@@ -6,31 +6,34 @@ from typing import Dict, Final, Optional, Self, Tuple
 from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.exporters.skipped import SkippedRow
+from sampletones_core.exporters.skipped import SkippedRow, SkipReason
 from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.structures import IdentifiedCollection
 from sampletones_core.utils.display import display_id, display_voice_label
 
 MAX_REPORTED_ROWS: Final[int] = 12
 ROW_BULLET: Final[str] = "  - "
+PARAGRAPH_BREAK: Final[str] = "\n\n"
 
 
 @dataclass(frozen=True)
 class SkippedRowMessages:
-    """The words the rows an export left silent are reported in.
+    """The words the rows an export wrote other than the song plays them are reported in.
 
     A row naming a voice on a channel the voice has no instrument for plays nothing in the song,
-    so the tracker formats write a note cut there. The report names each row where the reader
-    finds it in the tracker, and closes on how many more the list leaves out.
+    so the tracker formats write a note cut there. A transpose row the format has no pitch change
+    for keeps the note where it was. The report gives each reason a paragraph of its own, names each
+    row where the reader finds it in the tracker, and closes a paragraph on how many more it leaves
+    out.
 
     Attributes:
-        heading: The line introducing the rows.
+        headings: The line introducing the rows, per reason.
         row: The template one row is printed with.
         more: The template naming the rows past the ones listed.
         channels: The name each channel is printed under.
     """
 
-    heading: str
+    headings: Dict[SkipReason, str]
     row: str
     more: str
     channels: Dict[ChannelName, str]
@@ -46,7 +49,10 @@ class SkippedRowMessages:
             Self: The bundle the export result handler reads.
         """
         return cls(
-            heading=language_manager["global.dialog.message.export_skipped_rows"],
+            headings={
+                SkipReason.NO_INSTRUMENT: language_manager["global.dialog.message.export_skipped_rows"],
+                SkipReason.UNREACHED_TRANSPOSE: language_manager["global.dialog.message.export_untransposed_rows"],
+            },
             row=language_manager["global.dialog.template.export_skipped_row"],
             more=language_manager["global.dialog.template.export_skipped_rows_more"],
             channels={channel: channel_label(language_manager, channel) for channel in ChannelName.items()},
@@ -57,21 +63,35 @@ class SkippedRowMessages:
         skipped_rows: Tuple[SkippedRow, ...],
         voices: IdentifiedCollection[VoiceUnion],
     ) -> Optional[str]:
-        """Phrases the rows an export wrote as a note cut.
+        """Phrases the rows an export wrote other than the song plays them, a paragraph per reason.
 
         Args:
-            skipped_rows: The rows the export left silent, in the order the song plays them.
+            skipped_rows: The rows the export reported, in the order the song plays them.
             voices: The project's voices, which the rows name their voice through.
 
         Returns:
-            Optional[str]: The lines the export dialog appends, and ``None`` where no row was
-            left silent.
+            Optional[str]: The paragraphs the export dialog appends, and ``None`` where every row
+            was written as the song plays it.
         """
-        if not skipped_rows:
+        paragraphs = [
+            self._paragraph(reason, rows, voices)
+            for reason in SkipReason
+            if (rows := tuple(skipped for skipped in skipped_rows if skipped.reason == reason))
+        ]
+        if not paragraphs:
             return None
 
+        return PARAGRAPH_BREAK.join(paragraphs)
+
+    def _paragraph(
+        self,
+        reason: SkipReason,
+        skipped_rows: Tuple[SkippedRow, ...],
+        voices: IdentifiedCollection[VoiceUnion],
+    ) -> str:
+        """One reason's rows under its heading, cut after the rows a paragraph lists."""
         listed = skipped_rows[:MAX_REPORTED_ROWS]
-        lines = [self.heading, *(f"{ROW_BULLET}{self._row(skipped, voices)}" for skipped in listed)]
+        lines = [self.headings[reason], *(f"{ROW_BULLET}{self._row(skipped, voices)}" for skipped in listed)]
         remaining = len(skipped_rows) - len(listed)
         if remaining > 0:
             lines.append(self.more.format(count=remaining))

@@ -19,6 +19,22 @@ class NoteValue(IntEnum):
     HALT = 14
 
 
+class EffectId(IntEnum):
+    """Effect number a pattern cell stores, as vanilla FamiTracker 0.4.6 numbers its effects.
+
+    ``SLIDE_UP`` is ``Qxy`` and ``SLIDE_DOWN`` is ``Rxy``: each moves the channel's note by ``y``
+    semitones at once and glides the period toward it at ``2x + 1`` units a tick. A module below the
+    0CC version stores these numbers verbatim (``EF_SLIDE_UP``, ``EF_SLIDE_DOWN``).
+    """
+
+    SLIDE_UP = 20
+    SLIDE_DOWN = 21
+
+
+MAX_SLIDE_SEMITONES: Final[int] = 0x0F
+FASTEST_SLIDE_SPEED: Final[int] = 0x0F
+SLIDE_SPEED_SHIFT: Final[int] = 4
+
 EMPTY_NOTE: Final[int] = 0
 EMPTY_INSTRUMENT: Final[int] = 0x40
 EMPTY_VOLUME: Final[int] = 0x10

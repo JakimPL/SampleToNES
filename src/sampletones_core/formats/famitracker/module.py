@@ -153,7 +153,7 @@ def _write_patterns_block(writer: FamiTrackerWriter, patterns: Sequence[PatternD
                 body.write_int8(row.volume)
                 for effect, param in row.effects:
                     body.write_int8(effect)
-                    body.write_int8(param)
+                    body.write_uint8(param)
 
 
 def _write_dpcm_samples_block(writer: FamiTrackerWriter) -> None:

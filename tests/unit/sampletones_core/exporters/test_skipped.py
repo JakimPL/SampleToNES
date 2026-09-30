@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional, Set, Tuple
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.exporters.skipped import SkippedRow, find_skipped_rows
+from sampletones_core.exporters.skipped import SkippedRow, SkipReason, find_skipped_rows, in_song_order
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
@@ -47,7 +47,13 @@ class TestFindingTheRowsLeftSilent:
         )
 
         assert find_skipped_rows(song, INSTRUMENTS) == (
-            SkippedRow(voice_id=KNOWN, channel=ChannelName.PULSE2, order_position=0, row_index=1),
+            SkippedRow(
+                voice_id=KNOWN,
+                channel=ChannelName.PULSE2,
+                order_position=0,
+                row_index=1,
+                reason=SkipReason.NO_INSTRUMENT,
+            ),
         )
 
     def test_a_note_on_with_an_instrument_on_its_channel_is_left_alone(self) -> None:
@@ -96,4 +102,38 @@ class TestFindingTheRowsLeftSilent:
             (0, ChannelName.PULSE2, 3),
             (0, ChannelName.TRIANGLE, 0),
             (1, ChannelName.PULSE2, 3),
+        ]
+
+
+def _reported(
+    order_position: int,
+    channel: ChannelName,
+    row_index: int,
+    reason: SkipReason,
+) -> SkippedRow:
+    return SkippedRow(
+        voice_id=KNOWN,
+        channel=channel,
+        order_position=order_position,
+        row_index=row_index,
+        reason=reason,
+    )
+
+
+class TestTheRowsInSongOrder:
+    def test_rows_gathered_apart_come_frame_by_frame_then_channel_by_channel_then_row_by_row(self) -> None:
+        rows = (
+            _reported(2, ChannelName.PULSE1, 0, SkipReason.UNREACHED_TRANSPOSE),
+            _reported(0, ChannelName.TRIANGLE, 1, SkipReason.NO_INSTRUMENT),
+            _reported(0, ChannelName.PULSE2, 3, SkipReason.UNREACHED_TRANSPOSE),
+            _reported(0, ChannelName.PULSE2, 1, SkipReason.NO_INSTRUMENT),
+        )
+
+        ordered = [(row.order_position, row.channel, row.row_index) for row in in_song_order(rows)]
+
+        assert ordered == [
+            (0, ChannelName.PULSE2, 1),
+            (0, ChannelName.PULSE2, 3),
+            (0, ChannelName.TRIANGLE, 1),
+            (2, ChannelName.PULSE1, 0),
         ]

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Container, Final, Generic, List, Optional, Tuple, TypeVar
+from enum import StrEnum
+from typing import Container, Final, Generic, Iterable, List, Optional, Tuple, TypeVar
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.truncation import EnvelopeTruncation
@@ -9,24 +10,40 @@ from sampletones_core.project.voices.note_on import NoteOn
 DocumentT = TypeVar("DocumentT")
 
 
+class SkipReason(StrEnum):
+    """Why an export wrote a row other than the song plays it.
+
+    ``NO_INSTRUMENT`` is a note-on naming a voice with no instrument on its channel, written as a note
+    cut. ``UNREACHED_TRANSPOSE`` is a transpose row moving a sounding note further than the format's
+    pitch change reaches, or a row a pattern shared by several frames needs a different change in,
+    written without the change there.
+    """
+
+    NO_INSTRUMENT = "no_instrument"
+    UNREACHED_TRANSPOSE = "unreached_transpose"
+
+
 @dataclass(frozen=True)
 class SkippedRow:
-    """A note-on the target format has no instrument for, which the export wrote as a note cut.
+    """A row the export wrote other than the song plays it, named by where the reader finds it in the tracker.
 
-    A voice sounds on the channels its instruments cover, so a row naming it elsewhere plays
-    nothing in the song either. The row is named by where the reader finds it in the tracker.
+    A voice sounds on the channels its instruments cover, so a note-on naming it elsewhere plays
+    nothing in the song either, and the export writes a note cut. A transpose row the format has no
+    pitch change for keeps the note at the pitch it had.
 
     Attributes:
-        voice_id: The voice the row names.
+        voice_id: The voice the row names, or the voice it moves.
         channel: The channel the row stands on.
         order_position: The frame of the order the row stands in.
         row_index: The row's position within its pattern.
+        reason: What the export wrote in the row's place.
     """
 
     voice_id: str
     channel: ChannelName
     order_position: int
     row_index: int
+    reason: SkipReason
 
 
 NO_SKIPPED_ROWS: Final[Tuple[SkippedRow, ...]] = ()
@@ -81,7 +98,26 @@ def find_skipped_rows(
                                 channel=channel,
                                 order_position=position,
                                 row_index=row_index,
+                                reason=SkipReason.NO_INSTRUMENT,
                             )
                         )
 
     return tuple(skipped)
+
+
+def in_song_order(rows: Iterable[SkippedRow]) -> Tuple[SkippedRow, ...]:
+    """Rows in the order the song plays them: frame by frame, channel by channel, then row by row.
+
+    Args:
+        rows: The rows an export reports, gathered in any order.
+
+    Returns:
+        Tuple[SkippedRow, ...]: The same rows, in the order the song reaches them.
+    """
+    channels = ChannelName.items()
+    return tuple(
+        sorted(
+            rows,
+            key=lambda skipped: (skipped.order_position, channels.index(skipped.channel), skipped.row_index),
+        )
+    )

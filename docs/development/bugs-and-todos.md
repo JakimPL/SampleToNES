@@ -33,6 +33,12 @@ dimension the import starts carrying.
 * A tracker export moves a whole contour by one written note, so where a transpose carries part of it
   outside pitches 33–119, the ticks in-app playback clamps sound unclamped in the tracker. A clamped table
   (Bitphase) or arpeggio (FamiTracker) per such transposition would make them exact.
+* A FamiTracker transpose row moving a note more than fifteen semitones, or a shared pattern's cell that
+  frames reach needing different slides, is written without its slide and reported. A second effect
+  column, or a pattern cloned per frame, would carry it.
+* A FamiTracker bend ending before its arpeggio loses the offset it ends on, since the running arpeggio
+  reloads the period from the note and a halted bend adds nothing. Only instruments a note slide reaches
+  circle the bend on its last item today.
 
 ### Workflow
 

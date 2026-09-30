@@ -1,7 +1,7 @@
 from typing import Final, List
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.exporters.skipped import SkippedRow
+from sampletones_core.exporters.skipped import SkippedRow, SkipReason
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
@@ -28,4 +28,5 @@ def name_a_missing_voice(project: Project) -> SkippedRow:
         channel=SILENT_CHANNEL,
         order_position=0,
         row_index=SILENT_ROW,
+        reason=SkipReason.NO_INSTRUMENT,
     )

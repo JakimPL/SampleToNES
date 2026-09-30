@@ -120,7 +120,7 @@ class TestFeaturesFootprint(BaseTestSuite):
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_the_built_instrument_measures_the_same(self, test_case: TestCase) -> None:
         """Both entry points measure one export, so a slice reads the same either way."""
-        instrument = build_instrument(0, test_case.label, test_case.features)
+        instrument = build_instrument(0, test_case.label, test_case.features, repitched=False)
         assert instrument_footprint(instrument) == test_case.expected
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)

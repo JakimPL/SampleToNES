@@ -12,7 +12,7 @@ from sampletones_core.constants.enums import (
     ChannelName,
 )
 from sampletones_core.constants.general import MIN_PITCH, SILENT_VOLUME
-from sampletones_core.exporters.skipped import SkippedRow
+from sampletones_core.exporters.skipped import SkippedRow, SkipReason
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.bitphase.builder import build_bitphase, project_to_bitphase
 from sampletones_core.formats.bitphase.model.pattern import BitphaseRow, EffectCell, NoteCell
@@ -434,6 +434,7 @@ class TestARowWithNoInstrumentOnItsChannel:
                 channel=ChannelName.PULSE2,
                 order_position=0,
                 row_index=TRIGGER_ROW,
+                reason=SkipReason.NO_INSTRUMENT,
             ),
         )
 

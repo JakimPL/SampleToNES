@@ -1,14 +1,11 @@
-from dataclasses import dataclass
-from typing import Dict, FrozenSet, List, Optional, Sequence, Tuple
+from typing import Final, FrozenSet, List, Mapping, Optional, Sequence, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.rows.levels import cell_volume, full_level_notes
-from sampletones_core.exporters.rows.pitch import highest_step, written_pitch
-from sampletones_core.exporters.skipped import BuiltDocument, find_skipped_rows
+from sampletones_core.exporters.skipped import BuiltDocument, find_skipped_rows, in_song_order
 from sampletones_core.exporters.slices import (
     InstrumentEntry,
-    InstrumentSlot,
     InstrumentTable,
     iterate_instrument_entries,
 )
@@ -22,15 +19,12 @@ from sampletones_core.formats.famitracker.model.module import (
     Track,
 )
 from sampletones_core.formats.famitracker.model.pattern import PatternData, RowCell
-from sampletones_core.formats.famitracker.notes import (
-    period_to_note_cell,
-    pitch_to_note_cell,
-    resolve_machine,
-)
+from sampletones_core.formats.famitracker.notes import resolve_machine
 from sampletones_core.formats.famitracker.sequences.features import (
     features_to_instrument_sequences,
     features_truncation,
 )
+from sampletones_core.formats.famitracker.slides import PatternCell, SlidePlan, slide_effect
 from sampletones_core.formats.famitracker.specification.channels import (
     CHANNEL_COUNT_2A03,
     CHANNEL_TO_ID,
@@ -59,7 +53,7 @@ from sampletones_core.formats.famitracker.specification.patterns import (
     MIN_OCTAVE,
     NoteValue,
 )
-from sampletones_core.formats.famitracker.specification.sequences import SequenceKind
+from sampletones_core.formats.famitracker.targets import RowTargets, row_targets
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
@@ -68,29 +62,15 @@ from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_shared.application import SAMPLETONES_COPYRIGHT
 
-PatternCell = Tuple[int, int]
-
-
-@dataclass(frozen=True)
-class RowTarget:
-    """The instrument a row naming a voice on one channel triggers, with what places its note.
-
-    Attributes:
-        slot: The instrument's position in the module and the reference a row's transpose steps from.
-        contour_top: The highest semitone step the instrument's arpeggio moves the note by.
-    """
-
-    slot: InstrumentSlot
-    contour_top: int
-
-
-RowTargets = Dict[Tuple[str, ChannelName], RowTarget]
+NO_REPITCHED_INSTRUMENTS: Final[FrozenSet[int]] = frozenset()
 
 
 def build_instrument(
     index: int,
     name: str,
     features: Features,
+    *,
+    repitched: bool,
 ) -> Instrument2A03:
     """Builds one FamiTracker instrument from a set of envelopes.
 
@@ -101,11 +81,12 @@ def build_instrument(
         index: The slot the instrument is numbered under.
         name: The name FamiTracker lists the instrument by.
         features: The per-dimension envelopes the sequences are read from.
+        repitched: Whether a transpose row's note slide reaches the instrument in a module.
 
     Returns:
         The instrument the envelopes describe.
     """
-    sequences = features_to_instrument_sequences(features)
+    sequences = features_to_instrument_sequences(features, repitched=repitched)
 
     return Instrument2A03(
         index=index,
@@ -124,11 +105,18 @@ def build_instrument_table(project: Project) -> Tuple[List[Instrument2A03], Inst
     Raises:
         ValueError: If the project holds more instruments than FamiTracker has room for.
     """
-    return _instrument_table(tuple(iterate_instrument_entries(project)))
+    return _instrument_table(tuple(iterate_instrument_entries(project)), NO_REPITCHED_INSTRUMENTS)
 
 
-def _instrument_table(entries: Sequence[InstrumentEntry]) -> Tuple[List[Instrument2A03], InstrumentTable]:
+def _instrument_table(
+    entries: Sequence[InstrumentEntry],
+    repitched: FrozenSet[int],
+) -> Tuple[List[Instrument2A03], InstrumentTable]:
     """Builds the instruments the entries describe and the table a pattern row resolves through.
+
+    Args:
+        entries: The instruments to build, in the order the module numbers them.
+        repitched: The instruments a transpose row's note slide reaches.
 
     Raises:
         ValueError: If the entries hold more instruments than FamiTracker has room for.
@@ -145,6 +133,7 @@ def _instrument_table(entries: Sequence[InstrumentEntry]) -> Tuple[List[Instrume
                 entry.index,
                 entry.name,
                 entry.features,
+                repitched=entry.index in repitched,
             )
         )
         for channel, slot in entry.slots.items():
@@ -153,51 +142,12 @@ def _instrument_table(entries: Sequence[InstrumentEntry]) -> Tuple[List[Instrume
     return instruments, slots
 
 
-def _row_targets(
-    instruments: Sequence[Instrument2A03],
-    slots: InstrumentTable,
-) -> RowTargets:
-    """Pairs every slot a row resolves through with the highest step its instrument's arpeggio reaches.
-
-    The arpeggio is read as the module stores it, so the step is one FamiTracker plays.
-    """
-    contour_tops = {
-        instrument.index: highest_step(instrument.sequences[SequenceKind.ARPEGGIO].items) for instrument in instruments
-    }
-    return {
-        key: RowTarget(
-            slot=slot,
-            contour_top=contour_tops[slot.index],
-        )
-        for key, slot in slots.items()
-    }
-
-
-def _note_and_octave(
-    transpose: int,
-    channel_generator: ChannelName,
-    target: RowTarget,
-) -> Tuple[int, int]:
-    """Resolves an instrument moved by a row's transpose to the note column that triggers it.
-
-    The noise channel reads its note as a period, wrapped into the sixteen it has. Every other
-    channel reads the note its arpeggio moves, so the transposed pitch is written at the note that
-    keeps the contour where the song plays it — see :func:`written_pitch`.
-    """
-    base_pitch = target.slot.initial_pitch + transpose
-    if channel_generator == ChannelName.NOISE:
-        cell = period_to_note_cell(base_pitch)
-    else:
-        cell = pitch_to_note_cell(written_pitch(base_pitch, target.contour_top))
-
-    return cell.note, cell.octave
-
-
 def _row_cell(
     row: Row,
     row_number: int,
     channel_generator: ChannelName,
     targets: RowTargets,
+    slide: Optional[int],
     *,
     full_level: bool,
 ) -> Optional[RowCell]:
@@ -206,7 +156,8 @@ def _row_cell(
     A note-on naming a voice with no instrument on this channel plays nothing in the song, so it
     becomes the note cut that silences the channel. The volume column states what
     :func:`cell_volume` gives the row, which is the full level on a note FamiTracker would otherwise
-    start at the level the channel carries.
+    start at the level the channel carries. A transpose row moving the note sounding writes the note
+    slide ``slide`` names — see :class:`SlidePlan`.
     """
     note = EMPTY_NOTE
     octave = MIN_OCTAVE
@@ -223,15 +174,14 @@ def _row_cell(
                 note = int(NoteValue.HALT)
             else:
                 instrument = target.slot.index
-                note, octave = _note_and_octave(
-                    row.transpose or 0,
-                    channel_generator,
-                    target,
-                )
+                cell_note = target.note_cell(row.transpose or 0, channel_generator)
+                note, octave = cell_note.note, cell_note.octave
         case None:
             pass
 
     effects = tuple((EMPTY_EFFECT, EMPTY_EFFECT_PARAM) for _ in range(DEFAULT_EFFECT_COLUMNS))
+    if slide is not None:
+        effects = (slide_effect(slide),) + effects[1:]
     cell = RowCell(
         row_number=row_number,
         note=note,
@@ -267,8 +217,9 @@ def _channel_patterns(
     channel: Channel,
     targets: RowTargets,
     full_level_cells: FrozenSet[PatternCell],
+    slides: Mapping[PatternCell, int],
 ) -> List[PatternData]:
-    """Converts one channel's pattern pool, writing the full level on the cells named."""
+    """Converts one channel's pattern pool, writing the full level and the note slides on the cells named."""
     channel_id = CHANNEL_TO_ID[name]
     patterns: List[PatternData] = []
 
@@ -285,6 +236,7 @@ def _channel_patterns(
                     row_number,
                     name,
                     targets,
+                    slides.get((index, row_number)),
                     full_level=(index, row_number) in full_level_cells,
                 )
                 for row_number, row in enumerate(pattern.rows)
@@ -344,14 +296,18 @@ def build_module(project: Project) -> BuiltDocument[FamiTrackerModule]:
     so the module holds a note cut there and the row is listed beside it. A dimension longer than a
     sequence holds keeps its opening items, and the instruments shortened that way are reported
     beside the rows. The rows write their notes and levels so FamiTracker plays them where the
-    song's own walk does.
+    song's own walk does. A row moving the transpose of a note already sounding writes a note slide,
+    and a row the module has no slide for is listed beside the others — see :class:`SlidePlan`.
 
     Raises:
         ValueError: If the project holds more than FamiTracker has room for.
     """
     entries = tuple(iterate_instrument_entries(project))
-    instruments, slots = _instrument_table(entries)
     song = project.song
+    plain_instruments, slots = _instrument_table(entries, NO_REPITCHED_INSTRUMENTS)
+    targets = row_targets(plain_instruments, slots)
+    slides = SlidePlan.build(song, targets)
+    instruments, _ = _instrument_table(entries, slides.repitched)
     settings = project.settings
     info = project.info
 
@@ -372,7 +328,6 @@ def build_module(project: Project) -> BuiltDocument[FamiTrackerModule]:
         copyright=SAMPLETONES_COPYRIGHT,
     )
 
-    targets = _row_targets(instruments, slots)
     patterns: List[PatternData] = []
     for channel in ChannelName.items():
         patterns.extend(
@@ -381,6 +336,7 @@ def build_module(project: Project) -> BuiltDocument[FamiTrackerModule]:
                 song.channels[channel],
                 targets,
                 _full_level_cells(song, channel),
+                slides.slides[channel],
             ),
         )
 
@@ -402,6 +358,6 @@ def build_module(project: Project) -> BuiltDocument[FamiTrackerModule]:
             track=track,
             comment=info.comment,
         ),
-        skipped_rows=find_skipped_rows(song, slots),
+        skipped_rows=in_song_order(find_skipped_rows(song, slots) + slides.skipped_rows),
         truncation=EnvelopeTruncation.summarize([features_truncation(entry.features) for entry in entries]),
     )

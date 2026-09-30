@@ -58,6 +58,20 @@ def contour_sample(channel_name: ChannelName, frames: int) -> Sample:
     return Sample(name=f"Contour ({channel_name})", reconstruction=reconstruction_of(channel_name, instructions))
 
 
+def settling_sample(channel_name: ChannelName, frames: int) -> Sample:
+    """A sample stepping once through its channel's contour, then holding the last step for ``frames`` frames in all.
+
+    Its arpeggio stops changing early while the note goes on sounding, so a tracker whose arpeggio
+    halts once it has played its items shows a transpose row landing after that.
+    """
+    contour = CONTOURS[channel_name]
+    hold = CONTOUR_TICKS[channel_name]
+    instructions = [
+        contour_instruction(channel_name, contour[min(tick // hold, len(contour) - 1)]) for tick in range(frames)
+    ]
+    return Sample(name=f"Settling ({channel_name})", reconstruction=reconstruction_of(channel_name, instructions))
+
+
 def flat_sample(channel_name: ChannelName, value: int, frames: int) -> Sample:
     """A sample holding one pitch, or one period on noise, for ``frames`` frames."""
     instructions = [contour_instruction(channel_name, value)] * frames

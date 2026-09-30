@@ -12,7 +12,7 @@ from sampletones_application.coordinators.project import ProjectCoordinator
 from sampletones_application.paths import LANG_EN
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
-from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS, SkippedRow
+from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS, SkippedRow, SkipReason
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.project.project import Project
@@ -287,6 +287,7 @@ class TestAWrittenProjectReportsTheRowsLeftSilent:
             channel=SILENT_CHANNEL,
             order_position=3,
             row_index=index,
+            reason=SkipReason.NO_INSTRUMENT,
         )
 
     def test_a_project_with_an_instrument_for_every_row_announces_the_export_alone(
@@ -374,6 +375,7 @@ class TestAWrittenProjectReportsTheInstrumentsShortened:
             channel=SILENT_CHANNEL,
             order_position=0,
             row_index=0,
+            reason=SkipReason.NO_INSTRUMENT,
         )
 
         truncation = EnvelopeTruncation(frames=512, source_frames=600, instruments=1)

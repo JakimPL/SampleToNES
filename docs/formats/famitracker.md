@@ -156,7 +156,7 @@ Instruments reference the pooled sequences by index, so the module stores each s
 | instrument | `int8` | per stored row |
 | volume | `int8` | per stored row |
 | effect | `int8` | per stored row, one for each effect column |
-| effect parameter | `int8` | per stored row, one for each effect column |
+| effect parameter | `uint8` | per stored row, one for each effect column |
 
 **Pattern cell encoding**
 
@@ -166,7 +166,8 @@ Instruments reference the pooled sequences by index, so the module stores each s
 | octave | `0`–`7` |
 | instrument | `0x40` when empty |
 | volume | `0x10` when empty |
-| effect | `0` when empty |
+| effect | `0` when empty, `20` for `Qxy` (note slide up), `21` for `Rxy` (note slide down) |
+| effect parameter | for `Qxy` and `Rxy`, the speed `x` in the high four bits and the semitones `y` in the low four |
 
 A pitch converts to a cell by `note = pitch % 12 + 1` and `octave = pitch // 12 − 2`. This matches
 `pitch_to_name` in `sampletones_core/utils/frequencies.py`.
@@ -291,6 +292,37 @@ the arpeggio's highest item to 33:
 A tick that in-app playback holds at A-0 while its item moves the written note lower plays that lower
 note.
 
+**A transpose row slides the note sounding.** In-app playback reads a row that states a transpose and no
+note as a new pitch for the note already sounding: the voice goes on from the tick it reached, and every
+tick from that row on sounds at the new transpose. A note-on starts over at its own transpose. `Qxy` and
+`Rxy` move the channel's note by `y` semitones at once (`CChannelHandler::SetupSlide`) and glide the
+period toward it at `2x + 1` units a tick. While an instrument's arpeggio in absolute mode runs, it
+reloads the period from the note every tick (`CSeqInstHandler::ProcessSequence`), which makes the move
+instant. So a transpose row writes:
+
+| Column | What the exporter writes |
+| --- | --- |
+| Effect | `Qxy` or `Rxy` at the highest speed, `x = F`, sliding from the note the channel holds to the note a note-on at the new transpose would write |
+| Note, instrument | empty, so the instrument goes on |
+
+Each slide is measured from the note the channel holds once the slides before it applied, so a note's
+rows never drift from the transposes they state, and the low-note rule above holds for the note a slide
+reaches. On noise the note is the period, and both notes lie within the sixteen periods, so every noise
+slide is within reach. A row keeping the note where it stands writes no slide.
+
+A halted sequence reloads nothing, and the glide is then heard instead. Every instrument a slide reaches
+therefore keeps its arpeggio running: an arpeggio playing its items once circles on its last item, and an
+instrument writing none takes one item at its own note, repeating. A bend is added to the period the
+arpeggio reloads, and a halted bend adds nothing, so a bend playing its items once circles on its last
+item too and holds the offset it ends on. An instrument no slide reaches keeps its sequences as they
+are, so a module without transpose rows is unchanged.
+
+A slide moves the note by fifteen semitones at most, and a module stores a pattern once for every frame
+that plays it. A row moving the note further, or a cell of a shared pattern that another frame reaches
+needing a different slide, is written without its slide there. The first frame reaching a cell with a
+note sounding decides its slide. The export reports each such row by its frame, channel and row, beside
+the rows written as note cuts, and the rows after it slide from the note the channel holds.
+
 **What a row's volume cell holds.** A row naming a volume writes it. In-app playback starts a note whose
 row states no volume at the full level, while FamiTracker carries the level a channel last took into every
 note after it. Such a note therefore writes `15` wherever FamiTracker reaches it carrying another level,
@@ -351,6 +383,7 @@ that ends its note.
 | Patterns per channel | 128 (indices 0–127) | pool keyed by arbitrary ints | raises when a pattern index exceeds 127 |
 | Order frames | 128 | unbounded | raises when the order exceeds 128 frames |
 | Pattern length (rows) | 256 | 1–256 (`rows_per_pattern`) | matches; no guard needed |
+| Note slide | 15 semitones per row (`Qxy`, `Rxy`) | a transpose of −86..86 | writes the slide a transpose row needs, and reports a row needing more, or a shared pattern's cell needing different slides in different frames (section B) |
 | Note range | C-0..B-7 (pitch 24–119) | a reference of 33–119 plus a transpose reaching either end of that span | keeps the song's range, A-0..B-7, raising a lower note only as far as its arpeggio's highest item reaching A-0 (section B) |
 | Title / author | 32 bytes each | 64 characters | truncates to 32 bytes |
 | Comment | free text (COMMENTS block) | 65536 characters | carried in full |
@@ -359,7 +392,7 @@ that ends its note.
 
 A row that names a voice on a channel the voice has no instrument for plays nothing in the song, so the
 exporter writes a note cut on it and reports the row by its frame, channel and row. The project export
-dialog lists those rows.
+dialog lists those rows, and the transpose rows written without their slide under a heading of their own.
 
 The exporter also reserves an empty pattern index per channel (`max used index + 1`) for order slots the
 song leaves unset. A channel that already fills indices up to 127 leaves no room for it, and the exporter
@@ -405,4 +438,5 @@ appears once, so its own sequences are charged once each.
 
 **Length.** A sequence is written at the length it holds (section B), so a figure counts each dimension as
 it stands. A loop point on one dimension adds a byte and no padding. The figure for a voice is therefore
-what its **Export instrument...** writes.
+what its **Export instrument...** writes. In a module, an instrument a note slide reaches and that writes
+no arpeggio takes a one-item arpeggio of its own (section B), which adds a sequence to its figure.

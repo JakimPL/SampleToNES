@@ -82,6 +82,7 @@ global.dialog.message.bitphase_project_export_failed: "Failed to export Bitphase
 global.dialog.message.nsf_project_exported_successfully: "NSF program exported successfully."
 global.dialog.message.nsf_project_export_failed: "Failed to export NSF program."
 global.dialog.message.export_skipped_rows: "Rows whose voice has no instrument on that row's channel were written as note cuts instead:"
+global.dialog.message.export_untransposed_rows: "Rows whose pitch change this format cannot carry were written without the change:"
 global.dialog.template.export_skipped_row: "Frame {frame}, {channel}, row {row}: {voice}"
 global.dialog.template.export_skipped_rows_more: "and {count} more"
 global.dialog.template.export_truncated: "Shortened instruments: {instruments}. Envelopes longer than this format allows were cut to {frames} frames."

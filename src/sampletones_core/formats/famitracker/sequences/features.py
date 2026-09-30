@@ -19,9 +19,14 @@ from sampletones_core.formats.famitracker.specification.sequences import (
 )
 
 NO_ARPEGGIO_STEP: Final[int] = 0
+FLAT_RUNNING_ARPEGGIO: Final[Envelope[int]] = Envelope[int](items=(NO_ARPEGGIO_STEP,), loop_point=LOOP_FROM_START)
 
 
-def features_to_instrument_sequences(features: Features) -> Dict[SequenceKind, InstrumentSequence]:
+def features_to_instrument_sequences(
+    features: Features,
+    *,
+    repitched: bool,
+) -> Dict[SequenceKind, InstrumentSequence]:
     """Builds the five 2A03 sequences from a channel slice's envelopes.
 
     Each dimension becomes an :class:`InstrumentSequence`; one the generator lacks, or one left
@@ -31,15 +36,20 @@ def features_to_instrument_sequences(features: Features) -> Dict[SequenceKind, I
     holds — see :func:`stored_envelope`.
 
     A bend travels with an arpeggio that runs beside it, which is what makes the bend an offset
-    from the note — see :func:`_pinning_arpeggio`.
+    from the note — see :func:`_pinning_arpeggio`. An instrument a note slide reaches keeps its
+    arpeggio and its bend running for as long as the note sounds — see :func:`_running`.
 
     Args:
         features: The per-dimension envelopes describing the slice.
+        repitched: Whether a transpose row's note slide reaches the instrument in a module.
 
     Returns:
         Dict[SequenceKind, InstrumentSequence]: The sequences, one per dimension FamiTracker holds.
     """
     stored = _pinned(_stored_envelopes(features))
+    if repitched:
+        stored = _running(stored)
+
     return {kind: _sequence(kind, stored.get(kind, Envelope[int]())) for kind in SequenceKind}
 
 
@@ -133,9 +143,46 @@ def _pinning_arpeggio(stored: Dict[SequenceKind, Envelope[int]], bend_length: in
         return arpeggio
 
     if not arpeggio.items:
-        return Envelope[int](items=(NO_ARPEGGIO_STEP,), loop_point=LOOP_FROM_START)
+        return FLAT_RUNNING_ARPEGGIO
 
     return arpeggio.resized(max(len(arpeggio.items), bend_length))
+
+
+def _running(stored: Dict[SequenceKind, Envelope[int]]) -> Dict[SequenceKind, Envelope[int]]:
+    """These sequences with the arpeggio and the bend circling on their last item, so each runs as long as the note.
+
+    A note slide moves the channel's note, and an arpeggio in absolute mode reloads the period from the
+    note every tick it runs, so the moved note sounds from the slide's own tick. A halted arpeggio
+    reloads nothing and the slide's glide is heard instead, so the arpeggio circles on its last item,
+    which is the note it rests on anyway, and an instrument writing none takes one item at its own
+    note. The bend is added to the period the arpeggio reloads, and a halted bend adds nothing, so a
+    bend circles on its last item too and holds the offset it ends on.
+
+    Args:
+        stored: The sequences as the file holds them, the arpeggio already covering the bend.
+
+    Returns:
+        Dict[SequenceKind, Envelope[int]]: Those sequences, the arpeggio and the bend running.
+    """
+    arpeggio = stored.get(SequenceKind.ARPEGGIO, Envelope[int]())
+    running = {
+        **stored,
+        SequenceKind.ARPEGGIO: _circling(arpeggio) if arpeggio.items else FLAT_RUNNING_ARPEGGIO,
+    }
+    for kind in BEND_SEQUENCE_KINDS:
+        bend = stored.get(kind, Envelope[int]())
+        if bend.items:
+            running[kind] = _circling(bend)
+
+    return running
+
+
+def _circling(envelope: Envelope[int]) -> Envelope[int]:
+    """The envelope repeating from its own point, or from its last item where it plays once and holds it."""
+    if envelope.loops:
+        return envelope
+
+    return Envelope[int](items=envelope.items, loop_point=len(envelope.items) - 1)
 
 
 def _stored_envelopes(features: Features) -> Dict[SequenceKind, Envelope[int]]:

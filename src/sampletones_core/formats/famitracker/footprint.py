@@ -79,7 +79,7 @@ def features_footprint(features: Features) -> InstrumentFootprint:
     Returns:
         InstrumentFootprint: The footprint of the instrument those envelopes describe.
     """
-    sequences = features_to_instrument_sequences(features)
+    sequences = features_to_instrument_sequences(features, repitched=False)
     return sequences_footprint(sequences.values())
 
 

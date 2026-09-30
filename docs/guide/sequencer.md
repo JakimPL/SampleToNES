@@ -247,6 +247,10 @@ A voice plays on the channels its instruments cover. Where a row names a voice o
 FamiTracker and Bitphase files hold a note cut on that row, which is how the song plays it. The dialog
 that announces the export lists those rows by frame, channel and row.
 
+A row that changes only the transpose of a playing note moves that note in both files. A FamiTracker
+file moves a note by up to 15 semitones in one row. The dialog lists the rows it could not move, and the
+file plays them at the old pitch.
+
 FamiTracker and Bitphase files have room for a limited number of values per sequence. A longer sequence
 is cut short, and the dialog says how many instruments were shortened.
 

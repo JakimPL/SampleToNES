@@ -198,6 +198,7 @@ class TestAVoiceThroughAFileAndBack:
             STANDALONE_INSTRUMENT_INDEX,
             voice.name,
             voice.instrument_features(),
+            repitched=False,
         )
         return instrument_to_voice(fti_bytes_to_instrument(instrument_to_fti_bytes(tracker)))
 

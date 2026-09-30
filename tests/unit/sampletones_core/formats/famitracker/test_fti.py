@@ -112,7 +112,8 @@ def build_instrument(
             pitch=None if pitch is None else envelope(pitch),
             hi_pitch=None if hi_pitch is None else envelope(hi_pitch),
             duty_cycle=None if duty_cycle is None else envelope(duty_cycle),
-        )
+        ),
+        repitched=False,
     )
     return Instrument2A03(index=index, name=name, sequences=sequences)
 

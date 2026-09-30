@@ -59,6 +59,7 @@ class FamiTrackerBackend:
             STANDALONE_INSTRUMENT_INDEX,
             request.name,
             request.features,
+            repitched=False,
         )
         write_fti(destination, instrument)
         announce(report, ExportStage.WRITING, ONE_FILE, ONE_FILE)

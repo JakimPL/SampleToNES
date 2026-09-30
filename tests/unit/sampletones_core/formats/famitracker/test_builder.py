@@ -6,7 +6,7 @@ import pytest
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME, MIN_PITCH
-from sampletones_core.exporters.skipped import SkippedRow
+from sampletones_core.exporters.skipped import SkippedRow, SkipReason
 from sampletones_core.formats.famitracker.builder import (
     build_instrument_table,
     build_module,
@@ -274,6 +274,7 @@ class TestARowWithNoInstrumentOnItsChannel:
                 channel=ChannelName.PULSE2,
                 order_position=0,
                 row_index=self.DRUM_ROW,
+                reason=SkipReason.NO_INSTRUMENT,
             ),
         )
 

@@ -16,7 +16,7 @@ from sampletones_application.services.result import (
 )
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
-from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS, SkippedRow
+from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS, SkippedRow, SkipReason
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.artifact import ExportArtifact
 from sampletones_core.exports.format import ExportFormat
@@ -491,6 +491,7 @@ class TestExportSkippedRowsReporting:
             channel=ChannelName.PULSE1,
             order_position=3,
             row_index=26,
+            reason=SkipReason.NO_INSTRUMENT,
         ),
     )
 
