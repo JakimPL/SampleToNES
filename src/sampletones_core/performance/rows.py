@@ -47,9 +47,9 @@ def apply_row(performance: ChannelPerformance, row: Row) -> bool:
     """Moves a channel onto the row it has reached, and reports whether the note starts over.
 
     A note column names the voice to sound and begins it, taking the transpose and volume the row
-    states or the defaults where it states neither. A row naming no note leaves the voice playing
-    and changes only the columns it fills in, which is how a transpose or a volume bends a note
-    already sounding.
+    states or the defaults where it states neither, with every envelope dimension at the value a
+    song starts on. A row naming no note leaves the voice playing and changes only the columns it
+    fills in, which is how a transpose or a volume bends a note already sounding.
 
     Args:
         performance: What the channel carries; updated in place.
@@ -60,10 +60,11 @@ def apply_row(performance: ChannelPerformance, row: Row) -> bool:
     """
     match row.command:
         case NoteOn() as note_on:
-            performance.voice_id = note_on.voice_id
-            performance.tick_index = 0
-            performance.transpose = row.transpose if row.transpose is not None else 0
-            performance.volume = row.volume if row.volume is not None else MAX_VOLUME
+            performance.start_note(
+                note_on.voice_id,
+                transpose=row.transpose if row.transpose is not None else 0,
+                volume=row.volume if row.volume is not None else MAX_VOLUME,
+            )
             return True
         case NoteOff():
             performance.voice_id = None

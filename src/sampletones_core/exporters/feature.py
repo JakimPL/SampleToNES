@@ -17,7 +17,7 @@ class Features(BaseModel):
     cycle — carrying the values it writes per tick together with the item they repeat from, beside
     the ``initial_pitch`` the arpeggio is measured against. A dimension the generator offers is an
     envelope, ``None`` for one it lacks; an envelope of no items marks a dimension the instrument
-    leaves to the channel, which keeps the value it holds.
+    leaves to the channel, which sounds it at the value every note starts on.
 
     Attributes:
         initial_pitch: Reference pitch the arpeggio envelope is measured against.
@@ -146,8 +146,8 @@ class Features(BaseModel):
         """The dimensions the channel governs, whose envelopes carry no item.
 
         An instrument writes the dimensions it describes and leaves the rest to the channel,
-        which keeps the value it already holds for as long as the instrument sounds. These
-        are the dimensions it leaves, listed in the order the model declares them.
+        which sounds them at the value every note starts on for as long as the instrument sounds.
+        These are the dimensions it leaves, listed in the order the model declares them.
         """
         return tuple(feature_key for feature_key, envelope in self.envelopes.items() if not envelope.written)
 

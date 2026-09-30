@@ -31,7 +31,7 @@ One entry per channel:
 | `channel_name` | `pulse1`, `pulse2`, `triangle` or `noise` |
 | `instructions` | the stream the channel plays, one [instruction](../glossary.md#instruction) per frame. A FamiTracker export is built from this |
 | `initial_pitch` | the note the channel's arpeggio offsets are measured against, chosen when the reconstruction is built. An export reads the offsets against this pitch, so editing an arpeggio moves the frames around a fixed base (see [FamiTracker export](famitracker.md)) |
-| `held_features` | the dimensions the channel governs. The instrument writes the others itself. An export leaves the governed dimensions empty, and the player keeps the value it already has for them |
+| `held_features` | the dimensions the channel governs. The instrument writes the others itself. An export leaves the governed dimensions empty, and every note sounds them at the value a song starts on |
 
 A stream of no frames is a channel **standing by**. A channel whose every frame rests stands by, whatever
 silenced it, so such a stream is stored as no frames at all. No export writes it and it costs nothing, and

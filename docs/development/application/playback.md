@@ -92,11 +92,13 @@ Muting is monitoring, and principle 5 governs what follows. The project holds ev
 
 ## What the channel holds
 
-A sample has a value for every dimension of every frame, and its reconstruction names the dimensions the channel governs. The instrument writes the rest itself. Each channel carries a value per dimension (volume, arpeggio, timbre), and an instrument that leaves one empty sounds it at the value the channel holds. That is what clearing an envelope in the instruments panel means once the sample is played in a song. A FamiTracker instrument follows the same rule with a sequence left out.
+A sample has a value for every dimension of every frame, and its reconstruction names the dimensions the channel governs. The instrument writes the rest itself. Each channel carries a value per dimension (volume, arpeggio, bend, timbre), and an instrument that leaves one empty sounds it at the value the channel holds. That is what clearing an envelope in the instruments panel means once the sample is played in a song. A FamiTracker instrument follows the same rule with a sequence left out.
 
-The value moves as the song plays. Every frame an instrument writes hands its value to the channel, so the channel keeps the last one written, and an instrument that leaves the dimension empty picks it up. A silent frame sets its level alone and leaves pitch and timbre where the channel holds them.
+Every note starts those values where a song starts them: full volume, no arpeggio offset, no bend, the first timbre (duty 0 on a pulse channel, the long mode on noise). A dimension the instrument leaves empty therefore sounds at that start for the whole note, whatever the note before it wrote. An empty volume plays at the row's level. FamiTracker and Bitphase start a note the same way, so an exported song plays in the tracker as it does here.
 
-A pass through the song begins on the values a channel holds from the start: full volume, no arpeggio offset, the first timbre. Starting the song and looping back to its first row therefore sound the same. Seeking within a running song keeps the values, since the channel has reached them.
+Within a note, every frame the instrument writes hands its value to the channel. A silent frame sets its level alone and leaves pitch and timbre where the note last put them.
+
+A pass through the song begins on the same values, so starting the song and looping back to its first row sound the same. Seeking within a running song keeps the values, since the sounding note has reached them.
 
 ## Rendering the song to a file
 
@@ -131,7 +133,7 @@ The device holds a release per stream it handed out and invokes it whenever it n
 | Error presentation for a source's failures | `GuardedPlayer` (`coordinators/playback/guard.py`) |
 | The sequencer's mute set, its mask, and solo | `SequencerChannelsLogic` (`logic/sequencer/channels.py`) |
 | Row mixing, and the mask it pulls while rendering | `RowSynthesizer` (`logic/sequencer/playback/synthesizer/`) |
-| The values a channel holds between frames | `ChannelState` (`logic/sequencer/playback/synthesizer/state.py`) |
+| The values a note starts from and a channel holds between frames | `ChannelPerformance` (`sampletones_core/performance/state.py`) |
 | How long a row lasts, and how many samples its ticks span | `Groove` and `TickClock` (`sampletones_core/timing/`) |
 | Rendering the song to a file, its passes and its progress | `SongRenderService` (`services/render/`) |
 

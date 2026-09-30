@@ -236,8 +236,11 @@ export](bitphase.md#f-bitphase-capacity-limits) shortens a dimension by the same
 
 **Empty dimensions.** An empty dimension is written as a disabled sequence. This differs from a sequence
 with a single zero: a disabled slot leaves that dimension to the channel, while a one-item sequence sets
-the value once and holds it. A dimension is empty when the reconstruction records it as one the channel
-governs. Clearing the envelope in the instruments panel produces that state (see
+the value once and holds it. FamiTracker starts every note of a disabled slot where _SampleToNES_ starts
+one: the instrument volume full, so the note plays at the volume column; the note unmoved by an arpeggio
+or a bend; and the channel's default duty. A `Vxx` effect sets that duty, and it stays at 0 because an
+export leaves every effect column empty. A dimension is empty when the reconstruction records it as one
+the channel governs. Clearing the envelope in the instruments panel produces that state (see
 [Reconstructions](reconstructions.md)).
 
 **How _SampleToNES_ fills an instrument.** Each channel slice of a sample's reconstruction becomes one

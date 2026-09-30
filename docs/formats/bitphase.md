@@ -71,7 +71,7 @@ only for the fields a reconstruction decides. The fields match Bitphase's own:
 | Field | Range | Default | Runtime meaning | What the exporter writes |
 | --- | --- | --- | --- | --- |
 | `volumeOrRate` | 0–15 | 15 | the literal channel volume while `envelope` stays off | the volume envelope, or one full level where the slice leaves its volume to the channel |
-| `pulseWidth` | 0–3 | 2 | square duty cycle; on the noise channel, any nonzero value selects the short LFSR | the duty-cycle envelope (squares), the short or long mode (noise); the triangle writes no macro |
+| `pulseWidth` | 0–3 | 2 | square duty cycle; on the noise channel, any nonzero value selects the short LFSR | the duty-cycle envelope (squares), the short or long mode (noise), or one `0` where the slice leaves its duty to the channel; the triangle writes no macro |
 | `toneAdd` | −4096–4095 | 0 | period offset added to the period the note resolves to (squares and triangle) | the bend the slice sounds (section C.4), and the contour with it in a preset |
 | `envelope` | bool | `false` | reads `volumeOrRate` as a hardware decay rate | no macro, so each value is the volume itself |
 | `soundLength` | 0–511 | 0 | length counter in ticks; `0` holds the note | no macro, so the volume envelope alone shapes the note |
@@ -101,6 +101,13 @@ writes one full `volumeOrRate`. Playback combines that level with the pattern's 
 PT3 volume table, where a full level comes out at the column's own level. The slice therefore sounds at
 whatever level the channel has, which is how FamiTracker reads a disabled volume sequence. A slice that
 describes no frame at all writes a single silent value, the smallest instrument Bitphase plays.
+
+**Every note starts where a song does.** Bitphase reads every field from the instrument a note plays,
+from its first tick, and every note cell the exporter writes names its slice's own table. A slice that
+leaves a dimension to the channel writes the value _SampleToNES_ starts a note on: a full level, a flat
+table, no tone offset, and a `0` pulse width, which is the long mode on noise. The pulse width needs its
+macro, because a field with none takes Bitphase's default of `2`. The note therefore sounds the same
+whatever played before it, as it does in the app and in FamiTracker.
 
 **A table runs beside the macros.** The table advances one step per tick on a counter of its own, so the
 contour keeps the length and the repeat point the arpeggio envelope was written at, whatever the macros

@@ -228,8 +228,8 @@ class Reconstruction(DataModel):
         """The dimensions each channel governs, whose envelopes an export leaves empty.
 
         An instrument writes the dimensions it describes and leaves the rest to the channel,
-        which keeps the value it already holds for as long as the instrument sounds. These
-        are the dimensions it leaves.
+        which sounds them at the value every note starts on for as long as the instrument sounds.
+        These are the dimensions it leaves.
         """
         return {channel_name: tuple(item.held_features) for channel_name, item in self.streams.items()}
 

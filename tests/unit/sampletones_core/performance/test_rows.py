@@ -1,23 +1,40 @@
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Dict, Final, Optional, Tuple
 
 import pytest
 
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.constants.general import MAX_VOLUME
-from sampletones_core.performance import ChannelPerformance, apply_row, resolve_row
+from sampletones_core.features import CHANNEL_FEATURE_DEFAULTS
+from sampletones_core.performance import (
+    ChannelPerformance,
+    VoiceReading,
+    apply_row,
+    resolve_row,
+    sound_tick,
+)
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.song import Song
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.performance import make_pulse_reconstruction
 
 ROWS_PER_PATTERN: int = 4
 SOUNDING_ROW: int = 2
 SAMPLE_ID: str = "sample"
 ANOTHER_SAMPLE_ID: str = "another"
+QUIET_VOLUME: Final[int] = 3
+LEFT_BEHIND: Final[Dict[FeatureKey, int]] = {
+    FeatureKey.VOLUME: 0,
+    FeatureKey.ARPEGGIO: 7,
+    FeatureKey.PITCH: -3,
+    FeatureKey.HI_PITCH: 1,
+    FeatureKey.DUTY_CYCLE: 2,
+}
 
 
 def _song() -> Song:
@@ -175,3 +192,88 @@ class TestApplyRow(BaseTestSuite):
         retriggered = apply_row(performance, test_case.row)
 
         assert (performance.tick_index == 0) is retriggered
+
+
+class TestANoteStartsItsDimensionsOver(BaseTestSuite):
+    """A note starts every envelope dimension from where a song starts, whatever the one before it left.
+
+    A row naming no note plays on inside the note already sounding, so it leaves the dimensions
+    where that note has taken them.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        row: Row
+        expected: Dict[FeatureKey, int]
+
+    test_cases: Tuple["TestANoteStartsItsDimensionsOver.TestCase", ...] = (
+        TestCase(
+            label="a note column",
+            row=Row(command=NoteOn(voice_id=SAMPLE_ID)),
+            expected=CHANNEL_FEATURE_DEFAULTS,
+        ),
+        TestCase(
+            label="a note column with modifiers",
+            row=Row(
+                command=NoteOn(voice_id=SAMPLE_ID),
+                transpose=5,
+                volume=8,
+            ),
+            expected=CHANNEL_FEATURE_DEFAULTS,
+        ),
+        TestCase(
+            label="an empty row",
+            row=Row(),
+            expected=LEFT_BEHIND,
+        ),
+        TestCase(
+            label="a modifier row",
+            row=Row(transpose=-2, volume=4),
+            expected=LEFT_BEHIND,
+        ),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_dimensions_the_channel_carries_after_the_row(self, test_case: TestCase) -> None:
+        performance = ChannelPerformance(
+            voice_id=ANOTHER_SAMPLE_ID,
+            tick_index=6,
+            feature_values=LEFT_BEHIND.copy(),
+        )
+
+        apply_row(performance, test_case.row)
+
+        assert performance.feature_values == test_case.expected
+
+    def test_a_note_leaves_the_defaults_themselves_untouched(self) -> None:
+        """Each note takes a copy, so what a note writes reaches neither the next nor a song's start."""
+        defaults = dict(CHANNEL_FEATURE_DEFAULTS)
+        performance = ChannelPerformance(voice_id=ANOTHER_SAMPLE_ID)
+        apply_row(performance, Row(command=NoteOn(voice_id=SAMPLE_ID)))
+
+        performance.feature_values[FeatureKey.ARPEGGIO] += 1
+
+        assert CHANNEL_FEATURE_DEFAULTS == defaults
+
+    def test_a_sample_holding_its_level_after_a_quieter_one_sounds_at_full_volume(self) -> None:
+        """A level one sample wrote ends with its note, so the next leaves its level where a song starts."""
+        writes = Sample(name="writes", reconstruction=make_pulse_reconstruction(volume=QUIET_VOLUME))
+        holds = Sample(
+            name="holds",
+            reconstruction=make_pulse_reconstruction(
+                volume=MAX_VOLUME,
+                held_features=(FeatureKey.VOLUME,),
+            ),
+        )
+        writes_reading = VoiceReading.read(writes, ChannelName.PULSE1)
+        holds_reading = VoiceReading.read(holds, ChannelName.PULSE1)
+        assert writes_reading is not None and holds_reading is not None
+
+        performance = ChannelPerformance()
+        apply_row(performance, Row(command=NoteOn(voice_id=writes.id)))
+        sound_tick(performance, writes_reading)
+        apply_row(performance, Row(command=NoteOn(voice_id=holds.id)))
+        sounded = sound_tick(performance, holds_reading)
+
+        assert sounded is not None and sounded.on is True
+        assert performance.feature_values[FeatureKey.VOLUME] == MAX_VOLUME

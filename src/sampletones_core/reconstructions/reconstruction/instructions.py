@@ -27,7 +27,7 @@ class InstructionsItem(DataModel):
     )
     held_features: List[FeatureKey] = Field(
         ...,
-        description="Dimensions the channel governs, keeping the value it holds while the channel sounds",
+        description="Dimensions the channel governs, sounding at the value every note starts on",
     )
 
     @model_validator(mode="after")

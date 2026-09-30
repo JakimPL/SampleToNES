@@ -16,8 +16,9 @@ class ChannelPerformance:
     sustain across rows.
 
     The channel carries a value per envelope dimension too, which is what an instrument leaving a
-    dimension to the channel sounds at. A frame the instrument writes hands its value over, so the
-    channel keeps the last one written for as long as the song runs.
+    dimension to the channel sounds at. Every note starts them from the values a song starts on,
+    and a frame the instrument writes hands its value over, so the channel keeps the last one
+    written for as long as the note sounds.
 
     Attributes:
         voice_id: The voice the channel is sounding, or ``None`` while it is silent.
@@ -32,6 +33,31 @@ class ChannelPerformance:
     transpose: int = field(default=0)
     volume: int = field(default=MAX_VOLUME)
     feature_values: Dict[FeatureKey, int] = field(default_factory=CHANNEL_FEATURE_DEFAULTS.copy)
+
+    def start_note(
+        self,
+        voice_id: str,
+        *,
+        transpose: int,
+        volume: int,
+    ) -> None:
+        """Begins a note of ``voice_id`` from its first tick, at the transpose and volume given.
+
+        The envelope dimensions start from the values a song starts on: full volume, no arpeggio
+        offset, no bend and the first timbre. A dimension the voice leaves empty therefore sounds
+        the same on every note, wherever the note stands in the song, which is how FamiTracker and
+        Bitphase start a note and what keeps a tracker export playing it as the song does.
+
+        Args:
+            voice_id: The voice the note sounds.
+            transpose: The semitone offset the note plays at.
+            volume: The level the note plays at.
+        """
+        self.voice_id = voice_id
+        self.tick_index = 0
+        self.transpose = transpose
+        self.volume = volume
+        self.feature_values = CHANNEL_FEATURE_DEFAULTS.copy()
 
     def reset(self) -> None:
         """Returns the channel to silence at full volume, as a song starts it.

@@ -866,9 +866,9 @@ class TestNesFrequencyTempo:
 class TestChannelHeldValues:
     """A dimension an instrument leaves to the channel sounds at the value the channel holds.
 
-    The channel carries that value from the start of a song, taking up a new one wherever an
-    instrument writes it, so an instrument with an empty volume envelope plays at whatever the
-    one before it left behind.
+    Every note starts that value where a song starts it, and the channel takes up a new one
+    wherever the instrument writes it, so an instrument with an empty volume envelope plays at full
+    volume whatever the one before it wrote.
     """
 
     @staticmethod
@@ -904,7 +904,8 @@ class TestChannelHeldValues:
 
         assert _performance(context).feature_values[FeatureKey.VOLUME] == QUIET_VOLUME
 
-    def test_a_sample_holding_its_level_sounds_at_the_channels(self) -> None:
+    def test_a_sample_holding_its_level_starts_at_full_volume_after_a_quieter_one(self) -> None:
+        """A level one note wrote ends with it, so the next note sounds as a song would start it."""
         context = _make_context()
         self._place(
             context,
@@ -922,11 +923,18 @@ class TestChannelHeldValues:
             row_index=1,
             name="holds",
         )
+        loud = _make_context()
+        self._place(
+            loud,
+            make_pulse_reconstruction(volume=MAX_VOLUME, count=SUSTAINED_FRAMES),
+            row_index=0,
+            name="writes",
+        )
 
-        written = _render(context)
+        _render(context)
         held = _render(context)
 
-        assert self._peak(held) == pytest.approx(self._peak(written))
+        assert self._peak(held) == pytest.approx(self._peak(_render(loud)))
 
     def test_a_song_starts_a_held_level_at_full_volume(self) -> None:
         holding = _make_context()

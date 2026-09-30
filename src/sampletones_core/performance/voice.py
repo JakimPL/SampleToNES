@@ -17,8 +17,9 @@ class VoiceReading:
 
     A voice carries a frame per tick stating every dimension the channel reads, and names which of
     those dimensions it writes itself. The rest are the channel's own: the voice leaves an empty
-    envelope for them and the channel sounds them at the value it holds, which is what clearing an
-    envelope in the instruments panel means once the voice is played in a song.
+    envelope for them and the channel sounds them at the value it holds, which every note starts
+    where a song starts it. That is what clearing an envelope in the instruments panel means once
+    the voice is played in a song.
 
     Reading a voice on a channel answers all a channel needs of it — the frames, the reference its
     arpeggio is measured against, the dimensions it leaves behind, and what it sounds once the

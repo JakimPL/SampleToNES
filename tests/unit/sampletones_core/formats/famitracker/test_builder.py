@@ -27,6 +27,8 @@ from sampletones_core.formats.famitracker.specification.parameters import (
     Machine,
 )
 from sampletones_core.formats.famitracker.specification.patterns import (
+    EMPTY_EFFECT,
+    EMPTY_EFFECT_PARAM,
     EMPTY_INSTRUMENT,
     EMPTY_VOLUME,
     NOTE_RANGE,
@@ -219,6 +221,12 @@ class TestProjectToModulePatterns:
         module = project_to_module(project_fixture.project)
         pattern = self._pattern(module.track.patterns, ChannelId.SQUARE1, 0)
         assert {row.row_number for row in pattern.rows} == {0, 2, 4}
+
+    def test_every_row_leaves_its_effect_columns_empty(self, project_fixture: ProjectFixture) -> None:
+        """A `Vxx` is what moves FamiTracker's default duty, so every note there starts on duty 0."""
+        module = project_to_module(project_fixture.project)
+        effects = {effect for pattern in module.track.patterns for row in pattern.rows for effect in row.effects}
+        assert effects == {(EMPTY_EFFECT, EMPTY_EFFECT_PARAM)}
 
     def test_noise_row_uses_period_note(self, project_fixture: ProjectFixture) -> None:
         module = project_to_module(project_fixture.project)

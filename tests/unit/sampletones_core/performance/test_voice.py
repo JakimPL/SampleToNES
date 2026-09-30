@@ -280,16 +280,6 @@ class TestAHeldDimensionSoundsAtTheChannelsValue(BaseTestSuite):
 
         assert values[test_case.held_feature] == test_case.channel_value
 
-    def test_a_level_one_instrument_wrote_is_what_the_next_one_holds(self) -> None:
-        """The channel carries a value across samples, which is what makes an empty envelope mean this."""
-        writes = _voice(ChannelName.PULSE1, [self._INSTRUCTION], ())
-        holds = _voice(ChannelName.PULSE1, [self._INSTRUCTION], (FeatureKey.VOLUME,))
-        values = _channel_values()
-
-        writes.sound(self._INSTRUCTION, values)
-
-        assert holds.sound(self._INSTRUCTION, values).volume == SAMPLE_VOLUME
-
     def test_an_instrument_holding_its_level_sounds_a_silent_frame(self) -> None:
         """Silence is stated by a volume envelope, so an instrument leaving one out plays on."""
         rest = PulseInstruction.null_instruction()

@@ -97,6 +97,15 @@ class TestEachDimensionBecomesItsOwnMacro:
         )
         assert waveform_values(envelopes) == [FLAT_PULSE_WIDTH]
 
+    def test_a_noise_channel_without_a_duty_envelope_holds_the_long_mode(self) -> None:
+        """Every note starts on the long mode where the slice leaves its mode, as a note does in the app."""
+        envelopes = features_to_envelopes(
+            build_features(VOLUME_ENVELOPE),
+            ChannelName.NOISE,
+            tuning_table=DEFAULT_TUNING_TABLE,
+        )
+        assert waveform_values(envelopes) == [NOISE_MODE_LONG]
+
     def test_a_noise_contour_takes_the_offsets_that_move_its_period(self) -> None:
         steps = [0, 1, -1, 5]
         envelopes = features_to_envelopes(
