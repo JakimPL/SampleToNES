@@ -44,27 +44,28 @@ def note_index_to_note_cell(index: int) -> NoteCell:
 def noise_period_to_note_index(period: int) -> int:
     """Converts a noise period index to the note index that selects it.
 
-    Playback reads a noise note as ``15 - (index mod 16)``, so every period repeats once
-    per sixteen note indices and any of those indices selects it. The base index sits
-    far enough below the top of the tuning table that a whole cycle of table offsets
-    stays in range.
+    The project counts noise periods from the slowest and the register counts them from the
+    fastest, so a period reaches the register as ``15 - period``. Playback writes
+    ``15 - (index mod 16)`` to the register for a noise note, so the note index carries the
+    period itself, wrapped into the sixteen the channel has. Every period repeats once per
+    sixteen note indices, and the base index sits far enough below the top of the tuning
+    table that a whole cycle of table offsets stays in range.
 
     Args:
-        period: Noise period index the reconstruction chose.
+        period: Noise period index the reconstruction chose, or one a transpose moved.
 
     Returns:
-        int: Note index whose noise period equals ``period``.
+        int: Note index that sounds ``period``.
     """
-    offset = (NUM_PERIODS - 1 - period) % NUM_PERIODS
-    return NOISE_BASE_NOTE_INDEX + offset
+    return NOISE_BASE_NOTE_INDEX + period % NUM_PERIODS
 
 
 def noise_arpeggio_to_table_offset(step: int) -> int:
     """Converts a noise arpeggio step to the semitone offset a table row carries.
 
-    A rising noise period is a falling note index, so the step is negated and wrapped
-    into one period cycle, which keeps every note the table reaches inside the tuning
-    table.
+    The note index carries the period itself (see :func:`noise_period_to_note_index`), so a
+    step moves the index by as much, wrapped into one period cycle, which keeps every note
+    the table reaches inside the tuning table.
 
     Args:
         step: Period offset from the reconstruction's initial noise period.
@@ -72,4 +73,4 @@ def noise_arpeggio_to_table_offset(step: int) -> int:
     Returns:
         int: Semitone offset that moves the noise period by ``step``.
     """
-    return (-step) % NUM_PERIODS
+    return step % NUM_PERIODS

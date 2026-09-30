@@ -48,6 +48,26 @@ BITPHASE_MACRO_DEFAULTS: Final[Dict[str, Any]] = {
     "sweepShift": 0,
 }
 
+BITPHASE_NOISE_PERIOD_COUNT: Final[int] = 16
+BITPHASE_NOISE_TIMERS: Final[Tuple[int, ...]] = (
+    4,
+    8,
+    16,
+    32,
+    64,
+    96,
+    128,
+    160,
+    202,
+    254,
+    380,
+    508,
+    762,
+    1016,
+    2034,
+    4068,
+)
+
 MIN_INITIAL_SPEED: Final[int] = 1
 MAX_INITIAL_SPEED: Final[int] = 255
 MIN_PATTERN_LENGTH: Final[int] = 1
@@ -221,9 +241,48 @@ def sounded_period(
     Returns:
         int: The period the channel holds, within the timer's range.
     """
-    moved = min(max(note_index + table.step(tick), 0), len(tuning_table) - 1)
+    moved = reached_note(tuning_table, note_index, table, tick)
     period = tuning_table[moved] + instrument.value("toneAdd", tick)
     return min(max(period, BITPHASE_SILENT_PERIOD), BITPHASE_MAX_PERIOD)
+
+
+def noise_register(note_index: int) -> int:
+    """The period register value the noise channel writes for the note it reaches, as the engine resolves it.
+
+    The driver counts the note index down from the top of each cycle of sixteen, and the register
+    selects the timer from ``BITPHASE_NOISE_TIMERS``, the NTSC table fastest first. Read from
+    ``resolveNesNoisePeriodFromSemitoneOffset`` of ``nes-audio-driver.js``, the ``$400E`` write of
+    ``nes-apu-engine.js`` and ``wavlen_table`` of ``nsfplug/nes_dmc.c`` at commit ``265ff70``.
+
+    Args:
+        note_index: The note the channel reaches, its table step added.
+
+    Returns:
+        int: The value the period register holds.
+    """
+    return BITPHASE_NOISE_PERIOD_COUNT - 1 - note_index % BITPHASE_NOISE_PERIOD_COUNT
+
+
+def reached_note(
+    tuning_table: List[int],
+    note_index: int,
+    table: LoadedTable,
+    tick: int,
+) -> int:
+    """The note a channel reaches on a tick of a sounding note, held within the tuning table.
+
+    Read from ``processTables`` of ``tracker-pattern-processor.js`` at commit ``265ff70``.
+
+    Args:
+        tuning_table: The song's period per note index.
+        note_index: The note the pattern cell names.
+        table: The table the cell attaches.
+        tick: Ticks since the table started.
+
+    Returns:
+        int: The note index the channel sounds.
+    """
+    return min(max(note_index + table.step(tick), 0), len(tuning_table) - 1)
 
 
 def pattern_volume(carried: int, stored: int) -> int:

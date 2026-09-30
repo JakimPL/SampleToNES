@@ -158,17 +158,20 @@ each step to the one before it; a contour measures every step from the note, so 
 A pattern's `table` column names a table by `id + 1`. `0` leaves the attached table alone and `-1`
 detaches it.
 
-**Noise** derives its period from the note index, not from the tuning table: playback reads
-`period = 15 - (index mod 16)`. Every period therefore repeats once per sixteen indices. The exporter picks
-a base index far enough below the top of the table for a whole cycle of offsets to stay in range:
+**Noise** derives its period from the note index, not from the tuning table: playback writes
+`15 - (index mod 16)` to the period register, whose timers run fastest first. _SampleToNES_ counts its
+sixteen periods from the slowest, so a period `p` reaches the register as `15 - p`, which is what the NSF
+player writes too. The note index therefore carries the period itself. Every period repeats once per
+sixteen indices, and the exporter picks a base index far enough below the top of the table for a whole
+cycle of offsets to stay in range:
 
 ```
-base index   = 48 + ((15 - initial_period) mod 16)      lands in 48..63
-table offset = (-arpeggio_step) mod 16                  lands in 0..15
+base index   = 48 + (initial_period mod 16)      lands in 48..63
+table offset = arpeggio_step mod 16              lands in 0..15
 ```
 
-So `15 - ((base + offset) mod 16)` is the period the reconstruction chose, wrapped into the sixteen the
-channel has.
+So `(base + offset) mod 16` is the period the reconstruction chose, wrapped into the sixteen the channel
+has, and the register holds `15` less that period.
 
 ### C.3 Presets fold the contour into the period
 

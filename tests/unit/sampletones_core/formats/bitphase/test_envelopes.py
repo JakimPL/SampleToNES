@@ -107,13 +107,16 @@ class TestEachDimensionBecomesItsOwnMacro:
         assert waveform_values(envelopes) == [NOISE_MODE_LONG]
 
     def test_a_noise_contour_takes_the_offsets_that_move_its_period(self) -> None:
+        """The note index carries the period itself, so a step moves the index by as much, wrapped
+        into the sixteen periods the channel has.
+        """
         steps = [0, 1, -1, 5]
         envelopes = features_to_envelopes(
             build_features([15] * len(steps), arpeggio=steps),
             ChannelName.NOISE,
             tuning_table=DEFAULT_TUNING_TABLE,
         )
-        assert list(envelopes.table_rows) == [(-step) % NUM_PERIODS for step in steps]
+        assert list(envelopes.table_rows) == [step % NUM_PERIODS for step in steps]
 
 
 class TestEachDimensionKeepsItsOwnLength:

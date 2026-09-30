@@ -5,14 +5,15 @@ from typing import Final, List, Tuple
 import pytest
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.constants.general import HI_PITCH_FACTOR
+from sampletones_core.constants.general import HI_PITCH_FACTOR, NUM_PERIODS
 from sampletones_core.exporters.feature import Features
+from sampletones_core.exporters.implementation.noise import NoiseExporter
 from sampletones_core.exports.request import InstrumentExport, SampleExport
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.bitphase.btp import write_btp
-from sampletones_core.formats.bitphase.builder import sample_to_bitphase
+from sampletones_core.formats.bitphase.builder import instrument_to_bitphase, sample_to_bitphase
 from sampletones_core.formats.bitphase.notes import pitch_to_note_index
-from sampletones_core.formats.bitphase.specification.channels import CHANNEL_LABELS
+from sampletones_core.formats.bitphase.specification.channels import CHANNEL_LABELS, ChannelIndex
 from sampletones_core.formats.bitphase.specification.chip import (
     MAX_TUNING_PERIOD,
     MIN_TUNING_PERIOD,
@@ -22,15 +23,26 @@ from sampletones_core.formats.bitphase.specification.instruments import (
     MIN_VOLUME_OR_RATE,
 )
 from sampletones_core.formats.bitphase.specification.macros import MAX_MACRO_LENGTH
+from sampletones_core.formats.bitphase.specification.patterns import (
+    FIRST_OCTAVE,
+    NOTE_RANGE,
+    TABLE_COLUMN_OFFSET,
+    NoteName,
+)
+from sampletones_core.instructions import NoiseInstruction
 from sampletones_core.timers.arithmetic import bent_timer
 from sampletones_core.timers.utils import get_timer_table
+from sampletones_player.registers.noise import NoiseRegisters
 from sampletones_shared.constants.music import OCTAVE_SEMITONES
 from sampletones_shared.music import Tuning
 from tests.suite.bitphase import (
     LoadedInstrument,
+    LoadedNote,
     LoadedProject,
     LoadedTable,
+    noise_register,
     parse_btp,
+    reached_note,
     sounded_period,
 )
 from tests.suite.case import BaseRegularTestCase
@@ -46,6 +58,9 @@ PERIOD_OVER_TIMER: Final[int] = 1
 LOWERED_A4_FREQUENCY: Final[float] = 432.0
 C5_PITCH: Final[int] = 72
 SEMITONES_FROM_A4_TO_C5: Final[int] = 3
+NOISE_WALK: Final[Tuple[int, ...]] = (3, 4, 9, 15, 0, 1, 12, 7, 2)
+NOISE_VOLUME: Final[int] = 12
+NOISE_PERIOD_BITS: Final[int] = NUM_PERIODS - 1
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -181,3 +196,49 @@ class TestWhatEveryTickOfADocumentReads:
             for instrument in document.instruments
             for macro in instrument.macros.values()
         )
+
+
+def noise_walk() -> List[NoiseInstruction]:
+    """A noise stream stepping through periods on both sides of where it opens, wrapping past either end."""
+    return [NoiseInstruction(on=True, period=period, volume=NOISE_VOLUME, short=False) for period in NOISE_WALK]
+
+
+def cell_note_index(note: LoadedNote) -> int:
+    """The tuning-table index Bitphase's pattern processor reads back from a note cell."""
+    return note.name - int(NoteName.C) + (note.octave - FIRST_OCTAVE) * NOTE_RANGE
+
+
+class TestANoisePeriodTheEngineWrites:
+    """The project counts noise periods from the slowest and the register counts them from the
+    fastest, so the NSF player writes a period as its complement. A document sounds the same
+    register on every tick of a noise slice, the base note and the table step read together.
+    """
+
+    @pytest.fixture(name="noise_document")
+    def noise_document_fixture(self, tmp_path: Path) -> LoadedProject:
+        instructions = noise_walk()
+        initial_period = NoiseExporter.derive_initial_pitch(instructions)
+        request = InstrumentExport(
+            name="Walk",
+            channel=ChannelName.NOISE,
+            features=NoiseExporter.to_features(instructions, initial_period, ()),
+            nes_frequency=NES_FREQUENCY,
+            tuning=Tuning(),
+        )
+        destination = tmp_path / "Walk.btp"
+        write_btp(destination, instrument_to_bitphase(request))
+        return parse_btp(destination.read_bytes(), list(CHANNEL_LABELS))
+
+    def test_every_tick_writes_the_register_the_nsf_player_writes(self, noise_document: LoadedProject) -> None:
+        song = noise_document.songs[0]
+        rows = song.patterns[0].channels[int(ChannelIndex.NOISE)].rows
+        trigger = next(row for row in rows if row.note.name != int(NoteName.NONE))
+        table = noise_document.tables[trigger.table - TABLE_COLUMN_OFFSET]
+        note_index = cell_note_index(trigger.note)
+
+        written = [
+            noise_register(reached_note(song.tuning_table, note_index, table, tick)) for tick in range(len(NOISE_WALK))
+        ]
+        played = [registers.period & NOISE_PERIOD_BITS for registers in NoiseRegisters.from_instructions(noise_walk())]
+
+        assert written == played[: len(NOISE_WALK)]
