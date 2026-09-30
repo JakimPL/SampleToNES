@@ -22,12 +22,12 @@ through, the same slices the sequencer sounds a row in. On every tick each of th
 [channels](../glossary.md#channel) has a full set of register values. Written out plainly, that is 11
 bytes a tick: three each for the two pulse channels and the triangle, two for the noise.
 
-At 60 ticks a second, 11 bytes a tick fills the space behind the driver in **49 seconds**. A song of three
+At 60 ticks a second, 11 bytes a tick fills the space behind the driver in **48 seconds**. A song of three
 minutes needs 118800 bytes, and the console has about 32000. So either songs stay under a minute, or the
 stream is stored in a form the driver can unpack as it plays.
 
 The content in those bytes is far smaller than the bytes themselves. What a tick says is a volume, a duty
-cycle, a pitch and a noise period, roughly four bytes' worth even before anything repeats. And a great
+cycle, a pitch and a noise period, roughly five bytes' worth even before anything repeats. And a great
 deal repeats. A channel resting through a passage writes the same three bytes over and over. A song built
 by playing the same drum sample at many rows writes that sample's envelopes once per row.
 
@@ -68,14 +68,17 @@ its first bent tick to its last. The bend plane holds those ticks' steps alone, 
 its own. A note played straight costs it nothing, and a channel that never bends leaves it out of the
 block. A loop re-enters it at the value its flags have reached, which is a boundary like any other.
 
-Before any phrase, trading two dividers for an index and a bend already pays. On the arrangement of
-[section 6](#6-what-it-achieves), which bends most of its notes, the planes and their pitch table take
-3.229 bytes a tick against 3.517. Both figures are coded with no plane packing its repeats
-([section 2.3](#23-a-value-and-the-ticks-it-lasts)). The index pays because a bend plane has a value only
-where a note bends. What it earns beyond that is that **a pitch index can be transposed and a divider
-cannot.** The same figure played at five pitches is five unrelated byte sequences in divider space. In
-index space it is one sequence and five offsets, and its bend is the same bytes throughout. That turns a
-repeated sample into a single dictionary entry ([section 5](#5-the-dictionary)).
+Before any phrase, these planes already take less than a plane per register. On the arrangement of
+[section 6](#6-what-it-achieves), the planes and their pitch table take 3.229 bytes a tick against 3.517.
+Both figures are coded in holds and literals ([section 3](#3-the-token-language)), with no plane packing
+its repeats ([section 2.3](#23-a-value-and-the-ticks-it-lasts)). The saving comes from the triangle. Its
+value plane names silence, so its control byte leaves the block. On their own, the index and the bend
+take 2.5 % more than the dividers. The arrangement bends every note its first pulse channel plays, so
+that channel's bend plane has a value on every tick. What the index earns is that **a pitch index can be
+transposed and a divider cannot.** The same figure played at five pitches is five unrelated byte
+sequences in divider space. In index space it is one sequence and five offsets, and its bend is the same
+bytes throughout. That turns a repeated sample into a single dictionary entry
+([section 5](#5-the-dictionary)).
 
 ### 2.3 A value and the ticks it lasts
 
@@ -156,7 +159,7 @@ it prices all of a plane's literals in one pass.
 
 The obvious alternative takes the longest phrase that matches at each symbol, otherwise a hold, otherwise
 a literal. It goes wrong constantly. Taking a 40-symbol phrase for two bytes looks better than taking a
-30-symbol one, until stopping at 30 would have let the next 200 symbols be a single hold. Costs also
+30-symbol one, until stopping at 30 would have let the next 60 symbols be a single hold. Costs also
 depend on the dictionary: the same phrase is two bytes with a cheap id and four with an escaped id and a
 shift. The search weighs those against each other, and a rule of thumb cannot.
 
@@ -211,8 +214,8 @@ gain = what the current parse pays for those spans today
      − the entry the phrase takes in the dictionary
 ```
 
-Scoring against **the current parse** and not against raw length keeps the search honest. A run of 200
-identical values looks enormous by length and is worth nothing, because a hold already covers it for one
+Scoring against **the current parse** and not against raw length keeps the search honest. A run of 40
+identical values looks large by length and is worth nothing, because a hold already covers it for one
 byte. Only spans the parse is paying for can pay a candidate back.
 
 The best few candidates of each round are then confirmed the expensive way. The whole song is parsed again
@@ -246,30 +249,32 @@ could begin and not every symbol of the song.
 
 ## 6. What it achieves
 
-Measured over a three-minute arrangement of 10800 ticks, each layer added to the ones above it:
+Measured by `uv run sampletones codec report` over its three-minute arrangement of 10800 ticks, counting
+the dictionary, the streams and the pitch table. Each row builds on the one above it:
 
 | what is stored | bytes per tick | ratio | ticks that fit |
 |---|---|---|---|
 | a record per tick per channel | 11.000 | 1.00 | 2907 |
-| planes, coded | 3.517 | 3.13 | 9092 |
-| planes with a pitch index and a bend | 2.980 | 3.69 | 10731 |
+| a plane per register, in holds and literals | 3.517 | 3.13 | 9092 |
+| planes with a pitch index and a bend, repeats packed | 2.980 | 3.69 | 10731 |
 | phrases from the instruments | 1.717 | 6.41 | 18750 |
 | phrases played transposed | 1.447 | 7.60 | 22326 |
 | phrases from the search as well | **0.874** | **12.59** | **37660** |
 
-The arrangement bends most of the notes its pulse channel plays, and its bend plane carries every one of
-them. A song played straight leaves its bend planes out of the block. The whole song is 9435 bytes of the
-roughly 32000 available, and **37660 ticks is 10.5 minutes at 60 Hz**, against the 49 seconds a record per
-tick reaches. Encoding happens once, where the file is written. Decoding costs the console around twenty
-instructions per plane per tick, and fewer on a tick a symbol still covers, well inside a video frame.
+The arrangement bends every note its first pulse channel plays, and that channel's bend plane carries
+every one of them. A song played straight leaves its bend planes out of the block. The song takes 9435
+bytes of the roughly 32000 available, and **37660 ticks is 10.5 minutes at 60 Hz**, against the 48 seconds
+a record per tick reaches. Encoding happens once, where the file is written. Decoding the arrangement
+costs the console around twenty instructions per plane per tick, and fewer on a tick a symbol still
+covers, well inside a video frame.
 
 The format's constants are settled from a corpus of songs. Two results went against expectation.
 Splitting the duty cycle out of the control byte into a plane of its own **costs** bytes. On the
-arrangement above, encoded at every layer, it costs 16 % where no plane packs, because volume and duty
-turn over together, and a split pays two opcodes for what one covers. It costs 56 % where the planes pack
+arrangement above, encoded at every layer, it costs 5 % where no plane packs, because volume and duty
+turn over together, and a split pays two opcodes for what one covers. It costs 19 % where the planes pack
 as the format packs them, because a split plane also gives up the repeat count its register's spare bits
 carry. The pitch index earns its place through the transposition it makes possible, the fourth row of the
-table against the fifth, and it pays for itself directly as well
+table against the fifth. On its own, before any phrase, it costs a little
 ([section 2.2](#22-pitches-instead-of-dividers)).
 
 An export chooses how far down these layers it goes. Its **Level** names the layers read in order:
