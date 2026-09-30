@@ -42,7 +42,7 @@ class TestBuildSong:
         spec = _spec(
             ChannelName.PULSE1,
             {
-                0: RowSpec(row=0, sample="lead", transpose=12, volume=10),
+                0: RowSpec(row=0, voice="lead", transpose=12, volume=10),
                 2: RowSpec(row=2, off=True),
                 3: RowSpec(row=3, volume=4),
             },
@@ -59,16 +59,16 @@ class TestBuildSong:
         assert (rows[3].command, rows[3].volume) == (None, 4)
 
     def test_the_order_names_every_channel_and_every_channel_is_present(self) -> None:
-        song = build_song(_spec(ChannelName.NOISE, {0: RowSpec(row=0, sample="hihat")}), _catalog())
+        song = build_song(_spec(ChannelName.NOISE, {0: RowSpec(row=0, voice="hihat")}), _catalog())
 
         assert song.order == [{channel: 0 if channel == ChannelName.NOISE else None for channel in ChannelName.items()}]
         assert set(song.channels) == set(ChannelName.items())
         assert song.channels[ChannelName.PULSE1].patterns == {}
 
-    def test_a_sample_the_catalog_lacks_is_refused(self) -> None:
+    def test_a_voice_the_catalog_lacks_is_refused(self) -> None:
         with pytest.raises(KeyError, match="snare"):
-            build_song(_spec(ChannelName.NOISE, {0: RowSpec(row=0, sample="snare")}), _catalog())
+            build_song(_spec(ChannelName.NOISE, {0: RowSpec(row=0, voice="snare")}), _catalog())
 
-    def test_a_sample_on_a_channel_it_has_no_slice_for_is_refused(self) -> None:
-        with pytest.raises(ValueError, match="Sample 'lead' has no 'noise' slice"):
-            build_song(_spec(ChannelName.NOISE, {0: RowSpec(row=0, sample="lead")}), _catalog())
+    def test_a_voice_on_a_channel_it_has_no_slice_for_is_refused(self) -> None:
+        with pytest.raises(ValueError, match="Voice 'lead' has no 'noise' slice"):
+            build_song(_spec(ChannelName.NOISE, {0: RowSpec(row=0, voice="lead")}), _catalog())

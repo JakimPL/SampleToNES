@@ -23,7 +23,7 @@ class TestBuildProject:
         spec = SongSpec(
             rows_per_pattern=2,
             order=[{ChannelName.TRIANGLE: 0}],
-            channels={ChannelName.TRIANGLE: ChannelSpec(patterns={0: [RowSpec(row=0, sample="bass")]})},
+            channels={ChannelName.TRIANGLE: ChannelSpec(patterns={0: [RowSpec(row=0, voice="bass")]})},
         )
 
         project = build_project(catalog, MODULE, spec)

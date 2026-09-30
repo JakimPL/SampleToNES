@@ -4,6 +4,8 @@ This document is the reference for how _SampleToNES_ writes [Bitphase](https://g
 files: the `.btp` document and the `.json` instrument preset. It also lists the Bitphase capacity limits
 the exporter respects. Read it before changing anything under `formats/bitphase/`. The sibling
 [FamiTracker export](famitracker.md) document covers the other tracker.
+[The tracker playback check](../tools/tracker-playback.md) plays exported documents through Bitphase's
+own engine and lists every tick they sound differently from the app.
 
 The target is Bitphase's **NES (2A03) chip**: five channels (two squares, triangle, noise, DPCM). The DPCM
 channel is always silent. Every constant named here has a counterpart under

@@ -1,11 +1,12 @@
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Dict
+from typing import Dict, Mapping
 
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_tools.corpus.catalog import CatalogSpec, build_catalog
 from sampletones_tools.corpus.module import ModuleConfig
 from sampletones_tools.corpus.song import SongSpec, build_song
@@ -26,11 +27,11 @@ class Corpus:
 
 
 def build_project(
-    catalog: Dict[str, Sample],
+    catalog: Mapping[str, VoiceUnion],
     module_config: ModuleConfig,
     song_spec: SongSpec,
 ) -> Project:
-    """The arrangement playing the catalog under the module's identity and playback settings."""
+    """The arrangement playing the catalog's voices under the module's identity and playback settings."""
     settings = ProjectSettings(
         tempo=module_config.tempo,
         speed=module_config.speed,
@@ -41,8 +42,8 @@ def build_project(
         author=module_config.author,
         settings=settings,
     )
-    for sample in catalog.values():
-        project.voices.append(sample)
+    for voice in catalog.values():
+        project.voices.append(voice)
 
     project.song = build_song(song_spec, catalog)
     return project

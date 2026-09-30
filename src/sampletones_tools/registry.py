@@ -10,6 +10,7 @@ from sampletones_tools.player.command import DRIVER
 from sampletones_tools.samples.commands.btp import BTP
 from sampletones_tools.samples.commands.ftm import FTM
 from sampletones_tools.samples.commands.nsf import NSF
+from sampletones_tools.tracker_playback.command import TRACKER_PLAYBACK
 
 DEVELOPER_COMMANDS: Final[Tuple[Command, ...]] = (
     BTP,
@@ -21,4 +22,5 @@ DEVELOPER_COMMANDS: Final[Tuple[Command, ...]] = (
     FTM,
     ICONS,
     NSF,
+    TRACKER_PLAYBACK,
 )

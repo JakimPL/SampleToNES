@@ -1,4 +1,4 @@
-.PHONY: help setup install system-deps build release run calibration clean pre-commit test test-docs benchmarks lint format
+.PHONY: help setup install system-deps build release run calibration tracker-playback clean pre-commit test test-docs benchmarks lint format
 
 ifeq ($(OS),Windows_NT)
 PYTHON := python
@@ -25,6 +25,7 @@ help:
 	@echo $(Q)  make test-docs   - Run the doctests$(Q)
 	@echo $(Q)  make benchmarks  - Run the measured-duration suite$(Q)
 	@echo $(Q)  make calibration - Measure reconstruction on the reference sounds; writes the renders and a report$(Q)
+	@echo $(Q)  make tracker-playback BITPHASE=folder - Play the exported corpus with a Bitphase checkout; reports every tick that differs from the app$(Q)
 	@echo $(Q)  make clean       - Remove build artifacts and cache files$(Q)
 	@echo $(Q)  make lint        - Run mypy and pylint (ARGS=--mypy or ARGS=--pylint for one of them)$(Q)
 	@echo $(Q)  make format      - Auto-format code (isort, black)$(Q)
@@ -51,6 +52,9 @@ run:
 
 calibration:
 	uv run sampletones calibration
+
+tracker-playback:
+	uv run sampletones tracker-playback bitphase --checkout $(BITPHASE)
 
 clean:
 	$(PYTHON) scripts/clean.py

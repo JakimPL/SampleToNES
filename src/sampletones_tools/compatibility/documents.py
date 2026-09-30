@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Any, Dict, Final, List, Sequence, Tuple
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.fft.features import get_feature_extractor
@@ -23,11 +22,8 @@ from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
-from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
-from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from sampletones_tools.corpus.written import written_reconstruction
 
-SINGLE_STEM_ID: Final[int] = 0
 SOURCE_PATH: Final[Path] = Path("samples") / "kick.wav"
 COEFFICIENT: Final[float] = 0.75
 RECORDING_SCALE: Final[float] = 0.5
@@ -76,31 +72,13 @@ def corpus_instructions() -> Dict[ChannelName, List[InstructionUnion]]:
     }
 
 
-def stems_record(instructions: Dict[ChannelName, List[InstructionUnion]]) -> StemsData:
-    """The single-entry record a classic conversion writes, one owner per frame, and the scale it read at.
-
-    A frame that sounds answers to the recording; a silent frame answers to rest, which is the
-    rule a reconstruction holds its record to.
-    """
-    channels = list(instructions)
-    assignments = [
-        ChannelAssignment(
-            channel_name=channel_name,
-            stem_ids=[SINGLE_STEM_ID if instruction.on else RESTING_STEM_ID for instruction in stream],
-        )
-        for channel_name, stream in instructions.items()
-    ]
-    return StemsData.single_entry(StemSettings.covering(channels), assignments, RECORDING_SCALE)
-
-
 def corpus_reconstruction(instructions: Dict[ChannelName, List[InstructionUnion]]) -> Reconstruction:
     """A reconstruction naming every channel, its source recording, and one owner per frame."""
-    return Reconstruction.create(
-        instructions=instructions,
-        config=Config(),
+    return written_reconstruction(
+        instructions,
         coefficient=COEFFICIENT,
+        scale=RECORDING_SCALE,
         audio_filepath=(SOURCE_PATH,),
-        stems_data=stems_record(instructions),
     )
 
 
@@ -116,12 +94,11 @@ def embedded_reconstruction() -> Reconstruction:
             PulseInstruction(on=False, pitch=40, volume=0, duty_cycle=0),
         ]
     }
-    return Reconstruction.create(
-        instructions=instructions,
-        config=Config(),
+    return written_reconstruction(
+        instructions,
         coefficient=COEFFICIENT,
+        scale=RECORDING_SCALE,
         audio_filepath=(),
-        stems_data=stems_record(instructions),
     )
 
 

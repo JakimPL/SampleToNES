@@ -63,8 +63,9 @@ build on is refused by name.
 
 The Makefile is the developer's index, one line per target. A target names the script that does the work
 and passes its flag. The `run` and `calibration` targets name the `sampletones` command they start with no
-options. `install.sh` and `install.bat` at the root exist for the double-click path and call the same
-bundle script.
+options, and the `tracker-playback` target passes the one input its command needs, the Bitphase
+checkout its `BITPHASE` variable names. `install.sh` and `install.bat` at the root exist for the
+double-click path and call the same bundle script.
 
 **8. A developer command works from what it is given, in every copy of the program.** The wheel and the
 bundle carry the tools package, so every developer command exists wherever `sampletones` is installed, and

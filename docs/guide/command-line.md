@@ -35,6 +35,10 @@ They run from a copy of the source code. Add `--help` to one to see what it does
 `sampletones calibration` measures how well the app reconstructs a set of reference sounds.
 [Calibration](../tools/calibration.md) explains how to run it and read the results.
 
+`sampletones tracker-playback` checks that songs exported to a tracker play there as they play in the
+app. [Tracker playback check](../tools/tracker-playback.md) explains what it needs and how to read its
+report.
+
 ## Options
 
 - `--config <file>` or `-c <file>` uses a configuration file. It works with `run`, `open`,

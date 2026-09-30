@@ -9,7 +9,7 @@ from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.song import Song
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
-from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import VoiceUnion, voice_channels
 from sampletones_shared.utils.serialization import load_yaml_model
 from sampletones_tools.corpus.paths import SONG_PATH
 
@@ -19,8 +19,8 @@ class RowSpec(BaseModel):
 
     Attributes:
         row: The row's index in its pattern.
-        sample: The sample the row plays, or ``None`` for a row that plays none.
-        transpose: The semitones the row transposes the sample by, or ``None`` to leave it.
+        voice: The voice the row plays, or ``None`` for a row that plays none.
+        transpose: The semitones the row transposes the voice by, or ``None`` to leave it.
         volume: The volume the row sets, or ``None`` to leave it.
         off: Whether the row releases the note.
     """
@@ -28,7 +28,7 @@ class RowSpec(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     row: int
-    sample: Optional[str] = None
+    voice: Optional[str] = None
     transpose: Optional[int] = None
     volume: Optional[int] = None
     off: bool = False
@@ -63,19 +63,19 @@ def _order(
     return [{channel: frame.get(channel) for channel in ChannelName.items()} for frame in frames]
 
 
-def _row(spec: RowSpec, channel: ChannelName, samples_by_name: Mapping[str, Sample]) -> Row:
+def _row(spec: RowSpec, channel: ChannelName, voices_by_name: Mapping[str, VoiceUnion]) -> Row:
     if spec.off:
         return Row(command=NoteOff(), volume=spec.volume)
 
-    if spec.sample is None:
+    if spec.voice is None:
         return Row(transpose=spec.transpose, volume=spec.volume)
 
-    sample = samples_by_name[spec.sample]
-    if channel not in sample.reconstruction.playing_channels:
-        raise ValueError(f"Sample '{spec.sample}' has no '{channel.value}' slice for the {channel.value} channel")
+    voice = voices_by_name[spec.voice]
+    if channel not in voice_channels(voice):
+        raise ValueError(f"Voice '{spec.voice}' has no '{channel.value}' slice for the {channel.value} channel")
 
     return Row(
-        command=NoteOn(voice_id=sample.id),
+        command=NoteOn(voice_id=voice.id),
         transpose=spec.transpose,
         volume=spec.volume,
     )
@@ -85,11 +85,11 @@ def _pattern(
     row_specs: Sequence[RowSpec],
     rows_per_pattern: int,
     channel: ChannelName,
-    samples_by_name: Mapping[str, Sample],
+    voices_by_name: Mapping[str, VoiceUnion],
 ) -> Pattern:
     rows = [Row() for _ in range(rows_per_pattern)]
     for spec in row_specs:
-        rows[spec.row] = _row(spec, channel, samples_by_name)
+        rows[spec.row] = _row(spec, channel, voices_by_name)
 
     return Pattern(rows=rows)
 
@@ -97,7 +97,7 @@ def _pattern(
 def _channels(
     channel_specs: Mapping[ChannelName, ChannelSpec],
     rows_per_pattern: int,
-    samples_by_name: Mapping[str, Sample],
+    voices_by_name: Mapping[str, VoiceUnion],
 ) -> Dict[ChannelName, Channel]:
     channels: Dict[ChannelName, Channel] = {}
     for channel, spec in channel_specs.items():
@@ -106,7 +106,7 @@ def _channels(
                 row_specs,
                 rows_per_pattern,
                 channel,
-                samples_by_name,
+                voices_by_name,
             )
             for index, row_specs in spec.patterns.items()
         }
@@ -118,15 +118,15 @@ def _channels(
     return channels
 
 
-def build_song(spec: SongSpec, samples_by_name: Mapping[str, Sample]) -> Song:
-    """The song the spec describes, playing the named samples.
+def build_song(spec: SongSpec, voices_by_name: Mapping[str, VoiceUnion]) -> Song:
+    """The song the spec describes, playing the named voices.
 
     Raises:
-        KeyError: If a row names a sample the catalog lacks.
-        ValueError: If a row plays a sample on a channel the sample has no slice for.
+        KeyError: If a row names a voice the catalog lacks.
+        ValueError: If a row plays a voice on a channel the voice has no slice for.
     """
     return Song(
         rows_per_pattern=spec.rows_per_pattern,
         order=_order(spec.order),
-        channels=_channels(spec.channels, spec.rows_per_pattern, samples_by_name),
+        channels=_channels(spec.channels, spec.rows_per_pattern, voices_by_name),
     )

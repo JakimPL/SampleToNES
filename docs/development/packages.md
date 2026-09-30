@@ -48,7 +48,7 @@ graph TD
 | `sampletones_core` | The reconstruction engine, the project model, playing a song out into instructions, and the tracker export formats |
 | `sampletones_player` | The NES player: the register model, the re-clocking schedule, the 6502 driver and the NSF file |
 | `sampletones_application` | The DearPyGui front end |
-| `sampletones_tools` | Everything a developer runs and the application does not: the calibration harness, the driver toolchain and the register trace, the source checks, the synthetic corpus, and the developer commands that run them |
+| `sampletones_tools` | Everything a developer runs and the application does not: the calibration harness, the driver toolchain and the register trace, the source checks, the synthetic corpus, the tracker playback check, and the developer commands that run them |
 | `sampletones` | The command-line entry: the dispatcher, the commands and the startup self-check |
 
 **Only the command line reaches the tools package.** `sampletones_tools` has what a developer runs and the

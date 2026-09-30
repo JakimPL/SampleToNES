@@ -40,6 +40,7 @@ The [**tools**](tools/) section covers the commands that measure _SampleToNES_ o
 Each page says how to run the command with no options, what it writes and every custom use.
 
 - [Calibration](tools/calibration.md) — how well the reconstruction reproduces reference sounds, with every reconstruction written out to listen to.
+- [Tracker playback check](tools/tracker-playback.md) — whether a song exported to a tracker plays there the way the app plays it, tick by tick.
 
 ## File formats
 
