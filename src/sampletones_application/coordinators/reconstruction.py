@@ -32,6 +32,7 @@ from sampletones_application.utils.file_dialogs.api import (
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
@@ -166,15 +167,7 @@ class ReconstructionCoordinator:
         try:
             self._reconstruction_manager.save_reconstruction_as(filepath)
         except (OSError, SampleToNESError) as exception:
-            logger.error_with_traceback(
-                exception,
-                f"Failed to save reconstruction to {filepath}",
-            )
-            self._dialogs.show_error(
-                exception,
-                self._language_manager["global.dialog.message.reconstruction_save_failed"],
-            )
-
+            self._report_save_failure(exception, filepath)
             return
 
         self._session_manager.set_reconstruction_path(filepath.parent)
@@ -245,13 +238,29 @@ class ReconstructionCoordinator:
         self._session_manager.set_reconstruction_path(filepath.parent)
         self._tab.load_reconstruction(filepath)
 
-    def save(self, filepath: Optional[Path] = None) -> bool:
-        """Saves the open reconstruction, reporting whether it was written.
+    def save(self, filepath: Optional[Path] = None) -> SaveOutcome:
+        """Saves the open reconstruction, reporting what the save came to.
 
-        The exit and close prompts wait on this, so they proceed only once it lands on disk and
-        hold otherwise.
+        The save prompts wait on this: a document written to disk lets them go on, a document with
+        no file to write to asks again, and a write that fails shows its error.
         """
-        return self._reconstruction_manager.save_reconstruction(filepath)
+        try:
+            written = self._reconstruction_manager.save_reconstruction(filepath)
+        except (OSError, SampleToNESError) as exception:
+            self._report_save_failure(exception, filepath or self._reconstruction_manager.filepath)
+            return SaveOutcome.FAILED
+
+        return SaveOutcome.WRITTEN if written else SaveOutcome.CALLED_OFF
+
+    def _report_save_failure(self, exception: Exception, filepath: Optional[Path]) -> None:
+        logger.error_with_traceback(
+            exception,
+            f"Failed to save reconstruction to {filepath}",
+        )
+        self._dialogs.show_error(
+            exception,
+            self._language_manager["global.dialog.message.reconstruction_save_failed"],
+        )
 
     def close_with_confirmation(self) -> None:
         if self._requires_save_confirmation():
@@ -379,7 +388,7 @@ class ReconstructionCoordinator:
         self,
         title: str,
         message: str,
-        on_save: Callable[[], bool],
+        on_save: Callable[[], SaveOutcome],
         on_confirm: Callback,
         ok_label: str,
     ) -> None:

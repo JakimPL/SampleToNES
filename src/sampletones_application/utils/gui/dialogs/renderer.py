@@ -24,6 +24,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
 from sampletones_application.utils.gui.dialogs.windows.confirmation import (
     GUIConfirmationWindow,
 )
@@ -279,8 +280,9 @@ class DialogsRenderer:
     ) -> None:
         """Modal confirmation. ``on_confirm``/``on_cancel`` run on the respective choice.
 
-        The title bar's close button reads as the negative choice, so every way out of the
-        prompt reaches the caller and a dialog waiting behind it hears the answer.
+        The title bar's close button and Escape read as the negative choice, so every way out of
+        the prompt reaches the caller and a dialog waiting behind it hears the answer. The answer
+        runs a frame after the prompt has left the screen, so a prompt it raises opens alone.
 
         ``cancel_label`` names the negative button; it falls back to the shared Cancel label.
         When ``opt_out_label`` is given, a checkbox is shown; if it is ticked when the user
@@ -313,17 +315,19 @@ class DialogsRenderer:
         tag: str,
         message: str,
         title: str,
-        on_save: Callable[[], bool],
+        on_save: Callable[[], SaveOutcome],
         on_confirm: Callback,
         *,
         ok_label: str,
     ) -> None:
         """Modal save-or-proceed prompt for an unsaved document.
 
-        ``on_save`` writes the document and reports whether it completed; the prompt runs
-        ``on_confirm`` and closes once the save reports success, so a canceled save keeps the
-        prompt open for another attempt. The middle button discards the pending changes and runs
-        ``on_confirm`` to proceed, and Cancel — the initially focused button — dismisses the prompt.
+        Every answer runs once the prompt has left the screen, so whatever it opens stands alone.
+        ``on_save`` writes the document and reports a :class:`SaveOutcome`: a written document
+        runs ``on_confirm``, a save the reader called off brings the prompt back with the same
+        question, and a failed save leaves the error it showed alone on screen. The middle button
+        discards the pending changes and runs ``on_confirm`` to proceed, and Cancel — the initially
+        focused button — dismisses the prompt.
         """
         GUISaveConfirmationWindow(
             tag=get_dialog_tag(tag),

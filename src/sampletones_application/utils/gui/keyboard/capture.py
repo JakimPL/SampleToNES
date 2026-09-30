@@ -59,7 +59,7 @@ class KeyCapture(CallbackMixin):
             return
 
         self._listening = False
-        self._router.pop_modal()
+        self._router.pop_modal(self)
 
     def handle_key(self, event: KeyEvent) -> None:
         """Reads the press, reporting the combination it names once one arrives."""

@@ -13,6 +13,7 @@ from sampletones_application.logic.reconstruction.edit import StemRemoval
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.services.regeneration.service import RegeneratedInstrument
 from sampletones_application.services.result import ServiceSuccess
+from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import (
@@ -332,3 +333,33 @@ class TestSaveConfirmationGating(BaseTestSuite):
         else:
             coordinator._dialogs.show_save_confirmation.assert_not_called()
             coordinator._reconstructions_tab.load_reconstruction.assert_called_once_with(path)
+
+
+class TestTheSaveAPromptWaitsOn:
+    """A save prompt goes on, asks again or stands aside according to what the save came to."""
+
+    def test_a_document_with_a_file_is_written(
+        self,
+        reconstruction_coordinator: ReconstructionCoordinator,
+    ) -> None:
+        reconstruction_coordinator._reconstruction_manager.save_reconstruction.return_value = True
+
+        assert reconstruction_coordinator.save() is SaveOutcome.WRITTEN
+
+    def test_a_document_with_nothing_to_write_to_calls_the_save_off(
+        self,
+        reconstruction_coordinator: ReconstructionCoordinator,
+    ) -> None:
+        reconstruction_coordinator._reconstruction_manager.save_reconstruction.return_value = False
+
+        assert reconstruction_coordinator.save() is SaveOutcome.CALLED_OFF
+
+    def test_a_write_that_fails_shows_its_error(
+        self,
+        reconstruction_coordinator: ReconstructionCoordinator,
+    ) -> None:
+        failure = OSError("disk full")
+        reconstruction_coordinator._reconstruction_manager.save_reconstruction.side_effect = failure
+
+        assert reconstruction_coordinator.save() is SaveOutcome.FAILED
+        assert reconstruction_coordinator._dialogs.show_error.call_args.args[0] is failure

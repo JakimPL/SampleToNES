@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
@@ -253,15 +254,18 @@ class GUIProjectPropertiesWindow(GUIDialogWindow):
         )
 
     def _commit(self) -> None:
-        self.call(
-            self.on_commit,
-            dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_TITLE)[:MAX_PROJECT_TITLE_LENGTH],
-            dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_AUTHOR)[:MAX_PROJECT_AUTHOR_LENGTH],
-            dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_COMMENT)[:MAX_PROJECT_COMMENT_LENGTH],
-            int(clamp_widget_value(TAG_SETTINGS_PROPERTIES_INPUT_FIRST_HIGHLIGHT)),
-            int(clamp_widget_value(TAG_SETTINGS_PROPERTIES_INPUT_SECOND_HIGHLIGHT)),
+        """Reports the edited form once the window has left the screen, reading the fields first."""
+        self._leave_then(
+            partial(
+                self.call,
+                self.on_commit,
+                dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_TITLE)[:MAX_PROJECT_TITLE_LENGTH],
+                dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_AUTHOR)[:MAX_PROJECT_AUTHOR_LENGTH],
+                dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_COMMENT)[:MAX_PROJECT_COMMENT_LENGTH],
+                int(clamp_widget_value(TAG_SETTINGS_PROPERTIES_INPUT_FIRST_HIGHLIGHT)),
+                int(clamp_widget_value(TAG_SETTINGS_PROPERTIES_INPUT_SECOND_HIGHLIGHT)),
+            )
         )
-        self.hide()
 
     @staticmethod
     def _label(

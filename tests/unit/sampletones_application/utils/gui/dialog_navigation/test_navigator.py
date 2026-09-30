@@ -128,6 +128,18 @@ class TestModalClaim:
 
         assert router.is_modal_open
 
+    def test_a_navigator_disposed_beneath_a_newer_claim_releases_its_own(self) -> None:
+        """A dialog closing after it raised another leaves the keyboard with the one it raised."""
+        router = KeyRouter()
+        navigator = _navigator(on_escape=MagicMock(), router=router)
+        router.push_modal(navigator)
+        raised = MagicMock()
+        router.push_modal(raised)
+
+        navigator.dispose()
+
+        assert router._modal_stack == [raised]
+
     def test_focus_initial_delegates_while_the_window_is_present(self) -> None:
         navigator = _navigator(on_escape=MagicMock(), router=KeyRouter())
         navigator._ring = MagicMock()

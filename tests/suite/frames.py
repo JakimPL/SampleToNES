@@ -1,7 +1,9 @@
 from typing import Final, List, Tuple
 
 import dearpygui.dearpygui as dpg
+import pytest
 
+from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_shared.types.callback import VoidCallback
 
 ONE_FRAME: Final[int] = 1
@@ -41,6 +43,14 @@ class Frames:
             self._held = [(waiting, callback) for waiting, callback in counted if waiting]
             for callback in due:
                 callback()
+
+
+@pytest.fixture
+def held_frames(monkeypatch: pytest.MonkeyPatch) -> Frames:
+    """``FrameCallbackManager`` holding the work handed to it until the case renders a frame."""
+    frames = Frames()
+    monkeypatch.setattr(FrameCallbackManager, "set_frame_callback", frames.hold)
+    return frames
 
 
 VISIBLE_HANDLER: Final[str] = "mvAppItemType::mvVisibleHandler"

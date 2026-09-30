@@ -13,7 +13,7 @@ from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.dialog_navigation import FocusStop
-from sampletones_application.utils.gui.dpg import dpg_configure_item
+from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
 from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_shared.types.callback import Callback
@@ -24,11 +24,12 @@ CANCEL_FOCUS_STOP: Final[int] = 2
 class GUISaveConfirmationWindow(GUIDialogWindow):
     """A modal save-or-proceed prompt for an unsaved document.
 
-    ``on_save`` writes the document and reports whether it completed; the prompt runs
-    ``on_confirm`` and closes once the save reports success, so a canceled save keeps the
-    prompt open for another attempt. The middle button discards the pending changes and
-    runs ``on_confirm`` to proceed, and Cancel — the initially focused button — dismisses
-    the prompt.
+    Every answer runs a frame after the prompt has left the screen, so whatever it opens stands
+    alone. Save runs ``on_save``, which reports a :class:`SaveOutcome`: a written document runs
+    ``on_confirm``, a save the reader called off brings the prompt back with the same question,
+    and a failed save leaves its error on screen by itself. The middle button discards the
+    pending changes and runs ``on_confirm`` to proceed, and Cancel — the initially focused
+    button — dismisses the prompt.
     """
 
     def __init__(
@@ -48,7 +49,7 @@ class GUISaveConfirmationWindow(GUIDialogWindow):
 
         self._message: str
         self._title: str
-        self._on_save: Callable[[], bool]
+        self._on_save: Callable[[], SaveOutcome]
         self._on_confirm: Callback
         self._ok_label: str
 
@@ -63,7 +64,7 @@ class GUISaveConfirmationWindow(GUIDialogWindow):
         self,
         message: str,
         title: str,
-        on_save: Callable[[], bool],
+        on_save: Callable[[], SaveOutcome],
         on_confirm: Callback,
         *,
         ok_label: str,
@@ -80,27 +81,11 @@ class GUISaveConfirmationWindow(GUIDialogWindow):
         ok_button_tag = compose_tag(self.tag, SUF_BUTTON_OK)
         cancel_button_tag = compose_tag(self.tag, SUF_BUTTON_CANCEL)
 
-        def disable() -> None:
-            dpg_configure_item(save_button_tag, enabled=False)
-            dpg_configure_item(ok_button_tag, enabled=False)
-            dpg_configure_item(cancel_button_tag, enabled=False)
-
         def _on_save() -> None:
-            if not self._on_save():
-                return
-
-            disable()
-            self._on_confirm()
-            self.hide()
+            self._leave_then(self._save_and_go_on)
 
         def _on_confirm() -> None:
-            disable()
-            self._on_confirm()
-            self.hide()
-
-        def _on_cancel() -> None:
-            disable()
-            self.hide()
+            self._leave_then(self._on_confirm)
 
         def content(parent: str) -> None:
             dpg.add_text(self._message, parent=parent, wrap=self._wrap)
@@ -122,21 +107,41 @@ class GUISaveConfirmationWindow(GUIDialogWindow):
                 GUIButton(
                     tag=cancel_button_tag,
                     label=self._cancel_label,
-                    callback=_on_cancel,
+                    callback=self.hide,
                     width=-1,
                 )
 
             buttons(None)
 
-        with self.dialog_window(label=self._title, on_close=_on_cancel):
+        with self.dialog_window(label=self._title, on_close=self.hide):
             content(self.tag)
 
         self._install_navigation(
             [
                 FocusStop.button(save_button_tag, _on_save),
                 FocusStop.button(ok_button_tag, _on_confirm),
-                FocusStop.button(cancel_button_tag, _on_cancel),
+                FocusStop.button(cancel_button_tag, self.hide),
             ],
-            on_escape=_on_cancel,
+            on_escape=self.hide,
             initial_index=CANCEL_FOCUS_STOP,
         )
+
+    def _save_and_go_on(self) -> None:
+        """Writes the document and goes where the outcome leads, once the prompt has left.
+
+        A written document goes on to what the prompt was guarding. A save the reader called off
+        puts the same question again. A failed save showed its error, which stands alone.
+        """
+        match self._on_save():
+            case SaveOutcome.WRITTEN:
+                self._on_confirm()
+            case SaveOutcome.CALLED_OFF:
+                self.show(
+                    self._message,
+                    self._title,
+                    self._on_save,
+                    self._on_confirm,
+                    ok_label=self._ok_label,
+                )
+            case SaveOutcome.FAILED:
+                pass

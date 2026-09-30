@@ -95,10 +95,16 @@ class KeyRouter:
         """
         self._modal_stack.append(handler)
 
-    def pop_modal(self) -> None:
-        """Releases the top modal dialog's claim on the keyboard, ignored when none is open."""
-        if self._modal_stack:
-            self._modal_stack.pop()
+    def pop_modal(self, handler: ModalKeyHandler) -> None:
+        """Releases the latest claim ``handler`` holds on the keyboard, wherever it stands.
+
+        A dialog can close while one it raised still stands, so a release names whose claim it
+        gives up and every other claim keeps its place. A handler holding no claim changes nothing.
+        """
+        for index in range(len(self._modal_stack) - 1, -1, -1):
+            if self._modal_stack[index] is handler:
+                del self._modal_stack[index]
+                return
 
     def route(self, event: KeyEvent) -> bool:
         """Offers the event to the active scopes, highest priority first, stopping at the

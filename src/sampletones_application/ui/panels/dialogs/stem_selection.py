@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 from typing import Any, Callable, Final, FrozenSet, List, Optional, Sequence, Tuple
 
@@ -212,9 +213,8 @@ class GUIStemSelectionWindow(GUIDialogWindow):
         return NO_PICK < len(self._picked) <= self._room
 
     def _add(self) -> None:
+        """Answers with the pick once the question has left the screen, so what follows opens alone."""
         if not self._fits:
             return
 
-        picked = list(self._view().picked_paths)
-        self.hide()
-        self.call(self._answer, picked)
+        self._leave_then(partial(self.call, self._answer, list(self._view().picked_paths)))

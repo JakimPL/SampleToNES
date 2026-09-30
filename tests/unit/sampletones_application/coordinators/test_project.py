@@ -12,6 +12,7 @@ from sampletones_application.coordinators.project import ProjectCoordinator
 from sampletones_application.paths import LANG_EN
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
+from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
 from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS, SkippedRow, SkipReason
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.format import ExportFormat
@@ -389,3 +390,68 @@ class TestAWrittenProjectReportsTheInstrumentsShortened:
             source_frames=truncation.source_frames,
             instruments=truncation.instruments,
         )
+
+
+class TestTheSaveAPromptWaitsOn:
+    """A save prompt goes on, asks again or stands aside according to what the save came to."""
+
+    @pytest.fixture(name="save_dialog")
+    def save_dialog_fixture(self, monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+        dialog = MagicMock(return_value=None)
+        monkeypatch.setattr(project_module, "save_file_dialog", dialog)
+        return dialog
+
+    @pytest.fixture(name="saving")
+    def saving_fixture(
+        self,
+        project_coordinator: ProjectCoordinator,
+        tmp_path: Path,
+    ) -> ProjectCoordinator:
+        project_coordinator._session_manager.get_project_path.return_value = tmp_path
+        return project_coordinator
+
+    def test_a_project_with_a_file_is_written_there(
+        self,
+        saving: ProjectCoordinator,
+        tmp_path: Path,
+    ) -> None:
+        filepath = tmp_path / "song.stp"
+        saving._session_manager.current_project = filepath
+
+        assert saving.save() is SaveOutcome.WRITTEN
+        saving._project_controller.save.assert_called_once_with(filepath)
+
+    def test_a_file_dialog_closed_without_a_name_calls_the_save_off(
+        self,
+        saving: ProjectCoordinator,
+        save_dialog: MagicMock,
+    ) -> None:
+        saving._session_manager.current_project = None
+
+        assert saving.save() is SaveOutcome.CALLED_OFF
+        saving._project_controller.save.assert_not_called()
+
+    def test_a_name_chosen_in_the_file_dialog_is_written(
+        self,
+        saving: ProjectCoordinator,
+        save_dialog: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        filepath = tmp_path / "song.stp"
+        save_dialog.return_value = filepath
+        saving._session_manager.current_project = None
+
+        assert saving.save() is SaveOutcome.WRITTEN
+        saving._project_controller.save.assert_called_once_with(filepath)
+
+    def test_a_write_that_fails_shows_its_error(
+        self,
+        saving: ProjectCoordinator,
+        tmp_path: Path,
+    ) -> None:
+        failure = OSError("disk full")
+        saving._session_manager.current_project = tmp_path / "song.stp"
+        saving._project_controller.save.side_effect = failure
+
+        assert saving.save() is SaveOutcome.FAILED
+        assert saving._dialogs.show_error.call_args.args[0] is failure

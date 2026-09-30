@@ -191,6 +191,37 @@ class TestModalHandOff:
 
         assert dpg.get_item_children(TAG, 1)
 
+    def test_leaving_deletes_the_window(self, dpg_context: None) -> None:
+        window = ProbeWindow(on_close=None)
+        window.create_window()
+
+        with patch(f"{MODULE}.FrameCallbackManager"):
+            window._leave_then(MagicMock())
+
+        assert not dpg.does_item_exist(TAG)
+
+    def test_the_answer_runs_a_frame_after_the_window_left(self, dpg_context: None) -> None:
+        window = ProbeWindow(on_close=None)
+        window.create_window()
+        answer = MagicMock()
+
+        with patch(f"{MODULE}.FrameCallbackManager") as frame:
+            window._leave_then(answer)
+
+        answer.assert_not_called()
+        frame.set_frame_callback.assert_called_once_with(answer)
+
+    def test_a_window_that_already_left_answers_nothing(self, dpg_context: None) -> None:
+        """A second click reaches a window gone from the screen, and only the first one answers."""
+        window = ProbeWindow(on_close=None)
+        window.create_window()
+
+        with patch(f"{MODULE}.FrameCallbackManager") as frame:
+            window._leave_then(MagicMock())
+            window._leave_then(MagicMock())
+
+        frame.set_frame_callback.assert_called_once()
+
 
 class TestRaisingAWindow:
     """A window is raised from wherever a result reaches the screen, the callback drain between

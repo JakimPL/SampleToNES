@@ -35,6 +35,7 @@ from sampletones_application.utils.file_dialogs.api import (
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_core.exporters.skipped import SkippedRow
 from sampletones_core.exporters.truncation import EnvelopeTruncation
@@ -167,11 +168,11 @@ class ProjectCoordinator:
             ok_label=self._label(DialogElements.EXIT),
         )
 
-    def save(self) -> bool:
+    def save(self) -> SaveOutcome:
         """Saves the project to its current file, prompting for one when it has none.
 
-        Reports whether the project was written, so a caller waiting on the save (the exit and
-        close prompts) proceeds only once it lands on disk and holds when the user cancels.
+        Reports what the save came to, so a save prompt waiting on it goes on once the project
+        lands on disk and asks again when the reader closes the file dialog.
         """
         filepath = self._session_manager.current_project
         if filepath is None:
@@ -179,8 +180,8 @@ class ProjectCoordinator:
 
         return self._save(filepath)
 
-    def save_as_dialog(self) -> bool:
-        """Prompts for a destination and saves the project there, reporting whether it was written."""
+    def save_as_dialog(self) -> SaveOutcome:
+        """Prompts for a destination and saves the project there, reporting what the save came to."""
         path = self._session_manager.get_project_path()
         filename = path.name if path.is_file() else DEFAULT_PROJECT_FILENAME
         directory = get_directory(path)
@@ -255,8 +256,8 @@ class ProjectCoordinator:
         self._session_manager.set_project_path(filepath.parent)
         self._load(filepath)
 
-    @ignore_none_path(default=False)
-    def _handle_save_as(self, filepath: Path) -> bool:
+    @ignore_none_path(default=SaveOutcome.CALLED_OFF)
+    def _handle_save_as(self, filepath: Path) -> SaveOutcome:
         self._session_manager.set_project_path(filepath.parent)
         return self._save(filepath)
 
@@ -291,7 +292,7 @@ class ProjectCoordinator:
         self._session_manager.set_current_project(filepath)
         self._on_tab_switch(Tab.SEQUENCER)
 
-    def _save(self, filepath: Path) -> bool:
+    def _save(self, filepath: Path) -> SaveOutcome:
         try:
             self._project_controller.save(filepath)
         except (SerializationError, OSError) as exception:
@@ -303,7 +304,7 @@ class ProjectCoordinator:
                 exception,
                 self._message(GlobalMessageElements.PROJECT_SAVE_FAILED),
             )
-            return False
+            return SaveOutcome.FAILED
 
         self._session_manager.set_current_project(filepath)
         self._dialogs.show_info(
@@ -311,7 +312,7 @@ class ProjectCoordinator:
             self._message(GlobalMessageElements.PROJECT_SAVED_SUCCESSFULLY),
             self._title(GlobalDialogTitleElements.PROJECT_SAVED),
         )
-        return True
+        return SaveOutcome.WRITTEN
 
     def _on_export_result(self, result: ExportResult) -> None:
         """Reports a finished project export in the words of the format it was written in.

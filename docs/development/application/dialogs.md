@@ -1,8 +1,9 @@
 # Dialogs
 
 A dialog sets its size once, and where it opens follows from that size. Consult this when a dialog opens at
-the wrong size or in the wrong place, and when adding one. `GUIWindow` is the single place a dialog's
-window is opened, so what this document says holds for every dialog the application raises.
+the wrong size or in the wrong place, when a prompt raised from an answer never shows, and when adding one.
+`GUIWindow` is the single place a dialog's window is opened, so what this document says holds for every
+dialog the application raises.
 
 ## What a dialog sets
 
@@ -41,6 +42,25 @@ unfolds a text box beneath the message. The correction has ended by then, so the
 where it stands.
 
 Each axis is held at zero at the least, so a dialog taller than the viewport keeps its title bar reachable.
+
+## How a dialog answers
+
+DearPyGui carries one modal at a time. A modal built while another still stands opens hidden, and nobody
+can reach it. The frame the old modal was drawn in has to finish first. An answer often raises what comes
+next, such as a question of its own or an error, so a dialog that closes on its answer leaves the screen
+first and the answer runs a frame later. Leaving also releases the dialog's keyboard claim, so a prompt the
+answer raises holds the keyboard alone. `GUIWindow._leave_then` is that step.
+
+What the answer needs, such as a ticked box or the fields of a form, is read before the dialog leaves. Only
+the first answer runs: a second click reaches a dialog that has already gone.
+
+The save prompt's Save runs the save once the prompt has gone, and the save reports a `SaveOutcome`. A
+document written to disk goes on to what the prompt was guarding. A save the reader called off, such as a
+file dialog closed without a name, brings the prompt back with the same question. A save that failed has
+shown its error, and that error stands alone on screen.
+
+A dialog that comes back once the modal it raised is answered steps aside. `yield_to` takes it off screen
+and keeps its tree, and `resume` brings it back, a frame each way.
 
 ## Where it is written
 

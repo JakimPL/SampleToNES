@@ -15,6 +15,7 @@ from sampletones_application.tags.main import (
     PRE_MAIN_CONVERTER_CANDIDATE,
     TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS,
     TAG_MAIN_CONVERTER_TEXT_STEM_SELECTION_LIMIT,
+    TAG_MAIN_CONVERTER_WINDOW_STEM_SELECTION,
 )
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.tags import StemsTags
@@ -23,6 +24,7 @@ from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
+from tests.suite.frames import Frames
 from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
 from tests.suite.shortcuts import shipped_source
 
@@ -137,6 +139,12 @@ def click_name(row: StemRowViewModel, value: bool) -> None:
     dpg.get_item_callback(name_tag)(name_tag, value, row.key)
 
 
+def add(held_frames: Frames) -> None:
+    """Presses Add and lets the frame go by that carries the answer, once the question has left."""
+    dpg.get_item_callback(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))()
+    held_frames.render()
+
+
 def add_enabled() -> bool:
     return bool(dpg.get_item_configuration(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))["enabled"])
 
@@ -178,33 +186,59 @@ class TestWhatIsOffered(BaseTestSuite):
 class TestSettlingTheMix(BaseTestSuite):
     """The mix is settled once the pick fits, and the line above says where the pick stands."""
 
-    def test_a_pick_that_fits_settles(self, window: GUIStemSelectionWindow) -> None:
+    def test_a_pick_that_fits_settles(
+        self,
+        window: GUIStemSelectionWindow,
+        held_frames: Frames,
+    ) -> None:
         offered = candidates()
         answered: List[List[Path]] = []
 
         render(window, offered, answered.append)
-        dpg.get_item_callback(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))()
+        add(held_frames)
 
         assert answered == [paths()[:MAX_STEM_SOURCES]]
 
-    def test_swapping_one_for_another_keeps_it_settling(self, window: GUIStemSelectionWindow) -> None:
+    def test_the_question_leaves_before_the_mix_hears_the_answer(
+        self,
+        window: GUIStemSelectionWindow,
+        held_frames: Frames,
+    ) -> None:
+        """What the answer opens next, such as an error, stands alone once the question has gone."""
+        answered: List[List[Path]] = []
+        render(window, candidates(), answered.append)
+
+        dpg.get_item_callback(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))()
+
+        assert not dpg.does_item_exist(TAG_MAIN_CONVERTER_WINDOW_STEM_SELECTION)
+        assert answered == []
+
+    def test_swapping_one_for_another_keeps_it_settling(
+        self,
+        window: GUIStemSelectionWindow,
+        held_frames: Frames,
+    ) -> None:
         offered = candidates()
         answered: List[List[Path]] = []
 
         render(window, offered, answered.append)
         pick(offered[0])
         pick(offered[MAX_STEM_SOURCES])
-        dpg.get_item_callback(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))()
+        add(held_frames)
 
         assert answered == [paths()[1 : MAX_STEM_SOURCES + 1]]
 
-    def test_a_pick_past_the_room_leaves_the_mix_as_it_was(self, window: GUIStemSelectionWindow) -> None:
+    def test_a_pick_past_the_room_leaves_the_mix_as_it_was(
+        self,
+        window: GUIStemSelectionWindow,
+        held_frames: Frames,
+    ) -> None:
         offered = candidates()
         answered: List[List[Path]] = []
 
         render(window, offered, answered.append)
         pick(offered[MAX_STEM_SOURCES])
-        dpg.get_item_callback(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))()
+        add(held_frames)
 
         assert answered == [paths()[:MAX_STEM_SOURCES]]
 
@@ -272,6 +306,7 @@ class TestAFolderInTheQuestion(BaseTestSuite):
     def test_a_folder_larger_than_the_room_takes_as_many_as_fit(
         self,
         window: GUIStemSelectionWindow,
+        held_frames: Frames,
     ) -> None:
         """A folder settles either way, so it lets go of a full mix and takes what fits again."""
         answered: List[List[Path]] = []
@@ -286,15 +321,19 @@ class TestAFolderInTheQuestion(BaseTestSuite):
         pick(folder)
 
         assert add_enabled() is True
-        dpg.get_item_callback(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))()
+        add(held_frames)
         assert answered == [held[:MAX_STEM_SOURCES]]
 
-    def test_what_it_holds_is_what_the_mix_takes(self, window: GUIStemSelectionWindow) -> None:
+    def test_what_it_holds_is_what_the_mix_takes(
+        self,
+        window: GUIStemSelectionWindow,
+        held_frames: Frames,
+    ) -> None:
         held = paths(3)
         answered: List[List[Path]] = []
         render(window, [folder_row(Path("/audio/takes"), held)], answered.append)
 
-        dpg.get_item_callback(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))()
+        add(held_frames)
 
         assert answered == [held]
 
@@ -313,14 +352,18 @@ class TestAskingTwice(BaseTestSuite):
         for row in offered:
             assert dpg.does_item_exist(box_of(row))
 
-    def test_the_pick_still_settles(self, window: GUIStemSelectionWindow) -> None:
+    def test_the_pick_still_settles(
+        self,
+        window: GUIStemSelectionWindow,
+        held_frames: Frames,
+    ) -> None:
         offered = candidates()
         answered: List[List[Path]] = []
         render(window, offered)
         window.hide()
 
         render(window, offered, answered.append)
-        dpg.get_item_callback(compose_tag(TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS, SUF_BUTTON))()
+        add(held_frames)
 
         assert answered == [paths()[:MAX_STEM_SOURCES]]
 

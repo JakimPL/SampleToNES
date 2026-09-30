@@ -31,6 +31,10 @@ class GUIWindow(GUIPanel, ABC):
     position a window was placed at is its own from then on, so the return brings
     it back where it stood.
 
+    A dialog that closes on its answer leaves with ``_leave_then``: it goes off
+    screen, and the answer runs a frame later. Whatever the answer raises — a
+    question of its own, an error — then opens alone and holds the keyboard.
+
     A window claims the screen while it stands, so the reader answers it before going on. One
     reporting work already under way clears ``_claims_the_screen`` instead, which leaves the rest
     of the interface live beside it.
@@ -61,6 +65,21 @@ class GUIWindow(GUIPanel, ABC):
         dismissed still holds the screen for the frame it is dismissed in.
         """
         FrameCallbackManager.set_frame_callback(lambda: dpg_configure_item(self.tag, show=True))
+
+    def _leave_then(self, answer: VoidCallback) -> None:
+        """Deletes this appearance and runs ``answer`` a frame later, once the screen is clear.
+
+        The tree goes first, and with it the keyboard claim of this appearance, so a prompt the
+        answer raises is the only modal on screen and the one the keyboard reaches. What the answer
+        reads from the window, such as a ticked box or a form field, is read before this call. Only
+        the first answer given while the window stands runs: a second click reaches a window that
+        has already left.
+        """
+        if not dpg.does_item_exist(self.tag):
+            return
+
+        self.hide()
+        FrameCallbackManager.set_frame_callback(answer)
 
     @contextmanager
     def dialog_window(

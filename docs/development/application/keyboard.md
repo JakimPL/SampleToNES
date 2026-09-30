@@ -44,7 +44,9 @@ The query resolves the focused item to the field behind it. A `dpg.group` report
 
 ### The modal stack
 
-The router holds a LIFO stack of modal handlers. `push_modal` and `pop_modal` bracket a dialog's lifetime, and the built-in `MODAL` scope routes each press to the top of the stack. `MODAL` outranks the panel and shortcut scopes, so every scope beneath it reads the keyboard as though the application had no dialogs at all.
+The router holds a stack of modal handlers. `push_modal` and `pop_modal` bracket a dialog's lifetime, and the built-in `MODAL` scope routes each press to the top of the stack. `MODAL` outranks the panel and shortcut scopes, so every scope beneath it reads the keyboard as though the application had no dialogs at all.
+
+A release names its handler and removes that handler's latest claim, wherever it stands. A dialog can close while a prompt it raised still stands, and the prompt keeps the keyboard.
 
 ---
 

@@ -17,6 +17,9 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
+from tests.suite.frames import held_frames
+
+__all__ = ["held_frames"]
 
 
 @pytest.fixture

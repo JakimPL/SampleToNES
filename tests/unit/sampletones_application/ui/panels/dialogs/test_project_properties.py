@@ -15,6 +15,7 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_PROPERTIES_INPUT_FIRST_HIGHLIGHT,
     TAG_SETTINGS_PROPERTIES_INPUT_SECOND_HIGHLIGHT,
     TAG_SETTINGS_PROPERTIES_INPUT_TITLE,
+    TAG_SETTINGS_PROPERTIES_WINDOW,
 )
 from sampletones_application.ui.panels.dialogs.project_properties import (
     GUIProjectPropertiesWindow,
@@ -24,6 +25,7 @@ from sampletones_application.view_model.shared.project_properties import (
     ProjectPropertiesViewModel,
 )
 from sampletones_shared.constants.project import MAX_HIGHLIGHT, MIN_HIGHLIGHT
+from tests.suite.frames import Frames
 from tests.suite.shortcuts import shipped_source
 
 LANGUAGE_MANAGER: Final[LanguageManager] = LanguageManager(LANG_EN)
@@ -113,7 +115,10 @@ class TestProjectPropertiesWindow:
 
 
 class TestCommit:
-    """Confirming reports the whole form at once, so the owner applies one undoable gesture."""
+    """Confirming reports the whole form at once, so the owner applies one undoable gesture.
+
+    The form leaves the screen before the owner hears it, so the values are read as it goes.
+    """
 
     @pytest.fixture(name="committed")
     def committed_fixture(self, window: GUIProjectPropertiesWindow) -> List[Committed]:
@@ -128,11 +133,13 @@ class TestCommit:
         self,
         window: GUIProjectPropertiesWindow,
         committed: List[Committed],
+        held_frames: Frames,
     ) -> None:
         dpg.set_value(TAG_SETTINGS_PROPERTIES_INPUT_FIRST_HIGHLIGHT, 3)
         dpg.set_value(TAG_SETTINGS_PROPERTIES_INPUT_SECOND_HIGHLIGHT, 9)
 
         window._commit()
+        held_frames.render()
 
         assert committed == [("Chiptune", "Composer", "A note to self", 3, 9)]
 
@@ -140,12 +147,14 @@ class TestCommit:
         self,
         window: GUIProjectPropertiesWindow,
         committed: List[Committed],
+        held_frames: Frames,
     ) -> None:
         """The project rejects a highlight outside its bounds, so the dialog reports one inside."""
         dpg.set_value(TAG_SETTINGS_PROPERTIES_INPUT_FIRST_HIGHLIGHT, MAX_HIGHLIGHT + 1)
         dpg.set_value(TAG_SETTINGS_PROPERTIES_INPUT_SECOND_HIGHLIGHT, MIN_HIGHLIGHT - 1)
 
         window._commit()
+        held_frames.render()
 
         assert committed[-1][3:] == (MAX_HIGHLIGHT, MIN_HIGHLIGHT)
 
@@ -153,10 +162,12 @@ class TestCommit:
         self,
         window: GUIProjectPropertiesWindow,
         committed: List[Committed],
+        held_frames: Frames,
     ) -> None:
         dpg.set_value(TAG_SETTINGS_PROPERTIES_INPUT_TITLE, "Another song")
 
         window._commit()
+        held_frames.render()
 
         assert committed[-1] == (
             "Another song",
@@ -165,3 +176,14 @@ class TestCommit:
             FIRST_HIGHLIGHT,
             SECOND_HIGHLIGHT,
         )
+
+    def test_the_form_leaves_before_the_owner_hears_it(
+        self,
+        window: GUIProjectPropertiesWindow,
+        committed: List[Committed],
+        held_frames: Frames,
+    ) -> None:
+        window._commit()
+
+        assert not dpg.does_item_exist(TAG_SETTINGS_PROPERTIES_WINDOW)
+        assert committed == []

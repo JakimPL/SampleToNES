@@ -53,6 +53,16 @@ class Harness:
         self.canceled += 1
 
 
+class Dialog:
+    """A dialog holding the keyboard beside the capture, recording the keys it is sent."""
+
+    def __init__(self) -> None:
+        self.keys: List[int] = []
+
+    def handle_key(self, event: KeyEvent) -> None:
+        self.keys.append(event.key)
+
+
 @pytest.fixture(name="harness")
 def harness_fixture() -> Harness:
     harness = Harness()
@@ -77,13 +87,31 @@ class TestListening:
 
         assert not harness.router.is_modal_open
 
-    def test_stopping_twice_releases_the_claim_once(self, harness: Harness) -> None:
+    def test_stopping_twice_releases_the_claim_once(self) -> None:
         """A second release would drop the claim of the dialog the capture sits above."""
-        harness.router.push_modal(harness.capture)
-        harness.capture.stop()
-        harness.capture.stop()
+        harness = Harness()
+        dialog = Dialog()
+        harness.router.push_modal(dialog)
+        harness.capture.start()
 
-        assert harness.router.is_modal_open
+        harness.capture.stop()
+        harness.capture.stop()
+        harness.press(dpg.mvKey_F5)
+
+        assert dialog.keys == [dpg.mvKey_F5]
+
+    def test_stopping_gives_back_its_own_claim_alone(self) -> None:
+        """A dialog raised over a listening capture keeps the keyboard when the capture stops."""
+        harness = Harness()
+        harness.capture.start()
+        dialog = Dialog()
+        harness.router.push_modal(dialog)
+
+        harness.capture.stop()
+        harness.press(dpg.mvKey_F5)
+
+        assert dialog.keys == [dpg.mvKey_F5]
+        assert harness.captured == []
 
 
 class TestCapturedPress(BaseTestSuite):
