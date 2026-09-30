@@ -1,9 +1,17 @@
 from dataclasses import dataclass
-from typing import Any
+from itertools import product
+from typing import Any, Final, Tuple
 
 import pytest
 
-from sampletones_core.constants.general import MAX_PITCH, MAX_VOLUME, MIN_PITCH, VOLUME_RANGE
+from sampletones_core.constants.general import (
+    MAX_PITCH,
+    MAX_VOLUME,
+    MIN_PITCH,
+    MIN_VOLUME,
+    SILENT_VOLUME,
+    VOLUME_RANGE,
+)
 from sampletones_core.instructions import (
     NoiseInstruction,
     PulseInstruction,
@@ -12,6 +20,16 @@ from sampletones_core.instructions import (
 from sampletones_core.performance import apply_modifiers
 from sampletones_core.performance.modifiers import triangle_sounds_at
 from tests.suite.case import BaseRegularTestCase, BaseTestCase
+
+LEVEL_PAIRS: Final[Tuple[Tuple[int, int], ...]] = tuple(product(VOLUME_RANGE, VOLUME_RANGE))
+
+
+def _pulse(volume: int) -> PulseInstruction:
+    return PulseInstruction(on=True, pitch=60, volume=volume, duty_cycle=0)
+
+
+def _noise(volume: int) -> NoiseInstruction:
+    return NoiseInstruction(on=True, period=3, volume=volume, short=False)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -79,40 +97,67 @@ class TestPulseVolumeScaling:
         self,
         case: VolumeScalingCase,
     ) -> None:
-        instruction = PulseInstruction(
-            on=True,
-            pitch=60,
-            volume=case.instruction_volume,
-            duty_cycle=0,
-        )
         result = apply_modifiers(
-            instruction,
+            _pulse(case.instruction_volume),
             transpose=0,
             row_volume=case.row_volume,
         )
         assert isinstance(result, PulseInstruction)
         assert result.volume == case.expected
 
+    def test_every_pair_of_levels_rounds_to_the_nearest_step(self) -> None:
+        sounded = {
+            (volume, row_volume): apply_modifiers(_pulse(volume), transpose=0, row_volume=row_volume).volume
+            for volume, row_volume in LEVEL_PAIRS
+        }
+
+        assert sounded == {
+            (volume, row_volume): round(volume * row_volume / MAX_VOLUME) for volume, row_volume in LEVEL_PAIRS
+        }
+
+
+NOISE_VOLUME_CASES = [
+    VolumeScalingCase(label="max×max", instruction_volume=15, row_volume=15, expected=15),
+    VolumeScalingCase(label="a fraction rounds down", instruction_volume=13, row_volume=8, expected=6),
+    VolumeScalingCase(label="ten×ten rounds down", instruction_volume=10, row_volume=10, expected=6),
+    VolumeScalingCase(label="one×one keeps the quietest level", instruction_volume=1, row_volume=1, expected=1),
+    VolumeScalingCase(label="a quiet row keeps a loud note audible", instruction_volume=15, row_volume=1, expected=1),
+    VolumeScalingCase(label="a quiet note under a loud row", instruction_volume=1, row_volume=14, expected=1),
+    VolumeScalingCase(label="the loudest product below one step", instruction_volume=7, row_volume=2, expected=1),
+    VolumeScalingCase(label="a silent row silences", instruction_volume=15, row_volume=0, expected=0),
+    VolumeScalingCase(label="a silent instruction stays silent", instruction_volume=0, row_volume=15, expected=0),
+]
+
 
 class TestNoiseVolumeScaling:
-    @pytest.mark.parametrize("case", VOLUME_SCALING_CASES, ids=lambda c: c.label)
+    """The noise level follows the rule FamiTracker and Bitphase share: the product rounded down, and the
+    quietest level wherever that comes out silent while both levels sound."""
+
+    @pytest.mark.parametrize("case", NOISE_VOLUME_CASES, ids=lambda c: c.label)
     def test_volume_scaled_correctly(
         self,
         case: VolumeScalingCase,
     ) -> None:
-        instruction = NoiseInstruction(
-            on=True,
-            period=3,
-            volume=case.instruction_volume,
-            short=False,
-        )
         result = apply_modifiers(
-            instruction,
+            _noise(case.instruction_volume),
             transpose=0,
             row_volume=case.row_volume,
         )
         assert isinstance(result, NoiseInstruction)
         assert result.volume == case.expected
+
+    def test_every_pair_of_levels_follows_the_trackers_rule(self) -> None:
+        sounded = {
+            (volume, row_volume): apply_modifiers(_noise(volume), transpose=0, row_volume=row_volume).volume
+            for volume, row_volume in LEVEL_PAIRS
+        }
+
+        assert sounded == {
+            (volume, row_volume): (
+                max(MIN_VOLUME, volume * row_volume // MAX_VOLUME) if volume * row_volume else SILENT_VOLUME
+            )
+            for volume, row_volume in LEVEL_PAIRS
+        }
 
 
 @dataclass(frozen=True, kw_only=True)

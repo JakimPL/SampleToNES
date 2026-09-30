@@ -1,6 +1,6 @@
 from typing import Final
 
-from sampletones_core.constants.general import MAX_VOLUME
+from sampletones_core.constants.general import MAX_VOLUME, MIN_VOLUME, SILENT_VOLUME
 from sampletones_core.instructions import (
     InstructionUnion,
     NoiseInstruction,
@@ -28,6 +28,46 @@ def triangle_sounds_at(row_volume: int) -> bool:
     return row_volume > TRIANGLE_LOUDEST_SILENT_VOLUME
 
 
+def pulse_volume(
+    volume: int,
+    row_volume: int,
+) -> int:
+    """The level a pulse channel sounds at: the instruction's level scaled by the row's, to the nearest step.
+
+    Args:
+        volume: The level the instruction holds.
+        row_volume: The level the pattern has reached.
+
+    Returns:
+        int: The level the channel sounds at.
+    """
+    return max(SILENT_VOLUME, min(MAX_VOLUME, round(volume * row_volume / MAX_VOLUME)))
+
+
+def noise_volume(
+    volume: int,
+    row_volume: int,
+) -> int:
+    """The level the noise channel sounds at: the instruction's level scaled by the row's, rounded down.
+
+    A product that rounds down to silence while both levels sound is raised to the quietest level, so a
+    quiet row keeps the noise audible. FamiTracker and Bitphase both set the noise level by this rule,
+    so an exported song's noise plays there at the level it plays here.
+
+    Args:
+        volume: The level the instruction holds.
+        row_volume: The level the pattern has reached.
+
+    Returns:
+        int: The level the channel sounds at.
+    """
+    scaled = max(SILENT_VOLUME, min(MAX_VOLUME, volume * row_volume // MAX_VOLUME))
+    if scaled == SILENT_VOLUME and volume > SILENT_VOLUME and row_volume > SILENT_VOLUME:
+        return MIN_VOLUME
+
+    return scaled
+
+
 def apply_modifiers(
     instruction: InstructionUnion,
     transpose: int,
@@ -37,9 +77,9 @@ def apply_modifiers(
 
     A sample carries the instructions it was reconstructed from; a pattern states how loud and how
     high it is played. Each channel takes both in the terms it understands: the pulse channels
-    scale their volume and shift their pitch, the triangle shifts its pitch and sounds while the
-    row asks for more than half volume, and the noise channel scales its volume and walks its
-    period around the sixteen the hardware offers.
+    scale their volume by :func:`pulse_volume` and shift their pitch, the triangle shifts its pitch
+    and sounds while the row asks for more than half volume, and the noise channel scales its
+    volume by :func:`noise_volume` and walks its period around the sixteen the hardware offers.
 
     Args:
         instruction: The tick's instruction as the sample holds it.
@@ -51,7 +91,7 @@ def apply_modifiers(
     """
     match instruction:
         case PulseInstruction():
-            scaled_volume = max(0, min(MAX_VOLUME, round(instruction.volume * row_volume / MAX_VOLUME)))
+            scaled_volume = pulse_volume(instruction.volume, row_volume)
             effective_pitch = transpose_pitch(instruction.pitch, transpose)
             return instruction.model_copy(update={"pitch": effective_pitch, "volume": scaled_volume})
         case TriangleInstruction():
@@ -59,6 +99,6 @@ def apply_modifiers(
             on = instruction.on and triangle_sounds_at(row_volume)
             return instruction.model_copy(update={"pitch": effective_pitch, "on": on})
         case NoiseInstruction():
-            scaled_volume = max(0, min(MAX_VOLUME, round(instruction.volume * row_volume / MAX_VOLUME)))
+            scaled_volume = noise_volume(instruction.volume, row_volume)
             effective_period = transpose_period(instruction.period, transpose)
             return instruction.model_copy(update={"period": effective_period, "volume": scaled_volume})

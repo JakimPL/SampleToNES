@@ -98,6 +98,8 @@ Every note starts those values where a song starts them: full volume, no arpeggi
 
 Within a note, every frame the instrument writes hands its value to the channel. A silent frame sets its level alone and leaves pitch and timbre where the note last put them.
 
+The row's level scales the instrument's. A channel sounds their product over the full level. A pulse channel rounds it to the nearest step. The noise channel rounds it down, and sounds the quietest level wherever that comes out silent while both levels sound. FamiTracker and Bitphase set the noise level by that rule, so an exported song's noise plays there at the level it plays here. On the pulse channels the two trackers part: Bitphase rounds to the nearest step as the app does, and FamiTracker rounds down as it does on noise.
+
 A pass through the song begins on the same values, so starting the song and looping back to its first row sound the same. Seeking within a running song keeps the values, since the sounding note has reached them.
 
 ## Rendering the song to a file
@@ -134,6 +136,7 @@ The device holds a release per stream it handed out and invokes it whenever it n
 | The sequencer's mute set, its mask, and solo | `SequencerChannelsLogic` (`logic/sequencer/channels.py`) |
 | Row mixing, and the mask it pulls while rendering | `RowSynthesizer` (`logic/sequencer/playback/synthesizer/`) |
 | The values a note starts from and a channel holds between frames | `ChannelPerformance` (`sampletones_core/performance/state.py`) |
+| How a row's level and transpose reach what a channel sounds | `apply_modifiers` (`sampletones_core/performance/modifiers.py`) |
 | How long a row lasts, and how many samples its ticks span | `Groove` and `TickClock` (`sampletones_core/timing/`) |
 | Rendering the song to a file, its passes and its progress | `SongRenderService` (`services/render/`) |
 

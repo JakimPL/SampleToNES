@@ -97,10 +97,10 @@ instrument states. The envelopes are one set for every channel, so the slices di
 channel reads of them.
 
 **A held volume.** A slice whose volume envelope has no item leaves its level to the channel. The exporter
-writes one full `volumeOrRate`. Playback combines that level with the pattern's volume column through a
-PT3 volume table, where a full level comes out at the column's own level. The slice therefore sounds at
-whatever level the channel has, which is how FamiTracker reads a disabled volume sequence. A slice that
-describes no frame at all writes a single silent value, the smallest instrument Bitphase plays.
+writes one full `volumeOrRate`. Playback combines that level with the pattern's volume column, and a full
+level comes out at the column's own level (section E). The slice therefore sounds at whatever level the
+channel has, which is how FamiTracker reads a disabled volume sequence. A slice that describes no frame at
+all writes a single silent value, the smallest instrument Bitphase plays.
 
 **Every note starts where a song does.** Bitphase reads every field from the instrument a note plays,
 from its first tick, and every note cell the exporter writes names its slice's own table. A slice that
@@ -308,6 +308,11 @@ writes `15` wherever playback reaches it carrying another level, and keeps an em
 channel stands at the full level already. The exporter follows each channel's level through the order the way
 Bitphase plays it: frame by frame, then from the loop point, the first frame, with the level the order
 ended on. A note-on written as a note cut takes the same level.
+
+**The column scales the instrument's level.** Playback combines the two levels the way in-app playback
+does. On the pulse channels it reads a PT3 volume table, which rounds their product over the full level to
+the nearest step. On noise it rounds the product down, and plays the quietest level wherever that comes
+out silent while both levels sound. Either way a full instrument level plays at the column's own level.
 
 **The triangle sounds above half volume.** In-app playback sounds the triangle while a row's volume is 8–15
 and silences it at 0–7. Playback enables the triangle while the PT3 product of the pattern level and the

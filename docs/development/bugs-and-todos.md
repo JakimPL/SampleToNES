@@ -39,6 +39,9 @@ dimension the import starts carrying.
 * A FamiTracker bend ending before its arpeggio loses the offset it ends on, since the running arpeggio
   reloads the period from the note and a halted bend adds nothing. Only instruments a note slide reaches
   circle the bend on its last item today.
+* A FamiTracker module's pulse level can sound a step away from in-app playback. FamiTracker rounds the
+  product of the two levels down and keeps the quietest level where that comes out silent, while the app
+  and Bitphase round it to the nearest step.
 
 ### Workflow
 
