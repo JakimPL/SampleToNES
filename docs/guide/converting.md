@@ -100,10 +100,10 @@ When the conversion finishes, click **Load** to open the result on the **Reconst
 you can [listen to it and export it](reconstruction.md). After a conversion of several recordings, the
 button opens the folder instead.
 
-If the reconstruction you have open has unsaved changes, **Load** asks whether to save them first. The
-conversion may have written over the reconstruction you have open. Then **Discard** loads the new one
-and throws your changes away. To keep them, click **Cancel** and use **Save reconstruction as...** to
-save them to another file.
+If the reconstruction you have open has unsaved changes, **Load** asks whether to save them first. If
+the conversion wrote over that same reconstruction, you can't save your changes there. **Discard**
+loads the new one and throws your changes away. To keep them, click **Cancel** and use **Save
+reconstruction as...** to save them to another file.
 
 The first conversion with new settings takes longer, because it builds the [instruction
 library](../concepts/instruction-library.md) for them. Later conversions with the same settings reuse
