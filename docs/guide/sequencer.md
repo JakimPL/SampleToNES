@@ -244,7 +244,7 @@ rows.
 - **NSF program...** saves an `.nsf` file, which the NES or an NSF player plays directly.
 
 A voice plays on the channels its instruments cover. Where a row names a voice on another channel, the
-FamiTracker and Bitphase files hold a note cut on that row, which is how the song plays it. The dialog
+FamiTracker and Bitphase files have a note cut on that row, which is how the song plays it. The dialog
 that announces the export lists those rows by frame, channel and row.
 
 A row that changes only the transpose of a playing note moves that note in both files. A FamiTracker
