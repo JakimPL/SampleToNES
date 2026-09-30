@@ -173,7 +173,8 @@ class BitphaseEngine:
         """The command that plays ``document`` and writes its trace to ``output``.
 
         The checkout's own tsx runs the trace script, so the script loads the checkout's TypeScript
-        modules the way its own command-line tools do.
+        modules the way its own command-line tools do. The script runs inside the checkout, so the
+        document and the trace are named by absolute paths.
 
         Args:
             document: The `.btp` document to play.
@@ -187,8 +188,8 @@ class BitphaseEngine:
             str(self.checkout.root / TSX_CLI),
             str(BITPHASE_TRACE_SCRIPT_PATH),
             str(self.checkout.root),
-            str(document),
-            str(output),
+            str(document.resolve()),
+            str(output.resolve()),
         ]
 
     def trace(

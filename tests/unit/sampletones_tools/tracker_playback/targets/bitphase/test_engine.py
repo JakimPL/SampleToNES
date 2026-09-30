@@ -135,6 +135,17 @@ class TestBitphaseEngine:
             str(output),
         ]
 
+    def test_the_script_is_handed_absolute_paths(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        played = BitphaseEngine(node=NODE, checkout=_checkout(tmp_path / "checkout"))
+        monkeypatch.chdir(tmp_path)
+
+        command = played.command(Path("run") / "song.btp", Path("run") / "song.json")
+
+        assert [Path(argument) for argument in command[-2:]] == [
+            tmp_path / "run" / "song.btp",
+            tmp_path / "run" / "song.json",
+        ]
+
     def test_a_trace_is_read_from_the_file_the_run_writes(
         self,
         monkeypatch: pytest.MonkeyPatch,
