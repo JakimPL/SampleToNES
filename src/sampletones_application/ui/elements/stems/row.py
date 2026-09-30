@@ -159,16 +159,17 @@ class StemRowRenderer:
             dpg_configure_item(self._tags.row(row.key, SUF_TWISTY), enabled=live)
 
     def releasable(self, view_model: StemsListViewModel, row: Optional[StemRowViewModel] = None) -> bool:
-        """Whether a row may leave, which a list holding on to its last one answers by its count.
+        """Whether a row may leave, which a list holding on to its last recording answers by its count.
 
         The button on the row reads this, and so does every gesture reaching removal from outside
         the row — a key press, a menu item — so one rule answers them all. A row naming something
-        a removal stands outside of answers for itself.
+        a removal stands outside of answers for itself, and it takes no part in the count, so the
+        last recording of a document the reader has written into keeps its place.
         """
         if row is not None and not row.releasable:
             return False
 
-        return view_model.row_count > 1 or not self._offer.keeps_last_row
+        return view_model.releasable_count > 1 or not self._offer.keeps_last_row
 
     def _repaint_swatch(self, row: StemRowViewModel) -> None:
         """Keeps the square reading as the place its recording now holds on the record."""

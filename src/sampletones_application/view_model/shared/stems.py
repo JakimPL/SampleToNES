@@ -167,6 +167,11 @@ class StemsListViewModel(BaseModel, frozen=True):
         return len(self.rows)
 
     @property
+    def releasable_count(self) -> int:
+        """How many rows name something a removal takes out, which leaves the reader's own frames out of the count."""
+        return sum(1 for row in self.rows if row.releasable)
+
+    @property
     def holds_folders(self) -> bool:
         """A folder stands among the rows, which is what gives the list a disclosure column."""
         return any(row.stands_for_a_folder for row in self.rows)

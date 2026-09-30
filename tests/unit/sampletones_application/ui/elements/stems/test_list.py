@@ -578,6 +578,21 @@ class TestRetainedLastRow(BaseTestSuite):
         assert alone is False
         assert stems_list.lets_a_row_go is True
 
+    def test_the_reader_s_own_frames_leave_the_last_recording_in_place(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """The frames an edit wrote stand as a row of their own, and no removal takes them out."""
+        stems_list = build(layout_config, keeps_last_row=True)
+        bass = row("bass")
+        edits = row("edits", stem_id=None, kind=SourceKind.EDITS)
+
+        stems_list.update_view(view(bass, edits))
+
+        assert not dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
+        assert stems_list.lets_a_row_go is False
+
     def test_a_list_that_keeps_no_row_lets_the_last_one_go(
         self, dpg_context: None, layout_config: LayoutConfig
     ) -> None:
