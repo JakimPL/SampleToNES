@@ -43,6 +43,24 @@ class Groove:
         """Whether every row lasts alike, so a single speed value carries the tempo."""
         return len(set(self.ticks)) == 1
 
+    def ticks_across(self, row_index: int, rows: int) -> int:
+        """How many engine ticks pass over ``rows`` rows starting at ``row_index``.
+
+        Every frame of an order plays one whole pattern, so a span running past the pattern's last
+        row goes on from the first row of the next one.
+
+        Args:
+            row_index: The row the span starts on, within the pattern.
+            rows: How many rows the span covers, at least zero.
+
+        Returns:
+            int: The ticks those rows last.
+        """
+        length = len(self.ticks)
+        patterns, remainder = divmod(rows, length)
+        opening = sum(self.ticks[(row_index + offset) % length] for offset in range(remainder))
+        return patterns * self.total_ticks + opening
+
 
 def _pattern_ticks(
     rate: RowRate,

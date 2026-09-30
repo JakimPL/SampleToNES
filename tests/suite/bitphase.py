@@ -49,6 +49,17 @@ BITPHASE_MACRO_DEFAULTS: Final[Dict[str, Any]] = {
 }
 
 BITPHASE_NOISE_PERIOD_COUNT: Final[int] = 16
+BITPHASE_NOTE_OFF: Final[int] = 1
+BITPHASE_NO_NOTE: Final[int] = 0
+BITPHASE_FIRST_NOTE_NAME: Final[int] = 2
+BITPHASE_NOTE_RANGE: Final[int] = 12
+BITPHASE_FIRST_OCTAVE: Final[int] = 1
+BITPHASE_TABLE_OFF: Final[int] = -1
+BITPHASE_TABLE_COLUMN_OFFSET: Final[int] = 1
+BITPHASE_ORNAMENT_POSITION: Final[int] = 5
+BITPHASE_ORNAMENT_POSITION_MASK: Final[int] = 0xFF
+BITPHASE_SPEED_EFFECT: Final[int] = ord("S")
+BITPHASE_FIRST_STEP: Final[int] = 0
 BITPHASE_NOISE_TIMERS: Final[Tuple[int, ...]] = (
     4,
     8,
@@ -493,3 +504,104 @@ def parse_btp(data: bytes, channel_labels: List[str]) -> LoadedProject:
         tables=[_table(table) for table in document.get("tables") or []],
         instruments=[_instrument(instrument) for instrument in document.get("instruments") or []],
     )
+
+
+def note_value(note: LoadedNote) -> int:
+    """The note index a pattern cell names, as ``_processNote`` of the tracker at commit ``265ff70`` reads it."""
+    return note.name - BITPHASE_FIRST_NOTE_NAME + (note.octave - BITPHASE_FIRST_OCTAVE) * BITPHASE_NOTE_RANGE
+
+
+def _next_step(position: int, table: LoadedTable) -> int:
+    """The step a table moves to after a tick, circling from its loop where it stands among the steps."""
+    following = position + 1
+    if following < len(table.rows):
+        return following
+
+    return table.loop if 0 < table.loop < len(table.rows) else BITPHASE_FIRST_STEP
+
+
+def _row_speeds(document: LoadedProject, pattern: LoadedPattern) -> List[int]:
+    """The ticks each row of a pattern lasts: the entries of the table a speed effect names, or the initial speed.
+
+    The groove reaches the engine as a table a speed effect reads one entry per row from, triggered on
+    every pattern's first row, which is the only way the export states a speed.
+    """
+    triggers = [
+        effect
+        for channel in pattern.channels
+        for effect in channel.rows[0].effects
+        if effect is not None and effect.effect == BITPHASE_SPEED_EFFECT and effect.table_index is not None
+    ]
+    if not triggers:
+        return [document.songs[0].initial_speed] * pattern.length
+
+    table = next(table for table in document.tables if table.id == triggers[-1].table_index)
+    return [table.rows[row % len(table.rows)] for row in range(pattern.length)]
+
+
+@dataclass
+class _ChannelReplay:
+    """What one channel carries from row to row while the document plays."""
+
+    note: Optional[int] = None
+    table: Optional[LoadedTable] = None
+    position: int = BITPHASE_FIRST_STEP
+
+    def read(self, row: LoadedRow, tables: Dict[int, LoadedTable]) -> None:
+        """Moves the channel onto one row: its note, then its table, then its effects.
+
+        Read from ``parsePatternRow``, ``_processNote``, ``_processTable`` and
+        ``_initChannelOrnamentPosition`` of ``tracker-pattern-processor.js`` at commit ``265ff70``.
+        """
+        if row.note.name == BITPHASE_NOTE_OFF:
+            self.note = None
+        elif row.note.name != BITPHASE_NO_NOTE:
+            self.note = note_value(row.note)
+            self.position = BITPHASE_FIRST_STEP
+
+        if row.table == BITPHASE_TABLE_OFF:
+            self.table = None
+            self.position = BITPHASE_FIRST_STEP
+        elif row.table > 0:
+            self.table = tables[row.table - BITPHASE_TABLE_COLUMN_OFFSET]
+            self.position = BITPHASE_FIRST_STEP
+
+        for effect in row.effects:
+            if effect is not None and effect.effect == BITPHASE_ORNAMENT_POSITION:
+                self.position = effect.parameter & BITPHASE_ORNAMENT_POSITION_MASK
+
+    def tick(self, tuning_table: List[int]) -> Optional[int]:
+        """The note the channel sounds on one tick, its table stepping on after it.
+
+        Read from ``processTables`` of ``tracker-pattern-processor.js`` at commit ``265ff70``.
+        """
+        if self.note is None or self.table is None:
+            return self.note
+
+        step = self.table.rows[self.position] if self.position < len(self.table.rows) else BITPHASE_FIRST_STEP
+        self.position = _next_step(self.position, self.table)
+        return min(max(self.note + step, 0), len(tuning_table) - 1)
+
+
+def played_notes(document: LoadedProject, channel_index: int) -> List[Optional[int]]:
+    """The note index one channel sounds on each tick, the order played once through as the engine reads it.
+
+    Args:
+        document: The document as Bitphase loads it.
+        channel_index: The channel whose notes are read.
+
+    Returns:
+        List[Optional[int]]: One note per tick, and ``None`` where the channel holds no note.
+    """
+    song = document.songs[0]
+    patterns = {pattern.id: pattern for pattern in song.patterns}
+    tables = {table.id: table for table in document.tables}
+    replay = _ChannelReplay()
+    notes: List[Optional[int]] = []
+    for pattern_id in document.pattern_order:
+        pattern = patterns[pattern_id]
+        for row, speed in zip(pattern.channels[channel_index].rows, _row_speeds(document, pattern)):
+            replay.read(row, tables)
+            notes.extend(replay.tick(song.tuning_table) for _ in range(speed))
+
+    return notes

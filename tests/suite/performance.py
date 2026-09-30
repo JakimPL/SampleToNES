@@ -50,6 +50,14 @@ def _reconstruction(
     )
 
 
+def reconstruction_of(
+    channel_name: ChannelName,
+    instructions: List[InstructionUnion],
+) -> Reconstruction:
+    """A reconstruction sounding ``instructions`` on one channel, every other channel standing by."""
+    return _reconstruction(channel_name, instructions)
+
+
 def make_pulse_reconstruction(
     *,
     pitch: int = 60,

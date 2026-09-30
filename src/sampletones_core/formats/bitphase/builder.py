@@ -1,11 +1,9 @@
 import math
-from dataclasses import dataclass
-from typing import Dict, FrozenSet, List, Optional, Sequence, Tuple
+from typing import FrozenSet, List, Mapping, Optional, Sequence, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.exporters.rows.levels import RowPlace, cell_volume, full_level_notes
-from sampletones_core.exporters.rows.pitch import highest_step, written_pitch
 from sampletones_core.exporters.skipped import BuiltDocument, find_skipped_rows
 from sampletones_core.exporters.slices import iterate_voice_slices
 from sampletones_core.exporters.truncation import EnvelopeTruncation
@@ -26,11 +24,7 @@ from sampletones_core.formats.bitphase.model.pattern import (
 from sampletones_core.formats.bitphase.model.project import BitphaseProject
 from sampletones_core.formats.bitphase.model.song import BitphaseSong
 from sampletones_core.formats.bitphase.model.table import BitphaseTable
-from sampletones_core.formats.bitphase.notes import (
-    noise_period_to_note_index,
-    note_index_to_note_cell,
-    pitch_to_note_index,
-)
+from sampletones_core.formats.bitphase.notes import note_index_to_note_cell
 from sampletones_core.formats.bitphase.specification.channels import (
     CHANNEL_LABELS,
     CHANNEL_TO_INDEX,
@@ -63,8 +57,10 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     VOLUME_OFF,
     NoteName,
 )
+from sampletones_core.formats.bitphase.transposes import TransposeCell, TransposePlan
 from sampletones_core.formats.bitphase.truncation import document_truncation
 from sampletones_core.formats.bitphase.tuning import concert_frequency, generate_tuning_table
+from sampletones_core.formats.bitphase.voices import SliceVoice, SliceVoiceTable
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.tuning import tuning_from_project
@@ -83,35 +79,6 @@ GROOVE_CHANNEL = ChannelIndex.DPCM
 GROOVE_TRIGGER_ROW = 0
 GROOVE_TABLE_NAME = "Groove"
 GROOVE_TABLE_COUNT = 1
-
-
-@dataclass(frozen=True)
-class SliceVoice:
-    """One built instrument together with the table and the note that triggers it.
-
-    Attributes:
-        number: Value a pattern's instrument column carries to play the instrument.
-        instrument: The macros the channel reads a value per tick from.
-        table: The per-tick semitone contour that moves the note.
-        channel: The NES channel the slice was reconstructed for.
-        initial_pitch: Pitch the slice's contour is measured against.
-        ticks: How many ticks the instrument runs before every dimension stands at its end.
-    """
-
-    number: int
-    instrument: BitphaseInstrument
-    table: BitphaseTable
-    channel: ChannelName
-    initial_pitch: int
-    ticks: int
-
-    @property
-    def contour_top(self) -> int:
-        """The highest semitone step the slice's table moves its note by."""
-        return highest_step(self.table.rows)
-
-
-SliceVoiceTable = Dict[Tuple[str, ChannelName], SliceVoice]
 
 
 def _build_slice_voice(
@@ -161,18 +128,8 @@ def _build_slice_voice(
 
 
 def _note_cell(voice: SliceVoice, transpose: int) -> NoteCell:
-    """Resolves a slice moved by a row's transpose to the note column that triggers it.
-
-    The noise channel reads its note as a period selector, so its transposed period takes the
-    mapping that reproduces that period. Every other channel reads the tuning table at the note
-    its table moves, so the transposed pitch is written at the note that keeps the contour where
-    the song plays it — see :func:`written_pitch`.
-    """
-    pitch = voice.initial_pitch + transpose
-    if voice.channel == ChannelName.NOISE:
-        return note_index_to_note_cell(noise_period_to_note_index(pitch))
-
-    return note_index_to_note_cell(pitch_to_note_index(written_pitch(pitch, voice.contour_top)))
+    """Resolves a slice moved by a row's transpose to the note column that triggers it."""
+    return note_index_to_note_cell(voice.note_index(transpose))
 
 
 def _trigger_row(voice: SliceVoice, note: NoteCell, volume: int) -> BitphaseRow:
@@ -418,6 +375,7 @@ def _row_cell(
     row: Row,
     channel_generator: ChannelName,
     voices: SliceVoiceTable,
+    transpose: Optional[TransposeCell],
     *,
     full_level: bool,
 ) -> BitphaseRow:
@@ -426,7 +384,8 @@ def _row_cell(
     A note-on naming a voice with no instrument on this channel plays nothing in the song, so it
     becomes the note cut that silences the channel. The volume column states what
     :func:`cell_volume` gives the row, which is the full level on a note Bitphase would otherwise
-    start at the level the channel carries.
+    start at the level the channel carries. A transpose row moving the note sounding writes the
+    table and the effect its ``transpose`` cell names — see :class:`TransposePlan`.
     """
     volume = _volume_column(cell_volume(row, channel_generator, full_level=full_level))
     cell = BitphaseRow(volume=volume)
@@ -448,6 +407,12 @@ def _row_cell(
                     _note_cell(voice, row.transpose or 0),
                     volume,
                 )
+        case None if transpose is not None:
+            cell = BitphaseRow(
+                table=transpose.table,
+                effects=transpose.effects,
+                volume=volume,
+            )
         case None:
             pass
 
@@ -460,13 +425,15 @@ def _channel_rows(
     channel: ChannelName,
     voices: SliceVoiceTable,
     full_rows: FrozenSet[int],
+    transposes: Mapping[int, TransposeCell],
 ) -> List[BitphaseRow]:
-    """Converts one channel's pattern within a frame, writing the full level on the rows named."""
+    """Converts one channel's pattern within a frame, writing the full level and the transposes on the rows named."""
     cells = [
         _row_cell(
             row,
             channel,
             voices,
+            transposes.get(row_index),
             full_level=row_index in full_rows,
         )
         for row_index, row in enumerate(rows[:length])
@@ -551,19 +518,29 @@ def _groove_channel_rows(length: int, table_id: int) -> List[BitphaseRow]:
 def _document_tables(
     voices: Sequence[SliceVoice],
     groove_table: Optional[BitphaseTable],
+    transposes: TransposePlan,
 ) -> Tuple[BitphaseTable, ...]:
-    """Gathers the tables a document holds: one per slice, and the groove where it takes one."""
+    """Gathers the tables a document holds: one per slice, the groove where it takes one, then the moved tables."""
     tables = tuple(voice.table for voice in voices)
-    if groove_table is None:
-        return tables
+    if groove_table is not None:
+        tables += (groove_table,)
 
-    return tables + (groove_table,)
+    return tables + transposes.tables
+
+
+def _moved_table_id(voices: Sequence[SliceVoice], groove_table: Optional[BitphaseTable]) -> int:
+    """The id the first table a transpose row moves a note to takes, above the slices and the groove."""
+    if groove_table is None:
+        return len(voices) + MIN_TABLE_ID
+
+    return groove_table.id + GROOVE_TABLE_COUNT
 
 
 def _project_patterns(
     project: Project,
     voices: SliceVoiceTable,
     groove_table: Optional[BitphaseTable],
+    transposes: TransposePlan,
 ) -> Tuple[BitphasePattern, ...]:
     """Flattens the song's per-channel arrangement into whole-pattern order positions.
 
@@ -572,7 +549,8 @@ def _project_patterns(
     pattern of its own carrying that frame's channels side by side. Every pattern triggers
     the groove table it is given, so the tempo holds wherever the order jumps. The order plays
     the frames in turn and returns to the first, which is the walk :func:`full_level_notes`
-    follows to find the notes writing the full level.
+    follows to find the notes writing the full level. Each frame is a pattern of its own, so a
+    transpose row writes the cell the frame reaching it needs.
     """
     song = project.song
     length = song.rows_per_pattern
@@ -603,6 +581,7 @@ def _project_patterns(
                 channel_name,
                 voices,
                 _frame_rows(full_levels[channel_name], position),
+                transposes.frame_cells(channel_name, position),
             )
 
         patterns.append(_to_pattern(position, length, channel_rows))
@@ -624,7 +603,8 @@ def build_bitphase(project: Project) -> BuiltDocument[BitphaseProject]:
     project holds no sample. A row naming a voice on a channel the voice has no instrument for
     plays nothing in the song, so the document holds a note cut there and the row is listed
     beside it. A dimension longer than a macro holds keeps its opening values, and the slices
-    shortened that way are reported beside the rows.
+    shortened that way are reported beside the rows. A row moving the transpose of a note already
+    sounding switches the channel to a moved copy of the note's table — see :class:`TransposePlan`.
 
     Args:
         project: The project to write.
@@ -634,9 +614,9 @@ def build_bitphase(project: Project) -> BuiltDocument[BitphaseProject]:
             slices shortened.
 
     Raises:
-        ValueError: If the project holds more than Bitphase has room for, if its samples were
-            reconstructed at different tunings, or if their concert pitch lies outside the range
-            a Bitphase song takes.
+        ValueError: If the project holds more than Bitphase has room for, its transpose rows'
+            tables included, if its samples were reconstructed at different tunings, or if their
+            concert pitch lies outside the range a Bitphase song takes.
     """
     a4_tuning = concert_frequency(tuning_from_project(project))
     tuning_table = generate_tuning_table(DEFAULT_CPU_FREQUENCY, a4_tuning=a4_tuning)
@@ -654,7 +634,13 @@ def build_bitphase(project: Project) -> BuiltDocument[BitphaseProject]:
             len(voices) + MIN_TABLE_ID,
         )
     )
-    patterns = _project_patterns(project, by_reference, groove_table)
+    transposes = TransposePlan.build(
+        project.song,
+        by_reference,
+        groove,
+        first_table_id=_moved_table_id(voices, groove_table),
+    )
+    patterns = _project_patterns(project, by_reference, groove_table, transposes)
     settings = project.settings
     info = project.info
 
@@ -673,7 +659,7 @@ def build_bitphase(project: Project) -> BuiltDocument[BitphaseProject]:
                 ),
             ),
             pattern_order=tuple(pattern.id for pattern in patterns),
-            tables=_document_tables(voices, groove_table),
+            tables=_document_tables(voices, groove_table, transposes),
             instruments=tuple(voice.instrument for voice in voices),
         ),
         skipped_rows=find_skipped_rows(project.song, by_reference),

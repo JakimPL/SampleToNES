@@ -881,3 +881,23 @@ class TestGrooveProperties(BaseTestSuite):
 
     def test_a_single_row_groove_is_uniform(self) -> None:
         assert Groove(ticks=(4,)).is_uniform
+
+
+class TestTheTicksASpanOfRowsLasts:
+    """A frame plays one whole pattern, so a span of rows reads the groove from its first row and goes
+    on from the next pattern's first row once it passes the last.
+    """
+
+    UNEVEN: Final[Groove] = Groove(ticks=(5, 4, 4, 3))
+
+    def test_a_span_within_the_pattern_adds_up_its_rows(self) -> None:
+        assert self.UNEVEN.ticks_across(1, 2) == 4 + 4
+
+    def test_a_span_past_the_last_row_goes_on_from_the_first(self) -> None:
+        assert self.UNEVEN.ticks_across(3, 3) == 3 + 5 + 4
+
+    def test_a_span_of_whole_patterns_lasts_their_ticks(self) -> None:
+        assert self.UNEVEN.ticks_across(2, 2 * len(self.UNEVEN.ticks)) == 2 * self.UNEVEN.total_ticks
+
+    def test_an_empty_span_lasts_no_tick(self) -> None:
+        assert self.UNEVEN.ticks_across(2, 0) == 0

@@ -273,6 +273,35 @@ is raised only as far as bringing the table's highest step to 33:
 A tick that in-app playback holds at 33 while its step moves the written note lower plays the period
 that lower index resolves to, which at concert pitch is the longest (section C.1).
 
+**A transpose row moves the note sounding.** In-app playback reads a row that states a transpose and no
+note as a new pitch for the note already sounding: the voice goes on from the tick it reached, and every
+tick from that row on sounds at the new transpose. A note-on starts over at its own transpose. Bitphase
+restarts the instrument on a note or an instrument cell, and a table cell alone attaches a table at its
+first step while the instrument plays on. So the row writes a table cell and an effect:
+
+| Column | What the exporter writes |
+| --- | --- |
+| Table | a copy of the note's table with every step moved by `N`, the distance from the note already written to the note a note-on at the new transpose would write |
+| Effect | `5` (ornament position), `delay = 0`, the parameter naming the step the note's table has reached, which the first step leaves out |
+| Note, instrument | empty, so the instrument goes on |
+
+`N` is measured from the note the note-on wrote, whatever an earlier row moved the note to, so each row's
+pitch is the transpose it states. From that tick the channel sounds what a note-on at the new transpose
+would sound, the low-note rule above included. On noise `N` is measured the same way, between the two
+note indices the period mapping of section C.2 writes, so the moved table walks the period around the
+sixteen the channel has and follows that mapping wherever it places a period. A row returning to the
+note's own transpose names the note's own table, a row keeping the transpose in force writes nothing,
+and rows moving one slice by one distance share one table.
+
+The note's table advances a step per tick from the note on, so the step the effect names counts the ticks
+every row since the note lasts, the groove's uneven rows and the frames between included. The effect
+reads its parameter as a byte, so it names steps 0–255. A row reaching a later step names a copy that
+opens on that step: its steps run from there and circle over the steps the note's table circles
+over, and the row writes no effect.
+
+A transpose row reached while no note sounds moves nothing and writes nothing, and neither does one
+following a note-on that was written as a note cut.
+
 **A note starts at the full level.** In-app playback starts a note whose row states no volume at the full
 level. Playback carries the level a channel last took into every note after it. Such a note therefore
 writes `15` wherever playback reaches it carrying another level, and keeps an empty cell where the
@@ -299,9 +328,10 @@ is the same cell you would see in the tracker.
 | --- | --- | --- |
 | Values per instrument macro | 1–512 | writes the opening values of a longer dimension, keeps a volume's closing silence, and reports what it left out |
 | Rows per table | unbounded | writes the contour, or the groove, whole |
-| Effect columns per channel | 1–4 | writes one, which the groove trigger takes on the DPCM channel |
+| Effect columns per channel | 1–4 | writes one: the groove trigger on the DPCM channel, the ornament position on a transpose row |
 | Instruments | the instrument column holds 2 base-36 digits, so 1–1295 | raises past 1295 |
-| Tables | the table column holds 1 base-36 digit, so ids 0–34 | raises past 35 tables, one of which a groove takes |
+| Tables | the table column holds 1 base-36 digit, so ids 0–34 | raises past 35 tables, counting one a groove takes and the moved tables transpose rows name |
+| Ornament position | the effect parameter is a byte, so steps 0–255 | names a copy of the table opening on a later step |
 | Note range | the 96-entry tuning table, pitch 24–119 | keeps the song's range, 33–119, raising a lower note only as far as its table's highest step reaching 33 (section E) |
 | A4 tuning | 220–880 Hz, the range the song settings offer (`src/lib/chips/nes/schema.ts`) | writes the work's tuning, and raises past that range |
 | Volume column | `-1` silences (the tracker shows `0`), `0` carries the level forward (shown blank), 1–15 set the level | writes the row's level, `15` on a note the channel reaches at another level, and `-1` where a row asks for silence or the triangle's level is 0–7 |
@@ -317,7 +347,9 @@ dialog lists those rows.
 Tables and instruments are numbered together, and each slice takes one of each. The table column is
 therefore what a wide document reaches first, and the exporter raises an error instead of writing a
 document whose later voices cannot be named. A song whose rows vary spends one of those ids on its groove,
-so the slices a document holds are those the table column can still name.
+so the slices a document holds are those the table column can still name. The moved tables transpose
+rows name take the ids above the slices and the groove, and a document needing more of them than the
+column names is refused the same way.
 
 **The macro limit is the one a reconstruction meets by itself.** A dimension reaches it at 512 frames,
 which is 8.5 s at 60 Hz. Each field is counted on its own, so a flat duty or a held level costs one value.
