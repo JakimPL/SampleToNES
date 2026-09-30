@@ -6,6 +6,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from sampletones_application.coordinators.reconstruction import ReconstructionCoordinator
+from sampletones_application.coordinators.tabs.reconstruction import (
+    ReconstructionTabCoordinator,
+)
 from sampletones_application.logic.reconstruction.edit import StemRemoval
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.services.regeneration.service import RegeneratedInstrument
@@ -185,6 +188,51 @@ class TestStemRemovalApplyOrdering:
 
         assert observed == [prior]
         assert manager.reconstruction is remaining
+
+
+class TestAnEditRedrawsWhatItRewrote:
+    """The instruments panel keeps what its own edit drew, and draws afresh what a removal rewrote."""
+
+    @pytest.fixture
+    def tab(self, reconstruction_coordinator: ReconstructionCoordinator) -> MagicMock:
+        tab = MagicMock(spec=ReconstructionTabCoordinator)
+        reconstruction_coordinator.set_reconstructions_tab(tab)
+        return tab
+
+    def test_a_regenerated_instrument_keeps_the_envelopes_the_panel_draws(
+        self,
+        reconstruction_coordinator: ReconstructionCoordinator,
+        tab: MagicMock,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        """The regeneration carries what the reader typed, so a field being typed in keeps its text."""
+        outcome = RegeneratedInstrument(
+            reconstruction=reconstruction_factory(),
+            channel_name=ChannelName.PULSE1,
+            feature_key=FeatureKey.VOLUME,
+        )
+
+        reconstruction_coordinator._on_regeneration_result(ServiceSuccess(value=outcome))
+
+        tab.update_reconstruction.assert_called_once_with()
+        tab.redraw_reconstruction.assert_not_called()
+
+    def test_a_removed_recording_redraws_the_instruments_panel(
+        self,
+        reconstruction_coordinator: ReconstructionCoordinator,
+        tab: MagicMock,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        """A removal releases frames the panel drew as sounding, so the panel draws the document it leaves."""
+        reconstruction_coordinator.apply_edit(
+            StemRemoval(
+                reconstruction=reconstruction_factory(),
+                stem_name="kick",
+            )
+        )
+
+        tab.redraw_reconstruction.assert_called_once_with()
+        tab.update_reconstruction.assert_not_called()
 
 
 class TestReconstructionRestorePropagatesUnexpected:

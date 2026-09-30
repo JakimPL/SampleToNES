@@ -1,5 +1,5 @@
 ﻿from pathlib import Path
-from typing import Dict, Final
+from typing import Dict, Final, List, Optional, Tuple
 from unittest.mock import MagicMock
 
 import pytest
@@ -10,13 +10,36 @@ from sampletones_application.coordinators.tabs import reconstruction as reconstr
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
+from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
+from sampletones_application.logic.history.manager import HistoryManager
+from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.logic.project.manager import ProjectManager
+from sampletones_application.logic.reconstruction.editor import InstrumentEditor
+from sampletones_application.logic.reconstruction.instruments import (
+    ReconstructionInstrumentsLogic,
+)
+from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.paths import LANG_EN
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
-from sampletones_core.constants.enums import ChannelName
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
+from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.format import ExportFormat
+from sampletones_core.features.envelope import Envelope
+from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
+from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
+from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
+from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,
@@ -28,6 +51,8 @@ from sampletones_shared.exceptions import (
 )
 from sampletones_shared.types.callback import VoidCallback
 from tests.suite.language import FakeLanguageManager
+from tests.suite.sequencer import sample_reconstruction
+from tests.suite.stems import RECORDED_SCALE, STEM_A_ID, STEM_B_ID, regenerated
 
 FILE_NOT_FOUND_KEY: Final[str] = "reconstructions.browser.message.file_not_found"
 LOAD_ERROR_KEY: Final[str] = "reconstructions.browser.message.load_error"
@@ -40,6 +65,11 @@ REMOVE_RECONSTRUCTION_MESSAGE_KEY: Final[str] = "reconstructions.browser.message
 REMOVE_DIRECTORY_MESSAGE_KEY: Final[str] = "reconstructions.browser.message.remove_directory_message"
 
 TEXTS: Final[Dict[str, str]] = {INCOMPATIBLE_VERSION_KEY: "got {} expected {}"}
+HISTORY_BUDGET: Final[int] = 16
+SHARED_CHANNEL: Final[ChannelName] = ChannelName.PULSE1
+SOLE_CHANNEL: Final[ChannelName] = ChannelName.PULSE2
+SHARED_OWNERS: Final[Tuple[int, ...]] = (STEM_A_ID, STEM_B_ID)
+TYPED_VOLUME: Final[Tuple[int, ...]] = (6, 6)
 
 
 @pytest.fixture
@@ -420,3 +450,148 @@ class TestUpdateReconstructionRefitsTheWaveformOnRequest:
         coordinator.update_reconstruction()
 
         coordinator._reconstruction_panel_logic.update_reconstruction.assert_called_once_with(refit_waveform=False)
+
+    def test_a_redraw_asks_for_no_refit(self) -> None:
+        coordinator = self._coordinator()
+
+        coordinator.redraw_reconstruction()
+
+        coordinator._reconstruction_panel_logic.update_reconstruction.assert_called_once_with(refit_waveform=False)
+
+
+class TestTheInstrumentsPanelDrawsTheDocument:
+    """A document rewritten outside the instruments panel is drawn as it stands, and one the panel's
+    own edit rebuilt keeps the envelopes the panel draws."""
+
+    @pytest.fixture
+    def reconstruction(self, tmp_path: Path) -> Reconstruction:
+        """Two recordings taking turns on the shared channel, the second holding the sole channel alone."""
+        base = sample_reconstruction([SHARED_CHANNEL, SOLE_CHANNEL])
+        streams = dict(base.streams)
+        streams[SHARED_CHANNEL] = InstructionsItem.create(
+            channel_name=SHARED_CHANNEL,
+            instructions=base.instructions[SHARED_CHANNEL] * len(SHARED_OWNERS),
+            initial_pitch=base.initial_pitches[SHARED_CHANNEL],
+            held_features=base.held_features[SHARED_CHANNEL],
+        )
+        stems_data = StemsData(
+            config=StemsConfig(
+                entries=[
+                    StemEntry(id=STEM_A_ID, settings=StemSettings.covering([SHARED_CHANNEL])),
+                    StemEntry(id=STEM_B_ID, settings=StemSettings.covering([SHARED_CHANNEL, SOLE_CHANNEL])),
+                ],
+                hierarchy=StemsHierarchy(levels=[[STEM_A_ID, STEM_B_ID]]),
+            ),
+            assignments=[
+                ChannelAssignment(channel_name=SHARED_CHANNEL, stem_ids=list(SHARED_OWNERS)),
+                ChannelAssignment(channel_name=SOLE_CHANNEL, stem_ids=[STEM_B_ID]),
+            ],
+            scale=RECORDED_SCALE,
+        ).with_sources((tmp_path / "a.wav", tmp_path / "b.wav"))
+        return base.rewritten(streams, stems_data)
+
+    @pytest.fixture
+    def reconstruction_manager(
+        self,
+        reconstruction: Reconstruction,
+        scheduling: SchedulingBehavior,
+    ) -> ReconstructionManager:
+        manager = ReconstructionManager(scheduling=scheduling)
+        manager.load_reconstruction_object(reconstruction, name="lead")
+        return manager
+
+    @pytest.fixture
+    def instruments_logic(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        scheduling: SchedulingBehavior,
+    ) -> ReconstructionInstrumentsLogic:
+        """The panel's logic over the editor the application builds, reading the open document."""
+        controller = ProjectController(ProjectManager())
+        editor = InstrumentEditor(
+            reconstruction_manager,
+            controller,
+            HistoryManager(controller, budget=HISTORY_BUDGET, strict=True),
+            lambda _voice_id, _feature_key: (),
+        )
+        return ReconstructionInstrumentsLogic(editor, scheduling=scheduling)
+
+    @pytest.fixture
+    def drawn(
+        self,
+        instruments_logic: ReconstructionInstrumentsLogic,
+    ) -> List[Optional[ChannelEnvelopesViewModel]]:
+        """Every set of envelopes the panel is handed to draw."""
+        drawn: List[Optional[ChannelEnvelopesViewModel]] = []
+        instruments_logic.on_feature_data_changed = drawn.append
+        return drawn
+
+    @pytest.fixture
+    def coordinator(
+        self,
+        instruments_logic: ReconstructionInstrumentsLogic,
+    ) -> ReconstructionTabCoordinator:
+        instance = object.__new__(ReconstructionTabCoordinator)
+        instance._reconstruction_panel_logic = MagicMock()
+        instance._reconstruction_instruments_logic = instruments_logic
+        return instance
+
+    def test_a_removal_draws_the_document_it_leaves(
+        self,
+        coordinator: ReconstructionTabCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction: Reconstruction,
+        drawn: List[Optional[ChannelEnvelopesViewModel]],
+    ) -> None:
+        reconstruction_manager.apply_edited(without_stem(reconstruction, STEM_B_ID))
+
+        coordinator.redraw_reconstruction()
+
+        assert drawn == [reconstruction_manager.current_features]
+
+    def test_a_removal_draws_the_frames_it_released_as_rests(
+        self,
+        coordinator: ReconstructionTabCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction: Reconstruction,
+        drawn: List[Optional[ChannelEnvelopesViewModel]],
+    ) -> None:
+        reconstruction_manager.apply_edited(without_stem(reconstruction, STEM_B_ID))
+
+        coordinator.redraw_reconstruction()
+
+        envelopes = drawn[-1]
+        assert envelopes is not None
+        assert envelopes[SHARED_CHANNEL].volume.items[SHARED_OWNERS.index(STEM_B_ID)] == SILENT_VOLUME
+
+    def test_a_removal_draws_a_channel_it_emptied_standing_by(
+        self,
+        coordinator: ReconstructionTabCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction: Reconstruction,
+        drawn: List[Optional[ChannelEnvelopesViewModel]],
+    ) -> None:
+        reconstruction_manager.apply_edited(without_stem(reconstruction, STEM_B_ID))
+
+        coordinator.redraw_reconstruction()
+
+        envelopes = drawn[-1]
+        assert envelopes is not None
+        assert not envelopes[SOLE_CHANNEL].has_frames
+
+    def test_a_regeneration_leaves_a_field_being_typed_in_alone(
+        self,
+        coordinator: ReconstructionTabCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction: Reconstruction,
+        drawn: List[Optional[ChannelEnvelopesViewModel]],
+    ) -> None:
+        """The regenerated document carries what the reader typed, so the panel keeps drawing it."""
+        envelopes = reconstruction_manager.current_features
+        assert envelopes is not None
+        typed = envelopes[SHARED_CHANNEL].with_envelope(FeatureKey.VOLUME, Envelope[int](items=TYPED_VOLUME))
+        reconstruction_manager.apply_edited(regenerated(reconstruction, SHARED_CHANNEL, typed))
+
+        coordinator.update_reconstruction()
+
+        assert drawn == []

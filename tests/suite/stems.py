@@ -7,6 +7,7 @@ from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
+from sampletones_core.exporters import CHANNEL_TO_EXPORTER_MAP, Features
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
@@ -114,6 +115,23 @@ def everything_heard(reconstruction: Reconstruction) -> StemSelection:
         frozenset(reconstruction.stems_data.config.entries_by_id),
         ChannelName.items(),
     )
+
+
+def regenerated(
+    reconstruction: Reconstruction,
+    channel_name: ChannelName,
+    features: Features,
+) -> Reconstruction:
+    """The document a regeneration leaves once it rebuilds one channel from ``features``, every recording heard."""
+    rebuilt = reconstruction.model_copy(deep=True)
+    rebuilt.update_channel_data(
+        channel_name,
+        list(CHANNEL_TO_EXPORTER_MAP[channel_name].from_features(features)),
+        features.initial_pitch,
+        features.held_features,
+        heard=rebuilt.recorded_stem_ids,
+    )
+    return rebuilt
 
 
 def recorded_from(

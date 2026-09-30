@@ -21,7 +21,7 @@ from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
 from sampletones_core.constants.enums import ChannelName, FeatureKey
-from sampletones_core.exporters import CHANNEL_TO_EXPORTER_MAP, Features
+from sampletones_core.exporters import Features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.footprint import (
     features_footprint,
@@ -30,7 +30,7 @@ from sampletones_core.formats.famitracker.footprint import (
 )
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.reconstructions import Reconstruction
-from tests.suite.stems import everything_heard
+from tests.suite.stems import everything_heard, regenerated
 
 
 def _heard_features(reconstruction: Reconstruction) -> ChannelEnvelopesViewModel:
@@ -46,19 +46,6 @@ SILENCED_CHANNEL: Final[ChannelName] = ChannelName.PULSE1
 def _silent_volume(features: Features) -> Envelope[int]:
     """A volume quieting every frame the envelopes describe."""
     return Envelope[int](items=(0,) * features.frame_count)
-
-
-def _regenerated(reconstruction: Reconstruction, channel_name: ChannelName, features: Features) -> Reconstruction:
-    """The document a regeneration leaves once it rebuilds one channel from ``features``."""
-    regenerated = reconstruction.model_copy(deep=True)
-    regenerated.update_channel_data(
-        channel_name,
-        list(CHANNEL_TO_EXPORTER_MAP[channel_name].from_features(features)),
-        features.initial_pitch,
-        features.held_features,
-        heard=regenerated.recorded_stem_ids,
-    )
-    return regenerated
 
 
 def _editor(
@@ -298,12 +285,12 @@ class TestAnEditSilencingAChannel:
 
         instruments_logic.handle_envelope_changed(SILENCED_CHANNEL, FeatureKey.VOLUME, silenced.volume)
 
-        regenerated = _regenerated(reconstruction, SILENCED_CHANNEL, silenced)
+        landed = regenerated(reconstruction, SILENCED_CHANNEL, silenced)
         footprint = received[0].footprint
         assert footprint is not None
         assert SILENCED_CHANNEL not in received[0].playing_channels
         assert footprint.bytes_for(SILENCED_CHANNEL) is None
-        assert footprint.total_bytes == total_footprint(reconstruction_footprints(regenerated).values()).total_bytes
+        assert footprint.total_bytes == total_footprint(reconstruction_footprints(landed).values()).total_bytes
 
     def test_an_edit_standing_a_channel_by_redraws_it_empty(
         self,
@@ -318,7 +305,7 @@ class TestAnEditSilencingAChannel:
         instruments_logic.on_feature_data_changed = feature_updates.append
         instruments_logic.handle_envelope_changed(SILENCED_CHANNEL, FeatureKey.VOLUME, silenced.volume)
 
-        landed = _heard_features(_regenerated(reconstruction, SILENCED_CHANNEL, silenced))
+        landed = _heard_features(regenerated(reconstruction, SILENCED_CHANNEL, silenced))
         mock_reconstruction_manager.current_features = landed
         instruments_logic.refresh_view()
 
@@ -339,7 +326,7 @@ class TestAnEditSilencingAChannel:
         instruments_logic.on_feature_data_changed = feature_updates.append
         instruments_logic.handle_envelope_changed(SILENCED_CHANNEL, FeatureKey.VOLUME, silenced.volume)
         mock_reconstruction_manager.current_features = _heard_features(
-            _regenerated(reconstruction, SILENCED_CHANNEL, silenced)
+            regenerated(reconstruction, SILENCED_CHANNEL, silenced)
         )
 
         instruments_logic.refresh_view()
@@ -366,7 +353,7 @@ class TestAnEditSilencingAChannel:
             features[SILENCED_CHANNEL].volume,
         )
         mock_reconstruction_manager.current_features = _heard_features(
-            _regenerated(reconstruction, SILENCED_CHANNEL, silenced)
+            regenerated(reconstruction, SILENCED_CHANNEL, silenced)
         )
 
         instruments_logic.refresh_view()

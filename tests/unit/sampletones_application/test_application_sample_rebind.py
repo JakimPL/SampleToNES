@@ -2,6 +2,9 @@ from typing import Optional
 from unittest.mock import MagicMock
 
 from sampletones_application.application import Application
+from sampletones_application.coordinators.tabs.reconstruction import (
+    ReconstructionTabCoordinator,
+)
 from sampletones_core.project.voices.sample import Sample
 
 
@@ -19,7 +22,7 @@ def _app(
     app.project_manager.current.voice.return_value = sample
     app.reconstruction_manager = MagicMock()
     app.reconstruction_manager.reconstruction = open_reconstruction
-    app._reconstructions_tab = MagicMock()
+    app._reconstructions_tab = MagicMock(spec=ReconstructionTabCoordinator)
     return app
 
 
@@ -34,7 +37,18 @@ class TestRebindReplacedSample:
         app._rebind_replaced_sample("bass-id", incoming)
 
         app.reconstruction_manager.apply_edited.assert_called_once_with(incoming)
-        app._reconstructions_tab.update_reconstruction.assert_called_once()
+
+    def test_redraws_the_instruments_panel_from_the_incoming_reconstruction(self) -> None:
+        """The incoming reconstruction brings envelopes of its own, so the panel draws them afresh."""
+        outgoing = MagicMock()
+        sample = _sample_double()
+        sample.reconstruction = outgoing
+        app = _app(sample=sample, open_reconstruction=outgoing)
+
+        app._rebind_replaced_sample("bass-id", MagicMock())
+
+        app._reconstructions_tab.redraw_reconstruction.assert_called_once_with()
+        app._reconstructions_tab.update_reconstruction.assert_not_called()
 
     def test_leaves_the_editor_alone_when_a_different_sample_is_open(self) -> None:
         sample = _sample_double()
@@ -44,7 +58,7 @@ class TestRebindReplacedSample:
         app._rebind_replaced_sample("bass-id", MagicMock())
 
         app.reconstruction_manager.apply_edited.assert_not_called()
-        app._reconstructions_tab.update_reconstruction.assert_not_called()
+        app._reconstructions_tab.redraw_reconstruction.assert_not_called()
 
     def test_leaves_the_editor_alone_when_no_document_is_open(self) -> None:
         sample = _sample_double()
@@ -54,7 +68,7 @@ class TestRebindReplacedSample:
         app._rebind_replaced_sample("bass-id", MagicMock())
 
         app.reconstruction_manager.apply_edited.assert_not_called()
-        app._reconstructions_tab.update_reconstruction.assert_not_called()
+        app._reconstructions_tab.redraw_reconstruction.assert_not_called()
 
     def test_ignores_an_unknown_sample(self) -> None:
         app = _app(sample=None, open_reconstruction=MagicMock())
@@ -62,4 +76,4 @@ class TestRebindReplacedSample:
         app._rebind_replaced_sample("gone", MagicMock())
 
         app.reconstruction_manager.apply_edited.assert_not_called()
-        app._reconstructions_tab.update_reconstruction.assert_not_called()
+        app._reconstructions_tab.redraw_reconstruction.assert_not_called()

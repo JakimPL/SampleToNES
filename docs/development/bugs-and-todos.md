@@ -135,6 +135,3 @@ currently out of line. An entry leaves when the code meets the contract again.
   moved.
 
 ## Bugs
-
-* Removing a recording leaves the instruments panel drawing the envelopes it showed before. The removal
-  reaches the panel through `refresh_view`, which redraws only a channel an edit silenced.

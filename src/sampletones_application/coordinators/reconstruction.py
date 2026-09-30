@@ -10,6 +10,7 @@ from sampletones_application.coordinators.tabs.reconstruction import (
 from sampletones_application.logic.reconstruction.edit import (
     ChannelEdit,
     ReconstructionEdit,
+    StemRemoval,
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.services import (
@@ -317,12 +318,26 @@ class ReconstructionCoordinator:
         the manager still holds the prior reconstruction, so it can locate the owned sample
         by identity and record the edit against the project history as the ``edit``
         describes itself. The open document then rebinds to the new reconstruction, keeping
-        the editor and any owned sample sharing one object.
+        the editor and any owned sample sharing one object, and the tab shows it.
         """
         self._on_reconstruction_updated_callback(edit)
         self._reconstruction_manager.apply_edited(edit.reconstruction)
-        self._tab.update_reconstruction()
+        self._show_edit(edit)
         self._reconstruction_manager.mark_updated()
+
+    def _show_edit(self, edit: ReconstructionEdit) -> None:
+        """Shows the edited document, redrawing the instruments panel where the edit came from elsewhere.
+
+        A regenerated instrument carries the envelopes the panel's own edit wrote, so the panel
+        keeps drawing them and a field the reader is typing in keeps its text. A removed recording
+        releases frames the panel drew as sounding, so the panel draws every channel as the
+        document now holds it.
+        """
+        match edit:
+            case ChannelEdit():
+                self._tab.update_reconstruction()
+            case StemRemoval():
+                self._tab.redraw_reconstruction()
 
     def _on_regeneration_result(self, result: RegenerationResult) -> None:
         match result:

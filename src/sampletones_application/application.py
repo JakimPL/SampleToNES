@@ -1159,7 +1159,8 @@ class Application:
 
         The editor and its owning sample share one reconstruction object, so a sample whose audio is
         substituted takes its editor along. This runs while the sample still holds the outgoing
-        reconstruction, which is what identifies the open document as belonging to it.
+        reconstruction, which is what identifies the open document as belonging to it. The incoming
+        reconstruction brings envelopes of its own, so the tab redraws the instruments panel from it.
 
         Args:
             voice_id: The sample receiving a new reconstruction.
@@ -1170,7 +1171,7 @@ class Application:
             return
 
         self.reconstruction_manager.apply_edited(reconstruction)
-        self._reconstructions_tab.update_reconstruction()
+        self._reconstructions_tab.redraw_reconstruction()
 
     def _regenerate_instrument(
         self,

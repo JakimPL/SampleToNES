@@ -38,7 +38,7 @@ The reconstruction tab's Stems card turns the recorded assignment into a listene
 
 A filtered mix keeps every array at its unfiltered length, so it aligns with the unfiltered one sample for sample. The filter zeroes the unselected frames per channel before mixing (`filter_approximations`), and the original mix covers the recordings of the stems heard on any channel. The panel logic holds the channels each stem is heard on and re-answers the stems view model, the waveform and the audio data whenever the choice changes. A reconstruction that records one source presents a single row for its recording, and one that records no source shows the card's empty state.
 
-Removal runs through `without_stem`, which returns a fresh reconstruction holding what the rules in [Editing a stems reconstruction](#editing-a-stems-reconstruction) leave. The tab coordinator hands the result on as a `ReconstructionEdit`, the payload both a regenerated instrument and a removed recording travel as. One path therefore rebinds the open document and records the edit against the project history.
+Removal runs through `without_stem`, which returns a fresh reconstruction holding what the rules in [Editing a stems reconstruction](#editing-a-stems-reconstruction) leave. The tab coordinator hands the result on as a `ReconstructionEdit`, the payload both a regenerated instrument and a removed recording travel as. One path therefore rebinds the open document and records the edit against the project history. They differ in what the instruments panel does. A regenerated instrument carries the envelopes the panel's own edit wrote, so the panel keeps drawing them. A removal redraws every channel from the document it leaves.
 
 ## Editing a stems reconstruction
 

@@ -54,8 +54,10 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
     def update_display(self) -> None:
         """Renders whatever the panel has in front of it, envelopes and figures together.
 
-        The cards beside the panel describe the same voice, so the render is reported once it has
-        been made and they settle on it: an edit to an instrument redraws its waveform here.
+        A document opened, a recording removed and a new choice of what is heard each change what
+        the panel shows, so each redraws it from the document. The cards beside the panel describe
+        the same voice, so the render is reported once it has been made and they settle on it: an
+        edit to an instrument redraws its waveform here.
         """
         self.call(self.on_view_changed, self._build_view_model(self._current_generators()))
         self.call(self.on_feature_data_changed, self._displayed_features())
@@ -86,11 +88,13 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
     def refresh_view(self) -> None:
         """Reports which channels play and the sizes they occupy, redrawing only a channel an edit silenced.
 
-        A regeneration replaces what an instrument exports, so the byte figures and the standing-by
-        channels settle on it. The envelopes themselves are left to the edit that started the
-        regeneration, so a field the user is still typing in keeps what they wrote. A channel the
-        edit silenced stands by in the document once the regeneration lands, holding no frame, so
-        the panel draws it empty and the next edit starts from what the document holds.
+        This answers a document whose envelopes the panel already draws: a regeneration of the
+        panel's own edit, or a retune, which carries every envelope over. The byte figures and the
+        standing-by channels settle on what an instrument now exports, and the envelopes stay as
+        drawn, so a field the user is still typing in keeps what they wrote. A channel the edit
+        silenced stands by in the document once the regeneration lands, holding no frame, so the
+        panel draws it empty and the next edit starts from what the document holds. A document
+        rewritten anywhere else is drawn whole through :meth:`update_display`.
         """
         self.call(
             self.on_view_changed,

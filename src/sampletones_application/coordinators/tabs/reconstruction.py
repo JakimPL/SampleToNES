@@ -769,8 +769,23 @@ class ReconstructionTabCoordinator:
         return self._reconstruction_panel_logic.heard_on(channel_name)
 
     def update_reconstruction(self, *, refit_waveform: bool = False) -> None:
+        """Re-answers every reading of an edited document whose envelopes the instruments panel already draws.
+
+        A regenerated instrument carries the envelopes the panel's own edit wrote, and a retune
+        carries every envelope over, so the panel keeps what it draws and a field the reader is
+        typing in keeps its text.
+        """
         self._reconstruction_panel_logic.update_reconstruction(refit_waveform=refit_waveform)
         self._reconstruction_instruments_logic.refresh_view()
+
+    def redraw_reconstruction(self) -> None:
+        """Re-answers every reading of a document rewritten outside the instruments panel, envelopes included.
+
+        A removed recording releases the frames it held, and a replaced sample brings envelopes of
+        its own, so the panel draws the document as it now stands and the next edit starts from it.
+        """
+        self._reconstruction_panel_logic.update_reconstruction(refit_waveform=False)
+        self._reconstruction_instruments_logic.update_display()
 
     def set_reconstruction_dimmed(self, dimmed: bool) -> None:
         self._reconstruction_plot_panel.set_reconstruction_dimmed(dimmed)
