@@ -331,7 +331,7 @@ class SequencerTabCoordinator:
             panel.set_collapse_handler(self._layout.on_card_collapse_changed)
 
     def _wire_module_callbacks(self) -> None:
-        self._sequencer_module_panel.on_nes_frequency = self._request_nes_frequency_change
+        self._sequencer_module_panel.on_nes_frequency = gated(self._after_edits, self._request_nes_frequency_change)
         self._sequencer_module_panel.on_rows_per_pattern = self._recorder.undoable(
             HistoryAction.SET_ROWS_PER_PATTERN,
             self._sequencer_tracker_logic.set_rows_per_pattern,
@@ -562,18 +562,27 @@ class SequencerTabCoordinator:
             detail=self._history_detail.move_voice,
         )
         self._sequencer_voices_panel.on_rename_committed = self._voices.submit_rename
-        self._sequencer_voices_panel.on_duplicate_requested = self._recorder.undoable(
-            HistoryAction.DUPLICATE_VOICE,
-            self._sequencer_voices_logic.duplicate_voice,
-            detail=self._history_detail.duplicate_voice,
+        self._sequencer_voices_panel.on_duplicate_requested = gated(
+            self._after_edits,
+            self._recorder.undoable(
+                HistoryAction.DUPLICATE_VOICE,
+                self._sequencer_voices_logic.duplicate_voice,
+                detail=self._history_detail.duplicate_voice,
+            ),
         )
         self._sequencer_voices_panel.on_new_instrument_requested = self.add_instrument
         self._sequencer_voices_panel.on_add_sample_requested = self.add_sample_from_file
         self._sequencer_voices_panel.on_import_instrument_requested = self.import_instrument
         self._sequencer_voices_panel.voice_instruments = self._instrument_exports.voice_instruments
-        self._sequencer_voices_panel.on_export_instrument_requested = self._instrument_exports.request_voice
+        self._sequencer_voices_panel.on_export_instrument_requested = gated(
+            self._after_edits,
+            self._instrument_exports.request_voice,
+        )
         self._sequencer_voices_panel.instrument_channels = self._sequencer_voices_logic.instrument_channels
-        self._sequencer_voices_panel.on_instrument_from_channel_requested = self.add_instrument_from_channel
+        self._sequencer_voices_panel.on_instrument_from_channel_requested = gated(
+            self._after_edits,
+            self.add_instrument_from_channel,
+        )
 
     def _wire_browser_callbacks(self) -> None:
         self._sequencer_browser_panel.set_collapse_handler(self._layout.on_browser_collapse_changed)

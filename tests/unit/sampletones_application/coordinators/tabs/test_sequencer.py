@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Dict, Final, List, Optional
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -1545,6 +1545,57 @@ class TestHistoryDelegation:
         held_gate.release()
 
         history_coordinator._reconstructions.replace_from_file.assert_called_once_with(path)
+
+    def test_a_voice_gesture_reading_the_open_sample_waits_for_the_edits_before_it(
+        self,
+        history_coordinator: SequencerTabCoordinator,
+        held_gate: HeldGate,
+    ) -> None:
+        """A copy, an export or an instrument taken from the sample reads what the reader drew on it."""
+        for name in (
+            "_sequencer_voices_logic",
+            "_sequencer_voices_panel",
+            "_recorder",
+            "_history_detail",
+            "_voices",
+            "_instrument_exports",
+        ):
+            setattr(history_coordinator, name, MagicMock())
+        duplicate = history_coordinator._recorder.undoable.return_value
+        with patch.object(history_coordinator, "add_instrument_from_channel") as instrument_from_channel:
+            history_coordinator._wire_voices_callbacks()
+            panel = history_coordinator._sequencer_voices_panel
+            panel.on_duplicate_requested("lead")
+            panel.on_export_instrument_requested("lead", ChannelName.PULSE1)
+            panel.on_instrument_from_channel_requested("lead", ChannelName.TRIANGLE)
+            duplicate.assert_not_called()
+            history_coordinator._instrument_exports.request_voice.assert_not_called()
+            instrument_from_channel.assert_not_called()
+
+            held_gate.release()
+
+            duplicate.assert_called_once_with("lead")
+            history_coordinator._instrument_exports.request_voice.assert_called_once_with("lead", ChannelName.PULSE1)
+            instrument_from_channel.assert_called_once_with("lead", ChannelName.TRIANGLE)
+
+    def test_a_new_nes_frequency_waits_for_the_edits_before_it(
+        self,
+        history_coordinator: SequencerTabCoordinator,
+        held_gate: HeldGate,
+    ) -> None:
+        """The rate re-times the sample open on the Reconstructions tab, so it follows the edits made there."""
+        history_coordinator._sequencer_module_panel = MagicMock()
+        history_coordinator._recorder = MagicMock()
+        history_coordinator._sequencer_tracker_logic = MagicMock()
+        history_coordinator._history_detail = MagicMock()
+        with patch.object(history_coordinator, "_request_nes_frequency_change") as request:
+            history_coordinator._wire_module_callbacks()
+            history_coordinator._sequencer_module_panel.on_nes_frequency(50)
+            request.assert_not_called()
+
+            held_gate.release()
+
+            request.assert_called_once_with(50)
 
 
 class TestUndoableWrapper:

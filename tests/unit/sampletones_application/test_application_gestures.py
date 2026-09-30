@@ -112,6 +112,11 @@ class TestAWholeDocumentGestureWaitsForTheEdits(BaseTestSuite):
             press=lambda bindings: bindings.add_reconstruction_to_sequencer(),
             gesture=lambda app: app._add_current_reconstruction_to_sequencer,
         ),
+        TestCase(
+            label="render_song",
+            press=lambda bindings: bindings.render_song(),
+            gesture=lambda app: app._render_coordinator.open,
+        ),
     )
 
     @pytest.mark.parametrize(
@@ -143,6 +148,19 @@ class TestAWholeDocumentGestureWaitsForTheEdits(BaseTestSuite):
         held_gate.release()
 
         app._export_reconstruction_instruments_dialog.assert_called_once_with(ExportFormat.FAMITRACKER)
+
+    def test_a_project_export_keeps_the_format_it_was_asked_for(
+        self,
+        app: Application,
+        bindings: ShortcutBindings,
+        held_gate: HeldGate,
+    ) -> None:
+        bindings.export_project(ExportFormat.BITPHASE)
+        app._project_coordinator.export_project_dialog.assert_not_called()
+
+        held_gate.release()
+
+        app._project_coordinator.export_project_dialog.assert_called_once_with(ExportFormat.BITPHASE)
 
     def test_undo_leaves_the_wait_to_the_sequencer(
         self,

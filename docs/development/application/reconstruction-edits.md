@@ -53,9 +53,10 @@ out, or of the last recording standing, is skipped. So is a rate the document al
 ## A gesture on the whole document waits for the edits before it
 
 Undo, redo and a history jump, saving, loading, opening a voice, closing, exporting, adding the document to
-the sequencer, the project's own save, new, open and close, removing or replacing a voice, and the exit all
-read or put away a whole document. Each waits for the edits made before it, so an undo right after a drag
-undoes the drag and a save writes it. With nothing on its way, the gesture runs at once.
+the sequencer, the project's own save, new, open, close, export and render, a new project rate, removing,
+replacing or duplicating a voice, taking an instrument from it or exporting one, and the exit all read or
+put away a whole document. Each waits for the edits made before it, so an undo right after a drag undoes the
+drag and a save writes it. With nothing on its way, the gesture runs at once.
 
 A channel change drawn while a removal or such a gesture waits is refused, since it was drawn on a view the
 waiting step is about to change. The panel is redrawn once the line empties, which takes the refused change
@@ -63,10 +64,10 @@ off the screen.
 
 ## The project rate reaches the open sample as a step
 
-A new project rate retunes the samples in the background, one batch for all of them. The sample open on the
-tab takes the rate as a step of its own line, so it follows the edits made there and joins the rate change's
-history entry. A batch result for a sample edited since the batch started is retuned again from what the
-sample now holds.
+A new project rate retunes the samples in the background, one batch for all of them. The rate waits for the
+edits before it, and the sample open on the tab then takes it as a step of its own line, so the sample
+joins the rate change's history entry with every other sample. A batch result for a sample edited since the
+batch started is retuned again from what the sample now holds.
 
 ## The waveform fades while the line is busy
 
