@@ -1,12 +1,10 @@
 import json
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, Final, List, Optional, Sequence
+from typing import Any, Final, List, Optional, Sequence
 
 import pytest
-from pydantic import ValidationError
 
-from sampletones_core.constants.enums import ChannelName
 from sampletones_tools.tracker_playback.paths import BITPHASE_TRACE_SCRIPT_PATH
 from sampletones_tools.tracker_playback.targets.bitphase import engine
 from sampletones_tools.tracker_playback.targets.bitphase.engine import (
@@ -15,27 +13,10 @@ from sampletones_tools.tracker_playback.targets.bitphase.engine import (
     BitphaseCheckout,
     BitphaseEngine,
     EngineError,
-    read_driver_trace,
 )
-from sampletones_tools.tracker_playback.trace.sound import ABSENT_REGISTER, ChannelSound, TickPosition
 
 NODE: Final[Path] = Path("node")
-SILENT_CHANNEL: Final[Dict[str, Any]] = {
-    "enabled": False,
-    "period": 0,
-    "volume": 0,
-    "duty": 2,
-    "noise_period": 0,
-    "noise_mode": False,
-}
-
-
-def _channel(**values: Any) -> Dict[str, Any]:
-    return {**SILENT_CHANNEL, **values}
-
-
-def _trace_text(*channels: Dict[str, Any], frame: int = 0, row: int = 0) -> str:
-    return json.dumps({"ticks": [{"frame": frame, "row": row, "channels": list(channels)}]})
+ONE_SILENT_TICK: Final[str] = json.dumps({"ticks": [{"frame": 0, "row": 0, "writes": []}]})
 
 
 def _checkout(root: Path) -> BitphaseCheckout:
@@ -44,51 +25,6 @@ def _checkout(root: Path) -> BitphaseCheckout:
         (root / relative).touch()
 
     return BitphaseCheckout.located(root)
-
-
-class TestReadDriverTrace:
-    def test_each_tick_keeps_the_frame_and_row_bitphase_played_it_at(self) -> None:
-        trace = read_driver_trace(_trace_text(*(SILENT_CHANNEL,) * 4, frame=2, row=5))
-
-        assert trace.positions == (TickPosition(frame=2, row=5),)
-        assert set(trace.channels) == set(ChannelName.items())
-
-    def test_a_pulse_timer_is_its_period_less_one(self) -> None:
-        pulse = _channel(enabled=True, period=428, volume=9, duty=1)
-
-        trace = read_driver_trace(_trace_text(pulse, pulse, SILENT_CHANNEL, SILENT_CHANNEL))
-
-        expected = ChannelSound(audible=True, period=427, volume=9, timbre=1)
-        assert trace.channels[ChannelName.PULSE1] == (expected,)
-        assert trace.channels[ChannelName.PULSE2] == (expected,)
-
-    def test_a_triangle_timer_is_its_period_whole(self) -> None:
-        triangle = _channel(enabled=True, period=855, volume=15)
-
-        trace = read_driver_trace(_trace_text(SILENT_CHANNEL, SILENT_CHANNEL, triangle, SILENT_CHANNEL))
-
-        assert trace.channels[ChannelName.TRIANGLE] == (
-            ChannelSound(audible=True, period=855, volume=ABSENT_REGISTER, timbre=ABSENT_REGISTER),
-        )
-
-    def test_a_tone_channel_enabled_at_period_zero_is_silent(self) -> None:
-        stopped = _channel(enabled=True, period=0, volume=15)
-
-        trace = read_driver_trace(_trace_text(stopped, stopped, stopped, SILENT_CHANNEL))
-
-        for channel in (ChannelName.PULSE1, ChannelName.PULSE2, ChannelName.TRIANGLE):
-            assert not trace.channels[channel][0].audible
-
-    def test_the_noise_sounds_while_enabled_at_its_register_period_and_mode(self) -> None:
-        noise = _channel(enabled=True, volume=7, noise_period=6, noise_mode=True)
-
-        trace = read_driver_trace(_trace_text(SILENT_CHANNEL, SILENT_CHANNEL, SILENT_CHANNEL, noise))
-
-        assert trace.channels[ChannelName.NOISE] == (ChannelSound(audible=True, period=6, volume=7, timbre=1),)
-
-    def test_text_the_script_never_writes_is_refused(self) -> None:
-        with pytest.raises(ValidationError):
-            read_driver_trace(json.dumps({"ticks": [{"frame": 0, "row": 0, "channels": []}]}))
 
 
 class TestBitphaseCheckout:
@@ -157,7 +93,7 @@ class TestBitphaseEngine:
 
         def run(command: Sequence[str], *, cwd: Path, **options: Any) -> None:
             runs.append(cwd)
-            Path(command[-1]).write_text(_trace_text(*(SILENT_CHANNEL,) * 4), encoding="utf-8")
+            Path(command[-1]).write_text(ONE_SILENT_TICK, encoding="utf-8")
 
         monkeypatch.setattr(engine.subprocess, "run", run)
 

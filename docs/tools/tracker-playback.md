@@ -2,8 +2,8 @@
 
 The tracker playback check tells you whether a song exported to a tracker plays there the way
 _SampleToNES_ plays it. It exports a set of small projects, plays each exported file with the tracker's
-own playback code, and compares what every channel sounds on every engine tick with what _SampleToNES_
-plays. Then it writes a report of each difference.
+own playback code, and compares what the sound chip plays on every channel and every engine tick with
+what _SampleToNES_ plays. Then it writes a report of each difference.
 
 Each tracker the check plays through is a *target*. It has one today:
 
@@ -62,7 +62,7 @@ to the report.
 | `documents/` | each project as the export wrote it, and what the tracker's playback recorded of it |
 
 For the `bitphase` target, `documents/` has `<project>.btp`, ready to open in Bitphase, and
-`<project>.json`, what Bitphase's engine gave each channel on every tick.
+`<project>.json`, every write Bitphase's engine made to the sound chip, tick by tick.
 
 ## Reading the report
 
@@ -82,6 +82,10 @@ Ticks that differ in the same way on the same channel are counted together. The 
 difference show later rows where both sides sound new values, so two causes that differ in the same
 field show apart. The packaged settings set how many of those lines a difference shows.
 
+A sound that ends in `counted down` is one the chip's own envelope or counters move on from the
+level its registers set. The chip holds every other sound where its registers put it. The two differ
+in `volume`.
+
 A channel that is silent on both sides counts as alike. The report also says when the two sides
 place a tick on different rows, or play a different number of ticks.
 
@@ -94,15 +98,17 @@ place a tick on different rows, or play a different number of ticks.
 ## How it works
 
 Each project is exported by the same code the app's export runs. The target then plays the file with
-the tracker's own playback code and records what the tracker hands the sound chip for each channel on
-each tick. For `bitphase`, a script that comes with _SampleToNES_ plays the document through the
-Bitphase copy's own loader and renderer.
+the tracker's own playback code and records every write the tracker makes to the sound chip's
+registers on each tick. For `bitphase`, a script that comes with _SampleToNES_ plays the document
+through the Bitphase copy's own loader and renderer, and records each write its engine makes to the
+chip.
 
 The same project is played through the song walk the sequencer and the NSF export share, and turned
-into the register values the NSF player writes. Both sides are then read the same way: whether the
-channel sounds, and the values of its period, volume and duty registers. Bitphase writes a pulse
-channel's timer as its period less one, and the triangle's timer as its period whole. The check reads
-each as the chip receives it.
+into the register writes the NSF player makes. Both sides are then read the same way. The check keeps
+the value each register holds on each tick, and reads from those values what the chip plays on each
+channel: whether it sounds, its timer or noise period, its volume, and its duty cycle or noise mode.
+The check reads what the tracker writes to the chip, so it sees the timer the chip receives, however
+the tracker works it out from a note.
 
 Tick 0 is the song's first tick on both sides, so the rows of a groove line up by themselves.
 

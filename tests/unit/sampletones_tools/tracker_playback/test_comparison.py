@@ -13,8 +13,8 @@ from sampletones_tools.tracker_playback.trace.sound import ChannelSound, SongTra
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
-TONE: Final[ChannelSound] = ChannelSound(audible=True, period=427, volume=15, timbre=2)
-SILENT: Final[ChannelSound] = ChannelSound(audible=False, period=0, volume=0, timbre=0)
+TONE: Final[ChannelSound] = ChannelSound(audible=True, period=427, volume=15, held=True, timbre=2)
+SILENT: Final[ChannelSound] = ChannelSound(audible=False, period=0, volume=0, held=True, timbre=0)
 ROW_TICKS: Final[int] = 2
 EXAMPLES: Final[int] = 3
 
@@ -45,7 +45,7 @@ class TestDifferingFields(BaseTestSuite):
         TestCase(
             label="silent on both sides whatever the registers hold",
             application=replace(SILENT, period=2047),
-            engine=replace(SILENT, period=5, volume=3),
+            engine=replace(SILENT, period=5, volume=3, held=False),
             expected=(),
         ),
         TestCase(
@@ -57,13 +57,19 @@ class TestDifferingFields(BaseTestSuite):
         TestCase(
             label="every register",
             application=TONE,
-            engine=ChannelSound(audible=True, period=428, volume=5, timbre=1),
+            engine=ChannelSound(audible=True, period=428, volume=5, held=True, timbre=1),
             expected=(SoundField.PERIOD, SoundField.VOLUME, SoundField.TIMBRE),
         ),
         TestCase(
             label="the volume alone",
             application=TONE,
             engine=replace(TONE, volume=5),
+            expected=(SoundField.VOLUME,),
+        ),
+        TestCase(
+            label="a level the chip counts down against one it holds",
+            application=TONE,
+            engine=replace(TONE, held=False),
             expected=(SoundField.VOLUME,),
         ),
     )

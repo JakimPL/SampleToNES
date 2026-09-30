@@ -8,6 +8,7 @@ from sampletones_tools.tracker_playback.comparison import TraceComparison, compa
 from sampletones_tools.tracker_playback.corpus.build import CorpusProject
 from sampletones_tools.tracker_playback.outcome import ProjectOutcome
 from sampletones_tools.tracker_playback.report import (
+    COUNTED_DOWN,
     DIFFERS,
     DIFFERS_ONCE,
     LENGTHS_DIFFER,
@@ -30,9 +31,9 @@ from sampletones_tools.tracker_playback.trace.sound import ChannelSound, SongTra
 from tests.suite.playback import ReplayingTarget
 
 EXAMPLES: Final[int] = 4
-TONE: Final[ChannelSound] = ChannelSound(audible=True, period=427, volume=15, timbre=2)
+TONE: Final[ChannelSound] = ChannelSound(audible=True, period=427, volume=15, held=True, timbre=2)
 QUIET: Final[ChannelSound] = replace(TONE, volume=5)
-SILENT_SOUND: Final[ChannelSound] = ChannelSound(audible=False, period=0, volume=0, timbre=0)
+SILENT_SOUND: Final[ChannelSound] = ChannelSound(audible=False, period=0, volume=0, held=True, timbre=0)
 
 
 def _trace(pulse: Tuple[ChannelSound, ...]) -> SongTrace:
@@ -59,7 +60,7 @@ class TestDescribeSound:
         assert {describe_sound(channel, SILENT_SOUND) for channel in ChannelName.items()} == {SILENT}
 
     def test_each_channel_names_the_registers_it_has(self) -> None:
-        short = ChannelSound(audible=True, period=9, volume=12, timbre=1)
+        short = ChannelSound(audible=True, period=9, volume=12, held=True, timbre=1)
 
         assert describe_sound(ChannelName.PULSE2, TONE) == PULSE_SOUND.format(period=427, volume=15, timbre=2)
         assert describe_sound(ChannelName.TRIANGLE, TONE) == TRIANGLE_SOUND.format(period=427)
@@ -69,6 +70,12 @@ class TestDescribeSound:
             volume=12,
             mode=LONG_MODE,
         )
+
+    def test_a_sound_the_chip_counts_down_says_so_on_every_channel(self) -> None:
+        counted_down = replace(TONE, held=False)
+
+        for channel in ChannelName.items():
+            assert describe_sound(channel, counted_down) == describe_sound(channel, TONE) + COUNTED_DOWN
 
 
 class TestReportText:

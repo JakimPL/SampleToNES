@@ -18,14 +18,6 @@ from sampletones_tools.tracker_playback.targets.bitphase.target import TITLE, Bi
 from tests.suite.performance import make_pulse_reconstruction, place_instrument, project_with_sample
 
 NAME: Final[str] = "tone"
-SILENT_CHANNEL: Final = {
-    "enabled": False,
-    "period": 0,
-    "volume": 0,
-    "duty": 2,
-    "noise_period": 0,
-    "noise_mode": False,
-}
 
 
 def _target(root: Path) -> BitphaseTarget:
@@ -70,7 +62,7 @@ class TestBitphaseTarget:
 
         def run(command: Sequence[str], **options: Any) -> None:
             played.append(command)
-            ticks = [{"frame": 0, "row": 0, "channels": [SILENT_CHANNEL] * 4}]
+            ticks = [{"frame": 0, "row": 0, "writes": []}]
             Path(command[-1]).write_text(json.dumps({"ticks": ticks}), encoding="utf-8")
 
         monkeypatch.setattr(engine.subprocess, "run", run)

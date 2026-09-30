@@ -15,8 +15,8 @@ from sampletones_tools.tracker_playback.trace.sound import ChannelSound
 TITLE: Final[str] = "# What {tracker} plays of the corpus"
 INTRODUCTION: Final[str] = (
     "Each project was exported to {tracker} with the application's own exporter and played by {player}. Every "
-    "engine tick of every channel is held against what the application plays, both read as the registers the "
-    "console takes. A channel that is silent on both sides counts as alike."
+    "engine tick of every channel is held against what the application plays, both read out of the registers "
+    "each writes to the sound chip. A channel that is silent on both sides counts as alike."
 )
 SUMMARY_COLUMNS: Final[Tuple[str, ...]] = ("Project", "Ticks in the app", "Ticks in the tracker", "Result")
 DIVERGENCE_COLUMNS: Final[Tuple[str, ...]] = (
@@ -48,6 +48,7 @@ SILENT: Final[str] = "silent"
 PULSE_SOUND: Final[str] = "timer {period}, volume {volume}, duty {timbre}"
 TRIANGLE_SOUND: Final[str] = "timer {period}"
 NOISE_SOUND: Final[str] = "period {period}, volume {volume}, {mode}"
+COUNTED_DOWN: Final[str] = ", counted down"
 SHORT_MODE: Final[str] = "short"
 LONG_MODE: Final[str] = "long"
 FIELD_SEPARATOR: Final[str] = ", "
@@ -60,6 +61,9 @@ def describe_sound(
 ) -> str:
     """One channel's sound on a tick, in the registers a reader looks for on that channel.
 
+    A sound the chip's own envelope or counters move on from its registers closes with
+    ``COUNTED_DOWN``.
+
     Args:
         channel: The channel sounding.
         sound: What it sounds.
@@ -70,6 +74,15 @@ def describe_sound(
     if not sound.audible:
         return SILENT
 
+    closing = "" if sound.held else COUNTED_DOWN
+    return registers_text(channel, sound) + closing
+
+
+def registers_text(
+    channel: ChannelName,
+    sound: ChannelSound,
+) -> str:
+    """The registers a reader looks for on one channel, as a sounding tick holds them."""
     match channel:
         case ChannelName.PULSE1 | ChannelName.PULSE2:
             return PULSE_SOUND.format(

@@ -2,31 +2,20 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-type DriverChannel = {
-  enabled: boolean;
-  period: number;
-  volume: number;
-  duty: number;
-  noisePeriod: number;
-  noiseMode: boolean;
-};
-
-type RegisterState = { channels: DriverChannel[] };
-
 type Timeline = { currentPatternOrderIndex: number; currentRow: number };
 
 type TrackerState = { timeline: Timeline };
 
-type TracedChannel = {
-  enabled: boolean;
-  period: number;
-  volume: number;
-  duty: number;
-  noise_period: number;
-  noise_mode: boolean;
-};
+type UnitWrite = { unit: string; address: number; value: number };
 
-type TracedTick = { frame: number; row: number; channels: TracedChannel[] };
+type TracedTick = { frame: number; row: number; writes: UnitWrite[] };
+
+type Write = (pointer: number, address: number, value: number) => unknown;
+
+type Engine = {
+  applyRegisterState(registers: unknown): void;
+  process(sampleRate: number): unknown;
+};
 
 type Constructor<T> = new (...args: any[]) => T;
 
@@ -38,25 +27,18 @@ const PUBLIC_DIRECTORY = "public";
 const NES_CHIP = "nes";
 const SONG_INDEX = 0;
 const ONE_PASS = 1;
-const SOUNDING_CHANNELS = 4;
 const SILENT_OUTPUT = { left: 0, right: 0 };
 const STATE_MODULE = "nes/nes-state.js";
 const DRIVER_MODULE = "nes/nes-audio-driver.js";
 const ENGINE_MODULE = "nes/nes-apu-engine.js";
-
-function traced(channel: DriverChannel): TracedChannel {
-  return {
-    enabled: channel.enabled,
-    period: channel.period,
-    volume: channel.volume,
-    duty: channel.duty,
-    noise_period: channel.noisePeriod,
-    noise_mode: channel.noiseMode
-  };
-}
+const UNIT_WRITES: Record<string, string> = {
+  apu: "nes_apu_Write",
+  dmc: "nes_dmc_Write"
+};
 
 class TickRecorder {
   readonly ticks: TracedTick[] = [];
+  private pending: UnitWrite[] = [];
   private state: TrackerState | null = null;
   private driverPassed = false;
 
@@ -68,9 +50,14 @@ class TickRecorder {
     this.driverPassed = true;
   }
 
-  // The renderer applies the register state once before its first tick, so a tick is the one
-  // apply that follows a pass of the driver over the instruments.
-  record(registers: RegisterState): void {
+  write(unit: string, address: number, value: number): void {
+    this.pending.push({ unit, address, value });
+  }
+
+  // The engine writes the chip as it resets and once more before the first tick, so a tick is the
+  // apply that follows a pass of the driver over the instruments, carrying every write since the
+  // tick before.
+  record(): void {
     if (!this.driverPassed || this.state === null) {
       return;
     }
@@ -78,9 +65,24 @@ class TickRecorder {
     this.ticks.push({
       frame: this.state.timeline.currentPatternOrderIndex,
       row: this.state.timeline.currentRow,
-      channels: registers.channels.slice(0, SOUNDING_CHANNELS).map(traced)
+      writes: this.pending
     });
+    this.pending = [];
   }
+}
+
+// The emulator splits the APU into two units, and the engine writes each through an export of its
+// own on the module it is created with. The exports object is frozen, so the engine is handed a copy.
+function recordingWasm(wasm: Module, recorder: TickRecorder): Module {
+  const recording: Module = { ...wasm };
+  for (const [unit, name] of Object.entries(UNIT_WRITES)) {
+    const write = wasm[name] as Write;
+    recording[name] = (pointer: number, address: number, value: number): unknown => {
+      recorder.write(unit, address, value);
+      return write(pointer, address, value);
+    };
+  }
+  return recording;
 }
 
 function recordingModule(url: string, module: Module, recorder: TickRecorder): Module {
@@ -110,10 +112,15 @@ function recordingModule(url: string, module: Module, recorder: TickRecorder): M
     case ENGINE_MODULE:
       return {
         ...module,
-        createNesApuEngine(wasm: unknown) {
-          const made = module.createNesApuEngine(wasm);
-          made.engine.applyRegisterState = (registers: RegisterState) => recorder.record(registers);
-          made.engine.process = () => SILENT_OUTPUT;
+        createNesApuEngine(wasm: Module) {
+          const made = module.createNesApuEngine(recordingWasm(wasm, recorder));
+          const engine = made.engine as Engine;
+          const apply = engine.applyRegisterState.bind(engine);
+          engine.applyRegisterState = (registers: unknown) => {
+            apply(registers);
+            recorder.record();
+          };
+          engine.process = () => SILENT_OUTPUT;
           return made;
         }
       };

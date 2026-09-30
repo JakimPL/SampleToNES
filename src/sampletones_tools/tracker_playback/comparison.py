@@ -130,7 +130,8 @@ def differing_fields(
     """What differs between two sounds of one channel on one tick.
 
     A channel silent on both sides sounds alike whatever its registers hold, and one that sounds on
-    one side alone differs in that and nothing further.
+    one side alone differs in that and nothing further. The volume covers whether the chip holds the
+    level, so a channel its own envelope or counters move differs in volume from one it holds.
 
     Args:
         application: What the application sounds.
@@ -147,7 +148,7 @@ def differing_fields(
 
     compared = (
         (SoundField.PERIOD, application.period, engine.period),
-        (SoundField.VOLUME, application.volume, engine.volume),
+        (SoundField.VOLUME, (application.volume, application.held), (engine.volume, engine.held)),
         (SoundField.TIMBRE, application.timbre, engine.timbre),
     )
     return tuple(field for field, expected, played in compared if expected != played)

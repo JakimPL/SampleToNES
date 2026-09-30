@@ -3,6 +3,8 @@ from typing import Final, Tuple
 
 import pytest
 
+from sampletones_core.constants.enums import ChannelName
+from sampletones_player.specification.channels import CHANNEL_REGISTER_ADDRESSES
 from sampletones_player.specification.registers import (
     APU_FRAME_COUNTER,
     APU_STATUS,
@@ -22,7 +24,7 @@ from sampletones_player.specification.registers import (
     SWEEP_DISABLED,
     TRIANGLE_TIMER_HIGH,
 )
-from sampletones_tools.player.trace.trace import RegisterTrace
+from sampletones_tools.player.trace.trace import RegisterTrace, channel_writes, setup_writes
 from sampletones_tools.player.trace.write import RegisterWrite
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
@@ -99,6 +101,29 @@ class TestInitialization:
     def test_the_first_tick_writes_the_registers_that_reset_a_channel(self) -> None:
         first_tick = self.initialization[-WRITES_PER_TICK:]
         assert REGISTERS_WRITTEN_ON_CHANGE.issubset(set(addresses(first_tick)))
+
+
+class TestTickWrites:
+    """The writes the init routine opens with and the writes one tick's channels make."""
+
+    def test_the_setup_opens_the_initialization(self) -> None:
+        song = player_song(resting_streams((SOUNDING,)), NTSC_FREQUENCY, loop_tick=None)
+
+        initialization = RegisterTrace.from_song(song, play_calls=0).initialization
+
+        assert initialization[: len(setup_writes())] == setup_writes()
+
+    def test_a_tick_writes_every_register_each_channel_owns_in_channel_order(self) -> None:
+        streams = resting_streams((SOUNDING,))
+
+        writes = channel_writes(streams.at(0))
+
+        assert addresses(writes) == tuple(
+            address for channel in ChannelName.items() for address in CHANNEL_REGISTER_ADDRESSES[channel]
+        )
+        assert tuple(write.value for write in writes) == tuple(
+            value for registers in streams.at(0) for value in registers.values
+        )
 
 
 class TestChangeSuppression:

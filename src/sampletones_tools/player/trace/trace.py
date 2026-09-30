@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Final, List, Tuple
+from typing import Dict, Final, List, Sequence, Tuple
 
 from sampletones_core.constants.enums import ChannelName
+from sampletones_player.registers.base import ChannelRegisters
 from sampletones_player.song import Song
 from sampletones_player.specification.channels import CHANNEL_REGISTER_ADDRESSES
 from sampletones_player.specification.registers import (
@@ -24,6 +25,47 @@ from sampletones_player.specification.registers import (
 from sampletones_tools.player.trace.write import RegisterWrite
 
 FIRST_TICK: Final[int] = 0
+
+
+def setup_writes() -> Tuple[RegisterWrite, ...]:
+    """The writes the init routine makes before it sounds the song's first tick.
+
+    It clears every channel register, enables the four channels, runs the frame counter without an
+    interrupt, turns both sweep units off and loads the noise channel's length counter.
+
+    Returns:
+        Tuple[RegisterWrite, ...]: The writes, in the order the routine makes them.
+    """
+    writes = [
+        RegisterWrite(address, SILENCED_REGISTER)
+        for address in range(FIRST_CHANNEL_REGISTER, LAST_CHANNEL_REGISTER + 1)
+    ]
+    writes.extend(
+        (
+            RegisterWrite(APU_STATUS, CHANNELS_ENABLED),
+            RegisterWrite(APU_FRAME_COUNTER, FRAME_COUNTER_SEQUENCE),
+            RegisterWrite(PULSE1_SWEEP, SWEEP_DISABLED),
+            RegisterWrite(PULSE2_SWEEP, SWEEP_DISABLED),
+            RegisterWrite(NOISE_LENGTH_COUNTER, NOISE_LENGTH_COUNTER_LOAD),
+        )
+    )
+    return tuple(writes)
+
+
+def channel_writes(registers: Sequence[ChannelRegisters]) -> Tuple[RegisterWrite, ...]:
+    """Every register the four channels' values of one tick reach, each channel in the order the driver writes it.
+
+    Args:
+        registers: One register set per channel, in channel order.
+
+    Returns:
+        Tuple[RegisterWrite, ...]: One write per register the channels own.
+    """
+    return tuple(
+        RegisterWrite(address, value)
+        for channel, channel_registers in zip(ChannelName.items(), registers, strict=True)
+        for address, value in zip(CHANNEL_REGISTER_ADDRESSES[channel], channel_registers.values, strict=True)
+    )
 
 
 @dataclass(frozen=True)
@@ -59,31 +101,20 @@ class RegisterTrace:
         shadows: Dict[int, int],
     ) -> Tuple[RegisterWrite, ...]:
         writes: List[RegisterWrite] = []
-        for channel, registers in zip(ChannelName.items(), song.streams.at(tick)):
-            for address, value in zip(CHANNEL_REGISTER_ADDRESSES[channel], registers.values):
-                if address in REGISTERS_WRITTEN_ON_CHANGE:
-                    if shadows.get(address) == value:
-                        continue
+        for write in channel_writes(song.streams.at(tick)):
+            if write.address in REGISTERS_WRITTEN_ON_CHANGE:
+                if shadows.get(write.address) == write.value:
+                    continue
 
-                    shadows[address] = value
+                shadows[write.address] = write.value
 
-                writes.append(RegisterWrite(address, value))
+            writes.append(write)
 
         return tuple(writes)
 
     @classmethod
     def _initialization_writes(cls, song: Song, shadows: Dict[int, int]) -> Tuple[RegisterWrite, ...]:
-        writes = [
-            RegisterWrite(address, SILENCED_REGISTER)
-            for address in range(FIRST_CHANNEL_REGISTER, LAST_CHANNEL_REGISTER + 1)
-        ]
-        writes.append(RegisterWrite(APU_STATUS, CHANNELS_ENABLED))
-        writes.append(RegisterWrite(APU_FRAME_COUNTER, FRAME_COUNTER_SEQUENCE))
-        writes.append(RegisterWrite(PULSE1_SWEEP, SWEEP_DISABLED))
-        writes.append(RegisterWrite(PULSE2_SWEEP, SWEEP_DISABLED))
-        writes.append(RegisterWrite(NOISE_LENGTH_COUNTER, NOISE_LENGTH_COUNTER_LOAD))
-        writes.extend(cls._tick_writes(song, FIRST_TICK, shadows))
-        return tuple(writes)
+        return setup_writes() + cls._tick_writes(song, FIRST_TICK, shadows)
 
     @classmethod
     def from_song(cls, song: Song, play_calls: int) -> RegisterTrace:

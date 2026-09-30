@@ -1,27 +1,35 @@
-from typing import Final, Tuple
-
-import pytest
+from typing import Final
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.timing import Groove
-from sampletones_player.registers.base import ChannelRegisters
+from sampletones_player.specification.registers import (
+    APU_STATUS,
+    CHANNELS_ENABLED,
+    PULSE1_CONTROL,
+    PULSE1_SWEEP,
+    PULSE2_SWEEP,
+    SWEEP_DISABLED,
+)
 from sampletones_tools.tracker_playback.trace.application import (
     application_trace,
-    register_sound,
+    driver_registers,
     song_positions,
 )
-from sampletones_tools.tracker_playback.trace.sound import ABSENT_REGISTER, ChannelSound, TickPosition
+from sampletones_tools.tracker_playback.trace.sound import ChannelSound, TickPosition
 from tests.suite.performance import (
     make_pulse_reconstruction,
     place_instrument,
     project_with_sample,
 )
 from tests.suite.player import (
+    PLAYER_FULL_VOLUME,
+    PLAYER_OCTAVE_UP_TIMER,
+    PLAYER_REFERENCE_TIMER,
+    PLAYER_SILENT_VOLUME,
     PLAYER_TIMER_TABLE,
-    noise_tick,
     pulse_tick,
-    triangle_tick,
+    resting_streams,
 )
 
 TICKS_PER_ROW: Final[int] = 6
@@ -46,33 +54,26 @@ class TestSongPositions:
         )
 
 
-class TestRegisterSound:
-    def test_a_pulse_reads_its_level_duty_and_timer(self) -> None:
-        assert register_sound(pulse_tick(9, 3, 427)) == ChannelSound(audible=True, period=427, volume=9, timbre=3)
+class TestDriverRegisters:
+    SOUNDING: Final = pulse_tick(PLAYER_FULL_VOLUME, 0, PLAYER_REFERENCE_TIMER)
+    OCTAVE_UP: Final = pulse_tick(PLAYER_FULL_VOLUME, 0, PLAYER_OCTAVE_UP_TIMER)
+    RESTING: Final = pulse_tick(PLAYER_SILENT_VOLUME, 0, PLAYER_REFERENCE_TIMER)
 
-    def test_a_pulse_at_level_zero_is_silent(self) -> None:
-        assert not register_sound(pulse_tick(0, 3, 427)).audible
+    def test_the_console_stands_where_the_drivers_init_routine_leaves_it(self) -> None:
+        (registers,) = driver_registers(resting_streams((self.SOUNDING,)), 1)
 
-    def test_a_triangle_sounds_while_its_linear_counter_reloads(self) -> None:
-        sounding = register_sound(triangle_tick(True, 854))
+        assert registers.value(APU_STATUS) == CHANNELS_ENABLED
+        assert (registers.value(PULSE1_SWEEP), registers.value(PULSE2_SWEEP)) == (SWEEP_DISABLED, SWEEP_DISABLED)
 
-        assert sounding == ChannelSound(audible=True, period=854, volume=ABSENT_REGISTER, timbre=ABSENT_REGISTER)
-        assert not register_sound(triangle_tick(False, 854)).audible
+    def test_each_tick_holds_the_values_its_channels_write(self) -> None:
+        registers = driver_registers(resting_streams((self.SOUNDING, self.OCTAVE_UP)), 2)
 
-    def test_the_noise_reads_its_level_its_register_period_and_its_mode(self) -> None:
-        assert register_sound(noise_tick(12, 1, 9)) == ChannelSound(audible=True, period=9, volume=12, timbre=1)
+        assert [tick.value(PULSE1_CONTROL) for tick in registers] == [self.SOUNDING.control, self.OCTAVE_UP.control]
 
+    def test_a_channel_past_the_end_of_its_stream_holds_its_final_values(self) -> None:
+        registers = driver_registers(resting_streams((self.SOUNDING, self.RESTING)), 4)
 
-class UnplayedRegisters(ChannelRegisters):
-    @property
-    def values(self) -> Tuple[int, ...]:
-        return ()
-
-
-class TestUnplayedRegisters:
-    def test_registers_of_no_channel_the_console_plays_are_refused(self) -> None:
-        with pytest.raises(TypeError, match="UnplayedRegisters"):
-            register_sound(UnplayedRegisters())
+        assert registers[-1] == registers[1]
 
 
 class TestApplicationTrace:
@@ -99,6 +100,7 @@ class TestApplicationTrace:
             audible=True,
             period=PLAYER_TIMER_TABLE[PITCH],
             volume=ROW_VOLUME,
+            held=True,
             timbre=0,
         )
         assert all(sound.audible for sound in pulse[:FRAMES])
