@@ -1,6 +1,6 @@
 from functools import partial
 from pathlib import Path
-from typing import Callable, Dict, FrozenSet, Mapping, Optional, Sequence, Tuple
+from typing import Callable, Dict, Mapping, Optional, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -25,18 +25,22 @@ from sampletones_application.logic.reconstruction.audition import (
 )
 from sampletones_application.logic.reconstruction.browser.logic import BrowserLogic
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
-from sampletones_application.logic.reconstruction.edit import StemRemoval
 from sampletones_application.logic.reconstruction.editor import (
     InstrumentEditDetail,
     InstrumentEditor,
 )
 from sampletones_application.logic.reconstruction.instruments import (
-    OnReconstructionInstrumentUpdatedCallback,
+    PendingChangesProtocol,
     ReconstructionInstrumentsLogic,
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.reconstruction import (
     ReconstructionPanelLogic,
+)
+from sampletones_application.logic.reconstruction.rewrites.steps import (
+    RateChange,
+    Rewrite,
+    StemRemovalRequest,
 )
 from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.player import PlayerLogic
@@ -87,6 +91,7 @@ from sampletones_application.ui.panels.reconstruction.plot import (
 from sampletones_application.ui.panels.reconstruction.stems import (
     GUIReconstructionStemsPanel,
 )
+from sampletones_application.utils.callbacks.gates import Gate, gated
 from sampletones_application.utils.file_dialogs.api import save_file_dialog
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
@@ -105,7 +110,6 @@ from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.scope import ExportScope
-from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.exceptions import (
     DeserializationError,
@@ -139,8 +143,9 @@ class ReconstructionTabCoordinator:
         on_load_reconstruction_with_confirmation: Callable[[Optional[Path]], None],
         on_change_audio_state: VoidCallback,
         on_favorite_changed: Callable[[FileSystemNode], None],
-        on_reconstruction_instrument_updated: OnReconstructionInstrumentUpdatedCallback,
-        on_reconstruction_stem_removed: Callable[[StemRemoval], None],
+        on_rewrite_requested: Callable[[Rewrite], None],
+        pending_changes: PendingChangesProtocol,
+        after_edits: Gate,
         original_audio_locator: OriginalAudioLocator,
         instrument_exports: InstrumentExportCoordinator,
         history: HistoryManager,
@@ -167,7 +172,7 @@ class ReconstructionTabCoordinator:
         self._instrument_exports = instrument_exports
         self._dialogs = dialogs
         self._original_audio_locator = original_audio_locator
-        self._on_reconstruction_stem_removed = on_reconstruction_stem_removed
+        self._on_rewrite_requested = on_rewrite_requested
 
         self._geometry = layout.geometry
         self._side_panel_count: int
@@ -273,7 +278,7 @@ class ReconstructionTabCoordinator:
         self._reconstruction_instruments_panel.set_collapse_handler(self._on_instruments_collapse_changed)
         self._reconstruction_instruments_logic: ReconstructionInstrumentsLogic = ReconstructionInstrumentsLogic(
             self._instrument_editor,
-            scheduling=layout.scheduling,
+            pending_changes,
         )
         self._instrument_audition_logic: InstrumentAuditionLogic = InstrumentAuditionLogic(
             self._instrument_editor,
@@ -288,7 +293,7 @@ class ReconstructionTabCoordinator:
         self._browser_panel.on_directory_remove_requested = self._request_remove_directory
 
         self._reconstruction_audio_panel.on_audio_source_changed = self._reconstruction_panel_logic.set_audio_source
-        self._reconstruction_audio_panel.on_nes_frequency_changed = self._reconstruction_panel_logic.set_nes_frequency
+        self._reconstruction_audio_panel.on_nes_frequency_changed = self._request_rate_change
         self._reconstruction_plot_panel.on_channels_changed = self._reconstruction_panel_logic.set_selected_channels
         self._reconstruction_stems_panel.on_stem_channels_changed = self._reconstruction_panel_logic.set_stem_channels
         self._reconstruction_stems_panel.on_stem_solo_requested = self._reconstruction_panel_logic.solo_stem
@@ -321,11 +326,9 @@ class ReconstructionTabCoordinator:
         self._reconstruction_instruments_logic.on_feature_data_changed = (
             self._reconstruction_instruments_panel.update_feature_data
         )
-        self._reconstruction_instruments_logic.on_reconstruction_instrument_updated = (
-            on_reconstruction_instrument_updated
-        )
+        self._reconstruction_instruments_logic.on_channel_changed = on_rewrite_requested
 
-        self._reconstruction_instruments_panel.on_instrument_export = self._export_instrument
+        self._reconstruction_instruments_panel.on_instrument_export = gated(after_edits, self._export_instrument)
         self._reconstruction_instruments_panel.on_reconstruction_instrument_hovered = (
             self._reconstruction_plot_panel.set_overlay
         )
@@ -729,26 +732,14 @@ class ReconstructionTabCoordinator:
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_REMOVE_STEM_CONFIRMATION,
             title=self._language_manager["reconstructions.reconstruction.title.remove_stem_dialog"],
             message=self._language_manager["reconstructions.reconstruction.message.remove_stem_message"],
-            on_confirm=lambda: self._remove_stem(stem_id, row.name),
+            on_confirm=lambda: self._on_rewrite_requested(StemRemovalRequest(stem_id=stem_id, stem_name=row.name)),
             ok_label=self._lbl_remove,
             path=row.path,
         )
 
-    def _remove_stem(self, stem_id: int, name: str) -> None:
-        """Takes the recording out of the open document and hands the edit on to be recorded."""
-        reconstruction_data = self._reconstruction_manager.current_reconstruction
-        if reconstruction_data is None:
-            return
-
-        self._on_reconstruction_stem_removed(
-            StemRemoval(
-                reconstruction=without_stem(
-                    reconstruction_data.reconstruction,
-                    stem_id,
-                ),
-                stem_name=name,
-            )
-        )
+    def _request_rate_change(self, nes_frequency: int) -> None:
+        """Asks for the open document to be re-timed to the rate the reader typed."""
+        self._on_rewrite_requested(RateChange(nes_frequency=nes_frequency))
 
     def _request_remove_directory(self, directory: Path) -> None:
         self._dialogs.show_confirmation(
@@ -791,10 +782,6 @@ class ReconstructionTabCoordinator:
             return
 
         self._browser_panel.refresh()
-
-    def heard_on(self, channel_name: ChannelName) -> FrozenSet[int]:
-        """The recordings the reader hears on one channel, which is what an edit there reaches."""
-        return self._reconstruction_panel_logic.heard_on(channel_name)
 
     def update_reconstruction(self, *, refit_waveform: bool = False) -> None:
         """Re-answers every reading of an edited document whose envelopes the instruments panel already draws.

@@ -19,8 +19,25 @@ class Owner:
     def __init__(self, name: str, asked: List[str]) -> None:
         self.name = name
         self.unfinished = False
+        self.editing = False
         self._asked = asked
         self._proceed: Optional[VoidCallback] = None
+        self._after_edits: Optional[VoidCallback] = None
+
+    def after_edits(self, gesture: VoidCallback) -> None:
+        """Holds the gesture while an edit is on its way, the way the reconstruction's rewrites do."""
+        if not self.editing:
+            gesture()
+            return
+
+        self._after_edits = gesture
+
+    def land(self) -> None:
+        """The edit on its way landing, which lets a gesture waiting on it run."""
+        assert self._after_edits is not None
+        gesture, self._after_edits = self._after_edits, None
+        self.editing = False
+        gesture()
 
     def guard_exit(self, proceed: VoidCallback) -> None:
         if not self.unfinished:
@@ -150,3 +167,33 @@ class TestEachOwnerAlone:
         exiting.owners[name].cancel()
 
         exiting.exit.assert_not_called()
+
+
+class TestExitingWhileAnEditIsOnItsWay:
+    """The exit waits for the edits of the open reconstruction first, so every question asks about what the reader drew."""
+
+    def test_nothing_is_asked_before_the_edit_lands(self, exiting: Exiting) -> None:
+        exiting.owners[RECONSTRUCTION].editing = True
+        exiting.unfinished(PROJECT)
+
+        exiting.close()
+
+        assert exiting.asked == []
+        exiting.exit.assert_not_called()
+
+    def test_the_questions_follow_once_it_lands(self, exiting: Exiting) -> None:
+        exiting.owners[RECONSTRUCTION].editing = True
+        exiting.unfinished(PROJECT)
+        exiting.close()
+
+        exiting.owners[RECONSTRUCTION].land()
+
+        assert exiting.asked == [PROJECT]
+
+    def test_the_application_exits_once_it_lands_with_nothing_unfinished(self, exiting: Exiting) -> None:
+        exiting.owners[RECONSTRUCTION].editing = True
+        exiting.close()
+
+        exiting.owners[RECONSTRUCTION].land()
+
+        exiting.exit.assert_called_once_with()

@@ -1,7 +1,6 @@
 scheduling:
   delays:
     schedule: 12
-    reconstruction_update: 1
     cancel: 30
   priorities:
     update_status: 0

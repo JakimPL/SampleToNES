@@ -1,4 +1,4 @@
-from typing import Dict, List, Sequence
+from typing import Dict, List, Optional, Sequence
 
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
@@ -6,6 +6,23 @@ from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
 from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
+
+
+def can_remove_stem(reconstruction: Reconstruction, stem_id: int) -> bool:
+    """Whether a removal of ``stem_id`` applies to the reconstruction as it stands.
+
+    A removal asked for a moment before it runs meets the document the steps before it left, which
+    may have let that recording go already or left it the last one standing. The answer follows
+    the guard :func:`without_stem` holds to, so a removal asked about first always succeeds.
+
+    Args:
+        reconstruction: The reconstruction the recording would be taken out of.
+        stem_id: The stems entry to remove.
+
+    Returns:
+        bool: True where ``stem_id`` names a recorded entry and another entry stands beside it.
+    """
+    return _removal_refusal(reconstruction, stem_id) is None
 
 
 def without_stem(reconstruction: Reconstruction, stem_id: int) -> Reconstruction:
@@ -33,14 +50,11 @@ def without_stem(reconstruction: Reconstruction, stem_id: int) -> Reconstruction
     Raises:
         ValueError: If ``stem_id`` names no recorded entry, or names the last one standing.
     """
+    refusal = _removal_refusal(reconstruction, stem_id)
+    if refusal is not None:
+        raise ValueError(refusal)
+
     stems_data = reconstruction.stems_data
-    config = stems_data.config
-    if stem_id not in config.entries_by_id:
-        raise ValueError(f"Stem {stem_id} names no entry of the recorded setup")
-
-    if len(config.entries) == 1:
-        raise ValueError("A reconstruction holds at least one stem")
-
     released = {item.channel_name: [held == stem_id for held in item.stem_ids] for item in stems_data.assignments}
     return reconstruction.rewritten(
         _released_streams(reconstruction, released),
@@ -48,6 +62,18 @@ def without_stem(reconstruction: Reconstruction, stem_id: int) -> Reconstruction
             [_released_assignment(item, released[item.channel_name]) for item in stems_data.assignments]
         ).without_entries(frozenset({stem_id})),
     )
+
+
+def _removal_refusal(reconstruction: Reconstruction, stem_id: int) -> Optional[str]:
+    """Why a removal of ``stem_id`` does not apply to the reconstruction, or ``None`` where it does."""
+    config = reconstruction.stems_data.config
+    if stem_id not in config.entries_by_id:
+        return f"Stem {stem_id} names no entry of the recorded setup"
+
+    if len(config.entries) == 1:
+        return "A reconstruction holds at least one stem"
+
+    return None
 
 
 def _released_assignment(item: ChannelAssignment, released: Sequence[bool]) -> ChannelAssignment:

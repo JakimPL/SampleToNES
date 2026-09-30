@@ -70,10 +70,13 @@ from sampletones_shared.exceptions import (
     InvalidReconstructionValuesError,
     MalformedInstrumentError,
 )
+from tests.suite.gates import HeldGate, held_gate
 from tests.suite.language import FakeLanguageManager
 
 FREQUENCY_MISMATCH_MESSAGE_KEY: Final[str] = "global.dialog.message.frequency_mismatch"
 REMOVE_VOICE_MESSAGE_KEY: Final[str] = "global.dialog.message.remove_voice"
+
+__all__ = ["held_gate"]
 
 TEXTS: Final[Dict[str, str]] = {
     FREQUENCY_MISMATCH_MESSAGE_KEY: "recon {reconstruction} vs project {project}",
@@ -1084,10 +1087,15 @@ class TestReplaceTargetLabel:
 
 
 @pytest.fixture
-def history_coordinator() -> SequencerTabCoordinator:
-    """A coordinator whose history is a mock, so a test reads what a delegation asked of it."""
+def history_coordinator(held_gate: HeldGate) -> SequencerTabCoordinator:
+    """A coordinator whose history is a mock, so a test reads what a delegation asked of it.
+
+    The edits of the open reconstruction hold every gesture until the case releases the gate.
+    """
     instance = object.__new__(SequencerTabCoordinator)
     instance._history = MagicMock()
+    instance._after_edits = held_gate
+    instance._reconstructions = MagicMock()
     return instance
 
 
@@ -1126,6 +1134,7 @@ def wired_history_coordinator(
     controller.on_project_replaced = instance.realign_with_project
     instance._project_controller = controller
     instance._history = history
+    instance._after_edits = lambda gesture: gesture()
     instance._sequencer_channels_logic = SequencerChannelsLogic()
     instance._sequencer_channels_logic.on_channels_changed = lambda _: None
     monkeypatch.setattr(instance, "refresh", MagicMock())
@@ -1497,20 +1506,45 @@ class TestChannelMenuWiring:
 
 
 class TestHistoryDelegation:
-    def test_undo_delegates_to_history(self, history_coordinator: SequencerTabCoordinator) -> None:
+    """Undo, redo and a jump reach the history once the edits of the open reconstruction before them have landed."""
+
+    def test_undo_delegates_to_history(self, history_coordinator: SequencerTabCoordinator, held_gate: HeldGate) -> None:
         history_coordinator.undo()
+        history_coordinator._history.undo.assert_not_called()
+
+        held_gate.release()
 
         history_coordinator._history.undo.assert_called_once_with()
 
-    def test_redo_delegates_to_history(self, history_coordinator: SequencerTabCoordinator) -> None:
+    def test_redo_delegates_to_history(self, history_coordinator: SequencerTabCoordinator, held_gate: HeldGate) -> None:
         history_coordinator.redo()
+        history_coordinator._history.redo.assert_not_called()
+
+        held_gate.release()
 
         history_coordinator._history.redo.assert_called_once_with()
 
-    def test_jump_delegates_to_history(self, history_coordinator: SequencerTabCoordinator) -> None:
+    def test_jump_delegates_to_history(self, history_coordinator: SequencerTabCoordinator, held_gate: HeldGate) -> None:
         history_coordinator.jump_to_history(3)
+        history_coordinator._history.jump_to.assert_not_called()
+
+        held_gate.release()
 
         history_coordinator._history.jump_to.assert_called_once_with(3)
+
+    def test_replacing_a_sample_waits_for_the_edits_before_it(
+        self,
+        history_coordinator: SequencerTabCoordinator,
+        held_gate: HeldGate,
+    ) -> None:
+        """The sample may be the one open on the Reconstructions tab."""
+        path = Path("incoming.stn")
+        history_coordinator.replace_reconstruction(path)
+        history_coordinator._reconstructions.replace_from_file.assert_not_called()
+
+        held_gate.release()
+
+        history_coordinator._reconstructions.replace_from_file.assert_called_once_with(path)
 
 
 class TestUndoableWrapper:

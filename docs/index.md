@@ -85,6 +85,7 @@ whole repository. The pages about the graphical application and about releases e
 - [Playback](development/application/playback.md) — the audio transport shared by every view, and rendering the song to a file.
 - [Reconstruction browser](development/application/browser.md) — how a reconstructions directory becomes the tree both browser tabs show, and what narrows it.
 - [Stems in the application](development/application/stems.md) — the Stems card, and what an edit or a removal does to the per-frame record.
+- [Editing the open reconstruction](development/application/reconstruction-edits.md) — how the Reconstructions tab takes the reader's edits one step at a time, and what waits for them.
 - [Configuration](development/application/config-organization.md) — how the YAML configuration package is laid out.
 
 ### Releases

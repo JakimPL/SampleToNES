@@ -2,29 +2,26 @@ from dataclasses import dataclass
 from typing import Union
 
 from sampletones_application.services.result import (
-    ServiceCanceled,
     ServiceError,
     ServiceSuccess,
 )
-from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.reconstructions import Reconstruction
 
 
 @dataclass(frozen=True)
 class RegeneratedInstrument:
-    """A regeneration result paired with the generator and feature that changed.
+    """A reconstruction with one channel rebuilt from the envelopes the regeneration was handed.
 
-    Carrying the request context alongside the fresh reconstruction lets the
-    history record which channel and feature an edit touched.
+    The caller keeps what it asked for, so the result carries the rebuilt document alone.
+
+    Attributes:
+        reconstruction: The fresh reconstruction carrying the rebuilt channel.
     """
 
     reconstruction: Reconstruction
-    channel_name: ChannelName
-    feature_key: FeatureKey
 
 
 RegenerationResult = Union[
     ServiceSuccess[RegeneratedInstrument],
     ServiceError,
-    ServiceCanceled,
 ]

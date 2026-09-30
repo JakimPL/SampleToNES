@@ -59,7 +59,6 @@ def scheduling() -> SchedulingBehavior:
     return SchedulingBehavior(
         delays=SchedulingDelays(
             schedule=0,
-            reconstruction_update=0,
             cancel=0,
         ),
         priorities=SchedulingPriorities(

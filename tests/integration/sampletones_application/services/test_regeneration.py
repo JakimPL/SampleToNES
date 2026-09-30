@@ -54,7 +54,6 @@ class TestRegenerationServicePipeline:
         service._run(
             reconstruction_data.reconstruction,
             ChannelName.PULSE1,
-            FeatureKey.VOLUME,
             pulse_features,
             reconstruction_data.reconstruction.recorded_stem_ids,
         )
@@ -70,7 +69,6 @@ class TestRegenerationServicePipeline:
         service._run(
             reconstruction_data.reconstruction,
             ChannelName.PULSE1,
-            FeatureKey.VOLUME,
             pulse_features,
             reconstruction_data.reconstruction.recorded_stem_ids,
         )
@@ -78,8 +76,6 @@ class TestRegenerationServicePipeline:
         emitted = results[0].value
         assert emitted.reconstruction is not reconstruction_data.reconstruction
         assert len(emitted.reconstruction.approximations.get(ChannelName.PULSE1, np.array([], dtype=np.float32))) > 0
-        assert emitted.channel_name is ChannelName.PULSE1
-        assert emitted.feature_key is FeatureKey.VOLUME
 
     def test_run_updates_reconstruction_approximation(self, reconstruction_data, pulse_features) -> None:
         service = RegenerationService()
@@ -87,7 +83,6 @@ class TestRegenerationServicePipeline:
         service._run(
             reconstruction_data.reconstruction,
             ChannelName.PULSE1,
-            FeatureKey.VOLUME,
             pulse_features,
             reconstruction_data.reconstruction.recorded_stem_ids,
         )
@@ -103,7 +98,6 @@ class TestRegenerationServicePipeline:
         service._run(
             reconstruction_data.reconstruction,
             ChannelName.PULSE1,
-            FeatureKey.VOLUME,
             pulse_features,
             reconstruction_data.reconstruction.recorded_stem_ids,
         )
@@ -124,7 +118,6 @@ class TestRegenerationServicePipeline:
         service._run(
             reconstruction_data.reconstruction,
             ChannelName.PULSE1,
-            FeatureKey.VOLUME,
             silenced,
             reconstruction_data.reconstruction.recorded_stem_ids,
         )
@@ -142,7 +135,6 @@ class TestRegenerationServicePipeline:
         service._run(
             reconstruction_data.reconstruction,
             ChannelName.PULSE1,
-            FeatureKey.VOLUME,
             {},
             reconstruction_data.reconstruction.recorded_stem_ids,
         )
@@ -158,7 +150,6 @@ class TestRegenerationServicePipeline:
         service.start(
             reconstruction_data.reconstruction,
             ChannelName.PULSE1,
-            FeatureKey.VOLUME,
             pulse_features,
             reconstruction_data.reconstruction.recorded_stem_ids,
         )
@@ -191,7 +182,6 @@ def _edit_arpeggio(context: ArpeggioEditContext, arpeggio: np.ndarray) -> None:
     service._run(
         context.reconstruction,
         ChannelName.PULSE1,
-        FeatureKey.ARPEGGIO,
         edited,
         context.reconstruction.recorded_stem_ids,
     )
@@ -312,7 +302,6 @@ class TestRegenerationDeliveryThroughRealQueue:
         service._run(
             reconstruction_data.reconstruction,
             ChannelName.PULSE1,
-            FeatureKey.VOLUME,
             pulse_features,
             reconstruction_data.reconstruction.recorded_stem_ids,
         )
@@ -343,7 +332,6 @@ class TestRegenerationDeliveryThroughRealQueue:
         service._run(
             reconstruction_data.reconstruction,
             ChannelName.PULSE1,
-            FeatureKey.VOLUME,
             pulse_features,
             reconstruction_data.reconstruction.recorded_stem_ids,
         )
@@ -357,5 +345,3 @@ class TestRegenerationDeliveryThroughRealQueue:
         assert len(delivered) == 1
         regenerated = delivered[0].value
         assert regenerated.reconstruction is not reconstruction_data.reconstruction
-        assert regenerated.channel_name is ChannelName.PULSE1
-        assert regenerated.feature_key is FeatureKey.VOLUME

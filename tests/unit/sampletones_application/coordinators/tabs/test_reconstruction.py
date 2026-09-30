@@ -19,6 +19,8 @@ from sampletones_application.logic.reconstruction.instruments import (
     ReconstructionInstrumentsLogic,
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.logic.reconstruction.rewrites.queue import ReconstructionRewrites
+from sampletones_application.logic.reconstruction.rewrites.steps import RateChange, StemRemovalRequest
 from sampletones_application.paths import LANG_EN
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
@@ -36,14 +38,7 @@ from sampletones_core.exports.format import ExportFormat
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
-from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
-from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
-from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
-from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
-from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
-from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,
@@ -55,8 +50,15 @@ from sampletones_shared.exceptions import (
 )
 from sampletones_shared.types.callback import VoidCallback
 from tests.suite.language import FakeLanguageManager
-from tests.suite.sequencer import sample_reconstruction
-from tests.suite.stems import RECORDED_SCALE, STEM_A_ID, STEM_B_ID, regenerated
+from tests.suite.regeneration import HeldRegeneration
+from tests.suite.stems import (
+    SHARED_CHANNEL,
+    SHARED_OWNERS,
+    SOLE_CHANNEL,
+    STEM_B_ID,
+    regenerated,
+    taking_turns,
+)
 
 FILE_NOT_FOUND_KEY: Final[str] = "reconstructions.browser.message.file_not_found"
 LOAD_ERROR_KEY: Final[str] = "reconstructions.browser.message.load_error"
@@ -70,11 +72,11 @@ REMOVE_DIRECTORY_MESSAGE_KEY: Final[str] = "reconstructions.browser.message.remo
 
 TEXTS: Final[Dict[str, str]] = {INCOMPATIBLE_VERSION_KEY: "got {} expected {}"}
 HISTORY_BUDGET: Final[int] = 16
-SHARED_CHANNEL: Final[ChannelName] = ChannelName.PULSE1
-SOLE_CHANNEL: Final[ChannelName] = ChannelName.PULSE2
-SHARED_OWNERS: Final[Tuple[int, ...]] = (STEM_A_ID, STEM_B_ID)
 TYPED_VOLUME: Final[Tuple[int, ...]] = (6, 6)
+RETIMED_FREQUENCY: Final[int] = 50
 OPEN_VOICE_ID: Final[str] = "lead-id"
+
+__all__ = ["taking_turns"]
 
 
 @pytest.fixture
@@ -227,6 +229,47 @@ def removal_coordinator() -> ReconstructionTabCoordinator:
     instance._lbl_remove = "Remove"
     instance._msg_load_error = LOAD_ERROR_KEY
     return instance
+
+
+class TestTheTabAsksForItsDocumentToChange:
+    """A removal the reader confirms and a rate the reader types reach the document as steps of its own."""
+
+    @pytest.fixture
+    def requests(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture
+    def coordinator(self, requests: MagicMock) -> ReconstructionTabCoordinator:
+        instance = object.__new__(ReconstructionTabCoordinator)
+        instance._dialogs = MagicMock()
+        instance._language_manager = FakeLanguageManager(TEXTS)
+        instance._lbl_remove = "Remove"
+        instance._reconstruction_stems_panel = MagicMock()
+        instance._on_rewrite_requested = requests
+        return instance
+
+    def test_a_confirmed_removal_asks_for_the_recording_to_leave(
+        self,
+        coordinator: ReconstructionTabCoordinator,
+        requests: MagicMock,
+    ) -> None:
+        row = coordinator._reconstruction_stems_panel.stems_list.row.return_value
+        row.name = "b"
+
+        coordinator._request_remove_stem(STEM_B_ID)
+        requests.assert_not_called()
+        coordinator._dialogs.show_confirmation.call_args.kwargs["on_confirm"]()
+
+        requests.assert_called_once_with(StemRemovalRequest(stem_id=STEM_B_ID, stem_name="b"))
+
+    def test_a_typed_rate_asks_for_the_document_to_be_re_timed(
+        self,
+        coordinator: ReconstructionTabCoordinator,
+        requests: MagicMock,
+    ) -> None:
+        coordinator._request_rate_change(RETIMED_FREQUENCY)
+
+        requests.assert_called_once_with(RateChange(nes_frequency=RETIMED_FREQUENCY))
 
 
 class TestRemoveTreeEntries:
@@ -489,31 +532,8 @@ class TestTheInstrumentsPanelDrawsTheDocument:
     own edit rebuilt keeps the envelopes the panel draws."""
 
     @pytest.fixture
-    def reconstruction(self, tmp_path: Path) -> Reconstruction:
-        """Two recordings taking turns on the shared channel, the second holding the sole channel alone."""
-        base = sample_reconstruction([SHARED_CHANNEL, SOLE_CHANNEL])
-        streams = dict(base.streams)
-        streams[SHARED_CHANNEL] = InstructionsItem.create(
-            channel_name=SHARED_CHANNEL,
-            instructions=base.instructions[SHARED_CHANNEL] * len(SHARED_OWNERS),
-            initial_pitch=base.initial_pitches[SHARED_CHANNEL],
-            held_features=base.held_features[SHARED_CHANNEL],
-        )
-        stems_data = StemsData(
-            config=StemsConfig(
-                entries=[
-                    StemEntry(id=STEM_A_ID, settings=StemSettings.covering([SHARED_CHANNEL])),
-                    StemEntry(id=STEM_B_ID, settings=StemSettings.covering([SHARED_CHANNEL, SOLE_CHANNEL])),
-                ],
-                hierarchy=StemsHierarchy(levels=[[STEM_A_ID, STEM_B_ID]]),
-            ),
-            assignments=[
-                ChannelAssignment(channel_name=SHARED_CHANNEL, stem_ids=list(SHARED_OWNERS)),
-                ChannelAssignment(channel_name=SOLE_CHANNEL, stem_ids=[STEM_B_ID]),
-            ],
-            scale=RECORDED_SCALE,
-        ).with_sources((tmp_path / "a.wav", tmp_path / "b.wav"))
-        return base.rewritten(streams, stems_data)
+    def reconstruction(self, taking_turns: Reconstruction) -> Reconstruction:
+        return taking_turns
 
     @pytest.fixture
     def reconstruction_manager(
@@ -529,7 +549,6 @@ class TestTheInstrumentsPanelDrawsTheDocument:
     def instruments_logic(
         self,
         reconstruction_manager: ReconstructionManager,
-        scheduling: SchedulingBehavior,
     ) -> ReconstructionInstrumentsLogic:
         """The panel's logic over the editor the application builds, reading the open document."""
         controller = ProjectController(ProjectManager())
@@ -539,7 +558,10 @@ class TestTheInstrumentsPanelDrawsTheDocument:
             HistoryManager(controller, budget=HISTORY_BUDGET, strict=True),
             lambda _voice_id, _feature_key: (),
         )
-        return ReconstructionInstrumentsLogic(editor, scheduling=scheduling)
+        return ReconstructionInstrumentsLogic(
+            editor,
+            ReconstructionRewrites(reconstruction_manager, HeldRegeneration()),
+        )
 
     @pytest.fixture
     def drawn(
@@ -654,9 +676,10 @@ class TestTheInstrumentsPanelFollowsTheInstrument:
         self,
         editor: InstrumentEditor,
         views: List[ReconstructionInstrumentsViewModel],
-        scheduling: SchedulingBehavior,
     ) -> ReconstructionTabCoordinator:
-        instruments_logic = ReconstructionInstrumentsLogic(editor, scheduling=scheduling)
+        instruments_logic = ReconstructionInstrumentsLogic(
+            editor, ReconstructionRewrites(MagicMock(), HeldRegeneration())
+        )
         instruments_logic.on_view_changed = views.append
         instance = object.__new__(ReconstructionTabCoordinator)
         instance._instrument_editor = editor

@@ -147,6 +147,3 @@ currently out of line. An entry leaves when the code meets the contract again.
   moved.
 
 ## Bugs
-
-* A regeneration that lands after a recording's removal puts the recording back, since it rebuilds the
-  document it started from.

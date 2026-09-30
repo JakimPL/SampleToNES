@@ -44,6 +44,7 @@ class SampleRetuneService(ServiceBase[RetuneResult]):
                         value=RetunedSample(
                             voice_id=voice_id,
                             reconstruction=retuned,
+                            source=reconstruction,
                         )
                     )
                 )

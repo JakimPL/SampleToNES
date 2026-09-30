@@ -12,16 +12,16 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.edit import (
     ChannelEdit,
     ReconstructionEdit,
+    Retune,
     StemRemoval,
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.services import (
-    RegeneratedInstrument,
-    RegenerationResult,
-    RegenerationService,
-    ServiceCanceled,
-    ServiceError,
-    ServiceSuccess,
+from sampletones_application.logic.reconstruction.rewrites.queue import (
+    ReconstructionRewrites,
+)
+from sampletones_application.logic.reconstruction.rewrites.steps import (
+    AfterEdits,
+    Rewrite,
 )
 from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
@@ -37,8 +37,6 @@ from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.enums import ChannelName, FeatureKey
-from sampletones_core.exporters import Features
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
@@ -57,11 +55,13 @@ class ReconstructionCoordinator:
     - It can be opened from multiple entry points.
     - It must be saved before replacement.
     - Its dirty/saved state drives the window title.
-    - Menu bar instrument regeneration flows through it so that all
-      reconstruction mutations remain centralized.
+    - Every edit of the open document flows through it, one step at a time in the
+      reader's order (see :class:`ReconstructionRewrites`), so all reconstruction
+      mutations remain centralized.
     - Every change from outside the tab that replaces the open document passes
-      through it: opening a project voice, a replaced or retuned sample, and a
-      project change that restores, removes or lets go of the voice the tab shows.
+      through it: opening a project voice, a replaced sample, and a project change
+      that restores, removes or lets go of the voice the tab shows. Each puts away
+      the edits meant for the document it replaces.
 
     The reconstructions tab is wired in after construction through
     ``set_reconstructions_tab``; ``_tab`` asserts it is present before first use.
@@ -71,7 +71,7 @@ class ReconstructionCoordinator:
         self,
         reconstruction_manager: ReconstructionManager,
         session_manager: SessionManager,
-        regeneration_service: RegenerationService,
+        rewrites: ReconstructionRewrites,
         audio_device_manager: AudioDeviceManager,
         project_controller: ProjectController,
         history: HistoryManager,
@@ -84,7 +84,7 @@ class ReconstructionCoordinator:
     ) -> None:
         self._reconstruction_manager = reconstruction_manager
         self._session_manager = session_manager
-        self._regeneration_service = regeneration_service
+        self._rewrites = rewrites
         self._audio_device_manager = audio_device_manager
         self._project_controller = project_controller
         self._history = history
@@ -96,7 +96,10 @@ class ReconstructionCoordinator:
         self._on_reconstruction_updated_callback = on_reconstruction_updated
 
         self._reconstruction_manager.session.on_state_changed = self._on_state_changed
-        self._regeneration_service.subscribe(self._on_regeneration_result)
+        self._rewrites.on_edit = self.apply_edit
+        self._rewrites.on_dropped = self._redraw_open_document
+        self._rewrites.on_failed = self._report_rebuild_failure
+        self._rewrites.on_busy_changed = self._set_reconstruction_dimmed
         self._reconstruction_manager.set_callbacks(
             on_reconstruction_loaded=self.on_reconstruction_loaded,
             on_reconstruction_closed=self._on_closed,
@@ -210,16 +213,12 @@ class ReconstructionCoordinator:
             else:
                 self.load(filepath)
 
-        if self._requires_save_confirmation():
-            self._show_save_confirmation(
-                title=self._language_manager["global.dialog.title.load_unsaved_reconstruction"],
-                message=self._language_manager["global.dialog.message.load_unsaved_reconstruction"],
-                on_save=self.save,
-                on_confirm=load_reconstruction,
-                ok_label=self._language_manager["global.dialog.label.discard"],
-            )
-        else:
-            load_reconstruction()
+        self._save_first(
+            title=self._language_manager["global.dialog.title.load_unsaved_reconstruction"],
+            message=self._language_manager["global.dialog.message.load_unsaved_reconstruction"],
+            ok_label=self._language_manager["global.dialog.label.discard"],
+            proceed=load_reconstruction,
+        )
 
     def load_converted(self, filepath: Path) -> None:
         """Loads the reconstruction a conversion wrote, asking first about unsaved changes.
@@ -260,16 +259,11 @@ class ReconstructionCoordinator:
 
         A project sample's changes belong to the project, which the exit asks about on its own.
         """
-        if not self._requires_save_confirmation():
-            proceed()
-            return
-
-        self._show_save_confirmation(
+        self._save_first(
             title=self._language_manager["global.dialog.title.exit_confirmation"],
             message=self._language_manager["global.dialog.message.exit_unsaved_reconstruction"],
-            on_save=self.save,
-            on_confirm=proceed,
             ok_label=self._language_manager["global.dialog.label.exit"],
+            proceed=proceed,
         )
 
     @ignore_none_path
@@ -302,45 +296,40 @@ class ReconstructionCoordinator:
         )
 
     def close_with_confirmation(self) -> None:
-        if self._requires_save_confirmation():
-            self._show_save_confirmation(
-                title=self._language_manager["global.dialog.title.close_unsaved_reconstruction"],
-                message=self._language_manager["global.dialog.message.close_unsaved_reconstruction"],
-                on_confirm=self._close,
-                on_save=self.save,
-                ok_label=self._language_manager["global.dialog.label.close"],
-            )
-        else:
-            self._close()
+        self._save_first(
+            title=self._language_manager["global.dialog.title.close_unsaved_reconstruction"],
+            message=self._language_manager["global.dialog.message.close_unsaved_reconstruction"],
+            ok_label=self._language_manager["global.dialog.label.close"],
+            proceed=self._close,
+        )
 
     def _close(self) -> None:
+        self._drop_pending()
         self._reconstruction_manager.close_reconstruction()
 
-    def regenerate_instrument(
-        self,
-        channel_name: ChannelName,
-        feature_key: FeatureKey,
-        features: Features,
-    ) -> None:
-        reconstruction_data = self._reconstruction_manager.current_reconstruction
-        if reconstruction_data is None:
-            return
+    def request_rewrite(self, rewrite: Rewrite) -> None:
+        """Asks for a change of the open document, which it takes after the changes asked for before it."""
+        self._rewrites.request(rewrite)
 
-        accepted = self._regeneration_service.start(
-            reconstruction_data.reconstruction,
-            channel_name,
-            feature_key,
-            features,
-            self._tab.heard_on(channel_name),
-        )
-        if accepted:
-            self._set_reconstruction_dimmed(True)
+    def after_edits(self, gesture: VoidCallback) -> None:
+        """Runs a gesture that reads or puts away the whole document once the edits before it have landed.
+
+        Undo, a save, a load or an export acts on the document the reader has drawn, so it waits
+        for the edits still on their way. With nothing on its way, the gesture runs at once. The
+        signature is a :data:`Gate`, so the wait can lead a chain of gates.
+        """
+        self._rewrites.request(AfterEdits(gesture))
+
+    def _drop_pending(self) -> None:
+        """Puts away the edits meant for the open document, which an outside change is about to replace."""
+        self._rewrites.drop()
 
     def on_reconstruction_loaded(self) -> None:
         reconstruction_data = self._reconstruction_manager.current_reconstruction
         if reconstruction_data is None:
             raise RuntimeError("No reconstruction is loaded after loading process")
 
+        self._drop_pending()
         self._audio_device_manager.stop()
         missing_path = first_missing(reconstruction_data.reconstruction.audio_filepath)
         if missing_path is not None:
@@ -361,11 +350,12 @@ class ReconstructionCoordinator:
     def apply_edit(self, edit: ReconstructionEdit) -> None:
         """Applies an edited reconstruction across the open document and project.
 
-        Every edit of the open document arrives here, so one path answers a regenerated
-        instrument and a removed recording alike. The owning-sample hook runs first and records
-        the edit against the project history as the ``edit`` describes itself, so the history
-        holds it by the time the tab shows it. The open document then rebinds to the new
-        reconstruction, the same object the sample now holds, and the tab shows it.
+        Every edit of the open document lands here as the rewrites take it, so one path answers a
+        regenerated instrument, a removed recording and a retune alike, in the reader's order. The
+        owning-sample hook runs first and records the edit against the project history as the
+        ``edit`` describes itself, so the history holds it by the time the tab shows it. The open
+        document then rebinds to the new reconstruction, the same object the sample now holds, and
+        the tab shows it.
         """
         self._on_reconstruction_updated_callback(edit)
         self._reconstruction_manager.apply_edited(edit.reconstruction)
@@ -376,13 +366,16 @@ class ReconstructionCoordinator:
         """Shows the edited document, redrawing the instruments panel where the edit came from elsewhere.
 
         A regenerated instrument carries the envelopes the panel's own edit wrote, so the panel
-        keeps drawing them and a field the reader is typing in keeps its text. A removed recording
-        releases frames the panel drew as sounding, so the panel draws every channel as the
-        document now holds it.
+        keeps drawing them and a field the reader is typing in keeps its text. A retune carries
+        every envelope over too, and its audio spans another length, so the waveform re-fits. A
+        removed recording releases frames the panel drew as sounding, so the panel draws every
+        channel as the document now holds it.
         """
         match edit:
             case ChannelEdit():
                 self._tab.update_reconstruction()
+            case Retune():
+                self._tab.update_reconstruction(refit_waveform=True)
             case StemRemoval():
                 self._tab.redraw_reconstruction(refit_waveform=False)
 
@@ -392,16 +385,12 @@ class ReconstructionCoordinator:
         Either kind takes the place of the open document, so a standalone document with unsaved
         changes is offered a save first, the way loading a file offers it.
         """
-        if self._requires_save_confirmation():
-            self._show_save_confirmation(
-                title=self._language_manager["global.dialog.title.edit_voice_unsaved_reconstruction"],
-                message=self._language_manager["global.dialog.message.edit_voice_unsaved_reconstruction"],
-                on_save=self.save,
-                on_confirm=lambda: self._open_project_voice(voice_id),
-                ok_label=self._language_manager["global.dialog.label.discard"],
-            )
-        else:
-            self._open_project_voice(voice_id)
+        self._save_first(
+            title=self._language_manager["global.dialog.title.edit_voice_unsaved_reconstruction"],
+            message=self._language_manager["global.dialog.message.edit_voice_unsaved_reconstruction"],
+            ok_label=self._language_manager["global.dialog.label.discard"],
+            proceed=lambda: self._open_project_voice(voice_id),
+        )
 
     def _open_project_voice(self, voice_id: str) -> None:
         """Puts a voice of the project in front of the tab.
@@ -420,6 +409,7 @@ class ReconstructionCoordinator:
                     voice_id=sample.id,
                 )
             case Instrument():
+                self._drop_pending()
                 self._tab.edit_instrument(voice_id)
                 self._on_tab_switch(Tab.RECONSTRUCTIONS)
             case _:
@@ -438,22 +428,6 @@ class ReconstructionCoordinator:
         """
         if self._reconstruction_manager.voice_id == voice_id:
             self._rebind(reconstruction)
-
-    def retune_sample(self, voice_id: str, reconstruction: Reconstruction) -> None:
-        """Shows a retuned sample's reconstruction, where the tab has that sample open.
-
-        A retune carries every envelope over, so the instruments panel keeps what it draws, and
-        the audio spans another length, so the waveform re-fits.
-
-        Args:
-            voice_id: The sample the retune rewrote.
-            reconstruction: The reconstruction the sample now holds.
-        """
-        if self._reconstruction_manager.voice_id != voice_id:
-            return
-
-        self._reconstruction_manager.apply_edited(reconstruction)
-        self._tab.update_reconstruction(refit_waveform=True)
 
     def follow_project(self) -> None:
         """Closes the voice the tab shows once the project stops holding it.
@@ -513,36 +487,24 @@ class ReconstructionCoordinator:
             return
 
         retimed = reconstruction.config.nes_frequency != open_reconstruction.config.nes_frequency
+        self._drop_pending()
         self._reconstruction_manager.apply_edited(reconstruction)
         self._tab.redraw_reconstruction(refit_waveform=retimed)
 
-    def _on_regeneration_result(self, result: RegenerationResult) -> None:
-        match result:
-            case ServiceSuccess(value=outcome):
-                self.apply_edit(self._channel_edit(outcome))
-            case ServiceError(exception=exception):
-                logger.error_with_traceback(exception, "Regeneration failed")
-                self._dialogs.show_error(exception)
-            case ServiceCanceled():
-                logger.info("Regeneration canceled")
+    def _redraw_open_document(self) -> None:
+        """Draws the open document as it stands, where the panel drew a change that will never land."""
+        if self.is_loaded():
+            self._tab.redraw_reconstruction(refit_waveform=False)
 
-        self._set_reconstruction_dimmed(self._regeneration_service.is_running())
-
-    @staticmethod
-    def _channel_edit(outcome: RegeneratedInstrument) -> ChannelEdit:
-        """Reads a regeneration result as the edit the project history records."""
-        return ChannelEdit(
-            reconstruction=outcome.reconstruction,
-            channel_name=outcome.channel_name,
-            feature_key=outcome.feature_key,
-        )
+    def _report_rebuild_failure(self, exception: Exception) -> None:
+        logger.error_with_traceback(exception, "Regeneration failed")
+        self._dialogs.show_error(exception)
 
     def _set_reconstruction_dimmed(self, dimmed: bool) -> None:
-        """Fades the reconstruction waveform while the regeneration worker is busy.
+        """Fades the reconstruction waveform while the open document is being rewritten.
 
-        The dim tracks the service's own ``is_running`` span, so a continuous edit stream keeps
-        the waveform faded until the worker settles. Each finished result re-reads the live span:
-        while more work is queued it stays faded, and it restores once the worker is idle.
+        The dim follows the rewrites' busy span, so a continuous edit stream keeps the waveform
+        faded until the last step lands, and it restores once nothing runs or waits.
         """
         if self._reconstructions_tab is None:
             return
@@ -552,19 +514,31 @@ class ReconstructionCoordinator:
     def _on_state_changed(self) -> None:
         self._on_session_state_changed_callback()
 
-    def _show_save_confirmation(
+    def _save_first(
         self,
+        *,
         title: str,
         message: str,
-        on_save: Callable[[], SaveOutcome],
-        on_confirm: Callback,
         ok_label: str,
+        proceed: VoidCallback,
     ) -> None:
+        """Goes on with ``proceed``, offering first to save a standalone document with unsaved changes.
+
+        Args:
+            title: The prompt's title.
+            message: What the prompt says would be lost.
+            ok_label: The label of the answer that goes on without saving.
+            proceed: What runs once the document is saved, or once the reader lets the changes go.
+        """
+        if not self._requires_save_confirmation():
+            proceed()
+            return
+
         self._dialogs.show_save_confirmation(
             tag=TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
             title=title,
             message=message,
-            on_save=on_save,
-            on_confirm=on_confirm,
+            on_save=self.save,
+            on_confirm=proceed,
             ok_label=ok_label,
         )

@@ -1,7 +1,7 @@
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import Any, Callable, Dict, Final, FrozenSet, Generator, List, Optional, Tuple, Union
-from unittest.mock import PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -17,6 +17,7 @@ from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.sources import SettingsField, SourceKind
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.reconstruction.edit import ChannelEdit
+from sampletones_application.logic.reconstruction.rewrites.steps import ChannelChange
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON,
@@ -632,6 +633,137 @@ class TestTheReconstructionsTabFollowsTheProject:
 
         held_queue.drain()
         assert app.reconstruction_manager.filepath == path
+
+
+class TestAGestureOnTheWholeDocumentWaitsForTheEdits:
+    """A gesture that reads or puts away the open document runs once the edit on its way has landed.
+
+    The edit's rebuild is held, so each gesture meets an edit still on its way, the way a click
+    right after a drag meets it.
+    """
+
+    @pytest.fixture
+    def edit_on_its_way(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        held_queue: HeldQueue,
+    ) -> Sample:
+        """The open sample with a volume edit rebuilt and its result held until the case drains the queue."""
+        held_queue.drain()
+        with patch.object(
+            app.regeneration_service._executor,
+            "execute",
+            side_effect=lambda target, wait: target() or True,
+        ):
+            app._reconstruction_coordinator.request_rewrite(
+                ChannelChange(
+                    channel_name=ChannelName.PULSE1,
+                    feature_key=FeatureKey.VOLUME,
+                    envelopes={FeatureKey.VOLUME: EDITED_VOLUME},
+                    initial_pitch=None,
+                )
+            )
+
+        assert app.reconstruction_rewrites.is_busy
+        return embedded_sample
+
+    @staticmethod
+    def _edited(reconstruction: Optional[Reconstruction]) -> bool:
+        assert reconstruction is not None
+        return (
+            reconstruction.export()[ChannelName.PULSE1].volume.items[: len(EDITED_VOLUME.items)] == EDITED_VOLUME.items
+        )
+
+    def test_a_browser_load_waits(
+        self,
+        app: Application,
+        edit_on_its_way: Sample,
+        held_queue: HeldQueue,
+        reconstruction_factory: ReconstructionFactory,
+        tmp_path: Path,
+    ) -> None:
+        path = tmp_path / "other.stn"
+        reconstruction_factory().save(path)
+
+        app._reconstructions_tab._browser_panel.on_load_reconstruction(path)
+        assert app.reconstruction_manager.voice_id == edit_on_its_way.id
+        held_queue.drain()
+
+        assert app.reconstruction_manager.filepath == path
+        sample = app.project_manager.current.voice(edit_on_its_way.id)
+        assert isinstance(sample, Sample)
+        assert self._edited(sample.reconstruction)
+
+    def test_loading_a_conversion_waits(
+        self,
+        app: Application,
+        edit_on_its_way: Sample,
+        held_queue: HeldQueue,
+        reconstruction_factory: ReconstructionFactory,
+        tmp_path: Path,
+    ) -> None:
+        path = tmp_path / "converted.stn"
+        reconstruction_factory().save(path)
+
+        app._main_tab._hooks.on_load_file(path)
+        assert app.reconstruction_manager.voice_id == edit_on_its_way.id
+        held_queue.drain()
+
+        assert app.reconstruction_manager.filepath == path
+
+    def test_opening_another_voice_waits(
+        self,
+        app: Application,
+        edit_on_its_way: Sample,
+        held_queue: HeldQueue,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        with app.history.transaction(HistoryAction.ADD_SAMPLE):
+            other = app.project_controller.add_sample(reconstruction_factory(), "Other")
+
+        app._sequencer_tab._on_edit_voice_requested(other.id)
+        assert app.reconstruction_manager.voice_id == edit_on_its_way.id
+        held_queue.drain()
+
+        sample = app.project_manager.current.voice(edit_on_its_way.id)
+        assert isinstance(sample, Sample)
+        assert app.reconstruction_manager.voice_id == other.id
+        assert self._edited(sample.reconstruction)
+
+    def test_removing_the_open_voice_waits(
+        self,
+        app: Application,
+        edit_on_its_way: Sample,
+        held_queue: HeldQueue,
+    ) -> None:
+        """The edit is recorded before the removal, so an undo brings the sample back as the reader left it."""
+        app._sequencer_tab._sequencer_voices_panel.on_remove_requested(edit_on_its_way.id)
+        assert app.project_manager.current.voice(edit_on_its_way.id) is not None
+        held_queue.drain()
+
+        assert app.project_manager.current.voice(edit_on_its_way.id) is None
+        assert [entry.action for entry in app.history.entries[-2:]] == [
+            HistoryAction.EDIT_RECONSTRUCTION,
+            HistoryAction.REMOVE_VOICE,
+        ]
+
+    def test_exporting_an_instrument_waits(
+        self,
+        app: Application,
+        edit_on_its_way: Sample,
+        held_queue: HeldQueue,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        exports = MagicMock()
+        monkeypatch.setattr(app._reconstructions_tab, "_instrument_exports", exports)
+
+        app._reconstructions_tab._reconstruction_instruments_panel.on_instrument_export(ChannelName.PULSE1)
+        exports.request.assert_not_called()
+        held_queue.drain()
+
+        source = exports.request.call_args.args[0]
+        assert source.features.volume.items[: len(EDITED_VOLUME.items)] == EDITED_VOLUME.items
 
 
 def _press_shortcut(app: Application, shortcut_id: ShortcutId) -> None:

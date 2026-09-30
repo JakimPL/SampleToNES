@@ -1,3 +1,4 @@
+from functools import partial
 from typing import AbstractSet, List, cast
 
 from sampletones_application.services.base import ServiceBase
@@ -5,13 +6,9 @@ from sampletones_application.services.regeneration.result import (
     RegeneratedInstrument,
     RegenerationResult,
 )
-from sampletones_application.services.result import (
-    ServiceCanceled,
-    ServiceError,
-    ServiceSuccess,
-)
-from sampletones_application.utils.parallelization.coalescing import LatestWinsExecutor
-from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_application.services.result import ServiceError, ServiceSuccess
+from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import CHANNEL_TO_EXPORTER_MAP, Features
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction
@@ -29,55 +26,47 @@ class RegenerationService(ServiceBase[RegenerationResult]):
     the edited reconstruction in while any history snapshot that shares the prior
     object stays valid.
 
-    Requests are serialized on a :class:`LatestWinsExecutor`: while a job runs, further
-    requests coalesce to the latest one, so a continuous stream of edits collapses to a
-    single applied result — the final value. ``is_running`` reports whether that worker is
-    still busy, letting the view fade the reconstruction for the whole busy span.
+    One job runs at a time on a single worker thread. Its caller starts the next job once the
+    previous result has arrived, so each rebuild starts from the document the one before it left.
     """
 
     def __init__(self, priority: int = 0) -> None:
         super().__init__(priority)
-        self._executor = LatestWinsExecutor()
-        self._canceled: bool = False
+        self._executor = SingleThreadExecutor()
 
     def start(
         self,
         reconstruction: Reconstruction,
         channel_name: ChannelName,
-        feature_key: FeatureKey,
         features: Features,
         heard: AbstractSet[int],
-    ) -> bool:
-        if self._canceled:
-            return False
+    ) -> None:
+        """Rebuilds ``channel_name`` of ``reconstruction`` from ``features`` on the worker thread.
 
-        return self._executor.submit(
-            lambda: self._run(
+        Args:
+            reconstruction: The document the rebuild starts from, which stays as it is.
+            channel_name: The channel rebuilt.
+            features: The envelopes the channel is rebuilt from.
+            heard: The recordings whose frames the rebuild writes.
+        """
+        self._executor.execute(
+            partial(
+                self._run,
                 reconstruction,
                 channel_name,
-                feature_key,
                 features,
                 heard,
-            )
+            ),
+            wait=True,
         )
-
-    def is_running(self) -> bool:
-        return self._executor.is_running
-
-    def cancel(self) -> None:
-        self._canceled = True
 
     def _run(
         self,
         reconstruction: Reconstruction,
         channel_name: ChannelName,
-        feature_key: FeatureKey,
         features: Features,
         heard: AbstractSet[int],
     ) -> None:
-        if self._canceled:
-            self._emit(ServiceCanceled())
-            return
         try:
             exporter_class = CHANNEL_TO_EXPORTER_MAP[channel_name]
             instructions = cast(
@@ -93,14 +82,6 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                 features.held_features,
                 heard=heard,
             )
-            self._emit(
-                ServiceSuccess(
-                    value=RegeneratedInstrument(
-                        reconstruction=updated,
-                        channel_name=channel_name,
-                        feature_key=feature_key,
-                    )
-                )
-            )
+            self._emit(ServiceSuccess(value=RegeneratedInstrument(reconstruction=updated)))
         except Exception as exception:  # pylint: disable=broad-exception-caught
             self._emit(ServiceError(exception=exception))

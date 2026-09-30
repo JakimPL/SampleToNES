@@ -4,7 +4,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from sampletones_application.constants.instruments import INSTRUMENT_CHANNEL
-from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
@@ -14,6 +13,8 @@ from sampletones_application.logic.reconstruction.instruments import (
     ReconstructionInstrumentsLogic,
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.logic.reconstruction.rewrites.queue import ReconstructionRewrites
+from sampletones_application.logic.reconstruction.rewrites.steps import ChannelChange
 from sampletones_application.view_model.reconstruction.envelopes import (
     ChannelEnvelopesViewModel,
 )
@@ -30,7 +31,11 @@ from sampletones_core.formats.famitracker.footprint import (
 )
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.reconstructions import Reconstruction
-from tests.suite.stems import everything_heard, regenerated
+from tests.suite.application import HeldQueue, held_queue
+from tests.suite.regeneration import HeldRegeneration
+from tests.suite.stems import SHARED_CHANNEL, SOLE_CHANNEL, everything_heard, regenerated, taking_turns
+
+__all__ = ["held_queue", "taking_turns"]
 
 
 def _heard_features(reconstruction: Reconstruction) -> ChannelEnvelopesViewModel:
@@ -73,14 +78,32 @@ def instrument_editor(mock_reconstruction_manager: MagicMock) -> InstrumentEdito
 
 
 @pytest.fixture
+def regeneration() -> HeldRegeneration:
+    return HeldRegeneration()
+
+
+@pytest.fixture
+def rewrites(
+    mock_reconstruction_manager: MagicMock,
+    regeneration: HeldRegeneration,
+) -> ReconstructionRewrites:
+    """The steps of the open document, each rebuild held until a case lands it."""
+    return ReconstructionRewrites(mock_reconstruction_manager, regeneration)
+
+
+def _logic(editor: InstrumentEditor, rewrites: ReconstructionRewrites) -> ReconstructionInstrumentsLogic:
+    """The panel's logic, sending every change on to the document's steps the way the tab wires it."""
+    logic = ReconstructionInstrumentsLogic(editor, rewrites)
+    logic.on_channel_changed = rewrites.request
+    return logic
+
+
+@pytest.fixture
 def instruments_logic(
     instrument_editor: InstrumentEditor,
-    scheduling: SchedulingBehavior,
+    rewrites: ReconstructionRewrites,
 ) -> ReconstructionInstrumentsLogic:
-    return ReconstructionInstrumentsLogic(
-        instrument_editor,
-        scheduling=scheduling,
-    )
+    return _logic(instrument_editor, rewrites)
 
 
 class TestReconstructionInstrumentsLogicUpdateDisplay:
@@ -295,6 +318,7 @@ class TestAnEditSilencingAChannel:
     def test_an_edit_standing_a_channel_by_redraws_it_empty(
         self,
         instruments_logic: ReconstructionInstrumentsLogic,
+        regeneration: HeldRegeneration,
         mock_reconstruction_manager: MagicMock,
         reconstruction: Reconstruction,
         silenced: Features,
@@ -305,7 +329,9 @@ class TestAnEditSilencingAChannel:
         instruments_logic.on_feature_data_changed = feature_updates.append
         instruments_logic.handle_envelope_changed(SILENCED_CHANNEL, FeatureKey.VOLUME, silenced.volume)
 
-        landed = _heard_features(regenerated(reconstruction, SILENCED_CHANNEL, silenced))
+        rebuilt = regenerated(reconstruction, SILENCED_CHANNEL, silenced)
+        regeneration.finish_with(rebuilt)
+        landed = _heard_features(rebuilt)
         mock_reconstruction_manager.current_features = landed
         instruments_logic.refresh_view()
 
@@ -317,6 +343,7 @@ class TestAnEditSilencingAChannel:
     def test_the_channel_is_redrawn_once(
         self,
         instruments_logic: ReconstructionInstrumentsLogic,
+        regeneration: HeldRegeneration,
         mock_reconstruction_manager: MagicMock,
         reconstruction: Reconstruction,
         silenced: Features,
@@ -325,9 +352,9 @@ class TestAnEditSilencingAChannel:
         feature_updates: List[Optional[ChannelEnvelopesViewModel]] = []
         instruments_logic.on_feature_data_changed = feature_updates.append
         instruments_logic.handle_envelope_changed(SILENCED_CHANNEL, FeatureKey.VOLUME, silenced.volume)
-        mock_reconstruction_manager.current_features = _heard_features(
-            regenerated(reconstruction, SILENCED_CHANNEL, silenced)
-        )
+        rebuilt = regenerated(reconstruction, SILENCED_CHANNEL, silenced)
+        regeneration.finish_with(rebuilt)
+        mock_reconstruction_manager.current_features = _heard_features(rebuilt)
 
         instruments_logic.refresh_view()
         instruments_logic.refresh_view()
@@ -337,6 +364,7 @@ class TestAnEditSilencingAChannel:
     def test_an_edit_that_sounds_again_before_it_lands_leaves_the_envelopes_displayed(
         self,
         instruments_logic: ReconstructionInstrumentsLogic,
+        regeneration: HeldRegeneration,
         mock_reconstruction_manager: MagicMock,
         reconstruction: Reconstruction,
         silenced: Features,
@@ -352,9 +380,9 @@ class TestAnEditSilencingAChannel:
             FeatureKey.VOLUME,
             features[SILENCED_CHANNEL].volume,
         )
-        mock_reconstruction_manager.current_features = _heard_features(
-            regenerated(reconstruction, SILENCED_CHANNEL, silenced)
-        )
+        rebuilt = regenerated(reconstruction, SILENCED_CHANNEL, silenced)
+        regeneration.finish_with(rebuilt)
+        mock_reconstruction_manager.current_features = _heard_features(rebuilt)
 
         instruments_logic.refresh_view()
 
@@ -362,7 +390,7 @@ class TestAnEditSilencingAChannel:
 
 
 class TestReconstructionInstrumentsLogicHandlePitchValueChanged:
-    def test_schedules_reconstruction_update(
+    def test_a_moved_pitch_travels_on_as_a_change(
         self,
         instruments_logic: ReconstructionInstrumentsLogic,
         mock_reconstruction_manager: MagicMock,
@@ -370,30 +398,31 @@ class TestReconstructionInstrumentsLogicHandlePitchValueChanged:
     ) -> None:
         mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
         callback = MagicMock()
-        instruments_logic.on_reconstruction_instrument_updated = callback
+        instruments_logic.on_channel_changed = callback
         instruments_logic.handle_pitch_value_changed(ChannelName.PULSE1, NEW_PITCH)
         callback.assert_called_once()
 
-    def test_forwards_generator_pitch_feature_and_value(
+    def test_the_change_carries_the_channel_and_the_pitch_alone(
         self,
         instruments_logic: ReconstructionInstrumentsLogic,
         mock_reconstruction_manager: MagicMock,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
-        callback = MagicMock()
-        instruments_logic.on_reconstruction_instrument_updated = callback
+        received: List[ChannelChange] = []
+        instruments_logic.on_channel_changed = received.append
 
         instruments_logic.handle_pitch_value_changed(ChannelName.PULSE1, NEW_PITCH)
 
-        channel_name, feature_key, features = callback.call_args.args
-        assert channel_name == ChannelName.PULSE1
-        assert feature_key == FeatureKey.INITIAL_PITCH
-        assert features.initial_pitch == NEW_PITCH
+        (change,) = received
+        assert change.channel_name == ChannelName.PULSE1
+        assert change.feature_key == FeatureKey.INITIAL_PITCH
+        assert change.initial_pitch == NEW_PITCH
+        assert change.envelopes == {}
 
 
 class TestReconstructionInstrumentsLogicHandleEnvelope:
-    def test_an_edited_envelope_schedules_an_update(
+    def test_an_edited_envelope_travels_on_as_a_change(
         self,
         instruments_logic: ReconstructionInstrumentsLogic,
         mock_reconstruction_manager: MagicMock,
@@ -401,7 +430,7 @@ class TestReconstructionInstrumentsLogicHandleEnvelope:
     ) -> None:
         mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
         callback = MagicMock()
-        instruments_logic.on_reconstruction_instrument_updated = callback
+        instruments_logic.on_channel_changed = callback
         instruments_logic.handle_envelope_changed(
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
@@ -415,12 +444,10 @@ class TestReconstructionInstrumentsLogicHandleEnvelope:
         mock_reconstruction_manager: MagicMock,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        """The panel states values and loop point together, so the update carries both."""
+        """The panel states values and loop point together, so the change carries both."""
         mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
-        received: List[Features] = []
-        instruments_logic.on_reconstruction_instrument_updated = lambda _channel, _key, features: received.append(
-            features
-        )
+        received: List[ChannelChange] = []
+        instruments_logic.on_channel_changed = received.append
         arpeggio = Envelope[int](items=(0, 4, 7), loop_point=1)
 
         instruments_logic.handle_envelope_changed(
@@ -429,19 +456,25 @@ class TestReconstructionInstrumentsLogicHandleEnvelope:
             arpeggio,
         )
 
-        assert received[0].arpeggio == arpeggio
+        assert received[0].envelopes == {FeatureKey.ARPEGGIO: arpeggio}
 
-
-class TestReconstructionInstrumentsLogicOnUpdateScheduled:
-    def test_no_pending_update_is_a_no_op(
+    def test_the_change_carries_the_dimension_moved_alone(
         self,
         instruments_logic: ReconstructionInstrumentsLogic,
+        mock_reconstruction_manager: MagicMock,
+        reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        callback = MagicMock()
-        instruments_logic.on_reconstruction_instrument_updated = callback
-        instruments_logic._pending_reconstruction_update = None
-        instruments_logic._on_reconstruction_update_scheduled()
-        callback.assert_not_called()
+        """The rest of the channel is read at the change's turn, so a step before it stands."""
+        mock_reconstruction_manager.current_features = _heard_features(reconstruction_factory())
+        received: List[ChannelChange] = []
+        instruments_logic.on_channel_changed = received.append
+
+        instruments_logic.handle_envelope_changed(ChannelName.PULSE1, FeatureKey.VOLUME, Envelope[int](items=(7,)))
+
+        (change,) = received
+        assert change.feature_key == FeatureKey.VOLUME
+        assert list(change.envelopes) == [FeatureKey.VOLUME]
+        assert change.initial_pitch is None
 
 
 class TestTheInstrumentsPanelShowsAnInstrument:
@@ -456,14 +489,14 @@ class TestTheInstrumentsPanelShowsAnInstrument:
         self,
         mock_reconstruction_manager: MagicMock,
         project_controller: ProjectController,
-        scheduling: SchedulingBehavior,
+        rewrites: ReconstructionRewrites,
     ) -> ReconstructionInstrumentsLogic:
         mock_reconstruction_manager.current_features = None
         editor = _editor(mock_reconstruction_manager, project_controller)
         instrument = project_controller.add_instrument(new_instrument("lead"))
         project_controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, Envelope(items=(15, 12)))
         editor.edit_instrument(instrument.id)
-        return ReconstructionInstrumentsLogic(editor, scheduling=scheduling)
+        return _logic(editor, rewrites)
 
     def test_the_view_names_the_instrument_it_shows(
         self,
@@ -525,7 +558,7 @@ class TestTheInstrumentsPanelShowsAnInstrument:
         project_controller: ProjectController,
     ) -> None:
         regenerated: List[object] = []
-        instrument_logic.on_reconstruction_instrument_updated = lambda *args: regenerated.append(args)
+        instrument_logic.on_channel_changed = regenerated.append
 
         instrument_logic.handle_envelope_changed(
             INSTRUMENT_CHANNEL,
@@ -564,7 +597,7 @@ class TestAnEditReachingAVoiceThatLeft:
         self,
         mock_reconstruction_manager: MagicMock,
         project_controller: ProjectController,
-        scheduling: SchedulingBehavior,
+        rewrites: ReconstructionRewrites,
     ) -> ReconstructionInstrumentsLogic:
         """The panel's logic over an instrument the project has since removed."""
         mock_reconstruction_manager.current_features = None
@@ -572,7 +605,7 @@ class TestAnEditReachingAVoiceThatLeft:
         instrument = project_controller.add_instrument(new_instrument("lead"))
         editor.edit_instrument(instrument.id)
         project_controller.remove_voice(instrument.id)
-        return ReconstructionInstrumentsLogic(editor, scheduling=scheduling)
+        return _logic(editor, rewrites)
 
     def test_an_envelope_edit_draws_the_panel_empty(
         self,
@@ -592,7 +625,7 @@ class TestAnEditReachingAVoiceThatLeft:
         left_logic: ReconstructionInstrumentsLogic,
     ) -> None:
         regenerated: List[object] = []
-        left_logic.on_reconstruction_instrument_updated = lambda *args: regenerated.append(args)
+        left_logic.on_channel_changed = regenerated.append
 
         left_logic.handle_envelope_changed(INSTRUMENT_CHANNEL, FeatureKey.VOLUME, Envelope[int](items=(7,)))
 
@@ -605,7 +638,7 @@ class TestAnEditReachingAVoiceThatLeft:
         views: List[ReconstructionInstrumentsViewModel] = []
         left_logic.on_view_changed = views.append
         regenerated: List[object] = []
-        left_logic.on_reconstruction_instrument_updated = lambda *args: regenerated.append(args)
+        left_logic.on_channel_changed = regenerated.append
 
         left_logic.handle_pitch_value_changed(ChannelName.PULSE1, NEW_PITCH)
 
@@ -623,7 +656,7 @@ class TestAnEditReachingAVoiceThatLeft:
         received: List[Optional[ChannelEnvelopesViewModel]] = []
         instruments_logic.on_feature_data_changed = received.append
         regenerated: List[object] = []
-        instruments_logic.on_reconstruction_instrument_updated = lambda *args: regenerated.append(args)
+        instruments_logic.on_channel_changed = regenerated.append
 
         instruments_logic.handle_envelope_changed(ChannelName.PULSE1, FeatureKey.VOLUME, Envelope[int](items=(7,)))
 
@@ -634,20 +667,84 @@ class TestAnEditReachingAVoiceThatLeft:
         self,
         mock_reconstruction_manager: MagicMock,
         project_controller: ProjectController,
-        scheduling: SchedulingBehavior,
+        rewrites: ReconstructionRewrites,
     ) -> None:
         """The panel offers the pitch on a reconstruction's channels alone."""
         mock_reconstruction_manager.current_features = None
         editor = _editor(mock_reconstruction_manager, project_controller)
         editor.edit_instrument(project_controller.add_instrument(new_instrument("lead")).id)
-        logic = ReconstructionInstrumentsLogic(editor, scheduling=scheduling)
+        logic = _logic(editor, rewrites)
         views: List[ReconstructionInstrumentsViewModel] = []
         logic.on_view_changed = views.append
         regenerated: List[object] = []
-        logic.on_reconstruction_instrument_updated = lambda *args: regenerated.append(args)
+        logic.on_channel_changed = regenerated.append
 
         logic.handle_pitch_value_changed(INSTRUMENT_CHANNEL, NEW_PITCH)
 
         assert regenerated == []
         assert len(views) == 1
         assert views[0].instrument is not None
+
+
+class TestEveryGestureReachesTheDocument:
+    """Each gesture the panel makes travels on to the document, however quickly the next one follows."""
+
+    def test_two_channels_edited_within_one_frame_both_reach_the_document(
+        self,
+        instruments_logic: ReconstructionInstrumentsLogic,
+        mock_reconstruction_manager: MagicMock,
+        held_queue: HeldQueue,
+        taking_turns: Reconstruction,
+    ) -> None:
+        mock_reconstruction_manager.current_features = _heard_features(taking_turns)
+        reached: List[ChannelName] = []
+        instruments_logic.on_channel_changed = lambda change: reached.append(change.channel_name)
+
+        instruments_logic.handle_envelope_changed(SHARED_CHANNEL, FeatureKey.VOLUME, Envelope[int](items=(5, 5)))
+        instruments_logic.handle_envelope_changed(SOLE_CHANNEL, FeatureKey.VOLUME, Envelope[int](items=(3,)))
+        held_queue.drain()
+
+        assert reached == [SHARED_CHANNEL, SOLE_CHANNEL]
+
+    def test_a_change_waiting_behind_a_rebuild_is_measured(
+        self,
+        instruments_logic: ReconstructionInstrumentsLogic,
+        mock_reconstruction_manager: MagicMock,
+        taking_turns: Reconstruction,
+    ) -> None:
+        """The figures answer for what the document will hold, a change still waiting included."""
+        mock_reconstruction_manager.current_features = _heard_features(taking_turns)
+        views: List[ReconstructionInstrumentsViewModel] = []
+        sole = Envelope[int](items=(3, 3, 3))
+        instruments_logic.handle_envelope_changed(SHARED_CHANNEL, FeatureKey.VOLUME, Envelope[int](items=(5, 5)))
+        instruments_logic.handle_envelope_changed(SOLE_CHANNEL, FeatureKey.VOLUME, sole)
+        instruments_logic.on_view_changed = views.append
+
+        instruments_logic.refresh_view()
+
+        edited = _heard_features(taking_turns)[SOLE_CHANNEL].with_envelope(FeatureKey.VOLUME, sole)
+        footprint = views[-1].footprint
+        assert footprint is not None
+        assert footprint.bytes_for(SOLE_CHANNEL) == features_footprint(edited).total_bytes
+
+    def test_a_redraw_draws_the_changes_on_their_way(
+        self,
+        instruments_logic: ReconstructionInstrumentsLogic,
+        mock_reconstruction_manager: MagicMock,
+        taking_turns: Reconstruction,
+    ) -> None:
+        """A redraw while a change waits draws the change, so the bars the reader moved stay where they left them."""
+        mock_reconstruction_manager.current_features = _heard_features(taking_turns)
+        shared = Envelope[int](items=(5, 5))
+        sole = Envelope[int](items=(3,))
+        instruments_logic.handle_envelope_changed(SHARED_CHANNEL, FeatureKey.VOLUME, shared)
+        instruments_logic.handle_envelope_changed(SOLE_CHANNEL, FeatureKey.VOLUME, sole)
+        drawn: List[Optional[ChannelEnvelopesViewModel]] = []
+        instruments_logic.on_feature_data_changed = drawn.append
+
+        instruments_logic.update_display()
+
+        envelopes = drawn[-1]
+        assert envelopes is not None
+        assert envelopes[SHARED_CHANNEL].volume == shared
+        assert envelopes[SOLE_CHANNEL].volume == sole

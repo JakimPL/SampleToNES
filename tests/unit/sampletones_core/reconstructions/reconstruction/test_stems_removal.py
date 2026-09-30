@@ -12,7 +12,7 @@ from sampletones_core.reconstructions.reconstruction.instructions import Instruc
 from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
-from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
+from sampletones_core.reconstructions.reconstruction.stems.removal import can_remove_stem, without_stem
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
@@ -276,28 +276,48 @@ class TestTheDocument:
         np.testing.assert_array_equal(reconstruction.approximations[ChannelName.NOISE], before)
 
 
+@pytest.fixture
+def single_recording() -> Reconstruction:
+    """A reconstruction built from one recording alone."""
+    return Reconstruction.create(
+        instructions={ChannelName.PULSE1: [_pulse(60)] * FRAME_COUNT},
+        config=Config(),
+        coefficient=1.0,
+        audio_filepath=(RECORDINGS[STEM_A],),
+        stems_data=StemsData.single_entry(
+            StemSettings(channels=[ChannelName.PULSE1], bends=[ChannelName.PULSE1]),
+            [
+                ChannelAssignment(
+                    channel_name=ChannelName.PULSE1,
+                    stem_ids=[STEM_A] * FRAME_COUNT,
+                )
+            ],
+            RECORDED_SCALE,
+        ),
+    )
+
+
 class TestARefusedRemoval:
     def test_removing_an_unrecorded_stem_is_refused(self, reconstruction: Reconstruction) -> None:
         with pytest.raises(ValueError, match="names no entry"):
             without_stem(reconstruction, 7)
 
-    def test_removing_the_last_recording_is_refused(self) -> None:
-        reconstruction = Reconstruction.create(
-            instructions={ChannelName.PULSE1: [_pulse(60)] * FRAME_COUNT},
-            config=Config(),
-            coefficient=1.0,
-            audio_filepath=(RECORDINGS[STEM_A],),
-            stems_data=StemsData.single_entry(
-                StemSettings(channels=[ChannelName.PULSE1], bends=[ChannelName.PULSE1]),
-                [
-                    ChannelAssignment(
-                        channel_name=ChannelName.PULSE1,
-                        stem_ids=[STEM_A] * FRAME_COUNT,
-                    )
-                ],
-                RECORDED_SCALE,
-            ),
-        )
-
+    def test_removing_the_last_recording_is_refused(self, single_recording: Reconstruction) -> None:
         with pytest.raises(ValueError, match="at least one stem"):
-            without_stem(reconstruction, STEM_A)
+            without_stem(single_recording, STEM_A)
+
+
+class TestWhetherARemovalApplies:
+    """A removal asked about first answers as :func:`without_stem` would, without raising."""
+
+    def test_a_recording_standing_beside_others_can_leave(self, reconstruction: Reconstruction) -> None:
+        assert can_remove_stem(reconstruction, STEM_B)
+
+    def test_an_unrecorded_stem_cannot(self, reconstruction: Reconstruction) -> None:
+        assert not can_remove_stem(reconstruction, 7)
+
+    def test_the_last_recording_cannot(self, single_recording: Reconstruction) -> None:
+        assert not can_remove_stem(single_recording, STEM_A)
+
+    def test_a_recording_already_taken_out_cannot(self, reconstruction: Reconstruction) -> None:
+        assert not can_remove_stem(without_stem(reconstruction, STEM_B), STEM_B)

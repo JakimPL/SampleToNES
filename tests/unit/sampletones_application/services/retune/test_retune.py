@@ -46,15 +46,16 @@ class TestSampleRetuneServiceRun:
         assert len(results) == 1
         assert isinstance(results[0], ServiceError)
 
-    def test_result_carries_the_voice_id_and_retuned_reconstruction(self) -> None:
+    def test_result_carries_the_voice_id_the_retuned_reconstruction_and_its_source(self) -> None:
         service = SampleRetuneService()
         results: List[Any] = []
         service.subscribe(results.append)
         retuned = MagicMock()
+        source = _reconstruction(retuned)
 
-        service._run([("lead", _reconstruction(retuned))], 60)
+        service._run([("lead", source)], 60)
 
-        assert results[0].value == RetunedSample(voice_id="lead", reconstruction=retuned)
+        assert results[0].value == RetunedSample(voice_id="lead", reconstruction=retuned, source=source)
 
 
 class TestSampleRetuneServiceStart:

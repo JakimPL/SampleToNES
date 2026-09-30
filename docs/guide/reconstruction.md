@@ -63,7 +63,8 @@ one. The **Edits** row has no **x**.
 
 The **Instruments** panel shows what each channel plays, as one
 [sequence](../glossary.md#sequence-envelope) per dimension. A colored band beneath each set of bars
-shows which recording each frame came from. Edit a sequence by dragging its bars or typing values.
+shows which recording each frame came from. Edit a sequence by dragging its bars or typing values. The
+waveform fades while your edits are being applied.
 
 Each channel has its own set:
 

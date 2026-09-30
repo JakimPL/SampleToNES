@@ -1,9 +1,12 @@
 from functools import partial
-from typing import Callable, Sequence
+from typing import Callable, ParamSpec, Sequence, TypeVar
 
 from sampletones_shared.types.callback import VoidCallback
 
 Gate = Callable[[VoidCallback], None]
+
+GestureParameters = ParamSpec("GestureParameters")
+GestureResult = TypeVar("GestureResult")
 
 
 def pass_gates(gates: Sequence[Gate], arrive: VoidCallback) -> None:
@@ -23,3 +26,26 @@ def pass_gates(gates: Sequence[Gate], arrive: VoidCallback) -> None:
         return
 
     gates[0](partial(pass_gates, gates[1:], arrive))
+
+
+def gated(
+    gate: Gate,
+    gesture: Callable[GestureParameters, GestureResult],
+) -> Callable[GestureParameters, None]:
+    """``gesture`` as a callback that passes ``gate`` before it runs, with the arguments it was called with.
+
+    A menu item, a shortcut or a panel hook takes the callback in the gesture's place, so whatever
+    reaches the gesture goes through the gate first. The callback discards what the gesture returns.
+
+    Args:
+        gate: What the gesture waits on.
+        gesture: What runs once the gate lets it through.
+    """
+
+    def call(*args: GestureParameters.args, **kwargs: GestureParameters.kwargs) -> None:
+        def run() -> None:
+            gesture(*args, **kwargs)
+
+        gate(run)
+
+    return call

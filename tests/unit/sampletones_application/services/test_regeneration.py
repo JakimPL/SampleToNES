@@ -1,4 +1,3 @@
-import threading
 from types import SimpleNamespace
 from typing import Any, Callable, Dict, Final, FrozenSet, Iterator, List, Tuple, TypeAlias, cast
 from unittest.mock import MagicMock, patch
@@ -8,11 +7,10 @@ import pytest
 
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import (
-    ServiceCanceled,
     ServiceError,
     ServiceSuccess,
 )
-from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
 from sampletones_core.features import CHANNEL_GENERATOR_KIND, supported_features
 from sampletones_core.features.envelope import Envelope
@@ -73,100 +71,46 @@ def reconstruction() -> MockReconstruction:
 
 
 class TestRegenerationServiceStart:
-    def test_start_when_not_canceled_returns_true(
-        self, synthesis_mocks: SynthesisMocks, reconstruction: MockReconstruction
+    def test_start_runs_the_rebuild_on_the_worker(
+        self,
+        synthesis_mocks: SynthesisMocks,
+        reconstruction: MockReconstruction,
+        features: Features,
     ) -> None:
-        service = RegenerationService()
-        result = service.start(
-            reconstruction,
-            synthesis_mocks.channel_name,
-            FeatureKey.VOLUME,
-            cast(Features, {}),
-            EVERY_STEM,
-        )
-        assert result is True
-
-    def test_start_when_canceled_returns_false(self) -> None:
-        service = RegenerationService()
-        service.cancel()
-
-        result = service.start(MagicMock(), MagicMock(), FeatureKey.VOLUME, cast(Features, {}), EVERY_STEM)
-
-        assert result is False
-
-    def test_start_when_canceled_does_not_emit(self) -> None:
+        """The worker runs the job it is handed, and its result reaches the subscriber."""
         service = RegenerationService()
         results: List[Any] = []
         service.subscribe(results.append)
-        service.cancel()
 
         service.start(
-            MagicMock(),
-            MagicMock(),
-            MagicMock(),
-            cast(Features, {}),
-            EVERY_STEM,
-        )
-
-        assert results == []
-
-    def test_start_reports_a_submit_failure(self) -> None:
-        """``start`` propagates the executor's accepted/rejected verdict.
-
-        The coalescing worker owns the launch; ``start`` merely forwards whether the
-        submission was accepted, so a caller can gate on it.
-        """
-        service = RegenerationService()
-        with patch.object(service._executor, "submit", return_value=False):
-            result = service.start(
-                MagicMock(),
-                MagicMock(),
-                MagicMock(),
-                cast(Features, {}),
-                EVERY_STEM,
-            )
-
-        assert result is False
-
-    def test_cancel_sets_canceled_flag(self) -> None:
-        service = RegenerationService()
-        assert not service._canceled
-
-        service.cancel()
-
-        assert service._canceled
-
-
-class TestRegenerationServiceIsRunning:
-    def test_is_running_delegates_to_the_executor(self) -> None:
-        service = RegenerationService()
-        service._executor = MagicMock()
-
-        service._executor.is_running = True
-        assert service.is_running() is True
-
-        service._executor.is_running = False
-        assert service.is_running() is False
-
-
-class TestRegenerationServiceRun:
-    def test_run_when_canceled_emits_service_canceled(self) -> None:
-        service = RegenerationService()
-        results: List[Any] = []
-        service.subscribe(results.append)
-        service._canceled = True
-
-        service._run(
-            MagicMock(),
-            MagicMock(),
-            MagicMock(),
-            cast(Features, {}),
+            reconstruction,
+            synthesis_mocks.channel_name,
+            features,
             EVERY_STEM,
         )
 
         assert len(results) == 1
-        assert isinstance(results[0], ServiceCanceled)
+        assert isinstance(results[0], ServiceSuccess)
 
+    def test_a_job_started_as_the_last_one_winds_down_still_runs(
+        self,
+        synthesis_mocks: SynthesisMocks,
+        reconstruction: MockReconstruction,
+        features: Features,
+    ) -> None:
+        """One job runs at a time, and a job started while the worker winds down runs once it has.
+
+        The rewrites start the next rebuild as the previous result arrives, so every start is
+        answered and the line moves on.
+        """
+        service = RegenerationService()
+        with patch.object(service._executor, "execute") as execute:
+            service.start(reconstruction, synthesis_mocks.channel_name, features, EVERY_STEM)
+
+        assert execute.call_args.kwargs == {"wait": True}
+
+
+class TestRegenerationServiceRun:
     def test_run_success_emits_service_success(
         self,
         synthesis_mocks: SynthesisMocks,
@@ -180,7 +124,6 @@ class TestRegenerationServiceRun:
         service._run(
             reconstruction,
             synthesis_mocks.channel_name,
-            FeatureKey.VOLUME,
             features,
             EVERY_STEM,
         )
@@ -190,8 +133,6 @@ class TestRegenerationServiceRun:
         outcome = results[0].value
         assert outcome.reconstruction is reconstruction.model_copy.return_value
         assert outcome.reconstruction is not reconstruction
-        assert outcome.channel_name is synthesis_mocks.channel_name
-        assert outcome.feature_key is FeatureKey.VOLUME
 
     def test_run_regenerates_from_the_envelopes_it_is_handed(
         self,
@@ -202,7 +143,7 @@ class TestRegenerationServiceRun:
         """The caller writes the edit into the envelopes, so the service renders what it is given."""
         service = RegenerationService()
 
-        service._run(reconstruction, synthesis_mocks.channel_name, FeatureKey.VOLUME, features, EVERY_STEM)
+        service._run(reconstruction, synthesis_mocks.channel_name, features, EVERY_STEM)
 
         _, _, initial_pitch, held = reconstruction.model_copy.return_value.update_channel_data.call_args.args
         assert initial_pitch == features.initial_pitch
@@ -219,7 +160,6 @@ class TestRegenerationServiceRun:
         service._run(
             reconstruction,
             synthesis_mocks.channel_name,
-            FeatureKey.VOLUME,
             features,
             EVERY_STEM,
         )
@@ -246,7 +186,6 @@ class TestRegenerationServiceRun:
         service._run(
             reconstruction,
             synthesis_mocks.channel_name,
-            FeatureKey.ARPEGGIO,
             features,
             EVERY_STEM,
         )
@@ -264,7 +203,7 @@ class TestRegenerationServiceRun:
         moved = features.model_copy(update={"initial_pitch": REFERENCE_PITCH + 12})
         service = RegenerationService()
 
-        service._run(reconstruction, synthesis_mocks.channel_name, FeatureKey.INITIAL_PITCH, moved, EVERY_STEM)
+        service._run(reconstruction, synthesis_mocks.channel_name, moved, EVERY_STEM)
 
         _, _, initial_pitch, _ = reconstruction.model_copy.return_value.update_channel_data.call_args.args
         assert initial_pitch == REFERENCE_PITCH + 12
@@ -283,7 +222,6 @@ class TestRegenerationServiceRun:
         service._run(
             reconstruction,
             synthesis_mocks.channel_name,
-            FeatureKey.VOLUME,
             features,
             EVERY_STEM,
         )
@@ -310,7 +248,6 @@ class TestRegenerationServiceRun:
             service._run(
                 reconstruction,
                 ChannelName.PULSE1,
-                FeatureKey.VOLUME,
                 cast(Features, {}),
                 EVERY_STEM,
             )
@@ -335,7 +272,6 @@ class TestRegenerationServiceRun:
             service._run(
                 reconstruction,
                 ChannelName.PULSE1,
-                FeatureKey.VOLUME,
                 cast(Features, {}),
                 EVERY_STEM,
             )
@@ -363,7 +299,6 @@ class TestClearingEveryEnvelope:
         service._run(
             reconstruction,
             ChannelName.PULSE1,
-            FeatureKey.VOLUME,
             features,
             EVERY_STEM,
         )
@@ -416,87 +351,3 @@ class TestClearingEveryEnvelope:
         self._regenerated(reconstruction)
 
         assert reconstruction.playing_channels == (ChannelName.PULSE1,)
-
-
-class TestRegenerationServiceCancellationConstraints:
-    """Tests that document the non-preemptive cancellation behavior.
-
-    cancel() only prevents new tasks from starting. It does NOT interrupt
-    synthesis that is already in progress.
-    """
-
-    def test_cancel_while_running_does_not_interrupt_synthesis(
-        self,
-        synthesis_mocks: SynthesisMocks,
-        features: Features,
-    ) -> None:
-        service = RegenerationService()
-        results: List[Any] = []
-        done = threading.Event()
-
-        def on_result(result: Any) -> None:
-            results.append(result)
-            done.set()
-
-        service.subscribe(on_result)
-
-        task_started = threading.Event()
-        task_unblock = threading.Event()
-
-        def blocking_from_features(edited_features: Any) -> List[MagicMock]:
-            task_started.set()
-            task_unblock.wait(timeout=2.0)
-            return [synthesis_mocks.instruction]
-
-        synthesis_mocks.exporter.from_features.side_effect = blocking_from_features
-        reconstruction = MagicMock()
-        reconstruction.config = MagicMock()
-
-        thread = threading.Thread(
-            target=lambda: service._run(
-                reconstruction,
-                synthesis_mocks.channel_name,
-                FeatureKey.VOLUME,
-                features,
-                EVERY_STEM,
-            ),
-        )
-        thread.start()
-        task_started.wait(timeout=2.0)
-
-        service.cancel()
-        task_unblock.set()
-
-        done.wait(timeout=2.0)
-        thread.join(timeout=2.0)
-
-        assert len(results) == 1
-        assert isinstance(results[0], ServiceSuccess)
-
-    def test_cancel_after_completion_prevents_new_tasks(
-        self,
-        synthesis_mocks: SynthesisMocks,
-        reconstruction: MockReconstruction,
-    ) -> None:
-        service = RegenerationService()
-        results: List[Any] = []
-        service.subscribe(results.append)
-
-        service.start(
-            reconstruction,
-            synthesis_mocks.channel_name,
-            FeatureKey.VOLUME,
-            cast(Features, {}),
-            EVERY_STEM,
-        )
-
-        service.cancel()
-        second_result = service.start(
-            reconstruction,
-            synthesis_mocks.channel_name,
-            FeatureKey.VOLUME,
-            cast(Features, {}),
-            EVERY_STEM,
-        )
-
-        assert second_result is False

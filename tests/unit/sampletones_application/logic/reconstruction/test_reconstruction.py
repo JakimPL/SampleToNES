@@ -496,44 +496,20 @@ class TestReconstructionPanelLogicEngineRate:
         assert received[0].nes_frequency is None
 
 
-class TestReconstructionPanelLogicRetuning:
-    """A reader changing the rate re-times the open document and every reading of it."""
+class TestAReTimedDocumentIsShown:
+    """A document re-timed to another rate is shown at it, every reading of it re-answered.
+
+    The rate reaches the document as a step of its edits, and the tab then asks for every reading
+    again with the waveform re-fitted, since the audio spans another length.
+    """
 
     @staticmethod
-    def _rebinding(manager: MagicMock) -> None:
-        """Lets the stand-in manager rebind the open document the way the real one does."""
-        manager.apply_edited.side_effect = lambda reconstruction: setattr(
-            manager,
-            "current_reconstruction",
-            manager.current_reconstruction.with_reconstruction(reconstruction),
+    def _retime(manager: MagicMock, loaded_data: ReconstructionData) -> None:
+        """Opens the document, then lets the stand-in manager adopt it re-timed, as a landed retune leaves it."""
+        _open(manager, loaded_data)
+        manager.current_reconstruction = loaded_data.with_reconstruction(
+            loaded_data.reconstruction.with_nes_frequency(PAL_FREQUENCY)
         )
-
-    def test_the_document_is_rebound_to_a_reconstruction_at_the_new_rate(
-        self,
-        panel_logic: ReconstructionPanelLogic,
-        mock_reconstruction_manager: MagicMock,
-        loaded_data: ReconstructionData,
-    ) -> None:
-        self._rebinding(mock_reconstruction_manager)
-        _open(mock_reconstruction_manager, loaded_data)
-
-        panel_logic.set_nes_frequency(PAL_FREQUENCY)
-
-        retuned = mock_reconstruction_manager.apply_edited.call_args.args[0]
-        assert retuned.config.nes_frequency == PAL_FREQUENCY
-
-    def test_the_change_stands_as_an_unsaved_edit(
-        self,
-        panel_logic: ReconstructionPanelLogic,
-        mock_reconstruction_manager: MagicMock,
-        loaded_data: ReconstructionData,
-    ) -> None:
-        self._rebinding(mock_reconstruction_manager)
-        _open(mock_reconstruction_manager, loaded_data)
-
-        panel_logic.set_nes_frequency(PAL_FREQUENCY)
-
-        mock_reconstruction_manager.mark_updated.assert_called_once_with()
 
     def test_the_view_states_the_new_rate(
         self,
@@ -541,12 +517,11 @@ class TestReconstructionPanelLogicRetuning:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        self._rebinding(mock_reconstruction_manager)
-        _open(mock_reconstruction_manager, loaded_data)
+        self._retime(mock_reconstruction_manager, loaded_data)
         received: List[ReconstructionViewModel] = []
         panel_logic.on_view_changed = received.append
 
-        panel_logic.set_nes_frequency(PAL_FREQUENCY)
+        panel_logic.update_reconstruction(refit_waveform=True)
 
         assert received[-1].nes_frequency == PAL_FREQUENCY
 
@@ -556,14 +531,13 @@ class TestReconstructionPanelLogicRetuning:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        self._rebinding(mock_reconstruction_manager)
-        _open(mock_reconstruction_manager, loaded_data)
+        self._retime(mock_reconstruction_manager, loaded_data)
         waveforms: List[WaveformData] = []
         audio: List[Optional[AudioData]] = []
         panel_logic.on_waveform_update_changed = lambda waveform, _channels, **_kwargs: waveforms.append(waveform)
         panel_logic.on_audio_data_changed = audio.append
 
-        panel_logic.set_nes_frequency(PAL_FREQUENCY)
+        panel_logic.update_reconstruction(refit_waveform=True)
 
         assert len(waveforms) == 1
         assert len(audio) == 1
@@ -575,36 +549,13 @@ class TestReconstructionPanelLogicRetuning:
         loaded_data: ReconstructionData,
     ) -> None:
         """A retune moves the audio's own length, so the old view no longer answers to it."""
-        self._rebinding(mock_reconstruction_manager)
-        _open(mock_reconstruction_manager, loaded_data)
+        self._retime(mock_reconstruction_manager, loaded_data)
         refits: List[bool] = []
         panel_logic.on_waveform_update_changed = lambda _waveform, _channels, *, refit: refits.append(refit)
 
-        panel_logic.set_nes_frequency(PAL_FREQUENCY)
+        panel_logic.update_reconstruction(refit_waveform=True)
 
         assert refits == [True]
-
-    def test_the_rate_the_document_already_runs_at_changes_nothing(
-        self,
-        panel_logic: ReconstructionPanelLogic,
-        mock_reconstruction_manager: MagicMock,
-        loaded_data: ReconstructionData,
-    ) -> None:
-        _open(mock_reconstruction_manager, loaded_data)
-
-        panel_logic.set_nes_frequency(loaded_data.config.nes_frequency)
-
-        mock_reconstruction_manager.apply_edited.assert_not_called()
-        mock_reconstruction_manager.mark_updated.assert_not_called()
-
-    def test_a_tab_holding_no_document_changes_nothing(
-        self,
-        panel_logic: ReconstructionPanelLogic,
-        mock_reconstruction_manager: MagicMock,
-    ) -> None:
-        panel_logic.set_nes_frequency(PAL_FREQUENCY)
-
-        mock_reconstruction_manager.apply_edited.assert_not_called()
 
 
 class TestReconstructionPanelLogicClose:

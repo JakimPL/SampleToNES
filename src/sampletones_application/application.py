@@ -61,9 +61,14 @@ from sampletones_application.logic.reconstruction.browser.manager import Browser
 from sampletones_application.logic.reconstruction.edit import (
     ChannelEdit,
     ReconstructionEdit,
+    Retune,
     StemRemoval,
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.logic.reconstruction.rewrites.queue import (
+    ReconstructionRewrites,
+)
+from sampletones_application.logic.reconstruction.rewrites.steps import RateChange
 from sampletones_application.logic.render import SongRenderLogic
 from sampletones_application.parameters import (
     InstructionsTabParameters,
@@ -127,7 +132,7 @@ from sampletones_application.ui.panels.dialogs.render import GUIRenderWindow
 from sampletones_application.ui.panels.dialogs.stem_selection import GUIStemSelectionWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
-from sampletones_application.utils.callbacks.gates import pass_gates
+from sampletones_application.utils.callbacks.gates import gated, pass_gates
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
@@ -168,7 +173,6 @@ from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.audio import BufferSize, SampleRate
 from sampletones_core.constants.enums import ChannelName, FeatureKey
-from sampletones_core.exporters import Features
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.stage import ExportStage
@@ -261,6 +265,10 @@ class Application:
         _priority = self.layout.behavior.scheduling.priorities.schedule
         self.conversion_service: ConversionService = ConversionService(priority=_priority)
         self.regeneration_service: RegenerationService = RegenerationService(priority=_priority)
+        self.reconstruction_rewrites: ReconstructionRewrites = ReconstructionRewrites(
+            self.reconstruction_manager,
+            self.regeneration_service,
+        )
         self.export_service: ExportService = ExportService(priority=_priority)
         self.export_service.subscribe(self._on_export_activity)
         self.render_service: SongRenderService = SongRenderService(priority=_priority)
@@ -447,7 +455,7 @@ class Application:
         self._reconstruction_coordinator = ReconstructionCoordinator(
             self.reconstruction_manager,
             self.session_manager,
-            self.regeneration_service,
+            self.reconstruction_rewrites,
             self.audio_device_manager,
             self.project_controller,
             self.history,
@@ -483,11 +491,15 @@ class Application:
             export_service=self.export_service,
             export_backends=self.export_backends,
             format_setups=self._format_setups,
-            on_load_reconstruction_with_confirmation=self._reconstruction_coordinator.load_with_confirmation,
+            on_load_reconstruction_with_confirmation=gated(
+                self._reconstruction_coordinator.after_edits,
+                self._reconstruction_coordinator.load_with_confirmation,
+            ),
             on_change_audio_state=self._update_menu,
             on_favorite_changed=self._repaint_reconstruction_favorites,
-            on_reconstruction_instrument_updated=self._regenerate_instrument,
-            on_reconstruction_stem_removed=self._reconstruction_coordinator.apply_edit,
+            on_rewrite_requested=self._reconstruction_coordinator.request_rewrite,
+            pending_changes=self.reconstruction_rewrites,
+            after_edits=self._reconstruction_coordinator.after_edits,
             original_audio_locator=self._original_audio_locator,
             instrument_exports=self._instrument_exports,
             history=self.history,
@@ -528,9 +540,15 @@ class Application:
                 on_busy_state_changed=self._refresh_busy_state,
                 on_reconstruct_file=self._reconstruct_file,
                 on_reconstruct_directory=self._reconstruct_directory,
-                on_load_reconstruction=self._reconstruction_coordinator.load_with_confirmation,
+                on_load_reconstruction=gated(
+                    self._reconstruction_coordinator.after_edits,
+                    self._reconstruction_coordinator.load_with_confirmation,
+                ),
                 on_load_library=self._load_library,
-                on_load_file=self._reconstruction_coordinator.load_converted,
+                on_load_file=gated(
+                    self._reconstruction_coordinator.after_edits,
+                    self._reconstruction_coordinator.load_converted,
+                ),
                 on_load_directory=self._navigate_to_reconstructions,
                 on_canceled=self._refresh_browsers,
                 on_refresh_trees=self._refresh_browsers,
@@ -562,12 +580,16 @@ class Application:
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,
-            on_edit_voice_requested=self._reconstruction_coordinator.open_project_voice,
+            on_edit_voice_requested=gated(
+                self._reconstruction_coordinator.after_edits,
+                self._reconstruction_coordinator.open_project_voice,
+            ),
             on_favorite_changed=self._repaint_reconstruction_favorites,
             on_sample_reconstruction_replaced=self._reconstruction_coordinator.replace_sample,
             on_tab_switch=self._set_current_tab,
             on_nes_frequency_changed=self._retune_samples_for_rate,
             on_channels_changed=self._update_menu,
+            after_edits=self._reconstruction_coordinator.after_edits,
         )
 
         self._edit_router = EditRouter(surfaces=self._sequencer_tab.edit_surfaces)
@@ -706,15 +728,22 @@ class Application:
         self._update_menu()
 
     def _create_shortcut_bindings(self) -> ShortcutBindings:
+        """The call behind every action the menus and the keys reach.
+
+        A gesture that reads or puts away a whole document, the project or the open reconstruction,
+        waits for the edits of the open reconstruction made before it, so it acts on what the
+        reader has drawn.
+        """
+        after_edits = self._reconstruction_coordinator.after_edits
         return ShortcutBindings(
-            new_project=self._project_coordinator.new_project_with_confirmation,
-            open_project=self._project_coordinator.open_with_confirmation,
-            save_project=self._project_coordinator.save,
-            save_project_as=self._project_coordinator.save_as_dialog,
+            new_project=gated(after_edits, self._project_coordinator.new_project_with_confirmation),
+            open_project=gated(after_edits, self._project_coordinator.open_with_confirmation),
+            save_project=gated(after_edits, self._project_coordinator.save),
+            save_project_as=gated(after_edits, self._project_coordinator.save_as_dialog),
             project_properties=self._open_project_properties,
             export_project=self._project_coordinator.export_project_dialog,
             render_song=self._render_coordinator.open,
-            close_project=self._project_coordinator.close_with_confirmation,
+            close_project=gated(after_edits, self._project_coordinator.close_with_confirmation),
             exit=self._on_close,
             undo=self._sequencer_tab.undo,
             redo=self._sequencer_tab.redo,
@@ -722,13 +751,13 @@ class Application:
             reconstruct_directory=self._reconstruct_directory_dialog,
             load_generation_settings=self._config_coordinator.load_dialog,
             save_generation_settings=self._config_coordinator.save_dialog,
-            open_reconstruction=self._reconstruction_coordinator.load_with_confirmation,
-            save_reconstruction=self._reconstruction_coordinator.save,
-            save_reconstruction_as=self._reconstruction_coordinator.save_as_dialog,
-            close_reconstruction=self._reconstruction_coordinator.close_with_confirmation,
-            export_wav=self._export_reconstruction_wav_dialog,
-            export_instruments=self._export_reconstruction_instruments_dialog,
-            add_reconstruction_to_sequencer=self._add_current_reconstruction_to_sequencer,
+            open_reconstruction=gated(after_edits, self._reconstruction_coordinator.load_with_confirmation),
+            save_reconstruction=gated(after_edits, self._reconstruction_coordinator.save),
+            save_reconstruction_as=gated(after_edits, self._reconstruction_coordinator.save_as_dialog),
+            close_reconstruction=gated(after_edits, self._reconstruction_coordinator.close_with_confirmation),
+            export_wav=gated(after_edits, self._export_reconstruction_wav_dialog),
+            export_instruments=gated(after_edits, self._export_reconstruction_instruments_dialog),
+            add_reconstruction_to_sequencer=gated(after_edits, self._add_current_reconstruction_to_sequencer),
             new_instrument=self._add_instrument,
             add_sample_from_file=self._add_sample_from_file,
             import_instrument=self._import_instrument,
@@ -1138,14 +1167,6 @@ class Application:
     def _navigate_to_reconstructions(self) -> None:
         self._set_current_tab(Tab.RECONSTRUCTIONS)
 
-    def _regenerate_instrument(
-        self,
-        channel_name: ChannelName,
-        feature_key: FeatureKey,
-        features: Features,
-    ) -> None:
-        self._reconstruction_coordinator.regenerate_instrument(channel_name, feature_key, features)
-
     def _on_reconstruction_updated(
         self,
         edit: ReconstructionEdit,
@@ -1163,7 +1184,7 @@ class Application:
             return
 
         with self.history.transaction(
-            HistoryAction.EDIT_RECONSTRUCTION,
+            edit.history_action,
             detail=self._edit_detail(sample.id, edit),
             coalesce=edit.coalesce_key(sample.id),
         ):
@@ -1181,7 +1202,7 @@ class Application:
         return self._sequencer_tab.instrument_edit_detail(voice_id, feature_key)
 
     def _edit_detail(self, voice_id: str, edit: ReconstructionEdit) -> HistoryDetail:
-        """The history line an edit reads as: the feature it moved, or the recording it took out."""
+        """The history line an edit reads as: the feature it moved, the recording it took out, or the rate it set."""
         match edit:
             case ChannelEdit():
                 return self._sequencer_tab.reconstruction_edit_detail(
@@ -1194,33 +1215,32 @@ class Application:
                     voice_id,
                     edit.stem_name,
                 )
+            case Retune():
+                return self._sequencer_tab.nes_frequency_detail(edit.nes_frequency)
 
     def _retune_samples_for_rate(self, nes_frequency: int) -> None:
         """Refreshes the stored reconstructions of samples left out of sync by a rate change.
 
         Song playback already follows the new rate; this re-synthesizes only the persistent
         rendered waveforms the Reconstructions tab edits, and only for the samples still off the
-        target rate. The batch runs in the background so the rate change stays responsive.
+        target rate. The batch runs in the background so the rate change stays responsive. The
+        sample open on the Reconstructions tab takes the rate as a step of its own, after the edits
+        the reader made before it, so it is left out of the batch.
         """
+        open_voice_id = self.reconstruction_manager.voice_id
+        if self._owning_project_sample() is not None:
+            self._reconstruction_coordinator.request_rewrite(RateChange(nes_frequency=nes_frequency))
+
         targets = [
             (sample.id, sample.reconstruction)
             for sample in samples(self.project_manager.current.voices)
-            if sample.reconstruction.config.nes_frequency != nes_frequency
+            if sample.reconstruction.config.nes_frequency != nes_frequency and sample.id != open_voice_id
         ]
         if not targets:
             return
 
-        if not self.retune_service.start(targets, nes_frequency):
-            return
-
-        self.status_bar.set(self.language_manager["global.status.message.retuning_samples"])
-        if self._editing_retuned_sample(nes_frequency):
-            self._reconstructions_tab.set_reconstruction_dimmed(True)
-
-    def _editing_retuned_sample(self, nes_frequency: int) -> bool:
-        """Whether the open Reconstructions-tab document is a project sample this batch will retune."""
-        sample = self._owning_project_sample()
-        return sample is not None and sample.reconstruction.config.nes_frequency != nes_frequency
+        if self.retune_service.start(targets, nes_frequency):
+            self.status_bar.set(self.language_manager["global.status.message.retuning_samples"])
 
     def _on_retune_result(self, result: RetuneResult) -> None:
         match result:
@@ -1233,15 +1253,17 @@ class Application:
 
         if not self.retune_service.is_running():
             self.status_bar.set("")
-            self._reconstructions_tab.set_reconstruction_dimmed(False)
 
     def _apply_retuned_sample(self, retuned: RetunedSample) -> None:
         """Swaps a retuned reconstruction into its sample, folding it into the rate-change undo entry.
 
         A batch superseded by a newer rate change is discarded by the rate guard, so a stale
         result neither overwrites the current reconstruction nor appends a stray history entry. The
-        rate-keyed coalesce target rewrites the single ``SET_NES_FREQUENCY`` entry, and a sample
-        open in the Reconstructions tab shows the retuned reconstruction.
+        rate-keyed coalesce target rewrites the single ``SET_NES_FREQUENCY`` entry.
+
+        A sample the reader opened on the Reconstructions tab since the batch started takes the
+        rate as a step of the open document, after the edits made there. A sample edited since the
+        batch started is retuned again from what it now holds, so the edit stands.
         """
         project = self.project_manager.current
         sample = project.voices.get(retuned.voice_id)
@@ -1252,6 +1274,18 @@ class Application:
         if nes_frequency != project.settings.nes_frequency:
             return
 
+        if self.reconstruction_manager.voice_id == sample.id:
+            self._reconstruction_coordinator.request_rewrite(RateChange(nes_frequency=nes_frequency))
+            return
+
+        reconstruction = (
+            retuned.reconstruction
+            if sample.reconstruction is retuned.source
+            else sample.reconstruction.with_nes_frequency(nes_frequency)
+        )
+        if reconstruction is sample.reconstruction:
+            return
+
         with self.history.transaction(
             HistoryAction.SET_NES_FREQUENCY,
             detail=self._sequencer_tab.nes_frequency_detail(nes_frequency),
@@ -1259,13 +1293,8 @@ class Application:
         ):
             self.project_controller.replace_sample_reconstruction(
                 retuned.voice_id,
-                retuned.reconstruction,
+                reconstruction,
             )
-
-        self._reconstruction_coordinator.retune_sample(
-            retuned.voice_id,
-            retuned.reconstruction,
-        )
 
     def _open_project_properties(self) -> None:
         """Opens the properties dialog seeded with the current project's info.
@@ -1574,9 +1603,14 @@ class Application:
         self._sequencer_tab.toggle_channel(generator)
 
     def _on_close(self) -> None:
-        """Exits once each owner of something unfinished has asked about it, one after another."""
+        """Exits once each owner of something unfinished has asked about it, one after another.
+
+        The edits of the open reconstruction land first, so each question asks about what the
+        reader has drawn.
+        """
         pass_gates(
             (
+                self._reconstruction_coordinator.after_edits,
                 self._project_coordinator.guard_exit,
                 self._reconstruction_coordinator.guard_exit,
                 self._main_tab.guard_exit,

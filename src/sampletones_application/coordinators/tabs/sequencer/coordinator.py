@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 from typing import Callable, Sequence, Tuple
 
@@ -61,6 +62,7 @@ from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequenc
 from sampletones_application.ui.panels.sequencer.voices.panel import (
     GUISequencerVoicesPanel,
 )
+from sampletones_application.utils.callbacks.gates import Gate, gated
 from sampletones_application.utils.gui.clipboard.selection import select_text_clipboard
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
@@ -113,6 +115,7 @@ class SequencerTabCoordinator:
         on_tab_switch: Callable[[Tab], None],
         on_nes_frequency_changed: Callable[[int], None],
         on_channels_changed: VoidCallback,
+        after_edits: Gate,
     ) -> None:
         self._project_controller = project_controller
         self._session_manager = session_manager
@@ -125,6 +128,7 @@ class SequencerTabCoordinator:
         self._on_tab_switch = on_tab_switch
         self._on_nes_frequency_changed = on_nes_frequency_changed
         self._on_channels_changed = on_channels_changed
+        self._after_edits = after_edits
         self._language_manager = language_manager
         self._dialogs = dialogs
 
@@ -550,7 +554,7 @@ class SequencerTabCoordinator:
         self._sequencer_voices_panel.voice_footprint = self._sequencer_voices_logic.build_voice_footprint
         self._sequencer_voices_panel.on_voice_selected = self._on_voice_selected
         self._sequencer_voices_panel.on_voice_edit_requested = self._sequencer_voices_logic.request_edit
-        self._sequencer_voices_panel.on_remove_requested = self._voices.remove
+        self._sequencer_voices_panel.on_remove_requested = gated(self._after_edits, self._voices.remove)
         self._sequencer_voices_panel.on_play_requested = self._sequencer_voices_logic.play_voice
         self._sequencer_voices_panel.on_move_requested = self._recorder.undoable(
             HistoryAction.MOVE_VOICE,
@@ -659,13 +663,14 @@ class SequencerTabCoordinator:
         self._voices.import_instrument()
 
     def undo(self) -> None:
-        self._history.undo()
+        """Steps the project back, once the edits of the open document the reader made before it have landed."""
+        self._after_edits(self._history.undo)
 
     def redo(self) -> None:
-        self._history.redo()
+        self._after_edits(self._history.redo)
 
     def jump_to_history(self, index: int) -> None:
-        self._history.jump_to(index)
+        self._after_edits(partial(self._history.jump_to, index))
 
     def refresh_history(self) -> None:
         """Re-renders the history panel from the manager's current stack.
@@ -811,8 +816,12 @@ class SequencerTabCoordinator:
         self._reconstructions.import_object(reconstruction, name)
 
     def replace_reconstruction(self, filepath: Path) -> None:
-        """Substitutes the selected sample's reconstruction with a browser file's."""
-        self._reconstructions.replace_from_file(filepath)
+        """Substitutes the selected sample's reconstruction with a browser file's.
+
+        The sample may be the one open on the Reconstructions tab, so the substitution waits for
+        the edits made there before it.
+        """
+        self._after_edits(partial(self._reconstructions.replace_from_file, filepath))
 
     def _dispatch_edit_voice(self, voice_id: str) -> None:
         self._on_edit_voice_requested(voice_id)
