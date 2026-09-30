@@ -64,6 +64,12 @@ These rules govern the Python in this repository. They complement
 1. Freeze models whose instances stay constant after construction (`frozen=True`).
 1. Use a dataclass for a small internal state object that needs neither serialization nor validation, test-case dataclasses included.
 
+## Messages
+
+1. Write every message the application shows a user in plain American English: labels, dialogs, status lines and the notices an export adds. Log lines and exception messages are written for developers and may stay technical.
+1. Write for a regular user, not a developer. Name what the user sees and does in everyday words, and leave the repository's own vocabulary out. Keep sentences short, one fact each. Every document outside `docs/development/` has the same reader (see [writing the documentation](documentation.md)).
+1. Keep every message in the language file, `src/sampletones_config/lang/en.yaml`, and read it by its key where it is shown ([principle 8](architecture.md#8-all-display-text-comes-from-languagemanager)). A translation then replaces the file alone. The `language-keys` hook holds every key the code spells to an entry, and every entry to a reader.
+
 ## Docstrings and Comments
 
 1. A docstring explains the intention of a class or function and the context of its use.
