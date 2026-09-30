@@ -259,9 +259,9 @@ instrument reaches that one instrument, each against the initial pitch it reads:
 channels, its period on noise.
 
 **Where a row's note comes from.** A voice has a reference, the place where its zero is, and a row has a
-step from it. A pattern cell therefore holds `reference + transpose`, kept inside the range a tonal
-channel plays and wrapped into the sixteen periods on noise. A sample's reference is the offset origin its
-conversion chose. A hand-written instrument's reference is its initial pitch.
+step from it. A pattern cell therefore holds `reference + transpose`, wrapped into the sixteen periods on
+noise. A sample's reference is the offset origin its conversion chose. A hand-written instrument's
+reference is its initial pitch.
 
 The conversion chooses the origin once, when the reconstruction is built, and stores it as that channel's
 reference pitch (see [Reconstructions](reconstructions.md#contents)). For the pitched channels
@@ -270,6 +270,37 @@ takes the first sounding period. Every later export reports the stored pitch as 
 each frame as `pitch − initial_pitch`, wrapped into the 16 available periods on noise. The offsets
 straddle zero and stay compact around one note. The pattern cell holds the contour's midpoint, so a rising
 contour prints its middle note and opens below it.
+
+On the tonal channels the note keeps the song's pitch range. In-app playback holds every tick's
+transposed pitch within 33–119 (A-0 to B-7). FamiTracker moves the written note by the arpeggio's item
+each tick and clamps the result to C-0..B-7 (`CChannelHandler::TriggerNote`), so a note up to 119 is
+written as it is and a higher one is written at B-7. A note below A-0 sounds below every pitch in-app
+playback plays: on NTSC each one plays the longest period, `0x7FF`, about 12 cents flat of A-0, and on
+PAL they sound one semitone or more below A-0. A note below 33 is therefore raised only as far as bringing
+the arpeggio's highest item to 33:
+
+| Row | What the exporter writes |
+| --- | --- |
+| a flat instrument transposed below 33 | A-0, the note in-app playback sounds |
+| an arpeggio reaching 33 on some ticks | the transposed note, so every tick in-app playback sounds at 33 or above keeps its note |
+| an arpeggio lying wholly below 33 | the note whose highest item lands on A-0 |
+
+A tick that in-app playback holds at A-0 while its item moves the written note lower plays that lower
+note.
+
+**What a row's volume cell holds.** A row naming a volume writes it. In-app playback starts a note whose
+row states no volume at the full level, while FamiTracker carries the level a channel last took into every
+note after it. Such a note therefore writes `15` wherever FamiTracker reaches it carrying another level,
+and keeps an empty cell where the channel stands at the full level already. The exporter follows each
+channel's level through the order the way FamiTracker plays it: frame by frame, then from the first frame
+again with the level the order ended on. A pattern is stored once for every frame that plays it, so its
+note writes `15` when any of those frames reaches it at another level. A note-on written as a note cut
+takes the same level.
+
+The triangle sounds in-app while a row's volume is 8–15 and falls silent at 0–7. FamiTracker sounds the
+triangle while both its instrument volume and its volume column are above zero
+(`CTriangleChan::RefreshChannel`). A triangle row at 0–7 therefore writes `0`, and a row at 8–15 writes
+its level.
 
 ## C. Reading an instrument file
 
@@ -317,7 +348,7 @@ that ends its note.
 | Patterns per channel | 128 (indices 0–127) | pool keyed by arbitrary ints | raises when a pattern index exceeds 127 |
 | Order frames | 128 | unbounded | raises when the order exceeds 128 frames |
 | Pattern length (rows) | 256 | 1–256 (`rows_per_pattern`) | matches; no guard needed |
-| Note range | C-0..B-7 (pitch 24–119) | a reference of 33–119 plus a transpose reaching either end of that span | clamps to the nearest playable note (fidelity loss at the extremes) |
+| Note range | C-0..B-7 (pitch 24–119) | a reference of 33–119 plus a transpose reaching either end of that span | keeps the song's range, A-0..B-7, raising a lower note only as far as its arpeggio's highest item reaching A-0 (section B) |
 | Title / author | 32 bytes each | 64 characters | truncates to 32 bytes |
 | Comment | free text (COMMENTS block) | 65536 characters | carried in full |
 | Tempo / speed | engine-dependent (split at row `speed_split_point`) | tempo 32–255, speed 1–31 | written verbatim from settings |

@@ -1,7 +1,10 @@
-from typing import List, Optional, Sequence, Tuple
+from dataclasses import dataclass
+from typing import Dict, FrozenSet, List, Optional, Sequence, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
+from sampletones_core.exporters.rows.levels import cell_volume, full_level_notes
+from sampletones_core.exporters.rows.pitch import highest_step, written_pitch
 from sampletones_core.exporters.skipped import BuiltDocument, find_skipped_rows
 from sampletones_core.exporters.slices import (
     InstrumentEntry,
@@ -56,6 +59,7 @@ from sampletones_core.formats.famitracker.specification.patterns import (
     MIN_OCTAVE,
     NoteValue,
 )
+from sampletones_core.formats.famitracker.specification.sequences import SequenceKind
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
@@ -63,6 +67,24 @@ from sampletones_core.project.song import Song
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_shared.application import SAMPLETONES_COPYRIGHT
+
+PatternCell = Tuple[int, int]
+
+
+@dataclass(frozen=True)
+class RowTarget:
+    """The instrument a row naming a voice on one channel triggers, with what places its note.
+
+    Attributes:
+        slot: The instrument's position in the module and the reference a row's transpose steps from.
+        contour_top: The highest semitone step the instrument's arpeggio moves the note by.
+    """
+
+    slot: InstrumentSlot
+    contour_top: int
+
+
+RowTargets = Dict[Tuple[str, ChannelName], RowTarget]
 
 
 def build_instrument(
@@ -131,16 +153,42 @@ def _instrument_table(entries: Sequence[InstrumentEntry]) -> Tuple[List[Instrume
     return instruments, slots
 
 
+def _row_targets(
+    instruments: Sequence[Instrument2A03],
+    slots: InstrumentTable,
+) -> RowTargets:
+    """Pairs every slot a row resolves through with the highest step its instrument's arpeggio reaches.
+
+    The arpeggio is read as the module stores it, so the step is one FamiTracker plays.
+    """
+    contour_tops = {
+        instrument.index: highest_step(instrument.sequences[SequenceKind.ARPEGGIO].items) for instrument in instruments
+    }
+    return {
+        key: RowTarget(
+            slot=slot,
+            contour_top=contour_tops[slot.index],
+        )
+        for key, slot in slots.items()
+    }
+
+
 def _note_and_octave(
     transpose: int,
     channel_generator: ChannelName,
-    slot: InstrumentSlot,
+    target: RowTarget,
 ) -> Tuple[int, int]:
-    base_pitch = slot.initial_pitch + transpose
+    """Resolves an instrument moved by a row's transpose to the note column that triggers it.
+
+    The noise channel reads its note as a period, wrapped into the sixteen it has. Every other
+    channel reads the note its arpeggio moves, so the transposed pitch is written at the note that
+    keeps the contour where the song plays it — see :func:`written_pitch`.
+    """
+    base_pitch = target.slot.initial_pitch + transpose
     if channel_generator == ChannelName.NOISE:
         cell = period_to_note_cell(base_pitch)
     else:
-        cell = pitch_to_note_cell(base_pitch)
+        cell = pitch_to_note_cell(written_pitch(base_pitch, target.contour_top))
 
     return cell.note, cell.octave
 
@@ -149,31 +197,36 @@ def _row_cell(
     row: Row,
     row_number: int,
     channel_generator: ChannelName,
-    slots: InstrumentTable,
+    targets: RowTargets,
+    *,
+    full_level: bool,
 ) -> Optional[RowCell]:
     """Converts one tracker line to the cell that plays it, and ``None`` where the line is empty.
 
     A note-on naming a voice with no instrument on this channel plays nothing in the song, so it
-    becomes the note cut that silences the channel.
+    becomes the note cut that silences the channel. The volume column states what
+    :func:`cell_volume` gives the row, which is the full level on a note FamiTracker would otherwise
+    start at the level the channel carries.
     """
     note = EMPTY_NOTE
     octave = MIN_OCTAVE
     instrument = EMPTY_INSTRUMENT
-    volume = row.volume if row.volume is not None else EMPTY_VOLUME
+    stated_volume = cell_volume(row, channel_generator, full_level=full_level)
+    volume = stated_volume if stated_volume is not None else EMPTY_VOLUME
 
     match row.command:
         case NoteOff():
             note = int(NoteValue.HALT)
         case NoteOn() as reference:
-            slot = slots.get((reference.voice_id, channel_generator))
-            if slot is None:
+            target = targets.get((reference.voice_id, channel_generator))
+            if target is None:
                 note = int(NoteValue.HALT)
             else:
-                instrument = slot.index
+                instrument = target.slot.index
                 note, octave = _note_and_octave(
                     row.transpose or 0,
                     channel_generator,
-                    slot,
+                    target,
                 )
         case None:
             pass
@@ -199,11 +252,23 @@ def _has_data(cell: RowCell) -> bool:
     )
 
 
+def _full_level_cells(song: Song, channel_name: ChannelName) -> FrozenSet[PatternCell]:
+    """The pattern cells of one channel that write the full level, by pattern index and row.
+
+    A module stores a pattern once for every frame that plays it, so a cell writes the full level
+    wherever any of those frames reaches its note carrying another, which FamiTracker plays as the
+    frames come and again from the first once the order ends.
+    """
+    return frozenset((place.pattern_index, place.row_index) for place in full_level_notes(song, channel_name))
+
+
 def _channel_patterns(
     name: ChannelName,
     channel: Channel,
-    slots: InstrumentTable,
+    targets: RowTargets,
+    full_level_cells: FrozenSet[PatternCell],
 ) -> List[PatternData]:
+    """Converts one channel's pattern pool, writing the full level on the cells named."""
     channel_id = CHANNEL_TO_ID[name]
     patterns: List[PatternData] = []
 
@@ -219,7 +284,8 @@ def _channel_patterns(
                     row,
                     row_number,
                     name,
-                    slots,
+                    targets,
+                    full_level=(index, row_number) in full_level_cells,
                 )
                 for row_number, row in enumerate(pattern.rows)
             )
@@ -277,7 +343,8 @@ def build_module(project: Project) -> BuiltDocument[FamiTrackerModule]:
     A row naming a voice on a channel the voice has no instrument for plays nothing in the song,
     so the module holds a note cut there and the row is listed beside it. A dimension longer than a
     sequence holds keeps its opening items, and the instruments shortened that way are reported
-    beside the rows.
+    beside the rows. The rows write their notes and levels so FamiTracker plays them where the
+    song's own walk does.
 
     Raises:
         ValueError: If the project holds more than FamiTracker has room for.
@@ -305,13 +372,15 @@ def build_module(project: Project) -> BuiltDocument[FamiTrackerModule]:
         copyright=SAMPLETONES_COPYRIGHT,
     )
 
+    targets = _row_targets(instruments, slots)
     patterns: List[PatternData] = []
     for channel in ChannelName.items():
         patterns.extend(
             _channel_patterns(
                 channel,
                 song.channels[channel],
-                slots,
+                targets,
+                _full_level_cells(song, channel),
             ),
         )
 

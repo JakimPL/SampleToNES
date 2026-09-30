@@ -54,6 +54,23 @@ def pulse_sample(name: str, pitch: int) -> Sample:
     )
 
 
+def contour_sample(name: str, pitches: Sequence[int]) -> Sample:
+    """A pulse sample sounding each pitch for one frame, so its arpeggio moves the note between them."""
+    instructions = [PulseInstruction(on=True, pitch=pitch, volume=15, duty_cycle=0) for pitch in pitches]
+    return Sample(
+        name=name,
+        reconstruction=build_reconstruction({ChannelName.PULSE1: instructions}),
+    )
+
+
+def triangle_sample(name: str, pitch: int) -> Sample:
+    instructions = [TriangleInstruction(on=True, pitch=pitch)]
+    return Sample(
+        name=name,
+        reconstruction=build_reconstruction({ChannelName.TRIANGLE: instructions}),
+    )
+
+
 def noise_sample(name: str, period: int) -> Sample:
     instructions = [NoiseInstruction(on=True, period=period, volume=15, short=False)]
     return Sample(

@@ -1,6 +1,6 @@
 import struct
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Dict, Final, List, Tuple
 
 from sampletones_core.formats.famitracker.specification.blocks import BLOCK_NAME_LENGTH
 from sampletones_core.formats.famitracker.specification.file import (
@@ -14,6 +14,31 @@ from sampletones_core.formats.famitracker.specification.instruments import (
 from sampletones_core.formats.famitracker.specification.sequences import (
     SEQUENCE_COUNT_2A03,
 )
+
+FAMITRACKER_OPENING_VOLUME: Final[int] = 15
+FAMITRACKER_EMPTY_VOLUME: Final[int] = 0x10
+
+
+def column_volume(carried: int, stored: int) -> int:
+    """The level a channel plays at once a row's volume cell is read, as FamiTracker reads it.
+
+    A stored level below the empty value replaces the level the channel carries, and the empty value
+    leaves it alone. A channel opens at the full level. The triangle sounds while this level is above
+    zero and its instrument's volume is too. Read from ``CChannelHandler::ResetChannel`` and
+    ``CChannelHandler::HandleNoteData`` in ``ChannelHandler.cpp`` and ``CTriangleChan::RefreshChannel`` in
+    ``Channels2A03.cpp`` of 0CC-FamiTracker 0.3.15.3.
+
+    Args:
+        carried: The level the channel carries into the row.
+        stored: The row's stored volume cell.
+
+    Returns:
+        int: The level the channel plays the row at.
+    """
+    if stored < FAMITRACKER_EMPTY_VOLUME:
+        return stored
+
+    return carried
 
 
 class _Cursor:

@@ -1,13 +1,19 @@
+from dataclasses import dataclass
+from typing import Dict, Final, List, Mapping, Optional, Sequence, Tuple
+
 import numpy as np
 import pytest
 
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.general import MAX_VOLUME, MIN_PITCH
 from sampletones_core.exporters.skipped import SkippedRow
 from sampletones_core.formats.famitracker.builder import (
     build_instrument_table,
     build_module,
     project_to_module,
 )
+from sampletones_core.formats.famitracker.model.module import FamiTrackerModule
+from sampletones_core.formats.famitracker.model.pattern import RowCell
 from sampletones_core.formats.famitracker.specification.channels import (
     CHANNEL_COUNT_2A03,
     ChannelId,
@@ -22,6 +28,9 @@ from sampletones_core.formats.famitracker.specification.parameters import (
 )
 from sampletones_core.formats.famitracker.specification.patterns import (
     EMPTY_INSTRUMENT,
+    EMPTY_VOLUME,
+    NOTE_RANGE,
+    PITCH_OCTAVE_OFFSET,
     NoteValue,
 )
 from sampletones_core.formats.famitracker.specification.sequences import (
@@ -29,18 +38,55 @@ from sampletones_core.formats.famitracker.specification.sequences import (
     SequenceKind,
 )
 from sampletones_core.instructions.implementation.pulse import PulseInstruction
+from sampletones_core.performance.modifiers import triangle_sounds_at
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
+from sampletones_core.project.settings import ProjectSettings
+from sampletones_core.project.song import Song
+from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import voice_reference
+from sampletones_core.structures import IdentifiedCollection
+from sampletones_core.utils.frequencies import transpose_pitch
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
+from tests.suite.famitracker import FAMITRACKER_OPENING_VOLUME, column_volume
+from tests.suite.performance import song_row_volumes
 
-from .conftest import RECONSTRUCTION_LENGTH, ProjectFixture, build_reconstruction
+from .conftest import (
+    RECONSTRUCTION_LENGTH,
+    ProjectFixture,
+    build_reconstruction,
+    contour_sample,
+    pulse_sample,
+    triangle_sample,
+)
 
 LEAD_PITCH = 60
 OCTAVE = 12
 CUSTOM_NES_FREQUENCY = 30
+
+ROWS_PER_PATTERN: Final[int] = 8
+BASS_PITCH: Final[int] = 48
+TRANSPOSE: Final[int] = 5
+QUIET_VOLUME: Final[int] = 4
+NOTE_OFF_VOLUME: Final[int] = 6
+CLOSING_VOLUME: Final[int] = 9
+FRAME_CLOSING_VOLUME: Final[int] = 2
+QUIET_TRIANGLE_VOLUME: Final[int] = 5
+LOUD_TRIANGLE_VOLUME: Final[int] = 12
+RESTING_TRIANGLE_VOLUME: Final[int] = 7
+NOTE_TRIANGLE_VOLUME: Final[int] = 3
+SILENT_COLUMN: Final[int] = 0
+PLAYED_PASSES: Final[int] = 2
+LOW_PITCH: Final[int] = 36
+LOW_TRANSPOSE: Final[int] = -10
+CONTOUR_PITCHES: Final[Tuple[int, ...]] = (40, 50)
+STRADDLING_TRANSPOSE: Final[int] = -14
+SUBMERGED_TRANSPOSE: Final[int] = -20
 
 
 class TestBuildInstrumentTable:
@@ -265,3 +311,250 @@ class TestProjectToModuleOrder:
     def test_dpcm_channel_is_always_empty(self, project_fixture: ProjectFixture) -> None:
         module = project_to_module(project_fixture.project)
         assert all(frame[ChannelId.DPCM] == 0 for frame in module.track.order)
+
+
+def rows_with(*cells: Tuple[int, Row]) -> List[Row]:
+    """A pattern's rows, blank apart from the ones given by their index."""
+    rows = [Row() for _ in range(ROWS_PER_PATTERN)]
+    for row_index, row in cells:
+        rows[row_index] = row
+
+    return rows
+
+
+def arranged_project(
+    voices: Sequence[Sample],
+    patterns: Mapping[ChannelName, Mapping[int, List[Row]]],
+    order: List[Dict[ChannelName, Optional[int]]],
+) -> Project:
+    """A project playing ``voices`` through the channel patterns ``order`` names."""
+    pool: IdentifiedCollection[Sample] = IdentifiedCollection()
+    for voice in voices:
+        pool.append(voice)
+
+    channels = {
+        channel_name: Channel(
+            name=channel_name,
+            patterns={index: Pattern(rows=rows) for index, rows in patterns.get(channel_name, {}).items()},
+        )
+        for channel_name in ChannelName.items()
+    }
+    project = Project.create(title="Rows", author="Tester", settings=ProjectSettings())
+    project.voices = pool
+    project.song = Song(rows_per_pattern=ROWS_PER_PATTERN, order=order, channels=channels)
+    return project
+
+
+def played_volumes(module: FamiTrackerModule, channel: ChannelId) -> List[int]:
+    """The level FamiTracker plays one channel at on each row, the order played through and round again.
+
+    FamiTracker wraps from the last frame to the first, keeping every channel's level, so a second
+    pass shows what the level the song ends on does to the notes it opens with.
+    """
+    cells = {
+        (pattern.channel, pattern.index): {row.row_number: row for row in pattern.rows}
+        for pattern in module.track.patterns
+    }
+    level = FAMITRACKER_OPENING_VOLUME
+    levels: List[int] = []
+    for _ in range(PLAYED_PASSES):
+        for frame in module.track.order:
+            pattern = cells.get((channel, frame[int(channel)]), {})
+            for row_number in range(module.track.rows_per_pattern):
+                cell = pattern.get(row_number)
+                if cell is not None:
+                    level = column_volume(level, cell.volume)
+
+                levels.append(level)
+
+    return levels
+
+
+def pattern_cell(module: FamiTrackerModule, channel: ChannelId, index: int, row_number: int) -> RowCell:
+    pattern = next(
+        pattern for pattern in module.track.patterns if pattern.channel == channel and pattern.index == index
+    )
+    return next(row for row in pattern.rows if row.row_number == row_number)
+
+
+def cell_pitch(cell: RowCell) -> int:
+    """The pitch a pattern cell's note and octave name."""
+    return (cell.octave + PITCH_OCTAVE_OFFSET) * NOTE_RANGE + cell.note - int(NoteValue.C)
+
+
+@pytest.fixture(name="lead")
+def lead_fixture() -> Sample:
+    return pulse_sample("lead", pitch=LEAD_PITCH)
+
+
+@pytest.fixture(name="bass")
+def bass_fixture() -> Sample:
+    return triangle_sample("bass", pitch=BASS_PITCH)
+
+
+class TestTheLevelsAPlayedModuleCarries:
+    """The song starts a note stating no level at the full level and sounds the triangle only above
+    half volume, while FamiTracker carries the last level a cell wrote into every note and sounds the
+    triangle at any level above silence. The module therefore writes its volume column so that
+    FamiTracker, playing the order through and round again, plays each row the song sounds at the
+    song's own level, including in a pattern two frames reach at different levels.
+    """
+
+    @pytest.fixture(name="arranged")
+    def arranged_fixture(self, lead: Sample, bass: Sample) -> Project:
+        lead_note = Row(command=NoteOn(voice_id=lead.id))
+        bass_note = Row(command=NoteOn(voice_id=bass.id))
+        pulse = {
+            0: rows_with(
+                (0, lead_note),
+                (1, Row(volume=QUIET_VOLUME)),
+                (2, Row(transpose=TRANSPOSE)),
+                (3, lead_note),
+                (4, Row(command=NoteOff(), volume=NOTE_OFF_VOLUME)),
+                (5, lead_note),
+                (6, Row(volume=CLOSING_VOLUME)),
+            ),
+            1: rows_with(
+                (0, lead_note),
+                (3, Row(volume=FRAME_CLOSING_VOLUME)),
+            ),
+        }
+        triangle = {
+            0: rows_with(
+                (0, bass_note),
+                (2, Row(volume=QUIET_TRIANGLE_VOLUME)),
+                (4, Row(volume=LOUD_TRIANGLE_VOLUME)),
+                (6, bass_note),
+            ),
+            1: rows_with(
+                (0, Row(volume=RESTING_TRIANGLE_VOLUME)),
+                (2, bass_note),
+                (5, Row(command=NoteOn(voice_id=bass.id), volume=NOTE_TRIANGLE_VOLUME)),
+            ),
+        }
+        order: List[Dict[ChannelName, Optional[int]]] = [
+            {ChannelName.PULSE1: 0, ChannelName.TRIANGLE: 0},
+            {ChannelName.PULSE1: 1, ChannelName.TRIANGLE: 1},
+            {ChannelName.PULSE1: None, ChannelName.TRIANGLE: 0},
+            {ChannelName.PULSE1: 0, ChannelName.TRIANGLE: None},
+        ]
+        return arranged_project(
+            (lead, bass),
+            {ChannelName.PULSE1: pulse, ChannelName.TRIANGLE: triangle},
+            order,
+        )
+
+    def test_the_pulse_plays_every_sounding_row_at_the_song_level(self, arranged: Project) -> None:
+        played = played_volumes(project_to_module(arranged), ChannelId.SQUARE1)
+        song = song_row_volumes(arranged.song, ChannelName.PULSE1) * PLAYED_PASSES
+
+        sounding = [(level, volume) for level, volume in zip(played, song) if volume is not None]
+        assert [level for level, _ in sounding] == [volume for _, volume in sounding]
+
+    def test_the_triangle_sounds_on_every_row_the_song_sounds_it(self, arranged: Project) -> None:
+        played = played_volumes(project_to_module(arranged), ChannelId.TRIANGLE)
+        song = song_row_volumes(arranged.song, ChannelName.TRIANGLE) * PLAYED_PASSES
+
+        sounding = [(level, volume) for level, volume in zip(played, song) if volume is not None]
+        assert [level > 0 for level, _ in sounding] == [triangle_sounds_at(volume) for _, volume in sounding]
+
+    def test_a_note_after_a_quieter_row_starts_at_the_full_level(self, arranged: Project) -> None:
+        cell = pattern_cell(project_to_module(arranged), ChannelId.SQUARE1, 0, 3)
+        assert cell.volume == MAX_VOLUME
+
+    def test_a_note_the_channel_reaches_at_the_full_level_leaves_the_column_alone(self, lead: Sample) -> None:
+        lead_note = Row(command=NoteOn(voice_id=lead.id))
+        project = arranged_project(
+            (lead,),
+            {ChannelName.PULSE1: {0: rows_with((0, lead_note), (4, lead_note))}},
+            [{ChannelName.PULSE1: 0}, {ChannelName.PULSE1: 0}],
+        )
+
+        module = project_to_module(project)
+
+        assert [pattern_cell(module, ChannelId.SQUARE1, 0, row).volume for row in (0, 4)] == [EMPTY_VOLUME] * 2
+
+    def test_a_pattern_one_frame_reaches_quieter_writes_the_full_level(self, arranged: Project) -> None:
+        """The module stores the pulse's first pattern once for the two frames that play it, and the
+        second of them reaches its opening note at the level the frame before it ends on.
+        """
+        cell = pattern_cell(project_to_module(arranged), ChannelId.SQUARE1, 0, 0)
+        assert cell.volume == MAX_VOLUME
+
+
+class TestTheTriangleSoundsAboveHalfVolume(BaseTestSuite):
+    """The song sounds the triangle while a row asks for more than half volume, while FamiTracker
+    sounds it at any column level above zero, so a quieter row writes the level that silences it.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        volume: int
+        expected: int
+
+    test_cases: Tuple["TestTheTriangleSoundsAboveHalfVolume.TestCase", ...] = (
+        TestCase(label="a level the triangle rests at", volume=QUIET_TRIANGLE_VOLUME, expected=SILENT_COLUMN),
+        TestCase(label="a level the triangle sounds at", volume=LOUD_TRIANGLE_VOLUME, expected=LOUD_TRIANGLE_VOLUME),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_row_writes_the_triangle_gate(
+        self,
+        bass: Sample,
+        test_case: "TestTheTriangleSoundsAboveHalfVolume.TestCase",
+    ) -> None:
+        project = arranged_project(
+            (bass,),
+            {ChannelName.TRIANGLE: {0: rows_with((0, Row(command=NoteOn(voice_id=bass.id), volume=test_case.volume)))}},
+            [{ChannelName.TRIANGLE: 0}],
+        )
+
+        assert pattern_cell(project_to_module(project), ChannelId.TRIANGLE, 0, 0).volume == test_case.expected
+
+
+class TestALowTransposeKeepsTheSongsPitch:
+    """The song holds every tick's transposed pitch within 33-119, while FamiTracker plays any note
+    below A-0 at its longest period, a little flat of the lowest pitch. A transpose below the range
+    therefore raises the note only as far as the arpeggio's highest step reaching the lowest pitch.
+    """
+
+    @staticmethod
+    def _transposed(sample: Sample, transpose: int) -> Tuple[FamiTrackerModule, RowCell]:
+        project = arranged_project(
+            (sample,),
+            {ChannelName.PULSE1: {0: rows_with((0, Row(command=NoteOn(voice_id=sample.id), transpose=transpose)))}},
+            [{ChannelName.PULSE1: 0}],
+        )
+        module = project_to_module(project)
+        return (
+            module,
+            pattern_cell(module, ChannelId.SQUARE1, 0, 0),
+        )
+
+    @staticmethod
+    def _arpeggio(module: FamiTrackerModule) -> Tuple[int, ...]:
+        return module.instruments[0].sequences[SequenceKind.ARPEGGIO].items
+
+    def test_a_flat_voice_transposed_below_the_range_writes_the_lowest_note(self) -> None:
+        _, cell = self._transposed(pulse_sample("low", pitch=LOW_PITCH), LOW_TRANSPOSE)
+
+        assert cell_pitch(cell) == MIN_PITCH
+
+    def test_a_contour_reaching_into_the_range_keeps_every_tick_the_song_plays_there(self) -> None:
+        sample = contour_sample("contour", CONTOUR_PITCHES)
+        module, cell = self._transposed(sample, STRADDLING_TRANSPOSE)
+
+        reference = voice_reference(sample, ChannelName.PULSE1)
+        steps = self._arpeggio(module)
+        tracker = [cell_pitch(cell) + step for step in steps]
+        song = [transpose_pitch(reference + step, STRADDLING_TRANSPOSE) for step in steps]
+
+        assert cell_pitch(cell) == reference + STRADDLING_TRANSPOSE
+        assert [pitch for pitch, sung in zip(tracker, song) if sung > MIN_PITCH] == [
+            sung for sung in song if sung > MIN_PITCH
+        ]
+
+    def test_a_contour_lying_below_the_range_sounds_its_highest_step_at_the_lowest_pitch(self) -> None:
+        module, cell = self._transposed(contour_sample("contour", CONTOUR_PITCHES), SUBMERGED_TRANSPOSE)
+
+        assert cell_pitch(cell) + max(self._arpeggio(module)) == MIN_PITCH
