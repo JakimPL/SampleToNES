@@ -23,6 +23,7 @@ from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
+    TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
     TAG_GLOBAL_TAB_MAIN,
     TAG_GLOBAL_TABS,
     TAG_GLOBAL_THEME_PANEL_GROUND,
@@ -752,6 +753,20 @@ class MainTabCoordinator:
 
     def is_converter_active(self) -> bool:
         return self._converter_logic.is_active
+
+    def guard_exit(self, proceed: VoidCallback) -> None:
+        """Lets the exit go on, asking first while a conversion runs, which exiting stops."""
+        if not self.is_converter_active():
+            proceed()
+            return
+
+        self._dialogs.show_confirmation(
+            TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
+            self._language_manager["global.dialog.message.exit_conversion_in_progress"],
+            self._language_manager["global.dialog.title.exit_confirmation"],
+            proceed,
+            ok_label=self._language_manager["global.dialog.label.exit"],
+        )
 
     def is_converter_panel_visible(self) -> bool:
         return self._converter_panel.is_visible()

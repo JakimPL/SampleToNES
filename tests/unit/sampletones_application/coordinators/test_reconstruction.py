@@ -531,3 +531,43 @@ class TestLoadingAConversion(BaseTestSuite):
 
         assert outcome is SaveOutcome.WRITTEN
         assert not coordinator.is_unsaved()
+
+
+class TestTheExitAsksAboutTheReconstruction(BaseTestSuite):
+    """Exiting with unsaved changes in a reconstruction of its own asks to save them first. A project
+    sample's changes belong to the project, which the exit asks about already."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        unsaved: bool
+        embedded: bool
+
+    test_cases = (
+        TestCase(label="standalone_unsaved_asks", unsaved=True, embedded=False, expected=True),
+        TestCase(label="standalone_saved_goes_on", unsaved=False, embedded=False, expected=False),
+        TestCase(label="project_sample_unsaved_goes_on", unsaved=True, embedded=True, expected=False),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_the_exit_asks_only_about_a_standalone_document(self, test_case: TestCase) -> None:
+        coordinator = _gating_coordinator(unsaved=test_case.unsaved, embedded=test_case.embedded)
+        proceed = MagicMock()
+
+        coordinator.guard_exit(proceed)
+
+        assert coordinator._dialogs.show_save_confirmation.called is test_case.expected
+        assert proceed.called is not test_case.expected
+
+    def test_the_answer_lets_the_exit_go_on(self) -> None:
+        coordinator = _gating_coordinator(unsaved=True, embedded=False)
+        proceed = MagicMock()
+
+        coordinator.guard_exit(proceed)
+
+        prompt = coordinator._dialogs.show_save_confirmation.call_args.kwargs
+        assert prompt["on_save"] == coordinator.save
+        assert prompt["on_confirm"] is proceed

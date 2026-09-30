@@ -245,12 +245,20 @@ class ReconstructionCoordinator:
             logger.warning(f"Could not restore reconstruction from {logger.format_path(path)}: {exception}")
             self._session_manager.set_current_reconstruction(None)
 
-    def show_exit_save_confirmation(self, on_confirm: Callback) -> None:
+    def guard_exit(self, proceed: VoidCallback) -> None:
+        """Lets the exit go on, asking first to save a standalone reconstruction with unsaved changes.
+
+        A project sample's changes belong to the project, which the exit asks about on its own.
+        """
+        if not self._requires_save_confirmation():
+            proceed()
+            return
+
         self._show_save_confirmation(
             title=self._language_manager["global.dialog.title.exit_confirmation"],
             message=self._language_manager["global.dialog.message.exit_unsaved_reconstruction"],
             on_save=self.save,
-            on_confirm=on_confirm,
+            on_confirm=proceed,
             ok_label=self._language_manager["global.dialog.label.exit"],
         )
 

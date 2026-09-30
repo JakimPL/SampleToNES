@@ -25,6 +25,7 @@ from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
+    TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
     TAG_GLOBAL_TAB_INSTRUCTIONS,
     TAG_GLOBAL_TABS,
     TAG_GLOBAL_THEME_PANEL_GROUND,
@@ -499,6 +500,20 @@ class InstructionsTabCoordinator:
 
     def is_library_generating(self) -> bool:
         return self._library_logic.is_library_generating()
+
+    def guard_exit(self, proceed: VoidCallback) -> None:
+        """Lets the exit go on, asking first while a library is being built, which exiting stops."""
+        if not self.is_library_generating():
+            proceed()
+            return
+
+        self._dialogs.show_confirmation(
+            TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
+            self._language_manager["global.dialog.message.exit_library_generation_in_progress"],
+            self._language_manager["global.dialog.title.exit_confirmation"],
+            proceed,
+            ok_label=self._language_manager["global.dialog.label.exit"],
+        )
 
     def refresh_generate_button(self) -> None:
         self._library_panel.refresh_action_buttons()

@@ -10,6 +10,7 @@ from sampletones_application.coordinators.tabs.hooks import MainTabHooks
 from sampletones_application.coordinators.tabs.main import MainTabCoordinator
 from sampletones_application.logic.main.converter.run import ConversionSuccess
 from sampletones_application.logic.main.sources.scan import FolderScan
+from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION
 from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_DIALOG_CANCEL,
     TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS,
@@ -30,6 +31,8 @@ CLOSE_BUTTON_KEY: Final[str] = "main.converter.label.close_button"
 STOP_BUTTON_KEY: Final[str] = "main.converter.label.stop_button"
 CONTINUE_BUTTON_KEY: Final[str] = "main.converter.label.continue_button"
 NOTHING_BELOW_KEY: Final[str] = "main.converter.message.scan_nothing_below"
+EXIT_CONVERSION_MESSAGE_KEY: Final[str] = "global.dialog.message.exit_conversion_in_progress"
+EXIT_LABEL_KEY: Final[str] = "global.dialog.label.exit"
 
 
 def _hooks(*, operation_active: bool) -> MainTabHooks:
@@ -566,3 +569,34 @@ class TestGatheringAFolder:
 
         coordinator._converter_logic.gather_folder.assert_not_called()
         coordinator._stem_selection_window.open.assert_not_called()
+
+
+class TestTheExitAsksAboutARunningConversion:
+    """Exiting stops a running conversion, so the reader is asked first."""
+
+    def _coordinator(self, *, active: bool) -> MainTabCoordinator:
+        coordinator = _coordinator(operation_active=False)
+        coordinator._converter_logic.is_active = active
+        return coordinator
+
+    def test_an_idle_converter_lets_the_exit_go_on(self) -> None:
+        coordinator = self._coordinator(active=False)
+        proceed = MagicMock()
+
+        coordinator.guard_exit(proceed)
+
+        proceed.assert_called_once_with()
+        coordinator._dialogs.show_confirmation.assert_not_called()
+
+    def test_a_running_conversion_asks_first(self) -> None:
+        coordinator = self._coordinator(active=True)
+        proceed = MagicMock()
+
+        coordinator.guard_exit(proceed)
+
+        proceed.assert_not_called()
+        args, kwargs = coordinator._dialogs.show_confirmation.call_args
+        assert args[0] == TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION
+        assert args[1] == EXIT_CONVERSION_MESSAGE_KEY
+        assert args[3] is proceed
+        assert kwargs["ok_label"] == EXIT_LABEL_KEY

@@ -30,3 +30,14 @@ Project properties belong to a project and are covered in the [sequencer guide](
 **Reset to defaults** restores the original shortcuts. Your changes take effect when you click **OK**, and the app keeps them for the next time you start.
 
 `Space` plays and pauses, and `Esc` stops. On macOS, the shortcuts use Command where other platforms use Control.
+
+## Exiting
+
+When you exit, the app asks about anything unfinished, one question at a time:
+
+1. Unsaved changes to your project.
+2. Unsaved changes to the reconstruction you have open.
+3. A conversion that is still running.
+4. A library that is still being built.
+
+Click **Cancel** on any question to keep the app open.

@@ -158,13 +158,22 @@ class ProjectCoordinator:
         else:
             self._close()
 
-    def show_exit_save_confirmation(self, on_confirm: VoidCallback) -> None:
+    def guard_exit(self, proceed: VoidCallback) -> None:
+        """Lets the exit go on, asking first to save a project with unsaved changes.
+
+        Save and Exit both go on, so what the exit asks about next is asked in turn, and Cancel
+        keeps the application open.
+        """
+        if not self.is_unsaved:
+            proceed()
+            return
+
         self._dialogs.show_save_confirmation(
             tag=TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
             title=self._title(GlobalDialogTitleElements.EXIT_CONFIRMATION),
             message=self._message(GlobalMessageElements.EXIT_UNSAVED_PROJECT),
             on_save=self.save,
-            on_confirm=on_confirm,
+            on_confirm=proceed,
             ok_label=self._label(DialogElements.EXIT),
         )
 

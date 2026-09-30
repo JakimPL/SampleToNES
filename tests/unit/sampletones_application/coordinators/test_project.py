@@ -455,3 +455,27 @@ class TestTheSaveAPromptWaitsOn:
 
         assert saving.save() is SaveOutcome.FAILED
         assert saving._dialogs.show_error.call_args.args[0] is failure
+
+
+class TestTheExitAsksAboutTheProject:
+    """Exiting with unsaved project changes asks to save them first, and the answer lets the exit go on."""
+
+    def test_a_saved_project_lets_the_exit_go_on(self, project_coordinator: ProjectCoordinator) -> None:
+        project_coordinator._project_controller.is_dirty = False
+        proceed = MagicMock()
+
+        project_coordinator.guard_exit(proceed)
+
+        proceed.assert_called_once_with()
+        project_coordinator._dialogs.show_save_confirmation.assert_not_called()
+
+    def test_an_unsaved_project_asks_to_save_first(self, project_coordinator: ProjectCoordinator) -> None:
+        project_coordinator._project_controller.is_dirty = True
+        proceed = MagicMock()
+
+        project_coordinator.guard_exit(proceed)
+
+        proceed.assert_not_called()
+        prompt = project_coordinator._dialogs.show_save_confirmation.call_args.kwargs
+        assert prompt["on_save"] == project_coordinator.save
+        assert prompt["on_confirm"] is proceed

@@ -97,7 +97,6 @@ from sampletones_application.services import (
 from sampletones_application.shell import ApplicationShell, ShortcutBindings
 from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_ABOUT,
-    TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
     TAG_GLOBAL_TEXTURE_LOGO,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_MENU_FPS,
@@ -128,6 +127,7 @@ from sampletones_application.ui.panels.dialogs.render import GUIRenderWindow
 from sampletones_application.ui.panels.dialogs.stem_selection import GUIStemSelectionWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
+from sampletones_application.utils.callbacks.gates import pass_gates
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
@@ -1624,46 +1624,17 @@ class Application:
         """Flips one channel of the sequencer's mix, the gesture the Channels submenu offers."""
         self._sequencer_tab.toggle_channel(generator)
 
-    def _show_confirmation_dialog(
-        self,
-        message: str,
-        ok_label: str,
-    ) -> None:
-        self.dialogs.show_confirmation(
-            tag=TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
-            title=self.language_manager["global.dialog.title.exit_confirmation"],
-            message=message,
-            on_confirm=self._exit_application,
-            ok_label=ok_label,
-        )
-
     def _on_close(self) -> None:
-        if self.project_manager.is_dirty:
-            self._project_coordinator.show_exit_save_confirmation(on_confirm=self._exit_application)
-
-        elif self._reconstruction_coordinator.is_unsaved() and not self._editing_project_sample():
-            self._reconstruction_coordinator.show_exit_save_confirmation(on_confirm=self._exit_application)
-
-        elif self._is_converter_active():
-            self._show_confirmation_dialog(
-                self.language_manager["global.dialog.message.exit_conversion_in_progress"],
-                ok_label=self.language_manager["global.dialog.label.exit"],
-            )
-
-        elif self._is_library_generating():
-            self._show_confirmation_dialog(
-                self.language_manager["global.dialog.message.exit_library_generation_in_progress"],
-                ok_label=self.language_manager["global.dialog.label.exit"],
-            )
-
-        else:
-            self._exit_application()
-
-    def _is_converter_active(self) -> bool:
-        return self._main_tab.is_converter_active()
-
-    def _is_library_generating(self) -> bool:
-        return self._instructions_tab.is_library_generating()
+        """Exits once each owner of something unfinished has asked about it, one after another."""
+        pass_gates(
+            (
+                self._project_coordinator.guard_exit,
+                self._reconstruction_coordinator.guard_exit,
+                self._main_tab.guard_exit,
+                self._instructions_tab.guard_exit,
+            ),
+            self._exit_application,
+        )
 
     def _is_project_open(self) -> bool:
         return self.project_controller.is_open
