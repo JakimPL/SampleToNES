@@ -135,3 +135,11 @@ currently out of line. An entry leaves when the code meets the contract again.
   moved.
 
 ## Bugs
+
+* An undo or redo leaves the Reconstructions tab on the document it showed. A restore replaces the project
+  through `on_project_replaced`, which only the sequencer tab hears, so an open project sample keeps the
+  undone reconstruction and loses its owner, and an open instrument keeps its old envelopes. Closing it
+  needs two answers: what the tab shows once an undo removes its voice, and whether the manager holds the
+  voice id that a restore keeps.
+* A regeneration that lands after a recording's removal puts the recording back, since it rebuilds the
+  document it started from.
