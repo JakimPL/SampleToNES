@@ -522,7 +522,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         waveform_data: WaveformData,
         selected_channels: Optional[List[ChannelName]] = None,
     ) -> None:
-        self._reconstruction_dimmed = False
         self.clear_layers()
         self.current_data = waveform_data
         self._sample_rate = waveform_data.sample_rate

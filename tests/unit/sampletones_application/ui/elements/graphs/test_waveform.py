@@ -280,6 +280,27 @@ class TestWaveformReconstructionDim:
         graph.set_reconstruction_dimmed(False)
         graph._status_bar.set.assert_called_with("")
 
+    def test_new_data_keeps_the_reconstruction_dimmed(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """An edit landing while later ones are still on their way redraws the waveform still faded."""
+        graph = _graph()
+        graph.set_reconstruction_dimmed(True)
+        monkeypatch.setattr(graph, "clear_layers", MagicMock())
+        monkeypatch.setattr(graph, "_restate_clock_ticks", MagicMock())
+        monkeypatch.setattr(graph, "_display_layers", MagicMock(return_value=[]))
+        graph._x_range = (0.0, 1.0)
+        waveform_data = WaveformData(
+            original_audio=None,
+            approximation=np.zeros(4),
+            approximations={},
+            coefficient=1.0,
+            frame_length=1,
+            sample_rate=4,
+        )
+
+        graph.load_waveform_data(waveform_data)
+
+        assert graph._reconstruction_dimmed is True
+
 
 class TestAClickReportsASampleOfDrawnAudio:
     """The graph reports the sample a click named while it draws the audio its player sounds."""
