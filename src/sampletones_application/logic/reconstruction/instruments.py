@@ -213,17 +213,23 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         """Moves the pitch one channel of a reconstruction has its frames measured against.
 
         A conversion states the value it found, and moving it rebuilds the channel's frames around
-        the new origin, so the edit travels back out through the regeneration.
+        the new origin, so the edit travels back out through the regeneration. The panel offers the
+        pitch on a reconstruction's channels alone, so a change reaching it while it shows an
+        instrument, or a voice that has gone, draws the panel as it now stands and goes nowhere.
         """
-        features = self._get_features(channel_name).model_copy(update={"initial_pitch": value})
-        self._note_silenced(channel_name, features)
-        self._schedule_reconstruction_update(
-            ReconstructionUpdate(
-                channel_name,
-                FeatureKey.INITIAL_PITCH,
-                features,
-            )
-        )
+        match self._editor.edited_instrument():
+            case ChannelEnvelopesViewModel() as envelopes:
+                features = envelopes[channel_name].model_copy(update={"initial_pitch": value})
+                self._note_silenced(channel_name, features)
+                self._schedule_reconstruction_update(
+                    ReconstructionUpdate(
+                        channel_name,
+                        FeatureKey.INITIAL_PITCH,
+                        features,
+                    )
+                )
+            case _:
+                self.update_display()
 
     def handle_envelope_changed(
         self,
@@ -234,15 +240,22 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         """Takes one dimension as an edit leaves it, values and loop point together.
 
         The panel states the whole dimension, so a bar redrawn on the plot and a sequence typed
-        into the text field arrive the same way and are written the same way.
+        into the text field arrive the same way and are written the same way. An instrument stands
+        on no audio, so an edit reaches it at once, while a reconstruction's envelopes travel back
+        out through the regeneration. An edit reaching a panel whose voice has gone draws the panel
+        as it now stands and goes nowhere.
         """
-        if self._write_instrument_envelope(feature_key, envelope):
-            return
-
-        features = self._get_features(channel_name).with_envelope(feature_key, envelope)
-        self._note_silenced(channel_name, features)
-        self._report_edited_size(channel_name, features)
-        self._schedule_reconstruction_update(ReconstructionUpdate(channel_name, feature_key, features))
+        match self._editor.edited_instrument():
+            case InstrumentEdit():
+                self._editor.write_envelope(feature_key, envelope)
+                self.update_display()
+            case ChannelEnvelopesViewModel() as envelopes:
+                features = envelopes[channel_name].with_envelope(feature_key, envelope)
+                self._note_silenced(channel_name, features)
+                self._report_edited_size(channel_name, features)
+                self._schedule_reconstruction_update(ReconstructionUpdate(channel_name, feature_key, features))
+            case None:
+                self.update_display()
 
     def _note_silenced(self, channel_name: ChannelName, features: Features) -> None:
         """Remembers whether the latest edit of a channel silences it, which its regeneration then shows."""
@@ -250,23 +263,6 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
             self._silenced.add(channel_name)
         else:
             self._silenced.discard(channel_name)
-
-    def _write_instrument_envelope(
-        self,
-        feature_key: FeatureKey,
-        envelope: Envelope[int],
-    ) -> bool:
-        """Writes one dimension of the instrument in front of the panel, reporting whether it did.
-
-        An instrument stands on no audio, so an edit reaches it at once rather than through the
-        regeneration a reconstruction's envelopes go back through.
-        """
-        if self.instrument_edit is None:
-            return False
-
-        self._editor.write_envelope(feature_key, envelope)
-        self.update_display()
-        return True
 
     def _report_edited_size(
         self,
@@ -326,9 +322,3 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         channel_name, feature_key, features = self._pending_reconstruction_update
         self._pending_reconstruction_update = None
         self.call(self.on_reconstruction_instrument_updated, channel_name, feature_key, features)
-
-    def _get_features(self, channel_name: ChannelName) -> Features:
-        channels = self._current_generators()
-        assert channels is not None, "A channel edit arrives only while a reconstruction is open"
-
-        return channels[channel_name]

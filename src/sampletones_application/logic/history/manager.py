@@ -75,10 +75,11 @@ class HistoryManager(CallbackMixin):
         """Whether an undo, redo, or jump is reinstalling a snapshot right now.
 
         Every project transition reaches its handlers through the controller's single
-        ``on_project_replaced`` signal, so a handler that keeps transient session state — a
-        listening mute set, an acknowledged prompt — reads this to recognize history
-        navigation and carry that state across it, while a new, opened, or closed document
-        starts it fresh.
+        ``on_project_replaced`` signal, which the composition root fans out to each tab. A
+        handler that keeps session state across history navigation reads this to recognize
+        it: the sequencer carries the listening mute set across it, and the Reconstructions
+        tab keeps the voice it shows and redraws it as restored, while a new, opened, or
+        closed document starts both fresh.
         """
         return self._restoring
 

@@ -88,13 +88,19 @@ class ReconstructionData:
 
         A recording belongs to the entry standing at its position, so an entry the edit keeps
         carries its audio to the position it now holds and an entry taken out releases it.
-        Recordings the load left out stay out.
+        Recordings the load left out stay out. A document naming an entry this one holds no
+        recording for, such as one a restore brings back, comes back with no recording at all,
+        the way a document whose audio fails to load does.
         """
         if not self.stem_audios:
             return ()
 
         positions = {entry.id: index for index, entry in enumerate(self.reconstruction.stems_data.config.entries)}
-        return tuple(self.stem_audios[positions[entry.id]] for entry in reconstruction.stems_data.config.entries)
+        incoming = reconstruction.stems_data.config.entries
+        if any(entry.id not in positions for entry in incoming):
+            return ()
+
+        return tuple(self.stem_audios[positions[entry.id]] for entry in incoming)
 
     @classmethod
     def _assemble(

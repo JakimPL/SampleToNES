@@ -595,7 +595,6 @@ class SequencerTabCoordinator:
         self._project_controller.on_settings_changed = self._sequencer_tracker_logic.push_settings
         self._project_controller.on_song_changed = self._on_song_changed
         self._project_controller.on_voices_changed = self._sequencer_voices_logic.push_voices
-        self._project_controller.on_project_replaced = self._on_project_replaced
 
     def _wire_history(self) -> None:
         self._sequencer_history_panel.on_undo = self.undo
@@ -615,13 +614,14 @@ class SequencerTabCoordinator:
         self._sequencer_module_panel.update_settings(view_model)
         self._sequencer_tracker_panel.update_settings(view_model)
 
-    def _on_project_replaced(self) -> None:
+    def realign_with_project(self) -> None:
         """Realigns the tab with a replaced project, keeping the mute set across history navigation.
 
-        Undo, redo, and history jumps replace the project as well, and the history manager reports
-        itself restoring throughout, so the channels the user is listening through carry across
-        them. A new, opened, or closed document begins a fresh listening session instead, with
-        every channel audible.
+        The application's fan-out of the controller's single ``on_project_replaced`` signal calls
+        this. Undo, redo, and history jumps replace the project as well, and the history manager
+        reports itself restoring throughout, so the channels the user is listening through carry
+        across them. A new, opened, or closed document begins a fresh listening session instead,
+        with every channel audible.
         """
         if not self._history.is_restoring:
             self._sequencer_channels_logic.reset()

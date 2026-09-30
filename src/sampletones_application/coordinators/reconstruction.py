@@ -7,6 +7,8 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
+from sampletones_application.logic.history.manager import HistoryManager
+from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.edit import (
     ChannelEdit,
     ReconstructionEdit,
@@ -37,6 +39,9 @@ from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.sample import Sample
+from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
@@ -54,6 +59,9 @@ class ReconstructionCoordinator:
     - Its dirty/saved state drives the window title.
     - Menu bar instrument regeneration flows through it so that all
       reconstruction mutations remain centralized.
+    - Every change from outside the tab that replaces the open document passes
+      through it: opening a project voice, a replaced or retuned sample, and a
+      project change that restores, removes or lets go of the voice the tab shows.
 
     The reconstructions tab is wired in after construction through
     ``set_reconstructions_tab``; ``_tab`` asserts it is present before first use.
@@ -65,25 +73,27 @@ class ReconstructionCoordinator:
         session_manager: SessionManager,
         regeneration_service: RegenerationService,
         audio_device_manager: AudioDeviceManager,
+        project_controller: ProjectController,
+        history: HistoryManager,
         *,
         dialogs: DialogsRenderer,
         language_manager: LanguageManager,
         on_tab_switch: Callback,
         on_session_state_changed: VoidCallback,
         on_reconstruction_updated: Callable[[ReconstructionEdit], None],
-        is_reconstruction_embedded: Callable[[], bool],
     ) -> None:
         self._reconstruction_manager = reconstruction_manager
         self._session_manager = session_manager
         self._regeneration_service = regeneration_service
         self._audio_device_manager = audio_device_manager
+        self._project_controller = project_controller
+        self._history = history
         self._reconstructions_tab: Optional[ReconstructionTabCoordinator] = None
         self._dialogs = dialogs
         self._language_manager = language_manager
         self._on_tab_switch = on_tab_switch
         self._on_session_state_changed_callback = on_session_state_changed
         self._on_reconstruction_updated_callback = on_reconstruction_updated
-        self._is_reconstruction_embedded = is_reconstruction_embedded
 
         self._reconstruction_manager.session.on_state_changed = self._on_state_changed
         self._regeneration_service.subscribe(self._on_regeneration_result)
@@ -119,10 +129,10 @@ class ReconstructionCoordinator:
         """Reports pending edits that a save prompt can resolve.
 
         A prompt is warranted only for a standalone reconstruction with unsaved changes. A
-        project-embedded reconstruction has no file of its own, and its edits belong to the
-        project — closing or replacing it loses nothing, so it needs no prompt.
+        project sample has no file of its own, and its edits belong to the project — closing or
+        replacing it loses nothing, so it needs no prompt.
         """
-        return self.is_unsaved() and not self._is_reconstruction_embedded()
+        return self.is_unsaved() and not self._reconstruction_manager.is_project_sample
 
     def check_loaded(self) -> bool:
         if not self.is_loaded():
@@ -352,11 +362,10 @@ class ReconstructionCoordinator:
         """Applies an edited reconstruction across the open document and project.
 
         Every edit of the open document arrives here, so one path answers a regenerated
-        instrument and a removed recording alike. The owning-sample hook runs first, while
-        the manager still holds the prior reconstruction, so it can locate the owned sample
-        by identity and record the edit against the project history as the ``edit``
-        describes itself. The open document then rebinds to the new reconstruction, keeping
-        the editor and any owned sample sharing one object, and the tab shows it.
+        instrument and a removed recording alike. The owning-sample hook runs first and records
+        the edit against the project history as the ``edit`` describes itself, so the history
+        holds it by the time the tab shows it. The open document then rebinds to the new
+        reconstruction, the same object the sample now holds, and the tab shows it.
         """
         self._on_reconstruction_updated_callback(edit)
         self._reconstruction_manager.apply_edited(edit.reconstruction)
@@ -375,7 +384,137 @@ class ReconstructionCoordinator:
             case ChannelEdit():
                 self._tab.update_reconstruction()
             case StemRemoval():
-                self._tab.redraw_reconstruction()
+                self._tab.redraw_reconstruction(refit_waveform=False)
+
+    def open_project_voice(self, voice_id: str) -> None:
+        """Opens a voice of the project on the Reconstructions tab, in the terms of its kind.
+
+        Either kind takes the place of the open document, so a standalone document with unsaved
+        changes is offered a save first, the way loading a file offers it.
+        """
+        if self._requires_save_confirmation():
+            self._show_save_confirmation(
+                title=self._language_manager["global.dialog.title.edit_voice_unsaved_reconstruction"],
+                message=self._language_manager["global.dialog.message.edit_voice_unsaved_reconstruction"],
+                on_save=self.save,
+                on_confirm=lambda: self._open_project_voice(voice_id),
+                ok_label=self._language_manager["global.dialog.label.discard"],
+            )
+        else:
+            self._open_project_voice(voice_id)
+
+    def _open_project_voice(self, voice_id: str) -> None:
+        """Puts a voice of the project in front of the tab.
+
+        A sample opens as the reconstruction behind it, waveform and stems and all, and the
+        document remembers the voice it is. An instrument stands on no recording, so the tab
+        shows its envelopes alone. Either kind brings that tab to the front, so the voice a
+        reader asked to edit is the one in view.
+        """
+        match self._project_controller.project.voice(voice_id):
+            case Sample() as sample:
+                self._tab.release_instrument()
+                self._reconstruction_manager.load_reconstruction_object(
+                    sample.reconstruction,
+                    name=sample.name,
+                    voice_id=sample.id,
+                )
+            case Instrument():
+                self._tab.edit_instrument(voice_id)
+                self._on_tab_switch(Tab.RECONSTRUCTIONS)
+            case _:
+                logger.warning(f"Cannot edit unknown project voice: {voice_id}")
+
+    def replace_sample(self, voice_id: str, reconstruction: Reconstruction) -> None:
+        """Shows the reconstruction a sample now holds, where the tab has that sample open.
+
+        A sample whose audio is substituted keeps its id, so the open document takes the incoming
+        reconstruction along. It brings envelopes of its own, so the tab redraws the instruments
+        panel from it.
+
+        Args:
+            voice_id: The sample that received a new reconstruction.
+            reconstruction: The reconstruction the sample now holds.
+        """
+        if self._reconstruction_manager.voice_id == voice_id:
+            self._rebind(reconstruction)
+
+    def retune_sample(self, voice_id: str, reconstruction: Reconstruction) -> None:
+        """Shows a retuned sample's reconstruction, where the tab has that sample open.
+
+        A retune carries every envelope over, so the instruments panel keeps what it draws, and
+        the audio spans another length, so the waveform re-fits.
+
+        Args:
+            voice_id: The sample the retune rewrote.
+            reconstruction: The reconstruction the sample now holds.
+        """
+        if self._reconstruction_manager.voice_id != voice_id:
+            return
+
+        self._reconstruction_manager.apply_edited(reconstruction)
+        self._tab.update_reconstruction(refit_waveform=True)
+
+    def follow_project(self) -> None:
+        """Closes the voice the tab shows once the project stops holding it.
+
+        Every change to the project reaches here, the tab's own edits included. An edit writes
+        the project before the open document shows it, so a voice the project still holds is
+        left as it stands and the panel keeps what the reader is drawing.
+        """
+        self._follow(restored=False)
+
+    def follow_replaced_project(self) -> None:
+        """Follows the voice the tab shows into a project put in place of the one it belonged to.
+
+        An undo, a redo or a history jump installs a snapshot that keeps every voice's id, so a
+        voice it keeps is shown as restored and one it took out closes. Any other replacement
+        (a new, opened or closed project) lets the voice go, since a reopened file brings back
+        the same ids.
+        """
+        if self._history.is_restoring:
+            self._follow(restored=True)
+        else:
+            self._let_go_of_project_voice()
+
+    def _follow(self, *, restored: bool) -> None:
+        """Brings the voice in front of the tab in line with the project.
+
+        A sample the project no longer holds closes. A restore hands a kept sample the
+        reconstruction it held then, which the tab rebinds to. The instrument the tab holds
+        follows by the same rule.
+        """
+        voice_id = self._reconstruction_manager.voice_id
+        if voice_id is not None:
+            match self._project_controller.project.voice(voice_id):
+                case Sample() as sample:
+                    if restored:
+                        self._rebind(sample.reconstruction)
+                case _:
+                    self._close()
+
+        self._tab.follow_instrument(restored=restored)
+
+    def _let_go_of_project_voice(self) -> None:
+        """Closes a project voice the tab shows, leaving a standalone document open."""
+        if self._reconstruction_manager.is_project_sample:
+            self._close()
+
+        self._tab.close_instrument()
+
+    def _rebind(self, reconstruction: Reconstruction) -> None:
+        """Points the open document at the reconstruction its sample now holds, and redraws it.
+
+        A reconstruction timed at another NES frequency spans another length, so the waveform
+        re-fits to it. The document the sample already holds needs no redraw.
+        """
+        open_reconstruction = self._reconstruction_manager.reconstruction
+        if open_reconstruction is None or reconstruction is open_reconstruction:
+            return
+
+        retimed = reconstruction.config.nes_frequency != open_reconstruction.config.nes_frequency
+        self._reconstruction_manager.apply_edited(reconstruction)
+        self._tab.redraw_reconstruction(refit_waveform=retimed)
 
     def _on_regeneration_result(self, result: RegenerationResult) -> None:
         match result:

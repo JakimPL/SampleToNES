@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, List
+from typing import Callable, Final, List
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -20,6 +20,8 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.settings impor
 from sampletones_shared.exceptions import LoadReconstructionError
 from tests.suite.errors import DIRECTORY_READ_ERRORS
 from tests.suite.stems import RECORDED_SCALE, single_entry_stems_data
+
+SAMPLE_VOICE_ID: Final[str] = "lead-id"
 
 
 def _two_entry_stems_data() -> StemsData:
@@ -112,7 +114,11 @@ class TestReconstructionManagerSaveReconstruction:
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
     ) -> None:
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
         save_path = tmp_path / "saved.stn"
         assert reconstruction_manager.save_reconstruction(save_path)
         assert save_path.exists()
@@ -122,7 +128,11 @@ class TestReconstructionManagerSaveReconstruction:
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
         assert not reconstruction_manager.save_reconstruction()
 
     def test_save_when_nothing_loaded_is_no_op(
@@ -145,7 +155,11 @@ class TestReconstructionManagerIsFileBacked:
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
         assert not reconstruction_manager.is_file_backed
 
     def test_true_after_file_load(
@@ -212,7 +226,11 @@ class TestTheFileADocumentIsBackedBy:
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
     ) -> None:
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
 
         assert not reconstruction_manager.is_backed_by(tmp_path / "Sample.stn")
 
@@ -224,7 +242,11 @@ class TestReconstructionManagerSaveReconstructionAs:
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
     ) -> None:
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
         target = tmp_path / "detached.stn"
         reconstruction_manager.save_reconstruction_as(target)
         assert target.exists()
@@ -235,7 +257,11 @@ class TestReconstructionManagerSaveReconstructionAs:
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
     ) -> None:
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
         target = tmp_path / "detached.stn"
         reconstruction_manager.save_reconstruction_as(target)
         assert reconstruction_manager.is_file_backed
@@ -248,7 +274,7 @@ class TestReconstructionManagerSaveReconstructionAs:
         tmp_path: Path,
     ) -> None:
         original = reconstruction_factory()
-        reconstruction_manager.load_reconstruction_object(original, name="Sample")
+        reconstruction_manager.load_reconstruction_object(original, name="Sample", voice_id=SAMPLE_VOICE_ID)
         reconstruction_manager.save_reconstruction_as(tmp_path / "detached.stn")
         assert reconstruction_manager.reconstruction is not original
 
@@ -258,7 +284,11 @@ class TestReconstructionManagerSaveReconstructionAs:
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
     ) -> None:
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
         reconstruction_manager.mark_updated()
         reconstruction_manager.save_reconstruction_as(tmp_path / "detached.stn")
         assert not reconstruction_manager.session.unsaved_changes
@@ -279,7 +309,11 @@ class TestReconstructionManagerLoadObject:
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
         assert reconstruction_manager.session.is_loaded
 
     def test_load_object_sets_current_reconstruction(
@@ -287,7 +321,11 @@ class TestReconstructionManagerLoadObject:
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
         assert reconstruction_manager.current_reconstruction is not None
 
     def test_load_object_uses_supplied_name_for_session(
@@ -295,7 +333,11 @@ class TestReconstructionManagerLoadObject:
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Kick drum")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Kick drum",
+            voice_id=SAMPLE_VOICE_ID,
+        )
         assert reconstruction_manager.session.name == "Kick drum"
 
     def test_load_object_sets_reconstruction_by_identity(
@@ -304,7 +346,7 @@ class TestReconstructionManagerLoadObject:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample")
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
         assert reconstruction_manager.reconstruction is reconstruction
 
     def test_load_object_fires_on_reconstruction_loaded_callback(
@@ -314,7 +356,11 @@ class TestReconstructionManagerLoadObject:
     ) -> None:
         callback = MagicMock()
         reconstruction_manager.on_reconstruction_loaded = callback
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
         callback.assert_called_once()
 
 
@@ -349,7 +395,11 @@ class TestReconstructionManagerClose:
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
         reconstruction_manager.close_reconstruction()
         assert reconstruction_manager.current_reconstruction is None
 
@@ -360,7 +410,11 @@ class TestReconstructionManagerClose:
     ) -> None:
         callback = MagicMock()
         reconstruction_manager.on_reconstruction_closed = callback
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
         reconstruction_manager.close_reconstruction()
         callback.assert_called_once()
 
@@ -369,7 +423,11 @@ class TestReconstructionManagerClose:
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
         reconstruction_manager.close_reconstruction()
         assert not reconstruction_manager.session.is_loaded
 
@@ -378,7 +436,11 @@ class TestReconstructionManagerClose:
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
         reconstruction_manager.close_reconstruction()
         assert reconstruction_manager.source_paths == ()
 
@@ -390,7 +452,7 @@ class TestReconstructionManagerProperties:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample")
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
         assert reconstruction_manager.reconstruction is reconstruction
 
     def test_filepath_property_is_none_for_in_memory_reconstruction(
@@ -398,7 +460,11 @@ class TestReconstructionManagerProperties:
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
         assert reconstruction_manager.filepath is None
 
     def test_source_paths_return_reconstruction_source_paths(
@@ -407,7 +473,7 @@ class TestReconstructionManagerProperties:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample")
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
         assert reconstruction_manager.source_paths == reconstruction.audio_filepath
 
     def test_current_features_is_populated_after_load(
@@ -415,7 +481,11 @@ class TestReconstructionManagerProperties:
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
         assert reconstruction_manager.current_features is not None
 
 
@@ -467,7 +537,7 @@ class TestAnEditLettingARecordingGo:
             audio_filepath=(tmp_path / "kick.wav", tmp_path / "snare.wav"),
             stems_data=_two_entry_stems_data(),
         )
-        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample")
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
 
         reconstruction_manager.apply_edited(self._edited(reconstruction))
 
@@ -478,13 +548,119 @@ class TestAnEditLettingARecordingGo:
         assert features[ChannelName.PULSE1].volume.items[-1] == 0
 
 
+class TestTheVoiceTheDocumentIs:
+    """The open document remembers the project voice it is, which is how the tab follows it."""
+
+    def test_a_project_sample_names_its_voice(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
+
+        assert reconstruction_manager.voice_id == SAMPLE_VOICE_ID
+        assert reconstruction_manager.is_project_sample
+
+    def test_a_file_names_no_voice(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        path = tmp_path / "song.stn"
+        reconstruction_factory().save(path)
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
+
+        reconstruction_manager.load_reconstruction(path)
+
+        assert reconstruction_manager.voice_id is None
+        assert not reconstruction_manager.is_project_sample
+
+    def test_an_edit_keeps_the_voice(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
+
+        reconstruction_manager.apply_edited(reconstruction_factory())
+
+        assert reconstruction_manager.voice_id == SAMPLE_VOICE_ID
+
+    def test_save_as_lets_the_voice_go(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        """The saved copy is a standalone document, so its edits reach only its file."""
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
+
+        reconstruction_manager.save_reconstruction_as(tmp_path / "detached.stn")
+
+        assert reconstruction_manager.voice_id is None
+
+    def test_a_failed_save_as_keeps_the_voice(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
+
+        with pytest.raises(OSError):
+            reconstruction_manager.save_reconstruction_as(tmp_path / "missing" / "detached.stn")
+
+        assert reconstruction_manager.voice_id == SAMPLE_VOICE_ID
+
+    def test_closing_lets_the_voice_go(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
+
+        reconstruction_manager.close_reconstruction()
+
+        assert reconstruction_manager.voice_id is None
+        assert not reconstruction_manager.is_project_sample
+
+
 class TestReconstructionManagerMarkUpdated:
     def test_mark_updated_sets_unsaved_changes(
         self,
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
         reconstruction_manager.mark_updated()
         assert reconstruction_manager.session.unsaved_changes
 
@@ -515,7 +691,7 @@ class TestReconstructionManagerLocateOriginalAudio:
                 {ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]},
             ),
         )
-        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample")
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
         with pytest.raises(FileNotFoundError):
             reconstruction_manager.locate_original_audio()
 
@@ -541,7 +717,7 @@ class TestReconstructionManagerLocateOriginalAudio:
             audio_filepath=(first, second),
             stems_data=_two_entry_stems_data(),
         )
-        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample")
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
 
         with patch("sampletones_application.logic.reconstruction.manager.open_paths_in_explorer") as open_paths:
             reconstruction_manager.locate_original_audio()
@@ -563,7 +739,7 @@ class TestReconstructionManagerLocateOriginalAudio:
             audio_filepath=(present, missing),
             stems_data=_two_entry_stems_data(),
         )
-        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample")
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
 
         with pytest.raises(FileNotFoundError) as raised:
             reconstruction_manager.locate_original_audio()

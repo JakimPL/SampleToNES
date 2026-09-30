@@ -236,11 +236,11 @@ class SequencerReconstructions:
         """Substitutes a sample's reconstruction as one undoable gesture, renaming it to the source.
 
         The detail is composed while the sample still holds the outgoing reconstruction, so it reads
-        the name being replaced alongside the incoming one. The replacement is announced in the same
-        window, ahead of the substitution, because an editor holding the sample open recognizes it by
-        the identity of the reconstruction it is about to give up. The frequency adoption, the rename,
-        and the substitution share a single history entry, so one undo restores the previous rate,
-        name, and audio together.
+        the name being replaced alongside the incoming one. The replacement is announced once the
+        sample holds the incoming reconstruction, in the form the project keeps, so an editor holding
+        the sample open by its id shows what the project now plays. The frequency adoption, the
+        rename, and the substitution share a single history entry, so one undo restores the previous
+        rate, name, and audio together.
         """
         detail = self._history_detail.replace_sample(voice_id, name)
         with self._history.transaction(
@@ -251,5 +251,5 @@ class SequencerReconstructions:
                 self._tracker_logic.set_nes_frequency(adopt_frequency)
 
             self._voices_logic.rename_voice(voice_id, name)
-            self._on_sample_reconstruction_replaced(voice_id, reconstruction)
             self._browser_logic.replace_reconstruction(voice_id, reconstruction)
+            self._on_sample_reconstruction_replaced(voice_id, reconstruction)

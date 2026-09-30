@@ -1,6 +1,6 @@
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
-from typing import Any, Callable, Dict, Final, FrozenSet, Generator, List, Tuple, Union
+from typing import Any, Callable, Dict, Final, FrozenSet, Generator, List, Optional, Tuple, Union
 from unittest.mock import PropertyMock, patch
 
 import dearpygui.dearpygui as dpg
@@ -11,10 +11,12 @@ from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
+from sampletones_application.constants.instruments import INSTRUMENT_CHANNEL
 from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.sources import SettingsField, SourceKind
 from sampletones_application.logic.history.action import HistoryAction
+from sampletones_application.logic.reconstruction.edit import ChannelEdit
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON,
@@ -59,20 +61,29 @@ from sampletones_application.utils.parallelization.background import (
 )
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_application.view_model.main.converter import ConversionPhase, ConverterViewModel
+from sampletones_application.view_model.reconstruction.envelopes import ChannelEnvelopesViewModel
+from sampletones_application.view_model.reconstruction.instruments import ReconstructionInstrumentsViewModel
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import UNIT_DRIVE
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.features.envelope import Envelope
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.converter.paths import get_audio_files
 from sampletones_core.structures.tree import FileSystemNode, NodeType
+from sampletones_shared.paths.extensions import EXT_FILE_PROJECT
 from sampletones_shared.paths.user import CONFIG_PATH, LIBRARY_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
+from tests.conftest import ReconstructionFactory
+from tests.suite.application import HeldQueue, held_queue
 from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
 
 REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
 DRAG_PAYLOAD_SLOT: Final[int] = 3
 LOUD_DRIVE: Final[float] = 1.75
 UNBUILT_ROW: Final[str] = "browser.row.unbuilt"
+EDITED_VOLUME: Final[Envelope[int]] = Envelope[int](items=(7, 7))
 
 _DPG_DISPLAY_FUNCTIONS = [
     "create_context",
@@ -94,6 +105,8 @@ _DPG_DISPLAY_FUNCTIONS = [
 
 _VIEWPORT_CLIENT_WIDTH: Final[int] = 1280
 _VIEWPORT_CLIENT_HEIGHT: Final[int] = 720
+
+__all__ = ["held_queue"]
 
 
 def _display_patches() -> List[Any]:
@@ -288,6 +301,30 @@ class TestStartupRestoreDelegation:
         load_library_file.assert_called_once_with(Path("last.ins"))
 
 
+@pytest.fixture
+def embedded_sample(
+    app: Application,
+    reconstruction_factory: ReconstructionFactory,
+) -> Sample:
+    """A sample added to a new project and opened on the Reconstructions tab, as Edit opens it."""
+    app.project_controller.new()
+    with app.history.transaction(HistoryAction.ADD_SAMPLE):
+        sample = app.project_controller.add_sample(reconstruction_factory(), "Lead")
+    app._reconstruction_coordinator.open_project_voice(sample.id)
+    return sample
+
+
+@pytest.fixture
+def embedded_instrument(app: Application) -> Instrument:
+    """An instrument added to a new project and opened on the Reconstructions tab, as Edit opens it."""
+    app.project_controller.new()
+    app._add_instrument()
+    instrument = app.project_manager.current.voices[0]
+    assert isinstance(instrument, Instrument)
+    app._reconstruction_coordinator.open_project_voice(instrument.id)
+    return instrument
+
+
 class TestReconstructionSaveAsDetachment:
     """End-to-end proof that Save As severs a project sample from the open document.
 
@@ -296,35 +333,20 @@ class TestReconstructionSaveAsDetachment:
     while the project's sample keeps its original reconstruction object.
     """
 
-    def _embed_sample(
-        self,
-        app: Application,
-        reconstruction_factory: Callable[[], Reconstruction],
-    ) -> Any:
-        app.project_controller.new()
-        reconstruction = reconstruction_factory()
-        with app.history.transaction(HistoryAction.ADD_SAMPLE):
-            sample = app.project_controller.add_sample(reconstruction, "Lead")
-        app._edit_project_voice(sample.id)
-        return sample
-
     def test_embedded_reconstruction_is_owned_and_not_saveable(
         self,
         app: Application,
-        reconstruction_factory: Callable[[], Reconstruction],
+        embedded_sample: Sample,
     ) -> None:
-        sample = self._embed_sample(app, reconstruction_factory)
-
-        assert app._owning_project_sample() is sample
+        assert app._owning_project_sample() is embedded_sample
         assert not app._reconstruction_coordinator.is_saveable()
         assert not app._build_menu_bar_viewmodel().reconstruction_saveable
 
     def test_embedded_reconstruction_needs_no_save_prompt_when_edited(
         self,
         app: Application,
-        reconstruction_factory: Callable[[], Reconstruction],
+        embedded_sample: Sample,
     ) -> None:
-        self._embed_sample(app, reconstruction_factory)
         app.reconstruction_manager.mark_updated()
 
         assert app._reconstruction_coordinator.is_unsaved()
@@ -333,11 +355,10 @@ class TestReconstructionSaveAsDetachment:
     def test_save_as_detaches_open_document_from_the_project(
         self,
         app: Application,
-        reconstruction_factory: Callable[[], Reconstruction],
+        embedded_sample: Sample,
         tmp_path: Path,
     ) -> None:
-        sample = self._embed_sample(app, reconstruction_factory)
-        original = sample.reconstruction
+        original = embedded_sample.reconstruction
 
         app.reconstruction_manager.save_reconstruction_as(tmp_path / "lead.stn")
 
@@ -345,7 +366,7 @@ class TestReconstructionSaveAsDetachment:
         assert app._reconstruction_coordinator.is_saveable()
         assert app._build_menu_bar_viewmodel().reconstruction_saveable
         assert app.reconstruction_manager.reconstruction is not original
-        assert sample.reconstruction is original
+        assert embedded_sample.reconstruction is original
         assert original in [sample.reconstruction for sample in app.project_manager.current.voices]
 
 
@@ -399,6 +420,218 @@ class TestAddOpenReconstructionToSequencer:
         assert sample.reconstruction is not app.reconstruction_manager.reconstruction
         assert sample.reconstruction.audio_filepath == ()
         assert not app._editing_project_sample()
+
+
+class TestTheReconstructionsTabFollowsTheProject:
+    """The Reconstructions tab knows the voice it shows by its id, so a restore and a removal reach it.
+
+    An undo or a redo keeping the voice shows it as the project now holds it, and a change that takes
+    the voice out of the project, or puts another project in place, empties the tab.
+    """
+
+    @staticmethod
+    def _edit(app: Application, reconstruction_factory: ReconstructionFactory) -> Reconstruction:
+        """A regenerated instrument landing on the open sample, the way a drag on the panel lands."""
+        edited = reconstruction_factory()
+        app._reconstruction_coordinator.apply_edit(
+            ChannelEdit(
+                reconstruction=edited,
+                channel_name=ChannelName.PULSE1,
+                feature_key=FeatureKey.VOLUME,
+            )
+        )
+        return edited
+
+    @staticmethod
+    def _shows_nothing(app: Application, held_queue: HeldQueue) -> bool:
+        """Whether the tab stands empty once the close it queued has run."""
+        held_queue.drain()
+        return (
+            app.reconstruction_manager.current_reconstruction is None
+            and not app._reconstruction_coordinator.is_loaded()
+        )
+
+    @staticmethod
+    def _drawn_views(app: Application) -> List[ReconstructionInstrumentsViewModel]:
+        """Every view the instruments panel is handed from here on."""
+        views: List[ReconstructionInstrumentsViewModel] = []
+        app._reconstructions_tab._reconstruction_instruments_logic.on_view_changed = views.append
+        return views
+
+    @staticmethod
+    def _drawn_envelopes(app: Application) -> List[Optional[ChannelEnvelopesViewModel]]:
+        """Every set of envelopes the instruments panel is handed from here on."""
+        drawn: List[Optional[ChannelEnvelopesViewModel]] = []
+        app._reconstructions_tab._reconstruction_instruments_logic.on_feature_data_changed = drawn.append
+        return drawn
+
+    def test_an_undo_shows_the_reconstruction_it_restores(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        original = embedded_sample.reconstruction
+        self._edit(app, reconstruction_factory)
+
+        app.history.undo()
+
+        assert app.reconstruction_manager.reconstruction is original
+
+    def test_the_sample_an_undo_keeps_still_owns_the_tab(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        """The title and the next edit reach the sample, so the tab stays a view of the project."""
+        self._edit(app, reconstruction_factory)
+
+        app.history.undo()
+
+        owner = app._owning_project_sample()
+        title = app._reconstruction_title_part()
+        assert owner is not None
+        assert owner.id == embedded_sample.id
+        assert title is not None
+        assert title.included
+
+    def test_an_undo_redraws_the_instruments_panel(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        self._edit(app, reconstruction_factory)
+        drawn = self._drawn_envelopes(app)
+
+        app.history.undo()
+
+        assert drawn == [app.reconstruction_manager.current_features]
+
+    def test_a_redo_shows_the_edit_again(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        edited = self._edit(app, reconstruction_factory)
+        app.history.undo()
+
+        app.history.redo()
+
+        owner = app._owning_project_sample()
+        assert app.reconstruction_manager.reconstruction is edited
+        assert owner is not None
+        assert owner.id == embedded_sample.id
+
+    def test_an_undo_of_an_instrument_edit_draws_the_envelope_it_restores(
+        self,
+        app: Application,
+        embedded_instrument: Instrument,
+    ) -> None:
+        before = embedded_instrument.instrument_features().volume
+        instruments_logic = app._reconstructions_tab._reconstruction_instruments_logic
+        instruments_logic.handle_envelope_changed(INSTRUMENT_CHANNEL, FeatureKey.VOLUME, EDITED_VOLUME)
+        drawn = self._drawn_envelopes(app)
+
+        app.history.undo()
+
+        assert drawn
+        envelopes = drawn[-1]
+        assert envelopes is not None
+        assert envelopes[INSTRUMENT_CHANNEL].volume == before
+
+    def test_an_undo_taking_the_sample_out_empties_the_tab(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        held_queue: HeldQueue,
+    ) -> None:
+        app.history.undo()
+
+        assert app.project_manager.current.voice(embedded_sample.id) is None
+        assert self._shows_nothing(app, held_queue)
+
+    def test_a_redo_bringing_the_sample_back_leaves_the_tab_empty(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        held_queue: HeldQueue,
+    ) -> None:
+        """A voice that comes back is the reader's to open again."""
+        app.history.undo()
+
+        app.history.redo()
+
+        assert app.project_manager.current.voice(embedded_sample.id) is not None
+        assert self._shows_nothing(app, held_queue)
+
+    def test_removing_the_open_sample_empties_the_tab(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        held_queue: HeldQueue,
+    ) -> None:
+        app._sequencer_tab._voices.remove(embedded_sample.id)
+
+        assert self._shows_nothing(app, held_queue)
+
+    def test_removing_the_open_instrument_empties_the_panel(
+        self,
+        app: Application,
+        embedded_instrument: Instrument,
+    ) -> None:
+        views = self._drawn_views(app)
+
+        app._sequencer_tab._voices.remove(embedded_instrument.id)
+
+        assert views
+        assert views[-1].instrument is None
+        assert not views[-1].reconstruction_loaded
+
+    def test_closing_the_project_empties_the_tab(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        held_queue: HeldQueue,
+    ) -> None:
+        app.project_controller.close()
+
+        assert self._shows_nothing(app, held_queue)
+
+    def test_reopening_the_saved_project_empties_the_tab(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        held_queue: HeldQueue,
+        tmp_path: Path,
+    ) -> None:
+        """The file keeps the voice's id, so the reopened project holds a voice the tab no longer shows."""
+        path = tmp_path / f"song{EXT_FILE_PROJECT}"
+        app.project_controller.save(path)
+
+        app.project_controller.load(path)
+
+        assert isinstance(app.project_manager.current.voice(embedded_sample.id), Sample)
+        assert self._shows_nothing(app, held_queue)
+
+    def test_a_reconstruction_opened_from_a_file_outlasts_a_new_and_a_closed_project(
+        self,
+        app: Application,
+        reconstruction_factory: ReconstructionFactory,
+        held_queue: HeldQueue,
+        tmp_path: Path,
+    ) -> None:
+        path = tmp_path / "lead.stn"
+        reconstruction_factory().save(path)
+        app.reconstruction_manager.load_reconstruction(path)
+
+        app.project_controller.new()
+        app.project_controller.close()
+
+        held_queue.drain()
+        assert app.reconstruction_manager.filepath == path
 
 
 def _press_shortcut(app: Application, shortcut_id: ShortcutId) -> None:

@@ -142,6 +142,50 @@ class TestWhatTheTabHasInFront:
         assert editor.edited_instrument() is None
 
 
+class TestWhetherTheTabHoldsAnInstrument:
+    """The tab keeps the instrument it was given until it lets go, so a departed voice is noticed."""
+
+    def test_it_holds_none_to_begin_with(self, editor: InstrumentEditor) -> None:
+        assert not editor.holds_instrument
+
+    def test_opening_an_instrument_holds_it(
+        self,
+        editor: InstrumentEditor,
+        controller: ProjectController,
+    ) -> None:
+        instrument = controller.add_instrument(new_instrument("lead"))
+
+        editor.edit_instrument(instrument.id)
+
+        assert editor.holds_instrument
+
+    def test_an_instrument_removed_from_the_project_is_still_held(
+        self,
+        editor: InstrumentEditor,
+        controller: ProjectController,
+    ) -> None:
+        """Whoever follows the project reads this to tell a departed instrument from none at all."""
+        instrument = controller.add_instrument(new_instrument("lead"))
+        editor.edit_instrument(instrument.id)
+
+        controller.remove_voice(instrument.id)
+
+        assert editor.holds_instrument
+        assert editor.instrument is None
+
+    def test_letting_go_holds_none(
+        self,
+        editor: InstrumentEditor,
+        controller: ProjectController,
+    ) -> None:
+        instrument = controller.add_instrument(new_instrument("lead"))
+        editor.edit_instrument(instrument.id)
+
+        editor.release_instrument()
+
+        assert not editor.holds_instrument
+
+
 class TestWritingIntoTheInstrument:
     def test_an_envelope_reaches_the_instrument(
         self,

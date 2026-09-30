@@ -1,30 +1,51 @@
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Final, List, Optional
 from unittest.mock import MagicMock
 
 import pytest
 
+from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.coordinators.reconstruction import ReconstructionCoordinator
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
-from sampletones_application.logic.reconstruction.edit import StemRemoval
+from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
+from sampletones_application.logic.history.action import HistoryAction
+from sampletones_application.logic.history.manager import HistoryManager
+from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.logic.project.manager import ProjectManager
+from sampletones_application.logic.reconstruction.edit import ChannelEdit, ReconstructionEdit, StemRemoval
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.services.regeneration.service import RegeneratedInstrument
 from sampletones_application.services.result import ServiceSuccess
 from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED
 from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
 from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.project.voices.creation import new_instrument
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import (
     InvalidMetadataError,
     InvalidReconstructionValuesError,
 )
+from sampletones_shared.paths.extensions import EXT_FILE_PROJECT
 from tests.conftest import ReconstructionFactory
+from tests.suite.application import HeldQueue, held_queue, scheduling
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.language import FakeLanguageManager
+
+__all__ = ["held_queue", "scheduling"]
+
+OPEN_VOICE_ID: Final[str] = "lead-id"
+HISTORY_BUDGET: Final[int] = 16
+
+
+class VoiceKind(Enum):
+    SAMPLE = "sample"
+    INSTRUMENT = "instrument"
 
 
 @pytest.fixture
@@ -34,12 +55,13 @@ def reconstruction_coordinator() -> ReconstructionCoordinator:
         MagicMock(),
         MagicMock(),
         MagicMock(),
+        MagicMock(),
+        MagicMock(),
         dialogs=MagicMock(),
         language_manager=MagicMock(),
         on_tab_switch=MagicMock(),
         on_session_state_changed=MagicMock(),
         on_reconstruction_updated=MagicMock(),
-        is_reconstruction_embedded=MagicMock(return_value=False),
     )
 
 
@@ -53,14 +75,16 @@ def _gating_coordinator(
         MagicMock(),
         MagicMock(),
         MagicMock(),
+        MagicMock(),
+        MagicMock(),
         dialogs=MagicMock(),
         language_manager=MagicMock(),
         on_tab_switch=MagicMock(),
         on_session_state_changed=MagicMock(),
         on_reconstruction_updated=MagicMock(),
-        is_reconstruction_embedded=lambda: embedded,
     )
     coordinator._reconstruction_manager.session.unsaved_changes = unsaved
+    coordinator._reconstruction_manager.is_project_sample = embedded
     coordinator.set_reconstructions_tab(MagicMock())
     return coordinator
 
@@ -127,16 +151,17 @@ class TestRegenerationApplyOrdering:
     ) -> None:
         """Pins the hook-before-apply order in ``apply_edit``.
 
-        The hook locates the owning project sample by identity against the prior
-        reconstruction, so it must observe the manager before the document rebinds
-        to the regenerated object.
+        The hook records the edit against the project, so the history holds it by the time
+        the open document rebinds to the regenerated object and the tab shows it.
         """
         manager = ReconstructionManager(scheduling=MagicMock())
         prior = reconstruction_factory()
-        manager.load_reconstruction_object(prior, name="lead")
+        manager.load_reconstruction_object(prior, name="lead", voice_id=OPEN_VOICE_ID)
         observed: List[Optional[Reconstruction]] = []
         coordinator = ReconstructionCoordinator(
             manager,
+            MagicMock(),
+            MagicMock(),
             MagicMock(),
             MagicMock(),
             MagicMock(),
@@ -145,7 +170,6 @@ class TestRegenerationApplyOrdering:
             on_tab_switch=MagicMock(),
             on_session_state_changed=MagicMock(),
             on_reconstruction_updated=lambda _outcome: observed.append(manager.reconstruction),
-            is_reconstruction_embedded=lambda: False,
         )
         coordinator.set_reconstructions_tab(MagicMock())
         regenerated = reconstruction_factory()
@@ -170,10 +194,12 @@ class TestStemRemovalApplyOrdering:
         """Every edit of the open document is applied alike, so the history sees them alike."""
         manager = ReconstructionManager(scheduling=MagicMock())
         prior = reconstruction_factory()
-        manager.load_reconstruction_object(prior, name="lead")
+        manager.load_reconstruction_object(prior, name="lead", voice_id=OPEN_VOICE_ID)
         observed: List[Optional[Reconstruction]] = []
         coordinator = ReconstructionCoordinator(
             manager,
+            MagicMock(),
+            MagicMock(),
             MagicMock(),
             MagicMock(),
             MagicMock(),
@@ -182,7 +208,6 @@ class TestStemRemovalApplyOrdering:
             on_tab_switch=MagicMock(),
             on_session_state_changed=MagicMock(),
             on_reconstruction_updated=lambda _edit: observed.append(manager.reconstruction),
-            is_reconstruction_embedded=lambda: False,
         )
         coordinator.set_reconstructions_tab(MagicMock())
         remaining = reconstruction_factory()
@@ -234,7 +259,7 @@ class TestAnEditRedrawsWhatItRewrote:
             )
         )
 
-        tab.redraw_reconstruction.assert_called_once_with()
+        tab.redraw_reconstruction.assert_called_once_with(refit_waveform=False)
         tab.update_reconstruction.assert_not_called()
 
 
@@ -337,6 +362,604 @@ class TestSaveConfirmationGating(BaseTestSuite):
             coordinator._reconstructions_tab.load_reconstruction.assert_called_once_with(path)
 
 
+@pytest.fixture
+def project_manager() -> ProjectManager:
+    return ProjectManager()
+
+
+@pytest.fixture
+def project_controller(project_manager: ProjectManager) -> ProjectController:
+    return ProjectController(project_manager)
+
+
+@pytest.fixture
+def history(project_controller: ProjectController) -> HistoryManager:
+    """A strict history, so an edit that reaches the project outside a transaction is reported."""
+    history = HistoryManager(project_controller, budget=HISTORY_BUDGET, strict=True)
+    project_controller.on_mutation = history.handle_mutation
+    project_controller.on_saved = history.mark_saved
+    return history
+
+
+@pytest.fixture
+def reconstruction_manager(scheduling: SchedulingBehavior) -> ReconstructionManager:
+    return ReconstructionManager(scheduling=scheduling)
+
+
+@pytest.fixture
+def tab() -> MagicMock:
+    return MagicMock(spec=ReconstructionTabCoordinator)
+
+
+@pytest.fixture
+def following_coordinator(
+    reconstruction_manager: ReconstructionManager,
+    project_manager: ProjectManager,
+    project_controller: ProjectController,
+    history: HistoryManager,
+    tab: MagicMock,
+    held_queue: HeldQueue,
+) -> ReconstructionCoordinator:
+    """The coordinator on a real project, history and document, wired the way the application wires it.
+
+    The application writes an edit of a project sample back into the project as one history entry,
+    follows every project state change, and fans a replaced project out to the sequencer, which
+    reseeds the history, before the coordinator follows it. The fixture repeats that wiring, and a
+    new project stands open.
+    """
+
+    def write_back(edit: ReconstructionEdit) -> None:
+        voice_id = reconstruction_manager.voice_id
+        if voice_id is None:
+            return
+
+        with history.transaction(
+            HistoryAction.EDIT_RECONSTRUCTION,
+            coalesce=edit.coalesce_key(voice_id),
+        ):
+            project_controller.replace_sample_reconstruction(voice_id, edit.reconstruction)
+
+    coordinator = ReconstructionCoordinator(
+        reconstruction_manager,
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        project_controller,
+        history,
+        dialogs=MagicMock(),
+        language_manager=FakeLanguageManager({}),
+        on_tab_switch=MagicMock(),
+        on_session_state_changed=MagicMock(),
+        on_reconstruction_updated=write_back,
+    )
+    coordinator.set_reconstructions_tab(tab)
+
+    def realign() -> None:
+        history.reset()
+        coordinator.follow_replaced_project()
+
+    project_manager.session.on_state_changed = coordinator.follow_project
+    project_controller.on_project_replaced = realign
+    project_controller.new()
+    return coordinator
+
+
+@pytest.fixture
+def open_sample(
+    following_coordinator: ReconstructionCoordinator,
+    project_controller: ProjectController,
+    history: HistoryManager,
+    tab: MagicMock,
+    held_queue: HeldQueue,
+    reconstruction_factory: ReconstructionFactory,
+) -> Sample:
+    """A sample added to the project and opened on the tab, with the calls opening it cleared."""
+    with history.transaction(HistoryAction.ADD_SAMPLE):
+        sample = project_controller.add_sample(reconstruction_factory(), "lead")
+    following_coordinator.open_project_voice(sample.id)
+    held_queue.drain()
+    tab.reset_mock()
+    return sample
+
+
+@pytest.fixture
+def standalone_path(
+    reconstruction_manager: ReconstructionManager,
+    reconstruction_factory: ReconstructionFactory,
+    tmp_path: Path,
+) -> Path:
+    """A reconstruction file opened on the tab, standing apart from the project."""
+    path = tmp_path / "lead.stn"
+    reconstruction_factory().save(path)
+    reconstruction_manager.load_reconstruction(path)
+    return path
+
+
+def _retimed(reconstruction: Reconstruction) -> Reconstruction:
+    """The same reconstruction timed at another NES frequency, which spans another length."""
+    return reconstruction.model_copy(
+        update={"config": reconstruction.config.with_library(nes_frequency=reconstruction.config.nes_frequency // 2)}
+    )
+
+
+class TestTheTabFollowsTheVoiceItShows:
+    """The tab knows the voice it shows by its id, so a restore reaches it and a replaced project lets it go."""
+
+    def test_an_undo_keeping_the_sample_shows_the_reconstruction_it_restores(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        history: HistoryManager,
+        open_sample: Sample,
+        tab: MagicMock,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        original = open_sample.reconstruction
+        following_coordinator.apply_edit(
+            ChannelEdit(
+                reconstruction=reconstruction_factory(),
+                channel_name=ChannelName.PULSE1,
+                feature_key=FeatureKey.VOLUME,
+            )
+        )
+        tab.reset_mock()
+
+        history.undo()
+
+        assert reconstruction_manager.reconstruction is original
+        assert reconstruction_manager.voice_id == open_sample.id
+        tab.redraw_reconstruction.assert_called_once_with(refit_waveform=False)
+
+    def test_an_undo_across_a_rate_change_refits_the_waveform(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        project_controller: ProjectController,
+        history: HistoryManager,
+        open_sample: Sample,
+        tab: MagicMock,
+    ) -> None:
+        retimed = _retimed(open_sample.reconstruction)
+        with history.transaction(HistoryAction.SET_NES_FREQUENCY):
+            project_controller.replace_sample_reconstruction(open_sample.id, retimed)
+        following_coordinator.retune_sample(open_sample.id, retimed)
+        tab.reset_mock()
+
+        history.undo()
+
+        tab.redraw_reconstruction.assert_called_once_with(refit_waveform=True)
+
+    def test_an_undo_leaving_the_reconstruction_as_it_was_redraws_nothing(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        project_controller: ProjectController,
+        history: HistoryManager,
+        open_sample: Sample,
+        tab: MagicMock,
+    ) -> None:
+        """A restore shares every reconstruction it kept, so the document it already shows stands."""
+        with history.transaction(HistoryAction.SET_TEMPO):
+            project_controller.set_tempo(150)
+        tab.reset_mock()
+
+        history.undo()
+
+        assert reconstruction_manager.reconstruction is open_sample.reconstruction
+        tab.redraw_reconstruction.assert_not_called()
+        tab.update_reconstruction.assert_not_called()
+
+    def test_an_undo_taking_the_sample_out_closes_it(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        history: HistoryManager,
+        open_sample: Sample,
+    ) -> None:
+        history.undo()
+
+        assert reconstruction_manager.current_reconstruction is None
+        assert reconstruction_manager.voice_id is None
+
+    def test_a_redo_bringing_the_sample_back_leaves_the_tab_empty(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        project_controller: ProjectController,
+        history: HistoryManager,
+        open_sample: Sample,
+    ) -> None:
+        """A voice that comes back is the reader's to open again."""
+        history.undo()
+
+        history.redo()
+
+        assert project_controller.project.voice(open_sample.id) is not None
+        assert reconstruction_manager.current_reconstruction is None
+
+    def test_a_redo_taking_the_sample_out_closes_it(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        project_controller: ProjectController,
+        history: HistoryManager,
+        open_sample: Sample,
+    ) -> None:
+        with history.transaction(HistoryAction.REMOVE_VOICE):
+            project_controller.remove_voice(open_sample.id)
+        history.undo()
+        following_coordinator.open_project_voice(open_sample.id)
+
+        history.redo()
+
+        assert reconstruction_manager.current_reconstruction is None
+
+    def test_removing_the_sample_closes_it(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        project_controller: ProjectController,
+        history: HistoryManager,
+        open_sample: Sample,
+    ) -> None:
+        with history.transaction(HistoryAction.REMOVE_VOICE):
+            project_controller.remove_voice(open_sample.id)
+
+        assert reconstruction_manager.current_reconstruction is None
+
+    def test_an_edit_writing_the_project_first_leaves_the_document_to_the_edit(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        open_sample: Sample,
+        tab: MagicMock,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        """The write-back stamps the project while the document still holds what the edit started from."""
+        edited = reconstruction_factory()
+
+        following_coordinator.apply_edit(
+            ChannelEdit(
+                reconstruction=edited,
+                channel_name=ChannelName.PULSE1,
+                feature_key=FeatureKey.VOLUME,
+            )
+        )
+
+        assert reconstruction_manager.reconstruction is edited
+        tab.redraw_reconstruction.assert_not_called()
+        tab.update_reconstruction.assert_called_once_with()
+
+    def test_a_new_project_lets_the_sample_go(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        project_controller: ProjectController,
+        open_sample: Sample,
+    ) -> None:
+        project_controller.new()
+
+        assert reconstruction_manager.current_reconstruction is None
+
+    def test_closing_the_project_lets_the_sample_go(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        project_controller: ProjectController,
+        open_sample: Sample,
+    ) -> None:
+        project_controller.close()
+
+        assert reconstruction_manager.current_reconstruction is None
+
+    def test_reopening_the_saved_project_lets_the_sample_go(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        project_controller: ProjectController,
+        open_sample: Sample,
+        tmp_path: Path,
+    ) -> None:
+        """The file keeps each voice's id, so the reopened project names the voice the tab showed."""
+        path = tmp_path / f"song{EXT_FILE_PROJECT}"
+        project_controller.save(path)
+
+        project_controller.load(path)
+
+        assert isinstance(project_controller.project.voice(open_sample.id), Sample)
+        assert reconstruction_manager.current_reconstruction is None
+
+    def test_a_standalone_document_outlasts_a_new_and_a_closed_project(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        project_controller: ProjectController,
+        standalone_path: Path,
+    ) -> None:
+        project_controller.new()
+        project_controller.close()
+
+        assert reconstruction_manager.filepath == standalone_path
+
+    def test_a_restore_asks_the_instrument_to_follow_as_restored(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        project_controller: ProjectController,
+        history: HistoryManager,
+        tab: MagicMock,
+    ) -> None:
+        with history.transaction(HistoryAction.SET_TEMPO):
+            project_controller.set_tempo(150)
+        tab.reset_mock()
+
+        history.undo()
+
+        tab.follow_instrument.assert_called_with(restored=True)
+
+    def test_an_edit_asks_the_instrument_to_follow_as_it_stands(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        project_controller: ProjectController,
+        history: HistoryManager,
+        tab: MagicMock,
+    ) -> None:
+        tab.reset_mock()
+
+        with history.transaction(HistoryAction.SET_TEMPO):
+            project_controller.set_tempo(150)
+
+        tab.follow_instrument.assert_called_once_with(restored=False)
+
+    def test_a_replaced_project_closes_the_instrument(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        project_controller: ProjectController,
+        tab: MagicMock,
+    ) -> None:
+        tab.reset_mock()
+
+        project_controller.close()
+
+        tab.close_instrument.assert_called_once_with()
+
+
+class TestOpeningAProjectVoice(BaseTestSuite):
+    """Edit on a voice puts it in front of the tab, asking first where that would lose unsaved work."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        kind: VoiceKind
+
+    test_cases = (
+        TestCase(label="sample", kind=VoiceKind.SAMPLE),
+        TestCase(label="instrument", kind=VoiceKind.INSTRUMENT),
+    )
+
+    @staticmethod
+    def _add_voice(
+        kind: VoiceKind,
+        project_controller: ProjectController,
+        history: HistoryManager,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> str:
+        match kind:
+            case VoiceKind.SAMPLE:
+                with history.transaction(HistoryAction.ADD_SAMPLE):
+                    return project_controller.add_sample(reconstruction_factory(), "lead").id
+            case VoiceKind.INSTRUMENT:
+                with history.transaction(HistoryAction.ADD_INSTRUMENT):
+                    return project_controller.add_instrument(new_instrument("lead")).id
+
+    def test_a_sample_opens_as_the_document_it_is(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        project_controller: ProjectController,
+        history: HistoryManager,
+        tab: MagicMock,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        voice_id = self._add_voice(VoiceKind.SAMPLE, project_controller, history, reconstruction_factory)
+        sample = project_controller.project.voice(voice_id)
+        assert isinstance(sample, Sample)
+
+        following_coordinator.open_project_voice(voice_id)
+
+        assert reconstruction_manager.voice_id == voice_id
+        assert reconstruction_manager.reconstruction is sample.reconstruction
+        tab.release_instrument.assert_called_once_with()
+
+    def test_an_instrument_opens_in_the_editor_on_its_tab(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        project_controller: ProjectController,
+        history: HistoryManager,
+        tab: MagicMock,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        voice_id = self._add_voice(VoiceKind.INSTRUMENT, project_controller, history, reconstruction_factory)
+
+        following_coordinator.open_project_voice(voice_id)
+
+        tab.edit_instrument.assert_called_once_with(voice_id)
+        following_coordinator._on_tab_switch.assert_called_once_with(Tab.RECONSTRUCTIONS)
+
+    def test_an_unknown_voice_opens_nothing(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        tab: MagicMock,
+    ) -> None:
+        following_coordinator.open_project_voice("gone")
+
+        assert reconstruction_manager.current_reconstruction is None
+        tab.edit_instrument.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_an_unsaved_standalone_document_is_offered_a_save_first(
+        self,
+        test_case: TestCase,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        project_controller: ProjectController,
+        history: HistoryManager,
+        tab: MagicMock,
+        standalone_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        voice_id = self._add_voice(test_case.kind, project_controller, history, reconstruction_factory)
+        reconstruction_manager.mark_updated()
+
+        following_coordinator.open_project_voice(voice_id)
+
+        following_coordinator._dialogs.show_save_confirmation.assert_called_once()
+        assert reconstruction_manager.filepath == standalone_path
+        tab.edit_instrument.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_the_answer_opens_the_voice(
+        self,
+        test_case: TestCase,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        project_controller: ProjectController,
+        history: HistoryManager,
+        tab: MagicMock,
+        standalone_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        voice_id = self._add_voice(test_case.kind, project_controller, history, reconstruction_factory)
+        reconstruction_manager.mark_updated()
+        following_coordinator.open_project_voice(voice_id)
+
+        following_coordinator._dialogs.show_save_confirmation.call_args.kwargs["on_confirm"]()
+
+        match test_case.kind:
+            case VoiceKind.SAMPLE:
+                assert reconstruction_manager.voice_id == voice_id
+            case VoiceKind.INSTRUMENT:
+                tab.edit_instrument.assert_called_once_with(voice_id)
+
+    def test_an_edited_project_sample_opens_another_voice_at_once(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        project_controller: ProjectController,
+        history: HistoryManager,
+        open_sample: Sample,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        """A project sample's edits belong to the project, so putting it away loses nothing."""
+        voice_id = self._add_voice(VoiceKind.SAMPLE, project_controller, history, reconstruction_factory)
+        reconstruction_manager.mark_updated()
+
+        following_coordinator.open_project_voice(voice_id)
+
+        following_coordinator._dialogs.show_save_confirmation.assert_not_called()
+        assert reconstruction_manager.voice_id == voice_id
+
+
+class TestAnOutsideRewriteOfTheOpenSample:
+    """A sample replaced or retuned from the sequencer shows on the tab only where the tab has it open."""
+
+    def test_a_replaced_sample_shows_its_new_reconstruction(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        open_sample: Sample,
+        tab: MagicMock,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        incoming = reconstruction_factory()
+
+        following_coordinator.replace_sample(open_sample.id, incoming)
+
+        assert reconstruction_manager.reconstruction is incoming
+        tab.redraw_reconstruction.assert_called_once_with(refit_waveform=False)
+
+    def test_a_replacement_at_another_rate_refits_the_waveform(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        open_sample: Sample,
+        tab: MagicMock,
+    ) -> None:
+        following_coordinator.replace_sample(open_sample.id, _retimed(open_sample.reconstruction))
+
+        tab.redraw_reconstruction.assert_called_once_with(refit_waveform=True)
+
+    def test_a_replaced_sample_the_tab_holds_no_longer_leaves_the_document_alone(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        open_sample: Sample,
+        tab: MagicMock,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        following_coordinator.replace_sample("another-id", reconstruction_factory())
+
+        assert reconstruction_manager.reconstruction is open_sample.reconstruction
+        tab.redraw_reconstruction.assert_not_called()
+
+    def test_a_replacement_with_nothing_open_opens_nothing(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        tab: MagicMock,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        following_coordinator.replace_sample(OPEN_VOICE_ID, reconstruction_factory())
+
+        assert reconstruction_manager.current_reconstruction is None
+        tab.redraw_reconstruction.assert_not_called()
+
+    def test_a_retuned_sample_shows_its_new_length(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        open_sample: Sample,
+        tab: MagicMock,
+    ) -> None:
+        """A retune carries every envelope over, so the panel keeps what it draws."""
+        retimed = _retimed(open_sample.reconstruction)
+
+        following_coordinator.retune_sample(open_sample.id, retimed)
+
+        assert reconstruction_manager.reconstruction is retimed
+        tab.update_reconstruction.assert_called_once_with(refit_waveform=True)
+        tab.redraw_reconstruction.assert_not_called()
+
+    def test_another_sample_s_retune_leaves_the_document_alone(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        open_sample: Sample,
+        tab: MagicMock,
+    ) -> None:
+        following_coordinator.retune_sample("another-id", _retimed(open_sample.reconstruction))
+
+        assert reconstruction_manager.reconstruction is open_sample.reconstruction
+        tab.update_reconstruction.assert_not_called()
+
+    def test_a_retune_with_nothing_open_opens_nothing(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        tab: MagicMock,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        following_coordinator.retune_sample(OPEN_VOICE_ID, reconstruction_factory())
+
+        assert reconstruction_manager.current_reconstruction is None
+        tab.update_reconstruction.assert_not_called()
+
+
 class TestTheSaveAPromptWaitsOn:
     """A save prompt goes on, asks again or stands aside according to what the save came to."""
 
@@ -400,7 +1023,7 @@ class TestLoadingAConversion(BaseTestSuite):
         reconstruction_factory: ReconstructionFactory,
         tmp_path: Path,
     ) -> ReconstructionCoordinator:
-        """A coordinator over a document loaded from ``open.stn``, unsaved or saved as the case says."""
+        """A coordinator over the document in ``open.stn``, opened from its file or as a project sample, unsaved or saved as the case says."""
         opened = tmp_path / "open.stn"
         reconstruction_factory().save(opened)
         manager = ReconstructionManager(scheduling=MagicMock())
@@ -409,15 +1032,23 @@ class TestLoadingAConversion(BaseTestSuite):
             MagicMock(),
             MagicMock(),
             MagicMock(),
+            MagicMock(),
+            MagicMock(),
             dialogs=MagicMock(),
             language_manager=FakeLanguageManager(),
             on_tab_switch=MagicMock(),
             on_session_state_changed=MagicMock(),
             on_reconstruction_updated=MagicMock(),
-            is_reconstruction_embedded=lambda: test_case.embedded,
         )
         coordinator.set_reconstructions_tab(MagicMock())
-        manager.load_reconstruction(opened)
+        if test_case.embedded:
+            manager.load_reconstruction_object(
+                Reconstruction.load(opened),
+                name=opened.stem,
+                voice_id=OPEN_VOICE_ID,
+            )
+        else:
+            manager.load_reconstruction(opened)
         if test_case.unsaved:
             manager.mark_updated()
 

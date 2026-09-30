@@ -677,6 +677,34 @@ class ReconstructionTabCoordinator:
         """Lets go of the instrument the tab held, which is what opening a reconstruction does."""
         self._instrument_editor.release_instrument()
 
+    def follow_instrument(self, *, restored: bool) -> None:
+        """Brings the instrument the tab holds in line with the project it belongs to.
+
+        An instrument the project no longer holds leaves the tab empty. A restore hands a kept
+        instrument the envelopes it had then, so the panel draws them. Any other change to the
+        project leaves the panel as drawn, so a keystroke in the tracker keeps what the reader
+        is writing here.
+        """
+        if not self._instrument_editor.holds_instrument:
+            return
+
+        if self._instrument_editor.instrument is None:
+            self.close_instrument()
+        elif restored:
+            self._reconstruction_instruments_logic.update_display()
+
+    def close_instrument(self) -> None:
+        """Lets go of the instrument the tab holds and empties the tab, as a closed reconstruction leaves it.
+
+        The waveform card draws the instrument's own audio while it is open, so it empties together
+        with the instruments panel.
+        """
+        if not self._instrument_editor.holds_instrument:
+            return
+
+        self._instrument_editor.release_instrument()
+        self.close_reconstruction()
+
     def close_reconstruction(self) -> None:
         self._reconstruction_panel_logic.close_reconstruction()
         self._reconstruction_instruments_logic.update_display()
@@ -778,13 +806,15 @@ class ReconstructionTabCoordinator:
         self._reconstruction_panel_logic.update_reconstruction(refit_waveform=refit_waveform)
         self._reconstruction_instruments_logic.refresh_view()
 
-    def redraw_reconstruction(self) -> None:
+    def redraw_reconstruction(self, *, refit_waveform: bool) -> None:
         """Re-answers every reading of a document rewritten outside the instruments panel, envelopes included.
 
-        A removed recording releases the frames it held, and a replaced sample brings envelopes of
-        its own, so the panel draws the document as it now stands and the next edit starts from it.
+        A removed recording releases the frames it held, and a replaced sample or an undo brings
+        envelopes of its own, so the panel draws the document as it now stands and the next edit
+        starts from it. A document timed at another NES frequency spans another length, so the
+        caller that knows this asks the waveform to re-fit.
         """
-        self._reconstruction_panel_logic.update_reconstruction(refit_waveform=False)
+        self._reconstruction_panel_logic.update_reconstruction(refit_waveform=refit_waveform)
         self._reconstruction_instruments_logic.update_display()
 
     def set_reconstruction_dimmed(self, dimmed: bool) -> None:

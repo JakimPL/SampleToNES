@@ -7,9 +7,15 @@ This document describes the undo/redo subsystem of `sampletones_application`. Co
 
 ## Engine: snapshot + cursor
 
-`HistoryManager` holds an ordered list of whole-project snapshots and a cursor. The live project always equals a restoration of `entries[cursor]`. Undo and redo move the cursor and reinstall the snapshot there. They never mutate a stored snapshot, so reversibility determinism holds by construction. A restore installs a fresh copy through `ProjectController.replace_project`, which fires `on_project_replaced` to rebuild the tabs exactly as loading a project does.
+`HistoryManager` holds an ordered list of whole-project snapshots and a cursor. The live project always equals a restoration of `entries[cursor]`. Undo and redo move the cursor and reinstall the snapshot there. They never mutate a stored snapshot, so reversibility determinism holds by construction. A restore installs a fresh copy through `ProjectController.replace_project`, which fires `on_project_replaced`. The composition root owns that signal and fans it out to the two tabs that show the project: the sequencer rebuilds its views exactly as loading a project does, and the Reconstructions tab follows the voice it shows.
 
 A snapshot (`snapshot_project`) deep-copies the light structure (song, settings, metadata, sample shells) and **shares each `Reconstruction` by reference**. Reconstruction edits are copy-on-write. `RegenerationService` emits a *new* reconstruction, and the apply path installs it via `ProjectController.replace_sample_reconstruction`. A shared reconstruction therefore never mutates in place, and snapshots never duplicate the large audio arrays. Producing the new reconstruction deep-copies the edited one once, on the regeneration worker's background thread.
+
+## The open voice across a restore
+
+The Reconstructions tab knows the voice it shows by its id, which a snapshot and the project file both keep. A restore therefore reaches that voice the way it reaches the sequencer. A sample the restore keeps rebinds to the reconstruction the snapshot shares and redraws, and the waveform re-fits when that reconstruction runs at another NES frequency. A kept instrument redraws its envelopes. A voice the restore takes out closes, and a redo that brings it back leaves the tab empty until the reader opens it again.
+
+Outside a restore, a change to the project only closes a voice that left it. That leaves the panel to the reader's own edit, which writes the project a moment before the open document takes it. A new, opened or closed project lets the voice go even where its id resolves, because a reopened file brings back the same ids for the project the reader has just put away.
 
 ## Grouping and detection
 

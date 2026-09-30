@@ -36,7 +36,8 @@ Right-click a voice to rename, duplicate, move or remove it. Some commands do mo
 say:
 
 - **Edit** opens the voice on the **Reconstruction** tab, where you change how it sounds. See
-  [editing instruments](reconstruction.md#editing-instruments).
+  [editing instruments](reconstruction.md#editing-instruments). The tab closes the voice when you
+  remove it, or when you open, create or close a project.
 - **New instrument from**, on a sample, copies what the sample plays on one channel into a new
   instrument you can edit.
 - **Export instrument...** saves the voice as an `.fti` file. A sample has one instrument per
@@ -213,6 +214,9 @@ right-click menu. In the **Sample** column, they change the channels still playi
 You can undo every change, including a copy, a paste or a delete, which each count as one step. The
 **History** panel lists your changes, and you can click one to go back to that point. **Undo** and **Redo** are
 on the **Edit** menu.
+
+Undo and redo also change a voice open on the **Reconstruction** tab. If the voice is gone after an
+undo or a redo, the tab closes it.
 
 ## Timing and properties
 

@@ -1013,11 +1013,11 @@ class TestReplaceReconstruction:
         assert [call[0] for call in order.mock_calls] == ["detail", "replace"]
         replace_coordinator._history_detail.replace_sample.assert_called_once_with("bass-id", "kick_02")
 
-    def test_replacement_is_announced_before_the_substitution(
+    def test_replacement_is_announced_after_the_substitution(
         self,
         replace_coordinator: SequencerReconstructions,
     ) -> None:
-        """An editor holding the sample open identifies it by the reconstruction the swap replaces."""
+        """An editor holding the sample open by its id shows the reconstruction in the form the project keeps."""
         reconstruction = replace_coordinator._browser_logic.load_reconstruction.return_value
         order = MagicMock()
         order.attach_mock(replace_coordinator._on_sample_reconstruction_replaced, "announce")
@@ -1028,7 +1028,7 @@ class TestReplaceReconstruction:
 
         replace_coordinator.replace_from_file(Path("kick_02.stn"))
 
-        assert [call[0] for call in order.mock_calls] == ["announce", "replace"]
+        assert [call[0] for call in order.mock_calls] == ["replace", "announce"]
         replace_coordinator._on_sample_reconstruction_replaced.assert_called_once_with(
             "bass-id",
             reconstruction,
@@ -1115,7 +1115,7 @@ def wired_history_coordinator(
 
     A real manager observes a real controller, and every project replacement —
     including the ones undo/redo drive — routes back through
-    ``_on_project_replaced``, exactly as ``_wire_callbacks`` sets it up. The
+    ``realign_with_project``, exactly as the application's fan-out reaches it. The
     channels logic is real too, since the handler decides its lifetime. The
     panel-refreshing ``refresh`` is stubbed since no GUI subtree exists here.
     """
@@ -1123,7 +1123,7 @@ def wired_history_coordinator(
     controller = ProjectController(ProjectManager())
     history = HistoryManager(controller, budget=10, strict=True)
     controller.on_mutation = history.handle_mutation
-    controller.on_project_replaced = instance._on_project_replaced
+    controller.on_project_replaced = instance.realign_with_project
     instance._project_controller = controller
     instance._history = history
     instance._sequencer_channels_logic = SequencerChannelsLogic()
@@ -1187,7 +1187,7 @@ class TestChannelMuteLifetime:
     """The mute set spans history navigation and starts fresh on a document transition.
 
     Both arrive as the controller's single ``on_project_replaced`` signal, so these pin the
-    distinction ``_on_project_replaced`` draws from ``HistoryManager.is_restoring``.
+    distinction ``realign_with_project`` draws from ``HistoryManager.is_restoring``.
     """
 
     def test_undo_keeps_the_mute_set(

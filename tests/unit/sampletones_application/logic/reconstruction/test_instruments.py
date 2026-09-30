@@ -550,3 +550,104 @@ class TestTheInstrumentsPanelShowsAnInstrument:
         instrument = project_controller.project.voices[0]
         assert received[-1].footprint is not None
         assert received[-1].footprint.total_bytes == features_footprint(instrument.instrument_features()).total_bytes
+
+
+class TestAnEditReachingAVoiceThatLeft:
+    """A gesture the panel sent before its voice left draws the panel as it now stands and goes nowhere."""
+
+    @pytest.fixture
+    def project_controller(self) -> ProjectController:
+        return ProjectController(ProjectManager())
+
+    @pytest.fixture
+    def left_logic(
+        self,
+        mock_reconstruction_manager: MagicMock,
+        project_controller: ProjectController,
+        scheduling: SchedulingBehavior,
+    ) -> ReconstructionInstrumentsLogic:
+        """The panel's logic over an instrument the project has since removed."""
+        mock_reconstruction_manager.current_features = None
+        editor = _editor(mock_reconstruction_manager, project_controller)
+        instrument = project_controller.add_instrument(new_instrument("lead"))
+        editor.edit_instrument(instrument.id)
+        project_controller.remove_voice(instrument.id)
+        return ReconstructionInstrumentsLogic(editor, scheduling=scheduling)
+
+    def test_an_envelope_edit_draws_the_panel_empty(
+        self,
+        left_logic: ReconstructionInstrumentsLogic,
+    ) -> None:
+        views: List[ReconstructionInstrumentsViewModel] = []
+        left_logic.on_view_changed = views.append
+
+        left_logic.handle_envelope_changed(INSTRUMENT_CHANNEL, FeatureKey.VOLUME, Envelope[int](items=(7,)))
+
+        assert len(views) == 1
+        assert views[0].instrument is None
+        assert not views[0].reconstruction_loaded
+
+    def test_an_envelope_edit_goes_nowhere(
+        self,
+        left_logic: ReconstructionInstrumentsLogic,
+    ) -> None:
+        regenerated: List[object] = []
+        left_logic.on_reconstruction_instrument_updated = lambda *args: regenerated.append(args)
+
+        left_logic.handle_envelope_changed(INSTRUMENT_CHANNEL, FeatureKey.VOLUME, Envelope[int](items=(7,)))
+
+        assert regenerated == []
+
+    def test_a_pitch_change_draws_the_panel_empty(
+        self,
+        left_logic: ReconstructionInstrumentsLogic,
+    ) -> None:
+        views: List[ReconstructionInstrumentsViewModel] = []
+        left_logic.on_view_changed = views.append
+        regenerated: List[object] = []
+        left_logic.on_reconstruction_instrument_updated = lambda *args: regenerated.append(args)
+
+        left_logic.handle_pitch_value_changed(ChannelName.PULSE1, NEW_PITCH)
+
+        assert len(views) == 1
+        assert views[0].instrument is None
+        assert regenerated == []
+
+    def test_an_envelope_edit_after_the_document_closed_goes_nowhere(
+        self,
+        instruments_logic: ReconstructionInstrumentsLogic,
+        mock_reconstruction_manager: MagicMock,
+    ) -> None:
+        """A close lands on the panel a moment later, so an edit can reach it in between."""
+        mock_reconstruction_manager.current_features = None
+        received: List[Optional[ChannelEnvelopesViewModel]] = []
+        instruments_logic.on_feature_data_changed = received.append
+        regenerated: List[object] = []
+        instruments_logic.on_reconstruction_instrument_updated = lambda *args: regenerated.append(args)
+
+        instruments_logic.handle_envelope_changed(ChannelName.PULSE1, FeatureKey.VOLUME, Envelope[int](items=(7,)))
+
+        assert received == [None]
+        assert regenerated == []
+
+    def test_a_pitch_change_reaching_an_instrument_goes_nowhere(
+        self,
+        mock_reconstruction_manager: MagicMock,
+        project_controller: ProjectController,
+        scheduling: SchedulingBehavior,
+    ) -> None:
+        """The panel offers the pitch on a reconstruction's channels alone."""
+        mock_reconstruction_manager.current_features = None
+        editor = _editor(mock_reconstruction_manager, project_controller)
+        editor.edit_instrument(project_controller.add_instrument(new_instrument("lead")).id)
+        logic = ReconstructionInstrumentsLogic(editor, scheduling=scheduling)
+        views: List[ReconstructionInstrumentsViewModel] = []
+        logic.on_view_changed = views.append
+        regenerated: List[object] = []
+        logic.on_reconstruction_instrument_updated = lambda *args: regenerated.append(args)
+
+        logic.handle_pitch_value_changed(INSTRUMENT_CHANNEL, NEW_PITCH)
+
+        assert regenerated == []
+        assert len(views) == 1
+        assert views[0].instrument is not None

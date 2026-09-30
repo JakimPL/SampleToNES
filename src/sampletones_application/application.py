@@ -172,10 +172,8 @@ from sampletones_core.exporters import Features
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.stage import ExportStage
-from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.project.voices.voice import samples
-from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_player.export.backend import NSFBackend
 from sampletones_shared.application import (
@@ -282,6 +280,7 @@ class Application:
         )
         self.project_controller.on_mutation = self.history.handle_mutation
         self.project_controller.on_saved = self.history.mark_saved
+        self.project_controller.on_project_replaced = self._on_project_replaced
         self.history.on_history_changed = self._on_history_changed
 
         self.fps_timer: FPSTimer = FPSTimer(interval=self.layout.behavior.ui.fps_update_interval)
@@ -450,12 +449,13 @@ class Application:
             self.session_manager,
             self.regeneration_service,
             self.audio_device_manager,
+            self.project_controller,
+            self.history,
             dialogs=self.dialogs,
             language_manager=self.language_manager,
             on_tab_switch=self._set_current_tab,
             on_session_state_changed=self._on_reconstruction_state_changed,
             on_reconstruction_updated=self._on_reconstruction_updated,
-            is_reconstruction_embedded=self._editing_project_sample,
         )
 
         self._original_audio_locator = OriginalAudioLocator(
@@ -562,9 +562,9 @@ class Application:
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,
-            on_edit_voice_requested=self._edit_project_voice,
+            on_edit_voice_requested=self._reconstruction_coordinator.open_project_voice,
             on_favorite_changed=self._repaint_reconstruction_favorites,
-            on_sample_reconstruction_replaced=self._rebind_replaced_sample,
+            on_sample_reconstruction_replaced=self._reconstruction_coordinator.replace_sample,
             on_tab_switch=self._set_current_tab,
             on_nes_frequency_changed=self._retune_samples_for_rate,
             on_channels_changed=self._update_menu,
@@ -906,6 +906,17 @@ class Application:
             auto_expand_favorite_directories=self.session_manager.auto_expand_favorite_directories,
         )
 
+    def _on_project_replaced(self) -> None:
+        """Fans one project replacement out to the two tabs that show the project.
+
+        The controller exposes a single ``on_project_replaced`` slot, fired by a new, opened or
+        closed project and by every undo, redo and history jump; the composition root owns it. The
+        sequencer realigns its views first, then the Reconstructions tab follows the voice it
+        shows into the project now in place.
+        """
+        self._sequencer_tab.realign_with_project()
+        self._reconstruction_coordinator.follow_replaced_project()
+
     def _on_history_changed(self) -> None:
         """Fans one history change out to every consumer.
 
@@ -1127,49 +1138,6 @@ class Application:
     def _navigate_to_reconstructions(self) -> None:
         self._set_current_tab(Tab.RECONSTRUCTIONS)
 
-    def _edit_project_voice(self, voice_id: str) -> None:
-        """Opens the voice list's selection on the Reconstructions tab, in the terms of its kind.
-
-        A sample opens as the reconstruction behind it, waveform and stems and all; an instrument stands
-        on no recording, so the tab shows its envelopes alone. Either kind brings that tab to the
-        front, so the voice a reader asked to edit is the one in view.
-        """
-        match self.project_manager.current.voice(voice_id):
-            case Sample() as sample:
-                self._reconstructions_tab.release_instrument()
-                self.reconstruction_manager.load_reconstruction_object(
-                    sample.reconstruction,
-                    name=sample.name,
-                )
-            case Instrument():
-                self._reconstructions_tab.edit_instrument(voice_id)
-                self._navigate_to_reconstructions()
-            case _:
-                logger.warning(f"Cannot edit unknown project voice: {voice_id}")
-
-    def _rebind_replaced_sample(
-        self,
-        voice_id: str,
-        reconstruction: Reconstruction,
-    ) -> None:
-        """Points the open Reconstructions-tab document at the reconstruction replacing the one it edits.
-
-        The editor and its owning sample share one reconstruction object, so a sample whose audio is
-        substituted takes its editor along. This runs while the sample still holds the outgoing
-        reconstruction, which is what identifies the open document as belonging to it. The incoming
-        reconstruction brings envelopes of its own, so the tab redraws the instruments panel from it.
-
-        Args:
-            voice_id: The sample receiving a new reconstruction.
-            reconstruction: The reconstruction the sample is about to hold.
-        """
-        sample = self.project_manager.current.voice(voice_id)
-        if not isinstance(sample, Sample) or sample.reconstruction is not self.reconstruction_manager.reconstruction:
-            return
-
-        self.reconstruction_manager.apply_edited(reconstruction)
-        self._reconstructions_tab.redraw_reconstruction()
-
     def _regenerate_instrument(
         self,
         channel_name: ChannelName,
@@ -1273,7 +1241,7 @@ class Application:
         A batch superseded by a newer rate change is discarded by the rate guard, so a stale
         result neither overwrites the current reconstruction nor appends a stray history entry. The
         rate-keyed coalesce target rewrites the single ``SET_NES_FREQUENCY`` entry, and a sample
-        open in the Reconstructions tab rebinds so its editor and the project sample stay one object.
+        open in the Reconstructions tab shows the retuned reconstruction.
         """
         project = self.project_manager.current
         sample = project.voices.get(retuned.voice_id)
@@ -1284,7 +1252,6 @@ class Application:
         if nes_frequency != project.settings.nes_frequency:
             return
 
-        is_open = sample.reconstruction is self.reconstruction_manager.reconstruction
         with self.history.transaction(
             HistoryAction.SET_NES_FREQUENCY,
             detail=self._sequencer_tab.nes_frequency_detail(nes_frequency),
@@ -1295,11 +1262,10 @@ class Application:
                 retuned.reconstruction,
             )
 
-        if is_open:
-            self.reconstruction_manager.apply_edited(
-                retuned.reconstruction,
-            )
-            self._reconstructions_tab.update_reconstruction(refit_waveform=True)
+        self._reconstruction_coordinator.retune_sample(
+            retuned.voice_id,
+            retuned.reconstruction,
+        )
 
     def _open_project_properties(self) -> None:
         """Opens the properties dialog seeded with the current project's info.
@@ -1430,15 +1396,16 @@ class Application:
         self.audio_device_manager.set_buffer_size(buffer_size)
 
     def _owning_project_sample(self) -> Optional[Sample]:
-        reconstruction = self.reconstruction_manager.reconstruction
-        if reconstruction is None:
+        """The project sample the open document is, found by the voice id the document remembers."""
+        voice_id = self.reconstruction_manager.voice_id
+        if voice_id is None:
             return None
 
-        for sample in samples(self.project_manager.current.voices):
-            if sample.reconstruction is reconstruction:
+        match self.project_manager.current.voice(voice_id):
+            case Sample() as sample:
                 return sample
-
-        return None
+            case _:
+                return None
 
     def _editing_project_sample(self) -> bool:
         return self._owning_project_sample() is not None
@@ -1500,26 +1467,8 @@ class Application:
             )
         )
 
-    def _sync_reconstruction_ownership(self) -> None:
-        """Reflects sequencer ownership in the open reconstruction view.
-
-        When the reconstruction on screen becomes a project sample — added to the sequencer — its
-        source audio and file location are detached. The open document follows so both locations read
-        as not applicable, matching an owned sample. The guard lets this run only when a file-backed
-        reconstruction is added while it is the one on screen.
-        """
-        reconstruction_data = self.reconstruction_manager.current_reconstruction
-        if reconstruction_data is None or reconstruction_data.filepath is None:
-            return
-
-        if self._owning_project_sample() is None:
-            return
-
-        self.reconstruction_manager.detach_current_reconstruction()
-        self._reconstructions_tab.display_reconstruction()
-
     def _on_project_state_changed(self) -> None:
-        self._sync_reconstruction_ownership()
+        self._reconstruction_coordinator.follow_project()
         self._update_title()
         self._update_menu()
 

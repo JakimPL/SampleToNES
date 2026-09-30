@@ -47,6 +47,11 @@ class InstrumentEditor:
         self._voice_id = None
 
     @property
+    def holds_instrument(self) -> bool:
+        """Whether the tab was given an instrument, which it keeps until it lets go, even once the voice leaves."""
+        return self._voice_id is not None
+
+    @property
     def instrument(self) -> Optional[Instrument]:
         """The instrument in front of the tab, or ``None`` where it holds a reconstruction or nothing."""
         if self._voice_id is None:

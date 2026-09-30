@@ -25,12 +25,16 @@ from sampletones_application.services.export.success import ExportSuccess
 from sampletones_application.view_model.reconstruction.envelopes import (
     ChannelEnvelopesViewModel,
 )
+from sampletones_application.view_model.reconstruction.instruments import (
+    ReconstructionInstrumentsViewModel,
+)
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.features.envelope import Envelope
+from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
@@ -70,6 +74,7 @@ SHARED_CHANNEL: Final[ChannelName] = ChannelName.PULSE1
 SOLE_CHANNEL: Final[ChannelName] = ChannelName.PULSE2
 SHARED_OWNERS: Final[Tuple[int, ...]] = (STEM_A_ID, STEM_B_ID)
 TYPED_VOLUME: Final[Tuple[int, ...]] = (6, 6)
+OPEN_VOICE_ID: Final[str] = "lead-id"
 
 
 @pytest.fixture
@@ -466,9 +471,17 @@ class TestUpdateReconstructionRefitsTheWaveformOnRequest:
     def test_a_redraw_asks_for_no_refit(self) -> None:
         coordinator = self._coordinator()
 
-        coordinator.redraw_reconstruction()
+        coordinator.redraw_reconstruction(refit_waveform=False)
 
         coordinator._reconstruction_panel_logic.update_reconstruction.assert_called_once_with(refit_waveform=False)
+
+    def test_a_redraw_at_another_rate_is_forwarded_to_the_panel_logic(self) -> None:
+        """An undo or a replacement can bring a document timed at another rate, which spans another length."""
+        coordinator = self._coordinator()
+
+        coordinator.redraw_reconstruction(refit_waveform=True)
+
+        coordinator._reconstruction_panel_logic.update_reconstruction.assert_called_once_with(refit_waveform=True)
 
 
 class TestTheInstrumentsPanelDrawsTheDocument:
@@ -509,7 +522,7 @@ class TestTheInstrumentsPanelDrawsTheDocument:
         scheduling: SchedulingBehavior,
     ) -> ReconstructionManager:
         manager = ReconstructionManager(scheduling=scheduling)
-        manager.load_reconstruction_object(reconstruction, name="lead")
+        manager.load_reconstruction_object(reconstruction, name="lead", voice_id=OPEN_VOICE_ID)
         return manager
 
     @pytest.fixture
@@ -557,7 +570,7 @@ class TestTheInstrumentsPanelDrawsTheDocument:
     ) -> None:
         reconstruction_manager.apply_edited(without_stem(reconstruction, STEM_B_ID))
 
-        coordinator.redraw_reconstruction()
+        coordinator.redraw_reconstruction(refit_waveform=False)
 
         assert drawn == [reconstruction_manager.current_features]
 
@@ -570,7 +583,7 @@ class TestTheInstrumentsPanelDrawsTheDocument:
     ) -> None:
         reconstruction_manager.apply_edited(without_stem(reconstruction, STEM_B_ID))
 
-        coordinator.redraw_reconstruction()
+        coordinator.redraw_reconstruction(refit_waveform=False)
 
         envelopes = drawn[-1]
         assert envelopes is not None
@@ -585,7 +598,7 @@ class TestTheInstrumentsPanelDrawsTheDocument:
     ) -> None:
         reconstruction_manager.apply_edited(without_stem(reconstruction, STEM_B_ID))
 
-        coordinator.redraw_reconstruction()
+        coordinator.redraw_reconstruction(refit_waveform=False)
 
         envelopes = drawn[-1]
         assert envelopes is not None
@@ -607,3 +620,144 @@ class TestTheInstrumentsPanelDrawsTheDocument:
         coordinator.update_reconstruction()
 
         assert drawn == []
+
+
+class TestTheInstrumentsPanelFollowsTheInstrument:
+    """The panel keeps the instrument it edits while the project holds it, and draws a restore of it."""
+
+    @pytest.fixture
+    def project_controller(self) -> ProjectController:
+        return ProjectController(ProjectManager())
+
+    @pytest.fixture
+    def instrument_id(self, project_controller: ProjectController) -> str:
+        return project_controller.add_instrument(new_instrument("lead")).id
+
+    @pytest.fixture
+    def editor(self, project_controller: ProjectController) -> InstrumentEditor:
+        reconstruction_manager = MagicMock(spec=ReconstructionManager)
+        reconstruction_manager.current_features = None
+        return InstrumentEditor(
+            reconstruction_manager,
+            project_controller,
+            HistoryManager(project_controller, budget=HISTORY_BUDGET, strict=True),
+            lambda _voice_id, _feature_key: (),
+        )
+
+    @pytest.fixture
+    def views(self) -> List[ReconstructionInstrumentsViewModel]:
+        """Every view the panel is handed to draw."""
+        return []
+
+    @pytest.fixture
+    def coordinator(
+        self,
+        editor: InstrumentEditor,
+        views: List[ReconstructionInstrumentsViewModel],
+        scheduling: SchedulingBehavior,
+    ) -> ReconstructionTabCoordinator:
+        instruments_logic = ReconstructionInstrumentsLogic(editor, scheduling=scheduling)
+        instruments_logic.on_view_changed = views.append
+        instance = object.__new__(ReconstructionTabCoordinator)
+        instance._instrument_editor = editor
+        instance._reconstruction_instruments_logic = instruments_logic
+        instance._reconstruction_panel_logic = MagicMock()
+        return instance
+
+    def test_a_restore_keeping_the_instrument_draws_it(
+        self,
+        coordinator: ReconstructionTabCoordinator,
+        editor: InstrumentEditor,
+        instrument_id: str,
+        views: List[ReconstructionInstrumentsViewModel],
+    ) -> None:
+        editor.edit_instrument(instrument_id)
+
+        coordinator.follow_instrument(restored=True)
+
+        assert len(views) == 1
+        assert views[0].instrument is not None
+        assert editor.holds_instrument
+
+    def test_another_change_keeping_the_instrument_leaves_the_panel_as_drawn(
+        self,
+        coordinator: ReconstructionTabCoordinator,
+        editor: InstrumentEditor,
+        instrument_id: str,
+        views: List[ReconstructionInstrumentsViewModel],
+    ) -> None:
+        """A keystroke in the tracker changes the project, and the panel keeps what the reader writes."""
+        editor.edit_instrument(instrument_id)
+
+        coordinator.follow_instrument(restored=False)
+
+        assert views == []
+        assert editor.holds_instrument
+
+    @pytest.mark.parametrize("restored", (True, False), ids=("restored", "edited"))
+    def test_an_instrument_the_project_lost_leaves_the_panel_empty(
+        self,
+        restored: bool,
+        coordinator: ReconstructionTabCoordinator,
+        editor: InstrumentEditor,
+        project_controller: ProjectController,
+        instrument_id: str,
+        views: List[ReconstructionInstrumentsViewModel],
+    ) -> None:
+        editor.edit_instrument(instrument_id)
+        project_controller.remove_voice(instrument_id)
+
+        coordinator.follow_instrument(restored=restored)
+
+        assert not editor.holds_instrument
+        assert len(views) == 1
+        assert views[0].instrument is None
+        coordinator._reconstruction_panel_logic.close_reconstruction.assert_called_once_with()
+
+    def test_a_panel_holding_no_instrument_follows_nothing(
+        self,
+        coordinator: ReconstructionTabCoordinator,
+        views: List[ReconstructionInstrumentsViewModel],
+    ) -> None:
+        coordinator.follow_instrument(restored=True)
+
+        assert views == []
+
+    def test_closing_the_instrument_draws_the_panel_empty(
+        self,
+        coordinator: ReconstructionTabCoordinator,
+        editor: InstrumentEditor,
+        instrument_id: str,
+        views: List[ReconstructionInstrumentsViewModel],
+    ) -> None:
+        editor.edit_instrument(instrument_id)
+
+        coordinator.close_instrument()
+
+        assert not editor.holds_instrument
+        assert len(views) == 1
+        assert views[0].instrument is None
+
+    def test_closing_the_instrument_empties_the_waveform_card(
+        self,
+        coordinator: ReconstructionTabCoordinator,
+        editor: InstrumentEditor,
+        instrument_id: str,
+    ) -> None:
+        """The card draws the instrument's own audio, so the tab empties it the way a closed reconstruction does."""
+        editor.edit_instrument(instrument_id)
+
+        coordinator.close_instrument()
+
+        coordinator._reconstruction_panel_logic.close_reconstruction.assert_called_once_with()
+
+    def test_closing_with_no_instrument_draws_nothing(
+        self,
+        coordinator: ReconstructionTabCoordinator,
+        views: List[ReconstructionInstrumentsViewModel],
+    ) -> None:
+        """A reconstruction the panel draws stays drawn, since the close reaches an instrument alone."""
+        coordinator.close_instrument()
+
+        assert views == []
+        coordinator._reconstruction_panel_logic.close_reconstruction.assert_not_called()

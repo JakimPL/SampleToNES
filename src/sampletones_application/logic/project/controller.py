@@ -122,8 +122,9 @@ class ProjectController(CallbackMixin):
         """Installs a project restored from history and rebuilds every dependent view.
 
         Undo and redo install the whole project at once here: ``on_project_replaced``
-        fires to rebuild the tabs wholesale, mirroring how loading a project refreshes
-        them. The fine-grained ``on_mutation`` signal fires only for new user edits, so
+        fires so each tab realigns with the restored project, mirroring how loading a
+        project refreshes them, and a tab showing one voice keeps it by its id. The
+        fine-grained ``on_mutation`` signal fires only for new user edits, so
         reinstalling a recorded snapshot leaves it quiet. ``clean`` reports whether the
         restored state is the one last saved to disk, letting the session drop the
         unsaved-changes flag when undo returns exactly to the save point.

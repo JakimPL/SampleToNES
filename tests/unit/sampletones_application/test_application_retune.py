@@ -2,6 +2,7 @@ from typing import List, Optional
 from unittest.mock import MagicMock
 
 from sampletones_application.application import Application
+from sampletones_application.coordinators.reconstruction import ReconstructionCoordinator
 from sampletones_application.services.result import ServiceCanceled
 from sampletones_application.services.retune import RetunedSample
 from sampletones_core.project.voices.sample import Sample
@@ -21,18 +22,15 @@ def _retuned(voice_id: str, rate: int) -> RetunedSample:
 def _app(
     current_rate: int,
     sample: Optional[Sample],
-    open_reconstruction: Optional[MagicMock] = None,
 ) -> Application:
     app = Application.__new__(Application)
     app.project_manager = MagicMock()
     app.project_manager.current.settings.nes_frequency = current_rate
     app.project_manager.current.voices.get.return_value = sample
-    app.reconstruction_manager = MagicMock()
-    app.reconstruction_manager.reconstruction = open_reconstruction
     app.history = MagicMock()
     app.project_controller = MagicMock()
     app._sequencer_tab = MagicMock()
-    app._reconstructions_tab = MagicMock()
+    app._reconstruction_coordinator = MagicMock(spec=ReconstructionCoordinator)
     return app
 
 
@@ -61,28 +59,21 @@ class TestApplyRetunedSample:
 
         app.project_controller.replace_sample_reconstruction.assert_not_called()
 
-    def test_rebinds_the_open_editor_when_it_shows_the_sample(self) -> None:
-        open_reconstruction = MagicMock()
-        sample = _sample_double()
-        sample.reconstruction = open_reconstruction
-        app = _app(current_rate=60, sample=sample, open_reconstruction=open_reconstruction)
+    def test_hands_the_retuned_sample_to_the_open_document(self) -> None:
+        """The document open on the Reconstructions tab decides whether it is the sample retuned."""
+        app = _app(current_rate=60, sample=_sample_double())
         retuned = _retuned("lead", 60)
 
         app._apply_retuned_sample(retuned)
 
-        app.reconstruction_manager.apply_edited.assert_called_once_with(retuned.reconstruction)
-        app._reconstructions_tab.update_reconstruction.assert_called_once_with(refit_waveform=True)
+        app._reconstruction_coordinator.retune_sample.assert_called_once_with("lead", retuned.reconstruction)
 
-    def test_leaves_the_editor_alone_when_a_different_sample_is_open(self) -> None:
-        sample = _sample_double()
-        sample.reconstruction = MagicMock()
-        app = _app(current_rate=60, sample=sample, open_reconstruction=MagicMock())
-        retuned = _retuned("lead", 60)
+    def test_a_discarded_result_reaches_no_document(self) -> None:
+        app = _app(current_rate=30, sample=_sample_double())
 
-        app._apply_retuned_sample(retuned)
+        app._apply_retuned_sample(_retuned("lead", 60))
 
-        app.reconstruction_manager.apply_edited.assert_not_called()
-        app._reconstructions_tab.update_reconstruction.assert_not_called()
+        app._reconstruction_coordinator.retune_sample.assert_not_called()
 
 
 def _sample(voice_id: str, rate: int) -> Sample:
@@ -94,14 +85,15 @@ def _sample(voice_id: str, rate: int) -> Sample:
 
 def _app_for_rate(
     samples: List[Sample],
-    open_reconstruction: Optional[MagicMock],
+    open_sample: Optional[Sample],
     running: bool = False,
 ) -> Application:
     app = Application.__new__(Application)
     app.project_manager = MagicMock()
     app.project_manager.current.voices = samples
+    app.project_manager.current.voice.side_effect = {sample.id: sample for sample in samples}.get
     app.reconstruction_manager = MagicMock()
-    app.reconstruction_manager.reconstruction = open_reconstruction
+    app.reconstruction_manager.voice_id = None if open_sample is None else open_sample.id
     app.retune_service = MagicMock()
     app.retune_service.start.return_value = True
     app.retune_service.is_running.return_value = running
@@ -116,7 +108,7 @@ class TestRetuneDim:
         open_sample = _sample("open", 30)
         app = _app_for_rate(
             [open_sample, _sample("other", 30)],
-            open_reconstruction=open_sample.reconstruction,
+            open_sample=open_sample,
         )
 
         app._retune_samples_for_rate(60)
@@ -127,7 +119,7 @@ class TestRetuneDim:
         open_sample = _sample("open", 60)
         app = _app_for_rate(
             [open_sample, _sample("other", 30)],
-            open_reconstruction=open_sample.reconstruction,
+            open_sample=open_sample,
         )
 
         app._retune_samples_for_rate(60)
@@ -135,21 +127,21 @@ class TestRetuneDim:
         app._reconstructions_tab.set_reconstruction_dimmed.assert_not_called()
 
     def test_does_not_dim_when_no_reconstruction_is_open(self) -> None:
-        app = _app_for_rate([_sample("a", 30), _sample("b", 30)], open_reconstruction=None)
+        app = _app_for_rate([_sample("a", 30), _sample("b", 30)], open_sample=None)
 
         app._retune_samples_for_rate(60)
 
         app._reconstructions_tab.set_reconstruction_dimmed.assert_not_called()
 
     def test_restores_the_dim_when_the_batch_finishes(self) -> None:
-        app = _app_for_rate([], open_reconstruction=None, running=False)
+        app = _app_for_rate([], open_sample=None, running=False)
 
         app._on_retune_result(ServiceCanceled())
 
         app._reconstructions_tab.set_reconstruction_dimmed.assert_called_once_with(False)
 
     def test_keeps_the_dim_while_the_batch_is_running(self) -> None:
-        app = _app_for_rate([], open_reconstruction=None, running=True)
+        app = _app_for_rate([], open_sample=None, running=True)
 
         app._on_retune_result(ServiceCanceled())
 

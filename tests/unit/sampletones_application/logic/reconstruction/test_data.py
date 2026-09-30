@@ -505,6 +505,20 @@ class TestRebindingToAnEditedReconstruction:
 
         assert rebound.stem_audios == data.stem_audios
 
+    def test_a_document_naming_a_recording_the_load_lost_holds_none(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        """A restore can bring back an entry this document let go of, whose audio it no longer holds."""
+        data = self._three_recordings(reconstruction_factory, tmp_path)
+        remaining = data.with_reconstruction(without_stem(data.reconstruction, 1))
+
+        restored = remaining.with_reconstruction(data.reconstruction)
+
+        assert restored.stem_audios == ()
+        assert restored.original_audio is None
+
 
 class TestWaveformData:
     def test_projects_the_render_relevant_fields(
