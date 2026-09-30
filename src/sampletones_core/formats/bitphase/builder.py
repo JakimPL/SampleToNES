@@ -1,9 +1,11 @@
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, FrozenSet, List, Optional, Sequence, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import SILENT_VOLUME
+from sampletones_core.exporters.rows.levels import RowPlace, cell_volume, full_level_notes
+from sampletones_core.exporters.rows.pitch import highest_step, written_pitch
 from sampletones_core.exporters.skipped import BuiltDocument, find_skipped_rows
 from sampletones_core.exporters.slices import iterate_voice_slices
 from sampletones_core.exporters.truncation import EnvelopeTruncation
@@ -72,6 +74,7 @@ from sampletones_core.timing import Groove, Meter, RowRate, calculate_groove
 from sampletones_shared.constants.project import DEFAULT_ROWS_PER_PATTERN, DEFAULT_SPEED
 
 PREVIEW_SPEED = DEFAULT_SPEED
+PREVIEW_TRANSPOSE = 0
 PREVIEW_TRIGGER_ROW = 0
 PREVIEW_REST_PATTERN_ID = FIRST_PATTERN_ID + 1
 NO_AUTHOR = ""
@@ -101,6 +104,11 @@ class SliceVoice:
     channel: ChannelName
     initial_pitch: int
     ticks: int
+
+    @property
+    def contour_top(self) -> int:
+        """The highest semitone step the slice's table moves its note by."""
+        return highest_step(self.table.rows)
 
 
 SliceVoiceTable = Dict[Tuple[str, ChannelName], SliceVoice]
@@ -152,16 +160,19 @@ def _build_slice_voice(
     )
 
 
-def _note_cell(channel_generator: ChannelName, pitch: int) -> NoteCell:
-    """Resolves a pitch to the note column of the channel the row sits on.
+def _note_cell(voice: SliceVoice, transpose: int) -> NoteCell:
+    """Resolves a slice moved by a row's transpose to the note column that triggers it.
 
-    The noise channel reads its note as a period selector, so its pitch takes the
-    mapping that reproduces that period; every other channel reads the tuning table.
+    The noise channel reads its note as a period selector, so its transposed period takes the
+    mapping that reproduces that period. Every other channel reads the tuning table at the note
+    its table moves, so the transposed pitch is written at the note that keeps the contour where
+    the song plays it — see :func:`written_pitch`.
     """
-    if channel_generator == ChannelName.NOISE:
+    pitch = voice.initial_pitch + transpose
+    if voice.channel == ChannelName.NOISE:
         return note_index_to_note_cell(noise_period_to_note_index(pitch))
 
-    return note_index_to_note_cell(pitch_to_note_index(pitch))
+    return note_index_to_note_cell(pitch_to_note_index(written_pitch(pitch, voice.contour_top)))
 
 
 def _trigger_row(voice: SliceVoice, note: NoteCell, volume: int) -> BitphaseRow:
@@ -245,7 +256,7 @@ def _preview_patterns(
     channel_rows = _empty_channels(length)
     for voice in voices:
         channel = CHANNEL_TO_INDEX[voice.channel]
-        note = _note_cell(voice.channel, voice.initial_pitch)
+        note = _note_cell(voice, PREVIEW_TRANSPOSE)
         channel_rows[channel][PREVIEW_TRIGGER_ROW] = _trigger_row(
             voice,
             note,
@@ -407,13 +418,17 @@ def _row_cell(
     row: Row,
     channel_generator: ChannelName,
     voices: SliceVoiceTable,
+    *,
+    full_level: bool,
 ) -> BitphaseRow:
     """Converts one tracker line to the Bitphase row that plays it.
 
     A note-on naming a voice with no instrument on this channel plays nothing in the song, so it
-    becomes the note cut that silences the channel.
+    becomes the note cut that silences the channel. The volume column states what
+    :func:`cell_volume` gives the row, which is the full level on a note Bitphase would otherwise
+    start at the level the channel carries.
     """
-    volume = _volume_column(row.volume)
+    volume = _volume_column(cell_volume(row, channel_generator, full_level=full_level))
     cell = BitphaseRow(volume=volume)
     note_cut = BitphaseRow(
         note=NoteCell(name=int(NoteName.OFF)),
@@ -428,10 +443,9 @@ def _row_cell(
             if voice is None:
                 cell = note_cut
             else:
-                pitch = voice.initial_pitch + (row.transpose or 0)
                 cell = _trigger_row(
                     voice,
-                    _note_cell(channel_generator, pitch),
+                    _note_cell(voice, row.transpose or 0),
                     volume,
                 )
         case None:
@@ -445,10 +459,25 @@ def _channel_rows(
     length: int,
     channel: ChannelName,
     voices: SliceVoiceTable,
+    full_rows: FrozenSet[int],
 ) -> List[BitphaseRow]:
-    cells = [_row_cell(row, channel, voices) for row in rows[:length]]
+    """Converts one channel's pattern within a frame, writing the full level on the rows named."""
+    cells = [
+        _row_cell(
+            row,
+            channel,
+            voices,
+            full_level=row_index in full_rows,
+        )
+        for row_index, row in enumerate(rows[:length])
+    ]
     cells.extend(BitphaseRow() for _ in range(length - len(cells)))
     return cells
+
+
+def _frame_rows(places: FrozenSet[RowPlace], position: int) -> FrozenSet[int]:
+    """The rows among ``places`` that the order frame at ``position`` plays."""
+    return frozenset(place.row_index for place in places if place.order_position == position)
 
 
 def _project_groove(project: Project) -> Groove:
@@ -541,11 +570,14 @@ def _project_patterns(
     A SampleToNES order frame points every channel at its own pattern, where a Bitphase
     order position names one pattern that spans all channels, so each frame becomes a
     pattern of its own carrying that frame's channels side by side. Every pattern triggers
-    the groove table it is given, so the tempo holds wherever the order jumps.
+    the groove table it is given, so the tempo holds wherever the order jumps. The order plays
+    the frames in turn and returns to the first, which is the walk :func:`full_level_notes`
+    follows to find the notes writing the full level.
     """
     song = project.song
     length = song.rows_per_pattern
     patterns: List[BitphasePattern] = []
+    full_levels = {channel_name: full_level_notes(song, channel_name) for channel_name in ChannelName.items()}
 
     for position, frame in enumerate(song.order):
         channel_rows = _empty_channels(length)
@@ -570,6 +602,7 @@ def _project_patterns(
                 length,
                 channel_name,
                 voices,
+                _frame_rows(full_levels[channel_name], position),
             )
 
         patterns.append(_to_pattern(position, length, channel_rows))

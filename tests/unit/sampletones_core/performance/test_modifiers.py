@@ -3,13 +3,14 @@ from typing import Any
 
 import pytest
 
-from sampletones_core.constants.general import MAX_PITCH, MAX_VOLUME, MIN_PITCH
+from sampletones_core.constants.general import MAX_PITCH, MAX_VOLUME, MIN_PITCH, VOLUME_RANGE
 from sampletones_core.instructions import (
     NoiseInstruction,
     PulseInstruction,
     TriangleInstruction,
 )
 from sampletones_core.performance import apply_modifiers
+from sampletones_core.performance.modifiers import triangle_sounds_at
 from tests.suite.case import BaseRegularTestCase, BaseTestCase
 
 
@@ -365,3 +366,14 @@ class TestTriangleModifiers:
         assert isinstance(result, TriangleInstruction)
         assert result.pitch == case.expected_pitch
         assert result.on == case.expected_on
+
+
+class TestTheTriangleGate:
+    def test_the_triangle_sounds_at_every_level_the_gate_opens_at(self) -> None:
+        """A tracker export writes the triangle's volume column by the gate, so the gate is the rule
+        the song sounds the triangle by at every level a row can state.
+        """
+        instruction = TriangleInstruction(on=True, pitch=MIN_PITCH)
+        sounded = [apply_modifiers(instruction, transpose=0, row_volume=volume).on for volume in VOLUME_RANGE]
+
+        assert sounded == [triangle_sounds_at(volume) for volume in VOLUME_RANGE]

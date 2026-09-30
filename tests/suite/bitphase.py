@@ -32,6 +32,9 @@ BITPHASE_DEFAULT_TABLE_ID: Final[int] = 0
 BITPHASE_MAX_MACRO_LENGTH: Final[int] = 512
 BITPHASE_SILENT_PERIOD: Final[int] = 0
 BITPHASE_MAX_PERIOD: Final[int] = 2047
+BITPHASE_OPENING_PATTERN_VOLUME: Final[int] = 15
+BITPHASE_STORED_VOLUME_OFF: Final[int] = -1
+BITPHASE_SILENCED_PATTERN_VOLUME: Final[int] = 0
 BITPHASE_MACRO_DEFAULTS: Final[Dict[str, Any]] = {
     "pulseWidth": 2,
     "volumeOrRate": 15,
@@ -221,6 +224,32 @@ def sounded_period(
     moved = min(max(note_index + table.step(tick), 0), len(tuning_table) - 1)
     period = tuning_table[moved] + instrument.value("toneAdd", tick)
     return min(max(period, BITPHASE_SILENT_PERIOD), BITPHASE_MAX_PERIOD)
+
+
+def pattern_volume(carried: int, stored: int) -> int:
+    """The level a channel plays at once a row's stored volume cell is read, as the engine reads it.
+
+    A stored ``-1`` silences the channel, a level above zero replaces the one it carries, and any
+    other value leaves the carried level alone. A channel opens at the full level. Read from
+    ``_processVolume`` of ``tracker-pattern-processor.js`` and ``nes-state.js`` of the tracker at
+    commit ``265ff70``. The triangle sounds a full-level instrument while this level is above zero,
+    since the driver enables it on the PT3 product of the two, which for a full instrument is the
+    pattern level itself.
+
+    Args:
+        carried: The level the channel carries into the row.
+        stored: The row's stored volume cell.
+
+    Returns:
+        int: The level the channel plays the row at.
+    """
+    if stored == BITPHASE_STORED_VOLUME_OFF:
+        return BITPHASE_SILENCED_PATTERN_VOLUME
+
+    if stored > BITPHASE_SILENCED_PATTERN_VOLUME:
+        return stored
+
+    return carried
 
 
 def _note(data: Optional[Dict[str, Any]]) -> LoadedNote:

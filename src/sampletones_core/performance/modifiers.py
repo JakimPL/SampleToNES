@@ -1,3 +1,5 @@
+from typing import Final
+
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.instructions import (
     InstructionUnion,
@@ -6,6 +8,24 @@ from sampletones_core.instructions import (
     TriangleInstruction,
 )
 from sampletones_core.utils.frequencies import transpose_period, transpose_pitch
+
+TRIANGLE_LOUDEST_SILENT_VOLUME: Final[int] = MAX_VOLUME // 2
+
+
+def triangle_sounds_at(row_volume: int) -> bool:
+    """Whether the triangle sounds at the level a pattern has reached.
+
+    The triangle plays at one fixed loudness, so a pattern's level decides only whether it sounds,
+    and it sounds while the row asks for more than half volume. A tracker export writes the
+    triangle's volume column by this rule, so the tracker gates the triangle where the song does.
+
+    Args:
+        row_volume: The level the pattern has reached.
+
+    Returns:
+        bool: Whether the triangle sounds at that level.
+    """
+    return row_volume > TRIANGLE_LOUDEST_SILENT_VOLUME
 
 
 def apply_modifiers(
@@ -36,7 +56,7 @@ def apply_modifiers(
             return instruction.model_copy(update={"pitch": effective_pitch, "volume": scaled_volume})
         case TriangleInstruction():
             effective_pitch = transpose_pitch(instruction.pitch, transpose)
-            on = instruction.on and row_volume > MAX_VOLUME // 2
+            on = instruction.on and triangle_sounds_at(row_volume)
             return instruction.model_copy(update={"pitch": effective_pitch, "on": on})
         case NoiseInstruction():
             scaled_volume = max(0, min(MAX_VOLUME, round(instruction.volume * row_volume / MAX_VOLUME)))
