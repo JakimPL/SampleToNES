@@ -119,6 +119,7 @@ class GlobalMessageElements(AbstractElement):
     EXIT_UNSAVED_RECONSTRUCTION = "exit_unsaved_reconstruction"
     CLOSE_UNSAVED_RECONSTRUCTION = "close_unsaved_reconstruction"
     LOAD_UNSAVED_RECONSTRUCTION = "load_unsaved_reconstruction"
+    LOAD_REPLACED_RECONSTRUCTION = "load_replaced_reconstruction"
     PROJECT_SAVED_SUCCESSFULLY = "project_saved_successfully"
     PROJECT_SAVE_FAILED = "project_save_failed"
     PROJECT_EXPORTED_SUCCESSFULLY = "project_exported_successfully"

@@ -49,6 +49,23 @@ def to_path(path: GeneralPathlike) -> Path:
     return Path(path)
 
 
+def is_same_path(first: Path, second: Path) -> bool:
+    """
+    Whether two paths name the same location, however each of them is spelled.
+
+    A file is reached through a relative path, a detour through a parent, or a link, and each
+    spelling resolves to the one absolute location compared here. The file itself may be absent.
+
+    Args:
+        first (Path): One spelling of a location.
+        second (Path): Another spelling to compare it with.
+
+    Returns:
+        bool: Whether both resolve to the same location.
+    """
+    return first.resolve() == second.resolve()
+
+
 def get_filename(name: str, extension: str) -> str:
     """
     Composes a file name from the name a thing is known by and its extension.

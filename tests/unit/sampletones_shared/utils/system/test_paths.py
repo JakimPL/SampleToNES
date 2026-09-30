@@ -12,6 +12,7 @@ from sampletones_shared.utils.system.paths import (
     first_missing,
     get_directory,
     get_filename,
+    is_same_path,
     nearest_directory,
     open_directory_in_explorer_linux,
     open_file_in_explorer_linux,
@@ -44,6 +45,30 @@ class TestFirstMissing:
         second.touch()
 
         assert first_missing((first, second)) is None
+
+
+class TestIsSamePath:
+    """Two spellings of one location name the same file, which is what tells a document its own."""
+
+    def test_a_path_is_the_same_as_itself(self, tmp_path: Path) -> None:
+        assert is_same_path(tmp_path / "song.stn", tmp_path / "song.stn")
+
+    def test_a_detour_through_a_parent_reaches_the_same_file(self, tmp_path: Path) -> None:
+        (tmp_path / "folder").mkdir()
+
+        assert is_same_path(tmp_path / "folder" / ".." / "song.stn", tmp_path / "song.stn")
+
+    def test_a_relative_spelling_reaches_the_same_file(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+
+        assert is_same_path(Path("song.stn"), tmp_path / "song.stn")
+
+    def test_two_files_are_different(self, tmp_path: Path) -> None:
+        assert not is_same_path(tmp_path / "song.stn", tmp_path / "other.stn")
 
 
 class TestNearestDirectory:

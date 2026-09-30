@@ -160,6 +160,63 @@ class TestReconstructionManagerIsFileBacked:
         assert reconstruction_manager.is_file_backed
 
 
+class TestTheFileADocumentIsBackedBy:
+    """A conversion can write over the file the open document came from, so the manager tells its
+    own file however the path to it is spelled."""
+
+    @pytest.fixture(name="opened")
+    def opened_fixture(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> Path:
+        path = tmp_path / "song.stn"
+        reconstruction_factory().save(path)
+        reconstruction_manager.load_reconstruction(path)
+        return path
+
+    def test_the_file_it_was_loaded_from(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        opened: Path,
+    ) -> None:
+        assert reconstruction_manager.is_backed_by(opened)
+
+    def test_the_same_file_spelled_another_way(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        opened: Path,
+    ) -> None:
+        (opened.parent / "folder").mkdir()
+
+        assert reconstruction_manager.is_backed_by(opened.parent / "folder" / ".." / opened.name)
+
+    def test_another_file(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        opened: Path,
+    ) -> None:
+        assert not reconstruction_manager.is_backed_by(opened.with_name("other.stn"))
+
+    def test_nothing_open(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        tmp_path: Path,
+    ) -> None:
+        assert not reconstruction_manager.is_backed_by(tmp_path / "song.stn")
+
+    def test_a_document_held_in_memory(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        reconstruction_manager.load_reconstruction_object(reconstruction_factory(), name="Sample")
+
+        assert not reconstruction_manager.is_backed_by(tmp_path / "Sample.stn")
+
+
 class TestReconstructionManagerSaveReconstructionAs:
     def test_writes_the_file(
         self,

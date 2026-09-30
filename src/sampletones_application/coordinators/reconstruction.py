@@ -23,6 +23,7 @@ from sampletones_application.services import (
 )
 from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
+    TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED,
     TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
 )
 from sampletones_application.utils.file_dialogs.api import (
@@ -209,6 +210,26 @@ class ReconstructionCoordinator:
             )
         else:
             load_reconstruction()
+
+    def load_converted(self, filepath: Path) -> None:
+        """Loads the reconstruction a conversion wrote, asking first about unsaved changes.
+
+        A conversion can write over the very file the open document came from, and a save would
+        then write the old document over the new one. The question in that case is whether to
+        discard the changes and load, and Cancel keeps them for a save to another file. Every other
+        document is loaded the way one opened by hand is.
+        """
+        if self._requires_save_confirmation() and self._reconstruction_manager.is_backed_by(filepath):
+            self._dialogs.show_confirmation(
+                tag=TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED,
+                message=self._language_manager["global.dialog.message.load_replaced_reconstruction"],
+                title=self._language_manager["global.dialog.title.load_unsaved_reconstruction"],
+                on_confirm=lambda: self.load(filepath),
+                ok_label=self._language_manager["global.dialog.label.discard"],
+            )
+            return
+
+        self.load_with_confirmation(filepath)
 
     def load_reconstruction_safely(self, path: Path) -> None:
         """Loads the persisted reconstruction when the application starts.

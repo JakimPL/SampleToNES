@@ -506,6 +506,12 @@ TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED = TagName(
     Widget.DIALOG,
     "reconstruction_saved",
 )
+TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.DIALOG,
+    "reconstruction_replaced",
+)
 TAG_GLOBAL_DIALOG_ABOUT = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

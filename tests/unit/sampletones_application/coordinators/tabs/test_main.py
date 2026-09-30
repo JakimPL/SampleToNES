@@ -12,6 +12,7 @@ from sampletones_application.logic.main.converter.run import ConversionSuccess
 from sampletones_application.logic.main.sources.scan import FolderScan
 from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_DIALOG_CANCEL,
+    TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS,
     TAG_MAIN_CONVERTER_DIALOG_LOAD,
     TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET,
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
@@ -450,6 +451,51 @@ class TestReconstructReplacesTheSetup:
 
         coordinator._converter_logic.set_output.assert_not_called()
         coordinator._hooks.on_reconstruct_directory.assert_not_called()
+
+
+class TestReconstructingAFileOverAGatheredList:
+    """Reconstruct on a file while recordings stand gathered asks about them first, and the
+    conversion it goes on to can ask about writing over a reconstruction in turn."""
+
+    @pytest.fixture(name="coordinator")
+    def coordinator_fixture(self, tmp_path: Path) -> MainTabCoordinator:
+        coordinator = _stems_coordinator(mixes=True, gathered=(Path("/audio/a.wav"),))
+        coordinator._hooks.on_reconstruct_file.side_effect = lambda path: coordinator._confirm_overwriting_target(
+            (path.with_suffix(".stn"),)
+        )
+        coordinator.request_reconstruct_file(tmp_path / "a.wav")
+        return coordinator
+
+    def test_the_gathered_list_is_asked_about_first(self, coordinator: MainTabCoordinator) -> None:
+        assert coordinator._dialogs.show_confirmation.call_args.args[0] == TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS
+        coordinator._hooks.on_reconstruct_file.assert_not_called()
+
+    def test_replacing_the_list_reaches_the_conversion(
+        self,
+        coordinator: MainTabCoordinator,
+        tmp_path: Path,
+    ) -> None:
+        coordinator._dialogs.show_confirmation.call_args.args[3]()
+
+        coordinator._hooks.on_reconstruct_file.assert_called_once_with(tmp_path / "a.wav")
+
+    def test_the_conversion_asks_about_the_file_it_writes_over_next(
+        self,
+        coordinator: MainTabCoordinator,
+        tmp_path: Path,
+    ) -> None:
+        coordinator._dialogs.show_confirmation.call_args.args[3]()
+
+        overwrite = coordinator._dialogs.show_confirmation.call_args
+        assert overwrite.args[0] == TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET
+        assert overwrite.kwargs["path"] == tmp_path / "a.stn"
+
+    def test_confirming_the_overwrite_starts_the_conversion(self, coordinator: MainTabCoordinator) -> None:
+        coordinator._dialogs.show_confirmation.call_args.args[3]()
+
+        coordinator._dialogs.show_confirmation.call_args.args[3]()
+
+        coordinator._converter_logic.start_conversion.assert_called_once_with(confirmed=True)
 
 
 def _rows_holding(*counts: int) -> Tuple[MagicMock, ...]:

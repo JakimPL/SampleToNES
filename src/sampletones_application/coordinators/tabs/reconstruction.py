@@ -733,7 +733,7 @@ class ReconstructionTabCoordinator:
         )
 
     def _remove_reconstruction(self, filepath: Path) -> None:
-        if self._reconstruction_manager.filepath == filepath:
+        if self._reconstruction_manager.is_backed_by(filepath):
             self._reconstruction_manager.detach_current_reconstruction()
             self._reconstruction_manager.mark_updated()
 

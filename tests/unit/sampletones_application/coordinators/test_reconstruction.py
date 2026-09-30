@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import Final, List, Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -13,6 +13,7 @@ from sampletones_application.logic.reconstruction.edit import StemRemoval
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.services.regeneration.service import RegeneratedInstrument
 from sampletones_application.services.result import ServiceSuccess
+from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED
 from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.reconstructions import Reconstruction
@@ -23,6 +24,7 @@ from sampletones_shared.exceptions import (
 from tests.conftest import ReconstructionFactory
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.language import FakeLanguageManager
 
 
 @pytest.fixture
@@ -363,3 +365,169 @@ class TestTheSaveAPromptWaitsOn:
 
         assert reconstruction_coordinator.save() is SaveOutcome.FAILED
         assert reconstruction_coordinator._dialogs.show_error.call_args.args[0] is failure
+
+
+NO_PROMPT: Final[str] = "none"
+SAVE_PROMPT: Final[str] = "save"
+REPLACED_PROMPT: Final[str] = "replaced"
+REPLACED_MESSAGE_KEY: Final[str] = "global.dialog.message.load_replaced_reconstruction"
+DISCARD_LABEL_KEY: Final[str] = "global.dialog.label.discard"
+
+
+class TestLoadingAConversion(BaseTestSuite):
+    """Loading what a conversion wrote asks first about unsaved changes. A conversion that wrote over
+    the open document's own file offers to discard the changes or keep them, since a save would write
+    the old document over the new one."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        unsaved: bool
+        embedded: bool
+        same_file: bool
+
+    test_cases = (
+        TestCase(label="saved_another_file", unsaved=False, embedded=False, same_file=False, expected=NO_PROMPT),
+        TestCase(label="saved_its_own_file", unsaved=False, embedded=False, same_file=True, expected=NO_PROMPT),
+        TestCase(label="unsaved_another_file", unsaved=True, embedded=False, same_file=False, expected=SAVE_PROMPT),
+        TestCase(label="unsaved_its_own_file", unsaved=True, embedded=False, same_file=True, expected=REPLACED_PROMPT),
+        TestCase(label="project_sample_another_file", unsaved=True, embedded=True, same_file=False, expected=NO_PROMPT),
+        TestCase(label="project_sample_its_own_file", unsaved=True, embedded=True, same_file=True, expected=NO_PROMPT),
+    )
+
+    @staticmethod
+    def _coordinator(
+        test_case: TestCase,
+        reconstruction_factory: ReconstructionFactory,
+        tmp_path: Path,
+    ) -> ReconstructionCoordinator:
+        """A coordinator over a document loaded from ``open.stn``, unsaved or saved as the case says."""
+        opened = tmp_path / "open.stn"
+        reconstruction_factory().save(opened)
+        manager = ReconstructionManager(scheduling=MagicMock())
+        coordinator = ReconstructionCoordinator(
+            manager,
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            dialogs=MagicMock(),
+            language_manager=FakeLanguageManager(),
+            on_tab_switch=MagicMock(),
+            on_session_state_changed=MagicMock(),
+            on_reconstruction_updated=MagicMock(),
+            is_reconstruction_embedded=lambda: test_case.embedded,
+        )
+        coordinator.set_reconstructions_tab(MagicMock())
+        manager.load_reconstruction(opened)
+        if test_case.unsaved:
+            manager.mark_updated()
+
+        return coordinator
+
+    @staticmethod
+    def _converted(test_case: TestCase, tmp_path: Path) -> Path:
+        """What the conversion wrote: the open file spelled another way, or a file of its own."""
+        if not test_case.same_file:
+            return tmp_path / "converted.stn"
+
+        (tmp_path / "folder").mkdir()
+        return tmp_path / "folder" / ".." / "open.stn"
+
+    @staticmethod
+    def _asked(coordinator: ReconstructionCoordinator) -> str:
+        dialogs = coordinator._dialogs
+        if dialogs.show_save_confirmation.called:
+            return SAVE_PROMPT
+
+        if dialogs.show_confirmation.called:
+            assert dialogs.show_confirmation.call_args.kwargs["tag"] == TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED
+            return REPLACED_PROMPT
+
+        return NO_PROMPT
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_the_question_put_before_loading(
+        self,
+        test_case: TestCase,
+        reconstruction_factory: ReconstructionFactory,
+        tmp_path: Path,
+    ) -> None:
+        coordinator = self._coordinator(test_case, reconstruction_factory, tmp_path)
+
+        coordinator.load_converted(self._converted(test_case, tmp_path))
+
+        assert self._asked(coordinator) == test_case.expected
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_going_on_loads_what_the_conversion_wrote(
+        self,
+        test_case: TestCase,
+        reconstruction_factory: ReconstructionFactory,
+        tmp_path: Path,
+    ) -> None:
+        coordinator = self._coordinator(test_case, reconstruction_factory, tmp_path)
+        converted = self._converted(test_case, tmp_path)
+
+        coordinator.load_converted(converted)
+        asked = self._asked(coordinator)
+        if asked == SAVE_PROMPT:
+            coordinator._dialogs.show_save_confirmation.call_args.kwargs["on_confirm"]()
+        elif asked == REPLACED_PROMPT:
+            coordinator._dialogs.show_confirmation.call_args.kwargs["on_confirm"]()
+
+        coordinator._tab.load_reconstruction.assert_called_once_with(converted)
+
+    @pytest.mark.parametrize(
+        "test_case",
+        [test_case for test_case in test_cases if test_case.expected != NO_PROMPT],
+        ids=lambda test_case: test_case.label,
+    )
+    def test_nothing_loads_before_the_answer(
+        self,
+        test_case: TestCase,
+        reconstruction_factory: ReconstructionFactory,
+        tmp_path: Path,
+    ) -> None:
+        coordinator = self._coordinator(test_case, reconstruction_factory, tmp_path)
+
+        coordinator.load_converted(self._converted(test_case, tmp_path))
+
+        coordinator._tab.load_reconstruction.assert_not_called()
+        assert coordinator.is_unsaved()
+
+    def test_a_replaced_file_offers_to_discard_the_changes(
+        self,
+        reconstruction_factory: ReconstructionFactory,
+        tmp_path: Path,
+    ) -> None:
+        """Saving would write the old document over the conversion, so the prompt offers no Save."""
+        test_case = next(test_case for test_case in self.test_cases if test_case.expected == REPLACED_PROMPT)
+        coordinator = self._coordinator(test_case, reconstruction_factory, tmp_path)
+
+        coordinator.load_converted(self._converted(test_case, tmp_path))
+
+        prompt = coordinator._dialogs.show_confirmation.call_args.kwargs
+        assert prompt["message"] == REPLACED_MESSAGE_KEY
+        assert prompt["ok_label"] == DISCARD_LABEL_KEY
+        coordinator._dialogs.show_save_confirmation.assert_not_called()
+
+    def test_the_save_prompt_saves_the_open_document(
+        self,
+        reconstruction_factory: ReconstructionFactory,
+        tmp_path: Path,
+    ) -> None:
+        test_case = next(test_case for test_case in self.test_cases if test_case.expected == SAVE_PROMPT)
+        coordinator = self._coordinator(test_case, reconstruction_factory, tmp_path)
+        coordinator.load_converted(self._converted(test_case, tmp_path))
+
+        outcome = coordinator._dialogs.show_save_confirmation.call_args.kwargs["on_save"]()
+
+        assert outcome is SaveOutcome.WRITTEN
+        assert not coordinator.is_unsaved()

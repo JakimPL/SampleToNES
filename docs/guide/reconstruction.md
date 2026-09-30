@@ -16,7 +16,8 @@ To keep frequently used reconstructions within reach, right-click a reconstructi
 choose **Mark as favorite**. Check **Favorites only** to show only those items.
 
 If the reconstruction you have open has unsaved changes, opening another one asks whether to save it
-first.
+first. **Save** saves your changes and then opens the other one. **Discard** opens it and throws your
+changes away. **Cancel** keeps the one you have open.
 
 The **Source** card switches playback between **Reconstruction** and **Original audio**, so you can
 compare the two. Its **NES frequency** field retimes the reconstruction: type a new rate and press

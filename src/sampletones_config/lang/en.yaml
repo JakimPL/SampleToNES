@@ -73,6 +73,7 @@ global.dialog.message.exit_library_generation_in_progress: "Library generation i
 global.dialog.message.exit_unsaved_reconstruction: "The current reconstruction has unsaved changes. Are you sure you want to exit?"
 global.dialog.message.close_unsaved_reconstruction: "The current reconstruction has unsaved changes. Are you sure you want to close it?"
 global.dialog.message.load_unsaved_reconstruction: "The current reconstruction has unsaved changes. Do you want to save it before loading a new one?"
+global.dialog.message.load_replaced_reconstruction: "The conversion wrote over the reconstruction you have open. Loading it throws away your unsaved changes. To keep them, click Cancel, then choose Save reconstruction as... in the Reconstruction menu."
 global.dialog.message.project_saved_successfully: "Project saved successfully."
 global.dialog.message.project_save_failed: "Failed to save project."
 global.dialog.message.project_exported_successfully: "FamiTracker module exported successfully."

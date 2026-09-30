@@ -530,7 +530,7 @@ class Application:
                 on_reconstruct_directory=self._reconstruct_directory,
                 on_load_reconstruction=self._reconstruction_coordinator.load_with_confirmation,
                 on_load_library=self._load_library,
-                on_load_file=self._on_converted_reconstruction_loaded,
+                on_load_file=self._reconstruction_coordinator.load_converted,
                 on_load_directory=self._navigate_to_reconstructions,
                 on_canceled=self._refresh_browsers,
                 on_refresh_trees=self._refresh_browsers,
@@ -1094,9 +1094,6 @@ class Application:
             exception,
             self.language_manager["global.dialog.message.audio_playback_error"],
         )
-
-    def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
-        self._reconstruction_coordinator.load_with_confirmation(filepath)
 
     def _refresh_browsers(self) -> None:
         """Reads the disk afresh in every browser, so a reconstruction just written stands in each.

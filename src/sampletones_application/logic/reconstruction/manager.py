@@ -16,7 +16,7 @@ from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
-from sampletones_shared.utils.system.paths import first_missing
+from sampletones_shared.utils.system.paths import first_missing, is_same_path
 from sampletones_shared.utils.system.reveal.selection import open_paths_in_explorer
 
 
@@ -234,6 +234,15 @@ class ReconstructionManager(CallbackMixin):
     @property
     def is_file_backed(self) -> bool:
         return self.filepath is not None
+
+    def is_backed_by(self, path: Path) -> bool:
+        """Whether the open document stands for the file at ``path``, however the path is spelled.
+
+        A conversion can write over the file the open document was loaded from or last saved to,
+        and removing a file from the browser can take the open document's own away.
+        """
+        filepath = self.filepath
+        return filepath is not None and is_same_path(filepath, path)
 
     @property
     def source_paths(self) -> Tuple[Path, ...]:

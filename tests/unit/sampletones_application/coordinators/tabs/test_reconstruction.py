@@ -245,14 +245,26 @@ class TestRemoveTreeEntries:
         removal_coordinator: ReconstructionTabCoordinator,
     ) -> None:
         path = Path("tone.strec")
-        removal_coordinator._reconstruction_manager.filepath = path
+        removal_coordinator._reconstruction_manager.is_backed_by.return_value = True
 
         removal_coordinator._remove_reconstruction(path)
 
+        removal_coordinator._reconstruction_manager.is_backed_by.assert_called_once_with(path)
         removal_coordinator._reconstruction_manager.detach_current_reconstruction.assert_called_once_with()
         removal_coordinator._reconstruction_manager.mark_updated.assert_called_once_with()
         removal_coordinator._browser_logic.remove_path.assert_called_once_with(path)
         removal_coordinator._browser_panel.refresh.assert_called_once_with()
+
+    def test_removing_another_file_leaves_the_open_document_as_it_is(
+        self,
+        removal_coordinator: ReconstructionTabCoordinator,
+    ) -> None:
+        removal_coordinator._reconstruction_manager.is_backed_by.return_value = False
+
+        removal_coordinator._remove_reconstruction(Path("other.strec"))
+
+        removal_coordinator._reconstruction_manager.detach_current_reconstruction.assert_not_called()
+        removal_coordinator._browser_logic.remove_path.assert_called_once_with(Path("other.strec"))
 
     def test_removing_open_directory_detaches_loaded_reconstruction_inside_it(
         self,
