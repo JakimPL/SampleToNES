@@ -225,6 +225,8 @@ def removal_coordinator() -> ReconstructionTabCoordinator:
     instance._browser_logic = MagicMock()
     instance._browser_panel = MagicMock()
     instance._reconstruction_manager = MagicMock()
+    instance._reconstruction_panel_logic = MagicMock()
+    instance._reconstruction_instruments_logic = MagicMock()
     instance._language_manager = FakeLanguageManager(TEXTS)
     instance._lbl_remove = "Remove"
     instance._msg_load_error = LOAD_ERROR_KEY
@@ -302,6 +304,32 @@ class TestRemoveTreeEntries:
         removal_coordinator._reconstruction_manager.mark_updated.assert_called_once_with()
         removal_coordinator._browser_logic.remove_path.assert_called_once_with(path)
         removal_coordinator._browser_panel.refresh.assert_called_once_with()
+
+    def test_the_open_document_is_shown_without_the_file_it_lost(
+        self,
+        removal_coordinator: ReconstructionTabCoordinator,
+    ) -> None:
+        """The Source card stops naming a file that is gone."""
+        removal_coordinator._reconstruction_manager.is_backed_by.return_value = True
+
+        removal_coordinator._remove_reconstruction(Path("tone.strec"))
+
+        removal_coordinator._reconstruction_panel_logic.update_reconstruction.assert_called_once_with(
+            refit_waveform=False
+        )
+
+    def test_a_file_that_stays_keeps_the_open_document_on_it(
+        self,
+        removal_coordinator: ReconstructionTabCoordinator,
+    ) -> None:
+        removal_coordinator._reconstruction_manager.is_backed_by.return_value = True
+        removal_coordinator._browser_logic.remove_path.side_effect = OSError("busy")
+
+        removal_coordinator._remove_reconstruction(Path("tone.strec"))
+
+        removal_coordinator._reconstruction_manager.detach_current_reconstruction.assert_not_called()
+        removal_coordinator._reconstruction_manager.mark_updated.assert_not_called()
+        removal_coordinator._dialogs.show_error.assert_called_once()
 
     def test_removing_another_file_leaves_the_open_document_as_it_is(
         self,

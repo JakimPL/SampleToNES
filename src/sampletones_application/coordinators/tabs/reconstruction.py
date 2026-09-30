@@ -752,10 +752,8 @@ class ReconstructionTabCoordinator:
         )
 
     def _remove_reconstruction(self, filepath: Path) -> None:
-        if self._reconstruction_manager.is_backed_by(filepath):
-            self._reconstruction_manager.detach_current_reconstruction()
-            self._reconstruction_manager.mark_updated()
-
+        """Deletes a reconstruction file, keeping the open document once the file it stood on is gone."""
+        stood_on_it = self._reconstruction_manager.is_backed_by(filepath)
         try:
             self._browser_logic.remove_path(filepath)
         except OSError as exception:
@@ -763,14 +761,15 @@ class ReconstructionTabCoordinator:
             self._dialogs.show_error(exception, self._msg_load_error)
             return
 
+        if stood_on_it:
+            self._let_go_of_removed_file()
+
         self._browser_panel.refresh()
 
     def _remove_directory(self, directory: Path) -> None:
+        """Deletes a folder, keeping the open document once the file it stood on inside it is gone."""
         current_filepath = self._reconstruction_manager.filepath
-        if current_filepath is not None and current_filepath.is_relative_to(directory):
-            self._reconstruction_manager.detach_current_reconstruction()
-            self._reconstruction_manager.mark_updated()
-
+        stood_in_it = current_filepath is not None and current_filepath.is_relative_to(directory)
         try:
             self._browser_logic.remove_path(directory)
         except OSError as exception:
@@ -781,7 +780,20 @@ class ReconstructionTabCoordinator:
             self._dialogs.show_error(exception, self._msg_load_error)
             return
 
+        if stood_in_it:
+            self._let_go_of_removed_file()
+
         self._browser_panel.refresh()
+
+    def _let_go_of_removed_file(self) -> None:
+        """Holds the open document as unsaved changes with no file of its own, and shows it that way.
+
+        The reader still has the document in front of them, so its changes stay open for a save to
+        another file, and the Source card stops naming the file that is gone.
+        """
+        self._reconstruction_manager.detach_current_reconstruction()
+        self._reconstruction_manager.mark_updated()
+        self.update_reconstruction()
 
     def update_reconstruction(self, *, refit_waveform: bool = False) -> None:
         """Re-answers every reading of an edited document whose envelopes the instruments panel already draws.
