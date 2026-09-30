@@ -151,7 +151,7 @@ class ProjectCoordinator:
                 tag=TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
                 title=self._title(GlobalDialogTitleElements.CLOSE_UNSAVED_PROJECT),
                 message=self._message(GlobalMessageElements.CLOSE_UNSAVED_PROJECT),
-                on_save=self.save,
+                on_save=self._write_project,
                 on_confirm=self._close,
                 ok_label=self._label(DialogElements.DISCARD),
             )
@@ -172,25 +172,36 @@ class ProjectCoordinator:
             tag=TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
             title=self._title(GlobalDialogTitleElements.EXIT_CONFIRMATION),
             message=self._message(GlobalMessageElements.EXIT_UNSAVED_PROJECT),
-            on_save=self.save,
+            on_save=self._write_project,
             on_confirm=proceed,
             ok_label=self._label(DialogElements.EXIT),
         )
 
     def save(self) -> SaveOutcome:
-        """Saves the project to its current file, prompting for one when it has none.
+        """Saves the project to its current file, prompting for one when it has none, and says so.
 
-        Reports what the save came to, so a save prompt waiting on it goes on once the project
-        lands on disk and asks again when the reader closes the file dialog.
+        Reports what the save came to, the way :meth:`_write_project` does.
+        """
+        return self._announced(self._write_project())
+
+    def save_as_dialog(self) -> SaveOutcome:
+        """Prompts for a destination and saves the project there, saying so once it is written."""
+        return self._announced(self._write_to_chosen_file())
+
+    def _write_project(self) -> SaveOutcome:
+        """Writes the project to its current file, prompting for one when it has none.
+
+        A save prompt waits on this, going on once the project lands on disk and asking again when
+        the reader closes the file dialog. The reader asked to go on, so the save goes on without a
+        word of its own, and whatever the prompt guards opens alone.
         """
         filepath = self._session_manager.current_project
         if filepath is None:
-            return self.save_as_dialog()
+            return self._write_to_chosen_file()
 
-        return self._save(filepath)
+        return self._write(filepath)
 
-    def save_as_dialog(self) -> SaveOutcome:
-        """Prompts for a destination and saves the project there, reporting what the save came to."""
+    def _write_to_chosen_file(self) -> SaveOutcome:
         path = self._session_manager.get_project_path()
         filename = path.name if path.is_file() else DEFAULT_PROJECT_FILENAME
         directory = get_directory(path)
@@ -202,6 +213,17 @@ class ProjectCoordinator:
         )
 
         return self._handle_save_as(filepath)
+
+    def _announced(self, outcome: SaveOutcome) -> SaveOutcome:
+        """Tells the reader a save they asked for by itself has landed."""
+        if outcome is SaveOutcome.WRITTEN:
+            self._dialogs.show_info(
+                TAG_GLOBAL_DIALOG_PROJECT_SAVED,
+                self._message(GlobalMessageElements.PROJECT_SAVED_SUCCESSFULLY),
+                self._title(GlobalDialogTitleElements.PROJECT_SAVED),
+            )
+
+        return outcome
 
     def _project_filters(self) -> Tuple[FileFilter, ...]:
         """The single type a project of this application's own is written as and read from."""
@@ -268,7 +290,7 @@ class ProjectCoordinator:
     @ignore_none_path(default=SaveOutcome.CALLED_OFF)
     def _handle_save_as(self, filepath: Path) -> SaveOutcome:
         self._session_manager.set_project_path(filepath.parent)
-        return self._save(filepath)
+        return self._write(filepath)
 
     @ignore_none_path
     def _handle_export_project(self, filepath: Path, export_format: ExportFormat) -> None:
@@ -301,7 +323,7 @@ class ProjectCoordinator:
         self._session_manager.set_current_project(filepath)
         self._on_tab_switch(Tab.SEQUENCER)
 
-    def _save(self, filepath: Path) -> SaveOutcome:
+    def _write(self, filepath: Path) -> SaveOutcome:
         try:
             self._project_controller.save(filepath)
         except (SerializationError, OSError) as exception:
@@ -316,11 +338,6 @@ class ProjectCoordinator:
             return SaveOutcome.FAILED
 
         self._session_manager.set_current_project(filepath)
-        self._dialogs.show_info(
-            TAG_GLOBAL_DIALOG_PROJECT_SAVED,
-            self._message(GlobalMessageElements.PROJECT_SAVED_SUCCESSFULLY),
-            self._title(GlobalDialogTitleElements.PROJECT_SAVED),
-        )
         return SaveOutcome.WRITTEN
 
     def _on_export_result(self, result: ExportResult) -> None:
@@ -399,7 +416,7 @@ class ProjectCoordinator:
                 tag=TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
                 title=self._title(title),
                 message=self._message(message),
-                on_save=self.save,
+                on_save=self._write_project,
                 on_confirm=on_confirm,
                 ok_label=self._label(DialogElements.DISCARD),
             )

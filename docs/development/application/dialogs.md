@@ -57,7 +57,9 @@ the first answer runs: a second click reaches a dialog that has already gone.
 The save prompt's Save runs the save once the prompt has gone, and the save reports a `SaveOutcome`. A
 document written to disk goes on to what the prompt was guarding. A save the reader called off, such as a
 file dialog closed without a name, brings the prompt back with the same question. A save that failed has
-shown its error, and that error stands alone on screen.
+shown its error, and that error stands alone on screen. A save the prompt asked for shows no message of its
+own when it lands, since the reader asked to go on and what the prompt guards opens next. A document with
+no file to write to asks for one, the way Save As does.
 
 A dialog that comes back once the modal it raised is answered steps aside. `yield_to` takes it off screen
 and keeps its tree, and `resume` brings it back, a frame each way.

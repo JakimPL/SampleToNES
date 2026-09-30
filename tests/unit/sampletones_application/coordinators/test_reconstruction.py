@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 
 from sampletones_application.categories.hierarchy import Tab
+from sampletones_application.coordinators import reconstruction as reconstruction_module
 from sampletones_application.coordinators.reconstruction import ReconstructionCoordinator
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
@@ -1089,13 +1090,65 @@ class TestTheSaveAPromptWaitsOn:
 
         assert reconstruction_coordinator.save() is SaveOutcome.WRITTEN
 
-    def test_a_document_with_nothing_to_write_to_calls_the_save_off(
+    def test_a_project_sample_has_nothing_to_write_to(
         self,
         reconstruction_coordinator: ReconstructionCoordinator,
     ) -> None:
-        reconstruction_coordinator._reconstruction_manager.save_reconstruction.return_value = False
+        manager = reconstruction_coordinator._reconstruction_manager
+        manager.is_file_backed = False
+        manager.is_project_sample = True
+        manager.save_reconstruction.return_value = False
 
         assert reconstruction_coordinator.save() is SaveOutcome.CALLED_OFF
+
+    def test_a_document_whose_file_was_taken_away_asks_where_to_go(
+        self,
+        reconstruction_coordinator: ReconstructionCoordinator,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """The save a prompt waits on writes it where the reader picks, and goes on without a word."""
+        chosen = tmp_path / "lead.stn"
+        monkeypatch.setattr(reconstruction_module, "save_file_dialog", MagicMock(return_value=chosen))
+        manager = self._fileless(reconstruction_coordinator)
+
+        assert reconstruction_coordinator.save() is SaveOutcome.WRITTEN
+        manager.save_reconstruction_as.assert_called_once_with(chosen)
+        reconstruction_coordinator._dialogs.show_info.assert_not_called()
+
+    def test_a_file_dialog_closed_without_a_name_calls_the_save_off(
+        self,
+        reconstruction_coordinator: ReconstructionCoordinator,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(reconstruction_module, "save_file_dialog", MagicMock(return_value=None))
+        manager = self._fileless(reconstruction_coordinator)
+
+        assert reconstruction_coordinator.save() is SaveOutcome.CALLED_OFF
+        manager.save_reconstruction_as.assert_not_called()
+
+    def test_save_as_asked_for_by_itself_says_it_landed(
+        self,
+        reconstruction_coordinator: ReconstructionCoordinator,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        monkeypatch.setattr(reconstruction_module, "save_file_dialog", MagicMock(return_value=tmp_path / "lead.stn"))
+        reconstruction_coordinator.set_reconstructions_tab(MagicMock())
+
+        assert reconstruction_coordinator.save_as_dialog() is SaveOutcome.WRITTEN
+        reconstruction_coordinator._dialogs.show_info.assert_called_once()
+
+    @staticmethod
+    def _fileless(coordinator: ReconstructionCoordinator) -> MagicMock:
+        """A standalone document with no file of its own, the way removing its file leaves it."""
+        coordinator.set_reconstructions_tab(MagicMock())
+        manager: MagicMock = coordinator._reconstruction_manager
+        manager.is_file_backed = False
+        manager.is_project_sample = False
+        manager.current_reconstruction.filepath = None
+        manager.current_reconstruction.name = "lead"
+        return manager
 
     def test_a_write_that_fails_shows_its_error(
         self,

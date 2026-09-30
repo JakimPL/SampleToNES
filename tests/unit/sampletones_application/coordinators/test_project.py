@@ -456,6 +456,40 @@ class TestTheSaveAPromptWaitsOn:
         assert saving.save() is SaveOutcome.FAILED
         assert saving._dialogs.show_error.call_args.args[0] is failure
 
+    def test_a_save_asked_for_by_itself_says_it_landed(
+        self,
+        saving: ProjectCoordinator,
+        tmp_path: Path,
+    ) -> None:
+        saving._session_manager.current_project = tmp_path / "song.stp"
+
+        saving.save()
+
+        saving._dialogs.show_info.assert_called_once()
+
+    def test_a_save_a_prompt_asked_for_goes_on_without_a_word(
+        self,
+        saving: ProjectCoordinator,
+        tmp_path: Path,
+    ) -> None:
+        """What the prompt guards opens next, so it opens alone."""
+        filepath = tmp_path / "song.stp"
+        saving._session_manager.current_project = filepath
+
+        assert saving._write_project() is SaveOutcome.WRITTEN
+        saving._project_controller.save.assert_called_once_with(filepath)
+        saving._dialogs.show_info.assert_not_called()
+
+    def test_every_save_prompt_waits_on_the_quiet_save(self, saving: ProjectCoordinator) -> None:
+        saving._project_controller.is_open = True
+        saving._project_controller.is_dirty = True
+
+        saving.close_with_confirmation()
+        saving.new_project_with_confirmation()
+
+        for prompt in saving._dialogs.show_save_confirmation.call_args_list:
+            assert prompt.kwargs["on_save"] == saving._write_project
+
 
 class TestTheExitAsksAboutTheProject:
     """Exiting with unsaved project changes asks to save them first, and the answer lets the exit go on."""
@@ -477,5 +511,5 @@ class TestTheExitAsksAboutTheProject:
 
         proceed.assert_not_called()
         prompt = project_coordinator._dialogs.show_save_confirmation.call_args.kwargs
-        assert prompt["on_save"] == project_coordinator.save
+        assert prompt["on_save"] == project_coordinator._write_project
         assert prompt["on_confirm"] is proceed

@@ -145,10 +145,27 @@ class ReconstructionCoordinator:
 
         return True
 
-    def save_as_dialog(self) -> None:
+    def save_as_dialog(self) -> SaveOutcome:
+        """Saves the open reconstruction to a file the reader picks, and says so once it is written."""
+        outcome = self._save_to_chosen_file()
+        if outcome is SaveOutcome.WRITTEN:
+            self._dialogs.show_info(
+                TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
+                self._language_manager["global.dialog.message.reconstruction_saved_successfully"],
+                self._language_manager["global.dialog.title.reconstruction_saved"],
+            )
+
+        return outcome
+
+    def _save_to_chosen_file(self) -> SaveOutcome:
+        """Asks where the open reconstruction goes, writes it there and adopts that file as its own.
+
+        A document that came from a file offers that file's place, and one without a file offers
+        the reconstructions folder under its own name.
+        """
         reconstruction_data = self._reconstruction_manager.current_reconstruction
         if reconstruction_data is None:
-            return
+            return SaveOutcome.CALLED_OFF
 
         filepath = reconstruction_data.filepath
         if filepath is not None:
@@ -158,14 +175,25 @@ class ReconstructionCoordinator:
             default_filename = get_filename(reconstruction_data.name, EXT_FILE_RECONSTRUCTION)
             default_path = str(self._session_manager.get_reconstruction_path())
 
-        filepath = save_file_dialog(
+        chosen = save_file_dialog(
             title=self._language_manager["global.dialog.title.save_reconstruction"],
             initial_directory=default_path,
             default_filename=default_filename,
             filters=self._reconstruction_filters(),
         )
+        if chosen is None:
+            return SaveOutcome.CALLED_OFF
 
-        self._handle_save_as(filepath)
+        try:
+            self._reconstruction_manager.save_reconstruction_as(chosen)
+        except (OSError, SampleToNESError) as exception:
+            self._report_save_failure(exception, chosen)
+            return SaveOutcome.FAILED
+
+        self._session_manager.set_reconstruction_path(chosen.parent)
+        self._session_manager.set_current_reconstruction(chosen)
+        self._tab.display_reconstruction()
+        return SaveOutcome.WRITTEN
 
     def _reconstruction_filters(self) -> Tuple[FileFilter, ...]:
         """The single type a reconstruction is written as and read from."""
@@ -174,23 +202,6 @@ class ReconstructionCoordinator:
                 self._language_manager["global.dialog.filter.reconstruction"],
                 [EXT_FILE_RECONSTRUCTION],
             ),
-        )
-
-    @ignore_none_path
-    def _handle_save_as(self, filepath: Path) -> None:
-        try:
-            self._reconstruction_manager.save_reconstruction_as(filepath)
-        except (OSError, SampleToNESError) as exception:
-            self._report_save_failure(exception, filepath)
-            return
-
-        self._session_manager.set_reconstruction_path(filepath.parent)
-        self._session_manager.set_current_reconstruction(filepath)
-        self._tab.display_reconstruction()
-        self._dialogs.show_info(
-            TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
-            self._language_manager["global.dialog.message.reconstruction_saved_successfully"],
-            self._language_manager["global.dialog.title.reconstruction_saved"],
         )
 
     def _load_dialog(self) -> None:
@@ -274,9 +285,15 @@ class ReconstructionCoordinator:
     def save(self, filepath: Optional[Path] = None) -> SaveOutcome:
         """Saves the open reconstruction, reporting what the save came to.
 
-        The save prompts wait on this: a document written to disk lets them go on, a document with
-        no file to write to asks again, and a write that fails shows its error.
+        The save prompts wait on this: a document written to disk lets them go on, a save the
+        reader calls off asks again, and a write that fails shows its error. A standalone document
+        whose file was taken away asks where to go, the way Save As does, so its save prompt has a
+        way forward.
         """
+        manager = self._reconstruction_manager
+        if filepath is None and not manager.is_file_backed and not manager.is_project_sample:
+            return self._save_to_chosen_file()
+
         try:
             written = self._reconstruction_manager.save_reconstruction(filepath)
         except (OSError, SampleToNESError) as exception:
