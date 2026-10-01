@@ -19,6 +19,7 @@ from sampletones_core.formats.famitracker.specification.sequences import (
 )
 
 NO_ARPEGGIO_STEP: Final[int] = 0
+NO_BEND_STEP: Final[int] = 0
 FLAT_RUNNING_ARPEGGIO: Final[Envelope[int]] = Envelope[int](items=(NO_ARPEGGIO_STEP,), loop_point=LOOP_FROM_START)
 
 
@@ -36,8 +37,8 @@ def features_to_instrument_sequences(
     holds — see :func:`stored_envelope`.
 
     A bend travels with an arpeggio that runs beside it, which is what makes the bend an offset
-    from the note — see :func:`_pinning_arpeggio`. An instrument a note slide reaches keeps its
-    arpeggio and its bend running for as long as the note sounds — see :func:`_running`.
+    from the note — see :func:`_pinned`. An instrument a note slide reaches keeps its arpeggio and
+    its bend running for as long as the note sounds — see :func:`_running`.
 
     Args:
         features: The per-dimension envelopes describing the slice.
@@ -102,7 +103,7 @@ def features_truncation(features: Features) -> Optional[EnvelopeTruncation]:
 
 
 def _pinned(stored: Dict[SequenceKind, Envelope[int]]) -> Dict[SequenceKind, Envelope[int]]:
-    """These sequences with an arpeggio that runs for as long as the bend beside it does.
+    """These sequences with an arpeggio that runs for as long as the bend beside it acts.
 
     FamiTracker walks an instrument's sequences in slot order, and an arpeggio in absolute mode
     reloads the period from the note before the bend sequences add to it. So while the arpeggio
@@ -110,21 +111,34 @@ def _pinned(stored: Dict[SequenceKind, Envelope[int]]) -> Dict[SequenceKind, Env
     arpeggio halts, the same items start accumulating on the running period instead. Writing an
     arpeggio that covers the bend is what holds the two readings together.
 
+    A bend that repeats, or ends on an offset it then holds, acts for as long as the note sounds,
+    so the arpeggio and the bend both run on (see :func:`_running`). A bend ending with no offset
+    acts until its last item, which an arpeggio reaching its length covers.
+
     Args:
         stored: The sequences as the file holds them.
 
     Returns:
-        Dict[SequenceKind, Envelope[int]]: Those sequences, the arpeggio reaching the bend's length.
+        Dict[SequenceKind, Envelope[int]]: Those sequences, the arpeggio covering the bend.
     """
-    bend_length = max((len(stored.get(kind, Envelope[int]()).items) for kind in BEND_SEQUENCE_KINDS), default=0)
-    if not bend_length:
+    bends = [bend for kind in BEND_SEQUENCE_KINDS if (bend := stored.get(kind, Envelope[int]())).items]
+    if not bends:
         return stored
 
+    if any(_acts_throughout(bend) for bend in bends):
+        return _running(stored)
+
+    bend_length = max(len(bend.items) for bend in bends)
     return {**stored, SequenceKind.ARPEGGIO: _pinning_arpeggio(stored, bend_length)}
 
 
+def _acts_throughout(bend: Envelope[int]) -> bool:
+    """Whether a bend offsets the note for as long as it sounds: it repeats, or it holds an offset when it ends."""
+    return bend.loops or bend.items[-1] != NO_BEND_STEP
+
+
 def _pinning_arpeggio(stored: Dict[SequenceKind, Envelope[int]], bend_length: int) -> Envelope[int]:
-    """The arpeggio that reloads the note for every tick a bend states an offset for.
+    """The arpeggio that reloads the note for every tick a bend ending with no offset states one for.
 
     An arpeggio circling from a point runs for as long as the note sounds and needs nothing; one
     playing its items once holds its final note over the remaining ticks, which is the note it

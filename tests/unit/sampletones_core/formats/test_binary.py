@@ -112,6 +112,8 @@ class TestReadIntegerPrimitives(BaseTestSuite):
         TestCase(method="uint8", expected=255),
         TestCase(method="int8", expected=-128),
         TestCase(method="int8", expected=127),
+        TestCase(method="uint16", expected=0x8000),
+        TestCase(method="uint16", expected=65535),
         TestCase(method="uint32", expected=0x0440),
         TestCase(method="uint32", expected=4294967295),
         TestCase(method="int32", expected=-1),
@@ -124,6 +126,7 @@ class TestReadIntegerPrimitives(BaseTestSuite):
         {
             "uint8": writer.write_uint8,
             "int8": writer.write_int8,
+            "uint16": writer.write_uint16,
             "uint32": writer.write_uint32,
             "int32": writer.write_int32,
         }[test_case.method](test_case.expected)
@@ -134,6 +137,7 @@ class TestReadIntegerPrimitives(BaseTestSuite):
         return {
             "uint8": reader.read_uint8,
             "int8": reader.read_int8,
+            "uint16": reader.read_uint16,
             "uint32": reader.read_uint32,
             "int32": reader.read_int32,
         }[method]()
@@ -165,6 +169,11 @@ class TestReadingAdvances:
         reader.read_uint8()
         assert reader.remaining == 3
 
+    def test_a_skip_moves_past_the_count_asked_for(self) -> None:
+        reader = BinaryReader(b"abcdef")
+        reader.skip(4)
+        assert reader.read_bytes(2) == b"ef"
+
     def test_read_bytes_takes_the_count_asked_for(self) -> None:
         reader = BinaryReader(b"abcdef")
         assert reader.read_bytes(3) == b"abc"
@@ -190,6 +199,11 @@ class TestReadingPastTheEnd:
         reader = BinaryReader(b"\x01\x02")
         with pytest.raises(TruncatedDataError):
             reader.read_uint32()
+
+    def test_a_skip_past_the_end_raises(self) -> None:
+        reader = BinaryReader(b"abc")
+        with pytest.raises(TruncatedDataError):
+            reader.skip(4)
 
     def test_more_bytes_than_held_raises(self) -> None:
         reader = BinaryReader(b"abc")

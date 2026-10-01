@@ -1,5 +1,5 @@
 import math
-from typing import FrozenSet, List, Mapping, Optional, Sequence, Tuple
+from typing import Final, FrozenSet, List, Mapping, Optional, Sequence, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import SILENT_VOLUME
@@ -36,12 +36,10 @@ from sampletones_core.formats.bitphase.specification.chip import (
     MIN_INITIAL_SPEED,
 )
 from sampletones_core.formats.bitphase.specification.effects import (
-    NO_EFFECT_PARAMETER,
     SPEED_EFFECT_DELAY,
     EffectId,
 )
 from sampletones_core.formats.bitphase.specification.instruments import (
-    LOOP_FROM_START,
     MAX_INSTRUMENT_ID,
     MAX_TABLE_ID,
     MIN_INSTRUMENT_ID,
@@ -66,7 +64,7 @@ from sampletones_core.project.project import Project
 from sampletones_core.project.tuning import tuning_from_project
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
-from sampletones_core.timing import Groove, Meter, RowRate, calculate_groove
+from sampletones_core.timing import SongTiming, TickBounds
 from sampletones_shared.constants.project import DEFAULT_ROWS_PER_PATTERN, DEFAULT_SPEED
 
 PREVIEW_SPEED = DEFAULT_SPEED
@@ -76,9 +74,9 @@ PREVIEW_REST_PATTERN_ID = FIRST_PATTERN_ID + 1
 NO_AUTHOR = ""
 
 GROOVE_CHANNEL = ChannelIndex.DPCM
-GROOVE_TRIGGER_ROW = 0
-GROOVE_TABLE_NAME = "Groove"
-GROOVE_TABLE_COUNT = 1
+FIRST_FRAME = 0
+FIRST_ROW = 0
+BITPHASE_TICK_BOUNDS: Final[TickBounds] = TickBounds(minimum=MIN_INITIAL_SPEED, maximum=MAX_INITIAL_SPEED)
 
 
 def _build_slice_voice(
@@ -87,26 +85,23 @@ def _build_slice_voice(
     channel: ChannelName,
     initial_pitch: int,
     envelopes: ChannelEnvelopes,
-    *,
-    maximum_table_id: int,
 ) -> SliceVoice:
     """Numbers one channel slice and packages it as an instrument-and-table pair.
 
     Instruments and tables are numbered alike, so a pattern cell names the same position
-    in both columns. The document states how far the table numbering reaches, since a song
-    that carries a groove holds one table of its own above the slices.
+    in both columns.
 
     Raises:
         ValueError: If the position runs past what a pattern column can name, or past the
-            table ids the document leaves to its slices.
+            table ids a document holds.
     """
     number = index + MIN_INSTRUMENT_ID
     if number > MAX_INSTRUMENT_ID:
         raise ValueError(f"Document exceeds the Bitphase limit of {MAX_INSTRUMENT_ID} instruments")
 
     table_id = index + MIN_TABLE_ID
-    if table_id > maximum_table_id:
-        raise ValueError(f"Document holds room for {maximum_table_id + 1} slice tables")
+    if table_id > MAX_TABLE_ID:
+        raise ValueError(f"Document holds room for {MAX_TABLE_ID + 1} slice tables")
 
     return SliceVoice(
         number=number,
@@ -260,7 +255,6 @@ def sample_to_bitphase(request: SampleExport) -> BitphaseProject:
                 instrument.channel,
                 tuning_table=tuning_table,
             ),
-            maximum_table_id=MAX_TABLE_ID,
         )
         for index, instrument in enumerate(request.instruments)
     ]
@@ -314,7 +308,6 @@ def instrument_to_bitphase(request: InstrumentExport) -> BitphaseProject:
 def _build_voice_table(
     project: Project,
     *,
-    maximum_table_id: int,
     tuning_table: Tuple[int, ...],
 ) -> Tuple[
     List[SliceVoice],
@@ -342,7 +335,6 @@ def _build_voice_table(
             voice_slice.channel,
             voice_slice.features.initial_pitch,
             envelopes,
-            maximum_table_id=maximum_table_id,
         )
         voices.append(voice)
         by_reference[voice_slice.key] = voice
@@ -447,107 +439,105 @@ def _frame_rows(places: FrozenSet[RowPlace], position: int) -> FrozenSet[int]:
     return frozenset(place.row_index for place in places if place.order_position == position)
 
 
-def _project_groove(project: Project) -> Groove:
-    """Spreads the tempo a project states across the rows of one pattern.
+def _project_timing(project: Project) -> SongTiming:
+    """How many ticks every row of the project's song lasts, held within Bitphase's speed range.
 
-    A Bitphase song holds a speed alone, so the fractional row rate a tempo asks for is
-    carried by a groove: whole tick counts that vary from row to row and average out to the
-    rate, placed by the meter so the longer rows fall on the bar and the beat. The engine's
-    own speed range bounds them, and the groove's mean states the rate it reached.
+    A Bitphase song holds a speed alone, so the fractional row rate a tempo asks for is carried by
+    rows whose tick counts vary, placed the way in-app playback places them. The engine's own speed
+    range bounds them.
     """
-    settings = project.settings
-    return calculate_groove(
-        RowRate.from_settings(settings),
-        Meter.from_settings(settings, rows=project.song.rows_per_pattern),
-        minimum_ticks=MIN_INITIAL_SPEED,
-        maximum_ticks=MAX_INITIAL_SPEED,
-    )
+    return SongTiming.from_project(project, bounds=BITPHASE_TICK_BOUNDS)
 
 
-def _maximum_slice_table_id(groove: Groove) -> int:
-    """The last table id the document leaves to its slices.
+def _speed_effect(speed: int) -> EffectCell:
+    """Sets the speed, the ticks a row lasts, from the row carrying it on.
 
-    A groove whose rows differ occupies the table above the last slice, so the slices reach
-    one id less far; a groove whose rows last alike is carried by the song's initial speed
-    and leaves the whole column to them.
-    """
-    if groove.is_uniform:
-        return MAX_TABLE_ID
-
-    return MAX_TABLE_ID - GROOVE_TABLE_COUNT
-
-
-def _groove_table(groove: Groove, table_id: int) -> BitphaseTable:
-    """Writes the groove as the table a speed effect reads one entry per pattern row from."""
-    return BitphaseTable(
-        id=table_id,
-        rows=groove.ticks,
-        loop=LOOP_FROM_START,
-        name=GROOVE_TABLE_NAME,
-    )
-
-
-def _speed_effect(table_id: int) -> EffectCell:
-    """Names the table a row takes its own duration from.
-
-    The parameter states a speed directly where an effect carries no table, so an effect
-    that names one leaves it empty; the delay stays at zero, which is what Bitphase reads
-    on a speed effect.
+    The delay stays at zero, which is what Bitphase reads on a speed effect, and the parameter
+    states the speed itself.
     """
     return EffectCell(
         effect=int(EffectId.SPEED),
         delay=SPEED_EFFECT_DELAY,
-        parameter=NO_EFFECT_PARAMETER,
-        table_index=table_id,
+        parameter=speed,
     )
 
 
-def _groove_channel_rows(length: int, table_id: int) -> List[BitphaseRow]:
-    """Rests a channel for a whole pattern beyond the groove trigger its first row carries.
+def _speed_rows(
+    timing: SongTiming,
+    position: int,
+    frames: int,
+    length: int,
+) -> Optional[List[BitphaseRow]]:
+    """Carries the speed changes one frame's rows make, on a channel that otherwise rests.
 
-    A speed effect applies from whichever channel holds it, so the groove rides the silent
-    DPCM channel and leaves every sounding channel its own effect column. The table then
-    advances one entry per row from where the trigger placed it, and triggering it again on
-    each pattern's first row keeps every row on the entry that describes it.
+    A row whose length differs from the row played before it states its own speed. The order
+    returns to its first frame after the last, so the song's first row follows the last one, and
+    the song's initial speed covers the first pass. A speed effect applies from whichever channel
+    holds it, so the speeds ride the silent DPCM channel and every sounding channel keeps its own
+    effect column. Bitphase finds the speed of a row it starts playing from by reading back to the
+    last speed effect, so a song started anywhere plays every row at its length.
+
+    Args:
+        timing: How many ticks every row of the song lasts.
+        position: The order frame the rows belong to.
+        frames: How many frames the order plays.
+        length: The rows a pattern holds.
+
+    Returns:
+        Optional[List[BitphaseRow]]: The channel's rows, or ``None`` where no row of the frame changes
+            the speed.
     """
     rows = [BitphaseRow() for _ in range(length)]
-    rows[GROOVE_TRIGGER_ROW] = BitphaseRow(effects=(_speed_effect(table_id),))
-    return rows
+    changed = False
+    for row_index, ticks in enumerate(timing.groove(position).ticks):
+        if ticks != _previous_row_ticks(timing, position, row_index, frames=frames, length=length):
+            rows[row_index] = BitphaseRow(effects=(_speed_effect(ticks),))
+            changed = True
+
+    return rows if changed else None
+
+
+def _previous_row_ticks(
+    timing: SongTiming,
+    position: int,
+    row_index: int,
+    *,
+    frames: int,
+    length: int,
+) -> int:
+    """The ticks the row played just before a row lasts, the song's last row before its first."""
+    if row_index != FIRST_ROW:
+        return timing.row_ticks(position, row_index - 1)
+
+    previous_frame = position - 1 if position != FIRST_FRAME else frames - 1
+    return timing.row_ticks(previous_frame, length - 1)
 
 
 def _document_tables(
     voices: Sequence[SliceVoice],
-    groove_table: Optional[BitphaseTable],
     transposes: TransposePlan,
 ) -> Tuple[BitphaseTable, ...]:
-    """Gathers the tables a document holds: one per slice, the groove where it takes one, then the moved tables."""
-    tables = tuple(voice.table for voice in voices)
-    if groove_table is not None:
-        tables += (groove_table,)
-
-    return tables + transposes.tables
+    """Gathers the tables a document holds: one per slice, then the moved tables."""
+    return tuple(voice.table for voice in voices) + transposes.tables
 
 
-def _moved_table_id(voices: Sequence[SliceVoice], groove_table: Optional[BitphaseTable]) -> int:
-    """The id the first table a transpose row moves a note to takes, above the slices and the groove."""
-    if groove_table is None:
-        return len(voices) + MIN_TABLE_ID
-
-    return groove_table.id + GROOVE_TABLE_COUNT
+def _moved_table_id(voices: Sequence[SliceVoice]) -> int:
+    """The id the first table a transpose row moves a note to takes, above the slices."""
+    return len(voices) + MIN_TABLE_ID
 
 
 def _project_patterns(
     project: Project,
     voices: SliceVoiceTable,
-    groove_table: Optional[BitphaseTable],
+    timing: SongTiming,
     transposes: TransposePlan,
 ) -> Tuple[BitphasePattern, ...]:
     """Flattens the song's per-channel arrangement into whole-pattern order positions.
 
     A SampleToNES order frame points every channel at its own pattern, where a Bitphase
     order position names one pattern that spans all channels, so each frame becomes a
-    pattern of its own carrying that frame's channels side by side. Every pattern triggers
-    the groove table it is given, so the tempo holds wherever the order jumps. The order plays
+    pattern of its own carrying that frame's channels side by side, with the speed changes its
+    rows make beside them, so every row lasts what the song's timing gives it. The order plays
     the frames in turn and returns to the first, which is the walk :func:`full_level_notes`
     follows to find the notes writing the full level. Each frame is a pattern of its own, so a
     transpose row writes the cell the frame reaching it needs.
@@ -559,11 +549,9 @@ def _project_patterns(
 
     for position, frame in enumerate(song.order):
         channel_rows = _empty_channels(length)
-        if groove_table is not None:
-            channel_rows[int(GROOVE_CHANNEL)] = _groove_channel_rows(
-                length,
-                groove_table.id,
-            )
+        speeds = _speed_rows(timing, position, song.order_length(), length)
+        if speeds is not None:
+            channel_rows[int(GROOVE_CHANNEL)] = speeds
 
         for channel_name in ChannelName.items():
             index = frame.get(channel_name)
@@ -597,8 +585,8 @@ def project_to_bitphase(project: Project) -> BitphaseProject:
 def build_bitphase(project: Project) -> BuiltDocument[BitphaseProject]:
     """Maps a project onto the Bitphase document IR and lists what it had to leave out.
 
-    The song carries the project's tempo as a groove, which is the initial speed on its own
-    where every row lasts alike and a table the patterns trigger where the rows differ. It plays
+    The song carries the project's tempo in its row lengths: the initial speed where every row lasts
+    alike, and a speed effect on every row whose length differs from the row before it. It plays
     at the tuning the project's samples were reconstructed at, and at concert pitch where the
     project holds no sample. A row naming a voice on a channel the voice has no instrument for
     plays nothing in the song, so the document holds a note cut there and the row is listed
@@ -620,27 +608,18 @@ def build_bitphase(project: Project) -> BuiltDocument[BitphaseProject]:
     """
     a4_tuning = concert_frequency(tuning_from_project(project))
     tuning_table = generate_tuning_table(DEFAULT_CPU_FREQUENCY, a4_tuning=a4_tuning)
-    groove = _project_groove(project)
+    timing = _project_timing(project)
     voices, by_reference, truncation = _build_voice_table(
         project,
-        maximum_table_id=_maximum_slice_table_id(groove),
         tuning_table=tuning_table,
-    )
-    groove_table = (
-        None
-        if groove.is_uniform
-        else _groove_table(
-            groove,
-            len(voices) + MIN_TABLE_ID,
-        )
     )
     transposes = TransposePlan.build(
         project.song,
         by_reference,
-        groove,
-        first_table_id=_moved_table_id(voices, groove_table),
+        timing,
+        first_table_id=_moved_table_id(voices),
     )
-    patterns = _project_patterns(project, by_reference, groove_table, transposes)
+    patterns = _project_patterns(project, by_reference, timing, transposes)
     settings = project.settings
     info = project.info
 
@@ -651,7 +630,7 @@ def build_bitphase(project: Project) -> BuiltDocument[BitphaseProject]:
             songs=(
                 _build_song(
                     patterns,
-                    speed=groove.ticks[GROOVE_TRIGGER_ROW],
+                    speed=timing.row_ticks(FIRST_FRAME, FIRST_ROW),
                     nes_frequency=settings.nes_frequency,
                     pattern_length=project.song.rows_per_pattern,
                     a4_tuning=a4_tuning,
@@ -659,7 +638,7 @@ def build_bitphase(project: Project) -> BuiltDocument[BitphaseProject]:
                 ),
             ),
             pattern_order=tuple(pattern.id for pattern in patterns),
-            tables=_document_tables(voices, groove_table, transposes),
+            tables=_document_tables(voices, transposes),
             instruments=tuple(voice.instrument for voice in voices),
         ),
         skipped_rows=find_skipped_rows(project.song, by_reference),

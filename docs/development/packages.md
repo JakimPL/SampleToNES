@@ -104,9 +104,10 @@ The driver's assembler and the register trace live in `sampletones_tools/player/
 neither. The assembler builds the committed `driver/binary/driver.bin` from the assembly sources beside it.
 The tests rebuild the sources wherever cc65 is installed and hold the committed image to them.
 `RegisterTrace` says what the driver is expected to write, call by call, and the emulator tests hold the
-assembled driver to it. Exporting reads the assembled binary. The wheel carries the assembly sources
-beside it, inside the tools package. [`dependencies.md`](release/dependencies.md) describes the toolchain
-the build needs.
+assembled driver to it. They run it on the console in `sampletones_tools/console/`, which plays any `.nsf`
+the way an NSF player does, loaded whole or in switched banks. Exporting reads the assembled binary. The
+wheel carries the assembly sources beside it, inside the tools package.
+[`dependencies.md`](release/dependencies.md) describes the toolchain the build needs.
 
 ---
 

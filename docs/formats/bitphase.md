@@ -71,8 +71,8 @@ only for the fields a reconstruction decides. The fields match Bitphase's own:
 | Field | Range | Default | Runtime meaning | What the exporter writes |
 | --- | --- | --- | --- | --- |
 | `volumeOrRate` | 0–15 | 15 | the literal channel volume while `envelope` stays off | the volume envelope, or one full level where the slice leaves its volume to the channel |
-| `pulseWidth` | 0–3 | 2 | square duty cycle; on the noise channel, any nonzero value selects the short LFSR | the duty-cycle envelope (squares), the short or long mode (noise), or one `0` where the slice leaves its duty to the channel; the triangle writes no macro |
-| `toneAdd` | −4096–4095 | 0 | period offset added to the period the note resolves to (squares and triangle) | the bend the slice sounds (section C.4), and the contour with it in a preset |
+| `pulseWidth` | 0–3 | 2 | square duty cycle; on the noise channel, the lowest bit selects the short LFSR | the duty-cycle envelope (squares), the short or long mode (noise), or one `0` where the slice leaves its duty to the channel; the triangle writes no macro |
+| `toneAdd` | −4096–4095 | 0 | period offset added to the period the note resolves to (squares and triangle), or steps added to the note (noise) | the bend the slice sounds (section C.4), and the contour with it in a preset |
 | `envelope` | bool | `false` | reads `volumeOrRate` as a hardware decay rate | no macro, so each value is the volume itself |
 | `soundLength` | 0–511 | 0 | length counter in ticks; `0` holds the note | no macro, so the volume envelope alone shapes the note |
 | `toneAccumulation` | bool | `false` | sums `toneAdd` across ticks | no macro, so each value is a whole offset |
@@ -179,8 +179,9 @@ An instrument preset has no table, so its pitch movement is the per-tick `toneAd
 the note's own period. One offset carries the contour and the bend together. The offsets are measured
 against the pitch the slice was reconstructed at, under the tuning a freshly created Bitphase document
 plays: NTSC at concert pitch. A preset loads into a document that keeps its own tuning, so a preset stays
-at concert pitch whatever the reconstruction was tuned at. The noise channel takes its period from the
-note, so a preset for it has a flat offset.
+at concert pitch whatever the reconstruction was tuned at. On the noise channel the offset moves the
+note, which carries the period itself, so a noise preset's offset is the contour step and the bend added
+together, in period steps.
 
 ### C.4 The bend rides the tone offset
 
@@ -197,37 +198,39 @@ is the `toneAdd` macro, one value per tick.
 | leaves `toneAccumulation` clear | a whole offset per tick, not a step added to a running one |
 | silences a channel whose period reaches zero | an offset bounded to keep the period within 1–2047, the rule the timer follows, measured from the period the song's own table gives the note |
 
-The squares and the triangle read the offset. The noise channel takes its period from the note alone, so
-a noise slice writes no `toneAdd`. A slice that sounds every tick on its own note writes none either, so
-a document pays only for the bends it sounds.
+The squares and the triangle add the offset to the period. The noise channel adds it to the note, which
+carries the period itself, so a noise slice's bend is written as it stands: one period step per unit. A
+slice that sounds every tick on its own note writes no `toneAdd`, so a document pays only for the bends
+it sounds.
 
 ## D. Tempo as a groove
 
 A Bitphase song has a **speed**, the ticks each row lasts. A _SampleToNES_ project has a tempo and a speed
 together. The row rate the pair asks for is fractional at most tempi, so the exporter writes it as a
-[groove](../glossary.md#groove): whole tick counts, one per row of a pattern, averaging out to that rate,
-with the longer rows on the bar and the beat. In-app playback reads the same groove, so a document plays
-the rows the sequencer played. For example, at 60 Hz with speed 6 and tempo 210, a 16-row pattern in
-common time comes to:
+[groove](../glossary.md#groove): whole tick counts, one per row, averaging out to that rate, placed as
+[song timing](../concepts/timing.md) places them. In-app playback reads the same timing, so a document
+plays the rows the sequencer played. For example, at 60 Hz with speed 6 and tempo 210, a 16-row pattern
+in common time lasts 68 4/7 ticks, so the song's first two frames play:
 
 ```
-5 4 5 4 5 4 4 4 5 4 4 4 5 4 4 4      69 ticks, a rate of 30/7 per row
+5 4 5 4 5 4 4 4 5 4 4 4 5 4 4 4      69 ticks
+5 4 4 4 5 4 4 4 5 4 4 4 5 4 4 4      68 ticks
 ```
 
-**The groove reaches the engine as a table.** A speed effect that names a table reads one of its entries
-per pattern row, and that carries a per-row tick count into a song:
+**The groove reaches the engine as speed effects.** A speed effect sets the ticks a row lasts from its
+row on, so the exporter writes one wherever a row lasts differently from the row played before it:
 
 | Part | What the exporter writes |
 | --- | --- |
-| `initialSpeed` | the ticks the pattern's first row lasts |
-| The table | one entry per pattern row, `loop = 0`, taking the id above the last slice table |
-| The effect | `S` with `delay = 0` and an empty parameter, naming that table |
-| Its place | the first row of the DPCM channel, in every pattern |
+| `initialSpeed` | the ticks the song's first row lasts |
+| The effect | `S` with `delay = 0`, the row's ticks as its parameter, and `tableIndex = -1` |
+| Its place | the DPCM channel, on every row whose length differs from the row before it |
 
-A speed effect applies from whichever channel has it, so the groove rides the DPCM channel, which this
-exporter leaves silent. Every sounding channel keeps its own effect column free. The table
-advances an entry per row and resumes from where a trigger placed it. Triggering it at each pattern start
-therefore holds every row on the entry that describes it, however the order jumps.
+The order comes round to its first pattern after the last, so the song's last row counts as the row
+before its first. A speed effect applies from whichever channel has it, so the groove rides the DPCM
+channel, which this exporter leaves silent. Every sounding channel keeps its own effect column free.
+Bitphase finds the speed a row it starts playing from lasts by reading back to the last speed effect, so
+a song started anywhere plays every row at its length.
 
 **A tempo the speed column can state needs no groove.** Where every row lasts alike, as with tempo 150 at
 60 Hz where the rate is the speed itself, `initialSpeed` has the tempo whole. The document then has one
@@ -332,10 +335,10 @@ is the same cell you would see in the tracker.
 | Quantity | Bitphase limit | Exporter behavior |
 | --- | --- | --- |
 | Values per instrument macro | 1–512 | writes the opening values of a longer dimension, keeps a volume's closing silence, and reports what it left out |
-| Rows per table | unbounded | writes the contour, or the groove, whole |
-| Effect columns per channel | 1–4 | writes one: the groove trigger on the DPCM channel, the ornament position on a transpose row |
+| Rows per table | unbounded | writes the contour whole |
+| Effect columns per channel | 1–4 | writes one: the speed effects on the DPCM channel, the ornament position on a transpose row |
 | Instruments | the instrument column holds 2 base-36 digits, so 1–1295 | raises past 1295 |
-| Tables | the table column holds 1 base-36 digit, so ids 0–34 | raises past 35 tables, counting one a groove takes and the moved tables transpose rows name |
+| Tables | the table column holds 1 base-36 digit, so ids 0–34 | raises past 35 tables, counting the moved tables transpose rows name |
 | Ornament position | the effect parameter is a byte, so steps 0–255 | names a copy of the table opening on a later step |
 | Note range | the 96-entry tuning table, pitch 24–119 | keeps the song's range, 33–119, raising a lower note only as far as its table's highest step reaching 33 (section E) |
 | A4 tuning | 220–880 Hz, the range the song settings offer (`src/lib/chips/nes/schema.ts`) | writes the work's tuning, and raises past that range |
@@ -343,7 +346,7 @@ is the same cell you would see in the tracker.
 | Pattern length (rows) | 1–256 | clamps the preview pattern; a project keeps `rows_per_pattern` |
 | Order positions | unbounded | matches |
 | Speed | 1–255 | the groove's tick counts, bounded to that range |
-| DPCM channel | present | rests, apart from the groove trigger each pattern's first row carries |
+| DPCM channel | present | rests, apart from the speed effects the groove sets |
 
 A row that names a voice on a channel the voice has no instrument for plays nothing in the song, so the
 exporter writes a note cut on it and reports the row by its frame, channel and row. The project export
@@ -351,10 +354,8 @@ dialog lists those rows.
 
 Tables and instruments are numbered together, and each slice takes one of each. The table column is
 therefore what a wide document reaches first, and the exporter raises an error instead of writing a
-document whose later voices cannot be named. A song whose rows vary spends one of those ids on its groove,
-so the slices a document holds are those the table column can still name. The moved tables transpose
-rows name take the ids above the slices and the groove, and a document needing more of them than the
-column names is refused the same way.
+document whose later voices cannot be named. The moved tables transpose rows name take the ids above the
+slices, and a document needing more of them than the column names is refused the same way.
 
 **The macro limit is the one a reconstruction meets by itself.** A dimension reaches it at 512 frames,
 which is 8.5 s at 60 Hz. Each field is counted on its own, so a flat duty or a held level costs one value.

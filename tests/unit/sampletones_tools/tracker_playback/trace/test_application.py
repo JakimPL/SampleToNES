@@ -1,8 +1,9 @@
+from fractions import Fraction
 from typing import Final
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.settings import ProjectSettings
-from sampletones_core.timing import Groove
+from sampletones_core.timing import SONG_TICK_BOUNDS, Meter, RowRate, SongTiming
 from sampletones_player.specification.registers import (
     APU_STATUS,
     CHANNELS_ENABLED,
@@ -41,14 +42,20 @@ ROW_VOLUME: Final[int] = 5
 
 
 class TestSongPositions:
-    def test_each_row_lasts_the_ticks_its_groove_gives_it_in_every_frame(self) -> None:
-        positions = song_positions(Groove(ticks=(2, 1)), 2)
+    def test_each_row_lasts_the_ticks_its_frame_gives_it(self) -> None:
+        """At 5/4 ticks a row a 2-row pattern lasts 2.5 ticks, so the first frame plays 3 and the second 2."""
+        timing = SongTiming(
+            rate=RowRate(ticks_per_row=Fraction(5, 4)),
+            meter=Meter(rows=2, first_highlight=2, second_highlight=2),
+            bounds=SONG_TICK_BOUNDS,
+        )
+
+        positions = song_positions(timing, 2)
 
         assert positions == (
             TickPosition(frame=0, row=0),
             TickPosition(frame=0, row=0),
             TickPosition(frame=0, row=1),
-            TickPosition(frame=1, row=0),
             TickPosition(frame=1, row=0),
             TickPosition(frame=1, row=1),
         )

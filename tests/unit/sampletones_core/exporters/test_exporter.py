@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
-from sampletones_core.constants.general import MAX_VOLUME
+from sampletones_core.constants.general import MAX_VOLUME, NUM_PERIODS
 from sampletones_core.exporters import (
     ExporterTypeUnion,
     Features,
@@ -16,9 +16,9 @@ from sampletones_core.exporters import (
 from sampletones_core.features import (
     CHANNEL_FEATURE_DEFAULTS,
     FEATURE_DIMENSION_ORDER,
-    supports,
 )
 from sampletones_core.features.envelope import Envelope
+from sampletones_core.features.spec import reads_from_instrument
 from sampletones_core.instructions import (
     InstructionUnion,
     NoiseInstruction,
@@ -471,8 +471,12 @@ class TestSingleFrameReading(BaseTestSuite):
 
         @property
         def unread(self) -> Tuple[FeatureKey, ...]:
-            """The dimensions this channel's generator reads nothing from."""
-            return tuple(feature_key for feature_key in FEATURE_DIMENSION_ORDER if not supports(self.kind, feature_key))
+            """The dimensions this channel reads nothing from, of a frame or of an instrument."""
+            return tuple(
+                feature_key
+                for feature_key in FEATURE_DIMENSION_ORDER
+                if not reads_from_instrument(self.kind, feature_key)
+            )
 
     test_cases = (
         TestCase(
@@ -559,6 +563,18 @@ class TestSingleFrameReading(BaseTestSuite):
         values = test_case.exporter.feature_values(test_case.instruction, test_case.reference)
 
         assert test_case.exporter.instruction_from_values(values, test_case.reference) == test_case.instruction
+
+    def test_a_bend_moves_the_noise_period_one_step_per_unit(self) -> None:
+        values = {
+            FeatureKey.VOLUME: NOISE_VOLUME,
+            FeatureKey.ARPEGGIO: PERIOD_STEP,
+            FeatureKey.PITCH: UNREAD_VALUE,
+            FeatureKey.DUTY_CYCLE: 1,
+        }
+
+        frame = NoiseExporter.instruction_from_values(values, REFERENCE_PERIOD)
+
+        assert frame.period == (REFERENCE_PERIOD + PERIOD_STEP + UNREAD_VALUE) % NUM_PERIODS
 
     @pytest.mark.parametrize(
         "test_case",

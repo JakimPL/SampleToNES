@@ -13,7 +13,7 @@ from sampletones_core.instructions import (
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.timers.utils import get_timer_table
-from sampletones_core.timing import SongTiming
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_player.builder import (
     SONG_START,
     instructions_from_instruments,
@@ -366,7 +366,9 @@ class TestSongFromProject:
     ) -> None:
         project = drum_project()
         song = project_song(project, loop_tick=None)
-        assert song.ticks == SongTiming.from_project(project).frame_tick(project.song.order_length())
+        assert song.ticks == SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS).frame_tick(
+            project.song.order_length()
+        )
 
     def test_the_schedule_follows_the_rate_the_project_states(self) -> None:
         song = project_song(drum_project(), loop_tick=None)

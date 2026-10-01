@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from typing import Tuple
+from typing import List, Tuple
 
 import pytest
 from pydantic import ValidationError
 
 from sampletones_core.constants.enums import ChannelName, FeatureKey
-from sampletones_core.constants.general import MAX_VOLUME
+from sampletones_core.constants.general import MAX_VOLUME, NUM_PERIODS
 from sampletones_core.features import (
     RESTING_REFERENCE_PERIOD,
     RESTING_REFERENCE_PITCH,
@@ -23,6 +23,12 @@ from tests.suite.case import BaseRegularTestCase
 VOLUME: Tuple[int, ...] = (15, 12, 9, 6)
 ARPEGGIO: Tuple[int, ...] = (0, 0, 12, 12)
 DUTY_CYCLE: Tuple[int, ...] = (2,)
+
+
+def _noise_frames(instrument: Instrument) -> List[NoiseInstruction]:
+    frames = instrument.instructions(ChannelName.NOISE)
+    assert all(isinstance(frame, NoiseInstruction) for frame in frames)
+    return [frame for frame in frames if isinstance(frame, NoiseInstruction)]
 
 
 def _instrument(**overrides: object) -> Instrument:
@@ -125,15 +131,54 @@ class TestInstrumentInstructions:
 
         assert first == TriangleInstruction(on=True, pitch=RESTING_REFERENCE_PITCH)
 
-    def test_a_noise_frame_takes_the_period_root_and_the_short_mode(self) -> None:
+    def test_a_noise_frame_takes_the_period_root_and_the_long_mode_of_an_even_duty(self) -> None:
+        """FamiTracker and Bitphase read the duty cycle's lowest bit as the noise mode, so duty 2 plays long."""
         first = _instrument().instructions(ChannelName.NOISE)[0]
 
         assert first == NoiseInstruction(
             on=True,
             period=RESTING_REFERENCE_PERIOD,
             volume=VOLUME[0],
-            short=True,
+            short=False,
         )
+
+    def test_an_odd_duty_plays_the_short_noise_mode(self) -> None:
+        instrument = _instrument(
+            envelopes=InstrumentEnvelopes(volume=Envelope(items=VOLUME), duty_cycle=Envelope(items=(1, 3, 2)))
+        )
+
+        assert [frame.short for frame in _noise_frames(instrument)] == [True, True, False, False]
+
+    def test_a_bend_moves_the_noise_period_one_step_per_unit(self) -> None:
+        bend = (0, 1, -2, 5)
+        instrument = _instrument(
+            envelopes=InstrumentEnvelopes(volume=Envelope(items=VOLUME), pitch=Envelope(items=bend))
+        )
+
+        assert [frame.period for frame in _noise_frames(instrument)] == [
+            (RESTING_REFERENCE_PERIOD + step) % NUM_PERIODS for step in bend
+        ]
+
+    def test_a_bend_adds_to_the_arpeggio_on_noise(self) -> None:
+        instrument = _instrument(
+            envelopes=InstrumentEnvelopes(
+                volume=Envelope(items=VOLUME),
+                arpeggio=Envelope(items=(0, 4)),
+                pitch=Envelope(items=(3, 3)),
+            )
+        )
+
+        assert [frame.period for frame in _noise_frames(instrument)][:2] == [
+            RESTING_REFERENCE_PERIOD + 3,
+            RESTING_REFERENCE_PERIOD + 7,
+        ]
+
+    def test_hi_pitch_moves_the_noise_period_a_whole_turn_which_leaves_it_where_it_was(self) -> None:
+        instrument = _instrument(
+            envelopes=InstrumentEnvelopes(volume=Envelope(items=VOLUME), hi_pitch=Envelope(items=(1, 2)))
+        )
+
+        assert {frame.period for frame in _noise_frames(instrument)} == {RESTING_REFERENCE_PERIOD}
 
     def test_an_instrument_writing_nothing_sounds_on_no_channel(self) -> None:
         instrument = Instrument(name="empty")
@@ -162,6 +207,13 @@ class TestHeldDimensions:
         assert FeatureKey.VOLUME in held
         assert FeatureKey.DUTY_CYCLE in held
         assert FeatureKey.ARPEGGIO not in held
+
+    def test_a_bend_on_noise_decides_the_arpeggio_it_rides_on(self) -> None:
+        """A noise frame carries the arpeggio and the bend as one period, so the bend writes the arpeggio there."""
+        instrument = Instrument(name="sweep", envelopes=InstrumentEnvelopes(pitch=Envelope(items=(1, 2, 3))))
+
+        assert FeatureKey.ARPEGGIO not in instrument.held_features(ChannelName.NOISE)
+        assert FeatureKey.ARPEGGIO in instrument.held_features(ChannelName.PULSE1)
 
     def test_a_channel_is_told_of_the_dimensions_it_offers_alone(self) -> None:
         instrument = Instrument(name="lead", envelopes=InstrumentEnvelopes(arpeggio=Envelope(items=ARPEGGIO)))

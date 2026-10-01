@@ -18,7 +18,7 @@ from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
-from sampletones_core.timing import SongTiming
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_shared.exceptions import OperationCanceled
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -71,14 +71,26 @@ def _resting(channel_name: ChannelName) -> object:
 class TestSongInstructions:
     """The four streams a song plays out as, one instruction per channel per engine tick."""
 
-    def test_the_song_lasts_the_ticks_its_groove_gives_every_row_it_plays(self) -> None:
+    def test_the_song_lasts_the_ticks_its_timing_gives_every_row_it_plays(self) -> None:
         project = _project()
-        groove = SongTiming.from_project(project).groove()
+        timing = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS)
 
         streams = song_instructions(project)
 
-        expected_ticks = project.song.order_length() * groove.total_ticks
-        assert len(streams[ChannelName.PULSE1]) == expected_ticks
+        assert len(streams[ChannelName.PULSE1]) == timing.frame_tick(project.song.order_length())
+
+    def test_a_row_starts_on_the_tick_the_timing_places_it_at(self) -> None:
+        """At tempo 125 a row lasts 7.2 ticks, so a pattern played again starts where its frame's bar line falls."""
+        project = _project()
+        project.settings = SETTINGS.model_copy(update={"tempo": 125})
+        project.song.append_frame()
+        project.song.set_order_entry(1, ChannelName.PULSE1, 0)
+        start = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS).tick_at(1, 0)
+
+        stream = song_instructions(project)[ChannelName.PULSE1]
+
+        assert stream[start - 1] == _resting(ChannelName.PULSE1)
+        assert stream[start] == stream[0]
 
     def test_every_channel_answers_for_every_tick(self) -> None:
         """One length across the four streams is what makes a tick index one moment of the song."""
@@ -104,12 +116,12 @@ class TestSongInstructions:
         project = _project()
         project.song.append_frame()
         project.song.set_order_entry(1, ChannelName.PULSE1, 0)
-        groove = SongTiming.from_project(project).groove()
+        timing = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS)
 
         stream = song_instructions(project)[ChannelName.PULSE1]
 
-        frame_ticks = groove.total_ticks
-        assert stream[:frame_ticks] == stream[frame_ticks : 2 * frame_ticks]
+        frame_ticks = timing.frame_tick(1)
+        assert stream[:frame_ticks] == stream[frame_ticks : timing.frame_tick(2)]
 
 
 class TestWhatAWalkSaysAboutItself:
@@ -122,11 +134,11 @@ class TestWhatAWalkSaysAboutItself:
         assert len(heard) == project.song.order_length() * project.song.rows_per_pattern
 
     def test_the_walk_states_the_ticks_the_order_lasts(self) -> None:
-        """The groove states the length before a row is played, so every report names the same."""
+        """The timing states the length before a row is played, so every report names the same."""
         project = _project()
         heard: List[WalkProgress] = []
         song_instructions(project, lambda progress: heard.append(progress) is None)
-        expected = project.song.order_length() * SongTiming.from_project(project).groove().total_ticks
+        expected = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS).frame_tick(project.song.order_length())
         assert [progress.total for progress in heard] == [expected] * len(heard)
 
     def test_the_walk_reaches_the_ticks_it_set_out_to_sound(self) -> None:
@@ -168,7 +180,7 @@ def _following(
     place_instrument(project, channel_name=channel_name, row_index=1, sample=second, volume=volume)
 
     stream = song_instructions(project)[channel_name]
-    return stream[SongTiming.from_project(project).groove().ticks[0]]
+    return stream[SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS).row_ticks(0, 0)]
 
 
 class TestANoteStartsFromWhereASongStarts(BaseTestSuite):

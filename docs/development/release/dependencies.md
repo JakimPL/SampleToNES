@@ -54,11 +54,11 @@ cc65 is distributed under the zlib license. The link line names our own object f
 
 ### Verifying the driver
 
-[py65](https://github.com/mnaberez/py65), a 6502 emulator in the `dev` dependency group, executes the assembled driver against memory that watches the APU's address range. That lets the suite hold the image to what a correct driver writes ([the console player](../player.md)). py65 is a developer dependency, outside both the wheel and the bundles, and its BSD license leaves the project's own terms untouched.
+[py65](https://github.com/mnaberez/py65) is a 6502 emulator. The console in `sampletones_tools/console/` runs an `.nsf` on it the way an NSF player does, against memory that watches the APU's address range. That lets the suite hold the image to what a correct driver writes ([the console player](../player.md)). The tools package ships with every install, so py65 is a runtime dependency: the wheel names it and the bundles carry it. Its BSD license leaves the project's own terms untouched, and `THIRD-PARTY-LICENSES.txt` has its text.
 
 Listening to a real APU needs [ffmpeg](https://ffmpeg.org/) with the `libgme` demuxer, which is a build option and not a given. `uv run sampletones nsf render` asks the installed ffmpeg which demuxers it has, and names this system's install command before it decodes anything.
 
-CI reaches only py65, because the workflows install the `dev` group and `scripts/system_dependencies.py` has what building and running the application needs. cc65 and ffmpeg stay on the machine of whoever assembles the driver or renders a wave. A workflow that did either would put them in those scripts. The application itself needs neither: an export is written by the package's own code, from the committed `driver.bin`.
+CI runs the driver on py65, which arrives with the package's own dependencies, and `scripts/system_dependencies.py` has what building and running the application needs. cc65 and ffmpeg stay on the machine of whoever assembles the driver or renders a wave. A workflow that did either would put them in those scripts. The application itself needs neither: an export is written by the package's own code, from the committed `driver.bin`.
 
 ## Linux (standalone executable)
 

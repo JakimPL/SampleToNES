@@ -277,9 +277,10 @@ each. A tempo counts beats:
 ### Groove
 
 The number of ticks each row of a pattern lasts. A row lasts a whole number of ticks, so a tempo between
-two counts is played by varying the count from row to row. The meter places the longer rows on the bar
-first, then on the beat, then inside the beat. Playback reads the groove by the row's position in the
-pattern, so the pattern's first row starts it afresh.
+two counts is played by varying the count from row to row. Every bar starts on the tick nearest its exact
+moment, and the meter places the longer rows on the strongest positions of the bar and of each beat.
+A frame plays the groove its place in the song gives it, so two frames of one pattern can differ by a
+tick. [Song timing](concepts/timing.md) explains the rules.
 
 ### Order
 

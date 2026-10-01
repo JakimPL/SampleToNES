@@ -27,6 +27,7 @@ from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.voices.sample import Sample
+from sampletones_core.timing.bounds import SONG_TICK_BOUNDS
 from sampletones_core.timing.song import SongTiming
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -313,7 +314,7 @@ def replayed(document: FamiTrackerModule, project: Project, channel_name: Channe
     notes = played_notes(
         parse_ftm(module_to_ftm_bytes(document)),
         int(CHANNEL_TO_ID[channel_name]),
-        SongTiming.from_project(project).groove().ticks,
+        SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS),
     )
     if channel_name == ChannelName.NOISE:
         return [None if value is None else MAX_PERIOD - value for value in notes]

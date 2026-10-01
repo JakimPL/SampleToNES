@@ -16,7 +16,7 @@ from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.tuning import tuning_from_project
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.timers.utils import get_timer_table
-from sampletones_core.timing import SongTiming
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_player.builder import (
     song_from_project,
     song_from_reconstruction,
@@ -156,8 +156,9 @@ def lengthened_arrangement(
     Returns:
         Project: A copy of the project, its order repeated.
     """
-    groove = SongTiming.from_project(project).groove()
-    frames = ceil(seconds * project.settings.nes_frequency / groove.total_ticks)
+    timing = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS)
+    pattern_ticks = timing.exact_row_ticks * project.song.rows_per_pattern
+    frames = ceil(seconds * project.settings.nes_frequency / pattern_ticks)
     return lengthened(project, frames)
 
 

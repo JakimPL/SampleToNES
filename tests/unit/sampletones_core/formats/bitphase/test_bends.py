@@ -74,8 +74,9 @@ class TestTheBendReachesTheToneOffset:
     def test_the_triangle_channel_bends_its_period(self) -> None:
         assert offsets(ChannelName.TRIANGLE, bend=BEND_ENVELOPE) == BEND_ENVELOPE
 
-    def test_the_noise_channel_takes_its_period_from_the_note(self) -> None:
-        assert offsets(ChannelName.NOISE, bend=BEND_ENVELOPE) == []
+    def test_the_noise_channel_moves_its_period_one_step_per_unit(self) -> None:
+        """Bitphase adds the offset to the noise note, and the note carries the period itself."""
+        assert offsets(ChannelName.NOISE, bend=BEND_ENVELOPE) == BEND_ENVELOPE
 
     def test_the_bend_circles_from_the_point_it_states(self) -> None:
         written = features_to_envelopes(
@@ -174,7 +175,7 @@ class TestAPresetCarriesBothMovements:
         expected = [DEFAULT_TUNING_TABLE[BASE_INDEX + semitones] - BASE_PERIOD for semitones in PITCH_CONTOUR]
         assert list(preset.macros[NesMacroField.TONE_ADD].values) == expected
 
-    def test_a_noise_slice_takes_its_period_from_the_note(self) -> None:
+    def test_a_noise_slice_carries_its_bend_in_period_steps(self) -> None:
         preset = instrument_to_preset(
             build_instrument(
                 "Hat",
@@ -182,4 +183,4 @@ class TestAPresetCarriesBothMovements:
                 channel=ChannelName.NOISE,
             ),
         )
-        assert set(preset.macros[NesMacroField.TONE_ADD].values) == {NO_TONE_OFFSET}
+        assert list(preset.macros[NesMacroField.TONE_ADD].values)[: len(BEND_ENVELOPE)] == BEND_ENVELOPE

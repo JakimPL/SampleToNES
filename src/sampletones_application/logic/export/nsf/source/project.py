@@ -9,7 +9,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.request import ProjectExport
 from sampletones_core.exports.scope import ExportScope
-from sampletones_core.timing import SongTiming
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_player.compression.scheme import offered_schemes
 from sampletones_player.export.program import NSFProgram
 from sampletones_shared.utils.system.paths import get_directory
@@ -49,11 +49,11 @@ class ProjectSource:
     def ticks(self, channels: AbstractSet[ChannelName]) -> int:  # pylint: disable=unused-argument
         """The ticks the whole order plays for, which every channel shares."""
         project = self.request.project
-        return SongTiming.from_project(project).frame_tick(project.song.order_length())
+        return SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS).frame_tick(project.song.order_length())
 
     def frame_tick(self, frame: int) -> int:
-        """The tick order frame ``frame`` starts on, under the groove the song plays at."""
-        return SongTiming.from_project(self.request.project).frame_tick(frame)
+        """The tick order frame ``frame`` starts on, under the timing the song plays at."""
+        return SongTiming.from_project(self.request.project, bounds=SONG_TICK_BOUNDS).frame_tick(frame)
 
     def proposed_directory(self, session_manager: SessionManager) -> Path:
         """The folder the project was last opened or saved in."""

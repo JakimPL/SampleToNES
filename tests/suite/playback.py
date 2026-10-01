@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Final, List, Tuple
 
+from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS
 from sampletones_core.project.project import Project
 from sampletones_tools.tracker_playback.targets.protocol import TargetPlayback
 from sampletones_tools.tracker_playback.trace.application import application_trace
@@ -35,6 +36,6 @@ class ReplayingTarget:
         return TargetPlayback(
             document=document,
             trace=application_trace(project),
-            skipped_rows=0,
+            skipped_rows=NO_SKIPPED_ROWS,
             truncation=None,
         )

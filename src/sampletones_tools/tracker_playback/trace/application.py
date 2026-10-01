@@ -4,7 +4,7 @@ from sampletones_core.performance import song_instructions
 from sampletones_core.project.project import Project
 from sampletones_core.project.tuning import tuning_from_project
 from sampletones_core.timers.utils import get_timer_table
-from sampletones_core.timing import Groove, SongTiming
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_player.builder import streams_from_instructions
 from sampletones_player.registers.streams import ChannelStreams
 from sampletones_tools.player.trace.trace import channel_writes, setup_writes
@@ -27,14 +27,14 @@ def application_trace(project: Project) -> SongTrace:
     Returns:
         SongTrace: One pass through the song, the order played once.
     """
-    timing = SongTiming.from_project(project)
+    timing = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS)
     streams = streams_from_instructions(
         song_instructions(project),
         get_timer_table(tuning_from_project(project)),
     )
     return song_trace(
         song_positions(
-            timing.groove(),
+            timing,
             project.song.order_length(),
         ),
         driver_registers(
@@ -70,13 +70,13 @@ def driver_registers(
 
 
 def song_positions(
-    groove: Groove,
+    timing: SongTiming,
     frames: int,
 ) -> Tuple[TickPosition, ...]:
-    """Where each tick of a song falls, every frame lasting one groove.
+    """Where each tick of a song falls, every frame lasting the groove its place in the song gives it.
 
     Args:
-        groove: The ticks each row of a pattern lasts.
+        timing: How many ticks every row of the song lasts.
         frames: The order frames the song plays.
 
     Returns:
@@ -84,7 +84,7 @@ def song_positions(
     """
     positions: List[TickPosition] = []
     for frame in range(frames):
-        for row, row_ticks in enumerate(groove.ticks):
+        for row, row_ticks in enumerate(timing.groove(frame).ticks):
             positions.extend(TickPosition(frame=frame, row=row) for _ in range(row_ticks))
 
     return tuple(positions)

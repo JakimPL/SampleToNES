@@ -7,7 +7,7 @@ from sampletones_core.project.container import ProjectContainer
 from sampletones_core.project.project import Project
 from sampletones_core.project.tuning import tuning_from_project
 from sampletones_core.timers.utils import get_timer_table
-from sampletones_core.timing import SongTiming
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_player.builder import streams_from_instructions
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.separate import planes_from_streams
@@ -81,8 +81,8 @@ def _repeated(
     project: Project,
     seconds: int,
 ) -> Project:
-    groove = SongTiming.from_project(project).groove()
-    repetitions = max(1, ceil(seconds * project.settings.nes_frequency / groove.total_ticks))
+    order_ticks = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS).frame_tick(project.song.order_length())
+    repetitions = max(1, ceil(seconds * project.settings.nes_frequency / order_ticks))
     longer = Project.create(
         rows_per_pattern=project.song.rows_per_pattern,
         settings=project.settings,

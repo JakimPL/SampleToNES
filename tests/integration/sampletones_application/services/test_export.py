@@ -19,7 +19,7 @@ from sampletones_core.exports.request import (
 )
 from sampletones_core.exports.stage import ExportStage
 from sampletones_core.project.project import Project
-from sampletones_core.timing import SongTiming
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_player.export.backend import NSFBackend
 from sampletones_player.specification.nsf import NSF_MAGIC, PROGRAM_SIZE
 from sampletones_shared.music import Tuning
@@ -297,6 +297,6 @@ class TestExportProjectToTheConsoleIntegration:
             for result in results
             if isinstance(result, ServiceProgress) and result.current_item == ExportStage.WALKING
         ]
-        groove = SongTiming.from_project(project).groove()
+        timing = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS)
         assert walked
-        assert walked[-1].total == project.song.order_length() * groove.total_ticks
+        assert walked[-1].total == timing.frame_tick(project.song.order_length())

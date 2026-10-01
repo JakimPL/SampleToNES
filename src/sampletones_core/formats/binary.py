@@ -87,11 +87,22 @@ class BinaryReader:
         self._offset += count
         return chunk
 
+    def skip(self, count: int) -> None:
+        """Moves past the next ``count`` bytes, for a field the reader has no use for.
+
+        Raises:
+            TruncatedDataError: If the buffer holds fewer than ``count`` bytes from here.
+        """
+        self.read_bytes(count)
+
     def read_uint8(self) -> int:
         return self._read("<B")
 
     def read_int8(self) -> int:
         return self._read("<b")
+
+    def read_uint16(self) -> int:
+        return self._read("<H")
 
     def read_uint32(self) -> int:
         return self._read("<I")

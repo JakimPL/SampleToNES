@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from math import ceil
 from typing import Final
 
@@ -12,4 +13,26 @@ MAX_TICKS_PER_ROW: Final[int] = ceil(
         speed=MAX_SPEED,
         nes_frequency=MAX_NES_FREQUENCY,
     ).ticks_per_row
+)
+
+
+@dataclass(frozen=True)
+class TickBounds:
+    """The shortest and the longest an engine holds a row for, in ticks.
+
+    In-app playback and the NSF reach every row the settings ask for, while a tracker's speed column
+    states a narrower range, so each player names the range its rows are held within.
+
+    Attributes:
+        minimum: The fewest ticks a row lasts.
+        maximum: The most ticks a row lasts.
+    """
+
+    minimum: int
+    maximum: int
+
+
+SONG_TICK_BOUNDS: Final[TickBounds] = TickBounds(
+    minimum=MIN_TICKS_PER_ROW,
+    maximum=MAX_TICKS_PER_ROW,
 )

@@ -77,4 +77,4 @@ class TestBitphaseTarget:
             [str(playback.document), str(documents / f"{NAME}{EXT_FILE_JSON}")],
         ]
         assert playback.trace.ticks == 1
-        assert (playback.skipped_rows, playback.truncation) == (0, None)
+        assert (playback.skipped_rows, playback.truncation) == ((), None)

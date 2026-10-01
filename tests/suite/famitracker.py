@@ -1,6 +1,6 @@
 import struct
 from dataclasses import dataclass, field
-from typing import Dict, Final, List, Optional, Sequence, Tuple
+from typing import Dict, Final, List, Optional, Tuple
 
 from sampletones_core.formats.famitracker.specification.blocks import BLOCK_NAME_LENGTH
 from sampletones_core.formats.famitracker.specification.file import (
@@ -14,6 +14,7 @@ from sampletones_core.formats.famitracker.specification.instruments import (
 from sampletones_core.formats.famitracker.specification.sequences import (
     SEQUENCE_COUNT_2A03,
 )
+from sampletones_core.timing.song import SongTiming
 
 FAMITRACKER_OPENING_VOLUME: Final[int] = 15
 FAMITRACKER_EMPTY_VOLUME: Final[int] = 0x10
@@ -140,18 +141,17 @@ class _ChannelReplay:
 def played_notes(
     module: "ParsedModule",
     channel_id: int,
-    row_ticks: Sequence[int],
+    timing: SongTiming,
 ) -> List[Optional[int]]:
     """The note one channel sounds on each tick, the order played once through as the tracker reads it.
 
-    The ticks each row lasts are given, so the replay follows the rows of a song whose timing it
-    compares against. The note counts semitones from C-0 on the tonal channels and is the period on
-    noise.
+    The song's timing is given, so the replay follows the rows of a song whose timing it compares
+    against. The note counts semitones from C-0 on the tonal channels and is the period on noise.
 
     Args:
         module: The module as it was written.
         channel_id: The channel whose notes are read.
-        row_ticks: The ticks each row of a pattern lasts.
+        timing: How many ticks every row of the song lasts.
 
     Returns:
         List[Optional[int]]: One note per tick, and ``None`` where the channel holds no note.
@@ -170,14 +170,14 @@ def played_notes(
     }
     replay = _ChannelReplay(noise=channel_id == FAMITRACKER_NOISE_CHANNEL)
     notes: List[Optional[int]] = []
-    for frame in module.frames.order:
+    for frame_index, frame in enumerate(module.frames.order):
         rows = patterns.get(frame[channel_id], {})
         for row_number in range(module.frames.pattern_length):
             row = rows.get(row_number)
             if row is not None:
                 replay.read(row, arpeggios)
 
-            notes.extend(replay.tick() for _ in range(row_ticks[row_number]))
+            notes.extend(replay.tick() for _ in range(timing.row_ticks(frame_index, row_number)))
 
     return notes
 

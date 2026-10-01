@@ -16,6 +16,7 @@ TRIANGLE_TIMER_HIGH: Final[int] = 0x400B
 NOISE_CONTROL: Final[int] = 0x400C
 NOISE_PERIOD: Final[int] = 0x400E
 NOISE_LENGTH_COUNTER: Final[int] = 0x400F
+DMC_DIRECT_LOAD: Final[int] = 0x4011
 APU_STATUS: Final[int] = 0x4015
 APU_FRAME_COUNTER: Final[int] = 0x4017
 

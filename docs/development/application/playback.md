@@ -14,7 +14,7 @@ Two terms recur. A **source** is what plays one kind of audio: a reconstruction,
 4. **Surfaces describe the target, and the transport decides.** The menu, the toolbar and the keyboard reach identical verbs and report identical state, so a new surface adds another way in to the same behavior.
 5. **Listening choices stay out of the document.** What the user chooses to hear is session state, and what the project holds is the whole song. Saving, export, rendering and history read the document, so each of them works on the full song whatever the user is listening to. A render reads the document as it stood when it was asked for: every channel sounding, at unity gain, played through once.
 6. **Live state is pulled while sound is produced.** A player reads the settings that shape its sound as it renders, so a change is heard as the render-ahead buffer drains. A listening control therefore takes effect inside the sound already playing.
-7. **A row's duration belongs to the song, not to the player.** How long a row lasts follows from the project's tempo and meter together with the row's place in the pattern. It is a function of position: the same row lasts the same time however playback reached it, and a module exported from the song can state the same figures. The integer tick counts the [groove](../../glossary.md#groove) places *are* the tempo, so a render realizes them exactly at every rate it offers.
+7. **A row's duration belongs to the song, not to the player.** How long a row lasts follows from the project's tempo and meter together with the row's place in the song. It is a function of position: the same row lasts the same time however playback reached it, and a module exported from the song can state the same figures. The integer tick counts the [groove](../../glossary.md#groove) places *are* the tempo, so a render realizes them exactly at every rate it offers.
 
 ## Two kinds of sound
 
@@ -137,7 +137,7 @@ The device holds a release per stream it handed out and invokes it whenever it n
 | Row mixing, and the mask it pulls while rendering | `RowSynthesizer` (`logic/sequencer/playback/synthesizer/`) |
 | The values a note starts from and a channel holds between frames | `ChannelPerformance` (`sampletones_core/performance/state.py`) |
 | How a row's level and transpose reach what a channel sounds | `apply_modifiers` (`sampletones_core/performance/modifiers.py`) |
-| How long a row lasts, and how many samples its ticks span | `Groove` and `TickClock` (`sampletones_core/timing/`) |
+| How long a row lasts, and how many samples its ticks span | `SongTiming` and `TickClock` (`sampletones_core/timing/`) |
 | Rendering the song to a file, its passes and its progress | `SongRenderService` (`services/render/`) |
 
 The sequencer song is an ordinary intentional source alongside the reconstruction and instruction players. It implements the same protocol and is arbitrated by the same rules.

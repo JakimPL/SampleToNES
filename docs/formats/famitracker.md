@@ -4,6 +4,8 @@ This document is the reference for how _SampleToNES_ writes and reads FamiTracke
 write or check an `.fti` instrument file or an `.ftm` module file. It covers the binary layout of both
 formats (A), the instrument model (B), what an imported `.fti` gives a voice (C), FamiTracker's capacity
 limits (D) and the memory an instrument takes in the NSF driver (E).
+[The tracker playback check](../tools/tracker-playback.md) has FamiTracker export modules to NSF files and
+lists every tick they sound differently from the app.
 
 The target is **vanilla FamiTracker 0.4.6** (`FILE_VER = 0x0440`). Files written to this specification
 load in stock FamiTracker and in the 0CC, Dn-FamiTracker and FamiStudio forks. The module is single-chip
@@ -142,6 +144,10 @@ Instruments reference the pooled sequences by index, so the module stores each s
 | pattern length | `int32` | |
 | order table | `uint8` | for each frame, one pattern index per channel |
 
+The speed and tempo are the project's own. FamiTracker spreads a tempo between two tick counts with its
+own running count, so the longer rows of a module fall where that count lands. [Song
+timing](../concepts/timing.md#5-the-exports) compares it with the app's placement.
+
 `PATTERNS` payload, per non-empty pattern:
 
 | Field | Type | Notes |
@@ -205,8 +211,11 @@ that tick, and a hi-pitch item is the same offset counted sixteen dividers at a 
 halts, the same items accumulate on the running period.
 
 _SampleToNES_ writes and reads a bend as the per-tick offset. The writer therefore keeps an arpeggio
-running for as long as the bend. An instrument with a bend and no arpeggio gets one holding a single zero
-at loop point 0. A shorter arpeggio is extended to the bend's length by holding its final note. What one
+running for as long as the bend acts. A bend that repeats, or ends on an offset it then holds, acts for as
+long as the note sounds: the arpeggio and the bend both circle on their last items, so the tracker adds the
+held offset on every tick. A bend ending on no offset acts until its last item. An arpeggio shorter than
+that is extended to the bend's length by holding its final note. An instrument with a bend and no
+arpeggio gets one holding a single zero at loop point 0. What one
 step is worth follows the note it bends: under a cent at the lowest notes, widening to a whole semitone at
 the highest, where the divider grid is already coarser than the note grid.
 
@@ -239,8 +248,8 @@ export](bitphase.md#f-bitphase-capacity-limits) shortens a dimension by the same
 with a single zero: a disabled slot leaves that dimension to the channel, while a one-item sequence sets
 the value once and holds it. FamiTracker starts every note of a disabled slot where _SampleToNES_ starts
 one: the instrument volume full, so the note plays at the volume column; the note unmoved by an arpeggio
-or a bend; and the channel's default duty. A `Vxx` effect sets that duty, and it stays at 0 because an
-export leaves every effect column empty. A dimension is empty when the reconstruction records it as one
+or a bend; and the channel's default duty. A `Vxx` effect sets that duty, and an export
+writes none, so it stays at 0. A dimension is empty when the reconstruction records it as one
 the channel governs. Clearing the envelope in the instruments panel produces that state (see
 [Reconstructions](reconstructions.md)).
 
@@ -256,7 +265,9 @@ sequences carry across directly. A conversion that bent no note records both ben
 channel governs, so they reach the file as disabled slots. The DPCM key-assignment table is always empty.
 
 An [instrument](../glossary.md#instrument) written by hand is one set of envelopes that every channel
-reads, as in FamiTracker itself. It becomes a single instrument, however many channels play it. Each
+reads, as in FamiTracker itself. It becomes a single instrument, however many channels play it. The noise
+channel reads it the way FamiTracker and Bitphase do: the duty item's lowest bit selects the short mode,
+and each pitch item moves the period one step, as an arpeggio step does. Each
 dimension is written at the length it was typed at and has its own loop point, so a tracker that advances
 every sequence on its own counter sounds it the way the engine here plays it. Every channel that names the
 instrument reaches that one instrument, each against the initial pitch it reads: its note on the tonal

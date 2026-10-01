@@ -6,7 +6,7 @@ import pytest
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH, NUM_PERIODS
 from sampletones_core.formats.bitphase.btp import project_to_bytes
-from sampletones_core.formats.bitphase.builder import project_to_bitphase
+from sampletones_core.formats.bitphase.builder import BITPHASE_TICK_BOUNDS, project_to_bitphase
 from sampletones_core.formats.bitphase.model.pattern import BitphaseRow, EffectCell
 from sampletones_core.formats.bitphase.model.project import BitphaseProject
 from sampletones_core.formats.bitphase.model.table import BitphaseTable
@@ -33,6 +33,7 @@ from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.voices.sample import Sample
+from sampletones_core.timing import SongTiming
 from tests.suite.base import BaseTestSuite
 from tests.suite.bitphase import noise_register, note_value, parse_btp, played_notes
 from tests.suite.case import BaseRegularTestCase
@@ -85,11 +86,9 @@ def named_table(document: BitphaseProject, row: BitphaseRow) -> BitphaseTable:
     return next(table for table in document.tables if table.id == row.table - TABLE_COLUMN_OFFSET)
 
 
-def groove_ticks(document: BitphaseProject) -> Tuple[int, ...]:
-    """The ticks each row lasts, read from the table the groove trigger on the DPCM channel names."""
-    trigger = document.songs[0].patterns[0].channels[int(ChannelIndex.DPCM)].rows[0].effects[0]
-    assert trigger is not None
-    return next(table for table in document.tables if table.id == trigger.table_index).rows
+def frame_ticks(project: Project, frame: int) -> Tuple[int, ...]:
+    """The ticks each row of a frame lasts in the document, as the song's timing gives them."""
+    return SongTiming.from_project(project, bounds=BITPHASE_TICK_BOUNDS).groove(frame).ticks
 
 
 def ornament(position: int) -> Tuple[Optional[EffectCell], ...]:
@@ -270,11 +269,10 @@ class TestTheStepANoteHasReached:
     """
 
     def test_a_groove_counts_each_row_at_its_own_length(self, lead: Sample) -> None:
-        document = project_to_bitphase(
-            moved_project(lead, (0, note(lead)), (RAISED_ROW, Row(transpose=RAISED)), settings=GROOVE_SETTINGS)
-        )
+        project = moved_project(lead, (0, note(lead)), (RAISED_ROW, Row(transpose=RAISED)), settings=GROOVE_SETTINGS)
+        document = project_to_bitphase(project)
 
-        assert channel_row(document, 0, RAISED_ROW).effects == ornament(sum(groove_ticks(document)[:RAISED_ROW]))
+        assert channel_row(document, 0, RAISED_ROW).effects == ornament(sum(frame_ticks(project, 0)[:RAISED_ROW]))
 
     def test_the_rows_of_every_frame_between_are_counted(self, lead: Sample) -> None:
         """A frame leaving the channel empty plays on with the note it carries."""
@@ -286,9 +284,12 @@ class TestTheStepANoteHasReached:
             settings=GROOVE_SETTINGS,
         )
         document = project_to_bitphase(project)
-        ticks = groove_ticks(document)
 
-        elapsed = sum(ticks[LATE_NOTE_ROW:]) + sum(ticks) + sum(ticks[:RAISED_ROW])
+        elapsed = (
+            sum(frame_ticks(project, 0)[LATE_NOTE_ROW:])
+            + sum(frame_ticks(project, 1))
+            + sum(frame_ticks(project, 2)[:RAISED_ROW])
+        )
 
         assert channel_row(document, 2, RAISED_ROW).effects == ornament(elapsed)
 

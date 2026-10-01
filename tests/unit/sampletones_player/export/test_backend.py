@@ -17,7 +17,7 @@ from sampletones_core.exports.scope import ExportScope
 from sampletones_core.exports.stage import ExportStage
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
-from sampletones_core.timing import SongTiming
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_player.builder import SONG_START
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.driver.image import DriverImage
@@ -306,7 +306,7 @@ class TestWriteProject:
         project = drum_project()
         destination = tmp_path / FILENAME
         backend.write_project(destination, ProjectExport(project=project))
-        expected = SongTiming.from_project(project).frame_tick(project.song.order_length())
+        expected = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS).frame_tick(project.song.order_length())
         assert song_word(destination.read_bytes(), TOTAL_TICKS_OFFSET) == expected
 
     def test_the_program_repeats_from_its_first_tick(
@@ -357,7 +357,7 @@ class TestWhatAProjectRunSaysAboutItself:
         backend.write_project(tmp_path / FILENAME, ProjectExport(project=project), reporter)
 
         walked = [report for report in reporter.reports if report.stage == ExportStage.WALKING]
-        expected = SongTiming.from_project(project).frame_tick(project.song.order_length())
+        expected = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS).frame_tick(project.song.order_length())
         assert walked
         assert [report.total for report in walked] == [expected] * len(walked)
         assert walked[-1].completed == expected

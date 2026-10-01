@@ -50,14 +50,14 @@ class ChannelEnvelopes:
 def _pulse_width(channel: ChannelName, duty_cycle: int) -> int:
     """Reads a duty-cycle item as the field the channel uses it for.
 
-    A square channel takes it as the duty itself; the noise channel takes any nonzero
-    value as its short LFSR mode; the triangle channel plays one fixed waveform.
+    A square channel takes it as the duty itself; the noise channel takes its lowest bit as the
+    short LFSR mode; the triangle channel plays one fixed waveform.
     """
     match channel:
         case ChannelName.PULSE1 | ChannelName.PULSE2:
             return duty_cycle
         case ChannelName.NOISE:
-            return NOISE_MODE_SHORT if duty_cycle else NOISE_MODE_LONG
+            return NOISE_MODE_SHORT if duty_cycle & NOISE_MODE_SHORT else NOISE_MODE_LONG
         case ChannelName.TRIANGLE:
             return FLAT_PULSE_WIDTH
 
@@ -136,12 +136,35 @@ def _macro_bag(
     if channel != ChannelName.TRIANGLE:
         macros[NesMacroField.PULSE_WIDTH] = macro(_waveform_envelope(features, channel))
 
-    if channel in TONE_CHANNELS:
-        bend = _bend_envelope(features, contour, tuning_table=tuning_table)
-        if bend.written:
-            macros[NesMacroField.TONE_ADD] = macro(bend)
+    bend = (
+        _bend_envelope(features, contour, tuning_table=tuning_table)
+        if channel in TONE_CHANNELS
+        else noise_bend(features)
+    )
+    if bend.written:
+        macros[NesMacroField.TONE_ADD] = macro(bend)
 
     return macros
+
+
+def noise_bend(features: Features) -> Envelope[int]:
+    """The period steps a slice's bend moves the noise channel by on each tick.
+
+    Bitphase adds a tone offset to the noise channel's note, and the note index carries the
+    period itself (see :func:`noise_period_to_note_index`), so each step of the bend is one step
+    of the period, as the slice reads it.
+
+    Args:
+        features: The per-dimension envelopes describing the slice.
+
+    Returns:
+        Envelope[int]: The steps per tick, empty where the slice bends nothing.
+    """
+    bend = stored_envelope(FeatureKey.PITCH, bend_envelope(features.pitch, features.hi_pitch))
+    if not any(bend.items):
+        return Envelope[int]()
+
+    return bend
 
 
 def _bend_envelope(

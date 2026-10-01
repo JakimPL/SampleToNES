@@ -75,3 +75,29 @@ class RowRate:
             speed=settings.speed,
             nes_frequency=settings.nes_frequency,
         )
+
+    def bounded(
+        self,
+        *,
+        minimum_ticks: int,
+        maximum_ticks: int,
+    ) -> RowRate:
+        """The rate an engine plays this one at, every row lasting between its shortest and longest.
+
+        A tempo asking for rows shorter than the engine's shortest plays every row at that shortest
+        length, so the song runs slower than its tempo states. FamiTracker and Bitphase play such a
+        tempo the same way.
+
+        Args:
+            minimum_ticks: The fewest ticks the engine holds a row for.
+            maximum_ticks: The most ticks the engine holds a row for.
+
+        Returns:
+            RowRate: The rate, held between the two.
+        """
+        return RowRate(
+            ticks_per_row=min(
+                max(self.ticks_per_row, Fraction(minimum_ticks)),
+                Fraction(maximum_ticks),
+            ),
+        )

@@ -1,77 +1,74 @@
-from typing import List, Sequence, Tuple
+from fractions import Fraction
+from math import ceil, floor
+from typing import Final, Tuple
+
+HALF: Final[Fraction] = Fraction(1, 2)
+SINGLE_ROW: Final[int] = 1
 
 
-def _divide_rounding_up(dividend: int, divisor: int) -> int:
-    """Divides two integers, carrying a fractional result up to the next integer."""
-    return -(-dividend // divisor)
+def nearest(value: Fraction) -> int:
+    """The whole number closest to ``value``, a half rounding up."""
+    return floor(value + HALF)
 
 
-def distribute_proportionally(
+def split_by_halving(
     total: int,
-    lengths: Sequence[int],
+    spans: Tuple[int, ...],
+    *,
+    row_ticks: Fraction,
 ) -> Tuple[int, ...]:
-    """Shares a tick total among consecutive spans in proportion to their row counts.
+    """Shares a tick total among the rows of consecutive spans by halving them down to single rows.
 
-    Each span ends at a boundary rounded up from its exact share, so where a share falls
-    between two integers the surplus tick goes to the earlier span. Over a pattern this
-    puts the longer rows on the earlier, metrically stronger positions.
+    The spans are cut in two, the larger part first, so three spans part as two and one. Each part
+    takes the share of the total nearest its exact length, and each part is then halved again. A
+    single span is cut between its own rows. The surplus ticks therefore settle where a listener hears
+    the strongest positions: the first half of a bar's beats, then the halves of those, and inside a
+    beat its first row, then its middle, then its quarters.
 
-    Only the floor and the ceiling of the average per row ever appear, which is what lets
-    a caller hold every row within an engine's speed range by bounding ``total`` alone.
+    Every row of the spans lasts ``row_ticks`` exactly, and each part's share is held to what its rows
+    can carry, so every row lasts the floor or the ceiling of ``row_ticks``.
 
     Args:
-        total: The tick count the spans share.
-        lengths: The row count of each span, in order, each at least 1.
+        total: The ticks the spans share, between the floor and the ceiling of their exact length.
+        spans: The row count of each consecutive span, in order, each at least 1.
+        row_ticks: The exact ticks one row lasts.
 
     Returns:
-        Tuple[int, ...]: One tick total per span, together summing to ``total``.
+        Tuple[int, ...]: One tick count per row of the spans, together summing to ``total``.
 
     Raises:
-        ValueError: If no span is given, or a span holds fewer than one row.
+        ValueError: If no span is given, a span holds no row, or ``total`` lies outside what the rows
+            carry at the floor and the ceiling of ``row_ticks``.
     """
-    if not lengths:
+    if not spans:
         raise ValueError("At least one span is required to share a tick total")
 
-    if any(length < 1 for length in lengths):
-        raise ValueError(f"Every span must hold at least 1 row, got {tuple(lengths)}")
+    if any(span < SINGLE_ROW for span in spans):
+        raise ValueError(f"Every span must hold at least 1 row, got {spans}")
 
-    rows = sum(lengths)
-    shares: List[int] = []
-    cumulative = 0
-    boundary = 0
-    for length in lengths:
-        cumulative += length
-        previous, boundary = boundary, _divide_rounding_up(total * cumulative, rows)
-        shares.append(boundary - previous)
+    rows = sum(spans)
+    if not rows * floor(row_ticks) <= total <= rows * ceil(row_ticks):
+        raise ValueError(f"{rows} rows of {row_ticks} ticks each carry no total of {total}")
 
-    return tuple(shares)
+    return _halved(total, spans, row_ticks)
 
 
-def distribute_by_halving(total: int, rows: int) -> Tuple[int, ...]:
-    """Shares a tick total among rows by halving the span down to single rows.
+def _halved(
+    total: int,
+    spans: Tuple[int, ...],
+    row_ticks: Fraction,
+) -> Tuple[int, ...]:
+    if len(spans) == 1:
+        if spans[0] == SINGLE_ROW:
+            return (total,)
 
-    The earlier half takes the extra row where the count is odd and the surplus tick
-    where the share is fractional, so within a beat the longer rows fall on the positions
-    a listener hears as strong: the first row, then the halfway row, then the quarters.
+        spans = (SINGLE_ROW,) * spans[0]
 
-    Args:
-        total: The tick count the rows share.
-        rows: How many rows share it, at least 1.
-
-    Returns:
-        Tuple[int, ...]: One tick count per row, together summing to ``total``.
-
-    Raises:
-        ValueError: If fewer than one row is given.
-    """
-    if rows < 1:
-        raise ValueError(f"rows must be at least 1, got {rows}")
-
-    if rows == 1:
-        return (total,)
-
-    left = _divide_rounding_up(rows, 2)
-    right = rows - left
-    halves = distribute_proportionally(total, (left, right))
-
-    return distribute_by_halving(halves[0], left) + distribute_by_halving(halves[1], right)
+    middle = ceil(len(spans) / 2)
+    first, second = spans[:middle], spans[middle:]
+    first_rows, second_rows = sum(first), sum(second)
+    share = nearest(total * Fraction(first_rows, first_rows + second_rows))
+    lowest = max(first_rows * floor(row_ticks), total - second_rows * ceil(row_ticks))
+    highest = min(first_rows * ceil(row_ticks), total - second_rows * floor(row_ticks))
+    share = min(max(share, lowest), highest)
+    return _halved(share, first, row_ticks) + _halved(total - share, second, row_ticks)

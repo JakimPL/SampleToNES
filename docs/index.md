@@ -32,6 +32,7 @@ without the source code.
 - [Stems reconstruction](concepts/stems.md) — how the channels are shared between several stems.
 - [Instruction library](concepts/instruction-library.md) — the catalog of NES sounds the search draws from.
 - [Song compression](concepts/compression.md) — how a song fits into the space an NES program has for it.
+- [Song timing](concepts/timing.md) — how a tempo becomes the ticks each row lasts.
 - [Project](concepts/project.md) — a song and the reconstructions it is built from.
 
 ## Tools

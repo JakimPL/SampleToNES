@@ -97,7 +97,8 @@ class TestThePitchContourRidesInTheToneOffset:
         )
         assert all(MIN_TONE_ADD <= offset <= MAX_TONE_ADD for offset in offsets(preset))
 
-    def test_a_noise_slice_takes_its_period_from_the_note(self) -> None:
+    def test_a_noise_slice_carries_its_contour_in_period_steps(self) -> None:
+        """Bitphase adds the offset to the noise note, which carries the period itself."""
         preset = instrument_to_preset(
             build_instrument(
                 "Hat",
@@ -105,7 +106,7 @@ class TestThePitchContourRidesInTheToneOffset:
                 channel=ChannelName.NOISE,
             ),
         )
-        assert set(offsets(preset)) == {NO_TONE_OFFSET}
+        assert list(offsets(preset))[:4] == [0, 1, 2, 3]
 
 
 class TestAPresetStaysAtConcertPitch:

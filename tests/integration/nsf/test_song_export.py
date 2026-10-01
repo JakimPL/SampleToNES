@@ -4,7 +4,7 @@ import pytest
 
 from sampletones_core.constants.enums import ALL_CHANNELS
 from sampletones_core.project.project import Project
-from sampletones_core.timing import SongTiming
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_player.builder import song_from_project
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.driver.image import DriverImage
@@ -36,13 +36,13 @@ def project_song(integration_project: Project) -> Song:
 class TestTheProjectReachesTheConsole:
     """A whole arrangement flattened into the streams the driver already plays."""
 
-    def test_the_song_lasts_the_ticks_the_projects_groove_gives_its_order(
+    def test_the_song_lasts_the_ticks_the_projects_timing_gives_its_order(
         self,
         integration_project: Project,
         project_song: Song,
     ) -> None:
-        groove = SongTiming.from_project(integration_project).groove()
-        assert project_song.ticks == integration_project.song.order_length() * groove.total_ticks
+        timing = SongTiming.from_project(integration_project, bounds=SONG_TICK_BOUNDS)
+        assert project_song.ticks == timing.frame_tick(integration_project.song.order_length())
 
     def test_every_channel_the_order_plays_sounds(self, project_song: Song) -> None:
         """The fixture's arrangement fills all four channels, so none of them rests throughout."""
