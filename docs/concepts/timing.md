@@ -106,7 +106,24 @@ Each clock carries its own remainder, so neither adds up over a song. A bar line
 within half a tick of its exact moment plus one call. Planning the rows in ticks also keeps the NSF on the
 rhythm the app plays, and its stream holds only engine ticks, so a phrase repeats wherever it is played.
 
-## 5. How it is checked
+## 5. The exports
+
+**The NSF plays the app's ticks.** Its stream holds the ticks the song walk plays, and its driver re-clocks
+them onto the console's call (section 4). The stream stores how long each row's phrase lasts beside the
+phrase, so a frame whose groove differs from the one before costs a few more bytes than a frame that
+repeats it.
+
+**Bitphase plays the app's rows.** Its song has a speed and no tempo, so the export writes a speed effect
+on every row that lasts differently from the row before it. [Tempo as a
+groove](../formats/bitphase.md#d-tempo-as-a-groove) has the details.
+
+**FamiTracker places the longer rows by its own count.** The export writes the project's speed and tempo
+as they stand, and FamiTracker carries the rounding from row to row as it plays. Its song keeps the tempo
+over time, and the longer rows fall wherever its running count lands. A module's rows can therefore last
+a tick more or less than the app's, while every bar stays close to where the tempo puts it. A NES
+frequency other than 50 or 60 Hz reaches FamiTracker as its engine speed.
+
+## 6. How it is checked
 
 The test suite holds the groove of every combination of tempo, speed, NES frequency and meter it sweeps
 to the properties above, across many frames of a song. It measures how far each bar line lands from its

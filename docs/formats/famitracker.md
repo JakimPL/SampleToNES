@@ -144,6 +144,10 @@ Instruments reference the pooled sequences by index, so the module stores each s
 | pattern length | `int32` | |
 | order table | `uint8` | for each frame, one pattern index per channel |
 
+The speed and tempo are the project's own. FamiTracker spreads a tempo between two tick counts with its
+own running count, so the longer rows of a module fall where that count lands. [Song
+timing](../concepts/timing.md#5-the-exports) compares it with the app's placement.
+
 `PATTERNS` payload, per non-empty pattern:
 
 | Field | Type | Notes |
@@ -244,8 +248,8 @@ export](bitphase.md#f-bitphase-capacity-limits) shortens a dimension by the same
 with a single zero: a disabled slot leaves that dimension to the channel, while a one-item sequence sets
 the value once and holds it. FamiTracker starts every note of a disabled slot where _SampleToNES_ starts
 one: the instrument volume full, so the note plays at the volume column; the note unmoved by an arpeggio
-or a bend; and the channel's default duty. A `Vxx` effect sets that duty, and it stays at 0 because an
-export leaves every effect column empty. A dimension is empty when the reconstruction records it as one
+or a bend; and the channel's default duty. A `Vxx` effect sets that duty, and an export
+writes none, so it stays at 0. A dimension is empty when the reconstruction records it as one
 the channel governs. Clearing the envelope in the instruments panel produces that state (see
 [Reconstructions](reconstructions.md)).
 

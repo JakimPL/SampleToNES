@@ -39,6 +39,8 @@ dimension the import starts carrying.
 * A FamiTracker module's pulse level can sound a step away from in-app playback. FamiTracker rounds the
   product of the two levels down and keeps the quietest level where that comes out silent, while the app
   and Bitphase round it to the nearest step.
+* A FamiTracker module places the longer rows of an uneven tempo by FamiTracker's own running count.
+  A compatibility setting writing a speed effect per row at tempo 150 would make it play the app's groove.
 
 ### Workflow
 
