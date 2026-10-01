@@ -27,7 +27,7 @@ from sampletones_player.specification.registers import (
 )
 from sampletones_shared.music import Tuning
 from sampletones_tools.player.trace.trace import RegisterTrace
-from tests.integration.nsf.console.machine import register_file
+from tests.integration.nsf.console.registers import register_file
 
 TRIANGLE_SOUNDING: Final[int] = TRIANGLE_COUNTER_CONTROL | TRIANGLE_SOUNDING_RELOAD
 

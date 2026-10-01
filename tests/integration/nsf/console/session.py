@@ -4,8 +4,8 @@ from sampletones_player.driver.image import DriverImage
 from sampletones_player.nsf.file import nsf_to_bytes
 from sampletones_player.nsf.information import NSFInformation
 from sampletones_player.song import Song
+from sampletones_tools.console.machine import Console
 from sampletones_tools.player.trace.trace import RegisterTrace
-from tests.integration.nsf.console.machine import Console
 
 TRAILING_CALLS: Final[int] = 2
 
@@ -80,9 +80,7 @@ def captured_run(data: bytes, play_calls: int) -> RegisterTrace:
     Returns:
         RegisterTrace: The writes of the initialization and of every play call in the run.
     """
-    image = DriverImage.load()
-    console = Console(data, image.addresses)
-    return console.trace(play_calls)
+    return Console(data).trace(play_calls)
 
 
 def captured_trace(song: Song, information: NSFInformation) -> RegisterTrace:
