@@ -1,16 +1,10 @@
 from dataclasses import dataclass
 from fractions import Fraction
-from math import floor
-from typing import Final, List, Tuple
+from typing import List, Tuple
 
-from sampletones_core.timing.distribution import (
-    distribute_by_halving,
-    distribute_proportionally,
-)
+from sampletones_core.timing.distribution import nearest, split_by_halving
 from sampletones_core.timing.meter import Meter
 from sampletones_core.timing.rate import RowRate
-
-HALF: Final[Fraction] = Fraction(1, 2)
 
 
 @dataclass(frozen=True)
@@ -19,8 +13,8 @@ class Groove:
 
     An engine that takes one speed value per row reaches a fractional row rate by varying
     that value from row to row, which is how a tempo its speed column alone cannot state
-    still comes out right on average. The variation is placed by meter, so the longer rows
-    land on the bar, then the beat, then the subdivisions inside a beat.
+    still comes out right on average. Every bar starts on the tick nearest its exact start,
+    and inside a bar the meter places the longer rows on the strongest positions first.
 
     Attributes:
         ticks: One tick count per pattern row, in order.
@@ -62,36 +56,6 @@ class Groove:
         return patterns * self.total_ticks + opening
 
 
-def _pattern_ticks(
-    rate: RowRate,
-    rows: int,
-    *,
-    minimum_ticks: int,
-    maximum_ticks: int,
-) -> int:
-    """Rounds a pattern's exact tick count to the nearest integer within the engine's speed range.
-
-    Rounding once, on the pattern, is what makes the pattern's duration the closest the
-    engine reaches; the meter then decides which rows carry the difference. Bounding the
-    pattern total rather than each row keeps every row inside the range as a consequence,
-    since a proportional split yields only the floor and the ceiling of the average.
-
-    Args:
-        rate: The exact ticks one row lasts.
-        rows: The pattern's row count.
-        minimum_ticks: The fewest ticks the engine holds a row for.
-        maximum_ticks: The most ticks the engine holds a row for.
-
-    Returns:
-        int: The tick count the pattern's rows share.
-    """
-    exact = rate.ticks_per_row * rows
-    return min(
-        max(floor(exact + HALF), rows * minimum_ticks),
-        rows * maximum_ticks,
-    )
-
-
 def calculate_groove(
     rate: RowRate,
     meter: Meter,
@@ -101,9 +65,14 @@ def calculate_groove(
 ) -> Groove:
     """Builds the per-row tick counts that carry a row rate across one pattern.
 
-    The pattern's tick total is shared among its bars, each bar's among its beats, and
-    each beat's among its rows by halving — one rule applied at three levels, so the
-    surplus ticks settle on the strongest position each level offers.
+    Each bar starts on the tick nearest its exact start, counted from the pattern's first row, so
+    the pattern lasts the whole number of ticks nearest its exact length and no bar strays half a
+    tick from where the tempo puts it. A bar's ticks are then halved down its beats and rows by
+    :func:`~sampletones_core.timing.distribution.split_by_halving`, which settles the surplus on
+    the strongest positions.
+
+    The rate is first held within the engine's range, so a tempo asking for rows shorter than the
+    shortest the engine plays sounds every row at that shortest length.
 
     Args:
         rate: The exact ticks one row lasts.
@@ -114,30 +83,21 @@ def calculate_groove(
     Returns:
         Groove: One tick count per row of the pattern.
     """
-    total = _pattern_ticks(
-        rate,
-        meter.rows,
+    row_ticks = rate.bounded(
         minimum_ticks=minimum_ticks,
         maximum_ticks=maximum_ticks,
-    )
-    bars = meter.spans
-    bar_lengths = tuple(sum(beats) for beats in bars)
-
+    ).ticks_per_row
     ticks: List[int] = []
-    for beats, bar_ticks in zip(
-        bars,
-        distribute_proportionally(
-            total,
-            bar_lengths,
-        ),
-    ):
-        for beat_rows, beat_ticks in zip(
-            beats,
-            distribute_proportionally(
-                bar_ticks,
-                beats,
-            ),
-        ):
-            ticks.extend(distribute_by_halving(beat_ticks, beat_rows))
+    bar_start = 0
+    for beats in meter.spans:
+        bar_end = bar_start + sum(beats)
+        bar_ticks = _bar_line(bar_end, row_ticks) - _bar_line(bar_start, row_ticks)
+        ticks.extend(split_by_halving(bar_ticks, beats, row_ticks=row_ticks))
+        bar_start = bar_end
 
     return Groove(ticks=tuple(ticks))
+
+
+def _bar_line(row: int, row_ticks: Fraction) -> int:
+    """The tick a bar starting on ``row`` starts on: the one nearest its exact start."""
+    return nearest(row * row_ticks)

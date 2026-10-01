@@ -232,9 +232,11 @@ includes them. It also sets the [meter](../glossary.md#metric-highlight):
 The tracker marks the first row of each beat and each bar. The defaults, 4 and 16, give four beats
 of four rows in a bar. For waltz time, set **Second highlight** to 12, which gives three beats.
 
-The tempo counts beats, so the meter also changes how fast the song feels. [Tempo as a
-groove](../formats/bitphase.md#d-tempo-as-a-groove) explains how the app spreads a tempo over the
-rows.
+The tempo counts beats, so the meter also changes how fast the song feels. A row lasts a whole number of
+ticks, so at most tempi some rows last a tick longer than others. The longer rows fall on the strong beats.
+A row can't be shorter than one tick: at a tempo asking for shorter rows, every row lasts one tick and the
+song plays slower, as it does in FamiTracker and Bitphase. [Song timing](../concepts/timing.md) explains
+how the app spreads a tempo over the rows.
 
 ## Exporting the song
 

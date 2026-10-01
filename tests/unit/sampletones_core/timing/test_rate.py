@@ -124,3 +124,22 @@ class TestRowRate(BaseTestSuite):
             speed=settings.speed,
             nes_frequency=settings.nes_frequency,
         )
+
+
+class TestBoundedRate(BaseTestSuite):
+    """An engine plays a row for at least its shortest and at most its longest length."""
+
+    @pytest.mark.parametrize(
+        ("ticks_per_row", "expected"),
+        (
+            (Fraction(1, 4), Fraction(1)),
+            (Fraction(1), Fraction(1)),
+            (Fraction(36, 5), Fraction(36, 5)),
+            (Fraction(255), Fraction(255)),
+            (Fraction(2907, 4), Fraction(255)),
+        ),
+    )
+    def test_a_rate_is_held_within_the_engine_range(self, ticks_per_row: Fraction, expected: Fraction) -> None:
+        bounded = RowRate(ticks_per_row=ticks_per_row).bounded(minimum_ticks=1, maximum_ticks=255)
+
+        assert bounded == RowRate(ticks_per_row=expected)
