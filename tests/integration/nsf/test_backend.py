@@ -18,7 +18,7 @@ from sampletones_core.performance import song_instructions
 from sampletones_core.project.project import Project
 from sampletones_core.project.tuning import tuning_from_project
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.timing import SongTiming
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_player.builder import (
     SONG_START,
     instructions_from_instruments,
@@ -340,7 +340,7 @@ class TestTheConsoleSoundsTheChosenProgram:
         tmp_path: Path,
     ) -> None:
         """The calls past the arrangement's end sound the frame the program returns to, onward."""
-        loop_tick = SongTiming.from_project(integration_project).frame_tick(LOOP_FRAME)
+        loop_tick = SongTiming.from_project(integration_project, bounds=SONG_TICK_BOUNDS).frame_tick(LOOP_FRAME)
         program = NSFProgram.for_project(integration_project).model_copy(update={"loop_tick": loop_tick})
         data = chosen_file(backend, integration_project, program, tmp_path).read_bytes()
         ticks = project_song.ticks

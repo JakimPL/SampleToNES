@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Self
 
 from sampletones_core.project import Project
-from sampletones_core.timing import SongTiming
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 
 from .rates import EngineRates
 
@@ -32,7 +32,7 @@ class SongLength:
         total the walk through the song reaches.
         """
         return cls(
-            ticks=SongTiming.from_project(project).frame_tick(project.song.order_length()),
+            ticks=SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS).frame_tick(project.song.order_length()),
             rates=EngineRates.from_project(project, sample_rate),
         )
 

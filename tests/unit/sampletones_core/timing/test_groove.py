@@ -6,9 +6,11 @@ from typing import Final, Tuple
 
 import pytest
 
-from sampletones_core.timing.groove import Groove, calculate_groove
+from sampletones_core.timing.bounds import TickBounds
+from sampletones_core.timing.groove import Groove
 from sampletones_core.timing.meter import Meter
 from sampletones_core.timing.rate import RowRate
+from sampletones_core.timing.song import SongTiming
 from sampletones_shared.constants.project import REFERENCE_NES_FREQUENCY, REFERENCE_TEMPO
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
@@ -16,6 +18,8 @@ from tests.suite.groove import bar_line_drift, bar_rows, is_proportional
 
 MINIMUM_TICKS: Final[int] = 1
 MAXIMUM_TICKS: Final[int] = 255
+ENGINE_BOUNDS: Final[TickBounds] = TickBounds(minimum=MINIMUM_TICKS, maximum=MAXIMUM_TICKS)
+FIRST_FRAME: Final[int] = 0
 
 COMMON_TIME_BEAT: Final[int] = 4
 COMMON_TIME_BAR: Final[int] = 16
@@ -24,8 +28,13 @@ REFERENCE_SPEED: Final[int] = 6
 HALF_TICK: Final[Fraction] = Fraction(1, 2)
 
 
+def first_frame_groove(rate: RowRate, meter: Meter) -> Groove:
+    """The groove the song's first frame plays, where every bar line is counted from the pattern's first row."""
+    return SongTiming(rate=rate, meter=meter, bounds=ENGINE_BOUNDS).groove(FIRST_FRAME)
+
+
 class TestGroove(BaseTestSuite):
-    """One case table, read both for the ticks it produces and for the rules they obey."""
+    """One case table of the song's first frame, read both for the ticks it produces and for the rules they obey."""
 
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseAutolabelTestCase):
@@ -69,12 +78,7 @@ class TestGroove(BaseTestSuite):
 
         @property
         def groove(self) -> Groove:
-            return calculate_groove(
-                self.rate,
-                self.meter,
-                minimum_ticks=MINIMUM_TICKS,
-                maximum_ticks=MAXIMUM_TICKS,
-            )
+            return first_frame_groove(self.rate, self.meter)
 
     test_cases = (
         TestCase(
@@ -730,19 +734,9 @@ class TestGroove(BaseTestSuite):
         test_cases,
         ids=lambda test_case: test_case.label,
     )
-    def test_the_total_and_the_mean_describe_the_rows(self, test_case: TestCase) -> None:
-        groove = test_case.groove
-        assert groove.total_ticks == sum(groove.ticks)
-        assert groove.mean_ticks_per_row == Fraction(groove.total_ticks, test_case.rows)
-
-    @pytest.mark.parametrize(
-        "test_case",
-        test_cases,
-        ids=lambda test_case: test_case.label,
-    )
     def test_the_rate_is_reached_as_closely_as_the_range_allows(self, test_case: TestCase) -> None:
-        reachable = test_case.reachable_rate
-        assert abs(test_case.groove.mean_ticks_per_row - reachable) <= Fraction(1, 2 * test_case.rows)
+        exact = test_case.reachable_rate * test_case.rows
+        assert abs(sum(test_case.groove.ticks) - exact) <= HALF_TICK
 
     @pytest.mark.parametrize(
         "test_case",
@@ -794,7 +788,7 @@ class TestReferenceCalibration(BaseTestSuite):
     @pytest.mark.parametrize("speed", tuple(range(1, 32)))
     @pytest.mark.parametrize("rows", (1, 2, 7, 16, 60, 64, 256))
     def test_every_row_lasts_speed_ticks(self, speed: int, rows: int) -> None:
-        groove = calculate_groove(
+        groove = first_frame_groove(
             RowRate.from_parameters(
                 tempo=REFERENCE_TEMPO,
                 speed=speed,
@@ -805,11 +799,8 @@ class TestReferenceCalibration(BaseTestSuite):
                 first_highlight=COMMON_TIME_BEAT,
                 second_highlight=COMMON_TIME_BAR,
             ),
-            minimum_ticks=MINIMUM_TICKS,
-            maximum_ticks=MAXIMUM_TICKS,
         )
         assert groove.ticks == (speed,) * rows
-        assert groove.is_uniform
 
 
 class TestSecondHighlight(BaseTestSuite):
@@ -817,7 +808,7 @@ class TestSecondHighlight(BaseTestSuite):
 
     @staticmethod
     def _groove(rows: int, first_highlight: int, second_highlight: int, tempo: int) -> Groove:
-        return calculate_groove(
+        return first_frame_groove(
             RowRate.from_parameters(
                 tempo=tempo,
                 speed=REFERENCE_SPEED,
@@ -828,8 +819,6 @@ class TestSecondHighlight(BaseTestSuite):
                 first_highlight=first_highlight,
                 second_highlight=second_highlight,
             ),
-            minimum_ticks=MINIMUM_TICKS,
-            maximum_ticks=MAXIMUM_TICKS,
         )
 
     @pytest.mark.parametrize("second_highlight", (1, 2, 3, 4, 7, 8, 12, 16, 20, 32, 64))
@@ -838,21 +827,21 @@ class TestSecondHighlight(BaseTestSuite):
     def test_the_bar_leaves_the_tempo_alone(self, tempo: int, rows: int, second_highlight: int) -> None:
         grouped = self._groove(rows, COMMON_TIME_BEAT, second_highlight, tempo)
         pattern_wide = self._groove(rows, COMMON_TIME_BEAT, rows, tempo)
-        assert grouped.total_ticks == pattern_wide.total_ticks
+        assert sum(grouped.ticks) == sum(pattern_wide.ticks)
 
     def test_a_bar_cutting_across_the_beat_reorganizes_the_groove(self) -> None:
         across = self._groove(6, 2, 3, 105)
         pattern_wide = self._groove(6, 2, 6, 105)
         assert across.ticks == (9, 8, 9, 9, 8, 8)
         assert pattern_wide.ticks == (9, 8, 9, 8, 9, 8)
-        assert across.total_ticks == pattern_wide.total_ticks
+        assert sum(across.ticks) == sum(pattern_wide.ticks)
 
     def test_a_bar_shorter_than_the_beat_reorganizes_the_groove(self) -> None:
         across = self._groove(5, 5, 4, 105)
         aligned = self._groove(5, 5, 8, 105)
         assert across.ticks == (9, 8, 9, 8, 9)
         assert aligned.ticks == (9, 8, 9, 9, 8)
-        assert across.total_ticks == aligned.total_ticks
+        assert sum(across.ticks) == sum(aligned.ticks)
 
     def test_a_bar_of_whole_beats_reorganizes_the_groove_too(self) -> None:
         barred = self._groove(64, COMMON_TIME_BEAT, COMMON_TIME_BAR, 105)
@@ -869,41 +858,4 @@ class TestSecondHighlight(BaseTestSuite):
             9, 9, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8,
             9, 9, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8,
         )  # fmt: skip
-        assert barred.total_ticks == pattern_wide.total_ticks
-
-
-class TestGrooveProperties(BaseTestSuite):
-    def test_total_ticks_sums_the_rows(self) -> None:
-        assert Groove(ticks=(5, 4, 4, 4)).total_ticks == 17
-
-    def test_mean_ticks_per_row_is_exact(self) -> None:
-        assert Groove(ticks=(5, 4, 4, 4)).mean_ticks_per_row == Fraction(17, 4)
-
-    def test_a_varying_groove_is_not_uniform(self) -> None:
-        assert not Groove(ticks=(5, 4, 4, 4)).is_uniform
-
-    def test_a_constant_groove_is_uniform(self) -> None:
-        assert Groove(ticks=(4, 4, 4, 4)).is_uniform
-
-    def test_a_single_row_groove_is_uniform(self) -> None:
-        assert Groove(ticks=(4,)).is_uniform
-
-
-class TestTheTicksASpanOfRowsLasts:
-    """A frame plays one whole pattern, so a span of rows reads the groove from its first row and goes
-    on from the next pattern's first row once it passes the last.
-    """
-
-    UNEVEN: Final[Groove] = Groove(ticks=(5, 4, 4, 3))
-
-    def test_a_span_within_the_pattern_adds_up_its_rows(self) -> None:
-        assert self.UNEVEN.ticks_across(1, 2) == 4 + 4
-
-    def test_a_span_past_the_last_row_goes_on_from_the_first(self) -> None:
-        assert self.UNEVEN.ticks_across(3, 3) == 3 + 5 + 4
-
-    def test_a_span_of_whole_patterns_lasts_their_ticks(self) -> None:
-        assert self.UNEVEN.ticks_across(2, 2 * len(self.UNEVEN.ticks)) == 2 * self.UNEVEN.total_ticks
-
-    def test_an_empty_span_lasts_no_tick(self) -> None:
-        assert self.UNEVEN.ticks_across(2, 0) == 0
+        assert sum(barred.ticks) == sum(pattern_wide.ticks)

@@ -18,7 +18,6 @@ class EffectId(IntEnum):
 SPEED_EFFECT_DELAY: Final[int] = 0
 ORNAMENT_POSITION_DELAY: Final[int] = 0
 MAX_ORNAMENT_POSITION: Final[int] = 0xFF
-NO_EFFECT_PARAMETER: Final[int] = 0
 NO_EFFECT_TABLE: Final[int] = -1
 
 MIN_EFFECT_COLUMNS: Final[int] = 1

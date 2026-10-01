@@ -520,23 +520,38 @@ def _next_step(position: int, table: LoadedTable) -> int:
     return table.loop if 0 < table.loop < len(table.rows) else BITPHASE_FIRST_STEP
 
 
-def _row_speeds(document: LoadedProject, pattern: LoadedPattern) -> List[int]:
-    """The ticks each row of a pattern lasts: the entries of the table a speed effect names, or the initial speed.
+def row_speeds(document: LoadedProject) -> List[List[int]]:
+    """The ticks each row of every pattern lasts, the order played once through as the engine reads it.
 
-    The groove reaches the engine as a table a speed effect reads one entry per row from, triggered on
-    every pattern's first row, which is the only way the export states a speed.
+    The song starts at its initial speed, and a speed effect sets the speed from its row on, the last
+    one on a row winning across its channels, as ``readLastSpeedCommandOnRow`` of
+    ``playback-speed.ts`` reads it. Every speed the export states rides a speed effect's own
+    parameter.
+
+    Args:
+        document: The document as Bitphase loads it.
+
+    Returns:
+        List[List[int]]: One list per pattern of the order, one speed per row.
     """
-    triggers = [
-        effect
-        for channel in pattern.channels
-        for effect in channel.rows[0].effects
-        if effect is not None and effect.effect == BITPHASE_SPEED_EFFECT and effect.table_index is not None
-    ]
-    if not triggers:
-        return [document.songs[0].initial_speed] * pattern.length
+    song = document.songs[0]
+    patterns = {pattern.id: pattern for pattern in song.patterns}
+    speed = song.initial_speed
+    speeds: List[List[int]] = []
+    for pattern_id in document.pattern_order:
+        pattern = patterns[pattern_id]
+        pattern_speeds: List[int] = []
+        for row_index in range(pattern.length):
+            for channel in pattern.channels:
+                for effect in channel.rows[row_index].effects:
+                    if effect is not None and effect.effect == BITPHASE_SPEED_EFFECT and effect.parameter > 0:
+                        speed = effect.parameter
 
-    table = next(table for table in document.tables if table.id == triggers[-1].table_index)
-    return [table.rows[row % len(table.rows)] for row in range(pattern.length)]
+            pattern_speeds.append(speed)
+
+        speeds.append(pattern_speeds)
+
+    return speeds
 
 
 @dataclass
@@ -598,9 +613,9 @@ def played_notes(document: LoadedProject, channel_index: int) -> List[Optional[i
     tables = {table.id: table for table in document.tables}
     replay = _ChannelReplay()
     notes: List[Optional[int]] = []
-    for pattern_id in document.pattern_order:
+    for pattern_id, speeds in zip(document.pattern_order, row_speeds(document)):
         pattern = patterns[pattern_id]
-        for row, speed in zip(pattern.channels[channel_index].rows, _row_speeds(document, pattern)):
+        for row, speed in zip(pattern.channels[channel_index].rows, speeds):
             replay.read(row, tables)
             notes.extend(replay.tick(song.tuning_table) for _ in range(speed))
 

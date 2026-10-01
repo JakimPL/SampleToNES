@@ -13,7 +13,7 @@ from sampletones_application.view_model.shared.nsf.repeat import NSFRepeat
 from sampletones_application.view_model.shared.nsf.view import NSFExportViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exports.request import SampleExport
-from sampletones_core.timing import SongTiming
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_player.builder import SONG_START
 from sampletones_player.compression.scheme import CompressionScheme, offered_schemes
 from sampletones_player.export.program import NSFProgram
@@ -123,7 +123,9 @@ class TestOfferingTheProject:
         export.logic.open_project()
 
         project = export.controller.project
-        assert export.view.ticks == SongTiming.from_project(project).frame_tick(project.song.order_length())
+        assert export.view.ticks == SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS).frame_tick(
+            project.song.order_length()
+        )
         assert export.view.nes_frequency == project.settings.nes_frequency
 
     def test_the_setup_occupies_the_application_from_the_dialog_opening(self, export: NSFExportFixture) -> None:
@@ -216,7 +218,9 @@ class TestHandingTheProjectOver:
         program = export.backend.program
         assert program.information == choices.information
         assert program.channels == frozenset(ChannelName.items()) - {ChannelName.NOISE}
-        assert program.loop_tick == SongTiming.from_project(export.controller.project).frame_tick(LOOP_FRAME)
+        assert program.loop_tick == SongTiming.from_project(
+            export.controller.project, bounds=SONG_TICK_BOUNDS
+        ).frame_tick(LOOP_FRAME)
         assert program.scheme == CompressionScheme.RUNS
 
     def test_handing_over_closes_the_setup(self, export: NSFExportFixture) -> None:

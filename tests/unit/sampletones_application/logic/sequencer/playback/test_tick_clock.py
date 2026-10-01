@@ -8,7 +8,7 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.timing import MAX_TICKS_PER_ROW, MIN_TICKS_PER_ROW, Meter, RowRate, TickClock, calculate_groove
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming, TickClock
 from tests.suite.base import BaseTestSuite
 from tests.suite.performance import make_pulse_reconstruction
 from tests.unit.sampletones_application.logic.sequencer.playback.conftest import (
@@ -26,13 +26,8 @@ UNEVEN_RATES: Final[Tuple[int, ...]] = (8000, 16000, 22050)
 
 
 def _expected_ticks(controller: ProjectController) -> Tuple[int, ...]:
-    settings = controller.project.settings
-    return calculate_groove(
-        RowRate.from_settings(settings),
-        Meter.from_settings(settings, rows=controller.project.song.rows_per_pattern),
-        minimum_ticks=MIN_TICKS_PER_ROW,
-        maximum_ticks=MAX_TICKS_PER_ROW,
-    ).ticks
+    """The ticks each row of the song's first frame lasts, where the synthesizer starts."""
+    return SongTiming.from_project(controller.project, bounds=SONG_TICK_BOUNDS).groove(0).ticks
 
 
 class TestRowsFollowTheTickClock(BaseTestSuite):

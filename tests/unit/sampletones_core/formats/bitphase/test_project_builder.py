@@ -24,11 +24,10 @@ from sampletones_core.formats.bitphase.notes import (
 from sampletones_core.formats.bitphase.specification.channels import ChannelIndex
 from sampletones_core.formats.bitphase.specification.chip import DEFAULT_A4_TUNING, DEFAULT_CPU_FREQUENCY
 from sampletones_core.formats.bitphase.specification.effects import (
-    NO_EFFECT_PARAMETER,
+    NO_EFFECT_TABLE,
     SPEED_EFFECT_DELAY,
     EffectId,
 )
-from sampletones_core.formats.bitphase.specification.instruments import LOOP_FROM_START
 from sampletones_core.formats.bitphase.specification.patterns import (
     FIRST_OCTAVE,
     FULL_VOLUME,
@@ -63,6 +62,7 @@ from sampletones_core.project.voices.sample import Sample
 from sampletones_core.project.voices.voice import VoiceUnion, voice_reference
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures import IdentifiedCollection
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_core.utils.frequencies import transpose_pitch
 from tests.suite.base import BaseTestSuite
 from tests.suite.bitphase import BITPHASE_OPENING_PATTERN_VOLUME, pattern_volume
@@ -342,57 +342,103 @@ class TestRowCells:
         )
 
 
-class TestTheTempoBecomesAGroove:
-    """A Bitphase song holds one speed value per row, so the fractional row rate most tempi
-    ask for is carried by a groove: whole tick counts that vary from row to row. The groove
-    reaches the engine as a table a speed effect reads a row at a time, triggered from the
-    channel this exporter leaves silent. A tempo whose rows all last alike is carried by the
-    song's initial speed alone.
+def played_speeds(document: BitphaseProject) -> List[Tuple[int, ...]]:
+    """The ticks each row of every pattern lasts, the order played once through.
+
+    The song starts at its initial speed, and a speed effect sets the speed from its row on.
+    """
+    song = document.songs[0]
+    patterns = {pattern.id: pattern for pattern in song.patterns}
+    speed = song.initial_speed
+    played: List[Tuple[int, ...]] = []
+    for pattern_id in document.pattern_order:
+        pattern = patterns[pattern_id]
+        rows: List[int] = []
+        for row_index in range(pattern.length):
+            for channel in pattern.channels:
+                for effect in channel.rows[row_index].effects:
+                    if effect is not None and effect.effect == int(EffectId.SPEED):
+                        speed = effect.parameter
+
+            rows.append(speed)
+
+        played.append(tuple(rows))
+
+    return played
+
+
+class TestTheTempoBecomesSpeeds:
+    """A Bitphase song holds one speed value per row, so the fractional row rate most tempi ask for
+    is carried by speed effects that change it where the rows' lengths change. They ride the channel
+    this exporter leaves silent. A tempo whose rows all last alike is carried by the song's initial
+    speed alone.
     """
 
-    def test_a_tempo_the_speed_column_states_needs_no_table(self, document: BitphaseProject) -> None:
+    def test_the_document_holds_one_table_per_slice(
+        self,
+        document: BitphaseProject,
+        grooved_document: BitphaseProject,
+    ) -> None:
         assert len(document.tables) == len(document.instruments)
+        assert len(grooved_document.tables) == len(grooved_document.instruments)
 
-    def test_a_tempo_the_speed_column_states_leaves_the_groove_channel_resting(
+    def test_a_tempo_the_speed_column_states_leaves_the_speed_channel_resting(
         self,
         document: BitphaseProject,
     ) -> None:
-        assert all(row == BitphaseRow() for row in groove_channel_rows(document, 0))
-
-    def test_a_groove_takes_the_table_above_the_slices(self, grooved_document: BitphaseProject) -> None:
-        table = grooved_document.tables[-1]
-        assert table.id == len(grooved_document.instruments)
-        assert table.loop == LOOP_FROM_START
-
-    def test_the_table_holds_the_ticks_each_row_lasts(self, grooved_document: BitphaseProject) -> None:
-        assert grooved_document.tables[-1].rows == GROOVE_TICKS
+        for pattern_index in range(len(document.songs[0].patterns)):
+            assert all(row == BitphaseRow() for row in groove_channel_rows(document, pattern_index))
 
     def test_the_song_starts_on_the_ticks_its_first_row_lasts(self, grooved_document: BitphaseProject) -> None:
         assert grooved_document.songs[0].initial_speed == GROOVE_TICKS[TRIGGER_ROW]
 
-    def test_every_pattern_triggers_the_groove_on_its_first_row(self, grooved_document: BitphaseProject) -> None:
-        """The speed table advances one entry per row and returns to the entry the trigger
-        names, so triggering it again at each pattern start holds every row on the entry that
-        describes it however the order jumps.
-        """
-        trigger = EffectCell(
-            effect=int(EffectId.SPEED),
-            delay=SPEED_EFFECT_DELAY,
-            parameter=NO_EFFECT_PARAMETER,
-            table_index=grooved_document.tables[-1].id,
-        )
-        triggers = [
-            groove_channel_rows(grooved_document, index)[TRIGGER_ROW].effects
-            for index in range(len(grooved_document.songs[0].patterns))
-        ]
-        assert triggers == [(trigger,)] * len(triggers)
+    def test_every_row_plays_the_ticks_the_songs_timing_gives_it(
+        self,
+        grooved_document: BitphaseProject,
+        source: Project,
+    ) -> None:
+        """At tempo 210 an 8-row pattern lasts 34 2/7 ticks, so the second frame plays one tick more."""
+        timing = SongTiming.from_project(source, bounds=SONG_TICK_BOUNDS)
+        expected = [timing.groove(frame).ticks for frame in range(source.song.order_length())]
 
-    def test_the_groove_channel_carries_nothing_but_the_trigger(self, grooved_document: BitphaseProject) -> None:
-        rows = groove_channel_rows(grooved_document, 0)
-        assert all(row == BitphaseRow() for row in rows[TRIGGER_ROW + 1 :])
+        assert played_speeds(grooved_document) == expected
+        assert expected[0] == GROOVE_TICKS
+        assert sum(expected[1]) == sum(GROOVE_TICKS) + 1
+
+    def test_a_speed_is_stated_only_where_a_row_lasts_differently_from_the_row_before(
+        self,
+        grooved_document: BitphaseProject,
+    ) -> None:
+        """The song comes round to its first row after the last, so that is the row before the first."""
+        speeds = [speed for pattern in played_speeds(grooved_document) for speed in pattern]
+        changes = sum(1 for index, speed in enumerate(speeds) if speed != speeds[index - 1])
+        stated = sum(
+            1
+            for pattern_index in range(len(grooved_document.songs[0].patterns))
+            for row in groove_channel_rows(grooved_document, pattern_index)
+            if row != BitphaseRow()
+        )
+
+        assert stated == changes
+
+    def test_the_speed_channel_carries_nothing_but_speeds(self, grooved_document: BitphaseProject) -> None:
+        speeds = {GROOVE_TICKS[TRIGGER_ROW], *GROOVE_TICKS}
+        for pattern_index in range(len(grooved_document.songs[0].patterns)):
+            for row in groove_channel_rows(grooved_document, pattern_index):
+                if row == BitphaseRow():
+                    continue
+
+                (effect,) = row.effects
+                assert effect is not None
+                assert (effect.effect, effect.delay, effect.table_index) == (
+                    int(EffectId.SPEED),
+                    SPEED_EFFECT_DELAY,
+                    NO_EFFECT_TABLE,
+                )
+                assert effect.parameter in speeds
 
     def test_the_sounding_channels_keep_their_effect_columns(self, grooved_document: BitphaseProject) -> None:
-        """The groove rides the silent channel, so every channel that plays keeps the one
+        """The speeds ride the silent channel, so every channel that plays keeps the one
         effect column the chip gives it.
         """
         channels = grooved_document.songs[0].patterns[0].channels[: int(ChannelIndex.DPCM)]

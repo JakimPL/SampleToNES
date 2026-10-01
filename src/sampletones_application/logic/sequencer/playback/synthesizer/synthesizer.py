@@ -11,7 +11,7 @@ from sampletones_core.performance import VoiceReading, apply_row, resolve_row, s
 from sampletones_core.project import Project
 from sampletones_core.project.song import Song
 from sampletones_core.project.song_position import SongPosition
-from sampletones_core.timing import Groove, SongTiming
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 
 from .bank import ChannelBank
 from .frames import RowFrames
@@ -65,8 +65,7 @@ class RowSynthesizer:
         self._active_channels = active_channels
         self._sample_rate = sample_rate
         self._position = SongPosition()
-        self._timing: SongTiming = SongTiming.from_project(project_source.project)
-        self._groove: Groove = self._timing.groove()
+        self._timing: SongTiming = SongTiming.from_project(project_source.project, bounds=SONG_TICK_BOUNDS)
         self._channels: Optional[ChannelBank] = None
         self._elapsed_ticks: int = 0
 
@@ -97,12 +96,12 @@ class RowSynthesizer:
         song = project.song
         self._position.wrap_overflow(song.rows_per_pattern)
         channels = self._bank()
-        self._ensure_groove(project)
+        self._follow_timing(project)
 
         frames = RowFrames.from_clock(
             channels.clock,
             elapsed_ticks=self._elapsed_ticks,
-            ticks=self._groove.ticks[self._position.row_index],
+            ticks=self._timing.row_ticks(self._position.order_position, self._position.row_index),
         )
 
         position_before = replace(self._position)
@@ -146,20 +145,18 @@ class RowSynthesizer:
             self._sample_rate(),
         )
 
-    def _ensure_groove(self, project: Project) -> None:
-        """Rebuilds the groove when the row rate or the meter it is spread over changes.
+    def _follow_timing(self, project: Project) -> None:
+        """Takes up the project's timing when the row rate or the meter it is spread over changes.
 
-        An engine that holds a row for a whole number of ticks reaches a fractional row rate by
-        varying that number from row to row, and the groove is where those counts are decided.
-        Rebuilding only on a timing edit keeps a tempo change immediate while the distribution
-        itself, which spans a whole pattern, is computed once.
+        The timing answers how long a row lasts from the row's place in the song, and it keeps the
+        bar plans it has computed. Replacing it only on a timing edit keeps a tempo change heard
+        from the next row on, while the plans of an unchanged timing are computed once.
         """
-        timing = SongTiming.from_project(project)
+        timing = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS)
         if timing == self._timing:
             return
 
         self._timing = timing
-        self._groove = timing.groove()
 
     def _mix_channels(
         self,

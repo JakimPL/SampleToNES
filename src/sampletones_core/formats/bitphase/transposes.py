@@ -17,7 +17,7 @@ from sampletones_core.formats.bitphase.specification.instruments import FIRST_TA
 from sampletones_core.formats.bitphase.specification.patterns import TABLE_COLUMN_OFFSET
 from sampletones_core.formats.bitphase.voices import SliceVoice, SliceVoiceTable
 from sampletones_core.project.song import Song
-from sampletones_core.timing import Groove
+from sampletones_core.timing import SongTiming
 
 NOTE_SHIFT: Final[int] = 0
 MOVED_TABLE_NAME: Final[str] = "{name} {shift:+d}"
@@ -128,14 +128,14 @@ class TransposePlan:
         cls,
         song: Song,
         voices: SliceVoiceTable,
-        groove: Groove,
+        timing: SongTiming,
         *,
         first_table_id: int,
     ) -> TransposePlan:
         """Plans every transpose row of the song, following the notes the order sounds.
 
         A note's table advances a step every tick, so the step a transpose row reaches is read from
-        the ticks the groove gives every row since the note, across frames. An ornament position
+        the ticks the song's timing gives every row since the note, across frames. An ornament position
         names a step up to ``MAX_ORNAMENT_POSITION``, so a row reaching a later step names a copy of
         the table opening on that step. A row keeping the shift the channel already carries
         writes nothing.
@@ -143,7 +143,7 @@ class TransposePlan:
         Args:
             song: The arrangement being exported.
             voices: The slices a row's note-on reaches, by voice and channel.
-            groove: The ticks each row of a pattern lasts in the document.
+            timing: How many ticks every row of the song lasts in the document.
             first_table_id: The id the first moved table takes, above every other table.
 
         Returns:
@@ -161,7 +161,8 @@ class TransposePlan:
                     cls._note_cells(
                         note,
                         voices[(note.voice_id, channel_name)],
-                        groove,
+                        timing,
+                        song.order_length(),
                         shelf,
                     )
                 )
@@ -182,7 +183,8 @@ class TransposePlan:
     def _note_cells(
         note: SoundingNote,
         voice: SliceVoice,
-        groove: Groove,
+        timing: SongTiming,
+        frames: int,
         shelf: _TableShelf,
     ) -> Dict[Tuple[int, int], TransposeCell]:
         """The cells the transpose rows reaching one note write."""
@@ -195,7 +197,14 @@ class TransposePlan:
                 continue
 
             carried = shift
-            position = voice.table.position_at(groove.ticks_across(note.place.row_index, repitch.rows))
+            position = voice.table.position_at(
+                timing.ticks_across(
+                    note.place.order_position,
+                    note.place.row_index,
+                    repitch.rows,
+                    frames=frames,
+                )
+            )
             cells[(repitch.place.order_position, repitch.place.row_index)] = TransposePlan._attached(
                 voice,
                 shift,

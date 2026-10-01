@@ -14,6 +14,7 @@ from sampletones_core.performance.voice import VoiceReading
 from sampletones_core.project.project import Project
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.project.voices.voice import VoiceUnion
+from sampletones_core.timing.bounds import SONG_TICK_BOUNDS
 from sampletones_core.timing.song import SongTiming
 from sampletones_shared.utils.progress import silent_reporter
 
@@ -25,11 +26,11 @@ def song_instructions(
     """Plays a whole song out as the instructions each channel sounds, one per engine tick.
 
     The order is walked frame by frame and row by row, each row lasting the ticks the project's
-    groove gives its position within the pattern. Every channel answers for each of those ticks,
-    so the four streams share one length and a tick's index into them is the same moment of the
-    song — which is what an engine consuming one instruction per tick plays from.
+    timing gives its place in the song. Every channel answers for each of those ticks, so the four
+    streams share one length and a tick's index into them is the same moment of the song — which is
+    what an engine consuming one instruction per tick plays from.
 
-    The groove states the ticks the whole order lasts before a row is played, so a walk of a song
+    The timing states the ticks the whole order lasts before a row is played, so a walk of a song
     of minutes says how far along it is and answers a caller who no longer wants it.
 
     Args:
@@ -43,8 +44,7 @@ def song_instructions(
         OperationCanceled: If ``report`` withdraws the walk.
     """
     song = project.song
-    timing = SongTiming.from_project(project)
-    groove = timing.groove()
+    timing = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS)
     total = timing.frame_tick(song.order_length())
     performances = {channel_name: ChannelPerformance() for channel_name in ChannelName.items()}
     streams: Dict[ChannelName, List[InstructionUnion]] = {channel_name: [] for channel_name in ChannelName.items()}
@@ -52,7 +52,7 @@ def song_instructions(
     position = SongPosition()
     walked = 0
     while position.order_position < song.order_length():
-        ticks = groove.ticks[position.row_index]
+        ticks = timing.row_ticks(position.order_position, position.row_index)
         for channel_name in ChannelName.items():
             performance = performances[channel_name]
             row = resolve_row(song, position, channel_name)

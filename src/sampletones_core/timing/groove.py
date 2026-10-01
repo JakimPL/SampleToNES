@@ -1,15 +1,16 @@
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import List, Tuple
+from functools import lru_cache
+from typing import Final, Tuple
 
 from sampletones_core.timing.distribution import nearest, split_by_halving
-from sampletones_core.timing.meter import Meter
-from sampletones_core.timing.rate import RowRate
+
+BAR_PLAN_CACHE_SIZE: Final[int] = 4096
 
 
 @dataclass(frozen=True)
 class Groove:
-    """The engine ticks each row of a pattern lasts.
+    """The engine ticks each row of one pattern lasts, where an order frame plays it.
 
     An engine that takes one speed value per row reaches a fractional row rate by varying
     that value from row to row, which is how a tempo its speed column alone cannot state
@@ -22,82 +23,37 @@ class Groove:
 
     ticks: Tuple[int, ...]
 
-    @property
-    def total_ticks(self) -> int:
-        """How many engine ticks the whole pattern lasts."""
-        return sum(self.ticks)
 
-    @property
-    def mean_ticks_per_row(self) -> Fraction:
-        """The row rate the groove realizes, which states what a bounded groove reached."""
-        return Fraction(self.total_ticks, len(self.ticks))
-
-    @property
-    def is_uniform(self) -> bool:
-        """Whether every row lasts alike, so a single speed value carries the tempo."""
-        return len(set(self.ticks)) == 1
-
-    def ticks_across(self, row_index: int, rows: int) -> int:
-        """How many engine ticks pass over ``rows`` rows starting at ``row_index``.
-
-        Every frame of an order plays one whole pattern, so a span running past the pattern's last
-        row goes on from the first row of the next one.
-
-        Args:
-            row_index: The row the span starts on, within the pattern.
-            rows: How many rows the span covers, at least zero.
-
-        Returns:
-            int: The ticks those rows last.
-        """
-        length = len(self.ticks)
-        patterns, remainder = divmod(rows, length)
-        opening = sum(self.ticks[(row_index + offset) % length] for offset in range(remainder))
-        return patterns * self.total_ticks + opening
-
-
-def calculate_groove(
-    rate: RowRate,
-    meter: Meter,
-    *,
-    minimum_ticks: int,
-    maximum_ticks: int,
-) -> Groove:
-    """Builds the per-row tick counts that carry a row rate across one pattern.
-
-    Each bar starts on the tick nearest its exact start, counted from the pattern's first row, so
-    the pattern lasts the whole number of ticks nearest its exact length and no bar strays half a
-    tick from where the tempo puts it. A bar's ticks are then halved down its beats and rows by
-    :func:`~sampletones_core.timing.distribution.split_by_halving`, which settles the surplus on
-    the strongest positions.
-
-    The rate is first held within the engine's range, so a tempo asking for rows shorter than the
-    shortest the engine plays sounds every row at that shortest length.
+def bar_line(row: int, row_ticks: Fraction) -> int:
+    """The tick a bar starting on ``row`` of the song starts on: the one nearest its exact start.
 
     Args:
-        rate: The exact ticks one row lasts.
-        meter: The pattern's length and its beat and bar grouping.
-        minimum_ticks: The fewest ticks the engine holds a row for.
-        maximum_ticks: The most ticks the engine holds a row for.
+        row: The row the bar starts on, counted from the song's first row.
+        row_ticks: The exact ticks one row lasts.
 
     Returns:
-        Groove: One tick count per row of the pattern.
+        int: The tick, counted from the song's first.
     """
-    row_ticks = rate.bounded(
-        minimum_ticks=minimum_ticks,
-        maximum_ticks=maximum_ticks,
-    ).ticks_per_row
-    ticks: List[int] = []
-    bar_start = 0
-    for beats in meter.spans:
-        bar_end = bar_start + sum(beats)
-        bar_ticks = _bar_line(bar_end, row_ticks) - _bar_line(bar_start, row_ticks)
-        ticks.extend(split_by_halving(bar_ticks, beats, row_ticks=row_ticks))
-        bar_start = bar_end
-
-    return Groove(ticks=tuple(ticks))
-
-
-def _bar_line(row: int, row_ticks: Fraction) -> int:
-    """The tick a bar starting on ``row`` starts on: the one nearest its exact start."""
     return nearest(row * row_ticks)
+
+
+@lru_cache(maxsize=BAR_PLAN_CACHE_SIZE)
+def plan_bar(
+    total: int,
+    beats: Tuple[int, ...],
+    row_ticks: Fraction,
+) -> Tuple[int, ...]:
+    """The ticks each row of a bar lasts, the bar's total halved down its beats and rows.
+
+    A bar lasts one of two totals wherever it falls in a song, the floor or the ceiling of its exact
+    length, so each bar of a pattern has at most two plans, and they are kept once computed.
+
+    Args:
+        total: The ticks the bar lasts.
+        beats: The row count of each of the bar's beats.
+        row_ticks: The exact ticks one row lasts.
+
+    Returns:
+        Tuple[int, ...]: One tick count per row of the bar.
+    """
+    return split_by_halving(total, beats, row_ticks=row_ticks)

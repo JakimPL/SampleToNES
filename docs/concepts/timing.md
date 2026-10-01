@@ -59,8 +59,20 @@ about three ticks in a bar of 256 one-row beats, the deepest the settings allow.
 than its tempo states. FamiTracker and Bitphase play such a tempo the same way.
 
 **Each bar takes the ticks between its own start and the next bar's start.** Each start is rounded to its
-nearest tick, counted from the pattern's first row. This is what keeps time: no bar line is more than half
-a tick away from its exact moment.
+nearest tick, counted from the song's first row. This is what keeps time: no bar line is more than half
+a tick away from its exact moment, however far into the song it falls.
+
+**Two frames of one pattern can differ by a tick.** At 60 Hz, speed 6 and tempo 210, a 16-row pattern
+lasts 68 4/7 ticks. The first frame plays 69 and the second 68, as the bar lines fall:
+
+```
+5 4 5 4 5 4 4 4 5 4 4 4 5 4 4 4      69 ticks
+5 4 4 4 5 4 4 4 5 4 4 4 5 4 4 4      68 ticks
+```
+
+Once the exact lengths of a run of patterns add up to whole ticks, the grooves start over: here every
+seven patterns, which last 480 ticks. A pass through the whole song lasts the whole number of ticks
+nearest its exact length, and a song that repeats replays that pass.
 
 **A bar's ticks are halved down to its rows.** The bar's beats are cut in two, the larger part first, so
 three beats part as two and one. Each part takes the share of the ticks nearest its exact length, held to
@@ -72,9 +84,33 @@ sharing 23 ticks, for example, play `8 7 8`.
 of bars ends on a shorter bar. A beat of 3 rows in a bar of 7, over a 16-row pattern, gives bars of 7, 7
 and 2 rows, with beats of 3, 3 and 1 in the first two.
 
-## 4. How it is checked
+**Every player reads the same timing.** In-app playback, rendering, the NSF export, the Bitphase export
+and the tracker playback check all ask how long a row lasts by the row's place in the song. Each answer
+follows from that place alone, so a player starting from any row reads its length directly.
+
+## 4. Ticks and the clocks they play on
+
+Rows are planned in engine ticks, at the song's NES frequency. An instrument's envelope moves once a tick,
+and a note starts on a tick, so the tick is the unit a row's length can be counted in. Each way of
+playing the song then turns ticks into its own time once:
+
+- **In-app playback and rendering** turn each tick into audio samples. A tick rarely lasts a whole number
+  of samples, so the samples are spread the way the ticks are spread over rows: the fraction carries from
+  tick to tick.
+- **The NSF** runs on the console's own call, about 60.1 times a second on NTSC. Its driver adds the song's
+  rate, measured in calls, to a counter on every call and plays the ticks that fall out. A 30 Hz song
+  moves on every other call, a 41 Hz song holds about one call in three, and a 300 Hz song moves up to
+  five ticks a call. Any rate the settings allow therefore plays at its own speed.
+
+Each clock carries its own remainder, so neither adds up over a song. A bar line the console plays lands
+within half a tick of its exact moment plus one call. Planning the rows in ticks also keeps the NSF on the
+rhythm the app plays, and its stream holds only engine ticks, so a phrase repeats wherever it is played.
+
+## 5. How it is checked
 
 The test suite holds the groove of every combination of tempo, speed, NES frequency and meter it sweeps
-to the properties above. It measures how far each bar line lands from its exact moment, checks that every
-row lasts the floor or the ceiling of its exact length, and checks which rows of a beat and which beats of
-a bar carry the surplus.
+to the properties above, across many frames of a song. It measures how far each bar line lands from its
+exact moment, checks that every row lasts the floor or the ceiling of its exact length, and checks which
+rows of a beat and which beats of a bar carry the surplus. It also follows the bar lines through the
+console's call at several rates, and holds what a player spends asking for a row's length to a small
+share of what walking the song costs.

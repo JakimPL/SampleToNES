@@ -4,7 +4,7 @@ from typing import Final, List
 import pytest
 
 from sampletones_core.formats.bitphase.btp import write_btp
-from sampletones_core.formats.bitphase.builder import project_to_bitphase
+from sampletones_core.formats.bitphase.builder import BITPHASE_TICK_BOUNDS, project_to_bitphase
 from sampletones_core.formats.bitphase.specification.channels import (
     CHANNEL_COUNT,
     CHANNEL_LABELS,
@@ -21,8 +21,6 @@ from sampletones_core.formats.bitphase.specification.chip import (
     ChipVariant,
 )
 from sampletones_core.formats.bitphase.specification.effects import (
-    NO_EFFECT_PARAMETER,
-    SPEED_EFFECT_DELAY,
     EffectId,
 )
 from sampletones_core.formats.bitphase.specification.instruments import (
@@ -49,16 +47,15 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     NoteName,
 )
 from sampletones_core.project.project import Project
-from sampletones_core.timing import Meter, RowRate, calculate_groove
+from sampletones_core.timing import SongTiming
 from sampletones_tools.samples.bitphase import GROOVE_TEMPO, at_tempo
 from tests.suite.bitphase import (
     BITPHASE_NO_EFFECTS,
-    LoadedEffect,
     LoadedNote,
     LoadedProject,
     LoadedRow,
-    LoadedTable,
     parse_btp,
+    row_speeds,
 )
 
 EXPECTED_INSTRUMENT_COUNT: Final[int] = 5
@@ -220,69 +217,46 @@ class TestTheTriggersReachTheirVoices:
 
 
 class TestTheGrooveReachesTheFile:
-    """A tempo the speed column cannot state travels as a table of per-row tick counts and a
-    trigger that names it, so the file has to hold the groove the calculator produced and
-    re-trigger it wherever the order takes playback.
+    """A tempo the speed column cannot state travels as speed effects on the silent channel, set
+    wherever a row lasts differently from the row before it, so every row the engine loads plays the
+    ticks the song's timing gives it.
     """
 
-    @pytest.fixture(name="groove_table")
-    def groove_table_fixture(self, groove_document: LoadedProject) -> LoadedTable:
-        return groove_document.tables[-1]
-
-    def test_the_groove_takes_the_table_above_the_slices(
-        self,
-        groove_document: LoadedProject,
-        groove_table: LoadedTable,
-    ) -> None:
-        assert groove_table.id == len(groove_document.instruments)
-
-    def test_the_table_holds_one_entry_per_pattern_row(
-        self,
-        groove_document: LoadedProject,
-        groove_table: LoadedTable,
-    ) -> None:
-        lengths = {pattern.length for pattern in groove_document.songs[0].patterns}
-        assert lengths == {len(groove_table.rows)}
-
-    def test_every_entry_is_a_speed_the_engine_reads(self, groove_table: LoadedTable) -> None:
-        assert all(MIN_INITIAL_SPEED <= ticks <= MAX_INITIAL_SPEED for ticks in groove_table.rows)
-
-    def test_the_table_holds_the_groove_the_project_plays(
+    def test_every_row_plays_the_ticks_the_songs_timing_gives_it(
         self,
         integration_project: Project,
-        groove_table: LoadedTable,
+        groove_document: LoadedProject,
     ) -> None:
         project = at_tempo(integration_project, GROOVE_TEMPO)
-        groove = calculate_groove(
-            RowRate.from_settings(project.settings),
-            Meter.from_settings(project.settings, rows=project.song.rows_per_pattern),
-            minimum_ticks=MIN_INITIAL_SPEED,
-            maximum_ticks=MAX_INITIAL_SPEED,
-        )
-        assert groove_table.rows == list(groove.ticks)
+        timing = SongTiming.from_project(project, bounds=BITPHASE_TICK_BOUNDS)
+        expected = [list(timing.groove(frame).ticks) for frame in range(project.song.order_length())]
+
+        assert row_speeds(groove_document) == expected
+
+    def test_every_speed_is_one_the_engine_reads(self, groove_document: LoadedProject) -> None:
+        speeds = [
+            effect.parameter
+            for pattern in groove_document.songs[0].patterns
+            for row in pattern.channels[int(ChannelIndex.DPCM)].rows
+            for effect in row.effects
+            if effect is not None and effect.effect == int(EffectId.SPEED)
+        ]
+
+        assert speeds
+        assert all(MIN_INITIAL_SPEED <= speed <= MAX_INITIAL_SPEED for speed in speeds)
+
+    def test_the_document_holds_one_table_per_slice(self, groove_document: LoadedProject) -> None:
+        assert len(groove_document.tables) == len(groove_document.instruments)
 
     def test_the_song_starts_on_the_ticks_its_first_row_lasts(
         self,
+        integration_project: Project,
         groove_document: LoadedProject,
-        groove_table: LoadedTable,
     ) -> None:
-        assert groove_document.songs[0].initial_speed == groove_table.rows[0]
+        project = at_tempo(integration_project, GROOVE_TEMPO)
+        timing = SongTiming.from_project(project, bounds=BITPHASE_TICK_BOUNDS)
 
-    def test_every_pattern_triggers_the_groove_on_its_first_row(
-        self,
-        groove_document: LoadedProject,
-        groove_table: LoadedTable,
-    ) -> None:
-        trigger = LoadedEffect(
-            effect=int(EffectId.SPEED),
-            delay=SPEED_EFFECT_DELAY,
-            parameter=NO_EFFECT_PARAMETER,
-            table_index=groove_table.id,
-        )
-        triggers = [
-            pattern.channels[int(ChannelIndex.DPCM)].rows[0].effects for pattern in groove_document.songs[0].patterns
-        ]
-        assert triggers == [[trigger]] * len(triggers)
+        assert groove_document.songs[0].initial_speed == timing.row_ticks(0, 0)
 
     def test_a_tempo_the_speed_column_states_leaves_every_effect_column_empty(
         self,
