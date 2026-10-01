@@ -15,6 +15,8 @@ from sampletones_tools.tracker_playback.report import MATCHES
 from sampletones_tools.tracker_playback.session import PlaybackOutcome, PlaybackRun
 from sampletones_tools.tracker_playback.targets.bitphase.engine import EngineError
 from sampletones_tools.tracker_playback.targets.bitphase.target import BitphaseTarget
+from sampletones_tools.tracker_playback.targets.famitracker.errors import FamiTrackerError
+from sampletones_tools.tracker_playback.targets.famitracker.target import FamiTrackerTarget
 from tests.suite.playback import ReplayingTarget
 
 COMMAND: Final[str] = "tracker-playback"
@@ -144,6 +146,45 @@ class TestTrackerPlayback:
     def test_the_bitphase_checkout_is_required(self) -> None:
         with pytest.raises(SystemExit) as leaving:
             dispatch(COMMANDS, [COMMAND, "bitphase"])
+
+        assert leaving.value.code == 2
+
+    def test_the_famitracker_target_plays_through_the_program_given(
+        self,
+        started: StartedRuns,
+        monkeypatch: pytest.MonkeyPatch,
+        replaying_target: ReplayingTarget,
+        tmp_path: Path,
+    ) -> None:
+        located: List[Path] = []
+
+        def locate(cls: type, executable: Path) -> ReplayingTarget:
+            located.append(executable)
+            return replaying_target
+
+        monkeypatch.setattr(FamiTrackerTarget, "located", classmethod(locate))
+        executable = tmp_path / "FamiTracker.exe"
+
+        assert dispatch(COMMANDS, [COMMAND, "famitracker", "--executable", str(executable)]) == 0
+        assert located == [executable]
+        assert [run.target for run in started.runs] == [replaying_target]
+
+    def test_a_famitracker_that_cannot_run_is_reported(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        def located(cls: type, executable: Path) -> FamiTrackerTarget:
+            raise FamiTrackerError("wine is missing")
+
+        monkeypatch.setattr(FamiTrackerTarget, "located", classmethod(located))
+
+        with pytest.raises(SystemExit, match="wine is missing"):
+            dispatch(COMMANDS, [COMMAND, "famitracker", "--executable", str(tmp_path / "FamiTracker.exe")])
+
+    def test_the_famitracker_program_is_required(self) -> None:
+        with pytest.raises(SystemExit) as leaving:
+            dispatch(COMMANDS, [COMMAND, "famitracker"])
 
         assert leaving.value.code == 2
 

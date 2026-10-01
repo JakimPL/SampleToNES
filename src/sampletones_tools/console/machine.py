@@ -1,4 +1,4 @@
-from typing import Final, List, Optional, Tuple
+from typing import Final, List, Tuple
 
 from py65.devices.mpu6502 import MPU
 from py65.memory import ObservableMemory
@@ -107,9 +107,8 @@ class Console:
             play_calls=tuple(self.play() for _ in range(play_calls)),
         )
 
-    def _observe(self, address: int, value: int) -> Optional[int]:
+    def _observe(self, address: int, value: int) -> None:
         self._writes.append(RegisterWrite(address, value))
-        return None
 
     def _seed_stack(self) -> None:
         """Leaves the sentinel on the stack as a return address, so a routine's final RTS lands on it."""

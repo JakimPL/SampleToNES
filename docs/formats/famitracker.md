@@ -4,6 +4,8 @@ This document is the reference for how _SampleToNES_ writes and reads FamiTracke
 write or check an `.fti` instrument file or an `.ftm` module file. It covers the binary layout of both
 formats (A), the instrument model (B), what an imported `.fti` gives a voice (C), FamiTracker's capacity
 limits (D) and the memory an instrument takes in the NSF driver (E).
+[The tracker playback check](../tools/tracker-playback.md) has FamiTracker export modules to NSF files and
+lists every tick they sound differently from the app.
 
 The target is **vanilla FamiTracker 0.4.6** (`FILE_VER = 0x0440`). Files written to this specification
 load in stock FamiTracker and in the 0CC, Dn-FamiTracker and FamiStudio forks. The module is single-chip

@@ -24,14 +24,17 @@ class EffectId(IntEnum):
 
     ``SLIDE_UP`` is ``Qxy`` and ``SLIDE_DOWN`` is ``Rxy``: each moves the channel's note by ``y``
     semitones at once and glides the period toward it at ``2x + 1`` units a tick. A module below the
-    0CC version stores these numbers verbatim (``EF_SLIDE_UP``, ``EF_SLIDE_DOWN``).
+    0CC version stores these numbers verbatim (``EF_SLIDE_UP``, ``EF_SLIDE_DOWN``). ``DAC`` is
+    ``Zxx`` (``EF_DAC``): it loads ``xx``, at most ``MAX_DAC_LEVEL``, into the DMC's output level.
     """
 
+    DAC = 15
     SLIDE_UP = 20
     SLIDE_DOWN = 21
 
 
 MAX_SLIDE_SEMITONES: Final[int] = 0x0F
+MAX_DAC_LEVEL: Final[int] = 0x7F
 FASTEST_SLIDE_SPEED: Final[int] = 0x0F
 SLIDE_SPEED_SHIFT: Final[int] = 4
 

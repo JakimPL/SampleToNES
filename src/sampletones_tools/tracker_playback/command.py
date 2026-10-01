@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Dict, Final, List, Optional, Tuple
 from sampletones_shared.command import Command
 from sampletones_tools.tracker_playback.commands.bitphase import BITPHASE
 from sampletones_tools.tracker_playback.commands.face import TargetFace
+from sampletones_tools.tracker_playback.commands.famitracker import FAMITRACKER
 
 if TYPE_CHECKING:
     from sampletones_tools.tracker_playback.projects import CheckedProject
@@ -28,7 +29,7 @@ OUTPUT_HELP: Final[str] = (
     "the directory the run writes into; without it, a timestamped directory under "
     "Documents/SampleToNES/tracker-playback"
 )
-TARGETS: Final[Tuple[TargetFace, ...]] = (BITPHASE,)
+TARGETS: Final[Tuple[TargetFace, ...]] = (BITPHASE, FAMITRACKER)
 TARGETS_BY_NAME: Final[Dict[str, TargetFace]] = {face.name: face for face in TARGETS}
 
 

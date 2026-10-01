@@ -1,4 +1,4 @@
-from typing import Final, List, Optional
+from typing import Final, List
 
 from py65.memory import ObservableMemory
 
@@ -43,9 +43,8 @@ class Cartridge:
         for slot, bank in enumerate(self._header.banks):
             self._map(memory, slot, bank)
 
-        def switch(address: int, value: int) -> Optional[int]:
+        def switch(address: int, value: int) -> None:
             self._map(memory, address - FIRST_BANK_REGISTER, value)
-            return None
 
         memory.subscribe_to_write(
             range(FIRST_BANK_REGISTER, FIRST_BANK_REGISTER + len(self._header.banks)),
