@@ -80,6 +80,10 @@ dimension the import starts carrying.
   `referee/test_axioms.py` does for the referees.
 * API documentation
 * Code documentation
+* Screen scenarios on Windows and macOS. They run on Linux alone: a scenario's pointer and keys reach the
+  application through X11, and whether DearPyGui opens its window on GitHub's Windows and macOS runners is
+  unverified. A run there starts from a spike that opens the application on each runner and presses one
+  control through the callback a click runs.
 * What a build makes of the configuration and the session state an older one left behind. Neither has a
   version, so neither travels an upgrade chain or has an archived corpus. A `state.yaml` naming a panel
   that has since gone, or a configuration missing a setting added since, is read by whatever each loader

@@ -145,3 +145,13 @@ repos:
         stages:
           - pre-push
         pass_filenames: false
+
+      - id: screens
+        name: screens
+        entry: make screens
+        language: system
+        types:
+          - python
+        stages:
+          - pre-push
+        pass_filenames: false
