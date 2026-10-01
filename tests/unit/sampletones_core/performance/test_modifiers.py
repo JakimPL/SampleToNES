@@ -8,6 +8,7 @@ from sampletones_core.constants.general import (
     MAX_PITCH,
     MAX_VOLUME,
     MIN_PITCH,
+    MIN_PLAYED_PITCH,
     MIN_VOLUME,
     SILENT_VOLUME,
     VOLUME_RANGE,
@@ -194,10 +195,16 @@ PULSE_TRANSPOSE_CASES = [
         expected_pitch=MAX_PITCH,
     ),
     PulseTransposeCase(
-        label="clamped at MIN_PITCH",
+        label="below A-0, the note kept",
+        pitch=MIN_PITCH,
+        transpose=-5,
+        expected_pitch=MIN_PITCH - 5,
+    ),
+    PulseTransposeCase(
+        label="clamped at C-0",
         pitch=MIN_PITCH,
         transpose=-20,
-        expected_pitch=MIN_PITCH,
+        expected_pitch=MIN_PLAYED_PITCH,
     ),
     PulseTransposeCase(
         label="no transpose",
@@ -374,11 +381,11 @@ TRIANGLE_MODIFIERS_CASES = [
         expected_on=True,
     ),
     TriangleModifiersCase(
-        label="pitch clamped at MIN_PITCH",
+        label="pitch clamped at C-0",
         pitch=MIN_PITCH,
         transpose=-20,
         row_volume=15,
-        expected_pitch=MIN_PITCH,
+        expected_pitch=MIN_PLAYED_PITCH,
         expected_on=True,
     ),
     TriangleModifiersCase(

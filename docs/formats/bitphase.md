@@ -140,9 +140,10 @@ the [NSF export](../development/player.md#the-song-a-file-carries) refuses it.
 
 **A note index is the absolute pitch less 24.** Indices 0–95 cover pitches 24–119, the span a FamiTracker
 note cell covers too. A pattern cell stores the index as a semitone and an octave, which playback resolves
-back with `name - 2 + (octave - 1) * 12`. At concert pitch the nine indices below pitch 33 all resolve to
-the longest period, 2047, about 11 cents flat of A1. _SampleToNES_ plays pitches 33–119, so section E
-writes a note to keep within them.
+back with `name - 2 + (octave - 1) * 12`. At concert pitch the nine indices below pitch 33 ask for a
+period longer than the register holds. _SampleToNES_ plays pitches 24–119 and sounds each of those nine
+at the longest timer the register holds, `0x7FF`, as FamiTracker does. Bitphase holds a pulse or
+triangle period at 2047 at most, which is timer 2046, so those notes sound one step higher there.
 
 The triangle channel's period comes from the same table, so a written note sounds an octave below.
 _SampleToNES_ and FamiTracker share that convention.
@@ -262,18 +263,16 @@ the instrument number, the table column and the volume column below. A note-off 
 blank line leaves every column alone.
 
 **The note keeps the song's pitch range.** In-app playback holds every tick's transposed pitch within
-33–119. Playback moves the written note by the table's step each tick and holds the result at index 95
-(pitch 119), so a note up to 119 is written as it is and a higher one is written at 119. A note below 33
-is raised only as far as bringing the table's highest step to 33:
+24–119, the span of the tuning table. Playback moves the written note by the table's step each tick and
+holds the result at index 0 (pitch 24) and index 95 (pitch 119), so a note within the span is written as it
+is and a higher one is written at 119. Bitphase writes no note below index 0, so a lower one is raised
+only as far as bringing the table's highest step to pitch 24:
 
 | Row | What the exporter writes |
 | --- | --- |
-| a flat slice transposed below 33 | pitch 33, the note in-app playback sounds |
-| a contour reaching 33 on some ticks | the transposed note, so every tick in-app playback sounds at 33 or above keeps its note |
-| a contour lying wholly below 33 | the note whose highest step lands on 33 |
-
-A tick that in-app playback holds at 33 while its step moves the written note lower plays the period
-that lower index resolves to, which at concert pitch is the longest (section C.1).
+| a flat slice transposed below 24 | pitch 24, the note in-app playback sounds |
+| a contour whose steps stay at its note or below | the note whose highest step lands on 24 |
+| a contour rising above a note below 24 | pitch 24, where the ticks the contour raises sound higher than in-app playback |
 
 **A transpose row moves the note sounding.** In-app playback reads a row that states a transpose and no
 note as a new pitch for the note already sounding: the voice goes on from the tick it reached, and every
@@ -339,7 +338,7 @@ is the same cell you would see in the tracker.
 | Instruments | the instrument column holds 2 base-36 digits, so 1–1295 | raises past 1295 |
 | Tables | the table column holds 1 base-36 digit, so ids 0–34 | raises past 35 tables, counting one a groove takes and the moved tables transpose rows name |
 | Ornament position | the effect parameter is a byte, so steps 0–255 | names a copy of the table opening on a later step |
-| Note range | the 96-entry tuning table, pitch 24–119 | keeps the song's range, 33–119, raising a lower note only as far as its table's highest step reaching 33 (section E) |
+| Note range | the 96-entry tuning table, pitch 24–119 | keeps the song's range, 24–119, raising a lower note only as far as its table's highest step reaching 24 (section E) |
 | A4 tuning | 220–880 Hz, the range the song settings offer (`src/lib/chips/nes/schema.ts`) | writes the work's tuning, and raises past that range |
 | Volume column | `-1` silences (the tracker shows `0`), `0` carries the level forward (shown blank), 1–15 set the level | writes the row's level, `15` on a note the channel reaches at another level, and `-1` where a row asks for silence or the triangle's level is 0–7 |
 | Pattern length (rows) | 1–256 | clamps the preview pattern; a project keeps `rows_per_pattern` |

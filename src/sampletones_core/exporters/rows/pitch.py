@@ -1,6 +1,6 @@
 from typing import Final, Iterable
 
-from sampletones_core.constants.general import MAX_PITCH, MIN_PITCH
+from sampletones_core.constants.general import MAX_PITCH, MIN_PLAYED_PITCH
 
 FLAT_CONTOUR_STEP: Final[int] = 0
 
@@ -20,15 +20,15 @@ def highest_step(steps: Iterable[int]) -> int:
 def written_pitch(pitch: int, contour_top: int) -> int:
     """The pitch a tracker cell writes for a transposed voice, so its contour sounds where the song's does.
 
-    The song holds every tick's transposed pitch within the range the channels play. A tracker moves
-    the written note by the contour's step each tick and holds the result at the same top, so a
-    pitch up to the top is written as it is, and one above it is written at the top.
+    The song holds every tick's transposed pitch within the notes a tracker writes, C-0 to B-7 (see
+    :func:`played_pitch`). A tracker moves the written note by the contour's step each tick and holds
+    the result within the same notes, so a pitch inside them is written as it is, and one above the
+    top is written at the top.
 
-    Below the range a tracker plays every note at its longest period, a little flat of the lowest
-    pitch, where the song holds such a tick. A pitch below the range is therefore raised only as far
-    as bringing the contour's highest step up to the lowest pitch. Each tick the song plays within
-    the range keeps its own note, and a contour lying wholly below the range sounds its highest step
-    at the lowest pitch, which for a flat contour is every tick.
+    A tracker writes no note below C-0, so a pitch below it is raised only as far as bringing the
+    contour's highest step up to C-0. Each tick the song plays within the range keeps its own note,
+    and a contour lying wholly below the range sounds its highest step at C-0, which for a flat
+    contour is every tick.
 
     Args:
         pitch: The voice's reference pitch with the row's transpose added.
@@ -37,4 +37,4 @@ def written_pitch(pitch: int, contour_top: int) -> int:
     Returns:
         int: The pitch the cell writes.
     """
-    return min(MAX_PITCH, max(pitch, MIN_PITCH - contour_top))
+    return min(MAX_PITCH, max(pitch, MIN_PLAYED_PITCH - contour_top))

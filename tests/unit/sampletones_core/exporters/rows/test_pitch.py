@@ -3,7 +3,7 @@ from typing import Final, Tuple
 
 import pytest
 
-from sampletones_core.constants.general import MAX_PITCH, MIN_PITCH
+from sampletones_core.constants.general import MAX_PITCH, MIN_PLAYED_PITCH
 from sampletones_core.exporters.rows.pitch import FLAT_CONTOUR_STEP, highest_step, written_pitch
 from sampletones_core.utils.frequencies import transpose_pitch
 from tests.suite.base import BaseTestSuite
@@ -44,21 +44,21 @@ class TestTheWrittenPitch(BaseTestSuite):
         ),
         TestCase(
             label="a flat contour below the range",
-            pitch=MIN_PITCH - 3,
+            pitch=MIN_PLAYED_PITCH - 3,
             contour=FLAT_CONTOUR,
-            expected=MIN_PITCH,
+            expected=MIN_PLAYED_PITCH,
         ),
         TestCase(
             label="a contour reaching into the range",
-            pitch=MIN_PITCH - 2,
+            pitch=MIN_PLAYED_PITCH - 2,
             contour=CONTOUR,
-            expected=MIN_PITCH - 2,
+            expected=MIN_PLAYED_PITCH - 2,
         ),
         TestCase(
             label="a contour lying below the range",
-            pitch=MIN_PITCH - 10,
+            pitch=MIN_PLAYED_PITCH - 10,
             contour=CONTOUR,
-            expected=MIN_PITCH - CONTOUR_TOP,
+            expected=MIN_PLAYED_PITCH - CONTOUR_TOP,
         ),
         TestCase(
             label="a flat contour above the range",
@@ -77,8 +77,8 @@ class TestTheWrittenPitch(BaseTestSuite):
         self,
         test_case: "TestTheWrittenPitch.TestCase",
     ) -> None:
-        """A tick the song holds at the lowest pitch sounds at the tracker's lowest period instead,
-        and the highest tick of a contour lying below the range lands on the lowest pitch itself.
+        """A tick the song holds at C-0 the tracker holds there too, and the highest tick of a contour
+        lying below the range lands on C-0 itself.
         """
         contour_top = highest_step(test_case.contour)
         written = written_pitch(test_case.pitch, contour_top)
@@ -86,7 +86,7 @@ class TestTheWrittenPitch(BaseTestSuite):
         for step in test_case.contour:
             song_pitch = transpose_pitch(test_case.pitch, step)
             tracker_pitch = min(MAX_PITCH, written + step)
-            if song_pitch > MIN_PITCH or step == contour_top:
+            if song_pitch > MIN_PLAYED_PITCH or step == contour_top:
                 assert tracker_pitch == song_pitch
             else:
-                assert tracker_pitch <= MIN_PITCH
+                assert tracker_pitch <= MIN_PLAYED_PITCH

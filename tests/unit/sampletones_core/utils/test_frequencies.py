@@ -3,13 +3,13 @@ from typing import Any, Type, Union
 
 import pytest
 
-from sampletones_core.constants.general import MAX_PERIOD, MAX_PITCH, MIN_PITCH
+from sampletones_core.constants.general import MAX_PERIOD, MAX_PITCH, MIN_PITCH, MIN_PLAYED_PITCH
 from sampletones_core.utils.frequencies import (
     clamp_period,
     clamp_pitch,
-    is_pitch_valid,
     period_to_name,
     pitch_to_name,
+    played_pitch,
     sanitize,
     sanitize_period,
     sanitize_pitch,
@@ -21,22 +21,21 @@ from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import expect_error
 
 
-class TestIsPitchValid:
-    def test_is_pitch_valid(self) -> None:
-        valid_pitches = range(MIN_PITCH, MAX_PITCH + 1)
-        for pitch in valid_pitches:
-            assert is_pitch_valid(pitch), pitch
+class TestPlayedPitch:
+    """A note is played within C-0..B-7, the notes FamiTracker and Bitphase write, and held there past either end."""
 
-        invalid_pitches = (
-            0,
-            LIMIT_MIN_PITCH,
-            MIN_PITCH - 1,
-            MAX_PITCH + 1,
-            LIMIT_MAX_PITCH,
-            128,
-        )
-        for pitch in invalid_pitches:
-            assert not is_pitch_valid(pitch), pitch
+    def test_a_note_within_the_range_is_played_as_it_is(self) -> None:
+        for pitch in range(MIN_PLAYED_PITCH, MAX_PITCH + 1):
+            assert played_pitch(pitch) == pitch
+
+    def test_a_note_below_a0_keeps_its_own_pitch(self) -> None:
+        assert played_pitch(MIN_PITCH - 1) == MIN_PITCH - 1
+
+    def test_a_note_past_either_end_is_held_there(self) -> None:
+        assert played_pitch(MIN_PLAYED_PITCH - 1) == MIN_PLAYED_PITCH
+        assert played_pitch(0) == MIN_PLAYED_PITCH
+        assert played_pitch(MAX_PITCH + 1) == MAX_PITCH
+        assert played_pitch(LIMIT_MAX_PITCH) == MAX_PITCH
 
 
 class TestValidatePeriod(BaseTestSuite):

@@ -401,7 +401,7 @@ projects:
               - { row: 6, voice: buzz, transpose: 3, volume: 15 }
 
   - name: low-transpose
-    purpose: Transposes pushing a note below pitch 33, the lowest the application plays.
+    purpose: Transposes pushing a note below A-0, where every note sounds the longest timer the register holds.
     module: { title: Low transpose, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
     voices: [low]
     song:

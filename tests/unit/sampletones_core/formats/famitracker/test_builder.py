@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.constants.general import MAX_VOLUME, MIN_PITCH
+from sampletones_core.constants.general import MAX_VOLUME, MIN_PITCH, MIN_PLAYED_PITCH
 from sampletones_core.exporters.skipped import SkippedRow, SkipReason
 from sampletones_core.formats.famitracker.builder import (
     build_instrument_table,
@@ -87,7 +87,6 @@ PLAYED_PASSES: Final[int] = 2
 LOW_PITCH: Final[int] = 36
 LOW_TRANSPOSE: Final[int] = -10
 CONTOUR_PITCHES: Final[Tuple[int, ...]] = (40, 50)
-STRADDLING_TRANSPOSE: Final[int] = -14
 SUBMERGED_TRANSPOSE: Final[int] = -20
 
 
@@ -522,9 +521,9 @@ class TestTheTriangleSoundsAboveHalfVolume(BaseTestSuite):
 
 
 class TestALowTransposeKeepsTheSongsPitch:
-    """The song holds every tick's transposed pitch within 33-119, while FamiTracker plays any note
-    below A-0 at its longest period, a little flat of the lowest pitch. A transpose below the range
-    therefore raises the note only as far as the arpeggio's highest step reaching the lowest pitch.
+    """The song and FamiTracker both hold every tick's transposed pitch within C-0..B-7, and both play a
+    note below A-0 at the longest period. FamiTracker writes no note below C-0, so a transpose below it
+    writes C-0.
     """
 
     @staticmethod
@@ -544,26 +543,26 @@ class TestALowTransposeKeepsTheSongsPitch:
     def _arpeggio(module: FamiTrackerModule) -> Tuple[int, ...]:
         return module.instruments[0].sequences[SequenceKind.ARPEGGIO].items
 
-    def test_a_flat_voice_transposed_below_the_range_writes_the_lowest_note(self) -> None:
+    def test_a_flat_voice_transposed_below_a0_writes_its_own_note(self) -> None:
         _, cell = self._transposed(pulse_sample("low", pitch=LOW_PITCH), LOW_TRANSPOSE)
 
-        assert cell_pitch(cell) == MIN_PITCH
+        assert cell_pitch(cell) == LOW_PITCH + LOW_TRANSPOSE < MIN_PITCH
 
-    def test_a_contour_reaching_into_the_range_keeps_every_tick_the_song_plays_there(self) -> None:
+    def test_a_flat_voice_transposed_below_c0_writes_c0(self) -> None:
+        _, cell = self._transposed(pulse_sample("low", pitch=LOW_PITCH), SUBMERGED_TRANSPOSE)
+
+        assert cell_pitch(cell) == MIN_PLAYED_PITCH
+
+    def test_a_contour_reaching_below_c0_plays_every_tick_where_the_song_does(self) -> None:
         sample = contour_sample("contour", CONTOUR_PITCHES)
-        module, cell = self._transposed(sample, STRADDLING_TRANSPOSE)
-
         reference = voice_reference(sample, ChannelName.PULSE1)
+        transpose = MIN_PLAYED_PITCH + 1 - reference
+        module, cell = self._transposed(sample, transpose)
+
         steps = self._arpeggio(module)
-        tracker = [cell_pitch(cell) + step for step in steps]
-        song = [transpose_pitch(reference + step, STRADDLING_TRANSPOSE) for step in steps]
+        tracker = [transpose_pitch(cell_pitch(cell), step) for step in steps]
+        song = [transpose_pitch(reference + step, transpose) for step in steps]
 
-        assert cell_pitch(cell) == reference + STRADDLING_TRANSPOSE
-        assert [pitch for pitch, sung in zip(tracker, song) if sung > MIN_PITCH] == [
-            sung for sung in song if sung > MIN_PITCH
-        ]
-
-    def test_a_contour_lying_below_the_range_sounds_its_highest_step_at_the_lowest_pitch(self) -> None:
-        module, cell = self._transposed(contour_sample("contour", CONTOUR_PITCHES), SUBMERGED_TRANSPOSE)
-
-        assert cell_pitch(cell) + max(self._arpeggio(module)) == MIN_PITCH
+        assert cell_pitch(cell) == reference + transpose
+        assert min(song) == MIN_PLAYED_PITCH
+        assert tracker == song

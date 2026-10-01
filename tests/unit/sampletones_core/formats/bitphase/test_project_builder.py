@@ -11,7 +11,7 @@ from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
     ChannelName,
 )
-from sampletones_core.constants.general import MIN_PITCH, SILENT_VOLUME
+from sampletones_core.constants.general import MIN_PITCH, MIN_PLAYED_PITCH, SILENT_VOLUME
 from sampletones_core.exporters.skipped import SkippedRow, SkipReason
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.bitphase.builder import build_bitphase, project_to_bitphase
@@ -96,7 +96,6 @@ PLAYED_PASSES: Final[int] = 2
 LOW_PITCH: Final[int] = 36
 LOW_TRANSPOSE: Final[int] = -10
 CONTOUR_PITCHES: Final[Tuple[int, ...]] = (40, 50)
-STRADDLING_TRANSPOSE: Final[int] = -14
 SUBMERGED_TRANSPOSE: Final[int] = -20
 
 
@@ -652,9 +651,8 @@ class TestTheTriangleSoundsAboveHalfVolume(BaseTestSuite):
 
 
 class TestALowTransposeKeepsTheSongsPitch:
-    """The song holds every tick's transposed pitch within 33-119, while Bitphase at concert pitch plays
-    any note below 33 at its longest period, a little flat of the lowest pitch. A transpose below the
-    range therefore raises the note only as far as the contour's highest step reaching the lowest pitch.
+    """The song and Bitphase both hold every tick's transposed pitch within 24-119, the span of the tuning
+    table. Bitphase writes no note below index 0, so a transpose below it writes pitch 24.
     """
 
     @staticmethod
@@ -670,28 +668,27 @@ class TestALowTransposeKeepsTheSongsPitch:
             document.songs[0].patterns[0].channels[int(ChannelIndex.SQUARE1)].rows[0],
         )
 
-    def test_a_flat_voice_transposed_below_the_range_writes_the_lowest_note(self) -> None:
+    def test_a_flat_voice_transposed_below_a0_writes_its_own_note(self) -> None:
         _, row = self._transposed(pulse_sample("Low", LOW_PITCH, config=Config()), LOW_TRANSPOSE)
 
-        assert cell_pitch(row.note) == MIN_PITCH
+        assert cell_pitch(row.note) == LOW_PITCH + LOW_TRANSPOSE < MIN_PITCH
 
-    def test_a_contour_reaching_into_the_range_keeps_every_tick_the_song_plays_there(self) -> None:
+    def test_a_flat_voice_transposed_below_the_table_writes_its_lowest_note(self) -> None:
+        _, row = self._transposed(pulse_sample("Low", LOW_PITCH, config=Config()), SUBMERGED_TRANSPOSE)
+
+        assert cell_pitch(row.note) == MIN_PLAYED_PITCH
+
+    def test_a_contour_reaching_below_the_table_plays_every_tick_where_the_song_does(self) -> None:
         sample = contour_sample("Contour", CONTOUR_PITCHES, config=Config())
-        document, row = self._transposed(sample, STRADDLING_TRANSPOSE)
-
         reference = voice_reference(sample, ChannelName.PULSE1)
+        transpose = MIN_PLAYED_PITCH + 1 - reference
+        document, row = self._transposed(sample, transpose)
+
         steps = document.tables[0].rows
         written = cell_pitch(row.note) - NOTE_INDEX_PITCH_OFFSET
         tracker = [min(max(written + step, MIN_NOTE_INDEX), MAX_NOTE_INDEX) + NOTE_INDEX_PITCH_OFFSET for step in steps]
-        song = [transpose_pitch(reference + step, STRADDLING_TRANSPOSE) for step in steps]
+        song = [transpose_pitch(reference + step, transpose) for step in steps]
 
-        assert cell_pitch(row.note) == reference + STRADDLING_TRANSPOSE
-        assert [pitch for pitch, sung in zip(tracker, song) if sung > MIN_PITCH] == [
-            sung for sung in song if sung > MIN_PITCH
-        ]
-
-    def test_a_contour_lying_below_the_range_sounds_its_highest_step_at_the_lowest_pitch(self) -> None:
-        sample = contour_sample("Contour", CONTOUR_PITCHES, config=Config())
-        document, row = self._transposed(sample, SUBMERGED_TRANSPOSE)
-
-        assert cell_pitch(row.note) + max(document.tables[0].rows) == MIN_PITCH
+        assert cell_pitch(row.note) == reference + transpose
+        assert min(song) == MIN_PLAYED_PITCH
+        assert tracker == song

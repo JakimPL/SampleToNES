@@ -5,6 +5,7 @@ from sampletones_core.configs import Config
 from sampletones_core.instructions import TonalInstruction
 from sampletones_core.timers import PhaseTimer, frequency_to_timer, timer_to_frequency
 from sampletones_core.timers.arithmetic import bent_timer
+from sampletones_core.timers.utils import get_timer_table
 from sampletones_shared.utils.arrays import clamp
 
 from .generator import Generator
@@ -25,6 +26,10 @@ class TonalGenerator(Generator[TonalInstructionT, PhaseTimer], ABC):
         self.timer_table: Dict[int, int] = {
             pitch: frequency_to_timer(frequency) for pitch, frequency in self.frequency_table.items()
         }
+        self.played_timer_table: Dict[int, int] = {
+            **get_timer_table(config.library.tuning),
+            **self.timer_table,
+        }
 
     def set_timer(self, instruction: TonalInstructionT) -> None:
         if instruction.on:
@@ -34,6 +39,9 @@ class TonalGenerator(Generator[TonalInstructionT, PhaseTimer], ABC):
 
     def get_timer(self, pitch: int, offset: int) -> int:
         """The divider a note sounds at once the frame's bend has moved it.
+
+        A song plays notes below the range the library holds, down to C-0, and each sounds the divider
+        the tuning gives it, which below A-0 is the longest the register holds.
 
         Args:
             pitch: The note the frame names.
@@ -45,7 +53,7 @@ class TonalGenerator(Generator[TonalInstructionT, PhaseTimer], ABC):
         Raises:
             KeyError: If the pitch is absent from the generator's tables.
         """
-        return bent_timer(self.timer_table[pitch], offset)
+        return bent_timer(self.played_timer_table[pitch], offset)
 
     def sounds_at(self, pitch: int, offset: int) -> float:
         """The frequency in Hz this channel sounds a note at once a bend has moved it.

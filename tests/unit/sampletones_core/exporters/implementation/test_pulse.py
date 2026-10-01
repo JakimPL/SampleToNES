@@ -1,7 +1,7 @@
 import numpy as np
 
 from sampletones_core.constants.enums import FeatureKey
-from sampletones_core.constants.general import MAX_PITCH, MIN_PITCH
+from sampletones_core.constants.general import MAX_PITCH, MIN_PITCH, MIN_PLAYED_PITCH
 from sampletones_core.exporters.implementation.pulse import PulseExporter
 from sampletones_core.generators import PulseGenerator
 from sampletones_core.instructions.implementation.pulse import PulseInstruction
@@ -97,15 +97,20 @@ class TestPulseExporterReconstruction:
         assert result.duty_cycle == 1
         assert result.on is True
 
-    def test_invalid_pitch_above_max_returns_null_instruction(self) -> None:
+    def test_a_pitch_past_b7_sounds_at_b7_as_the_trackers_hold_it(self) -> None:
         dictionary = {"pitch": 10, "volume": 8, "duty_cycle": 0}
         result = PulseExporter._features_dictionary_to_instruction(dictionary, MAX_PITCH)
-        assert result.on is False
+        assert (result.on, result.pitch) == (True, MAX_PITCH)
 
-    def test_invalid_pitch_below_min_returns_null_instruction(self) -> None:
-        dictionary = {"pitch": -10, "volume": 8, "duty_cycle": 0}
+    def test_a_pitch_below_a0_keeps_its_note(self) -> None:
+        dictionary = {"pitch": -5, "volume": 8, "duty_cycle": 0}
         result = PulseExporter._features_dictionary_to_instruction(dictionary, MIN_PITCH)
-        assert result.on is False
+        assert (result.on, result.pitch) == (True, MIN_PITCH - 5)
+
+    def test_a_pitch_below_c0_sounds_at_c0_as_the_trackers_hold_it(self) -> None:
+        dictionary = {"pitch": -20, "volume": 8, "duty_cycle": 0}
+        result = PulseExporter._features_dictionary_to_instruction(dictionary, MIN_PITCH)
+        assert (result.on, result.pitch) == (True, MIN_PLAYED_PITCH)
 
     def test_zero_volume_reconstructed_as_off(self) -> None:
         dictionary = {"pitch": 0, "volume": 0, "duty_cycle": 0}
