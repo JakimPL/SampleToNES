@@ -5,8 +5,8 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.project.project import Project
 from sampletones_tools.tracker_playback.comparison import TraceComparison, compare_traces
-from sampletones_tools.tracker_playback.corpus.build import CorpusProject
 from sampletones_tools.tracker_playback.outcome import ProjectOutcome
+from sampletones_tools.tracker_playback.projects import CheckedProject
 from sampletones_tools.tracker_playback.report import (
     COUNTED_DOWN,
     DIFFERS,
@@ -48,7 +48,7 @@ def _trace(pulse: Tuple[ChannelSound, ...]) -> SongTrace:
 
 def _outcome(name: str, comparison: TraceComparison) -> ProjectOutcome:
     return ProjectOutcome(
-        project=CorpusProject(name=name, purpose=f"What {name} exercises.", project=Project.create()),
+        project=CheckedProject(name=name, purpose=f"What {name} exercises.", project=Project.create()),
         comparison=comparison,
         skipped_rows=0,
         truncation=None,

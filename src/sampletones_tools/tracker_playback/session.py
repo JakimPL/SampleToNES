@@ -4,13 +4,13 @@ from typing import Sequence, Tuple
 
 from sampletones_tools.runs import stamped_run_directory
 from sampletones_tools.tracker_playback.comparison import compare_traces
-from sampletones_tools.tracker_playback.corpus.build import CorpusProject
 from sampletones_tools.tracker_playback.outcome import ProjectOutcome
 from sampletones_tools.tracker_playback.paths import (
     DOCUMENTS_DIRECTORY_NAME,
     OUTPUT_ROOT,
     REPORT_FILENAME,
 )
+from sampletones_tools.tracker_playback.projects import CheckedProject
 from sampletones_tools.tracker_playback.report import report_text
 from sampletones_tools.tracker_playback.settings import PlaybackSettings
 from sampletones_tools.tracker_playback.targets.protocol import PlaybackTarget
@@ -19,7 +19,7 @@ from sampletones_tools.tracker_playback.trace.application import application_tra
 
 @dataclass(frozen=True)
 class PlaybackRun:
-    """What a check plays the corpus through, where it writes, and how it reports.
+    """What a check plays its projects through, where it writes, and how it reports.
 
     Attributes:
         target: The tracker the projects are exported to and played by.
@@ -51,13 +51,13 @@ def default_output() -> Path:
 
 
 def check_project(
-    corpus_project: CorpusProject,
+    checked: CheckedProject,
     run: PlaybackRun,
 ) -> ProjectOutcome:
     """Plays one project through the target and holds what it played against the application.
 
     Args:
-        corpus_project: The project to check.
+        checked: The project to check.
         run: What plays it, where the files go, and how differences are shown.
 
     Returns:
@@ -67,14 +67,14 @@ def check_project(
         PlaybackError: If the tracker fails to play the project.
     """
     playback = run.target.play(
-        corpus_project.project,
+        checked.project,
         run.output / DOCUMENTS_DIRECTORY_NAME,
-        corpus_project.name,
+        checked.name,
     )
     return ProjectOutcome(
-        project=corpus_project,
+        project=checked,
         comparison=compare_traces(
-            application_trace(corpus_project.project),
+            application_trace(checked.project),
             playback.trace,
             examples=run.settings.examples_per_difference,
         ),
@@ -83,11 +83,11 @@ def check_project(
     )
 
 
-def check_corpus(
-    projects: Sequence[CorpusProject],
+def check_projects(
+    projects: Sequence[CheckedProject],
     run: PlaybackRun,
 ) -> PlaybackOutcome:
-    """Checks every project of a corpus and writes the report on all of them.
+    """Checks each project and writes the report on all of them.
 
     The output keeps every exported file, and whatever its playing wrote, beside the report, so a
     difference can be followed into the file and the ticks that show it.
@@ -103,7 +103,7 @@ def check_corpus(
         PlaybackError: If the tracker fails to play a project.
     """
     (run.output / DOCUMENTS_DIRECTORY_NAME).mkdir(parents=True, exist_ok=True)
-    outcomes = tuple(check_project(corpus_project, run) for corpus_project in projects)
+    outcomes = tuple(check_project(checked, run) for checked in projects)
     report = run.output / REPORT_FILENAME
     report.write_text(
         report_text(

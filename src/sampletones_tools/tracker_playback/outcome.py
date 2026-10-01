@@ -3,12 +3,12 @@ from typing import Optional
 
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_tools.tracker_playback.comparison import TraceComparison
-from sampletones_tools.tracker_playback.corpus.build import CorpusProject
+from sampletones_tools.tracker_playback.projects import CheckedProject
 
 
 @dataclass(frozen=True)
 class ProjectOutcome:
-    """How one project of the corpus fared: what the tracker played of it, and what its export left out.
+    """How one checked project fared: what the tracker played of it, and what its export left out.
 
     Attributes:
         project: The project compared.
@@ -17,7 +17,7 @@ class ProjectOutcome:
         truncation: The instruments a macro shortened, or ``None`` where every one fit.
     """
 
-    project: CorpusProject
+    project: CheckedProject
     comparison: TraceComparison
     skipped_rows: int
     truncation: Optional[EnvelopeTruncation]

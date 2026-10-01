@@ -13,6 +13,7 @@ Q := "
 endif
 
 GPU ?= auto
+PROJECT_OPTIONS = $(foreach project,$(PROJECT),--project $(project))
 
 help:
 	@echo $(Q)Available targets:$(Q)
@@ -25,7 +26,7 @@ help:
 	@echo $(Q)  make test-docs   - Run the doctests$(Q)
 	@echo $(Q)  make benchmarks  - Run the measured-duration suite$(Q)
 	@echo $(Q)  make calibration - Measure reconstruction on the reference sounds; writes the renders and a report$(Q)
-	@echo $(Q)  make tracker-playback BITPHASE=folder - Play the exported corpus with a Bitphase checkout; reports every tick that differs from the app$(Q)
+	@echo $(Q)  make tracker-playback BITPHASE=folder [PROJECT=song.stp] - Play exported projects (the corpus by default) with a Bitphase checkout; reports every tick that differs from the app$(Q)
 	@echo $(Q)  make clean       - Remove build artifacts and cache files$(Q)
 	@echo $(Q)  make lint        - Run mypy and pylint (ARGS=--mypy or ARGS=--pylint for one of them)$(Q)
 	@echo $(Q)  make format      - Auto-format code (isort, black)$(Q)
@@ -54,7 +55,7 @@ calibration:
 	uv run sampletones calibration
 
 tracker-playback:
-	uv run sampletones tracker-playback bitphase --checkout $(BITPHASE)
+	uv run sampletones tracker-playback bitphase --checkout $(BITPHASE) $(PROJECT_OPTIONS)
 
 clean:
 	$(PYTHON) scripts/clean.py

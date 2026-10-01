@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final, List, Sequence
 
@@ -5,10 +6,11 @@ import pytest
 
 from sampletones.commands.registry import COMMANDS
 from sampletones.dispatcher import dispatch
+from sampletones_core.project.container import ProjectContainer
 from sampletones_core.project.project import Project
 from sampletones_tools.tracker_playback.comparison import TraceComparison
-from sampletones_tools.tracker_playback.corpus.build import CorpusProject
 from sampletones_tools.tracker_playback.outcome import ProjectOutcome
+from sampletones_tools.tracker_playback.projects import CheckedProject
 from sampletones_tools.tracker_playback.report import MATCHES
 from sampletones_tools.tracker_playback.session import PlaybackOutcome, PlaybackRun
 from sampletones_tools.tracker_playback.targets.bitphase.engine import EngineError
@@ -17,42 +19,55 @@ from tests.suite.playback import ReplayingTarget
 
 COMMAND: Final[str] = "tracker-playback"
 COMPARISON_CORPUS: Final[str] = "sampletones_tools.tracker_playback.corpus.build.comparison_corpus"
-CHECK_CORPUS: Final[str] = "sampletones_tools.tracker_playback.session.check_corpus"
+CHECK_PROJECTS: Final[str] = "sampletones_tools.tracker_playback.session.check_projects"
 DEFAULT_OUTPUT: Final[str] = "sampletones_tools.tracker_playback.session.default_output"
+CORPUS_PROJECT: Final[str] = "corpus-tone"
 
 
 def _matching_outcome(name: str) -> ProjectOutcome:
     return ProjectOutcome(
-        project=CorpusProject(name=name, purpose="A tone.", project=Project.create()),
+        project=CheckedProject(name=name, purpose="A tone.", project=Project.create()),
         comparison=TraceComparison(application_ticks=6, engine_ticks=6, timing=None, divergences=()),
         skipped_rows=0,
         truncation=None,
     )
 
 
-@pytest.fixture(name="runs")
-def runs_fixture(
+@dataclass
+class StartedRuns:
+    """What the command started: each run, and the names of the projects it was handed."""
+
+    runs: List[PlaybackRun] = field(default_factory=list)
+    projects: List[List[str]] = field(default_factory=list)
+
+
+@pytest.fixture(name="started")
+def started_fixture(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     replaying_target: ReplayingTarget,
-) -> List[PlaybackRun]:
-    """The runs the command starts, each answered with one matching project, the target located as a replay."""
-    runs: List[PlaybackRun] = []
+) -> StartedRuns:
+    """The runs the command starts, each answered with one matching project, the target located as a replay.
 
-    def check_corpus(projects: Sequence[CorpusProject], run: PlaybackRun) -> PlaybackOutcome:
-        runs.append(run)
+    The corpus is a single project named ``CORPUS_PROJECT``.
+    """
+    started = StartedRuns()
+
+    def check_projects(projects: Sequence[CheckedProject], run: PlaybackRun) -> PlaybackOutcome:
+        started.runs.append(run)
+        started.projects.append([project.name for project in projects])
         return PlaybackOutcome(outcomes=(_matching_outcome("tone"),), report=tmp_path / "report.md")
 
     monkeypatch.setattr(BitphaseTarget, "located", classmethod(lambda cls, root: replaying_target))
-    monkeypatch.setattr(COMPARISON_CORPUS, lambda corpus: [])
-    monkeypatch.setattr(CHECK_CORPUS, check_corpus)
-    return runs
+    monkeypatch.setattr(COMPARISON_CORPUS, lambda corpus: [_matching_outcome(CORPUS_PROJECT).project])
+    monkeypatch.setattr(CHECK_PROJECTS, check_projects)
+    return started
 
 
 class TestTrackerPlayback:
     def test_each_verdict_and_the_report_link_are_printed(
         self,
-        runs: List[PlaybackRun],
+        started: StartedRuns,
         replaying_target: ReplayingTarget,
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
@@ -60,7 +75,7 @@ class TestTrackerPlayback:
         arguments = [COMMAND, "bitphase", "--checkout", str(tmp_path), "-o", str(tmp_path / "run")]
 
         assert dispatch(COMMANDS, arguments) == 0
-        (run,) = runs
+        (run,) = started.runs
         assert (run.target, run.output) == (replaying_target, tmp_path / "run")
         assert run.settings.examples_per_difference >= 1
         assert capsys.readouterr().out.splitlines() == [
@@ -70,14 +85,48 @@ class TestTrackerPlayback:
 
     def test_a_run_given_no_output_writes_where_the_default_names(
         self,
-        runs: List[PlaybackRun],
+        started: StartedRuns,
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
         monkeypatch.setattr(DEFAULT_OUTPUT, lambda: tmp_path / "stamped")
 
         assert dispatch(COMMANDS, [COMMAND, "bitphase", "--checkout", str(tmp_path)]) == 0
-        assert [run.output for run in runs] == [tmp_path / "stamped"]
+        assert [run.output for run in started.runs] == [tmp_path / "stamped"]
+
+    def test_a_run_given_no_project_checks_the_corpus(self, started: StartedRuns, tmp_path: Path) -> None:
+        assert dispatch(COMMANDS, [COMMAND, "bitphase", "--checkout", str(tmp_path)]) == 0
+        assert started.projects == [[CORPUS_PROJECT]]
+
+    def test_a_run_given_projects_checks_those_alone_in_the_order_given(
+        self,
+        started: StartedRuns,
+        tmp_path: Path,
+    ) -> None:
+        for name in ("verse", "chorus"):
+            ProjectContainer.save(Project.create(), tmp_path / f"{name}.stp")
+
+        arguments = [
+            COMMAND,
+            "bitphase",
+            "--checkout",
+            str(tmp_path),
+            "--project",
+            str(tmp_path / "chorus.stp"),
+            "--project",
+            str(tmp_path / "verse.stp"),
+        ]
+
+        assert dispatch(COMMANDS, arguments) == 0
+        assert started.projects == [["chorus", "verse"]]
+
+    def test_a_project_that_fails_to_open_is_reported(self, started: StartedRuns, tmp_path: Path) -> None:
+        arguments = [COMMAND, "bitphase", "--checkout", str(tmp_path), "--project", str(tmp_path / "absent.stp")]
+
+        with pytest.raises(SystemExit, match="absent.stp"):
+            dispatch(COMMANDS, arguments)
+
+        assert not started.runs
 
     def test_a_tracker_that_cannot_run_is_reported(
         self,

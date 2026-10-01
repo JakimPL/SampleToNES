@@ -12,7 +12,7 @@ from sampletones_tools.tracker_playback.outcome import ProjectOutcome
 from sampletones_tools.tracker_playback.targets.protocol import PlaybackTarget
 from sampletones_tools.tracker_playback.trace.sound import ChannelSound
 
-TITLE: Final[str] = "# What {tracker} plays of the corpus"
+TITLE: Final[str] = "# What {tracker} plays of each project"
 INTRODUCTION: Final[str] = (
     "Each project was exported to {tracker} with the application's own exporter and played by {player}. Every "
     "engine tick of every channel is held against what the application plays, both read out of the registers "

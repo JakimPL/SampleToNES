@@ -1,9 +1,10 @@
 # Tracker playback check
 
 The tracker playback check tells you whether a song exported to a tracker plays there the way
-_SampleToNES_ plays it. It exports a set of small projects, plays each exported file with the tracker's
-own playback code, and compares what the sound chip plays on every channel and every engine tick with
-what _SampleToNES_ plays. Then it writes a report of each difference.
+_SampleToNES_ plays it. It exports your projects, or a set of small projects that comes with
+_SampleToNES_, and plays each exported file with the tracker's own playback code. It compares what the
+sound chip plays on every channel and every engine tick with what _SampleToNES_ plays. Then it writes a
+report of each difference.
 
 Each tracker the check plays through is a *target*. It has one today:
 
@@ -12,6 +13,7 @@ Each tracker the check plays through is a *target*. It has one today:
 
 Use it to:
 
+- Check that your song plays in the tracker the way you wrote it.
 - Check an export after changing it.
 - Check an export against a newer version of the tracker.
 - Find the tick, the row and the channel where the tracker plays a song differently.
@@ -40,7 +42,20 @@ In an installed copy:
 sampletones tracker-playback bitphase --checkout path/to/bitphase
 ```
 
-With no other options, the run plays the corpus that comes with _SampleToNES_:
+To check your own song, add `--project` with its project file. Repeat it to check several songs in one
+run:
+
+```
+sampletones tracker-playback bitphase --checkout path/to/bitphase --project my-song.stp
+```
+
+From a copy of the source code, `PROJECT` takes one or more project files, separated by spaces:
+
+```
+make tracker-playback BITPHASE=path/to/bitphase PROJECT=my-song.stp
+```
+
+Without `--project`, the run plays the corpus that comes with _SampleToNES_:
 
 - Small projects that each exercise one thing a song can do. They cover notes on every channel,
   volume rows, transpose rows, note-offs, hand-written instruments, samples with arpeggios and bends,
@@ -64,11 +79,14 @@ to the report.
 For the `bitphase` target, `documents/` has `<project>.btp`, ready to open in Bitphase, and
 `<project>.json`, every write Bitphase's engine made to the sound chip, tick by tick.
 
+Your projects are named after their files. When two files have the same name, the second one's files
+get `-2` after the name.
+
 ## Reading the report
 
 The report opens with a table of the projects. Each has the ticks each side plays and its verdict.
-A section per project follows. It says what the project exercises, and what the export reported
-leaving out, such as an instrument it shortened. A table then lists each difference. A line names:
+A section per project follows. It says which file the project came from, or what a corpus project
+exercises. It also says what the export reported leaving out, such as an instrument it shortened. A table then lists each difference. A line names:
 
 - The channel.
 - What differs. `audible` means the channel sounds on one side only. Otherwise the difference is in
@@ -92,6 +110,8 @@ place a tick on different rows, or play a different number of ticks.
 ## Options
 
 - `bitphase --checkout <folder>`: the copy of the Bitphase source code. The `bitphase` target needs it.
+- `--project <file>`: a project file to check. Repeat it to check several. Without it, the run plays
+  the corpus.
 - `--output <folder>` or `-o <folder>`: where the run writes. Without it, the run writes into the
   timestamped folder described above.
 
