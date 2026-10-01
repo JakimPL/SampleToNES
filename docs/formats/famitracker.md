@@ -207,8 +207,11 @@ that tick, and a hi-pitch item is the same offset counted sixteen dividers at a 
 halts, the same items accumulate on the running period.
 
 _SampleToNES_ writes and reads a bend as the per-tick offset. The writer therefore keeps an arpeggio
-running for as long as the bend. An instrument with a bend and no arpeggio gets one holding a single zero
-at loop point 0. A shorter arpeggio is extended to the bend's length by holding its final note. What one
+running for as long as the bend acts. A bend that repeats, or ends on an offset it then holds, acts for as
+long as the note sounds: the arpeggio and the bend both circle on their last items, so the tracker adds the
+held offset on every tick. A bend ending on no offset acts until its last item. An arpeggio shorter than
+that is extended to the bend's length by holding its final note. An instrument with a bend and no
+arpeggio gets one holding a single zero at loop point 0. What one
 step is worth follows the note it bends: under a cent at the lowest notes, widening to a whole semitone at
 the highest, where the divider grid is already coarser than the note grid.
 
@@ -258,7 +261,9 @@ sequences carry across directly. A conversion that bent no note records both ben
 channel governs, so they reach the file as disabled slots. The DPCM key-assignment table is always empty.
 
 An [instrument](../glossary.md#instrument) written by hand is one set of envelopes that every channel
-reads, as in FamiTracker itself. It becomes a single instrument, however many channels play it. Each
+reads, as in FamiTracker itself. It becomes a single instrument, however many channels play it. The noise
+channel reads it the way FamiTracker and Bitphase do: the duty item's lowest bit selects the short mode,
+and each pitch item moves the period one step, as an arpeggio step does. Each
 dimension is written at the length it was typed at and has its own loop point, so a tracker that advances
 every sequence on its own counter sounds it the way the engine here plays it. Every channel that names the
 instrument reaches that one instrument, each against the initial pitch it reads: its note on the tonal

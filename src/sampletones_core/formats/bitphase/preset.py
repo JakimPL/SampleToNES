@@ -7,7 +7,7 @@ from sampletones_core.exporters.bend import bend_envelope
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exports.request import InstrumentExport
 from sampletones_core.features.envelope import Envelope
-from sampletones_core.formats.bitphase.envelopes import ChannelEnvelopes, features_to_envelopes
+from sampletones_core.formats.bitphase.envelopes import ChannelEnvelopes, features_to_envelopes, noise_bend
 from sampletones_core.formats.bitphase.macros import macro, stored_envelope
 from sampletones_core.formats.bitphase.model.instrument import BitphaseInstrumentPreset
 from sampletones_core.formats.bitphase.notes import pitch_to_note_index
@@ -31,11 +31,12 @@ def _tone_offsets(
     pitch the slice was reconstructed at, under the tuning the NTSC system gives at concert
     pitch, which is what a freshly created Bitphase document plays. A preset loads into a
     document that keeps its own tuning, so the offsets stay at that tuning whatever the slice was
-    tuned at. The noise channel takes its period from the note, so its offsets stay flat and the
-    note carries the pitch.
+    tuned at. On the noise channel an offset moves the note, which carries the period itself, so
+    each tick's offset is its contour step and its bend, in period steps.
     """
     if channel == ChannelName.NOISE:
-        return (NO_TONE_OFFSET,) * len(contour)
+        bend = noise_bend(features)
+        return tuple(semitones + _value(bend, tick) for tick, semitones in enumerate(contour))
 
     base_index = pitch_to_note_index(features.initial_pitch)
     base_period = DEFAULT_TUNING_TABLE[base_index]

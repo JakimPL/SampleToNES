@@ -6,6 +6,7 @@ import pytest
 
 from sampletones.commands.registry import COMMANDS
 from sampletones.dispatcher import dispatch
+from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS
 from sampletones_core.project.container import ProjectContainer
 from sampletones_core.project.project import Project
 from sampletones_tools.tracker_playback.comparison import TraceComparison
@@ -30,7 +31,7 @@ def _matching_outcome(name: str) -> ProjectOutcome:
     return ProjectOutcome(
         project=CheckedProject(name=name, purpose="A tone.", project=Project.create()),
         comparison=TraceComparison(application_ticks=6, engine_ticks=6, timing=None, divergences=()),
-        skipped_rows=0,
+        skipped_rows=NO_SKIPPED_ROWS,
         truncation=None,
     )
 

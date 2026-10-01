@@ -90,6 +90,9 @@ in the **Voices** list and choose **Edit**.
 For an instrument, the panel shows **Audition** in place of the pitch steppers. Choose **Pulse**,
 **Triangle** or **Noise**, and the note keys play the instrument on that channel.
 
+The noise channel plays an instrument the way FamiTracker and Bitphase do. Each pitch step moves the noise
+one step, like an arpeggio step, and an odd duty cycle value plays the short mode.
+
 ## Exporting
 
 You export a reconstruction from the **Reconstruction** menu:

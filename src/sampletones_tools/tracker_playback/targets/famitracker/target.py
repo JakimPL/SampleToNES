@@ -97,7 +97,7 @@ class FamiTrackerTarget:
         return TargetPlayback(
             document=document,
             trace=recorded.song_trace(),
-            skipped_rows=len(built.skipped_rows),
+            skipped_rows=built.skipped_rows,
             truncation=built.truncation,
         )
 

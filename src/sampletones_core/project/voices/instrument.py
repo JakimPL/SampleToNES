@@ -17,10 +17,11 @@ from sampletones_core.features import (
     RESTING_REFERENCE_PERIOD,
     RESTING_REFERENCE_PITCH,
     channel_reference,
+    speaks_in_periods,
     supported_features,
-    supports,
 )
 from sampletones_core.features.envelope import Envelope
+from sampletones_core.features.spec import reads_from_instrument
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 
@@ -80,15 +81,31 @@ class Instrument(BaseModel):
         """The dimensions this channel governs: those it offers and the instrument leaves empty."""
         kind = CHANNEL_GENERATOR_KIND[channel_name]
         return tuple(
-            feature_key for feature_key in supported_features(kind) if not self.envelopes.envelope(feature_key).written
+            feature_key for feature_key in supported_features(kind) if not self._writes(channel_name, feature_key)
+        )
+
+    def _writes(self, channel_name: ChannelName, feature_key: FeatureKey) -> bool:
+        """Whether the instrument decides a dimension on a channel.
+
+        The noise channel plays a bend as steps of the period the arpeggio sets, so a frame carries
+        the two as one period, and an instrument writing a bend there decides the arpeggio too.
+        """
+        if self.envelopes.envelope(feature_key).written:
+            return True
+
+        return (
+            feature_key is FeatureKey.ARPEGGIO
+            and speaks_in_periods(channel_name)
+            and self.envelopes.envelope(FeatureKey.PITCH).written
         )
 
     def features(self, channel_name: ChannelName) -> Features:
         """The envelopes as this channel reads them, measured against the instrument's pitch.
 
-        A channel takes the dimensions its generator offers and leaves the rest absent, which is
-        what makes one set of envelopes serve every channel. Each dimension travels with the item
-        it repeats from, so a channel reads a loop the way the instrument wrote it.
+        A channel takes the dimensions it reads of an instrument (see :func:`reads_from_instrument`)
+        and leaves the rest absent, which is what makes one set of envelopes serve every channel.
+        Each dimension travels with the item it repeats from, so a channel reads a loop the way the
+        instrument wrote it.
 
         Args:
             channel_name: The channel reading the instrument.
@@ -131,12 +148,12 @@ class Instrument(BaseModel):
         return CHANNEL_TO_EXPORTER_MAP[channel_name].from_features(features)[0]
 
     def _offered(self, channel_name: ChannelName) -> Dict[FeatureKey, Envelope[int]]:
-        """The dimensions this channel's generator reads, as the instrument writes them."""
+        """The dimensions this channel reads of the instrument, as the instrument writes them."""
         kind = CHANNEL_GENERATOR_KIND[channel_name]
         return {
             feature_key: envelope
             for feature_key, envelope in self.envelopes.envelope_map.items()
-            if supports(kind, feature_key)
+            if reads_from_instrument(kind, feature_key)
         }
 
     @cached_property

@@ -72,12 +72,13 @@ class TestTheArpeggioThatPinsABend:
         assert arpeggio.items == (0,)
         assert arpeggio.loop_point == LOOP_FROM_START
 
-    def test_an_arpeggio_shorter_than_the_bend_reaches_its_length(self) -> None:
-        arpeggio = features_to_instrument_sequences(build([15, 0], [4, 7], pitch=[1, 2, 3, 4]), repitched=False)[
+    def test_an_arpeggio_shorter_than_a_bend_ending_with_no_offset_reaches_its_length(self) -> None:
+        arpeggio = features_to_instrument_sequences(build([15, 0], [4, 7], pitch=[1, 2, 3, 0]), repitched=False)[
             SequenceKind.ARPEGGIO
         ]
 
         assert arpeggio.items == (4, 7, 7, 7)
+        assert arpeggio.loop_point == NO_LOOP_POINT
 
     def test_an_arpeggio_that_repeats_is_left_as_it_stands(self) -> None:
         sequences = features_to_instrument_sequences(
@@ -89,11 +90,34 @@ class TestTheArpeggioThatPinsABend:
         assert sequences[SequenceKind.ARPEGGIO].loop_point == LOOP_FROM_START
 
     def test_an_arpeggio_already_covering_the_bend_is_left_as_it_stands(self) -> None:
-        arpeggio = features_to_instrument_sequences(build([15, 0], [4, 7, 9], pitch=[1, 2]), repitched=False)[
+        arpeggio = features_to_instrument_sequences(build([15, 0], [4, 7, 9], pitch=[1, 0]), repitched=False)[
             SequenceKind.ARPEGGIO
         ]
 
-        assert arpeggio.items == (4, 7, 9)
+        assert (arpeggio.items, arpeggio.loop_point) == ((4, 7, 9), NO_LOOP_POINT)
+
+    def test_a_bend_ending_on_an_offset_holds_it_with_the_arpeggio_running_on(self) -> None:
+        """The voice holds a bend's last offset, which the tracker re-adds on every tick the arpeggio reloads."""
+        sequences = features_to_instrument_sequences(build([15, 0], [], pitch=[0, 1, 2]), repitched=False)
+        arpeggio, pitch = sequences[SequenceKind.ARPEGGIO], sequences[SequenceKind.PITCH]
+
+        assert (pitch.items, pitch.loop_point) == ((0, 1, 2), 2)
+        assert (arpeggio.items, arpeggio.loop_point) == ((0,), LOOP_FROM_START)
+
+    def test_a_repeating_bend_keeps_an_arpeggio_playing_once_running(self) -> None:
+        """A repeating bend acts all through the note, and a halted arpeggio would let it pile up."""
+        features = Features(
+            initial_pitch=REFERENCE_PITCH,
+            volume=envelope([15, 0]),
+            arpeggio=envelope([4, 7]),
+            pitch=envelope([1, -1], LOOP_FROM_START),
+            hi_pitch=None,
+            duty_cycle=None,
+        )
+
+        arpeggio = features_to_instrument_sequences(features, repitched=False)[SequenceKind.ARPEGGIO]
+
+        assert (arpeggio.items, arpeggio.loop_point) == ((4, 7), 1)
 
     def test_an_instrument_writing_no_bend_gains_no_arpeggio(self) -> None:
         arpeggio = features_to_instrument_sequences(build([15, 0], []), repitched=False)[SequenceKind.ARPEGGIO]

@@ -45,7 +45,7 @@ class TestCheckProjects:
         (project_outcome,) = outcome.outcomes
         assert project_outcome.project.name == NAME
         assert project_outcome.comparison.matches
-        assert (project_outcome.skipped_rows, project_outcome.truncation) == (0, None)
+        assert (project_outcome.skipped_rows, project_outcome.truncation) == ((), None)
 
 
 class TestDefaultOutput:

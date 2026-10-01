@@ -72,6 +72,11 @@ GENERATOR_FEATURE_RANGES: Final[Dict[GeneratorName, Dict[FeatureKey, FeatureRang
 }
 
 
+INSTRUMENT_ONLY_READINGS: Final[Dict[GeneratorName, FrozenSet[FeatureKey]]] = {
+    GeneratorName.NOISE: frozenset((FeatureKey.PITCH,)),
+}
+
+
 CHANNEL_GENERATOR_KIND: Final[Dict[ChannelName, GeneratorName]] = {
     ChannelName.PULSE1: GeneratorName.PULSE,
     ChannelName.PULSE2: GeneratorName.PULSE,
@@ -220,3 +225,22 @@ def feature_range(
 
 def supports(kind: GeneratorName, feature: FeatureKey) -> bool:
     return feature in GENERATOR_FEATURE_RANGES[kind]
+
+
+def reads_from_instrument(kind: GeneratorName, feature: FeatureKey) -> bool:
+    """Whether a channel of this kind reads a dimension of an instrument written by hand.
+
+    A channel reads every dimension its generator offers. The noise channel also reads an
+    instrument's pitch envelope: each unit moves the period one step, the way an arpeggio step
+    does, which is how FamiTracker and Bitphase play a bend on noise. A hi-pitch unit moves the
+    period sixteen steps, a whole turn of the sixteen periods, so the noise channel hears nothing
+    of it.
+
+    Args:
+        kind: The channel's generator.
+        feature: The instrument's dimension.
+
+    Returns:
+        bool: Whether the channel reads that dimension.
+    """
+    return supports(kind, feature) or feature in INSTRUMENT_ONLY_READINGS.get(kind, frozenset())

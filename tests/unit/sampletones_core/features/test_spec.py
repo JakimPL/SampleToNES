@@ -1,3 +1,5 @@
+from typing import Tuple
+
 from sampletones_core.constants.enums import (
     ChannelName,
     FeatureKey,
@@ -14,6 +16,7 @@ from sampletones_core.features import (
     supported_features,
     supports,
 )
+from sampletones_core.features.spec import reads_from_instrument
 from sampletones_core.formats.famitracker.specification.sequences import (
     FEATURE_KEY_TO_SEQUENCE_KIND,
     SequenceKind,
@@ -63,10 +66,24 @@ def test_supports_reports_triangle_lacks_duty_cycle() -> None:
     assert not supports(GeneratorName.TRIANGLE, FeatureKey.DUTY_CYCLE)
 
 
-def test_supported_features_match_exporter_attribute_maps() -> None:
-    assert tuple(supported_features(GeneratorName.PULSE)) == tuple(PulseExporter._ATTRIBUTE_MAP)
-    assert tuple(supported_features(GeneratorName.TRIANGLE)) == tuple(TriangleExporter._ATTRIBUTE_MAP)
-    assert tuple(supported_features(GeneratorName.NOISE)) == tuple(NoiseExporter._ATTRIBUTE_MAP)
+def test_exporter_attribute_maps_match_what_each_channel_reads() -> None:
+    def read(kind: GeneratorName) -> Tuple[FeatureKey, ...]:
+        return tuple(feature for feature in FEATURE_DIMENSION_ORDER if reads_from_instrument(kind, feature))
+
+    assert read(GeneratorName.PULSE) == tuple(PulseExporter._ATTRIBUTE_MAP)
+    assert read(GeneratorName.TRIANGLE) == tuple(TriangleExporter._ATTRIBUTE_MAP)
+    assert read(GeneratorName.NOISE) == tuple(NoiseExporter._ATTRIBUTE_MAP)
+
+
+def test_a_channel_reads_every_dimension_its_generator_offers() -> None:
+    for kind in GeneratorName:
+        assert all(reads_from_instrument(kind, feature) for feature in supported_features(kind))
+
+
+def test_the_noise_channel_reads_an_instruments_bend_and_no_hi_pitch() -> None:
+    assert reads_from_instrument(GeneratorName.NOISE, FeatureKey.PITCH)
+    assert not reads_from_instrument(GeneratorName.NOISE, FeatureKey.HI_PITCH)
+    assert not reads_from_instrument(GeneratorName.TRIANGLE, FeatureKey.DUTY_CYCLE)
 
 
 def test_feature_dimension_order_matches_famitracker_sequence_slots() -> None:

@@ -1,6 +1,8 @@
-from typing import Final, List, Sequence, Tuple
+from collections import Counter
+from typing import Dict, Final, List, Sequence, Tuple
 
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.exporters.skipped import SkipReason
 from sampletones_shared.utils.tables import Table
 from sampletones_tools.tracker_playback.comparison import (
     Divergence,
@@ -39,7 +41,15 @@ TIMING_DIFFERS: Final[str] = (
     "and the tracker at frame {engine_frame}, row {engine_row}."
 )
 ALL_ALIKE: Final[str] = "Every tick sounds alike."
-SKIPPED_ROWS: Final[str] = "Rows the export wrote as note cuts, for lack of an instrument on their channel: {count}."
+SKIPPED_ROWS: Final[Dict[SkipReason, str]] = {
+    SkipReason.NO_INSTRUMENT: (
+        "Rows the export wrote as note cuts, for lack of an instrument on their channel: {count}."
+    ),
+    SkipReason.UNREACHED_TRANSPOSE: (
+        "Transpose rows the export wrote without their pitch change, "
+        "because the format can't make it there: {count}."
+    ),
+}
 SHORTENED: Final[str] = (
     "Instruments the export shortened to {frames} of their {source_frames} frames, "
     "the most the format holds: {instruments}."
@@ -171,9 +181,8 @@ def export_notes(outcome: ProjectOutcome) -> List[str]:
     Returns:
         List[str]: One line per thing left out.
     """
-    notes: List[str] = []
-    if outcome.skipped_rows:
-        notes.append(SKIPPED_ROWS.format(count=outcome.skipped_rows))
+    reasons = Counter(row.reason for row in outcome.skipped_rows)
+    notes = [SKIPPED_ROWS[reason].format(count=reasons[reason]) for reason in SkipReason if reasons[reason]]
 
     truncation = outcome.truncation
     if truncation is not None:

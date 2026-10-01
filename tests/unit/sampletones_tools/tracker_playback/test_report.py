@@ -2,6 +2,7 @@ from dataclasses import replace
 from typing import Final, Tuple
 
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS, SkippedRow, SkipReason
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.project.project import Project
 from sampletones_tools.tracker_playback.comparison import TraceComparison, compare_traces
@@ -46,11 +47,15 @@ def _trace(pulse: Tuple[ChannelSound, ...]) -> SongTrace:
     )
 
 
+def _skipped(reason: SkipReason, row: int) -> SkippedRow:
+    return SkippedRow(voice_id="voice", channel=ChannelName.PULSE1, order_position=0, row_index=row, reason=reason)
+
+
 def _outcome(name: str, comparison: TraceComparison) -> ProjectOutcome:
     return ProjectOutcome(
         project=CheckedProject(name=name, purpose=f"What {name} exercises.", project=Project.create()),
         comparison=comparison,
-        skipped_rows=0,
+        skipped_rows=NO_SKIPPED_ROWS,
         truncation=None,
     )
 
@@ -107,7 +112,11 @@ class TestReportText:
         engine = SongTrace(positions=(TickPosition(frame=0, row=0),) * 3, channels=_trace((TONE,) * 3).channels)
         outcome = replace(
             _outcome("long", compare_traces(application, engine, examples=EXAMPLES)),
-            skipped_rows=2,
+            skipped_rows=(
+                _skipped(SkipReason.NO_INSTRUMENT, 0),
+                _skipped(SkipReason.UNREACHED_TRANSPOSE, 1),
+                _skipped(SkipReason.NO_INSTRUMENT, 2),
+            ),
             truncation=EnvelopeTruncation(frames=512, source_frames=601, instruments=1),
         )
 
@@ -115,7 +124,8 @@ class TestReportText:
 
         assert LENGTHS_DIFFER.format(application=2, engine=3) in text
         assert TIMING_DIFFERS.format(tick=1, frame=0, row=1, engine_frame=0, engine_row=0) in text
-        assert SKIPPED_ROWS.format(count=2) in text
+        assert SKIPPED_ROWS[SkipReason.NO_INSTRUMENT].format(count=2) in text
+        assert SKIPPED_ROWS[SkipReason.UNREACHED_TRANSPOSE].format(count=1) in text
         assert SHORTENED.format(instruments=1, frames=512, source_frames=601) in text
 
 

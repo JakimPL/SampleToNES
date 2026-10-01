@@ -28,7 +28,8 @@ class InstrumentEnvelopes(BaseModel):
 
     Each dimension carries the widest range the four channels offer, and a channel takes what it
     reads: an arpeggio item is a semitone offset on the tonal channels and a period offset on
-    noise, and a duty-cycle item selects a pulse waveform or the noise channel's short mode. An
+    noise, a pitch item bends a divider on the tonal channels and moves the noise period a step,
+    and a duty-cycle item selects a pulse waveform, its lowest bit the noise channel's short mode. An
     empty envelope leaves that dimension to the channel, which sounds it at the value every note
     starts on — the same record a reconstruction's held dimensions carry.
 

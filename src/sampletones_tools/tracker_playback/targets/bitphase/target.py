@@ -82,6 +82,6 @@ class BitphaseTarget:
                 document,
                 directory / f"{name}{EXT_FILE_JSON}",
             ),
-            skipped_rows=len(built.skipped_rows),
+            skipped_rows=built.skipped_rows,
             truncation=built.truncation,
         )

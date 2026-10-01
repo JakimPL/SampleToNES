@@ -71,8 +71,8 @@ only for the fields a reconstruction decides. The fields match Bitphase's own:
 | Field | Range | Default | Runtime meaning | What the exporter writes |
 | --- | --- | --- | --- | --- |
 | `volumeOrRate` | 0–15 | 15 | the literal channel volume while `envelope` stays off | the volume envelope, or one full level where the slice leaves its volume to the channel |
-| `pulseWidth` | 0–3 | 2 | square duty cycle; on the noise channel, any nonzero value selects the short LFSR | the duty-cycle envelope (squares), the short or long mode (noise), or one `0` where the slice leaves its duty to the channel; the triangle writes no macro |
-| `toneAdd` | −4096–4095 | 0 | period offset added to the period the note resolves to (squares and triangle) | the bend the slice sounds (section C.4), and the contour with it in a preset |
+| `pulseWidth` | 0–3 | 2 | square duty cycle; on the noise channel, the lowest bit selects the short LFSR | the duty-cycle envelope (squares), the short or long mode (noise), or one `0` where the slice leaves its duty to the channel; the triangle writes no macro |
+| `toneAdd` | −4096–4095 | 0 | period offset added to the period the note resolves to (squares and triangle), or steps added to the note (noise) | the bend the slice sounds (section C.4), and the contour with it in a preset |
 | `envelope` | bool | `false` | reads `volumeOrRate` as a hardware decay rate | no macro, so each value is the volume itself |
 | `soundLength` | 0–511 | 0 | length counter in ticks; `0` holds the note | no macro, so the volume envelope alone shapes the note |
 | `toneAccumulation` | bool | `false` | sums `toneAdd` across ticks | no macro, so each value is a whole offset |
@@ -179,8 +179,9 @@ An instrument preset has no table, so its pitch movement is the per-tick `toneAd
 the note's own period. One offset carries the contour and the bend together. The offsets are measured
 against the pitch the slice was reconstructed at, under the tuning a freshly created Bitphase document
 plays: NTSC at concert pitch. A preset loads into a document that keeps its own tuning, so a preset stays
-at concert pitch whatever the reconstruction was tuned at. The noise channel takes its period from the
-note, so a preset for it has a flat offset.
+at concert pitch whatever the reconstruction was tuned at. On the noise channel the offset moves the
+note, which carries the period itself, so a noise preset's offset is the contour step and the bend added
+together, in period steps.
 
 ### C.4 The bend rides the tone offset
 
@@ -197,9 +198,10 @@ is the `toneAdd` macro, one value per tick.
 | leaves `toneAccumulation` clear | a whole offset per tick, not a step added to a running one |
 | silences a channel whose period reaches zero | an offset bounded to keep the period within 1–2047, the rule the timer follows, measured from the period the song's own table gives the note |
 
-The squares and the triangle read the offset. The noise channel takes its period from the note alone, so
-a noise slice writes no `toneAdd`. A slice that sounds every tick on its own note writes none either, so
-a document pays only for the bends it sounds.
+The squares and the triangle add the offset to the period. The noise channel adds it to the note, which
+carries the period itself, so a noise slice's bend is written as it stands: one period step per unit. A
+slice that sounds every tick on its own note writes no `toneAdd`, so a document pays only for the bends
+it sounds.
 
 ## D. Tempo as a groove
 

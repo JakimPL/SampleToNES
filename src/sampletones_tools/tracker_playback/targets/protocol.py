@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Optional, Protocol, Tuple
 
+from sampletones_core.exporters.skipped import SkippedRow
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.project.project import Project
 from sampletones_shared.exceptions import SampleToNESError
@@ -19,13 +20,13 @@ class TargetPlayback:
     Attributes:
         document: The file the export wrote, which the tracker played.
         trace: What each channel sounded on every engine tick, read as the registers the chip takes.
-        skipped_rows: How many rows the export wrote as note cuts for lack of an instrument.
+        skipped_rows: The rows the export wrote other than the song plays them, each with why.
         truncation: The instruments the format's value limit shortened, or ``None`` where every one fit.
     """
 
     document: Path
     trace: SongTrace
-    skipped_rows: int
+    skipped_rows: Tuple[SkippedRow, ...]
     truncation: Optional[EnvelopeTruncation]
 
 
