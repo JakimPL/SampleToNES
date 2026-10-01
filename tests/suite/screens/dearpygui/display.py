@@ -1,0 +1,68 @@
+import shutil
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import Dict, Final
+
+from pyvirtualdisplay.display import Display
+
+
+class DisplayBackend(StrEnum):
+    XVFB = "xvfb"
+    XEPHYR = "xephyr"
+
+
+SERVER_PROGRAMS: Final[Dict[DisplayBackend, str]] = {
+    DisplayBackend.XVFB: "Xvfb",
+    DisplayBackend.XEPHYR: "Xephyr",
+}
+
+
+class DisplayServerMissingError(RuntimeError):
+    """Raised when the X server a run draws on is not installed."""
+
+
+@dataclass(frozen=True)
+class ScreenSize:
+    """The pixels a display's screen spans."""
+
+    width: int
+    height: int
+
+
+class VirtualDisplay:
+    """An X server of a worker's own, which its scenarios draw on one after another.
+
+    Xvfb draws into memory, which suits a run nobody watches. Xephyr draws into a window on the
+    desktop, which lets a person follow a scenario as it plays. Either server takes every event a
+    scenario sends, so the desktop around it stays untouched.
+    """
+
+    def __init__(
+        self,
+        backend: DisplayBackend,
+        size: ScreenSize,
+    ) -> None:
+        self._program = SERVER_PROGRAMS[backend]
+        self._server = Display(
+            backend=backend.value,
+            size=(size.width, size.height),
+            manage_global_env=False,
+        )
+
+    def start(self) -> str:
+        """Starts the server and returns the name a client connects to it under, such as ``:3``.
+
+        Raises:
+            DisplayServerMissingError: If the server's program is not installed.
+        """
+        if shutil.which(self._program) is None:
+            raise DisplayServerMissingError(
+                f"{self._program} is not installed. Install it from the system's packages, such as "
+                f"the xvfb package on Debian and Ubuntu, to run the screen scenarios."
+            )
+
+        self._server.start()
+        return self._server.new_display_var
+
+    def stop(self) -> None:
+        self._server.stop()
