@@ -81,7 +81,7 @@ whole repository. The pages about the graphical application and about releases e
 - [Identifier vocabularies](development/application/vocabularies.md) — the keys display text is looked up by, and the tags DearPyGui knows a widget by.
 - [Colors and palettes](development/application/palette.md) — how a color is written, composed, and handed to DearPyGui.
 - [The render thread](development/application/render-thread.md) — how work reaches DearPyGui from another thread, and what each crossing costs.
-- [Dialogs](development/application/dialogs.md) — how a dialog gets its size, and where it opens.
+- [Dialogs](development/application/dialogs.md) — how a dialog gets its size, where it opens, and when it reaches the screen.
 - [Playback](development/application/playback.md) — the audio transport shared by every view, and rendering the song to a file.
 - [Reconstruction browser](development/application/browser.md) — how a reconstructions directory becomes the tree both browser tabs show, and what narrows it.
 - [Stems in the application](development/application/stems.md) — the Stems card, and what an edit or a removal does to the per-frame record.

@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Any, Generic, Optional, TypeVar
 
+import dearpygui.dearpygui as dpg
+
 from sampletones_application.layout.primitives import DialogGeometry
 from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.utils.gui.keyboard import KeyRouter
@@ -47,9 +49,14 @@ class GUISeededDialogWindow(GUIDialogWindow, ABC, Generic[ViewModel]):
         """The values drawn were seeded by :meth:`open` before the tree rebuilt."""
 
     def update_view(self, view_model: ViewModel) -> None:
-        """Re-seeds the open window's controls from where its subject stands."""
+        """Re-seeds the window from where its subject stands, re-drawing the controls it stands with.
+
+        A window still waiting for the screen keeps the newest seed, which it is built from when it
+        opens.
+        """
         self._view_model = view_model
-        self._render()
+        if dpg.does_item_exist(self.tag):
+            self._render()
 
     @property
     def view_model(self) -> ViewModel:

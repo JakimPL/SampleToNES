@@ -7,7 +7,6 @@ from sampletones_application.ui.panels.dialogs.nsf import GUINSFExportWindow
 from sampletones_application.utils.file_dialogs.api import save_file_dialog
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
-from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.view_model.shared.nsf.view import NSFExportViewModel
 from sampletones_core.exports.request import SampleExport
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
@@ -96,16 +95,8 @@ class NSFExportCoordinator:
         self._logic.set_destination(filepath)
 
     def _export(self) -> None:
-        """Takes the dialog off screen and hands the export over once that frame has finished.
-
-        DearPyGui carries one modal at a time, and the export's window opens on the run's first
-        word, so the run starts on the frame after the one the dialog left the screen in. The setup
-        holds the application through that frame, and the running service holds it from there.
-        """
+        """Takes the dialog off screen and starts the export, which the running service holds from there."""
         self._take_off_screen()
-        FrameCallbackManager.set_frame_callback(self._hand_over)
-
-    def _hand_over(self) -> None:
         self._logic.start()
         self._release()
 

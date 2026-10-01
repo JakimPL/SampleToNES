@@ -14,7 +14,6 @@ from sampletones_application.view_model.shared.nsf.choices import NSFExportChoic
 from sampletones_application.view_model.shared.nsf.view import NSFExportViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
-from sampletones_shared.types.callback import VoidCallback
 from tests.suite.language import FakeLanguageManager
 from tests.suite.nsf import FakeNSFExportService, FakeProgramBackend
 from tests.suite.player import player_sample
@@ -75,11 +74,7 @@ class _SaveDialogRecorder:
 
 
 class NSFExportFixture:
-    """The coordinator over a real setup logic, a recording service and backend, and a recorded screen.
-
-    The frame the hand-over waits for passes when a test asks for it, so the step from the dialog
-    leaving the screen to the run starting is walked one frame at a time.
-    """
+    """The coordinator over a real setup logic, a recording service and backend, and a recorded screen."""
 
     def __init__(
         self,
@@ -106,14 +101,8 @@ class NSFExportFixture:
         self.window = _WindowRecorder()
         self.save_dialog = _SaveDialogRecorder()
         self.activity = 0
-        self.pending: List[VoidCallback] = []
 
         monkeypatch.setattr(nsf_module, "save_file_dialog", self.save_dialog)
-        monkeypatch.setattr(
-            nsf_module.FrameCallbackManager,
-            "set_frame_callback",
-            lambda callback, frame_count=1: self.pending.append(callback),
-        )
 
         self.coordinator = NSFExportCoordinator(
             self.logic,
@@ -136,12 +125,6 @@ class NSFExportFixture:
 
     def close(self) -> None:
         self.window.on_close()
-
-    def advance_frame(self) -> None:
-        pending = self.pending
-        self.pending = []
-        for callback in pending:
-            callback()
 
 
 @pytest.fixture
@@ -226,22 +209,13 @@ class TestAskingForTheDestination:
 
 
 class TestHandingTheExportOver:
-    def test_the_dialog_leaves_the_screen_before_the_run_starts(self, nsf: NSFExportFixture) -> None:
+    def test_the_dialog_leaves_the_screen_and_the_run_starts(self, nsf: NSFExportFixture) -> None:
         nsf.coordinator.open_project()
+        destination = nsf.window.view.destination
 
         nsf.export()
 
         assert nsf.window.hides == 1
-        assert not nsf.service.projects
-        assert nsf.coordinator.is_active
-
-    def test_the_run_starts_once_that_frame_has_finished(self, nsf: NSFExportFixture) -> None:
-        nsf.coordinator.open_project()
-        destination = nsf.window.view.destination
-        nsf.export()
-
-        nsf.advance_frame()
-
         assert [run.destination for run in nsf.service.projects] == [destination]
         assert not nsf.coordinator.is_active
         assert nsf.activity == 2
@@ -251,7 +225,5 @@ class TestHandingTheExportOver:
         view = nsf.window.view
         nsf.edit(view.choices.with_channel(ChannelName.NOISE, False, view.offer))
         nsf.export()
-
-        nsf.advance_frame()
 
         assert ChannelName.NOISE not in nsf.backend.program.channels

@@ -340,14 +340,16 @@ class TestAFolderInTheQuestion(BaseTestSuite):
 
 class TestAskingTwice(BaseTestSuite):
     """The window takes its whole tree down between one opening and the next, so a second asking
-    draws the rows rather than repainting the ones that are gone."""
+    draws the rows rather than repainting the ones that are gone. The frame the window left in still
+    draws it, so the second asking opens a frame later."""
 
-    def test_the_rows_are_drawn_again(self, window: GUIStemSelectionWindow) -> None:
+    def test_the_rows_are_drawn_again(self, window: GUIStemSelectionWindow, held_frames: Frames) -> None:
         offered = candidates()
         render(window, offered)
         window.hide()
 
         render(window, offered)
+        held_frames.render()
 
         for row in offered:
             assert dpg.does_item_exist(box_of(row))
@@ -363,6 +365,7 @@ class TestAskingTwice(BaseTestSuite):
         window.hide()
 
         render(window, offered, answered.append)
+        held_frames.render()
         add(held_frames)
 
         assert answered == [paths()[:MAX_STEM_SOURCES]]

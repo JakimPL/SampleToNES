@@ -238,13 +238,8 @@ class TestAFormatWithASetupOpensIt:
 
 
 @pytest.fixture(name="coordinator")
-def coordinator_fixture(monkeypatch: pytest.MonkeyPatch) -> ProjectCoordinator:
-    """A coordinator reporting a finished export at once, in the shipped language."""
-    monkeypatch.setattr(
-        project_module.FrameCallbackManager,
-        "set_frame_callback",
-        lambda callback: callback(),
-    )
+def coordinator_fixture() -> ProjectCoordinator:
+    """A coordinator reporting a finished export, in the shipped language."""
     project_manager = MagicMock()
     project_manager.current = Project.create(title="Demo", author="Tester", settings=ProjectSettings())
     return ProjectCoordinator(

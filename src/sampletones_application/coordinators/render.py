@@ -1,4 +1,3 @@
-from functools import partial
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
@@ -9,7 +8,6 @@ from sampletones_application.utils.file_dialogs.api import save_file_dialog
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
-from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.view_model.shared.render import SongRenderViewModel
 from sampletones_core.audio.writers import AudioFormat, capability_of
 from sampletones_shared.types.callback import VoidCallback
@@ -124,19 +122,16 @@ class SongRenderCoordinator:
     def _on_success(self, destination: Path) -> None:
         """Reports the file a finished render wrote, as a path that opens in the file manager."""
         self._close()
-        self._present(
-            partial(
-                self._dialogs.show_message_with_path,
-                self._title_rendered,
-                self._msg_rendered,
-                destination,
-            )
+        self._dialogs.show_message_with_path(
+            self._title_rendered,
+            self._msg_rendered,
+            destination,
         )
 
     def _on_error(self, exception: Exception) -> None:
         """Reports what a render failed on, leaving the destination as it was."""
         self._close()
-        self._present(partial(self._dialogs.show_error, exception, self._msg_failed))
+        self._dialogs.show_error(exception, self._msg_failed)
 
     def _on_canceled(self) -> None:
         """Closes the dialog of a render that was stopped, which leaves no file to report."""
@@ -149,14 +144,6 @@ class SongRenderCoordinator:
         self._window.hide()
         self._logic.close()
         self._on_activity_changed()
-
-    def _present(self, raise_dialog: VoidCallback) -> None:
-        """Raises ``raise_dialog`` once the frame the window left the screen in has finished.
-
-        The render window is modal and DearPyGui carries one modal at a time, so a report waits
-        for the frame that draws the screen without it and opens onto a clear screen.
-        """
-        FrameCallbackManager.set_frame_callback(raise_dialog)
 
     def _require_view_model(self) -> SongRenderViewModel:
         """The render the dialog opens on.

@@ -35,6 +35,8 @@ Use plain, direct English. Short sentences, one fact each. Everyday verbs, not t
 vocabulary. A term the reader would not know is either avoided or defined in
 [the glossary](../glossary.md) and linked from the page that uses it.
 
+**Apply one test to every sentence: if the reader would know it without being told, it goes.** That covers what a button labeled Cancel does, what the screen already shows, and what the application does by itself. A change to the application earns a sentence in the guide only when the reader needs that sentence to act. Decide this for every change, and expect the answer to often be none.
+
 Two passages read the way a guide page should. "Voices: samples and instruments" in
 [the sequencer guide](../guide/sequencer.md) names each kind in one sentence, then says what the reader
 does with it. The three install options at the top of [installation](../guide/installation.md) give each

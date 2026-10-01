@@ -48,7 +48,6 @@ from sampletones_shared.exceptions import (
     LoadReconstructionError,
     UnhandledReconstructionError,
 )
-from sampletones_shared.types.callback import VoidCallback
 from tests.suite.language import FakeLanguageManager
 from tests.suite.regeneration import HeldRegeneration
 from tests.suite.stems import (
@@ -370,18 +369,8 @@ class TestRemoveTreeEntries:
 
 
 @pytest.fixture
-def export_coordinator(monkeypatch: pytest.MonkeyPatch) -> ReconstructionTabCoordinator:
-    """A coordinator with only the collaborators ``_on_export_result`` touches.
-
-    A report waits for the frame the export window leaves the screen in, so the wait is run
-    through at once and what the coordinator reports stays observable from the call that asks.
-    """
-
-    def run_now(callback: VoidCallback, frame_count: int = 1) -> None:
-        callback()
-
-    monkeypatch.setattr(reconstruction_module.FrameCallbackManager, "set_frame_callback", run_now)
-
+def export_coordinator() -> ReconstructionTabCoordinator:
+    """A coordinator with only the collaborators ``_on_export_result`` touches."""
     instance = object.__new__(ReconstructionTabCoordinator)
     instance._dialogs = MagicMock()
     instance._export_messages = ExportMessages.build(LanguageManager(LANG_EN))

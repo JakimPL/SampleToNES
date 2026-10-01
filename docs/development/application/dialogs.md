@@ -43,13 +43,30 @@ where it stands.
 
 Each axis is held at zero at the least, so a dialog taller than the viewport keeps its title bar reachable.
 
+## One modal at a time
+
+DearPyGui shows one modal at a time. A modal built while another stands opens hidden, where nobody can
+reach it, and its title-bar close runs as though the reader had dismissed it. A modal built in the frame
+another one left in meets the same fate, since that frame still draws the one that left.
+
+The screen therefore belongs to one conversation at a time. A conversation is a dialog, the modals it
+hands the screen to while it steps aside, and the ones its answers raise. A modal asked for from anywhere
+else, such as the report of a job that finished or a prompt raised by a gesture that waited for edits,
+waits in line. It opens once the conversation holding the screen has ended, a frame after its last window
+left, and the line opens in the order it was asked. A dialog asked for again while it waits keeps its place
+with the newer request, and one hidden while it waits leaves the line.
+
+`ModalQueue` (`utils/gui/modal_queue.py`) keeps the line, and `GUIWindow.show` is the only way into it, so
+a caller raises a dialog whenever it has one to raise and never waits a frame of its own for the screen. A
+window that reports work under way and leaves the rest of the interface live beside it is no modal, so it
+opens at once.
+
 ## How a dialog answers
 
-DearPyGui carries one modal at a time. A modal built while another still stands opens hidden, and nobody
-can reach it. The frame the old modal was drawn in has to finish first. An answer often raises what comes
-next, such as a question of its own or an error, so a dialog that closes on its answer leaves the screen
-first and the answer runs a frame later. Leaving also releases the dialog's keyboard claim, so a prompt the
-answer raises holds the keyboard alone. `GUIWindow._leave_then` is that step.
+A dialog that closes on its answer leaves the screen first, and the answer runs a frame later as a hand-off
+of its conversation. Whatever the answer raises, such as a question of its own or an error, opens ahead of
+the line. Leaving also releases the dialog's keyboard claim, so a prompt the answer raises holds the
+keyboard alone. `GUIWindow._leave_then` is that step.
 
 What the answer needs, such as a ticked box or the fields of a form, is read before the dialog leaves. Only
 the first answer runs: a second click reaches a dialog that has already gone.
@@ -62,7 +79,8 @@ own when it lands, since the reader asked to go on and what the prompt guards op
 no file to write to asks for one, the way Save As does.
 
 A dialog that comes back once the modal it raised is answered steps aside. `yield_to` takes it off screen
-and keeps its tree, and `resume` brings it back, a frame each way.
+and keeps its tree, and `resume` brings it back, a frame each way. The dialog keeps the screen while it
+stands aside, so nothing waiting in line opens between it and the prompt it raised.
 
 ## Where it is written
 

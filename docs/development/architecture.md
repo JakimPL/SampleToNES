@@ -130,6 +130,15 @@ An **action** is one `ShortcutId`: the name a key press, a menu item and a conte
 
 A menu item is a view of an action. `ShortcutManager.add_menu_item(shortcut_id, ...)` takes both the accelerator and the call from the action and keeps the item under it, so a rebind re-prints the key already on screen. One builder, owned by whoever owns the actions, states a set of actions that several menus show, and each menu decides where to print it. A menu whose contents follow a selection states them when it is opened. [`keyboard.md`](application/keyboard.md) covers the kinds of action that state their call differently and the mechanism behind a restated menu.
 
+### 15. The screen holds one modal at a time
+
+DearPyGui shows one modal window at a time, and a modal built while another stands opens hidden. The screen
+therefore belongs to one conversation at a time: a dialog, the modals it hands the screen to, and the ones
+its answers raise. A modal asked for from anywhere else, such as the report of a finished job, waits in line
+and opens once that conversation has ended. Every modal opens through `GUIWindow`, and one line decides when
+each reaches the screen, so a caller raises a dialog the moment it has one. [Dialogs](application/dialogs.md)
+describes the conversation and its hand-offs.
+
 ---
 
 ## Enforcement
@@ -212,7 +221,7 @@ Coordinators are the glue between the UI, logic and service layers. Each owns th
 
 `create_tab()` is the sole authority for the tab's layout. It declares the column and card arrangement through the shared `ui/elements/layout` primitives and injects each panel's parent container via `create_panel(parent)`. It builds widgets alone. Pushing the first view models and refreshing trees runs afterward, from the coordinator's post-build initialization, once the whole tree exists.
 
-- A coordinator touches DPG on a narrow, closed surface: inside `create_tab()`, and when building dialog content inside a closure passed to `DialogsRenderer.show_modal`. A dialog that must wait for the next frame is deferred through `FrameCallbackManager`. All other presentation goes through `DialogsRenderer`.
+- A coordinator touches DPG on a narrow, closed surface: inside `create_tab()`, and when building dialog content inside a closure passed to `DialogsRenderer.show_modal`. A dialog is raised the moment the coordinator has one, and the modal line decides when it reaches the screen (principle 15). All other presentation goes through `DialogsRenderer`.
 - File selection runs through OS-native dialogs, which live outside DPG. A coordinator opens one via `utils/file_dialogs`, a synchronous call that returns once the user picks a path or cancels. It resolves the dialog title and filter name from `LanguageManager`, and routes the returned path through a handler decorated with `@ignore_none_path`. Each handler body then runs with a real path, and a canceled dialog passes quietly. The backend is chosen at runtime, so a coordinator names no platform (principle 11).
 - A coordinator holds no domain state. It delegates reads and writes to the managers and controllers it was given. What it caches is presentation wiring: resolved language strings, panels, logic objects and callbacks.
 - Callbacks received from `Application` as constructor parameters are stored and forwarded as they stand. A wrapper is sanctioned only where a contract requires an intent-level guard, such as a busy-authority start-time guard (principle 10) around an operation's entry point, and the guard is all the wrapper does. A wrapper that renames a call, reorders its arguments or adds a step of its own is the coordinator taking on work that belongs to the logic object the call reaches.
