@@ -1,4 +1,4 @@
-.PHONY: help setup install system-deps build release run calibration tracker-playback clean pre-commit test test-docs benchmarks lint format
+.PHONY: help setup install system-deps build release run calibration tracker-playback clean pre-commit test test-docs benchmarks screens lint format
 
 ifeq ($(OS),Windows_NT)
 PYTHON := python
@@ -25,6 +25,7 @@ help:
 	@echo $(Q)  make test        - Run the test suite with coverage$(Q)
 	@echo $(Q)  make test-docs   - Run the doctests$(Q)
 	@echo $(Q)  make benchmarks  - Run the measured-duration suite$(Q)
+	@echo $(Q)  make screens     - Run the screen scenarios: the application driven on a virtual display (needs Xvfb)$(Q)
 	@echo $(Q)  make calibration - Measure reconstruction on the reference sounds; writes the renders and a report$(Q)
 	@echo $(Q)  make tracker-playback BITPHASE=folder FAMITRACKER=FamiTracker.exe [PROJECT=song.stp] - Play exported projects (the corpus by default) in Bitphase, FamiTracker or both; reports every tick that differs from the app$(Q)
 	@echo $(Q)  make clean       - Remove build artifacts and cache files$(Q)
@@ -73,6 +74,9 @@ test-docs:
 
 benchmarks:
 	$(PYTHON) scripts/run_tests.py benchmarks
+
+screens:
+	$(PYTHON) scripts/run_tests.py screens
 
 lint:
 	$(PYTHON) scripts/lint.py $(ARGS)

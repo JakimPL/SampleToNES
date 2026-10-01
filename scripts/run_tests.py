@@ -3,24 +3,29 @@ import os
 import sys
 from typing import Dict, Final, Sequence, Tuple
 
-from bootstrap.layout import BENCHMARKS_DIRECTORY, SOURCE_DIRECTORY, repository_root
+from bootstrap.layout import BENCHMARKS_DIRECTORY, SCREENS_DIRECTORY, SOURCE_DIRECTORY, repository_root
 from bootstrap.passes import Pass, run_pass
 from bootstrap.processes import run
 
 SUITE: Final[str] = "suite"
 DOCTESTS: Final[str] = "doctests"
 BENCHMARKS: Final[str] = "benchmarks"
+SCREENS: Final[str] = "screens"
 DEFAULT_WORKERS: Final[str] = "6"
+SCREEN_WORKERS: Final[str] = "4"
 PYTEST: Final[Tuple[str, ...]] = ("uv", "run", "python", "-m", "pytest")
 
 
 def planned_passes(workers: str) -> Dict[str, Pass]:
-    """The passes a test run is made of, by name: the covered suite, the doctests, the benchmarks.
+    """The passes a test run is made of, by name: the covered suite, the doctests, the benchmarks
+    and the screen scenarios.
 
     Each pass is a target and a hook of its own, so a failure names the pass it belongs to. The
     covered suite runs across ``workers`` pytest workers. The benchmarks run serial, uncovered
     and with their output shown, so a measured duration is the code's own cost and its reading
-    reaches the terminal.
+    reaches the terminal. The screen scenarios drive the running application on a display of
+    each worker's own, each scenario in a process of its own, so they run uncovered across a few
+    workers, each drawing its frames on the processor.
 
     Args:
         workers: The worker count for the covered suite, or ``auto`` for one per processor.
@@ -32,7 +37,14 @@ def planned_passes(workers: str) -> Dict[str, Pass]:
         Pass(
             SUITE,
             "Running pytest with coverage...",
-            (*PYTEST, "-n", workers, "--cov", f"--ignore={BENCHMARKS_DIRECTORY}"),
+            (
+                *PYTEST,
+                "-n",
+                workers,
+                "--cov",
+                f"--ignore={BENCHMARKS_DIRECTORY}",
+                f"--ignore={SCREENS_DIRECTORY}",
+            ),
         ),
         Pass(
             DOCTESTS,
@@ -43,6 +55,11 @@ def planned_passes(workers: str) -> Dict[str, Pass]:
             BENCHMARKS,
             "Running benchmarks...",
             (*PYTEST, BENCHMARKS_DIRECTORY, "--no-cov", "-s"),
+        ),
+        Pass(
+            SCREENS,
+            "Running screen scenarios...",
+            (*PYTEST, SCREENS_DIRECTORY, "-n", SCREEN_WORKERS, "--no-cov"),
         ),
     )
     return {current.name: current for current in passes}

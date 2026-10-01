@@ -5,6 +5,7 @@ REPOSITORY_ROOT: Final[Path] = Path(__file__).resolve().parents[2]
 PROJECT_FILE: Final[str] = "pyproject.toml"
 SOURCE_DIRECTORY: Final[str] = "src"
 BENCHMARKS_DIRECTORY: Final[str] = "tests/benchmarks"
+SCREENS_DIRECTORY: Final[str] = "tests/screens"
 DISTRIBUTION: Final[str] = "bin"
 BUNDLES: Final[str] = "bundles"
 BUILD_ENVIRONMENT: Final[str] = ".venv-build"

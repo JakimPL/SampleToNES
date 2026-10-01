@@ -146,3 +146,8 @@ currently out of line. An entry leaves when the code meets the contract again.
   moved.
 
 ## Bugs
+
+* Leaving the application on a machine that offers no output device fails. The shutdown saves the
+  session and asks the audio device manager for its current device, and with no device selected it
+  raises `ValueError: No audio device selected`. The screen scenario in `tests/screens/test_leaving.py`
+  reproduces it as a known failure.
