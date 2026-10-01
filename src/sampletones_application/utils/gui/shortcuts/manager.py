@@ -40,6 +40,10 @@ class ShortcutManager:
         """Names the call an action makes when its combination is pressed or its menu item chosen."""
         self._callbacks[shortcut_id] = callback
 
+    def shortcut(self, shortcut_id: ShortcutId) -> Shortcut:
+        """The binding an action answers to under the scheme in place, rebinds included."""
+        return self._source.shortcut(shortcut_id)
+
     def add_menu_item(
         self,
         shortcut_id: ShortcutId,
