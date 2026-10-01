@@ -1,0 +1,159 @@
+# Screen Scenarios
+
+This document governs the screen tier: tests that run the whole application, draw its frames on a display,
+and press its controls the way a user does. It covers `tests/screens/`, where the scenarios live, and
+`tests/suite/screens/`, which drives them. Consult it before writing a scenario, and when a change to the
+interface needs proving that no lower tier can give.
+
+---
+
+## Principles
+
+### 1. A behavior is proven at the lowest tier that sees it
+
+Most behavior is proven below this tier. Logic is tested without DearPyGui, a widget on a real context
+with simulated frames, and the whole application headless with its display calls stood in for. None of
+them draws a frame. A screen scenario covers what only a drawn frame shows: where a control stands and
+whether it fits, what a frame-lag contract decides, which scope a real key press reaches, hover, drag and
+double-click, the exit and its teardown, and what a restart restores. A rule a screen depends on gets its
+own case below, and the scenario keeps only what the screen adds.
+
+### 2. A scenario drives the application a user runs
+
+A scenario starts the application as `sampletones open` does and runs its own render loop unchanged. The
+pointer and the keyboard are real input sent to the display, so a press travels the path a user's press
+travels. A scenario reads what the screen shows and what the application wrote to disk. It reaches the
+application through what the application makes public: tags, language keys, shortcuts, services and the
+modal queue's snapshot. A seam a scenario needs and cannot find is added to the application as a public
+one, which keeps the scenario independent of how the code is arranged inside.
+
+### 3. Each scenario runs in a world of its own
+
+Every scenario runs in a fresh process with a home directory of its own, so settings, session state and
+the documents folder start empty. The process ends with the scenario, so the exit and its teardown are part
+of what the scenario proves, and a crash on the way out fails it. A worker draws on an X server of its own,
+so its scenarios take only its own input.
+
+### 4. A scenario waits for what it expects
+
+Waiting is for a reading to hold. An expectation reads once a frame until it holds or its time runs out,
+and a gesture waits for its control to be reachable and to stand still. A fixed sleep hides a race, and a
+retry hides a bug: a scenario that passes only sometimes is a bug. A count of frames appears in a scenario
+only where the count is the contract itself.
+
+### 5. Every scenario is held to the same promises
+
+Every scenario is held to the same after-checks. A failing gesture is logged and swallowed so the interface
+keeps running, which is why the checks read the log as well as the screen.
+
+- **Quiet.** The application logged no error and no thread let an exception escape.
+- **Contained.** The application started no program, and every file dialog it opened had an answer
+  waiting.
+- **Settled.** No modal conversation is left open, and every window lies inside the viewport.
+- **Leaving cleanly.** The application leaves through the Exit shortcut without asking anything, stops,
+  and writes its session state.
+
+A known bug is a case marked `xfail(strict=True)` that names its [ledger](../bugs-and-todos.md) entry. The
+mark makes the run fail once the bug is fixed, until the mark goes.
+
+### 6. The DearPyGui layer knows nothing of SampleToNES
+
+`tests/suite/screens/dearpygui/` drives any DearPyGui application: the process per scenario, the display,
+the input, the readings and the waiting. The SampleToNES layer around it holds what belongs to this
+application: the views, the stand-ins at its boundaries and the after-checks. A case in
+`tests/integration/tooling/` holds the direction. The DearPyGui layer grows only when a scenario here needs
+something, and it moves to a project of its own the day a second application wants it.
+
+## How a scenario runs
+
+The parent pytest run starts each scenario as a child pytest run of that one test, in a fresh interpreter.
+The child writes its reports as it goes, and the parent reports them as its own, so selecting, rerunning and
+strict expected failures behave as for any test. A child that crashes or runs out of time is reported as a
+failure carrying its output.
+
+Inside the child, the application is built on the main thread, where its render loop runs. The scenario
+runs on a thread of its own. Every reading and every gesture crosses to the render thread through the
+queue the application's own workers post to, between two frames ([the render thread](render-thread.md)).
+
+## Gestures
+
+A pointer gesture aims at the middle of a control once the control is in reach: it exists, it and every
+container around it are shown, it was drawn in the last frame, it answers a press, its box lies inside the
+viewport, and no modal window of another tree holds the screen. The control must also stand where it stood a
+frame before, since a dialog sized by its content settles its place over its first frames
+([dialogs](dialogs.md)).
+
+Keys are pressed on the real keyboard, with modifiers held a frame before the key. A scenario names an
+action by its `ShortcutId`, and the keys come from the scheme in place.
+
+DearPyGui reports a position alone for a menu entry, so choosing one runs its callback the way a click does,
+through the queue's own error reporting.
+
+## Views
+
+A scenario speaks through views, one per tab, card and dialog, under `tests/suite/screens/views/`. A view
+knows its controls by their tags and its words by their language keys. A tag that moves changes one view,
+and a scenario reads as the gestures a user makes.
+
+## The boundaries
+
+- **File dialogs.** A native dialog stops the queue while it stands, so a scenario queues its answer before
+  the gesture that opens the dialog, and the stand-in answers at once.
+- **Audio.** The default output device plays into silence in real time, so playback runs and nothing is
+  heard. A scenario can start on a machine offering no device at all.
+- **Programs.** An audit hook refuses every program the application tries to start: a file manager, a
+  browser or a dialog tool would open on the desktop around the run. A shared library lookup passes.
+
+## Questions a GUI change asks
+
+Before a change to the interface gets its scenarios, ask which of these it meets, and provoke it in a
+scenario:
+
+- **Render thread.** What does it touch in DearPyGui away from the render thread?
+- **Teardown.** What happens when the window closes while it runs?
+- **Modal over modal.** What if its dialog opens while another stands, waits or answers?
+- **Frame lag.** Which geometry does it read in the frame that changes it?
+- **In flight.** What if the user acts while its work is still running?
+- **Unsaved work.** What does every path that replaces or closes a document ask?
+- **Twice.** What does the same gesture do twice, and a double click against a single one?
+- **Key scope.** Which scope claims its keys: a field, a modal, a panel, a collapsed card or a rebound key?
+- **Palette.** Does a live palette swap repaint it?
+- **Restart.** What of it survives a restart?
+- **Scale.** Does it still answer with a large folder or a long list in it?
+- **Failure.** What does the user read when a file is missing, old or truncated, or a write fails?
+
+The list holds questions, never history. A fixed bug becomes a scenario, a step, a stand-in or an
+after-check, and the list keeps only the general question that leads to it. A question joins only when no
+question here would have led to the test that caught a bug, and near-duplicates merge, so the list stays
+short enough to read before every change.
+
+A bug fix's scenario is shown failing on the code before the fix, and the pull request says so.
+
+## Running and watching
+
+`make screens` runs every scenario across a few workers, each on an Xvfb of its own. `make system-deps`
+installs Xvfb with the other development packages on Linux, and a missing server is named when the run
+starts. The scenarios run on Linux, and [the ledger](../bugs-and-todos.md) holds the other platforms.
+
+To follow a scenario as it plays, draw on Xephyr, which opens its screen as a window on the desktop:
+
+```
+SAMPLETONES_SCREENS_DISPLAY=xephyr uv run python -m pytest tests/screens --no-cov -k display_settings
+```
+
+Each scenario keeps its files under `build/screens/`, in a folder named after the test: the home the
+application lived in, and a screenshot of the last frame when the scenario failed. `screen.capture` keeps a
+picture as evidence of a look, for a pull request rather than an assertion.
+
+## Who governs what
+
+| Concern | Owner |
+|---|---|
+| A scenario per process, its reports | `tests/suite/screens/dearpygui/isolation.py`, `plugin.py` |
+| The render thread crossing and waiting | `tests/suite/screens/dearpygui/bridge.py` |
+| What a user can reach, and the gestures | `tests/suite/screens/dearpygui/reach.py`, `hand.py`, `semantic.py` |
+| The display a worker draws on | `tests/suite/screens/dearpygui/display.py` |
+| The application under test and how it ends | `tests/suite/screens/application.py` |
+| The stand-ins at the boundaries | `tests/suite/screens/boundaries/` |
+| The after-checks | `tests/suite/screens/checks.py` |
+| What a scenario holds and reads | `tests/suite/screens/screen.py`, `views/` |
