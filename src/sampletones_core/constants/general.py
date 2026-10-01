@@ -1,5 +1,7 @@
 from typing import Final, Tuple
 
+from sampletones_shared.constants.music import LIMIT_MIN_PITCH
+
 # Pitches and frequencies
 
 APU_CLOCK: Final[float] = 1789773.0
@@ -8,6 +10,7 @@ MIN_TIMER: Final[int] = 1
 MAX_TIMER: Final[int] = 0x7FF
 MIN_PITCH: Final[int] = 33
 MAX_PITCH: Final[int] = 119
+MIN_PLAYED_PITCH: Final[int] = LIMIT_MIN_PITCH
 PITCH_RANGE: Final[int] = MAX_PITCH - MIN_PITCH
 
 MIN_FREQUENCY: Final[float] = APU_CLOCK / (TIMER_CYCLE_DIVIDER * (MAX_TIMER + 1))

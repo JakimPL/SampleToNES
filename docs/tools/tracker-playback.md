@@ -66,7 +66,7 @@ Without `--project`, the run plays the corpus that comes with _SampleToNES_:
 - Small projects that each exercise one thing a song can do. They cover notes on every channel,
   volume rows, transpose rows, note-offs, hand-written instruments, samples with arpeggios and bends,
   noise at several periods in both modes, a tempo whose rows last unequal ticks, an order that revisits
-  patterns, notes pushed below the lowest pitch, and a slice longer than a tracker instrument holds.
+  patterns, notes pushed below A-0, and a slice longer than a tracker instrument holds.
 - The arrangement the example commands write, rebuilt from rendered sounds, at its own tempo and at a
   faster one.
 

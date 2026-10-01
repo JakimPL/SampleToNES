@@ -1,7 +1,7 @@
 from typing import ClassVar, Dict, List, Tuple, Union
 
 from sampletones_core.constants.enums import FeatureKey
-from sampletones_core.constants.general import MAX_VOLUME, MIN_PITCH
+from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.exporters.implementation.utils import center_pitch
 from sampletones_core.generators import GeneratorTypeUnion, TriangleGenerator
 from sampletones_core.instructions import (
@@ -9,7 +9,7 @@ from sampletones_core.instructions import (
     InstructionTypeUnion,
     TriangleInstruction,
 )
-from sampletones_core.utils.frequencies import is_pitch_valid
+from sampletones_core.utils.frequencies import played_pitch
 
 from ..tonal import TonalExporter
 
@@ -24,32 +24,11 @@ class TriangleExporter(TonalExporter[TriangleInstruction]):
 
     @classmethod
     def extract_data(cls, instructions: List[TriangleInstruction]) -> Tuple[int, List[int], List[int]]:
-        initial_pitch = None
-
-        pitch = MIN_PITCH
-        volume = 0
-
-        pitches: List[int] = []
-        volumes: List[int] = []
-
-        for instruction in instructions:
-            if instruction.on:
-                if initial_pitch is None:
-                    initial_pitch = instruction.pitch
-                    pitches = [initial_pitch for _ in range(len(pitches))]
-
-                pitch = instruction.pitch
-                volume = MAX_VOLUME
-            else:
-                volume = 0
-
-            pitches.append(pitch)
-            volumes.append(volume)
-
-        if volume > 0:
+        initial_pitch, pitches = cls.read_pitches(instructions)
+        volumes = [MAX_VOLUME if instruction.on else 0 for instruction in instructions]
+        if volumes and volumes[-1] > 0:
             volumes.append(0)
 
-        initial_pitch = initial_pitch if initial_pitch is not None else MIN_PITCH
         return initial_pitch, pitches, volumes
 
     @classmethod
@@ -80,10 +59,7 @@ class TriangleExporter(TonalExporter[TriangleInstruction]):
         dictionary: Dict[str, Union[bool, int]],
         initial_pitch: int,
     ) -> TriangleInstruction:
-        pitch = int(initial_pitch + dictionary[cls._ATTRIBUTE_MAP[FeatureKey.ARPEGGIO]])
-        if not is_pitch_valid(pitch):
-            return TriangleInstruction.null_instruction()
-
+        pitch = played_pitch(int(initial_pitch + dictionary[cls._ATTRIBUTE_MAP[FeatureKey.ARPEGGIO]]))
         return TriangleInstruction(
             on=cls._infer_instruction_on(dictionary),
             pitch=pitch,

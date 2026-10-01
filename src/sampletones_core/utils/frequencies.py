@@ -2,6 +2,7 @@ from sampletones_core.constants.general import (
     MAX_PERIOD,
     MAX_PITCH,
     MIN_PITCH,
+    MIN_PLAYED_PITCH,
     NOISE_PERIODS,
     NOTE_NAMES,
     NUM_PERIODS,
@@ -11,17 +12,20 @@ from sampletones_shared.utils.arrays import clamp
 from sampletones_shared.utils.frequencies import validate_pitch
 
 
-def is_pitch_valid(pitch: int) -> bool:
-    """
-    Checks if a pitch value is in the defined range.
+def played_pitch(pitch: int) -> int:
+    """The note a channel plays a pitch at, held within ``MIN_PLAYED_PITCH`` (C-0) and ``MAX_PITCH`` (B-7).
+
+    Those are the lowest and highest notes FamiTracker and Bitphase write, and both hold a note
+    moved past them there. A note below A-0 asks for a timer longer than the eleven bits the
+    register holds, so it sounds the longest one, as it does on the console.
 
     Args:
-        pitch: The pitch value to check.
+        pitch: The pitch a note, its transpose and its arpeggio step reach.
 
     Returns:
-        True if the pitch is valid, False otherwise.
+        int: The note the channel plays.
     """
-    return MIN_PITCH <= pitch <= MAX_PITCH
+    return clamp_pitch(pitch, MIN_PLAYED_PITCH, MAX_PITCH)
 
 
 def validate_period(period: int) -> None:
@@ -43,8 +47,8 @@ def validate_period(period: int) -> None:
 
 
 def transpose_pitch(pitch: int, transpose: int) -> int:
-    """The pitch a transpose reaches, held inside the range the channels play."""
-    return clamp_pitch(pitch + transpose)
+    """The pitch a transpose reaches, held inside the range the channels play (see :func:`played_pitch`)."""
+    return played_pitch(pitch + transpose)
 
 
 def transpose_period(period: int, transpose: int) -> int:

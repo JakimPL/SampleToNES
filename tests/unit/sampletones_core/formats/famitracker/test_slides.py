@@ -4,7 +4,7 @@ from typing import Final, List, Optional, Tuple
 import pytest
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.constants.general import MAX_PERIOD, MAX_PITCH, MIN_PITCH, NUM_PERIODS
+from sampletones_core.constants.general import MAX_PERIOD, MAX_PITCH, MIN_PLAYED_PITCH, NUM_PERIODS
 from sampletones_core.exporters.skipped import BuiltDocument, SkippedRow, SkipReason
 from sampletones_core.formats.famitracker.builder import build_module
 from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
@@ -60,7 +60,8 @@ RESET_ROW: Final[int] = 10
 AFTER_RESET_ROW: Final[int] = 13
 LATE_NOTE_ROW: Final[int] = 12
 FAR_TRANSPOSE: Final[int] = MAX_SLIDE_SEMITONES + 5
-SUBMERGED_TRANSPOSE: Final[int] = -20
+LOW_FLAT_PITCH: Final[int] = 36
+SUBMERGED_TRANSPOSE: Final[int] = -14
 SOARING_TRANSPOSE: Final[int] = 10
 NOISE_PERIOD: Final[int] = 3
 NOISE_TRANSPOSES: Final[Tuple[int, ...]] = (-5, 12, 40)
@@ -181,12 +182,12 @@ class TestTheSlideATransposeRowWrites:
 
     def test_a_transpose_below_the_range_slides_to_the_lowest_pitch(self) -> None:
         """A note-on at the new transpose writes its note by the low-pitch rule, so a flat instrument
-        slides to the lowest pitch the song plays.
+        slides to C-0, the lowest pitch the song plays.
         """
-        flat = flat_sample(CHANNEL, FLAT_PITCH, FLAT_FRAMES)
+        flat = flat_sample(CHANNEL, LOW_FLAT_PITCH, FLAT_FRAMES)
         document = slid(flat, (0, note(flat)), (RAISED_ROW, Row(transpose=SUBMERGED_TRANSPOSE))).document
 
-        assert slide_at(document, 0, RAISED_ROW) == semitones_down(FLAT_PITCH - MIN_PITCH)
+        assert slide_at(document, 0, RAISED_ROW) == semitones_down(LOW_FLAT_PITCH - MIN_PLAYED_PITCH)
 
     def test_a_transpose_above_the_range_slides_to_the_highest_pitch(self) -> None:
         high = flat_sample(CHANNEL, HIGH_PITCH, FLAT_FRAMES)

@@ -1,7 +1,6 @@
 from typing import ClassVar, Dict, List, Tuple, Union
 
 from sampletones_core.constants.enums import FeatureKey
-from sampletones_core.constants.general import MIN_PITCH
 from sampletones_core.exporters.implementation.utils import center_pitch
 from sampletones_core.generators import GeneratorTypeUnion, PulseGenerator
 from sampletones_core.instructions import (
@@ -9,7 +8,7 @@ from sampletones_core.instructions import (
     InstructionTypeUnion,
     PulseInstruction,
 )
-from sampletones_core.utils.frequencies import is_pitch_valid
+from sampletones_core.utils.frequencies import played_pitch
 
 from ..tonal import TonalExporter
 
@@ -25,36 +24,21 @@ class PulseExporter(TonalExporter[PulseInstruction]):
 
     @classmethod
     def extract_data(cls, instructions: List[PulseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
-        initial_pitch = None
-
-        pitch = MIN_PITCH
+        initial_pitch, pitches = cls.read_pitches(instructions)
         volume = 0
         duty_cycle = 0
-
-        pitches: List[int] = []
         volumes: List[int] = []
         duty_cycles: List[int] = []
 
         for instruction in instructions:
-            if instruction.on:
-                if initial_pitch is None:
-                    initial_pitch = instruction.pitch
-                    pitches = [initial_pitch for _ in range(len(pitches))]
-
-                pitch = instruction.pitch
-                volume = instruction.volume
-                duty_cycle = instruction.duty_cycle
-            else:
-                volume = 0
-
-            pitches.append(pitch)
+            volume = instruction.volume if instruction.on else 0
+            duty_cycle = instruction.duty_cycle if instruction.on else duty_cycle
             volumes.append(volume)
             duty_cycles.append(duty_cycle)
 
         if volume > 0:
             volumes.append(0)
 
-        initial_pitch = initial_pitch if initial_pitch is not None else MIN_PITCH
         return initial_pitch, pitches, volumes, duty_cycles
 
     @classmethod
@@ -83,10 +67,7 @@ class PulseExporter(TonalExporter[PulseInstruction]):
         dictionary: Dict[str, Union[bool, int]],
         initial_pitch: int,
     ) -> PulseInstruction:
-        pitch = int(initial_pitch + dictionary[cls._ATTRIBUTE_MAP[FeatureKey.ARPEGGIO]])
-        if not is_pitch_valid(pitch):
-            return PulseInstruction.null_instruction()
-
+        pitch = played_pitch(int(initial_pitch + dictionary[cls._ATTRIBUTE_MAP[FeatureKey.ARPEGGIO]]))
         return PulseInstruction(
             on=cls._infer_instruction_on(dictionary),
             pitch=pitch,

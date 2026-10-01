@@ -2,6 +2,7 @@ from abc import ABC
 from typing import Dict, List, Tuple, TypeVar, Union
 
 from sampletones_core.constants.enums import FeatureKey
+from sampletones_core.constants.general import MIN_PITCH
 from sampletones_core.features import BEND_FEATURES, CHANNEL_FEATURE_DEFAULTS
 from sampletones_core.instructions import TonalInstruction
 from sampletones_core.instructions.tonal import bend_steps
@@ -19,6 +20,22 @@ class TonalExporter(Exporter[TonalInstructionT], ABC):
     it sounds. Both dimensions are read the way a contour is read — a rest carries what the last
     sounding frame stated — so a bend survives a rest exactly as a pitch does.
     """
+
+    @classmethod
+    def read_pitches(cls, instructions: List[TonalInstructionT]) -> Tuple[int, List[int]]:
+        """The note each frame stands at, and the first note the channel sounds.
+
+        A rest holds the note the last sounding frame stated, and the rests before the first take its
+        note, the rule a bend is read by too. A channel that never sounds stands at ``MIN_PITCH``.
+
+        Args:
+            instructions: The channel's per-frame instructions.
+
+        Returns:
+            Tuple[int, List[int]]: The first note sounded, and one note per frame.
+        """
+        pitches = list(held_across_rests(instructions, lambda instruction: instruction.pitch, MIN_PITCH))
+        return (pitches[0] if pitches else MIN_PITCH), pitches
 
     @classmethod
     def read_bends(

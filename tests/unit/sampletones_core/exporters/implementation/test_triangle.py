@@ -1,7 +1,7 @@
 import numpy as np
 
 from sampletones_core.constants.enums import FeatureKey
-from sampletones_core.constants.general import MAX_PITCH, MIN_PITCH
+from sampletones_core.constants.general import MAX_PITCH, MIN_PITCH, MIN_PLAYED_PITCH
 from sampletones_core.exporters.implementation.triangle import TriangleExporter
 from sampletones_core.generators import TriangleGenerator
 from sampletones_core.instructions.implementation.triangle import TriangleInstruction
@@ -96,26 +96,20 @@ class TestTriangleExporterReconstruction:
         assert result.pitch == initial_pitch + arpeggio
         assert result.on is True
 
-    def test_invalid_pitch_above_max_returns_null_instruction(self) -> None:
-        initial_pitch = MAX_PITCH
-        arpeggio = 10
-        dictionary = {"pitch": arpeggio, "volume": 10}
-        result = TriangleExporter._features_dictionary_to_instruction(
-            dictionary,
-            initial_pitch,
-        )
-        assert result.on is False
-        assert result.pitch == MIN_PITCH
+    def test_a_pitch_past_b7_sounds_at_b7_as_the_trackers_hold_it(self) -> None:
+        dictionary = {"pitch": 10, "volume": 10}
+        result = TriangleExporter._features_dictionary_to_instruction(dictionary, MAX_PITCH)
+        assert (result.on, result.pitch) == (True, MAX_PITCH)
 
-    def test_invalid_pitch_below_min_returns_null_instruction(self) -> None:
-        initial_pitch = MIN_PITCH
-        arpeggio = -10
-        dictionary = {"pitch": arpeggio, "volume": 10}
-        result = TriangleExporter._features_dictionary_to_instruction(
-            dictionary,
-            initial_pitch,
-        )
-        assert result.on is False
+    def test_a_pitch_below_a0_keeps_its_note(self) -> None:
+        dictionary = {"pitch": -5, "volume": 10}
+        result = TriangleExporter._features_dictionary_to_instruction(dictionary, MIN_PITCH)
+        assert (result.on, result.pitch) == (True, MIN_PITCH - 5)
+
+    def test_a_pitch_below_c0_sounds_at_c0_as_the_trackers_hold_it(self) -> None:
+        dictionary = {"pitch": -20, "volume": 10}
+        result = TriangleExporter._features_dictionary_to_instruction(dictionary, MIN_PITCH)
+        assert (result.on, result.pitch) == (True, MIN_PLAYED_PITCH)
 
     def test_zero_volume_reconstructed_as_off(self) -> None:
         dictionary = {"pitch": 0, "volume": 0}

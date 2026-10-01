@@ -4,7 +4,7 @@ from typing import Final, List, Optional, Tuple
 import pytest
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH, NUM_PERIODS
+from sampletones_core.constants.general import MAX_PERIOD, MIN_PLAYED_PITCH, NUM_PERIODS
 from sampletones_core.formats.bitphase.btp import project_to_bytes
 from sampletones_core.formats.bitphase.builder import BITPHASE_TICK_BOUNDS, project_to_bitphase
 from sampletones_core.formats.bitphase.model.pattern import BitphaseRow, EffectCell
@@ -66,6 +66,7 @@ PITCH_OFFSET: Final[int] = 24
 FLAT_PITCH: Final[int] = 40
 FLAT_FRAMES: Final[int] = 8
 SUBMERGED_TRANSPOSE: Final[int] = -20
+LOW_FLAT_PITCH: Final[int] = 36
 NOISE_PERIOD: Final[int] = 3
 NOISE_TRANSPOSE: Final[int] = -5
 LATE_FRAME: Final[int] = 3
@@ -248,7 +249,7 @@ class TestTheCellsATransposeRowWrites:
         """A note-on at the new transpose writes its note by the low-pitch rule, so the moved table
         reaches the note that rule writes, and a flat slice sounds the lowest pitch the song plays.
         """
-        flat = flat_sample(CHANNEL, FLAT_PITCH, FLAT_FRAMES)
+        flat = flat_sample(CHANNEL, LOW_FLAT_PITCH, FLAT_FRAMES)
         document = project_to_bitphase(
             moved_project(
                 flat,
@@ -260,7 +261,7 @@ class TestTheCellsATransposeRowWrites:
 
         moved = named_table(document, channel_row(document, 0, RAISED_ROW))
 
-        assert moved.rows == (pitch_to_note_index(MIN_PITCH) - pitch_to_note_index(FLAT_PITCH),)
+        assert moved.rows == (pitch_to_note_index(MIN_PLAYED_PITCH) - pitch_to_note_index(LOW_FLAT_PITCH),)
 
 
 class TestTheStepANoteHasReached:

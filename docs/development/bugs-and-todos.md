@@ -31,7 +31,7 @@ dimension the import starts carrying.
 * The sample column reads the sample still playing from the top of each frame, so a frame's first rows
   take no transpose or volume while playback still carries the previous frame's sample.
 * A tracker export moves a whole contour by one written note, so where a transpose carries part of it
-  outside pitches 33–119, the ticks in-app playback clamps sound unclamped in the tracker. A clamped table
+  outside pitches 24–119, the ticks in-app playback clamps sound unclamped in the tracker. A clamped table
   (Bitphase) or arpeggio (FamiTracker) per such transposition would make them exact.
 * A FamiTracker transpose row moving a note more than fifteen semitones, or a shared pattern's cell that
   frames reach needing different slides, is written without its slide and reported. A second effect
