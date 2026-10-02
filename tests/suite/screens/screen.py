@@ -9,6 +9,7 @@ from tests.suite.screens.boundaries.dialogs import DialogKind, ScriptedFileDialo
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
 from tests.suite.screens.dearpygui.screenshot import capture
+from tests.suite.screens.dearpygui.windows import WindowManager
 from tests.suite.screens.keyboard import press_combination, primary_combination
 from tests.suite.screens.render_thread import QueueRenderThread
 from tests.suite.screens.views.display_settings import DisplaySettings
@@ -38,6 +39,7 @@ class Screen:
         bridge: Bridge,
         render_thread: QueueRenderThread,
         hand: Hand,
+        window_manager: WindowManager,
         language: LanguageManager,
         shortcuts: ShortcutManager,
         dialogs: ScriptedFileDialogs,
@@ -45,6 +47,7 @@ class Screen:
     ) -> None:
         self.bridge = bridge
         self.hand = hand
+        self._window_manager = window_manager
         self._render_thread = render_thread
         self._shortcuts = shortcuts
         self._dialogs = dialogs
@@ -80,6 +83,10 @@ class Screen:
     def is_running(self) -> bool:
         """Whether the application still draws its window."""
         return self._render_thread.is_running()
+
+    def close_window(self) -> None:
+        """Closes the application's window from its title bar, the way a window manager asks it to."""
+        self._window_manager.request_close()
 
     def wait_for_exit(self) -> bool:
         """Waits for the application to stop, and says whether it did within the expectation's time."""

@@ -10,6 +10,7 @@ from tests.suite.screens.plugin import (
     screen_bridge,
     screen_render_thread,
     startup,
+    world,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "screen_bridge",
     "screen_render_thread",
     "startup",
+    "world",
 ]

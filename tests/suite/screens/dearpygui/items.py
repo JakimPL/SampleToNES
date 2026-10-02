@@ -98,6 +98,19 @@ def read_windows() -> Tuple[WindowReading, ...]:
     return tuple(windows)
 
 
+def read_hovered(item: Item) -> Optional[bool]:
+    """Whether the pointer rested on ``item`` in the last frame, or ``None`` for a kind reporting no hover.
+
+    Runs on the render thread. An item covered by a popup, clipped by the region it scrolls in, or
+    passed over while another item holds the mouse reads as not hovered.
+    """
+    state = dpg.get_item_state(item)
+    if "hovered" not in state:
+        return None
+
+    return bool(state["hovered"])
+
+
 def read_label(item: Item) -> str:
     """The label ``item`` carries. Runs on the render thread."""
     return str(dpg.get_item_label(item) or "")

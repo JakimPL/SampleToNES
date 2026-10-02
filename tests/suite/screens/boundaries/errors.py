@@ -1,8 +1,13 @@
+import inspect
 import logging
 import threading
-from typing import List, Tuple
+from types import CodeType
+from typing import Final, List, Tuple
 
+from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_shared.application import SAMPLETONES_NAME
+
+EXIT_JOIN_CODE: Final[CodeType] = SingleThreadExecutor.join_all.__code__
 
 
 class ErrorRecords(logging.Handler):
@@ -10,10 +15,12 @@ class ErrorRecords(logging.Handler):
 
     A gesture's callback that raises is logged and swallowed so the interface keeps running, which
     is why a scenario reads this record: a click that failed this way leaves the screen looking calm.
+    The warning that background work outlived the exit's deadline counts as an error too, since the
+    teardown destroys what that work still reaches.
     """
 
     def __init__(self) -> None:
-        super().__init__(level=logging.ERROR)
+        super().__init__(level=logging.WARNING)
         self._messages: List[str] = []
         self._lock = threading.Lock()
 
@@ -27,10 +34,10 @@ class ErrorRecords(logging.Handler):
             return tuple(self._messages)
 
     def emit(self, record: logging.LogRecord) -> None:
-        if record.levelno < logging.ERROR:
+        if record.levelno < logging.ERROR and not _logged_by_the_exit_join():
             return
 
-        self._record(self.format(record))
+        self._record(f"{record.levelname} {self.format(record)}")
 
     def _escaped(self, arguments: threading.ExceptHookArgs) -> None:
         thread = arguments.thread.name if arguments.thread is not None else "a thread"
@@ -39,3 +46,19 @@ class ErrorRecords(logging.Handler):
     def _record(self, message: str) -> None:
         with self._lock:
             self._messages.append(message)
+
+
+def _logged_by_the_exit_join() -> bool:
+    """Whether the record being handled was logged from within the join that awaits background work.
+
+    The application logs through a wrapper, so a record names the wrapper as its origin, and the
+    call stack is what still holds the join.
+    """
+    frame = inspect.currentframe()
+    while frame is not None:
+        if frame.f_code is EXIT_JOIN_CODE:
+            return True
+
+        frame = frame.f_back
+
+    return False

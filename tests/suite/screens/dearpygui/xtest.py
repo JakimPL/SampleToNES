@@ -25,10 +25,14 @@ class XTestDevice:
 
     Each call sends one event and flushes it, so the server holds it before the next frame polls.
     The display is the scenario's own, which keeps every event inside the application under test.
+    The display repeats no held key, so a key held across a slow frame arrives as the one press a
+    person made.
     """
 
     def __init__(self, display_name: str) -> None:
         self._display = Display(display_name)
+        self._display.change_keyboard_control(auto_repeat_mode=X.AutoRepeatModeOff)
+        self._display.sync()
 
     def move(self, point: Point) -> None:
         xtest.fake_input(self._display, X.MotionNotify, x=point.x, y=point.y)

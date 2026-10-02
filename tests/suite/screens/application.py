@@ -1,3 +1,4 @@
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, List, Optional
@@ -18,8 +19,10 @@ from tests.suite.screens.checks import (
     quiet_findings,
     read_screen_state,
     screen_findings,
+    surviving_thread_findings,
 )
 from tests.suite.screens.dearpygui.bridge import Bridge, RenderThreadStoppedError
+from tests.suite.screens.dearpygui.hosting import SCENARIO_THREAD_NAME
 from tests.suite.screens.dearpygui.screenshot import capture
 from tests.suite.screens.keyboard import primary_combination
 from tests.suite.screens.render_thread import QueueRenderThread
@@ -115,6 +118,7 @@ class ScreenApplication:
 
     def close(self) -> None:
         findings = quiet_findings(self._boundaries.errors)[self._reported_errors :]
+        findings.extend(surviving_thread_findings(_application_threads()))
         if not self._state_path.exists():
             findings.append(f"The application stopped without writing its session state to {self._state_path}")
 
@@ -158,3 +162,12 @@ class ScreenApplication:
             return [f"The failure screenshot could not be taken: {error}"]
 
         return []
+
+
+def _application_threads() -> List[threading.Thread]:
+    """The threads running beside the main one, the scenario's own aside."""
+    return [
+        thread
+        for thread in threading.enumerate()
+        if thread is not threading.main_thread() and thread.name != SCENARIO_THREAD_NAME
+    ]

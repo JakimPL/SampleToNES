@@ -6,9 +6,6 @@ import pytest
 
 from sampletones_application.application import Application
 from sampletones_application.config.profile import UserProfile
-from sampletones_application.config.session.state.state import ApplicationState
-from sampletones_application.config.session.state.window import ViewportState
-from sampletones_shared.utils.serialization import save_yaml_atomic
 from tests.suite.screens.application import NOTHING_TO_OPEN, Boundaries, ScreenApplication, Startup
 from tests.suite.screens.boundaries.audio import OutputDevice, provide_output_device
 from tests.suite.screens.boundaries.dialogs import ScriptedFileDialogs
@@ -19,6 +16,7 @@ from tests.suite.screens.dearpygui.display import VirtualDisplay
 from tests.suite.screens.dearpygui.hand import Hand
 from tests.suite.screens.dearpygui.hosting import host
 from tests.suite.screens.dearpygui.isolation import ReportRecorder, run_isolated
+from tests.suite.screens.dearpygui.windows import WindowManager
 from tests.suite.screens.dearpygui.xtest import XTestDevice
 from tests.suite.screens.environment import (
     ARTIFACTS_VARIABLE,
@@ -31,6 +29,7 @@ from tests.suite.screens.environment import (
 from tests.suite.screens.paths import FAILURE_SCREENSHOT, SCREENS_DIRECTORY
 from tests.suite.screens.render_thread import QueueRenderThread
 from tests.suite.screens.screen import Screen
+from tests.suite.screens.world import World, lived_in_world
 
 CHILD_TIMEOUT_SECONDS: Final[float] = 180.0
 ANSWER_TIMEOUT_SECONDS: Final[float] = 30.0
@@ -76,6 +75,7 @@ def pytest_runtest_protocol(
     for report in run_isolated(
         item,
         environment=environment,
+        working_directory=folders.home,
         report_path=folders.reports,
         timeout=CHILD_TIMEOUT_SECONDS,
     ):
@@ -121,6 +121,12 @@ def pytest_pyfunc_call(pyfuncitem: pytest.Function) -> Generator[None, Optional[
         return (yield)
     finally:
         pyfuncitem.obj = original
+
+
+@pytest.fixture
+def world() -> World:
+    """What the scenario's home holds as the application starts; a scenario overrides it to seed its own."""
+    return lived_in_world()
 
 
 @pytest.fixture
@@ -171,6 +177,7 @@ def screen_boundaries(
 
 @pytest.fixture
 def screen_application(
+    world: World,
     startup: Startup,
     screen_render_thread: QueueRenderThread,
     screen_bridge: Bridge,
@@ -178,7 +185,7 @@ def screen_application(
 ) -> ScreenApplication:
     """SampleToNES as ``sampletones open`` starts it, on the scenario's display and in its home."""
     profile = UserProfile.user()
-    _seed_viewport(profile.state)
+    world.write(profile)
     application = Application(
         profile=profile,
         reconstruction_path=startup.reconstruction,
@@ -203,15 +210,18 @@ def screen(
 ) -> Iterator[Screen]:
     """The application the scenario drives, with a user's hand on its display."""
     device = XTestDevice(os.environ["DISPLAY"])
+    window_manager = WindowManager(os.environ["DISPLAY"], os.getpid())
     yield Screen(
         bridge=screen_bridge,
         render_thread=screen_render_thread,
         hand=Hand(screen_bridge, device),
+        window_manager=window_manager,
         language=screen_application.language,
         shortcuts=screen_application.shortcuts,
         dialogs=screen_boundaries.dialogs,
         artifacts=Path(os.environ[ARTIFACTS_VARIABLE]),
     )
+    window_manager.close()
     device.close()
 
 
@@ -226,17 +236,3 @@ def _worker_display(config: pytest.Config) -> str:
     config.stash[DISPLAY_KEY] = display
     config.stash[DISPLAY_NAME_KEY] = name
     return name
-
-
-def _seed_viewport(state_path: Path) -> None:
-    """Writes the session state a first run of the scenario finds: the window filling the display."""
-    state = ApplicationState(
-        viewport=ViewportState(
-            width=SCREEN_SIZE.width,
-            height=SCREEN_SIZE.height,
-            x=0,
-            y=0,
-        )
-    )
-    state_path.parent.mkdir(parents=True, exist_ok=True)
-    save_yaml_atomic(state_path, state.model_dump(mode="json"))

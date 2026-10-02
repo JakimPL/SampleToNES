@@ -29,19 +29,48 @@ one, which keeps the scenario independent of how the code is arranged inside.
 
 ### 3. Each scenario runs in a world of its own
 
-Every scenario runs in a fresh process with a home directory of its own, so settings, session state and
-the documents folder start empty. The process ends with the scenario, so the exit and its teardown are part
-of what the scenario proves, and a crash on the way out fails it. A worker draws on an X server of its own,
-so its scenarios take only its own input.
+Every scenario runs in a fresh process started in a home directory of its own, so settings, session state
+and the documents folder hold only what the scenario put there. The process ends with the scenario, so the
+exit and its teardown are part of what the scenario proves, and a crash on the way out fails it. A worker
+draws on an X server of its own, so its scenarios take only its own input.
 
-### 4. A scenario waits for what it expects
+The `world` fixture says what the home holds before the first frame: the session a previous run left, the
+settings, and the recordings, documents and libraries the scenario works on. Each file is written by the
+model and the manager the application reads it with, so a seeded home is one a real run could have left. A
+scenario class overrides `world` to seed its own.
+
+### 4. A scenario is written to break the application
+
+A scenario that only confirms the path its author had in mind proves little. Each rule a scenario proves
+gets a positive example and a negative or boundary one, with real values, and each area is attacked along
+the [questions](#questions-a-gui-change-asks) below.
+
+- **A negative ends with its witness.** After the gesture that should change nothing, the same path is used
+  once more where it should act, and then the whole state is asserted: the count is one lower and the row
+  that left is the one named. A late effect of the negative then shows in the count. Waiting a fixed
+  window instead would only restate the application's own delays.
+- **A gesture confirms that it arrived** (see [Gestures](#gestures)), so a negative never passes because
+  its input was lost.
+- **A frame-lag promise is read on every frame** between the gestures, since a reading once a frame until
+  it holds misses a flash that lasts one frame.
+- **Where several states meet several doors, one suite walks the table**: every document state against
+  every door that closes it, every kind of broken file against every door that opens one.
+- **An expected value comes from the rule**: a language key with its arguments, a palette token, or a hand
+  computation written in the test. A value the code under test answered proves nothing about that code.
+- **A scenario that could pass vacuously is shown failing** on a fault planted for the purpose: a negative,
+  an attack, or a check that reads state the gesture might never reach.
+
+A break of something a document or a docstring states is recorded as a known bug, below, and its fix is
+separate work. A break of behavior nothing states is a question for the maintainer.
+
+### 5. A scenario waits for what it expects
 
 Waiting is for a reading to hold. An expectation reads once a frame until it holds or its time runs out,
 and a gesture waits for its control to be reachable and to stand still. A fixed sleep hides a race, and a
 retry hides a bug: a scenario that passes only sometimes is a bug. A count of frames appears in a scenario
 only where the count is the contract itself.
 
-### 5. Every scenario is held to the same promises
+### 6. Every scenario is held to the same promises
 
 Every scenario is held to the same after-checks. A failing gesture is logged and swallowed so the interface
 keeps running, which is why the checks read the log as well as the screen.
@@ -51,12 +80,13 @@ keeps running, which is why the checks read the log as well as the screen.
   waiting.
 - **Settled.** No modal conversation is left open, and every window lies inside the viewport.
 - **Leaving cleanly.** The application leaves through the Exit shortcut without asking anything, stops,
-  and writes its session state.
+  and writes its session state. Its background work winds down within the exit's deadline, and no thread
+  of its own outlives the exit.
 
 A known bug is a case marked `xfail(strict=True)` that names its [ledger](../bugs-and-todos.md) entry. The
 mark makes the run fail once the bug is fixed, until the mark goes.
 
-### 6. The DearPyGui layer knows nothing of SampleToNES
+### 7. The DearPyGui layer knows nothing of SampleToNES
 
 `tests/suite/screens/dearpygui/` drives any DearPyGui application: the process per scenario, the display,
 the input, the readings and the waiting. The SampleToNES layer around it holds what belongs to this
@@ -84,7 +114,13 @@ frame before, since a dialog sized by its content settles its place over its fir
 ([dialogs](dialogs.md)).
 
 Keys are pressed on the real keyboard, with modifiers held a frame before the key. A scenario names an
-action by its `ShortcutId`, and the keys come from the scheme in place.
+action by its `ShortcutId`, and the keys come from the scheme in place. The display repeats no held key,
+so a key held across a slow frame arrives as one press.
+
+A gesture confirms that it arrived. Before a button goes down, the control must report the pointer resting
+on it: DearPyGui calls a control visible while the region it scrolls in clips it, and a press there lands
+on something else. While a button or a named key is held, the application must read it as down. A press
+lost on the way fails where it was lost.
 
 DearPyGui reports a position alone for a menu entry, so choosing one runs its callback the way a click does,
 through the queue's own error reporting.
@@ -103,6 +139,15 @@ and a scenario reads as the gestures a user makes.
   heard. A scenario can start on a machine offering no device at all.
 - **Programs.** An audit hook refuses every program the application tries to start: a file manager, a
   browser or a dialog tool would open on the desktop around the run. A shared library lookup passes.
+- **The window manager.** The scenario's X server runs none, so `screen.close_window()` sends the request
+  a title bar's close button sends.
+
+## What survives a restart
+
+What a restart keeps is proven in two halves, each a scenario on a fresh home. In the first, the application
+leaves, and the scenario reads the files it wrote through their models. In the second, the world seeds the
+same value through the same model, and the scenario reads it on the screen. A writer and a reader that
+disagree fail one of the halves.
 
 ## Questions a GUI change asks
 
@@ -156,4 +201,6 @@ picture as evidence of a look, for a pull request rather than an assertion.
 | The application under test and how it ends | `tests/suite/screens/application.py` |
 | The stand-ins at the boundaries | `tests/suite/screens/boundaries/` |
 | The after-checks | `tests/suite/screens/checks.py` |
-| What a scenario holds and reads | `tests/suite/screens/screen.py`, `views/` |
+| What a scenario holds and reads | `tests/suite/screens/screen.py`, `views/`, `steps/` |
+| What a scenario's home holds | `tests/suite/screens/world.py` |
+| The window manager's requests | `tests/suite/screens/dearpygui/windows.py` |

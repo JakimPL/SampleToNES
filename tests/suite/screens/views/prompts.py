@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_BUTTON, SUF_BUTTON_CANCEL, SUF_BUTTON_OK, SUF_BUTTON_SAVE
@@ -30,12 +30,16 @@ class Prompt:
 
     def window(self) -> Optional[WindowReading]:
         """The prompt's window while one is shown, and ``None`` otherwise."""
-        shown = [
+        shown = self.shown_windows()
+        return shown[0] if shown else None
+
+    def shown_windows(self) -> List[WindowReading]:
+        """Every window of the prompt's kind standing on the screen, which is one for a question asked once."""
+        return [
             window
             for window in self._bridge.ask(read_windows)
             if window.shown and is_tag_within(window.alias, self._tag)
         ]
-        return shown[0] if shown else None
 
     def is_shown(self) -> bool:
         return self.window() is not None

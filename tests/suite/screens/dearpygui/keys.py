@@ -82,6 +82,11 @@ def keysym_of(key: int) -> int:
     return XK.string_to_keysym(name)
 
 
+def key_name(key: int) -> str:
+    """The name the X keyboard table gives the Dear ImGui key ``key``, for a report a person reads."""
+    return KEYSYM_NAMES.get(key, str(key))
+
+
 def keysym_of_character(character: str) -> int:
     """The X keysym typing ``character`` sends; a printable ASCII keysym is its own code point."""
     return ord(character)

@@ -20,6 +20,7 @@ CHILD_ARGUMENTS: Final[Sequence[str]] = (
     "--no-header",
 )
 OUTPUT_TAIL_CHARACTERS: Final[int] = 20_000
+NODE_SEPARATOR: Final[str] = "::"
 
 
 @dataclass(frozen=True)
@@ -71,19 +72,22 @@ def run_isolated(
     item: pytest.Item,
     *,
     environment: Mapping[str, str],
+    working_directory: Path,
     report_path: Path,
     timeout: float,
 ) -> List[pytest.TestReport]:
     """Runs ``item`` in a fresh interpreter and returns its reports, as if it had run here.
 
-    The child is a pytest run of the item's node id alone, under ``environment``. It writes its
-    reports to ``report_path``. A phase missing from them, because the child crashed or ran out of
-    time, comes back as a failure carrying the child's output, and so does the last phase of a child
-    that crashed after reporting all of them.
+    The child is a pytest run of the item's node id alone, under ``environment`` and started in
+    ``working_directory``, which is where the application under test finds itself launched. It
+    writes its reports to ``report_path``. A phase missing from them, because the child crashed or
+    ran out of time, comes back as a failure carrying the child's output, and so does the last phase
+    of a child that crashed after reporting all of them.
     """
     child = _run_child(
         item,
         environment=environment,
+        working_directory=working_directory,
         timeout=timeout,
     )
     reports = _read_reports(item.config, report_path)
@@ -94,13 +98,21 @@ def _run_child(
     item: pytest.Item,
     *,
     environment: Mapping[str, str],
+    working_directory: Path,
     timeout: float,
 ) -> ChildRun:
-    command = [sys.executable, "-m", "pytest", item.nodeid, *CHILD_ARGUMENTS]
+    command = [
+        sys.executable,
+        "-m",
+        "pytest",
+        _located_nodeid(item),
+        f"--rootdir={item.config.rootpath}",
+        *CHILD_ARGUMENTS,
+    ]
     try:
         completed = subprocess.run(
             command,
-            cwd=item.config.rootpath,
+            cwd=working_directory,
             env=dict(environment),
             timeout=timeout,
             capture_output=True,
@@ -117,6 +129,12 @@ def _run_child(
         returncode=completed.returncode,
         output=completed.stdout + completed.stderr,
     )
+
+
+def _located_nodeid(item: pytest.Item) -> str:
+    """The item's node id with its file named by an absolute path, which a run started anywhere finds."""
+    _, separator, name = item.nodeid.partition(NODE_SEPARATOR)
+    return f"{item.path}{separator}{name}"
 
 
 def _read_reports(config: pytest.Config, path: Path) -> Dict[str, pytest.TestReport]:

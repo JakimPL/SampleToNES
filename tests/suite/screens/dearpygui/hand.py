@@ -1,13 +1,17 @@
 import time
-from typing import Final, Optional, Sequence
+from functools import partial
+from typing import Callable, Dict, Final, Optional, Sequence
+
+import dearpygui.dearpygui as dpg
 
 from tests.suite.screens.dearpygui.bridge import ONE_FRAME, Bridge, RenderThreadStoppedError
 from tests.suite.screens.dearpygui.geometry import Point
-from tests.suite.screens.dearpygui.items import Item, read_viewport
+from tests.suite.screens.dearpygui.items import Item, read_hovered, read_viewport
 from tests.suite.screens.dearpygui.keys import (
     IMGUI_LEFT_CTRL,
     IMGUI_LEFT_SHIFT,
     IMGUI_LETTER_A,
+    key_name,
     keysym_of,
     keysym_of_character,
 )
@@ -20,7 +24,17 @@ RELEASE_FRAMES: Final[int] = 1
 SETTLE_FRAMES: Final[int] = 2
 SINGLE_PRESS: Final[int] = 1
 DOUBLE_PRESS: Final[int] = 2
+HOVER_ARRIVAL_FRAMES: Final[int] = 5
 REACH_TIMEOUT_SECONDS: Final[float] = 10.0
+IMGUI_MOUSE_BUTTONS: Final[Dict[MouseButton, int]] = {
+    MouseButton.LEFT: dpg.mvMouseButton_Left,
+    MouseButton.RIGHT: dpg.mvMouseButton_Right,
+    MouseButton.MIDDLE: dpg.mvMouseButton_Middle,
+}
+
+
+class GestureLostError(AssertionError):
+    """Raised when a gesture's input never reached the control it was aimed at."""
 
 
 class Hand:
@@ -31,6 +45,11 @@ class Hand:
     input once a frame: the pointer rests over a control before pressing it, and a modifier is held
     a frame before the key it modifies goes down. A gesture that closes the application ends where
     the application stopped, which is how a scenario presses the button that leaves it.
+
+    A gesture confirms that it arrived. The control reports the pointer resting on it before a
+    button goes down, and the application reports every held button and named key down while it is
+    held, so a press lost on the way fails where it was lost, and a scenario expecting nothing to
+    happen learns that its gesture was made.
     """
 
     def __init__(
@@ -54,9 +73,14 @@ class Hand:
         self._press(item, MouseButton.RIGHT, SINGLE_PRESS)
 
     def hover(self, item: Item) -> None:
-        """Rests the pointer over ``item``."""
+        """Rests the pointer over ``item`` until the item reports it.
+
+        Raises:
+            GestureLostError: If the item never reports the pointer resting on it.
+        """
         self._device.move(self._aim(item))
         self._bridge.frames(HOVER_FRAMES)
+        self._confirm_hover(item)
 
     def press_key(
         self,
@@ -65,15 +89,19 @@ class Hand:
         modifiers: Sequence[int],
     ) -> None:
         """Presses the Dear ImGui key ``key`` while holding the Dear ImGui keys in ``modifiers``."""
-        held = tuple(keysym_of(modifier) for modifier in modifiers)
-        for keysym in held:
-            self._device.key_down(keysym)
-        if held:
+        for modifier in modifiers:
+            self._device.key_down(keysym_of(modifier))
+        if modifiers:
             self._settle(HOLD_FRAMES)
+            self._confirm_keys(modifiers)
 
-        self._tap(keysym_of(key))
-        for keysym in reversed(held):
-            self._device.key_up(keysym)
+        self._device.key_down(keysym_of(key))
+        self._settle(HOLD_FRAMES)
+        self._confirm_keys([key])
+        self._device.key_up(keysym_of(key))
+        self._settle(RELEASE_FRAMES)
+        for modifier in reversed(modifiers):
+            self._device.key_up(keysym_of(modifier))
 
         self._settle(SETTLE_FRAMES)
 
@@ -109,9 +137,11 @@ class Hand:
         count: int,
     ) -> None:
         self.hover(item)
+        imgui_button = IMGUI_MOUSE_BUTTONS[button]
         for _ in range(count):
             self._device.button_down(button)
             self._settle(HOLD_FRAMES)
+            self._confirm(lambda: dpg.is_mouse_button_down(imgui_button), f"The {button.name.lower()} button")
             self._device.button_up(button)
             self._settle(RELEASE_FRAMES)
 
@@ -122,6 +152,45 @@ class Hand:
         self._settle(HOLD_FRAMES)
         self._device.key_up(keysym)
         self._settle(RELEASE_FRAMES)
+
+    def _confirm_hover(self, item: Item) -> None:
+        """Waits a few frames for ``item`` to report the pointer resting on it, where its kind reports hover.
+
+        Raises:
+            GestureLostError: If the item never reports the pointer, which is a press bound elsewhere.
+        """
+        for _ in range(HOVER_ARRIVAL_FRAMES):
+            if self._bridge.ask(lambda: read_hovered(item)) is not False:
+                return
+
+            self._bridge.frames(ONE_FRAME)
+
+        raise GestureLostError(
+            f"The pointer was aimed at {item!r} and the item reports no hover: "
+            f"something covers it, or the region it scrolls in clips it"
+        )
+
+    def _confirm_keys(self, keys: Sequence[int]) -> None:
+        for key in keys:
+            self._confirm(partial(dpg.is_key_down, key), f"The key {key_name(key)}")
+
+    def _confirm(
+        self,
+        is_down: Callable[[], bool],
+        what: str,
+    ) -> None:
+        """Checks that the application reads a held button or key as down, unless the gesture closed it.
+
+        Raises:
+            GestureLostError: If the application reads it as up while it is held.
+        """
+        try:
+            arrived = self._bridge.ask(is_down)
+        except RenderThreadStoppedError:
+            return
+
+        if not arrived:
+            raise GestureLostError(f"{what} is held on the display and the application reads it as up")
 
     def _settle(self, count: int) -> None:
         """Lets ``count`` frames pass once a gesture is under way, or none once it closed the application."""

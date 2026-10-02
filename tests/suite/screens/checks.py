@@ -1,5 +1,6 @@
+import threading
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Sequence, Tuple
 
 from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_ERROR, TAG_GLOBAL_WINDOW_MAIN
 from sampletones_application.utils.gui.modal_queue import ModalQueue, ModalQueueSnapshot
@@ -34,7 +35,12 @@ def read_screen_state() -> ScreenState:
 
 def quiet_findings(errors: ErrorRecords) -> List[str]:
     """The errors the application logged or let escape a thread."""
-    return [f"The application reported an error: {message}" for message in errors.messages]
+    return [f"The application reported: {message}" for message in errors.messages]
+
+
+def surviving_thread_findings(threads: Sequence[threading.Thread]) -> List[str]:
+    """The threads still running once the application has stopped and torn its context down."""
+    return [f"The thread '{thread.name}' outlived the application's exit" for thread in threads]
 
 
 def contained_findings(

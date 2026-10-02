@@ -5,11 +5,10 @@ import pytest
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from sampletones_core.project import ProjectContainer
 from sampletones_shared.paths.user import PROJECTS_DIRECTORY
 from tests.suite.screens.boundaries.audio import OutputDevice
-from tests.suite.screens.boundaries.dialogs import DialogKind
 from tests.suite.screens.screen import Screen
+from tests.suite.screens.steps.project import retitle_project, save_new_project, saved_project_title
 
 PROJECT_FILENAME: Final[str] = "Leaving.stp"
 NEW_TITLE: Final[str] = "Leaving title"
@@ -17,26 +16,11 @@ SETTLING_FRAMES: Final[int] = 10
 
 
 def save_a_new_project(screen: Screen) -> None:
-    project = screen.project
-    project.create()
-    screen.answer_next_dialog(DialogKind.SAVE, PROJECTS_DIRECTORY / PROJECT_FILENAME)
-
-    project.save_as()
-
-    screen.expect(project.saved_notice.is_shown, bool, description="the project saved notice")
-    project.saved_notice.confirm()
-    screen.expect(project.saved_notice.is_shown, operator.not_, description="the notice gone")
+    save_new_project(screen, PROJECTS_DIRECTORY / PROJECT_FILENAME)
 
 
 def retitle_the_project(screen: Screen) -> None:
-    properties = screen.project.properties
-    properties.open()
-    screen.expect(properties.is_shown, bool, description="the Project properties dialog")
-
-    properties.retitle(NEW_TITLE)
-    properties.confirm()
-
-    screen.expect(properties.is_shown, operator.not_, description="the dialog closed")
+    retitle_project(screen, NEW_TITLE)
 
 
 def ask_to_leave(screen: Screen) -> None:
@@ -46,7 +30,7 @@ def ask_to_leave(screen: Screen) -> None:
 
 
 def saved_title() -> str:
-    return ProjectContainer.load(PROJECTS_DIRECTORY / PROJECT_FILENAME).info.title
+    return saved_project_title(PROJECTS_DIRECTORY / PROJECT_FILENAME)
 
 
 class TestLeavingWithAnUnsavedProject:
