@@ -15,6 +15,7 @@ SERVER_PROGRAMS: Final[Dict[DisplayBackend, str]] = {
     DisplayBackend.XVFB: "Xvfb",
     DisplayBackend.XEPHYR: "Xephyr",
 }
+KEEP_STATE_BETWEEN_CLIENTS: Final[str] = "-noreset"
 
 
 class DisplayServerMissingError(RuntimeError):
@@ -35,6 +36,11 @@ class VirtualDisplay:
     Xvfb draws into memory, which suits a run nobody watches. Xephyr draws into a window on the
     desktop, which lets a person follow a scenario as it plays. Either server takes every event a
     scenario sends, so the desktop around it stays untouched.
+
+    The server goes on as it stands when its last client leaves. A server that resets then refuses
+    the connection an application opens a moment after another of its clients closed, and each
+    reset recompiles the keymap into output nobody reads, which stalls the server once that output
+    fills its pipe.
     """
 
     def __init__(
@@ -46,6 +52,7 @@ class VirtualDisplay:
         self._server = Display(
             backend=backend.value,
             size=(size.width, size.height),
+            extra_args=[KEEP_STATE_BETWEEN_CLIENTS],
             manage_global_env=False,
         )
 

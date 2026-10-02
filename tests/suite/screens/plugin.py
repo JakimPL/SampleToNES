@@ -219,6 +219,7 @@ def screen(
         language=screen_application.language,
         shortcuts=screen_application.shortcuts,
         dialogs=screen_boundaries.dialogs,
+        errors=screen_boundaries.errors,
         artifacts=Path(os.environ[ARTIFACTS_VARIABLE]),
     )
     window_manager.close()

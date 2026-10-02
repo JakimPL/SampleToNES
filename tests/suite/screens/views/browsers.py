@@ -1,0 +1,103 @@
+from pathlib import Path
+from typing import Callable, List, Optional
+
+import dearpygui.dearpygui as dpg
+
+from sampletones_core.structures.tree.node import FileSystemNode, LibraryNode, TreeNode
+from tests.suite.screens.dearpygui.bridge import Bridge
+from tests.suite.screens.dearpygui.hand import Hand
+from tests.suite.screens.dearpygui.items import TREE_NODE_TYPE, Item, find_item, read_label
+
+NodeTest = Callable[[TreeNode], bool]
+
+
+class FileTree:
+    """A tree of rows on one of the tabs, each row standing for the node of the tree it was drawn from.
+
+    A row carries its node, so the view finds a row by the file or the library the node names,
+    and a heading by the words it shows.
+    """
+
+    def __init__(
+        self,
+        bridge: Bridge,
+        hand: Hand,
+        tree: str,
+    ) -> None:
+        self._bridge = bridge
+        self._hand = hand
+        self._tree = tree
+
+    def file_row(self, path: Path) -> Optional[Item]:
+        """The first row naming the file or folder at ``path``, if one is drawn."""
+        return self._row(lambda node: isinstance(node, FileSystemNode) and node.filepath == path)
+
+    def file_rows(self, path: Path) -> List[Item]:
+        """Every row naming the file at ``path``, which a browser listing it under several headings draws more than once."""
+
+        def rows() -> List[Item]:
+            found: List[Item] = []
+            find_item(self._tree, lambda item: _collect(item, path, found))
+            return found
+
+        return self._bridge.ask(rows)
+
+    def library_row(self, matches: Callable[[LibraryNode], bool]) -> Optional[Item]:
+        """The first row standing for a library ``matches`` accepts, if one is drawn."""
+        return self._row(lambda node: isinstance(node, LibraryNode) and matches(node))
+
+    def heading(self, label: str) -> Optional[Item]:
+        """The first row whose words read ``label``, such as a heading the tree groups its files under."""
+        return self._bridge.ask(
+            lambda: find_item(
+                self._tree,
+                lambda item: _is_tree_row(item) and read_label(item).strip() == label.strip(),
+            )
+        )
+
+    def label(self, row: Item) -> str:
+        return self._bridge.ask(lambda: read_label(row))
+
+    def is_open(self, row: Item) -> bool:
+        """Whether ``row`` stands open onto the rows under it."""
+        return bool(self._bridge.ask(lambda: dpg.get_value(row)))
+
+    def open_by_click(self, row: Item) -> None:
+        """Brings ``row`` into view and clicks it, which opens or closes a row of a tree opened by a click."""
+        self._hand.scroll_into_view(row)
+        self._hand.click(row)
+
+    def double_click(self, row: Item) -> None:
+        """Brings ``row`` into view and double-clicks it."""
+        self._hand.scroll_into_view(row)
+        self._hand.double_click(row)
+
+    def _row(self, matches: NodeTest) -> Optional[Item]:
+        return self._bridge.ask(
+            lambda: find_item(
+                self._tree,
+                lambda item: _is_tree_row(item) and _node_matches(item, matches),
+            )
+        )
+
+
+def _is_tree_row(item: Item) -> bool:
+    return str(dpg.get_item_info(item)["type"]) == TREE_NODE_TYPE
+
+
+def _node_matches(item: Item, matches: NodeTest) -> bool:
+    user_data = dpg.get_item_user_data(item)
+    if not isinstance(user_data, tuple) or not user_data:
+        return False
+
+    node = user_data[0]
+    return isinstance(node, TreeNode) and bool(matches(node))
+
+
+def _collect(item: Item, path: Path, found: List[Item]) -> bool:
+    if _is_tree_row(item) and _node_matches(
+        item, lambda node: isinstance(node, FileSystemNode) and node.filepath == path
+    ):
+        found.append(item)
+
+    return False

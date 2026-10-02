@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Optional, Sequence
 
 
 @dataclass(frozen=True)
@@ -42,6 +42,21 @@ class Rect:
             x=round(self.x + self.width / 2),
             y=round(self.y + self.height / 2),
         )
+
+    def overlap(self, other: Rect) -> Optional[Rect]:
+        """The part of this box ``other`` covers too, or ``None`` where the two do not meet."""
+        left = max(self.x, other.x)
+        top = max(self.y, other.y)
+        right = min(self.x + self.width, other.x + other.width)
+        bottom = min(self.y + self.height, other.y + other.height)
+        if right <= left or bottom <= top:
+            return None
+
+        return Rect(x=left, y=top, width=right - left, height=bottom - top)
+
+    def holds(self, point: Point) -> bool:
+        """Whether ``point`` lies within this box, edges included."""
+        return self.x <= point.x <= self.x + self.width and self.y <= point.y <= self.y + self.height
 
     def contains(self, other: Rect) -> bool:
         """Whether ``other`` lies within this box, edges included."""

@@ -37,6 +37,32 @@ def invoke(
     run(callback, *_declared(callback, arguments))
 
 
+def choose(
+    item: Item,
+    value: Any,
+    run: CallbackRunner,
+) -> None:
+    """Sets ``item`` to ``value`` and runs its callback as a pick of that option does. Runs on the render thread.
+
+    This is the gesture for a choice DearPyGui draws as one item, such as a radio button's options or a
+    combo's entries. The choice must stand in reach the way :func:`invoke` asks.
+
+    Raises:
+        UnreachableError: Naming what keeps a user from the choice.
+    """
+    refusal = _refusal(read_item(item))
+    if refusal is not None:
+        raise UnreachableError(f"{item!r} is out of reach: {refusal}")
+
+    callback = dpg.get_item_callback(item)
+    if callback is None:
+        raise UnreachableError(f"{item!r} answers no choice: it carries no callback")
+
+    dpg.set_value(item, value)
+    arguments = (item, value, dpg.get_item_user_data(item))
+    run(callback, *_declared(callback, arguments))
+
+
 def _refusal(reading: ItemReading) -> Optional[str]:
     if not reading.exists:
         return "it does not exist"

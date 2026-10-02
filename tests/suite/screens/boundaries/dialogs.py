@@ -25,12 +25,18 @@ class DialogRequest:
     Attributes:
         kind: What the dialog asked for.
         title: The title the dialog carried.
+        initial_directory: The folder the dialog opened in, if the application named one.
+        suggested_name: The file name a save dialog offered, if any.
+        filters: The kinds of file the dialog offered to show.
         answered: Whether the scenario had queued an answer for it.
         answer: The path the dialog answered with, or ``None`` for a dismissed dialog.
     """
 
     kind: DialogKind
     title: str
+    initial_directory: Optional[Path]
+    suggested_name: Optional[str]
+    filters: Tuple[FileFilter, ...]
     answered: bool
     answer: Optional[Path]
 
@@ -77,8 +83,13 @@ class ScriptedFileDialogs:
         initial_directory: Optional[Path],
         filters: Tuple[FileFilter, ...],
     ) -> Optional[Path]:
-        del initial_directory, filters
-        return self._take(DialogKind.OPEN, title)
+        return self._take(
+            DialogKind.OPEN,
+            title=title,
+            initial_directory=initial_directory,
+            suggested_name=None,
+            filters=filters,
+        )
 
     def save_file(
         self,
@@ -88,8 +99,14 @@ class ScriptedFileDialogs:
         suggested_name: Optional[str],
         filters: Tuple[FileFilter, ...],
     ) -> Optional[SaveDestination]:
-        del initial_directory, suggested_name, filters
-        return untyped_destination(self._take(DialogKind.SAVE, title))
+        answer = self._take(
+            DialogKind.SAVE,
+            title=title,
+            initial_directory=initial_directory,
+            suggested_name=suggested_name,
+            filters=filters,
+        )
+        return untyped_destination(answer)
 
     def select_directory(
         self,
@@ -97,13 +114,22 @@ class ScriptedFileDialogs:
         title: str,
         initial_directory: Optional[Path],
     ) -> Optional[Path]:
-        del initial_directory
-        return self._take(DialogKind.DIRECTORY, title)
+        return self._take(
+            DialogKind.DIRECTORY,
+            title=title,
+            initial_directory=initial_directory,
+            suggested_name=None,
+            filters=(),
+        )
 
     def _take(
         self,
         kind: DialogKind,
+        *,
         title: str,
+        initial_directory: Optional[Path],
+        suggested_name: Optional[str],
+        filters: Tuple[FileFilter, ...],
     ) -> Optional[Path]:
         with self._lock:
             queued = self._answers[kind]
@@ -113,6 +139,9 @@ class ScriptedFileDialogs:
                 DialogRequest(
                     kind=kind,
                     title=title,
+                    initial_directory=initial_directory,
+                    suggested_name=suggested_name,
+                    filters=filters,
                     answered=answered,
                     answer=answer,
                 )

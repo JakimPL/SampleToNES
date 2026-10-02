@@ -1,6 +1,6 @@
 import threading
 from dataclasses import dataclass
-from typing import List, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_ERROR, TAG_GLOBAL_WINDOW_MAIN
 from sampletones_application.utils.gui.modal_queue import ModalQueue, ModalQueueSnapshot
@@ -33,9 +33,13 @@ def read_screen_state() -> ScreenState:
     )
 
 
-def quiet_findings(errors: ErrorRecords) -> List[str]:
-    """The errors the application logged or let escape a thread."""
-    return [f"The application reported: {message}" for message in errors.messages]
+def quiet_findings(
+    errors: ErrorRecords,
+    start: int,
+    stop: Optional[int],
+) -> List[str]:
+    """The unprovoked errors the application logged or let escape a thread, from the ``start``-th to the ``stop``-th."""
+    return [f"The application reported: {message}" for message in errors.unclaimed(start, stop)]
 
 
 def surviving_thread_findings(threads: Sequence[threading.Thread]) -> List[str]:

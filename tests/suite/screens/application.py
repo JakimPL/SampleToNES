@@ -117,7 +117,7 @@ class ScreenApplication:
             raise AfterCheckError("\n".join(findings))
 
     def close(self) -> None:
-        findings = quiet_findings(self._boundaries.errors)[self._reported_errors :]
+        findings = quiet_findings(self._boundaries.errors, self._reported_errors, None)
         findings.extend(surviving_thread_findings(_application_threads()))
         if not self._state_path.exists():
             findings.append(f"The application stopped without writing its session state to {self._state_path}")
@@ -126,8 +126,8 @@ class ScreenApplication:
             raise AfterCheckError("\n".join(findings))
 
     def _boundary_findings(self) -> List[str]:
-        quiet = quiet_findings(self._boundaries.errors)
-        self._reported_errors = len(quiet)
+        self._reported_errors = self._boundaries.errors.count
+        quiet = quiet_findings(self._boundaries.errors, 0, self._reported_errors)
         return [
             *quiet,
             *contained_findings(self._boundaries.spawns, self._boundaries.dialogs),

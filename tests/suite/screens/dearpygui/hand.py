@@ -6,7 +6,15 @@ import dearpygui.dearpygui as dpg
 
 from tests.suite.screens.dearpygui.bridge import ONE_FRAME, Bridge, RenderThreadStoppedError
 from tests.suite.screens.dearpygui.geometry import Point
-from tests.suite.screens.dearpygui.items import Item, read_hovered, read_viewport
+from tests.suite.screens.dearpygui.items import (
+    Item,
+    enclosing_regions,
+    read_hovered,
+    read_item,
+    read_scroll,
+    read_viewport,
+    read_visible_box,
+)
 from tests.suite.screens.dearpygui.keys import (
     IMGUI_LEFT_CTRL,
     IMGUI_LEFT_SHIFT,
@@ -26,6 +34,10 @@ SINGLE_PRESS: Final[int] = 1
 DOUBLE_PRESS: Final[int] = 2
 HOVER_ARRIVAL_FRAMES: Final[int] = 5
 REACH_TIMEOUT_SECONDS: Final[float] = 10.0
+WHEEL_FRAMES: Final[int] = 1
+SCROLL_NOTCH_LIMIT: Final[int] = 400
+EDGE_INSET: Final[int] = 3
+DRAG_STEPS: Final[int] = 8
 IMGUI_MOUSE_BUTTONS: Final[Dict[MouseButton, int]] = {
     MouseButton.LEFT: dpg.mvMouseButton_Left,
     MouseButton.RIGHT: dpg.mvMouseButton_Right,
@@ -81,6 +93,61 @@ class Hand:
         self._device.move(self._aim(item))
         self._bridge.frames(HOVER_FRAMES)
         self._confirm_hover(item)
+
+    def wheel(
+        self,
+        item: Item,
+        notches: int,
+    ) -> None:
+        """Rests the pointer over ``item`` and turns the wheel ``notches`` notches, down for a positive count."""
+        self.hover(item)
+        self._turn_wheel(notches)
+        self._settle(SETTLE_FRAMES)
+
+    def scroll_into_view(self, item: Item) -> None:
+        """Turns the wheel over the regions ``item`` scrolls in until the item stands whole in view.
+
+        The nearest region that scrolls is moved first, at its right edge, and the regions around it
+        after. The wheel moves a region that takes it: the first notch shows how far one notch carries
+        the region, and each later turn takes as many notches as the distance left needs, the way a
+        person spins the wheel toward a row. A region the wheel leaves alone is moved by dragging its
+        scrollbar's grip to where the grip stands for the scroll the item needs.
+
+        Raises:
+            UnreachableError: If a region stops moving, or the wheel runs out of turns, first.
+        """
+        for region in self._bridge.ask(lambda: enclosing_regions(item)):
+            self._scroll_within(item, region)
+
+        self._settle(SETTLE_FRAMES)
+
+    def _scroll_within(self, item: Item, region: Item) -> None:
+        notch = 0.0
+        for _ in range(SCROLL_NOTCH_LIMIT):
+            distance = self._bridge.ask(lambda: _distance_from_view(item, region))
+            before = self._bridge.ask(lambda: read_scroll(region))
+            if distance == 0 or before.maximum == 0:
+                return
+
+            if before.by_wheel:
+                self._device.move(self._bridge.ask(lambda: _wheel_point(region)))
+                self._settle(HOVER_FRAMES)
+                notches = max(1, int(abs(distance) // notch)) if notch > 0 else 1
+                self._turn_wheel(notches if distance > 0 else -notches)
+            else:
+                start = self._bridge.ask(lambda: _grip_point(region, before.position))
+                end = self._bridge.ask(lambda: _grip_point(region, before.position + distance))
+                self._drag_between(start, end)
+                notches = 1
+
+            self._settle(ONE_FRAME)
+            after = self._bridge.ask(lambda: read_scroll(region))
+            if after == before:
+                raise UnreachableError(f"{item!r} stays out of view: the region {region!r} stopped at {before}")
+
+            notch = abs(after.position - before.position) / notches
+
+        raise UnreachableError(f"{item!r} stays out of view after {SCROLL_NOTCH_LIMIT} turns of the wheel")
 
     def press_key(
         self,
@@ -146,6 +213,32 @@ class Hand:
             self._settle(RELEASE_FRAMES)
 
         self._settle(SETTLE_FRAMES)
+
+    def _drag_between(self, start: Point, end: Point) -> None:
+        """Presses the left button at ``start``, carries it to ``end`` over a few frames, and lets go there."""
+        self._device.move(start)
+        self._settle(HOVER_FRAMES)
+        self._device.button_down(MouseButton.LEFT)
+        self._settle(HOLD_FRAMES)
+        for step in range(1, DRAG_STEPS + 1):
+            self._device.move(
+                Point(
+                    x=start.x + round((end.x - start.x) * step / DRAG_STEPS),
+                    y=start.y + round((end.y - start.y) * step / DRAG_STEPS),
+                )
+            )
+            self._settle(ONE_FRAME)
+
+        self._device.button_up(MouseButton.LEFT)
+        self._settle(RELEASE_FRAMES)
+
+    def _turn_wheel(self, notches: int) -> None:
+        button = MouseButton.WHEEL_DOWN if notches > 0 else MouseButton.WHEEL_UP
+        for _ in range(abs(notches)):
+            self._device.button_down(button)
+            self._settle(WHEEL_FRAMES)
+            self._device.button_up(button)
+            self._settle(WHEEL_FRAMES)
 
     def _tap(self, keysym: int) -> None:
         self._device.key_down(keysym)
@@ -233,3 +326,61 @@ class Hand:
 
             previous = point
             self._bridge.frames(ONE_FRAME)
+
+
+def _distance_from_view(item: Item, region: Item) -> float:
+    """How far the region must scroll for ``item`` to stand whole in its view: down for a positive distance.
+
+    Runs on the render thread.
+    """
+    item_box = read_item(item).rect
+    region_box = read_item(region).rect
+    if item_box is None or region_box is None:
+        raise UnreachableError(f"{item!r} or the region {region!r} it scrolls in reports no box")
+
+    below = item_box.y + item_box.height - (region_box.y + region_box.height)
+    if below > 0:
+        return below
+    above = item_box.y - region_box.y
+    if above < 0:
+        return above
+
+    return 0.0
+
+
+def _wheel_point(region: Item) -> Point:
+    """A pixel at the right edge of the part of ``region`` left in view, where its scrollbar stands.
+
+    The middle of a region often lies over a smaller region it holds, which would take the wheel;
+    the edge belongs to the region itself. Runs on the render thread.
+    """
+    visible = read_visible_box(region)
+    if visible is None:
+        raise UnreachableError(f"No part of the region {region!r} stands in view to turn the wheel over")
+
+    viewport = read_viewport()
+    return Point(
+        x=round(viewport.x + visible.x + visible.width) - EDGE_INSET,
+        y=round(viewport.y) + visible.center.y,
+    )
+
+
+def _grip_point(region: Item, scroll: float) -> Point:
+    """The pixel at the middle of ``region``'s scrollbar grip while the region stands scrolled to ``scroll``.
+
+    The grip spans the share of the content the region shows, and travels the rest of the track as
+    the region scrolls from its top to its end. Runs on the render thread.
+    """
+    visible = read_visible_box(region)
+    if visible is None:
+        raise UnreachableError(f"No part of the region {region!r} stands in view to drag its scrollbar")
+
+    reading = read_scroll(region)
+    target = min(max(scroll, 0.0), reading.maximum)
+    grip = visible.height * visible.height / (visible.height + reading.maximum)
+    travel = visible.height - grip
+    viewport = read_viewport()
+    return Point(
+        x=round(viewport.x + visible.x + visible.width) - EDGE_INSET,
+        y=round(viewport.y + visible.y + grip / 2 + travel * target / reading.maximum),
+    )

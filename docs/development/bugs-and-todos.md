@@ -155,3 +155,13 @@ currently out of line. An entry leaves when the code meets the contract again.
   session and asks the audio device manager for its current device, and with no device selected it
   raises `ValueError: No audio device selected`. The screen scenario in `tests/screens/test_leaving.py`
   reproduces it as a known failure.
+* A project stating a data version no upgrade step reaches is refused by its shape, not by its version.
+  `ProjectContainer.load` validates the document before `_validate_document` compares the version, so
+  the user reads a list of validation errors instead of the version mismatch a reconstruction reports.
+  `tests/integration/compatibility/test_project.py` and the screen scenario in
+  `tests/screens/application/test_old_files.py` reproduce it as known failures.
+* Leaving keeps the last dialog folder a run found deleted. A dialog opens in the nearest folder still
+  standing, while `state.yaml` goes on naming the deleted one. `tests/screens/application/test_restart.py`
+  reproduces it as a known failure.
+* Leaving keeps a starred file a run found deleted: `config.yaml` goes on naming it among the favorites.
+  `tests/screens/application/test_restart.py` reproduces it as a known failure.

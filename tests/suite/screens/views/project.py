@@ -2,6 +2,7 @@ from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON,
+    TAG_GLOBAL_DIALOG_PROJECT_OPEN,
     TAG_GLOBAL_DIALOG_PROJECT_SAVED,
     TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
 )
@@ -61,6 +62,11 @@ class Project:
         self.properties = ProjectProperties(bridge, hand, menu)
         self.unsaved_prompt = Prompt(bridge, hand, TAG_GLOBAL_DIALOG_PROJECT_UNSAVED)
         self.saved_notice = Prompt(bridge, hand, TAG_GLOBAL_DIALOG_PROJECT_SAVED)
+        self.replace_prompt = Prompt(bridge, hand, TAG_GLOBAL_DIALOG_PROJECT_OPEN)
+
+    def open(self) -> None:
+        """Chooses File ▸ Open project, which asks for a file."""
+        self._menu.choose(MenuElements.GROUP_FILE, MenuElements.ITEM_FILE_OPEN_PROJECT)
 
     def create(self) -> None:
         """Starts a new project from File ▸ New project."""

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Final, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Final, List, Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -8,8 +8,11 @@ from tests.suite.screens.dearpygui.geometry import Rect
 Item = Union[int, str]
 
 WINDOW_TYPE: Final[str] = "mvAppItemType::mvWindowAppItem"
+CHILD_WINDOW_TYPE: Final[str] = "mvAppItemType::mvChildWindow"
+TREE_NODE_TYPE: Final[str] = "mvAppItemType::mvTreeNode"
 MENU_TYPE: Final[str] = "mvAppItemType::mvMenu"
 MENU_ITEM_TYPE: Final[str] = "mvAppItemType::mvMenuItem"
+TEXT_TYPE: Final[str] = "mvAppItemType::mvText"
 TAG_SEPARATOR: Final[str] = "."
 
 
@@ -22,7 +25,7 @@ class ItemReading:
         exists: Whether the item is in the context at all.
         shown: Whether the item and every container around it are shown.
         visible: Whether the item was drawn inside its clip region in the last frame.
-        enabled: Whether the item answers a press.
+        enabled: Whether the item and every container around it answer a press.
         rect: The item's box on the screen, where its kind reports one.
     """
 
@@ -32,6 +35,21 @@ class ItemReading:
     visible: bool
     enabled: bool
     rect: Optional[Rect]
+
+
+@dataclass(frozen=True)
+class ScrollReading:
+    """How far a region that scrolls stands from its top, how far it can go, in pixels, and what moves it.
+
+    Attributes:
+        position: How far the region is scrolled down.
+        maximum: How far the region can scroll down.
+        by_wheel: Whether the wheel scrolls the region, or its scrollbar alone does.
+    """
+
+    position: float
+    maximum: float
+    by_wheel: bool
 
 
 @dataclass(frozen=True)
@@ -72,7 +90,7 @@ def read_item(item: Item) -> ItemReading:
         exists=True,
         shown=_shown_with_ancestors(item),
         visible=bool(state.get("visible", True)),
-        enabled=bool(configuration.get("enabled", True)),
+        enabled=bool(configuration.get("enabled", True)) and _enabled_ancestors(item),
         rect=_rect(item, state),
     )
 
@@ -98,6 +116,70 @@ def read_windows() -> Tuple[WindowReading, ...]:
     return tuple(windows)
 
 
+def read_scroll(region: Item) -> ScrollReading:
+    """How far ``region`` is scrolled down. Runs on the render thread."""
+    return ScrollReading(
+        position=dpg.get_y_scroll(region),
+        maximum=dpg.get_y_scroll_max(region),
+        by_wheel=not dpg.get_item_configuration(region).get("no_scroll_with_mouse", False),
+    )
+
+
+def enclosing_regions(item: Item) -> Tuple[Item, ...]:
+    """The regions around ``item`` that clip what they hold, the nearest first. Runs on the render thread."""
+    regions: List[Item] = []
+    parent = dpg.get_item_parent(item)
+    while parent is not None:
+        if dpg.get_item_info(parent)["type"] == CHILD_WINDOW_TYPE:
+            regions.append(parent)
+
+        parent = dpg.get_item_parent(parent)
+
+    return tuple(regions)
+
+
+def read_visible_box(item: Item) -> Optional[Rect]:
+    """The part of ``item``'s box the regions around it and the viewport leave in view. Runs on the render thread."""
+    box = read_item(item).rect
+    for region in enclosing_regions(item):
+        region_box = read_item(region).rect
+        if box is None or region_box is None:
+            return None
+
+        box = box.overlap(region_box)
+
+    return box.overlap(read_client_area()) if box is not None else None
+
+
+def read_table(table: Item) -> Tuple[Tuple[Tuple[Item, ...], ...], ...]:
+    """The items inside each cell of each row of ``table``, row by row. Runs on the render thread.
+
+    A table keeps its columns in one slot of children and its rows in another, and each row holds
+    one cell per column, whatever item the cell carries.
+    """
+    rows = dpg.get_item_info(table)["children"][1]
+    return tuple(
+        tuple(tuple(dpg.get_item_info(cell)["children"][1]) for cell in dpg.get_item_info(row)["children"][1])
+        for row in rows
+    )
+
+
+def find_item(
+    container: Item,
+    matches: Callable[[Item], bool],
+) -> Optional[Item]:
+    """The first item under ``container``, in the order they are drawn, that ``matches`` accepts. Runs on the render thread."""
+    pending: List[Item] = [container]
+    while pending:
+        item = pending.pop(0)
+        if matches(item):
+            return item
+
+        pending[:0] = [child for children in dpg.get_item_info(item)["children"].values() for child in children]
+
+    return None
+
+
 def read_hovered(item: Item) -> Optional[bool]:
     """Whether the pointer rested on ``item`` in the last frame, or ``None`` for a kind reporting no hover.
 
@@ -111,6 +193,15 @@ def read_hovered(item: Item) -> Optional[bool]:
     return bool(state["hovered"])
 
 
+def read_theme(item: Item) -> Optional[str]:
+    """The tag of the theme bound to ``item``, if one is. Runs on the render thread."""
+    theme = dpg.get_item_info(item)["theme"]
+    if theme is None:
+        return None
+
+    return str(dpg.get_item_alias(theme))
+
+
 def read_label(item: Item) -> str:
     """The label ``item`` carries. Runs on the render thread."""
     return str(dpg.get_item_label(item) or "")
@@ -119,6 +210,36 @@ def read_label(item: Item) -> str:
 def read_value(item: Item) -> Any:
     """The value ``item`` holds, whatever kind the item keeps. Runs on the render thread."""
     return dpg.get_value(item)
+
+
+def read_shown_texts(container: Item) -> Tuple[str, ...]:
+    """The words of every shown text item under ``container``, in the order they are drawn. Runs on the render thread."""
+    return _texts(container, shown_only=True)
+
+
+def read_texts(container: Item) -> Tuple[str, ...]:
+    """The words of every text item under ``container``, shown or waiting to be, such as a tooltip's.
+
+    Runs on the render thread.
+    """
+    return _texts(container, shown_only=False)
+
+
+def _texts(container: Item, *, shown_only: bool) -> Tuple[str, ...]:
+    texts: List[str] = []
+    pending: List[Item] = [container]
+    while pending:
+        item = pending.pop(0)
+        if shown_only and not dpg.is_item_shown(item):
+            continue
+
+        info = dpg.get_item_info(item)
+        if info["type"] == TEXT_TYPE:
+            texts.append(str(dpg.get_value(item)))
+
+        pending[:0] = [child for children in info["children"].values() for child in children]
+
+    return tuple(texts)
 
 
 def find_labelled(
@@ -163,6 +284,11 @@ def read_viewport() -> Rect:
     )
 
 
+def read_viewport_title() -> str:
+    """The title the viewport's window carries in its title bar. Runs on the render thread."""
+    return str(dpg.get_viewport_title())
+
+
 def read_client_area() -> Rect:
     """The viewport's client area in the coordinates its items report. Runs on the render thread."""
     return Rect(
@@ -189,14 +315,58 @@ def _shown_with_ancestors(tag: Item) -> bool:
     return True
 
 
+def _enabled_ancestors(tag: Item) -> bool:
+    parent = dpg.get_item_parent(tag)
+    while parent is not None:
+        if not dpg.get_item_configuration(parent).get("enabled", True):
+            return False
+
+        parent = dpg.get_item_parent(parent)
+
+    return True
+
+
 def _rect(item: Item, state: Dict[str, Any]) -> Optional[Rect]:
     if "rect_min" in state:
         return Rect.of(state["rect_min"], state["rect_size"])
 
-    if dpg.get_item_info(item)["type"] == WINDOW_TYPE:
+    item_type = dpg.get_item_info(item)["type"]
+    if item_type == WINDOW_TYPE:
         return _window_rect(item)
+    if item_type == CHILD_WINDOW_TYPE:
+        return Rect.of(_child_window_corner(item), state["rect_size"])
 
     return None
+
+
+def _child_window_corner(child: Item) -> Tuple[float, float]:
+    """Where a child window stands on the screen.
+
+    DearPyGui reports a child window's position in the content of the window holding it, which
+    scrolls, so the corner is that window's own corner moved by the position and back by the scroll.
+    """
+    container = _containing_window(child)
+    if dpg.get_item_info(container)["type"] == WINDOW_TYPE:
+        corner = dpg.get_item_pos(container)
+    else:
+        corner = _child_window_corner(container)
+
+    position = dpg.get_item_state(child)["pos"]
+    return (
+        corner[0] + position[0] - dpg.get_x_scroll(container),
+        corner[1] + position[1] - dpg.get_y_scroll(container),
+    )
+
+
+def _containing_window(item: Item) -> Item:
+    parent: Optional[Item] = dpg.get_item_parent(item)
+    while parent is not None and dpg.get_item_info(parent)["type"] not in (WINDOW_TYPE, CHILD_WINDOW_TYPE):
+        parent = dpg.get_item_parent(parent)
+
+    if parent is None:
+        raise LookupError(f"{item!r} stands in no window")
+
+    return parent
 
 
 def _window_rect(window: Item) -> Rect:

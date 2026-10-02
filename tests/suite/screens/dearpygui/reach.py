@@ -3,7 +3,14 @@ from typing import Optional
 import dearpygui.dearpygui as dpg
 
 from tests.suite.screens.dearpygui.geometry import Rect
-from tests.suite.screens.dearpygui.items import Item, ItemReading, read_client_area, read_item, read_windows
+from tests.suite.screens.dearpygui.items import (
+    Item,
+    ItemReading,
+    read_client_area,
+    read_item,
+    read_visible_box,
+    read_windows,
+)
 
 
 class UnreachableError(AssertionError):
@@ -14,8 +21,8 @@ def reachable(item: Item) -> Rect:
     """The box of ``item``, once it stands where a user could press it. Runs on the render thread.
 
     A control is in reach when it exists, it and every container around it are shown, it was drawn
-    in the last frame, it answers a press, its box lies inside the viewport, and no modal window of
-    another tree holds the screen.
+    in the last frame, it answers a press, its box lies inside the viewport, its middle lies in the
+    part the regions around it leave in view, and no modal window of another tree holds the screen.
 
     Raises:
         UnreachableError: Naming the first condition the control misses.
@@ -42,6 +49,10 @@ def _refusal(reading: ItemReading) -> Optional[str]:
         return "its kind reports no box to press"
     if not read_client_area().contains(reading.rect):
         return f"its box {reading.rect} reaches outside the viewport"
+
+    visible = read_visible_box(reading.item)
+    if visible is None or not visible.holds(reading.rect.center):
+        return "its middle lies outside the part the regions around it leave in view"
 
     covering = covering_modal(reading.item)
     if covering is not None:

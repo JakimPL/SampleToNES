@@ -37,7 +37,9 @@ draws on an X server of its own, so its scenarios take only its own input.
 The `world` fixture says what the home holds before the first frame: the session a previous run left, the
 settings, and the recordings, documents and libraries the scenario works on. Each file is written by the
 model and the manager the application reads it with, so a seeded home is one a real run could have left. A
-scenario class overrides `world` to seed its own.
+scenario class overrides `world` to seed its own. The [compatibility corpus](../../../tests/data/compatibility/README.md)
+supplies the documents a release wrote, whole or damaged: restated at a version no step reaches, cut
+short, or replaced by bytes of another kind.
 
 ### 4. A scenario is written to break the application
 
@@ -75,7 +77,8 @@ only where the count is the contract itself.
 Every scenario is held to the same after-checks. A failing gesture is logged and swallowed so the interface
 keeps running, which is why the checks read the log as well as the screen.
 
-- **Quiet.** The application logged no error and no thread let an exception escape.
+- **Quiet.** The application logged no error and no thread let an exception escape. A scenario that
+  provokes a failure claims the error it provokes, and an error nobody claims still fails it.
 - **Contained.** The application started no program, and every file dialog it opened had an answer
   waiting.
 - **Settled.** No modal conversation is left open, and every window lies inside the viewport.
@@ -108,10 +111,14 @@ queue the application's own workers post to, between two frames ([the render thr
 ## Gestures
 
 A pointer gesture aims at the middle of a control once the control is in reach: it exists, it and every
-container around it are shown, it was drawn in the last frame, it answers a press, its box lies inside the
-viewport, and no modal window of another tree holds the screen. The control must also stand where it stood a
-frame before, since a dialog sized by its content settles its place over its first frames
-([dialogs](dialogs.md)).
+container around it are shown, it was drawn in the last frame, it and every container around it answer a
+press, its box lies inside the viewport, its middle lies in the part the regions around it leave in view, and
+no modal window of another tree holds the screen. The control must also stand where it stood a frame before,
+since a dialog sized by its content settles its place over its first frames ([dialogs](dialogs.md)).
+
+A control in a region that scrolls is brought into view the way a person brings it: the wheel turns over a
+region that takes the wheel, and the grip of a region's scrollbar is dragged where the region ignores the
+wheel.
 
 Keys are pressed on the real keyboard, with modifiers held a frame before the key. A scenario names an
 action by its `ShortcutId`, and the keys come from the scheme in place. The display repeats no held key,

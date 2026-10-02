@@ -1,13 +1,20 @@
 import inspect
 import logging
 import threading
+from dataclasses import dataclass
 from types import CodeType
-from typing import Final, List, Tuple
+from typing import Final, List, Optional, Tuple
 
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_shared.application import SAMPLETONES_NAME
 
 EXIT_JOIN_CODE: Final[CodeType] = SingleThreadExecutor.join_all.__code__
+
+
+@dataclass
+class _ErrorRecord:
+    message: str
+    claimed: bool
 
 
 class ErrorRecords(logging.Handler):
@@ -17,11 +24,14 @@ class ErrorRecords(logging.Handler):
     is why a scenario reads this record: a click that failed this way leaves the screen looking calm.
     The warning that background work outlived the exit's deadline counts as an error too, since the
     teardown destroys what that work still reaches.
+
+    A scenario that provokes a failure claims the error it expects, and every error left unclaimed
+    is one the application reported on its own.
     """
 
     def __init__(self) -> None:
         super().__init__(level=logging.WARNING)
-        self._messages: List[str] = []
+        self._records: List[_ErrorRecord] = []
         self._lock = threading.Lock()
 
     def install(self) -> None:
@@ -29,9 +39,29 @@ class ErrorRecords(logging.Handler):
         threading.excepthook = self._escaped
 
     @property
-    def messages(self) -> Tuple[str, ...]:
+    def count(self) -> int:
+        """How many errors have been recorded, claimed or not."""
         with self._lock:
-            return tuple(self._messages)
+            return len(self._records)
+
+    def unclaimed(
+        self,
+        start: int,
+        stop: Optional[int],
+    ) -> Tuple[str, ...]:
+        """The errors recorded from the ``start``-th up to the ``stop``-th, or on, that no scenario claimed."""
+        with self._lock:
+            return tuple(record.message for record in self._records[start:stop] if not record.claimed)
+
+    def claim(self, naming: str) -> bool:
+        """Takes the first unclaimed error whose message holds ``naming`` as provoked, and says whether one did."""
+        with self._lock:
+            for record in self._records:
+                if not record.claimed and naming in record.message:
+                    record.claimed = True
+                    return True
+
+        return False
 
     def emit(self, record: logging.LogRecord) -> None:
         if record.levelno < logging.ERROR and not _logged_by_the_exit_join():
@@ -45,7 +75,7 @@ class ErrorRecords(logging.Handler):
 
     def _record(self, message: str) -> None:
         with self._lock:
-            self._messages.append(message)
+            self._records.append(_ErrorRecord(message=message, claimed=False))
 
 
 def _logged_by_the_exit_join() -> bool:
