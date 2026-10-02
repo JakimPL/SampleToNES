@@ -12,6 +12,7 @@ from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from tests.suite.screens.boundaries.dialogs import ScriptedFileDialogs
 from tests.suite.screens.boundaries.errors import ErrorRecords
+from tests.suite.screens.boundaries.reveals import FileManagerStandIn
 from tests.suite.screens.boundaries.spawns import SpawnGuard
 from tests.suite.screens.checks import (
     AfterCheckError,
@@ -58,6 +59,7 @@ class Boundaries:
     errors: ErrorRecords
     spawns: SpawnGuard
     holds: Holds
+    file_manager: FileManagerStandIn
 
 
 class ScreenApplication:

@@ -327,7 +327,7 @@ class TestTwoGesturesWaitingOnAHeldRebuild:
             screen.frames(SETTLING_FRAMES)
             assert screen.shown_windows() == ()
             assert screen.title() == titled(screen, marked(OPEN_RECONSTRUCTION.name, unsaved=True))
-            assert reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME) == typed[0]
+            assert reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME) == typed[0]
 
         def leave_letting_it_go(screen: Screen) -> None:
             screen.press_shortcut(ShortcutId.EXIT)
@@ -372,7 +372,7 @@ class TestAFailedRebuildBeforeAClose:
                 titled(screen, marked(OPEN_RECONSTRUCTION.name, unsaved=True)).__eq__,
                 description="the reconstruction left unsaved",
             )
-            standing.append(reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME))
+            standing.append(reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME))
 
             raise_the_first_level_while_held(screen, regeneration_hold, ChannelName.PULSE1)
 
@@ -403,7 +403,7 @@ class TestAFailedRebuildBeforeAClose:
             screen.expect(prompt.is_shown, operator.not_, description="the question answered")
             screen.frames(SETTLING_FRAMES)
             assert screen.shown_windows() == ()
-            assert reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME) == standing[0]
+            assert reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME) == standing[0]
 
         def leave_letting_it_go(screen: Screen) -> None:
             screen.press_shortcut(ShortcutId.EXIT)

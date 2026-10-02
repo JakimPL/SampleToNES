@@ -291,6 +291,29 @@ def read_texts(container: Item) -> Tuple[str, ...]:
     return _texts(container, shown_only=False)
 
 
+def read_theme_colors(theme: Item) -> Tuple[Tuple[float, ...], ...]:
+    """The colors every theme color under ``theme`` holds, in the order they were added. Runs on the render thread."""
+    colors: List[Tuple[float, ...]] = []
+    for component in dpg.get_item_children(theme, 1):
+        for color in dpg.get_item_children(component, 1):
+            colors.append(tuple(float(part) for part in dpg.get_value(color)))
+
+    return tuple(colors)
+
+
+def read_visible_text(words: str) -> bool:
+    """Whether a text item reading ``words`` was drawn in the last frame, such as a tooltip standing open.
+
+    Runs on the render thread.
+    """
+    return any(
+        dpg.get_item_info(item)["type"] == TEXT_TYPE
+        and dpg.get_value(item) == words
+        and bool(dpg.is_item_visible(item))
+        for item in dpg.get_all_items()
+    )
+
+
 def read_shown_labels(container: Item, item_type: str) -> Tuple[str, ...]:
     """The labels of every shown item of ``item_type`` under ``container``, in the order they are drawn.
 

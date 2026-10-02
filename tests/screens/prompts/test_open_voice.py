@@ -164,7 +164,7 @@ class TestTheTabFollowsTheProjectsHistory:
 
         def edit_the_sample(screen: Screen) -> None:
             open_the_sample(screen)
-            drawn["standing"] = reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME)
+            drawn["standing"] = reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME)
 
             drawn["edit"] = raise_the_first_level(screen, ChannelName.PULSE1, title=sample_title(screen, unsaved=True))
 
@@ -174,7 +174,7 @@ class TestTheTabFollowsTheProjectsHistory:
             screen.press_shortcut(ShortcutId.UNDO)
 
             screen.expect(
-                lambda: reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME),
+                lambda: reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME),
                 drawn["standing"].__eq__,
                 description="the edit undone",
             )
@@ -183,7 +183,7 @@ class TestTheTabFollowsTheProjectsHistory:
             screen.press_shortcut(ShortcutId.REDO)
 
             screen.expect(
-                lambda: reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME),
+                lambda: reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME),
                 drawn["edit"].__eq__,
                 description="the edit redone",
             )
@@ -198,7 +198,7 @@ class TestTheTabFollowsTheProjectsHistory:
         def edit_the_instrument(screen: Screen) -> None:
             open_voice(screen, SONG_INSTRUMENT)
             screen.expect(screen.tabs.front, Tab.RECONSTRUCTIONS.__eq__, description="the instrument open")
-            drawn["standing"] = reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME)
+            drawn["standing"] = reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME)
 
             edit_envelope(
                 screen,
@@ -214,7 +214,7 @@ class TestTheTabFollowsTheProjectsHistory:
             screen.press_shortcut(ShortcutId.UNDO)
 
             screen.expect(
-                lambda: reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME),
+                lambda: reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME),
                 drawn["standing"].__eq__,
                 description="the edit undone",
             )
@@ -241,7 +241,7 @@ class TestAVoiceOpenedByADoubleClickHeldAsAPersonHoldsIt:
 
         def read_it_and_put_it_away(screen: Screen) -> None:
             open_the_sample(screen)
-            drawn.append(tuple(reconstructions.envelope(channel, FeatureKey.VOLUME) for channel in PULSES))
+            drawn.append(tuple(reconstructions.instruments.envelope(channel, FeatureKey.VOLUME) for channel in PULSES))
 
             reconstructions.close_from_menu()
 
@@ -253,6 +253,9 @@ class TestAVoiceOpenedByADoubleClickHeldAsAPersonHoldsIt:
             screen.expect(screen.tabs.front, Tab.RECONSTRUCTIONS.__eq__, description="the sample in front")
             screen.frames(PERSONS_HOLD_FRAMES)
             assert screen.title() == sample_title(screen, unsaved=False)
-            assert tuple(reconstructions.envelope(channel, FeatureKey.VOLUME) for channel in PULSES) == drawn[0]
+            assert (
+                tuple(reconstructions.instruments.envelope(channel, FeatureKey.VOLUME) for channel in PULSES)
+                == drawn[0]
+            )
 
         screen.scenario(read_it_and_put_it_away, double_click_it_holding_the_second_press).run()

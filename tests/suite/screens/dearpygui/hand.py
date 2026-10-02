@@ -12,12 +12,14 @@ from tests.suite.screens.dearpygui.items import (
     enclosing_regions,
     read_hovered,
     read_item,
+    read_pointer,
     read_region_view,
     read_scroll,
     read_viewport,
     read_visible_box,
 )
 from tests.suite.screens.dearpygui.keys import (
+    IMGUI_BACKSPACE,
     IMGUI_LEFT_CTRL,
     IMGUI_LEFT_SHIFT,
     IMGUI_LETTER_A,
@@ -34,7 +36,9 @@ RELEASE_FRAMES: Final[int] = 1
 SETTLE_FRAMES: Final[int] = 2
 SINGLE_PRESS: Final[int] = 1
 DOUBLE_PRESS: Final[int] = 2
+TRIPLE_PRESS: Final[int] = 3
 HOVER_ARRIVAL_FRAMES: Final[int] = 5
+ARRIVAL_FRAMES: Final[int] = 10
 REACH_TIMEOUT_SECONDS: Final[float] = 10.0
 WHEEL_FRAMES: Final[int] = 1
 SCROLL_NOTCH_LIMIT: Final[int] = 100
@@ -138,13 +142,30 @@ class Hand:
         The press confirms it reached the application, while what it landed on is for the scenario
         to read from what the press changed.
         """
-        viewport = self._bridge.ask(read_viewport)
-        self._device.move(Point(x=round(viewport.x) + point.x, y=round(viewport.y) + point.y))
+        self._press_at(point, SINGLE_PRESS)
+
+    def double_click_at(self, point: Point) -> None:
+        """Presses the left button twice in quick succession at ``point`` of the viewport."""
+        self._press_at(point, DOUBLE_PRESS)
+
+    def triple_click_at(self, point: Point) -> None:
+        """Presses the left button three times in quick succession at ``point`` of the viewport."""
+        self._press_at(point, TRIPLE_PRESS)
+
+    def move_to(self, point: Point) -> None:
+        """Rests the pointer at ``point`` of the viewport."""
+        self._device.move(self._on_display(point))
         self._settle(HOVER_FRAMES)
-        self._device.button_down(MouseButton.LEFT)
-        self._settle(HOLD_FRAMES)
-        self._confirm(lambda: dpg.is_mouse_button_down(dpg.mvMouseButton_Left), "The left button")
-        self._device.button_up(MouseButton.LEFT)
+
+    def drag(self, start: Point, end: Point) -> None:
+        """Presses the left button at ``start`` of the viewport, carries it to ``end`` over a few frames, and lets go.
+
+        The press is confirmed held as the pointer sets off, so a drag the application never saw
+        fails where it was lost.
+        """
+        self._outlast_a_double_click()
+        self._drag_between(self._on_display(start), self._on_display(end))
+        self._last_release = self._application_seconds()
         self._settle(SETTLE_FRAMES)
 
     def hover(self, item: Item) -> None:
@@ -172,6 +193,16 @@ class Hand:
     ) -> None:
         """Rests the pointer over ``item`` and turns the wheel ``notches`` notches, down for a positive count."""
         self.hover(item)
+        self._turn_wheel(notches)
+        self._settle(SETTLE_FRAMES)
+
+    def wheel_at(
+        self,
+        point: Point,
+        notches: int,
+    ) -> None:
+        """Rests the pointer at viewport point ``point`` and turns the wheel ``notches`` notches, down if positive."""
+        self.move_to(point)
         self._turn_wheel(notches)
         self._settle(SETTLE_FRAMES)
 
@@ -294,9 +325,10 @@ class Hand:
         item: Item,
         text: str,
     ) -> None:
-        """Clicks the field ``item``, selects what it holds, and types ``text`` over it."""
+        """Clicks the field ``item``, selects what it holds, deletes it, and types ``text`` in its place."""
         self.click(item)
         self.press_key(IMGUI_LETTER_A, modifiers=[IMGUI_LEFT_CTRL])
+        self.press_key(IMGUI_BACKSPACE, modifiers=[])
         self.type_text(text)
 
     def type_text(self, text: str) -> None:
@@ -361,21 +393,44 @@ class Hand:
         except RenderThreadStoppedError:
             return None
 
+    def _press_at(self, point: Point, count: int) -> None:
+        self.move_to(point)
+        self._outlast_a_double_click()
+        for _ in range(count):
+            self._press_once(MouseButton.LEFT, HOLD_FRAMES)
+
+        self._last_release = self._application_seconds()
+        self._settle(SETTLE_FRAMES)
+
+    def _on_display(self, point: Point) -> Point:
+        """The display pixel at ``point`` of the viewport."""
+        viewport = self._bridge.ask(read_viewport)
+        return Point(x=round(viewport.x) + point.x, y=round(viewport.y) + point.y)
+
     def _drag_between(self, start: Point, end: Point) -> None:
-        """Presses the left button at ``start``, carries it to ``end`` over a few frames, and lets go there."""
+        """Presses the left button at display pixel ``start``, carries it to ``end`` over a few frames, and lets go.
+
+        Each step waits until the application reads the pointer where the step put it, so every
+        point the drag passes through reaches the application while the button is down, and the
+        pointer rests at ``end`` a few frames before the button comes up, as a person stops before
+        letting go.
+        """
         self._device.move(start)
         self._settle(HOVER_FRAMES)
         self._device.button_down(MouseButton.LEFT)
         self._settle(HOLD_FRAMES)
-        for step in range(1, DRAG_STEPS + 1):
-            self._device.move(
-                Point(
-                    x=start.x + round((end.x - start.x) * step / DRAG_STEPS),
-                    y=start.y + round((end.y - start.y) * step / DRAG_STEPS),
-                )
-            )
-            self._settle(ONE_FRAME)
+        self._confirm(lambda: dpg.is_mouse_button_down(dpg.mvMouseButton_Left), "The left button")
 
+        for step in range(1, DRAG_STEPS + 1):
+            point = Point(
+                x=start.x + round((end.x - start.x) * step / DRAG_STEPS),
+                y=start.y + round((end.y - start.y) * step / DRAG_STEPS),
+            )
+            self._device.move(point)
+            self._settle(ONE_FRAME)
+            self._confirm_pointer(point)
+
+        self._settle(HOLD_FRAMES)
         self._device.button_up(MouseButton.LEFT)
         self._settle(RELEASE_FRAMES)
 
@@ -407,6 +462,25 @@ class Hand:
 
         return False
 
+    def _confirm_pointer(self, point: Point) -> None:
+        """Waits a few frames for the application to read the pointer at display pixel ``point``.
+
+        Raises:
+            GestureLostError: If the application reads the pointer elsewhere throughout.
+        """
+        viewport = self._bridge.ask(read_viewport)
+        expected = Point(x=point.x - round(viewport.x), y=point.y - round(viewport.y))
+        for _ in range(ARRIVAL_FRAMES):
+            try:
+                if self._bridge.ask(read_pointer) == expected:
+                    return
+            except RenderThreadStoppedError:
+                return
+
+            self._settle(ONE_FRAME)
+
+        raise GestureLostError(f"The pointer was moved to {expected} and the application reads it elsewhere")
+
     def _confirm_keys(self, keys: Sequence[int]) -> None:
         for key in keys:
             self._confirm(partial(dpg.is_key_down, key), f"The key {key_name(key)}")
@@ -418,16 +492,22 @@ class Hand:
     ) -> None:
         """Checks that the application reads a held button or key as down, unless the gesture closed it.
 
-        Raises:
-            GestureLostError: If the application reads it as up while it is held.
-        """
-        try:
-            arrived = self._bridge.ask(is_down)
-        except RenderThreadStoppedError:
-            return
+        A display busy with other work hands the press on a few frames late, so the check reads it
+        once a frame for a few frames while it stays held.
 
-        if not arrived:
-            raise GestureLostError(f"{what} is held on the display and the application reads it as up")
+        Raises:
+            GestureLostError: If the application reads it as up throughout.
+        """
+        for _ in range(ARRIVAL_FRAMES):
+            try:
+                if self._bridge.ask(is_down):
+                    return
+            except RenderThreadStoppedError:
+                return
+
+            self._settle(ONE_FRAME)
+
+        raise GestureLostError(f"{what} is held on the display and the application reads it as up")
 
     def _settle(self, count: int) -> None:
         """Lets ``count`` frames pass once a gesture is under way, or none once it closed the application."""

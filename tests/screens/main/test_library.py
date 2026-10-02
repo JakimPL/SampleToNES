@@ -1,6 +1,5 @@
 import operator
 from functools import partial
-from pathlib import Path
 from typing import Final, List
 
 import dearpygui.dearpygui as dpg
@@ -9,14 +8,13 @@ import pytest
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import SpectrumMethod
-from sampletones_core.fft import Window
-from sampletones_core.library.key import InstructionLibraryKey
 from sampletones_core.structures.tree.node import GeneratorNode
 from sampletones_shared.paths.user import LIBRARY_DIRECTORY
 from tests.suite.screens.boundaries.dialogs import DialogKind
 from tests.suite.screens.dearpygui.items import Item, find_item
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds import MiniLibrary, archived_library
+from tests.suite.screens.steps.instructions import library_path, library_row, open_library_row
 from tests.suite.screens.steps.main import home_path
 from tests.suite.screens.world import World, one_worker_config, screen_filling_state
 
@@ -40,11 +38,6 @@ def quick_config() -> Config:
     return config.model_copy(update={"library": library})
 
 
-def library_path(config: Config) -> Path:
-    key = InstructionLibraryKey.create(config.library, Window.from_config(config))
-    return LIBRARY_DIRECTORY / key.filename
-
-
 def library_world(config: Config, *, built: bool) -> World:
     state = screen_filling_state().model_copy(update={"advanced_settings": True})
     return World(
@@ -53,21 +46,6 @@ def library_world(config: Config, *, built: bool) -> World:
         config=config,
         files=(MiniLibrary(config),) if built else (),
     )
-
-
-def library_row(screen: Screen, path: Path) -> Item:
-    library = screen.instructions.library
-    return screen.expect_item(partial(library.row, path.name), description=f"the row of {path.name}")
-
-
-def open_library_row(screen: Screen, row: Item) -> None:
-    """Opens a library's row, which is the click that loads it, closing it first where it stands open."""
-    tree = screen.instructions.library.tree
-    if tree.is_open(row):
-        tree.open_by_click(row)
-        screen.expect(partial(tree.is_open, row), operator.not_, description="the row closed")
-
-    tree.open_by_click(row)
 
 
 def generator_rows(screen: Screen, row: Item) -> List[Item]:
@@ -190,7 +168,7 @@ class TestRegeneratingALibrary:
 
 
 class TestAnotherLibraryFolder:
-    """Advanced settings pointed at another folder lists its libraries; pointed back, the first library returns loaded."""
+    """Advanced settings pointed at another folder lists its libraries; pointed back, the first returns loaded."""
 
     @pytest.fixture
     def world(self) -> World:

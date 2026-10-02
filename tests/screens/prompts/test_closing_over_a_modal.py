@@ -234,7 +234,7 @@ class TestClosingTheWindowWhileAnEditIsOnItsWay:
             assert screen.shown_windows() == ()
 
         def edit_again_after_the_close(screen: Screen) -> None:
-            reconstructions.type_envelope(ChannelName.PULSE1, FeatureKey.VOLUME, first_raised(typed[0]))
+            reconstructions.instruments.type_envelope(ChannelName.PULSE1, FeatureKey.VOLUME, first_raised(typed[0]))
 
             screen.frames(SETTLING_FRAMES)
             assert screen.shown_windows() == ()
@@ -246,7 +246,7 @@ class TestClosingTheWindowWhileAnEditIsOnItsWay:
             prompt.cancel()
             screen.expect(prompt.is_shown, operator.not_, description="the question answered")
             screen.expect(
-                lambda: reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME),
+                lambda: reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME),
                 typed[0].__eq__,
                 description="the field drawing the edit that landed",
             )

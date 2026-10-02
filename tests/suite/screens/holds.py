@@ -172,9 +172,9 @@ class RegenerationHold:
 
     The rebuild waits where the real one runs, so the application draws and answers while the edit
     is on its way, and once released the real rebuild computes the edit's result. The hold lets
-    every rebuild through from its release on. A scenario standing for a rebuild that breaks lets
-    the held rebuilds go as that failure instead, which the service reports the way it reports a
-    rebuild that raised.
+    every rebuild through from its release on, until the scenario holds again. A scenario standing
+    for a rebuild that breaks lets the held rebuilds go as that failure instead, which the service
+    reports the way it reports a rebuild that raised.
     """
 
     def __init__(self) -> None:
@@ -209,6 +209,10 @@ class RegenerationHold:
 
     def release(self) -> None:
         self._released.set()
+
+    def hold_again(self) -> None:
+        """Holds every rebuild asked for from now on, as the hold did before its release."""
+        self._released.clear()
 
     def fail(self, failure: Exception) -> None:
         """Lets every held rebuild, and every one asked for after, go as ``failure``."""

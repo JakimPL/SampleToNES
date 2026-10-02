@@ -2,14 +2,16 @@ import shutil
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Final
+from typing import Dict, Final, List, Tuple
 
 import numpy as np
 import soundfile
 
 from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.configs import Config, InstructionsLibraryConfig
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import Window
+from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
 from sampletones_core.library.key import InstructionLibraryKey
 from sampletones_core.project import ProjectContainer
 from sampletones_core.project.project import Project
@@ -18,6 +20,7 @@ from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.compatibility import ARCHIVED_VERSIONS, archived, restated_document, stored_document
 from tests.suite.library import build_served_library
+from tests.suite.stems import recorded_from, single_entry_stems_data
 
 FOREIGN_BYTES: Final[bytes] = b"These bytes were written by another program and belong to no SampleToNES document.\n"
 TRUNCATED_FRACTION: Final[int] = 2
@@ -27,6 +30,16 @@ RECORDING_AMPLITUDE: Final[float] = 0.5
 STORED_RECORDING_SECONDS: Final[float] = 0.5
 STORED_RECORDING_FREQUENCY: Final[float] = 220.0
 AUDIO_PATH_FIELD: Final[str] = "audio_filepath"
+LINE_START_PITCH: Final[int] = 60
+LINE_STEP_FRAMES: Final[int] = 15
+LINE_SPAN: Final[int] = 12
+LINE_VOLUME: Final[int] = 12
+LINE_DUTY_CYCLE: Final[int] = 2
+BASS_PITCH: Final[int] = 45
+BEAT_FRAMES: Final[int] = 15
+BEAT_LENGTH: Final[int] = 3
+BEAT_PERIOD: Final[int] = 4
+BEAT_VOLUME: Final[int] = 10
 
 
 class Damage(StrEnum):
@@ -119,6 +132,58 @@ class StoredProject:
         project.voices.append(Instrument(name=self.instrument))
         self.destination.parent.mkdir(parents=True, exist_ok=True)
         ProjectContainer.save(project, self.destination)
+
+
+@dataclass(frozen=True)
+class PlayableReconstruction:
+    """A reconstruction sounding a rising line on Pulse 1, a bass on the triangle and a beat on the noise.
+
+    Each recording of ``recordings`` plays the ``frames`` frames once, in turn, so the document
+    lasts as long as the recordings laid at those paths, one :class:`Recording` of ``frames`` frames
+    each, and opens with its sources.
+    """
+
+    destination: Path
+    recordings: Tuple[Path, ...]
+    frames: int
+
+    def write(self) -> None:
+        instructions = _playable_instructions(self.frames)
+        reconstruction = Reconstruction.create(
+            instructions=instructions,
+            config=Config(),
+            coefficient=1.0,
+            audio_filepath=self.recordings[:1],
+            stems_data=single_entry_stems_data(list(instructions), instructions),
+        )
+        if len(self.recordings) > 1:
+            reconstruction = recorded_from(reconstruction, self.recordings)
+
+        self.destination.parent.mkdir(parents=True, exist_ok=True)
+        reconstruction.save(self.destination)
+
+
+def _playable_instructions(frames: int) -> Dict[ChannelName, List[InstructionUnion]]:
+    line: List[InstructionUnion] = [
+        PulseInstruction(
+            on=True,
+            pitch=LINE_START_PITCH + (frame // LINE_STEP_FRAMES) % LINE_SPAN,
+            volume=LINE_VOLUME,
+            duty_cycle=LINE_DUTY_CYCLE,
+        )
+        for frame in range(frames)
+    ]
+    bass: List[InstructionUnion] = [TriangleInstruction(on=True, pitch=BASS_PITCH) for _ in range(frames)]
+    beat: List[InstructionUnion] = [
+        NoiseInstruction(
+            on=frame % BEAT_FRAMES < BEAT_LENGTH,
+            period=BEAT_PERIOD,
+            volume=BEAT_VOLUME if frame % BEAT_FRAMES < BEAT_LENGTH else 0,
+            short=False,
+        )
+        for frame in range(frames)
+    ]
+    return {ChannelName.PULSE1: line, ChannelName.TRIANGLE: bass, ChannelName.NOISE: beat}
 
 
 def stored_recording() -> Recording:

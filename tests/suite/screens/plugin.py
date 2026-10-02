@@ -10,6 +10,7 @@ from tests.suite.screens.application import NOTHING_TO_OPEN, Boundaries, ScreenA
 from tests.suite.screens.boundaries.audio import OutputDevice, provide_output_device
 from tests.suite.screens.boundaries.dialogs import ScriptedFileDialogs
 from tests.suite.screens.boundaries.errors import ErrorRecords
+from tests.suite.screens.boundaries.reveals import FileManagerStandIn
 from tests.suite.screens.boundaries.spawns import SpawnGuard
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.display import VirtualDisplay
@@ -39,6 +40,8 @@ REPORT_RECORDER_NAME: Final[str] = "screens-report-recorder"
 CONVERSION_RELEASE_FILE: Final[str] = "release-conversion"
 SCAN_RELEASE_FILE: Final[str] = "release-scan"
 SCAN_ENTRY_SECONDS: Final[float] = 0.05
+STAND_IN_PROGRAMS: Final[str] = "programs"
+REVEALS_FILE: Final[str] = "reveals.log"
 SCREEN_APPLICATION_FIXTURE: Final[str] = "screen_application"
 DISPLAY_KEY: Final[pytest.StashKey[VirtualDisplay]] = pytest.StashKey()
 DISPLAY_NAME_KEY: Final[pytest.StashKey[str]] = pytest.StashKey()
@@ -211,8 +214,12 @@ def screen_boundaries(
     dialogs.install(monkeypatch)
     errors = ErrorRecords()
     errors.install()
+    artifacts = Path(os.environ[ARTIFACTS_VARIABLE])
+    file_manager = FileManagerStandIn(artifacts / STAND_IN_PROGRAMS, artifacts / REVEALS_FILE)
+    file_manager.install(monkeypatch)
     spawns = SpawnGuard()
     spawns.install()
+    spawns.allow(file_manager.folder)
     provide_output_device(
         output_device,
         home=Path.home(),
@@ -223,6 +230,7 @@ def screen_boundaries(
         errors=errors,
         spawns=spawns,
         holds=screen_holds,
+        file_manager=file_manager,
     )
 
 
@@ -271,6 +279,7 @@ def screen(
         shortcuts=screen_application.shortcuts,
         dialogs=screen_boundaries.dialogs,
         errors=screen_boundaries.errors,
+        file_manager=screen_boundaries.file_manager,
         artifacts=Path(os.environ[ARTIFACTS_VARIABLE]),
     )
     window_manager.close()

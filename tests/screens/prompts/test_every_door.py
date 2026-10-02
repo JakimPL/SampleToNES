@@ -149,7 +149,7 @@ def standing(screen: Screen) -> Standing:
     return Standing(
         title=screen.title(),
         file_line=reconstructions.file_line(),
-        volume=reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME),
+        volume=reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME),
         windows=tuple(window.alias for window in screen.shown_windows()),
         dialogs=len(screen.dialog_requests()),
     )
@@ -276,7 +276,7 @@ class TestAnEditedSampleAtEveryDoor:
         def open_the_sample(screen: Screen) -> None:
             open_voice(screen, SONG_SAMPLE)
             expect_title(screen, sample_open())
-            assert reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME) == edit[0]
+            assert reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME) == edit[0]
 
         def edit_the_sample(screen: Screen) -> None:
             open_voice(screen, SONG_SAMPLE)
@@ -303,7 +303,7 @@ class TestAnEditedSampleAtEveryDoor:
         def another_voice_opens_at_once(screen: Screen) -> None:
             knock(screen, Door.VOICE_MENU, voice=SONG_INSTRUMENT)
 
-            screen.expect(reconstructions.offers_audition, bool, description="the instrument open")
+            screen.expect(reconstructions.instruments.offers_audition, bool, description="the instrument open")
             assert screen.title() == titled(screen, marked(SONG.stem, unsaved=True))
             nothing_asked(screen)
             open_the_sample(screen)
@@ -366,16 +366,16 @@ class TestAnInstrumentAtEveryDoor:
 
         def open_the_instrument(screen: Screen) -> None:
             open_voice(screen, SONG_INSTRUMENT)
-            screen.expect(reconstructions.offers_audition, bool, description="the instrument open")
+            screen.expect(reconstructions.instruments.offers_audition, bool, description="the instrument open")
             screen.expect(
-                lambda: reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME),
+                lambda: reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME),
                 FADING.__eq__,
                 description="its edit drawn",
             )
 
         def edit_the_instrument(screen: Screen) -> None:
             open_voice(screen, SONG_INSTRUMENT)
-            screen.expect(reconstructions.offers_audition, bool, description="the instrument open")
+            screen.expect(reconstructions.instruments.offers_audition, bool, description="the instrument open")
 
             edit_envelope(screen, channel=ChannelName.PULSE1, feature=FeatureKey.VOLUME, sequence=FADING, title=edited)
 
@@ -383,7 +383,7 @@ class TestAnInstrumentAtEveryDoor:
             knock(screen, Door.BROWSER, voice=SONG_SAMPLE)
 
             expect_title(screen, titled(screen, marked(SONG.stem, unsaved=True), OTHER_RECONSTRUCTION.name))
-            assert not reconstructions.offers_audition()
+            assert not reconstructions.instruments.offers_audition()
             nothing_asked(screen)
             open_the_instrument(screen)
 
@@ -400,7 +400,7 @@ class TestAnInstrumentAtEveryDoor:
             knock(screen, Door.VOICE_MENU, voice=SONG_SAMPLE)
 
             expect_title(screen, voice_title(screen, SONG.stem, SAMPLE_ORDINAL, SONG_SAMPLE, unsaved=True))
-            assert not reconstructions.offers_audition()
+            assert not reconstructions.instruments.offers_audition()
             nothing_asked(screen)
             open_the_instrument(screen)
 
@@ -410,8 +410,8 @@ class TestAnInstrumentAtEveryDoor:
             screen.press_shortcut(ShortcutId.CLOSE_RECONSTRUCTION)
 
             nothing_asked(screen)
-            assert reconstructions.offers_audition()
-            assert reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME) == FADING
+            assert reconstructions.instruments.offers_audition()
+            assert reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME) == FADING
             assert screen.title() == edited
 
         def the_conversion_loads_at_once(screen: Screen) -> None:
@@ -432,7 +432,7 @@ class TestAnInstrumentAtEveryDoor:
                 prompt.cancel()
                 screen.expect(prompt.is_shown, operator.not_, description="the question taken back")
                 screen.frames(SETTLING_FRAMES)
-                assert reconstructions.offers_audition()
+                assert reconstructions.instruments.offers_audition()
 
             step.__name__ = f"{door.value}_asks_about_the_project"
             return step

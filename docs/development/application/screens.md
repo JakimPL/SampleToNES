@@ -131,8 +131,10 @@ brings under a button still down.
 
 A gesture confirms that it arrived. Before a button goes down, the control must report the pointer resting
 on it: DearPyGui calls a control visible while the region it scrolls in clips it, and a press there lands
-on something else. While a button or a named key is held, the application must read it as down. A press
-lost on the way fails where it was lost.
+on something else. While a button or a named key is held, the application must read it as down within a
+few frames, since a busy display hands input on late. Each step of a drag waits until the application
+reads the pointer where the step put it, and the pointer rests at the end before the button comes up, as
+a person stops before letting go. A press lost on the way fails where it was lost.
 
 DearPyGui reports a position alone for a menu entry, so choosing one runs its callback the way a click does,
 through the queue's own error reporting.
@@ -150,7 +152,11 @@ and a scenario reads as the gestures a user makes.
 - **Audio.** The default output device plays into silence in real time, so playback runs and nothing is
   heard. A scenario can start on a machine offering no device at all.
 - **Programs.** An audit hook refuses every program the application tries to start: a file manager, a
-  browser or a dialog tool would open on the desktop around the run. A shared library lookup passes.
+  browser or a dialog tool would open on the desktop around the run. A shared library lookup passes, and
+  so do the stand-ins below.
+- **The file manager.** Stand-in programs lead the search path: `xdg-mime` names a file manager, and that
+  file manager and `xdg-open` note each path they are asked to show. The application's own reveal code
+  runs, and `screen.revealed()` reads what it showed.
 - **The window manager.** The scenario's X server runs none, so `screen.close_window()` sends the request
   a title bar's close button sends.
 

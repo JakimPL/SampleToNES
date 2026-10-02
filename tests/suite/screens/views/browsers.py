@@ -3,7 +3,8 @@ from typing import Callable, List, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_core.structures.tree.node import FileSystemNode, LibraryNode, TreeNode
+from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.structures.tree.node import FileSystemNode, GeneratorNode, LibraryNode, TreeNode
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
 from tests.suite.screens.dearpygui.items import TREE_NODE_TYPE, Item, find_item, read_label
@@ -34,7 +35,7 @@ class FileTree:
         return self._row(lambda node: isinstance(node, FileSystemNode) and node.filepath == path)
 
     def file_rows(self, path: Path) -> List[Item]:
-        """Every row naming the file at ``path``, which a browser listing it under several headings draws more than once."""
+        """Every row naming the file at ``path``, which a browser listing it under several headings draws again."""
 
         def rows() -> List[Item]:
             found: List[Item] = []
@@ -42,6 +43,10 @@ class FileTree:
             return found
 
         return self._bridge.ask(rows)
+
+    def generator_row(self, generator: GeneratorName) -> Optional[Item]:
+        """The first row standing for ``generator``, if one is drawn."""
+        return self._row(lambda node: isinstance(node, GeneratorNode) and node.generator_name == generator)
 
     def library_row(self, matches: Callable[[LibraryNode], bool]) -> Optional[Item]:
         """The first row standing for a library ``matches`` accepts, if one is drawn."""

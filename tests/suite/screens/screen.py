@@ -2,19 +2,25 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Callable, Final, Iterator, Optional, Tuple, TypeVar, Union
 
+from sampletones_application.categories.context import generator_label
 from sampletones_application.categories.key.text import TextKeyTuple
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
+    SUF_BUTTON,
     TAG_GLOBAL_DIALOG_ERROR,
     TAG_GLOBAL_DIALOG_FILE_NOT_FOUND,
+    TAG_GLOBAL_STATUS_BAR,
     TAG_GLOBAL_WINDOW_MAIN,
 )
 from sampletones_application.tags.main import TAG_MAIN_EXPLORER_TREE
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_core.constants.enums import GeneratorName
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
 from tests.suite.screens.boundaries.dialogs import DialogKind, DialogRequest, ScriptedFileDialogs
 from tests.suite.screens.boundaries.errors import ErrorRecords
+from tests.suite.screens.boundaries.reveals import FileManagerStandIn
 from tests.suite.screens.dearpygui.bridge import Bridge, ExpectationError
 from tests.suite.screens.dearpygui.geometry import Point
 from tests.suite.screens.dearpygui.hand import Hand
@@ -22,9 +28,11 @@ from tests.suite.screens.dearpygui.items import (
     Item,
     WindowReading,
     read_item_count,
+    read_label,
     read_pointer,
     read_theme,
     read_viewport_title,
+    read_visible_text,
     read_windows,
 )
 from tests.suite.screens.dearpygui.recording import FrameRecording
@@ -50,6 +58,7 @@ ReadingT = TypeVar("ReadingT")
 EXPECT_TIMEOUT_SECONDS: Final[float] = 10.0
 STEP_SEPARATOR: Final[str] = " → "
 SCREENSHOT_SUFFIX: Final[str] = ".png"
+STATUS_BAR: Final[str] = compose_tag(TAG_GLOBAL_STATUS_BAR, SUF_BUTTON)
 
 
 class Screen:
@@ -72,6 +81,7 @@ class Screen:
         shortcuts: ShortcutManager,
         dialogs: ScriptedFileDialogs,
         errors: ErrorRecords,
+        file_manager: FileManagerStandIn,
         artifacts: Path,
     ) -> None:
         self.bridge = bridge
@@ -81,6 +91,7 @@ class Screen:
         self._shortcuts = shortcuts
         self._dialogs = dialogs
         self._errors = errors
+        self._file_manager = file_manager
         self._artifacts = artifacts
         self._language = language
         self.tabs = Tabs(bridge, hand)
@@ -115,6 +126,18 @@ class Screen:
     def words(self, key: Union[str, TextKeyTuple]) -> str:
         """What the language file says under ``key``, which is what the application shows the user."""
         return self._language[key]
+
+    def generator_words(self, generator: GeneratorName) -> str:
+        """The words the application names ``generator`` by wherever it offers one."""
+        return generator_label(self._language, generator)
+
+    def status(self) -> str:
+        """What the status bar along the bottom of the window says."""
+        return self.bridge.ask(lambda: read_label(STATUS_BAR))
+
+    def shows_text(self, words: str) -> bool:
+        """Whether text reading ``words`` was drawn in the last frame, such as a tooltip standing open."""
+        return self.bridge.ask(lambda: read_visible_text(words))
 
     def expect_item(
         self,
@@ -185,6 +208,10 @@ class Screen:
     def dialog_requests(self) -> Tuple[DialogRequest, ...]:
         """Every file dialog the application opened so far, in order."""
         return self._dialogs.requests
+
+    def revealed(self) -> Tuple[Path, ...]:
+        """Every path the application asked the desktop's file manager to show, in order."""
+        return self._file_manager.shown()
 
     def shown_windows(self) -> Tuple[WindowReading, ...]:
         """Every window standing on the screen besides the application's main one."""

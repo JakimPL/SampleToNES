@@ -11,7 +11,14 @@ from sampletones_application.config.session.state.window import ViewportState
 from sampletones_core.configs import Config
 from sampletones_shared.paths.user import CONFIG_PATH, PROJECTS_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 from tests.suite.screens.environment import SCREEN_SIZE
-from tests.suite.screens.seeds import MiniLibrary, Recording, StoredProject, StoredReconstruction, stored_recording
+from tests.suite.screens.seeds import (
+    MiniLibrary,
+    PlayableReconstruction,
+    Recording,
+    StoredProject,
+    StoredReconstruction,
+    stored_recording,
+)
 
 OPEN_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Open.stn"
 OTHER_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Other.stn"
@@ -22,6 +29,16 @@ BASS: Final[str] = "bass.wav"
 LEAD: Final[str] = "lead.wav"
 DOCUMENT_RECORDING_SECONDS: Final[float] = 0.3
 DOCUMENT_RECORDING_FREQUENCY: Final[float] = 220.0
+PLAYABLE_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Playable.stn"
+SECOND_PLAYABLE: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Second.stn"
+STEMS_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Stems.stn"
+SHORT_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Short.stn"
+TAKES: Final[Tuple[str, ...]] = ("take1.wav", "take2.wav", "take3.wav")
+STEM_TAKES: Final[Tuple[str, ...]] = ("stem1.wav", "stem2.wav", "stem3.wav")
+STEM_FRAMES: Final[int] = 60
+PLAYABLE_FRAMES: Final[int] = 600
+FRAMES_PER_SECOND: Final[int] = 60
+TAKE_FREQUENCY: Final[float] = 220.0
 
 
 class HomeFile(Protocol):
@@ -133,4 +150,36 @@ def documents_world() -> World:
             stored_recording(),
             StoredProject(SONG, sample=SONG_SAMPLE, instrument=SONG_INSTRUMENT),
         )
+    )
+
+
+def playing_world() -> World:
+    """A home holding reconstructions that play: two of one recording each, and one of three recordings in turn.
+
+    :data:`PLAYABLE_RECONSTRUCTION` and :data:`SECOND_PLAYABLE` play the first and the second of
+    :data:`TAKES`, the shorter :data:`STEMS_RECONSTRUCTION` plays the three :data:`STEM_TAKES` in
+    turn, and :data:`SHORT_RECONSTRUCTION` plays the first of them alone. The home holds the stored
+    :data:`OPEN_RECONSTRUCTION`, sounding every channel, and the project :data:`SONG` besides.
+    """
+    takes = tuple(Path.cwd() / name for name in TAKES)
+    stem_takes = tuple(Path.cwd() / name for name in STEM_TAKES)
+    recordings = tuple(
+        Recording(destination=take, seconds=frames / FRAMES_PER_SECOND, frequency=TAKE_FREQUENCY * (index + 1))
+        for paths, frames in ((takes, PLAYABLE_FRAMES), (stem_takes, STEM_FRAMES))
+        for index, take in enumerate(paths)
+    )
+    return World(
+        state=screen_filling_state(),
+        application_config=None,
+        config=None,
+        files=(
+            *recordings,
+            PlayableReconstruction(PLAYABLE_RECONSTRUCTION, takes[:1], PLAYABLE_FRAMES),
+            PlayableReconstruction(SECOND_PLAYABLE, takes[1:2], PLAYABLE_FRAMES),
+            PlayableReconstruction(STEMS_RECONSTRUCTION, stem_takes, STEM_FRAMES),
+            PlayableReconstruction(SHORT_RECONSTRUCTION, stem_takes[:1], STEM_FRAMES),
+            StoredReconstruction(OPEN_RECONSTRUCTION),
+            stored_recording(),
+            StoredProject(SONG, sample=SONG_SAMPLE, instrument=SONG_INSTRUMENT),
+        ),
     )

@@ -101,7 +101,7 @@ class TestLoadingAConversionOverAnEditedReconstruction:
             screen.expect(prompt.is_shown, operator.not_, description="the question gone")
             assert screen.title() == edited_title(screen)
             assert reconstructions.shows_open(OPEN_RECONSTRUCTION)
-            assert reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME) == typed[0]
+            assert reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME) == typed[0]
             assert OPEN_RECONSTRUCTION.read_bytes() == stored[0]
 
         def save_writes_the_changes_and_loads_the_next(screen: Screen) -> None:
@@ -179,7 +179,7 @@ class TestAConversionWrittenOverTheOpenFile:
 
             expect_open(screen, converted(home_path(BASS)))
             drawn["converted"] = screen.expect(
-                lambda: reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME),
+                lambda: reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME),
                 bool,
                 description="Pulse 1's volume drawn",
             )
@@ -213,7 +213,7 @@ class TestAConversionWrittenOverTheOpenFile:
 
             screen.expect(prompt.is_shown, operator.not_, description="the question gone")
             assert screen.title() == titled(screen, marked(converted(home_path(BASS)).name, unsaved=True))
-            assert reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME) == drawn["edit"]
+            assert reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME) == drawn["edit"]
 
         def discard_loads_what_the_run_wrote(screen: Screen) -> None:
             convert_over_it(screen)
@@ -225,7 +225,7 @@ class TestAConversionWrittenOverTheOpenFile:
                 titled(screen, converted(home_path(BASS)).name).__eq__,
                 description="the conversion loaded",
             )
-            assert reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME) == drawn["converted"]
+            assert reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME) == drawn["converted"]
 
         screen.scenario(
             convert_and_load,
@@ -249,7 +249,7 @@ class TestReloadingACleanReconstruction:
 
         def change_the_file_behind_it(screen: Screen) -> None:
             expect_open(screen, OPEN_RECONSTRUCTION)
-            standing.append(reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME))
+            standing.append(reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME))
             raise_the_first_level(screen, ChannelName.PULSE1, title=edited_title(screen))
             reconstructions.save_from_menu()
             screen.expect(screen.title, titled(screen, OPEN_RECONSTRUCTION.name).__eq__, description="the save landed")
@@ -260,7 +260,7 @@ class TestReloadingACleanReconstruction:
             load_from_the_browser(screen, OPEN_RECONSTRUCTION)
 
             screen.expect(
-                lambda: reconstructions.envelope(ChannelName.PULSE1, FeatureKey.VOLUME),
+                lambda: reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME),
                 standing[0].__eq__,
                 description="the file as it now stands",
             )

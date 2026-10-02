@@ -74,7 +74,7 @@ def edit_envelope(
 ) -> None:
     """Types ``sequence`` over a channel's envelope and waits for the edit to land, which marks the title ``title``."""
     screen.tabs.bring_to_front(Tab.RECONSTRUCTIONS)
-    screen.reconstructions.type_envelope(channel, feature, sequence)
+    screen.reconstructions.instruments.type_envelope(channel, feature, sequence)
     screen.expect(screen.title, title.__eq__, description=f"the title reading '{title}'")
 
 
@@ -144,7 +144,7 @@ def raise_the_first_level(
     screen.tabs.bring_to_front(Tab.RECONSTRUCTIONS)
     sequence = first_raised(
         screen.expect(
-            lambda: screen.reconstructions.envelope(channel, FeatureKey.VOLUME),
+            lambda: screen.reconstructions.instruments.envelope(channel, FeatureKey.VOLUME),
             bool,
             description=f"the volume of {channel} drawn",
         )
@@ -173,9 +173,9 @@ def raise_the_first_level_while_held(screen: Screen, hold: RegenerationHold, cha
         str: The sequence typed.
     """
     reconstructions = screen.reconstructions
-    sequence = first_raised(reconstructions.envelope(channel, FeatureKey.VOLUME))
+    sequence = first_raised(reconstructions.instruments.envelope(channel, FeatureKey.VOLUME))
 
-    reconstructions.type_envelope(channel, FeatureKey.VOLUME, sequence)
+    reconstructions.instruments.type_envelope(channel, FeatureKey.VOLUME, sequence)
 
     screen.expect(hold.waiting, bool, description="the rebuild held")
     return sequence

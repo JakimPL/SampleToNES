@@ -3,31 +3,33 @@ from pathlib import Path
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
-    SUF_GROUP,
-    SUF_TEXT,
     SUF_TOOLTIP,
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
     TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED,
     TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
 )
-from sampletones_application.tags.graphs import SUF_GRAPH_RAW_DATA
 from sampletones_application.tags.reconstructions import (
+    PRE_RECONSTRUCTION_CHANNEL,
     TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_RECONSTRUCTION_CONFIRMATION,
     TAG_RECONSTRUCTIONS_BROWSER_TREE,
-    TAG_RECONSTRUCTIONS_INSTRUMENTS_RADIO_AUDITION,
-    TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_INPUT_NES_FREQUENCY,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_RECONSTRUCTION_WAVEFORM,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PATH_RECONSTRUCTION_FILE,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_NES_FREQUENCY_LOCKED,
 )
-from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_application.utils.callbacks.queue import CallbackQueue
+from sampletones_core.constants.enums import ChannelName
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
 from tests.suite.screens.dearpygui.items import read_item, read_texts, read_value
-from tests.suite.screens.dearpygui.keys import IMGUI_ENTER
+from tests.suite.screens.dearpygui.semantic import choose
 from tests.suite.screens.views.browsers import FileTree
+from tests.suite.screens.views.instruments import Instruments
 from tests.suite.screens.views.menus import MenuBar
 from tests.suite.screens.views.prompts import Prompt
+from tests.suite.screens.views.stems import StemsCard
+from tests.suite.screens.views.waveform import Waveform
 
 OPEN_FILE_TOOLTIP = compose_tag(TAG_RECONSTRUCTIONS_RECONSTRUCTION_PATH_RECONSTRUCTION_FILE, SUF_TOOLTIP)
 
@@ -54,6 +56,9 @@ class Reconstructions:
         self.replaced_prompt = Prompt(bridge, hand, TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED)
         self.remove_prompt = Prompt(bridge, hand, TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_RECONSTRUCTION_CONFIRMATION)
         self.saved_notice = Prompt(bridge, hand, TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED)
+        self.waveform = Waveform(bridge, hand, TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_RECONSTRUCTION_WAVEFORM)
+        self.instruments = Instruments(bridge, hand)
+        self.stems = StemsCard(bridge, hand)
 
     def open_from_menu(self) -> None:
         """Chooses Reconstruction ▸ Open, which asks for a file."""
@@ -106,33 +111,30 @@ class Reconstructions:
             self._bridge.ask(lambda: read_texts(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_NES_FREQUENCY_LOCKED))
         )
 
-    def offers_audition(self) -> bool:
-        """Whether the Audition switch stands, which it does while a hand-written instrument is open."""
-        return self._bridge.ask(
-            lambda: read_item(compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_RADIO_AUDITION, SUF_GROUP))
-        ).shown
+    def audio_source(self) -> str:
+        """The source the switch above the waveform names: the reconstruction, or the original audio."""
+        return str(self._bridge.ask(lambda: read_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE)))
 
-    def envelope(
-        self,
-        channel: ChannelName,
-        feature: FeatureKey,
-    ) -> str:
-        """The sequence the field under ``channel``'s ``feature`` graph holds, as the reader would edit it."""
-        return str(self._bridge.ask(lambda: read_value(_envelope_field(channel, feature))))
+    def can_choose_audio_source(self) -> bool:
+        return self._bridge.ask(lambda: read_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE)).enabled
 
-    def type_envelope(
-        self,
-        channel: ChannelName,
-        feature: FeatureKey,
-        sequence: str,
-    ) -> None:
-        """Brings ``channel``'s tab forward, types ``sequence`` over its ``feature`` field and presses Enter."""
-        self._hand.click(compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR, channel))
-        field = _envelope_field(channel, feature)
-        self._hand.scroll_into_view(field)
-        self._hand.replace_text(field, sequence)
-        self._hand.press_key(IMGUI_ENTER, modifiers=[])
+    def choose_audio_source(self, label: str) -> None:
+        """Picks the source the switch names ``label``."""
+        self._bridge.ask(
+            lambda: choose(TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE, label, CallbackQueue.run)
+        )
+
+    def channel_ticked(self, channel: ChannelName) -> bool:
+        """Whether the box of ``channel`` above the waveform stands ticked."""
+        return bool(self._bridge.ask(lambda: read_value(_channel_box(channel))))
+
+    def channel_plays(self, channel: ChannelName) -> bool:
+        """Whether the box of ``channel`` answers, which it does for a channel the reconstruction plays."""
+        return self._bridge.ask(lambda: read_item(_channel_box(channel))).enabled
+
+    def tick_channel(self, channel: ChannelName) -> None:
+        self._hand.click(_channel_box(channel))
 
 
-def _envelope_field(channel: ChannelName, feature: FeatureKey) -> str:
-    return compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR, channel, feature, SUF_GRAPH_RAW_DATA, SUF_TEXT)
+def _channel_box(channel: ChannelName) -> str:
+    return compose_tag(PRE_RECONSTRUCTION_CHANNEL, channel.value)

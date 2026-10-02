@@ -1,8 +1,13 @@
-from typing import Optional
+from typing import Final, Optional
+
+import dearpygui.dearpygui as dpg
 
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_BUTTON
+from sampletones_application.tags.graphs import SUF_GRAPH_Y_AXIS
 from sampletones_application.tags.instructions import (
+    TAG_INSTRUCTIONS_INSTRUCTION_PANEL_INSTRUCTION_SPECTRUM,
+    TAG_INSTRUCTIONS_INSTRUCTION_PANEL_INSTRUCTION_WAVEFORM,
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
     TAG_INSTRUCTIONS_LIBRARY_DIALOG_REBUILD_CONFIRMATION,
@@ -17,9 +22,12 @@ from tests.suite.screens.dearpygui.items import Item, read_label, read_value
 from tests.suite.screens.views.browsers import FileTree
 from tests.suite.screens.views.notices import Notice
 from tests.suite.screens.views.prompts import Prompt
+from tests.suite.screens.views.waveform import Waveform
 
 GENERATE_BUTTON = compose_tag(TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY, SUF_BUTTON)
 CANCEL_GENERATION_BUTTON = compose_tag(TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION, SUF_BUTTON)
+SPECTRUM_BANDS = compose_tag(TAG_INSTRUCTIONS_INSTRUCTION_PANEL_INSTRUCTION_SPECTRUM, SUF_GRAPH_Y_AXIS)
+BAR_SERIES_TYPE: Final[str] = "mvAppItemType::mvBarSeries"
 
 
 class Library:
@@ -58,11 +66,25 @@ class Library:
 
 
 class Instructions:
-    """The Instructions tab, as far as scenarios read it."""
+    """The Instructions tab: the library card, and the waveform and spectrum of the instruction picked in it."""
 
     def __init__(
         self,
         bridge: Bridge,
         hand: Hand,
     ) -> None:
+        self._bridge = bridge
         self.library = Library(bridge, hand)
+        self.waveform = Waveform(bridge, hand, TAG_INSTRUCTIONS_INSTRUCTION_PANEL_INSTRUCTION_WAVEFORM)
+
+    def spectrum_bands(self) -> int:
+        """How many bands the spectrum draws."""
+
+        def read() -> int:
+            return sum(
+                1
+                for child in dpg.get_item_children(SPECTRUM_BANDS, 1)
+                if dpg.get_item_info(child)["type"] == BAR_SERIES_TYPE
+            )
+
+        return self._bridge.ask(read)
