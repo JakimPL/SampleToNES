@@ -90,7 +90,9 @@ keeps running, which is why the checks read the log as well as the screen.
   of its own outlives the exit.
 
 A known bug is a case marked `xfail(strict=True)` that names its [ledger](../bugs-and-todos.md) entry. The
-mark makes the run fail once the bug is fixed, until the mark goes.
+mark makes the run fail once the bug is fixed, until the mark goes. A known crash is marked the same way:
+the parent reports a marked scenario whose process a signal killed as the failure it expects, naming the
+signal.
 
 ### 7. The DearPyGui layer knows nothing of SampleToNES
 
@@ -105,7 +107,7 @@ something, and it moves to a project of its own the day a second application wan
 The parent pytest run starts each scenario as a child pytest run of that one test, in a fresh interpreter.
 The child writes its reports as it goes, and the parent reports them as its own, so selecting, rerunning and
 strict expected failures behave as for any test. A child that crashes or runs out of time is reported as a
-failure carrying its output.
+failure carrying its output, unless a crash is the known bug its scenario is marked with.
 
 Inside the child, the application is built on the main thread, where its render loop runs. The scenario
 runs on a thread of its own. Every reading and every gesture crosses to the render thread through the
@@ -150,8 +152,8 @@ A scenario speaks through views, one per tab, card and dialog, under `tests/suit
 knows its controls by their tags and its words by their language keys. A tag that moves changes one view,
 and a scenario reads as the gestures a user makes.
 
-What DearPyGui reports no item for is read from the frame it draws: `screen.frame_pixels()` hands over the
-next frame, which is how a menu popup's width is measured.
+What only the drawn frame shows is read from it: `screen.frame_pixels()` hands over the next frame, which is
+how a menu popup's width is measured.
 
 ## The boundaries
 
@@ -169,9 +171,9 @@ next frame, which is how a menu popup's width is measured.
   runs, and `screen.revealed()` reads what it showed.
 - **The window manager.** The scenario's X server runs none, so `screen.close_window()` sends the request
   a title bar's close button sends.
-- **Table highlights.** DearPyGui keeps a table's row, cell and column highlights without a way to read
-  their color back, so the calls laying and lifting them are wrapped from the first frame on, and
-  `screen.table_highlights()` reads what stands.
+- **Table highlights.** DearPyGui holds a table's row, cell and column highlights as table state and
+  reports whether one stands, so the calls laying and lifting them are wrapped from the first frame on, and
+  `screen.table_highlights()` reads each highlight standing with its color.
 
 ## Holding work in flight
 

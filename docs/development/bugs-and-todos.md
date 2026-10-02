@@ -226,3 +226,7 @@ currently out of line. An entry leaves when the code meets the contract again.
   writes that size: leaving records the live window size, while the dialog keeps the session at the values
   it opened with until OK, and the window manager's close passes the open dialog by.
   `tests/screens/interface/test_display.py` reproduces it as a known failure.
+* Closing the window while a folder is being read crashes the process once the read ends: nothing stops the
+  walk on exit, so it runs past the shutdown, and its report closes the reading window through DearPyGui
+  after the context is gone (SIGSEGV). `tests/screens/application/test_closing.py` reproduces it as a
+  known failure.

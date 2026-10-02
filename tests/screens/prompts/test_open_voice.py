@@ -50,7 +50,7 @@ def open_the_sample(screen: Screen) -> None:
     open_voice(screen, SONG_SAMPLE)
 
     screen.expect(screen.title, sample_title(screen, unsaved=False).__eq__, description="the sample open")
-    assert screen.tabs.front() is Tab.RECONSTRUCTIONS
+    screen.expect(screen.tabs.front, Tab.RECONSTRUCTIONS.__eq__, description="the sample in front")
 
 
 class TestAVoiceDoubleClickedOverAnEditedReconstruction:
@@ -95,7 +95,7 @@ class TestAVoiceDoubleClickedOverAnEditedReconstruction:
             prompt.confirm()
 
             screen.expect(screen.title, sample_title(screen, unsaved=False).__eq__, description="the sample open")
-            assert screen.tabs.front() is Tab.RECONSTRUCTIONS
+            screen.expect(screen.tabs.front, Tab.RECONSTRUCTIONS.__eq__, description="the sample in front")
             assert OPEN_RECONSTRUCTION.read_bytes() == stored[0]
 
         screen.scenario(

@@ -21,6 +21,8 @@ CHILD_ARGUMENTS: Final[Sequence[str]] = (
 )
 OUTPUT_TAIL_CHARACTERS: Final[int] = 20_000
 NODE_SEPARATOR: Final[str] = "::"
+XFAIL_MARKER: Final[str] = "xfail"
+XFAIL_REASON: Final[str] = "reason"
 
 
 @dataclass(frozen=True)
@@ -34,6 +36,11 @@ class ChildRun:
     def crashed(self) -> bool:
         """Whether the process ended by a signal or ran out of time."""
         return self.returncode is None or self.returncode < 0
+
+    @property
+    def killed_by_signal(self) -> bool:
+        """Whether the process ended by a signal, such as a crash."""
+        return self.returncode is not None and self.returncode < 0
 
     @property
     def ending(self) -> str:
@@ -177,6 +184,23 @@ def _missing_report(
     *,
     failed: bool,
 ) -> pytest.TestReport:
+    """The report of a phase the child never wrote, since the process ended first.
+
+    A scenario marked to fail by a known defect, whose process a signal killed, reports that phase as the expected
+    failure it names: a crash is a defect the ledger records like any other.
+    """
+    expected = item.get_closest_marker(XFAIL_MARKER)
+    if failed and child.killed_by_signal and expected is not None:
+        return pytest.TestReport(
+            nodeid=item.nodeid,
+            location=item.location,
+            keywords={keyword: 1 for keyword in item.keywords},
+            outcome="skipped",
+            longrepr=None,
+            when=phase,
+            wasxfail=f"{expected.kwargs.get(XFAIL_REASON, '')} (the process {child.ending})",
+        )
+
     longrepr = None
     if failed:
         longrepr = (
