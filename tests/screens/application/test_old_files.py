@@ -29,11 +29,18 @@ from sampletones_shared.exceptions.reconstruction import (
 )
 from sampletones_shared.paths.user import CONFIG_PATH, LIBRARY_DIRECTORY, PROJECTS_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 from tests.suite.compatibility import ARCHIVED_VERSIONS, archived, stored_document, stored_version
-from tests.suite.screens.application import NOTHING_TO_OPEN, Startup
+from tests.suite.screens.application import Startup
 from tests.suite.screens.boundaries.dialogs import DialogKind
 from tests.suite.screens.dearpygui.items import Item
 from tests.suite.screens.screen import Screen
-from tests.suite.screens.seeds import Damage, Recording, WrittenBytes, archived_document, damaged_document
+from tests.suite.screens.seeds import (
+    Damage,
+    Recording,
+    WrittenBytes,
+    archived_document,
+    damaged_document,
+    stored_recording,
+)
 from tests.suite.screens.views.notices import Notice
 from tests.suite.screens.world import HomeFile, World, screen_filling_state
 
@@ -46,7 +53,6 @@ OLDER_RECONSTRUCTION_VERSION: Final[str] = "2.0"
 OLDER_PROJECT_VERSION: Final[str] = "0.9"
 RECORDING_SECONDS: Final[float] = 0.5
 RECORDING_FREQUENCY: Final[float] = 220.0
-AUDIO_PATH_FIELD: Final[str] = "audio_filepath"
 SAMPLES_FIELD: Final[str] = "samples"
 NAME_FIELD: Final[str] = "name"
 CONFIG_FIELD: Final[str] = "config"
@@ -60,19 +66,6 @@ def future_version(current: str) -> str:
     """A data version past the one this build writes, which no build has written yet."""
     major, _ = current.split(".", 1)
     return f"{int(major) + 1}.0"
-
-
-def stored_recording() -> Recording:
-    """The recording the archived reconstruction names, laid where its relative path leads from the home.
-
-    The application runs in the home, so a relative path the document names resolves there.
-    """
-    document = stored_document(archived(ObjectKind.RECONSTRUCTION, ARCHIVED_VERSIONS[ObjectKind.RECONSTRUCTION]))
-    return Recording(
-        destination=Path.cwd() / document[AUDIO_PATH_FIELD],
-        seconds=RECORDING_SECONDS,
-        frequency=RECORDING_FREQUENCY,
-    )
 
 
 def stored_voice_names() -> List[str]:
@@ -447,7 +440,7 @@ def open_project(screen: Screen, path: Path) -> None:
 
 
 def refused_project(screen: Screen, path: Path) -> str:
-    """Reads the notice refusing ``path``, dismisses it, checks the project open before stands, and returns its words."""
+    """Reads the notice refusing ``path``, dismisses it, checks the project open before stands, returning the words."""
     notice = shown_notice(screen)
     words = notice.words()
     screen.claim_error(path.name)

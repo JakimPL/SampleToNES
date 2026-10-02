@@ -182,3 +182,16 @@ currently out of line. An entry leaves when the code meets the contract again.
 * A library folder pointed away from and back lists its library unloaded: the library loaded before
   reads as one that exists, where it should come back loaded.
   `tests/screens/main/test_library.py` reproduces it as a known failure.
+* A reconstruction whose file the browser removed reads as a sample of the project: the NES frequency
+  field locks with the hint that the project sets its rate, though the document belongs to no
+  project. `tests/screens/prompts/test_vanished.py` reproduces it as a known failure.
+* A voice double-clicked with the second press still held opens edited. The double-click brings the
+  Reconstructions tab forward while the button is down, and the envelope graph that comes under the
+  pointer draws a bar for a press that began on the Voices card. `tests/screens/prompts/test_open_voice.py`
+  reproduces it as a known failure.
+* A Keyboard settings row reads as listening once Cancel answers the reassign question, while no key
+  reaches it: the keys pressed next are taken by nothing, and Escape closes the dialog.
+  `tests/screens/prompts/test_modal_over_modal.py` reproduces it as a known failure.
+* Two closes before the first is answered ask twice: each close puts its question in line, so Cancel
+  on the first brings the second, and so does a close made twice while an edit is on its way.
+  `tests/screens/prompts/test_closing_over_a_modal.py` reproduces it as a known failure.

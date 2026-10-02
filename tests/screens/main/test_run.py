@@ -1,7 +1,6 @@
 import multiprocessing
 import operator
 import shutil
-from functools import partial
 from pathlib import Path
 from typing import Dict, Final, FrozenSet, List, Tuple
 
@@ -16,7 +15,7 @@ from tests.suite.screens.dearpygui.items import read_item
 from tests.suite.screens.holds import ConversionHold
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds import Recording
-from tests.suite.screens.steps.main import explorer_row, gather, home_path
+from tests.suite.screens.steps.main import explorer_row, gather, give_each_its_own_channel, home_path
 from tests.suite.screens.world import HomeFile, World, converting_world
 
 SECONDS: Final[float] = 0.3
@@ -173,20 +172,6 @@ class TestTheLinesOfTheCard:
         screen.scenario(no_input_before_the_run, input_while_it_reads, no_input_after_it).run()
 
 
-def give_each_its_own_channel(screen: Screen, channels: Dict[Path, ChannelName]) -> None:
-    """Leaves each gathered recording the one channel ``channels`` names for it."""
-    listing = screen.main.converter.list
-    for path, keep in channels.items():
-        for channel in ChannelName:
-            if listing.channel_ticked(path, channel) != (channel == keep):
-                listing.tick(path, channel)
-                screen.expect(
-                    partial(listing.channel_ticked, path, channel),
-                    (channel == keep).__eq__,
-                    description=f"{path.name} {channel}",
-                )
-
-
 def written_as(path: Path) -> Path:
     """The one reconstruction a run wrote for the recording at ``path``, wherever below the folder it went."""
     found = [file for file in written(RECONSTRUCTIONS_DIRECTORY) if file.stem == path.stem]
@@ -312,7 +297,7 @@ class TestReplacingWhatARunWrote:
 
 
 class TestReconstructingAFileWhileAListStands:
-    """Reconstruct file with a list gathered asks first: Keep the list converts nothing, Replace it converts that file alone."""
+    """Reconstruct file with a list gathered asks first: Keep the list converts none, Replace it converts the file."""
 
     def test_keep_the_list_then_replace_it(self, screen: Screen) -> None:
         converter = screen.main.converter

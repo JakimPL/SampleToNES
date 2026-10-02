@@ -11,6 +11,11 @@ from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.fft import Window
 from sampletones_core.library.key import InstructionLibraryKey
+from sampletones_core.project import ProjectContainer
+from sampletones_core.project.project import Project
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.sample import Sample
+from sampletones_core.reconstructions import Reconstruction
 from tests.suite.compatibility import ARCHIVED_VERSIONS, archived, restated_document, stored_document
 from tests.suite.library import build_served_library
 
@@ -19,6 +24,9 @@ TRUNCATED_FRACTION: Final[int] = 2
 CONFIG_FIELD: Final[str] = "config"
 RECORDING_SAMPLE_RATE: Final[int] = 44100
 RECORDING_AMPLITUDE: Final[float] = 0.5
+STORED_RECORDING_SECONDS: Final[float] = 0.5
+STORED_RECORDING_FREQUENCY: Final[float] = 220.0
+AUDIO_PATH_FIELD: Final[str] = "audio_filepath"
 
 
 class Damage(StrEnum):
@@ -81,6 +89,53 @@ class MiniLibrary:
     def write(self) -> None:
         library, key = build_served_library(self.config)
         library.save_data(key, library.data[key])
+
+
+@dataclass(frozen=True)
+class StoredReconstruction:
+    """The reconstruction the last release wrote, laid at ``destination`` the way this build writes it.
+
+    It names the recording :func:`stored_recording` lays in the home, so it opens with its source.
+    """
+
+    destination: Path
+
+    def write(self) -> None:
+        self.destination.parent.mkdir(parents=True, exist_ok=True)
+        _stored_reconstruction().save(self.destination)
+
+
+@dataclass(frozen=True)
+class StoredProject:
+    """A project holding the stored reconstruction as the sample ``sample`` and a hand-written ``instrument``."""
+
+    destination: Path
+    sample: str
+    instrument: str
+
+    def write(self) -> None:
+        project = Project.create()
+        project.voices.append(Sample(name=self.sample, reconstruction=_stored_reconstruction()))
+        project.voices.append(Instrument(name=self.instrument))
+        self.destination.parent.mkdir(parents=True, exist_ok=True)
+        ProjectContainer.save(project, self.destination)
+
+
+def stored_recording() -> Recording:
+    """The recording the archived reconstruction names, laid where its relative path leads from the home.
+
+    The application runs in the home, so a relative path the document names resolves there.
+    """
+    document = stored_document(archived(ObjectKind.RECONSTRUCTION, ARCHIVED_VERSIONS[ObjectKind.RECONSTRUCTION]))
+    return Recording(
+        destination=Path.cwd() / document[AUDIO_PATH_FIELD],
+        seconds=STORED_RECORDING_SECONDS,
+        frequency=STORED_RECORDING_FREQUENCY,
+    )
+
+
+def _stored_reconstruction() -> Reconstruction:
+    return Reconstruction.load(archived(ObjectKind.RECONSTRUCTION, ARCHIVED_VERSIONS[ObjectKind.RECONSTRUCTION]))
 
 
 def archived_document(kind: ObjectKind, destination: Path) -> CopiedFile:

@@ -36,6 +36,7 @@ from tests.suite.screens.views.browsers import FileTree
 from tests.suite.screens.views.context_menu import ContextMenu
 from tests.suite.screens.views.display_settings import DisplaySettings
 from tests.suite.screens.views.instructions import Instructions
+from tests.suite.screens.views.keyboard_settings import KeyboardSettings
 from tests.suite.screens.views.main import Main
 from tests.suite.screens.views.menus import MenuBar
 from tests.suite.screens.views.notices import Notice
@@ -85,12 +86,13 @@ class Screen:
         self.tabs = Tabs(bridge, hand)
         self.menu = MenuBar(bridge, language)
         self.display_settings = DisplaySettings(bridge, hand, self.menu)
+        self.keyboard_settings = KeyboardSettings(bridge, hand, self.menu)
         self.project = Project(bridge, hand, self.menu)
         self.main = Main(bridge, hand, language)
         self.context_menu = ContextMenu(bridge, hand)
         self.explorer = FileTree(bridge, hand, TAG_MAIN_EXPLORER_TREE)
         self.reconstructions = Reconstructions(bridge, hand, self.menu)
-        self.sequencer = Sequencer(bridge, self.menu)
+        self.sequencer = Sequencer(bridge, hand, self.menu)
         self.instructions = Instructions(bridge, hand)
         self.error_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_ERROR)
         self.file_not_found_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_FILE_NOT_FOUND)

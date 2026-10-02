@@ -3,10 +3,14 @@ from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_BUTTON
 from sampletones_application.tags.settings import (
     TAG_SETTINGS_DISPLAY_BUTTON_CANCEL,
+    TAG_SETTINGS_DISPLAY_BUTTON_KEEP,
     TAG_SETTINGS_DISPLAY_BUTTON_OK,
+    TAG_SETTINGS_DISPLAY_BUTTON_REVERT,
+    TAG_SETTINGS_DISPLAY_CHECKBOX_BORDERLESS,
     TAG_SETTINGS_DISPLAY_CHECKBOX_VSYNC,
     TAG_SETTINGS_DISPLAY_DIALOG_DISCARD,
     TAG_SETTINGS_DISPLAY_WINDOW,
+    TAG_SETTINGS_DISPLAY_WINDOW_COUNTDOWN,
 )
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
@@ -42,6 +46,26 @@ class DisplaySettings:
 
     def toggle_vsync(self) -> None:
         self._hand.click(TAG_SETTINGS_DISPLAY_CHECKBOX_VSYNC)
+
+    def borderless(self) -> bool:
+        """Whether the borderless box stands ticked."""
+        return bool(self._bridge.ask(lambda: read_value(TAG_SETTINGS_DISPLAY_CHECKBOX_BORDERLESS)))
+
+    def toggle_borderless(self) -> None:
+        """Clicks the borderless box, which changes the window mode and starts the countdown."""
+        self._hand.click(TAG_SETTINGS_DISPLAY_CHECKBOX_BORDERLESS)
+
+    def countdown_shown(self) -> bool:
+        """Whether the countdown asking to keep a new window mode stands."""
+        return self._bridge.ask(lambda: read_item(TAG_SETTINGS_DISPLAY_WINDOW_COUNTDOWN)).shown
+
+    def keep(self) -> None:
+        """Presses Keep on the countdown."""
+        self._hand.click(compose_tag(TAG_SETTINGS_DISPLAY_BUTTON_KEEP, SUF_BUTTON))
+
+    def revert(self) -> None:
+        """Presses Revert on the countdown."""
+        self._hand.click(compose_tag(TAG_SETTINGS_DISPLAY_BUTTON_REVERT, SUF_BUTTON))
 
     def cancel(self) -> None:
         self._hand.click(compose_tag(TAG_SETTINGS_DISPLAY_BUTTON_CANCEL, SUF_BUTTON))

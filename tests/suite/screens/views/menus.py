@@ -4,7 +4,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.tags.general import TAG_GLOBAL_WINDOW_MAIN
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from tests.suite.screens.dearpygui.bridge import Bridge
-from tests.suite.screens.dearpygui.items import MENU_ITEM_TYPE, MENU_TYPE, find_labelled
+from tests.suite.screens.dearpygui.items import MENU_ITEM_TYPE, MENU_TYPE, Item, find_labelled, read_item
 from tests.suite.screens.dearpygui.semantic import invoke
 
 
@@ -30,23 +30,32 @@ class MenuBar:
         item: MenuElements,
     ) -> None:
         """Chooses the entry ``item`` of the menu ``group``."""
-        group_label = self._label(group)
-        item_label = self._label(item)
+        self._bridge.ask(lambda: invoke(self._entry(group, item), CallbackQueue.run))
 
-        def press() -> None:
-            menu = find_labelled(
-                TAG_GLOBAL_WINDOW_MAIN,
-                group_label,
-                item_type=MENU_TYPE,
-            )
-            entry = find_labelled(
-                menu,
-                item_label,
-                item_type=MENU_ITEM_TYPE,
-            )
-            invoke(entry, CallbackQueue.run)
+    def is_enabled(
+        self,
+        group: MenuElements,
+        item: MenuElements,
+    ) -> bool:
+        """Whether the entry ``item`` of the menu ``group`` answers a press."""
+        return self._bridge.ask(lambda: read_item(self._entry(group, item)).enabled)
 
-        self._bridge.ask(press)
+    def _entry(
+        self,
+        group: MenuElements,
+        item: MenuElements,
+    ) -> Item:
+        """The entry ``item`` of the menu ``group``. Runs on the render thread."""
+        menu = find_labelled(
+            TAG_GLOBAL_WINDOW_MAIN,
+            self._label(group),
+            item_type=MENU_TYPE,
+        )
+        return find_labelled(
+            menu,
+            self._label(item),
+            item_type=MENU_ITEM_TYPE,
+        )
 
     def _label(self, element: MenuElements) -> str:
         return self._language[

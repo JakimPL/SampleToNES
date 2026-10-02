@@ -72,6 +72,10 @@ class Project:
         """Starts a new project from File ▸ New project."""
         self._menu.choose(MenuElements.GROUP_FILE, MenuElements.ITEM_FILE_NEW_PROJECT)
 
+    def close(self) -> None:
+        """Closes the project from File ▸ Close project."""
+        self._menu.choose(MenuElements.GROUP_FILE, MenuElements.ITEM_FILE_CLOSE_PROJECT)
+
     def save_as(self) -> None:
         """Saves the project from File ▸ Save project as, which asks where."""
         self._menu.choose(MenuElements.GROUP_FILE, MenuElements.ITEM_FILE_SAVE_PROJECT_AS)

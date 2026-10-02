@@ -37,7 +37,8 @@ draws on an X server of its own, so its scenarios take only its own input.
 The `world` fixture says what the home holds before the first frame: the session a previous run left, the
 settings, and the recordings, documents and libraries the scenario works on. Each file is written by the
 model and the manager the application reads it with, so a seeded home is one a real run could have left. A
-scenario class overrides `world` to seed its own. The [compatibility corpus](../../../tests/data/compatibility/README.md)
+scenario class overrides `world` to seed its own, and a folder of scenarios working on the same documents
+overrides it once in its `conftest.py`. The [compatibility corpus](../../../tests/data/compatibility/README.md)
 supplies the documents a release wrote, whole or damaged: restated at a version no step reaches, cut
 short, or replaced by bytes of another kind.
 
@@ -124,6 +125,10 @@ Keys are pressed on the real keyboard, with modifiers held a frame before the ke
 action by its `ShortcutId`, and the keys come from the scheme in place. The display repeats no held key,
 so a key held across a slow frame arrives as one press.
 
+A person lets go of a click some frames after pressing it, and DearPyGui answers a double-click as its
+second press goes down. A scenario holding that press for as long as a person does sees what the answer
+brings under a button still down.
+
 A gesture confirms that it arrived. Before a button goes down, the control must report the pointer resting
 on it: DearPyGui calls a control visible while the region it scrolls in clips it, and a press there lands
 on something else. While a button or a named key is held, the application must read it as down. A press
@@ -155,10 +160,13 @@ A gesture made while work runs is only proven if the work is provably still runn
 lands. A hold keeps it there: a stand-in decides **when** the work lands and never **what** it computes.
 A held conversion walks the stages a real one reports and stops halfway through matching, and a held
 folder scan meets the folder's entries and then one entry after another that is no recording. Each goes
-on reporting while it is held, so Stop and Cancel are heard where the real work hears them. A hold lasts
+on reporting while it is held, so Stop and Cancel are heard where the real work hears them. A held rebuild
+of an edited channel waits on its worker before it computes, so the edit is drawn while it is on its way,
+and the real rebuild runs once it is released. A scenario standing for a rebuild that breaks lets the held
+rebuilds go as that failure, which reaches the application the way a rebuild that raised does. A hold lasts
 until the scenario releases it, and every hold is released before the scenario leaves, because leaving
-waits for the work in flight. A scenario asks for a hold through its fixture, `conversion_hold` or
-`scan_hold`.
+waits for the work in flight. A scenario asks for a hold through its fixture: `conversion_hold`,
+`scan_hold` or `regeneration_hold`.
 
 ## What survives a restart
 
@@ -179,6 +187,7 @@ scenario:
 - **In flight.** What if the user acts while its work is still running?
 - **Unsaved work.** What does every path that replaces or closes a document ask?
 - **Twice.** What does the same gesture do twice, and a double click against a single one?
+- **Held press.** What does a press still down when the screen changes do to what comes under the pointer?
 - **Key scope.** Which scope claims its keys: a field, a modal, a panel, a collapsed card or a rebound key?
 - **Palette.** Does a live palette swap repaint it?
 - **Restart.** What of it survives a restart?

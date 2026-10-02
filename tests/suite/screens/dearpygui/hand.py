@@ -109,6 +109,25 @@ class Hand:
         """Presses ``item`` twice in quick succession with the left button."""
         self._press(item, MouseButton.LEFT, DOUBLE_PRESS)
 
+    def double_click_held(
+        self,
+        item: Item,
+        *,
+        frames: int,
+    ) -> None:
+        """Presses ``item`` twice with the left button, holding the second press down for ``frames`` frames.
+
+        A person lets go of a click some frames after pressing it, and the double-click is answered
+        as the second press goes down, so whatever the answer brings under the pointer meets a held
+        button.
+        """
+        self.hover(item)
+        self._outlast_a_double_click()
+        self._press_once(MouseButton.LEFT, HOLD_FRAMES)
+        self._press_once(MouseButton.LEFT, frames)
+        self._last_release = self._application_seconds()
+        self._settle(SETTLE_FRAMES)
+
     def right_click(self, item: Item) -> None:
         """Presses ``item`` with the right button, the gesture that opens a context menu."""
         self._press(item, MouseButton.RIGHT, SINGLE_PRESS)
@@ -172,7 +191,7 @@ class Hand:
         self._settle(SETTLE_FRAMES)
 
     def scroll_to_end(self, region: Item) -> None:
-        """Drags the grip of ``region``'s scrollbar to the bottom of its track, as a person reaches the end of a long list.
+        """Drags the grip of ``region``'s scrollbar to the bottom, as a person reaches the end of a long list.
 
         A list drawing only the rows in view settles its length as it scrolls, so the grip is dragged
         again while the end moves on, and a turn of the wheel takes up the pixels the grip's whole
@@ -303,16 +322,24 @@ class Hand:
     ) -> None:
         self.hover(item)
         self._outlast_a_double_click()
-        imgui_button = IMGUI_MOUSE_BUTTONS[button]
         for _ in range(count):
-            self._device.button_down(button)
-            self._settle(HOLD_FRAMES)
-            self._confirm(lambda: dpg.is_mouse_button_down(imgui_button), f"The {button.name.lower()} button")
-            self._device.button_up(button)
-            self._settle(RELEASE_FRAMES)
+            self._press_once(button, HOLD_FRAMES)
 
         self._last_release = self._application_seconds()
         self._settle(SETTLE_FRAMES)
+
+    def _press_once(
+        self,
+        button: MouseButton,
+        frames: int,
+    ) -> None:
+        """Holds ``button`` down where the pointer stands for ``frames`` frames, then lets it go."""
+        imgui_button = IMGUI_MOUSE_BUTTONS[button]
+        self._device.button_down(button)
+        self._settle(frames)
+        self._confirm(lambda: dpg.is_mouse_button_down(imgui_button), f"The {button.name.lower()} button")
+        self._device.button_up(button)
+        self._settle(RELEASE_FRAMES)
 
     def _outlast_a_double_click(self) -> None:
         """Waits until the last press lies further back than a double-click reaches, in the application's clock.

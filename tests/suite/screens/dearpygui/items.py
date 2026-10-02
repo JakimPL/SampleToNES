@@ -13,6 +13,7 @@ TREE_NODE_TYPE: Final[str] = "mvAppItemType::mvTreeNode"
 MENU_TYPE: Final[str] = "mvAppItemType::mvMenu"
 MENU_ITEM_TYPE: Final[str] = "mvAppItemType::mvMenuItem"
 TEXT_TYPE: Final[str] = "mvAppItemType::mvText"
+BUTTON_TYPE: Final[str] = "mvAppItemType::mvButton"
 TAG_SEPARATOR: Final[str] = "."
 
 
@@ -189,7 +190,10 @@ def find_item(
     container: Item,
     matches: Callable[[Item], bool],
 ) -> Optional[Item]:
-    """The first item under ``container``, in the order they are drawn, that ``matches`` accepts. Runs on the render thread."""
+    """The first item under ``container``, in the order they are drawn, that ``matches`` accepts.
+
+    Runs on the render thread.
+    """
     pending: List[Item] = [container]
     while pending:
         item = pending.pop(0)
@@ -272,7 +276,10 @@ def read_value(item: Item) -> Any:
 
 
 def read_shown_texts(container: Item) -> Tuple[str, ...]:
-    """The words of every shown text item under ``container``, in the order they are drawn. Runs on the render thread."""
+    """The words of every shown text item under ``container``, in the order they are drawn.
+
+    Runs on the render thread.
+    """
     return _texts(container, shown_only=True)
 
 
@@ -282,6 +289,27 @@ def read_texts(container: Item) -> Tuple[str, ...]:
     Runs on the render thread.
     """
     return _texts(container, shown_only=False)
+
+
+def read_shown_labels(container: Item, item_type: str) -> Tuple[str, ...]:
+    """The labels of every shown item of ``item_type`` under ``container``, in the order they are drawn.
+
+    Runs on the render thread.
+    """
+    labels: List[str] = []
+    pending: List[Item] = [container]
+    while pending:
+        item = pending.pop(0)
+        if not dpg.is_item_shown(item):
+            continue
+
+        info = dpg.get_item_info(item)
+        if info["type"] == item_type:
+            labels.append(read_label(item))
+
+        pending[:0] = [child for children in info["children"].values() for child in children]
+
+    return tuple(labels)
 
 
 def _texts(container: Item, *, shown_only: bool) -> Tuple[str, ...]:

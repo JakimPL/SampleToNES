@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Optional, Protocol, Tuple
+from pathlib import Path
+from typing import Final, Optional, Protocol, Tuple
 
 from sampletones_application.config.managers.application import ApplicationConfigManager
 from sampletones_application.config.managers.state import ApplicationStateManager
@@ -8,9 +9,19 @@ from sampletones_application.config.session.application.config import Applicatio
 from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_application.config.session.state.window import ViewportState
 from sampletones_core.configs import Config
-from sampletones_shared.paths.user import CONFIG_PATH
+from sampletones_shared.paths.user import CONFIG_PATH, PROJECTS_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 from tests.suite.screens.environment import SCREEN_SIZE
-from tests.suite.screens.seeds import MiniLibrary
+from tests.suite.screens.seeds import MiniLibrary, Recording, StoredProject, StoredReconstruction, stored_recording
+
+OPEN_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Open.stn"
+OTHER_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Other.stn"
+SONG: Final[Path] = PROJECTS_DIRECTORY / "Song.stp"
+SONG_SAMPLE: Final[str] = "Lead"
+SONG_INSTRUMENT: Final[str] = "Pad"
+BASS: Final[str] = "bass.wav"
+LEAD: Final[str] = "lead.wav"
+DOCUMENT_RECORDING_SECONDS: Final[float] = 0.3
+DOCUMENT_RECORDING_FREQUENCY: Final[float] = 220.0
 
 
 class HomeFile(Protocol):
@@ -96,4 +107,30 @@ def lived_in_world() -> World:
         application_config=None,
         config=None,
         files=(),
+    )
+
+
+def documents_world() -> World:
+    """A home ready to convert that holds the documents a user puts away and replaces.
+
+    It holds two reconstructions, :data:`OPEN_RECONSTRUCTION` and :data:`OTHER_RECONSTRUCTION`,
+    with the recording they name; the project :data:`SONG` with a sample and an instrument; and
+    two recordings to convert, :data:`BASS` and :data:`LEAD`, in the home itself.
+    """
+    recordings = tuple(
+        Recording(
+            destination=Path.cwd() / name,
+            seconds=DOCUMENT_RECORDING_SECONDS,
+            frequency=DOCUMENT_RECORDING_FREQUENCY,
+        )
+        for name in (BASS, LEAD)
+    )
+    return converting_world(
+        (
+            *recordings,
+            StoredReconstruction(OPEN_RECONSTRUCTION),
+            StoredReconstruction(OTHER_RECONSTRUCTION),
+            stored_recording(),
+            StoredProject(SONG, sample=SONG_SAMPLE, instrument=SONG_INSTRUMENT),
+        )
     )
