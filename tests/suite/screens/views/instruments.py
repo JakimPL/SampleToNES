@@ -14,7 +14,7 @@ from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import read_item, read_selected_tab, read_theme, read_value
+from tests.suite.screens.dearpygui.items import read_item, read_label, read_selected_tab, read_theme, read_value
 from tests.suite.screens.dearpygui.keys import IMGUI_ENTER
 from tests.suite.screens.dearpygui.semantic import choose
 from tests.suite.screens.views.bar_graph import BarGraph
@@ -40,6 +40,10 @@ class Instruments:
     def front(self) -> str:
         """The tag of the tab standing in front."""
         return self._bridge.ask(lambda: read_selected_tab(TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR))
+
+    def tab_label(self, channel: ChannelName) -> str:
+        """What ``channel``'s tab reads, which names the open hand-written voice on the tab it is edited under."""
+        return self._bridge.ask(lambda: read_label(tab(channel)))
 
     def tab_shown(self, channel: ChannelName) -> bool:
         return self._bridge.ask(lambda: read_item(tab(channel))).shown
@@ -74,6 +78,16 @@ class Instruments:
     def field_theme(self, channel: ChannelName, feature: FeatureKey) -> Optional[str]:
         """The theme the field wears, which marks a sequence refused or one an export shortens."""
         return self._bridge.ask(lambda: read_theme(self.field(channel, feature)))
+
+    def hover_field(self, channel: ChannelName, feature: FeatureKey) -> None:
+        """Rests the pointer on ``channel``'s ``feature`` field, which puts what the field takes on the status bar."""
+        field = self.field(channel, feature)
+        self._hand.scroll_into_view(field)
+        rect = self._bridge.ask(lambda: read_item(field).rect)
+        if rect is None:
+            raise LookupError(f"The field '{field}' stands nowhere")
+
+        self._hand.move_to(rect.center)
 
     def type_envelope(self, channel: ChannelName, feature: FeatureKey, sequence: str) -> None:
         """Brings ``channel``'s tab forward, types ``sequence`` over its ``feature`` field and presses Enter."""

@@ -9,15 +9,20 @@ from sampletones_application.config.session.application.config import Applicatio
 from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_application.config.session.state.window import ViewportState
 from sampletones_core.configs import Config
+from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT
 from sampletones_shared.paths.user import CONFIG_PATH, PROJECTS_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 from tests.suite.screens.environment import SCREEN_SIZE
 from tests.suite.screens.seeds import (
     ArrangedProject,
+    LongEnvelopeProject,
     MiniLibrary,
+    OverlongProject,
     PlayableReconstruction,
     Recording,
+    ReleasingInstrumentFile,
     StoredProject,
     StoredReconstruction,
+    TwoTuningsProject,
     stored_recording,
 )
 
@@ -46,6 +51,21 @@ PAD: Final[str] = "Pad"
 PAD_ROW: Final[int] = 4
 BASS_ROW: Final[int] = 8
 TAKE_FREQUENCY: Final[float] = 220.0
+SINGLE_ORDER_FRAME: Final[int] = 1
+LOOPING_PROJECT: Final[Path] = PROJECTS_DIRECTORY / "Looping.stp"
+LOOPING_ORDER_FRAMES: Final[int] = 2
+OVERLONG_PROJECT: Final[Path] = PROJECTS_DIRECTORY / "Overlong.stp"
+OVERLONG_SAMPLE: Final[str] = "Turning"
+OVERLONG_ORDER_FRAMES: Final[int] = 12
+TWO_TUNINGS_PROJECT: Final[Path] = PROJECTS_DIRECTORY / "Tunings.stp"
+RETUNED_A4: Final[float] = 432.0
+LONG_ENVELOPES_PROJECT: Final[Path] = PROJECTS_DIRECTORY / "Envelopes.stp"
+LONG_VOICE: Final[str] = "Long"
+LONG_ITEMS: Final[int] = 600
+MIDDLING_VOICE: Final[str] = "Middling"
+MIDDLING_ITEMS: Final[int] = 300
+INSTRUMENTS_FOLDER: Final[str] = "instruments"
+RELEASING_INSTRUMENT: Final[str] = "Releasing"
 
 
 class HomeFile(Protocol):
@@ -206,6 +226,57 @@ def sequencer_world() -> World:
         config=None,
         files=(
             *playing.files,
-            ArrangedProject(ARRANGED_PROJECT, line=LINE, bass=BASS_VOICE, pad=PAD, pad_row=PAD_ROW, bass_row=BASS_ROW),
+            arranged_project(ARRANGED_PROJECT, SINGLE_ORDER_FRAME),
         ),
+    )
+
+
+def exporting_world() -> World:
+    """The sequencer's home, holding besides the projects an export meets at its limits.
+
+    :data:`LOOPING_PROJECT` is :data:`ARRANGED_PROJECT` with its pattern played twice in the order.
+    :data:`OVERLONG_PROJECT` changes every channel at every tick through :data:`OVERLONG_ORDER_FRAMES`
+    frames. :data:`TWO_TUNINGS_PROJECT` holds :data:`LINE` at the default tuning and
+    :data:`BASS_VOICE` with A4 at :data:`RETUNED_A4` hertz. :data:`LONG_ENVELOPES_PROJECT` holds
+    :data:`LONG_VOICE` and :data:`MIDDLING_VOICE`, whose volume envelopes run :data:`LONG_ITEMS` and
+    :data:`MIDDLING_ITEMS` items. The home's :data:`INSTRUMENTS_FOLDER` holds the FamiTracker instrument
+    :data:`RELEASING_INSTRUMENT`, whose volume states a release point.
+    """
+    sequencer = sequencer_world()
+    return World(
+        state=sequencer.state,
+        application_config=None,
+        config=None,
+        files=(
+            *sequencer.files,
+            arranged_project(LOOPING_PROJECT, LOOPING_ORDER_FRAMES),
+            OverlongProject(OVERLONG_PROJECT, sample=OVERLONG_SAMPLE, order_frames=OVERLONG_ORDER_FRAMES),
+            TwoTuningsProject(TWO_TUNINGS_PROJECT, line=LINE, bass=BASS_VOICE, a4_frequency=RETUNED_A4),
+            LongEnvelopeProject(
+                LONG_ENVELOPES_PROJECT,
+                long=LONG_VOICE,
+                long_items=LONG_ITEMS,
+                middling=MIDDLING_VOICE,
+                middling_items=MIDDLING_ITEMS,
+            ),
+            ReleasingInstrumentFile(releasing_instrument(), name=RELEASING_INSTRUMENT),
+        ),
+    )
+
+
+def releasing_instrument() -> Path:
+    """Where the home holds the FamiTracker instrument :data:`RELEASING_INSTRUMENT`."""
+    return Path.cwd() / INSTRUMENTS_FOLDER / f"{RELEASING_INSTRUMENT}{EXT_FILE_INSTRUMENT}"
+
+
+def arranged_project(destination: Path, order_frames: int) -> ArrangedProject:
+    """The arranged project laid at ``destination``, its pattern played ``order_frames`` times in the order."""
+    return ArrangedProject(
+        destination,
+        line=LINE,
+        bass=BASS_VOICE,
+        pad=PAD,
+        pad_row=PAD_ROW,
+        bass_row=BASS_ROW,
+        order_frames=order_frames,
     )

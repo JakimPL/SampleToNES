@@ -4,6 +4,8 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.tags.general import (
+    TAG_GLOBAL_DIALOG_INSTRUMENT_IMPORTED,
+    TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
 )
@@ -16,16 +18,19 @@ from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_VOICES_DIALOG_REMOVE,
     TAG_SEQUENCER_VOICES_PANEL,
     TAG_SEQUENCER_VOICES_TABLE,
+    TAG_SEQUENCER_VOICES_WINDOW,
 )
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.screens.dearpygui.bridge import Bridge
+from tests.suite.screens.dearpygui.geometry import Point
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import Item, read_item, read_label, read_table
+from tests.suite.screens.dearpygui.items import Item, read_item, read_label, read_region_view, read_table
 from tests.suite.screens.dearpygui.keys import IMGUI_ENTER
 from tests.suite.screens.views.browsers import FileTree
 from tests.suite.screens.views.history import History
 from tests.suite.screens.views.main import Card
 from tests.suite.screens.views.menus import MenuBar
+from tests.suite.screens.views.notices import Notice
 from tests.suite.screens.views.prompts import Prompt
 from tests.suite.screens.views.tracker import Tracker
 
@@ -36,6 +41,7 @@ MASTER_ORDER_ROW: Final[int] = 0
 FIRST_CHANNEL_ORDER_ROW: Final[int] = 2
 ORDER_LABEL_CELLS: Final[int] = 1
 CELL_CONTENT: Final[int] = 0
+CLEAR_OF_THE_EDGE: Final[int] = 12
 
 
 class Voices:
@@ -49,6 +55,8 @@ class Voices:
         self._bridge = bridge
         self._hand = hand
         self.remove_prompt = Prompt(bridge, hand, TAG_SEQUENCER_VOICES_DIALOG_REMOVE)
+        self.no_project_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN)
+        self.imported_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_INSTRUMENT_IMPORTED)
         self.card = Card(bridge, hand, TAG_SEQUENCER_VOICES_PANEL)
 
     def kind_color(self, name: str) -> Tuple[float, ...]:
@@ -99,6 +107,14 @@ class Voices:
         """Clicks ``row`` with the right button, which opens its menu."""
         self._hand.scroll_into_view(row)
         self._hand.right_click(row)
+
+    def right_click_below_the_rows(self) -> None:
+        """Clicks the empty foot of the list with the right button, which opens the list's own menu."""
+        view = self._bridge.ask(lambda: read_region_view(TAG_SEQUENCER_VOICES_WINDOW))
+        if view is None:
+            raise LookupError("The list of voices stands nowhere")
+
+        self._hand.right_click_at(Point(x=view.center.x, y=round(view.y + view.height) - CLEAR_OF_THE_EDGE))
 
 
 class Playback:

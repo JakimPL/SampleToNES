@@ -153,7 +153,9 @@ and a scenario reads as the gestures a user makes.
 ## The boundaries
 
 - **File dialogs.** A native dialog stops the queue while it stands, so a scenario queues its answer before
-  the gesture that opens the dialog, and the stand-in answers at once.
+  the gesture that opens the dialog, and the stand-in answers at once. An answer names a folder that stands
+  on the disk, as a native dialog's does, and a save may pick one of the file types the dialog offers by
+  its name.
 - **Audio.** The default output device plays into silence in real time, so playback runs and nothing is
   heard. A scenario can start on a machine offering no device at all.
 - **Programs.** An audit hook refuses every program the application tries to start: a file manager, a
@@ -174,10 +176,12 @@ folder scan meets the folder's entries and then one entry after another that is 
 on reporting while it is held, so Stop and Cancel are heard where the real work hears them. A held rebuild
 of an edited channel waits on its worker before it computes, so the edit is drawn while it is on its way,
 and the real rebuild runs once it is released. A scenario standing for a rebuild that breaks lets the held
-rebuilds go as that failure, which reaches the application the way a rebuild that raised does. A hold lasts
+rebuilds go as that failure, which reaches the application the way a rebuild that raised does. A held
+export stops at one report of its stages, after its window has heard the stage, and goes on answering a
+cancel there; a scenario can move the report it stops at, to land a cancel between two files. A hold lasts
 until the scenario releases it, and every hold is released before the scenario leaves, because leaving
 waits for the work in flight. A scenario asks for a hold through its fixture: `conversion_hold`,
-`scan_hold` or `regeneration_hold`.
+`scan_hold`, `regeneration_hold` or `export_hold`.
 
 ## What survives a restart
 

@@ -1,19 +1,22 @@
+import itertools
 import threading
 import time
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import AbstractSet, Final, Iterator, List, Optional, Protocol, Sequence
+from typing import AbstractSet, Callable, Final, Iterator, List, Optional, Protocol, Sequence
 
 import pytest
 
 import sampletones_application.logic.main.sources.scan as scan_module
 import sampletones_core.reconstructions.converter.converter as converter_module
+from sampletones_application.services.export.reporter import ExportProgressReporter
 from sampletones_application.services.regeneration.service import RegenerationService
-from sampletones_application.services.result import ServiceError
+from sampletones_application.services.result import ServiceError, ServiceProgress
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
+from sampletones_core.exports.stage import ExportStage
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.progress import STAGE_BEGUN, WHOLE_STAGE, ReconstructionReporter, announce
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
@@ -23,6 +26,7 @@ from tests.suite.conversion import COUNTED_STAGES, FAKE_FRAMES, HALFWAY
 
 RELEASE_POLL_SECONDS: Final[float] = 0.05
 HELD_ENTRY: Final[str] = "held-entry.txt"
+FIRST_REPORT: Final[int] = 0
 
 
 class Hold(Protocol):
@@ -224,5 +228,68 @@ class RegenerationHold:
             self._waiting += 1
 
         self._released.wait()
+        with self._lock:
+            self._waiting -= 1
+
+
+class ExportHold:
+    """Holds every export at one report of its stages, until the scenario releases it.
+
+    A run reports each stage it reaches and then asks whether it is still wanted. The hold answers
+    that question at the report it stands at, once the export's window has heard the stage, so the
+    window shows the run under way. While held, the run still hears a cancel and unwinds the way a
+    cancel unwinds a real run. Released, every run goes on to its end until the scenario holds again.
+    """
+
+    def __init__(self) -> None:
+        self._released = threading.Event()
+        self._lock = threading.Lock()
+        self._waiting = 0
+        self._held_report = FIRST_REPORT
+
+    def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        build = ExportProgressReporter.__init__
+
+        def held(
+            reporter: ExportProgressReporter,
+            emit: Callable[[ServiceProgress[ExportStage]], None],
+            withdrawn: Callable[[], bool],
+        ) -> None:
+            build(reporter, emit, self._gate(withdrawn))
+
+        monkeypatch.setattr(ExportProgressReporter, "__init__", held)
+
+    def waiting(self) -> int:
+        """How many runs stand held."""
+        with self._lock:
+            return self._waiting
+
+    def release(self) -> None:
+        self._released.set()
+
+    def hold_at(self, report: int) -> None:
+        """Holds every run from now on at its report numbered ``report``, counted from 0, letting the earlier ones pass."""
+        self._held_report = report
+        self._released.clear()
+
+    def _gate(self, withdrawn: Callable[[], bool]) -> Callable[[], bool]:
+        """The question one run asks after each report, which waits at the held report until released or withdrawn."""
+        reports = itertools.count()
+
+        def asked() -> bool:
+            if next(reports) == self._held_report:
+                self._wait(withdrawn)
+
+            return withdrawn()
+
+        return asked
+
+    def _wait(self, withdrawn: Callable[[], bool]) -> None:
+        with self._lock:
+            self._waiting += 1
+
+        while not self._released.wait(RELEASE_POLL_SECONDS) and not withdrawn():
+            continue
+
         with self._lock:
             self._waiting -= 1

@@ -13,14 +13,13 @@ from tests.suite.screens.dearpygui.items import read_item
 from tests.suite.screens.dearpygui.keys import IMGUI_ENTER
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.reconstructions import titled
-from tests.suite.screens.steps.sequencer import open_voice
+from tests.suite.screens.steps.sequencer import forgive_the_hover_race, leave_letting_the_project_go, open_voice
 from tests.suite.screens.views.history import HistoryLine
 from tests.suite.screens.world import ARRANGED_PROJECT, BASS_VOICE, LINE, PAD
 
 SETTLING_FRAMES: Final[int] = 10
 RENAMED: Final[str] = "Renamed"
 DUPLICATE: Final[str] = "sequencer.voices.label.context_duplicate"
-HOVER_RACE: Final[str] = "Error executing callback _on_row_hovered"
 VOLUME_LETTER: Final[str] = "v"
 ARPEGGIO_LETTER: Final[str] = "a"
 QUIET: Final[float] = 4.0
@@ -165,21 +164,10 @@ def one_entry_per_gesture(gesture_name: str, gesture: Gesture, voice: str, posit
 
 def leave_as_opened(screen: Screen) -> None:
     """Exits a project every gesture of which was undone, which leaves at once."""
-    screen.forgive_known_error(HOVER_RACE)
+    forgive_the_hover_race(screen)
     assert screen.title() == titled(screen, ARRANGED_PROJECT.stem)
 
     screen.press_shortcut(ShortcutId.EXIT)
-
-    assert screen.wait_for_exit()
-
-
-def leave_letting_the_project_go(screen: Screen) -> None:
-    screen.forgive_known_error(HOVER_RACE)
-    prompt = screen.project.unsaved_prompt
-    screen.press_shortcut(ShortcutId.EXIT)
-    screen.expect(prompt.is_shown, bool, description="the question about the project")
-
-    prompt.confirm()
 
     assert screen.wait_for_exit()
 
@@ -217,7 +205,7 @@ class TestEachVoiceGestureIsOneEntry:
             screen.press_shortcut(ShortcutId.UNDO)
             screen.expect(screen.sequencer.voices.names, [LINE, BASS_VOICE, PAD].__eq__, description="undone")
 
-        screen.forgive_known_error(HOVER_RACE)
+        forgive_the_hover_race(screen)
         assert all(names_by_position_and_name(line, LINE, LINE_POSITION) for line in lines)
 
     def test_a_new_instrument_is_one_entry(self, screen: Screen) -> None:

@@ -13,6 +13,7 @@ from tests.suite.screens.application import Startup
 from tests.suite.screens.dearpygui.items import read_label
 from tests.suite.screens.dearpygui.keys import IMGUI_LETTER_A
 from tests.suite.screens.screen import Screen
+from tests.suite.screens.steps.sequencer import leave_letting_the_project_go
 from tests.suite.screens.views.tracker import tracker_cell, tracker_cell_theme
 from tests.suite.screens.world import ARRANGED_PROJECT, BASS_ROW, PAD_ROW
 
@@ -61,16 +62,6 @@ def type_into(screen: Screen, row: int, channel: Optional[ChannelName], subcolum
     screen.sequencer.tracker.click(row, channel, subcolumn)
     screen.hand.type_text(text)
     screen.frames(TYPING_FRAMES)
-
-
-def leave_letting_the_project_go(screen: Screen) -> None:
-    prompt = screen.project.unsaved_prompt
-    screen.press_shortcut(ShortcutId.EXIT)
-    screen.expect(prompt.is_shown, bool, description="the question about the project")
-
-    prompt.confirm()
-
-    assert screen.wait_for_exit()
 
 
 @pytest.fixture

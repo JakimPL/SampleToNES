@@ -13,7 +13,7 @@ from sampletones_core.utils.display import BLANK
 from tests.suite.screens.application import Startup
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.reconstructions import marked, raise_the_first_level, titled, voice_title
-from tests.suite.screens.steps.sequencer import open_voice
+from tests.suite.screens.steps.sequencer import leave_letting_the_project_go, open_voice
 from tests.suite.screens.world import ARRANGED_PROJECT, LINE
 
 SETTLING_FRAMES: Final[int] = 20
@@ -49,16 +49,6 @@ def startup() -> Startup:
 def on_the_sequencer(screen: Screen) -> None:
     screen.tabs.bring_to_front(Tab.SEQUENCER)
     screen.expect(screen.sequencer.voices.names, bool, description="the project's voices")
-
-
-def leave_letting_the_project_go(screen: Screen) -> None:
-    prompt = screen.project.unsaved_prompt
-    screen.press_shortcut(ShortcutId.EXIT)
-    screen.expect(prompt.is_shown, bool, description="the question about the project")
-
-    prompt.confirm()
-
-    assert screen.wait_for_exit()
 
 
 class TestTheOrderTable:

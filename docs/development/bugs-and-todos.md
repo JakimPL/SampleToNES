@@ -218,3 +218,7 @@ currently out of line. An entry leaves when the code meets the contract again.
   callback queued for a row before the rebuild reads an item that no longer exists
   (`_on_row_hovered`, "Item not found"). The Sequencer's screen scenarios forgive it by name; no
   scenario reproduces it on demand, since it rests on the order the queued callbacks run in.
+* Export instrument... in a project whose samples were converted at two tunings does nothing the user
+  can see: `voice_instrument` raises the tuning error inside the menu's callback, so no message, no save
+  dialog and no file follow, while a Bitphase project or an NSF program of the same project stops with a
+  message. `tests/screens/exports/test_progress.py` reproduces it as a known failure.

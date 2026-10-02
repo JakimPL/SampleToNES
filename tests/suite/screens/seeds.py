@@ -12,6 +12,11 @@ from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.fft import Window
+from sampletones_core.formats.famitracker.instrument import instrument_to_fti_bytes
+from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
+from sampletones_core.formats.famitracker.model.sequence import InstrumentSequence
+from sampletones_core.formats.famitracker.specification.instruments import STANDALONE_INSTRUMENT_INDEX
+from sampletones_core.formats.famitracker.specification.sequences import SequenceKind
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
 from sampletones_core.library.key import InstructionLibraryKey
 from sampletones_core.project import ProjectContainer
@@ -20,6 +25,7 @@ from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from tests.suite.compatibility import ARCHIVED_VERSIONS, archived, restated_document, stored_document
 from tests.suite.library import build_served_library
 from tests.suite.performance import place_instrument
@@ -46,6 +52,24 @@ BEAT_VOLUME: Final[int] = 10
 ARRANGED_FRAMES: Final[int] = 30
 PAD_VOLUME: Final[Tuple[int, ...]] = (12, 8, 4)
 PAD_ARPEGGIO: Final[Tuple[int, ...]] = (0, 0, 0)
+FIRST_FRAME: Final[int] = 0
+ONE_FRAME: Final[int] = 1
+FIRST_ROW: Final[int] = 0
+TURNING_PULSE_PITCH: Final[int] = 40
+TURNING_PULSE_SPAN: Final[int] = 24
+TURNING_SECOND_PITCH: Final[int] = 30
+TURNING_SECOND_SPAN: Final[int] = 31
+TURNING_TRIANGLE_PITCH: Final[int] = 30
+TURNING_TRIANGLE_SPAN: Final[int] = 29
+TURNING_PERIODS: Final[int] = 16
+TURNING_LEVELS: Final[int] = 15
+TURNING_DUTY_CYCLES: Final[int] = 4
+TURNING_SECOND_LEVEL_STEP: Final[int] = 7
+TURNING_NOISE_LEVEL_STEP: Final[int] = 5
+TURNING_SECOND_DUTY_TICKS: Final[int] = 3
+LOUDEST_LEVEL: Final[int] = 15
+RELEASING_VOLUME: Final[Tuple[int, ...]] = (15, 8)
+RELEASE_POINT: Final[int] = 1
 
 
 class Damage(StrEnum):
@@ -199,7 +223,7 @@ class ArrangedProject:
     ``line`` is a sample sounding Pulse 1, the triangle and the noise; ``bass`` a sample sounding the
     triangle alone; ``pad`` a hand-written voice fading on Pulse 2, its arpeggio flat. The first starts the pattern on
     Pulse 1, the hand-written voice comes in on Pulse 2 at ``pad_row``, and the bass on the triangle at
-    ``bass_row``.
+    ``bass_row``. The order plays that pattern ``order_frames`` times.
     """
 
     destination: Path
@@ -208,13 +232,14 @@ class ArrangedProject:
     pad: str
     pad_row: int
     bass_row: int
+    order_frames: int
 
     def write(self) -> None:
         line_instructions = _playable_instructions(ARRANGED_FRAMES)
         bass_instructions = {ChannelName.TRIANGLE: line_instructions[ChannelName.TRIANGLE]}
         project = Project.create()
-        line = Sample(name=self.line, reconstruction=_detached_reconstruction(line_instructions))
-        bass = Sample(name=self.bass, reconstruction=_detached_reconstruction(bass_instructions))
+        line = Sample(name=self.line, reconstruction=_detached_reconstruction(line_instructions, Config()))
+        bass = Sample(name=self.bass, reconstruction=_detached_reconstruction(bass_instructions, Config()))
         pad = Instrument(
             name=self.pad,
             envelopes=InstrumentEnvelopes(
@@ -228,15 +253,178 @@ class ArrangedProject:
         place_instrument(project, channel_name=ChannelName.PULSE1, row_index=0, sample=line)
         place_instrument(project, channel_name=ChannelName.PULSE2, row_index=self.pad_row, sample=pad)
         place_instrument(project, channel_name=ChannelName.TRIANGLE, row_index=self.bass_row, sample=bass)
+        _repeat_first_frame(project, self.order_frames)
+        _save_project(project, self.destination)
+
+
+@dataclass(frozen=True)
+class OverlongProject:
+    """A project whose song changes on every channel at every tick, through ``order_frames`` frames.
+
+    Its one sample, ``sample``, plays a new value on each channel at every tick for as long as a
+    frame lasts, and every frame of the order plays it from the top. Stored tick by tick, the song
+    outgrows the room an NSF program has; stored with each repeat saved once, it fits.
+    """
+
+    destination: Path
+    sample: str
+    order_frames: int
+
+    def write(self) -> None:
+        project = Project.create()
+        ticks = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS).frame_tick(ONE_FRAME)
+        sample = Sample(
+            name=self.sample, reconstruction=_detached_reconstruction(_turning_instructions(ticks), Config())
+        )
+        project.voices.append(sample)
+        for channel in ChannelName.items():
+            place_instrument(project, channel_name=channel, row_index=FIRST_ROW, sample=sample)
+
+        _repeat_first_frame(project, self.order_frames)
+        _save_project(project, self.destination)
+
+
+@dataclass(frozen=True)
+class TwoTuningsProject:
+    """A project whose sample ``line`` was converted at the default tuning, and ``bass`` with A4 at ``a4_frequency`` hertz.
+
+    The line starts the first pattern on Pulse 1 and the bass the triangle, so the song plays both.
+    """
+
+    destination: Path
+    line: str
+    bass: str
+    a4_frequency: float
+
+    def write(self) -> None:
+        line_instructions = _playable_instructions(ARRANGED_FRAMES)
+        bass_instructions = {ChannelName.TRIANGLE: line_instructions[ChannelName.TRIANGLE]}
+        default = Config()
+        retuned = default.model_copy(
+            update={"library": default.library.model_copy(update={"a4_frequency": self.a4_frequency})}
+        )
+        project = Project.create()
+        line = Sample(name=self.line, reconstruction=_detached_reconstruction(line_instructions, default))
+        bass = Sample(name=self.bass, reconstruction=_detached_reconstruction(bass_instructions, retuned))
+        for voice in (line, bass):
+            project.voices.append(voice)
+
+        place_instrument(project, channel_name=ChannelName.PULSE1, row_index=FIRST_ROW, sample=line)
+        place_instrument(project, channel_name=ChannelName.TRIANGLE, row_index=FIRST_ROW, sample=bass)
+        _save_project(project, self.destination)
+
+
+@dataclass(frozen=True)
+class LongEnvelopeProject:
+    """A project holding two hand-written voices whose volume envelopes run long, both placed on the first pattern.
+
+    ``long`` fades through ``long_items`` items and ``middling`` through ``middling_items``, neither
+    of them ending in silence.
+    """
+
+    destination: Path
+    long: str
+    long_items: int
+    middling: str
+    middling_items: int
+
+    def write(self) -> None:
+        project = Project.create()
+        long = _fading_instrument(self.long, self.long_items)
+        middling = _fading_instrument(self.middling, self.middling_items)
+        for voice in (long, middling):
+            project.voices.append(voice)
+
+        place_instrument(project, channel_name=ChannelName.PULSE1, row_index=FIRST_ROW, sample=long)
+        place_instrument(project, channel_name=ChannelName.PULSE2, row_index=FIRST_ROW, sample=middling)
+        _save_project(project, self.destination)
+
+
+@dataclass(frozen=True)
+class ReleasingInstrumentFile:
+    """A FamiTracker instrument file of the voice ``name``, whose volume sequence states a release point."""
+
+    destination: Path
+    name: str
+
+    def write(self) -> None:
+        sequences = {kind: InstrumentSequence(kind=kind) for kind in SequenceKind}
+        sequences[SequenceKind.VOLUME] = InstrumentSequence(
+            kind=SequenceKind.VOLUME,
+            items=RELEASING_VOLUME,
+            release_point=RELEASE_POINT,
+        )
+        instrument = Instrument2A03(index=STANDALONE_INSTRUMENT_INDEX, name=self.name, sequences=sequences)
         self.destination.parent.mkdir(parents=True, exist_ok=True)
-        ProjectContainer.save(project, self.destination)
+        self.destination.write_bytes(instrument_to_fti_bytes(instrument))
 
 
-def _detached_reconstruction(instructions: Dict[ChannelName, List[InstructionUnion]]) -> Reconstruction:
+def _fading_instrument(name: str, items: int) -> Instrument:
+    """A hand-written voice whose volume falls from the loudest level to the quietest one before silence, over and over."""
+    return Instrument(
+        name=name,
+        envelopes=InstrumentEnvelopes(
+            volume=Envelope[int](items=tuple(LOUDEST_LEVEL - index % TURNING_LEVELS for index in range(items))),
+        ),
+    )
+
+
+def _turning_instructions(ticks: int) -> Dict[ChannelName, List[InstructionUnion]]:
+    """Every channel sounding a new pitch, level or period at each of ``ticks`` ticks."""
+    return {
+        ChannelName.PULSE1: [
+            PulseInstruction(
+                on=True,
+                pitch=TURNING_PULSE_PITCH + tick % TURNING_PULSE_SPAN,
+                volume=1 + tick % TURNING_LEVELS,
+                duty_cycle=tick % TURNING_DUTY_CYCLES,
+            )
+            for tick in range(ticks)
+        ],
+        ChannelName.PULSE2: [
+            PulseInstruction(
+                on=True,
+                pitch=TURNING_SECOND_PITCH + tick % TURNING_SECOND_SPAN,
+                volume=1 + (tick * TURNING_SECOND_LEVEL_STEP) % TURNING_LEVELS,
+                duty_cycle=(tick // TURNING_SECOND_DUTY_TICKS) % TURNING_DUTY_CYCLES,
+            )
+            for tick in range(ticks)
+        ],
+        ChannelName.TRIANGLE: [
+            TriangleInstruction(on=True, pitch=TURNING_TRIANGLE_PITCH + tick % TURNING_TRIANGLE_SPAN)
+            for tick in range(ticks)
+        ],
+        ChannelName.NOISE: [
+            NoiseInstruction(
+                on=True,
+                period=tick % TURNING_PERIODS,
+                volume=1 + (tick * TURNING_NOISE_LEVEL_STEP) % TURNING_LEVELS,
+                short=bool(tick % 2),
+            )
+            for tick in range(ticks)
+        ],
+    }
+
+
+def _repeat_first_frame(project: Project, order_frames: int) -> None:
+    """Lays ``order_frames`` frames in the order, each playing the patterns the first one plays."""
+    for _ in range(order_frames - 1):
+        project.song.duplicate_frame(FIRST_FRAME)
+
+
+def _save_project(project: Project, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    ProjectContainer.save(project, destination)
+
+
+def _detached_reconstruction(
+    instructions: Dict[ChannelName, List[InstructionUnion]],
+    config: Config,
+) -> Reconstruction:
     """A reconstruction of ``instructions`` naming no recording, the way a project stores a sample."""
     return Reconstruction.create(
         instructions=instructions,
-        config=Config(),
+        config=config,
         coefficient=1.0,
         audio_filepath=(),
         stems_data=single_entry_stems_data(list(instructions), instructions),

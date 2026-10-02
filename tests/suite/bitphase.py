@@ -253,7 +253,7 @@ def sounded_period(
         int: The period the channel holds, within the timer's range.
     """
     moved = reached_note(tuning_table, note_index, table, tick)
-    period = tuning_table[moved] + instrument.value("toneAdd", tick)
+    period = tuning_table[moved] + int(instrument.value("toneAdd", tick))
     return min(max(period, BITPHASE_SILENT_PERIOD), BITPHASE_MAX_PERIOD)
 
 

@@ -1,5 +1,6 @@
 from tests.suite.screens.plugin import (
     conversion_hold,
+    export_hold,
     output_device,
     pytest_configure,
     pytest_pyfunc_call,
@@ -19,6 +20,7 @@ from tests.suite.screens.plugin import (
 
 __all__ = [
     "conversion_hold",
+    "export_hold",
     "output_device",
     "pytest_configure",
     "pytest_pyfunc_call",

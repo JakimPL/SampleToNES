@@ -18,6 +18,7 @@ from tests.suite.screens.dearpygui.items import Item, enclosing_regions, read_re
 from tests.suite.screens.keyboard import press_combination
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.reconstructions import BY_CONFIGURATION
+from tests.suite.screens.steps.sequencer import forgive_the_hover_race, leave_letting_the_project_go
 from tests.suite.screens.views.menus import MenuEntry
 from tests.suite.screens.world import ARRANGED_PROJECT, BASS_VOICE, LINE, PAD, SHORT_RECONSTRUCTION
 
@@ -40,7 +41,6 @@ SETTLING_FRAMES: Final[int] = 20
 MOVE_DOWN_KEYS: Final[str] = "Alt+Down"
 PLACED_ROW: Final[int] = 1
 ADDED_NUMBER: Final[str] = "03"
-HOVER_RACE: Final[str] = "Error executing callback _on_row_hovered"
 
 
 @pytest.fixture
@@ -75,22 +75,6 @@ def menu_on_the_bar(screen: Screen, group: MenuElements) -> List[MenuEntry]:
     screen.menu.close()
     screen.frames(SETTLING_FRAMES)
     return entries
-
-
-def forgive_the_hover_race(screen: Screen) -> None:
-    """Forgives the error a voice row's hover meets once the list has rebuilt the row, which the ledger records."""
-    screen.forgive_known_error(HOVER_RACE)
-
-
-def leave_letting_the_project_go(screen: Screen) -> None:
-    forgive_the_hover_race(screen)
-    prompt = screen.project.unsaved_prompt
-    screen.press_shortcut(ShortcutId.EXIT)
-    screen.expect(prompt.is_shown, bool, description="the question about the project")
-
-    prompt.confirm()
-
-    assert screen.wait_for_exit()
 
 
 class TestTheVoicesMenus:

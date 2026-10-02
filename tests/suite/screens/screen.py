@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Callable, Final, Iterator, Optional, Tuple, TypeVar, Union
 
-from sampletones_application.categories.context import generator_label
+from sampletones_application.categories.context import channel_label, generator_label
 from sampletones_application.categories.key.text import TextKeyTuple
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.tags.compose import compose_tag
@@ -16,7 +16,7 @@ from sampletones_application.tags.general import (
 from sampletones_application.tags.main import TAG_MAIN_EXPLORER_TREE
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName, GeneratorName
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
 from tests.suite.screens.boundaries.dialogs import DialogKind, DialogRequest, ScriptedFileDialogs
 from tests.suite.screens.boundaries.errors import ErrorRecords
@@ -44,6 +44,7 @@ from tests.suite.screens.views.audio_settings import AudioSettings
 from tests.suite.screens.views.browsers import FileTree
 from tests.suite.screens.views.context_menu import ContextMenu
 from tests.suite.screens.views.display_settings import DisplaySettings
+from tests.suite.screens.views.exports import Exports
 from tests.suite.screens.views.instructions import Instructions
 from tests.suite.screens.views.keyboard_settings import KeyboardSettings
 from tests.suite.screens.views.main import Main
@@ -107,6 +108,7 @@ class Screen:
         self.reconstructions = Reconstructions(bridge, hand, self.menu)
         self.sequencer = Sequencer(bridge, hand, self.menu)
         self.instructions = Instructions(bridge, hand)
+        self.exports = Exports(bridge, hand, self.menu)
         self.error_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_ERROR)
         self.file_not_found_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_FILE_NOT_FOUND)
 
@@ -128,6 +130,10 @@ class Screen:
     def words(self, key: Union[str, TextKeyTuple]) -> str:
         """What the language file says under ``key``, which is what the application shows the user."""
         return self._language[key]
+
+    def channel_words(self, channel: ChannelName) -> str:
+        """The name every display gives ``channel``."""
+        return channel_label(self._language, channel)
 
     def generator_words(self, generator: GeneratorName) -> str:
         """The words the application names ``generator`` by wherever it offers one."""
@@ -230,6 +236,14 @@ class Screen:
     ) -> None:
         """Answers the next file dialog of ``kind`` with ``path``, or dismisses it for ``None``."""
         self._dialogs.answer(kind, path)
+
+    def answer_next_save_as(
+        self,
+        path: Path,
+        type_name: str,
+    ) -> None:
+        """Answers the next save dialog with ``path``, the offered file type named ``type_name`` picked in it."""
+        self._dialogs.answer_save_as(path, type_name)
 
     def claim_error(self, naming: str) -> None:
         """Waits for the error a scenario provoked on purpose, one whose message holds ``naming``.

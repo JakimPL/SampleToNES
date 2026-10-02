@@ -27,7 +27,14 @@ from tests.suite.screens.environment import (
     child_environment,
     display_backend,
 )
-from tests.suite.screens.holds import ConversionHold, Holds, RegenerationHold, ReleaseSignal, ScanHold
+from tests.suite.screens.holds import (
+    ConversionHold,
+    ExportHold,
+    Holds,
+    RegenerationHold,
+    ReleaseSignal,
+    ScanHold,
+)
 from tests.suite.screens.paths import FAILURE_SCREENSHOT, SCREENS_DIRECTORY
 from tests.suite.screens.render_thread import QueueRenderThread
 from tests.suite.screens.screen import Screen
@@ -198,6 +205,18 @@ def regeneration_hold(
 ) -> RegenerationHold:
     """Holds every rebuild an edit of a channel asks for, until the scenario releases it."""
     hold = RegenerationHold()
+    hold.install(monkeypatch)
+    screen_holds.add(hold)
+    return hold
+
+
+@pytest.fixture
+def export_hold(
+    screen_holds: Holds,
+    monkeypatch: pytest.MonkeyPatch,
+) -> ExportHold:
+    """Holds every export at its first report, until the scenario releases it."""
+    hold = ExportHold()
     hold.install(monkeypatch)
     screen_holds.add(hold)
     return hold
