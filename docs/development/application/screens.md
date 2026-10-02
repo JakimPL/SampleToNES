@@ -79,7 +79,9 @@ Every scenario is held to the same after-checks. A failing gesture is logged and
 keeps running, which is why the checks read the log as well as the screen.
 
 - **Quiet.** The application logged no error and no thread let an exception escape. A scenario that
-  provokes a failure claims the error it provokes, and an error nobody claims still fails it.
+  provokes a failure claims the error it provokes, and an error nobody claims still fails it. A defect
+  the bugs ledger records, which a scenario's gestures meet by chance, is forgiven by name in the
+  scenarios about something else, while the ledger entry names it for its fix.
 - **Contained.** The application started no program, and every file dialog it opened had an answer
   waiting.
 - **Settled.** No modal conversation is left open, and every window lies inside the viewport.
@@ -135,6 +137,9 @@ on something else. While a button or a named key is held, the application must r
 few frames, since a busy display hands input on late. Each step of a drag waits until the application
 reads the pointer where the step put it, and the pointer rests at the end before the button comes up, as
 a person stops before letting go. A press lost on the way fails where it was lost.
+
+A plot reads the pointer as it draws, so the value it puts under the pointer trails the pointer by a
+frame. A scenario that aims by plot values reads one once the plot has kept it for two frames in a row.
 
 DearPyGui reports a position alone for a menu entry, so choosing one runs its callback the way a click does,
 through the queue's own error reporting.

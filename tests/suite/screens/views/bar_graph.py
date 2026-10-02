@@ -1,14 +1,13 @@
 from dataclasses import dataclass
 from typing import Final, List, Tuple
 
-import dearpygui.dearpygui as dpg
-
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.graphs import SUF_GRAPH_PLOT
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.geometry import Point
 from tests.suite.screens.dearpygui.hand import Hand
 from tests.suite.screens.dearpygui.items import read_item
+from tests.suite.screens.dearpygui.plots import settled_plot_pointer
 
 NEAR: Final[float] = 0.25
 FAR: Final[float] = 0.75
@@ -72,14 +71,7 @@ class BarGraph:
     def value_under(self, point: Point) -> Tuple[float, float]:
         """Rests the pointer at ``point`` and reads the value the plot puts under it."""
         self._hand.move_to(point)
-        self._bridge.expect(
-            lambda: bool(dpg.is_item_hovered(self.plot)),
-            bool,
-            description=f"the pointer resting on '{self.plot}'",
-            timeout=HOVER_SECONDS,
-        )
-        x, y = self._bridge.ask(dpg.get_plot_mouse_pos)
-        return float(x), float(y)
+        return settled_plot_pointer(self._bridge, self.plot, timeout=HOVER_SECONDS)
 
     def zoom_in(self, fraction: float, notches: int) -> None:
         """Turns the wheel up ``notches`` notches ``fraction`` of the way across the plot, widening each bar there."""

@@ -8,6 +8,8 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.tags.settings import (
     TAG_SETTINGS_PROPERTIES_BUTTON_OK,
+    TAG_SETTINGS_PROPERTIES_INPUT_FIRST_HIGHLIGHT,
+    TAG_SETTINGS_PROPERTIES_INPUT_SECOND_HIGHLIGHT,
     TAG_SETTINGS_PROPERTIES_INPUT_TITLE,
     TAG_SETTINGS_PROPERTIES_WINDOW,
 )
@@ -44,6 +46,11 @@ class ProjectProperties:
     def retitle(self, title: str) -> None:
         """Types ``title`` over the title the field holds."""
         self._hand.replace_text(TAG_SETTINGS_PROPERTIES_INPUT_TITLE, title)
+
+    def retype_highlights(self, first: int, second: int) -> None:
+        """Types ``first`` and ``second`` over the fields of the rows the tracker tints."""
+        self._hand.replace_text(TAG_SETTINGS_PROPERTIES_INPUT_FIRST_HIGHLIGHT, str(first))
+        self._hand.replace_text(TAG_SETTINGS_PROPERTIES_INPUT_SECOND_HIGHLIGHT, str(second))
 
     def confirm(self) -> None:
         self._hand.click(compose_tag(TAG_SETTINGS_PROPERTIES_BUTTON_OK, SUF_BUTTON))

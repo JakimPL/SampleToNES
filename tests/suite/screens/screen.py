@@ -40,6 +40,7 @@ from tests.suite.screens.dearpygui.screenshot import capture
 from tests.suite.screens.dearpygui.windows import WindowManager
 from tests.suite.screens.keyboard import press_combination, primary_combination
 from tests.suite.screens.render_thread import QueueRenderThread
+from tests.suite.screens.views.audio_settings import AudioSettings
 from tests.suite.screens.views.browsers import FileTree
 from tests.suite.screens.views.context_menu import ContextMenu
 from tests.suite.screens.views.display_settings import DisplaySettings
@@ -95,9 +96,10 @@ class Screen:
         self._artifacts = artifacts
         self._language = language
         self.tabs = Tabs(bridge, hand)
-        self.menu = MenuBar(bridge, language)
+        self.menu = MenuBar(bridge, hand, language)
         self.display_settings = DisplaySettings(bridge, hand, self.menu)
         self.keyboard_settings = KeyboardSettings(bridge, hand, self.menu)
+        self.audio_settings = AudioSettings(bridge, hand)
         self.project = Project(bridge, hand, self.menu)
         self.main = Main(bridge, hand, language)
         self.context_menu = ContextMenu(bridge, hand)
@@ -240,6 +242,15 @@ class Screen:
             bool,
             description=f"an error naming '{naming}'",
         )
+
+    def forgive_known_error(self, naming: str) -> None:
+        """Claims every error holding ``naming``, which a defect the bugs ledger records provokes by chance.
+
+        A scenario about something else stays quiet about a defect its gestures may meet, while the
+        scenario reproducing the defect holds it to account.
+        """
+        while self._errors.claim(naming):
+            continue
 
     def press_shortcut(self, shortcut_id: ShortcutId) -> None:
         """Presses the keys the scheme in place gives ``shortcut_id`` on the real keyboard."""

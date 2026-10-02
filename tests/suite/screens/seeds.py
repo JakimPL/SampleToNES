@@ -10,16 +10,19 @@ import soundfile
 from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.fft import Window
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
 from sampletones_core.library.key import InstructionLibraryKey
 from sampletones_core.project import ProjectContainer
 from sampletones_core.project.project import Project
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.compatibility import ARCHIVED_VERSIONS, archived, restated_document, stored_document
 from tests.suite.library import build_served_library
+from tests.suite.performance import place_instrument
 from tests.suite.stems import recorded_from, single_entry_stems_data
 
 FOREIGN_BYTES: Final[bytes] = b"These bytes were written by another program and belong to no SampleToNES document.\n"
@@ -40,6 +43,9 @@ BEAT_FRAMES: Final[int] = 15
 BEAT_LENGTH: Final[int] = 3
 BEAT_PERIOD: Final[int] = 4
 BEAT_VOLUME: Final[int] = 10
+ARRANGED_FRAMES: Final[int] = 30
+PAD_VOLUME: Final[Tuple[int, ...]] = (12, 8, 4)
+PAD_ARPEGGIO: Final[Tuple[int, ...]] = (0, 0, 0)
 
 
 class Damage(StrEnum):
@@ -184,6 +190,57 @@ def _playable_instructions(frames: int) -> Dict[ChannelName, List[InstructionUni
         for frame in range(frames)
     ]
     return {ChannelName.PULSE1: line, ChannelName.TRIANGLE: bass, ChannelName.NOISE: beat}
+
+
+@dataclass(frozen=True)
+class ArrangedProject:
+    """A project with two samples and a hand-written voice, each placed once on the song's first pattern.
+
+    ``line`` is a sample sounding Pulse 1, the triangle and the noise; ``bass`` a sample sounding the
+    triangle alone; ``pad`` a hand-written voice fading on Pulse 2, its arpeggio flat. The first starts the pattern on
+    Pulse 1, the hand-written voice comes in on Pulse 2 at ``pad_row``, and the bass on the triangle at
+    ``bass_row``.
+    """
+
+    destination: Path
+    line: str
+    bass: str
+    pad: str
+    pad_row: int
+    bass_row: int
+
+    def write(self) -> None:
+        line_instructions = _playable_instructions(ARRANGED_FRAMES)
+        bass_instructions = {ChannelName.TRIANGLE: line_instructions[ChannelName.TRIANGLE]}
+        project = Project.create()
+        line = Sample(name=self.line, reconstruction=_detached_reconstruction(line_instructions))
+        bass = Sample(name=self.bass, reconstruction=_detached_reconstruction(bass_instructions))
+        pad = Instrument(
+            name=self.pad,
+            envelopes=InstrumentEnvelopes(
+                volume=Envelope[int](items=PAD_VOLUME),
+                arpeggio=Envelope[int](items=PAD_ARPEGGIO),
+            ),
+        )
+        for voice in (line, bass, pad):
+            project.voices.append(voice)
+
+        place_instrument(project, channel_name=ChannelName.PULSE1, row_index=0, sample=line)
+        place_instrument(project, channel_name=ChannelName.PULSE2, row_index=self.pad_row, sample=pad)
+        place_instrument(project, channel_name=ChannelName.TRIANGLE, row_index=self.bass_row, sample=bass)
+        self.destination.parent.mkdir(parents=True, exist_ok=True)
+        ProjectContainer.save(project, self.destination)
+
+
+def _detached_reconstruction(instructions: Dict[ChannelName, List[InstructionUnion]]) -> Reconstruction:
+    """A reconstruction of ``instructions`` naming no recording, the way a project stores a sample."""
+    return Reconstruction.create(
+        instructions=instructions,
+        config=Config(),
+        coefficient=1.0,
+        audio_filepath=(),
+        stems_data=single_entry_stems_data(list(instructions), instructions),
+    )
 
 
 def stored_recording() -> Recording:

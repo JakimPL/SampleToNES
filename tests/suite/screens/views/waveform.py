@@ -14,6 +14,7 @@ from tests.suite.screens.dearpygui.bridge import ONE_FRAME, Bridge
 from tests.suite.screens.dearpygui.geometry import Point, Rect
 from tests.suite.screens.dearpygui.hand import Hand
 from tests.suite.screens.dearpygui.items import read_item
+from tests.suite.screens.dearpygui.plots import settled_plot_pointer
 
 LINE_SERIES_TYPE: Final[str] = "mvAppItemType::mvLineSeries"
 FIRST_POINT: Final[int] = 0
@@ -60,13 +61,8 @@ class Waveform:
             ExpectationError: If the plot never reports the pointer resting on it.
         """
         self._hand.move_to(self.point(fraction))
-        self._bridge.expect(
-            lambda: bool(dpg.is_item_hovered(self.plot)),
-            bool,
-            description=f"the pointer resting on '{self.plot}'",
-            timeout=SETTLING_SECONDS,
-        )
-        return float(self._bridge.ask(dpg.get_plot_mouse_pos)[FIRST_POINT])
+        sample, _ = settled_plot_pointer(self._bridge, self.plot, timeout=SETTLING_SECONDS)
+        return sample
 
     def cursor(self) -> Optional[float]:
         """The sample the cursor marks, or ``None`` while no cursor stands on the plot."""

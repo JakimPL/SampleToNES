@@ -142,15 +142,19 @@ class Hand:
         The press confirms it reached the application, while what it landed on is for the scenario
         to read from what the press changed.
         """
-        self._press_at(point, SINGLE_PRESS)
+        self._press_at(point, MouseButton.LEFT, SINGLE_PRESS)
 
     def double_click_at(self, point: Point) -> None:
         """Presses the left button twice in quick succession at ``point`` of the viewport."""
-        self._press_at(point, DOUBLE_PRESS)
+        self._press_at(point, MouseButton.LEFT, DOUBLE_PRESS)
+
+    def right_click_at(self, point: Point) -> None:
+        """Presses the right button at ``point`` of the viewport, for a menu a place offers rather than an item."""
+        self._press_at(point, MouseButton.RIGHT, SINGLE_PRESS)
 
     def triple_click_at(self, point: Point) -> None:
         """Presses the left button three times in quick succession at ``point`` of the viewport."""
-        self._press_at(point, TRIPLE_PRESS)
+        self._press_at(point, MouseButton.LEFT, TRIPLE_PRESS)
 
     def move_to(self, point: Point) -> None:
         """Rests the pointer at ``point`` of the viewport."""
@@ -393,11 +397,16 @@ class Hand:
         except RenderThreadStoppedError:
             return None
 
-    def _press_at(self, point: Point, count: int) -> None:
+    def _press_at(
+        self,
+        point: Point,
+        button: MouseButton,
+        count: int,
+    ) -> None:
         self.move_to(point)
         self._outlast_a_double_click()
         for _ in range(count):
-            self._press_once(MouseButton.LEFT, HOLD_FRAMES)
+            self._press_once(button, HOLD_FRAMES)
 
         self._last_release = self._application_seconds()
         self._settle(SETTLE_FRAMES)

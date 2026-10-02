@@ -1,13 +1,23 @@
-from typing import Final, List
+from typing import Final, List, Optional, Tuple
+
+import dearpygui.dearpygui as dpg
 
 from sampletones_application.tags.general import TAG_GLOBAL_CONTEXT_WINDOW, TAG_GLOBAL_TAB_INSTRUCTIONS
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.geometry import Point, Rect
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import EntryReading, read_item, read_popup_entries
+from tests.suite.screens.dearpygui.items import (
+    MENU_ITEM_TYPE,
+    MENU_TYPE,
+    EntryReading,
+    read_item,
+    read_label,
+    read_popup_entries,
+)
 
 ENTRY_INSET: Final[Point] = Point(x=12, y=8)
 CLEAR_OF_THE_TABS: Final[int] = 48
+ENABLED: Final[str] = "enabled"
 
 
 class MissingEntryError(AssertionError):
@@ -46,6 +56,30 @@ class ContextMenu:
 
     def labels(self) -> List[str]:
         return [entry.label for entry in self.entries()]
+
+    def submenu(self, label: str) -> List[Tuple[str, bool]]:
+        """The entries of the submenu reading ``label``, each with whether it answers.
+
+        Raises:
+            MissingEntryError: If the menu offers no such submenu.
+        """
+
+        def read() -> Optional[List[Tuple[str, bool]]]:
+            for child in dpg.get_item_children(TAG_GLOBAL_CONTEXT_WINDOW, 1):
+                if dpg.get_item_info(child)["type"] == MENU_TYPE and read_label(child) == label:
+                    return [
+                        (read_label(entry), bool(dpg.get_item_configuration(entry).get(ENABLED, True)))
+                        for entry in dpg.get_item_children(child, 1)
+                        if dpg.get_item_info(entry)["type"] == MENU_ITEM_TYPE
+                    ]
+
+            return None
+
+        found = self._bridge.ask(read)
+        if found is None:
+            raise MissingEntryError(f"The context menu offers no submenu '{label}'")
+
+        return found
 
     def choose(self, label: str) -> None:
         """Clicks the entry reading ``label``.

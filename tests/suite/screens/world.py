@@ -12,6 +12,7 @@ from sampletones_core.configs import Config
 from sampletones_shared.paths.user import CONFIG_PATH, PROJECTS_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 from tests.suite.screens.environment import SCREEN_SIZE
 from tests.suite.screens.seeds import (
+    ArrangedProject,
     MiniLibrary,
     PlayableReconstruction,
     Recording,
@@ -38,6 +39,12 @@ STEM_TAKES: Final[Tuple[str, ...]] = ("stem1.wav", "stem2.wav", "stem3.wav")
 STEM_FRAMES: Final[int] = 60
 PLAYABLE_FRAMES: Final[int] = 600
 FRAMES_PER_SECOND: Final[int] = 60
+ARRANGED_PROJECT: Final[Path] = PROJECTS_DIRECTORY / "Arranged.stp"
+LINE: Final[str] = "Line"
+BASS_VOICE: Final[str] = "Bass"
+PAD: Final[str] = "Pad"
+PAD_ROW: Final[int] = 4
+BASS_ROW: Final[int] = 8
 TAKE_FREQUENCY: Final[float] = 220.0
 
 
@@ -181,5 +188,24 @@ def playing_world() -> World:
             StoredReconstruction(OPEN_RECONSTRUCTION),
             stored_recording(),
             StoredProject(SONG, sample=SONG_SAMPLE, instrument=SONG_INSTRUMENT),
+        ),
+    )
+
+
+def sequencer_world() -> World:
+    """A home holding :data:`ARRANGED_PROJECT`, its voices placed on its first pattern, and the playing world's files.
+
+    The project's sample :data:`LINE` starts the pattern on Pulse 1, its hand-written :data:`PAD`
+    comes in on Pulse 2 at :data:`PAD_ROW`, and its sample :data:`BASS_VOICE` on the triangle at
+    :data:`BASS_ROW`.
+    """
+    playing = playing_world()
+    return World(
+        state=playing.state,
+        application_config=None,
+        config=None,
+        files=(
+            *playing.files,
+            ArrangedProject(ARRANGED_PROJECT, line=LINE, bass=BASS_VOICE, pad=PAD, pad_row=PAD_ROW, bass_row=BASS_ROW),
         ),
     )
