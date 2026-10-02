@@ -1,3 +1,7 @@
+from typing import Final, Tuple
+
+import dearpygui.dearpygui as dpg
+
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_BUTTON
@@ -8,15 +12,21 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_DISPLAY_BUTTON_REVERT,
     TAG_SETTINGS_DISPLAY_CHECKBOX_BORDERLESS,
     TAG_SETTINGS_DISPLAY_CHECKBOX_VSYNC,
+    TAG_SETTINGS_DISPLAY_COMBO_PALETTE,
+    TAG_SETTINGS_DISPLAY_COMBO_RESOLUTION,
     TAG_SETTINGS_DISPLAY_DIALOG_DISCARD,
     TAG_SETTINGS_DISPLAY_WINDOW,
     TAG_SETTINGS_DISPLAY_WINDOW_COUNTDOWN,
 )
+from sampletones_application.utils.callbacks.queue import CallbackQueue
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
 from tests.suite.screens.dearpygui.items import read_item, read_value
+from tests.suite.screens.dearpygui.semantic import choose
 from tests.suite.screens.views.menus import MenuBar
 from tests.suite.screens.views.prompts import Prompt
+
+ITEMS: Final[str] = "items"
 
 
 class DisplaySettings:
@@ -39,6 +49,33 @@ class DisplaySettings:
 
     def is_shown(self) -> bool:
         return self._bridge.ask(lambda: read_item(TAG_SETTINGS_DISPLAY_WINDOW)).shown
+
+    def resolution(self) -> str:
+        """The window size the Resolution list names."""
+        return str(self._bridge.ask(lambda: read_value(TAG_SETTINGS_DISPLAY_COMBO_RESOLUTION)))
+
+    def resolutions(self) -> Tuple[str, ...]:
+        """The window sizes the Resolution list offers, in order."""
+        return tuple(
+            str(item)
+            for item in self._bridge.ask(lambda: dpg.get_item_configuration(TAG_SETTINGS_DISPLAY_COMBO_RESOLUTION))[
+                ITEMS
+            ]
+        )
+
+    def choose_resolution(self, label: str) -> None:
+        """Picks the window size reading ``label`` in the Resolution list, which resizes the window and starts the
+        countdown.
+        """
+        self._bridge.ask(lambda: choose(TAG_SETTINGS_DISPLAY_COMBO_RESOLUTION, label, CallbackQueue.run))
+
+    def palette(self) -> str:
+        """The palette the Palette list names."""
+        return str(self._bridge.ask(lambda: read_value(TAG_SETTINGS_DISPLAY_COMBO_PALETTE)))
+
+    def choose_palette(self, name: str) -> None:
+        """Picks the palette ``name`` in the Palette list, which repaints the interface at once."""
+        self._bridge.ask(lambda: choose(TAG_SETTINGS_DISPLAY_COMBO_PALETTE, name, CallbackQueue.run))
 
     def vsync(self) -> bool:
         """Whether the vertical sync box stands ticked."""

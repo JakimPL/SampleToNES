@@ -6,6 +6,7 @@ from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON,
     SUF_COLLAPSE_BODY,
+    SUF_COLLAPSE_RAIL,
     SUF_COLLAPSE_STRIP,
     SUF_TOOLTIP,
     TAG_GLOBAL_THEME_STEP_BUTTON_LIT,
@@ -57,6 +58,24 @@ class Card:
         strip = compose_tag(self.tag, SUF_COLLAPSE_STRIP)
         self._hand.scroll_into_view(strip)
         self._hand.click(strip)
+
+    def folds_sideways(self) -> bool:
+        """Whether the card folds into a rail at its side, rather than into its bar."""
+        return self._bridge.ask(lambda: read_item(self.rail)).exists
+
+    @property
+    def rail(self) -> str:
+        """The rail a sideways card folds into, which a click unfolds."""
+        return compose_tag(self.tag, SUF_COLLAPSE_RAIL)
+
+    @property
+    def strip(self) -> str:
+        """The header bar a click folds the card on."""
+        return compose_tag(self.tag, SUF_COLLAPSE_STRIP)
+
+    def unfold_from_the_rail(self) -> None:
+        """Clicks the rail a sideways card stands folded into, which unfolds it."""
+        self._hand.click(self.rail)
 
 
 class Main:

@@ -18,6 +18,7 @@ from tests.suite.screens.dearpygui.items import (
     find_labelled,
     read_item,
     read_label,
+    read_value,
     read_viewport,
 )
 from tests.suite.screens.dearpygui.semantic import invoke
@@ -31,11 +32,12 @@ FAR_END_INSET: Final[int] = 30
 
 @dataclass(frozen=True)
 class MenuEntry:
-    """One entry of a menu on the bar: its words, whether it answers, and the keys printed beside it."""
+    """One entry of a menu on the bar: its words, whether it answers, the keys printed beside it, and its check mark."""
 
     label: str
     enabled: bool
     keys: str
+    checked: bool
 
 
 class MenuBar:
@@ -66,8 +68,13 @@ class MenuBar:
 
     def open(self, group: MenuElements) -> None:
         """Clicks the header of the menu ``group``, which opens its popup."""
+        corner = self.header(group)
+        self._hand.click_at(Point(x=corner.x + HEADER_INSET.x, y=corner.y + HEADER_INSET.y))
+
+    def header(self, group: MenuElements) -> Point:
+        """Where the header of the menu ``group`` stands on the bar, its top left corner."""
         corner = self._bridge.ask(lambda: dpg.get_item_state(self._menu(group))["pos"])
-        self._hand.click_at(Point(x=round(corner[0]) + HEADER_INSET.x, y=round(corner[1]) + HEADER_INSET.y))
+        return Point(x=round(corner[0]), y=round(corner[1]))
 
     def close(self) -> None:
         """Clicks the bare far end of the tab bar, clear of every menu's popup, which puts an open menu away."""
@@ -87,6 +94,7 @@ class MenuBar:
                     label=read_label(entry),
                     enabled=bool(dpg.get_item_configuration(entry).get(ENABLED, True)),
                     keys=str(dpg.get_item_configuration(entry).get(SHORTCUT, "")),
+                    checked=bool(read_value(entry)),
                 )
                 for entry in _menu_items(self._menu(group))
             ]
@@ -101,9 +109,17 @@ class MenuBar:
         """Whether the entry ``item`` of the menu ``group`` answers a press."""
         return self._bridge.ask(lambda: read_item(self._entry(group, item)).enabled)
 
+    def is_checked(
+        self,
+        group: MenuElements,
+        item: MenuElements,
+    ) -> bool:
+        """Whether the entry ``item`` of the menu ``group`` carries its check mark."""
+        return bool(self._bridge.ask(lambda: read_value(self._entry(group, item))))
+
     def _menu(self, group: MenuElements) -> Item:
         """The menu ``group`` on the bar. Runs on the render thread."""
-        return find_labelled(TAG_GLOBAL_WINDOW_MAIN, self._label(group), item_type=MENU_TYPE)
+        return find_labelled(TAG_GLOBAL_WINDOW_MAIN, self.label(group), item_type=MENU_TYPE)
 
     def _entry(
         self,
@@ -113,16 +129,17 @@ class MenuBar:
         """The entry ``item`` of the menu ``group``. Runs on the render thread."""
         menu = find_labelled(
             TAG_GLOBAL_WINDOW_MAIN,
-            self._label(group),
+            self.label(group),
             item_type=MENU_TYPE,
         )
         return find_labelled(
             menu,
-            self._label(item),
+            self.label(item),
             item_type=MENU_ITEM_TYPE,
         )
 
-    def _label(self, element: MenuElements) -> str:
+    def label(self, element: MenuElements) -> str:
+        """The words the menu bar shows for ``element``."""
         return self._language[
             Page.GLOBAL,
             Panel.MENU,

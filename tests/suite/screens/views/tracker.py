@@ -10,7 +10,7 @@ from sampletones_core.constants.enums import ChannelName
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.geometry import Point
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import Item, read_item, read_label
+from tests.suite.screens.dearpygui.items import Item, read_item, read_label, read_theme_text_color
 from tests.suite.screens.dearpygui.keys import IMGUI_LEFT_SHIFT
 from tests.suite.screens.dearpygui.reach import UnreachableError
 
@@ -37,6 +37,14 @@ def tracker_cell_theme(row: int, channel: Optional[ChannelName], subcolumn: SubC
     return int(theme) if theme is not None else None
 
 
+def _header_label(channel: Optional[ChannelName]) -> Item:
+    """The name heading ``channel``'s column, the Sample column's for ``None``. Runs on the render thread."""
+    table_row = dpg.get_item_children(TAG_SEQUENCER_TRACKER_TABLE, 1)[HEADER_ROW]
+    cell = dpg.get_item_children(table_row, 1)[tracker_table_column(channel)]
+    label: Item = dpg.get_item_children(cell, 1)[CELL_GROUP]
+    return label
+
+
 class Tracker:
     """The tracker grid: a row per pattern row, the Sample column and a column per channel, three slots to a cell.
 
@@ -54,11 +62,19 @@ class Tracker:
 
     def header(self, channel: Optional[ChannelName]) -> str:
         """What the header of ``channel``'s column reads, the Sample column's for ``None``."""
+        return self._bridge.ask(lambda: read_label(_header_label(channel)))
 
-        def read() -> str:
-            table_row = dpg.get_item_children(TAG_SEQUENCER_TRACKER_TABLE, 1)[HEADER_ROW]
-            cell = dpg.get_item_children(table_row, 1)[tracker_table_column(channel)]
-            return read_label(dpg.get_item_children(cell, 1)[CELL_GROUP])
+    def click_header(self, channel: ChannelName) -> None:
+        """Clicks the name heading ``channel``'s column, which mutes the channel or lets it sound again."""
+        label = self._bridge.ask(lambda: _header_label(channel))
+        self._hand.click(label)
+
+    def text_color(self, row: int, channel: Optional[ChannelName], subcolumn: SubColumn) -> Optional[Tuple[float, ...]]:
+        """The color one slot's text is drawn in, the theme it wears states."""
+
+        def read() -> Optional[Tuple[float, ...]]:
+            theme = tracker_cell_theme(row, channel, subcolumn)
+            return None if theme is None else read_theme_text_color(theme)
 
         return self._bridge.ask(read)
 

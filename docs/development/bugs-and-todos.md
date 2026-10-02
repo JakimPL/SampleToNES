@@ -222,3 +222,7 @@ currently out of line. An entry leaves when the code meets the contract again.
   can see: `voice_instrument` raises the tuning error inside the menu's callback, so no message, no save
   dialog and no file follow, while a Bitphase project or an NSF program of the same project stops with a
   message. `tests/screens/exports/test_progress.py` reproduces it as a known failure.
+* Closing the window while Display settings holds a window size kept on the countdown but never confirmed
+  writes that size: leaving records the live window size, while the dialog keeps the session at the values
+  it opened with until OK, and the window manager's close passes the open dialog by.
+  `tests/screens/interface/test_display.py` reproduces it as a known failure.

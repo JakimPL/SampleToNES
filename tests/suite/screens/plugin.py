@@ -10,6 +10,7 @@ from tests.suite.screens.application import NOTHING_TO_OPEN, Boundaries, ScreenA
 from tests.suite.screens.boundaries.audio import OutputDevice, provide_output_device
 from tests.suite.screens.boundaries.dialogs import ScriptedFileDialogs
 from tests.suite.screens.boundaries.errors import ErrorRecords
+from tests.suite.screens.boundaries.highlights import TableHighlights
 from tests.suite.screens.boundaries.reveals import FileManagerStandIn
 from tests.suite.screens.boundaries.spawns import SpawnGuard
 from tests.suite.screens.dearpygui.bridge import Bridge
@@ -239,6 +240,8 @@ def screen_boundaries(
     spawns = SpawnGuard()
     spawns.install()
     spawns.allow(file_manager.folder)
+    highlights = TableHighlights()
+    highlights.install(monkeypatch)
     provide_output_device(
         output_device,
         home=Path.home(),
@@ -250,6 +253,7 @@ def screen_boundaries(
         spawns=spawns,
         holds=screen_holds,
         file_manager=file_manager,
+        highlights=highlights,
     )
 
 
@@ -299,6 +303,7 @@ def screen(
         dialogs=screen_boundaries.dialogs,
         errors=screen_boundaries.errors,
         file_manager=screen_boundaries.file_manager,
+        highlights=screen_boundaries.highlights,
         artifacts=Path(os.environ[ARTIFACTS_VARIABLE]),
     )
     window_manager.close()

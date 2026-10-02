@@ -1,6 +1,8 @@
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Callable, Final, Iterator, Optional, Tuple, TypeVar, Union
+from typing import Callable, Dict, Final, Iterator, Optional, Tuple, TypeVar, Union
+
+import numpy as np
 
 from sampletones_application.categories.context import channel_label, generator_label
 from sampletones_application.categories.key.text import TextKeyTuple
@@ -20,6 +22,7 @@ from sampletones_core.constants.enums import ChannelName, GeneratorName
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
 from tests.suite.screens.boundaries.dialogs import DialogKind, DialogRequest, ScriptedFileDialogs
 from tests.suite.screens.boundaries.errors import ErrorRecords
+from tests.suite.screens.boundaries.highlights import HighlightPlace, TableHighlights
 from tests.suite.screens.boundaries.reveals import FileManagerStandIn
 from tests.suite.screens.dearpygui.bridge import Bridge, ExpectationError
 from tests.suite.screens.dearpygui.geometry import Point
@@ -36,7 +39,7 @@ from tests.suite.screens.dearpygui.items import (
     read_windows,
 )
 from tests.suite.screens.dearpygui.recording import FrameRecording
-from tests.suite.screens.dearpygui.screenshot import capture
+from tests.suite.screens.dearpygui.screenshot import capture, drawn_frame
 from tests.suite.screens.dearpygui.windows import WindowManager
 from tests.suite.screens.keyboard import press_combination, primary_combination
 from tests.suite.screens.render_thread import QueueRenderThread
@@ -61,6 +64,7 @@ EXPECT_TIMEOUT_SECONDS: Final[float] = 10.0
 STEP_SEPARATOR: Final[str] = " → "
 SCREENSHOT_SUFFIX: Final[str] = ".png"
 STATUS_BAR: Final[str] = compose_tag(TAG_GLOBAL_STATUS_BAR, SUF_BUTTON)
+PIXEL_CHANNELS: Final[int] = 4
 
 
 class Screen:
@@ -84,6 +88,7 @@ class Screen:
         dialogs: ScriptedFileDialogs,
         errors: ErrorRecords,
         file_manager: FileManagerStandIn,
+        highlights: TableHighlights,
         artifacts: Path,
     ) -> None:
         self.bridge = bridge
@@ -94,6 +99,7 @@ class Screen:
         self._dialogs = dialogs
         self._errors = errors
         self._file_manager = file_manager
+        self._highlights = highlights
         self._artifacts = artifacts
         self._language = language
         self.tabs = Tabs(bridge, hand)
@@ -130,6 +136,15 @@ class Screen:
     def words(self, key: Union[str, TextKeyTuple]) -> str:
         """What the language file says under ``key``, which is what the application shows the user."""
         return self._language[key]
+
+    def shortcut_words(self, shortcut_id: ShortcutId) -> str:
+        """How a menu prints the keys of ``shortcut_id`` under the scheme in place."""
+        return self._shortcuts.shortcut(shortcut_id).display()
+
+    def frame_pixels(self) -> np.ndarray:
+        """The next frame drawn, as rows of pixels of red, green, blue and alpha fractions."""
+        frame = drawn_frame(self.bridge)
+        return np.frombuffer(frame.pixels, dtype=np.float32).reshape(frame.height, frame.width, PIXEL_CHANNELS)
 
     def channel_words(self, channel: ChannelName) -> str:
         """The name every display gives ``channel``."""
@@ -220,6 +235,10 @@ class Screen:
     def revealed(self) -> Tuple[Path, ...]:
         """Every path the application asked the desktop's file manager to show, in order."""
         return self._file_manager.shown()
+
+    def table_highlights(self) -> Dict[HighlightPlace, Tuple[float, ...]]:
+        """Every highlight standing on a table, with the color the application laid it in."""
+        return self._highlights.standing()
 
     def shown_windows(self) -> Tuple[WindowReading, ...]:
         """Every window standing on the screen besides the application's main one."""

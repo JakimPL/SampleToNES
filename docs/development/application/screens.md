@@ -150,6 +150,9 @@ A scenario speaks through views, one per tab, card and dialog, under `tests/suit
 knows its controls by their tags and its words by their language keys. A tag that moves changes one view,
 and a scenario reads as the gestures a user makes.
 
+What DearPyGui reports no item for is read from the frame it draws: `screen.frame_pixels()` hands over the
+next frame, which is how a menu popup's width is measured.
+
 ## The boundaries
 
 - **File dialogs.** A native dialog stops the queue while it stands, so a scenario queues its answer before
@@ -166,6 +169,9 @@ and a scenario reads as the gestures a user makes.
   runs, and `screen.revealed()` reads what it showed.
 - **The window manager.** The scenario's X server runs none, so `screen.close_window()` sends the request
   a title bar's close button sends.
+- **Table highlights.** DearPyGui keeps a table's row, cell and column highlights without a way to read
+  their color back, so the calls laying and lifting them are wrapped from the first frame on, and
+  `screen.table_highlights()` reads what stands.
 
 ## Holding work in flight
 

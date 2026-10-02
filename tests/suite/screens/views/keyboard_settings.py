@@ -5,6 +5,7 @@ from sampletones_application.tags.settings import (
     PRE_SETTINGS_KEYBINDINGS_ROW,
     SUF_SETTINGS_KEYBINDINGS_SHORTCUT,
     TAG_SETTINGS_KEYBINDINGS_BUTTON_CANCEL,
+    TAG_SETTINGS_KEYBINDINGS_BUTTON_OK,
     TAG_SETTINGS_KEYBINDINGS_DIALOG_REASSIGN,
     TAG_SETTINGS_KEYBINDINGS_WINDOW,
 )
@@ -49,6 +50,10 @@ class KeyboardSettings:
 
     def cancel(self) -> None:
         self._hand.click(compose_tag(TAG_SETTINGS_KEYBINDINGS_BUTTON_CANCEL, SUF_BUTTON))
+
+    def confirm(self) -> None:
+        """Presses OK, which puts the keys edited in force."""
+        self._hand.click(compose_tag(TAG_SETTINGS_KEYBINDINGS_BUTTON_OK, SUF_BUTTON))
 
 
 def _shortcut_cell(shortcut_id: ShortcutId) -> str:
