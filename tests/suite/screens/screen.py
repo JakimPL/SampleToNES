@@ -1,5 +1,6 @@
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Callable, Final, Optional, Tuple, TypeVar, Union
+from typing import Callable, Final, Iterator, Optional, Tuple, TypeVar, Union
 
 from sampletones_application.categories.key.text import TextKeyTuple
 from sampletones_application.categories.manager import LanguageManager
@@ -15,13 +16,24 @@ from tests.suite.scenario import BaseTestScenario, ScenarioStep
 from tests.suite.screens.boundaries.dialogs import DialogKind, DialogRequest, ScriptedFileDialogs
 from tests.suite.screens.boundaries.errors import ErrorRecords
 from tests.suite.screens.dearpygui.bridge import Bridge, ExpectationError
+from tests.suite.screens.dearpygui.geometry import Point
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import Item, WindowReading, read_viewport_title, read_windows
+from tests.suite.screens.dearpygui.items import (
+    Item,
+    WindowReading,
+    read_item_count,
+    read_pointer,
+    read_theme,
+    read_viewport_title,
+    read_windows,
+)
+from tests.suite.screens.dearpygui.recording import FrameRecording
 from tests.suite.screens.dearpygui.screenshot import capture
 from tests.suite.screens.dearpygui.windows import WindowManager
 from tests.suite.screens.keyboard import press_combination, primary_combination
 from tests.suite.screens.render_thread import QueueRenderThread
 from tests.suite.screens.views.browsers import FileTree
+from tests.suite.screens.views.context_menu import ContextMenu
 from tests.suite.screens.views.display_settings import DisplaySettings
 from tests.suite.screens.views.instructions import Instructions
 from tests.suite.screens.views.main import Main
@@ -75,6 +87,7 @@ class Screen:
         self.display_settings = DisplaySettings(bridge, hand, self.menu)
         self.project = Project(bridge, hand, self.menu)
         self.main = Main(bridge, hand, language)
+        self.context_menu = ContextMenu(bridge, hand)
         self.explorer = FileTree(bridge, hand, TAG_MAIN_EXPLORER_TREE)
         self.reconstructions = Reconstructions(bridge, hand, self.menu)
         self.sequencer = Sequencer(bridge, self.menu)
@@ -117,6 +130,31 @@ class Screen:
             raise ExpectationError(f"Expected {description}, and found nothing")
 
         return found
+
+    def pointer(self) -> Point:
+        """Where the pointer stands in the viewport, as the application last saw it."""
+        return self.bridge.ask(read_pointer)
+
+    def theme_of(self, item: Item) -> Optional[str]:
+        """The tag of the theme bound to ``item``, which is how a control wears a state such as hover."""
+        return self.bridge.ask(lambda: read_theme(item))
+
+    def item_count(self) -> int:
+        """How many items the interface holds, which a gesture repeated without end leaves where it stood."""
+        return self.bridge.ask(read_item_count)
+
+    @contextmanager
+    def record(self, reading: Callable[[], ReadingT]) -> Iterator[FrameRecording[ReadingT]]:
+        """Takes ``reading`` on the render thread after every frame drawn while the block runs.
+
+        ``reading`` runs between frames on the render thread, so it reads DearPyGui directly.
+        """
+        recording = FrameRecording(self._render_thread, reading)
+        recording.start()
+        try:
+            yield recording
+        finally:
+            recording.stop()
 
     def frames(self, count: int) -> None:
         """Lets ``count`` frames pass, for a scenario whose promise is itself a number of frames."""

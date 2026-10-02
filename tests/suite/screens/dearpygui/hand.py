@@ -1,4 +1,5 @@
 import time
+from contextlib import suppress
 from functools import partial
 from typing import Callable, Dict, Final, Optional, Sequence
 
@@ -11,6 +12,7 @@ from tests.suite.screens.dearpygui.items import (
     enclosing_regions,
     read_hovered,
     read_item,
+    read_region_view,
     read_scroll,
     read_viewport,
     read_visible_box,
@@ -35,9 +37,13 @@ DOUBLE_PRESS: Final[int] = 2
 HOVER_ARRIVAL_FRAMES: Final[int] = 5
 REACH_TIMEOUT_SECONDS: Final[float] = 10.0
 WHEEL_FRAMES: Final[int] = 1
-SCROLL_NOTCH_LIMIT: Final[int] = 400
+SCROLL_NOTCH_LIMIT: Final[int] = 100
 EDGE_INSET: Final[int] = 3
+IMGUI_DOUBLE_CLICK_SECONDS: Final[float] = 0.30
 DRAG_STEPS: Final[int] = 8
+GRIP_MARGIN_PIXELS: Final[float] = 8.0
+GRIP_DRAGS: Final[int] = 4
+IMGUI_GRAB_MIN_SIZE: Final[float] = 12.0
 IMGUI_MOUSE_BUTTONS: Final[Dict[MouseButton, int]] = {
     MouseButton.LEFT: dpg.mvMouseButton_Left,
     MouseButton.RIGHT: dpg.mvMouseButton_Right,
@@ -71,10 +77,33 @@ class Hand:
     ) -> None:
         self._bridge = bridge
         self._device = device
+        self._last_release: Optional[float] = None
 
     def click(self, item: Item) -> None:
         """Presses ``item`` with the left button."""
         self._press(item, MouseButton.LEFT, SINGLE_PRESS)
+
+    def click_holding(
+        self,
+        item: Item,
+        modifiers: Sequence[int],
+    ) -> None:
+        """Presses ``item`` with the left button while holding the Dear ImGui keys in ``modifiers``.
+
+        The keys go down a frame before the button and come up once the press has settled, which is
+        how a person makes a Ctrl-click, so an application reading them while it answers the press
+        finds them held.
+        """
+        for modifier in modifiers:
+            self._device.key_down(keysym_of(modifier))
+        self._settle(HOLD_FRAMES)
+        self._confirm_keys(modifiers)
+
+        self._press(item, MouseButton.LEFT, SINGLE_PRESS)
+
+        for modifier in reversed(modifiers):
+            self._device.key_up(keysym_of(modifier))
+        self._settle(SETTLE_FRAMES)
 
     def double_click(self, item: Item) -> None:
         """Presses ``item`` twice in quick succession with the left button."""
@@ -84,15 +113,38 @@ class Hand:
         """Presses ``item`` with the right button, the gesture that opens a context menu."""
         self._press(item, MouseButton.RIGHT, SINGLE_PRESS)
 
+    def click_at(self, point: Point) -> None:
+        """Presses the left button at ``point`` of the viewport, for a target DearPyGui reports a position alone for.
+
+        The press confirms it reached the application, while what it landed on is for the scenario
+        to read from what the press changed.
+        """
+        viewport = self._bridge.ask(read_viewport)
+        self._device.move(Point(x=round(viewport.x) + point.x, y=round(viewport.y) + point.y))
+        self._settle(HOVER_FRAMES)
+        self._device.button_down(MouseButton.LEFT)
+        self._settle(HOLD_FRAMES)
+        self._confirm(lambda: dpg.is_mouse_button_down(dpg.mvMouseButton_Left), "The left button")
+        self._device.button_up(MouseButton.LEFT)
+        self._settle(SETTLE_FRAMES)
+
     def hover(self, item: Item) -> None:
         """Rests the pointer over ``item`` until the item reports it.
 
         Raises:
             GestureLostError: If the item never reports the pointer resting on it.
         """
-        self._device.move(self._aim(item))
-        self._bridge.frames(HOVER_FRAMES)
-        self._confirm_hover(item)
+        deadline = time.monotonic() + REACH_TIMEOUT_SECONDS
+        while True:
+            self._device.move(self._aim(item))
+            self._bridge.frames(HOVER_FRAMES)
+            if self._hovered_within(item, HOVER_ARRIVAL_FRAMES):
+                return
+            if time.monotonic() >= deadline:
+                raise GestureLostError(
+                    f"The pointer was aimed at {item!r} and the item reports no hover: "
+                    f"something covers it, or the region it scrolls in clips it"
+                )
 
     def wheel(
         self,
@@ -104,6 +156,50 @@ class Hand:
         self._turn_wheel(notches)
         self._settle(SETTLE_FRAMES)
 
+    def turn_wheel_over(
+        self,
+        region: Item,
+        notches: int,
+    ) -> None:
+        """Turns the wheel ``notches`` notches over the right edge of ``region``, down for a positive count.
+
+        The pointer goes where it goes whatever stands open, so the gesture reports nothing; the
+        scenario reads what the turn moved.
+        """
+        self._device.move(self._bridge.ask(lambda: _wheel_point(region)))
+        self._settle(HOVER_FRAMES)
+        self._turn_wheel(notches)
+        self._settle(SETTLE_FRAMES)
+
+    def scroll_to_end(self, region: Item) -> None:
+        """Drags the grip of ``region``'s scrollbar to the bottom of its track, as a person reaches the end of a long list.
+
+        A list drawing only the rows in view settles its length as it scrolls, so the grip is dragged
+        again while the end moves on, and a turn of the wheel takes up the pixels the grip's whole
+        steps leave over.
+
+        Raises:
+            UnreachableError: If the region stands short of its end afterwards.
+        """
+        self.scroll_into_view(region)
+        for _ in range(GRIP_DRAGS):
+            before = self._bridge.ask(lambda: read_scroll(region))
+            if before.position >= before.maximum:
+                return
+
+            start = self._bridge.ask(partial(_grip_point, region, before.position))
+            end = self._bridge.ask(partial(_grip_point, region, before.maximum + GRIP_MARGIN_PIXELS))
+            self._drag_between(start, end)
+            self._settle(SETTLE_FRAMES)
+
+        short = self._bridge.ask(lambda: read_scroll(region))
+        if short.position < short.maximum and short.by_wheel:
+            self.turn_wheel_over(region, 1)
+
+        after = self._bridge.ask(lambda: read_scroll(region))
+        if after.position < after.maximum:
+            raise UnreachableError(f"The region {region!r} stands short of its end at {after}")
+
     def scroll_into_view(self, item: Item) -> None:
         """Turns the wheel over the regions ``item`` scrolls in until the item stands whole in view.
 
@@ -111,7 +207,8 @@ class Hand:
         after. The wheel moves a region that takes it: the first notch shows how far one notch carries
         the region, and each later turn takes as many notches as the distance left needs, the way a
         person spins the wheel toward a row. A region the wheel leaves alone is moved by dragging its
-        scrollbar's grip to where the grip stands for the scroll the item needs.
+        scrollbar's grip to where the grip stands for the scroll the item needs, and a few pixels on,
+        since the grip moves in whole pixels and each of them scrolls further than one.
 
         Raises:
             UnreachableError: If a region stops moving, or the wheel runs out of turns, first.
@@ -135,8 +232,9 @@ class Hand:
                 notches = max(1, int(abs(distance) // notch)) if notch > 0 else 1
                 self._turn_wheel(notches if distance > 0 else -notches)
             else:
-                start = self._bridge.ask(lambda: _grip_point(region, before.position))
-                end = self._bridge.ask(lambda: _grip_point(region, before.position + distance))
+                margin = GRIP_MARGIN_PIXELS if distance > 0 else -GRIP_MARGIN_PIXELS
+                start = self._bridge.ask(partial(_grip_point, region, before.position))
+                end = self._bridge.ask(partial(_grip_point, region, before.position + distance + margin))
                 self._drag_between(start, end)
                 notches = 1
 
@@ -204,6 +302,7 @@ class Hand:
         count: int,
     ) -> None:
         self.hover(item)
+        self._outlast_a_double_click()
         imgui_button = IMGUI_MOUSE_BUTTONS[button]
         for _ in range(count):
             self._device.button_down(button)
@@ -212,7 +311,28 @@ class Hand:
             self._device.button_up(button)
             self._settle(RELEASE_FRAMES)
 
+        self._last_release = self._application_seconds()
         self._settle(SETTLE_FRAMES)
+
+    def _outlast_a_double_click(self) -> None:
+        """Waits until the last press lies further back than a double-click reaches, in the application's clock.
+
+        A person's next gesture comes later than that, while frames drawn quickly bring it within
+        reach, where Dear ImGui counts it with the clicks before it.
+        """
+        last = self._last_release
+        if last is None:
+            return
+
+        while float(self._bridge.ask(dpg.get_total_time)) - last < IMGUI_DOUBLE_CLICK_SECONDS:
+            self._bridge.frames(ONE_FRAME)
+
+    def _application_seconds(self) -> Optional[float]:
+        """The application's clock, or ``None`` once a gesture has closed the application."""
+        try:
+            return float(self._bridge.ask(dpg.get_total_time))
+        except RenderThreadStoppedError:
+            return None
 
     def _drag_between(self, start: Point, end: Point) -> None:
         """Presses the left button at ``start``, carries it to ``end`` over a few frames, and lets go there."""
@@ -246,22 +366,19 @@ class Hand:
         self._device.key_up(keysym)
         self._settle(RELEASE_FRAMES)
 
-    def _confirm_hover(self, item: Item) -> None:
-        """Waits a few frames for ``item`` to report the pointer resting on it, where its kind reports hover.
+    def _hovered_within(self, item: Item, frames: int) -> bool:
+        """Whether ``item`` reports the pointer resting on it within ``frames`` frames, or reports no hover at all.
 
-        Raises:
-            GestureLostError: If the item never reports the pointer, which is a press bound elsewhere.
+        An item standing in a tree that rebuilds reports no hover until the rebuild lets it go, which
+        is why the hover is aimed again until the reach time runs out.
         """
-        for _ in range(HOVER_ARRIVAL_FRAMES):
+        for _ in range(frames):
             if self._bridge.ask(lambda: read_hovered(item)) is not False:
-                return
+                return True
 
             self._bridge.frames(ONE_FRAME)
 
-        raise GestureLostError(
-            f"The pointer was aimed at {item!r} and the item reports no hover: "
-            f"something covers it, or the region it scrolls in clips it"
-        )
+        return False
 
     def _confirm_keys(self, keys: Sequence[int]) -> None:
         for key in keys:
@@ -287,10 +404,8 @@ class Hand:
 
     def _settle(self, count: int) -> None:
         """Lets ``count`` frames pass once a gesture is under way, or none once it closed the application."""
-        try:
+        with suppress(RenderThreadStoppedError):
             self._bridge.frames(count)
-        except RenderThreadStoppedError:
-            return
 
     def _aim(self, item: Item) -> Point:
         """The screen pixel at the middle of ``item``, once a user could press it and it holds still.
@@ -334,7 +449,7 @@ def _distance_from_view(item: Item, region: Item) -> float:
     Runs on the render thread.
     """
     item_box = read_item(item).rect
-    region_box = read_item(region).rect
+    region_box = read_region_view(region)
     if item_box is None or region_box is None:
         raise UnreachableError(f"{item!r} or the region {region!r} it scrolls in reports no box")
 
@@ -368,19 +483,21 @@ def _wheel_point(region: Item) -> Point:
 def _grip_point(region: Item, scroll: float) -> Point:
     """The pixel at the middle of ``region``'s scrollbar grip while the region stands scrolled to ``scroll``.
 
-    The grip spans the share of the content the region shows, and travels the rest of the track as
-    the region scrolls from its top to its end. Runs on the render thread.
+    The grip spans the share of the content the region shows, held at Dear ImGui's smallest grip,
+    and travels the rest of the track as the region scrolls from its top to its end. The track spans
+    the region's whole height, so the region stands whole in view for its grip to be dragged. Runs on
+    the render thread.
     """
-    visible = read_visible_box(region)
-    if visible is None:
-        raise UnreachableError(f"No part of the region {region!r} stands in view to drag its scrollbar")
+    box = read_item(region).rect
+    if box is None:
+        raise UnreachableError(f"The region {region!r} reports no box to drag its scrollbar in")
 
     reading = read_scroll(region)
     target = min(max(scroll, 0.0), reading.maximum)
-    grip = visible.height * visible.height / (visible.height + reading.maximum)
-    travel = visible.height - grip
+    grip = min(max(box.height * box.height / (box.height + reading.maximum), IMGUI_GRAB_MIN_SIZE), box.height)
+    travel = box.height - grip
     viewport = read_viewport()
     return Point(
-        x=round(viewport.x + visible.x + visible.width) - EDGE_INSET,
-        y=round(viewport.y + visible.y + grip / 2 + travel * target / reading.maximum),
+        x=round(viewport.x + box.x + box.width) - EDGE_INSET,
+        y=round(viewport.y + box.y + grip / 2 + travel * target / reading.maximum),
     )

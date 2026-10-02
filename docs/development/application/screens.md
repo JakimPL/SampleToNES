@@ -149,6 +149,17 @@ and a scenario reads as the gestures a user makes.
 - **The window manager.** The scenario's X server runs none, so `screen.close_window()` sends the request
   a title bar's close button sends.
 
+## Holding work in flight
+
+A gesture made while work runs is only proven if the work is provably still running when the gesture
+lands. A hold keeps it there: a stand-in decides **when** the work lands and never **what** it computes.
+A held conversion walks the stages a real one reports and stops halfway through matching, and a held
+folder scan meets the folder's entries and then one entry after another that is no recording. Each goes
+on reporting while it is held, so Stop and Cancel are heard where the real work hears them. A hold lasts
+until the scenario releases it, and every hold is released before the scenario leaves, because leaving
+waits for the work in flight. A scenario asks for a hold through its fixture, `conversion_hold` or
+`scan_hold`.
+
 ## What survives a restart
 
 What a restart keeps is proven in two halves, each a scenario on a fresh home. In the first, the application
@@ -207,6 +218,7 @@ picture as evidence of a look, for a pull request rather than an assertion.
 | The display a worker draws on | `tests/suite/screens/dearpygui/display.py` |
 | The application under test and how it ends | `tests/suite/screens/application.py` |
 | The stand-ins at the boundaries | `tests/suite/screens/boundaries/` |
+| Work held in flight | `tests/suite/screens/holds.py` |
 | The after-checks | `tests/suite/screens/checks.py` |
 | What a scenario holds and reads | `tests/suite/screens/screen.py`, `views/`, `steps/` |
 | What a scenario's home holds | `tests/suite/screens/world.py` |

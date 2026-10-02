@@ -7,6 +7,7 @@ from sampletones_core.structures.tree.node import FileSystemNode, LibraryNode, T
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
 from tests.suite.screens.dearpygui.items import TREE_NODE_TYPE, Item, find_item, read_label
+from tests.suite.screens.dearpygui.keys import IMGUI_LEFT_CTRL
 
 NodeTest = Callable[[TreeNode], bool]
 
@@ -67,10 +68,25 @@ class FileTree:
         self._hand.scroll_into_view(row)
         self._hand.click(row)
 
+    def click(self, row: Item) -> None:
+        """Brings ``row`` into view and clicks it."""
+        self._hand.scroll_into_view(row)
+        self._hand.click(row)
+
     def double_click(self, row: Item) -> None:
         """Brings ``row`` into view and double-clicks it."""
         self._hand.scroll_into_view(row)
         self._hand.double_click(row)
+
+    def ctrl_click(self, row: Item) -> None:
+        """Brings ``row`` into view and clicks it while holding Ctrl."""
+        self._hand.scroll_into_view(row)
+        self._hand.click_holding(row, [IMGUI_LEFT_CTRL])
+
+    def right_click(self, row: Item) -> None:
+        """Brings ``row`` into view and clicks it with the right button, which opens its menu."""
+        self._hand.scroll_into_view(row)
+        self._hand.right_click(row)
 
     def _row(self, matches: NodeTest) -> Optional[Item]:
         return self._bridge.ask(

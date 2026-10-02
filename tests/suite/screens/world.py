@@ -10,6 +10,7 @@ from sampletones_application.config.session.state.window import ViewportState
 from sampletones_core.configs import Config
 from sampletones_shared.paths.user import CONFIG_PATH
 from tests.suite.screens.environment import SCREEN_SIZE
+from tests.suite.screens.seeds import MiniLibrary
 
 
 class HomeFile(Protocol):
@@ -67,6 +68,24 @@ def screen_filling_state() -> ApplicationState:
             x=0,
             y=0,
         )
+    )
+
+
+def one_worker_config() -> Config:
+    """Reconstruction settings running one job at a time, which keeps a scenario's run on a worker of its own."""
+    config = Config()
+    general = config.general.model_copy(update={"max_workers": 1})
+    return config.model_copy(update={"general": general})
+
+
+def converting_world(files: Tuple[HomeFile, ...]) -> World:
+    """A home ready to convert: one-worker settings, a small library built for them, and ``files``."""
+    config = one_worker_config()
+    return World(
+        state=screen_filling_state(),
+        application_config=None,
+        config=config,
+        files=(MiniLibrary(config), *files),
     )
 
 

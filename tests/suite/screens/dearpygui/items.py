@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, Final, List, Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
-from tests.suite.screens.dearpygui.geometry import Rect
+from tests.suite.screens.dearpygui.geometry import Point, Rect
 
 Item = Union[int, str]
 
@@ -138,15 +138,36 @@ def enclosing_regions(item: Item) -> Tuple[Item, ...]:
     return tuple(regions)
 
 
+def read_region_view(region: Item) -> Optional[Rect]:
+    """The part of ``region``'s box its content shows through, its scrollbars and far padding left out.
+
+    Runs on the render thread. A region reports the room left for its content, which is its box
+    less its padding on both sides and the scrollbars standing in it, so the view keeps the near
+    side whole and gives up half of what the region withholds on the far side, which covers its
+    scrollbar.
+    """
+    box = read_item(region).rect
+    if box is None:
+        return None
+
+    room = dpg.get_item_state(region)["content_region_avail"]
+    return Rect(
+        x=box.x,
+        y=box.y,
+        width=box.width - (box.width - room[0]) / 2,
+        height=box.height - (box.height - room[1]) / 2,
+    )
+
+
 def read_visible_box(item: Item) -> Optional[Rect]:
     """The part of ``item``'s box the regions around it and the viewport leave in view. Runs on the render thread."""
     box = read_item(item).rect
     for region in enclosing_regions(item):
-        region_box = read_item(region).rect
-        if box is None or region_box is None:
+        view = read_region_view(region)
+        if box is None or view is None:
             return None
 
-        box = box.overlap(region_box)
+        box = box.overlap(view)
 
     return box.overlap(read_client_area()) if box is not None else None
 
@@ -178,6 +199,44 @@ def find_item(
         pending[:0] = [child for children in dpg.get_item_info(item)["children"].values() for child in children]
 
     return None
+
+
+def read_item_count() -> int:
+    """How many items the context holds, which grows with what the interface builds. Runs on the render thread."""
+    return len(dpg.get_all_items())
+
+
+@dataclass(frozen=True)
+class EntryReading:
+    """One entry of a popup menu: its words, where it stands in the viewport, and whether it answers."""
+
+    label: str
+    point: Point
+    enabled: bool
+
+
+def read_popup_entries(popup: Item) -> Tuple[EntryReading, ...]:
+    """The menu entries a popup window holds, in order. Runs on the render thread.
+
+    DearPyGui reports an entry's position inside the popup alone, so the entry stands where the
+    popup does, moved by that position.
+    """
+    corner = dpg.get_item_pos(popup)
+    entries: List[EntryReading] = []
+    for child in dpg.get_item_children(popup, 1):
+        if dpg.get_item_info(child)["type"] != MENU_ITEM_TYPE:
+            continue
+
+        position = dpg.get_item_state(child)["pos"]
+        entries.append(
+            EntryReading(
+                label=read_label(child),
+                point=Point(x=round(corner[0] + position[0]), y=round(corner[1] + position[1])),
+                enabled=bool(dpg.get_item_configuration(child).get("enabled", True)),
+            )
+        )
+
+    return tuple(entries)
 
 
 def read_hovered(item: Item) -> Optional[bool]:
@@ -287,6 +346,12 @@ def read_viewport() -> Rect:
 def read_viewport_title() -> str:
     """The title the viewport's window carries in its title bar. Runs on the render thread."""
     return str(dpg.get_viewport_title())
+
+
+def read_pointer() -> Point:
+    """Where the pointer stands in the viewport, as the application last saw it. Runs on the render thread."""
+    position = dpg.get_mouse_pos(local=False)
+    return Point(x=round(position[0]), y=round(position[1]))
 
 
 def read_client_area() -> Rect:

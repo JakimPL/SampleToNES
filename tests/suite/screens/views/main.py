@@ -23,6 +23,8 @@ from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
 from tests.suite.screens.dearpygui.items import read_item, read_texts, read_theme, read_value
 from tests.suite.screens.dearpygui.semantic import choose
+from tests.suite.screens.views.converter import Converter
+from tests.suite.screens.views.source import SourceSettings
 
 OUTPUT_LABEL_KEYS = {
     OutputKind.PER_RECORDING: "main.converter.label.mode_each",
@@ -70,6 +72,8 @@ class Main:
         self._hand = hand
         self._language = language
         self.advanced = Card(bridge, hand, TAG_MAIN_ADVANCED_PANEL)
+        self.converter = Converter(bridge, hand)
+        self.source = SourceSettings(bridge, hand)
 
     def card(self, tag: str) -> Card:
         return Card(self._bridge, self._hand, tag)

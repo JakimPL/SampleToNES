@@ -26,6 +26,7 @@ from tests.suite.screens.environment import (
     child_environment,
     display_backend,
 )
+from tests.suite.screens.holds import ConversionHold, Holds, ReleaseSignal, ScanHold
 from tests.suite.screens.paths import FAILURE_SCREENSHOT, SCREENS_DIRECTORY
 from tests.suite.screens.render_thread import QueueRenderThread
 from tests.suite.screens.screen import Screen
@@ -35,6 +36,9 @@ CHILD_TIMEOUT_SECONDS: Final[float] = 180.0
 ANSWER_TIMEOUT_SECONDS: Final[float] = 30.0
 JOIN_TIMEOUT_SECONDS: Final[float] = 30.0
 REPORT_RECORDER_NAME: Final[str] = "screens-report-recorder"
+CONVERSION_RELEASE_FILE: Final[str] = "release-conversion"
+SCAN_RELEASE_FILE: Final[str] = "release-scan"
+SCAN_ENTRY_SECONDS: Final[float] = 0.05
 SCREEN_APPLICATION_FIXTURE: Final[str] = "screen_application"
 DISPLAY_KEY: Final[pytest.StashKey[VirtualDisplay]] = pytest.StashKey()
 DISPLAY_NAME_KEY: Final[pytest.StashKey[str]] = pytest.StashKey()
@@ -152,8 +156,42 @@ def screen_bridge(screen_render_thread: QueueRenderThread) -> Bridge:
 
 
 @pytest.fixture
+def screen_holds() -> Holds:
+    """The work the scenario holds under way, let go before it leaves."""
+    return Holds()
+
+
+@pytest.fixture
+def conversion_hold(
+    screen_holds: Holds,
+    monkeypatch: pytest.MonkeyPatch,
+) -> ConversionHold:
+    """Holds every conversion the scenario starts halfway through matching, until the scenario releases it."""
+    hold = ConversionHold(ReleaseSignal(Path(os.environ[ARTIFACTS_VARIABLE]) / CONVERSION_RELEASE_FILE))
+    hold.install(monkeypatch)
+    screen_holds.add(hold)
+    return hold
+
+
+@pytest.fixture
+def scan_hold(
+    screen_holds: Holds,
+    monkeypatch: pytest.MonkeyPatch,
+) -> ScanHold:
+    """Holds every folder scan the scenario starts once its tree is read, until the scenario releases it."""
+    hold = ScanHold(
+        ReleaseSignal(Path(os.environ[ARTIFACTS_VARIABLE]) / SCAN_RELEASE_FILE),
+        interval=SCAN_ENTRY_SECONDS,
+    )
+    hold.install(monkeypatch)
+    screen_holds.add(hold)
+    return hold
+
+
+@pytest.fixture
 def screen_boundaries(
     output_device: OutputDevice,
+    screen_holds: Holds,
     monkeypatch: pytest.MonkeyPatch,
 ) -> Boundaries:
     """Puts the scenario's stand-ins between the application and the desktop before it starts."""
@@ -172,6 +210,7 @@ def screen_boundaries(
         dialogs=dialogs,
         errors=errors,
         spawns=spawns,
+        holds=screen_holds,
     )
 
 

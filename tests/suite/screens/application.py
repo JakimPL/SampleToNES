@@ -24,6 +24,7 @@ from tests.suite.screens.checks import (
 from tests.suite.screens.dearpygui.bridge import Bridge, RenderThreadStoppedError
 from tests.suite.screens.dearpygui.hosting import SCENARIO_THREAD_NAME
 from tests.suite.screens.dearpygui.screenshot import capture
+from tests.suite.screens.holds import Holds
 from tests.suite.screens.keyboard import primary_combination
 from tests.suite.screens.render_thread import QueueRenderThread
 
@@ -56,6 +57,7 @@ class Boundaries:
     dialogs: ScriptedFileDialogs
     errors: ErrorRecords
     spawns: SpawnGuard
+    holds: Holds
 
 
 class ScreenApplication:
@@ -64,7 +66,7 @@ class ScreenApplication:
     A scenario that ends well leaves through the Exit shortcut, so every question the application asks
     about unsaved work runs as it would for a user, and the application must then stop at once. A
     scenario that failed, or a screen the after-checks object to, stops the loop outright once a
-    screenshot of it is kept.
+    screenshot of it is kept. Either way, the work the scenario held is let go first.
     """
 
     def __init__(
@@ -102,6 +104,7 @@ class ScreenApplication:
             self._render_thread.stop()
 
     def finish(self, *, failed: bool) -> None:
+        self._boundaries.holds.release_all()
         findings = self._boundary_findings()
         if self._render_thread.is_running():
             findings.extend(self._screen_findings())

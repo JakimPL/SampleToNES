@@ -165,3 +165,20 @@ currently out of line. An entry leaves when the code meets the contract again.
   reproduces it as a known failure.
 * Leaving keeps a starred file a run found deleted: `config.yaml` goes on naming it among the favorites.
   `tests/screens/application/test_restart.py` reproduces it as a known failure.
+* A folder asked for while a stopped read winds down is dropped without a word. Stop closes the scan
+  window at once while the walk runs on to its next entry, and `FolderScan.start` turns away the folder
+  asked for in that time, though it promises that a folder asked for once the window closes is read.
+  `tests/screens/main/test_scan.py` reproduces it as a known failure.
+* A box clicked in the Converter list leaves Source settings where it stood: ticking a channel on a
+  recording inside an open folder changes that row, while the card goes on naming the row picked
+  before, or New recordings. `tests/screens/main/test_row_settings.py` reproduces it as a known failure.
+* General settings stops short of the Converter's right edge while Advanced settings is put away,
+  where it should fill the row and end where the Converter below it does.
+  `tests/screens/main/test_cards.py` reproduces it as a known failure.
+* The Destination line names no folder a run writes into once the gathered recordings convert with
+  different channels: it names the folder of every channel the rows use together, while each
+  recording goes into the folder of its own channels. `tests/screens/main/test_run.py` reproduces it as
+  a known failure.
+* A library folder pointed away from and back lists its library unloaded: the library loaded before
+  reads as one that exists, where it should come back loaded.
+  `tests/screens/main/test_library.py` reproduces it as a known failure.

@@ -8,10 +8,15 @@ import numpy as np
 import soundfile
 
 from sampletones_core.compatibility.kind import ObjectKind
-from tests.suite.compatibility import ARCHIVED_VERSIONS, archived, restated_document
+from sampletones_core.configs import Config, InstructionsLibraryConfig
+from sampletones_core.fft import Window
+from sampletones_core.library.key import InstructionLibraryKey
+from tests.suite.compatibility import ARCHIVED_VERSIONS, archived, restated_document, stored_document
+from tests.suite.library import build_served_library
 
 FOREIGN_BYTES: Final[bytes] = b"These bytes were written by another program and belong to no SampleToNES document.\n"
 TRUNCATED_FRACTION: Final[int] = 2
+CONFIG_FIELD: Final[str] = "config"
 RECORDING_SAMPLE_RATE: Final[int] = 44100
 RECORDING_AMPLITUDE: Final[float] = 0.5
 
@@ -64,12 +69,34 @@ class Recording:
         soundfile.write(self.destination, tone, RECORDING_SAMPLE_RATE)
 
 
+@dataclass(frozen=True)
+class MiniLibrary:
+    """A small library built for ``config``, saved where the application looks for that configuration's library.
+
+    A conversion matches against it in seconds, and the Instructions tab browses it.
+    """
+
+    config: Config
+
+    def write(self) -> None:
+        library, key = build_served_library(self.config)
+        library.save_data(key, library.data[key])
+
+
 def archived_document(kind: ObjectKind, destination: Path) -> CopiedFile:
     """The document of ``kind`` a release wrote, which the compatibility corpus keeps, laid at ``destination``."""
     return CopiedFile(
         source=archived(kind, ARCHIVED_VERSIONS[kind]),
         destination=destination,
     )
+
+
+def archived_library(folder: Path) -> CopiedFile:
+    """The library a release built, laid in ``folder`` under the name its settings give a library file."""
+    source = archived(ObjectKind.LIBRARY, ARCHIVED_VERSIONS[ObjectKind.LIBRARY])
+    config = Config(library=InstructionsLibraryConfig.model_validate(stored_document(source)[CONFIG_FIELD]))
+    key = InstructionLibraryKey.create(config.library, Window.from_config(config))
+    return CopiedFile(source=source, destination=folder / key.filename)
 
 
 def damaged_document(
