@@ -1707,8 +1707,9 @@ class Application:
     def _teardown_steps(self) -> Tuple[VoidCallback, ...]:
         """The steps of the teardown in the order they are taken.
 
-        Background work stops before anything it reaches is let go of, the session is written while
-        the window it measures still stands, and the DearPyGui context goes last.
+        Background work stops before anything it reaches is let go of. Display settings put back what
+        they never confirmed before the session records the window, the session is written while the
+        window it measures still stands, and the DearPyGui context goes last.
         """
         return (
             release_render_thread,
@@ -1718,6 +1719,7 @@ class Application:
             self._playback_router.shutdown,
             self._main_tab.cleanup,
             self.library_manager.release_creator,
+            self._display_coordinator.cleanup,
             self._save_config,
             self._persist_application_state,
             self.audio_device_manager.terminate,

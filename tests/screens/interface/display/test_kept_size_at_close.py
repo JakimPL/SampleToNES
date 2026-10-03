@@ -1,7 +1,5 @@
 from typing import List, Tuple
 
-import pytest
-
 from tests.screens.interface.display.steps import another_size, kept, open_display_settings, size_named, window_size
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.written import written_state
@@ -16,11 +14,6 @@ class TestClosingWithASizeKeptButNotConfirmed:
     session.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: closing the window writes a size Display settings never confirmed",
-    )
     def test_leaving_writes_the_confirmed_size(self, screen: Screen) -> None:
         settings = screen.display_settings
         opened: List[Tuple[int, int]] = []

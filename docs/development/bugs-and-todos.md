@@ -217,10 +217,6 @@ currently out of line. An entry leaves when the code meets the contract again.
   can see: `voice_instrument` raises the tuning error inside the menu's callback, so no message, no save
   dialog and no file follow, while a Bitphase project or an NSF program of the same project stops with a
   message. `tests/screens/exports/progress/test_refusals.py` reproduces it as a known failure.
-* Closing the window while Display settings holds a window size kept on the countdown but never confirmed
-  writes that size: leaving records the live window size, while the dialog keeps the session at the values
-  it opened with until OK, and the window manager's close passes the open dialog by.
-  `tests/screens/interface/display/test_kept_size_at_close.py` reproduces it as a known failure.
 * Closing the window while a folder is being read crashes the process once the read ends: nothing stops the
   walk on exit, so it runs past the shutdown, and its report closes the reading window through DearPyGui
   after the context is gone (SIGSEGV). `tests/screens/application/closing/test_during_work.py` reproduces it as a

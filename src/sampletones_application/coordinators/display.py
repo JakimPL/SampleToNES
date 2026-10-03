@@ -19,7 +19,7 @@ from sampletones_application.view_model.shared.display_settings import (
     DisplaySettingsViewModel,
     WindowMode,
 )
-from sampletones_application.viewport import ViewportManager
+from sampletones_application.viewport import ViewportManager, WindowPlacement
 from sampletones_shared.display import Resolution
 
 
@@ -29,7 +29,8 @@ class DisplayCoordinator:
 
     A change reaches the screen the moment it is made, so a user judges it by looking at it, while
     the session keeps the values the dialog opened with until OK commits them. Cancel re-applies
-    that snapshot, asking first when there is something to lose.
+    that snapshot, asking first when there is something to lose, and a run that ends while the
+    dialog stands puts it back the same way before the session is written.
 
     Changing the window's size, its frame, or fullscreen can leave the window unreadable, so each
     of those arms a countdown over the dialog: keeping it disarms the clock and leaves the change
@@ -66,6 +67,7 @@ class DisplayCoordinator:
 
         self._settings: Optional[DisplaySettings] = None
         self._snapshot: Optional[DisplaySettings] = None
+        self._opening_placement: Optional[WindowPlacement] = None
         self._armed: Optional[WindowMode] = None
         self._remaining: float = 0.0
 
@@ -84,7 +86,25 @@ class DisplayCoordinator:
         view_model = self._view_model(self._settings_in_force())
         self._snapshot = view_model.settings
         self._settings = view_model.settings
+        self._opening_placement = self._viewport_manager.placement
         self._window.open(view_model)
+
+    def cleanup(self) -> None:
+        """Puts back the display the dialog opened with when the run ends while it stands, as Cancel does.
+
+        The session keeps the opening values until OK, and leaving records the window as it stands, so
+        the window returns to its opening place and size before that record is taken. A fullscreen
+        change reaches DearPyGui's reading of the window on a drawn frame alone, while a place and a
+        size set directly reach it at once, so a window that opened windowed is placed as well.
+        """
+        snapshot = self._snapshot
+        placement = self._opening_placement
+        if snapshot is None or placement is None:
+            return
+
+        self._discard()
+        if not snapshot.window.fullscreen:
+            self._viewport_manager.place(placement)
 
     def tick(self, delta_time: float) -> None:
         """Advances an armed countdown, restoring the last confirmed window mode when it runs out."""
@@ -199,6 +219,7 @@ class DisplayCoordinator:
     def _close(self) -> None:
         self._settings = None
         self._snapshot = None
+        self._opening_placement = None
         self._window.hide()
 
     def _apply(self, previous: DisplaySettings, current: DisplaySettings) -> None:

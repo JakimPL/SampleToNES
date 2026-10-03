@@ -13,6 +13,7 @@ from sampletones_application.view_model.shared.display_settings import (
     DisplaySettingsViewModel,
     WindowMode,
 )
+from sampletones_application.viewport import WindowPlacement
 from sampletones_shared.display import UNLIMITED_FRAME_RATE, Resolution
 from sampletones_shared.types.callback import VoidCallback
 
@@ -23,6 +24,10 @@ WIDESCREEN = Resolution(width=1600, height=900)
 DEFAULT_RESOLUTION = Resolution(width=1280, height=800)
 
 COUNTDOWN_SECONDS = 10.0
+
+OPENING_X = 120
+OPENING_Y = 90
+FULLSCREEN_PLACEMENT = WindowPlacement(x=0, y=0, resolution=Resolution(width=1920, height=1080))
 
 BEHAVIOR = DisplayBehavior(
     resolutions=(
@@ -102,12 +107,24 @@ class _ViewportRecorder:
             DEFAULT_RESOLUTION.width,
             DEFAULT_RESOLUTION.height,
         )
+        self.position: Tuple[int, int] = (OPENING_X, OPENING_Y)
         self.fullscreen_toggles = 0
         self.calls: List[Tuple[str, Any]] = []
 
     @property
     def monitor_area(self) -> MonitorArea:
         return MonitorArea(x=0, y=0, width=1920, height=1080, usable_ratio=0.9)
+
+    @property
+    def placement(self) -> WindowPlacement:
+        width, height = self.resolution
+        x, y = self.position
+        return WindowPlacement(x=x, y=y, resolution=Resolution(width=width, height=height))
+
+    def place(self, placement: WindowPlacement) -> None:
+        self.calls.append(("place", placement))
+        self.position = (placement.x, placement.y)
+        self.resolution = (placement.resolution.width, placement.resolution.height)
 
     def set_resolution(self, width: int, height: int) -> None:
         self.calls.append(("resolution", (width, height)))
@@ -120,8 +137,15 @@ class _ViewportRecorder:
         self.calls.append(("vsync", vsync))
 
     def toggle_fullscreen(self) -> None:
+        """Answers the reads DearPyGui gives before a frame: the window keeps the fullscreen place.
+
+        Entering fullscreen is read once a frame is drawn, and leaving it is read only on the next
+        frame, so a toggle back with no frame between leaves the fullscreen place standing.
+        """
         self.fullscreen_toggles += 1
         self.calls.append(("fullscreen", self.fullscreen_toggles))
+        self.position = (FULLSCREEN_PLACEMENT.x, FULLSCREEN_PLACEMENT.y)
+        self.resolution = (FULLSCREEN_PLACEMENT.resolution.width, FULLSCREEN_PLACEMENT.resolution.height)
 
 
 class _FrameLimiterRecorder:
@@ -249,6 +273,9 @@ class Harness:
 
     def elapse(self, seconds: float) -> None:
         self.coordinator.tick(seconds)
+
+    def end_the_run(self) -> None:
+        self.coordinator.cleanup()
 
     @property
     def settings(self) -> DisplaySettings:
@@ -541,3 +568,79 @@ class TestClosedDialog:
 
         with pytest.raises(SystemError):
             harness.change(settings)
+
+
+class TestARunEndingWhileTheDialogStands:
+    """A run that ends while the dialog stands puts back the display it opened with, as Cancel does.
+
+    The session keeps the opening values until OK, and leaving records the window as it stands, so
+    the window returns to its opening place and size first. A change kept on the countdown is
+    undone the same way, and a dialog already closed leaves the display as it is.
+    """
+
+    OPENING_PLACEMENT = WindowPlacement(x=OPENING_X, y=OPENING_Y, resolution=DEFAULT_RESOLUTION)
+
+    def test_a_size_kept_on_the_countdown_goes_back(self, harness: Harness) -> None:
+        harness.change(harness.settings.with_window(harness.settings.window.with_resolution(WIDESCREEN)))
+        harness.keep()
+
+        harness.end_the_run()
+
+        assert harness.viewport.placement == self.OPENING_PLACEMENT
+
+    def test_fullscreen_kept_on_the_countdown_goes_back_to_the_opening_place(self, harness: Harness) -> None:
+        harness.change(harness.settings.with_window(harness.settings.window.with_fullscreen(True)))
+        harness.keep()
+
+        harness.end_the_run()
+
+        assert harness.viewport.fullscreen_toggles == 2
+        assert harness.viewport.placement == self.OPENING_PLACEMENT
+
+    def test_a_dialog_opened_in_fullscreen_goes_back_to_fullscreen(self) -> None:
+        harness = Harness()
+        harness.session.fullscreen = True
+        harness.open()
+        harness.change(harness.settings.with_window(harness.settings.window.with_fullscreen(False)))
+        harness.keep()
+
+        harness.end_the_run()
+
+        assert harness.viewport.fullscreen_toggles == 2
+        assert all(name != "place" for name, _ in harness.viewport.calls)
+
+    def test_the_palette_goes_back_and_nothing_is_written(self, harness: Harness) -> None:
+        harness.change(harness.settings.with_palette(DARK))
+
+        harness.end_the_run()
+
+        assert harness.palette_source.activated == [DARK, STUDIO]
+        assert harness.session.writes == []
+        assert not harness.window.visible
+
+    def test_a_countdown_running_at_the_end_is_stopped(self, harness: Harness) -> None:
+        harness.change(harness.settings.with_window(harness.settings.window.with_borderless(True)))
+
+        harness.end_the_run()
+
+        assert not harness.countdown.visible
+        assert harness.viewport.calls[-1] == ("place", self.OPENING_PLACEMENT)
+
+    def test_a_confirmed_change_stays(self, harness: Harness) -> None:
+        harness.change(harness.settings.with_window(harness.settings.window.with_resolution(WIDESCREEN)))
+        harness.keep()
+        harness.commit()
+        calls = list(harness.viewport.calls)
+
+        harness.end_the_run()
+
+        assert harness.viewport.calls == calls
+        assert harness.viewport.resolution == (WIDESCREEN.width, WIDESCREEN.height)
+
+    def test_a_dialog_never_opened_leaves_the_display_alone(self) -> None:
+        harness = Harness()
+
+        harness.end_the_run()
+
+        assert harness.viewport.calls == []
+        assert harness.palette_source.activated == []
