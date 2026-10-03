@@ -19,6 +19,7 @@ from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.main import MainTabParameters
 from sampletones_application.services.conversion.service import ConversionService
+from sampletones_application.services.folder_scan.service import FolderScanService
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
@@ -170,7 +171,7 @@ class MainTabCoordinator:
             open_directories=session_manager.expanded_directories,
         )
         self._file_playback: FilePlayback = FilePlayback(audio_device_manager)
-        self._folder_scan: FolderScan = FolderScan()
+        self._folder_scan: FolderScan = FolderScan(FolderScanService(priority=self._repaint_priority))
         self._explorer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
             self._file_playback,
@@ -185,9 +186,6 @@ class MainTabCoordinator:
             colors=layout.tree_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_MAIN_EXPLORER_PANEL),
         )
-        self._folder_scan.on_started = self._on_scan_started
-        self._folder_scan.on_progress = self._on_scan_progress
-        self._folder_scan.on_stopped = self._on_scan_stopped
         self._explorer_tree_logic.on_lock_state_changed = self._explorer_panel.set_tree_enabled
         self._explorer_tree_logic.on_favorite_changed = self._repaint_explorer_favorites
         self._explorer_tree_logic.on_search_update_needed = self._explorer_panel.update_tree_visibility
@@ -257,6 +255,10 @@ class MainTabCoordinator:
             language_manager=language_manager,
         )
         self._scan_window.on_stop = self._folder_scan.stop
+        self._folder_scan.on_started = self._scan_window.open
+        self._folder_scan.on_progress = self._scan_window.report
+        self._folder_scan.on_stopped = self._scan_window.close
+        self._folder_scan.on_failed = self._on_scan_failed
         self._converter_panel: GUIConverterPanel = GUIConverterPanel(
             layout=layout.main.converter,
             stems_layout=layout.stems,
@@ -514,27 +516,15 @@ class MainTabCoordinator:
         if self._hooks.is_operation_active():
             return
 
-        self._folder_scan.start(directory_path, self._gather_folder_read)
+        self._folder_scan.start(directory_path, self._gather_read)
 
-    def _on_scan_started(self, directory_path: Path) -> None:
-        """Puts the wait on screen, since reading a folder of thousands takes seconds."""
-        on_render_thread(self._scan_window.open, directory_path, priority=self._repaint_priority)
-
-    def _on_scan_progress(self, count: int) -> None:
-        on_render_thread(self._scan_window.report, count, priority=self._repaint_priority)
-
-    def _on_scan_stopped(self) -> None:
-        on_render_thread(self._scan_window.close, priority=self._repaint_priority)
-
-    def _gather_folder_read(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
-        """Gathers what the walk found, on the thread the widgets it draws belong to."""
-        on_render_thread(self._gather_read, directory_path, found, priority=self._repaint_priority)
-
-    def _convert_folder_read(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
-        """Converts what the walk found, on the thread the widgets it draws belong to."""
-        on_render_thread(self._convert_read, directory_path, found, priority=self._repaint_priority)
+    def _on_scan_failed(self, exception: Exception) -> None:
+        """Takes the wait away and says why the folder could not be read."""
+        self._scan_window.close()
+        self._dialogs.show_error(exception)
 
     def _gather_read(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
+        """Gathers what the walk found, saying so where the folder holds no recordings."""
         self._scan_window.close()
         if not found:
             self._nothing_below(directory_path)
@@ -559,6 +549,7 @@ class MainTabCoordinator:
         )
 
     def _convert_read(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
+        """Converts what the walk found."""
         self._scan_window.close()
         self._converter_logic.convert_folder(directory_path, found)
 
@@ -788,7 +779,7 @@ class MainTabCoordinator:
             self._converter_logic.convert_recording(path)
             return
 
-        self._folder_scan.start(path, self._convert_folder_read)
+        self._folder_scan.start(path, self._convert_read)
 
     def save_browser_shape(self) -> None:
         """Writes down the folders the explorer stands open, so a later run reads down to them."""

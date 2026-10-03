@@ -80,7 +80,7 @@ from sampletones_core.structures.tree import FileSystemNode, NodeType
 from sampletones_shared.paths.extensions import EXT_FILE_PROJECT
 from sampletones_shared.paths.user import CONFIG_PATH, LIBRARY_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 from tests.conftest import ReconstructionFactory
-from tests.suite.application import HeldQueue, held_queue
+from tests.suite.application import HeldQueue, held_queue, settled
 from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
 
 REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
@@ -1145,8 +1145,7 @@ class TestGatheringAFolderIntoAMix:
     @staticmethod
     def _ask(app: Application, directory: Path) -> None:
         """Ctrl-clicks the folder and waits for the reading, the way a reader does."""
-        _ctrl_click_folder(app, directory)
-        SingleThreadExecutor.join_all()
+        settled(lambda: _ctrl_click_folder(app, directory))
 
     def test_it_asks_rather_than_gathers(self, app: Application, tmp_path: Path) -> None:
         directory = self._folder(tmp_path, MAX_STEM_SOURCES + 3)
@@ -1324,9 +1323,7 @@ class TestBrowserGathering:
         """Clicks a folder's row, with whatever the reader was holding down, and lets it settle."""
         panel = app._main_tab._explorer_panel
         with patch.object(explorer_module, "capture_modifiers", return_value=modifiers):
-            panel._directory_node_clicked(self._folder(directory), UNBUILT_ROW)
-
-        SingleThreadExecutor.join_all()
+            settled(lambda: panel._directory_node_clicked(self._folder(directory), UNBUILT_ROW))
 
     def test_a_plain_click_gathers_nothing(self, app: Application, tmp_path: Path) -> None:
         directory = self._tree(tmp_path)

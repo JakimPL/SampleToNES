@@ -165,11 +165,6 @@ class TestClosingDuringAFolderRead:
             ),
         )
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: a folder read outliving the exit calls DearPyGui after its context is gone",
-    )
     def test_it_leaves_the_read_behind(self, screen: Screen, scan_hold: ScanHold) -> None:
         """The application stops after the close while the folder read is in progress."""
         converter = screen.main.converter

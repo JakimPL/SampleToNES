@@ -40,6 +40,7 @@ from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.gui.callbacks import hold_callbacks
 from sampletones_application.utils.gui.keyboard import KeyRouter
+from sampletones_application.utils.gui.render_thread import reset_render_thread
 from sampletones_application.utils.gui.shortcuts.ids import (
     CHANNEL_SHORTCUT_IDS,
     FOLLOW_MODE_SHORTCUT_IDS,
@@ -172,6 +173,7 @@ class ApplicationShell:
         on_tab_changed: Callback,
         initial_menu_state: MenuBarViewModel,
     ) -> None:
+        reset_render_thread()
         dpg.create_context()
         hold_callbacks()
         self._set_fonts()

@@ -138,10 +138,6 @@ currently out of line. An entry leaves when the code meets the contract again.
 * `ConverterMessages` reads the strings it shows a reader once, at construction, where principle 8 has text
   resolve at the point of use. The stage names and status lines are cached as fields, and the run's
   templates are read live. The fix is to read each key where it is used and let the manager answer.
-* `FolderScan` runs a long directory read on a worker and reports back, which is work that `services/` exists for,
-  while it stands in `logic/`. It reports through optional hooks and not the result union, and the
-  coordinator crosses to the render thread on its behalf. Moving it would buy the exhaustive `match` every
-  other long operation reports through.
 * Every gesture in the converter re-derives the whole setup. A gesture hands `ConverterLogic._rewrite` a
   state whose recordings are new objects, so the rows and the batch entries are read from it cold, and the
   garbage collector's own share falls inside them. On a very large folder that is long enough to feel as a
@@ -162,10 +158,6 @@ currently out of line. An entry leaves when the code meets the contract again.
   the user reads a list of validation errors instead of the version mismatch a reconstruction reports.
   `tests/integration/compatibility/test_project.py` and the screen scenario in
   `tests/screens/application/old_files/test_broken_projects.py` reproduce it as known failures.
-* A folder asked for while a stopped read winds down is dropped without a word. Stop closes the scan
-  window at once while the walk runs on to its next entry, and `FolderScan.start` turns away the folder
-  asked for in that time, though it promises that a folder asked for once the window closes is read.
-  `tests/screens/main/scan/test_reading_a_folder.py` reproduces it as a known failure.
 * A box clicked in the Converter list leaves Source settings where it stood: ticking a channel on a
   recording inside an open folder changes that row, while the card goes on naming the row picked
   before, or New recordings. `tests/screens/main/row_settings/test_boxes.py` reproduces it as a known failure.
@@ -213,7 +205,3 @@ currently out of line. An entry leaves when the code meets the contract again.
   can see: `voice_instrument` raises the tuning error inside the menu's callback, so no message, no save
   dialog and no file follow, while a Bitphase project or an NSF program of the same project stops with a
   message. `tests/screens/exports/progress/test_refusals.py` reproduces it as a known failure.
-* Closing the window while a folder is being read crashes the process once the read ends: nothing stops the
-  walk on exit, so it runs past the shutdown, and its report closes the reading window through DearPyGui
-  after the context is gone (SIGSEGV). `tests/screens/application/closing/test_during_work.py` reproduces it as a
-  known failure.

@@ -186,11 +186,6 @@ class TestAskingForAFolderAsAStoppedReadWindsDown:
         screen_holds.add(hold)
         return hold
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: a folder asked for while a stopped read winds down is dropped",
-    )
     def test_the_folder_asked_for_is_read(self, screen: Screen, scan_hold: ScanHold) -> None:
         """The small folder, Ctrl-clicked just after Stop, is gathered once the hold is released."""
         converter = screen.main.converter

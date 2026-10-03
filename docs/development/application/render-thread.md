@@ -33,8 +33,14 @@ Python thread state, which crashes the process.
 where it stands, and work arriving from any other thread joins the queue. A worker that reads a value or
 sets one on a standing widget still goes through it, since the hazard is the thread and not the gesture.
 
-A run claims the drawing thread when its loop starts and lets it go when the loop stops. Where no run has
-claimed the thread, as while the interface is being built, the work runs in place.
+A run claims the drawing thread when its loop starts. Where no run has claimed the thread, as while the
+interface is being built, the work runs in place.
+
+The thread that drew keeps the context after the loop stops, until the context is destroyed, since the
+teardown runs there. A worker's work that arrives after the loop has stopped joins the queue like any
+other, and the teardown stops the queue, so that work is let go of. The context being taken down therefore
+stays with the thread taking it down. A worker reading something long, such as a folder, also listens for
+the shutdown and gives up at its next step, so the teardown finds it ended.
 
 ## A widget's own gesture is held for the frame
 
