@@ -825,7 +825,7 @@ class MainTabCoordinator:
             cells.add(TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL)
 
         self._advanced_settings_panel.set_visibility(standing)
-        TabColumns.stand_columns(self._config_columns, cells, self._geometry.panel_gap)
+        TabColumns.stand_columns(self._config_columns, cells)
         self._sync_config_row_height()
 
     def emit_initial_view(self) -> None:

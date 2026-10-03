@@ -1142,28 +1142,32 @@ class TestMainTabReadingOrder:
         assert dpg.get_item_configuration(TAG_MAIN_CONFIG_TABLE_CONFIG_ROW)["height"] == 0
 
     @staticmethod
-    def _share(cell_tag: str) -> float:
-        """The share of the settings row the column behind a cell holds."""
-        column = compose_tag(cell_tag, SUF_TABLE_COLUMN)
-        return float(dpg.get_item_configuration(column)["init_width_or_weight"])
+    def _column(cell_tag: str) -> Dict[str, Any]:
+        """The configuration of the settings row's column behind a cell."""
+        configuration: Dict[str, Any] = dpg.get_item_configuration(compose_tag(cell_tag, SUF_TABLE_COLUMN))
+        return configuration
 
     def test_the_advanced_card_leaves_the_row_and_comes_back_to_its_half(self, app: Application) -> None:
         """One toggle leaves the row to the general card, the other gives the advanced one its half.
 
-        Which way the first toggle goes is whatever the session was left at, so the pair of shares
-        is what the rule states: nothing while the card is put away, and the general card's own
-        share once it stands again.
+        Which way the first toggle goes is whatever the session was left at, so the pair of readings
+        is what the rule states: the column leaves the row while the card is put away, and stands
+        again at the general card's own share. The general card stands throughout.
         """
         coordinator = app._main_tab
-        general = self._share(TAG_MAIN_CONFIG_PANEL_CONFIG_CELL)
+        general = self._column(TAG_MAIN_CONFIG_PANEL_CONFIG_CELL)["init_width_or_weight"]
 
         coordinator.toggle_advanced_settings()
-        first = self._share(TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL)
+        first = self._column(TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL)
+        first_general = self._column(TAG_MAIN_CONFIG_PANEL_CONFIG_CELL)["enabled"]
         coordinator.toggle_advanced_settings()
-        second = self._share(TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL)
+        second = self._column(TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL)
+        second_general = self._column(TAG_MAIN_CONFIG_PANEL_CONFIG_CELL)["enabled"]
 
         assert general > 0
-        assert {first, second} == {0.0, general}
+        assert {first["enabled"], second["enabled"]} == {False, True}
+        assert (first["init_width_or_weight"], second["init_width_or_weight"]) == (general, general)
+        assert (first_general, second_general) == (True, True)
 
 
 class TestBrowserGathering:

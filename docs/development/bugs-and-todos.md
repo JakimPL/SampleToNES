@@ -159,9 +159,6 @@ currently out of line. An entry leaves when the code meets the contract again.
   window at once while the walk runs on to its next entry, and `FolderScan.start` turns away the folder
   asked for in that time, though it promises that a folder asked for once the window closes is read.
   `tests/screens/main/scan/test_reading_a_folder.py` reproduces it as a known failure.
-* General settings stops short of the Converter's right edge while Advanced settings is put away,
-  where it should fill the row and end where the Converter below it does.
-  `tests/screens/main/cards/test_card_layout.py` reproduces it as a known failure.
 * The Destination line names no folder a run writes into once the gathered recordings convert with
   different channels: it names the folder of every channel the rows use together, while each
   recording goes into the folder of its own channels. `tests/screens/main/run/test_destination.py` reproduces it as
