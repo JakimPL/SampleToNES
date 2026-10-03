@@ -73,6 +73,12 @@ and a gesture waits for its control to be reachable and to stand still. A fixed 
 retry hides a bug: a scenario that passes only sometimes is a bug. A count of frames appears in a scenario
 only where the count is the contract itself.
 
+A wait's time runs in seconds and in frames: the frames a machine drawing 30 a second draws in those
+seconds. The wait ends once both have run, so a machine drawing slowly gives the application as many frames
+as a fast one before an expectation fails. A witness that lasts a moment is read where it stays: a sound
+counts once it reaches the output device, and a stopped read that must still be winding down is held there
+until the scenario lets it go.
+
 ### 6. Every scenario is held to the same promises
 
 Every scenario is held to the same after-checks. A failing gesture is logged and swallowed so the interface
@@ -126,8 +132,14 @@ region that takes the wheel, and the grip of a region's scrollbar is dragged whe
 wheel.
 
 Keys are pressed on the real keyboard, with modifiers held a frame before the key. A scenario names an
-action by its `ShortcutId`, and the keys come from the scheme in place. The display repeats no held key,
-so a key held across a slow frame arrives as one press.
+action by its `ShortcutId`, and the keys come from the scheme in place. The display repeats no held key.
+
+Dear ImGui judges a press by time: two presses count as a double-click when they land within 0.30 s, and a
+key held past 0.275 s repeats. A click and a key press therefore go down and come up in one go, and Dear
+ImGui reads the press on one frame and the release on the next at any frame rate. A key stands down for a
+single frame, too briefly to repeat, and the presses of a double-click land two frames apart. Where two
+frames take longer than the double-click time, the hand raises `SlowFramesError` and says how far apart the
+presses landed.
 
 A person lets go of a click some frames after pressing it, and DearPyGui answers a double-click as its
 second press goes down. A scenario holding that press for as long as a person does sees what the answer
@@ -135,10 +147,16 @@ brings under a button still down.
 
 A gesture confirms that it arrived. Before a button goes down, the control must report the pointer resting
 on it: DearPyGui calls a control visible while the region it scrolls in clips it, and a press there lands
-on something else. While a button or a named key is held, the application must read it as down within a
-few frames, since a busy display hands input on late. Each step of a drag waits until the application
-reads the pointer where the step put it, and the pointer rests at the end before the button comes up, as
-a person stops before letting go. A press lost on the way fails where it was lost.
+on something else. While a button or a modifier is held, the application must read it as down within a
+few frames, since a busy display hands input on late. A click or a key press that came and went is
+confirmed by a witness, a handler registry of the hand's own that counts every release and every
+double-click Dear ImGui reads. Each step of a drag waits until the application reads the pointer where the
+step put it, and the pointer rests at the end before the button comes up, as a person stops before letting
+go. A press lost on the way fails where it was lost.
+
+A worker's scenarios take its display in turn, and a key or a button left down would meet the next
+scenario's first gesture. A gesture that fails lets go of what it holds, and each scenario starts and ends
+with every key and button of the display up.
 
 A plot reads the pointer as it draws, so the value it puts under the pointer trails the pointer by a
 frame. A scenario that aims by plot values reads one once the plot has kept it for two frames in a row.
@@ -267,7 +285,9 @@ sentences.
 
 ## Running and watching
 
-`make screens` runs every scenario across a few workers, each on an Xvfb of its own. `make system-deps`
+`make screens` runs every scenario across a few workers, each on an Xvfb of its own. Each worker draws
+on the processor, so CI runs two of them, which leaves each application more of a small runner's processors
+for its frames. `make system-deps`
 installs Xvfb with the other development packages on Linux, and a missing server is named when the run
 starts. The scenarios run on Linux, and [the ledger](../bugs-and-todos.md) holds the other platforms.
 
@@ -289,7 +309,7 @@ picture as evidence of a look, for a pull request rather than an assertion.
 | The fixtures a scenario asks for | `tests/suite/screens/plugin/fixtures.py`, `plugin/hold_fixtures.py` |
 | The render thread crossing and waiting | `tests/suite/screens/dearpygui/bridge.py` |
 | What a user can reach | `tests/suite/screens/dearpygui/reach.py`, `semantic.py` |
-| The gestures | `tests/suite/screens/dearpygui/hand.py` and `gestures/`: `arrival.py` (waiting and confirming), `pointer.py`, `scrolling.py`, `keyboard.py` |
+| The gestures | `tests/suite/screens/dearpygui/hand.py` and `gestures/`: `arrival.py` (waiting and confirming), `witness.py` (what Dear ImGui counted), `pointer.py`, `scrolling.py`, `keyboard.py` |
 | What a reading says of an item | `tests/suite/screens/dearpygui/items/`: `reading.py`, `regions.py`, `texts.py`, `colors.py`, `viewport.py` |
 | The display a worker draws on | `tests/suite/screens/dearpygui/display.py` |
 | The application under test and how it ends | `tests/suite/screens/application/` |

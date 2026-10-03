@@ -500,10 +500,19 @@ class GUITreePanel(GUIPanel, ABC):
         self,
         status_bar_callback: Optional[MessageCallback],
     ) -> Callback:
+        """The hover callback of a row, which names the row in the status bar and its detail tooltip.
+
+        The hover is reported a frame after it happened, by which time a rebuilt tree may have taken
+        the row away, so the callback answers for the rows still standing.
+        """
+
         def hover_callback(
             _sender: Sender,
             app_data: int,
         ) -> None:
+            if not dpg.does_item_exist(app_data):
+                return
+
             user_data = dpg.get_item_user_data(app_data)
             if status_bar_callback is not None:
                 self._status_bar.set(status_bar_callback, user_data=user_data)

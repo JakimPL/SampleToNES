@@ -20,6 +20,7 @@ from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_core.constants.enums import ChannelName, GeneratorName
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
+from tests.suite.screens.boundaries.audio import OutputRecord
 from tests.suite.screens.boundaries.dialogs import DialogKind, DialogRequest, ScriptedFileDialogs
 from tests.suite.screens.boundaries.errors import ErrorRecords
 from tests.suite.screens.boundaries.highlights import HighlightPlace, TableHighlights
@@ -83,6 +84,7 @@ class Screen:
         errors: ErrorRecords,
         file_manager: FileManagerStandIn,
         highlights: TableHighlights,
+        output: OutputRecord,
         artifacts: Path,
     ) -> None:
         self.bridge = bridge
@@ -94,6 +96,7 @@ class Screen:
         self._errors = errors
         self._file_manager = file_manager
         self._highlights = highlights
+        self._output = output
         self._artifacts = artifacts
         self._language = language
         self.tabs = Tabs(bridge, hand)
@@ -221,6 +224,14 @@ class Screen:
     def wait_for_exit(self) -> bool:
         """Waits for the application to stop, and says whether it did within the expectation's time."""
         return self._render_thread.wait_stopped(EXPECT_TIMEOUT_SECONDS)
+
+    def sound_heard(self) -> int:
+        """How many samples carrying sound the application has played so far, which grows while anything sounds.
+
+        The count is taken at the output device, so a sound shorter than the frames between two readings counts
+        all the same.
+        """
+        return self._output.sounding_samples()
 
     def dialog_requests(self) -> Tuple[DialogRequest, ...]:
         """Every file dialog the application opened so far, in order."""
