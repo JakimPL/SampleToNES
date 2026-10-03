@@ -53,7 +53,9 @@ class GUIKeybindingsWindow(GUISeededDialogWindow[KeybindingsViewModel]):
     A row is given keys either way round: clicking its shortcut cell listens for the press to
     assign, and the entry box below writes a combination out for the actions a press cannot reach.
     Both report through their own hook, so the owner decides what an assignment means and this
-    window shows what it decided.
+    window shows what it decided. A row reads as listening exactly while the capture holds the
+    keyboard: the capture ends with the press it reads, and the owner listens again where the
+    reader declines to assign it.
 
     The action set is fixed, so the rows are built once per appearance and every later view re-reads
     their labels; the filter reaches the same rows through their visibility, which keeps a keystroke
@@ -245,6 +247,15 @@ class GUIKeybindingsWindow(GUISeededDialogWindow[KeybindingsViewModel]):
             width=-1,
         )
 
+    def listen_again(self) -> None:
+        """Comes back on screen with the selected row listening for the next press.
+
+        A press the reader declined to assign leaves the row waiting for the one they meant.
+        """
+        self.resume()
+        self._require_capture().start()
+        self._render()
+
     def _install_capture(self) -> None:
         """Readies the capture that reads a press, canceled by whatever a dialog is canceled by."""
         self._capture = KeyCapture(
@@ -343,11 +354,17 @@ class GUIKeybindingsWindow(GUISeededDialogWindow[KeybindingsViewModel]):
         self.call(self.on_combination_typed, app_data)
 
     def _report_captured(self, combination: KeyCombination) -> None:
+        """Shows the row done listening, then hands the press to the owner to decide what it means."""
+        self._render()
         self.call(self.on_combination_captured, combination)
 
     def _stop_capture(self) -> None:
-        if self._capture is not None:
-            self._capture.stop()
+        """Ends a capture that listens, and shows the row's keys in place of the prompt."""
+        if self._capture is None or not self._capture.is_listening:
+            return
+
+        self._capture.stop()
+        self._render()
 
     def _request_clear(self) -> None:
         self._stop_capture()

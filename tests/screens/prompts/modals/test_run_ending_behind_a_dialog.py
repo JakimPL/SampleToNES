@@ -1,8 +1,6 @@
 import operator
 from typing import Dict, List
 
-import pytest
-
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.screens.prompts.modals.constants import SETTLING_FRAMES
@@ -244,27 +242,61 @@ class TestTheRowListeningAfterTheReassignQuestion:
     """A row that reads as listening after Cancel answers the reassign question takes the next keys pressed.
 
     Redo listens, Undo's keys ask to reassign, and Cancel brings the dialog back with the row still
-    listening. The same keys then ask again.
+    listening. The same keys then ask again, and Escape ends the listening with the dialog still open.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: a row listening again after the reassign question takes no keys",
-    )
     def test_the_same_keys_ask_again(self, screen: Screen) -> None:
-        """The same keys pressed again ask the reassign question once more."""
+        """The same keys pressed again ask the reassign question once more.
+
+        Cancel brings the row back listening a second time, and Escape then gives it back Redo's own keys.
+        """
         settings = screen.keyboard_settings
         reassign = settings.reassign_prompt
-        settings.open()
-        screen.expect(settings.is_shown, bool, description="Keyboard settings")
-        settings.listen_for(ShortcutId.REDO)
-        screen.press_shortcut(ShortcutId.UNDO)
-        screen.expect(reassign.is_shown, bool, description="the question about reassigning")
-        reassign.cancel()
-        screen.expect(settings.is_shown, bool, description="Keyboard settings back")
-        assert settings.keys_of(ShortcutId.REDO) == screen.words(LISTENING)
+        keys: Dict[ShortcutId, str] = {}
 
-        screen.press_shortcut(ShortcutId.UNDO)
+        def cancel_the_question(screen: Screen) -> None:
+            settings.open()
+            screen.expect(settings.is_shown, bool, description="Keyboard settings")
+            keys.update(
+                {shortcut_id: settings.keys_of(shortcut_id) for shortcut_id in (ShortcutId.UNDO, ShortcutId.REDO)}
+            )
+            settings.listen_for(ShortcutId.REDO)
+            screen.press_shortcut(ShortcutId.UNDO)
+            screen.expect(reassign.is_shown, bool, description="the question about reassigning")
 
-        screen.expect(reassign.is_shown, bool, description="the question about reassigning again")
+            reassign.cancel()
+
+            screen.expect(settings.is_shown, bool, description="Keyboard settings back")
+            assert settings.keys_of(ShortcutId.REDO) == screen.words(LISTENING)
+
+        def the_same_keys_ask_again(screen: Screen) -> None:
+            screen.press_shortcut(ShortcutId.UNDO)
+
+            screen.expect(reassign.is_shown, bool, description="the question about reassigning again")
+
+        def escape_ends_the_listening_alone(screen: Screen) -> None:
+            reassign.cancel()
+            screen.expect(settings.is_shown, bool, description="Keyboard settings back again")
+            assert settings.keys_of(ShortcutId.REDO) == screen.words(LISTENING)
+
+            screen.press_shortcut(ShortcutId.DIALOG_CANCEL)
+
+            screen.expect(
+                lambda: settings.keys_of(ShortcutId.REDO),
+                keys[ShortcutId.REDO].__eq__,
+                description="Redo's own keys",
+            )
+            assert settings.is_shown()
+            assert settings.keys_of(ShortcutId.UNDO) == keys[ShortcutId.UNDO]
+
+        def cancel_closes_the_dialog(screen: Screen) -> None:
+            settings.cancel()
+
+            screen.expect(settings.is_shown, operator.not_, description="Keyboard settings closed")
+
+        screen.scenario(
+            cancel_the_question,
+            the_same_keys_ask_again,
+            escape_ends_the_listening_alone,
+            cancel_closes_the_dialog,
+        ).run()

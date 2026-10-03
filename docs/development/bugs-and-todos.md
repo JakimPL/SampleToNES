@@ -180,9 +180,6 @@ currently out of line. An entry leaves when the code meets the contract again.
 * A reconstruction whose file the browser removed reads as a sample of the project: the NES frequency
   field locks with the hint that the project sets its rate, though the document belongs to no
   project. `tests/screens/prompts/vanished/test_reconstruction_removed.py` reproduces it as a known failure.
-* A Keyboard settings row reads as listening once Cancel answers the reassign question, while no key
-  reaches it: the keys pressed next are taken by nothing, and Escape closes the dialog.
-  `tests/screens/prompts/modals/test_run_ending_behind_a_dialog.py` reproduces it as a known failure.
 * Two closes before the first is answered ask twice: each close puts its question in line, so Cancel
   on the first brings the second, and so does a close made twice while an edit is on its way.
   `tests/screens/prompts/closing/test_over_a_question.py` and

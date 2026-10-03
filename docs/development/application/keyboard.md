@@ -70,7 +70,7 @@ A change reaches the running application through `ShortcutSource.on_bindings_cha
 
 `ShortcutDraft` (`utils/gui/shortcuts/draft.py`) holds the scheme being edited together with the actions the reader has touched: the combination each was given, or nothing where it was left unbound. Only those actions reach the preference, and every other key follows the scheme beneath.
 
-An assignment displaces. Giving an action a combination its category already answers takes the key from the holder in the same step, so every scheme a draft produces is valid. The dialog names the holder and asks before that step is taken. The dialog edits the draft, and a commit activates it, so a reader rebinding Escape, Tab or Enter keeps the keys the dialog is operated by until they are done.
+An assignment displaces. Giving an action a combination its category already answers takes the key from the holder in the same step, so every scheme a draft produces is valid. The dialog names the holder and asks before that step is taken. Cancel on that question brings the reader back to where they gave the keys: a written combination to the entry box, and a pressed one to its row, listening for the next press. A row reads as listening exactly while it takes the keys. The dialog edits the draft, and a commit activates it, so a reader rebinding Escape, Tab or Enter keeps the keys the dialog is operated by until they are done.
 
 ### A scheme belongs to a platform; an action does not
 

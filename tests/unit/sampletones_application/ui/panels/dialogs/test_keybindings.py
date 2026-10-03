@@ -320,6 +320,28 @@ class TestCapture:
         assert harness.captured == []
         assert harness.label_of(shortcut_tag(SAVE_PROJECT)) == "Ctrl+S"
 
+    def test_a_captured_press_leaves_the_cell_reading_its_keys(self, harness: Harness) -> None:
+        """The capture ends with the press it reads, so the cell stops asking for one."""
+        harness.render(view_model(selected=SAVE_PROJECT))
+        harness.click_shortcut(SAVE_PROJECT)
+        harness.press(dpg.mvKey_G, CTRL_ALT)
+
+        assert harness.label_of(shortcut_tag(SAVE_PROJECT)) == "Ctrl+S"
+
+    def test_listening_again_asks_for_a_press_and_takes_the_next_one(self, harness: Harness) -> None:
+        harness.render(view_model(selected=SAVE_PROJECT))
+        harness.click_shortcut(SAVE_PROJECT)
+        harness.press(dpg.mvKey_G, CTRL_ALT)
+
+        harness.window.listen_again()
+
+        assert harness.label_of(shortcut_tag(SAVE_PROJECT)) == CAPTURING_MESSAGE
+        harness.press(dpg.mvKey_B, CTRL_ALT)
+        assert harness.captured == [
+            KeyCombination(dpg.mvKey_G, CTRL_ALT),
+            KeyCombination(dpg.mvKey_B, CTRL_ALT),
+        ]
+
     def test_clicking_an_action_listens_for_nothing(self, harness: Harness) -> None:
         """The name cell selects the row, which leaves the keyboard where it was."""
         harness.render(view_model(selected=SAVE_PROJECT))
@@ -381,3 +403,23 @@ class TestReportedGestures:
         harness.press(dpg.mvKey_G, CTRL)
 
         assert harness.captured == []
+
+    @pytest.mark.parametrize(
+        "tag",
+        [
+            TAG_SETTINGS_KEYBINDINGS_BUTTON_RESET,
+            TAG_SETTINGS_KEYBINDINGS_BUTTON_CANCEL,
+        ],
+        ids=["reset", "cancel"],
+    )
+    def test_a_button_pressed_mid_capture_leaves_the_cell_reading_its_keys(
+        self,
+        harness: Harness,
+        tag: str,
+    ) -> None:
+        """Reset and Cancel ask a question first, and the row behind it reads what it holds."""
+        harness.render(view_model(selected=SAVE_PROJECT))
+        harness.click_shortcut(SAVE_PROJECT)
+        harness.press_button(tag)
+
+        assert harness.label_of(shortcut_tag(SAVE_PROJECT)) == "Ctrl+S"
