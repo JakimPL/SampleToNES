@@ -20,9 +20,7 @@ from sampletones_application.logic.main.converter.run import (
 )
 from sampletones_application.logic.main.converter.settings import RunSettings
 from sampletones_application.logic.main.converter.setup import (
-    batch_entries,
     conversion_plan,
-    conversion_setup,
     playing_sources,
 )
 from sampletones_application.logic.main.converter.state import ConverterState
@@ -550,13 +548,8 @@ class ConverterLogic(CallbackMixin):
 
     def _redirected(self, state: ConverterState) -> ConverterState:
         """The setup with its destination following the sources that take part in it."""
-        config = self._config_manager.config
         destination = state.destination.named_after(state.gathering.sources)
-        if state.settings.mixes:
-            setup = conversion_setup(state)
-            return state.with_destination(destination.aimed_at_mix(config, setup.sources, setup.stems.covered_channels))
-
-        return state.with_destination(destination.aimed_at_batch(config, batch_entries(state)))
+        return state.with_destination(destination.aimed_at(self._config_manager.config, conversion_plan(state)))
 
     def _standing_targets(self, plan: ConversionPlan) -> Tuple[Path, ...]:
         """Every reconstruction ``plan`` would write over, in the order the run reaches them.

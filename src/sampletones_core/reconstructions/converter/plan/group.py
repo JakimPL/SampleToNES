@@ -24,14 +24,15 @@ class GroupConversion:
             ConversionJob(
                 sources=self.sources,
                 stems=self.stems,
-                output_path=self._output_path(config),
+                output_path=self.destination(config),
             )
         ]
 
     def existing_targets(self, config: Config) -> Tuple[Path, ...]:
         """The one file this conversion writes, where it already stands."""
-        output_path = self._output_path(config)
+        output_path = self.destination(config)
         return (output_path,) if output_path.is_file() else ()
 
-    def _output_path(self, config: Config) -> Path:
+    def destination(self, config: Config) -> Path:
+        """The one reconstruction this conversion writes."""
         return group_output_path(config, self.sources, self.stems.covered_channels)

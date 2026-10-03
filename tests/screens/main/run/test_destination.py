@@ -1,8 +1,6 @@
 from pathlib import Path
 from typing import Dict, FrozenSet, List
 
-import pytest
-
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
 from sampletones_shared.paths.user import RECONSTRUCTIONS_DIRECTORY
@@ -41,11 +39,6 @@ class TestWhereARunWrites:
         for path, channel in self.channels().items():
             assert converted_channels(written_as(path)) == {channel}
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: Destination names no folder a run of differing channels writes into",
-    )
     def test_the_destination_line_names_the_folder_the_run_writes_into(self, screen: Screen) -> None:
         """Every reconstruction is written directly in the folder the Destination line names."""
         converter = screen.main.converter

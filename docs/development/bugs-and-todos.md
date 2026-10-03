@@ -159,10 +159,6 @@ currently out of line. An entry leaves when the code meets the contract again.
   window at once while the walk runs on to its next entry, and `FolderScan.start` turns away the folder
   asked for in that time, though it promises that a folder asked for once the window closes is read.
   `tests/screens/main/scan/test_reading_a_folder.py` reproduces it as a known failure.
-* The Destination line names no folder a run writes into once the gathered recordings convert with
-  different channels: it names the folder of every channel the rows use together, while each
-  recording goes into the folder of its own channels. `tests/screens/main/run/test_destination.py` reproduces it as
-  a known failure.
 * A library folder pointed away from and back lists its library unloaded: the library loaded before
   reads as one that exists, where it should come back loaded.
   `tests/screens/main/library/test_folders_and_generators.py` reproduces it as a known failure.
