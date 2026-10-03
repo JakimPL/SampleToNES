@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Final, List
 
 import pytest
@@ -15,7 +16,8 @@ from sampletones_shared.application import (
     SAMPLETONES_PROJECT_DATA_VERSION,
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
 )
-from tests.suite.compatibility import PROJECT_VERSION, archived, stored_version
+from sampletones_shared.exceptions.project import IncompatibleProjectVersionError, InvalidProjectDataValuesError
+from tests.suite.compatibility import PROJECT_VERSION, archived, restated_document, stored_version
 
 VOICE_NAMES: Final[List[str]] = ["kick", "kick again"]
 PATTERN_NAME: Final[str] = "verse"
@@ -27,6 +29,8 @@ PROJECT_COMMENT: Final[str] = "A document kept to be read back"
 PROJECT_TEMPO: Final[int] = 132
 ROW_TRANSPOSE: Final[int] = 3
 ROW_VOLUME: Final[int] = 9
+UNREACHED_VERSION: Final[str] = "0.9"
+UNREACHED_FILENAME: Final[str] = "unreached.stp"
 
 
 @pytest.fixture(name="loaded")
@@ -53,6 +57,29 @@ class TestTheVersionAnUpgradedProjectOpensFrom:
     def test_it_opens_all_the_same(self, loaded: Project) -> None:
         """The contract refuses a version no chain reaches, so opening is the chain having run."""
         assert loaded.voices
+
+
+class TestAVersionNoStepReaches:
+    """A document stating a version no chain reaches is refused by the load contract, which names both versions."""
+
+    @pytest.mark.xfail(
+        strict=True,
+        raises=InvalidProjectDataValuesError,
+        reason="bugs-and-todos § Bugs: a project at a version no step reaches is refused by its shape",
+    )
+    def test_a_load_refuses_it_naming_both_versions(self, tmp_path: Path) -> None:
+        path = tmp_path / UNREACHED_FILENAME
+        path.write_bytes(
+            restated_document(archived(ObjectKind.PROJECT, PROJECT_VERSION), ObjectKind.PROJECT, UNREACHED_VERSION)
+        )
+
+        with pytest.raises(IncompatibleProjectVersionError) as refused:
+            ProjectContainer.load(path)
+
+        assert (refused.value.actual_version, refused.value.expected_version) == (
+            UNREACHED_VERSION,
+            SAMPLETONES_PROJECT_DATA_VERSION,
+        )
 
 
 class TestTheVoicesAnUpgradedProjectHolds:

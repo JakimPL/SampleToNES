@@ -90,3 +90,16 @@ jobs:
         if: ${{ !cancelled() && steps.environment.outcome == 'success' }}
         shell: bash
         run: $PYTHON scripts/run_tests.py benchmarks
+
+      - name: Run the screen scenarios (Linux)
+        id: screens
+        if: ${{ !cancelled() && steps.environment.outcome == 'success' && runner.os == 'Linux' }}
+        shell: bash
+        run: $PYTHON scripts/run_tests.py screens --screen-workers 2
+
+      - name: Keep what the failed screen scenarios left
+        if: ${{ failure() && steps.screens.outcome == 'failure' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: screens-${{ matrix.os }}-py${{ matrix.python }}
+          path: build/screens/

@@ -254,3 +254,59 @@ class TestAConversation:
         held_frames.render()
 
         assert screen.built == [DIALOG, PROMPT, SECOND]
+
+
+class TestTheSnapshot:
+    """A reader outside the line sees which window stands, which wait, and whether the line moves."""
+
+    def test_a_free_screen_reads_settled(self) -> None:
+        snapshot = ModalQueue.snapshot()
+
+        assert snapshot.shown is None
+        assert snapshot.is_settled
+
+    def test_the_standing_window_and_the_line_read_in_order(self, screen: Screen) -> None:
+        screen.open(FIRST)
+        screen.open(SECOND)
+        screen.open(THIRD)
+
+        snapshot = ModalQueue.snapshot()
+
+        assert snapshot.shown == FIRST
+        assert snapshot.waiting == (SECOND, THIRD)
+        assert not snapshot.is_settled
+
+    @pytest.mark.usefixtures("held_frames")
+    def test_a_window_that_left_reads_as_a_turn_due(self, screen: Screen) -> None:
+        screen.open(FIRST)
+
+        ModalQueue.leave(FIRST)
+
+        snapshot = ModalQueue.snapshot()
+        assert snapshot.shown is None
+        assert snapshot.turning
+        assert not snapshot.is_settled
+
+    def test_the_line_settles_a_frame_after_the_last_window_left(
+        self,
+        screen: Screen,
+        held_frames: Frames,
+    ) -> None:
+        screen.open(FIRST)
+        ModalQueue.leave(FIRST)
+
+        held_frames.render()
+
+        assert ModalQueue.snapshot().is_settled
+
+    def test_a_dialog_standing_aside_reads_aside(self, screen: Screen, held_frames: Frames) -> None:
+        screen.open(DIALOG)
+        ModalQueue.step_aside(DIALOG)
+        ModalQueue.hand_off(lambda: screen.open(PROMPT))
+        held_frames.render()
+
+        snapshot = ModalQueue.snapshot()
+
+        assert snapshot.shown == PROMPT
+        assert snapshot.aside == (DIALOG,)
+        assert not snapshot.is_settled

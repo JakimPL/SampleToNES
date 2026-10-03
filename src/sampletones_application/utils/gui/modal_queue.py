@@ -1,6 +1,6 @@
 from collections import deque
 from dataclasses import dataclass
-from typing import ClassVar, Deque, Dict, List, Optional
+from typing import ClassVar, Deque, Dict, List, Optional, Tuple
 
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_shared.meta import NonInstantiableMeta
@@ -18,6 +18,28 @@ class WaitingModal:
 
     tag: str
     build: VoidCallback
+
+
+@dataclass(frozen=True)
+class ModalQueueSnapshot:
+    """What the line holds at one moment, for a reader watching the screen from outside it.
+
+    Attributes:
+        shown: The window standing on the screen, or ``None`` while the screen is free.
+        aside: The windows standing aside for the modals they handed the screen to.
+        waiting: The windows waiting for the screen, in the order they open.
+        turning: Whether the line moves on in a coming frame.
+    """
+
+    shown: Optional[str]
+    aside: Tuple[str, ...]
+    waiting: Tuple[str, ...]
+    turning: bool
+
+    @property
+    def is_settled(self) -> bool:
+        """Whether the line stands still: nothing waits, nothing stands aside, and no turn is due."""
+        return not self.aside and not self.waiting and not self.turning
 
 
 class ModalQueue(metaclass=NonInstantiableMeta):
@@ -116,6 +138,16 @@ class ModalQueue(metaclass=NonInstantiableMeta):
         """
         cls._hand_offs.append(continuation)
         cls._take_a_turn()
+
+    @classmethod
+    def snapshot(cls) -> ModalQueueSnapshot:
+        """What the line holds now: the window standing, the ones aside and the ones waiting."""
+        return ModalQueueSnapshot(
+            shown=cls._shown,
+            aside=tuple(cls._aside),
+            waiting=tuple(waiting.tag for waiting in cls._waiting),
+            turning=cls._turn_due,
+        )
 
     @classmethod
     def clear(cls) -> None:

@@ -24,6 +24,8 @@ SYSTEM_PACKAGES: Final[Tuple[str, ...]] = (
     "libxrandr2",
     "libxrender1",
     "libxxf86vm1",
+    "libgl1-mesa-dri",
+    "xvfb",
 )
 BUNDLING: Final[Bundling] = Bundling(
     icon=PNG_ICON,

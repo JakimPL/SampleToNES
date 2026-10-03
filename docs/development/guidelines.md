@@ -90,6 +90,7 @@ These rules govern the Python in this repository. They complement
 
 1. A test file mirrors the ownership of the code it exercises.
 1. When functionality moves between packages, move its direct unit tests in the same change.
+1. **What only a drawn frame shows is proven by a screen scenario.** A behavior is proven at the lowest tier that sees its outcome, and a scenario in `tests/screens/` covers what a running, rendered application adds: geometry, frame timing, real input and the exit. `make screens` runs the scenarios, and [screen scenarios](application/screens.md) says how they are written.
 1. **A test whose assertion is a measured duration lives in `tests/benchmarks/`.** The gated suite runs across several workers and under coverage, which multiplies the cost of the code being measured. Benchmarks run in a pass of their own, serial and uncovered, where the reading is the code's own cost. `make test` runs the covered suite, and `make benchmarks` runs the measured pass.
 1. Parametrize tests that share a body, using a test-case dataclass.
 1. Test case classes and cases themselves should be defined inside the testing class, unless these objects are shared between test classes. A suite inherits from `BaseTestSuite` and names its case class `TestCase`, which inherits from `BaseRegularTestCase`, or from `BaseAutolabelTestCase` where the case derives its own label. The parametrized argument carries the case as `test_case`.
