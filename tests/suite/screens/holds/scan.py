@@ -4,7 +4,7 @@ from typing import Final, Iterator
 
 import pytest
 
-import sampletones_application.logic.main.sources.scan as scan_module
+import sampletones_application.services.folder_scan.service as scan_module
 from tests.suite.screens.holds.constants import RELEASE_POLL_SECONDS
 from tests.suite.screens.holds.signal import ReleaseSignal
 

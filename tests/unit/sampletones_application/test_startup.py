@@ -8,6 +8,7 @@ import pytest
 
 from sampletones_application.application import Application
 from sampletones_application.categories.hierarchy import Tab
+from sampletones_application.config.managers.application import ApplicationConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
@@ -65,8 +66,10 @@ from sampletones_application.view_model.main.converter import ConversionPhase, C
 from sampletones_application.view_model.reconstruction.envelopes import ChannelEnvelopesViewModel
 from sampletones_application.view_model.reconstruction.instruments import ReconstructionInstrumentsViewModel
 from sampletones_application.view_model.shared.stems import StemRowViewModel
+from sampletones_core.audio import CurrentDevice
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import UNIT_DRIVE
+from sampletones_core.constants.audio import BufferSize, SampleRate
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.voices.instrument import Instrument
@@ -77,7 +80,7 @@ from sampletones_core.structures.tree import FileSystemNode, NodeType
 from sampletones_shared.paths.extensions import EXT_FILE_PROJECT
 from sampletones_shared.paths.user import CONFIG_PATH, LIBRARY_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 from tests.conftest import ReconstructionFactory
-from tests.suite.application import HeldQueue, held_queue
+from tests.suite.application import HeldQueue, held_queue, settled
 from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
 
 REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
@@ -85,6 +88,21 @@ DRAG_PAYLOAD_SLOT: Final[int] = 3
 LOUD_DRIVE: Final[float] = 1.75
 UNBUILT_ROW: Final[str] = "browser.row.unbuilt"
 EDITED_VOLUME: Final[Envelope[int]] = Envelope[int](items=(7, 7))
+REMEMBERED_DEVICE: Final[CurrentDevice] = CurrentDevice(
+    device_index=7,
+    name="Remembered headphones",
+    sample_rate=48000,
+    host_api=0,
+)
+SPEAKERS: Final[Dict[str, Union[int, str]]] = {
+    "index": 0,
+    "name": "Speakers",
+    "maxOutputChannels": 2,
+    "defaultSampleRate": 44100,
+    "hostApi": 0,
+}
+CHOSEN_SAMPLE_RATE: Final[SampleRate] = 48000
+CHOSEN_BUFFER_SIZE: Final[BufferSize] = 512
 
 _DPG_DISPLAY_FUNCTIONS = [
     "create_context",
@@ -137,6 +155,29 @@ def _no_audio_devices() -> Generator[None, None, None]:
             "pyaudio.PyAudio.get_default_output_device_info",
             side_effect=OSError,
         ),
+    ):
+        yield
+
+
+@contextmanager
+def _viewport_geometry() -> Generator[None, None, None]:
+    """The window's place and size as the session reads them when a run leaves."""
+    with (
+        patch("dearpygui.dearpygui.get_viewport_pos", return_value=[0, 0]),
+        patch("dearpygui.dearpygui.get_viewport_width", return_value=_VIEWPORT_CLIENT_WIDTH),
+        patch("dearpygui.dearpygui.get_viewport_height", return_value=_VIEWPORT_CLIENT_HEIGHT),
+    ):
+        yield
+
+
+@contextmanager
+def _one_audio_device() -> Generator[None, None, None]:
+    """A machine offering one pair of speakers as its default output."""
+    with (
+        patch("pyaudio.PyAudio.get_device_count", return_value=1),
+        patch("pyaudio.PyAudio.get_device_info_by_index", return_value=SPEAKERS),
+        patch("pyaudio.PyAudio.get_default_output_device_info", return_value=SPEAKERS),
+        patch("pyaudio.PyAudio.is_format_supported", return_value=True),
     ):
         yield
 
@@ -206,6 +247,97 @@ class TestGUIStartup:
             stack.enter_context(_no_audio_devices())
 
             _application(tmp_path)
+
+
+class TestLeaving:
+    """Leaving lets go of everything the run holds and writes the session, whatever the machine offers.
+
+    The session keeps the output device the user last committed in Audio settings. A machine offering
+    no output device therefore leaves cleanly, and the device the session remembers stays remembered
+    while it is unplugged, as a remembered folder does.
+    """
+
+    @pytest.fixture(autouse=True)
+    def dpg_context(self) -> Generator[Any, Application, Any]:
+        dpg.create_context()
+        yield
+        stop_background_workers()
+        SingleThreadExecutor.reset_shutdown()
+        dpg.destroy_context()
+
+    @staticmethod
+    def _remember_device(directory: Path) -> None:
+        """Writes a session whose last committed device is one this machine does not offer."""
+        settings = ApplicationConfigManager(_profile(directory).config)
+        settings.set_audio_settings(REMEMBERED_DEVICE, CHOSEN_BUFFER_SIZE)
+        settings.save()
+
+    @staticmethod
+    def _leave(application: Application) -> None:
+        """Takes the teardown a run takes once its loop has ended, leaving the context to the fixture."""
+        with patch("dearpygui.dearpygui.destroy_context") as destroy_context:
+            application._teardown()
+
+        destroy_context.assert_called_once_with()
+
+    @staticmethod
+    def _remembered_device(directory: Path) -> CurrentDevice:
+        return ApplicationConfigManager(_profile(directory).config).current_audio_device
+
+    def test_a_machine_offering_no_device_leaves_and_keeps_the_remembered_one(self, tmp_path: Path) -> None:
+        self._remember_device(tmp_path)
+        with ExitStack() as stack:
+            for display_patch in _display_patches():
+                stack.enter_context(display_patch)
+            stack.enter_context(_viewport_geometry())
+            stack.enter_context(_no_audio_devices())
+
+            application = _application(tmp_path)
+            assert application.audio_device_manager.get_current_device() is None
+            self._leave(application)
+
+        assert self._remembered_device(tmp_path) == REMEMBERED_DEVICE
+        assert _profile(tmp_path).state.exists()
+
+    def test_a_committed_device_is_what_the_session_keeps(self, tmp_path: Path) -> None:
+        self._remember_device(tmp_path)
+        with ExitStack() as stack:
+            for display_patch in _display_patches():
+                stack.enter_context(display_patch)
+            stack.enter_context(_viewport_geometry())
+            stack.enter_context(_one_audio_device())
+
+            application = _application(tmp_path)
+            application._apply_audio_settings(
+                int(SPEAKERS["index"]),
+                CHOSEN_SAMPLE_RATE,
+                CHOSEN_BUFFER_SIZE,
+            )
+            committed = application.audio_device_manager.get_current_device()
+            self._leave(application)
+
+        assert committed is not None
+        assert committed.sample_rate == CHOSEN_SAMPLE_RATE
+        assert self._remembered_device(tmp_path) == committed
+
+    def test_a_failing_step_leaves_the_later_ones_taken(self, tmp_path: Path) -> None:
+        with ExitStack() as stack:
+            for display_patch in _display_patches():
+                stack.enter_context(display_patch)
+            stack.enter_context(_viewport_geometry())
+            stack.enter_context(_no_audio_devices())
+
+            application = _application(tmp_path)
+            with (
+                patch.object(application._main_tab, "cleanup", side_effect=RuntimeError),
+                patch("dearpygui.dearpygui.destroy_context") as destroy_context,
+                pytest.raises(RuntimeError),
+            ):
+                application._teardown()
+
+        destroy_context.assert_called_once_with()
+        assert application.audio_device_manager._pyaudio is None
+        assert _profile(tmp_path).state.exists()
 
 
 @pytest.fixture
@@ -1013,8 +1145,7 @@ class TestGatheringAFolderIntoAMix:
     @staticmethod
     def _ask(app: Application, directory: Path) -> None:
         """Ctrl-clicks the folder and waits for the reading, the way a reader does."""
-        _ctrl_click_folder(app, directory)
-        SingleThreadExecutor.join_all()
+        settled(lambda: _ctrl_click_folder(app, directory))
 
     def test_it_asks_rather_than_gathers(self, app: Application, tmp_path: Path) -> None:
         directory = self._folder(tmp_path, MAX_STEM_SOURCES + 3)
@@ -1192,9 +1323,7 @@ class TestBrowserGathering:
         """Clicks a folder's row, with whatever the reader was holding down, and lets it settle."""
         panel = app._main_tab._explorer_panel
         with patch.object(explorer_module, "capture_modifiers", return_value=modifiers):
-            panel._directory_node_clicked(self._folder(directory), UNBUILT_ROW)
-
-        SingleThreadExecutor.join_all()
+            settled(lambda: panel._directory_node_clicked(self._folder(directory), UNBUILT_ROW))
 
     def test_a_plain_click_gathers_nothing(self, app: Application, tmp_path: Path) -> None:
         directory = self._tree(tmp_path)

@@ -125,11 +125,6 @@ class TestLeavingWhereNothingCanPlay:
         """The machine offers no output device."""
         return OutputDevice.NONE
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=ValueError,
-        reason="bugs-and-todos § Bugs: leaving the application where nothing can play",
-    )
     def test_the_application_leaves_without_an_error(self, screen: Screen) -> None:
         """The application starts and stops cleanly with no output device."""
         screen.expect(screen.tabs.front, Tab.MAIN.__eq__, description="the Main tab in front")

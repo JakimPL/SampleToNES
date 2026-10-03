@@ -10,6 +10,7 @@ from sampletones_application.coordinators.tabs.hooks import MainTabHooks
 from sampletones_application.coordinators.tabs.main import MainTabCoordinator
 from sampletones_application.logic.main.converter.run import ConversionSuccess
 from sampletones_application.logic.main.sources.scan import FolderScan
+from sampletones_application.services.folder_scan.service import FolderScanService
 from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION
 from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_DIALOG_CANCEL,
@@ -18,8 +19,8 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET,
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
 )
-from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.constants.enums import ChannelName
+from tests.suite.application import settled
 from tests.suite.language import FakeLanguageManager
 
 CONVERTER_RUNNING_MESSAGE_KEY: Final[str] = "main.explorer.message.converter_running_msg"
@@ -235,10 +236,11 @@ def _stems_coordinator(
     coordinator._stem_selection_window = MagicMock()
     coordinator._scan_window = MagicMock()
     coordinator._repaint_priority = 0
-    coordinator._folder_scan = FolderScan()
-    coordinator._folder_scan.on_started = coordinator._on_scan_started
-    coordinator._folder_scan.on_progress = coordinator._on_scan_progress
-    coordinator._folder_scan.on_stopped = coordinator._on_scan_stopped
+    coordinator._folder_scan = FolderScan(FolderScanService(priority=coordinator._repaint_priority))
+    coordinator._folder_scan.on_started = coordinator._scan_window.open
+    coordinator._folder_scan.on_progress = coordinator._scan_window.report
+    coordinator._folder_scan.on_stopped = coordinator._scan_window.close
+    coordinator._folder_scan.on_failed = coordinator._on_scan_failed
     return coordinator
 
 
@@ -253,9 +255,12 @@ def _folder_of(tmp_path: Path, count: int) -> Path:
 
 
 def _add_folder(coordinator: MainTabCoordinator, root: Path) -> None:
-    """Asks for the folder and waits for the reading, the way a reader does."""
-    coordinator._on_directory_add_requested(root)
-    SingleThreadExecutor.join_all()
+    """Asks for the folder and waits for the reading, the way a reader does.
+
+    The walk's reports reach the coordinator through the queue the render loop drains, so the case
+    drains it once the walk has ended.
+    """
+    settled(lambda: coordinator._on_directory_add_requested(root))
 
 
 class TestOutputSwitch:
@@ -582,21 +587,26 @@ class TestTheExitAsksAboutARunningConversion:
     def test_an_idle_converter_lets_the_exit_go_on(self) -> None:
         coordinator = self._coordinator(active=False)
         proceed = MagicMock()
+        decline = MagicMock()
 
-        coordinator.guard_exit(proceed)
+        coordinator.guard_exit(proceed, decline)
 
         proceed.assert_called_once_with()
+        decline.assert_not_called()
         coordinator._dialogs.show_confirmation.assert_not_called()
 
     def test_a_running_conversion_asks_first(self) -> None:
         coordinator = self._coordinator(active=True)
         proceed = MagicMock()
+        decline = MagicMock()
 
-        coordinator.guard_exit(proceed)
+        coordinator.guard_exit(proceed, decline)
 
         proceed.assert_not_called()
+        decline.assert_not_called()
         args, kwargs = coordinator._dialogs.show_confirmation.call_args
         assert args[0] == TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION
         assert args[1] == EXIT_CONVERSION_MESSAGE_KEY
         assert args[3] is proceed
         assert kwargs["ok_label"] == EXIT_LABEL_KEY
+        assert kwargs["on_cancel"] is decline

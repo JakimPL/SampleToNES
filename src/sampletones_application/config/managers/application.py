@@ -4,7 +4,7 @@ from typing import Dict, Optional, Set
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.playback import FollowMode
-from sampletones_core.audio import AudioDeviceManager, CurrentDevice
+from sampletones_core.audio import CurrentDevice
 from sampletones_core.constants.audio import BufferSize
 from sampletones_core.constants.enums import HierarchyMode
 from sampletones_core.data.metadata import Metadata
@@ -60,8 +60,12 @@ class ApplicationConfigManager:
     def toggle_favorite(self, path: Path) -> None:
         self.config.favorites.toggle_favorite(path)
 
-    def set_current_audio_device(self, audio_device_manager: AudioDeviceManager) -> None:
-        self.config.audio.set_audio_settings(audio_device_manager)
+    def set_audio_settings(
+        self,
+        current_device: CurrentDevice,
+        buffer_size: BufferSize,
+    ) -> None:
+        self.config.audio.set_audio_settings(current_device, buffer_size)
 
     @property
     def current_audio_device(self) -> CurrentDevice:

@@ -92,6 +92,19 @@ class HeldQueue:
             callback(*args)
 
 
+def settled(gesture: VoidCallback) -> None:
+    """Runs ``gesture``, waits for the workers it started, and runs what they reported.
+
+    A worker reports through the queue the render loop drains, so the reports are held while the
+    workers run and drained once they have ended, in the order they arrived.
+    """
+    queue = HeldQueue()
+    with patch.object(CallbackQueue, "add", queue.add):
+        gesture()
+        SingleThreadExecutor.join_all()
+        queue.drain()
+
+
 @pytest.fixture
 def held_queue(monkeypatch: pytest.MonkeyPatch) -> HeldQueue:
     """``CallbackQueue.add`` holding each callback until the case drains the queue."""

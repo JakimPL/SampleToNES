@@ -62,7 +62,7 @@ from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequenc
 from sampletones_application.ui.panels.sequencer.voices.panel import (
     GUISequencerVoicesPanel,
 )
-from sampletones_application.utils.callbacks.gates import Gate, gated
+from sampletones_application.utils.callbacks.gates import Wait, gated
 from sampletones_application.utils.gui.clipboard.selection import select_text_clipboard
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
@@ -115,7 +115,7 @@ class SequencerTabCoordinator:
         on_tab_switch: Callable[[Tab], None],
         on_nes_frequency_changed: Callable[[int], None],
         on_channels_changed: VoidCallback,
-        after_edits: Gate,
+        after_edits: Wait,
     ) -> None:
         self._project_controller = project_controller
         self._session_manager = session_manager

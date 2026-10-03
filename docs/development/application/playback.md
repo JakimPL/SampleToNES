@@ -110,6 +110,8 @@ Two things differ between them, and whoever asks for the audio sets each. The **
 
 A rate is asked for once there is audio to take it, which is the first row the synthesizer renders. A device has been chosen by the time playback starts, and a format by the time a render does. A session on a machine with no output device opens on that rule, and everything that writes and does not sound works on it: editing, exporting a module and rendering to a file.
 
+The session keeps the device the user last applied in Audio settings. A remembered device unplugged for one run is therefore looked for again in the next, the way a remembered folder is.
+
 The song's exact length follows from the timing model before a sample is rendered. The order's length in rows gives the ticks, and the tick clock gives the samples those ticks span. That figure is what the progress bar counts against and what a finished file measures.
 
 Rendering is an exclusive operation (architecture principle 10). It occupies the application from the moment its dialog opens until that dialog closes. It joins the same busy authority as conversion and library generation, so each of the three holds the others off and every surface offering one reads a single answer.

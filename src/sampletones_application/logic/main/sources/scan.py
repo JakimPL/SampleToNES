@@ -1,100 +1,174 @@
-import threading
+from dataclasses import dataclass
+from enum import Enum, auto
 from pathlib import Path
-from typing import Callable, Final, List, Optional, Tuple
+from typing import Callable, Optional, Protocol, Tuple
 
-from sampletones_application.utils.parallelization.thread import concurrent
-from sampletones_core.reconstructions.converter.paths import walk_entries
-from sampletones_shared.paths.extensions import is_audio_file
+from sampletones_application.services.folder_scan.result import (
+    FolderScanCanceled,
+    FolderScanError,
+    FolderScanProgress,
+    FolderScanRequest,
+    FolderScanResult,
+    FolderScanStarted,
+    FolderScanSuccess,
+)
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 CountCallback = Callable[[int], None]
+FailureCallback = Callable[[Exception], None]
 FoundCallback = Callable[[Path, Tuple[Path, ...]], None]
 
-REPORT_EVERY: Final[int] = 64
-REPORT_DUE: Final[int] = 0
+
+class FolderScanServiceProtocol(Protocol):
+    """The calls a folder scan makes of the service that walks the tree."""
+
+    def subscribe(self, handler: Callable[[FolderScanResult], None]) -> None: ...
+
+    def start(self, request: FolderScanRequest) -> None: ...
+
+    def stop(self) -> None: ...
+
+
+class ScanPhase(Enum):
+    """Where the reading of a folder stands, from the reader's request until the walk lets it go."""
+
+    IDLE = auto()
+    READING = auto()
+    WINDING_DOWN = auto()
+
+
+@dataclass(frozen=True)
+class AskedFolder:
+    """A folder asked to be read, and what hears its recordings once it is."""
+
+    root: Path
+    answer: FoundCallback
 
 
 class FolderScan(CallbackMixin):
-    """The recordings below a folder, read beside the interface rather than in front of it.
+    """The reading of a folder a reader points at, from the moment it is asked for until it is let go.
 
-    A folder a reader points at holds a handful of recordings or a disk's worth, and finding out
-    costs what the tree costs — seconds where the tree is large. The walk therefore runs on a
-    worker, reports how many it has met as it goes, and stops when the reader asks it to, so the
-    window keeps answering and the reader knows what it is waiting for.
+    A reading is idle, reading, or winding down. Stop ends the reading for the reader at once, while
+    the walk runs on to the next entry it meets, so the scan winds down until the walk is heard to
+    give up. A folder asked for in that span is read as soon as it has, the latest one asked for
+    taking the place of an earlier one. A folder asked for while another is being read is turned
+    away.
 
-    The reports arrive on the worker's own thread, so whoever draws from them crosses to the
-    thread DearPyGui's context belongs to. The scan lives in ``logic/`` because it is short and the
-    Main tab is its only caller.
+    The reports arrive on the render thread through the service, each naming the request it
+    answers, so a report of a reading already let go is set aside.
     """
 
-    def __init__(self) -> None:
-        self._stopping = threading.Event()
-        self._running = threading.Event()
+    def __init__(self, service: FolderScanServiceProtocol) -> None:
+        self._service = service
+        self._phase: ScanPhase = ScanPhase.IDLE
+        self._reading: Optional[FolderScanRequest] = None
+        self._answer: Optional[FoundCallback] = None
+        self._next: Optional[AskedFolder] = None
 
         self.on_started: Optional[PathCallback] = None
         self.on_progress: Optional[CountCallback] = None
         self.on_stopped: Optional[VoidCallback] = None
+        self.on_failed: Optional[FailureCallback] = None
+
+        service.subscribe(self._on_result)
 
     @property
-    def running(self) -> bool:
-        """A walk is under way, which is what the reader is being shown."""
-        return self._running.is_set()
+    def phase(self) -> ScanPhase:
+        return self._phase
 
     def start(self, root: Path, answer: FoundCallback) -> None:
         """Reads what ``root`` holds and hands it to ``answer``, counting as the walk goes.
 
-        The answer travels with the walk that earns it, so the same scan serves a gathering and a
-        conversion and each hears back from its own reading. One walk runs at a time: a folder
-        asked for while another is being read is turned away, and asking again once the window
-        closes reads it.
+        The answer travels with the reading that earns it, so the same scan serves a gathering and
+        a conversion and each hears back from its own reading. One reading runs at a time: a folder
+        asked for while another is being read is turned away, and one asked for once Stop has closed
+        the window is read as soon as the stopped walk has given up.
         """
-        if self.running:
-            return
-
-        self._stopping.clear()
-        self._running.set()
-        self.call(self.on_started, root)
-        self._walk(root, answer)
+        match self._phase:
+            case ScanPhase.IDLE:
+                self._begin(AskedFolder(root=root, answer=answer))
+            case ScanPhase.READING:
+                return
+            case ScanPhase.WINDING_DOWN:
+                self._next = AskedFolder(root=root, answer=answer)
 
     def stop(self) -> None:
-        """Asks the walk to give up, which it does at the next recording it meets."""
-        self._stopping.set()
+        """Gives the reading up for the reader, which the walk hears at the next entry it meets."""
+        if self._phase is not ScanPhase.READING:
+            return
 
-    @concurrent(wait=False)
-    def _walk(self, root: Path, answer: FoundCallback) -> None:
-        """Reads the tree, reports how it ended, and lets the walk go, in that order.
+        self._phase = ScanPhase.WINDING_DOWN
+        self._service.stop()
 
-        The walk holds its claim until its report has gone out, so the worker and the scan agree
-        on the moment a folder may next be asked for. It is let go whatever becomes of the reading,
-        so one that fails partway leaves the next folder free to be asked for.
+    def _begin(self, asked: AskedFolder) -> None:
+        request = FolderScanRequest(root=asked.root)
+        self._phase = ScanPhase.READING
+        self._reading = request
+        self._answer = asked.answer
+        self._service.start(request)
+
+    def _on_result(self, result: FolderScanResult) -> None:
+        if result.request is not self._reading:
+            return
+
+        match result:
+            case FolderScanStarted(request=request):
+                self._report_started(request.root)
+            case FolderScanProgress(count=count):
+                self._report_progress(count)
+            case FolderScanSuccess(request=request, recordings=recordings):
+                self._land_found(request.root, recordings)
+            case FolderScanCanceled():
+                self._land_stopped()
+            case FolderScanError(exception=exception):
+                self._land_failed(exception)
+
+    def _report_started(self, root: Path) -> None:
+        if self._phase is ScanPhase.READING:
+            self.call(self.on_started, root)
+
+    def _report_progress(self, count: int) -> None:
+        if self._phase is ScanPhase.READING:
+            self.call(self.on_progress, count)
+
+    def _land_found(self, root: Path, recordings: Tuple[Path, ...]) -> None:
+        """Hands the recordings to whoever asked, where the reader still waits for them.
+
+        A walk that reached the end of its tree before it heard Stop answers a reader who gave it
+        up, so it ends the way a stopped one does.
         """
-        try:
-            found = self._gather(root)
-            if self._stopping.is_set():
-                self.call(self.on_stopped)
-                return
+        if self._phase is ScanPhase.WINDING_DOWN:
+            self._land_stopped()
+            return
 
-            self.call(answer, root, tuple(sorted(found)))
-        finally:
-            self._running.clear()
+        answer = self._answer
+        self._settle()
+        self.call(answer, root, recordings)
 
-    def _gather(self, root: Path) -> List[Path]:
-        """The recordings met below ``root``, giving up at the entry the reader stops the walk on.
+    def _land_stopped(self) -> None:
+        self._settle()
+        self.call(self.on_stopped)
+        self._read_next()
 
-        Every entry the tree holds is offered, so a folder of thousands holding a handful of
-        recordings answers **Stop** as promptly as one holding thousands.
-        """
-        found: List[Path] = []
-        for path in walk_entries(root):
-            if self._stopping.is_set():
-                return found
+    def _land_failed(self, exception: Exception) -> None:
+        """Reports a reading that failed partway, and goes on to the folder asked for meanwhile."""
+        reading = self._phase is ScanPhase.READING
+        self._settle()
+        if reading:
+            self.call(self.on_failed, exception)
+        else:
+            self.call(self.on_stopped)
 
-            if not is_audio_file(path):
-                continue
+        self._read_next()
 
-            found.append(path)
-            if len(found) % REPORT_EVERY == REPORT_DUE:
-                self.call(self.on_progress, len(found))
+    def _settle(self) -> None:
+        self._phase = ScanPhase.IDLE
+        self._reading = None
+        self._answer = None
 
-        return found
+    def _read_next(self) -> None:
+        asked = self._next
+        self._next = None
+        if asked is not None:
+            self._begin(asked)

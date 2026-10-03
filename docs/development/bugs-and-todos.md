@@ -138,10 +138,6 @@ currently out of line. An entry leaves when the code meets the contract again.
 * `ConverterMessages` reads the strings it shows a reader once, at construction, where principle 8 has text
   resolve at the point of use. The stage names and status lines are cached as fields, and the run's
   templates are read live. The fix is to read each key where it is used and let the manager answer.
-* `FolderScan` runs a long directory read on a worker and reports back, which is work that `services/` exists for,
-  while it stands in `logic/`. It reports through optional hooks and not the result union, and the
-  coordinator crosses to the render thread on its behalf. Moving it would buy the exhaustive `match` every
-  other long operation reports through.
 * Every gesture in the converter re-derives the whole setup. A gesture hands `ConverterLogic._rewrite` a
   state whose recordings are new objects, so the rows and the batch entries are read from it cold, and the
   garbage collector's own share falls inside them. On a very large folder that is long enough to feel as a
@@ -151,19 +147,17 @@ currently out of line. An entry leaves when the code meets the contract again.
 
 ## Bugs
 
-* Leaving the application on a machine that offers no output device fails. The shutdown saves the
-  session and asks the audio device manager for its current device, and with no device selected it
-  raises `ValueError: No audio device selected`. The screen scenario in `tests/screens/application/leaving/test_exit_shortcut.py`
-  reproduces it as a known failure.
+* Playing on a machine that offers no output device fails without a word. The song player reads the
+  device's rate as playback starts, and a recording's playback reads it on its own thread, and with no
+  device in force both raise `ValueError: No audio device selected` where the user should read that
+  nothing can play.
+* Apply in Audio settings on a machine that offers no output device logs a `KeyError` and leaves the
+  window open: the window looks the empty device choice up among the devices it lists.
 * A project stating a data version no upgrade step reaches is refused by its shape, not by its version.
   `ProjectContainer.load` validates the document before `_validate_document` compares the version, so
   the user reads a list of validation errors instead of the version mismatch a reconstruction reports.
   `tests/integration/compatibility/test_project.py` and the screen scenario in
   `tests/screens/application/old_files/test_broken_projects.py` reproduce it as known failures.
-* A folder asked for while a stopped read winds down is dropped without a word. Stop closes the scan
-  window at once while the walk runs on to its next entry, and `FolderScan.start` turns away the folder
-  asked for in that time, though it promises that a folder asked for once the window closes is read.
-  `tests/screens/main/scan/test_reading_a_folder.py` reproduces it as a known failure.
 * A box clicked in the Converter list leaves Source settings where it stood: ticking a channel on a
   recording inside an open folder changes that row, while the card goes on naming the row picked
   before, or New recordings. `tests/screens/main/row_settings/test_boxes.py` reproduces it as a known failure.
@@ -187,10 +181,6 @@ currently out of line. An entry leaves when the code meets the contract again.
 * A Keyboard settings row reads as listening once Cancel answers the reassign question, while no key
   reaches it: the keys pressed next are taken by nothing, and Escape closes the dialog.
   `tests/screens/prompts/modals/test_run_ending_behind_a_dialog.py` reproduces it as a known failure.
-* Two closes before the first is answered ask twice: each close puts its question in line, so Cancel
-  on the first brings the second, and so does a close made twice while an edit is on its way.
-  `tests/screens/prompts/closing/test_over_a_question.py` and
-  `tests/screens/prompts/closing/test_during_an_edit.py` reproduce it as known failures.
 * A reconstruction whose recording is missing draws a flat original line beside the reconstruction,
   where the waveform shows the approximation on its own. `tests/screens/reconstructions/player/test_source_switch.py`
   reproduces it as a known failure.
@@ -207,9 +197,6 @@ currently out of line. An entry leaves when the code meets the contract again.
 * The history lines of a renamed or a moved voice name it one way alone: a rename names the voice and
   not its position, and a move names the positions and not the voice.
   `tests/screens/sequencer/history/test_voice_gestures.py` reproduces it as a known failure.
-* A project opened as the application starts is saved as though it had no file: `load_project_safely`
-  leaves the session's current project unset, so Save asks for a path, or writes to whatever path an
-  earlier session left. `tests/screens/sequencer/song/test_retuning_and_saving.py` reproduces it as a known failure.
 * A voice row's hover can log an error: the Voices list rebuilds every row on each update, and a hover
   callback queued for a row before the rebuild reads an item that no longer exists
   (`_on_row_hovered`, "Item not found"). The Sequencer's screen scenarios forgive it by name; no
@@ -218,11 +205,3 @@ currently out of line. An entry leaves when the code meets the contract again.
   can see: `voice_instrument` raises the tuning error inside the menu's callback, so no message, no save
   dialog and no file follow, while a Bitphase project or an NSF program of the same project stops with a
   message. `tests/screens/exports/progress/test_refusals.py` reproduces it as a known failure.
-* Closing the window while Display settings holds a window size kept on the countdown but never confirmed
-  writes that size: leaving records the live window size, while the dialog keeps the session at the values
-  it opened with until OK, and the window manager's close passes the open dialog by.
-  `tests/screens/interface/display/test_kept_size_at_close.py` reproduces it as a known failure.
-* Closing the window while a folder is being read crashes the process once the read ends: nothing stops the
-  walk on exit, so it runs past the shutdown, and its report closes the reading window through DearPyGui
-  after the context is gone (SIGSEGV). `tests/screens/application/closing/test_during_work.py` reproduces it as a
-  known failure.

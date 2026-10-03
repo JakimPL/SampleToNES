@@ -317,6 +317,7 @@ class DialogsRenderer:
         title: str,
         on_save: Callable[[], SaveOutcome],
         on_confirm: Callback,
+        on_cancel: Callback,
         *,
         ok_label: str,
     ) -> None:
@@ -325,9 +326,10 @@ class DialogsRenderer:
         Every answer runs once the prompt has left the screen, so whatever it opens stands alone.
         ``on_save`` writes the document and reports a :class:`SaveOutcome`: a written document
         runs ``on_confirm``, a save the reader called off brings the prompt back with the same
-        question, and a failed save leaves the error it showed alone on screen. The middle button
-        discards the pending changes and runs ``on_confirm`` to proceed, and Cancel — the initially
-        focused button — dismisses the prompt.
+        question, and a failed save leaves the error it showed alone on screen and runs
+        ``on_cancel``. The middle button discards the pending changes and runs ``on_confirm`` to
+        proceed. Cancel, the initially focused button, runs ``on_cancel``, and so do Escape and the
+        title bar's close button.
         """
         GUISaveConfirmationWindow(
             tag=get_dialog_tag(tag),
@@ -342,6 +344,7 @@ class DialogsRenderer:
             title,
             on_save,
             on_confirm,
+            on_cancel,
             ok_label=ok_label,
         )
 

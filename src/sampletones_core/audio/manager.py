@@ -352,19 +352,25 @@ class AudioDeviceManager(CallbackMixin):
 
         self._sample_rate = value
 
-    def get_current_device(self) -> CurrentDevice:
+    def get_current_device(self) -> Optional[CurrentDevice]:
         """
         Get a snapshot of the current device configuration.
 
+        A machine offering no output device starts with nothing selected, and a refresh can take
+        the selected device off the list, so both read as no current device.
+
         Returns:
-            CurrentDevice object containing device index, name, sample rate, and host API.
+            CurrentDevice object containing device index, name, sample rate, and host API, or
+            ``None`` while no listed device is selected.
         """
-        return CurrentDevice(
-            device_index=self.device_index,
-            name=self.device_name,
-            sample_rate=self.sample_rate,
-            host_api=self._devices[self.device_index].host_api,
-        )
+        if self._device_index is None or self._sample_rate is None:
+            return None
+
+        device = self._devices.get(self._device_index)
+        if device is None:
+            return None
+
+        return CurrentDevice.from_device(device, self._sample_rate)
 
     def set_current_device(self, current_device: CurrentDevice) -> None:
         """
@@ -379,17 +385,18 @@ class AudioDeviceManager(CallbackMixin):
         """
         device_index = self.find_device_index(current_device)
         if device_index != -1:
-            return self.configure_device(
+            self.configure_device(
                 device_index=device_index,
                 sample_rate=current_device.sample_rate,
             )
+            return
 
         if current_device.name:
             logger.warning(f"Audio device '{current_device.name}' not found. " f"Falling back to default device.")
         else:
             logger.info("No device specified. Initializing the default audio device.")
 
-        return self._initialize_default_device()
+        self._initialize_default_device()
 
     def find_device_index(
         self,
@@ -423,7 +430,7 @@ class AudioDeviceManager(CallbackMixin):
         self,
         device_index: int,
         sample_rate: SampleRate,
-    ) -> None:
+    ) -> CurrentDevice:
         """
         Configure the audio device and sample rate.
 
@@ -437,6 +444,9 @@ class AudioDeviceManager(CallbackMixin):
         Args:
             device_index: Index of the device to configure.
             sample_rate: Desired sample rate in Hz.
+
+        Returns:
+            The device and the rate now in force.
 
         Raises:
             ValueError: If the device index is not found.
@@ -462,6 +472,7 @@ class AudioDeviceManager(CallbackMixin):
         self.device_index = device_index
         self.sample_rate = sample_rate
         logger.info(f"Audio device configured: '{self.device_name}' (index={device_index}, sample_rate={sample_rate})")
+        return CurrentDevice.from_device(device, sample_rate)
 
     def set_buffer_size(self, buffer_size: BufferSize) -> None:
         """

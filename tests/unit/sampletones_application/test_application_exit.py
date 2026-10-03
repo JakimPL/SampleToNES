@@ -22,30 +22,33 @@ class Owner:
         self.editing = False
         self._asked = asked
         self._proceed: Optional[VoidCallback] = None
-        self._after_edits: Optional[VoidCallback] = None
+        self._decline: Optional[VoidCallback] = None
+        self._after_edits: List[VoidCallback] = []
 
     def after_edits(self, gesture: VoidCallback) -> None:
-        """Holds the gesture while an edit is on its way, the way the reconstruction's rewrites do."""
+        """Holds the gesture while an edit is on its way, in line, the way the reconstruction's rewrites do."""
         if not self.editing:
             gesture()
             return
 
-        self._after_edits = gesture
+        self._after_edits.append(gesture)
 
     def land(self) -> None:
-        """The edit on its way landing, which lets a gesture waiting on it run."""
-        assert self._after_edits is not None
-        gesture, self._after_edits = self._after_edits, None
+        """The edit on its way landing, which lets every gesture waiting on it run in the order it came."""
+        assert self._after_edits
+        gestures, self._after_edits = self._after_edits, []
         self.editing = False
-        gesture()
+        for gesture in gestures:
+            gesture()
 
-    def guard_exit(self, proceed: VoidCallback) -> None:
+    def guard_exit(self, proceed: VoidCallback, decline: VoidCallback) -> None:
         if not self.unfinished:
             proceed()
             return
 
         self._asked.append(self.name)
         self._proceed = proceed
+        self._decline = decline
 
     @property
     def is_asking(self) -> bool:
@@ -54,12 +57,16 @@ class Owner:
     def go_on(self) -> None:
         """The reader answering the question with Save, Exit or Discard."""
         assert self._proceed is not None
-        proceed, self._proceed = self._proceed, None
+        proceed = self._proceed
+        self._proceed, self._decline = None, None
         proceed()
 
     def cancel(self) -> None:
-        """The reader answering the question with Cancel, which ends the exit."""
-        self._proceed = None
+        """The reader answering the question with Cancel, which turns the exit away."""
+        assert self._decline is not None
+        decline = self._decline
+        self._proceed, self._decline = None, None
+        decline()
 
 
 class Exiting:
@@ -75,13 +82,14 @@ class Exiting:
         self.application._instructions_tab = self.owners[LIBRARY]
         self.exit = MagicMock()
         self.application._exit_application = self.exit
+        self.application._exiting = self.application._exit_flight()
 
     def unfinished(self, *names: str) -> None:
         for name in names:
             self.owners[name].unfinished = True
 
     def close(self) -> None:
-        self.application._on_close()
+        self.application._exiting()
 
 
 @pytest.fixture(name="exiting")
@@ -197,3 +205,59 @@ class TestExitingWhileAnEditIsOnItsWay:
         exiting.owners[RECONSTRUCTION].land()
 
         exiting.exit.assert_called_once_with()
+
+
+class TestClosingTwiceBeforeTheAnswer:
+    """A close asked for again while the exit's questions stand is absorbed, and Cancel ends the exit.
+
+    A close made after the answer asks again, so the reader can always leave.
+    """
+
+    def test_two_closes_over_a_question_ask_once(self, exiting: Exiting) -> None:
+        exiting.unfinished(PROJECT)
+
+        exiting.close()
+        exiting.close()
+
+        assert exiting.asked == [PROJECT]
+
+    def test_cancel_leaves_no_question_behind(self, exiting: Exiting) -> None:
+        exiting.unfinished(PROJECT)
+        exiting.close()
+        exiting.close()
+
+        exiting.owners[PROJECT].cancel()
+
+        assert not exiting.owners[PROJECT].is_asking
+        assert exiting.asked == [PROJECT]
+        exiting.exit.assert_not_called()
+
+    def test_a_close_after_cancel_asks_again(self, exiting: Exiting) -> None:
+        exiting.unfinished(PROJECT)
+        exiting.close()
+        exiting.owners[PROJECT].cancel()
+
+        exiting.close()
+        exiting.owners[PROJECT].go_on()
+
+        assert exiting.asked == [PROJECT, PROJECT]
+        exiting.exit.assert_called_once_with()
+
+    def test_a_close_while_a_later_question_stands_is_absorbed(self, exiting: Exiting) -> None:
+        exiting.unfinished(PROJECT, CONVERSION)
+        exiting.close()
+        exiting.owners[PROJECT].go_on()
+
+        exiting.close()
+
+        assert exiting.asked == [PROJECT, CONVERSION]
+
+    def test_two_closes_while_an_edit_is_on_its_way_ask_once_it_lands(self, exiting: Exiting) -> None:
+        exiting.owners[RECONSTRUCTION].editing = True
+        exiting.unfinished(RECONSTRUCTION)
+        exiting.close()
+        exiting.close()
+
+        exiting.owners[RECONSTRUCTION].land()
+
+        assert exiting.asked == [RECONSTRUCTION]

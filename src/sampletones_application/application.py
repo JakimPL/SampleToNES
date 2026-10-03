@@ -1,5 +1,6 @@
+from contextlib import ExitStack
 from pathlib import Path
-from typing import Any, Dict, Final, Optional, Tuple
+from typing import Any, Callable, Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 from pydantic import ValidationError
@@ -132,7 +133,14 @@ from sampletones_application.ui.panels.dialogs.render import GUIRenderWindow
 from sampletones_application.ui.panels.dialogs.stem_selection import GUIStemSelectionWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
-from sampletones_application.utils.callbacks.gates import gated, pass_gates
+from sampletones_application.utils.callbacks.gates import (
+    Gate,
+    GestureParameters,
+    GestureResult,
+    SingleFlight,
+    gated,
+    waiting,
+)
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
@@ -189,6 +197,7 @@ from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.logger import logger
 from sampletones_shared.paths.extensions import EXT_FILES_AUDIO
 from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import VoidCallback
 
 SEQUENCER_SAMPLE_TITLE_FORMAT: Final[str] = "{ordinal}: {name}"
 SEQUENCER_SAMPLE_ORDINAL_FORMAT: Final[str] = "02X"
@@ -465,6 +474,7 @@ class Application:
             on_session_state_changed=self._on_reconstruction_state_changed,
             on_reconstruction_updated=self._on_reconstruction_updated,
         )
+        self._reconstruction_opening: SingleFlight[[Optional[Path]]] = self._reconstruction_opening_flight()
 
         self._original_audio_locator = OriginalAudioLocator(
             dialogs=self.dialogs,
@@ -491,10 +501,7 @@ class Application:
             export_service=self.export_service,
             export_backends=self.export_backends,
             format_setups=self._format_setups,
-            on_load_reconstruction_with_confirmation=gated(
-                self._reconstruction_coordinator.after_edits,
-                self._reconstruction_coordinator.load_with_confirmation,
-            ),
+            on_load_reconstruction_with_confirmation=self._reconstruction_opening,
             on_change_audio_state=self._update_menu,
             on_favorite_changed=self._repaint_reconstruction_favorites,
             on_rewrite_requested=self._reconstruction_coordinator.request_rewrite,
@@ -540,10 +547,7 @@ class Application:
                 on_busy_state_changed=self._refresh_busy_state,
                 on_reconstruct_file=self._reconstruct_file,
                 on_reconstruct_directory=self._reconstruct_directory,
-                on_load_reconstruction=gated(
-                    self._reconstruction_coordinator.after_edits,
-                    self._reconstruction_coordinator.load_with_confirmation,
-                ),
+                on_load_reconstruction=self._reconstruction_opening,
                 on_load_library=self._load_library,
                 on_load_file=gated(
                     self._reconstruction_coordinator.after_edits,
@@ -662,6 +666,7 @@ class Application:
             instructions_tab=self._instructions_tab,
         )
         self.browser_manager.on_recordings_read = self._show_reconstruction_recordings
+        self._exiting: SingleFlight[[]] = self._exit_flight()
 
         self._setup_gui()
         self._restore_current_items(
@@ -732,29 +737,42 @@ class Application:
 
         A gesture that reads or puts away a whole document, the project or the open reconstruction,
         waits for the edits of the open reconstruction made before it, so it acts on what the
-        reader has drawn.
+        reader has drawn. A gesture that replaces or closes a document, or leaves, holds one
+        conversation at a time, so asking for it again before its question is answered asks once.
         """
         after_edits = self._reconstruction_coordinator.after_edits
         return ShortcutBindings(
-            new_project=gated(after_edits, self._project_coordinator.new_project_with_confirmation),
-            open_project=gated(after_edits, self._project_coordinator.open_with_confirmation),
+            new_project=self._document_flight(
+                self._project_coordinator.guard_new,
+                self._project_coordinator.new_project,
+            ),
+            open_project=self._document_flight(
+                self._project_coordinator.guard_open,
+                self._project_coordinator.open_project,
+            ),
             save_project=gated(after_edits, self._project_coordinator.save),
             save_project_as=gated(after_edits, self._project_coordinator.save_as_dialog),
             project_properties=self._open_project_properties,
             export_project=gated(after_edits, self._project_coordinator.export_project_dialog),
             render_song=gated(after_edits, self._render_coordinator.open),
-            close_project=gated(after_edits, self._project_coordinator.close_with_confirmation),
-            exit=self._on_close,
+            close_project=self._document_flight(
+                self._project_coordinator.guard_close,
+                self._project_coordinator.close_project,
+            ),
+            exit=self._exiting,
             undo=self._sequencer_tab.undo,
             redo=self._sequencer_tab.redo,
             reconstruct_file=self._reconstruct_file_dialog,
             reconstruct_directory=self._reconstruct_directory_dialog,
             load_generation_settings=self._config_coordinator.load_dialog,
             save_generation_settings=self._config_coordinator.save_dialog,
-            open_reconstruction=gated(after_edits, self._reconstruction_coordinator.load_with_confirmation),
+            open_reconstruction=self._reconstruction_opening,
             save_reconstruction=gated(after_edits, self._reconstruction_coordinator.save),
             save_reconstruction_as=gated(after_edits, self._reconstruction_coordinator.save_as_dialog),
-            close_reconstruction=gated(after_edits, self._reconstruction_coordinator.close_with_confirmation),
+            close_reconstruction=self._document_flight(
+                self._reconstruction_coordinator.guard_close,
+                self._reconstruction_coordinator.close,
+            ),
             export_wav=gated(after_edits, self._export_reconstruction_wav_dialog),
             export_instruments=gated(after_edits, self._export_reconstruction_instruments_dialog),
             add_reconstruction_to_sequencer=gated(after_edits, self._add_current_reconstruction_to_sequencer),
@@ -785,10 +803,31 @@ class Application:
             select_tab=self._set_current_tab,
         )
 
+    def _document_flight(
+        self,
+        guard: Gate,
+        arrive: Callable[GestureParameters, GestureResult],
+    ) -> SingleFlight[GestureParameters]:
+        """A gesture on a whole document as one conversation: the edits on their way land, then ``guard`` asks."""
+        return SingleFlight(
+            (
+                waiting(self._reconstruction_coordinator.after_edits),
+                guard,
+            ),
+            arrive,
+        )
+
+    def _reconstruction_opening_flight(self) -> SingleFlight[[Optional[Path]]]:
+        """Opening a reconstruction as one conversation, whichever door asks: the menu or a browser."""
+        return self._document_flight(
+            self._reconstruction_coordinator.guard_load,
+            self._reconstruction_coordinator.open,
+        )
+
     def _setup_shell(self, bindings: ShortcutBindings) -> None:
         self._shell.setup(
             bindings,
-            on_close=self._on_close,
+            on_close=self._exiting,
             on_tab_changed=self._on_tab_changed,
             initial_menu_state=self._build_initial_menu_state(),
         )
@@ -1411,18 +1450,20 @@ class Application:
         sample_rate: SampleRate,
         buffer_size: BufferSize,
     ) -> None:
-        """Applies the dialog's committed device, sample rate, and buffer size.
+        """Applies the dialog's committed device, sample rate, and buffer size, and remembers them.
 
         Switching devices needs the output free; a source that keeps hold of it leaves the
-        settings as they stand and reports the failure.
+        settings as they stand and reports the failure. The session keeps what the user chose,
+        so a remembered device that is unplugged for one run is looked for again in the next.
         """
         try:
-            self.audio_device_manager.configure_device(device_index, sample_rate)
+            current_device = self.audio_device_manager.configure_device(device_index, sample_rate)
         except PlaybackError as exception:
             self._on_playback_error(exception)
             return
 
         self.audio_device_manager.set_buffer_size(buffer_size)
+        self.session_manager.set_audio_settings(current_device, buffer_size)
 
     def _owning_project_sample(self) -> Optional[Sample]:
         """The project sample the open document is, found by the voice id the document remembers."""
@@ -1524,7 +1565,6 @@ class Application:
         return self._shell.get_active_source()
 
     def _persist_application_state(self) -> None:
-        self.session_manager.set_current_audio_device(self.audio_device_manager)
         self._viewport_manager.save_window_state()
         self._save_browser_shapes()
         current_tab = self._shell.get_current_tab()
@@ -1602,15 +1642,16 @@ class Application:
         """Flips one channel of the sequencer's mix, the gesture the Channels submenu offers."""
         self._sequencer_tab.toggle_channel(generator)
 
-    def _on_close(self) -> None:
-        """Exits once each owner of something unfinished has asked about it, one after another.
+    def _exit_flight(self) -> SingleFlight[[]]:
+        """The exit as one conversation, in which each owner of something unfinished asks in turn.
 
         The edits of the open reconstruction land first, so each question asks about what the
-        reader has drawn.
+        reader has drawn. A close asked for again while the questions stand is absorbed, and Cancel
+        on any of them ends the conversation.
         """
-        pass_gates(
+        return SingleFlight(
             (
-                self._reconstruction_coordinator.after_edits,
+                waiting(self._reconstruction_coordinator.after_edits),
                 self._project_coordinator.guard_exit,
                 self._reconstruction_coordinator.guard_exit,
                 self._main_tab.guard_exit,
@@ -1623,12 +1664,7 @@ class Application:
         return self.project_controller.is_open
 
     def _exit_application(self) -> None:
-        self._render_coordinator.cleanup()
-        self._export_coordinator.cleanup()
-        stop_background_workers()
-        self._playback_router.shutdown()
-        self._main_tab.cleanup()
-
+        """Stops the frames; the run lets go of what it holds once its loop has ended."""
         dpg.stop_dearpygui()
 
     def _update_status(self) -> None:
@@ -1671,13 +1707,17 @@ class Application:
         )
         CallbackQueue.process(self.layout.behavior.scheduling.queue_budget_seconds)
 
-    def _save_config(self) -> bool:
+    def _save_config(self) -> None:
+        """Writes the generation settings, ending the process with a failing status where the write fails.
+
+        Raises:
+            SystemExit: If the settings could not be written.
+        """
         try:
             self.config_manager.save_config()
-            return False
         except OSError as exception:
             logger.error_with_traceback(exception, "Failed to save configuration on exit")
-            return True
+            raise SystemExit(1) from exception
 
     def run(self) -> None:
         claim_render_thread()
@@ -1689,17 +1729,37 @@ class Application:
         except KeyboardInterrupt:
             return
         finally:
-            release_render_thread()
-            self._render_coordinator.cleanup()
-            self._export_coordinator.cleanup()
-            stop_background_workers()
-            self._playback_router.shutdown()
-            self._main_tab.cleanup()
-            self.library_manager.release_creator()
-            save_failed = self._save_config()
+            self._teardown()
 
-            self._persist_application_state()
-            self.audio_device_manager.terminate()
-            dpg.destroy_context()
-            if save_failed:
-                raise SystemExit(1)
+    def _teardown(self) -> None:
+        """Lets go of everything the run holds, once its loop has ended, whichever way it ended.
+
+        Every step is taken whatever an earlier one raised, so a failure leaves the background work
+        stopped, the audio backend closed and the DearPyGui context destroyed, and it is raised once
+        the last step has run.
+        """
+        with ExitStack() as steps:
+            for step in reversed(self._teardown_steps()):
+                steps.callback(step)
+
+    def _teardown_steps(self) -> Tuple[VoidCallback, ...]:
+        """The steps of the teardown in the order they are taken.
+
+        Background work stops before anything it reaches is let go of. Display settings put back what
+        is left unconfirmed before the session records the window, the session is written while the
+        window it measures still stands, and the DearPyGui context goes last.
+        """
+        return (
+            release_render_thread,
+            self._render_coordinator.cleanup,
+            self._export_coordinator.cleanup,
+            stop_background_workers,
+            self._playback_router.shutdown,
+            self._main_tab.cleanup,
+            self.library_manager.release_creator,
+            self._display_coordinator.cleanup,
+            self._save_config,
+            self._persist_application_state,
+            self.audio_device_manager.terminate,
+            dpg.destroy_context,
+        )
