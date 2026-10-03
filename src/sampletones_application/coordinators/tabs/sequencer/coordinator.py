@@ -743,6 +743,7 @@ class SequencerTabCoordinator:
         self._sequencer_tracker_panel.set_enabled(is_open)
         self._sequencer_order_panel.set_enabled(is_open)
         self._sequencer_history_panel.set_enabled(is_open)
+        self._sequencer_voices_panel.set_enabled(is_open)
 
     def repaint(self) -> None:
         """Draws every table again so its tints take the palette now in place.

@@ -29,7 +29,11 @@ from sampletones_application.ui.panels.sequencer.voices.footprint import (
 from sampletones_application.ui.panels.sequencer.voices.menu import VoicesMenu
 from sampletones_application.ui.panels.sequencer.voices.moves import MOVE_DIRECTIONS
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.dpg import dpg_delete_children, dpg_pointer_within_window
+from sampletones_application.utils.gui.dpg import (
+    dpg_configure_item,
+    dpg_delete_children,
+    dpg_pointer_within_window,
+)
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import (
     PRIORITY_PANEL,
@@ -85,6 +89,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         self._selected_row: Optional[int] = None
         self._editing_voice_id: Optional[str] = None
         self._entries: Tuple[VoiceEntryViewModel, ...] = ()
+        self._accepts_voices = False
         self._tip_new_instrument = self._tooltip(language_manager, SequencerVoicesElements.NEW_INSTRUMENT)
         self._tip_kind_sample = self._tooltip(language_manager, SequencerVoicesElements.KIND_SAMPLE)
         self._tip_kind_instrument = self._tooltip(language_manager, SequencerVoicesElements.KIND_INSTRUMENT)
@@ -202,10 +207,25 @@ class GUISequencerVoicesPanel(GUIPanel):
             tag=TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT,
             label=self._label(self._language_manager, SequencerVoicesElements.NEW_INSTRUMENT),
             width=-1,
+            enabled=self._accepts_voices,
             callback=lambda: self.call(self.on_new_instrument_requested),
         )
         FontRegistry.bind_to_item(button, Font.REGULAR_SMALL)
         show_tooltip(button, self._tip_new_instrument)
+
+    def set_enabled(self, enabled: bool) -> None:
+        """Offers the ways a voice comes in while a project stands open to take one.
+
+        The button above the list and the pool section of every menu the list raises follow the
+        one answer.
+        """
+        self._accepts_voices = enabled
+        dpg_configure_item(TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT, enabled=enabled)
+
+    @property
+    def accepts_voices(self) -> bool:
+        """Whether a project stands open for a voice to come into."""
+        return self._accepts_voices
 
     def _create_voices_table(self) -> None:
         with (

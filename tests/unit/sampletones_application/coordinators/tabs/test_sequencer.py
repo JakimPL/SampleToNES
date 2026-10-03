@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, Final, List, Optional
+from typing import Callable, Dict, Final, List, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -335,6 +335,65 @@ class TestImportInstrument:
         instrument_voices.import_instrument()
 
         instrument_voices._history.transaction.assert_not_called()
+
+
+POOL_GESTURES: Final[Dict[str, Callable[[SequencerVoices], None]]] = {
+    "new instrument": SequencerVoices.add_instrument,
+    "add sample from file": SequencerVoices.add_sample_from_file,
+    "import instrument": SequencerVoices.import_instrument,
+}
+
+
+@pytest.fixture
+def pool_voices() -> SequencerVoices:
+    """The pool gestures over an open project holding no voice yet."""
+    project_controller = MagicMock()
+    project_controller.is_open = True
+    project_controller.voice_count = 0
+    voices_logic = MagicMock()
+    voices_logic.read_instrument.return_value = _imported()
+    return _voices(voices_logic, project_controller, MagicMock(), MagicMock())
+
+
+class TestAVoiceComesIntoAnOpenProjectAlone:
+    """Every way a voice comes in asks for an open project as it starts, wherever the gesture came from.
+
+    The menus grey these doors without a project, and a key bound to one reaches it all the same.
+    """
+
+    @pytest.mark.parametrize("gesture", POOL_GESTURES.values(), ids=POOL_GESTURES.keys())
+    def test_with_no_project_nothing_is_asked_for_and_nothing_added(
+        self,
+        pool_voices: SequencerVoices,
+        located_file: List[Dict[str, object]],
+        gesture: Callable[[SequencerVoices], None],
+    ) -> None:
+        pool_voices._project_controller.is_open = False
+
+        gesture(pool_voices)
+
+        assert located_file == []
+        pool_voices._voices_logic.add_new_instrument.assert_not_called()
+        pool_voices._voices_logic.add_instrument.assert_not_called()
+        pool_voices._import_reconstruction.assert_not_called()
+        pool_voices._history.transaction.assert_not_called()
+        pool_voices._dialogs.show_info.assert_called_once()
+
+    def test_with_a_project_a_new_instrument_joins_the_pool(self, pool_voices: SequencerVoices) -> None:
+        pool_voices.add_instrument()
+
+        pool_voices._voices_logic.add_new_instrument.assert_called_once()
+        pool_voices._dialogs.show_info.assert_not_called()
+
+    def test_with_a_project_a_sample_is_asked_for_and_brought_in(
+        self,
+        pool_voices: SequencerVoices,
+        located_file: List[Dict[str, object]],
+    ) -> None:
+        pool_voices.add_sample_from_file()
+
+        assert len(located_file) == 1
+        pool_voices._import_reconstruction.assert_called_once_with(INSTRUMENT_FILE)
 
 
 @pytest.fixture

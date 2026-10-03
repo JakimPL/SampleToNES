@@ -65,6 +65,9 @@ class VoicesMenuHost(Protocol):
     @property
     def voice_count(self) -> int: ...
 
+    @property
+    def accepts_voices(self) -> bool: ...
+
     def start_rename(self, voice_id: str) -> None: ...
 
 
@@ -135,21 +138,26 @@ class VoicesMenu(CallbackMixin):
         A voice is written by hand, converted from a recording, or brought from a tracker, and
         the three stand apart from the actions a listed voice offers, since each answers with an
         entry the list did not hold. Every door onto the list prints this section, so a reader
-        reaches it from the list and from a row alike.
+        reaches it from the list and from a row alike. The three answer while a project stands
+        open to take a voice, as the button above the list does.
         """
+        accepts_voices = self._panel.accepts_voices
         dpg.add_menu_item(
             label=self._label(SequencerVoicesElements.NEW_INSTRUMENT),
             shortcut=self._shortcuts.display(ShortcutId.NEW_INSTRUMENT),
+            enabled=accepts_voices,
             callback=lambda: self.call(self._panel.on_new_instrument_requested),
         )
         dpg.add_menu_item(
             label=self._label(SequencerVoicesElements.ADD_SAMPLE),
             shortcut=self._shortcuts.display(ShortcutId.ADD_SAMPLE_FROM_FILE),
+            enabled=accepts_voices,
             callback=lambda: self.call(self._panel.on_add_sample_requested),
         )
         dpg.add_menu_item(
             label=self._label(SequencerVoicesElements.IMPORT_INSTRUMENT),
             shortcut=self._shortcuts.display(ShortcutId.IMPORT_INSTRUMENT),
+            enabled=accepts_voices,
             callback=lambda: self.call(self._panel.on_import_instrument_requested),
         )
 
