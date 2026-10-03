@@ -92,6 +92,7 @@ class ProjectCoordinator:
         self._truncation_messages = TruncationMessages.for_project(language_manager)
         self._on_tab_switch = on_tab_switch
         self._project_manager.session.on_state_changed = on_session_state_changed
+        self._project_manager.on_path_changed = session_manager.set_current_project
 
         export_service.subscribe(self._on_export_result)
 
@@ -127,12 +128,13 @@ class ProjectCoordinator:
         )
 
     def load_project_safely(self, path: Path) -> None:
-        """Loads the persisted project when the application starts.
+        """Loads the project a run starts on, the one the session remembers or the one it was given.
 
         Startup restore happens automatically, so a failed load is recovered silently:
         the stale session pointer is cleared so a missing, moved, or corrupt file leaves
         the next launch starting from a clean slate. Only known domain and I/O failures
-        are absorbed; unexpected errors propagate.
+        are absorbed; unexpected errors propagate. A project that loads stands for its file,
+        so a later save writes there.
         """
         try:
             self._project_controller.load(path)
@@ -193,7 +195,7 @@ class ProjectCoordinator:
         the reader closes the file dialog. The reader asked to go on, so the save goes on without a
         word of its own, and whatever the prompt guards opens alone.
         """
-        filepath = self._session_manager.current_project
+        filepath = self._project_manager.path
         if filepath is None:
             return self._write_to_chosen_file()
 
@@ -300,12 +302,10 @@ class ProjectCoordinator:
 
     def _new(self) -> None:
         self._project_controller.new()
-        self._session_manager.set_current_project(None)
         self._on_tab_switch(Tab.SEQUENCER)
 
     def _close(self) -> None:
         self._project_controller.close()
-        self._session_manager.set_current_project(None)
 
     def _load(self, filepath: Path) -> None:
         try:
@@ -318,7 +318,6 @@ class ProjectCoordinator:
             self._dialogs.show_error(exception)
             return
 
-        self._session_manager.set_current_project(filepath)
         self._on_tab_switch(Tab.SEQUENCER)
 
     def _write(self, filepath: Path) -> SaveOutcome:
@@ -335,7 +334,6 @@ class ProjectCoordinator:
             )
             return SaveOutcome.FAILED
 
-        self._session_manager.set_current_project(filepath)
         return SaveOutcome.WRITTEN
 
     def _on_export_result(self, result: ExportResult) -> None:

@@ -186,7 +186,7 @@ A view model is the UI's contract with the logic layer: it states exactly what d
 
 Owns domain state and implements the state-machine transitions that govern it, knowing nothing of the UI framework.
 
-*Managers* own a domain object's lifecycle (load, save, close). They hold the current object and a `Session` that tracks dirty state, and they fire `CallbackMixin` callbacks when the state changes.
+*Managers* own a domain object's lifecycle (load, save, close). They hold the current object, the file it was last loaded from or saved to, and a `Session` that tracks dirty state, and they fire `CallbackMixin` callbacks when the state changes. Whoever saves or remembers a document reads its file from the manager, so a document opened by any route is saved where it came from.
 
 *Controllers* are thin mutation façades over a manager. `ProjectController` exposes named, typed mutation methods and emits a finer-grained callback per mutation kind, so the UI answers exactly what changed. Its `batch()` widens that grain to a whole gesture. Each mutation still applies the moment it is made, while the callbacks wait for the scope to close and then arrive once each. A gesture that writes hundreds of rows therefore rebuilds its subscribers once.
 

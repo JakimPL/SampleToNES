@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Final, Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -9,6 +9,8 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.skipped import MAX_REPORTED_ROWS
 from sampletones_application.coordinators import project as project_module
 from sampletones_application.coordinators.project import ProjectCoordinator
+from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.paths import LANG_EN
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
@@ -16,6 +18,7 @@ from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
 from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS, SkippedRow, SkipReason
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.format import ExportFormat
+from sampletones_core.project import ProjectContainer
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_shared.exceptions import (
@@ -30,6 +33,9 @@ from sampletones_shared.paths.extensions import EXT_FILE_MODULE
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.silent_rows import MISSING_VOICE_ID, SILENT_CHANNEL
+
+ORIGINAL_TITLE: Final[str] = "As saved"
+EDITED_TITLE: Final[str] = "As edited"
 
 
 @pytest.fixture
@@ -48,17 +54,81 @@ def project_coordinator() -> ProjectCoordinator:
     )
 
 
-class TestProjectRestoreSuccess:
-    def test_loads_and_keeps_session_pointer(
+class TestAProjectOpenedAtStart:
+    """A project a run starts on stands for its file, as one opened by hand does.
+
+    The session remembers the file, and Save writes there at once. A project the run never opened
+    asks where to save it.
+    """
+
+    @pytest.fixture(name="save_dialog")
+    def save_dialog_fixture(self, monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+        dialog = MagicMock(return_value=None)
+        monkeypatch.setattr(project_module, "save_file_dialog", dialog)
+        return dialog
+
+    @pytest.fixture(name="saved_project")
+    def saved_project_fixture(self, tmp_path: Path) -> Path:
+        """A project file on disk, titled so a save can be told from the file as it was."""
+        path = tmp_path / "song.stp"
+        manager = ProjectManager()
+        manager.current.info.title = ORIGINAL_TITLE
+        manager.save(path)
+        return path
+
+    @pytest.fixture(name="starting")
+    def starting_fixture(self, tmp_path: Path) -> ProjectCoordinator:
+        """A coordinator over a real project manager, its session remembering nothing yet."""
+        project_manager = ProjectManager()
+        session_manager = MagicMock()
+        session_manager.current_project = None
+        session_manager.get_project_path.return_value = tmp_path
+        return ProjectCoordinator(
+            ProjectController(project_manager),
+            project_manager,
+            session_manager,
+            MagicMock(),
+            export_backends={},
+            format_setups={},
+            dialogs=MagicMock(),
+            language_manager=MagicMock(),
+            on_tab_switch=MagicMock(),
+            on_session_state_changed=MagicMock(),
+        )
+
+    def test_the_session_remembers_its_file(self, starting: ProjectCoordinator, saved_project: Path) -> None:
+        starting.load_project_safely(saved_project)
+
+        starting._session_manager.set_current_project.assert_called_once_with(saved_project)
+
+    def test_save_writes_its_file_without_asking(
         self,
-        project_coordinator: ProjectCoordinator,
+        starting: ProjectCoordinator,
+        saved_project: Path,
+        save_dialog: MagicMock,
     ) -> None:
-        path = Path("song.stp")
+        starting.load_project_safely(saved_project)
+        starting._project_controller.set_title(EDITED_TITLE)
 
-        project_coordinator.load_project_safely(path)
+        assert starting.save() is SaveOutcome.WRITTEN
 
-        project_coordinator._project_controller.load.assert_called_once_with(path)
-        project_coordinator._session_manager.set_current_project.assert_not_called()
+        save_dialog.assert_not_called()
+        assert ProjectContainer.load(saved_project).info.title == EDITED_TITLE
+
+    def test_a_new_project_asks_where_to_save(
+        self,
+        starting: ProjectCoordinator,
+        saved_project: Path,
+        save_dialog: MagicMock,
+    ) -> None:
+        starting.load_project_safely(saved_project)
+        starting._new()
+
+        assert starting.save() is SaveOutcome.CALLED_OFF
+
+        save_dialog.assert_called_once()
+        starting._session_manager.set_current_project.assert_called_with(None)
+        assert ProjectContainer.load(saved_project).info.title == ORIGINAL_TITLE
 
 
 class TestProjectRestoreAbsorbsFailures(BaseTestSuite):
@@ -411,7 +481,7 @@ class TestTheSaveAPromptWaitsOn:
         tmp_path: Path,
     ) -> None:
         filepath = tmp_path / "song.stp"
-        saving._session_manager.current_project = filepath
+        saving._project_manager.path = filepath
 
         assert saving.save() is SaveOutcome.WRITTEN
         saving._project_controller.save.assert_called_once_with(filepath)
@@ -421,7 +491,7 @@ class TestTheSaveAPromptWaitsOn:
         saving: ProjectCoordinator,
         save_dialog: MagicMock,
     ) -> None:
-        saving._session_manager.current_project = None
+        saving._project_manager.path = None
 
         assert saving.save() is SaveOutcome.CALLED_OFF
         saving._project_controller.save.assert_not_called()
@@ -434,7 +504,7 @@ class TestTheSaveAPromptWaitsOn:
     ) -> None:
         filepath = tmp_path / "song.stp"
         save_dialog.return_value = filepath
-        saving._session_manager.current_project = None
+        saving._project_manager.path = None
 
         assert saving.save() is SaveOutcome.WRITTEN
         saving._project_controller.save.assert_called_once_with(filepath)
@@ -445,7 +515,7 @@ class TestTheSaveAPromptWaitsOn:
         tmp_path: Path,
     ) -> None:
         failure = OSError("disk full")
-        saving._session_manager.current_project = tmp_path / "song.stp"
+        saving._project_manager.path = tmp_path / "song.stp"
         saving._project_controller.save.side_effect = failure
 
         assert saving.save() is SaveOutcome.FAILED
@@ -456,7 +526,7 @@ class TestTheSaveAPromptWaitsOn:
         saving: ProjectCoordinator,
         tmp_path: Path,
     ) -> None:
-        saving._session_manager.current_project = tmp_path / "song.stp"
+        saving._project_manager.path = tmp_path / "song.stp"
 
         saving.save()
 
@@ -469,7 +539,7 @@ class TestTheSaveAPromptWaitsOn:
     ) -> None:
         """What the prompt guards opens next, so it opens alone."""
         filepath = tmp_path / "song.stp"
-        saving._session_manager.current_project = filepath
+        saving._project_manager.path = filepath
 
         assert saving._write_project() is SaveOutcome.WRITTEN
         saving._project_controller.save.assert_called_once_with(filepath)
