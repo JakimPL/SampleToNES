@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -47,7 +47,8 @@ class _FakeDPG:
     def get_item_alias(self, item_id: int) -> str:
         return self.id_to_alias.get(item_id, "")
 
-    def delete_item(self, item_id: int) -> None:
+    def delete_item(self, item: Union[int, str]) -> None:
+        item_id = self.alias_to_id.get(item, -1) if isinstance(item, str) else item
         self.deleted.append(item_id)
         for children in self.children.values():
             if item_id in children:
@@ -257,6 +258,28 @@ class TestAnUpdateDrawsTheLayersItsDataDisplays:
         graph.update_waveform_data(TestWaveformDataUpdateRefit._waveform_data())
 
         assert (list(graph.layers), fake_dpg.deleted) == (["Original", "Reconstruction"], [])
+
+    def test_a_layer_joining_the_plot_is_drawn_in_the_layers_order(
+        self,
+        fake_dpg: _FakeDPG,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The series already drawn is taken off and added back behind the one that joins, as ordered."""
+        graph = _graph()
+        graph.current_data = TestWaveformDataUpdateRefit._waveform_data()
+        graph.layers = {"Reconstruction": _Layer("Reconstruction")}
+        fake_dpg.set_children("axis", [graph._series_tag("Reconstruction"), "indicator", "overlay"])
+        added: List[str] = []
+        monkeypatch.setattr(waveform_module.dpg, "add_line_series", lambda *args, **kwargs: added.append(kwargs["tag"]))
+        monkeypatch.setattr(
+            graph,
+            "_display_layers",
+            lambda *_args, **_kwargs: [_Layer("Reconstruction"), _Layer("Original")],
+        )
+
+        graph.update_waveform_data(TestWaveformDataUpdateRefit._waveform_data())
+
+        assert added == [graph._series_tag("Reconstruction"), graph._series_tag("Original")]
 
 
 class TestWaveformReconstructionDim:

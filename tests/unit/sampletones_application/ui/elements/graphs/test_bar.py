@@ -71,6 +71,7 @@ def _point_at(
     monkeypatch.setattr(bar_module, "dpg_configure_item", lambda tag, **kwargs: None)
     monkeypatch.setattr(bar_module.dpg, "is_key_down", lambda key: False)
     monkeypatch.setattr(bar_module.dpg, "get_plot_mouse_pos", lambda: position)
+    monkeypatch.setattr(bar_module.dpg, "is_mouse_button_down", lambda button: True)
 
 
 def _press(
@@ -90,6 +91,17 @@ def _hover(
 ) -> None:
     """One frame of the pointer standing at ``position``, as the hover and the move report it."""
     _point_at(monkeypatch, position)
+    graph._on_mouse_action(PLOT_TAG)
+
+
+def _hover_with_the_button_up(
+    graph: GUIBarGraph,
+    monkeypatch: pytest.MonkeyPatch,
+    position: Tuple[float, float],
+) -> None:
+    """One frame of the pointer standing at ``position`` with the left button up."""
+    _point_at(monkeypatch, position)
+    monkeypatch.setattr(bar_module.dpg, "is_mouse_button_down", lambda button: False)
     graph._on_mouse_action(PLOT_TAG)
 
 
@@ -161,6 +173,17 @@ class TestAPressBelongsToThePlotItWentDownOn:
         expected = _with_bar(PRESSED_BAR, PRESSED_VALUE)
         expected[last_bar] = int(PRESSED_VALUE)
         assert list(graph.layers[LAYER_NAME].y_data) == expected
+
+    def test_a_release_the_plot_missed_ends_the_press(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A button that reads up ends the press, so a button held again later draws nothing."""
+        graph = _graph()
+        last_bar = len(BAR_VALUES) - 1
+        _press(graph, monkeypatch, (PRESSED_BAR + 0.5, PRESSED_VALUE))
+
+        _hover_with_the_button_up(graph, monkeypatch, (last_bar + 0.5, PRESSED_VALUE))
+        _hover(graph, monkeypatch, (last_bar + 0.5, PRESSED_VALUE))
+
+        assert list(graph.layers[LAYER_NAME].y_data) == _with_bar(PRESSED_BAR, PRESSED_VALUE)
 
 
 class TestPressingTheBandBeneathTheBars:

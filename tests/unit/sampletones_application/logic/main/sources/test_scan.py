@@ -277,6 +277,21 @@ class TestStoppingAReading:
         assert answered == []
         assert heard.stopped == 1
 
+    def test_a_walk_failing_as_it_winds_down_ends_the_way_a_stopped_one_does(
+        self,
+        stopped: FolderScan,
+        service: ScanServiceStandIn,
+        heard: Heard,
+    ) -> None:
+        """The reader gave the reading up, so its failure reads as the stop, and the folder asked for meanwhile is read."""
+        stopped.start(FEW, lambda _root, _found: None)
+
+        service.report(FolderScanError(request=service.latest, exception=OSError("the tree went away")))
+
+        assert heard.failures == []
+        assert heard.stopped == 1
+        assert [request.root for request in service.started] == [MANY, FEW]
+
     def test_a_late_report_of_the_reading_let_go_is_set_aside(
         self,
         stopped: FolderScan,

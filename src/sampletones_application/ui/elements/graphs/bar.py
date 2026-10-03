@@ -385,8 +385,20 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self._set_hover_bar_position(bar_index, clamped_y)
         self.call(self.on_bar_point_hovered, name, bar_index)
 
-        if self._pressed and self._presses_a_bar(mouse_y):
+        if self._holds_press() and self._presses_a_bar(mouse_y):
             self._draw_bar(layer, bar_index, clamped_y, previous_stroke)
+
+    def _holds_press(self) -> bool:
+        """Whether a press that went down on the plot is still held.
+
+        A release the plot never heard, such as one outside the window, ends the press here, once the
+        button reads up, so a later press begun elsewhere draws nothing.
+        """
+        if self._pressed and not dpg.is_mouse_button_down(dpg.mvMouseButton_Left):
+            self._pressed = False
+            self._draw_stroke = None
+
+        return self._pressed
 
     def _presses_a_bar(self, mouse_y: float) -> bool:
         """Whether a press at ``mouse_y`` stands on the grid the bars are drawn across.

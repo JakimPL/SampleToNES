@@ -503,14 +503,19 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         """Redraws the loaded waveform from fresh data, keeping the view the reader left it at.
 
         The plot draws the layers the fresh data displays, so a layer the data no longer carries
-        leaves it. ``refit`` names the update a retune is: the audio's own length changed, so the
-        view is re-fitted to the new span.
+        leaves it, and a layer joining it is drawn in the layers' order, with the audible source on
+        top. ``refit`` names the update a retune is: the audio's own length changed, so the view is
+        re-fitted to the new span.
         """
         if not isinstance(self.current_data, WaveformData):
             return
 
         self.current_data = waveform_data
-        self.layers = {layer.name: layer for layer in self._display_layers(waveform_data, selected_channels)}
+        displayed = self._display_layers(waveform_data, selected_channels)
+        if any(layer.name not in self.layers for layer in displayed):
+            self._delete_series()
+
+        self.layers = {layer.name: layer for layer in displayed}
 
         if refit:
             self._update_ranges()
@@ -599,14 +604,20 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
         sample_layer = self.layers[self._lbl_waveform_original]
         reconstruction_layer = self.layers[self._lbl_waveform_reconstruction]
-        for layer in (sample_layer, reconstruction_layer):
-            dpg_delete_item(self._series_tag(layer.name))
-
+        self._delete_series()
         self.layers.clear()
         for layer in self._ordered_layers(sample_layer, reconstruction_layer):
             self.layers[layer.name] = layer
 
         self._update_display()
+
+    def _delete_series(self) -> None:
+        """Takes every layer's series off the axis, so the next display adds them back in the layers' order.
+
+        DearPyGui draws sibling series in child order, and a series it already holds keeps its place.
+        """
+        for layer_name in self.layers:
+            dpg_delete_item(self._series_tag(layer_name))
 
     def clear(self) -> None:
         """Empties the plot down to the marks it keeps for whatever it draws next: the position
