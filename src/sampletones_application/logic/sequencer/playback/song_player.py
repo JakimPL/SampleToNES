@@ -13,6 +13,7 @@ from sampletones_application.services.song_player.result import (
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.project.song_position import SongPosition
+from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
@@ -57,6 +58,10 @@ class SongPlayerLogic(CallbackMixin):
 
     All playback controls are forwarded here from the UI panel. Position
     updates are forwarded to the coordinator via callbacks.
+
+    Every transition of the playback reaches ``on_change_audio_state``: a start, a pause, a resume,
+    a stop, the song ending by itself and a playback error. Whoever shows the transport follows the
+    song through that one hook, whichever gesture moved it. Position updates leave the hook quiet.
     """
 
     def __init__(
@@ -81,6 +86,7 @@ class SongPlayerLogic(CallbackMixin):
         self.on_position_changed: Optional[Callable[[int, int], None]] = None
         self.on_view_changed: Optional[Callable[[SongPlayerViewModel], None]] = None
         self.on_error: Optional[Callable[[Exception], None]] = None
+        self.on_change_audio_state: Optional[VoidCallback] = None
 
     def play(self) -> None:
         self._last_error = None
@@ -100,6 +106,7 @@ class SongPlayerLogic(CallbackMixin):
             row_index=position.row_index,
         )
         self._emit_view()
+        self._notify_audio_state_changed()
 
     def pause_or_resume(self) -> None:
         if self._service.is_paused:
@@ -108,8 +115,10 @@ class SongPlayerLogic(CallbackMixin):
             self._service.pause()
         else:
             self.play()
+            return
 
         self._emit_view()
+        self._notify_audio_state_changed()
 
     def seek(self, order_position: int) -> None:
         """Moves the live playhead to another order, preserving sounding voices.
@@ -137,10 +146,18 @@ class SongPlayerLogic(CallbackMixin):
             self._awaiting_seek_order = order_position
 
     def stop(self) -> None:
+        """Silences the song and puts the playhead back at its start.
+
+        A stop of a song already silent is no transition, so it leaves ``on_change_audio_state``
+        quiet.
+        """
+        was_engaged = self._service.alive
         self._service.stop()
         self._position = SongPosition()
         self._awaiting_seek_order = None
         self._emit_view()
+        if was_engaged:
+            self._notify_audio_state_changed()
 
     def is_playing(self) -> bool:
         return self._service.is_playing
@@ -192,12 +209,17 @@ class SongPlayerLogic(CallbackMixin):
                 self._position = SongPosition()
                 self._awaiting_seek_order = None
                 self._emit_idle_view()
+                self._notify_audio_state_changed()
             case SongPlaybackError(error=error):
                 self._last_error = str(error) if str(error) else type(error).__name__
                 self._position = SongPosition()
                 self._awaiting_seek_order = None
                 self.call(self.on_error, error)
                 self._emit_view()
+                self._notify_audio_state_changed()
+
+    def _notify_audio_state_changed(self) -> None:
+        self.call(self.on_change_audio_state)
 
     def _emit_view(self) -> None:
         self.call(

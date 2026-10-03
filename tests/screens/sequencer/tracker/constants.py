@@ -8,3 +8,4 @@ TYPING_FRAMES: Final[int] = 10
 LINE_NUMBER: Final[str] = "00"
 PAD_NUMBER: Final[str] = "02"
 SAMPLE_COLUMN: Final[Optional[ChannelName]] = None
+PLAY_FROM_THIS_FRAME: Final[str] = "sequencer.tracker.label.context_play_from_frame"

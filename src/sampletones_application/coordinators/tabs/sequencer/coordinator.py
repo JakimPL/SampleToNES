@@ -115,6 +115,7 @@ class SequencerTabCoordinator:
         on_tab_switch: Callable[[Tab], None],
         on_nes_frequency_changed: Callable[[int], None],
         on_channels_changed: VoidCallback,
+        on_audio_state_changed: VoidCallback,
         after_edits: Gate,
     ) -> None:
         self._project_controller = project_controller
@@ -128,6 +129,7 @@ class SequencerTabCoordinator:
         self._on_tab_switch = on_tab_switch
         self._on_nes_frequency_changed = on_nes_frequency_changed
         self._on_channels_changed = on_channels_changed
+        self._on_audio_state_changed = on_audio_state_changed
         self._after_edits = after_edits
         self._language_manager = language_manager
         self._dialogs = dialogs
@@ -603,6 +605,7 @@ class SequencerTabCoordinator:
         self._song_player_logic.on_position_changed = self._on_player_position_changed
         self._song_player_logic.on_view_changed = self._on_player_view_changed
         self._song_player_logic.on_error = self._on_player_error
+        self._song_player_logic.on_change_audio_state = self._on_audio_state_changed
 
     def _wire_project_callbacks(self) -> None:
         self._project_controller.on_settings_changed = self._sequencer_tracker_logic.push_settings

@@ -589,6 +589,7 @@ class Application:
             on_tab_switch=self._set_current_tab,
             on_nes_frequency_changed=self._retune_samples_for_rate,
             on_channels_changed=self._update_menu,
+            on_audio_state_changed=self._update_menu,
             after_edits=self._reconstruction_coordinator.after_edits,
         )
 
@@ -1564,11 +1565,9 @@ class Application:
 
     def _play_from_start(self) -> None:
         self._playback_router.play_from_start()
-        self._update_menu()
 
     def _play(self) -> None:
         self._playback_router.play()
-        self._update_menu()
 
     def _play_from_frame(self) -> None:
         """Plays from the current order frame; available only in the Sequencer tab."""
@@ -1576,11 +1575,9 @@ class Application:
             return
 
         self._sequencer_tab.play_from_current_frame()
-        self._update_menu()
 
     def _stop(self) -> None:
         self._playback_router.stop()
-        self._update_menu()
 
     def _toggle_channel(self, generator: ChannelName) -> None:
         """Switches one NES channel in the tab in front of the reader.

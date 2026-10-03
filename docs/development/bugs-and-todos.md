@@ -187,9 +187,6 @@ currently out of line. An entry leaves when the code meets the contract again.
 * A reconstruction whose recording is missing draws a flat original line beside the reconstruction,
   where the waveform shows the approximation on its own. `tests/screens/reconstructions/player/test_source_switch.py`
   reproduces it as a known failure.
-* Playing the song from a tracker row leaves the Playback menu reading Play, with Stop greyed out, while
-  the song plays: that path never refreshes the menu. `tests/screens/sequencer/tracker/test_notes_typed.py` reproduces
-  it as a known failure.
 * New instrument with no project open writes into a project nobody opened: the Voices card's button has
   no open-project guard, so the instrument is added and listed, while Voice ▸ New instrument stands
   greyed out. `tests/screens/sequencer/voices/test_voices_card.py` reproduces it as a known failure.
