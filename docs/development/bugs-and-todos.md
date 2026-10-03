@@ -153,31 +153,3 @@ currently out of line. An entry leaves when the code meets the contract again.
   nothing can play.
 * Apply in Audio settings on a machine that offers no output device logs a `KeyError` and leaves the
   window open: the window looks the empty device choice up among the devices it lists.
-* A voice double-clicked with the second press still held opens edited. The double-click brings the
-  Reconstructions tab forward while the button is down, and the envelope graph that comes under the
-  pointer draws a bar for a press that began on the Voices card. `tests/screens/prompts/open_voice/test_open_voice.py`
-  reproduces it as a known failure.
-* A Keyboard settings row reads as listening once Cancel answers the reassign question, while no key
-  reaches it: the keys pressed next are taken by nothing, and Escape closes the dialog.
-  `tests/screens/prompts/modals/test_run_ending_behind_a_dialog.py` reproduces it as a known failure.
-* With an instrument open on the Reconstructions tab, the note keys take Ctrl+Z, Ctrl+S and every
-  combination ending in a note key: the instruments panel answers a key whatever modifiers are held, so
-  Undo, Save and the rest never reach their shortcuts. `tests/screens/reconstructions/instruments/test_note_keys.py`
-  reproduces it as a known failure.
-* Playing the song from a tracker row leaves the Playback menu reading Play, with Stop greyed out, while
-  the song plays: that path never refreshes the menu. `tests/screens/sequencer/tracker/test_notes_typed.py` reproduces
-  it as a known failure.
-* New instrument with no project open writes into a project nobody opened: the Voices card's button has
-  no open-project guard, so the instrument is added and listed, while Voice ▸ New instrument stands
-  greyed out. `tests/screens/sequencer/voices/test_voices_card.py` reproduces it as a known failure.
-* The history lines of a renamed or a moved voice name it one way alone: a rename names the voice and
-  not its position, and a move names the positions and not the voice.
-  `tests/screens/sequencer/history/test_voice_gestures.py` reproduces it as a known failure.
-* A voice row's hover can log an error: the Voices list rebuilds every row on each update, and a hover
-  callback queued for a row before the rebuild reads an item that no longer exists
-  (`_on_row_hovered`, "Item not found"). The Sequencer's screen scenarios forgive it by name; no
-  scenario reproduces it on demand, since it rests on the order the queued callbacks run in.
-* Export instrument... in a project whose samples were converted at two tunings does nothing the user
-  can see: `voice_instrument` raises the tuning error inside the menu's callback, so no message, no save
-  dialog and no file follow, while a Bitphase project or an NSF program of the same project stops with a
-  message. `tests/screens/exports/progress/test_refusals.py` reproduces it as a known failure.

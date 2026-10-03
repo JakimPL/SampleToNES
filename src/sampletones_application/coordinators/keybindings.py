@@ -30,6 +30,7 @@ from sampletones_application.view_model.shared.keybindings import (
     KeybindingRow,
     KeybindingsViewModel,
 )
+from sampletones_shared.types.callback import VoidCallback
 
 NO_COMBINATION: str = ""
 NO_MESSAGE: str = ""
@@ -45,6 +46,9 @@ class KeybindingsCoordinator:
 
     An assignment onto keys another action of the same scope holds is offered after a prompt naming
     that action, which is then left unbound — one combination reaches one action within a scope.
+    Declining the prompt brings the dialog back where the reader gave the keys: a written
+    combination returns to the entry box, and a pressed one returns to its row listening for the
+    next press.
     """
 
     def __init__(
@@ -115,14 +119,34 @@ class KeybindingsCoordinator:
             self._window.update_view(self._view_model())
             return
 
-        self._assign(shortcut_id, combination)
+        self._assign(
+            shortcut_id,
+            combination,
+            on_declined=self._window.resume,
+        )
 
     def _capture_combination(self, combination: KeyCombination) -> None:
         """Gives the selected action the keys a reader pressed."""
-        self._assign(self._require_selected(), combination)
+        self._assign(
+            self._require_selected(),
+            combination,
+            on_declined=self._window.listen_again,
+        )
 
-    def _assign(self, shortcut_id: ShortcutId, combination: KeyCombination) -> None:
-        """Assigns the combination, asking first where another action of the scope holds it."""
+    def _assign(
+        self,
+        shortcut_id: ShortcutId,
+        combination: KeyCombination,
+        *,
+        on_declined: VoidCallback,
+    ) -> None:
+        """Assigns the combination, asking first where another action of the scope holds it.
+
+        Args:
+            shortcut_id: The action the keys go to.
+            combination: The keys given.
+            on_declined: What brings the dialog back once the reader declines to take the keys.
+        """
         draft = self._require_draft()
         self._message = NO_MESSAGE
         claimant = draft.claimant(shortcut_id, combination)
@@ -130,13 +154,22 @@ class KeybindingsCoordinator:
             self._apply(draft.assign(shortcut_id, combination))
             return
 
-        self._window.yield_to(lambda: self._ask_to_reassign(shortcut_id, combination, claimant))
+        self._window.yield_to(
+            lambda: self._ask_to_reassign(
+                shortcut_id,
+                combination,
+                claimant,
+                on_declined=on_declined,
+            ),
+        )
 
     def _ask_to_reassign(
         self,
         shortcut_id: ShortcutId,
         combination: KeyCombination,
         claimant: ShortcutId,
+        *,
+        on_declined: VoidCallback,
     ) -> None:
         message = self._template(KeybindingsElements.REASSIGN_CONFIRMATION).format(
             combination=combination.display(),
@@ -148,7 +181,7 @@ class KeybindingsCoordinator:
             title=self._title(KeybindingsElements.REASSIGN_CONFIRMATION),
             message=message,
             on_confirm=lambda: self._reassign(shortcut_id, combination),
-            on_cancel=self._window.resume,
+            on_cancel=on_declined,
             ok_label=self._label(KeybindingsElements.REASSIGN_BUTTON),
         )
 

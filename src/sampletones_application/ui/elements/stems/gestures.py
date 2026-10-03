@@ -13,7 +13,11 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.stems.host import StemsListHost
 from sampletones_application.ui.elements.stems.messages import StemsMessages
 from sampletones_application.ui.elements.stems.tags import StemsTags
-from sampletones_application.utils.gui.dpg import dpg_delete_item, dpg_set_value
+from sampletones_application.utils.gui.dpg import (
+    dpg_delete_item,
+    dpg_get_item_user_data,
+    dpg_set_value,
+)
 from sampletones_application.view_model.shared.stems import StemsListViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.application import Sender
@@ -164,13 +168,13 @@ class StemsGestures:
 
     def on_row_drop(self, sender: Sender, app_data: str) -> None:
         """A recording was dropped on a row, so it joins that row's level at its place."""
-        target = dpg.get_item_user_data(sender)
+        target = dpg_get_item_user_data(sender)
         if isinstance(target, str):
             self._report(self.on_dropped_on_row, app_data, target)
 
     def on_level_drop(self, sender: Sender, app_data: str) -> None:
         """A recording was dropped in a gap, so it takes a level of its own there."""
-        position = dpg.get_item_user_data(sender)
+        position = dpg_get_item_user_data(sender)
         if isinstance(position, int):
             self._report(self.on_dropped_on_level, app_data, position)
 
@@ -229,10 +233,10 @@ class StemsGestures:
         may have taken the widget away, so the answer is for the widgets still standing.
         """
         mouse_button, clicked_item = app_data
-        if mouse_button != button or not dpg.does_item_exist(clicked_item):
+        if mouse_button != button:
             return None
 
-        key = dpg.get_item_user_data(clicked_item)
+        key = dpg_get_item_user_data(clicked_item)
         return key if isinstance(key, str) else None
 
     def _hover_callback(self, message_function: MessageCallback) -> Callable[[Sender, int], None]:
@@ -245,10 +249,9 @@ class StemsGestures:
         """
 
         def hover_callback(_sender: Sender, app_data: int) -> None:
-            if not dpg.does_item_exist(app_data):
-                return
-
-            self._status_bar.set(message_function, user_data=dpg.get_item_user_data(app_data))
+            user_data = dpg_get_item_user_data(app_data)
+            if user_data is not None:
+                self._status_bar.set(message_function, user_data=user_data)
 
         return hover_callback
 

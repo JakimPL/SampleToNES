@@ -24,7 +24,7 @@ The application orders its scopes by priority, from highest to lowest:
 | `PANEL` | a sub-panel the keys are meant for | its tab is in front, its card is open, and the sub-panel holds what the keys act on: a cursor, a row picked out, or an open audition | handles the keys its own category names and yields every combination it does not own, so a higher-reaching shortcut still wins |
 | `SHORTCUT` | application shortcuts (`ShortcutManager`) | always | fires the matching shortcut while no field is being edited, or whenever the shortcut is `field_transparent` |
 
-The router offers a panel the key ahead of the shortcut scope. A panel therefore returns `False` on any combination it does not own. The grid, for example, yields every `Ctrl`-modified press. That lets field-transparent shortcuts, such as the tab switch, reach the shortcut scope while a grid cursor is set.
+The router offers a panel the key ahead of the shortcut scope. A panel therefore returns `False` on any combination it does not own. A panel that reads keys as entry, such as notes or hex digits, takes **plain presses** alone: a key pressed on its own or with Shift, the way a character is typed. Ctrl, Alt and Super make a press a command, and a command goes on to the shortcuts. The grid therefore lets `Ctrl+D` through, and an open instrument's note keys let `Ctrl+Z` through. That lets field-transparent shortcuts, such as the tab switch, reach the shortcut scope while a grid cursor is set.
 
 ### A panel scope answers on its own tab, from an open card
 
@@ -70,7 +70,7 @@ A change reaches the running application through `ShortcutSource.on_bindings_cha
 
 `ShortcutDraft` (`utils/gui/shortcuts/draft.py`) holds the scheme being edited together with the actions the reader has touched: the combination each was given, or nothing where it was left unbound. Only those actions reach the preference, and every other key follows the scheme beneath.
 
-An assignment displaces. Giving an action a combination its category already answers takes the key from the holder in the same step, so every scheme a draft produces is valid. The dialog names the holder and asks before that step is taken. The dialog edits the draft, and a commit activates it, so a reader rebinding Escape, Tab or Enter keeps the keys the dialog is operated by until they are done.
+An assignment displaces. Giving an action a combination its category already answers takes the key from the holder in the same step, so every scheme a draft produces is valid. The dialog names the holder and asks before that step is taken. Cancel on that question brings the reader back to where they gave the keys: a written combination to the entry box, and a pressed one to its row, listening for the next press. A row reads as listening exactly while it takes the keys. The dialog edits the draft, and a commit activates it, so a reader rebinding Escape, Tab or Enter keeps the keys the dialog is operated by until they are done.
 
 ### A scheme belongs to a platform; an action does not
 

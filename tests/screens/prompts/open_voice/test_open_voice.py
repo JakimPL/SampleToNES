@@ -248,11 +248,6 @@ class TestAVoiceOpenedByADoubleClickHeldAsAPersonHoldsIt:
         """Starts with the song open and no reconstruction."""
         return Startup(reconstruction=None, project=SONG)
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: a voice double-clicked with the second press held opens edited",
-    )
     def test_the_voice_opens_unchanged(self, screen: Screen) -> None:
         """The volume drawn after a held double-click equals the volume drawn after a plain open.
 

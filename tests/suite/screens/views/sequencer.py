@@ -89,6 +89,10 @@ class Voices:
         self._hand.scroll_into_view(TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT)
         self._hand.click(TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT)
 
+    def new_instrument_answers(self) -> bool:
+        """Whether New instrument above the list answers a press, which it does while a project is open."""
+        return self._bridge.ask(lambda: read_item(TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT)).enabled
+
     def names(self) -> List[str]:
         """The names the rows show, top to bottom."""
 

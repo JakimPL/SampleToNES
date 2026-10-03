@@ -90,7 +90,7 @@ class InstrumentExportLogic:
             ``None`` where the voice holds no instrument answering to that channel.
 
         Raises:
-            ValueError: If the project's samples were reconstructed against tunings that differ.
+            ProjectTuningError: If the project's samples were reconstructed against tunings that differ.
         """
         return voice_instrument(self._controller.project, voice_id, channel_name)
 

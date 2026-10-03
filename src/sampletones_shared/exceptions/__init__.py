@@ -38,6 +38,7 @@ from .project import (
     LoadProjectError,
     MissingProjectDataFileError,
     NotAValidArchiveError,
+    ProjectTuningError,
     UnhandledProjectError,
 )
 from .reconstruction import (
@@ -98,6 +99,7 @@ __all__ = [
     "OperationCanceled",
     "PlaybackError",
     "PlayerError",
+    "ProjectTuningError",
     "ReconstructionError",
     "SampleToNESError",
     "SerializationError",

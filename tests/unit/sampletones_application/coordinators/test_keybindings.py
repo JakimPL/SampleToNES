@@ -61,6 +61,7 @@ class _WindowRecorder:
     def __init__(self) -> None:
         self.view_models: List[KeybindingsViewModel] = []
         self.visible = False
+        self.listening = False
         self.on_scheme_selected: Any = None
         self.on_action_selected: Any = None
         self.on_combination_typed: Any = None
@@ -83,6 +84,10 @@ class _WindowRecorder:
 
     def resume(self) -> None:
         self.visible = True
+
+    def listen_again(self) -> None:
+        self.visible = True
+        self.listening = True
 
     def hide(self) -> None:
         self.visible = False
@@ -297,6 +302,39 @@ class TestTakenCombination:
         assert harness.row(ABOUT_DIALOG).combination == ""
         assert harness.row(SAVE_PROJECT).combination == SAVE_COMBINATION
         assert harness.window.visible
+
+    def test_declining_a_pressed_combination_brings_its_row_back_listening(self, harness: Harness) -> None:
+        """The reader declined the keys they pressed, so the row waits for the press they meant."""
+        harness.select(ABOUT_DIALOG)
+        harness.capture(SAVE_COMBINATION)
+        harness.dialogs.decline()
+
+        assert harness.window.visible
+        assert harness.window.listening
+        assert harness.row(SAVE_PROJECT).combination == SAVE_COMBINATION
+
+    def test_declining_a_written_combination_brings_the_dialog_back_listening_for_nothing(
+        self,
+        harness: Harness,
+    ) -> None:
+        harness.select(ABOUT_DIALOG)
+        harness.type_combination(SAVE_COMBINATION)
+        harness.dialogs.decline()
+
+        assert harness.window.visible
+        assert not harness.window.listening
+
+    def test_confirming_a_pressed_combination_brings_the_dialog_back_listening_for_nothing(
+        self,
+        harness: Harness,
+    ) -> None:
+        harness.select(ABOUT_DIALOG)
+        harness.capture(SAVE_COMBINATION)
+        harness.dialogs.confirm()
+
+        assert harness.window.visible
+        assert not harness.window.listening
+        assert harness.row(ABOUT_DIALOG).combination == SAVE_COMBINATION
 
     def test_an_alias_another_action_answers_is_taken_the_same_way(self, harness: Harness) -> None:
         """Redo answers Ctrl+Shift+Z beside its own keys, which an assignment takes with them."""

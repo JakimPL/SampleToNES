@@ -43,6 +43,14 @@ class DrawStroke:
 
 
 class GUIBarGraph(GUIGraph[BarLayer]):
+    """A plot of bars the reader draws by pressing and dragging over them.
+
+    A press belongs to the plot it went down on: the plot's own click starts it and the release
+    ends it, and bars are drawn only in between. A button already held as the plot comes under
+    the pointer, such as the second press of a double-click that brought the plot forward, draws
+    nothing.
+    """
+
     tag: str
     parent: str
     width: int
@@ -86,6 +94,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self.on_bar_point_hovered: Optional[OnBarPointHoveredCallback] = None
 
         self._draw_stroke: Optional[DrawStroke] = None
+        self._pressed = False
 
         _min_x = layout.graph.min_x
         _max_x = layout.graph.max_x
@@ -139,9 +148,27 @@ class GUIBarGraph(GUIGraph[BarLayer]):
 
     def _setup_handlers(self) -> None:
         super()._setup_handlers()
+        dpg.add_item_clicked_handler(
+            button=dpg.mvMouseButton_Left,
+            callback=self._on_press,
+            parent=self.event_handler_tag,
+        )
         with dpg.handler_registry(tag=self.mouse_handler_tag):
             dpg.add_mouse_move_handler(callback=self._on_mouse_action)
-            dpg.add_mouse_click_handler(callback=self._on_mouse_action)
+            dpg.add_mouse_release_handler(
+                button=dpg.mvMouseButton_Left,
+                callback=self._on_release,
+            )
+
+    def _on_press(self, sender: Sender) -> None:
+        """Starts a press on the plot, which draws the bar it lands on."""
+        self._pressed = True
+        self._on_mouse_action(sender)
+
+    def _on_release(self, _sender: Sender) -> None:
+        """Ends the press, so the next stroke starts afresh."""
+        self._pressed = False
+        self._draw_stroke = None
 
     def _on_hover(self, sender: Sender, app_data: int, user_data: Any) -> None:
         super()._on_hover(sender, app_data, user_data)
@@ -358,9 +385,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self._set_hover_bar_position(bar_index, clamped_y)
         self.call(self.on_bar_point_hovered, name, bar_index)
 
-        if self._presses_a_bar(mouse_y) and (
-            dpg.is_mouse_button_down(dpg.mvMouseButton_Left) or dpg.is_mouse_button_clicked(dpg.mvMouseButton_Left)
-        ):
+        if self._pressed and self._presses_a_bar(mouse_y):
             self._draw_bar(layer, bar_index, clamped_y, previous_stroke)
 
     def _presses_a_bar(self, mouse_y: float) -> bool:

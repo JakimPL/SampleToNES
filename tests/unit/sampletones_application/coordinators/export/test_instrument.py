@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from sampletones_application.categories.export import ExportMessages
 from sampletones_application.categories.exports import INSTRUMENT_EXPORT_FORMATS
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.coordinators.export import instrument as instrument_module
@@ -22,6 +23,7 @@ from sampletones_core.exports.request import InstrumentSource
 from sampletones_core.exports.scope import ExportScope
 from sampletones_core.project.project import Project
 from sampletones_core.project.voices.creation import new_instrument
+from sampletones_shared.exceptions import ProjectTuningError
 
 REMEMBERED_DIRECTORY: Final[Path] = Path("/instruments")
 SUGGESTED_NAME: Final[str] = "Lead"
@@ -44,8 +46,19 @@ def logic() -> MagicMock:
 
 
 @pytest.fixture
-def coordinator(logic: MagicMock) -> InstrumentExportCoordinator:
-    return InstrumentExportCoordinator(logic, LanguageManager(LANG_EN))
+def dialogs() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
+def coordinator(logic: MagicMock, dialogs: MagicMock) -> InstrumentExportCoordinator:
+    language_manager = LanguageManager(LANG_EN)
+    return InstrumentExportCoordinator(
+        logic,
+        language_manager,
+        dialogs=dialogs,
+        messages=ExportMessages.build(language_manager),
+    )
 
 
 @pytest.fixture
@@ -172,6 +185,46 @@ class TestAskingForOneOfAVoicesInstruments:
         logic.voice_instruments.return_value = (ChannelName.PULSE1, ChannelName.NOISE)
 
         assert coordinator.voice_instruments("bass-id") == (ChannelName.PULSE1, ChannelName.NOISE)
+
+
+class TestAVoiceTheProjectCannotTune:
+    """A project whose samples were converted at two tunings states no one tuning for an instrument.
+
+    The export stops before a file is asked for, and says so.
+    """
+
+    def test_the_export_stops_with_a_message_before_the_dialog(
+        self,
+        coordinator: InstrumentExportCoordinator,
+        logic: MagicMock,
+        dialogs: MagicMock,
+        confirmed: List[Dict[str, object]],
+    ) -> None:
+        refusal = ProjectTuningError("a project sounds one tuning")
+        logic.voice_instrument.side_effect = refusal
+
+        coordinator.request_voice("lead-id", None)
+
+        assert confirmed == []
+        logic.export.assert_not_called()
+        dialogs.show_error.assert_called_once_with(
+            refusal,
+            LanguageManager(LANG_EN)["reconstructions.instruments.message.export_instrument_failed"],
+        )
+
+    def test_a_voice_the_project_tunes_asks_for_a_file_and_says_nothing(
+        self,
+        coordinator: InstrumentExportCoordinator,
+        logic: MagicMock,
+        dialogs: MagicMock,
+        confirmed: List[Dict[str, object]],
+    ) -> None:
+        logic.voice_instrument.return_value = ExportableInstrument(name=SUGGESTED_NAME, source=_source())
+
+        coordinator.request_voice("lead-id", None)
+
+        assert len(confirmed) == 1
+        dialogs.show_error.assert_not_called()
 
 
 class TestWritingWhatWasConfirmed:

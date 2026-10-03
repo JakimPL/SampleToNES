@@ -7,7 +7,6 @@ from tests.suite.screens.dearpygui.items.types import Item
 from tests.suite.screens.screen import Screen
 
 EDIT_VOICE: Final[str] = "sequencer.voices.label.context_edit"
-HOVER_RACE: Final[str] = "Error executing callback _on_row_hovered"
 
 
 def voice_row(screen: Screen, name: str) -> Item:
@@ -34,16 +33,8 @@ def open_voice(screen: Screen, name: str) -> None:
     screen.context_menu.choose(screen.words(EDIT_VOICE))
 
 
-def forgive_the_hover_race(screen: Screen) -> None:
-    """Forgives the error a voice row's hover meets once the list has rebuilt the row, which the ledger
-    records.
-    """
-    screen.forgive_known_error(HOVER_RACE)
-
-
 def leave_letting_the_project_go(screen: Screen) -> None:
     """Exits, letting the changed project go at the question about it."""
-    forgive_the_hover_race(screen)
     prompt = screen.project.unsaved_prompt
     screen.press_shortcut(ShortcutId.EXIT)
     screen.expect(prompt.is_shown, bool, description="the question about the project")
