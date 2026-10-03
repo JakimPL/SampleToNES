@@ -4,7 +4,7 @@ import dearpygui.dearpygui as dpg
 
 from tests.suite.screens.dearpygui.bridge import ONE_FRAME
 from tests.suite.screens.dearpygui.geometry import Point
-from tests.suite.screens.dearpygui.gestures.arrival import IMGUI_DOUBLE_CLICK_SECONDS, Arrival
+from tests.suite.screens.dearpygui.gestures.arrival import ARRIVAL_FRAMES, IMGUI_DOUBLE_CLICK_SECONDS, Arrival
 from tests.suite.screens.dearpygui.gestures.constants import (
     HOLD_FRAMES,
     HOVER_FRAMES,
@@ -209,13 +209,18 @@ class Pointer(Arrival):
         """Checks that Dear ImGui counted a double-click since the witness counted ``double_clicks`` of them.
 
         The presses came two frames apart, so a missing double-click says the display drew those frames
-        more slowly than Dear ImGui's double-click time allows.
+        more slowly than Dear ImGui's double-click time allows. The witness counts a double-click among
+        the callbacks the frame holds, which can run after the button already reads down, so the count
+        is read once a frame for a few frames.
 
         Raises:
             SlowFramesError: If Dear ImGui counted the presses as separate clicks.
         """
-        if self._bridge.ask(lambda: self._witness.double_clicks(imgui_button)) > double_clicks:
-            return
+        for _ in range(ARRIVAL_FRAMES):
+            if self._bridge.ask(lambda: self._witness.double_clicks(imgui_button)) > double_clicks:
+                return
+
+            self._settle(ONE_FRAME)
 
         times = self._bridge.ask(lambda: self._witness.button_release_times(imgui_button))[releases:]
         took = f"{times[1] - times[0]:.2f} s" if len(times) > 1 else "longer than that"
