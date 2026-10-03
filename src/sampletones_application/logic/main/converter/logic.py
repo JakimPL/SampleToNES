@@ -306,18 +306,24 @@ class ConverterLogic(CallbackMixin):
         self.toggle_slot(SettingsField.CHANNELS, channel_name)
 
     def set_source_channels(self, path: Path, channels: FrozenSet[ChannelName]) -> None:
-        """Names the channels one recording may take, which is the whole of what it reaches."""
+        """Names the channels one recording may take, and picks its row out.
+
+        A click on a row always picks it, the boxes beside its name included, so the settings
+        card follows the row whose box moved.
+        """
         gathering = self._state.gathering.written(path, CHANNEL_SLOT, channels)
-        self._rewrite(self._state.with_gathering(gathering))
+        self._rewrite(self._state.with_gathering(gathering).with_selected(SourceKey.recording(path)))
 
     def toggle_folder_channel(self, root: Path, channel_name: ChannelName) -> None:
-        """Settles one channel on every recording a folder stands for, in one gesture.
+        """Settles one channel on every recording a folder stands for, and picks the folder out.
 
         A folder its recordings already agree on lets the channel go; every other reading settles
-        the whole folder on it, so one gesture always moves the group somewhere.
+        the whole folder on it, so one gesture always moves the group somewhere. The click picks
+        the folder's row, as a click on its name does.
         """
-        gathering = self._state.gathering.toggled(SourceKey.folder(root), CHANNEL_SLOT, channel_name)
-        self._rewrite(self._state.with_gathering(gathering))
+        folder = SourceKey.folder(root)
+        gathering = self._state.gathering.toggled(folder, CHANNEL_SLOT, channel_name)
+        self._rewrite(self._state.with_gathering(gathering).with_selected(folder))
 
     def move_source_within_level(self, path: Path, offset: int) -> None:
         """Moves a recording past the neighbor it shares a level with."""

@@ -159,9 +159,6 @@ currently out of line. An entry leaves when the code meets the contract again.
   window at once while the walk runs on to its next entry, and `FolderScan.start` turns away the folder
   asked for in that time, though it promises that a folder asked for once the window closes is read.
   `tests/screens/main/scan/test_reading_a_folder.py` reproduces it as a known failure.
-* A box clicked in the Converter list leaves Source settings where it stood: ticking a channel on a
-  recording inside an open folder changes that row, while the card goes on naming the row picked
-  before, or New recordings. `tests/screens/main/row_settings/test_boxes.py` reproduces it as a known failure.
 * General settings stops short of the Converter's right edge while Advanced settings is put away,
   where it should fill the row and end where the Converter below it does.
   `tests/screens/main/cards/test_card_layout.py` reproduces it as a known failure.

@@ -1029,6 +1029,87 @@ class TestAFolderInTheList(BaseTestSuite):
         assert [row.stands_for_a_folder for row in rows] == [False, False]
 
 
+class TestABoxPicksItsRow(BaseTestSuite):
+    """A click on a row's box picks that row, as a click on its name does, so the card follows the box."""
+
+    @staticmethod
+    def _folder(converter_logic: ConverterLogic, tmp_path: Path) -> Path:
+        root = tmp_path / "sources"
+        root.mkdir()
+        for name in ("a.wav", "b.wav"):
+            (root / name).touch()
+
+        converter_logic.gather_folder(root, get_audio_files(root, sort=True))
+        return root
+
+    def test_a_recordings_box_picks_the_recording(self, converter_logic: ConverterLogic) -> None:
+        _listed(converter_logic, "kick", "snare")
+        snare = Path("/audio/snare.wav")
+        converter_logic.select_row(Path("/audio/kick.wav"), SourceKind.RECORDING)
+
+        converter_logic.set_source_channels(snare, frozenset({ChannelName.PULSE1}))
+
+        subject = converter_logic.source_settings_view.subject
+        assert subject is not None
+        assert (_view(converter_logic).selected_key, subject.name, subject.kind) == (
+            str(snare),
+            snare.stem,
+            SourceKind.RECORDING,
+        )
+
+    def test_a_box_with_nothing_picked_picks_its_row(self, converter_logic: ConverterLogic) -> None:
+        _listed(converter_logic, "kick")
+        kick = Path("/audio/kick.wav")
+        assert converter_logic.source_settings_view.edits_new_recordings is True
+
+        converter_logic.set_source_channels(kick, frozenset({ChannelName.PULSE1}))
+
+        assert converter_logic.source_settings_view.edits_new_recordings is False
+        assert _view(converter_logic).selected_key == str(kick)
+
+    def test_the_row_picked_before_keeps_its_channels(self, converter_logic: ConverterLogic) -> None:
+        _listed(converter_logic, "kick", "snare")
+        kick = Path("/audio/kick.wav")
+        converter_logic.select_row(kick, SourceKind.RECORDING)
+        standing = _card_channels(converter_logic)
+
+        converter_logic.set_source_channels(Path("/audio/snare.wav"), frozenset({ChannelName.NOISE}))
+        converter_logic.select_row(kick, SourceKind.RECORDING)
+
+        assert _card_channels(converter_logic) == standing
+
+    def test_a_box_inside_a_folder_picks_that_recording(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        root = self._folder(converter_logic, tmp_path)
+        converter_logic.select_row(root, SourceKind.FOLDER)
+
+        converter_logic.set_source_channels(root / "a.wav", frozenset({ChannelName.PULSE1}))
+
+        assert _view(converter_logic).selected_key == str(root / "a.wav")
+        assert _card_channels(converter_logic) == frozenset({ChannelName.PULSE1})
+
+    def test_a_folders_box_picks_the_folder(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        root = self._folder(converter_logic, tmp_path)
+        converter_logic.select_row(root / "a.wav", SourceKind.RECORDING)
+
+        converter_logic.toggle_folder_channel(root, ChannelName.TRIANGLE)
+
+        subject = converter_logic.source_settings_view.subject
+        assert subject is not None
+        assert (_view(converter_logic).selected_key, subject.name, subject.kind) == (
+            str(root),
+            root.name,
+            SourceKind.FOLDER,
+        )
+
+
 class TestTheChannelAKeyReaches(BaseTestSuite):
     """A channel's key settles the row a reader picked out, which is the box beside that row."""
 
