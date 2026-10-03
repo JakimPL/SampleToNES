@@ -19,6 +19,12 @@ def window_size(screen: Screen) -> Tuple[int, int]:
     return round(viewport.width), round(viewport.height)
 
 
+def window_position(screen: Screen) -> Tuple[int, int]:
+    """Where the window's client area stands on the screen, left then top."""
+    viewport = screen.bridge.ask(read_viewport)
+    return round(viewport.x), round(viewport.y)
+
+
 def framed(screen: Screen) -> bool:
     """Whether the window has its frame."""
     return screen.bridge.ask(read_viewport_decorated)

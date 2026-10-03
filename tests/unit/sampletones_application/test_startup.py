@@ -103,6 +103,7 @@ SPEAKERS: Final[Dict[str, Union[int, str]]] = {
 }
 CHOSEN_SAMPLE_RATE: Final[SampleRate] = 48000
 CHOSEN_BUFFER_SIZE: Final[BufferSize] = 512
+APPLIED_BUFFER_SIZE: Final[BufferSize] = 2048
 
 _DPG_DISPLAY_FUNCTIONS = [
     "create_context",
@@ -311,7 +312,7 @@ class TestLeaving:
             application._apply_audio_settings(
                 int(SPEAKERS["index"]),
                 CHOSEN_SAMPLE_RATE,
-                CHOSEN_BUFFER_SIZE,
+                APPLIED_BUFFER_SIZE,
             )
             committed = application.audio_device_manager.get_current_device()
             self._leave(application)
@@ -319,6 +320,7 @@ class TestLeaving:
         assert committed is not None
         assert committed.sample_rate == CHOSEN_SAMPLE_RATE
         assert self._remembered_device(tmp_path) == committed
+        assert ApplicationConfigManager(_profile(tmp_path).config).current_buffer_size == APPLIED_BUFFER_SIZE
 
     def test_a_failing_step_leaves_the_later_ones_taken(self, tmp_path: Path) -> None:
         with ExitStack() as stack:
