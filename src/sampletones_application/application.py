@@ -1,3 +1,4 @@
+from contextlib import ExitStack
 from pathlib import Path
 from typing import Any, Dict, Final, Optional, Tuple
 
@@ -189,6 +190,7 @@ from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.logger import logger
 from sampletones_shared.paths.extensions import EXT_FILES_AUDIO
 from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import VoidCallback
 
 SEQUENCER_SAMPLE_TITLE_FORMAT: Final[str] = "{ordinal}: {name}"
 SEQUENCER_SAMPLE_ORDINAL_FORMAT: Final[str] = "02X"
@@ -1411,18 +1413,20 @@ class Application:
         sample_rate: SampleRate,
         buffer_size: BufferSize,
     ) -> None:
-        """Applies the dialog's committed device, sample rate, and buffer size.
+        """Applies the dialog's committed device, sample rate, and buffer size, and remembers them.
 
         Switching devices needs the output free; a source that keeps hold of it leaves the
-        settings as they stand and reports the failure.
+        settings as they stand and reports the failure. The session keeps what the user chose,
+        so a remembered device that is unplugged for one run is looked for again in the next.
         """
         try:
-            self.audio_device_manager.configure_device(device_index, sample_rate)
+            current_device = self.audio_device_manager.configure_device(device_index, sample_rate)
         except PlaybackError as exception:
             self._on_playback_error(exception)
             return
 
         self.audio_device_manager.set_buffer_size(buffer_size)
+        self.session_manager.set_audio_settings(current_device, buffer_size)
 
     def _owning_project_sample(self) -> Optional[Sample]:
         """The project sample the open document is, found by the voice id the document remembers."""
@@ -1524,7 +1528,6 @@ class Application:
         return self._shell.get_active_source()
 
     def _persist_application_state(self) -> None:
-        self.session_manager.set_current_audio_device(self.audio_device_manager)
         self._viewport_manager.save_window_state()
         self._save_browser_shapes()
         current_tab = self._shell.get_current_tab()
@@ -1623,12 +1626,7 @@ class Application:
         return self.project_controller.is_open
 
     def _exit_application(self) -> None:
-        self._render_coordinator.cleanup()
-        self._export_coordinator.cleanup()
-        stop_background_workers()
-        self._playback_router.shutdown()
-        self._main_tab.cleanup()
-
+        """Stops the frames; the run lets go of what it holds once its loop has ended."""
         dpg.stop_dearpygui()
 
     def _update_status(self) -> None:
@@ -1671,13 +1669,17 @@ class Application:
         )
         CallbackQueue.process(self.layout.behavior.scheduling.queue_budget_seconds)
 
-    def _save_config(self) -> bool:
+    def _save_config(self) -> None:
+        """Writes the generation settings, ending the process with a failing status where the write fails.
+
+        Raises:
+            SystemExit: If the settings could not be written.
+        """
         try:
             self.config_manager.save_config()
-            return False
         except OSError as exception:
             logger.error_with_traceback(exception, "Failed to save configuration on exit")
-            return True
+            raise SystemExit(1) from exception
 
     def run(self) -> None:
         claim_render_thread()
@@ -1689,17 +1691,35 @@ class Application:
         except KeyboardInterrupt:
             return
         finally:
-            release_render_thread()
-            self._render_coordinator.cleanup()
-            self._export_coordinator.cleanup()
-            stop_background_workers()
-            self._playback_router.shutdown()
-            self._main_tab.cleanup()
-            self.library_manager.release_creator()
-            save_failed = self._save_config()
+            self._teardown()
 
-            self._persist_application_state()
-            self.audio_device_manager.terminate()
-            dpg.destroy_context()
-            if save_failed:
-                raise SystemExit(1)
+    def _teardown(self) -> None:
+        """Lets go of everything the run holds, once its loop has ended, whichever way it ended.
+
+        Every step is taken whatever an earlier one raised, so a failure leaves the background work
+        stopped, the audio backend closed and the DearPyGui context destroyed, and it is raised once
+        the last step has run.
+        """
+        with ExitStack() as steps:
+            for step in reversed(self._teardown_steps()):
+                steps.callback(step)
+
+    def _teardown_steps(self) -> Tuple[VoidCallback, ...]:
+        """The steps of the teardown in the order they are taken.
+
+        Background work stops before anything it reaches is let go of, the session is written while
+        the window it measures still stands, and the DearPyGui context goes last.
+        """
+        return (
+            release_render_thread,
+            self._render_coordinator.cleanup,
+            self._export_coordinator.cleanup,
+            stop_background_workers,
+            self._playback_router.shutdown,
+            self._main_tab.cleanup,
+            self.library_manager.release_creator,
+            self._save_config,
+            self._persist_application_state,
+            self.audio_device_manager.terminate,
+            dpg.destroy_context,
+        )

@@ -28,6 +28,20 @@ class CurrentDevice(BaseModel):
             host_api=-1,
         )
 
+    @classmethod
+    def from_device(
+        cls,
+        device: AudioDevice,
+        sample_rate: SampleRate,
+    ) -> Self:
+        """The configuration of ``device`` playing at ``sample_rate``."""
+        return cls(
+            device_index=device.index,
+            name=device.name,
+            sample_rate=sample_rate,
+            host_api=device.host_api,
+        )
+
 
 class AudioDevice(BaseModel):
     """
