@@ -200,27 +200,18 @@ class TestPlayingFromATrackerRow:
     """
 
     def test_the_menu_follows(self, screen: Screen) -> None:
-        """The play-from-row shortcut and the cell menu's Play from this frame each turn the menu to Pause, and
-        Stop from the menu and from its key each turn it back to Play.
+        """The cell menu's Play from this frame and the play-from-row shortcut each turn the menu to Pause, and
+        the Stop key and Stop on the menu each turn it back to Play.
+
+        Every gesture on a cell comes before the song first plays, since a playing song moves the grid.
         """
         tracker = screen.sequencer.tracker
         menu = screen.context_menu
 
-        def the_shortcut_plays_from_the_row(screen: Screen) -> None:
+        def the_cell_menu_plays_from_the_frame(screen: Screen) -> None:
             on_the_sequencer(screen)
             tracker.click(1, ChannelName.PULSE1, SubColumn.VOICE)
             reads_as_stopped(screen)
-
-            screen.press_shortcut(ShortcutId.TRACKER_PLAY_FROM_ROW)
-
-            reads_as_playing(screen)
-
-        def stop_from_the_menu_reads_as_stopped(screen: Screen) -> None:
-            screen.sequencer.playback.stop()
-
-            reads_as_stopped(screen)
-
-        def the_cell_menu_plays_from_the_frame(screen: Screen) -> None:
             tracker.right_click(1, ChannelName.PULSE1, SubColumn.VOICE)
             screen.expect(menu.is_shown, bool, description="the cell's menu")
 
@@ -234,9 +225,19 @@ class TestPlayingFromATrackerRow:
 
             reads_as_stopped(screen)
 
+        def the_shortcut_plays_from_the_row(screen: Screen) -> None:
+            screen.press_shortcut(ShortcutId.TRACKER_PLAY_FROM_ROW)
+
+            reads_as_playing(screen)
+
+        def stop_from_the_menu_reads_as_stopped(screen: Screen) -> None:
+            screen.sequencer.playback.stop()
+
+            reads_as_stopped(screen)
+
         screen.scenario(
-            the_shortcut_plays_from_the_row,
-            stop_from_the_menu_reads_as_stopped,
             the_cell_menu_plays_from_the_frame,
             the_stop_key_reads_as_stopped,
+            the_shortcut_plays_from_the_row,
+            stop_from_the_menu_reads_as_stopped,
         ).run()
