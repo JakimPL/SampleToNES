@@ -354,7 +354,7 @@ class ReconstructionCoordinator:
 
         Undo, a save, a load or an export acts on the document the reader has drawn, so it waits
         for the edits still on their way. With nothing on its way, the gesture runs at once. The
-        signature is a :data:`Wait`, so the wait can lead a chain of gates.
+        signature is a :data:`Wait`, which :func:`waiting` turns into the gate that leads a chain.
         """
         self._rewrites.request(AfterEdits(gesture))
 

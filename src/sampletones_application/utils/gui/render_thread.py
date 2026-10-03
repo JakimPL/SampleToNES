@@ -14,7 +14,7 @@ AnswerT = TypeVar("AnswerT")
 FRAME_PAUSE: Final[float] = 1 / 60
 
 
-class RenderPhase(Enum):
+class RenderThreadPhase(Enum):
     """Where a run stands with DearPyGui's context, which decides the thread work runs on."""
 
     BUILDING = auto()
@@ -22,21 +22,21 @@ class RenderPhase(Enum):
     STOPPED = auto()
 
 
-_PHASE: RenderPhase = RenderPhase.BUILDING
+_PHASE: RenderThreadPhase = RenderThreadPhase.BUILDING
 _RENDER_THREAD: Optional[int] = None
 
 
 def reset_render_thread() -> None:
     """Hands a fresh context to whichever thread asks, the state a new interface is built in."""
     global _PHASE, _RENDER_THREAD  # pylint: disable=global-statement
-    _PHASE = RenderPhase.BUILDING
+    _PHASE = RenderThreadPhase.BUILDING
     _RENDER_THREAD = None
 
 
 def claim_render_thread() -> None:
     """Names the thread DearPyGui's context belongs to, which is the one drawing the frames."""
     global _PHASE, _RENDER_THREAD  # pylint: disable=global-statement
-    _PHASE = RenderPhase.DRAWING
+    _PHASE = RenderThreadPhase.DRAWING
     _RENDER_THREAD = threading.get_ident()
 
 
@@ -44,12 +44,12 @@ def release_render_thread() -> None:
     """Marks the loop as stopped, which a run does as its teardown begins.
 
     The thread that ran the loop keeps the context until it is destroyed, since the teardown runs
-    there. Work from any other thread joins the queue, which the teardown stops, so the queue lets it go.
+    there. Work from any other thread joins the queue, which nothing drains once the loop has stopped.
     A run taken down before its loop claimed a thread leaves the context to the thread taking it
     down.
     """
     global _PHASE, _RENDER_THREAD  # pylint: disable=global-statement
-    _PHASE = RenderPhase.STOPPED
+    _PHASE = RenderThreadPhase.STOPPED
     if _RENDER_THREAD is None:
         _RENDER_THREAD = threading.get_ident()
 
@@ -62,9 +62,9 @@ def is_render_thread() -> bool:
     as long as the context lasts: while the loop draws, and while the run is taken down after it.
     """
     match _PHASE:
-        case RenderPhase.BUILDING:
+        case RenderThreadPhase.BUILDING:
             return True
-        case RenderPhase.DRAWING | RenderPhase.STOPPED:
+        case RenderThreadPhase.DRAWING | RenderThreadPhase.STOPPED:
             return threading.get_ident() == _RENDER_THREAD
 
 

@@ -11,7 +11,7 @@ GestureResult = TypeVar("GestureResult")
 
 
 def ignore() -> None:
-    """Answers a request turned away that nothing waits on, so the request ends where it stopped."""
+    """Answers a request turned away whose asker carries on as it stands, so the request ends where it stopped."""
 
 
 def waiting(wait: Wait) -> Gate:

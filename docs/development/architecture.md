@@ -205,7 +205,7 @@ Runs long operations (file conversion, waveform regeneration, export, playback s
 
 - Every service inherits `ServiceBase[ResultType]`, which provides `subscribe(handler)`, `unsubscribe(handler)` and `_emit(result)`.
 - `_emit` posts the result to `CallbackQueue`, which puts every handler on the render thread (principle 6).
-- Result types are a tagged union of `ServiceStarted`, `ServiceProgress`, `ServiceIntermediate`, `ServiceSuccess`, `ServiceError` and `ServiceCanceled`, so a subscriber matches exhaustively.
+- Result types are a tagged union, so a subscriber matches exhaustively. A long operation reports through `ServiceStarted`, `ServiceProgress`, `ServiceIntermediate`, `ServiceSuccess`, `ServiceError` and `ServiceCanceled`, and a service whose reports carry more, such as the playhead or the request they answer, declares a union of its own in its `result.py`.
 - A service is one subpackage holding `service.py` and `result.py`, so its implementation and the contract its subscribers type against are reached separately. The generic contracts every service reports through are in `services/result.py`. `ServiceProgress.fraction` is the one reading a bar draws. See [`progress.md`](progress.md).
 - A service knows no panel, view model or logic object.
 

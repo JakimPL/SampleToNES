@@ -31,8 +31,8 @@ class SequencerVoices:
     pool back to where it stood. A gesture reaching a file reads it before the pool is touched,
     which leaves a file the reader cannot use with the project and the history as they were.
 
-    A voice enters the pool of an open project alone. Each way in asks for one as it starts, so the
-    rule holds wherever the gesture came from: a button, a menu, or a key bound to it.
+    A voice enters the pool while a project is open. Each way in asks for the open project as it
+    starts, so the rule holds wherever the gesture came from: a button, a menu, or a key bound to it.
     """
 
     def __init__(

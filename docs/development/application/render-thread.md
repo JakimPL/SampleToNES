@@ -25,9 +25,9 @@ belongs to the visual layers.
 
 ## Work arriving from a worker crosses through `on_render_thread`
 
-A thread of our own, such as a directory being read or a subtree being rebuilt, reaches the interface while
-the render thread is walking the very items it would create and drop. An item freed there is freed with no
-Python thread state, which crashes the process.
+A thread of our own, such as a subtree being rebuilt, reaches the interface while the render thread is
+walking the very items it would create and drop. An item freed there is freed with no Python thread state,
+which crashes the process.
 
 `on_render_thread` (`utils/gui/render_thread.py`) is the crossing. Work already on the render thread runs
 where it stands, and work arriving from any other thread joins the queue. A worker that reads a value or
@@ -38,8 +38,8 @@ interface is being built, the work runs in place.
 
 The thread that drew keeps the context after the loop stops, until the context is destroyed, since the
 teardown runs there. A worker's work that arrives after the loop has stopped joins the queue like any
-other, and the teardown stops the queue, so that work is let go of. The context being taken down therefore
-stays with the thread taking it down. A worker reading something long, such as a folder, also listens for
+other, and nothing drains the queue once the loop has stopped, so that work never runs. The context being
+taken down therefore stays with the thread taking it down. A worker reading something long, such as a folder, also listens for
 the shutdown and gives up at its next step, so the teardown finds it ended.
 
 ## A widget's own gesture is held for the frame
