@@ -92,8 +92,9 @@ title bar's close and a save that failed turn it away. A request therefore alway
 While a conversation stands, the same gesture asked for again is absorbed, so two closes before the first is
 answered ask once. Once the conversation has ended, the gesture asks again. The span covers the wait for the
 edits of the open reconstruction too, so a gesture repeated while an edit is on its way asks once it lands.
-`SingleFlight` (`utils/callbacks/gates.py`) holds the conversation, and the composition root wraps every such
-gesture in one, whichever door it is asked for through.
+`SingleFlight` (`utils/callbacks/gates.py`) holds the conversation, built from the request so a question can
+speak of what the gesture asks for, and the composition root wraps every such gesture in one, whichever door it
+is asked for through.
 
 ## Where it is written
 

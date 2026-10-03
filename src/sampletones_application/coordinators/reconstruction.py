@@ -1,4 +1,3 @@
-from functools import partial
 from pathlib import Path
 from typing import Callable, Optional, Tuple
 
@@ -29,7 +28,6 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED,
     TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
 )
-from sampletones_application.utils.callbacks.gates import ignore
 from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
     save_file_dialog,
@@ -239,29 +237,32 @@ class ReconstructionCoordinator:
             decline=decline,
         )
 
-    def load_with_confirmation(self, filepath: Optional[Path] = None) -> None:
-        """Loads ``filepath``, or the file the reader picks, once unsaved changes are answered for."""
-        self.guard_load(partial(self.open, filepath), ignore)
-
-    def load_converted(self, filepath: Path) -> None:
-        """Loads the reconstruction a conversion wrote, asking first about unsaved changes.
+    def guard_load_converted(
+        self,
+        filepath: Path,
+        proceed: VoidCallback,
+        decline: VoidCallback,
+    ) -> None:
+        """Lets the reconstruction a conversion wrote at ``filepath`` take the open one's place.
 
         A conversion can write over the very file the open document came from, and a save would
         then write the old document over the new one. The question in that case is whether to
         discard the changes and load, and Cancel keeps them for a save to another file. Every other
-        document is loaded the way one opened by hand is.
+        document is asked about the way one opened by hand is. With ``filepath`` bound, the
+        signature is a :data:`Gate`, so the question leads the loading's conversation.
         """
         if self._requires_save_confirmation() and self._reconstruction_manager.is_backed_by(filepath):
             self._dialogs.show_confirmation(
                 tag=TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED,
                 message=self._language_manager["global.dialog.message.load_replaced_reconstruction"],
                 title=self._language_manager["global.dialog.title.load_unsaved_reconstruction"],
-                on_confirm=lambda: self.load(filepath),
+                on_confirm=proceed,
                 ok_label=self._language_manager["global.dialog.label.discard"],
+                on_cancel=decline,
             )
             return
 
-        self.load_with_confirmation(filepath)
+        self.guard_load(proceed, decline)
 
     def load_reconstruction_safely(self, path: Path) -> None:
         """Loads the persisted reconstruction when the application starts.
@@ -416,22 +417,23 @@ class ReconstructionCoordinator:
             case StemRemoval():
                 self._tab.redraw_reconstruction(refit_waveform=False)
 
-    def open_project_voice(self, voice_id: str) -> None:
-        """Opens a voice of the project on the Reconstructions tab, in the terms of its kind.
+    def guard_edit_voice(self, proceed: VoidCallback, decline: VoidCallback) -> None:
+        """Lets a voice of the project take the open document's place, offering first to save unsaved changes.
 
-        Either kind takes the place of the open document, so a standalone document with unsaved
-        changes is offered a save first, the way loading a file offers it.
+        Either kind of voice takes the place of the open document, so a standalone document with
+        unsaved changes is offered a save first, the way loading a file offers it. The signature is a
+        :data:`Gate`, so the question leads the editing's conversation.
         """
         self._save_first(
             title=self._language_manager["global.dialog.title.edit_voice_unsaved_reconstruction"],
             message=self._language_manager["global.dialog.message.edit_voice_unsaved_reconstruction"],
             ok_label=self._language_manager["global.dialog.label.discard"],
-            proceed=lambda: self._open_project_voice(voice_id),
-            decline=ignore,
+            proceed=proceed,
+            decline=decline,
         )
 
-    def _open_project_voice(self, voice_id: str) -> None:
-        """Puts a voice of the project in front of the tab.
+    def open_project_voice(self, voice_id: str) -> None:
+        """Puts a voice of the project in front of the tab, in the terms of its kind.
 
         A sample opens as the reconstruction behind it, waveform and stems and all, and the
         document remembers the voice it is. An instrument stands on no recording, so the tab

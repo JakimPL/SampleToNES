@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, Generic, ParamSpec, Sequence, Tuple, TypeVar
+from typing import Callable, Generic, ParamSpec, Sequence, TypeVar
 
 from sampletones_shared.types.callback import VoidCallback
 
@@ -25,6 +25,20 @@ def waiting(wait: Wait) -> Gate:
         wait(proceed)
 
     return gate
+
+
+def fixed(gates: Sequence[Gate]) -> Callable[..., Sequence[Gate]]:
+    """A conversation that asks ``gates`` whatever a request carries.
+
+    Args:
+        gates: What stands between every request and its arrival, in the order the gates are asked.
+    """
+    held = tuple(gates)
+
+    def conversation(*_args: object, **_kwargs: object) -> Sequence[Gate]:
+        return held
+
+    return conversation
 
 
 def pass_gates(
@@ -78,7 +92,8 @@ def gated(
 class SingleFlight(Generic[GestureParameters]):
     """A gesture that holds one conversation at a time, absorbing a repeat asked for while one is in flight.
 
-    The conversation is the gates the gesture passes. It is in flight from the moment the gesture is
+    The conversation is the gates the gesture passes, built from the request's arguments, so a
+    question can speak of what the request asks for. It is in flight from the moment the gesture is
     asked for until the gates let it through or turn it away. A gesture asked for twice before its
     question is answered therefore asks once, and one asked for after the answer asks again. A gate
     that raises ends the flight too, so one failure leaves the gesture to be asked for again.
@@ -86,10 +101,10 @@ class SingleFlight(Generic[GestureParameters]):
 
     def __init__(
         self,
-        gates: Sequence[Gate],
+        conversation: Callable[GestureParameters, Sequence[Gate]],
         arrive: Callable[GestureParameters, GestureResult],
     ) -> None:
-        self._gates: Tuple[Gate, ...] = tuple(gates)
+        self._conversation = conversation
         self._arrive = arrive
         self._in_flight: bool = False
 
@@ -109,7 +124,7 @@ class SingleFlight(Generic[GestureParameters]):
         self._in_flight = True
         asked = False
         try:
-            pass_gates(self._gates, arrive, self._land)
+            pass_gates(self._conversation(*args, **kwargs), arrive, self._land)
             asked = True
         finally:
             if not asked:

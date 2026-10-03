@@ -3,7 +3,7 @@ from typing import Final, List, Optional
 
 import pytest
 
-from sampletones_application.utils.callbacks.gates import SingleFlight, gated, pass_gates, waiting
+from sampletones_application.utils.callbacks.gates import Gate, SingleFlight, fixed, gated, pass_gates, waiting
 from sampletones_shared.types.callback import VoidCallback
 
 ARRIVED: Final[str] = "arrived"
@@ -166,7 +166,7 @@ class TestSingleFlight:
 
     @pytest.fixture(name="flight")
     def flight_fixture(self, guard: Guard, reached: List[str]) -> SingleFlight[[]]:
-        return SingleFlight((guard,), lambda: reached.append(ARRIVED))
+        return SingleFlight(fixed((guard,)), lambda: reached.append(ARRIVED))
 
     def test_a_repeat_while_the_question_stands_is_absorbed(
         self,
@@ -225,7 +225,7 @@ class TestSingleFlight:
     def test_a_repeat_while_a_wait_holds_the_gesture_is_absorbed(self, reached: List[str]) -> None:
         wait = HeldWait()
         guard = Guard("question", reached, unfinished=True)
-        flight: SingleFlight[[]] = SingleFlight((waiting(wait), guard), lambda: reached.append(ARRIVED))
+        flight: SingleFlight[[]] = SingleFlight(fixed((waiting(wait), guard)), lambda: reached.append(ARRIVED))
 
         flight()
         flight()
@@ -236,7 +236,7 @@ class TestSingleFlight:
     def test_the_arrival_takes_the_arguments_of_the_gesture_that_asked(self, reached: List[str]) -> None:
         guard = Guard("question", reached, unfinished=True)
         opened: List[Path] = []
-        flight: SingleFlight[[Path]] = SingleFlight((guard,), opened.append)
+        flight: SingleFlight[[Path]] = SingleFlight(fixed((guard,)), opened.append)
 
         flight(Path("first.stn"))
         flight(Path("second.stn"))
@@ -244,9 +244,42 @@ class TestSingleFlight:
 
         assert opened == [Path("first.stn")]
 
+    def test_the_question_is_built_from_the_gesture_that_asked(self, reached: List[str]) -> None:
+        """A question speaking of what the gesture asks for is built from that gesture's arguments."""
+        guards: List[Guard] = []
+
+        def conversation(path: Path) -> List[Gate]:
+            guard = Guard(path.name, reached, unfinished=True)
+            guards.append(guard)
+            return [guard]
+
+        opened: List[Path] = []
+        flight: SingleFlight[[Path]] = SingleFlight(conversation, opened.append)
+
+        flight(Path("first.stn"))
+        flight(Path("second.stn"))
+        guards[0].answer()
+        flight(Path("third.stn"))
+
+        assert reached == ["first.stn", "third.stn"]
+        assert opened == [Path("first.stn")]
+        assert flight.in_flight
+
+    def test_a_conversation_that_raises_ends_the_flight(self, reached: List[str]) -> None:
+        def conversation() -> List[Gate]:
+            raise RuntimeError("the question could not be built")
+
+        flight: SingleFlight[[]] = SingleFlight(conversation, lambda: reached.append(ARRIVED))
+
+        with pytest.raises(RuntimeError):
+            flight()
+
+        assert not flight.in_flight
+        assert not reached
+
     def test_a_gesture_with_nothing_to_ask_arrives_and_lands(self, reached: List[str]) -> None:
         flight: SingleFlight[[]] = SingleFlight(
-            (Guard("clear", reached, unfinished=False),),
+            fixed((Guard("clear", reached, unfinished=False),)),
             lambda: reached.append(ARRIVED),
         )
 
@@ -260,7 +293,7 @@ class TestSingleFlight:
             reached.append("broken")
             raise RuntimeError("the question could not be asked")
 
-        flight: SingleFlight[[]] = SingleFlight((broken,), lambda: reached.append(ARRIVED))
+        flight: SingleFlight[[]] = SingleFlight(fixed((broken,)), lambda: reached.append(ARRIVED))
 
         with pytest.raises(RuntimeError):
             flight()

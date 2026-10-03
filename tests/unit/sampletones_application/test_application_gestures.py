@@ -289,3 +289,62 @@ class TestADocumentGestureAsksOnce(BaseTestSuite):
         proceed, _ = guard.call_args.args
         proceed()
         app._reconstruction_coordinator.open.assert_called_once_with(Path("browsed.stn"))
+
+
+class TestLoadingWhatARunWroteAsksOnce:
+    """The Converter's Load asks about the file it loads once, however often it is pressed meanwhile."""
+
+    @pytest.fixture
+    def guard(self, app: Application) -> MagicMock:
+        guard = app._reconstruction_coordinator.guard_load_converted
+        guard.side_effect = None
+        return guard
+
+    def test_two_presses_while_an_edit_is_on_its_way_ask_once(
+        self,
+        app: Application,
+        guard: MagicMock,
+        held_gate: HeldGate,
+    ) -> None:
+        loading = app._converted_loading_flight()
+
+        loading(Path("written.stn"))
+        loading(Path("written.stn"))
+        held_gate.release()
+
+        guard.assert_called_once()
+        assert guard.call_args.args[0] == Path("written.stn")
+        app._reconstruction_coordinator.load.assert_not_called()
+
+    def test_the_answer_loads_the_file_the_question_spoke_of(
+        self,
+        app: Application,
+        guard: MagicMock,
+        held_gate: HeldGate,
+    ) -> None:
+        loading = app._converted_loading_flight()
+        loading(Path("written.stn"))
+        held_gate.release()
+
+        _, proceed, _ = guard.call_args.args
+        proceed()
+
+        app._reconstruction_coordinator.load.assert_called_once_with(Path("written.stn"))
+
+    def test_a_press_after_cancel_asks_again(
+        self,
+        app: Application,
+        guard: MagicMock,
+        held_gate: HeldGate,
+    ) -> None:
+        loading = app._converted_loading_flight()
+        loading(Path("written.stn"))
+        held_gate.release()
+        _, _, decline = guard.call_args.args
+
+        decline()
+        loading(Path("written.stn"))
+        held_gate.release()
+
+        assert guard.call_count == 2
+        app._reconstruction_coordinator.load.assert_not_called()

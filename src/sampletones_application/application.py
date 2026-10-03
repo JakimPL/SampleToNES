@@ -1,6 +1,7 @@
 from contextlib import ExitStack
+from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Dict, Final, Optional, Tuple
+from typing import Any, Callable, Dict, Final, Optional, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 from pydantic import ValidationError
@@ -139,6 +140,7 @@ from sampletones_application.utils.callbacks.gates import (
     GestureParameters,
     GestureResult,
     SingleFlight,
+    fixed,
     gated,
     waiting,
 )
@@ -552,10 +554,7 @@ class Application:
                 on_reconstruct_directory=self._reconstruct_directory,
                 on_load_reconstruction=self._reconstruction_opening,
                 on_load_library=self._load_library,
-                on_load_file=gated(
-                    self._reconstruction_coordinator.after_edits,
-                    self._reconstruction_coordinator.load_converted,
-                ),
+                on_load_file=self._converted_loading_flight(),
                 on_load_directory=self._navigate_to_reconstructions,
                 on_canceled=self._refresh_browsers,
                 on_refresh_trees=self._refresh_browsers,
@@ -587,8 +586,8 @@ class Application:
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             status_bar=self.status_bar,
-            on_edit_voice_requested=gated(
-                self._reconstruction_coordinator.after_edits,
+            on_edit_voice_requested=self._document_flight(
+                self._reconstruction_coordinator.guard_edit_voice,
                 self._reconstruction_coordinator.open_project_voice,
             ),
             on_favorite_changed=self._repaint_reconstruction_favorites,
@@ -814,12 +813,26 @@ class Application:
     ) -> SingleFlight[GestureParameters]:
         """A gesture on a whole document as one conversation: the edits on their way land, then ``guard`` asks."""
         return SingleFlight(
-            (
-                waiting(self._reconstruction_coordinator.after_edits),
-                guard,
+            fixed(
+                (
+                    waiting(self._reconstruction_coordinator.after_edits),
+                    guard,
+                )
             ),
             arrive,
         )
+
+    def _converted_loading_flight(self) -> SingleFlight[[Path]]:
+        """Loading what a run wrote as one conversation, whose question speaks of the file it loads."""
+        coordinator = self._reconstruction_coordinator
+
+        def conversation(filepath: Path) -> Sequence[Gate]:
+            return (
+                waiting(coordinator.after_edits),
+                partial(coordinator.guard_load_converted, filepath),
+            )
+
+        return SingleFlight(conversation, coordinator.load)
 
     def _reconstruction_opening_flight(self) -> SingleFlight[[Optional[Path]]]:
         """Opening a reconstruction as one conversation, whichever door asks: the menu or a browser."""
@@ -1650,12 +1663,14 @@ class Application:
         on any of them ends the conversation.
         """
         return SingleFlight(
-            (
-                waiting(self._reconstruction_coordinator.after_edits),
-                self._project_coordinator.guard_exit,
-                self._reconstruction_coordinator.guard_exit,
-                self._main_tab.guard_exit,
-                self._instructions_tab.guard_exit,
+            fixed(
+                (
+                    waiting(self._reconstruction_coordinator.after_edits),
+                    self._project_coordinator.guard_exit,
+                    self._reconstruction_coordinator.guard_exit,
+                    self._main_tab.guard_exit,
+                    self._instructions_tab.guard_exit,
+                )
             ),
             self._exit_application,
         )
