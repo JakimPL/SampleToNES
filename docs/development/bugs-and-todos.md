@@ -187,9 +187,6 @@ currently out of line. An entry leaves when the code meets the contract again.
 * A reconstruction whose recording is missing draws a flat original line beside the reconstruction,
   where the waveform shows the approximation on its own. `tests/screens/reconstructions/player/test_source_switch.py`
   reproduces it as a known failure.
-* The history lines of a renamed or a moved voice name it one way alone: a rename names the voice and
-  not its position, and a move names the positions and not the voice.
-  `tests/screens/sequencer/history/test_voice_gestures.py` reproduces it as a known failure.
 * A project opened as the application starts is saved as though it had no file: `load_project_safely`
   leaves the session's current project unset, so Save asks for a path, or writes to whatever path an
   earlier session left. `tests/screens/sequencer/song/test_retuning_and_saving.py` reproduces it as a known failure.

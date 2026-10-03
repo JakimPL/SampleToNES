@@ -1,7 +1,5 @@
 from typing import Callable, Final, List, Tuple
 
-import pytest
-
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.screens.sequencer.history.cases import GESTURES, Gesture
@@ -112,11 +110,6 @@ class TestEachVoiceGestureIsOneEntry:
 
         screen.scenario(*steps, leave_as_opened).run()
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: the history lines of a renamed or a moved voice name it one way alone",
-    )
     def test_every_line_names_the_voice_by_position_and_name(self, screen: Screen) -> None:
         """The entries of a renamed and of a moved sample each name it by its position and by its name."""
         history = screen.sequencer.history
