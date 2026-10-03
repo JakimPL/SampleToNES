@@ -189,10 +189,6 @@ currently out of line. An entry leaves when the code meets the contract again.
 * A Keyboard settings row reads as listening once Cancel answers the reassign question, while no key
   reaches it: the keys pressed next are taken by nothing, and Escape closes the dialog.
   `tests/screens/prompts/modals/test_run_ending_behind_a_dialog.py` reproduces it as a known failure.
-* Two closes before the first is answered ask twice: each close puts its question in line, so Cancel
-  on the first brings the second, and so does a close made twice while an edit is on its way.
-  `tests/screens/prompts/closing/test_over_a_question.py` and
-  `tests/screens/prompts/closing/test_during_an_edit.py` reproduce it as known failures.
 * A reconstruction whose recording is missing draws a flat original line beside the reconstruction,
   where the waveform shows the approximation on its own. `tests/screens/reconstructions/player/test_source_switch.py`
   reproduces it as a known failure.

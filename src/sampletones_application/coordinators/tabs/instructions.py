@@ -501,8 +501,11 @@ class InstructionsTabCoordinator:
     def is_library_generating(self) -> bool:
         return self._library_logic.is_library_generating()
 
-    def guard_exit(self, proceed: VoidCallback) -> None:
-        """Lets the exit go on, asking first while a library is being built, which exiting stops."""
+    def guard_exit(self, proceed: VoidCallback, decline: VoidCallback) -> None:
+        """Lets the exit go on, asking first while a library is being built, which exiting stops.
+
+        Cancel keeps the library building and turns the exit away.
+        """
         if not self.is_library_generating():
             proceed()
             return
@@ -513,6 +516,7 @@ class InstructionsTabCoordinator:
             self._language_manager["global.dialog.title.exit_confirmation"],
             proceed,
             ok_label=self._language_manager["global.dialog.label.exit"],
+            on_cancel=decline,
         )
 
     def refresh_generate_button(self) -> None:

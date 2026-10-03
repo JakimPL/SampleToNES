@@ -1,6 +1,6 @@
 from contextlib import ExitStack
 from pathlib import Path
-from typing import Any, Dict, Final, Optional, Tuple
+from typing import Any, Callable, Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 from pydantic import ValidationError
@@ -133,7 +133,14 @@ from sampletones_application.ui.panels.dialogs.render import GUIRenderWindow
 from sampletones_application.ui.panels.dialogs.stem_selection import GUIStemSelectionWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
-from sampletones_application.utils.callbacks.gates import gated, pass_gates
+from sampletones_application.utils.callbacks.gates import (
+    Gate,
+    GestureParameters,
+    GestureResult,
+    SingleFlight,
+    gated,
+    waiting,
+)
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
@@ -467,6 +474,7 @@ class Application:
             on_session_state_changed=self._on_reconstruction_state_changed,
             on_reconstruction_updated=self._on_reconstruction_updated,
         )
+        self._reconstruction_opening: SingleFlight[[Optional[Path]]] = self._reconstruction_opening_flight()
 
         self._original_audio_locator = OriginalAudioLocator(
             dialogs=self.dialogs,
@@ -493,10 +501,7 @@ class Application:
             export_service=self.export_service,
             export_backends=self.export_backends,
             format_setups=self._format_setups,
-            on_load_reconstruction_with_confirmation=gated(
-                self._reconstruction_coordinator.after_edits,
-                self._reconstruction_coordinator.load_with_confirmation,
-            ),
+            on_load_reconstruction_with_confirmation=self._reconstruction_opening,
             on_change_audio_state=self._update_menu,
             on_favorite_changed=self._repaint_reconstruction_favorites,
             on_rewrite_requested=self._reconstruction_coordinator.request_rewrite,
@@ -542,10 +547,7 @@ class Application:
                 on_busy_state_changed=self._refresh_busy_state,
                 on_reconstruct_file=self._reconstruct_file,
                 on_reconstruct_directory=self._reconstruct_directory,
-                on_load_reconstruction=gated(
-                    self._reconstruction_coordinator.after_edits,
-                    self._reconstruction_coordinator.load_with_confirmation,
-                ),
+                on_load_reconstruction=self._reconstruction_opening,
                 on_load_library=self._load_library,
                 on_load_file=gated(
                     self._reconstruction_coordinator.after_edits,
@@ -664,6 +666,7 @@ class Application:
             instructions_tab=self._instructions_tab,
         )
         self.browser_manager.on_recordings_read = self._show_reconstruction_recordings
+        self._exiting: SingleFlight[[]] = self._exit_flight()
 
         self._setup_gui()
         self._restore_current_items(
@@ -734,29 +737,42 @@ class Application:
 
         A gesture that reads or puts away a whole document, the project or the open reconstruction,
         waits for the edits of the open reconstruction made before it, so it acts on what the
-        reader has drawn.
+        reader has drawn. A gesture that replaces or closes a document, or leaves, holds one
+        conversation at a time, so asking for it again before its question is answered asks once.
         """
         after_edits = self._reconstruction_coordinator.after_edits
         return ShortcutBindings(
-            new_project=gated(after_edits, self._project_coordinator.new_project_with_confirmation),
-            open_project=gated(after_edits, self._project_coordinator.open_with_confirmation),
+            new_project=self._document_flight(
+                self._project_coordinator.guard_new,
+                self._project_coordinator.new_project,
+            ),
+            open_project=self._document_flight(
+                self._project_coordinator.guard_open,
+                self._project_coordinator.open_project,
+            ),
             save_project=gated(after_edits, self._project_coordinator.save),
             save_project_as=gated(after_edits, self._project_coordinator.save_as_dialog),
             project_properties=self._open_project_properties,
             export_project=gated(after_edits, self._project_coordinator.export_project_dialog),
             render_song=gated(after_edits, self._render_coordinator.open),
-            close_project=gated(after_edits, self._project_coordinator.close_with_confirmation),
-            exit=self._on_close,
+            close_project=self._document_flight(
+                self._project_coordinator.guard_close,
+                self._project_coordinator.close_project,
+            ),
+            exit=self._exiting,
             undo=self._sequencer_tab.undo,
             redo=self._sequencer_tab.redo,
             reconstruct_file=self._reconstruct_file_dialog,
             reconstruct_directory=self._reconstruct_directory_dialog,
             load_generation_settings=self._config_coordinator.load_dialog,
             save_generation_settings=self._config_coordinator.save_dialog,
-            open_reconstruction=gated(after_edits, self._reconstruction_coordinator.load_with_confirmation),
+            open_reconstruction=self._reconstruction_opening,
             save_reconstruction=gated(after_edits, self._reconstruction_coordinator.save),
             save_reconstruction_as=gated(after_edits, self._reconstruction_coordinator.save_as_dialog),
-            close_reconstruction=gated(after_edits, self._reconstruction_coordinator.close_with_confirmation),
+            close_reconstruction=self._document_flight(
+                self._reconstruction_coordinator.guard_close,
+                self._reconstruction_coordinator.close,
+            ),
             export_wav=gated(after_edits, self._export_reconstruction_wav_dialog),
             export_instruments=gated(after_edits, self._export_reconstruction_instruments_dialog),
             add_reconstruction_to_sequencer=gated(after_edits, self._add_current_reconstruction_to_sequencer),
@@ -787,10 +803,31 @@ class Application:
             select_tab=self._set_current_tab,
         )
 
+    def _document_flight(
+        self,
+        guard: Gate,
+        arrive: Callable[GestureParameters, GestureResult],
+    ) -> SingleFlight[GestureParameters]:
+        """A gesture on a whole document as one conversation: the edits on their way land, then ``guard`` asks."""
+        return SingleFlight(
+            (
+                waiting(self._reconstruction_coordinator.after_edits),
+                guard,
+            ),
+            arrive,
+        )
+
+    def _reconstruction_opening_flight(self) -> SingleFlight[[Optional[Path]]]:
+        """Opening a reconstruction as one conversation, whichever door asks: the menu or a browser."""
+        return self._document_flight(
+            self._reconstruction_coordinator.guard_load,
+            self._reconstruction_coordinator.open,
+        )
+
     def _setup_shell(self, bindings: ShortcutBindings) -> None:
         self._shell.setup(
             bindings,
-            on_close=self._on_close,
+            on_close=self._exiting,
             on_tab_changed=self._on_tab_changed,
             initial_menu_state=self._build_initial_menu_state(),
         )
@@ -1605,15 +1642,16 @@ class Application:
         """Flips one channel of the sequencer's mix, the gesture the Channels submenu offers."""
         self._sequencer_tab.toggle_channel(generator)
 
-    def _on_close(self) -> None:
-        """Exits once each owner of something unfinished has asked about it, one after another.
+    def _exit_flight(self) -> SingleFlight[[]]:
+        """The exit as one conversation, in which each owner of something unfinished asks in turn.
 
         The edits of the open reconstruction land first, so each question asks about what the
-        reader has drawn.
+        reader has drawn. A close asked for again while the questions stand is absorbed, and Cancel
+        on any of them ends the conversation.
         """
-        pass_gates(
+        return SingleFlight(
             (
-                self._reconstruction_coordinator.after_edits,
+                waiting(self._reconstruction_coordinator.after_edits),
                 self._project_coordinator.guard_exit,
                 self._reconstruction_coordinator.guard_exit,
                 self._main_tab.guard_exit,

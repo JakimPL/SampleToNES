@@ -338,21 +338,26 @@ class TestTheExitAsksAboutALibraryBeingBuilt:
     def test_an_idle_library_lets_the_exit_go_on(self) -> None:
         coordinator = self._coordinator(generating=False)
         proceed = MagicMock()
+        decline = MagicMock()
 
-        coordinator.guard_exit(proceed)
+        coordinator.guard_exit(proceed, decline)
 
         proceed.assert_called_once_with()
+        decline.assert_not_called()
         coordinator._dialogs.show_confirmation.assert_not_called()
 
     def test_a_library_being_built_asks_first(self) -> None:
         coordinator = self._coordinator(generating=True)
         proceed = MagicMock()
+        decline = MagicMock()
 
-        coordinator.guard_exit(proceed)
+        coordinator.guard_exit(proceed, decline)
 
         proceed.assert_not_called()
+        decline.assert_not_called()
         args, kwargs = coordinator._dialogs.show_confirmation.call_args
         assert args[0] == TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION
         assert args[1] == EXIT_LIBRARY_MESSAGE_KEY
         assert args[3] is proceed
         assert kwargs["ok_label"] == EXIT_LABEL_KEY
+        assert kwargs["on_cancel"] is decline

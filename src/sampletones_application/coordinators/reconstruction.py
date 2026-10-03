@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 from typing import Callable, Optional, Tuple
 
@@ -28,6 +29,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED,
     TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
 )
+from sampletones_application.utils.callbacks.gates import ignore
 from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
     save_file_dialog,
@@ -217,19 +219,29 @@ class ReconstructionCoordinator:
     def load(self, filepath: Path) -> None:
         return self._tab.load_reconstruction(filepath)
 
-    def load_with_confirmation(self, filepath: Optional[Path] = None) -> None:
-        def load_reconstruction() -> None:
-            if filepath is None:
-                self._load_dialog()
-            else:
-                self.load(filepath)
+    def open(self, filepath: Optional[Path] = None) -> None:
+        """Loads ``filepath``, or the reconstruction file the reader picks where none is named."""
+        if filepath is None:
+            self._load_dialog()
+        else:
+            self.load(filepath)
 
+    def guard_load(self, proceed: VoidCallback, decline: VoidCallback) -> None:
+        """Lets another document take the open one's place, offering first to save unsaved changes.
+
+        The signature is a :data:`Gate`, so the question leads the loading's conversation.
+        """
         self._save_first(
             title=self._language_manager["global.dialog.title.load_unsaved_reconstruction"],
             message=self._language_manager["global.dialog.message.load_unsaved_reconstruction"],
             ok_label=self._language_manager["global.dialog.label.discard"],
-            proceed=load_reconstruction,
+            proceed=proceed,
+            decline=decline,
         )
+
+    def load_with_confirmation(self, filepath: Optional[Path] = None) -> None:
+        """Loads ``filepath``, or the file the reader picks, once unsaved changes are answered for."""
+        self.guard_load(partial(self.open, filepath), ignore)
 
     def load_converted(self, filepath: Path) -> None:
         """Loads the reconstruction a conversion wrote, asking first about unsaved changes.
@@ -265,16 +277,18 @@ class ReconstructionCoordinator:
             logger.warning(f"Could not restore reconstruction from {logger.format_path(path)}: {exception}")
             self._session_manager.set_current_reconstruction(None)
 
-    def guard_exit(self, proceed: VoidCallback) -> None:
+    def guard_exit(self, proceed: VoidCallback, decline: VoidCallback) -> None:
         """Lets the exit go on, asking first to save a standalone reconstruction with unsaved changes.
 
         A project sample's changes belong to the project, which the exit asks about on its own.
+        Cancel keeps the application open and turns the exit away.
         """
         self._save_first(
             title=self._language_manager["global.dialog.title.exit_confirmation"],
             message=self._language_manager["global.dialog.message.exit_unsaved_reconstruction"],
             ok_label=self._language_manager["global.dialog.label.exit"],
             proceed=proceed,
+            decline=decline,
         )
 
     @ignore_none_path
@@ -312,15 +326,21 @@ class ReconstructionCoordinator:
             self._language_manager["global.dialog.message.reconstruction_save_failed"],
         )
 
-    def close_with_confirmation(self) -> None:
+    def guard_close(self, proceed: VoidCallback, decline: VoidCallback) -> None:
+        """Lets the open document close, offering first to save unsaved changes.
+
+        The signature is a :data:`Gate`, so the question leads the closing's conversation.
+        """
         self._save_first(
             title=self._language_manager["global.dialog.title.close_unsaved_reconstruction"],
             message=self._language_manager["global.dialog.message.close_unsaved_reconstruction"],
             ok_label=self._language_manager["global.dialog.label.close"],
-            proceed=self._close,
+            proceed=proceed,
+            decline=decline,
         )
 
-    def _close(self) -> None:
+    def close(self) -> None:
+        """Puts the open document away, with the edits still on their way to it."""
         self._drop_pending()
         self._reconstruction_manager.close_reconstruction()
 
@@ -333,7 +353,7 @@ class ReconstructionCoordinator:
 
         Undo, a save, a load or an export acts on the document the reader has drawn, so it waits
         for the edits still on their way. With nothing on its way, the gesture runs at once. The
-        signature is a :data:`Gate`, so the wait can lead a chain of gates.
+        signature is a :data:`Wait`, so the wait can lead a chain of gates.
         """
         self._rewrites.request(AfterEdits(gesture))
 
@@ -407,6 +427,7 @@ class ReconstructionCoordinator:
             message=self._language_manager["global.dialog.message.edit_voice_unsaved_reconstruction"],
             ok_label=self._language_manager["global.dialog.label.discard"],
             proceed=lambda: self._open_project_voice(voice_id),
+            decline=ignore,
         )
 
     def _open_project_voice(self, voice_id: str) -> None:
@@ -482,14 +503,14 @@ class ReconstructionCoordinator:
                     if restored:
                         self._rebind(sample.reconstruction)
                 case _:
-                    self._close()
+                    self.close()
 
         self._tab.follow_instrument(restored=restored)
 
     def _let_go_of_project_voice(self) -> None:
         """Closes a project voice the tab shows, leaving a standalone document open."""
         if self._reconstruction_manager.is_project_sample:
-            self._close()
+            self.close()
 
         self._tab.close_instrument()
 
@@ -538,6 +559,7 @@ class ReconstructionCoordinator:
         message: str,
         ok_label: str,
         proceed: VoidCallback,
+        decline: VoidCallback,
     ) -> None:
         """Goes on with ``proceed``, offering first to save a standalone document with unsaved changes.
 
@@ -546,6 +568,7 @@ class ReconstructionCoordinator:
             message: What the prompt says would be lost.
             ok_label: The label of the answer that goes on without saving.
             proceed: What runs once the document is saved, or once the reader lets the changes go.
+            decline: What runs once the reader keeps the changes, or once the save fails.
         """
         if not self._requires_save_confirmation():
             proceed()
@@ -557,5 +580,6 @@ class ReconstructionCoordinator:
             message=message,
             on_save=self.save,
             on_confirm=proceed,
+            on_cancel=decline,
             ok_label=ok_label,
         )

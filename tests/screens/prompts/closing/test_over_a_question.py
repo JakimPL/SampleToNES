@@ -1,8 +1,6 @@
 import operator
 from typing import Final
 
-import pytest
-
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.paths.user import PROJECTS_DIRECTORY
@@ -47,11 +45,6 @@ class TestClosingTheWindowTwiceAtOnce:
     application, and a further close asks once more and leaves on Exit.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: two closes before the first is answered ask twice",
-    )
     def test_one_question_and_cancel_keeps_the_application(self, screen: Screen) -> None:
         """Two closes bring one question, and Cancel keeps the application running."""
         prompt = screen.project.unsaved_prompt

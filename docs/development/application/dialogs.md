@@ -82,6 +82,19 @@ A dialog that comes back once the modal it raised is answered steps aside. `yiel
 and keeps its tree, and `resume` brings it back, a frame each way. The dialog keeps the screen while it
 stands aside, so nothing waiting in line opens between it and the prompt it raised.
 
+## A gesture asks once
+
+A gesture that asks before it replaces a document, closes one or leaves the application holds one
+conversation at a time. The conversation is the chain of questions the gesture passes, and every way out of
+a question reaches whoever asked it. An answer that goes on lets the request through. Cancel, Escape, the
+title bar's close and a save that failed turn it away. A request therefore always ends in one of the two.
+
+While a conversation stands, the same gesture asked for again is absorbed, so two closes before the first is
+answered ask once. Once the conversation has ended, the gesture asks again. The span covers the wait for the
+edits of the open reconstruction too, so a gesture repeated while an edit is on its way asks once it lands.
+`SingleFlight` (`utils/callbacks/gates.py`) holds the conversation, and the composition root wraps every such
+gesture in one, whichever door it is asked for through.
+
 ## Where it is written
 
 `GUIWindow.dialog_window` (`ui/elements/window.py`) is the only place a dialog's `dpg.window` is opened.

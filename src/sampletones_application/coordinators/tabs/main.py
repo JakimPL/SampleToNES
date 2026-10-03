@@ -754,8 +754,11 @@ class MainTabCoordinator:
     def is_converter_active(self) -> bool:
         return self._converter_logic.is_active
 
-    def guard_exit(self, proceed: VoidCallback) -> None:
-        """Lets the exit go on, asking first while a conversion runs, which exiting stops."""
+    def guard_exit(self, proceed: VoidCallback, decline: VoidCallback) -> None:
+        """Lets the exit go on, asking first while a conversion runs, which exiting stops.
+
+        Cancel keeps the conversion running and turns the exit away.
+        """
         if not self.is_converter_active():
             proceed()
             return
@@ -766,6 +769,7 @@ class MainTabCoordinator:
             self._language_manager["global.dialog.title.exit_confirmation"],
             proceed,
             ok_label=self._language_manager["global.dialog.label.exit"],
+            on_cancel=decline,
         )
 
     def is_converter_panel_visible(self) -> bool:

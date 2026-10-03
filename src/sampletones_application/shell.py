@@ -55,7 +55,7 @@ from sampletones_application.viewport import ViewportManager
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exports.format import ExportFormat
 from sampletones_shared.types.application import Sender
-from sampletones_shared.types.callback import Callback, PathCallback
+from sampletones_shared.types.callback import Callback, PathCallback, VoidCallback
 
 _TAB_TAGS: Dict[Tab, str] = {
     Tab.MAIN: TAG_GLOBAL_TAB_MAIN,
@@ -168,7 +168,7 @@ class ApplicationShell:
         self,
         bindings: ShortcutBindings,
         *,
-        on_close: Callback,
+        on_close: VoidCallback,
         on_tab_changed: Callback,
         initial_menu_state: MenuBarViewModel,
     ) -> None:
@@ -183,7 +183,20 @@ class ApplicationShell:
         self._setup_handlers()
         self._create_main_window(on_tab_changed, initial_menu_state)
         self._activate_background_work()
-        dpg.set_exit_callback(on_close)
+        dpg.set_exit_callback(ApplicationShell._window_close(on_close))
+
+    @staticmethod
+    def _window_close(on_close: VoidCallback) -> VoidCallback:
+        """``on_close`` as the window manager's close reaches it.
+
+        The close is answered as a widget's callback is, handed as many of DearPyGui's sender, data
+        and user data as it declares. It declares none, so ``on_close`` is called with nothing.
+        """
+
+        def close() -> None:
+            on_close()
+
+        return close
 
     def _activate_background_work(self) -> None:
         """Re-arm the background machinery for this run.

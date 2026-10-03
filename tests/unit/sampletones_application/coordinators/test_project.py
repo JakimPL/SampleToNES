@@ -122,7 +122,7 @@ class TestAProjectOpenedAtStart:
         save_dialog: MagicMock,
     ) -> None:
         starting.load_project_safely(saved_project)
-        starting._new()
+        starting.new_project()
 
         assert starting.save() is SaveOutcome.CALLED_OFF
 
@@ -549,32 +549,143 @@ class TestTheSaveAPromptWaitsOn:
         saving._project_controller.is_open = True
         saving._project_controller.is_dirty = True
 
-        saving.close_with_confirmation()
-        saving.new_project_with_confirmation()
+        saving.guard_close(MagicMock(), MagicMock())
+        saving.guard_new(MagicMock(), MagicMock())
 
         for prompt in saving._dialogs.show_save_confirmation.call_args_list:
             assert prompt.kwargs["on_save"] == saving._write_project
 
 
 class TestTheExitAsksAboutTheProject:
-    """Exiting with unsaved project changes asks to save them first, and the answer lets the exit go on."""
+    """Exiting with unsaved project changes asks to save them first, the answer lets the exit go on, and
+    Cancel turns it away."""
 
     def test_a_saved_project_lets_the_exit_go_on(self, project_coordinator: ProjectCoordinator) -> None:
         project_coordinator._project_controller.is_dirty = False
         proceed = MagicMock()
+        decline = MagicMock()
 
-        project_coordinator.guard_exit(proceed)
+        project_coordinator.guard_exit(proceed, decline)
 
         proceed.assert_called_once_with()
+        decline.assert_not_called()
         project_coordinator._dialogs.show_save_confirmation.assert_not_called()
 
     def test_an_unsaved_project_asks_to_save_first(self, project_coordinator: ProjectCoordinator) -> None:
         project_coordinator._project_controller.is_dirty = True
         proceed = MagicMock()
+        decline = MagicMock()
 
-        project_coordinator.guard_exit(proceed)
+        project_coordinator.guard_exit(proceed, decline)
 
         proceed.assert_not_called()
+        decline.assert_not_called()
         prompt = project_coordinator._dialogs.show_save_confirmation.call_args.kwargs
         assert prompt["on_save"] == project_coordinator._write_project
         assert prompt["on_confirm"] is proceed
+        assert prompt["on_cancel"] is decline
+
+
+class TestReplacingOrClosingTheProject:
+    """New, Open and Close ask before the open project goes, and Cancel turns the request away.
+
+    An unsaved project is offered a save, an open project holding no changes is still asked about, and a
+    request with no project open goes on at once, or, for Close, is turned away.
+    """
+
+    @pytest.fixture(name="proceed")
+    def proceed_fixture(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture(name="decline")
+    def decline_fixture(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.mark.parametrize("guard", ["guard_new", "guard_open"])
+    def test_no_project_open_goes_on_at_once(
+        self,
+        project_coordinator: ProjectCoordinator,
+        proceed: MagicMock,
+        decline: MagicMock,
+        guard: str,
+    ) -> None:
+        project_coordinator._project_controller.is_open = False
+
+        {"guard_new": project_coordinator.guard_new, "guard_open": project_coordinator.guard_open}[guard](
+            proceed,
+            decline,
+        )
+
+        proceed.assert_called_once_with()
+        decline.assert_not_called()
+
+    @pytest.mark.parametrize("guard", ["guard_new", "guard_open", "guard_close"])
+    def test_an_unsaved_project_asks_and_cancel_turns_the_request_away(
+        self,
+        project_coordinator: ProjectCoordinator,
+        proceed: MagicMock,
+        decline: MagicMock,
+        guard: str,
+    ) -> None:
+        project_coordinator._project_controller.is_open = True
+        project_coordinator._project_controller.is_dirty = True
+
+        {
+            "guard_new": project_coordinator.guard_new,
+            "guard_open": project_coordinator.guard_open,
+            "guard_close": project_coordinator.guard_close,
+        }[guard](proceed, decline)
+
+        proceed.assert_not_called()
+        prompt = project_coordinator._dialogs.show_save_confirmation.call_args.kwargs
+        assert prompt["on_confirm"] is proceed
+        assert prompt["on_cancel"] is decline
+
+    @pytest.mark.parametrize("guard", ["guard_new", "guard_open"])
+    def test_a_saved_project_is_asked_about_and_cancel_turns_the_request_away(
+        self,
+        project_coordinator: ProjectCoordinator,
+        proceed: MagicMock,
+        decline: MagicMock,
+        guard: str,
+    ) -> None:
+        project_coordinator._project_controller.is_open = True
+        project_coordinator._project_controller.is_dirty = False
+
+        {"guard_new": project_coordinator.guard_new, "guard_open": project_coordinator.guard_open}[guard](
+            proceed,
+            decline,
+        )
+
+        proceed.assert_not_called()
+        prompt = project_coordinator._dialogs.show_confirmation.call_args.kwargs
+        assert prompt["on_confirm"] is proceed
+        assert prompt["on_cancel"] is decline
+
+    def test_a_saved_project_closes_at_once(
+        self,
+        project_coordinator: ProjectCoordinator,
+        proceed: MagicMock,
+        decline: MagicMock,
+    ) -> None:
+        project_coordinator._project_controller.is_open = True
+        project_coordinator._project_controller.is_dirty = False
+
+        project_coordinator.guard_close(proceed, decline)
+
+        proceed.assert_called_once_with()
+        decline.assert_not_called()
+
+    def test_closing_with_no_project_open_is_turned_away(
+        self,
+        project_coordinator: ProjectCoordinator,
+        proceed: MagicMock,
+        decline: MagicMock,
+    ) -> None:
+        project_coordinator._project_controller.is_open = False
+
+        project_coordinator.guard_close(proceed, decline)
+
+        proceed.assert_not_called()
+        decline.assert_called_once_with()
+        project_coordinator._dialogs.show_save_confirmation.assert_not_called()

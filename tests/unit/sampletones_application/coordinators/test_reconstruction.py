@@ -454,7 +454,7 @@ class TestSaveConfirmationGating(BaseTestSuite):
             embedded=test_case.embedded,
         )
 
-        coordinator.close_with_confirmation()
+        coordinator.guard_close(coordinator.close, MagicMock())
 
         if test_case.expects_prompt:
             coordinator._dialogs.show_save_confirmation.assert_called_once()
@@ -1358,21 +1358,37 @@ class TestTheExitAsksAboutTheReconstruction(BaseTestSuite):
     def test_the_exit_asks_only_about_a_standalone_document(self, test_case: TestCase) -> None:
         coordinator = _gating_coordinator(unsaved=test_case.unsaved, embedded=test_case.embedded)
         proceed = MagicMock()
+        decline = MagicMock()
 
-        coordinator.guard_exit(proceed)
+        coordinator.guard_exit(proceed, decline)
 
         assert coordinator._dialogs.show_save_confirmation.called is test_case.expected
         assert proceed.called is not test_case.expected
+        decline.assert_not_called()
 
-    def test_the_answer_lets_the_exit_go_on(self) -> None:
+    def test_the_answer_lets_the_exit_go_on_and_cancel_turns_it_away(self) -> None:
         coordinator = _gating_coordinator(unsaved=True, embedded=False)
         proceed = MagicMock()
+        decline = MagicMock()
 
-        coordinator.guard_exit(proceed)
+        coordinator.guard_exit(proceed, decline)
 
         prompt = coordinator._dialogs.show_save_confirmation.call_args.kwargs
         assert prompt["on_save"] == coordinator.save
         assert prompt["on_confirm"] is proceed
+        assert prompt["on_cancel"] is decline
+
+    @pytest.mark.parametrize("guard", ["guard_load", "guard_close"])
+    def test_cancel_on_a_load_or_a_close_turns_the_request_away(self, guard: str) -> None:
+        coordinator = _gating_coordinator(unsaved=True, embedded=False)
+        proceed = MagicMock()
+        decline = MagicMock()
+
+        {"guard_load": coordinator.guard_load, "guard_close": coordinator.guard_close}[guard](proceed, decline)
+
+        prompt = coordinator._dialogs.show_save_confirmation.call_args.kwargs
+        assert prompt["on_confirm"] is proceed
+        assert prompt["on_cancel"] is decline
 
 
 @pytest.fixture
@@ -1498,7 +1514,7 @@ class TestTheDocumentChangesOneStepAtATime:
         turns_path: Path,
     ) -> None:
         _move(following_coordinator, SHARED_CHANNEL, FeatureKey.VOLUME, EDITED_VOLUME)
-        following_coordinator.close_with_confirmation()
+        following_coordinator.guard_close(following_coordinator.close, MagicMock())
         held_queue.drain()
 
         assert reconstruction_manager.current_reconstruction is None

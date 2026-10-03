@@ -91,7 +91,7 @@ from sampletones_application.ui.panels.reconstruction.plot import (
 from sampletones_application.ui.panels.reconstruction.stems import (
     GUIReconstructionStemsPanel,
 )
-from sampletones_application.utils.callbacks.gates import Gate, gated
+from sampletones_application.utils.callbacks.gates import Wait, gated
 from sampletones_application.utils.file_dialogs.api import save_file_dialog
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
@@ -145,7 +145,7 @@ class ReconstructionTabCoordinator:
         on_favorite_changed: Callable[[FileSystemNode], None],
         on_rewrite_requested: Callable[[Rewrite], None],
         pending_changes: PendingChangesProtocol,
-        after_edits: Gate,
+        after_edits: Wait,
         original_audio_locator: OriginalAudioLocator,
         instrument_exports: InstrumentExportCoordinator,
         history: HistoryManager,

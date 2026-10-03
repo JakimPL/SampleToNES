@@ -27,9 +27,10 @@ class GUISaveConfirmationWindow(GUIDialogWindow):
     Every answer runs a frame after the prompt has left the screen, so whatever it opens stands
     alone. Save runs ``on_save``, which reports a :class:`SaveOutcome`: a written document runs
     ``on_confirm``, a save the reader called off brings the prompt back with the same question,
-    and a failed save leaves its error on screen by itself. The middle button discards the
-    pending changes and runs ``on_confirm`` to proceed, and Cancel — the initially focused
-    button — dismisses the prompt.
+    and a failed save leaves its error on screen by itself and runs ``on_cancel``. The middle
+    button discards the pending changes and runs ``on_confirm`` to proceed. Cancel, the initially
+    focused button, runs ``on_cancel``, and so do Escape and the title bar's close button, so every
+    way out of the prompt reaches the caller.
     """
 
     def __init__(
@@ -51,6 +52,7 @@ class GUISaveConfirmationWindow(GUIDialogWindow):
         self._title: str
         self._on_save: Callable[[], SaveOutcome]
         self._on_confirm: Callback
+        self._on_cancel: Callback
         self._ok_label: str
 
         super().__init__(
@@ -66,14 +68,16 @@ class GUISaveConfirmationWindow(GUIDialogWindow):
         title: str,
         on_save: Callable[[], SaveOutcome],
         on_confirm: Callback,
+        on_cancel: Callback,
         *,
         ok_label: str,
     ) -> None:
-        """Captures the pending document's write and the two ways forward."""
+        """Captures the pending document's write, the two ways forward and the way back."""
         self._message = message
         self._title = title
         self._on_save = on_save
         self._on_confirm = on_confirm
+        self._on_cancel = on_cancel
         self._ok_label = ok_label
 
     def create_window(self) -> None:
@@ -86,6 +90,9 @@ class GUISaveConfirmationWindow(GUIDialogWindow):
 
         def _on_confirm() -> None:
             self._leave_then(self._on_confirm)
+
+        def _on_cancel() -> None:
+            self._leave_then(self._on_cancel)
 
         def content(parent: str) -> None:
             dpg.add_text(self._message, parent=parent, wrap=self._wrap)
@@ -107,22 +114,22 @@ class GUISaveConfirmationWindow(GUIDialogWindow):
                 GUIButton(
                     tag=cancel_button_tag,
                     label=self._cancel_label,
-                    callback=self.hide,
+                    callback=_on_cancel,
                     width=-1,
                 )
 
             buttons(None)
 
-        with self.dialog_window(label=self._title, on_close=self.hide):
+        with self.dialog_window(label=self._title, on_close=_on_cancel):
             content(self.tag)
 
         self._install_navigation(
             [
                 FocusStop.button(save_button_tag, _on_save),
                 FocusStop.button(ok_button_tag, _on_confirm),
-                FocusStop.button(cancel_button_tag, self.hide),
+                FocusStop.button(cancel_button_tag, _on_cancel),
             ],
-            on_escape=self.hide,
+            on_escape=_on_cancel,
             initial_index=CANCEL_FOCUS_STOP,
         )
 
@@ -130,7 +137,8 @@ class GUISaveConfirmationWindow(GUIDialogWindow):
         """Writes the document and goes where the outcome leads, once the prompt has left.
 
         A written document goes on to what the prompt was guarding. A save the reader called off
-        puts the same question again. A failed save showed its error, which stands alone.
+        puts the same question again. A failed save showed its error, which stands alone, and the
+        request the prompt guarded goes back the way Cancel takes it.
         """
         match self._on_save():
             case SaveOutcome.WRITTEN:
@@ -141,7 +149,8 @@ class GUISaveConfirmationWindow(GUIDialogWindow):
                     self._title,
                     self._on_save,
                     self._on_confirm,
+                    self._on_cancel,
                     ok_label=self._ok_label,
                 )
             case SaveOutcome.FAILED:
-                pass
+                self._on_cancel()

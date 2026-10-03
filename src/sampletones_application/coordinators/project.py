@@ -105,27 +105,40 @@ class ProjectCoordinator:
     def is_unsaved(self) -> bool:
         return self._project_controller.is_dirty
 
-    def new_project_with_confirmation(self) -> None:
+    def guard_new(self, proceed: VoidCallback, decline: VoidCallback) -> None:
+        """Lets a new project take the open one's place, asking first what becomes of the open one.
+
+        The signature is a :data:`Gate`, so the question leads the new project's conversation.
+        """
         self._guard_open(
             title=GlobalDialogTitleElements.NEW_UNSAVED_PROJECT,
             message=GlobalMessageElements.NEW_UNSAVED_PROJECT,
             open_message=GlobalMessageElements.NEW_OPEN_PROJECT,
-            on_confirm=self._new,
+            proceed=proceed,
+            decline=decline,
         )
 
-    def open_with_confirmation(self, filepath: Optional[Path] = None) -> None:
-        def open_project() -> None:
-            if filepath is None:
-                self._open_dialog()
-            else:
-                self._load(filepath)
+    def guard_open(self, proceed: VoidCallback, decline: VoidCallback) -> None:
+        """Lets another project take the open one's place, asking first what becomes of the open one.
 
+        The signature is a :data:`Gate`, so the question leads the opening's conversation.
+        """
         self._guard_open(
             title=GlobalDialogTitleElements.OPEN_UNSAVED_PROJECT,
             message=GlobalMessageElements.OPEN_UNSAVED_PROJECT,
             open_message=GlobalMessageElements.OPEN_OPEN_PROJECT,
-            on_confirm=open_project,
+            proceed=proceed,
+            decline=decline,
         )
+
+    def new_project(self) -> None:
+        """Puts a new project in place and brings the Sequencer forward."""
+        self._project_controller.new()
+        self._on_tab_switch(Tab.SEQUENCER)
+
+    def open_project(self) -> None:
+        """Opens the project file the reader picks."""
+        self._open_dialog()
 
     def load_project_safely(self, path: Path) -> None:
         """Loads the project a run starts on, the one the session remembers or the one it was given.
@@ -142,27 +155,38 @@ class ProjectCoordinator:
             logger.warning(f"Could not restore project from {logger.format_path(path)}: {exception}")
             self._session_manager.set_current_project(None)
 
-    def close_with_confirmation(self) -> None:
+    def guard_close(self, proceed: VoidCallback, decline: VoidCallback) -> None:
+        """Lets the open project close, asking first to save unsaved changes.
+
+        With no project open there is nothing to close, so the request is turned away. The
+        signature is a :data:`Gate`, so the question leads the closing's conversation.
+        """
         if not self._project_controller.is_open:
+            decline()
             return
 
-        if self.is_unsaved:
-            self._dialogs.show_save_confirmation(
-                tag=TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
-                title=self._title(GlobalDialogTitleElements.CLOSE_UNSAVED_PROJECT),
-                message=self._message(GlobalMessageElements.CLOSE_UNSAVED_PROJECT),
-                on_save=self._write_project,
-                on_confirm=self._close,
-                ok_label=self._label(DialogElements.DISCARD),
-            )
-        else:
-            self._close()
+        if not self.is_unsaved:
+            proceed()
+            return
 
-    def guard_exit(self, proceed: VoidCallback) -> None:
+        self._dialogs.show_save_confirmation(
+            tag=TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
+            title=self._title(GlobalDialogTitleElements.CLOSE_UNSAVED_PROJECT),
+            message=self._message(GlobalMessageElements.CLOSE_UNSAVED_PROJECT),
+            on_save=self._write_project,
+            on_confirm=proceed,
+            on_cancel=decline,
+            ok_label=self._label(DialogElements.DISCARD),
+        )
+
+    def close_project(self) -> None:
+        self._project_controller.close()
+
+    def guard_exit(self, proceed: VoidCallback, decline: VoidCallback) -> None:
         """Lets the exit go on, asking first to save a project with unsaved changes.
 
         Save and Exit both go on, so what the exit asks about next is asked in turn, and Cancel
-        keeps the application open.
+        keeps the application open and turns the exit away.
         """
         if not self.is_unsaved:
             proceed()
@@ -174,6 +198,7 @@ class ProjectCoordinator:
             message=self._message(GlobalMessageElements.EXIT_UNSAVED_PROJECT),
             on_save=self._write_project,
             on_confirm=proceed,
+            on_cancel=decline,
             ok_label=self._label(DialogElements.EXIT),
         )
 
@@ -300,13 +325,6 @@ class ProjectCoordinator:
             self._project_controller.export_request,
         )
 
-    def _new(self) -> None:
-        self._project_controller.new()
-        self._on_tab_switch(Tab.SEQUENCER)
-
-    def _close(self) -> None:
-        self._project_controller.close()
-
     def _load(self, filepath: Path) -> None:
         try:
             self._project_controller.load(filepath)
@@ -387,10 +405,16 @@ class ProjectCoordinator:
         title: GlobalDialogTitleElements,
         message: GlobalMessageElements,
         open_message: GlobalMessageElements,
-        on_confirm: Callback,
+        proceed: VoidCallback,
+        decline: VoidCallback,
     ) -> None:
+        """Lets another project take the open one's place, asking first while one is open.
+
+        Unsaved changes are offered a save, and an open project holding none is still asked about,
+        so a project is replaced only by an answer. Cancel turns the request away.
+        """
         if not self._project_controller.is_open:
-            on_confirm()
+            proceed()
             return
 
         if self.is_unsaved:
@@ -399,7 +423,8 @@ class ProjectCoordinator:
                 title=self._title(title),
                 message=self._message(message),
                 on_save=self._write_project,
-                on_confirm=on_confirm,
+                on_confirm=proceed,
+                on_cancel=decline,
                 ok_label=self._label(DialogElements.DISCARD),
             )
         else:
@@ -407,7 +432,8 @@ class ProjectCoordinator:
                 tag=TAG_GLOBAL_DIALOG_PROJECT_OPEN,
                 title=self._title(title),
                 message=self._message(open_message),
-                on_confirm=on_confirm,
+                on_confirm=proceed,
+                on_cancel=decline,
                 ok_label=self._label(DialogElements.DISCARD),
             )
 
