@@ -159,9 +159,6 @@ currently out of line. An entry leaves when the code meets the contract again.
   window at once while the walk runs on to its next entry, and `FolderScan.start` turns away the folder
   asked for in that time, though it promises that a folder asked for once the window closes is read.
   `tests/screens/main/scan/test_reading_a_folder.py` reproduces it as a known failure.
-* A reconstruction whose file the browser removed reads as a sample of the project: the NES frequency
-  field locks with the hint that the project sets its rate, though the document belongs to no
-  project. `tests/screens/prompts/vanished/test_reconstruction_removed.py` reproduces it as a known failure.
 * A voice double-clicked with the second press still held opens edited. The double-click brings the
   Reconstructions tab forward while the button is down, and the envelope graph that comes under the
   pointer draws a bar for a press that began on the Voices card. `tests/screens/prompts/open_voice/test_open_voice.py`

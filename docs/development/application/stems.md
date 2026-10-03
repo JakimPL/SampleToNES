@@ -14,7 +14,7 @@ Opening the document loads the recorded stems through `load_recordings`, at the 
 
 A document on disk is named after its file. The converter names that file from every recording it read, through the naming rules in `sampletones_core.reconstructions.naming`, so the name stands when a recording later leaves the document. A document held in memory, such as a project sample, carries the name it was given.
 
-The Stems card names every recorded path, one row per stem. Each row has its own full-path tooltip and reveals its recording on a double-click. The Audio source panel keeps the reconstruction's own file, the choice between the two waveforms and the engine rate, which a document living on disk retimes as a step of its edits and a project sample leaves to the project. Locating reveals every recorded path at once, in one window with every stem selected where the file manager supports that, and in one window per directory otherwise.
+The Stems card names every recorded path, one row per stem. Each row has its own full-path tooltip and reveals its recording on a double-click. The Audio source panel keeps the reconstruction's own file, the choice between the two waveforms and the engine rate, which a document living on disk retimes as a step of its edits. A project sample leaves the rate to the project, and a document with no file keeps it until it is saved to one. The logic names which of the two locks the rate, and the panel's hint says that reason. Locating reveals every recorded path at once, in one window with every stem selected where the file manager supports that, and in one window per directory otherwise.
 
 ## The stems card
 

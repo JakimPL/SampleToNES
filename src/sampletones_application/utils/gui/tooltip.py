@@ -68,14 +68,22 @@ def attach_disabled_tooltip(
     message: str,
     *,
     tag: str,
+    text_tag: Optional[str] = None,
 ) -> None:
     """Attaches an explanatory tooltip to ``parent`` — an enabled group wrapping a control that can be
     disabled — and hides it by default. Toggle ``tag``'s ``show`` to reveal the explanation while the
     control is unavailable. The wrapper group is the hover target because DearPyGui surfaces a tooltip
-    for an enabled item, so the explanation reaches the user even when the inner control is disabled."""
+    for an enabled item, so the explanation reaches the user even when the inner control is disabled.
+
+    ``text_tag`` names the message itself, which is what a caller gives it where the reason the
+    control is unavailable changes while the control stands."""
+    text_kwargs: SerializedData = {}
+    if text_tag is not None:
+        text_kwargs["tag"] = text_tag
+
     with dpg.tooltip(parent, tag=tag, show=False, hide_on_activity=True) as tooltip:
         ThemeRegistry.get(TAG_GLOBAL_THEME_TOOLTIP).bind_to_item(tooltip)
-        tooltip_text = dpg.add_text(message)
+        tooltip_text = dpg.add_text(message, **text_kwargs)
         FontRegistry.bind_to_item(tooltip_text, Font.REGULAR_SMALL)
 
 

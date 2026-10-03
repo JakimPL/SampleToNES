@@ -13,6 +13,7 @@ from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PATH_RECONSTRUCTION_FILE,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_NES_FREQUENCY_LOCKED,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_NES_FREQUENCY,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_NES_FREQUENCY_LOCKED,
 )
@@ -31,6 +32,7 @@ from sampletones_application.view_model.reconstruction.paths.path import (
 from sampletones_application.view_model.reconstruction.paths.state import (
     ReconstructionPathState,
 )
+from sampletones_application.view_model.reconstruction.rate import RateLock
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
@@ -45,7 +47,8 @@ class GUIReconstructionAudioPanel(GUIPanel):
     The card names the reconstruction's own file and takes the engine rate it runs at, and offers
     the choice between the reconstruction and the audio it was built from. The recordings
     behind that audio are named by the stems card, one row each. A reconstruction that is a
-    sample of a project follows the project's rate, so its field is locked.
+    sample of a project follows the project's rate, and one with no file keeps its rate until it
+    is saved to one, so the field is locked for both, with a hint naming which.
     """
 
     def __init__(
@@ -190,8 +193,9 @@ class GUIReconstructionAudioPanel(GUIPanel):
         )
         attach_disabled_tooltip(
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_NES_FREQUENCY,
-            self._language_manager["reconstructions.reconstruction.tooltip.nes_frequency_locked"],
+            self._rate_lock_words(RateLock.PROJECT_SAMPLE),
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_NES_FREQUENCY_LOCKED,
+            text_tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_NES_FREQUENCY_LOCKED,
         )
 
     def _render_frequency(self, view_model: ReconstructionViewModel) -> None:
@@ -213,8 +217,21 @@ class GUIReconstructionAudioPanel(GUIPanel):
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_NES_FREQUENCY_LOCKED,
             view_model.show_nes_frequency_hint,
         )
+        if view_model.rate_lock is not None:
+            dpg_set_value(
+                TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_NES_FREQUENCY_LOCKED,
+                self._rate_lock_words(view_model.rate_lock),
+            )
         if nes_frequency is not None and not dpg.is_item_active(TAG_RECONSTRUCTIONS_RECONSTRUCTION_INPUT_NES_FREQUENCY):
             dpg_set_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_INPUT_NES_FREQUENCY, nes_frequency)
+
+    def _rate_lock_words(self, rate_lock: RateLock) -> str:
+        """What the locked rate's hint says, which names the reason the rate is kept."""
+        match rate_lock:
+            case RateLock.PROJECT_SAMPLE:
+                return self._language_manager["reconstructions.reconstruction.tooltip.nes_frequency_locked"]
+            case RateLock.NO_FILE:
+                return self._language_manager["reconstructions.reconstruction.tooltip.nes_frequency_no_file"]
 
     def _on_nes_frequency_input(self, _sender: Sender, _app_data: int) -> None:
         self.call(

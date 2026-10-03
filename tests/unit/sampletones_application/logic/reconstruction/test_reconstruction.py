@@ -20,6 +20,7 @@ from sampletones_application.view_model.reconstruction.envelopes import (
 from sampletones_application.view_model.reconstruction.paths.state import (
     ReconstructionPathState,
 )
+from sampletones_application.view_model.reconstruction.rate import RateLock
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
@@ -89,6 +90,7 @@ def mock_export_service() -> MagicMock:
 def mock_reconstruction_manager() -> MagicMock:
     mock = MagicMock(spec=ReconstructionManager)
     mock.current_reconstruction = None
+    mock.is_project_sample = False
     mock.audio_filepath = None
     mock.listening = StemListening()
     mock.refresh_features.side_effect = lambda: _refresh_features(mock)
@@ -494,6 +496,58 @@ class TestReconstructionPanelLogicEngineRate:
         panel_logic.close_reconstruction()
 
         assert received[0].nes_frequency is None
+
+
+class TestTheRateLock:
+    """The view names why the open document keeps its rate: it is a sample of the project, or it has no file."""
+
+    @staticmethod
+    def _shown(panel_logic: ReconstructionPanelLogic) -> ReconstructionViewModel:
+        received: List[ReconstructionViewModel] = []
+        panel_logic.on_view_changed = received.append
+        panel_logic.display_reconstruction()
+        return received[-1]
+
+    def test_a_document_on_disk_is_free_to_retime(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+        tmp_path: Path,
+    ) -> None:
+        _open(mock_reconstruction_manager, loaded_data.detached_copy(tmp_path / "standing.stn"))
+
+        assert self._shown(panel_logic).rate_lock is None
+
+    def test_a_document_with_no_file_keeps_its_rate_for_that_reason(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        """A document whose file was taken away belongs to no project, so its lock says so."""
+        _open(mock_reconstruction_manager, loaded_data)
+
+        assert self._shown(panel_logic).rate_lock is RateLock.NO_FILE
+
+    def test_a_sample_of_the_project_follows_the_projects_rate(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.is_project_sample = True
+        _open(mock_reconstruction_manager, loaded_data)
+
+        assert self._shown(panel_logic).rate_lock is RateLock.PROJECT_SAMPLE
+
+    def test_a_closed_tab_names_no_lock(self, panel_logic: ReconstructionPanelLogic) -> None:
+        received: List[ReconstructionViewModel] = []
+        panel_logic.on_view_changed = received.append
+
+        panel_logic.close_reconstruction()
+
+        assert received[-1].rate_lock is None
 
 
 class TestAReTimedDocumentIsShown:

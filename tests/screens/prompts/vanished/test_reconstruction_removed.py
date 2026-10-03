@@ -23,6 +23,7 @@ PULSES: Final[Tuple[ChannelName, ...]] = (ChannelName.PULSE1, ChannelName.PULSE2
 SETTLING_FRAMES: Final[int] = 10
 NOT_APPLICABLE: Final[str] = "reconstructions.reconstruction.label.path_not_applicable"
 RATE_SET_BY_THE_PROJECT: Final[str] = "reconstructions.reconstruction.tooltip.nes_frequency_locked"
+RATE_KEPT_WITHOUT_A_FILE: Final[str] = "reconstructions.reconstruction.tooltip.nes_frequency_no_file"
 
 
 def take_its_file_away(screen: Screen) -> None:
@@ -115,16 +116,23 @@ class TestAReconstructionWhoseFileWasRemoved:
             save_where_asked_writes_it_and_closes,
         ).run()
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: a reconstruction whose file was removed reads as a sample of the project",
-    )
     def test_the_locked_rate_says_nothing_of_a_project(self, screen: Screen) -> None:
-        """The rate stays locked and its explanation words speak of the reconstruction, not of a project."""
+        """The rate stays locked and its explanation words speak of the missing file, not of a project.
+
+        Closing the reconstruction afterwards lets its changes go, so the application leaves with
+        nothing to ask.
+        """
         reconstructions = screen.reconstructions
+        prompt = reconstructions.unsaved_prompt
         take_its_file_away(screen)
 
         assert not reconstructions.can_retune()
         assert reconstructions.retune_lock_explained()
         assert reconstructions.retune_lock_words() != screen.words(RATE_SET_BY_THE_PROJECT)
+        assert reconstructions.retune_lock_words() == screen.words(RATE_KEPT_WITHOUT_A_FILE)
+
+        reconstructions.close_from_menu()
+        screen.expect(prompt.is_shown, bool, description="the question about closing")
+        prompt.confirm()
+
+        screen.expect(screen.title, titled(screen).__eq__, description="the reconstruction let go")
