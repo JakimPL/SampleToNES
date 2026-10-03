@@ -27,6 +27,9 @@ def configure(parser: ArgumentParser) -> None:
 def run(arguments: Namespace) -> int:
     """Starts the application with the file loaded.
 
+    The file is handed on by its absolute path, so the session that remembers it reopens it from
+    any folder a later run starts in.
+
     Raises:
         SystemExit: If the path names no file, a recording, or a file of another kind.
     """
@@ -56,11 +59,12 @@ def run(arguments: Namespace) -> int:
     from sampletones_shared.array import report_array_backend
 
     report_array_backend()
+    opened = given.path.resolve()
     run_application(
         given.config,
-        project_path=given.path if suffix == EXT_FILE_PROJECT else None,
-        reconstruction_path=given.path if suffix == EXT_FILE_RECONSTRUCTION else None,
-        library_path=given.path if suffix == EXT_FILE_LIBRARY else None,
+        project_path=opened if suffix == EXT_FILE_PROJECT else None,
+        reconstruction_path=opened if suffix == EXT_FILE_RECONSTRUCTION else None,
+        library_path=opened if suffix == EXT_FILE_LIBRARY else None,
     )
     return 0
 
