@@ -15,16 +15,12 @@ from tests.suite.screens.steps.reconstructions import (
     stored_levels,
     titled,
 )
+from tests.suite.screens.vocabulary.dialogs import CANCEL, CLOSE, CLOSE_MESSAGE, CLOSE_TITLE, SAVE
 from tests.suite.screens.world import OPEN_RECONSTRUCTION
 
 KEPT: Final[str] = "Kept.stn"
 PULSES: Final[Tuple[ChannelName, ...]] = (ChannelName.PULSE1, ChannelName.PULSE2)
 SETTLING_FRAMES: Final[int] = 10
-CLOSE_TITLE: Final[str] = "global.dialog.title.close_unsaved_reconstruction"
-CLOSE_MESSAGE: Final[str] = "global.dialog.message.close_unsaved_reconstruction"
-SAVE: Final[str] = "global.dialog.label.save"
-CLOSE: Final[str] = "global.dialog.label.close"
-CANCEL: Final[str] = "global.dialog.label.cancel"
 NOT_APPLICABLE: Final[str] = "reconstructions.reconstruction.label.path_not_applicable"
 RATE_SET_BY_THE_PROJECT: Final[str] = "reconstructions.reconstruction.tooltip.nes_frequency_locked"
 

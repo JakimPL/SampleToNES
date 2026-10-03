@@ -21,15 +21,14 @@ from tests.suite.screens.steps.reconstructions import (
     remove_from_the_browser,
     titled,
 )
+from tests.suite.screens.vocabulary.converter import CONVERT_ONE
+from tests.suite.screens.vocabulary.dialogs import CLOSE_TITLE, LOAD_TITLE
 from tests.suite.screens.world import BASS, OPEN_RECONSTRUCTION, OTHER_RECONSTRUCTION
 
 SETTLING_FRAMES: Final[int] = 30
 KEPT: Final[str] = "Kept.stn"
 LOCKED_FOLDER: Final[str] = "Locked"
 READ_AND_ENTER: Final[int] = stat.S_IRUSR | stat.S_IXUSR
-CONVERT_ONE: Final[str] = "main.converter.template.convert_recording"
-LOAD_TITLE: Final[str] = "global.dialog.title.load_unsaved_reconstruction"
-CLOSE_TITLE: Final[str] = "global.dialog.title.close_unsaved_reconstruction"
 SAVE_FAILED: Final[str] = "global.dialog.message.reconstruction_save_failed"
 REBUILD_FAILURE: Final[str] = "The rebuild broke on its worker"
 LISTENING: Final[str] = "settings.keybindings.message.capturing"

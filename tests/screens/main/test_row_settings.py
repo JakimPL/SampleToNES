@@ -17,10 +17,10 @@ from tests.suite.screens.holds import ConversionHold
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds import Recording
 from tests.suite.screens.steps.main import choose_from_the_row_menu, gather, home_path
+from tests.suite.screens.vocabulary.converter import CANCEL_RUN, FOLDER_ROW, REMOVE_RECORDING
+from tests.suite.screens.vocabulary.recordings import KICK, SNARE
 from tests.suite.screens.world import HomeFile, World, converting_world, lived_in_world
 
-KICK: Final[str] = "kick.wav"
-SNARE: Final[str] = "snare.wav"
 PAIR: Final[str] = "Pair"
 PAIR_TAKES: Final[Tuple[str, ...]] = ("left.wav", "right.wav")
 PLAYED_SECONDS: Final[float] = 2.0
@@ -29,9 +29,6 @@ FILTER_TEXT: Final[str] = "zz"
 HELD_TIMEOUT_SECONDS: Final[float] = 60.0
 
 NEW_RECORDINGS: Final[str] = "main.source.label.new_recordings"
-FOLDER_ROW: Final[str] = "global.stems.template.folder_row"
-REMOVE_RECORDING: Final[str] = "main.converter.label.context_remove_stem"
-CANCEL_RUN: Final[str] = "main.converter.label.cancel_button"
 PROGRESS: Final[str] = "main.converter.template.progress_template"
 
 

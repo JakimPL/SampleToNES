@@ -9,6 +9,7 @@ from tests.suite.screens.dearpygui.items import Item
 from tests.suite.screens.holds import Holds, ReleaseSignal, ScanHold
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds import Recording
+from tests.suite.screens.vocabulary.converter import FOLDER_ROW, SCAN_PROGRESS
 from tests.suite.screens.world import HomeFile, World, lived_in_world
 
 MANY: Final[str] = "Many"
@@ -21,8 +22,6 @@ FREQUENCY: Final[float] = 330.0
 SLOW_ENTRY_SECONDS: Final[float] = 2.0
 SLOW_RELEASE_FILE: Final[str] = "release-slow-scan"
 
-SCAN_PROGRESS: Final[str] = "main.converter.template.scan_progress"
-FOLDER_ROW: Final[str] = "global.stems.template.folder_row"
 RECONSTRUCT_DIRECTORY: Final[str] = "main.explorer.label.context_reconstruct_directory"
 
 

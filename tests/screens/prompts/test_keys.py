@@ -22,14 +22,12 @@ from tests.suite.screens.steps.reconstructions import (
     stored_levels,
     titled,
 )
+from tests.suite.screens.vocabulary.dialogs import CLOSE_MESSAGE, EXIT_PROJECT_MESSAGE, EXIT_RECONSTRUCTION_MESSAGE
 from tests.suite.screens.world import BASS, LEAD, OPEN_RECONSTRUCTION, SONG, SONG_INSTRUMENT, SONG_SAMPLE
 
 RETITLED: Final[str] = "Retitled from the keyboard"
 KEPT: Final[str] = "Kept.stn"
 SETTLING_FRAMES: Final[int] = 10
-EXIT_PROJECT_MESSAGE: Final[str] = "global.dialog.message.exit_unsaved_project"
-EXIT_RECONSTRUCTION_MESSAGE: Final[str] = "global.dialog.message.exit_unsaved_reconstruction"
-CLOSE_MESSAGE: Final[str] = "global.dialog.message.close_unsaved_reconstruction"
 
 
 def tab(screen: Screen, times: int) -> None:

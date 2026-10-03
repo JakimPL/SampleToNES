@@ -224,6 +224,43 @@ short enough to read before every change.
 
 A bug fix's scenario is shown failing on the code before the fix, and the pull request says so.
 
+## How the scenarios are laid out
+
+`tests/screens/` has a package per area of the application (`application`, `exports`, `instructions`,
+`interface`, `main`, `prompts`, `reconstructions`, `sequencer`), and an area has a package per subject.
+A subject package holds one file per responsibility: the classes in a file prove one family of rules of
+that subject, and a file that grows past about 300 lines or starts answering a second question is split
+by subject. A file name says its responsibility, such as `test_note_keys.py`.
+
+What several files of a subject share sits in modules of the package, written once two files need it:
+
+| Module | Holds |
+|---|---|
+| `constants.py` | Scalar `Final` constants and language keys |
+| `cases.py` | Case dataclasses and the tables over them |
+| `steps.py` | Steps, readings and the builders of a world |
+| `conftest.py` | Fixtures every file of the package uses, such as `world` and `startup` |
+
+What several areas share lives in `tests/suite/screens/vocabulary/`, one module per area: the keys of
+the dialogs and their messages, of the converter and of playback, and the names of the seeded recordings.
+A value that one file alone uses stays in that file. Constants stand directly under the imports in every
+module, so a reader meets the values before the code that uses them, and a case in
+`tests/integration/tooling/` holds that order. Scenario files import from `constants.py`, `cases.py`,
+`steps.py` and the vocabulary, and never from one another.
+
+### Docstrings
+
+A docstring tells a reader what is tested, how the scenario goes and what is expected, in a few plain
+sentences.
+
+- A test class opens with the rule it proves, told from the user's side. A second sentence gives the
+  logic where the method names leave it open: the setup, the gestures and the witness a negative ends with.
+- A test method gets one sentence on what is expected where its name does not already say.
+- A fixture says what the home holds or what opens at start.
+- A step or a reading says what it does and what it leaves behind.
+- A case type says what one row means, and each of its fields what it holds.
+- The steps defined inside a test carry their gesture as their name and need no docstring.
+
 ## Running and watching
 
 `make screens` runs every scenario across a few workers, each on an Xvfb of its own. `make system-deps`

@@ -21,6 +21,7 @@ from tests.suite.screens.steps.project import save_project_as
 from tests.suite.screens.steps.reconstructions import edit_envelope, expect_open, marked, titled
 from tests.suite.screens.steps.sequencer import open_voice
 from tests.suite.screens.views.waveform import read_cursor
+from tests.suite.screens.vocabulary.playback import PLAY
 from tests.suite.screens.world import OPEN_RECONSTRUCTION, PLAYABLE_RECONSTRUCTION, SONG, SONG_INSTRUMENT
 
 SAVED_SONG: Final[Path] = PROJECTS_DIRECTORY / "Saved.stp"
@@ -63,7 +64,6 @@ TYPING_HINT: Final[str] = "reconstructions.instruments.message.status_sequence"
 TOO_LONG: Final[str] = "reconstructions.instruments.message.status_sequence_too_long"
 KEPT_FAMITRACKER: Final[str] = "reconstructions.instruments.template.kept_famitracker"
 INVALID_INPUT: Final[str] = "Invalid PULSE1 data input for VOLUME"
-PLAY: Final[str] = "global.menu.label.item_playback_play"
 
 
 def status_over(screen: Screen, item: str) -> str:

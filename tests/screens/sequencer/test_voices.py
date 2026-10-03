@@ -20,6 +20,7 @@ from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.reconstructions import BY_CONFIGURATION
 from tests.suite.screens.steps.sequencer import forgive_the_hover_race, leave_letting_the_project_go
 from tests.suite.screens.views.menus import MenuEntry
+from tests.suite.screens.vocabulary.playback import PAUSE
 from tests.suite.screens.world import ARRANGED_PROJECT, BASS_VOICE, LINE, PAD, SHORT_RECONSTRUCTION
 
 POOL_ACTIONS: Final[Tuple[str, ...]] = (
@@ -35,7 +36,6 @@ LINE_CHANNEL_NAMES: Final[Tuple[str, ...]] = (
     "global.context.label.triangle",
     "global.context.label.noise",
 )
-PAUSE: Final[str] = "global.menu.label.item_playback_pause"
 EMPTY_SPACE_INSET: Final[int] = 10
 SETTLING_FRAMES: Final[int] = 20
 MOVE_DOWN_KEYS: Final[str] = "Alt+Down"

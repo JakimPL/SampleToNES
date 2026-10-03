@@ -18,13 +18,13 @@ from tests.suite.screens.steps.reconstructions import (
     raise_the_first_level_while_held,
     titled,
 )
+from tests.suite.screens.vocabulary.dialogs import EXIT_PROJECT_MESSAGE
 from tests.suite.screens.world import BASS, LEAD, OPEN_RECONSTRUCTION
 
 SETTLING_FRAMES: Final[int] = 30
 PROJECT: Final[str] = "Closing.stp"
 SAVED_TITLE: Final[str] = "Before closing"
 NEW_TITLE: Final[str] = "After closing"
-EXIT_PROJECT_MESSAGE: Final[str] = "global.dialog.message.exit_unsaved_project"
 
 
 def change_a_saved_project(screen: Screen) -> None:

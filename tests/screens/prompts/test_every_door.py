@@ -24,6 +24,20 @@ from tests.suite.screens.steps.reconstructions import (
     voice_title,
 )
 from tests.suite.screens.steps.sequencer import double_click_voice, open_voice
+from tests.suite.screens.vocabulary.dialogs import (
+    CANCEL,
+    CLOSE,
+    CLOSE_MESSAGE,
+    CLOSE_TITLE,
+    DISCARD,
+    EDIT_MESSAGE,
+    EDIT_TITLE,
+    EXIT_PROJECT_MESSAGE,
+    EXIT_RECONSTRUCTION_MESSAGE,
+    LOAD_MESSAGE,
+    LOAD_TITLE,
+    SAVE,
+)
 from tests.suite.screens.world import (
     BASS,
     LEAD,
@@ -37,20 +51,8 @@ from tests.suite.screens.world import (
 SETTLING_FRAMES: Final[int] = 10
 SAMPLE_ORDINAL: Final[int] = 0
 FADING: Final[str] = "12 8 4"
-LOAD_TITLE: Final[str] = "global.dialog.title.load_unsaved_reconstruction"
-LOAD_MESSAGE: Final[str] = "global.dialog.message.load_unsaved_reconstruction"
-CLOSE_TITLE: Final[str] = "global.dialog.title.close_unsaved_reconstruction"
-CLOSE_MESSAGE: Final[str] = "global.dialog.message.close_unsaved_reconstruction"
-EDIT_TITLE: Final[str] = "global.dialog.title.edit_voice_unsaved_reconstruction"
-EDIT_MESSAGE: Final[str] = "global.dialog.message.edit_voice_unsaved_reconstruction"
 EXIT_TITLE: Final[str] = "global.dialog.title.exit_confirmation"
-EXIT_RECONSTRUCTION_MESSAGE: Final[str] = "global.dialog.message.exit_unsaved_reconstruction"
-EXIT_PROJECT_MESSAGE: Final[str] = "global.dialog.message.exit_unsaved_project"
-SAVE: Final[str] = "global.dialog.label.save"
-DISCARD: Final[str] = "global.dialog.label.discard"
-CLOSE: Final[str] = "global.dialog.label.close"
 EXIT: Final[str] = "global.dialog.label.exit"
-CANCEL: Final[str] = "global.dialog.label.cancel"
 
 
 class Door(StrEnum):

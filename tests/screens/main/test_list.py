@@ -22,10 +22,10 @@ from sampletones_shared.utils.serialization import load_yaml_model
 from tests.suite.screens.dearpygui.items import Item, read_item, read_scroll
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds import Recording
+from tests.suite.screens.vocabulary.converter import CONVERT_ONE, CONVERT_SEVERAL, FOLDER_ROW, REMOVE_RECORDING
+from tests.suite.screens.vocabulary.recordings import KICK, SNARE
 from tests.suite.screens.world import HomeFile, World, lived_in_world
 
-KICK: Final[str] = "kick.wav"
-SNARE: Final[str] = "snare.wav"
 FORTY: Final[str] = "Forty"
 FORTY_COUNT: Final[int] = 40
 PLAYED_SECONDS: Final[float] = 2.0
@@ -35,13 +35,9 @@ STILL_FRAMES: Final[int] = 30
 SAME_LINE_PIXELS: Final[float] = 1.0
 HEADING: Final[str] = "heading"
 
-FOLDER_ROW: Final[str] = "global.stems.template.folder_row"
 SHOW_RECORDINGS: Final[str] = "main.converter.label.context_open_folder"
 HIDE_RECORDINGS: Final[str] = "main.converter.label.context_close_folder"
-REMOVE_RECORDING: Final[str] = "main.converter.label.context_remove_stem"
 PLAY: Final[str] = "global.context.label.play"
-CONVERT_ONE: Final[str] = "main.converter.template.convert_recording"
-CONVERT_SEVERAL: Final[str] = "main.converter.template.convert_recordings"
 CHANNEL_NAMES: Final[Dict[ChannelName, str]] = {
     ChannelName.PULSE1: "global.context.label.pulse_1",
     ChannelName.PULSE2: "global.context.label.pulse_2",

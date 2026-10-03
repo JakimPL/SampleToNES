@@ -18,6 +18,8 @@ from tests.suite.screens.steps.main import gather, home_path
 from tests.suite.screens.steps.project import retitle_project, save_project_as, saved_project_title
 from tests.suite.screens.steps.reconstructions import expect_open, raise_the_first_level_while_held
 from tests.suite.screens.views.prompts import Prompt
+from tests.suite.screens.vocabulary.converter import SCAN_PROGRESS
+from tests.suite.screens.vocabulary.playback import PAUSE
 from tests.suite.screens.world import (
     ARRANGED_PROJECT,
     BASS,
@@ -36,14 +38,12 @@ PROJECT_FILENAME: Final[str] = "Closing.stp"
 SAVED_TITLE: Final[str] = "Before closing"
 NEW_TITLE: Final[str] = "Closing title"
 CONVERSION_RUNNING: Final[str] = "global.dialog.message.exit_conversion_in_progress"
-PAUSE: Final[str] = "global.menu.label.item_playback_pause"
 RUN_TIMEOUT_SECONDS: Final[float] = 60.0
 SETTLING_FRAMES: Final[int] = 30
 FOLDER: Final[str] = "Many"
 FOLDER_RECORDINGS: Final[int] = 130
 RECORDING_SECONDS: Final[float] = 0.05
 RECORDING_FREQUENCY: Final[float] = 330.0
-SCAN_PROGRESS: Final[str] = "main.converter.template.scan_progress"
 
 
 def save_a_titled_project(screen: Screen) -> None:

@@ -16,6 +16,7 @@ from tests.suite.screens.holds import ConversionHold
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds import Recording
 from tests.suite.screens.steps.main import explorer_row, gather, give_each_its_own_channel, home_path
+from tests.suite.screens.vocabulary.converter import CANCEL_RUN, CONVERT_NOTHING, CONVERT_ONE, CONVERT_SEVERAL
 from tests.suite.screens.world import HomeFile, World, converting_world
 
 SECONDS: Final[float] = 0.3
@@ -31,11 +32,7 @@ DISC_TAKES: Final[Tuple[str, ...]] = ("three.wav",)
 RECONSTRUCTION_SUFFIX: Final[str] = ".stn"
 OTHER_RECONSTRUCTION: Final[str] = "other.stn"
 
-CONVERT_NOTHING: Final[str] = "main.converter.label.convert_button"
-CONVERT_ONE: Final[str] = "main.converter.template.convert_recording"
-CONVERT_SEVERAL: Final[str] = "main.converter.template.convert_recordings"
 MIX_SEVERAL: Final[str] = "main.converter.template.mix_recordings"
-CANCEL_RUN: Final[str] = "main.converter.label.cancel_button"
 RECONSTRUCT_FILE: Final[str] = "main.explorer.label.context_reconstruct_file"
 RUN_FAILED: Final[str] = "main.converter.message.status_error"
 

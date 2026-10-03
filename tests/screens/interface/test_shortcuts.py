@@ -21,10 +21,9 @@ from tests.suite.screens.dearpygui.items import is_tag_within, read_windows
 from tests.suite.screens.dearpygui.keys import IMGUI_ESCAPE
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.reconstructions import UNTITLED, expect_open, titled
+from tests.suite.screens.vocabulary.playback import PAUSE, PLAY
 from tests.suite.screens.world import ARRANGED_PROJECT, PLAYABLE_RECONSTRUCTION
 
-PAUSE: Final[str] = "global.menu.label.item_playback_pause"
-PLAY: Final[str] = "global.menu.label.item_playback_play"
 SETTLING_FRAMES: Final[int] = 10
 DIALOG_SHORTCUTS: Final[Tuple[Tuple[ShortcutId, str], ...]] = (
     (ShortcutId.DISPLAY_SETTINGS, TAG_SETTINGS_DISPLAY_WINDOW),

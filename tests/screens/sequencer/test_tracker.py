@@ -15,6 +15,7 @@ from tests.suite.screens.dearpygui.keys import IMGUI_LETTER_A
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.sequencer import leave_letting_the_project_go
 from tests.suite.screens.views.tracker import tracker_cell, tracker_cell_theme
+from tests.suite.screens.vocabulary.playback import PAUSE
 from tests.suite.screens.world import ARRANGED_PROJECT, BASS_ROW, PAD_ROW
 
 PIANO_C: Final[int] = IMGUI_LETTER_A + ord("z") - ord("a")
@@ -31,7 +32,6 @@ HIGHER_OCTAVE: Final[int] = 3
 NO_VOICE_ROW: Final[int] = 2
 SAMPLE_COLUMN: Final[Optional[ChannelName]] = None
 SAMPLE_HEADER: Final[str] = "sequencer.tracker.label.column_sample"
-PAUSE: Final[str] = "global.menu.label.item_playback_pause"
 SET_VOICE: Final[str] = "sequencer.tracker.label.context_set_voice"
 CLEAR_SUBCOLUMN: Final[str] = "sequencer.tracker.label.context_clear_subcolumn"
 SUBCOLUMN_LETTERS: Final[Tuple[Tuple[SubColumn, str], ...]] = (

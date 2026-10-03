@@ -17,16 +17,12 @@ from tests.suite.screens.steps.reconstructions import (
     voice_title,
 )
 from tests.suite.screens.steps.sequencer import double_click_voice, open_voice, voice_row
+from tests.suite.screens.vocabulary.dialogs import CANCEL, DISCARD, EDIT_MESSAGE, EDIT_TITLE, SAVE
 from tests.suite.screens.world import OPEN_RECONSTRUCTION, SONG, SONG_INSTRUMENT, SONG_SAMPLE
 
 SAMPLE_ORDINAL: Final[int] = 0
 PERSONS_HOLD_FRAMES: Final[int] = 10
 PULSES: Final[Tuple[ChannelName, ...]] = (ChannelName.PULSE1, ChannelName.PULSE2)
-EDIT_TITLE: Final[str] = "global.dialog.title.edit_voice_unsaved_reconstruction"
-EDIT_MESSAGE: Final[str] = "global.dialog.message.edit_voice_unsaved_reconstruction"
-SAVE: Final[str] = "global.dialog.label.save"
-DISCARD: Final[str] = "global.dialog.label.discard"
-CANCEL: Final[str] = "global.dialog.label.cancel"
 REMOVE_VOICE: Final[str] = "sequencer.voices.label.context_remove"
 FADING: Final[str] = "12 8 4"
 

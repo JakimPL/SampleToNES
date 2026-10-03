@@ -12,6 +12,7 @@ from tests.suite.screens.application import Startup
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.reconstructions import expect_open, load_from_the_browser, marked, titled
 from tests.suite.screens.views.stems import StemsCard
+from tests.suite.screens.vocabulary.playback import PAUSE
 from tests.suite.screens.world import (
     SHORT_RECONSTRUCTION,
     STEM_TAKES,
@@ -28,7 +29,6 @@ PLAYING_CHANNELS: Final[Tuple[ChannelName, ...]] = (ChannelName.PULSE1, ChannelN
 REMOVE_TITLE: Final[str] = "reconstructions.reconstruction.title.remove_stem_dialog"
 REMOVE_MESSAGE: Final[str] = "reconstructions.reconstruction.message.remove_stem_message"
 NOTHING_EXPORTED: Final[str] = "global.context.template.size_bytes"
-PAUSE: Final[str] = "global.menu.label.item_playback_pause"
 
 
 def take(index: int) -> Path:

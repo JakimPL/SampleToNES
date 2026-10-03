@@ -12,6 +12,7 @@ from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds import Recording
 from tests.suite.screens.steps.reconstructions import expect_open, load_from_the_browser
 from tests.suite.screens.views.waveform import Waveform
+from tests.suite.screens.vocabulary.playback import PAUSE, PLAY
 from tests.suite.screens.world import (
     PLAYABLE_RECONSTRUCTION,
     SECOND_PLAYABLE,
@@ -31,8 +32,6 @@ BEAT_FRAMES: Final[int] = 15
 BEAT_LENGTH: Final[int] = 3
 SILENCE: Final[float] = 1e-6
 SILENT_SHARE_TOLERANCE: Final[float] = 0.05
-PLAY: Final[str] = "global.menu.label.item_playback_play"
-PAUSE: Final[str] = "global.menu.label.item_playback_pause"
 RESUME: Final[str] = "global.menu.label.item_playback_resume"
 ORIGINAL_SWITCH: Final[str] = "reconstructions.reconstruction.label.original_audio_radio"
 RECONSTRUCTION_SWITCH: Final[str] = "reconstructions.reconstruction.label.reconstruction_radio"

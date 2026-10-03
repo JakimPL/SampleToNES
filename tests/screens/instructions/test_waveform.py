@@ -6,11 +6,11 @@ from sampletones_core.constants.enums import GeneratorName
 from tests.suite.screens.dearpygui.items import read_label
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.instructions import load_library
+from tests.suite.screens.vocabulary.playback import PAUSE
 from tests.suite.screens.world import one_worker_config
 
 LISTENING_FRAMES: Final[int] = 30
 ZOOM_NOTCHES: Final[int] = 3
-PAUSE: Final[str] = "global.menu.label.item_playback_pause"
 
 
 def show_the_pulse(screen: Screen) -> None:

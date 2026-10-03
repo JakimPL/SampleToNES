@@ -1,0 +1,14 @@
+from typing import Final
+
+SAVE: Final[str] = "global.dialog.label.save"
+DISCARD: Final[str] = "global.dialog.label.discard"
+CANCEL: Final[str] = "global.dialog.label.cancel"
+CLOSE: Final[str] = "global.dialog.label.close"
+LOAD_TITLE: Final[str] = "global.dialog.title.load_unsaved_reconstruction"
+LOAD_MESSAGE: Final[str] = "global.dialog.message.load_unsaved_reconstruction"
+CLOSE_TITLE: Final[str] = "global.dialog.title.close_unsaved_reconstruction"
+CLOSE_MESSAGE: Final[str] = "global.dialog.message.close_unsaved_reconstruction"
+EDIT_TITLE: Final[str] = "global.dialog.title.edit_voice_unsaved_reconstruction"
+EDIT_MESSAGE: Final[str] = "global.dialog.message.edit_voice_unsaved_reconstruction"
+EXIT_RECONSTRUCTION_MESSAGE: Final[str] = "global.dialog.message.exit_unsaved_reconstruction"
+EXIT_PROJECT_MESSAGE: Final[str] = "global.dialog.message.exit_unsaved_project"

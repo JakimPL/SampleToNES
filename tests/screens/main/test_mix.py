@@ -10,6 +10,7 @@ from sampletones_application.constants.output import OutputKind
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds import Recording
 from tests.suite.screens.steps.main import gather, home_path
+from tests.suite.screens.vocabulary.converter import REMOVE_RECORDING
 from tests.suite.screens.world import World, lived_in_world
 
 GATHERED: Final[int] = MAX_STEM_SOURCES + 2
@@ -18,7 +19,6 @@ FREQUENCY: Final[float] = 220.0
 NAMES_CLICKED: Final[int] = 4
 
 COUNT_LINE: Final[str] = "main.converter.template.stem_selection_limit"
-REMOVE_RECORDING: Final[str] = "main.converter.label.context_remove_stem"
 MOVES: Final[List[str]] = [
     "main.converter.label.context_move_up",
     "main.converter.label.context_move_down",

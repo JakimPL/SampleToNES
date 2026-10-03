@@ -20,15 +20,11 @@ from tests.suite.screens.steps.reconstructions import (
     stored_levels,
     titled,
 )
+from tests.suite.screens.vocabulary.dialogs import CANCEL, DISCARD, LOAD_MESSAGE, LOAD_TITLE, SAVE
 from tests.suite.screens.world import BASS, LEAD, OPEN_RECONSTRUCTION
 
 PULSES: Final[Tuple[ChannelName, ...]] = (ChannelName.PULSE1, ChannelName.PULSE2)
-LOAD_TITLE: Final[str] = "global.dialog.title.load_unsaved_reconstruction"
-LOAD_MESSAGE: Final[str] = "global.dialog.message.load_unsaved_reconstruction"
 REPLACED_MESSAGE: Final[str] = "global.dialog.message.load_replaced_reconstruction"
-SAVE: Final[str] = "global.dialog.label.save"
-DISCARD: Final[str] = "global.dialog.label.discard"
-CANCEL: Final[str] = "global.dialog.label.cancel"
 
 
 def convert_and_ask_to_load(screen: Screen, recording: str) -> None:

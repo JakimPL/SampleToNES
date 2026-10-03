@@ -17,10 +17,10 @@ from tests.suite.screens.dearpygui.geometry import Rect
 from tests.suite.screens.dearpygui.items import Item
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds import Recording, WrittenBytes
+from tests.suite.screens.vocabulary.converter import CANCEL_RUN, CONVERT_NOTHING, CONVERT_ONE, FOLDER_ROW
+from tests.suite.screens.vocabulary.recordings import KICK, SNARE
 from tests.suite.screens.world import HomeFile, World, lived_in_world
 
-KICK: Final[str] = "kick.wav"
-SNARE: Final[str] = "snare.wav"
 TAKES: Final[str] = "Takes"
 INNER: Final[str] = "Inner"
 LOOPS: Final[str] = "Loops"
@@ -37,10 +37,6 @@ ROUNDS: Final[int] = 20
 FIRST_COUNTED_ROUND: Final[int] = 2
 POINTER_REACH: Final[int] = 4
 
-FOLDER_ROW: Final[str] = "global.stems.template.folder_row"
-CONVERT_NOTHING: Final[str] = "main.converter.label.convert_button"
-CONVERT_ONE: Final[str] = "main.converter.template.convert_recording"
-CANCEL_RUN: Final[str] = "main.converter.label.cancel_button"
 ADD_AS_STEM: Final[str] = "main.explorer.label.context_add_stem"
 ADD_FOLDER: Final[str] = "main.explorer.label.context_add_folder_stems"
 NOTHING_BELOW: Final[str] = "main.converter.message.scan_nothing_below"
