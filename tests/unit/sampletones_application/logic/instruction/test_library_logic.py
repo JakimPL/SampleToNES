@@ -547,12 +547,26 @@ class TestTheCatalogFollowingTheConfiguration:
         assert (catalog.manager.library_directory, catalog.rebuilds_under_lock) == (other, [False])
 
     def test_the_same_directory_repaints_over_what_is_loaded(self, catalog: Catalog) -> None:
-        catalog.manager._library.save_data(catalog.config_manager.key, WrittenLibrary())
+        catalog.manager._catalog.library.save_data(catalog.config_manager.key, WrittenLibrary())
 
         aim_library_directory(catalog.config_manager, catalog.config_manager.get_library_directory())
 
         assert catalog.rebuilds_under_lock == []
         assert catalog.views[-1].generate_button_label == "Regenerate"
+
+    def test_a_directory_pointed_away_from_and_back_repaints_its_library_loaded(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        ours = catalog.config_manager.get_library_directory()
+        catalog.manager._catalog.library.save_data(catalog.config_manager.key, WrittenLibrary())
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        away = catalog.views[-1].generate_button_label
+
+        aim_library_directory(catalog.config_manager, ours)
+
+        assert (away, catalog.views[-1].generate_button_label) == ("Generate", "Regenerate")
 
     @ENDINGS
     def test_a_change_during_a_generation_stands_whatever_the_generation_came_to(

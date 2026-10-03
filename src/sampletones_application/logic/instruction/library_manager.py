@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from typing import Callable, Dict, Optional, Tuple
@@ -39,6 +40,14 @@ OnGenerationProgressCallback = Callable[[TaskStatus, TaskProgress], None]
 OnGenerationErrorCallback = Callable[[Exception], None]
 
 
+@dataclass
+class _Catalog:
+    """The libraries one directory holds in memory, and the one taken up as current there."""
+
+    library: InstructionLibrary
+    current_key: Optional[InstructionLibraryKey]
+
+
 class InstructionsLibraryManager(CallbackMixin):
     def __init__(
         self,
@@ -48,10 +57,9 @@ class InstructionsLibraryManager(CallbackMixin):
     ) -> None:
         self._language_manager = language_manager
         self._config_manager = config_manager
-        library_directory = config_manager.get_library_directory()
-        self._library = InstructionLibrary(directory=str(library_directory))
+        self._catalogs: Dict[Path, _Catalog] = {}
+        self._catalog = self._catalog_at(config_manager.get_library_directory())
         self._listed_libraries: Dict[InstructionLibraryKey, bool] = {}
-        self._current_library_key: Optional[InstructionLibraryKey] = None
 
         self._tree = Tree()
         self._creator: Optional[InstructionsLibraryCreator] = None
@@ -65,12 +73,28 @@ class InstructionsLibraryManager(CallbackMixin):
 
     @property
     def library_directory(self) -> Path:
-        return to_path(self._library.directory)
+        return to_path(self._catalog.library.directory)
 
     def set_library_directory(self, directory: Path) -> None:
-        """Roots the catalog at ``directory``, which keeps the libraries loaded from where it already stands."""
-        if directory != self.library_directory:
-            self._library = InstructionLibrary(directory=str(directory))
+        """Roots the catalog at ``directory``, keeping what every directory has loaded.
+
+        A directory read before brings back the libraries it loaded and the one it had taken up as
+        current, so a reader pointing the catalog away and back finds it as they left it.
+        """
+        self._catalog = self._catalog_at(directory)
+
+    def _catalog_at(self, directory: Path) -> _Catalog:
+        """The catalog of ``directory``, started empty the first time the directory is read."""
+        root = to_path(directory)
+        catalog = self._catalogs.get(root)
+        if catalog is None:
+            catalog = _Catalog(
+                library=InstructionLibrary(directory=str(root)),
+                current_key=None,
+            )
+            self._catalogs[root] = catalog
+
+        return catalog
 
     def gather_available_libraries(self) -> None:
         """Lists the library files standing in the catalog's directory, marking each one another
@@ -82,8 +106,9 @@ class InstructionsLibraryManager(CallbackMixin):
                 if filepath.is_file() and filepath.suffix == EXT_FILE_LIBRARY and self._is_library_file(filepath.stem):
                     listed[create_key_from_filename(filepath)] = library_state(filepath) is LibraryState.OUTDATED
 
-        for removed_key in set(self._listed_libraries) - set(listed):
-            self._library.data.pop(removed_key, None)
+        loaded = self._catalog.library.data
+        for removed_key in set(loaded) - set(listed):
+            del loaded[removed_key]
 
         self._listed_libraries = listed
 
@@ -93,11 +118,11 @@ class InstructionsLibraryManager(CallbackMixin):
         A load takes only a library this build reads, so a library held here is one to use as it
         stands.
         """
-        return library_key in self._library.data
+        return library_key in self._catalog.library.data
 
     def library_state(self, library_key: InstructionLibraryKey) -> LibraryState:
         """Where the library ``library_key`` names stands in the catalog for this build."""
-        return self._library.state(library_key)
+        return self._catalog.library.state(library_key)
 
     def stored_config(self, library_key: InstructionLibraryKey) -> Optional[InstructionsLibraryConfig]:
         """The settings the library ``library_key`` names states it was built for, where its file
@@ -111,23 +136,24 @@ class InstructionsLibraryManager(CallbackMixin):
         """Takes up the library ``library_key`` names as the current one, reading it from its file
         where the catalog holds it in no memory yet."""
         if not self.is_library_loaded(library_key):
-            self._library.load_data(library_key)
+            self._catalog.library.load_data(library_key)
 
-        self._current_library_key = library_key
-        return self._library.data[library_key]
+        self._catalog.current_key = library_key
+        return self._catalog.library.data[library_key]
 
     def load_instruction(
         self,
         instruction: InstructionUnion,
     ) -> Optional[InstructionPanelData]:
-        if not self._current_library_key or not self.is_library_loaded(self._current_library_key):
+        current_key = self._catalog.current_key
+        if not current_key or not self.is_library_loaded(current_key):
             return None
 
-        data = self._library.data[self._current_library_key]
+        data = self._catalog.library.data[current_key]
         fragment = data[instruction]
         library_config = data.config
         instruction_data = InstructionPanelData(
-            library_key=self._current_library_key,
+            library_key=current_key,
             instruction=instruction,
             config=library_config,
             fragment=fragment,
@@ -136,14 +162,14 @@ class InstructionsLibraryManager(CallbackMixin):
         return instruction_data
 
     def get_path(self, library_key: InstructionLibraryKey) -> Path:
-        return self._library.get_path(library_key)
+        return self._catalog.library.get_path(library_key)
 
     def sync_with_config_key(
         self,
         config_key: InstructionLibraryKey,
     ) -> Optional[InstructionLibraryKey]:
         if self.library_state(config_key) is LibraryState.CURRENT:
-            self._current_library_key = config_key
+            self._catalog.current_key = config_key
             return config_key
 
         return None
@@ -186,7 +212,7 @@ class InstructionsLibraryManager(CallbackMixin):
 
         self._creator.set_callbacks(
             on_start=self.on_generation_start,
-            on_completed=partial(self._complete_generation, self._library),
+            on_completed=partial(self._complete_generation, self._catalog),
             on_error=self.on_generation_error,
             on_canceled=self.on_generation_canceled,
             on_progress=_on_progress,
@@ -196,22 +222,22 @@ class InstructionsLibraryManager(CallbackMixin):
 
     def _complete_generation(
         self,
-        library: InstructionLibrary,
+        catalog: _Catalog,
         result: Tuple[InstructionLibraryKey, InstructionLibraryData],
     ) -> None:
-        """Writes the generated library into ``library``, the catalog the generation was started in.
+        """Writes the generated library into ``catalog``, the one the generation was started in.
 
         The library becomes the current one only where the catalog still stands there.
         """
         key, library_data = result
         try:
-            library.save_data(key, library_data)
+            catalog.library.save_data(key, library_data)
         except OSError as exception:
             self.call(self.on_generation_error, exception)
             raise
 
-        if library is self._library:
-            self._current_library_key = key
+        if catalog is self._catalog:
+            catalog.current_key = key
 
         self.call(self.on_generation_completed)
 
@@ -230,10 +256,11 @@ class InstructionsLibraryManager(CallbackMixin):
 
     @property
     def current_library_key(self) -> Optional[InstructionLibraryKey]:
-        return self._current_library_key
+        """The library taken up as current in the catalog standing now."""
+        return self._catalog.current_key
 
     def clear_current_library(self) -> None:
-        self._current_library_key = None
+        self._catalog.current_key = None
 
     @property
     def creator(self) -> Optional[InstructionsLibraryCreator]:
