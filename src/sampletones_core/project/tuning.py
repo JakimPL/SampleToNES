@@ -2,6 +2,7 @@ from typing import Final, Set
 
 from sampletones_core.project.project import Project
 from sampletones_core.project.voices.voice import samples
+from sampletones_shared.exceptions import ProjectTuningError
 from sampletones_shared.music import Tuning
 
 UNTUNED_PROJECT: Final[Tuning] = Tuning()
@@ -26,8 +27,8 @@ def tuning_from_project(project: Project) -> Tuning:
         Tuning: The tuning every sample of the project was reconstructed against.
 
     Raises:
-        ValueError: If the samples were reconstructed against tunings that differ, which one
-            timer table sounds only one of.
+        ProjectTuningError: If the samples were reconstructed against tunings that differ, which
+            one timer table sounds only one of.
     """
     tunings: Set[Tuning] = {sample.reconstruction.config.tuning for sample in samples(project.voices)}
     if not tunings:
@@ -35,6 +36,6 @@ def tuning_from_project(project: Project) -> Tuning:
 
     if len(tunings) > 1:
         stated = ", ".join(sorted(_named(tuning) for tuning in tunings))
-        raise ValueError(f"a project sounds one tuning, and its samples were reconstructed at {stated}")
+        raise ProjectTuningError(f"a project sounds one tuning, and its samples were reconstructed at {stated}")
 
     return tunings.pop()

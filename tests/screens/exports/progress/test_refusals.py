@@ -18,6 +18,7 @@ from tests.suite.screens.worlds.songs import LINE, OVERLONG_PROJECT, TWO_TUNINGS
 
 NSF_FAILED: Final[str] = "global.dialog.message.nsf_project_export_failed"
 BITPHASE_FAILED: Final[str] = "global.dialog.message.bitphase_project_export_failed"
+INSTRUMENT_FAILED: Final[str] = "reconstructions.instruments.message.export_instrument_failed"
 STORED_TICK_BY_TICK: Final[str] = "settings.nsf.label.scheme_none"
 EVERY_REPEAT_ONCE: Final[str] = "settings.nsf.label.scheme_search"
 
@@ -110,12 +111,10 @@ class TestTwoTunings:
 
         screen.scenario(a_bitphase_project_stops, a_program_stops, a_module_is_written).run()
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: Export instrument... in a project of two tunings fails with no message",
-    )
     def test_an_instrument_export_stops_with_a_message(self, screen: Screen) -> None:
+        """Export instrument... on a sample says the instrument failed and asks for no file."""
+        notice = screen.error_notice
+        asked = len(screen.dialog_requests())
         open_voice_menu(screen, LINE)
 
         screen.context_menu.choose_in(
@@ -123,4 +122,8 @@ class TestTwoTunings:
             screen.channel_words(INSTRUMENT_CHANNEL),
         )
 
-        screen.expect(screen.error_notice.is_shown, bool, description="the export refused with a message")
+        screen.expect(notice.is_shown, bool, description="the export refused with a message")
+        assert screen.words(INSTRUMENT_FAILED) in notice.words()
+        assert len(screen.dialog_requests()) == asked
+        notice.dismiss()
+        screen.expect(notice.is_shown, operator.not_, description="the error gone")

@@ -10,7 +10,7 @@ from tests.suite.screens.dearpygui.hand import Hand
 from tests.suite.screens.dearpygui.items.reading import read_item
 from tests.suite.screens.dearpygui.items.texts import EntryReading, find_labelled, read_label, read_popup_entries
 from tests.suite.screens.dearpygui.items.types import MENU_ITEM_TYPE, MENU_TYPE, Item
-from tests.suite.screens.dearpygui.semantic import invoke
+from tests.suite.screens.dearpygui.semantic import CallbackRunner, invoke
 
 ENTRY_INSET: Final[Point] = Point(x=12, y=8)
 CLEAR_OF_THE_TABS: Final[int] = 48
@@ -103,8 +103,10 @@ class ContextMenu:
         ``entry_label``.
 
         DearPyGui reports where a submenu's entries stand inside a window of its own that it names
-        nowhere, so the entry is chosen by running its callback the way a click does. The menu is then
-        put away by a click beside it, as a click on the entry would put it away.
+        nowhere, so the entry is chosen by running its callback the way a click does. A click on an
+        entry closes the menu in the frame it lands in, and the callback runs once that frame is drawn,
+        so the menu is put away by a click beside it before the callback runs. A dialog the entry
+        raises then opens on a screen the menu has left, as it does for a person's click.
 
         Raises:
             MissingEntryError: If the menu offers no such submenu.
@@ -112,9 +114,16 @@ class ContextMenu:
         header = self._submenu_header(menu_label)
         self._hand.click_at(Point(x=header.x + ENTRY_INSET.x, y=header.y + ENTRY_INSET.y))
         self._bridge.frames(OPENING_FRAMES)
-        self._bridge.ask(lambda: invoke(self._submenu_entry(menu_label, entry_label), CallbackQueue.run))
-        if self.is_shown():
-            self.dismiss()
+        pressed: List[Tuple[CallbackRunner, Tuple[object, ...]]] = []
+        self._bridge.ask(
+            lambda: invoke(
+                self._submenu_entry(menu_label, entry_label),
+                lambda callback, *arguments: pressed.append((callback, arguments)),
+            )
+        )
+        self.dismiss()
+        callback, arguments = pressed[0]
+        self._bridge.ask(lambda: CallbackQueue.run(callback, *arguments))
 
     def choose(self, label: str) -> None:
         """Clicks the entry reading ``label``.

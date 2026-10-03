@@ -190,10 +190,6 @@ currently out of line. An entry leaves when the code meets the contract again.
 * A project opened as the application starts is saved as though it had no file: `load_project_safely`
   leaves the session's current project unset, so Save asks for a path, or writes to whatever path an
   earlier session left. `tests/screens/sequencer/song/test_retuning_and_saving.py` reproduces it as a known failure.
-* Export instrument... in a project whose samples were converted at two tunings does nothing the user
-  can see: `voice_instrument` raises the tuning error inside the menu's callback, so no message, no save
-  dialog and no file follow, while a Bitphase project or an NSF program of the same project stops with a
-  message. `tests/screens/exports/progress/test_refusals.py` reproduces it as a known failure.
 * Closing the window while Display settings holds a window size kept on the countdown but never confirmed
   writes that size: leaving records the live window size, while the dialog keeps the session at the values
   it opened with until OK, and the window manager's close passes the open dialog by.

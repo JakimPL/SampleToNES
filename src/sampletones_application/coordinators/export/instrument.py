@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Dict, Optional, Tuple
 
 from sampletones_application.categories.elements.global_ import FileFilterElements
+from sampletones_application.categories.export import ExportMessages
 from sampletones_application.categories.exports import (
     EXPORT_INSTRUMENT_FILTERS,
     INSTRUMENT_EXPORT_FORMATS,
@@ -12,10 +13,13 @@ from sampletones_application.logic.export.instrument.logic import InstrumentExpo
 from sampletones_application.utils.file_dialogs.api import save_file_dialog
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
+from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.request import InstrumentSource
 from sampletones_core.exports.scope import ExportScope
+from sampletones_shared.exceptions import ProjectTuningError
+from sampletones_shared.logger import logger
 
 
 class InstrumentExportCoordinator:
@@ -26,14 +30,22 @@ class InstrumentExportCoordinator:
     whichever of them asked. All three formats that write a single instrument are offered at once,
     which leaves choosing one to the dialog's own type selector rather than to the menu that
     reached it.
+
+    A project voice is measured against the project before a file is asked for, so a voice the
+    project cannot state as one instrument is refused with a message ahead of the save dialog.
     """
 
     def __init__(
         self,
         export_logic: InstrumentExportLogic,
         language_manager: LanguageManager,
+        *,
+        dialogs: DialogsRenderer,
+        messages: ExportMessages,
     ) -> None:
         self._logic = export_logic
+        self._dialogs = dialogs
+        self._messages = messages
         self._title = language_manager["reconstructions.instruments.title.export_instrument_dialog"]
         self._filter_names: Dict[ExportFormat, str] = {
             export_format: self._filter_name(language_manager, element)
@@ -64,14 +76,21 @@ class InstrumentExportCoordinator:
 
         Both surfaces naming a voice — the sequencer's voice menu and the Reconstructions tab's
         export button — reach a file this way, so the same voice is written the same bytes
-        whichever of them asked.
+        whichever of them asked. A project whose samples were converted at different tunings
+        states no one tuning for the instrument, so the export stops there with a message.
 
         Args:
             voice_id: The voice the instrument belongs to.
             channel_name: The channel the instrument is stated for, ``None`` where the voice
                 holds the one set of envelopes every channel reads.
         """
-        exportable = self._logic.voice_instrument(voice_id, channel_name)
+        try:
+            exportable = self._logic.voice_instrument(voice_id, channel_name)
+        except ProjectTuningError as exception:
+            logger.warning(f"The instrument of voice {voice_id} was refused: {exception}")
+            self._dialogs.show_error(exception, self._messages.instrument_failed)
+            return
+
         if exportable is not None:
             self.request(exportable.source, exportable.name)
 

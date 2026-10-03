@@ -4,6 +4,7 @@ from typing import Any, Dict, Final, Optional, Tuple
 import dearpygui.dearpygui as dpg
 from pydantic import ValidationError
 
+from sampletones_application.categories.export import ExportMessages
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.deployment.deployment import (
@@ -479,6 +480,8 @@ class Application:
                 self.export_backends,
             ),
             self.language_manager,
+            dialogs=self.dialogs,
+            messages=ExportMessages.build(self.language_manager),
         )
 
         self._reconstructions_tab = ReconstructionTabCoordinator(

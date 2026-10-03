@@ -33,3 +33,7 @@ class MissingProjectDataFileError(LoadProjectError):
 
 class UnhandledProjectError(LoadProjectError):
     """Raised when an unhandled error is encountered while loading a project."""
+
+
+class ProjectTuningError(ProjectError, ValueError):
+    """Raised when a project's samples were converted at tunings that differ, where one tuning is needed."""
