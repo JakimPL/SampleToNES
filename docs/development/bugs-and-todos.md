@@ -194,10 +194,6 @@ currently out of line. An entry leaves when the code meets the contract again.
 * A reconstruction whose recording is missing draws a flat original line beside the reconstruction,
   where the waveform shows the approximation on its own. `tests/screens/reconstructions/player/test_source_switch.py`
   reproduces it as a known failure.
-* With an instrument open on the Reconstructions tab, the note keys take Ctrl+Z, Ctrl+S and every
-  combination ending in a note key: the instruments panel answers a key whatever modifiers are held, so
-  Undo, Save and the rest never reach their shortcuts. `tests/screens/reconstructions/instruments/test_note_keys.py`
-  reproduces it as a known failure.
 * Playing the song from a tracker row leaves the Playback menu reading Play, with Stop greyed out, while
   the song plays: that path never refreshes the menu. `tests/screens/sequencer/tracker/test_notes_typed.py` reproduces
   it as a known failure.

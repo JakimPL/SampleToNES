@@ -59,11 +59,6 @@ class TestTheNoteKeys:
 
         screen.scenario(the_keys_sound_it, a_field_takes_them_as_characters, leave_letting_the_project_go).run()
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: an instrument's note keys take Ctrl+Z on the Reconstructions tab",
-    )
     def test_undo_undoes_with_an_instrument_open(self, screen: Screen) -> None:
         """Undo removes the typed volume while the Reconstructions tab shows an instrument."""
         instruments = screen.reconstructions.instruments

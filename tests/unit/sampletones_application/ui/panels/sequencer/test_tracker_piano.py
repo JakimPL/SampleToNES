@@ -120,3 +120,20 @@ class TestWhereTheNoteKeysStayOut:
 
         assert fixture.panel._type_note(_press("K")) is False
         assert fixture.typed == []
+
+    @pytest.mark.parametrize("written", ["Ctrl+Z", "Alt+Z", "Super+Z"])
+    def test_a_combination_ending_in_a_note_key_is_left_to_the_shortcuts(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        written: str,
+    ) -> None:
+        fixture = _panel(monkeypatch, ChannelName.PULSE1)
+
+        assert fixture.panel._type_note(_press(written)) is False
+        assert fixture.typed == []
+
+    def test_a_note_key_under_shift_types_its_note(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        fixture = _panel(monkeypatch, ChannelName.PULSE1)
+
+        assert fixture.panel._type_note(_press("Shift+Z")) is True
+        assert fixture.typed == [(ROW, ChannelName.PULSE1, _pitch(DEFAULT_OCTAVE, 0))]

@@ -24,7 +24,7 @@ The application orders its scopes by priority, from highest to lowest:
 | `PANEL` | a sub-panel the keys are meant for | its tab is in front, its card is open, and the sub-panel holds what the keys act on: a cursor, a row picked out, or an open audition | handles the keys its own category names and yields every combination it does not own, so a higher-reaching shortcut still wins |
 | `SHORTCUT` | application shortcuts (`ShortcutManager`) | always | fires the matching shortcut while no field is being edited, or whenever the shortcut is `field_transparent` |
 
-The router offers a panel the key ahead of the shortcut scope. A panel therefore returns `False` on any combination it does not own. The grid, for example, yields every `Ctrl`-modified press. That lets field-transparent shortcuts, such as the tab switch, reach the shortcut scope while a grid cursor is set.
+The router offers a panel the key ahead of the shortcut scope. A panel therefore returns `False` on any combination it does not own. A panel that reads keys as entry, such as notes or hex digits, takes **plain presses** alone: a key pressed on its own or with Shift, the way a character is typed. Ctrl, Alt and Super make a press a command, and a command goes on to the shortcuts. The grid therefore lets `Ctrl+D` through, and an open instrument's note keys let `Ctrl+Z` through. That lets field-transparent shortcuts, such as the tab switch, reach the shortcut scope while a grid cursor is set.
 
 ### A panel scope answers on its own tab, from an open card
 

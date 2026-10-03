@@ -81,7 +81,7 @@ from sampletones_application.utils.gui.keyboard import (
     KeyRouter,
     panel_scope_active,
 )
-from sampletones_application.utils.gui.keyboard.piano import PIANO_KEYS
+from sampletones_application.utils.gui.keyboard.piano import semitone_of
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.envelopes import (
@@ -603,8 +603,12 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         )
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:
-        """Sounds the open instrument at the note a piano key names, reporting whether it did."""
-        semitone = PIANO_KEYS.get(event.key)
+        """Sounds the open instrument at the note a plain piano key names, reporting whether it did.
+
+        A combination ending in a note key passes on to the shortcuts, so Undo and Save answer
+        while an instrument is open.
+        """
+        semitone = semitone_of(event)
         if semitone is None:
             return False
 

@@ -1,7 +1,8 @@
-from typing import Dict, Final, Tuple
+from typing import Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_shared.constants.music import OCTAVE_SEMITONES
 
 _LOWER_ROW: Final[Tuple[int, ...]] = (
@@ -44,3 +45,22 @@ Two rows of the keyboard make two octaves of a piano, the way a tracker lays the
 bottom row opens at the octave in force and the top row an octave above it, with the black keys
 on the row over each.
 """
+
+
+def semitone_of(event: KeyEvent) -> Optional[int]:
+    """The note a plain press of a piano key names, as semitones above the C being typed at.
+
+    A note key held with Ctrl, Alt or Super is a combination, which belongs to the shortcuts, so
+    Ctrl+Z undoes wherever the Z key plays a C.
+
+    Args:
+        event: The press, carrying the modifiers held as it fired.
+
+    Returns:
+        Optional[int]: The semitones the key stands above the C, or ``None`` for a press that
+        names no note.
+    """
+    if not event.is_plain:
+        return None
+
+    return PIANO_KEYS.get(event.key)

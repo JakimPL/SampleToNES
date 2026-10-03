@@ -114,7 +114,7 @@ from sampletones_application.utils.gui.keyboard.modifiers import (
     Modifier,
     capture_modifiers,
 )
-from sampletones_application.utils.gui.keyboard.piano import PIANO_KEYS
+from sampletones_application.utils.gui.keyboard.piano import semitone_of
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.utils.gui.tooltip import show_tooltip
@@ -1773,10 +1773,10 @@ class GUISequencerTrackerPanel(GUIPanel):
         """Types a note, digit or sign into the cell under the cursor, reporting whether the press
         was one.
 
-        A press holding Ctrl or Alt is an application gesture, so cell entry reads the plain keys
-        and leaves the rest to the global shortcuts.
+        A press holding Ctrl, Alt or Super is an application gesture, so cell entry reads the plain
+        keys and leaves the rest to the global shortcuts.
         """
-        if Modifier.CTRL in event.modifiers or Modifier.ALT in event.modifiers:
+        if not event.is_plain:
             return False
 
         if self._type_note(event):
@@ -1808,7 +1808,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         if speaks_in_periods(cursor.channel):
             return False
 
-        semitone = PIANO_KEYS.get(event.key)
+        semitone = semitone_of(event)
         if semitone is None:
             return False
 

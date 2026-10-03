@@ -32,6 +32,8 @@ from sampletones_application.ui.panels.reconstruction.instruments.instruments im
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.gui.keyboard import KeyEvent, KeyRouter
+from sampletones_application.utils.gui.keyboard.combination import KeyCombination
+from sampletones_application.utils.gui.keyboard.modifiers import SHIFT
 from sampletones_application.utils.gui.keyboard.piano import PIANO_KEYS
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
@@ -813,6 +815,32 @@ class TestTheNoteKeys:
 
         assert panel._on_key_pressed(KeyEvent(key=dpg.mvKey_Spacebar, modifiers=frozenset())) is False
         assert sounded == []
+
+    @pytest.mark.parametrize("typed", ["Ctrl+Z", "Ctrl+S", "Ctrl+Shift+Z", "Alt+Z", "Super+Z"])
+    def test_a_combination_ending_in_a_note_key_is_left_to_the_shortcuts(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        typed: str,
+    ) -> None:
+        """Undo, Save and the rest reach their shortcuts while an instrument is open."""
+        sounded: List[int] = []
+        panel.on_audition_requested = sounded.append
+        panel.update_view(ONE_INSTRUMENT)
+        combination = KeyCombination.parse(typed)
+
+        assert panel._on_key_pressed(KeyEvent(key=combination.key, modifiers=combination.modifiers)) is False
+        assert sounded == []
+
+    def test_a_note_key_under_shift_sounds_its_note(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        sounded: List[int] = []
+        panel.on_audition_requested = sounded.append
+        panel.update_view(ONE_INSTRUMENT)
+
+        assert panel._on_key_pressed(KeyEvent(key=dpg.mvKey_Z, modifiers=SHIFT)) is True
+        assert sounded == [PIANO_KEYS[dpg.mvKey_Z]]
 
     def test_the_keys_answer_while_an_instrument_is_open(
         self,

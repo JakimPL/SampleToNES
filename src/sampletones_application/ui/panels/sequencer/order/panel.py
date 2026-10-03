@@ -1329,10 +1329,10 @@ class GUISequencerOrderPanel(GUIPanel):
     def _type_character(self, event: KeyEvent) -> bool:
         """Types a hex digit into the cell under the cursor, reporting whether the press was one.
 
-        A press holding Ctrl or Alt is an application gesture, so cell entry reads the plain keys
-        and leaves the rest to the global shortcuts.
+        A press holding Ctrl, Alt or Super is an application gesture, so cell entry reads the plain
+        keys and leaves the rest to the global shortcuts.
         """
-        if Modifier.CTRL in event.modifiers or Modifier.ALT in event.modifiers:
+        if not event.is_plain:
             return False
 
         char = HEX_KEYS.get(event.key)

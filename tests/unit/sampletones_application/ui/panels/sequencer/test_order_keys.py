@@ -135,10 +135,15 @@ class TestCellEntry:
         assert order.panel._on_key_pressed(_press("A")) is True
         assert order.states[-1].pending == "A"
 
-    def test_a_modified_hex_key_reaches_the_application(self, order: OrderPanelFixture) -> None:
+    @pytest.mark.parametrize("written", ["Ctrl+D", "Alt+D", "Super+D"])
+    def test_a_modified_hex_key_reaches_the_application(self, order: OrderPanelFixture, written: str) -> None:
         """Ctrl+D opens the display settings, so cell entry keeps the plain key alone."""
-        assert order.panel._on_key_pressed(_press("Ctrl+D")) is False
+        assert order.panel._on_key_pressed(_press(written)) is False
         assert order.states == []
+
+    def test_a_hex_key_under_shift_types_as_a_capital(self, order: OrderPanelFixture) -> None:
+        assert order.panel._on_key_pressed(_press("Shift+A")) is True
+        assert order.states[-1].pending == "A"
 
     def test_the_clear_cell_key_empties_the_cell_and_moves_on(self, order: OrderPanelFixture) -> None:
         assert order.panel._on_key_pressed(_press("Del")) is True
