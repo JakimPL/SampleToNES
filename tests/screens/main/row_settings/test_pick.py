@@ -70,9 +70,10 @@ class TestThePickHoldsThrough:
             assert main.source.subject() == home_path(KICK).stem
 
         def a_double_click_plays_and_keeps_it(screen: Screen) -> None:
+            heard = screen.sound_heard()
             screen.hand.double_click(listing.row(home_path(KICK)))
 
-            screen.expect(playback.can_stop, bool, description="the recording playing")
+            screen.expect(screen.sound_heard, heard.__lt__, description="the recording heard")
             assert listing.is_picked(home_path(KICK))
 
         def esc_stops_and_keeps_it(screen: Screen) -> None:

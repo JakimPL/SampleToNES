@@ -12,7 +12,7 @@ from tests.suite.screens.paths import SCREENS_DIRECTORY
 from tests.suite.screens.plugin.constants import DISPLAY_KEY
 from tests.suite.screens.plugin.fixtures import _worker_display
 
-CHILD_TIMEOUT_SECONDS: Final[float] = 180.0
+CHILD_TIMEOUT_SECONDS: Final[float] = 600.0
 JOIN_TIMEOUT_SECONDS: Final[float] = 30.0
 REPORT_RECORDER_NAME: Final[str] = "screens-report-recorder"
 SCREEN_APPLICATION_FIXTURE: Final[str] = "screen_application"

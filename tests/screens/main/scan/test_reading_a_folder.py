@@ -6,7 +6,7 @@ import pytest
 
 from sampletones_application.categories.hierarchy import Tab
 from tests.suite.screens.holds.base import Holds
-from tests.suite.screens.holds.scan import ScanHold
+from tests.suite.screens.holds.scan import ScanHold, WindingDownScanHold
 from tests.suite.screens.holds.signal import ReleaseSignal
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds.recordings import Recording
@@ -22,8 +22,7 @@ FEW_RECORDINGS: Final[int] = 2
 REPORTED_COUNT: Final[int] = 128
 SECONDS: Final[float] = 0.05
 FREQUENCY: Final[float] = 330.0
-SLOW_ENTRY_SECONDS: Final[float] = 2.0
-SLOW_RELEASE_FILE: Final[str] = "release-slow-scan"
+WIND_DOWN_RELEASE_FILE: Final[str] = "release-winding-down-scan"
 RECONSTRUCT_DIRECTORY: Final[str] = "main.explorer.label.context_reconstruct_directory"
 
 
@@ -176,12 +175,16 @@ class TestAskingForAFolderDuringARead:
 
 
 class TestAskingForAFolderAsAStoppedReadWindsDown:
-    """A folder asked for once Stop closed the window is read, as the scan promises once its window closes."""
+    """A folder asked for once Stop closed the window is read, as the scan promises once its window closes.
+
+    The read of the large folder is held past its last entry, so Stop closes the window while the read still
+    winds down. The small folder is Ctrl-clicked then, and the hold lets the stopped read end.
+    """
 
     @pytest.fixture
-    def scan_hold(self, screen_holds: Holds, monkeypatch: pytest.MonkeyPatch) -> ScanHold:
-        """A scan hold that releases slowly, so a stopped read still winds down when the next folder comes."""
-        hold = ScanHold(ReleaseSignal(Path.cwd().parent / SLOW_RELEASE_FILE), interval=SLOW_ENTRY_SECONDS)
+    def scan_hold(self, screen_holds: Holds, monkeypatch: pytest.MonkeyPatch) -> WindingDownScanHold:
+        """A scan hold that keeps a stopped read winding down until the scenario releases it."""
+        hold = WindingDownScanHold(ReleaseSignal(Path.cwd().parent / WIND_DOWN_RELEASE_FILE))
         hold.install(monkeypatch)
         screen_holds.add(hold)
         return hold
@@ -191,7 +194,7 @@ class TestAskingForAFolderAsAStoppedReadWindsDown:
         raises=AssertionError,
         reason="bugs-and-todos § Bugs: a folder asked for while a stopped read winds down is dropped",
     )
-    def test_the_folder_asked_for_is_read(self, screen: Screen, scan_hold: ScanHold) -> None:
+    def test_the_folder_asked_for_is_read(self, screen: Screen, scan_hold: WindingDownScanHold) -> None:
         """The small folder, Ctrl-clicked just after Stop, is gathered once the hold is released."""
         converter = screen.main.converter
         screen.explorer.ctrl_click(explorer_row(screen, home_path(MANY)))

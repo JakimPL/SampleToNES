@@ -100,10 +100,11 @@ class TestPlayingFromTheList:
 
         def a_double_click_plays(screen: Screen) -> None:
             gather(screen, home_path(KICK))
+            heard = screen.sound_heard()
 
             screen.hand.double_click(listing.row(home_path(KICK)))
 
-            screen.expect(screen.sequencer.playback.can_stop, bool, description="the recording playing")
+            screen.expect(screen.sound_heard, heard.__lt__, description="the recording heard")
             assert listing.rows() == [listing.row(home_path(KICK))]
 
         def its_menu_leads_with_play(screen: Screen) -> None:

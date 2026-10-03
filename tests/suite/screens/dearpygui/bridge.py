@@ -1,3 +1,4 @@
+import math
 import threading
 import time
 from concurrent.futures import Future
@@ -7,6 +8,7 @@ AnswerT = TypeVar("AnswerT")
 NEXT_DRAIN: Final[int] = 0
 ONE_FRAME: Final[int] = 1
 POLL_SECONDS: Final[float] = 0.05
+REFERENCE_FRAME_RATE: Final[int] = 30
 
 
 class RenderThreadTimeoutError(AssertionError):
@@ -39,13 +41,44 @@ class RenderThread(Protocol):
     def is_running(self) -> bool:
         """Whether the render thread still draws frames, and so still runs what is posted to it."""
 
+    def frames_drawn(self) -> int:
+        """How many frames the render thread has drawn, read from any thread."""
+
+
+class Deadline:
+    """The end of a wait, which comes once its seconds have run and the render thread has drawn its frames.
+
+    The frames are those a machine drawing ``REFERENCE_FRAME_RATE`` frames a second draws in the same seconds. A
+    machine drawing more slowly answers each gesture in more seconds, so its waits stretch with its frames, and a
+    wait fails on what the application did within them. A render thread that stops ends every wait.
+    """
+
+    def __init__(
+        self,
+        render_thread: RenderThread,
+        *,
+        seconds: float,
+    ) -> None:
+        self._render_thread = render_thread
+        self.seconds = seconds
+        self.frames = math.ceil(seconds * REFERENCE_FRAME_RATE)
+        self._end = time.monotonic() + seconds
+        self._last_frame = render_thread.frames_drawn() + self.frames
+
+    def passed(self) -> bool:
+        """Whether both the seconds and the frames of the wait have run, or the render thread stopped."""
+        if not self._render_thread.is_running():
+            return True
+
+        return time.monotonic() >= self._end and self._render_thread.frames_drawn() >= self._last_frame
+
 
 class Bridge:
     """The crossing a scenario takes to the render thread, where every reading and gesture happens.
 
     A question runs between two frames, so what it reads is one consistent frame. Its answer, or the
     exception it raised, comes back to the scenario's thread. Waiting is counted in frames drawn, and
-    an expectation is read once a frame until it holds or its time runs out.
+    an expectation is read once a frame until it holds or its `Deadline` passes.
     """
 
     def __init__(
@@ -104,18 +137,26 @@ class Bridge:
         may combine several answers.
 
         Raises:
-            ExpectationError: If no reading within ``timeout`` seconds holds, naming the last one.
+            ExpectationError: If no reading holds before the deadline of ``timeout`` seconds passes, naming the
+                last one.
         """
-        deadline = time.monotonic() + timeout
+        deadline = self.deadline(timeout)
         while True:
             value = reading()
             if holds(value):
                 return value
 
-            if time.monotonic() >= deadline:
-                raise ExpectationError(f"Expected {description} within {timeout} s; the last reading was {value!r}")
+            if deadline.passed():
+                raise ExpectationError(
+                    f"Expected {description} within {timeout} s and {deadline.frames} frames; "
+                    f"the last reading was {value!r}"
+                )
 
             self.frames(ONE_FRAME)
+
+    def deadline(self, seconds: float) -> Deadline:
+        """The deadline of a wait of ``seconds`` that starts now."""
+        return Deadline(self._render_thread, seconds=seconds)
 
     def _wait(
         self,

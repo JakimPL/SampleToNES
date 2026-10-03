@@ -9,7 +9,7 @@ from sampletones_application.config.profile import UserProfile
 from tests.suite.screens.application.boundaries import Boundaries
 from tests.suite.screens.application.running import ScreenApplication
 from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.boundaries.audio import OutputDevice, provide_output_device
+from tests.suite.screens.boundaries.audio import OutputDevice, OutputRecord, provide_output_device
 from tests.suite.screens.boundaries.dialogs import ScriptedFileDialogs
 from tests.suite.screens.boundaries.errors import ErrorRecords
 from tests.suite.screens.boundaries.highlights import TableHighlights
@@ -88,6 +88,8 @@ def screen_boundaries(
     spawns.allow(file_manager.folder)
     highlights = TableHighlights()
     highlights.install(monkeypatch)
+    output = OutputRecord()
+    output.install(monkeypatch)
     provide_output_device(
         output_device,
         home=Path.home(),
@@ -100,6 +102,7 @@ def screen_boundaries(
         holds=screen_holds,
         file_manager=file_manager,
         highlights=highlights,
+        output=output,
     )
 
 
@@ -150,6 +153,7 @@ def screen(
         errors=screen_boundaries.errors,
         file_manager=screen_boundaries.file_manager,
         highlights=screen_boundaries.highlights,
+        output=screen_boundaries.output,
         artifacts=Path(os.environ[ARTIFACTS_VARIABLE]),
     )
     window_manager.close()
