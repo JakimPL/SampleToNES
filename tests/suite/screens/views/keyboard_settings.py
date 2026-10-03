@@ -12,7 +12,8 @@ from sampletones_application.tags.settings import (
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import read_item, read_label
+from tests.suite.screens.dearpygui.items.reading import read_item
+from tests.suite.screens.dearpygui.items.texts import read_label
 from tests.suite.screens.views.menus import MenuBar
 from tests.suite.screens.views.prompts import Prompt
 
@@ -36,6 +37,7 @@ class KeyboardSettings:
         self._menu.choose(MenuElements.GROUP_VIEW, MenuElements.ITEM_VIEW_KEYBOARD_SETTINGS)
 
     def is_shown(self) -> bool:
+        """Whether the dialog stands on the screen."""
         return self._bridge.ask(lambda: read_item(TAG_SETTINGS_KEYBINDINGS_WINDOW)).shown
 
     def listen_for(self, shortcut_id: ShortcutId) -> None:
@@ -49,6 +51,7 @@ class KeyboardSettings:
         return self._bridge.ask(lambda: read_label(_shortcut_cell(shortcut_id)))
 
     def cancel(self) -> None:
+        """Presses Cancel, which drops the keys edited and closes the dialog."""
         self._hand.click(compose_tag(TAG_SETTINGS_KEYBINDINGS_BUTTON_CANCEL, SUF_BUTTON))
 
     def confirm(self) -> None:

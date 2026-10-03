@@ -237,16 +237,20 @@ What several files of a subject share sits in modules of the package, written on
 | Module | Holds |
 |---|---|
 | `constants.py` | Scalar `Final` constants and language keys |
-| `cases.py` | Case dataclasses and the tables over them |
+| `cases.py` | Case dataclasses, followed by the tables built from them |
 | `steps.py` | Steps, readings and the builders of a world |
 | `conftest.py` | Fixtures every file of the package uses, such as `world` and `startup` |
 
 What several areas share lives in `tests/suite/screens/vocabulary/`, one module per area: the keys of
 the dialogs and their messages, of the converter and of playback, and the names of the seeded recordings.
 A value that one file alone uses stays in that file. Constants stand directly under the imports in every
-module, so a reader meets the values before the code that uses them, and a case in
-`tests/integration/tooling/` holds that order. Scenario files import from `constants.py`, `cases.py`,
-`steps.py` and the vocabulary, and never from one another.
+module, so a reader meets the values before the code that uses them; the tables of `cases.py` follow the
+types they are made of. A case in `tests/integration/tooling/` holds that order. Scenario files import from
+`constants.py`, `cases.py`, `steps.py` and the vocabulary, and never from one another.
+
+The driver under `tests/suite/screens/` follows the same rules: a package per concern (`application`, `boundaries`,
+`holds`, `plugin`, `seeds`, `worlds`, `views`, `steps`, and the DearPyGui layer with its `gestures` and `items`),
+and a module per responsibility inside it.
 
 ### Docstrings
 
@@ -281,14 +285,18 @@ picture as evidence of a look, for a pull request rather than an assertion.
 
 | Concern | Owner |
 |---|---|
-| A scenario per process, its reports | `tests/suite/screens/dearpygui/isolation.py`, `plugin.py` |
+| A scenario per process, its reports | `tests/suite/screens/dearpygui/isolation.py`, `plugin/hooks.py` |
+| The fixtures a scenario asks for | `tests/suite/screens/plugin/fixtures.py`, `plugin/hold_fixtures.py` |
 | The render thread crossing and waiting | `tests/suite/screens/dearpygui/bridge.py` |
-| What a user can reach, and the gestures | `tests/suite/screens/dearpygui/reach.py`, `hand.py`, `semantic.py` |
+| What a user can reach | `tests/suite/screens/dearpygui/reach.py`, `semantic.py` |
+| The gestures | `tests/suite/screens/dearpygui/hand.py` and `gestures/`: `arrival.py` (waiting and confirming), `pointer.py`, `scrolling.py`, `keyboard.py` |
+| What a reading says of an item | `tests/suite/screens/dearpygui/items/`: `reading.py`, `regions.py`, `texts.py`, `colors.py`, `viewport.py` |
 | The display a worker draws on | `tests/suite/screens/dearpygui/display.py` |
-| The application under test and how it ends | `tests/suite/screens/application.py` |
+| The application under test and how it ends | `tests/suite/screens/application/` |
 | The stand-ins at the boundaries | `tests/suite/screens/boundaries/` |
-| Work held in flight | `tests/suite/screens/holds.py` |
+| Work held in flight | `tests/suite/screens/holds/` |
 | The after-checks | `tests/suite/screens/checks.py` |
 | What a scenario holds and reads | `tests/suite/screens/screen.py`, `views/`, `steps/` |
-| What a scenario's home holds | `tests/suite/screens/world.py` |
+| What a scenario's home holds | `tests/suite/screens/worlds/`, and the files it seeds in `seeds/` |
+| The words several areas share | `tests/suite/screens/vocabulary/` |
 | The window manager's requests | `tests/suite/screens/dearpygui/windows.py` |

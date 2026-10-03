@@ -24,7 +24,10 @@ from sampletones_core.constants.enums import ChannelName
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.geometry import Point
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import Item, read_item, read_label, read_region_view, read_table
+from tests.suite.screens.dearpygui.items.reading import read_item
+from tests.suite.screens.dearpygui.items.regions import read_region_view, read_table
+from tests.suite.screens.dearpygui.items.texts import read_label
+from tests.suite.screens.dearpygui.items.types import Item
 from tests.suite.screens.dearpygui.keys import IMGUI_ENTER
 from tests.suite.screens.views.browsers import FileTree
 from tests.suite.screens.views.history import History
@@ -167,6 +170,7 @@ class OrderTable:
         )
 
     def click(self, channel: Optional[ChannelName], position: int) -> None:
+        """Clicks the entry of ``channel`` at frame ``position``, scrolling it into view first."""
         entry = self._bridge.ask(lambda: _order_entry(channel, position))
         self._hand.scroll_into_view(entry)
         self._hand.click(entry)
@@ -185,6 +189,7 @@ class ModuleOptions:
         self.retune_prompt = Prompt(bridge, hand, TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY)
 
     def nes_frequency(self) -> int:
+        """The NES frequency the field holds."""
         return int(self._bridge.ask(lambda: dpg.get_value(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY)))
 
     def retype_nes_frequency(self, frequency: int) -> None:

@@ -19,6 +19,7 @@ class Notice:
         self.prompt = Prompt(bridge, hand, tag)
 
     def is_shown(self) -> bool:
+        """Whether a notice of this kind stands on the screen."""
         return self.prompt.is_shown()
 
     def words(self) -> str:

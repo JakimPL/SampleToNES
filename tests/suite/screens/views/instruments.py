@@ -14,7 +14,9 @@ from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import read_item, read_label, read_selected_tab, read_theme, read_value
+from tests.suite.screens.dearpygui.items.colors import read_theme
+from tests.suite.screens.dearpygui.items.reading import read_item, read_selected_tab, read_value
+from tests.suite.screens.dearpygui.items.texts import read_label
 from tests.suite.screens.dearpygui.keys import IMGUI_ENTER
 from tests.suite.screens.dearpygui.semantic import choose
 from tests.suite.screens.views.bar_graph import BarGraph
@@ -42,10 +44,13 @@ class Instruments:
         return self._bridge.ask(lambda: read_selected_tab(TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR))
 
     def tab_label(self, channel: ChannelName) -> str:
-        """What ``channel``'s tab reads, which names the open hand-written voice on the tab it is edited under."""
+        """What ``channel``'s tab reads, which names the open hand-written voice on the tab it is edited
+        under.
+        """
         return self._bridge.ask(lambda: read_label(tab(channel)))
 
     def tab_shown(self, channel: ChannelName) -> bool:
+        """Whether ``channel``'s tab stands on the screen."""
         return self._bridge.ask(lambda: read_item(tab(channel))).shown
 
     def tab_theme(self, channel: ChannelName) -> Optional[str]:
@@ -69,6 +74,7 @@ class Instruments:
         return self._bridge.ask(read)
 
     def field(self, channel: ChannelName, feature: FeatureKey) -> str:
+        """The name of the field holding the sequence of ``channel``'s ``feature`` envelope."""
         return compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR, channel, feature, SUF_GRAPH_RAW_DATA, SUF_TEXT)
 
     def envelope(self, channel: ChannelName, feature: FeatureKey) -> str:
@@ -80,7 +86,9 @@ class Instruments:
         return self._bridge.ask(lambda: read_theme(self.field(channel, feature)))
 
     def hover_field(self, channel: ChannelName, feature: FeatureKey) -> None:
-        """Rests the pointer on ``channel``'s ``feature`` field, which puts what the field takes on the status bar."""
+        """Rests the pointer on ``channel``'s ``feature`` field, which puts what the field takes on the
+        status bar.
+        """
         field = self.field(channel, feature)
         self._hand.scroll_into_view(field)
         rect = self._bridge.ask(lambda: read_item(field).rect)
@@ -90,7 +98,9 @@ class Instruments:
         self._hand.move_to(rect.center)
 
     def type_envelope(self, channel: ChannelName, feature: FeatureKey, sequence: str) -> None:
-        """Brings ``channel``'s tab forward, types ``sequence`` over its ``feature`` field and presses Enter."""
+        """Brings ``channel``'s tab forward, types ``sequence`` over its ``feature`` field and presses
+        Enter.
+        """
         self.bring_forward(channel)
         field = self.field(channel, feature)
         self._hand.scroll_into_view(field)
@@ -98,6 +108,7 @@ class Instruments:
         self._hand.press_key(IMGUI_ENTER, modifiers=[])
 
     def graph(self, channel: ChannelName, feature: FeatureKey) -> BarGraph:
+        """The graph drawn for ``channel``'s ``feature`` envelope."""
         return BarGraph(
             self._bridge, self._hand, compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR, channel, feature, SUF_GRAPH)
         )
@@ -116,6 +127,7 @@ class Instruments:
         return str(self._bridge.ask(lambda: read_value(TAG_RECONSTRUCTIONS_INSTRUMENTS_RADIO_AUDITION)))
 
     def choose_audition(self, label: str) -> None:
+        """Picks the generator reading ``label`` in the Audition list."""
         self._bridge.ask(lambda: choose(TAG_RECONSTRUCTIONS_INSTRUMENTS_RADIO_AUDITION, label, CallbackQueue.run))
 
     def can_export(self, channel: ChannelName) -> bool:
@@ -123,15 +135,18 @@ class Instruments:
         return self._bridge.ask(lambda: read_item(export_button(channel))).enabled
 
     def export(self, channel: ChannelName) -> None:
+        """Clicks ``channel``'s Export instrument button."""
         self._hand.scroll_into_view(export_button(channel))
         self._hand.click(export_button(channel))
 
 
 def tab(channel: ChannelName) -> str:
+    """The name of the tab of ``channel``."""
     return compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR, channel)
 
 
 def export_button(channel: ChannelName) -> str:
+    """The name of the Export instrument button of ``channel``."""
     return compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT, tab(channel), SUF_BUTTON)
 
 

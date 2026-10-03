@@ -22,7 +22,9 @@ from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.main.source import CHANNEL_CAP_STEPS
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import read_item, read_texts, read_theme, read_value
+from tests.suite.screens.dearpygui.items.colors import read_theme
+from tests.suite.screens.dearpygui.items.reading import read_item, read_value
+from tests.suite.screens.dearpygui.items.texts import read_texts
 from tests.suite.screens.dearpygui.semantic import choose
 from tests.suite.screens.views.converter import Converter
 from tests.suite.screens.views.source import SourceSettings
@@ -47,6 +49,7 @@ class Card:
         self.tag = tag
 
     def is_shown(self) -> bool:
+        """Whether the card stands on the screen."""
         return self._bridge.ask(lambda: read_item(self.tag)).shown
 
     def is_collapsed(self) -> bool:
@@ -60,7 +63,7 @@ class Card:
         self._hand.click(strip)
 
     def folds_sideways(self) -> bool:
-        """Whether the card folds into a rail at its side, rather than into its bar."""
+        """Whether the card folds into a rail at its side, and not into its bar."""
         return self._bridge.ask(lambda: read_item(self.rail)).exists
 
     @property
@@ -95,6 +98,7 @@ class Main:
         self.source = SourceSettings(bridge, hand)
 
     def card(self, tag: str) -> Card:
+        """A view of the card standing under ``tag``."""
         return Card(self._bridge, self._hand, tag)
 
     def output(self) -> OutputKind:

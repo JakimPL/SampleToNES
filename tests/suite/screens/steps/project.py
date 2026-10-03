@@ -1,6 +1,7 @@
 import operator
 from pathlib import Path
 
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.project import ProjectContainer
 from tests.suite.screens.boundaries.dialogs import DialogKind
 from tests.suite.screens.screen import Screen
@@ -39,3 +40,14 @@ def retitle_project(screen: Screen, title: str) -> None:
 def saved_project_title(path: Path) -> str:
     """The title the project file at ``path`` carries."""
     return ProjectContainer.load(path).info.title
+
+
+def leave_letting_the_project_go(screen: Screen) -> None:
+    """Exits, answering Exit to the question about the project, and waits for the application to stop."""
+    prompt = screen.project.unsaved_prompt
+    screen.press_shortcut(ShortcutId.EXIT)
+    screen.expect(prompt.is_shown, bool, description="the question about the project")
+
+    prompt.confirm()
+
+    assert screen.wait_for_exit()

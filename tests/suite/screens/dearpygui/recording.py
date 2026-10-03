@@ -7,7 +7,6 @@ import dearpygui.dearpygui as dpg
 from tests.suite.screens.dearpygui.bridge import ONE_FRAME, RenderThread
 
 ReadingT = TypeVar("ReadingT")
-
 NO_FRAME: Final[int] = 0
 
 
@@ -39,17 +38,21 @@ class FrameRecording(Generic[ReadingT]):
         self._lock = threading.Lock()
 
     def start(self) -> None:
+        """Takes the first reading after the next frame and goes on reading after every frame."""
         self._render_thread.post(self._take, frames=ONE_FRAME)
 
     def stop(self) -> None:
+        """Ends the recording; the readings taken so far stay available."""
         self._stopped.set()
 
     @property
     def readings(self) -> Tuple[FrameReading[ReadingT], ...]:
+        """Every reading taken so far, in frame order, each with the frame it followed."""
         with self._lock:
             return tuple(self._readings)
 
     def values(self) -> List[ReadingT]:
+        """The value of every reading taken so far, in frame order."""
         return [reading.value for reading in self.readings]
 
     def _take(self) -> None:

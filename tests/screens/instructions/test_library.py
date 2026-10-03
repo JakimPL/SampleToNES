@@ -3,10 +3,11 @@ from typing import Dict, Final, Tuple
 
 from sampletones_application.ui.themes.channels import CHANNEL_THEME_TAGS
 from sampletones_core.constants.enums import ChannelName, GeneratorName
-from tests.suite.screens.dearpygui.items import Item, read_theme, read_theme_colors
+from tests.suite.screens.dearpygui.items.colors import read_theme, read_theme_colors
+from tests.suite.screens.dearpygui.items.types import Item
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.instructions import load_library
-from tests.suite.screens.world import one_worker_config
+from tests.suite.screens.worlds.home import one_worker_config
 
 GENERATOR_CHANNELS: Final[Dict[GeneratorName, ChannelName]] = {
     GeneratorName.PULSE: ChannelName.PULSE1,
@@ -27,14 +28,20 @@ def line_color(screen: Screen, line: str) -> Tuple[float, ...]:
 
 
 def channel_colors(screen: Screen, channel: ChannelName) -> Tuple[Tuple[float, ...], ...]:
-    """The colors the theme every view naming ``channel`` paints from holds."""
+    """The colors of the theme that every view naming ``channel`` paints from."""
     return screen.bridge.ask(lambda: read_theme_colors(CHANNEL_THEME_TAGS[channel]))
 
 
 class TestTheGeneratorsOfALibrary:
-    """A library lists a row per generator, each drawing its fragment's waveform and spectrum in its channel's color."""
+    """A library lists a row per generator, each drawing its fragment's waveform and spectrum in its channel's
+    color.
+
+    The library loads and shows a row per generator. Each row is clicked in turn, and its waveform draws one
+    line in a color of its channel's theme. The three generators end with three different colors.
+    """
 
     def test_each_generator_draws_in_its_channels_color(self, screen: Screen) -> None:
+        """Each generator's row draws a waveform and a spectrum in its own channel's color."""
         instructions = screen.instructions
         tree = instructions.library.tree
         waveform = instructions.waveform

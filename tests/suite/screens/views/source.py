@@ -8,7 +8,7 @@ from sampletones_application.tags.main import PRE_MAIN_SOURCE_CHANNEL, TAG_MAIN_
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import read_theme
+from tests.suite.screens.dearpygui.items.colors import read_theme
 
 
 class SourceSettings:
@@ -27,14 +27,18 @@ class SourceSettings:
         return str(self._bridge.ask(lambda: dpg.get_value(TAG_MAIN_SOURCE_TEXT_SUBJECT)))
 
     def channel_box(self, channel: ChannelName) -> str:
+        """The tag of the checkbox that lets the row convert with ``channel``."""
         return compose_tag(PRE_MAIN_SOURCE_CHANNEL, channel, SUF_CHANNELS, SUF_CHECKBOX)
 
     def channel_ticked(self, channel: ChannelName) -> bool:
+        """Whether the checkbox of ``channel`` stands ticked."""
         return bool(self._bridge.ask(lambda: dpg.get_value(self.channel_box(channel))))
 
     def channel_theme(self, channel: ChannelName) -> Optional[str]:
+        """The theme the checkbox of ``channel`` wears, or ``None`` while it wears none."""
         return self._bridge.ask(lambda: read_theme(self.channel_box(channel)))
 
     def tick(self, channel: ChannelName) -> None:
+        """Clicks the checkbox of ``channel``, scrolling it into view first."""
         self._hand.scroll_into_view(self.channel_box(channel))
         self._hand.click(self.channel_box(channel))

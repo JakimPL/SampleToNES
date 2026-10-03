@@ -11,6 +11,8 @@ SHIFTED_COLUMN: Final[int] = 1
 
 
 class MouseButton(IntEnum):
+    """A pointer button as the X server numbers it, the two wheel directions included."""
+
     LEFT = 1
     MIDDLE = 2
     RIGHT = 3
@@ -27,8 +29,8 @@ class XTestDevice:
 
     Each call sends one event and flushes it, so the server holds it before the next frame polls.
     The display is the scenario's own, which keeps every event inside the application under test.
-    The display repeats no held key, so a key held across a slow frame arrives as the one press a
-    person made.
+    The display turns key auto-repeat off, so a key held across a slow frame arrives as the one
+    press a person made.
     """
 
     def __init__(self, display_name: str) -> None:
@@ -37,22 +39,27 @@ class XTestDevice:
         self._display.sync()
 
     def move(self, point: Point) -> None:
+        """Moves the pointer to ``point``, in display pixels."""
         xtest.fake_input(self._display, X.MotionNotify, x=point.x, y=point.y)
         self._display.sync()
 
     def button_down(self, button: MouseButton) -> None:
+        """Presses ``button`` and holds it down."""
         xtest.fake_input(self._display, X.ButtonPress, int(button))
         self._display.sync()
 
     def button_up(self, button: MouseButton) -> None:
+        """Releases ``button``."""
         xtest.fake_input(self._display, X.ButtonRelease, int(button))
         self._display.sync()
 
     def key_down(self, keysym: int) -> None:
+        """Presses the key typing ``keysym`` and holds it down."""
         xtest.fake_input(self._display, X.KeyPress, self._keycode(keysym))
         self._display.sync()
 
     def key_up(self, keysym: int) -> None:
+        """Releases the key typing ``keysym``."""
         xtest.fake_input(self._display, X.KeyRelease, self._keycode(keysym))
         self._display.sync()
 
@@ -64,6 +71,7 @@ class XTestDevice:
         )
 
     def close(self) -> None:
+        """Closes the connection to the display."""
         self._display.close()
 
     def _keycode(self, keysym: int) -> int:

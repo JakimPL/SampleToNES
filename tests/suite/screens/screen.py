@@ -27,17 +27,12 @@ from tests.suite.screens.boundaries.reveals import FileManagerStandIn
 from tests.suite.screens.dearpygui.bridge import Bridge, ExpectationError
 from tests.suite.screens.dearpygui.geometry import Point
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import (
-    Item,
-    WindowReading,
-    read_item_count,
-    read_label,
-    read_pointer,
-    read_theme,
-    read_viewport_title,
-    read_visible_text,
-    read_windows,
-)
+from tests.suite.screens.dearpygui.items.colors import read_theme
+from tests.suite.screens.dearpygui.items.reading import read_item_count
+from tests.suite.screens.dearpygui.items.regions import WindowReading, read_windows
+from tests.suite.screens.dearpygui.items.texts import read_label, read_visible_text
+from tests.suite.screens.dearpygui.items.types import Item
+from tests.suite.screens.dearpygui.items.viewport import read_pointer, read_viewport_title
 from tests.suite.screens.dearpygui.recording import FrameRecording
 from tests.suite.screens.dearpygui.screenshot import capture, drawn_frame
 from tests.suite.screens.dearpygui.windows import WindowManager
@@ -59,7 +54,6 @@ from tests.suite.screens.views.sequencer import Sequencer
 from tests.suite.screens.views.tabs import Tabs
 
 ReadingT = TypeVar("ReadingT")
-
 EXPECT_TIMEOUT_SECONDS: Final[float] = 10.0
 STEP_SEPARATOR: Final[str] = " → "
 SCREENSHOT_SUFFIX: Final[str] = ".png"
@@ -261,7 +255,9 @@ class Screen:
         path: Path,
         type_name: str,
     ) -> None:
-        """Answers the next save dialog with ``path``, the offered file type named ``type_name`` picked in it."""
+        """Answers the next save dialog with ``path``, the offered file type named ``type_name`` picked in
+        it.
+        """
         self._dialogs.answer_save_as(path, type_name)
 
     def claim_error(self, naming: str) -> None:

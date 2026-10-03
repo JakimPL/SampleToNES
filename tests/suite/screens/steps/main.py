@@ -5,7 +5,7 @@ from typing import Dict, Final, Sequence
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_core.constants.enums import ChannelName
-from tests.suite.screens.dearpygui.items import Item
+from tests.suite.screens.dearpygui.items.types import Item
 from tests.suite.screens.screen import Screen
 
 RUN_TIMEOUT_SECONDS: Final[float] = 120.0

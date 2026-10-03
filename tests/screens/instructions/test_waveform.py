@@ -3,17 +3,18 @@ from typing import Final
 
 from sampletones_application.tags.general import TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY
 from sampletones_core.constants.enums import GeneratorName
-from tests.suite.screens.dearpygui.items import read_label
+from tests.suite.screens.dearpygui.items.texts import read_label
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.instructions import load_library
 from tests.suite.screens.vocabulary.playback import PAUSE
-from tests.suite.screens.world import one_worker_config
+from tests.suite.screens.worlds.home import one_worker_config
 
 LISTENING_FRAMES: Final[int] = 30
 ZOOM_NOTCHES: Final[int] = 3
 
 
 def show_the_pulse(screen: Screen) -> None:
+    """Loads the library, clicks the pulse row and waits until its waveform is drawn."""
     instructions = screen.instructions
     tree = instructions.library.tree
     load_library(screen, one_worker_config())
@@ -27,10 +28,13 @@ def show_the_pulse(screen: Screen) -> None:
 class TestTheFragmentWaveform:
     """A click on the fragment's waveform sounds it, and a drag across a narrowed view sounds nothing.
 
-    A fragment lasts a few frames, so what plays is read on every frame the gesture spans.
+    A fragment lasts a few frames, so the Playback menu's entry is recorded on every frame the gesture spans.
+    The pulse is shown and zoomed in; the drag leaves the entry away from Pause, and the click brings Pause
+    up.
     """
 
     def test_a_click_sounds_it_and_a_drag_does_not(self, screen: Screen) -> None:
+        """The Playback entry reads Pause during the click and stays away from it during the drag."""
         waveform = screen.instructions.waveform
         playing = screen.words(PAUSE)
 

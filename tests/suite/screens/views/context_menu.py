@@ -7,16 +7,9 @@ from sampletones_application.utils.callbacks.queue import CallbackQueue
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.geometry import Point, Rect
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import (
-    MENU_ITEM_TYPE,
-    MENU_TYPE,
-    EntryReading,
-    Item,
-    find_labelled,
-    read_item,
-    read_label,
-    read_popup_entries,
-)
+from tests.suite.screens.dearpygui.items.reading import read_item
+from tests.suite.screens.dearpygui.items.texts import EntryReading, find_labelled, read_label, read_popup_entries
+from tests.suite.screens.dearpygui.items.types import MENU_ITEM_TYPE, MENU_TYPE, Item
 from tests.suite.screens.dearpygui.semantic import invoke
 
 ENTRY_INSET: Final[Point] = Point(x=12, y=8)
@@ -26,7 +19,7 @@ OPENING_FRAMES: Final[int] = 3
 
 
 class MissingEntryError(AssertionError):
-    """Raised when a scenario chooses an entry the open menu does not offer."""
+    """Raised when a scenario chooses an entry that the open menu lacks."""
 
 
 class ContextMenu:
@@ -46,6 +39,7 @@ class ContextMenu:
         self._hand = hand
 
     def is_shown(self) -> bool:
+        """Whether the menu stands on the screen."""
         return self._bridge.ask(lambda: read_item(TAG_GLOBAL_CONTEXT_WINDOW)).shown
 
     def box(self) -> Rect:
@@ -57,9 +51,11 @@ class ContextMenu:
         return rect
 
     def entries(self) -> List[EntryReading]:
+        """The entries of the menu, each with its label and where it stands, in the order shown."""
         return list(self._bridge.ask(lambda: read_popup_entries(TAG_GLOBAL_CONTEXT_WINDOW)))
 
     def labels(self) -> List[str]:
+        """The labels of the entries of the menu, in the order shown."""
         return [entry.label for entry in self.entries()]
 
     def submenus(self) -> List[str]:
@@ -103,7 +99,8 @@ class ContextMenu:
         menu_label: str,
         entry_label: str,
     ) -> None:
-        """Opens the submenu reading ``menu_label`` with a click on it, and chooses its entry reading ``entry_label``.
+        """Opens the submenu reading ``menu_label`` with a click on it, and chooses its entry reading
+        ``entry_label``.
 
         DearPyGui reports where a submenu's entries stand inside a window of its own that it names
         nowhere, so the entry is chosen by running its callback the way a click does. The menu is then
@@ -155,7 +152,10 @@ class ContextMenu:
         menu_label: str,
         entry_label: str,
     ) -> Item:
-        """The entry reading ``entry_label`` of the submenu reading ``menu_label``. Runs on the render thread."""
+        """The entry reading ``entry_label`` of the submenu reading ``menu_label``.
+
+        Runs on the render thread.
+        """
         menu = find_labelled(TAG_GLOBAL_CONTEXT_WINDOW, menu_label, item_type=MENU_TYPE)
         return find_labelled(menu, entry_label, item_type=MENU_ITEM_TYPE)
 

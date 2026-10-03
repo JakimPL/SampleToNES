@@ -12,7 +12,7 @@ from sampletones_application.tags.sequencer import (
 )
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import TEXT_TYPE, Item
+from tests.suite.screens.dearpygui.items.types import TEXT_TYPE, Item
 
 TABLE_TYPE: Final[str] = "mvAppItemType::mvTable"
 ENTRY_GROUP: Final[int] = 1
@@ -36,6 +36,7 @@ class HistoryLine:
 
     @property
     def words(self) -> str:
+        """The words of every piece of the line, joined by spaces."""
         return " ".join(segment.words for segment in self.segments)
 
 
@@ -59,9 +60,11 @@ class History:
         return next(line for line in self.lines() if line.current)
 
     def undo(self) -> None:
+        """Clicks Undo below the list, which steps the project back one entry."""
         self._hand.click(compose_tag(TAG_SEQUENCER_HISTORY_BUTTON_UNDO, SUF_BUTTON))
 
     def redo(self) -> None:
+        """Clicks Redo below the list, which steps the project forward one entry."""
         self._hand.click(compose_tag(TAG_SEQUENCER_HISTORY_BUTTON_REDO, SUF_BUTTON))
 
 
@@ -84,6 +87,7 @@ def read_history() -> Tuple[HistoryLine, ...]:
 
 
 def _segments(group: Item) -> Tuple[HistorySegment, ...]:
+    """The pieces of one history line, each with its words and color, in the order drawn."""
     return tuple(
         HistorySegment(
             words=str(dpg.get_value(text)),

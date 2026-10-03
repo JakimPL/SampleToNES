@@ -11,16 +11,10 @@ from sampletones_application.utils.callbacks.queue import CallbackQueue
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.geometry import Point
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import (
-    MENU_ITEM_TYPE,
-    MENU_TYPE,
-    Item,
-    find_labelled,
-    read_item,
-    read_label,
-    read_value,
-    read_viewport,
-)
+from tests.suite.screens.dearpygui.items.reading import read_item, read_value
+from tests.suite.screens.dearpygui.items.texts import find_labelled, read_label
+from tests.suite.screens.dearpygui.items.types import MENU_ITEM_TYPE, MENU_TYPE, Item
+from tests.suite.screens.dearpygui.items.viewport import read_viewport
 from tests.suite.screens.dearpygui.semantic import invoke
 
 HEADER_INSET: Final[Point] = Point(x=12, y=8)

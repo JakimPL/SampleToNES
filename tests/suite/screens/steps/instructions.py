@@ -7,7 +7,7 @@ from sampletones_core.configs import Config
 from sampletones_core.fft import Window
 from sampletones_core.library.key import InstructionLibraryKey
 from sampletones_shared.paths.user import LIBRARY_DIRECTORY
-from tests.suite.screens.dearpygui.items import Item
+from tests.suite.screens.dearpygui.items.types import Item
 from tests.suite.screens.screen import Screen
 
 
@@ -34,7 +34,9 @@ def open_library_row(screen: Screen, row: Item) -> None:
 
 
 def load_library(screen: Screen, config: Config) -> Item:
-    """Brings the Instructions tab forward and opens the row of the library built for ``config``, which loads it."""
+    """Brings the Instructions tab forward and opens the row of the library built for ``config``, which loads
+    it.
+    """
     screen.tabs.bring_to_front(Tab.INSTRUCTIONS)
     row = library_row(screen, library_path(config))
     open_library_row(screen, row)

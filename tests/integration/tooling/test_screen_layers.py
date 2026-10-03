@@ -39,7 +39,7 @@ class TestTheDearPyGuiLayer:
     def test_every_import_is_dearpygui_pytest_x11_or_the_standard_library(self) -> None:
         strays = [
             f"{path.name} imports {module}"
-            for path in sorted(DEARPYGUI_LAYER_DIRECTORY.glob("*.py"))
+            for path in sorted(DEARPYGUI_LAYER_DIRECTORY.rglob("*.py"))
             for module in imported_modules(path)
             if not is_allowed(module)
         ]
@@ -47,4 +47,4 @@ class TestTheDearPyGuiLayer:
         assert strays == []
 
     def test_the_layer_holds_modules_to_read(self) -> None:
-        assert any(DEARPYGUI_LAYER_DIRECTORY.glob("*.py"))
+        assert any(DEARPYGUI_LAYER_DIRECTORY.rglob("*.py"))

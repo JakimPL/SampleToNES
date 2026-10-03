@@ -3,7 +3,7 @@ from typing import Final
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from tests.suite.screens.dearpygui.items import Item
+from tests.suite.screens.dearpygui.items.types import Item
 from tests.suite.screens.screen import Screen
 
 EDIT_VOICE: Final[str] = "sequencer.voices.label.context_edit"
@@ -35,7 +35,9 @@ def open_voice(screen: Screen, name: str) -> None:
 
 
 def forgive_the_hover_race(screen: Screen) -> None:
-    """Forgives the error a voice row's hover meets once the list has rebuilt the row, which the ledger records."""
+    """Forgives the error a voice row's hover meets once the list has rebuilt the row, which the ledger
+    records.
+    """
     screen.forgive_known_error(HOVER_RACE)
 
 
@@ -49,3 +51,9 @@ def leave_letting_the_project_go(screen: Screen) -> None:
     prompt.confirm()
 
     assert screen.wait_for_exit()
+
+
+def on_the_sequencer(screen: Screen) -> None:
+    """Brings the Sequencer tab to the front and waits until the project's voices are listed."""
+    screen.tabs.bring_to_front(Tab.SEQUENCER)
+    screen.expect(screen.sequencer.voices.names, bool, description="the project's voices")

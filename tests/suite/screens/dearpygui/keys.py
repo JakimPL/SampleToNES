@@ -23,7 +23,6 @@ IMGUI_LEFT_ALT: Final[int] = 529
 IMGUI_DIGIT_ZERO: Final[int] = 536
 IMGUI_LETTER_A: Final[int] = 546
 IMGUI_F1: Final[int] = 572
-
 DIGIT_COUNT: Final[int] = 10
 LETTER_COUNT: Final[int] = 26
 FUNCTION_KEY_COUNT: Final[int] = 12
@@ -48,11 +47,15 @@ NAMED_KEYSYMS: Final[Dict[int, str]] = {
     IMGUI_LEFT_SHIFT: "Shift_L",
     IMGUI_LEFT_ALT: "Alt_L",
 }
+
 DIGIT_KEYSYMS: Final[Dict[int, str]] = {IMGUI_DIGIT_ZERO + offset: str(offset) for offset in range(DIGIT_COUNT)}
+
 LETTER_KEYSYMS: Final[Dict[int, str]] = {
     IMGUI_LETTER_A + offset: chr(ord("a") + offset) for offset in range(LETTER_COUNT)
 }
+
 FUNCTION_KEYSYMS: Final[Dict[int, str]] = {IMGUI_F1 + offset: f"F{offset + 1}" for offset in range(FUNCTION_KEY_COUNT)}
+
 KEYSYM_NAMES: Final[Dict[int, str]] = {
     **NAMED_KEYSYMS,
     **DIGIT_KEYSYMS,

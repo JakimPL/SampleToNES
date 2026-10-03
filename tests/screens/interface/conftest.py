@@ -1,6 +1,7 @@
 import pytest
 
-from tests.suite.screens.world import World, sequencer_world
+from tests.suite.screens.worlds.home import World
+from tests.suite.screens.worlds.songs import sequencer_world
 
 
 @pytest.fixture

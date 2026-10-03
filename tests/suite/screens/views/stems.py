@@ -10,7 +10,9 @@ from sampletones_application.tags.reconstructions import (
 from sampletones_application.ui.elements.stems.tags import StemsTags
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import enclosing_regions, read_item, read_label, read_value
+from tests.suite.screens.dearpygui.items.reading import read_item, read_value
+from tests.suite.screens.dearpygui.items.regions import enclosing_regions
+from tests.suite.screens.dearpygui.items.texts import read_label
 from tests.suite.screens.views.prompts import Prompt
 
 
@@ -33,10 +35,12 @@ class StemsCard:
         self.remove_prompt = Prompt(bridge, hand, TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_REMOVE_STEM_CONFIRMATION)
 
     def has_row(self, key: str) -> bool:
+        """Whether a row for the recording ``key`` stands on the screen."""
         reading = self._bridge.ask(lambda: read_item(self.tags.row(key, SUF_GROUP)))
         return reading.exists and reading.shown
 
     def name(self, key: str) -> str:
+        """The name the row of ``key`` shows."""
         return self._bridge.ask(lambda: read_label(self.tags.row(key, SUF_TEXT)))
 
     def is_highlighted(self, key: str) -> bool:
@@ -59,6 +63,7 @@ class StemsCard:
         self._hand.click(self._in_view(self.tags.row(key, SUF_BUTTON)))
 
     def click(self, key: str) -> None:
+        """Clicks the name of the row of ``key``, which picks it."""
         self._hand.click(self._in_view(self.tags.row(key, SUF_TEXT)))
 
     def reveal(self, key: str) -> None:
@@ -70,6 +75,7 @@ class StemsCard:
         return bool(self._bridge.ask(lambda: read_value(self.tags.row(key, SUF_CHECKBOX))))
 
     def tick(self, key: str) -> None:
+        """Clicks the box of the row of ``key``, which flips whether its recording is heard."""
         self._hand.click(self._in_view(self.tags.row(key, SUF_CHECKBOX)))
 
     def _in_view(self, item: str) -> str:

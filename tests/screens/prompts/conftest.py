@@ -1,6 +1,7 @@
 import pytest
 
-from tests.suite.screens.world import World, documents_world
+from tests.suite.screens.worlds.home import World
+from tests.suite.screens.worlds.recordings import documents_world
 
 
 @pytest.fixture

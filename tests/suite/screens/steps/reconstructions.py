@@ -8,9 +8,10 @@ from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.constants.symbols import TITLE_SEPARATOR
 from sampletones_shared.paths.user import RECONSTRUCTIONS_DIRECTORY
-from tests.suite.screens.dearpygui.items import Item
-from tests.suite.screens.holds import RegenerationHold
+from tests.suite.screens.dearpygui.items.types import Item
+from tests.suite.screens.holds.regeneration import RegenerationHold
 from tests.suite.screens.screen import Screen
+from tests.suite.screens.worlds.recordings import OPEN_RECONSTRUCTION
 
 APPLICATION_NAME: Final[str] = "global.dialog.title.main_window"
 UNTITLED: Final[str] = "global.dialog.label.untitled"
@@ -33,7 +34,8 @@ def titled(screen: Screen, *documents: str) -> str:
 
 
 def reconstruction_row(screen: Screen, path: Path) -> Item:
-    """The browser's row of the reconstruction at ``path``, under the heading listing reconstructions by configuration.
+    """The browser's row of the reconstruction at ``path``, under the heading listing reconstructions by
+    configuration.
 
     The heading is opened where it stands closed, so the row is in reach.
     """
@@ -72,7 +74,9 @@ def edit_envelope(
     sequence: str,
     title: str,
 ) -> None:
-    """Types ``sequence`` over a channel's envelope and waits for the edit to land, which marks the title ``title``."""
+    """Types ``sequence`` over a channel's envelope and waits for the edit to land, which marks the title
+    ``title``.
+    """
     screen.tabs.bring_to_front(Tab.RECONSTRUCTIONS)
     screen.reconstructions.instruments.type_envelope(channel, feature, sequence)
     screen.expect(screen.title, title.__eq__, description=f"the title reading '{title}'")
@@ -160,7 +164,9 @@ def raise_the_first_level(
 
 
 def converted(recording: Path) -> Path:
-    """The one reconstruction a run wrote for ``recording``, wherever below the reconstructions folder it went."""
+    """The one reconstruction a run wrote for ``recording``, wherever below the reconstructions folder it
+    went.
+    """
     found = list(RECONSTRUCTIONS_DIRECTORY.rglob(f"{recording.stem}{RECONSTRUCTION_SUFFIX}"))
     assert len(found) == 1, found
     return found[0]
@@ -179,3 +185,8 @@ def raise_the_first_level_while_held(screen: Screen, hold: RegenerationHold, cha
 
     screen.expect(hold.waiting, bool, description="the rebuild held")
     return sequence
+
+
+def edited_title(screen: Screen) -> str:
+    """The window title while the open reconstruction carries unsaved changes."""
+    return titled(screen, marked(OPEN_RECONSTRUCTION.name, unsaved=True))

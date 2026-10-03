@@ -9,6 +9,7 @@ from typing import Dict, Final, List, Literal, Mapping, Optional, Sequence, Unio
 import pytest
 
 PHASES: Final[Sequence[Literal["setup", "call", "teardown"]]] = ("setup", "call", "teardown")
+
 CHILD_ARGUMENTS: Final[Sequence[str]] = (
     "-p",
     "no:cacheprovider",
@@ -19,6 +20,7 @@ CHILD_ARGUMENTS: Final[Sequence[str]] = (
     "-q",
     "--no-header",
 )
+
 OUTPUT_TAIL_CHARACTERS: Final[int] = 20_000
 NODE_SEPARATOR: Final[str] = "::"
 XFAIL_MARKER: Final[str] = "xfail"
@@ -70,6 +72,7 @@ class ReportRecorder:
 
     @pytest.hookimpl
     def pytest_runtest_logreport(self, report: pytest.TestReport) -> None:
+        """Appends the report of one finished phase to the file as a line of JSON."""
         data = self._config.hook.pytest_report_to_serializable(config=self._config, report=report)
         with self._path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(data) + "\n")

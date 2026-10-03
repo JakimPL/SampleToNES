@@ -51,6 +51,7 @@ class WindowManager:
         self._display.sync()
 
     def close(self) -> None:
+        """Closes the connection to the display."""
         self._display.close()
 
     def _own_window(self) -> Window:

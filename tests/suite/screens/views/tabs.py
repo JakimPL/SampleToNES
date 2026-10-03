@@ -10,7 +10,7 @@ from sampletones_application.tags.general import (
 )
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import read_selected_tab
+from tests.suite.screens.dearpygui.items.reading import read_selected_tab
 
 TAB_TAGS: Final[Dict[Tab, str]] = {
     Tab.MAIN: TAG_GLOBAL_TAB_MAIN,
@@ -18,6 +18,7 @@ TAB_TAGS: Final[Dict[Tab, str]] = {
     Tab.SEQUENCER: TAG_GLOBAL_TAB_SEQUENCER,
     Tab.INSTRUCTIONS: TAG_GLOBAL_TAB_INSTRUCTIONS,
 }
+
 TABS_BY_TAG: Final[Dict[str, Tab]] = {tag: tab for tab, tag in TAB_TAGS.items()}
 
 

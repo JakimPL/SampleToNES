@@ -6,7 +6,7 @@ from sampletones_application.tags.graphs import SUF_GRAPH_PLOT
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.geometry import Point
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import read_item
+from tests.suite.screens.dearpygui.items.reading import read_item
 from tests.suite.screens.dearpygui.plots import settled_plot_pointer
 
 NEAR: Final[float] = 0.25

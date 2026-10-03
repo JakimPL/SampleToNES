@@ -15,7 +15,7 @@ from sampletones_application.tags.settings import (
 )
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import read_item, read_value
+from tests.suite.screens.dearpygui.items.reading import read_item, read_value
 from tests.suite.screens.views.menus import MenuBar
 from tests.suite.screens.views.prompts import Prompt
 
@@ -38,9 +38,11 @@ class ProjectProperties:
         self._menu.choose(MenuElements.GROUP_FILE, MenuElements.ITEM_FILE_PROJECT_PROPERTIES)
 
     def is_shown(self) -> bool:
+        """Whether the dialog stands on the screen."""
         return self._bridge.ask(lambda: read_item(TAG_SETTINGS_PROPERTIES_WINDOW)).shown
 
     def title(self) -> str:
+        """The title the title field holds."""
         return str(self._bridge.ask(lambda: read_value(TAG_SETTINGS_PROPERTIES_INPUT_TITLE)))
 
     def retitle(self, title: str) -> None:
@@ -53,6 +55,7 @@ class ProjectProperties:
         self._hand.replace_text(TAG_SETTINGS_PROPERTIES_INPUT_SECOND_HIGHLIGHT, str(second))
 
     def confirm(self) -> None:
+        """Presses OK, which keeps the typed values and closes the dialog."""
         self._hand.click(compose_tag(TAG_SETTINGS_PROPERTIES_BUTTON_OK, SUF_BUTTON))
 
 

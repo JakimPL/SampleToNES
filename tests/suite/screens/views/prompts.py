@@ -4,14 +4,10 @@ from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_BUTTON, SUF_BUTTON_CANCEL, SUF_BUTTON_OK, SUF_BUTTON_SAVE
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import (
-    BUTTON_TYPE,
-    WindowReading,
-    is_tag_within,
-    read_shown_labels,
-    read_shown_texts,
-    read_windows,
-)
+from tests.suite.screens.dearpygui.items.reading import is_tag_within
+from tests.suite.screens.dearpygui.items.regions import WindowReading, read_windows
+from tests.suite.screens.dearpygui.items.texts import read_shown_labels, read_shown_texts
+from tests.suite.screens.dearpygui.items.types import BUTTON_TYPE
 
 
 class MissingPromptError(AssertionError):
@@ -49,6 +45,7 @@ class Prompt:
         ]
 
     def is_shown(self) -> bool:
+        """Whether a prompt of this kind stands on the screen."""
         return self.window() is not None
 
     def title(self) -> str:
@@ -82,6 +79,7 @@ class Prompt:
         self._hand.click(compose_tag(self._standing().alias, suffix, SUF_BUTTON))
 
     def _standing(self) -> WindowReading:
+        """The window of the prompt on the screen; raises ``MissingPromptError`` when none stands."""
         window = self.window()
         if window is None:
             raise MissingPromptError(f"No prompt under '{self._tag}' stands on the screen")

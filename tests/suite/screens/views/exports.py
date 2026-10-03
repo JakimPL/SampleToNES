@@ -26,7 +26,8 @@ from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import read_item, read_shown_texts, read_value
+from tests.suite.screens.dearpygui.items.reading import read_item, read_value
+from tests.suite.screens.dearpygui.items.texts import read_shown_texts
 from tests.suite.screens.dearpygui.semantic import choose
 from tests.suite.screens.views.menus import MenuBar
 from tests.suite.screens.views.notices import Notice
@@ -48,6 +49,7 @@ class ExportProgress:
         self._hand = hand
 
     def is_shown(self) -> bool:
+        """Whether the window stands on the screen."""
         return self._bridge.ask(lambda: read_item(TAG_SETTINGS_EXPORT_WINDOW)).shown
 
     def stages(self) -> Tuple[str, ...]:
@@ -55,11 +57,14 @@ class ExportProgress:
         return self._bridge.ask(lambda: read_shown_texts(TAG_SETTINGS_EXPORT_GROUP_STAGES))
 
     def cancel(self) -> None:
+        """Clicks Cancel, which asks the run to stop."""
         self._hand.click(compose_tag(TAG_SETTINGS_EXPORT_BUTTON_CANCEL, SUF_BUTTON))
 
 
 class NSFWindow:
-    """The window setting an NSF program up: its channels, its repeat, its level of compression, its title and file."""
+    """The window setting an NSF program up: its channels, its repeat, its level of compression,
+    its title and file.
+    """
 
     def __init__(
         self,
@@ -70,6 +75,7 @@ class NSFWindow:
         self._hand = hand
 
     def is_shown(self) -> bool:
+        """Whether the window stands on the screen."""
         return self._bridge.ask(lambda: read_item(TAG_SETTINGS_NSF_WINDOW)).shown
 
     def offers(self, channel: ChannelName) -> bool:
@@ -77,6 +83,7 @@ class NSFWindow:
         return self._bridge.ask(lambda: read_item(_channel_box(channel))).enabled
 
     def is_ticked(self, channel: ChannelName) -> bool:
+        """Whether ``channel``'s box stands ticked."""
         return bool(self._bridge.ask(lambda: read_value(_channel_box(channel))))
 
     def tick(self, channel: ChannelName) -> None:
@@ -96,6 +103,7 @@ class NSFWindow:
         return self._bridge.ask(lambda: read_item(TAG_SETTINGS_NSF_TEXT_NO_CHANNEL)).shown
 
     def can_export(self) -> bool:
+        """Whether Export answers a press."""
         return self._bridge.ask(lambda: read_item(_export_button())).enabled
 
     def press_export(self) -> None:
@@ -107,6 +115,7 @@ class NSFWindow:
         self._hand.click_at(rect.center)
 
     def export(self) -> None:
+        """Clicks Export, which writes the program to the file chosen."""
         self._hand.click(_export_button())
 
     def browse(self) -> None:
@@ -114,6 +123,7 @@ class NSFWindow:
         self._hand.click(compose_tag(TAG_SETTINGS_NSF_BUTTON_BROWSE, SUF_BUTTON))
 
     def cancel(self) -> None:
+        """Clicks Cancel, which closes the window."""
         self._hand.click(compose_tag(TAG_SETTINGS_NSF_BUTTON_CANCEL, SUF_BUTTON))
 
     def repeat(self) -> str:
@@ -133,6 +143,7 @@ class NSFWindow:
         self._bridge.ask(lambda: choose(TAG_SETTINGS_NSF_COMBO_SCHEME, label, CallbackQueue.run))
 
     def loop_frame(self) -> str:
+        """What the Frame field reads, in hexadecimal."""
         return str(self._bridge.ask(lambda: read_value(TAG_SETTINGS_NSF_INPUT_LOOP_FRAME)))
 
     def type_loop_frame(self, frame: str) -> None:
@@ -140,6 +151,7 @@ class NSFWindow:
         self._hand.replace_text(TAG_SETTINGS_NSF_INPUT_LOOP_FRAME, frame)
 
     def title(self) -> str:
+        """What the Title field reads."""
         return str(self._bridge.ask(lambda: read_value(TAG_SETTINGS_NSF_INPUT_TITLE)))
 
     def type_title(self, title: str) -> None:
@@ -148,11 +160,11 @@ class NSFWindow:
 
 
 class Exports:
-    """The ways a project, a reconstruction or an instrument leaves the application as a file, and what they report.
+    """The ways a project, a reconstruction or an instrument leaves the application as a file.
 
-    A project is exported from File ▸ Export, a reconstruction's channels from Reconstruction ▸
-    Export instruments. An export runs under its window, and its outcome stands in a notice: the
-    project's names the format it was written in, and an instrument's names the file it wrote.
+    A project is exported from File ▸ Export, a reconstruction's channels from Reconstruction ▸ Export
+    instruments. An export runs under its window, and its outcome stands in a notice: the project's names the
+    format it was written in, and an instrument's names the file it wrote.
     """
 
     def __init__(

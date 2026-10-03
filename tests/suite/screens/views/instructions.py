@@ -18,7 +18,9 @@ from sampletones_application.tags.instructions import (
 )
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import Item, read_label, read_value
+from tests.suite.screens.dearpygui.items.reading import read_value
+from tests.suite.screens.dearpygui.items.texts import read_label
+from tests.suite.screens.dearpygui.items.types import Item
 from tests.suite.screens.views.browsers import FileTree
 from tests.suite.screens.views.notices import Notice
 from tests.suite.screens.views.prompts import Prompt
@@ -54,10 +56,12 @@ class Library:
         return self._bridge.ask(lambda: read_label(GENERATE_BUTTON))
 
     def generate(self) -> None:
+        """Clicks the button generating a library, scrolling it into view first."""
         self._hand.scroll_into_view(GENERATE_BUTTON)
         self._hand.click(GENERATE_BUTTON)
 
     def cancel_generation(self) -> None:
+        """Clicks the button that cancels a generation under way."""
         self._hand.click(CANCEL_GENERATION_BUTTON)
 
     def status(self) -> str:

@@ -13,7 +13,7 @@ from sampletones_application.tags.graphs import (
 from tests.suite.screens.dearpygui.bridge import ONE_FRAME, Bridge
 from tests.suite.screens.dearpygui.geometry import Point, Rect
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import read_item
+from tests.suite.screens.dearpygui.items.reading import read_item
 from tests.suite.screens.dearpygui.plots import settled_plot_pointer
 
 LINE_SERIES_TYPE: Final[str] = "mvAppItemType::mvLineSeries"
@@ -98,12 +98,15 @@ class Waveform:
         self._hand.wheel_at(self.point(fraction), -notches)
 
     def click(self, fraction: float) -> None:
+        """Clicks the plot ``fraction`` of the way across it."""
         self._hand.click_at(self.point(fraction))
 
     def double_click(self, fraction: float) -> None:
+        """Double-clicks the plot ``fraction`` of the way across it."""
         self._hand.double_click_at(self.point(fraction))
 
     def triple_click(self, fraction: float) -> None:
+        """Triple-clicks the plot ``fraction`` of the way across it."""
         self._hand.triple_click_at(self.point(fraction))
 
     def drag(self, start: float, end: float) -> None:

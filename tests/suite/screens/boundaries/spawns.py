@@ -7,6 +7,7 @@ from typing import Any, Final, FrozenSet, List, Optional, Tuple
 LIBRARY_PROBES: Final[FrozenSet[str]] = frozenset({"cc", "gcc", "ld", "ldconfig", "objdump"})
 PROGRAM_ARGUMENT: Final[int] = 0
 ARGUMENTS_ARGUMENT: Final[int] = 1
+
 SPAWN_EVENTS: Final[FrozenSet[str]] = frozenset(
     {
         "os.exec",
@@ -29,11 +30,10 @@ class SpawnGuard:
 
     A file manager, a browser or a dialog tool would open on the desktop around the scenario's display.
     The guard is an audit hook, so it stands in front of every way Python starts a program, however
-    a module imported it. The application's own worker processes start through multiprocessing,
-    which the hook leaves alone, and so are the tools ``ctypes.util.find_library`` asks where a
-    shared library lies, and the stand-in programs of the folder the guard is told to allow. A
-    refused try is remembered by its program and arguments alone, since the environment it carried
-    can hold the secrets of the machine the run is on.
+    a module imported it. It lets through the application's own worker processes, which start through
+    multiprocessing, the tools ``ctypes.util.find_library`` asks where a shared library lies, and the
+    stand-in programs of the folder it is told to allow. A refused try is remembered by its program and
+    arguments alone, since the environment it carried can hold the secrets of the machine the run is on.
     """
 
     def __init__(self) -> None:
@@ -43,7 +43,7 @@ class SpawnGuard:
         self._lock = threading.Lock()
 
     def install(self) -> None:
-        """Puts the guard in front of the process for good; it refuses nothing until armed."""
+        """Puts the guard in front of the process for good; it lets every try through until armed."""
         sys.addaudithook(self._audit)
 
     def allow(self, folder: Path) -> None:
@@ -51,10 +51,12 @@ class SpawnGuard:
         self._allowed = folder
 
     def arm(self) -> None:
+        """Starts refusing the programs the application tries to start."""
         self._armed = True
 
     @property
     def refused(self) -> Tuple[str, ...]:
+        """The programs refused so far, each with its event and arguments, in order."""
         with self._lock:
             return tuple(self._refused)
 

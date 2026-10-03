@@ -8,11 +8,12 @@ import pytest
 
 TableItem = Union[int, str]
 Color = Tuple[float, ...]
-
 WHOLE_LINE: Final[None] = None
 
 
 class HighlightKind(StrEnum):
+    """The stretch of a table one highlight covers."""
+
     ROW = "row"
     CELL = "cell"
     COLUMN = "column"
@@ -49,6 +50,7 @@ class TableHighlights:
         self._lock = threading.Lock()
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Wraps DearPyGui's calls that lay and lift table highlights, so each one is noted as it runs."""
         lay_row = dpg.highlight_table_row
         lay_cell = dpg.highlight_table_cell
         lay_column = dpg.highlight_table_column

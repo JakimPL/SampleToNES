@@ -32,7 +32,10 @@ from sampletones_application.ui.elements.stems.tags import StemsTags
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import Item, find_item, read_item, read_label, read_texts, read_theme
+from tests.suite.screens.dearpygui.items.colors import read_theme
+from tests.suite.screens.dearpygui.items.reading import find_item, read_item
+from tests.suite.screens.dearpygui.items.texts import read_label, read_texts
+from tests.suite.screens.dearpygui.items.types import Item
 from tests.suite.screens.views.notices import Notice
 from tests.suite.screens.views.prompts import Prompt
 
@@ -66,18 +69,23 @@ class ConverterList:
         return self.tags.row(str(path), ROW_TEXT)
 
     def has_row(self, path: Path) -> bool:
+        """Whether a row gathered from ``path`` is drawn."""
         return bool(self._bridge.ask(lambda: dpg.does_item_exist(self.row(path))))
 
     def label(self, path: Path) -> str:
+        """The words the row of ``path`` reads."""
         return self._bridge.ask(lambda: read_label(self.row(path)))
 
     def is_picked(self, path: Path) -> bool:
+        """Whether the row of ``path`` stands picked."""
         return bool(self._bridge.ask(lambda: dpg.get_value(self.row(path))))
 
     def row_theme(self, path: Path) -> Optional[str]:
+        """The theme the row of ``path`` wears, or None when it wears none."""
         return self._bridge.ask(lambda: read_theme(self.row(path)))
 
     def band_theme(self, path: Path) -> Optional[str]:
+        """The theme the band behind the row of ``path`` wears, or None when it wears none."""
         return self._bridge.ask(lambda: read_theme(self.tags.row(str(path), ROW_GROUP)))
 
     def rows(self) -> List[str]:
@@ -91,18 +99,23 @@ class ConverterList:
         return self._bridge.ask(read)
 
     def row_count(self) -> int:
+        """How many rows are drawn, folders included."""
         return len(self.rows())
 
     def channel_box(self, path: Path, channel: ChannelName) -> str:
+        """The name of the box ticking ``channel`` on the row of ``path``."""
         return self.tags.channel(str(path), channel)
 
     def channel_ticked(self, path: Path, channel: ChannelName) -> bool:
+        """Whether ``channel``'s box on the row of ``path`` stands ticked."""
         return bool(self._bridge.ask(lambda: dpg.get_value(self.channel_box(path, channel))))
 
     def channel_theme(self, path: Path, channel: ChannelName) -> Optional[str]:
+        """The theme ``channel``'s box on the row of ``path`` wears, or None when it wears none."""
         return self._bridge.ask(lambda: read_theme(self.channel_box(path, channel)))
 
     def twisty(self, path: Path) -> str:
+        """The name of the marker that opens the folder gathered from ``path``."""
         return self.tags.row(str(path), ROW_TWISTY)
 
     def is_open(self, path: Path) -> bool:
@@ -110,6 +123,7 @@ class ConverterList:
         return bool(self._bridge.ask(lambda: dpg.does_item_exist(self.tags.region(str(path)))))
 
     def remove_button(self, path: Path) -> str:
+        """The name of the button removing the row of ``path``."""
         return self.tags.row(str(path), ROW_REMOVE)
 
     def has_levels(self) -> bool:
@@ -117,9 +131,11 @@ class ConverterList:
         return bool(self._bridge.ask(lambda: dpg.does_item_exist(self.tags.level(FIRST_LEVEL, LEVEL_STRIP))))
 
     def hint_shown(self) -> bool:
+        """Whether the hint asking for recordings stands on the card."""
         return self._bridge.ask(lambda: read_item(TAG_MAIN_CONVERTER_TEXT_STEMS_HINT)).shown
 
     def list_shown(self) -> bool:
+        """Whether the list of rows stands on the card."""
         return self._bridge.ask(lambda: read_item(self.tags.well)).shown
 
     def pick(self, path: Path) -> None:
@@ -156,43 +172,57 @@ class MixQuestion:
         self.tags = StemsTags(prefix=PRE_MAIN_CONVERTER_CANDIDATE)
 
     def is_shown(self) -> bool:
+        """Whether the question stands on the screen."""
         return self._bridge.ask(lambda: read_item(TAG_MAIN_CONVERTER_WINDOW_STEM_SELECTION)).shown
 
     def box(self, path: Path) -> str:
+        """The name of the box ticking the recording at ``path``."""
         return self.tags.row(str(path), SUF_CHECKBOX)
 
     def name(self, path: Path) -> str:
+        """The name of the line showing the recording at ``path``."""
         return self.tags.row(str(path), ROW_TEXT)
 
     def is_ticked(self, path: Path) -> bool:
+        """Whether the box of the recording at ``path`` stands ticked."""
         return bool(self._bridge.ask(lambda: dpg.get_value(self.box(path))))
 
     def is_live(self, path: Path) -> bool:
-        """Whether the box answers a click, which a box past a full pick does not."""
+        """Whether the box answers a click, which a box beyond a full pick stops doing."""
         return self._bridge.ask(lambda: read_item(self.box(path))).enabled
 
     def is_highlighted(self, path: Path) -> bool:
+        """Whether the line of the recording at ``path`` stands highlighted."""
         return bool(self._bridge.ask(lambda: dpg.get_value(self.name(path))))
 
     def count_line(self) -> str:
+        """What the line counting the recordings picked reads."""
         return str(self._bridge.ask(lambda: dpg.get_value(TAG_MAIN_CONVERTER_TEXT_STEM_SELECTION_LIMIT)))
 
     def can_add(self) -> bool:
+        """Whether Add answers a click."""
         return self._bridge.ask(lambda: read_item(_add_button())).enabled
 
     def tick(self, path: Path) -> None:
+        """Brings the box of the recording at ``path`` into view and clicks it."""
         self._hand.scroll_into_view(self.box(path))
         self._hand.click(self.box(path))
 
     def add(self) -> None:
+        """Clicks Add, which takes the recordings ticked."""
         self._hand.click(_add_button())
 
     def cancel(self) -> None:
+        """Clicks Cancel, which closes the question and takes no recording."""
         self._hand.click(compose_tag(TAG_MAIN_CONVERTER_BUTTON_CANCEL_STEMS, SUF_BUTTON))
 
 
 class Converter:
-    """The Converter card: the list, the button naming the run, and the run's progress and questions."""
+    """The Converter card: the list, the button naming the run, and the run's progress and questions.
+
+    A scenario reaches the list, the mix question, the prompts and the notices through the attributes
+    of the card.
+    """
 
     def __init__(
         self,
@@ -219,6 +249,7 @@ class Converter:
         return self._bridge.ask(lambda: read_label(_action_button()))
 
     def press_action(self) -> None:
+        """Brings the button under the list into view and clicks it."""
         self._hand.scroll_into_view(_action_button())
         self._hand.click(_action_button())
 
@@ -227,9 +258,11 @@ class Converter:
         return self._bridge.ask(lambda: read_item(TAG_MAIN_CONVERTER_GROUP)).shown
 
     def status(self) -> str:
+        """What the status line of the run reads."""
         return str(self._bridge.ask(lambda: dpg.get_value(TAG_MAIN_CONVERTER_TEXT_STATUS)))
 
     def progress(self) -> float:
+        """How far the run has come, as a fraction."""
         return float(self._bridge.ask(lambda: dpg.get_value(TAG_MAIN_CONVERTER_PROGRESS)))
 
     def destination(self) -> str:
@@ -242,9 +275,11 @@ class Converter:
         return self._bridge.ask(lambda: read_item(TAG_MAIN_CONVERTER_WINDOW_SCAN)).shown
 
     def scan_words(self) -> str:
+        """What the window reading a folder says it is reading."""
         return str(self._bridge.ask(lambda: dpg.get_value(TAG_MAIN_CONVERTER_TEXT_SCAN_FOLDER)))
 
     def stop_scan(self) -> None:
+        """Clicks Stop on the window reading a folder."""
         self._hand.click(compose_tag(TAG_MAIN_CONVERTER_BUTTON_STOP_SCAN, SUF_BUTTON))
 
 

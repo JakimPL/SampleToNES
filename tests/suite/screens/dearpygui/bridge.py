@@ -4,7 +4,6 @@ from concurrent.futures import Future
 from typing import Callable, Final, Protocol, TypeVar
 
 AnswerT = TypeVar("AnswerT")
-
 NEXT_DRAIN: Final[int] = 0
 ONE_FRAME: Final[int] = 1
 POLL_SECONDS: Final[float] = 0.05

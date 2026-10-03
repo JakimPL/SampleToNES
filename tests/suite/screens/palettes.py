@@ -3,10 +3,9 @@ from typing import Final, FrozenSet, Sequence, Tuple
 from sampletones_application.paths import PALETTES_DIRECTORY
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.palette import Palette
-from tests.suite.screens.dearpygui.items import rounded_color
+from tests.suite.screens.dearpygui.items.colors import rounded_color
 
 Color = Tuple[float, ...]
-
 FULL_STEP: Final[float] = 255.0
 
 

@@ -3,11 +3,11 @@ from typing import Any, Callable, Final, Optional, Sequence
 
 import dearpygui.dearpygui as dpg
 
-from tests.suite.screens.dearpygui.items import Item, ItemReading, read_item
+from tests.suite.screens.dearpygui.items.reading import ItemReading, read_item
+from tests.suite.screens.dearpygui.items.types import Item
 from tests.suite.screens.dearpygui.reach import UnreachableError, covering_modal
 
 CallbackRunner = Callable[..., object]
-
 POSITIONAL: Final = (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD)
 
 

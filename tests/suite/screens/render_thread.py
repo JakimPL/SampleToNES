@@ -21,9 +21,11 @@ class QueueRenderThread:
         *,
         frames: int,
     ) -> None:
+        """Queues ``task`` to run on the render thread once ``frames`` frames are drawn."""
         CallbackQueue.add(task, delay=frames)
 
     def is_running(self) -> bool:
+        """Whether the loop is drawing."""
         return self._running.is_set()
 
     def start(self) -> None:

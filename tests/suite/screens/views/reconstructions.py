@@ -22,7 +22,8 @@ from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import read_item, read_texts, read_value
+from tests.suite.screens.dearpygui.items.reading import read_item, read_value
+from tests.suite.screens.dearpygui.items.texts import read_texts
 from tests.suite.screens.dearpygui.semantic import choose
 from tests.suite.screens.views.browsers import FileTree
 from tests.suite.screens.views.instruments import Instruments
@@ -83,7 +84,7 @@ class Reconstructions:
     def open_file(self) -> str:
         """The whole path of the open reconstruction's file, as the hover over its shortened path shows it.
 
-        Nothing open, or a reconstruction holding no file, reads as the status the line shows instead.
+        While nothing is open, or the reconstruction has no file yet, the hover shows the status of the line.
         """
         return " ".join(self._bridge.ask(lambda: read_texts(OPEN_FILE_TOOLTIP)))
 
@@ -100,7 +101,7 @@ class Reconstructions:
         return self._bridge.ask(lambda: read_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_INPUT_NES_FREQUENCY)).enabled
 
     def retune_lock_explained(self) -> bool:
-        """Whether hovering the NES frequency field explains why it takes no new rate."""
+        """Whether hovering the NES frequency field shows why the rate is locked."""
         return self._bridge.ask(
             lambda: read_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_NES_FREQUENCY_LOCKED)
         ).shown
@@ -116,6 +117,7 @@ class Reconstructions:
         return str(self._bridge.ask(lambda: read_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE)))
 
     def can_choose_audio_source(self) -> bool:
+        """Whether the switch above the waveform answers a press."""
         return self._bridge.ask(lambda: read_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE)).enabled
 
     def choose_audio_source(self, label: str) -> None:
@@ -133,6 +135,7 @@ class Reconstructions:
         return self._bridge.ask(lambda: read_item(_channel_box(channel))).enabled
 
     def tick_channel(self, channel: ChannelName) -> None:
+        """Clicks the box of ``channel`` above the waveform, which flips its tick."""
         self._hand.click(_channel_box(channel))
 
 

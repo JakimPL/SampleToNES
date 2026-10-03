@@ -153,67 +153,68 @@ currently out of line. An entry leaves when the code meets the contract again.
 
 * Leaving the application on a machine that offers no output device fails. The shutdown saves the
   session and asks the audio device manager for its current device, and with no device selected it
-  raises `ValueError: No audio device selected`. The screen scenario in `tests/screens/test_leaving.py`
+  raises `ValueError: No audio device selected`. The screen scenario in `tests/screens/application/leaving/test_exit_shortcut.py`
   reproduces it as a known failure.
 * A project stating a data version no upgrade step reaches is refused by its shape, not by its version.
   `ProjectContainer.load` validates the document before `_validate_document` compares the version, so
   the user reads a list of validation errors instead of the version mismatch a reconstruction reports.
   `tests/integration/compatibility/test_project.py` and the screen scenario in
-  `tests/screens/application/test_old_files.py` reproduce it as known failures.
+  `tests/screens/application/old_files/test_broken_projects.py` reproduce it as known failures.
 * Leaving keeps the last dialog folder a run found deleted. A dialog opens in the nearest folder still
-  standing, while `state.yaml` goes on naming the deleted one. `tests/screens/application/test_restart.py`
+  standing, while `state.yaml` goes on naming the deleted one. `tests/screens/application/restart/test_deleted_files.py`
   reproduces it as a known failure.
 * Leaving keeps a starred file a run found deleted: `config.yaml` goes on naming it among the favorites.
-  `tests/screens/application/test_restart.py` reproduces it as a known failure.
+  `tests/screens/application/restart/test_deleted_files.py` reproduces it as a known failure.
 * A folder asked for while a stopped read winds down is dropped without a word. Stop closes the scan
   window at once while the walk runs on to its next entry, and `FolderScan.start` turns away the folder
   asked for in that time, though it promises that a folder asked for once the window closes is read.
-  `tests/screens/main/test_scan.py` reproduces it as a known failure.
+  `tests/screens/main/scan/test_reading_a_folder.py` reproduces it as a known failure.
 * A box clicked in the Converter list leaves Source settings where it stood: ticking a channel on a
   recording inside an open folder changes that row, while the card goes on naming the row picked
-  before, or New recordings. `tests/screens/main/test_row_settings.py` reproduces it as a known failure.
+  before, or New recordings. `tests/screens/main/row_settings/test_boxes.py` reproduces it as a known failure.
 * General settings stops short of the Converter's right edge while Advanced settings is put away,
   where it should fill the row and end where the Converter below it does.
-  `tests/screens/main/test_cards.py` reproduces it as a known failure.
+  `tests/screens/main/cards/test_card_layout.py` reproduces it as a known failure.
 * The Destination line names no folder a run writes into once the gathered recordings convert with
   different channels: it names the folder of every channel the rows use together, while each
-  recording goes into the folder of its own channels. `tests/screens/main/test_run.py` reproduces it as
+  recording goes into the folder of its own channels. `tests/screens/main/run/test_destination.py` reproduces it as
   a known failure.
 * A library folder pointed away from and back lists its library unloaded: the library loaded before
   reads as one that exists, where it should come back loaded.
-  `tests/screens/main/test_library.py` reproduces it as a known failure.
+  `tests/screens/main/library/test_folders_and_generators.py` reproduces it as a known failure.
 * A reconstruction whose file the browser removed reads as a sample of the project: the NES frequency
   field locks with the hint that the project sets its rate, though the document belongs to no
-  project. `tests/screens/prompts/test_vanished.py` reproduces it as a known failure.
+  project. `tests/screens/prompts/vanished/test_reconstruction_removed.py` reproduces it as a known failure.
 * A voice double-clicked with the second press still held opens edited. The double-click brings the
   Reconstructions tab forward while the button is down, and the envelope graph that comes under the
-  pointer draws a bar for a press that began on the Voices card. `tests/screens/prompts/test_open_voice.py`
+  pointer draws a bar for a press that began on the Voices card. `tests/screens/prompts/open_voice/test_open_voice.py`
   reproduces it as a known failure.
 * A Keyboard settings row reads as listening once Cancel answers the reassign question, while no key
   reaches it: the keys pressed next are taken by nothing, and Escape closes the dialog.
-  `tests/screens/prompts/test_modal_over_modal.py` reproduces it as a known failure.
+  `tests/screens/prompts/modals/test_run_ending_behind_a_dialog.py` reproduces it as a known failure.
 * Two closes before the first is answered ask twice: each close puts its question in line, so Cancel
   on the first brings the second, and so does a close made twice while an edit is on its way.
-  `tests/screens/prompts/test_closing_over_a_modal.py` reproduces it as a known failure.
+  `tests/screens/prompts/closing/test_over_a_question.py` and
+  `tests/screens/prompts/closing/test_during_an_edit.py` reproduce it as known failures.
 * A reconstruction whose recording is missing draws a flat original line beside the reconstruction,
-  where the waveform shows the approximation on its own. `tests/screens/reconstructions/test_player.py`
+  where the waveform shows the approximation on its own. `tests/screens/reconstructions/player/test_source_switch.py`
   reproduces it as a known failure.
 * With an instrument open on the Reconstructions tab, the note keys take Ctrl+Z, Ctrl+S and every
   combination ending in a note key: the instruments panel answers a key whatever modifiers are held, so
-  Undo, Save and the rest never reach their shortcuts. `tests/screens/reconstructions/test_instruments.py`
+  Undo, Save and the rest never reach their shortcuts. `tests/screens/reconstructions/instruments/test_note_keys.py`
   reproduces it as a known failure.
 * Playing the song from a tracker row leaves the Playback menu reading Play, with Stop greyed out, while
-  the song plays: that path never refreshes the menu. `tests/screens/sequencer/test_tracker.py` reproduces
+  the song plays: that path never refreshes the menu. `tests/screens/sequencer/tracker/test_notes_typed.py` reproduces
   it as a known failure.
 * New instrument with no project open writes into a project nobody opened: the Voices card's button has
   no open-project guard, so the instrument is added and listed, while Voice ▸ New instrument stands
-  greyed out. `tests/screens/sequencer/test_voices.py` reproduces it as a known failure.
+  greyed out. `tests/screens/sequencer/voices/test_voices_card.py` reproduces it as a known failure.
 * The history lines of a renamed or a moved voice name it one way alone: a rename names the voice and
   not its position, and a move names the positions and not the voice.
-  `tests/screens/sequencer/test_history.py` reproduces it as a known failure.
+  `tests/screens/sequencer/history/test_voice_gestures.py` reproduces it as a known failure.
 * A project opened as the application starts is saved as though it had no file: `load_project_safely`
   leaves the session's current project unset, so Save asks for a path, or writes to whatever path an
-  earlier session left. `tests/screens/sequencer/test_song.py` reproduces it as a known failure.
+  earlier session left. `tests/screens/sequencer/song/test_retuning_and_saving.py` reproduces it as a known failure.
 * A voice row's hover can log an error: the Voices list rebuilds every row on each update, and a hover
   callback queued for a row before the rebuild reads an item that no longer exists
   (`_on_row_hovered`, "Item not found"). The Sequencer's screen scenarios forgive it by name; no
@@ -221,12 +222,12 @@ currently out of line. An entry leaves when the code meets the contract again.
 * Export instrument... in a project whose samples were converted at two tunings does nothing the user
   can see: `voice_instrument` raises the tuning error inside the menu's callback, so no message, no save
   dialog and no file follow, while a Bitphase project or an NSF program of the same project stops with a
-  message. `tests/screens/exports/test_progress.py` reproduces it as a known failure.
+  message. `tests/screens/exports/progress/test_refusals.py` reproduces it as a known failure.
 * Closing the window while Display settings holds a window size kept on the countdown but never confirmed
   writes that size: leaving records the live window size, while the dialog keeps the session at the values
   it opened with until OK, and the window manager's close passes the open dialog by.
-  `tests/screens/interface/test_display.py` reproduces it as a known failure.
+  `tests/screens/interface/display/test_kept_size_at_close.py` reproduces it as a known failure.
 * Closing the window while a folder is being read crashes the process once the read ends: nothing stops the
   walk on exit, so it runs past the shutdown, and its report closes the reading window through DearPyGui
-  after the context is gone (SIGSEGV). `tests/screens/application/test_closing.py` reproduces it as a
+  after the context is gone (SIGSEGV). `tests/screens/application/closing/test_during_work.py` reproduces it as a
   known failure.

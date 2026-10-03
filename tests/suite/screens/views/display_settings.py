@@ -21,7 +21,7 @@ from sampletones_application.tags.settings import (
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import read_item, read_value
+from tests.suite.screens.dearpygui.items.reading import read_item, read_value
 from tests.suite.screens.dearpygui.semantic import choose
 from tests.suite.screens.views.menus import MenuBar
 from tests.suite.screens.views.prompts import Prompt
@@ -48,6 +48,7 @@ class DisplaySettings:
         self._menu.choose(MenuElements.GROUP_VIEW, MenuElements.ITEM_VIEW_DISPLAY_SETTINGS)
 
     def is_shown(self) -> bool:
+        """Whether the dialog stands on the screen."""
         return self._bridge.ask(lambda: read_item(TAG_SETTINGS_DISPLAY_WINDOW)).shown
 
     def resolution(self) -> str:
@@ -64,8 +65,9 @@ class DisplaySettings:
         )
 
     def choose_resolution(self, label: str) -> None:
-        """Picks the window size reading ``label`` in the Resolution list, which resizes the window and starts the
-        countdown.
+        """Picks the window size reading ``label`` in the Resolution list.
+
+        The window resizes and the countdown starts.
         """
         self._bridge.ask(lambda: choose(TAG_SETTINGS_DISPLAY_COMBO_RESOLUTION, label, CallbackQueue.run))
 
@@ -82,6 +84,7 @@ class DisplaySettings:
         return bool(self._bridge.ask(lambda: read_value(TAG_SETTINGS_DISPLAY_CHECKBOX_VSYNC)))
 
     def toggle_vsync(self) -> None:
+        """Clicks the vertical sync box, which ticks it or lets it go."""
         self._hand.click(TAG_SETTINGS_DISPLAY_CHECKBOX_VSYNC)
 
     def borderless(self) -> bool:
@@ -105,7 +108,9 @@ class DisplaySettings:
         self._hand.click(compose_tag(TAG_SETTINGS_DISPLAY_BUTTON_REVERT, SUF_BUTTON))
 
     def cancel(self) -> None:
+        """Presses Cancel, which drops the changes and closes the dialog."""
         self._hand.click(compose_tag(TAG_SETTINGS_DISPLAY_BUTTON_CANCEL, SUF_BUTTON))
 
     def confirm(self) -> None:
+        """Presses OK, which keeps the changes and closes the dialog."""
         self._hand.click(compose_tag(TAG_SETTINGS_DISPLAY_BUTTON_OK, SUF_BUTTON))

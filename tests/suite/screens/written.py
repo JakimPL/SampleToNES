@@ -19,5 +19,7 @@ def written_application_config() -> ApplicationConfig:
 
 
 def written_config() -> Config:
-    """The reconstruction settings left in the documents folder, read by the manager the next start reads them with."""
+    """The reconstruction settings left in the documents folder, read by the manager the next start reads
+    them with.
+    """
     return ConfigManager(CONFIG_PATH).config

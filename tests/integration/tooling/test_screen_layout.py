@@ -1,28 +1,13 @@
 import ast
 from pathlib import Path
-from typing import Final, FrozenSet, Iterator, List
+from typing import Final, Iterator, List
 
 from sampletones_shared.paths.source import REPOSITORY_ROOT
 from tests.suite.screens.paths import SCREEN_DRIVER_DIRECTORY, SCREENS_DIRECTORY
 
 SCENARIO_FILE_PREFIX: Final[str] = "test_"
+CASES_MODULE: Final[str] = "cases.py"
 SCREEN_TIER_DIRECTORIES: Final[List[Path]] = [SCREENS_DIRECTORY, SCREEN_DRIVER_DIRECTORY]
-NOT_YET_REORGANIZED: Final[FrozenSet[str]] = frozenset(
-    {
-        "tests/screens/application/test_old_files.py",
-        "tests/screens/application/test_restart.py",
-        "tests/screens/exports/test_import.py",
-        "tests/screens/exports/test_progress.py",
-        "tests/screens/interface/test_dialog_sweep.py",
-        "tests/screens/main/test_list.py",
-        "tests/screens/main/test_row_settings.py",
-        "tests/screens/prompts/test_every_door.py",
-        "tests/screens/sequencer/test_history.py",
-        "tests/suite/screens/application.py",
-        "tests/suite/screens/boundaries/dialogs.py",
-        "tests/suite/screens/dearpygui/display.py",
-    }
-)
 
 
 def screen_tier_modules() -> Iterator[Path]:
@@ -62,7 +47,7 @@ class TestTheScreenTierLayout:
         offenders = {
             relative(path): constants_after_code(path)
             for path in screen_tier_modules()
-            if relative(path) not in NOT_YET_REORGANIZED and constants_after_code(path)
+            if path.name != CASES_MODULE and constants_after_code(path)
         }
 
         assert offenders == {}
@@ -80,12 +65,3 @@ class TestTheScreenTierLayout:
         }
 
         assert importers == {}
-
-    def test_the_list_of_modules_not_yet_reorganized_names_files_that_still_need_it(self) -> None:
-        finished = [
-            entry
-            for entry in sorted(NOT_YET_REORGANIZED)
-            if not (REPOSITORY_ROOT / entry).exists() or not constants_after_code(REPOSITORY_ROOT / entry)
-        ]
-
-        assert finished == []

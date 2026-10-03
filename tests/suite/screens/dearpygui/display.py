@@ -1,21 +1,23 @@
 import shutil
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Dict, Final
+from typing import Final
 
 from pyvirtualdisplay.display import Display
 
+KEEP_STATE_BETWEEN_CLIENTS: Final[str] = "-noreset"
+
 
 class DisplayBackend(StrEnum):
+    """The X server program a display runs on: Xvfb draws into memory, Xephyr into a window on the desktop."""
+
     XVFB = "xvfb"
     XEPHYR = "xephyr"
 
-
-SERVER_PROGRAMS: Final[Dict[DisplayBackend, str]] = {
-    DisplayBackend.XVFB: "Xvfb",
-    DisplayBackend.XEPHYR: "Xephyr",
-}
-KEEP_STATE_BETWEEN_CLIENTS: Final[str] = "-noreset"
+    @property
+    def program(self) -> str:
+        """The name of the X server program that draws for this backend."""
+        return "Xvfb" if self is DisplayBackend.XVFB else "Xephyr"
 
 
 class DisplayServerMissingError(RuntimeError):
@@ -48,7 +50,7 @@ class VirtualDisplay:
         backend: DisplayBackend,
         size: ScreenSize,
     ) -> None:
-        self._program = SERVER_PROGRAMS[backend]
+        self._program = backend.program
         self._server = Display(
             backend=backend.value,
             size=(size.width, size.height),
@@ -72,4 +74,5 @@ class VirtualDisplay:
         return self._server.new_display_var
 
     def stop(self) -> None:
+        """Stops the server and frees the display name it served."""
         self._server.stop()

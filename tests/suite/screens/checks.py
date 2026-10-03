@@ -8,7 +8,9 @@ from tests.suite.screens.boundaries.dialogs import ScriptedFileDialogs
 from tests.suite.screens.boundaries.errors import ErrorRecords
 from tests.suite.screens.boundaries.spawns import SpawnGuard
 from tests.suite.screens.dearpygui.geometry import Rect
-from tests.suite.screens.dearpygui.items import WindowReading, is_tag_within, read_client_area, read_windows
+from tests.suite.screens.dearpygui.items.reading import is_tag_within
+from tests.suite.screens.dearpygui.items.regions import WindowReading, read_windows
+from tests.suite.screens.dearpygui.items.viewport import read_client_area
 
 
 class AfterCheckError(AssertionError):
@@ -38,7 +40,9 @@ def quiet_findings(
     start: int,
     stop: Optional[int],
 ) -> List[str]:
-    """The unprovoked errors the application logged or let escape a thread, from the ``start``-th to the ``stop``-th."""
+    """The unprovoked errors the application logged or let escape a thread, from the ``start``-th to the
+    ``stop``-th.
+    """
     return [f"The application reported: {message}" for message in errors.unclaimed(start, stop)]
 
 

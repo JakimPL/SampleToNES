@@ -10,7 +10,10 @@ from sampletones_core.constants.enums import ChannelName
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.geometry import Point
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import Item, read_item, read_label, read_theme_text_color
+from tests.suite.screens.dearpygui.items.colors import read_theme_text_color
+from tests.suite.screens.dearpygui.items.reading import read_item
+from tests.suite.screens.dearpygui.items.texts import read_label
+from tests.suite.screens.dearpygui.items.types import Item
 from tests.suite.screens.dearpygui.keys import IMGUI_LEFT_SHIFT
 from tests.suite.screens.dearpygui.reach import UnreachableError
 
@@ -70,7 +73,7 @@ class Tracker:
         self._hand.click(label)
 
     def text_color(self, row: int, channel: Optional[ChannelName], subcolumn: SubColumn) -> Optional[Tuple[float, ...]]:
-        """The color one slot's text is drawn in, the theme it wears states."""
+        """The color one slot's text is drawn in, as the theme the slot wears sets it."""
 
         def read() -> Optional[Tuple[float, ...]]:
             theme = tracker_cell_theme(row, channel, subcolumn)
@@ -79,6 +82,7 @@ class Tracker:
         return self._bridge.ask(read)
 
     def label(self, row: int, channel: Optional[ChannelName], subcolumn: SubColumn) -> str:
+        """What one slot reads."""
         return self._bridge.ask(lambda: read_label(tracker_cell(row, channel, subcolumn)))
 
     def labels(self, row: int, channel: Optional[ChannelName]) -> Tuple[str, ...]:
@@ -86,6 +90,7 @@ class Tracker:
         return tuple(self.label(row, channel, subcolumn) for subcolumn in SUBCOLUMNS)
 
     def theme(self, row: int, channel: Optional[ChannelName], subcolumn: SubColumn) -> Optional[int]:
+        """The theme one slot's text wears, or ``None`` while it wears none."""
         return self._bridge.ask(lambda: tracker_cell_theme(row, channel, subcolumn))
 
     def click(self, row: int, channel: Optional[ChannelName], subcolumn: SubColumn) -> None:
@@ -101,6 +106,7 @@ class Tracker:
         self._hand.click_holding(item, [IMGUI_LEFT_SHIFT])
 
     def right_click(self, row: int, channel: Optional[ChannelName], subcolumn: SubColumn) -> None:
+        """Clicks one slot with the right button, which opens its menu."""
         item = self._bridge.ask(lambda: tracker_cell(row, channel, subcolumn))
         self._hand.scroll_into_view(item)
         self._hand.right_click(item)
@@ -122,6 +128,7 @@ class Tracker:
         )
 
     def octave(self) -> int:
+        """The octave the octave field holds."""
         return int(self._bridge.ask(lambda: dpg.get_value(TAG_SEQUENCER_TRACKER_INPUT_OCTAVE)))
 
     def raise_octave(self) -> None:

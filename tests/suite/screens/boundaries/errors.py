@@ -35,6 +35,7 @@ class ErrorRecords(logging.Handler):
         self._lock = threading.Lock()
 
     def install(self) -> None:
+        """Starts recording what the application logs and what its threads let escape."""
         logging.getLogger(SAMPLETONES_NAME).addHandler(self)
         threading.excepthook = self._escaped
 
@@ -54,7 +55,9 @@ class ErrorRecords(logging.Handler):
             return tuple(record.message for record in self._records[start:stop] if not record.claimed)
 
     def claim(self, naming: str) -> bool:
-        """Takes the first unclaimed error whose message holds ``naming`` as provoked, and says whether one did."""
+        """Takes the first unclaimed error whose message holds ``naming`` as provoked, and says whether one
+        did.
+        """
         with self._lock:
             for record in self._records:
                 if not record.claimed and naming in record.message:
@@ -64,6 +67,7 @@ class ErrorRecords(logging.Handler):
         return False
 
     def emit(self, record: logging.LogRecord) -> None:
+        """Records a logged error, and a warning logged from within the exit's join on background work."""
         if record.levelno < logging.ERROR and not _logged_by_the_exit_join():
             return
 

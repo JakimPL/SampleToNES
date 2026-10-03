@@ -7,7 +7,9 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.structures.tree.node import FileSystemNode, GeneratorNode, LibraryNode, TreeNode
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
-from tests.suite.screens.dearpygui.items import TREE_NODE_TYPE, Item, find_item, read_label
+from tests.suite.screens.dearpygui.items.reading import find_item
+from tests.suite.screens.dearpygui.items.texts import read_label
+from tests.suite.screens.dearpygui.items.types import TREE_NODE_TYPE, Item
 from tests.suite.screens.dearpygui.keys import IMGUI_LEFT_CTRL
 
 NodeTest = Callable[[TreeNode], bool]
@@ -35,7 +37,9 @@ class FileTree:
         return self._row(lambda node: isinstance(node, FileSystemNode) and node.filepath == path)
 
     def file_rows(self, path: Path) -> List[Item]:
-        """Every row naming the file at ``path``, which a browser listing it under several headings draws again."""
+        """Every row naming the file at ``path``, which a browser listing it under several headings draws
+        again.
+        """
 
         def rows() -> List[Item]:
             found: List[Item] = []
@@ -62,6 +66,7 @@ class FileTree:
         )
 
     def label(self, row: Item) -> str:
+        """The words ``row`` reads."""
         return self._bridge.ask(lambda: read_label(row))
 
     def is_open(self, row: Item) -> bool:

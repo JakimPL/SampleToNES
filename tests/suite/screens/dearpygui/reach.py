@@ -3,14 +3,10 @@ from typing import Optional
 import dearpygui.dearpygui as dpg
 
 from tests.suite.screens.dearpygui.geometry import Rect
-from tests.suite.screens.dearpygui.items import (
-    Item,
-    ItemReading,
-    read_client_area,
-    read_item,
-    read_visible_box,
-    read_windows,
-)
+from tests.suite.screens.dearpygui.items.reading import ItemReading, read_item
+from tests.suite.screens.dearpygui.items.regions import read_visible_box, read_windows
+from tests.suite.screens.dearpygui.items.types import Item
+from tests.suite.screens.dearpygui.items.viewport import read_client_area
 
 
 class UnreachableError(AssertionError):

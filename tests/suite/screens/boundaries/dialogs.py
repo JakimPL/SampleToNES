@@ -3,7 +3,7 @@ from collections import deque
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Deque, Dict, Final, List, Optional, Tuple
+from typing import Deque, Dict, List, Optional, Tuple
 
 import pytest
 
@@ -13,21 +13,21 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 
 
 class DialogKind(StrEnum):
+    """What a file dialog asks the user for: a file to open, a path to save to or a folder."""
+
     OPEN = "open"
     SAVE = "save"
     DIRECTORY = "directory"
 
 
-UNTYPED: Final[None] = None
-
-
 @dataclass(frozen=True)
 class DialogAnswer:
-    """What a scenario has a dialog answer: a path, and for a save dialog the file type picked in its selector.
+    """What a scenario queued for a dialog to answer: a path, and for a save dialog the type picked in its
+    selector.
 
     Attributes:
         path: The path the dialog answers with.
-        type_name: The name of the offered file type the reader picks, or ``None`` to leave the selector alone.
+        type_name: The name of the offered file type to pick, or ``None`` to leave the selector as it was.
     """
 
     path: Path
@@ -81,27 +81,29 @@ class ScriptedFileDialogs:
     ) -> None:
         """Queues the answer the next dialog of ``kind`` gives: ``path``, or ``None`` to dismiss it."""
         with self._lock:
-            self._answers[kind].append(None if path is None else DialogAnswer(path=path, type_name=UNTYPED))
+            self._answers[kind].append(None if path is None else DialogAnswer(path=path, type_name=None))
 
     def answer_save_as(
         self,
         path: Path,
         type_name: str,
     ) -> None:
-        """Queues the answer the next save dialog gives: ``path``, with the offered type named ``type_name`` picked.
+        """Queues the answer the next save dialog gives: ``path``, with the type named ``type_name`` picked.
 
-        A dialog offering no type of that name is left unanswered, which the after-checks report.
+        A dialog offering a type of another name stays unanswered, which the after-checks report.
         """
         with self._lock:
             self._answers[DialogKind.SAVE].append(DialogAnswer(path=path, type_name=type_name))
 
     @property
     def requests(self) -> Tuple[DialogRequest, ...]:
+        """Every dialog the application opened so far, in order, answered or not."""
         with self._lock:
             return tuple(self._requests)
 
     @property
     def unanswered(self) -> Tuple[DialogRequest, ...]:
+        """The dialogs that opened while no answer was queued for them."""
         return tuple(request for request in self.requests if not request.answered)
 
     def open_file(
@@ -111,6 +113,7 @@ class ScriptedFileDialogs:
         initial_directory: Optional[Path],
         filters: Tuple[FileFilter, ...],
     ) -> Optional[Path]:
+        """Answers an open dialog with the queued path, or ``None`` when it is dismissed."""
         return _path(
             self._take(
                 DialogKind.OPEN,
@@ -129,6 +132,9 @@ class ScriptedFileDialogs:
         suggested_name: Optional[str],
         filters: Tuple[FileFilter, ...],
     ) -> Optional[SaveDestination]:
+        """Answers a save dialog with the queued path and the file type picked, or ``None`` when it is
+        dismissed.
+        """
         answer = self._take(
             DialogKind.SAVE,
             title=title,
@@ -147,6 +153,7 @@ class ScriptedFileDialogs:
         title: str,
         initial_directory: Optional[Path],
     ) -> Optional[Path]:
+        """Answers a folder dialog with the queued path, or ``None`` when it is dismissed."""
         return _path(
             self._take(
                 DialogKind.DIRECTORY,
@@ -166,6 +173,7 @@ class ScriptedFileDialogs:
         suggested_name: Optional[str],
         filters: Tuple[FileFilter, ...],
     ) -> Optional[DialogAnswer]:
+        """Takes the answer queued for ``kind``, notes the request and returns the answer, if any."""
         with self._lock:
             queued = self._answers[kind]
             answered = bool(queued)
