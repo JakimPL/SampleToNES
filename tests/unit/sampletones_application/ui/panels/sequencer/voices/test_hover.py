@@ -1,5 +1,4 @@
 from typing import Final, Iterator, Optional, Tuple
-from unittest.mock import MagicMock
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -19,6 +18,7 @@ from sampletones_application.view_model.sequencer.voices import (
 from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
+from tests.suite.status import RecordedStatusBar
 
 SAMPLE_ID: Final[str] = "kick-id"
 INSTRUMENT_ID: Final[str] = "lead-id"
@@ -38,6 +38,15 @@ SAMPLE_FOOTPRINT: Final[VoiceFootprintViewModel] = VoiceFootprintViewModel.from_
     }
 )
 INSTRUMENT_FOOTPRINT: Final[VoiceFootprintViewModel] = VoiceFootprintViewModel.from_instrument(PULSE_1_FOOTPRINT)
+
+
+@pytest.fixture
+def context() -> Iterator[None]:
+    dpg.create_context()
+    try:
+        yield
+    finally:
+        dpg.destroy_context()
 
 
 def _panel(footprint: Optional[VoiceFootprintViewModel]) -> GUISequencerVoicesPanel:
@@ -96,54 +105,34 @@ class TestWhatARowSaysAboutItsVoice:
         assert _panel(footprint)._voice_status_message(voice_id) == ""
 
 
-@pytest.fixture
-def dpg_context() -> Iterator[None]:
-    dpg.create_context()
-    try:
-        yield
-    finally:
-        dpg.destroy_context()
-
-
-@pytest.fixture
-def hovered_panel() -> GUISequencerVoicesPanel:
-    """The panel over the facts a hovered row reads, saying what it says to a recorded status bar."""
-    panel = _panel(SAMPLE_FOOTPRINT)
-    panel._status_bar = MagicMock()
-    return panel
-
-
-def _row(voice_id: str) -> int:
-    """A row of the list, carrying the position and the voice the list gives each row."""
-    with dpg.window():
-        return int(dpg.add_selectable(label=voice_id, user_data=(0, voice_id)))
-
-
-class TestAHoverReachingTheList:
+@pytest.mark.usefixtures("context")
+class TestAHoverReportedAfterTheRowWent:
     """A hover is answered a frame after it happened, and the list rebuilds every row on each update."""
 
-    def test_a_hover_on_a_standing_row_says_what_its_voice_is(
-        self,
-        dpg_context: None,
-        hovered_panel: GUISequencerVoicesPanel,
-    ) -> None:
-        row = _row(SAMPLE_ID)
+    def test_a_standing_cell_names_its_voice(self) -> None:
+        status_bar = RecordedStatusBar()
+        panel = _panel(SAMPLE_FOOTPRINT)
+        panel._status_bar = status_bar
+        with dpg.window():
+            cell = dpg.add_text("Kick", user_data=(0, SAMPLE_ID))
 
-        hovered_panel._on_row_hovered(row, row)
+        panel._on_row_hovered(0, cell)
 
-        hovered_panel._status_bar.set.assert_called_once_with(hovered_panel._voice_status_message(SAMPLE_ID))
+        assert len(status_bar.messages) == 1
+        assert status_bar.messages[0].startswith("Kick")
 
-    def test_a_hover_reaching_a_row_that_is_gone_says_nothing(
-        self,
-        dpg_context: None,
-        hovered_panel: GUISequencerVoicesPanel,
-    ) -> None:
-        gone = _row(SAMPLE_ID)
-        dpg.delete_item(gone)
+    def test_a_cell_a_rebuild_removed_leaves_the_status_bar_as_it_was(self) -> None:
+        status_bar = RecordedStatusBar()
+        panel = _panel(SAMPLE_FOOTPRINT)
+        panel._status_bar = status_bar
+        with dpg.window():
+            cell = dpg.add_text("Kick", user_data=(0, SAMPLE_ID))
+        dpg.delete_item(cell)
 
-        hovered_panel._on_row_hovered(gone, gone)
+        panel._on_row_hovered(0, cell)
 
-        hovered_panel._status_bar.set.assert_not_called()
-        standing = _row(SAMPLE_ID)
-        hovered_panel._on_row_hovered(standing, standing)
-        hovered_panel._status_bar.set.assert_called_once()
+        assert status_bar.messages == []
+        with dpg.window():
+            standing = dpg.add_text("Kick", user_data=(0, SAMPLE_ID))
+        panel._on_row_hovered(0, standing)
+        assert len(status_bar.messages) == 1

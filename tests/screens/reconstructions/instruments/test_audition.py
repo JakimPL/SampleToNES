@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List
 
 import pytest
 
@@ -11,7 +11,6 @@ from tests.suite.screens.application.startup import Startup
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.project import leave_letting_the_project_go
 from tests.suite.screens.steps.reconstructions import expect_open
-from tests.suite.screens.views.waveform import read_cursor
 from tests.suite.screens.vocabulary.playback import PLAY
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION, SONG, SONG_INSTRUMENT
 
@@ -61,9 +60,8 @@ class TestTheAuditionSwitch:
 class TestAnInstrumentsWaveform:
     """A click on an open instrument's waveform keeps playback silent, while a note key sounds it.
 
-    A reconstruction that plays stands open before the instrument, so any sound from a click is heard as
-    a moving cursor. The click leaves the cursor still and the Play button as it was; the note key moves
-    the cursor.
+    A reconstruction that plays stands open before the instrument, so a click that played would play it.
+    The click plays nothing and leaves the Play button as it was; the note key plays sound.
     """
 
     @pytest.fixture
@@ -74,26 +72,22 @@ class TestAnInstrumentsWaveform:
     def test_a_click_plays_nothing_and_a_key_does(self, screen: Screen) -> None:
         waveform = screen.reconstructions.waveform
 
-        def cursors_over(gesture: Callable[[], None]) -> List[Optional[float]]:
-            with screen.record(partial(read_cursor, waveform.cursor_line)) as recording:
-                gesture()
-                screen.frames(NOTE_FRAMES)
+        def heard_over(gesture: Callable[[], None]) -> bool:
+            heard = screen.sound_heard()
+            gesture()
+            screen.frames(NOTE_FRAMES)
 
-            return recording.values()
+            return screen.sound_heard() > heard
 
         def a_click_plays_nothing(screen: Screen) -> None:
             expect_open(screen, PLAYABLE_RECONSTRUCTION)
             give_it_a_volume(screen)
             screen.tabs.bring_to_front(Tab.RECONSTRUCTIONS)
 
-            cursors = cursors_over(partial(waveform.click, 0.5))
-
-            assert not any(cursors)
+            assert not heard_over(partial(waveform.click, 0.5))
             assert screen.sequencer.playback.play_entry() == screen.words(PLAY)
 
         def a_note_key_sounds_it(screen: Screen) -> None:
-            cursors = cursors_over(partial(screen.hand.press_key, PIANO_C, modifiers=[]))
-
-            assert any(cursors)
+            assert heard_over(partial(screen.hand.press_key, PIANO_C, modifiers=[]))
 
         screen.scenario(a_click_plays_nothing, a_note_key_sounds_it, leave_letting_the_project_go).run()

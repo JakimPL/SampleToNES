@@ -110,6 +110,14 @@ class TestCallbackQueueFrameDelay:
 
         assert fired == [True]
 
+    def test_current_frame_counts_each_frame_drawn(self) -> None:
+        start = CallbackQueue.current_frame()
+
+        CallbackQueue.notify_frame()
+        CallbackQueue.notify_frame()
+
+        assert CallbackQueue.current_frame() == start + 2
+
 
 class TestCallbackQueueBudget:
     def test_zero_budget_runs_one_due_callback_per_call(self) -> None:

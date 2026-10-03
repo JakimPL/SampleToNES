@@ -151,7 +151,9 @@ class GUISequencerVoicesPanel(GUIPanel):
         """Says what the hovered row holds, which the id cell and the name cell both address.
 
         Both cells carry the row's position and its voice, so one handler covers the whole row and
-        a reader reads the same line wherever the pointer rests on it.
+        a reader reads the same line wherever the pointer rests on it. The hover is reported a frame
+        after it happened, by which time a rebuilt list may have taken the cell away, so the handler
+        answers for the cells still standing.
         """
         user_data = dpg_get_item_user_data(app_data)
         if not isinstance(user_data, tuple):

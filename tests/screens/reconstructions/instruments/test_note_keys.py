@@ -1,5 +1,4 @@
 import operator
-from functools import partial
 from typing import Final
 
 import pytest
@@ -14,7 +13,6 @@ from tests.suite.screens.dearpygui.keys import IMGUI_DIGIT_ZERO
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.project import leave_letting_the_project_go
 from tests.suite.screens.steps.reconstructions import expect_open
-from tests.suite.screens.views.waveform import read_cursor
 from tests.suite.screens.worlds.recordings import OPEN_RECONSTRUCTION, SONG
 
 PIANO_C_SHARP_UP: Final[int] = IMGUI_DIGIT_ZERO + 2
@@ -31,17 +29,17 @@ class TestTheNoteKeys:
         return Startup(reconstruction=None, project=SONG)
 
     def test_keys_sound_the_instrument_and_a_field_keeps_them(self, screen: Screen) -> None:
-        """Piano keys move the waveform cursor; with the Arpeggio field focused, the same key writes its
-        letter and sounds nothing.
+        """Piano keys play sound; with the Arpeggio field focused, the same key writes its letter and plays
+        nothing.
         """
         instruments = screen.reconstructions.instruments
 
         def sounded(key: int) -> bool:
-            with screen.record(partial(read_cursor, screen.reconstructions.waveform.cursor_line)) as recording:
-                screen.hand.press_key(key, modifiers=[])
-                screen.frames(NOTE_FRAMES)
+            heard = screen.sound_heard()
+            screen.hand.press_key(key, modifiers=[])
+            screen.frames(NOTE_FRAMES)
 
-            return any(reading is not None and reading > 0 for reading in recording.values())
+            return screen.sound_heard() > heard
 
         def the_keys_sound_it(screen: Screen) -> None:
             give_it_a_volume(screen)

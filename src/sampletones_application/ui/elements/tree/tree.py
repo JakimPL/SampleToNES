@@ -501,6 +501,12 @@ class GUITreePanel(GUIPanel, ABC):
         self,
         status_bar_callback: Optional[MessageCallback],
     ) -> Callback:
+        """The hover callback of a row, which names the row in the status bar and its detail tooltip.
+
+        The hover is reported a frame after it happened, by which time a rebuilt tree may have taken
+        the row away, so the callback answers for the rows still standing.
+        """
+
         def hover_callback(
             _sender: Sender,
             app_data: int,

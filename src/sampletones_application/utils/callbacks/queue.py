@@ -75,6 +75,12 @@ class CallbackQueue(metaclass=NonInstantiableMeta):
             cls._frame_counter += 1
 
     @classmethod
+    def current_frame(cls) -> int:
+        """The frame the counter stands at, which a delay given to :meth:`add` counts from."""
+        with cls._lock:
+            return cls._frame_counter
+
+    @classmethod
     def process(cls, budget_seconds: float) -> None:
         """Run the callbacks due at the current frame, up to a time budget.
 

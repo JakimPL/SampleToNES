@@ -1,7 +1,9 @@
+import threading
 from enum import StrEnum
 from pathlib import Path
-from typing import Final
+from typing import Final, Optional
 
+import numpy as np
 import pyaudio
 import pytest
 
@@ -14,6 +16,47 @@ class OutputDevice(StrEnum):
 
     SILENT = "silent"
     NONE = "none"
+
+
+class OutputRecord:
+    """What the application wrote to its output device: how many of the samples it played carry sound.
+
+    It wraps the write of every output stream, so a sound counts once it reaches the device, however briefly it
+    plays and however many frames pass between two readings of it. The playback thread writes while a
+    scenario reads, so the count stands behind a lock.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._sounding_samples = 0
+
+    def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Puts the record in front of every output stream's write before the application starts.
+
+        ``PyAudio.open`` builds its streams from ``PyAudio.Stream``, the class whose write is wrapped.
+        """
+        write = pyaudio.PyAudio.Stream.write
+
+        def recorded(
+            stream: pyaudio.PyAudio.Stream,
+            frames: bytes,
+            num_frames: Optional[int] = None,
+            exception_on_underflow: bool = False,
+        ) -> None:
+            self._count(frames)
+            write(stream, frames, num_frames, exception_on_underflow)
+
+        monkeypatch.setattr(pyaudio.PyAudio.Stream, "write", recorded)
+
+    def sounding_samples(self) -> int:
+        """How many samples carrying sound the application has written to its output so far."""
+        with self._lock:
+            return self._sounding_samples
+
+    def _count(self, frames: bytes) -> None:
+        sounding = int(np.count_nonzero(np.frombuffer(frames, dtype=np.float32)))
+        with self._lock:
+            self._sounding_samples += sounding
 
 
 def provide_output_device(
