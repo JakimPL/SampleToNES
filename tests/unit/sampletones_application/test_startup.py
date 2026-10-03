@@ -275,8 +275,8 @@ class TestLeaving:
     @staticmethod
     def _leave(application: Application) -> None:
         """Takes the teardown a run takes once its loop has ended, leaving the context to the fixture."""
-        with patch("dearpygui.dearpygui.destroy_context") as destroy_context:
-            application._teardown()
+        with patch("dearpygui.dearpygui.destroy_context") as destroy_context, application._teardown():
+            pass
 
         destroy_context.assert_called_once_with()
 
@@ -332,12 +332,32 @@ class TestLeaving:
                 patch.object(application._main_tab, "cleanup", side_effect=RuntimeError),
                 patch("dearpygui.dearpygui.destroy_context") as destroy_context,
                 pytest.raises(RuntimeError),
+                application._teardown(),
             ):
-                application._teardown()
+                pass
 
         destroy_context.assert_called_once_with()
         assert application.audio_device_manager._pyaudio is None
         assert _profile(tmp_path).state.exists()
+
+    def test_a_failing_step_keeps_the_failure_that_ended_the_run(self, tmp_path: Path) -> None:
+        """The traceback of a step failing on the way out names the failure the run ended on."""
+        with ExitStack() as stack:
+            for display_patch in _display_patches():
+                stack.enter_context(display_patch)
+            stack.enter_context(_viewport_geometry())
+            stack.enter_context(_no_audio_devices())
+
+            application = _application(tmp_path)
+            with (
+                patch.object(application._main_tab, "cleanup", side_effect=RuntimeError("cleanup")),
+                patch("dearpygui.dearpygui.destroy_context"),
+                pytest.raises(RuntimeError) as raised,
+                application._teardown(),
+            ):
+                raise ValueError("the run")
+
+        assert isinstance(raised.value.__context__, ValueError)
 
 
 @pytest.fixture

@@ -1,9 +1,10 @@
-from typing import Final, List, Optional, Tuple
-from unittest.mock import MagicMock
+from typing import Final, Iterator, List, Optional, Tuple
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from sampletones_application.application import Application
+from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_shared.types.callback import VoidCallback
 
 PROJECT: Final[str] = "project"
@@ -261,3 +262,35 @@ class TestClosingTwiceBeforeTheAnswer:
         exiting.owners[RECONSTRUCTION].land()
 
         assert exiting.asked == [RECONSTRUCTION]
+
+
+class TestTheFrameTheExitIsDecidedIn:
+    """The work waiting on the render thread stays unrun once the exit is decided, so nothing the reader
+    left behind starts after they chose to leave."""
+
+    @pytest.fixture(autouse=True)
+    def live_queue(self) -> Iterator[None]:
+        CallbackQueue.start()
+        yield
+        CallbackQueue.stop()
+        CallbackQueue.start()
+
+    def test_the_work_due_in_that_frame_stays_unrun(self) -> None:
+        application = Application.__new__(Application)
+        ran: List[str] = []
+        CallbackQueue.add(lambda: ran.append("late"))
+
+        with patch("dearpygui.dearpygui.stop_dearpygui") as stop_dearpygui:
+            application._exit_application()
+        CallbackQueue.process(budget_seconds=1.0)
+
+        stop_dearpygui.assert_called_once_with()
+        assert not ran
+
+    def test_the_work_due_before_the_exit_runs(self) -> None:
+        ran: List[str] = []
+        CallbackQueue.add(lambda: ran.append("due"))
+
+        CallbackQueue.process(budget_seconds=1.0)
+
+        assert ran == ["due"]

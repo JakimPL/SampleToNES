@@ -1,7 +1,7 @@
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Dict, Final, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Final, Iterator, Optional, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 from pydantic import ValidationError
@@ -1679,7 +1679,12 @@ class Application:
         return self.project_controller.is_open
 
     def _exit_application(self) -> None:
-        """Stops the frames; the run lets go of what it holds once its loop has ended."""
+        """Stops the frames and the work waiting on the render thread, in the frame the exit is decided.
+
+        The run lets go of what it holds once its loop has ended, so the session it writes is the one
+        the reader left.
+        """
+        CallbackQueue.stop()
         dpg.stop_dearpygui()
 
     def _update_status(self) -> None:
@@ -1736,26 +1741,29 @@ class Application:
 
     def run(self) -> None:
         claim_render_thread()
-        try:
-            while dpg.is_dearpygui_running():
-                self.frame()
-                self._post_frame()
-                self.frame_limiter.tick()
-        except KeyboardInterrupt:
-            return
-        finally:
-            self._teardown()
+        with self._teardown():
+            try:
+                while dpg.is_dearpygui_running():
+                    self.frame()
+                    self._post_frame()
+                    self.frame_limiter.tick()
+            except KeyboardInterrupt:
+                return
 
-    def _teardown(self) -> None:
-        """Lets go of everything the run holds, once its loop has ended, whichever way it ended.
+    @contextmanager
+    def _teardown(self) -> Iterator[None]:
+        """Lets go of everything the run holds once the block it wraps has ended, whichever way it ended.
 
         Every step is taken whatever an earlier one raised, so a failure leaves the background work
         stopped, the audio backend closed and the DearPyGui context destroyed, and it is raised once
-        the last step has run.
+        the last step has run. A step failing after the block raised carries the block's failure as
+        its context, so the traceback names what ended the run.
         """
         with ExitStack() as steps:
             for step in reversed(self._teardown_steps()):
                 steps.callback(step)
+
+            yield
 
     def _teardown_steps(self) -> Tuple[VoidCallback, ...]:
         """The steps of the teardown in the order they are taken.
