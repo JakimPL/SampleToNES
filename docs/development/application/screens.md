@@ -180,7 +180,10 @@ how a menu popup's width is measured.
   on the disk, as a native dialog's does, and a save may pick one of the file types the dialog offers by
   its name.
 - **Audio.** The default output device plays into silence in real time, so playback runs and nothing is
-  heard. A scenario can start on a machine offering no device at all.
+  heard. It is the one device the application finds on every machine: the scenario's ALSA reads a
+  configuration of its own, which keeps the machine's sound cards and sound server outside the run, and a
+  clock returns each write and each stop when a device would. A scenario can start on a machine offering
+  no device at all.
 - **Programs.** An audit hook refuses every program the application tries to start: a file manager, a
   browser or a dialog tool would open on the desktop around the run. A shared library lookup passes, and
   so do the stand-ins below.
