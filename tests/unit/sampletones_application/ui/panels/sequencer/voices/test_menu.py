@@ -766,7 +766,7 @@ class TestWhichDoorAnswersAPress:
         _deferred_calls(monkeypatch)
         monkeypatch.setattr(fixture.panel, "_pointer_within_list", lambda: True)
         monkeypatch.setattr(fixture.panel, "_show_context_menu", lambda _position, _voice_id: None)
-        monkeypatch.setattr(panel_module.dpg, "get_item_user_data", lambda _item: (SELECTED_ROW, SELECTED_ID))
+        monkeypatch.setattr(panel_module, "dpg_get_item_user_data", lambda _item: (SELECTED_ROW, SELECTED_ID))
 
         fixture.panel._on_list_right_clicked(0, RIGHT_BUTTON)
         fixture.panel._on_voice_clicked(0, (RIGHT_BUTTON, 0))

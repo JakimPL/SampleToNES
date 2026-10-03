@@ -16,7 +16,7 @@ from tests.suite.screens.dearpygui.items.types import Item
 from tests.suite.screens.keyboard import press_combination
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.reconstructions import BY_CONFIGURATION
-from tests.suite.screens.steps.sequencer import forgive_the_hover_race, leave_letting_the_project_go
+from tests.suite.screens.steps.sequencer import leave_letting_the_project_go
 from tests.suite.screens.views.menus import MenuEntry
 from tests.suite.screens.vocabulary.playback import PAUSE
 from tests.suite.screens.worlds.recordings import SHORT_RECONSTRUCTION
@@ -155,7 +155,6 @@ class TestHoveringAVoice:
         screen.hand.hover(row)
 
         screen.expect(screen.status, lambda status: expected.fullmatch(status) is not None, description="the status")
-        forgive_the_hover_race(screen)
 
 
 class TestTheKeysOfACollapsedVoicesCard:

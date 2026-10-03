@@ -1,5 +1,7 @@
-from typing import Final, Optional, Tuple
+from typing import Final, Iterator, Optional, Tuple
+from unittest.mock import MagicMock
 
+import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
@@ -92,3 +94,56 @@ class TestWhatARowSaysAboutItsVoice:
         footprint: Optional[VoiceFootprintViewModel],
     ) -> None:
         assert _panel(footprint)._voice_status_message(voice_id) == ""
+
+
+@pytest.fixture
+def dpg_context() -> Iterator[None]:
+    dpg.create_context()
+    try:
+        yield
+    finally:
+        dpg.destroy_context()
+
+
+@pytest.fixture
+def hovered_panel() -> GUISequencerVoicesPanel:
+    """The panel over the facts a hovered row reads, saying what it says to a recorded status bar."""
+    panel = _panel(SAMPLE_FOOTPRINT)
+    panel._status_bar = MagicMock()
+    return panel
+
+
+def _row(voice_id: str) -> int:
+    """A row of the list, carrying the position and the voice the list gives each row."""
+    with dpg.window():
+        return int(dpg.add_selectable(label=voice_id, user_data=(0, voice_id)))
+
+
+class TestAHoverReachingTheList:
+    """A hover is answered a frame after it happened, and the list rebuilds every row on each update."""
+
+    def test_a_hover_on_a_standing_row_says_what_its_voice_is(
+        self,
+        dpg_context: None,
+        hovered_panel: GUISequencerVoicesPanel,
+    ) -> None:
+        row = _row(SAMPLE_ID)
+
+        hovered_panel._on_row_hovered(row, row)
+
+        hovered_panel._status_bar.set.assert_called_once_with(hovered_panel._voice_status_message(SAMPLE_ID))
+
+    def test_a_hover_reaching_a_row_that_is_gone_says_nothing(
+        self,
+        dpg_context: None,
+        hovered_panel: GUISequencerVoicesPanel,
+    ) -> None:
+        gone = _row(SAMPLE_ID)
+        dpg.delete_item(gone)
+
+        hovered_panel._on_row_hovered(gone, gone)
+
+        hovered_panel._status_bar.set.assert_not_called()
+        standing = _row(SAMPLE_ID)
+        hovered_panel._on_row_hovered(standing, standing)
+        hovered_panel._status_bar.set.assert_called_once()

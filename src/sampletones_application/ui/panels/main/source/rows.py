@@ -23,7 +23,11 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.channels import CHANNEL_THEME_TAGS, PARTIAL_CHANNEL_THEME_TAGS
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
+from sampletones_application.utils.gui.dpg import (
+    dpg_configure_item,
+    dpg_get_item_user_data,
+    dpg_set_value,
+)
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.view_model.main.source import ChannelSettingsViewModel, SourceSettingsPanelViewModel
 from sampletones_application.view_model.shared.agreement import Agreement
@@ -221,6 +225,9 @@ class ChannelSettingsRows(CallbackMixin):
         The slider's clamp holds a typed value within the bounds a drive has, and rounding sets
         aside the single-precision noise the widget carries its value in.
         """
-        channel_name: ChannelName = dpg.get_item_user_data(slider)
+        channel_name = dpg_get_item_user_data(slider)
+        if not isinstance(channel_name, ChannelName):
+            return
+
         drive = round(float(dpg.get_value(slider)), self._layout.drive_decimals)
         self.call(self.on_drive_changed, channel_name, drive)

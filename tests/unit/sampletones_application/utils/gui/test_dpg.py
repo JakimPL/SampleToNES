@@ -3,10 +3,11 @@ from typing import Iterator
 import dearpygui.dearpygui as dpg
 import pytest
 
-from sampletones_application.utils.gui.dpg import dpg_get_item_parent
+from sampletones_application.utils.gui.dpg import dpg_get_item_parent, dpg_get_item_user_data
 
 ROOT_TAG = "test_root"
 CHILD_TAG = "test_child"
+ROW_DATA = (3, "voice-id")
 
 
 @pytest.fixture
@@ -40,3 +41,29 @@ class TestAnAbsentItem:
             dpg.get_item_parent("never_built")
 
         assert type(raised.value) is Exception  # pylint: disable=unidiomatic-typecheck
+
+
+class TestTheUserDataOfAnItemAGestureNamed:
+    """A held callback reads what a gesture landed on a frame late, so a row a rebuild took away reads as nothing."""
+
+    def test_a_standing_item_answers_with_its_user_data(self, dpg_context: None) -> None:
+        with dpg.window(tag=ROOT_TAG):
+            dpg.add_selectable(label="row", tag=CHILD_TAG, user_data=ROW_DATA)
+
+        assert dpg_get_item_user_data(CHILD_TAG) == ROW_DATA
+
+    def test_an_item_a_rebuild_took_away_answers_with_nothing(self, dpg_context: None) -> None:
+        with dpg.window(tag=ROOT_TAG):
+            row = dpg.add_selectable(label="row", user_data=ROW_DATA)
+        dpg.delete_item(row)
+
+        assert dpg_get_item_user_data(row) is None
+
+    def test_the_library_raises_for_an_item_a_rebuild_took_away(self, dpg_context: None) -> None:
+        """What the guard answers: the bare read of a deleted item raises, and the callback logs it."""
+        with dpg.window(tag=ROOT_TAG):
+            row = dpg.add_selectable(label="row", user_data=ROW_DATA)
+        dpg.delete_item(row)
+
+        with pytest.raises(Exception, match="Item not found"):
+            dpg.get_item_user_data(row)

@@ -14,7 +14,6 @@ from tests.suite.screens.dearpygui.items.reading import read_item
 from tests.suite.screens.dearpygui.keys import IMGUI_ENTER, IMGUI_ESCAPE
 from tests.suite.screens.keyboard import press_combination
 from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import forgive_the_hover_race
 from tests.suite.screens.vocabulary.settings import LISTENING
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT, BASS_VOICE, LINE, PAD
 from tests.suite.screens.written import written_application_config
@@ -124,7 +123,6 @@ class TestRebindingUndo:
             screen.expect(settings.is_shown, operator.not_, description="Keyboard settings closed")
 
         def leaving_writes_the_rebind(screen: Screen) -> None:
-            forgive_the_hover_race(screen)
             screen.press_shortcut(ShortcutId.EXIT)
 
             assert screen.wait_for_exit()

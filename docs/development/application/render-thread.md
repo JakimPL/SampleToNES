@@ -47,6 +47,11 @@ the top of each frame's drain. A gesture therefore reaches the interface from th
 What a gesture costs is paid between frames. A callback heavy enough to be felt should spread its work
 across frames itself.
 
+**A held gesture reads the items still standing.** The callback runs after the frame that gathered it, and
+a rebuild in between can take away the row a hover, a click or a drop landed on. A callback reads what that
+item carries through `dpg_get_item_user_data` (`utils/gui/dpg.py`), which answers nothing for an item that
+is gone, so a gesture on a row the list has dropped says and does nothing.
+
 ## A gesture that waits keeps the frames going
 
 A callback on the render thread holds the frames up for as long as it runs, and a native dialog runs for as

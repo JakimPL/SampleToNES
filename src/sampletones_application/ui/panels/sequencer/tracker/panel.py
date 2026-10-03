@@ -100,7 +100,10 @@ from sampletones_application.ui.panels.sequencer.tracker.callbacks import (
 from sampletones_application.ui.panels.sequencer.tracker.menu import TrackerMenu
 from sampletones_application.ui.panels.sequencer.tracker.themes import TrackerThemes
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.dpg import dpg_delete_children
+from sampletones_application.utils.gui.dpg import (
+    dpg_delete_children,
+    dpg_get_item_user_data,
+)
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import (
     PRIORITY_PANEL,
@@ -1361,7 +1364,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         if mouse_button != dpg.mvMouseButton_Right:
             return
 
-        key = dpg.get_item_user_data(clicked_item)
+        key = dpg_get_item_user_data(clicked_item)
         if key is None:
             return
 
@@ -1843,10 +1846,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         )
 
     def _on_row_hovered(self, _sender: Sender, app_data: int) -> None:
-        if not dpg.does_item_exist(app_data):
-            return
-
-        row_index = dpg.get_item_user_data(app_data)
+        row_index = dpg_get_item_user_data(app_data)
         if row_index is not None:
             self._highlighted_row = row_index
 

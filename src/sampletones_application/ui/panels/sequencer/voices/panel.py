@@ -32,6 +32,7 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_delete_children,
+    dpg_get_item_user_data,
     dpg_pointer_within_window,
 )
 from sampletones_application.utils.gui.frame import FrameCallbackManager
@@ -152,7 +153,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         Both cells carry the row's position and its voice, so one handler covers the whole row and
         a reader reads the same line wherever the pointer rests on it.
         """
-        user_data = dpg.get_item_user_data(app_data)
+        user_data = dpg_get_item_user_data(app_data)
         if not isinstance(user_data, tuple):
             return
 
@@ -600,7 +601,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         app_data: List[int],
     ) -> None:
         clicked_item = app_data[1]
-        user_data = dpg.get_item_user_data(clicked_item)
+        user_data = dpg_get_item_user_data(clicked_item)
         if user_data is not None:
             _, voice_id = user_data
             self.call(self.on_voice_edit_requested, voice_id)
@@ -614,7 +615,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         if mouse_button != dpg.mvMouseButton_Right:
             return
 
-        user_data = dpg.get_item_user_data(clicked_item)
+        user_data = dpg_get_item_user_data(clicked_item)
         if user_data is None:
             return
 

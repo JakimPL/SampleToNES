@@ -70,6 +70,7 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
+    dpg_get_item_user_data,
     dpg_get_value,
     dpg_is_item_hovered,
     dpg_set_value,
@@ -504,7 +505,10 @@ class GUITreePanel(GUIPanel, ABC):
             _sender: Sender,
             app_data: int,
         ) -> None:
-            user_data = dpg.get_item_user_data(app_data)
+            user_data = dpg_get_item_user_data(app_data)
+            if user_data is None:
+                return
+
             if status_bar_callback is not None:
                 self._status_bar.set(status_bar_callback, user_data=user_data)
             self._update_detail_tooltip(user_data)
@@ -574,10 +578,7 @@ class GUITreePanel(GUIPanel, ABC):
     @staticmethod
     def _node_at(node_tag: str) -> Optional[TreeNode]:
         """The node a row was created for, read back from the widget the row is."""
-        if not dpg.does_item_exist(node_tag):
-            return None
-
-        user_data = dpg.get_item_user_data(node_tag)
+        user_data = dpg_get_item_user_data(node_tag)
         if not isinstance(user_data, tuple):
             return None
 
@@ -612,7 +613,10 @@ class GUITreePanel(GUIPanel, ABC):
             sender: Sender,
             app_data: Tuple[int, int],
         ) -> None:
-            user_data = dpg.get_item_user_data(app_data[1])
+            user_data = dpg_get_item_user_data(app_data[1])
+            if user_data is None:
+                return
+
             self._remember_clicked_row(user_data)
             if item_click_callback is not None:
                 item_click_callback(sender, app_data, user_data=user_data)
@@ -630,7 +634,10 @@ class GUITreePanel(GUIPanel, ABC):
             sender: Sender,
             app_data: Tuple[int, int],
         ) -> None:
-            user_data = dpg.get_item_user_data(app_data[1])
+            user_data = dpg_get_item_user_data(app_data[1])
+            if user_data is None:
+                return
+
             if item_double_click_callback is not None:
                 item_double_click_callback(
                     sender,

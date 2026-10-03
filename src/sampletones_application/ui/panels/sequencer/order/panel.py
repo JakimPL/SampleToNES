@@ -82,7 +82,11 @@ from sampletones_application.ui.themes.inline import (
     create_selectable_text_theme,
 )
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_delete_item
+from sampletones_application.utils.gui.dpg import (
+    dpg_configure_item,
+    dpg_delete_item,
+    dpg_get_item_user_data,
+)
 from sampletones_application.utils.gui.keyboard import (
     PRIORITY_PANEL,
     ActivePredicate,
@@ -1000,7 +1004,7 @@ class GUISequencerOrderPanel(GUIPanel):
         if mouse_button != dpg.mvMouseButton_Right:
             return
 
-        key = dpg.get_item_user_data(clicked_item)
+        key = dpg_get_item_user_data(clicked_item)
         if key is None:
             return
 

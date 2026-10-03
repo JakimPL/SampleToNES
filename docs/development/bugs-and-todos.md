@@ -190,10 +190,6 @@ currently out of line. An entry leaves when the code meets the contract again.
 * A project opened as the application starts is saved as though it had no file: `load_project_safely`
   leaves the session's current project unset, so Save asks for a path, or writes to whatever path an
   earlier session left. `tests/screens/sequencer/song/test_retuning_and_saving.py` reproduces it as a known failure.
-* A voice row's hover can log an error: the Voices list rebuilds every row on each update, and a hover
-  callback queued for a row before the rebuild reads an item that no longer exists
-  (`_on_row_hovered`, "Item not found"). The Sequencer's screen scenarios forgive it by name; no
-  scenario reproduces it on demand, since it rests on the order the queued callbacks run in.
 * Export instrument... in a project whose samples were converted at two tunings does nothing the user
   can see: `voice_instrument` raises the tuning error inside the menu's callback, so no message, no save
   dialog and no file follow, while a Bitphase project or an NSF program of the same project stops with a
