@@ -155,11 +155,6 @@ currently out of line. An entry leaves when the code meets the contract again.
   session and asks the audio device manager for its current device, and with no device selected it
   raises `ValueError: No audio device selected`. The screen scenario in `tests/screens/application/leaving/test_exit_shortcut.py`
   reproduces it as a known failure.
-* A project stating a data version no upgrade step reaches is refused by its shape, not by its version.
-  `ProjectContainer.load` validates the document before `_validate_document` compares the version, so
-  the user reads a list of validation errors instead of the version mismatch a reconstruction reports.
-  `tests/integration/compatibility/test_project.py` and the screen scenario in
-  `tests/screens/application/old_files/test_broken_projects.py` reproduce it as known failures.
 * A folder asked for while a stopped read winds down is dropped without a word. Stop closes the scan
   window at once while the walk runs on to its next entry, and `FolderScan.start` turns away the folder
   asked for in that time, though it promises that a folder asked for once the window closes is read.

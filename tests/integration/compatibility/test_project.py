@@ -16,7 +16,7 @@ from sampletones_shared.application import (
     SAMPLETONES_PROJECT_DATA_VERSION,
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
 )
-from sampletones_shared.exceptions.project import IncompatibleProjectVersionError, InvalidProjectDataValuesError
+from sampletones_shared.exceptions.project import IncompatibleProjectVersionError
 from tests.suite.compatibility import PROJECT_VERSION, archived, restated_document, stored_version
 
 VOICE_NAMES: Final[List[str]] = ["kick", "kick again"]
@@ -62,11 +62,6 @@ class TestTheVersionAnUpgradedProjectOpensFrom:
 class TestAVersionNoStepReaches:
     """A document stating a version no chain reaches is refused by the load contract, which names both versions."""
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=InvalidProjectDataValuesError,
-        reason="bugs-and-todos § Bugs: a project at a version no step reaches is refused by its shape",
-    )
     def test_a_load_refuses_it_naming_both_versions(self, tmp_path: Path) -> None:
         path = tmp_path / UNREACHED_FILENAME
         path.write_bytes(

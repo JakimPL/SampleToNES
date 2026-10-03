@@ -128,11 +128,6 @@ class TestRefusingABrokenProject:
             open_the_second_project_the_same_way,
         ).run()
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: a project at a version no step reaches is refused by its shape",
-    )
     def test_a_version_no_step_reaches_is_refused_for_its_version(self, screen: Screen) -> None:
         """The notice states the file's version and the current version."""
         screen.tabs.bring_to_front(Tab.SEQUENCER)
