@@ -5,8 +5,13 @@ from typing import Final, List, Tuple
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName, FeatureKey
-from tests.screens.exports.instruments.import_files.constants import KEPT, VOICES
-from tests.screens.exports.instruments.import_files.steps import choose_import, export_kept, segments
+from tests.screens.exports.instruments.import_files.constants import IMPORT_INSTRUMENT, KEPT, VOICES
+from tests.screens.exports.instruments.import_files.steps import (
+    choose_import,
+    export_kept,
+    open_the_list_menu,
+    segments,
+)
 from tests.suite.screens.boundaries.dialogs import DialogKind
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.exports import leaving_asks_nothing
@@ -15,8 +20,6 @@ from tests.suite.screens.views.history import HistorySegment
 from tests.suite.screens.worlds.songs import PAD, RELEASING_INSTRUMENT, releasing_instrument
 
 IMPORT_TITLE: Final[str] = "sequencer.voices.title.import_instrument_dialog"
-NO_PROJECT_TITLE: Final[str] = "global.dialog.title.no_project_open"
-NO_PROJECT_MESSAGE: Final[str] = "global.dialog.message.no_project_open"
 IMPORTED_TITLE: Final[str] = "sequencer.voices.title.instrument_imported"
 IMPORTED_TEMPLATE: Final[str] = "sequencer.voices.template.instrument_omissions"
 RELEASE_POINT: Final[str] = "sequencer.voices.label.omission_release_point"
@@ -25,20 +28,20 @@ SETTLING_FRAMES: Final[int] = 20
 
 
 class TestImportWithNoProjectOpen:
-    """Import instrument... with no project open says so and asks for no file; with a project open, it asks
-    for one.
+    """Import instrument... with no project open stands greyed out and asks for no file; with a project open, it
+    asks for one.
 
-    The project is closed, Import instrument... is chosen on the list's menu, and a notice says that no
-    project is open while the file dialog stays closed. A new project is created, and the same choice
-    now asks for a file and shows no notice.
+    The project is closed, and the list's menu offers Import instrument... greyed out: a click on it asks for
+    no file and raises no notice. A new project is created, and the same choice now asks for a file.
     """
 
-    def test_it_says_so_and_asks_for_no_file(self, screen: Screen) -> None:
-        """The notice appears with no project; with a new project the open dialog appears and the list stays
-        empty.
+    def test_it_stands_greyed_out_and_asks_for_no_file(self, screen: Screen) -> None:
+        """The entry is greyed out with no project; with a new project the open dialog appears and the list
+        stays empty.
         """
         voices = screen.sequencer.voices
         notice = voices.no_project_notice
+        menu = screen.context_menu
         asked: List[int] = []
 
         def close_the_project(screen: Screen) -> None:
@@ -49,15 +52,19 @@ class TestImportWithNoProjectOpen:
             screen.expect(voices.names, operator.not_, description="no voices listed")
             asked.append(len(screen.dialog_requests()))
 
-        def import_says_no_project_is_open(screen: Screen) -> None:
-            choose_import(screen)
+        def import_stands_greyed_out(screen: Screen) -> None:
+            open_the_list_menu(screen)
+            entry = next(entry for entry in menu.entries() if entry.label == screen.words(IMPORT_INSTRUMENT))
+            assert not entry.enabled
 
-            screen.expect(notice.is_shown, bool, description="the notice")
-            assert notice.prompt.title() == screen.words(NO_PROJECT_TITLE)
-            assert notice.words() == screen.words(NO_PROJECT_MESSAGE)
+            menu.choose(screen.words(IMPORT_INSTRUMENT))
+
+            screen.frames(SETTLING_FRAMES)
+            assert menu.is_shown()
+            assert not notice.is_shown()
             assert len(screen.dialog_requests()) == asked[0]
-            notice.dismiss()
-            screen.expect(notice.is_shown, operator.not_, description="the notice gone")
+            menu.dismiss()
+            screen.expect(menu.is_shown, operator.not_, description="the menu put away")
 
         def with_a_new_project_it_asks_for_a_file(screen: Screen) -> None:
             screen.project.create()
@@ -78,7 +85,7 @@ class TestImportWithNoProjectOpen:
 
         screen.scenario(
             close_the_project,
-            import_says_no_project_is_open,
+            import_stands_greyed_out,
             with_a_new_project_it_asks_for_a_file,
             leaving_asks_nothing,
         ).run()

@@ -20,11 +20,16 @@ def kept_folder() -> Path:
     return path
 
 
-def choose_import(screen: Screen) -> None:
-    """Chooses Import instrument... on the menu the empty foot of the voice list opens."""
+def open_the_list_menu(screen: Screen) -> None:
+    """Opens the menu the empty foot of the voice list offers."""
     screen.tabs.bring_to_front(Tab.SEQUENCER)
     screen.sequencer.voices.right_click_below_the_rows()
     screen.expect(screen.context_menu.is_shown, bool, description="the list's menu")
+
+
+def choose_import(screen: Screen) -> None:
+    """Chooses Import instrument... on the menu the empty foot of the voice list opens."""
+    open_the_list_menu(screen)
     screen.context_menu.choose(screen.words(IMPORT_INSTRUMENT))
 
 
