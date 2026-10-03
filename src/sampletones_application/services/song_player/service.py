@@ -62,6 +62,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         self._master_gain = master_gain
         self._stop_event = threading.Event()
         self._resume_event = threading.Event()
+        self._holding_output = threading.Event()
         self._render_thread: Optional[threading.Thread] = None
         self._write_thread: Optional[threading.Thread] = None
 
@@ -74,7 +75,12 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
 
     @property
     def alive(self) -> bool:
-        return self._write_thread is not None and self._write_thread.is_alive()
+        """Whether the song holds the output, from :meth:`start` until the writer hands its stream back.
+
+        The writer lets go before it reports the song's end, so a listener reading ``alive`` on
+        ``SongPlaybackStopped`` or ``SongPlaybackError`` reads the output free.
+        """
+        return self._holding_output.is_set()
 
     @property
     def is_playing(self) -> bool:
@@ -107,6 +113,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         self._write_block_frames = self._audio_device_manager.buffer_size
         self._stop_event.clear()
         self._resume_event.set()
+        self._holding_output.set()
         self._render_thread = threading.Thread(
             target=self._render_loop,
             daemon=True,
@@ -161,9 +168,9 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
     def _join_worker(self, thread: Optional[threading.Thread]) -> Optional[threading.Thread]:
         """Joins one worker; keeps the thread when it outlives the stop deadline.
 
-        Keeping a surviving writer is what makes ``alive`` report the truth: the thread still
-        holds the output stream, so callers waiting on quiescence — the audio device before it
-        tears the backend down — can see that the stream is still outstanding.
+        A surviving writer still holds the output stream, and ``alive`` goes on reporting it, so
+        callers waiting on quiescence — the audio device before it tears the backend down — can see
+        that the stream is still outstanding.
         """
         if thread is None:
             return None
@@ -196,18 +203,25 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
             self._enqueue_end()
 
     def _write_loop(self) -> None:
+        """Drains the song to the device, hands the stream back, and then reports how the song ended."""
         stream = self._open_stream()
         if stream is None:
+            self._holding_output.clear()
+            self._emit(SongPlaybackStopped())
             return
 
+        ended = True
         try:
-            self._drain_to_stream(stream)
+            ended = self._drain_to_stream(stream)
         except Exception as exception:  # pylint: disable=broad-exception-caught
             logger.error_with_traceback(exception, f"{self.class_name}: playback error")
             self._playback_error = exception
-            self._emit_terminal()
         finally:
             self._audio_device_manager.close_output_stream(stream)
+            self._holding_output.clear()
+
+        if ended:
+            self._emit_terminal()
 
     def _open_stream(self) -> Optional[pyaudio.Stream]:
         try:
@@ -221,26 +235,31 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
             return stream
         except Exception as exception:  # pylint: disable=broad-exception-caught
             logger.error(f"{self.class_name}: failed to open audio stream: {exception}")
-            self._emit(SongPlaybackStopped())
             self._stop_event.set()
             self._wake_buffer()
             return None
 
-    def _drain_to_stream(self, stream: pyaudio.Stream) -> None:
+    def _drain_to_stream(self, stream: pyaudio.Stream) -> bool:
+        """Hands the buffered rows to the device until the song ends or a stop comes.
+
+        Returns:
+            True once the song reached its end, False when a stop ended the drain.
+        """
         while not self._stop_event.is_set():
             self._resume_event.wait()
             if self._stop_event.is_set():
-                return
+                return False
 
             popped, row = self._dequeue()
             if not popped or self._stop_event.is_set():
-                return
+                return False
 
             if row is None:
-                self._emit_terminal()
-                return
+                return True
 
             self._play_row(stream, row)
+
+        return False
 
     def _play_row(self, stream: pyaudio.Stream, row: _RenderedRow) -> None:
         """Hands one row to the device, reporting its position once the whole row is written.

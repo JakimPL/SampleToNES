@@ -148,8 +148,8 @@ class SongPlayerLogic(CallbackMixin):
     def stop(self) -> None:
         """Silences the song and puts the playhead back at its start.
 
-        A stop of a song already silent is no transition, so it leaves ``on_change_audio_state``
-        quiet.
+        ``on_change_audio_state`` fires when the song held the output, which is when a stop moves
+        it from one state to another.
         """
         was_engaged = self._service.alive
         self._service.stop()
@@ -230,10 +230,9 @@ class SongPlayerLogic(CallbackMixin):
     def _emit_idle_view(self) -> None:
         """Pushes a definitively stopped view.
 
-        ``SongPlaybackStopped`` is the authoritative end-of-playback signal, so the flags are
-        forced off here. The worker thread may still be closing its audio stream and briefly report
-        itself as playing; forcing the flags off keeps the stopped view authoritative and lets the
-        playing highlight settle correctly.
+        ``SongPlaybackStopped`` is the authoritative end-of-playback signal, and the service hands its
+        stream back before sending it, so the view reads the song silent and the playing highlight
+        settles.
         """
         self.call(
             self.on_view_changed,
