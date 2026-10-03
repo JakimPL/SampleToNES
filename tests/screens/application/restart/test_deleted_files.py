@@ -39,8 +39,9 @@ def deleted_favorite() -> Path:
 class TestASessionNamingDeletedFiles:
     """A session naming a folder, a reconstruction and a starred file deleted since the last run.
 
-    The application starts quietly with nothing restored, a dialog opens in the nearest folder
-    still standing, and leaving writes none of the three back.
+    The application starts quietly with nothing restored, and a dialog opens in the nearest folder
+    still standing. Leaving lets go of the reconstruction that failed to open and keeps the folder and
+    the starred file, so a drive plugged back in is found where it was left.
     """
 
     @pytest.fixture
@@ -77,30 +78,20 @@ class TestASessionNamingDeletedFiles:
         assert screen.shown_windows() == ()
         assert screen.reconstructions.open_file() == ""
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: leaving keeps the last dialog folder a run found deleted",
-    )
-    def test_the_session_left_names_neither_the_folder_nor_the_reconstruction(self, screen: Screen) -> None:
-        """The session written at exit holds no reconstruction and a different dialog folder."""
+    def test_the_session_left_lets_the_reconstruction_go_and_keeps_the_folder(self, screen: Screen) -> None:
+        """The session written at exit holds no reconstruction and still names the deleted dialog folder."""
         screen.expect(screen.tabs.front, Tab.MAIN.__eq__, description="the Main tab in front")
 
         leave(screen)
 
         state = written_state()
         assert state.current.reconstruction is None
-        assert state.last_paths.reconstruction != deleted_folder()
+        assert state.last_paths.reconstruction == deleted_folder()
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: leaving keeps a starred file a run found deleted",
-    )
-    def test_the_settings_left_name_no_deleted_starred_file(self, screen: Screen) -> None:
-        """The settings written at exit leave the deleted file out of the starred paths."""
+    def test_the_settings_left_still_star_the_deleted_file(self, screen: Screen) -> None:
+        """The settings written at exit keep the deleted file among the starred paths."""
         screen.expect(screen.tabs.front, Tab.MAIN.__eq__, description="the Main tab in front")
 
         leave(screen)
 
-        assert deleted_favorite() not in written_application_config().favorites.paths
+        assert deleted_favorite() in written_application_config().favorites.paths

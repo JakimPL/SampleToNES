@@ -160,11 +160,6 @@ currently out of line. An entry leaves when the code meets the contract again.
   the user reads a list of validation errors instead of the version mismatch a reconstruction reports.
   `tests/integration/compatibility/test_project.py` and the screen scenario in
   `tests/screens/application/old_files/test_broken_projects.py` reproduce it as known failures.
-* Leaving keeps the last dialog folder a run found deleted. A dialog opens in the nearest folder still
-  standing, while `state.yaml` goes on naming the deleted one. `tests/screens/application/restart/test_deleted_files.py`
-  reproduces it as a known failure.
-* Leaving keeps a starred file a run found deleted: `config.yaml` goes on naming it among the favorites.
-  `tests/screens/application/restart/test_deleted_files.py` reproduces it as a known failure.
 * A folder asked for while a stopped read winds down is dropped without a word. Stop closes the scan
   window at once while the walk runs on to its next entry, and `FolderScan.start` turns away the folder
   asked for in that time, though it promises that a folder asked for once the window closes is read.

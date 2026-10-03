@@ -91,6 +91,12 @@ class TestSourcePaths:
         write_module(tmp_path / ".cache", "cached.py", MODULE_BODY)
         assert source_paths([tmp_path]) == [visible]
 
+    def test_a_root_inside_a_hidden_folder_is_swept(self, tmp_path: Path) -> None:
+        """A worktree kept in a hidden folder is a tree to read, whatever the folders above it are named."""
+        root = tmp_path / ".worktrees" / "branch"
+        path = write_module(root / "package", "first.py", MODULE_BODY)
+        assert source_paths([root]) == [path]
+
     def test_a_file_of_another_kind_stays_aside(self, tmp_path: Path) -> None:
         visible = write_module(tmp_path, "first.py", MODULE_BODY)
         write_module(tmp_path, "notes.md", "# notes\n")
