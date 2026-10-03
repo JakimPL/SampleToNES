@@ -170,9 +170,6 @@ currently out of line. An entry leaves when the code meets the contract again.
   on the first brings the second, and so does a close made twice while an edit is on its way.
   `tests/screens/prompts/closing/test_over_a_question.py` and
   `tests/screens/prompts/closing/test_during_an_edit.py` reproduce it as known failures.
-* A reconstruction whose recording is missing draws a flat original line beside the reconstruction,
-  where the waveform shows the approximation on its own. `tests/screens/reconstructions/player/test_source_switch.py`
-  reproduces it as a known failure.
 * With an instrument open on the Reconstructions tab, the note keys take Ctrl+Z, Ctrl+S and every
   combination ending in a note key: the instruments panel answers a key whatever modifiers are held, so
   Undo, Save and the rest never reach their shortcuts. `tests/screens/reconstructions/instruments/test_note_keys.py`

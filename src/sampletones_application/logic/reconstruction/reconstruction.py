@@ -718,10 +718,10 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         sample_rate = reconstruction_data.reconstruction.config.sample_rate
         if self._current_audio_source == AudioSourceType.ORIGINAL:
-            if reconstruction_data.original_audio is None:
+            selected_original_audio = reconstruction_data.original_mix_for(self._stem_selection)
+            if selected_original_audio is None:
                 return None
 
-            selected_original_audio = reconstruction_data.original_mix_for(self._stem_selection)
             return AudioData.from_array(selected_original_audio, sample_rate)
 
         partial_approximation = reconstruction_data.partials_for(

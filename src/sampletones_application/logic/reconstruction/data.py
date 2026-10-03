@@ -168,8 +168,17 @@ class ReconstructionData:
         stems_data = self.reconstruction.stems_data
         return {entry.id: index for index, entry in enumerate(stems_data.config.entries)}
 
-    def original_mix_for(self, selection: StemSelection) -> np.ndarray:
-        """The original audio of the stems heard anywhere, silence once none are."""
+    def original_mix_for(self, selection: StemSelection) -> Optional[np.ndarray]:
+        """The original audio of the stems heard anywhere.
+
+        Returns:
+            Optional[np.ndarray]: The mix of the recordings heard, silence where the recordings
+            loaded and none of them is heard, and ``None`` where no recording loaded, which leaves
+            the approximation on its own in playback and the display.
+        """
+        if not self.stem_audios:
+            return None
+
         selected_stem_ids = selection.any_channel()
         indexes = self._stem_recording_indexes
         recordings = [self.stem_audios[index] for stem_id, index in indexes.items() if stem_id in selected_stem_ids]
