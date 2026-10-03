@@ -214,6 +214,51 @@ class TestWaveformDataUpdateRefit:
         ranges.assert_not_called()
 
 
+class TestAnUpdateDrawsTheLayersItsDataDisplays:
+    """An update draws what the fresh data displays, so a layer the data no longer carries leaves the plot."""
+
+    @staticmethod
+    def _drawing_both(fake_dpg: _FakeDPG) -> GUIWaveformGraph:
+        """A graph showing the original and the reconstruction, each with its series on the axis."""
+        graph = _graph()
+        graph.current_data = TestWaveformDataUpdateRefit._waveform_data()
+        graph.layers = {"Original": _Layer("Original"), "Reconstruction": _Layer("Reconstruction")}
+        fake_dpg.set_children(
+            "axis",
+            [graph._series_tag("Original"), graph._series_tag("Reconstruction"), "indicator", "overlay"],
+        )
+        return graph
+
+    def test_a_layer_the_data_no_longer_displays_leaves_with_its_series(
+        self,
+        fake_dpg: _FakeDPG,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        graph = self._drawing_both(fake_dpg)
+        original_series = fake_dpg.alias_to_id[graph._series_tag("Original")]
+        monkeypatch.setattr(graph, "_display_layers", lambda *_args, **_kwargs: [_Layer("Reconstruction")])
+
+        graph.update_waveform_data(TestWaveformDataUpdateRefit._waveform_data())
+
+        assert (list(graph.layers), fake_dpg.deleted) == (["Reconstruction"], [original_series])
+
+    def test_layers_the_data_still_displays_stay(
+        self,
+        fake_dpg: _FakeDPG,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        graph = self._drawing_both(fake_dpg)
+        monkeypatch.setattr(
+            graph,
+            "_display_layers",
+            lambda *_args, **_kwargs: [_Layer("Original"), _Layer("Reconstruction")],
+        )
+
+        graph.update_waveform_data(TestWaveformDataUpdateRefit._waveform_data())
+
+        assert (list(graph.layers), fake_dpg.deleted) == (["Original", "Reconstruction"], [])
+
+
 class TestWaveformReconstructionDim:
     def test_series_color_is_untouched_when_not_dimmed(self) -> None:
         graph = _graph()

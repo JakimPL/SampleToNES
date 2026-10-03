@@ -61,6 +61,21 @@ class MetadataContract:
                 f"Metadata application name mismatch: expected {SAMPLETONES_NAME}, got {metadata.application_name}."
             )
 
+        self.validate_version(actual_version)
+
+    def validate_version(self, actual_version: str) -> None:
+        """Holds the data version a file states against the one this build accepts.
+
+        A format checks the version before it reads the rest of the file, so a file no upgrade
+        reaches is refused for its version.
+
+        Args:
+            actual_version: The data version the file was written at.
+
+        Raises:
+            IncompatibleVersionError: Of this contract's type, if the file's version departs from
+                the one this build accepts.
+        """
         if compare_versions(actual_version, self.expected_version) != 0:
             raise self.error(
                 f"{self.label} version mismatch: expected {self.expected_version}, got {actual_version}.",

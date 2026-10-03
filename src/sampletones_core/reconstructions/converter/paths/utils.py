@@ -82,8 +82,23 @@ def group_output_path(
     Raises:
         ValueError: If ``sources`` is empty.
     """
-    output_directory = config_directory_path(config, channels)
-    return Path((output_directory / f"{derive_name(sources)}{suffix}").absolute())
+    return named_output_path(config_directory_path(config, channels), sources, suffix)
+
+
+def named_output_path(
+    directory: Path,
+    sources: Tuple[Path, ...],
+    suffix: str = EXT_FILE_RECONSTRUCTION,
+) -> Path:
+    """Where the one reconstruction built from ``sources`` is written inside ``directory``.
+
+    The file takes the name the source rules derive: one source names it after itself, and several
+    after what they share.
+
+    Raises:
+        ValueError: If ``sources`` is empty.
+    """
+    return Path((directory / f"{derive_name(sources)}{suffix}").absolute())
 
 
 def walk_entries(input_directory: Path) -> Iterator[Path]:

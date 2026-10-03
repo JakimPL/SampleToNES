@@ -96,11 +96,6 @@ class TestTheSourceSwitchWithItsRecordingGone:
 
         screen.scenario(the_missing_recording_is_named, the_switch_offers_nothing_else).run()
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: a reconstruction whose recording is missing draws a flat original line",
-    )
     def test_the_waveform_draws_the_reconstruction_alone(self, screen: Screen) -> None:
         """The waveform shows one line, the reconstruction's."""
         waveform = screen.reconstructions.waveform

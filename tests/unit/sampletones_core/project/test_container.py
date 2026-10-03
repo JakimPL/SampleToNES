@@ -35,6 +35,8 @@ from tests.suite.errors import DIRECTORY_READ_ERRORS
 Document = Dict[str, Any]
 DocumentRewrite = Callable[[Document], Document]
 
+UNREACHED_VERSION: Final[str] = "9.0"
+
 
 def _rewrite_format_version(source: Path, target: Path, *, format_version: str) -> None:
     with zipfile.ZipFile(source, "r") as archive:
@@ -59,6 +61,12 @@ def _rewrite_document(source: Path, target: Path, rewrite: DocumentRewrite) -> N
     with zipfile.ZipFile(target, "w") as archive:
         for name, data in members.items():
             archive.writestr(name, data)
+
+
+def _another_builds_document(document: Document) -> Document:
+    """The document as a build no step reaches might write it: another version and a song it calls otherwise."""
+    reshaped = {key: value for key, value in document.items() if key != "song"}
+    return {**reshaped, "format_version": UNREACHED_VERSION, "arrangement": document["song"]}
 
 
 def _populated_project(
@@ -327,6 +335,17 @@ class TestLoadRejectsInvalidArchives:
         with pytest.raises(InvalidProjectDataValuesError):
             ProjectContainer.load(path)
 
+    def test_a_document_that_is_not_text_raises_invalid_values(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        path = tmp_path / "binarydoc.stp"
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr(PROJECT_DOCUMENT_NAME, b"\xff\xfe\x00\xd8")
+
+        with pytest.raises(InvalidProjectDataValuesError):
+            ProjectContainer.load(path)
+
     def test_corrupt_reconstruction_raises_incorrect_data(
         self,
         tmp_path: Path,
@@ -393,6 +412,61 @@ class TestVersionCompatibility:
 
         assert exc_info.value.expected_version == SAMPLETONES_PROJECT_DATA_VERSION
         assert exc_info.value.actual_version == "9.0"
+
+    def test_a_version_no_step_reaches_is_refused_before_its_shape_is_read(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        """A document at another version keeps another build's shape, so the refusal names the version."""
+        original = tmp_path / "demo.stp"
+        ProjectContainer.save(_populated_project(reconstruction_factory), original)
+        reshaped = tmp_path / "reshaped.stp"
+        _rewrite_document(original, reshaped, _another_builds_document)
+
+        with pytest.raises(IncompatibleProjectVersionError) as exc_info:
+            ProjectContainer.load(reshaped)
+
+        assert (exc_info.value.actual_version, exc_info.value.expected_version) == (
+            UNREACHED_VERSION,
+            SAMPLETONES_PROJECT_DATA_VERSION,
+        )
+
+    def test_the_same_shape_at_the_current_version_is_refused_for_its_shape(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        original = tmp_path / "demo.stp"
+        ProjectContainer.save(_populated_project(reconstruction_factory), original)
+        reshaped = tmp_path / "reshaped.stp"
+        _rewrite_document(
+            original,
+            reshaped,
+            lambda document: {**_another_builds_document(document), "format_version": SAMPLETONES_PROJECT_DATA_VERSION},
+        )
+
+        with pytest.raises(InvalidProjectDataValuesError):
+            ProjectContainer.load(reshaped)
+
+    def test_a_document_stating_no_version_reads_at_the_current_one(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        project = _populated_project(reconstruction_factory)
+        original = tmp_path / "demo.stp"
+        ProjectContainer.save(project, original)
+        unstated = tmp_path / "unstated.stp"
+        _rewrite_document(
+            original,
+            unstated,
+            lambda document: {key: value for key, value in document.items() if key != "format_version"},
+        )
+
+        loaded = ProjectContainer.load(unstated)
+
+        assert [voice.name for voice in loaded.voices] == [voice.name for voice in project.voices]
 
     def test_incompatible_embedded_reconstruction_version_rejected(
         self,

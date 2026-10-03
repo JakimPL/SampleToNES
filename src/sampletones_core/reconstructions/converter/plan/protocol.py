@@ -16,6 +16,13 @@ class ConversionPlan(Protocol):
 
     def jobs(self, config: Config) -> List[ConversionJob]: ...
 
+    def destination(self, config: Config) -> Path:
+        """Where this plan writes: the one reconstruction a plan of one makes, or the folder the rest fill.
+
+        A reader is shown this path before the run, so every reconstruction the plan's jobs write
+        is this file or lies inside this folder.
+        """
+
     def existing_targets(self, config: Config) -> Tuple[Path, ...]:
         """The reconstructions already standing where this plan would write.
 

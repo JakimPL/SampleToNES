@@ -15,7 +15,6 @@ from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import StringCallback
 
 _STRETCH_WEIGHT: Final[float] = 1.0
-_PUT_AWAY: Final[float] = 0.0
 
 
 @dataclass(frozen=True)
@@ -132,33 +131,29 @@ class TabColumns:
 
         cls._bind_column_themes(columns)
 
-    @classmethod
+    @staticmethod
     def stand_columns(
-        cls,
         columns: Sequence[ColumnSpec],
         standing: AbstractSet[str],
-        panel_gap: int,
     ) -> None:
         """Divides a row built by :meth:`row` among the columns in ``standing``.
 
-        A card the reader puts away leaves its column with nothing to hold, so the column drops to
-        no width and the ones still standing divide the whole row between them. A gap holds its
-        width where a column stands on each side of it, so what is left sits flush to the row's
-        edges and keeps one gap between neighbors. A column comes back at the size it was declared
-        with.
+        A card the reader puts away leaves its column with nothing to hold, so the column is
+        disabled and the ones still standing divide the whole row between them, its padding
+        included. A gap stands where a column stands on each side of it, so what is left sits flush
+        to the row's edges and keeps one gap between neighbors. A column comes back at the size it
+        was declared with.
+
+        Disabling is what lets a column go entirely: DearPyGui reads a weight of zero as the
+        default share, and the smallest positive weight still keeps a few pixels and the cell's
+        padding.
         """
         preceded = False
         for index, column in enumerate(columns):
             stands = column.tag in standing
-            dpg_configure_item(
-                compose_tag(column.tag, SUF_TABLE_COLUMN),
-                init_width_or_weight=column.declared_size if stands else _PUT_AWAY,
-            )
+            dpg_configure_item(compose_tag(column.tag, SUF_TABLE_COLUMN), enabled=stands)
             if index > 0:
-                dpg_configure_item(
-                    compose_tag(column.tag, SUF_TABLE_GAP),
-                    init_width_or_weight=panel_gap if stands and preceded else _PUT_AWAY,
-                )
+                dpg_configure_item(compose_tag(column.tag, SUF_TABLE_GAP), enabled=stands and preceded)
 
             preceded = preceded or stands
 

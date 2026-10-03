@@ -111,6 +111,7 @@ def _view_model(
         reconstruction_file=empty_path,
         original_audio=empty_path,
         nes_frequency=None,
+        rate_lock=None,
     )
 
 

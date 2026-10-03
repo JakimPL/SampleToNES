@@ -29,6 +29,7 @@ from sampletones_application.view_model.reconstruction.paths.path import (
 from sampletones_application.view_model.reconstruction.paths.state import (
     ReconstructionPathState,
 )
+from sampletones_application.view_model.reconstruction.rate import RateLock
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
@@ -217,7 +218,22 @@ class ReconstructionPanelLogic(CallbackMixin):
             reconstruction_file=reconstruction_file,
             original_audio=original_audio,
             nes_frequency=reconstruction_data.config.nes_frequency,
+            rate_lock=self._rate_lock(reconstruction_data),
         )
+
+    def _rate_lock(self, reconstruction_data: ReconstructionData) -> Optional[RateLock]:
+        """Why the open document keeps its rate, or ``None`` while the tab may retime it.
+
+        A sample of the project follows the project's rate. A document with no file keeps its
+        rate until it is saved to one.
+        """
+        if self._reconstruction_manager.is_project_sample:
+            return RateLock.PROJECT_SAMPLE
+
+        if reconstruction_data.filepath is None:
+            return RateLock.NO_FILE
+
+        return None
 
     def close_reconstruction(self) -> None:
         self._current_audio_source = AudioSourceType.RECONSTRUCTION
@@ -245,6 +261,7 @@ class ReconstructionPanelLogic(CallbackMixin):
                 reconstruction_file=empty_path,
                 original_audio=empty_path,
                 nes_frequency=None,
+                rate_lock=None,
             ),
         )
 
@@ -701,10 +718,10 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         sample_rate = reconstruction_data.reconstruction.config.sample_rate
         if self._current_audio_source == AudioSourceType.ORIGINAL:
-            if reconstruction_data.original_audio is None:
+            selected_original_audio = reconstruction_data.original_mix_for(self._stem_selection)
+            if selected_original_audio is None:
                 return None
 
-            selected_original_audio = reconstruction_data.original_mix_for(self._stem_selection)
             return AudioData.from_array(selected_original_audio, sample_rate)
 
         partial_approximation = reconstruction_data.partials_for(
@@ -720,9 +737,10 @@ class ReconstructionPanelLogic(CallbackMixin):
         """Resolves the reconstruction-file and original-audio locations for display.
 
         Each location is reported independently. A file-backed reconstruction knows its own file;
-        a detached one (a project sample) reports not-applicable. Its source audio is available when
-        the recorded file loaded, not-found when a path is recorded yet its content is unavailable,
-        and not-applicable when the reconstruction has been detached from its origin.
+        one with no file, such as a project sample or a document whose file was removed, reports
+        not-applicable. Its source audio is available when the recorded file loaded, not-found when
+        a path is recorded yet its content is unavailable, and not-applicable when the
+        reconstruction has been detached from its origin.
         """
         reconstruction_file = self._build_file_path_view_model(reconstruction_data.filepath)
         original_audio = self._build_audio_path_view_model(

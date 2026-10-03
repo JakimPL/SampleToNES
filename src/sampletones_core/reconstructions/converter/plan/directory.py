@@ -32,12 +32,20 @@ class DirectoryConversion:
         Raises:
             NoFilesToProcessError: If the directory holds no audio file still to be converted.
         """
-        output_path = get_output_path(config, self.directory, self.stems.covered_channels)
+        output_path = self.destination(config)
         audio_files = filter_files(get_audio_files(self.directory), self.directory, output_path)
         if not audio_files:
             raise NoFilesToProcessError(f"No audio files found in {self.directory}")
 
         return [self._job(audio_file, output_path) for audio_file in audio_files]
+
+    def destination(self, config: Config) -> Path:
+        """The folder mirroring the directory, which every reconstruction this conversion writes sits in.
+
+        Raises:
+            FileNotFoundError: If the directory does not exist.
+        """
+        return get_output_path(config, self.directory, self.stems.covered_channels)
 
     def existing_targets(self, _config: Config) -> Tuple[Path, ...]:
         """The empty tuple: the scan converts what is still to be written and keeps the rest."""

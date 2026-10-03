@@ -1,25 +1,18 @@
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import AbstractSet, Optional, Self, Tuple
+from typing import Optional, Self
 
 from sampletones_application.logic.main.sources.list import SourceList
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
-from sampletones_core.reconstructions.converter import BatchEntry
-from sampletones_core.reconstructions.converter.paths import (
-    config_directory_path,
-    group_output_path,
-)
+from sampletones_core.reconstructions.converter import ConversionPlan
 
 
 @dataclass(frozen=True)
 class Destination:
     """What a run converts and where the reconstruction it writes lands.
 
-    The output path follows the input: a recording names the document beside it, a directory names
-    the tree its batch mirrors, and a mix names the document the gathered recordings amount to.
-    Deriving it in one step keeps the path the panel shows and the path the run writes the same
-    answer.
+    The output path is the one the run's plan names as its destination, so the path the panel
+    shows and the path the run writes are one answer.
     """
 
     input_path: Optional[Path]
@@ -39,37 +32,18 @@ class Destination:
 
         return self.input_path.stem if self.input_path is not None else ""
 
-    def aimed_at_mix(
-        self,
-        config: Config,
-        sources: Tuple[Path, ...],
-        channels: AbstractSet[ChannelName],
-    ) -> Self:
-        """The destination the recordings a mix gathers name between them.
+    def aimed_at(self, config: Config, plan: Optional[ConversionPlan]) -> Self:
+        """The destination the plan a run amounts to names.
 
-        A mix with nobody taking part names nothing of its own, so the destination it last held
-        stands until a recording joins it.
+        A run of one names the document it writes, which is what a reader converting a single file
+        is looking at; a larger one names the folder every reconstruction it writes lands in. A run
+        with nobody taking part names nothing of its own, so the destination it last held stands
+        until a recording joins it.
         """
-        if not sources:
+        if plan is None:
             return self
 
-        return replace(self, output_path=group_output_path(config, sources, channels))
-
-    def aimed_at_batch(self, config: Config, entries: Tuple[BatchEntry, ...]) -> Self:
-        """The destination a run writing one reconstruction per recording names.
-
-        One recording names the document it is written to, which is what a reader converting a
-        single file is looking at; several name the directory the channels they cover between them
-        are held under, which is the tree the batch writes into.
-        """
-        if not entries:
-            return self
-
-        if len(entries) == 1:
-            return replace(self, output_path=entries[0].output_path(config))
-
-        covered = frozenset().union(*(entry.stems.covered_channels for entry in entries))
-        return replace(self, output_path=config_directory_path(config, covered))
+        return replace(self, output_path=plan.destination(config))
 
     def named_after(self, sources: SourceList) -> Self:
         """What a run names itself by, read from the sources gathered for it.

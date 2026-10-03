@@ -14,7 +14,7 @@ The upgrades live in `sampletones_core/compatibility` and run at the load bounda
 
 ### A format reads and writes one data version
 
-Each format has one data version this build produces, held in `SAMPLETONES_LIBRARY_DATA_VERSION`, `SAMPLETONES_RECONSTRUCTION_DATA_VERSION` and `SAMPLETONES_PROJECT_DATA_VERSION` (`sampletones_shared/application.py`). The version travels inside every stored file, and the format's load contract holds each file to it: `MetadataContract` for the binary formats, and the `format_version` check for projects.
+Each format has one data version this build produces, held in `SAMPLETONES_LIBRARY_DATA_VERSION`, `SAMPLETONES_RECONSTRUCTION_DATA_VERSION` and `SAMPLETONES_PROJECT_DATA_VERSION` (`sampletones_shared/application.py`). The version travels inside every stored file, and the format's load contract, a `MetadataContract`, holds each file to it before the rest of the file is read. A file at another version is therefore refused for its version, and the refusal names both versions.
 
 ### An upgrade is one version step
 

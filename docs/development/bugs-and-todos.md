@@ -153,27 +153,6 @@ currently out of line. An entry leaves when the code meets the contract again.
   nothing can play.
 * Apply in Audio settings on a machine that offers no output device logs a `KeyError` and leaves the
   window open: the window looks the empty device choice up among the devices it lists.
-* A project stating a data version no upgrade step reaches is refused by its shape, not by its version.
-  `ProjectContainer.load` validates the document before `_validate_document` compares the version, so
-  the user reads a list of validation errors instead of the version mismatch a reconstruction reports.
-  `tests/integration/compatibility/test_project.py` and the screen scenario in
-  `tests/screens/application/old_files/test_broken_projects.py` reproduce it as known failures.
-* A box clicked in the Converter list leaves Source settings where it stood: ticking a channel on a
-  recording inside an open folder changes that row, while the card goes on naming the row picked
-  before, or New recordings. `tests/screens/main/row_settings/test_boxes.py` reproduces it as a known failure.
-* General settings stops short of the Converter's right edge while Advanced settings is put away,
-  where it should fill the row and end where the Converter below it does.
-  `tests/screens/main/cards/test_card_layout.py` reproduces it as a known failure.
-* The Destination line names no folder a run writes into once the gathered recordings convert with
-  different channels: it names the folder of every channel the rows use together, while each
-  recording goes into the folder of its own channels. `tests/screens/main/run/test_destination.py` reproduces it as
-  a known failure.
-* A library folder pointed away from and back lists its library unloaded: the library loaded before
-  reads as one that exists, where it should come back loaded.
-  `tests/screens/main/library/test_folders_and_generators.py` reproduces it as a known failure.
-* A reconstruction whose file the browser removed reads as a sample of the project: the NES frequency
-  field locks with the hint that the project sets its rate, though the document belongs to no
-  project. `tests/screens/prompts/vanished/test_reconstruction_removed.py` reproduces it as a known failure.
 * A voice double-clicked with the second press still held opens edited. The double-click brings the
   Reconstructions tab forward while the button is down, and the envelope graph that comes under the
   pointer draws a bar for a press that began on the Voices card. `tests/screens/prompts/open_voice/test_open_voice.py`
@@ -181,9 +160,6 @@ currently out of line. An entry leaves when the code meets the contract again.
 * A Keyboard settings row reads as listening once Cancel answers the reassign question, while no key
   reaches it: the keys pressed next are taken by nothing, and Escape closes the dialog.
   `tests/screens/prompts/modals/test_run_ending_behind_a_dialog.py` reproduces it as a known failure.
-* A reconstruction whose recording is missing draws a flat original line beside the reconstruction,
-  where the waveform shows the approximation on its own. `tests/screens/reconstructions/player/test_source_switch.py`
-  reproduces it as a known failure.
 * With an instrument open on the Reconstructions tab, the note keys take Ctrl+Z, Ctrl+S and every
   combination ending in a note key: the instruments panel answers a key whatever modifiers are held, so
   Undo, Save and the rest never reach their shortcuts. `tests/screens/reconstructions/instruments/test_note_keys.py`

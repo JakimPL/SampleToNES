@@ -103,11 +103,6 @@ class TestAnotherLibraryFolder:
 
         screen.scenario(ours_listed_and_loaded, point_at_the_other_folder, point_back).run()
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: a library folder pointed away from and back lists its library unloaded",
-    )
     def test_pointing_back_finds_the_library_loaded(self, screen: Screen) -> None:
         """After pointing away and back, the first library's status reads loaded without a second opening."""
         library = screen.instructions.library
