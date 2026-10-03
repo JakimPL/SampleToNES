@@ -10,13 +10,17 @@ class Hand(Scrolling, Keyboard):
     A gesture first reads where its control stands, refusing one beyond a user's reach, and then
     plays the events a person makes. Every step waits whole frames, since the application reads
     input once a frame: the pointer rests over a control before pressing it, and a modifier is held
-    a frame before the key it modifies goes down. A gesture that closes the application ends where
-    the application stopped, which is how a scenario presses the button that leaves it.
+    a frame before the key it modifies goes down. A click and a key press go down and come up in one
+    go, which Dear ImGui reads over two frames, so a press means what a person meant at any frame
+    rate: a key stands down too briefly to repeat, and the presses of a double-click land two frames
+    apart. A gesture that closes the application ends where the application stopped, which is how a
+    scenario presses the button that leaves it.
 
     A gesture confirms that it arrived. The control reports the pointer resting on it before a
-    button goes down, and the application reports every held button and named key down while it is
-    held, so a press lost on the way fails where it was lost, and a scenario expecting nothing to
-    happen learns that its gesture was made.
+    button goes down, a held button or modifier reads as down while it is held, and Dear ImGui
+    counts the release of every click and key press and the double-click of a double press. A press
+    lost on the way fails where it was lost, and a scenario expecting nothing to happen learns that
+    its gesture was made.
 
     The pieces are `Arrival` (waiting and confirming), `Pointer` (presses and drags), `Scrolling`
     (the wheel and the scrollbars) and `Keyboard` (keys and typed text).

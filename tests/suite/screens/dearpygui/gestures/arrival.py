@@ -1,4 +1,3 @@
-import time
 from contextlib import suppress
 from functools import partial
 from typing import Callable, Final, Optional, Sequence
@@ -9,6 +8,7 @@ from tests.suite.screens.dearpygui.bridge import ONE_FRAME, Bridge, RenderThread
 from tests.suite.screens.dearpygui.geometry import Point
 from tests.suite.screens.dearpygui.gestures.constants import REACH_TIMEOUT_SECONDS
 from tests.suite.screens.dearpygui.gestures.errors import GestureLostError
+from tests.suite.screens.dearpygui.gestures.witness import InputWitness
 from tests.suite.screens.dearpygui.items.reading import read_hovered
 from tests.suite.screens.dearpygui.items.types import Item
 from tests.suite.screens.dearpygui.items.viewport import read_pointer, read_viewport
@@ -23,10 +23,11 @@ IMGUI_DOUBLE_CLICK_SECONDS: Final[float] = 0.30
 class Arrival:
     """The part of a hand that lets frames pass and confirms that its input reached DearPyGui.
 
-    It owns the bridge, the display's input device and the time of the last release. It aims at an item
-    once the item stands in reach and holds still, waits out a double-click window, and confirms
-    that the pointer, a button or a key reads as held. `Pointer` and `Keyboard` build their gestures
-    on these steps, and `Scrolling` reaches them through `Pointer`.
+    It owns the bridge, the display's input device, the witness of what Dear ImGui counted and the time of
+    the last release. It aims at an item once the item stands in reach and holds still, waits out a
+    double-click window, confirms that the pointer, a held button or a held key reads where it was put, and
+    confirms a press that came and went from the witness's counts. `Pointer` and `Keyboard` build their
+    gestures on these steps, and `Scrolling` reaches them through `Pointer`.
     """
 
     def __init__(
@@ -36,6 +37,7 @@ class Arrival:
     ) -> None:
         self._bridge = bridge
         self._device = device
+        self._witness = InputWitness()
         self._last_release: Optional[float] = None
 
     def _settle(self, count: int) -> None:
@@ -85,19 +87,19 @@ class Arrival:
                 y=round(viewport.y) + center.y,
             )
 
-        deadline = time.monotonic() + REACH_TIMEOUT_SECONDS
+        deadline = self._bridge.deadline(REACH_TIMEOUT_SECONDS)
         previous: Optional[Point] = None
         while True:
             try:
                 point = self._bridge.ask(read)
             except UnreachableError:
-                if time.monotonic() >= deadline:
+                if deadline.passed():
                     raise
                 point = None
 
             if point is not None and point == previous:
                 return point
-            if time.monotonic() >= deadline:
+            if deadline.passed():
                 raise UnreachableError(f"{item!r} kept moving: it stood at {previous} and then at {point}")
 
             previous = point
@@ -135,6 +137,37 @@ class Arrival:
             self._settle(ONE_FRAME)
 
         raise GestureLostError(f"The pointer was moved to {expected} and the application reads it elsewhere")
+
+    def _await_count(
+        self,
+        count: Callable[[], int],
+        target: int,
+        what: str,
+    ) -> bool:
+        """Waits a few frames until the witness's ``count`` reaches ``target``, and says whether the application
+        still runs.
+
+        A display busy with other work hands input on a few frames late, so the count is read once a frame
+        for a few frames. A gesture that closes the application ends the wait where the application stopped.
+
+        Raises:
+            GestureLostError: If the count stays short of ``target`` throughout.
+        """
+        counted = 0
+        for _ in range(ARRIVAL_FRAMES):
+            try:
+                counted = self._bridge.ask(count)
+            except RenderThreadStoppedError:
+                return False
+            if counted >= target:
+                return True
+
+            self._settle(ONE_FRAME)
+
+        raise GestureLostError(
+            f"{what} was pressed on the display, and the application counted {counted} of the {target} "
+            f"releases the press brings it to"
+        )
 
     def _confirm_keys(self, keys: Sequence[int]) -> None:
         for key in keys:

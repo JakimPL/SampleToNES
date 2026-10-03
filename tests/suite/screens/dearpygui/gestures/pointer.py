@@ -1,11 +1,10 @@
-import time
-from typing import Dict, Final, Sequence
+from typing import Dict, Final, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 
 from tests.suite.screens.dearpygui.bridge import ONE_FRAME
 from tests.suite.screens.dearpygui.geometry import Point
-from tests.suite.screens.dearpygui.gestures.arrival import Arrival
+from tests.suite.screens.dearpygui.gestures.arrival import IMGUI_DOUBLE_CLICK_SECONDS, Arrival
 from tests.suite.screens.dearpygui.gestures.constants import (
     HOLD_FRAMES,
     HOVER_FRAMES,
@@ -13,7 +12,7 @@ from tests.suite.screens.dearpygui.gestures.constants import (
     RELEASE_FRAMES,
     SETTLE_FRAMES,
 )
-from tests.suite.screens.dearpygui.gestures.errors import GestureLostError
+from tests.suite.screens.dearpygui.gestures.errors import GestureLostError, SlowFramesError
 from tests.suite.screens.dearpygui.items.types import Item
 from tests.suite.screens.dearpygui.keys import keysym_of
 from tests.suite.screens.dearpygui.xtest import MouseButton
@@ -35,8 +34,11 @@ class Pointer(Arrival):
     """The pointer of a hand: presses, double-clicks, drags and hovering.
 
     It owns every gesture made with the buttons and builds each from `Arrival`'s steps: aim at the item,
-    rest over it, press, confirm the press and settle. `Scrolling` reuses its hover and drag to reach
-    scrollbars and the wheel.
+    rest over it, press, confirm the press and settle. A click goes down and comes up in one go, and so do
+    the presses of a double-click, so Dear ImGui reads each press on a frame of its own at any frame rate.
+    The presses of a double-click then land two frames apart, and Dear ImGui counts them as one double-click
+    while those frames take less than its double-click time between them. `Scrolling` reuses its hover and
+    drag to reach scrollbars and the wheel.
     """
 
     def click(self, item: Item) -> None:
@@ -56,13 +58,14 @@ class Pointer(Arrival):
         """
         for modifier in modifiers:
             self._device.key_down(keysym_of(modifier))
-        self._settle(HOLD_FRAMES)
-        self._confirm_keys(modifiers)
+        try:
+            self._settle(HOLD_FRAMES)
+            self._confirm_keys(modifiers)
+            self._press(item, MouseButton.LEFT, SINGLE_PRESS)
+        finally:
+            for modifier in reversed(modifiers):
+                self._device.key_up(keysym_of(modifier))
 
-        self._press(item, MouseButton.LEFT, SINGLE_PRESS)
-
-        for modifier in reversed(modifiers):
-            self._device.key_up(keysym_of(modifier))
         self._settle(SETTLE_FRAMES)
 
     def double_click(self, item: Item) -> None:
@@ -83,8 +86,21 @@ class Pointer(Arrival):
         """
         self.hover(item)
         self._outlast_a_double_click()
-        self._press_once(MouseButton.LEFT, HOLD_FRAMES)
-        self._press_once(MouseButton.LEFT, frames)
+        imgui_button = IMGUI_MOUSE_BUTTONS[MouseButton.LEFT]
+        releases, double_clicks = self._bridge.ask(lambda: self._counts(imgui_button))
+        self._device.click_button(MouseButton.LEFT, SINGLE_PRESS)
+        self._device.button_down(MouseButton.LEFT)
+        try:
+            self._confirm(lambda: dpg.is_mouse_button_down(imgui_button), "The left button")
+            self._require_double_click(imgui_button, releases, double_clicks)
+            self._settle(frames)
+        finally:
+            self._device.button_up(MouseButton.LEFT)
+        self._await_count(
+            lambda: self._witness.button_releases(imgui_button),
+            releases + DOUBLE_PRESS,
+            "The left button",
+        )
         self._last_release = self._application_seconds()
         self._settle(SETTLE_FRAMES)
 
@@ -134,13 +150,13 @@ class Pointer(Arrival):
         Raises:
             GestureLostError: If the item never reports the pointer resting on it.
         """
-        deadline = time.monotonic() + REACH_TIMEOUT_SECONDS
+        deadline = self._bridge.deadline(REACH_TIMEOUT_SECONDS)
         while True:
             self._device.move(self._aim(item))
             self._bridge.frames(HOVER_FRAMES)
             if self._hovered_within(item, HOVER_ARRIVAL_FRAMES):
                 return
-            if time.monotonic() >= deadline:
+            if deadline.passed():
                 raise GestureLostError(
                     f"The pointer was aimed at {item!r} and the item reports no hover: "
                     f"something covers it, or the region it scrolls in clips it"
@@ -154,24 +170,59 @@ class Pointer(Arrival):
     ) -> None:
         self.hover(item)
         self._outlast_a_double_click()
-        for _ in range(count):
-            self._press_once(button, HOLD_FRAMES)
-
+        self._press_where_it_stands(button, count)
         self._last_release = self._application_seconds()
         self._settle(SETTLE_FRAMES)
 
-    def _press_once(
+    def _press_where_it_stands(
         self,
         button: MouseButton,
-        frames: int,
+        count: int,
     ) -> None:
-        """Holds ``button`` down where the pointer stands for ``frames`` frames, then lets it go."""
+        """Presses ``button`` ``count`` times in one go where the pointer stands, and confirms Dear ImGui read
+        every release, and the double-click when the presses are more than one.
+        """
         imgui_button = IMGUI_MOUSE_BUTTONS[button]
-        self._device.button_down(button)
-        self._settle(frames)
-        self._confirm(lambda: dpg.is_mouse_button_down(imgui_button), f"The {button.name.lower()} button")
-        self._device.button_up(button)
-        self._settle(RELEASE_FRAMES)
+        releases, double_clicks = self._bridge.ask(lambda: self._counts(imgui_button))
+        self._device.click_button(button, count)
+        running = self._await_count(
+            lambda: self._witness.button_releases(imgui_button),
+            releases + count,
+            f"The {button.name.lower()} button",
+        )
+        if running and count > SINGLE_PRESS:
+            self._require_double_click(imgui_button, releases, double_clicks)
+
+    def _counts(self, imgui_button: int) -> Tuple[int, int]:
+        """The releases and the double-clicks the witness counted of ``imgui_button`` so far."""
+        return (
+            self._witness.button_releases(imgui_button),
+            self._witness.double_clicks(imgui_button),
+        )
+
+    def _require_double_click(
+        self,
+        imgui_button: int,
+        releases: int,
+        double_clicks: int,
+    ) -> None:
+        """Checks that Dear ImGui counted a double-click since the witness counted ``double_clicks`` of them.
+
+        The presses came two frames apart, so a missing double-click says the display drew those frames
+        more slowly than Dear ImGui's double-click time allows.
+
+        Raises:
+            SlowFramesError: If Dear ImGui counted the presses as separate clicks.
+        """
+        if self._bridge.ask(lambda: self._witness.double_clicks(imgui_button)) > double_clicks:
+            return
+
+        times = self._bridge.ask(lambda: self._witness.button_release_times(imgui_button))[releases:]
+        took = f"{times[1] - times[0]:.2f} s" if len(times) > 1 else "longer than that"
+        raise SlowFramesError(
+            f"Dear ImGui counted no double-click: it counts two presses landing within "
+            f"{IMGUI_DOUBLE_CLICK_SECONDS} s of each other, and the two frames between these took {took}"
+        )
 
     def _press_at(
         self,
@@ -181,9 +232,7 @@ class Pointer(Arrival):
     ) -> None:
         self.move_to(point)
         self._outlast_a_double_click()
-        for _ in range(count):
-            self._press_once(button, HOLD_FRAMES)
-
+        self._press_where_it_stands(button, count)
         self._last_release = self._application_seconds()
         self._settle(SETTLE_FRAMES)
 
@@ -198,18 +247,21 @@ class Pointer(Arrival):
         self._device.move(start)
         self._settle(HOVER_FRAMES)
         self._device.button_down(MouseButton.LEFT)
-        self._settle(HOLD_FRAMES)
-        self._confirm(lambda: dpg.is_mouse_button_down(dpg.mvMouseButton_Left), "The left button")
+        try:
+            self._settle(HOLD_FRAMES)
+            self._confirm(lambda: dpg.is_mouse_button_down(dpg.mvMouseButton_Left), "The left button")
 
-        for step in range(1, DRAG_STEPS + 1):
-            point = Point(
-                x=start.x + round((end.x - start.x) * step / DRAG_STEPS),
-                y=start.y + round((end.y - start.y) * step / DRAG_STEPS),
-            )
-            self._device.move(point)
-            self._settle(ONE_FRAME)
-            self._confirm_pointer(point)
+            for step in range(1, DRAG_STEPS + 1):
+                point = Point(
+                    x=start.x + round((end.x - start.x) * step / DRAG_STEPS),
+                    y=start.y + round((end.y - start.y) * step / DRAG_STEPS),
+                )
+                self._device.move(point)
+                self._settle(ONE_FRAME)
+                self._confirm_pointer(point)
 
-        self._settle(HOLD_FRAMES)
-        self._device.button_up(MouseButton.LEFT)
+            self._settle(HOLD_FRAMES)
+        finally:
+            self._device.button_up(MouseButton.LEFT)
+
         self._settle(RELEASE_FRAMES)

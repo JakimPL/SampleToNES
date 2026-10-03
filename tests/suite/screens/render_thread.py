@@ -28,6 +28,10 @@ class QueueRenderThread:
         """Whether the loop is drawing."""
         return self._running.is_set()
 
+    def frames_drawn(self) -> int:
+        """How many frames the loop has drawn, counted by the queue it drains."""
+        return CallbackQueue.current_frame()
+
     def start(self) -> None:
         """Marks the loop as drawing, which is when posted work starts being answered."""
         self._running.set()

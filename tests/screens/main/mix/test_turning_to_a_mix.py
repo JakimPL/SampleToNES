@@ -154,9 +154,10 @@ class TestTurningToAMixPastItsRoom:
             screen.expect(question.is_shown, bool, description="the question")
 
         def a_double_click_sounds_it(screen: Screen) -> None:
+            heard = screen.sound_heard()
             screen.hand.double_click(question.name(paths[0]))
 
-            screen.expect(screen.sequencer.playback.can_stop, bool, description="the recording sounding")
+            screen.expect(screen.sound_heard, heard.__lt__, description="the recording heard")
 
         def names_clicked_leave_no_highlight(screen: Screen) -> None:
             before = [question.is_ticked(path) for path in paths]

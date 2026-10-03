@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from tests.suite.screens.boundaries.audio import OutputRecord
 from tests.suite.screens.boundaries.dialogs import ScriptedFileDialogs
 from tests.suite.screens.boundaries.errors import ErrorRecords
 from tests.suite.screens.boundaries.highlights import TableHighlights
@@ -18,3 +19,4 @@ class Boundaries:
     holds: Holds
     file_manager: FileManagerStandIn
     highlights: TableHighlights
+    output: OutputRecord

@@ -56,12 +56,12 @@ class TestAPlainClickOnARecording:
     def test_it_plays_and_the_gathering_gestures_gather(self, screen: Screen) -> None:
         """A click only plays, while Ctrl-click and the Add as stem entry add rows."""
         converter = screen.main.converter
-        playback = screen.sequencer.playback
 
         def a_click_plays(screen: Screen) -> None:
+            heard = screen.sound_heard()
             screen.explorer.click(explorer_row(screen, home_path(KICK)))
 
-            screen.expect(playback.can_stop, bool, description="the recording playing")
+            screen.expect(screen.sound_heard, heard.__lt__, description="the recording heard")
             assert converter.list.hint_shown()
 
         def ctrl_click_gathers(screen: Screen) -> None:
