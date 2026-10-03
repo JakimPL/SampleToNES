@@ -1,5 +1,6 @@
-from typing import Final, Optional, Tuple
+from typing import Final, Iterator, Optional, Tuple
 
+import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
@@ -17,6 +18,7 @@ from sampletones_application.view_model.sequencer.voices import (
 from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
+from tests.suite.status import RecordedStatusBar
 
 SAMPLE_ID: Final[str] = "kick-id"
 INSTRUMENT_ID: Final[str] = "lead-id"
@@ -36,6 +38,15 @@ SAMPLE_FOOTPRINT: Final[VoiceFootprintViewModel] = VoiceFootprintViewModel.from_
     }
 )
 INSTRUMENT_FOOTPRINT: Final[VoiceFootprintViewModel] = VoiceFootprintViewModel.from_instrument(PULSE_1_FOOTPRINT)
+
+
+@pytest.fixture
+def context() -> Iterator[None]:
+    dpg.create_context()
+    try:
+        yield
+    finally:
+        dpg.destroy_context()
 
 
 def _panel(footprint: Optional[VoiceFootprintViewModel]) -> GUISequencerVoicesPanel:
@@ -92,3 +103,30 @@ class TestWhatARowSaysAboutItsVoice:
         footprint: Optional[VoiceFootprintViewModel],
     ) -> None:
         assert _panel(footprint)._voice_status_message(voice_id) == ""
+
+
+@pytest.mark.usefixtures("context")
+class TestAHoverReportedAfterTheRowWent:
+    def test_a_standing_cell_names_its_voice(self) -> None:
+        status_bar = RecordedStatusBar()
+        panel = _panel(SAMPLE_FOOTPRINT)
+        panel._status_bar = status_bar
+        with dpg.window():
+            cell = dpg.add_text("Kick", user_data=(0, SAMPLE_ID))
+
+        panel._on_row_hovered(0, cell)
+
+        assert len(status_bar.messages) == 1
+        assert status_bar.messages[0].startswith("Kick")
+
+    def test_a_cell_a_rebuild_removed_leaves_the_status_bar_as_it_was(self) -> None:
+        status_bar = RecordedStatusBar()
+        panel = _panel(SAMPLE_FOOTPRINT)
+        panel._status_bar = status_bar
+        with dpg.window():
+            cell = dpg.add_text("Kick", user_data=(0, SAMPLE_ID))
+        dpg.delete_item(cell)
+
+        panel._on_row_hovered(0, cell)
+
+        assert status_bar.messages == []
