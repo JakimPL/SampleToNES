@@ -1746,7 +1746,7 @@ class Application:
         """The steps of the teardown in the order they are taken.
 
         Background work stops before anything it reaches is let go of. Display settings put back what
-        they never confirmed before the session records the window, the session is written while the
+        is left unconfirmed before the session records the window, the session is written while the
         window it measures still stands, and the DearPyGui context goes last.
         """
         return (

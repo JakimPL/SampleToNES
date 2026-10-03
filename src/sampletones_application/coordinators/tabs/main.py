@@ -519,7 +519,7 @@ class MainTabCoordinator:
         self._folder_scan.start(directory_path, self._gather_read)
 
     def _on_scan_failed(self, exception: Exception) -> None:
-        """Takes the wait away and says why the folder could not be read."""
+        """Takes the wait away and shows the failure that ended the reading."""
         self._scan_window.close()
         self._dialogs.show_error(exception)
 

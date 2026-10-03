@@ -44,7 +44,7 @@ def release_render_thread() -> None:
     """Marks the loop as stopped, which a run does as its teardown begins.
 
     The thread that ran the loop keeps the context until it is destroyed, since the teardown runs
-    there. Work from any other thread joins the queue, which the teardown stops, so it never runs.
+    there. Work from any other thread joins the queue, which the teardown stops, so the queue lets it go.
     A run taken down before its loop claimed a thread leaves the context to the thread taking it
     down.
     """

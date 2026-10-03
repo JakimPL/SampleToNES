@@ -95,7 +95,7 @@ class SingleFlight(Generic[GestureParameters]):
 
     @property
     def in_flight(self) -> bool:
-        """Whether a conversation of this gesture has been asked for and has not yet ended."""
+        """Whether a conversation of this gesture is under way, from the moment it is asked for to its end."""
         return self._in_flight
 
     def __call__(self, *args: GestureParameters.args, **kwargs: GestureParameters.kwargs) -> None:

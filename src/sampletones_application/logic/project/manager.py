@@ -17,7 +17,7 @@ class ProjectManager(CallbackMixin):
     - Lifecycle events are emitted by its ``session``; callers that need to react to lifecycle
       transitions subscribe to ``session.on_state_changed``.
     - The project stands for the file it was last loaded from or saved to, its :attr:`path`. A
-      project created here and never saved stands for none. ``on_path_changed`` reports each new
+      project made here stands for a file once it is first saved. ``on_path_changed`` reports each new
       path, so the session remembers the project the next run reopens.
     """
 
