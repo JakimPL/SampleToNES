@@ -7,6 +7,7 @@ from typing import Any, Dict, Final, Optional
 import msgpack
 
 from sampletones_core.compatibility.kind import ObjectKind
+from sampletones_core.compatibility.upgrade import read_version
 from sampletones_core.data.document import decompress_document
 from sampletones_tools.compatibility.paths import CORPUS_DIRECTORY, archived_path
 
@@ -48,15 +49,8 @@ def stored_document(path: Path) -> Dict[str, Any]:
 
 
 def stored_version(kind: ObjectKind, path: Path) -> Optional[str]:
-    """The data version an archived file states, read off the stored payload."""
-    document = stored_document(path)
-    if kind is ObjectKind.PROJECT:
-        version = document.get(FORMAT_VERSION_FIELD)
-    else:
-        metadata = document.get(METADATA_FIELD, {})
-        version = metadata.get(f"{kind.value}_data_version")
-
-    return version if isinstance(version, str) else None
+    """The data version an archived file states, read off the stored payload where its format's load reads it."""
+    return read_version(kind, stored_document(path))
 
 
 def writing_release(path: Path) -> Optional[str]:

@@ -3,8 +3,6 @@ import re
 from functools import partial
 from typing import Final, List, Tuple
 
-import pytest
-
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.tags.sequencer import TAG_SEQUENCER_VOICES_TABLE
@@ -18,7 +16,7 @@ from tests.suite.screens.dearpygui.items.types import Item
 from tests.suite.screens.keyboard import press_combination
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.reconstructions import BY_CONFIGURATION
-from tests.suite.screens.steps.sequencer import forgive_the_hover_race, leave_letting_the_project_go
+from tests.suite.screens.steps.sequencer import leave_letting_the_project_go
 from tests.suite.screens.views.menus import MenuEntry
 from tests.suite.screens.vocabulary.playback import PAUSE
 from tests.suite.screens.worlds.recordings import SHORT_RECONSTRUCTION
@@ -31,6 +29,8 @@ POOL_ACTIONS: Final[Tuple[str, ...]] = (
 )
 
 PLAY_VOICE: Final[str] = "global.context.label.play"
+NEW_INSTRUMENT_TIP: Final[str] = "sequencer.voices.tooltip.new_instrument"
+NO_PROJECT_TIP: Final[str] = "sequencer.voices.tooltip.new_instrument_no_project"
 STATUS_SAMPLE: Final[str] = "sequencer.voices.template.status_sample"
 STATUS_SEPARATOR: Final[str] = "sequencer.voices.template.status_channel_separator"
 
@@ -157,7 +157,6 @@ class TestHoveringAVoice:
         screen.hand.hover(row)
 
         screen.expect(screen.status, lambda status: expected.fullmatch(status) is not None, description="the status")
-        forgive_the_hover_race(screen)
 
 
 class TestTheKeysOfACollapsedVoicesCard:
@@ -204,26 +203,67 @@ class TestTheKeysOfACollapsedVoicesCard:
 
 
 class TestNewInstrumentWithNoProjectOpen:
-    """New instrument with no project open keeps the voice list empty, and leaving goes through at once."""
+    """With no project open, every way a voice comes in stands greyed out and the voice list stays empty.
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: New instrument with no project open writes into a project nobody opened",
-    )
-    def test_nothing_is_added(self, screen: Screen) -> None:
-        """The voice list stays empty and the exit shortcut ends the application."""
+    Hovering the greyed-out New instrument says what brings it back. A new project brings the ways back,
+    hovering New instrument then says what it adds, and a click adds one voice.
+    """
+
+    def test_nothing_is_offered_until_a_project_opens(self, screen: Screen) -> None:
+        """The card's button, the list's menu and the Voice menu grey out the ways in, and a new project answers."""
         voices = screen.sequencer.voices
-        screen.tabs.bring_to_front(Tab.SEQUENCER)
-        screen.project.close()
-        screen.expect(voices.names, operator.not_, description="no voices listed")
+        menu = screen.context_menu
+        pool = tuple(screen.words(key) for key in POOL_ACTIONS)
 
-        voices.new_instrument()
+        def close_the_project(screen: Screen) -> None:
+            screen.tabs.bring_to_front(Tab.SEQUENCER)
 
-        screen.frames(SETTLING_FRAMES)
-        assert voices.names() == []
-        screen.press_shortcut(ShortcutId.EXIT)
-        assert screen.wait_for_exit()
+            screen.project.close()
+
+            screen.expect(voices.names, operator.not_, description="no voices listed")
+
+        def every_way_in_stands_greyed_out(screen: Screen) -> None:
+            screen.expect(lambda: not voices.new_instrument_answers(), bool, description="New instrument greyed out")
+            voices.hover_new_instrument()
+            screen.expect(
+                partial(screen.shows_text, screen.words(NO_PROJECT_TIP)),
+                bool,
+                description="the tooltip saying what brings New instrument back",
+            )
+            assert not screen.shows_text(screen.words(NEW_INSTRUMENT_TIP))
+
+            right_click_the_empty_list(screen)
+            screen.expect(menu.is_shown, bool, description="the list's menu")
+            entries = menu.entries()
+            menu.dismiss()
+            screen.expect(menu.is_shown, operator.not_, description="the menu put away")
+            from_the_bar = [entry for entry in menu_on_the_bar(screen, MenuElements.GROUP_VOICE) if entry.label in pool]
+
+            assert [(entry.label, entry.enabled) for entry in entries] == [(label, False) for label in pool]
+            assert [(entry.label, entry.enabled) for entry in from_the_bar] == [(label, False) for label in pool]
+            assert voices.names() == []
+
+        def a_new_project_takes_a_new_instrument(screen: Screen) -> None:
+            screen.project.create()
+            screen.expect(voices.new_instrument_answers, bool, description="New instrument answering")
+            voices.hover_new_instrument()
+            screen.expect(
+                partial(screen.shows_text, screen.words(NEW_INSTRUMENT_TIP)),
+                bool,
+                description="New instrument's own tooltip",
+            )
+            assert not screen.shows_text(screen.words(NO_PROJECT_TIP))
+
+            voices.new_instrument()
+
+            screen.expect(lambda: len(voices.names()), (1).__eq__, description="one voice")
+
+        screen.scenario(
+            close_the_project,
+            every_way_in_stands_greyed_out,
+            a_new_project_takes_a_new_instrument,
+            leave_letting_the_project_go,
+        ).run()
 
 
 class TestASampleAddedFromTheBrowser:

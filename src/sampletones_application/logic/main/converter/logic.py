@@ -20,9 +20,7 @@ from sampletones_application.logic.main.converter.run import (
 )
 from sampletones_application.logic.main.converter.settings import RunSettings
 from sampletones_application.logic.main.converter.setup import (
-    batch_entries,
     conversion_plan,
-    conversion_setup,
     playing_sources,
 )
 from sampletones_application.logic.main.converter.state import ConverterState
@@ -214,30 +212,30 @@ class ConverterLogic(CallbackMixin):
 
         self._rewrite(self._state.with_gathering(self._gathering_folder(root, found)))
 
-    def convert_recording(self, path: Path) -> None:
-        """Converts exactly the recording the reader named, which is what a Reconstruct asks for.
+    def take_up_recording(self, path: Path) -> None:
+        """Lists the recording a Reconstruct names, to be converted into a reconstruction of its own.
 
-        The setup is replaced only where a conversion may start, so a Reconstruct reaching the
-        converter while another operation runs leaves what the reader gathered standing.
+        A Reconstruct asks for one reconstruction per recording, so a mix standing in the converter
+        gives way to a list of that kind, and a list of that kind takes the recording beside what it
+        holds. The reader starts the run once the list and its settings are as they want them.
         """
-        if self._declines_to_start():
-            return
-
-        self._replace_setup()
+        self._turn_to_one_apiece()
         self.gather_recordings([path])
-        self.start_conversion()
 
-    def convert_folder(self, root: Path, found: Sequence[Path]) -> None:
-        """Converts the recordings ``found`` below a folder, writing one reconstruction apiece."""
-        if self._declines_to_start():
+    def take_up_folder(self, root: Path, found: Sequence[Path]) -> None:
+        """Lists the folder a Reconstruct names, standing for the recordings ``found`` below it.
+
+        The folder joins a list writing one reconstruction per recording, as :meth:`take_up_recording`
+        describes.
+        """
+        self._turn_to_one_apiece()
+        self.gather_folder(root, found)
+
+    def _turn_to_one_apiece(self) -> None:
+        """Lets a mix go for an empty list writing one reconstruction per recording."""
+        if not self.mixes:
             return
 
-        self._replace_setup()
-        self.gather_folder(root, found)
-        self.start_conversion()
-
-    def _replace_setup(self) -> None:
-        """Lets whatever was gathered go, since a Reconstruct names what it converts on its own."""
         self._rewrite(
             self._state.with_settings(self._settings.with_output(OutputKind.PER_RECORDING)).with_gathering(
                 Gathering.empty()
@@ -306,18 +304,24 @@ class ConverterLogic(CallbackMixin):
         self.toggle_slot(SettingsField.CHANNELS, channel_name)
 
     def set_source_channels(self, path: Path, channels: FrozenSet[ChannelName]) -> None:
-        """Names the channels one recording may take, which is the whole of what it reaches."""
+        """Names the channels one recording may take, and picks its row out.
+
+        A click on a row always picks it, the boxes beside its name included, so the settings
+        card follows the row whose box moved.
+        """
         gathering = self._state.gathering.written(path, CHANNEL_SLOT, channels)
-        self._rewrite(self._state.with_gathering(gathering))
+        self._rewrite(self._state.with_gathering(gathering).with_selected(SourceKey.recording(path)))
 
     def toggle_folder_channel(self, root: Path, channel_name: ChannelName) -> None:
-        """Settles one channel on every recording a folder stands for, in one gesture.
+        """Settles one channel on every recording a folder stands for, and picks the folder out.
 
         A folder its recordings already agree on lets the channel go; every other reading settles
-        the whole folder on it, so one gesture always moves the group somewhere.
+        the whole folder on it, so one gesture always moves the group somewhere. The click picks
+        the folder's row, as a click on its name does.
         """
-        gathering = self._state.gathering.toggled(SourceKey.folder(root), CHANNEL_SLOT, channel_name)
-        self._rewrite(self._state.with_gathering(gathering))
+        folder = SourceKey.folder(root)
+        gathering = self._state.gathering.toggled(folder, CHANNEL_SLOT, channel_name)
+        self._rewrite(self._state.with_gathering(gathering).with_selected(folder))
 
     def move_source_within_level(self, path: Path, offset: int) -> None:
         """Moves a recording past the neighbor it shares a level with."""
@@ -404,7 +408,6 @@ class ConverterLogic(CallbackMixin):
             ConversionRequest(
                 config=config,
                 plan=plan,
-                reconstruction_name=self._state.destination.reconstruction_name,
                 library_key=library_key,
                 library_state=self.query(
                     self.library_state,
@@ -544,13 +547,8 @@ class ConverterLogic(CallbackMixin):
 
     def _redirected(self, state: ConverterState) -> ConverterState:
         """The setup with its destination following the sources that take part in it."""
-        config = self._config_manager.config
         destination = state.destination.named_after(state.gathering.sources)
-        if state.settings.mixes:
-            setup = conversion_setup(state)
-            return state.with_destination(destination.aimed_at_mix(config, setup.sources, setup.stems.covered_channels))
-
-        return state.with_destination(destination.aimed_at_batch(config, batch_entries(state)))
+        return state.with_destination(destination.aimed_at(self._config_manager.config, conversion_plan(state)))
 
     def _standing_targets(self, plan: ConversionPlan) -> Tuple[Path, ...]:
         """Every reconstruction ``plan`` would write over, in the order the run reaches them.

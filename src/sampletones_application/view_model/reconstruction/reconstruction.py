@@ -10,6 +10,7 @@ from .paths.state import (
     RECORDED_PATH_STATES,
     ReconstructionPathState,
 )
+from .rate import RateLock
 
 
 class ReconstructionViewModel(BaseModel, frozen=True):
@@ -20,8 +21,8 @@ class ReconstructionViewModel(BaseModel, frozen=True):
     switched on, so a channel switched off by hand stays off across an edit.
 
     :attr:`nes_frequency` is the engine rate the open reconstruction runs at, and ``None``
-    while the tab holds no document. A document living on disk takes a new rate from the tab,
-    while one detached from its file is a project sample and follows the project's rate.
+    while the tab holds no document. :attr:`rate_lock` says why the tab may not change that rate,
+    and is ``None`` for a document living on disk, which takes a new rate from the tab.
     """
 
     reconstruction_loaded: bool
@@ -30,6 +31,7 @@ class ReconstructionViewModel(BaseModel, frozen=True):
     reconstruction_file: ReconstructionPathViewModel
     original_audio: ReconstructionPathViewModel
     nes_frequency: Optional[int]
+    rate_lock: Optional[RateLock]
 
     @property
     def audio_source_enabled(self) -> bool:
@@ -39,15 +41,13 @@ class ReconstructionViewModel(BaseModel, frozen=True):
 
     @property
     def nes_frequency_editable(self) -> bool:
-        """The rate can be changed while a loaded document still has a file it is saved to."""
-        return (
-            self.reconstruction_loaded and self.reconstruction_file.state is not ReconstructionPathState.NOT_APPLICABLE
-        )
+        """The rate can be changed while a loaded document has no reason to keep it."""
+        return self.reconstruction_loaded and self.rate_lock is None
 
     @property
     def show_nes_frequency_hint(self) -> bool:
-        """The hint explains the locked rate, so it appears exactly when a loaded document follows the project's."""
-        return self.reconstruction_loaded and not self.nes_frequency_editable
+        """The hint explains the locked rate, so it appears exactly when a loaded document's rate is locked."""
+        return self.reconstruction_loaded and self.rate_lock is not None
 
     @property
     def locate_audio_enabled(self) -> bool:

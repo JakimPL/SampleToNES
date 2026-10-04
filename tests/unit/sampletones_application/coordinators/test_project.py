@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Final, Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -9,13 +9,17 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.skipped import MAX_REPORTED_ROWS
 from sampletones_application.coordinators import project as project_module
 from sampletones_application.coordinators.project import ProjectCoordinator
+from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.paths import LANG_EN
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
+from sampletones_application.utils.callbacks.gates import Gate
 from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
 from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS, SkippedRow, SkipReason
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.format import ExportFormat
+from sampletones_core.project import ProjectContainer
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_shared.exceptions import (
@@ -29,7 +33,19 @@ from sampletones_shared.exceptions import (
 from sampletones_shared.paths.extensions import EXT_FILE_MODULE
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.frames import held_frames
+from tests.suite.questions import (
+    StandingWindow,
+    assert_the_answers_reach,
+    dialogs_on_the_line,
+    standing_window,
+)
 from tests.suite.silent_rows import MISSING_VOICE_ID, SILENT_CHANNEL
+
+__all__ = ["held_frames", "standing_window"]
+
+ORIGINAL_TITLE: Final[str] = "As saved"
+EDITED_TITLE: Final[str] = "As edited"
 
 
 @pytest.fixture
@@ -41,24 +57,88 @@ def project_coordinator() -> ProjectCoordinator:
         MagicMock(),
         export_backends={},
         format_setups={},
-        dialogs=MagicMock(),
+        dialogs=dialogs_on_the_line(),
         language_manager=MagicMock(),
         on_tab_switch=MagicMock(),
         on_session_state_changed=MagicMock(),
     )
 
 
-class TestProjectRestoreSuccess:
-    def test_loads_and_keeps_session_pointer(
+class TestAProjectOpenedAtStart:
+    """A project a run starts on stands for its file, as one opened by hand does.
+
+    The session remembers the file, and Save writes there at once. A project the run never opened
+    asks where to save it.
+    """
+
+    @pytest.fixture(name="save_dialog")
+    def save_dialog_fixture(self, monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+        dialog = MagicMock(return_value=None)
+        monkeypatch.setattr(project_module, "save_file_dialog", dialog)
+        return dialog
+
+    @pytest.fixture(name="saved_project")
+    def saved_project_fixture(self, tmp_path: Path) -> Path:
+        """A project file on disk, titled so a save can be told from the file as it was."""
+        path = tmp_path / "song.stp"
+        manager = ProjectManager()
+        manager.current.info.title = ORIGINAL_TITLE
+        manager.save(path)
+        return path
+
+    @pytest.fixture(name="starting")
+    def starting_fixture(self, tmp_path: Path) -> ProjectCoordinator:
+        """A coordinator over a real project manager, its session remembering nothing yet."""
+        project_manager = ProjectManager()
+        session_manager = MagicMock()
+        session_manager.current_project = None
+        session_manager.get_project_path.return_value = tmp_path
+        return ProjectCoordinator(
+            ProjectController(project_manager),
+            project_manager,
+            session_manager,
+            MagicMock(),
+            export_backends={},
+            format_setups={},
+            dialogs=dialogs_on_the_line(),
+            language_manager=MagicMock(),
+            on_tab_switch=MagicMock(),
+            on_session_state_changed=MagicMock(),
+        )
+
+    def test_the_session_remembers_its_file(self, starting: ProjectCoordinator, saved_project: Path) -> None:
+        starting.load_project_safely(saved_project)
+
+        starting._session_manager.set_current_project.assert_called_once_with(saved_project)
+
+    def test_save_writes_its_file_without_asking(
         self,
-        project_coordinator: ProjectCoordinator,
+        starting: ProjectCoordinator,
+        saved_project: Path,
+        save_dialog: MagicMock,
     ) -> None:
-        path = Path("song.stp")
+        starting.load_project_safely(saved_project)
+        starting._project_controller.set_title(EDITED_TITLE)
 
-        project_coordinator.load_project_safely(path)
+        assert starting.save() is SaveOutcome.WRITTEN
 
-        project_coordinator._project_controller.load.assert_called_once_with(path)
-        project_coordinator._session_manager.set_current_project.assert_not_called()
+        save_dialog.assert_not_called()
+        assert ProjectContainer.load(saved_project).info.title == EDITED_TITLE
+
+    def test_a_new_project_asks_where_to_save(
+        self,
+        starting: ProjectCoordinator,
+        saved_project: Path,
+        save_dialog: MagicMock,
+    ) -> None:
+        starting.load_project_safely(saved_project)
+        starting.new_project()
+
+        assert starting.save() is SaveOutcome.CALLED_OFF
+
+        save_dialog.assert_called_once()
+        starting._session_manager.set_current_project.assert_called_with(None)
+        assert ProjectContainer.load(saved_project).info.title == ORIGINAL_TITLE
 
 
 class TestProjectRestoreAbsorbsFailures(BaseTestSuite):
@@ -195,7 +275,7 @@ class TestAFormatWithASetupOpensIt:
             MagicMock(),
             export_backends={ExportFormat.FAMITRACKER: backend},
             format_setups={ExportFormat.NSF: setup},
-            dialogs=MagicMock(),
+            dialogs=dialogs_on_the_line(),
             language_manager=MagicMock(),
             on_tab_switch=MagicMock(),
             on_session_state_changed=MagicMock(),
@@ -249,7 +329,7 @@ def coordinator_fixture() -> ProjectCoordinator:
         MagicMock(),
         export_backends={},
         format_setups={},
-        dialogs=MagicMock(),
+        dialogs=dialogs_on_the_line(),
         language_manager=LanguageManager(LANG_EN),
         on_tab_switch=MagicMock(),
         on_session_state_changed=MagicMock(),
@@ -411,7 +491,7 @@ class TestTheSaveAPromptWaitsOn:
         tmp_path: Path,
     ) -> None:
         filepath = tmp_path / "song.stp"
-        saving._session_manager.current_project = filepath
+        saving._project_manager.path = filepath
 
         assert saving.save() is SaveOutcome.WRITTEN
         saving._project_controller.save.assert_called_once_with(filepath)
@@ -421,7 +501,7 @@ class TestTheSaveAPromptWaitsOn:
         saving: ProjectCoordinator,
         save_dialog: MagicMock,
     ) -> None:
-        saving._session_manager.current_project = None
+        saving._project_manager.path = None
 
         assert saving.save() is SaveOutcome.CALLED_OFF
         saving._project_controller.save.assert_not_called()
@@ -434,7 +514,7 @@ class TestTheSaveAPromptWaitsOn:
     ) -> None:
         filepath = tmp_path / "song.stp"
         save_dialog.return_value = filepath
-        saving._session_manager.current_project = None
+        saving._project_manager.path = None
 
         assert saving.save() is SaveOutcome.WRITTEN
         saving._project_controller.save.assert_called_once_with(filepath)
@@ -445,7 +525,7 @@ class TestTheSaveAPromptWaitsOn:
         tmp_path: Path,
     ) -> None:
         failure = OSError("disk full")
-        saving._session_manager.current_project = tmp_path / "song.stp"
+        saving._project_manager.path = tmp_path / "song.stp"
         saving._project_controller.save.side_effect = failure
 
         assert saving.save() is SaveOutcome.FAILED
@@ -456,7 +536,7 @@ class TestTheSaveAPromptWaitsOn:
         saving: ProjectCoordinator,
         tmp_path: Path,
     ) -> None:
-        saving._session_manager.current_project = tmp_path / "song.stp"
+        saving._project_manager.path = tmp_path / "song.stp"
 
         saving.save()
 
@@ -469,7 +549,7 @@ class TestTheSaveAPromptWaitsOn:
     ) -> None:
         """What the prompt guards opens next, so it opens alone."""
         filepath = tmp_path / "song.stp"
-        saving._session_manager.current_project = filepath
+        saving._project_manager.path = filepath
 
         assert saving._write_project() is SaveOutcome.WRITTEN
         saving._project_controller.save.assert_called_once_with(filepath)
@@ -479,32 +559,258 @@ class TestTheSaveAPromptWaitsOn:
         saving._project_controller.is_open = True
         saving._project_controller.is_dirty = True
 
-        saving.close_with_confirmation()
-        saving.new_project_with_confirmation()
+        saving.guard_close(MagicMock(), MagicMock())
+        saving.guard_new(MagicMock(), MagicMock())
 
         for prompt in saving._dialogs.show_save_confirmation.call_args_list:
             assert prompt.kwargs["on_save"] == saving._write_project
 
 
 class TestTheExitAsksAboutTheProject:
-    """Exiting with unsaved project changes asks to save them first, and the answer lets the exit go on."""
+    """Exiting with unsaved project changes asks to save them first, the answer lets the exit go on, and
+    Cancel turns it away."""
 
     def test_a_saved_project_lets_the_exit_go_on(self, project_coordinator: ProjectCoordinator) -> None:
         project_coordinator._project_controller.is_dirty = False
         proceed = MagicMock()
+        decline = MagicMock()
 
-        project_coordinator.guard_exit(proceed)
+        project_coordinator.guard_exit(proceed, decline)
 
         proceed.assert_called_once_with()
+        decline.assert_not_called()
         project_coordinator._dialogs.show_save_confirmation.assert_not_called()
 
     def test_an_unsaved_project_asks_to_save_first(self, project_coordinator: ProjectCoordinator) -> None:
         project_coordinator._project_controller.is_dirty = True
         proceed = MagicMock()
+        decline = MagicMock()
 
-        project_coordinator.guard_exit(proceed)
+        project_coordinator.guard_exit(proceed, decline)
+
+        proceed.assert_not_called()
+        decline.assert_not_called()
+        prompt = project_coordinator._dialogs.show_save_confirmation.call_args.kwargs
+        assert prompt["on_save"] == project_coordinator._write_project
+        assert_the_answers_reach(
+            confirm=prompt["on_confirm"],
+            cancel=prompt["on_cancel"],
+            proceed=proceed,
+            decline=decline,
+        )
+
+
+class TestReplacingOrClosingTheProject:
+    """New, Open and Close ask before the open project goes, and Cancel turns the request away.
+
+    An unsaved project is offered a save, an open project holding no changes is still asked about, and a
+    request with no project open goes on at once, or, for Close, is turned away.
+    """
+
+    @pytest.fixture(name="proceed")
+    def proceed_fixture(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture(name="decline")
+    def decline_fixture(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.mark.parametrize("guard", ["guard_new", "guard_open"])
+    def test_no_project_open_goes_on_at_once(
+        self,
+        project_coordinator: ProjectCoordinator,
+        proceed: MagicMock,
+        decline: MagicMock,
+        guard: str,
+    ) -> None:
+        project_coordinator._project_controller.is_open = False
+
+        {"guard_new": project_coordinator.guard_new, "guard_open": project_coordinator.guard_open}[guard](
+            proceed,
+            decline,
+        )
+
+        proceed.assert_called_once_with()
+        decline.assert_not_called()
+
+    @pytest.mark.parametrize("guard", ["guard_new", "guard_open", "guard_close"])
+    def test_an_unsaved_project_asks_and_cancel_turns_the_request_away(
+        self,
+        project_coordinator: ProjectCoordinator,
+        proceed: MagicMock,
+        decline: MagicMock,
+        guard: str,
+    ) -> None:
+        project_coordinator._project_controller.is_open = True
+        project_coordinator._project_controller.is_dirty = True
+
+        {
+            "guard_new": project_coordinator.guard_new,
+            "guard_open": project_coordinator.guard_open,
+            "guard_close": project_coordinator.guard_close,
+        }[guard](proceed, decline)
 
         proceed.assert_not_called()
         prompt = project_coordinator._dialogs.show_save_confirmation.call_args.kwargs
-        assert prompt["on_save"] == project_coordinator._write_project
-        assert prompt["on_confirm"] is proceed
+        assert_the_answers_reach(
+            confirm=prompt["on_confirm"],
+            cancel=prompt["on_cancel"],
+            proceed=proceed,
+            decline=decline,
+        )
+
+    @pytest.mark.parametrize("guard", ["guard_new", "guard_open"])
+    def test_a_saved_project_is_asked_about_and_cancel_turns_the_request_away(
+        self,
+        project_coordinator: ProjectCoordinator,
+        proceed: MagicMock,
+        decline: MagicMock,
+        guard: str,
+    ) -> None:
+        project_coordinator._project_controller.is_open = True
+        project_coordinator._project_controller.is_dirty = False
+
+        {"guard_new": project_coordinator.guard_new, "guard_open": project_coordinator.guard_open}[guard](
+            proceed,
+            decline,
+        )
+
+        proceed.assert_not_called()
+        prompt = project_coordinator._dialogs.show_confirmation.call_args.kwargs
+        assert_the_answers_reach(
+            confirm=prompt["on_confirm"],
+            cancel=prompt["on_cancel"],
+            proceed=proceed,
+            decline=decline,
+        )
+
+    def test_a_saved_project_closes_at_once(
+        self,
+        project_coordinator: ProjectCoordinator,
+        proceed: MagicMock,
+        decline: MagicMock,
+    ) -> None:
+        project_coordinator._project_controller.is_open = True
+        project_coordinator._project_controller.is_dirty = False
+
+        project_coordinator.guard_close(proceed, decline)
+
+        proceed.assert_called_once_with()
+        decline.assert_not_called()
+
+    def test_closing_with_no_project_open_is_turned_away(
+        self,
+        project_coordinator: ProjectCoordinator,
+        proceed: MagicMock,
+        decline: MagicMock,
+    ) -> None:
+        project_coordinator._project_controller.is_open = False
+
+        project_coordinator.guard_close(proceed, decline)
+
+        proceed.assert_not_called()
+        decline.assert_called_once_with()
+        project_coordinator._dialogs.show_save_confirmation.assert_not_called()
+
+
+def _close_the_project(controller: MagicMock) -> None:
+    controller.is_open = False
+    controller.is_dirty = False
+
+
+def _save_the_project(controller: MagicMock) -> None:
+    controller.is_dirty = False
+
+
+class TestAQuestionAboutTheProjectWaitsForTheScreen(BaseTestSuite):
+    """A guard asks about the open project once the screen is free for its question, reading the project then.
+
+    A project another conversation closed or saved meanwhile lets the request through with no question.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        guard: Callable[[ProjectCoordinator], Gate]
+        settle: Callable[[MagicMock], None]
+
+    test_cases = (
+        TestCase(label="new", guard=lambda coordinator: coordinator.guard_new, settle=_close_the_project),
+        TestCase(label="open", guard=lambda coordinator: coordinator.guard_open, settle=_close_the_project),
+        TestCase(label="close", guard=lambda coordinator: coordinator.guard_close, settle=_save_the_project),
+        TestCase(label="exit", guard=lambda coordinator: coordinator.guard_exit, settle=_save_the_project),
+    )
+
+    @pytest.fixture(name="unsaved")
+    def unsaved_fixture(self, project_coordinator: ProjectCoordinator) -> ProjectCoordinator:
+        project_coordinator._project_controller.is_open = True
+        project_coordinator._project_controller.is_dirty = True
+        return project_coordinator
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_question_waits_while_another_window_stands(
+        self,
+        test_case: TestCase,
+        unsaved: ProjectCoordinator,
+        standing_window: StandingWindow,
+    ) -> None:
+        proceed = MagicMock()
+        decline = MagicMock()
+
+        test_case.guard(unsaved)(proceed, decline)
+
+        unsaved._dialogs.show_save_confirmation.assert_not_called()
+        proceed.assert_not_called()
+        decline.assert_not_called()
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_question_asks_once_the_window_leaves(
+        self,
+        test_case: TestCase,
+        unsaved: ProjectCoordinator,
+        standing_window: StandingWindow,
+    ) -> None:
+        proceed = MagicMock()
+        decline = MagicMock()
+        test_case.guard(unsaved)(proceed, decline)
+
+        standing_window.leave()
+
+        prompt = unsaved._dialogs.show_save_confirmation.call_args.kwargs
+        assert_the_answers_reach(
+            confirm=prompt["on_confirm"],
+            cancel=prompt["on_cancel"],
+            proceed=proceed,
+            decline=decline,
+        )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_project_settled_meanwhile_goes_on_with_no_question(
+        self,
+        test_case: TestCase,
+        unsaved: ProjectCoordinator,
+        standing_window: StandingWindow,
+    ) -> None:
+        proceed = MagicMock()
+        decline = MagicMock()
+        test_case.guard(unsaved)(proceed, decline)
+
+        test_case.settle(unsaved._project_controller)
+        standing_window.leave()
+
+        proceed.assert_called_once_with()
+        decline.assert_not_called()
+        unsaved._dialogs.show_save_confirmation.assert_not_called()
+        unsaved._dialogs.show_confirmation.assert_not_called()
+
+    def test_a_saved_project_lets_the_exit_go_on_while_another_window_stands(
+        self,
+        project_coordinator: ProjectCoordinator,
+        standing_window: StandingWindow,
+    ) -> None:
+        """Leaving while a dialog stands goes on at once when there is nothing to ask about."""
+        project_coordinator._project_controller.is_dirty = False
+        proceed = MagicMock()
+
+        project_coordinator.guard_exit(proceed, MagicMock())
+
+        proceed.assert_called_once_with()

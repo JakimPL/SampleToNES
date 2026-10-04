@@ -8,6 +8,8 @@ from sampletones_core.reconstructions.converter.paths.utils import (
     get_output_path,
     get_relative_path,
     group_output_path,
+    named_output_path,
+    reconstructions_directory,
     walk_audio_files,
     walk_entries,
 )
@@ -20,6 +22,8 @@ __all__ = [
     "get_output_path",
     "get_relative_path",
     "group_output_path",
+    "named_output_path",
+    "reconstructions_directory",
     "walk_audio_files",
     "walk_entries",
 ]

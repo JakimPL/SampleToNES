@@ -183,6 +183,8 @@ class KeybindingsElements(AbstractElement):
     DISCARD_BUTTON = "discard_button"
     KEEP_EDITING_BUTTON = "keep_editing_button"
     REASSIGN_CONFIRMATION = "reassign_confirmation"
+    REASSIGN_SEVERAL_CONFIRMATION = "reassign_several_confirmation"
+    ASSIGNMENT = "assignment"
     RESET_CONFIRMATION = "reset_confirmation"
     DISCARD_CONFIRMATION = "discard_confirmation"
     UNREADABLE_COMBINATION = "unreadable_combination"

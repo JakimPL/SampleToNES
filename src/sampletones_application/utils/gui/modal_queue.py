@@ -1,6 +1,6 @@
 from collections import deque
 from dataclasses import dataclass
-from typing import ClassVar, Deque, Dict, List, Optional, Tuple
+from typing import ClassVar, Deque, Dict, List, Optional, Tuple, Union
 
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_shared.meta import NonInstantiableMeta
@@ -21,6 +21,20 @@ class WaitingModal:
 
 
 @dataclass(frozen=True)
+class WaitingTurn:
+    """A gesture waiting for the screen before it reads what it asks about.
+
+    Attributes:
+        continuation: What runs once the screen is free for it.
+    """
+
+    continuation: VoidCallback
+
+
+WaitingEntry = Union[WaitingModal, WaitingTurn]
+
+
+@dataclass(frozen=True)
 class ModalQueueSnapshot:
     """What the line holds at one moment, for a reader watching the screen from outside it.
 
@@ -28,18 +42,20 @@ class ModalQueueSnapshot:
         shown: The window standing on the screen, or ``None`` while the screen is free.
         aside: The windows standing aside for the modals they handed the screen to.
         waiting: The windows waiting for the screen, in the order they open.
+        turns: How many gestures wait in line for the screen before they ask.
         turning: Whether the line moves on in a coming frame.
     """
 
     shown: Optional[str]
     aside: Tuple[str, ...]
     waiting: Tuple[str, ...]
+    turns: int
     turning: bool
 
     @property
     def is_settled(self) -> bool:
         """Whether the line stands still: nothing waits, nothing stands aside, and no turn is due."""
-        return not self.aside and not self.waiting and not self.turning
+        return not self.aside and not self.waiting and not self.turns and not self.turning
 
 
 class ModalQueue(metaclass=NonInstantiableMeta):
@@ -51,10 +67,14 @@ class ModalQueue(metaclass=NonInstantiableMeta):
 
     The screen therefore belongs to one conversation at a time: a modal window, the modals it hands
     the screen to while it steps aside, and the ones its answers raise. A modal asked for from
-    anywhere else, such as the report of a job that finished or a prompt raised by a gesture that
-    waited, takes its place in line and opens once the conversation holding the screen has ended,
-    a frame after its last window left. A window asked for again while it waits keeps its place in
-    line with the newer request. The line is one for the process, as DearPyGui's context is.
+    anywhere else, such as the report of a job that finished, takes its place in line and opens once
+    the conversation holding the screen has ended, a frame after its last window left. A window asked
+    for again while it waits takes one place, at the back of the line, with the newer request. The line
+    is one for the process, as DearPyGui's context is.
+
+    A guard with something to ask takes a turn in the line, so it reads what it asks about once the
+    screen is free for its question. The conversation that held the screen has settled what it
+    changes by then, such as a project its answer closed.
 
     A hand-off is how a conversation keeps the screen while its windows change: what runs a frame
     after a window stepped aside or left, opening the modal that comes next or bringing the window
@@ -65,9 +85,10 @@ class ModalQueue(metaclass=NonInstantiableMeta):
     _aside: ClassVar[List[str]] = []
     _returning: ClassVar[Dict[str, VoidCallback]] = {}
     _hand_offs: ClassVar[List[VoidCallback]] = []
-    _waiting: ClassVar[Deque[WaitingModal]] = deque()
+    _waiting: ClassVar[Deque[WaitingEntry]] = deque()
     _clearing: ClassVar[bool] = False
     _handing_off: ClassVar[bool] = False
+    _turning: ClassVar[bool] = False
     _turn_due: ClassVar[bool] = False
 
     @classmethod
@@ -82,13 +103,22 @@ class ModalQueue(metaclass=NonInstantiableMeta):
             build: What builds the window.
         """
         cls._forget_waiting(tag)
-        waiting = WaitingModal(tag=tag, build=build)
-        if cls._shown is None and not cls._clearing and (cls._handing_off or not cls._screen_taken()):
-            cls._build(waiting)
-        elif cls._handing_off:
-            cls._waiting.appendleft(waiting)
-        else:
-            cls._waiting.append(waiting)
+        cls._admit(WaitingModal(tag=tag, build=build))
+
+    @classmethod
+    def when_free(cls, continuation: VoidCallback) -> None:
+        """Runs ``continuation`` once the screen is free for it, as a turn in the line.
+
+        The turn goes by the rule a modal opens by: at once where the screen is free or a hand-off
+        carries it, and in its place in line otherwise. Once it has run, the line goes on to the next
+        window waiting while the screen stays free, so a turn that opens a modal holds the line. The
+        signature is a :data:`Wait`, so a guard reads what it asks about once its question may reach
+        the screen.
+
+        Args:
+            continuation: What runs once the screen is free for it.
+        """
+        cls._admit(WaitingTurn(continuation=continuation))
 
     @classmethod
     def leave(cls, tag: str) -> None:
@@ -145,7 +175,8 @@ class ModalQueue(metaclass=NonInstantiableMeta):
         return ModalQueueSnapshot(
             shown=cls._shown,
             aside=tuple(cls._aside),
-            waiting=tuple(waiting.tag for waiting in cls._waiting),
+            waiting=tuple(entry.tag for entry in cls._waiting if isinstance(entry, WaitingModal)),
+            turns=sum(1 for entry in cls._waiting if isinstance(entry, WaitingTurn)),
             turning=cls._turn_due,
         )
 
@@ -159,6 +190,7 @@ class ModalQueue(metaclass=NonInstantiableMeta):
         cls._waiting = deque()
         cls._clearing = False
         cls._handing_off = False
+        cls._turning = False
         cls._turn_due = False
 
     @classmethod
@@ -167,13 +199,54 @@ class ModalQueue(metaclass=NonInstantiableMeta):
         return cls._shown is not None or bool(cls._aside) or bool(cls._hand_offs) or cls._clearing
 
     @classmethod
-    def _build(cls, waiting: WaitingModal) -> None:
-        cls._shown = waiting.tag
-        waiting.build()
+    def _admit(cls, entry: WaitingEntry) -> None:
+        """Takes ``entry`` now where the screen is free for it, and puts it in line otherwise.
+
+        An entry a hand-off or a turn asks for joins the conversation at the head of the line, ahead of
+        every entry waiting. Any other one takes a free screen only while nothing waits in line, so an
+        entry asked for in the frame after a failing turn waits behind the ones the failure left.
+        """
+        if cls._shown is None and not cls._clearing and cls._head_is_free():
+            cls._take(entry)
+        elif cls._joins_the_head():
+            cls._waiting.appendleft(entry)
+        else:
+            cls._waiting.append(entry)
+
+    @classmethod
+    def _joins_the_head(cls) -> bool:
+        """Whether what is asked for now comes from the head of the line: a hand-off or a turn running."""
+        return cls._handing_off or cls._turning
+
+    @classmethod
+    def _head_is_free(cls) -> bool:
+        """Whether an entry asked for now stands at the head of a line free for it."""
+        return cls._joins_the_head() or (not cls._screen_taken() and not cls._waiting)
+
+    @classmethod
+    def _take(cls, entry: WaitingEntry) -> None:
+        """Gives ``entry`` the screen: a window is built on it, and a turn runs."""
+        match entry:
+            case WaitingModal(tag=tag, build=build):
+                cls._shown = tag
+                build()
+            case WaitingTurn(continuation=continuation):
+                cls._run_turn(continuation)
+
+    @classmethod
+    def _run_turn(cls, continuation: VoidCallback) -> None:
+        """Runs a turn at the head of the line, so what it asks for joins it ahead of the entries waiting."""
+        turning, cls._turning = cls._turning, True
+        try:
+            continuation()
+        finally:
+            cls._turning = turning
 
     @classmethod
     def _forget_waiting(cls, tag: str) -> None:
-        cls._waiting = deque(waiting for waiting in cls._waiting if waiting.tag != tag)
+        cls._waiting = deque(
+            entry for entry in cls._waiting if not (isinstance(entry, WaitingModal) and entry.tag == tag)
+        )
 
     @classmethod
     def _take_a_turn(cls) -> None:
@@ -199,18 +272,43 @@ class ModalQueue(metaclass=NonInstantiableMeta):
         if cls._bring_back():
             return
 
-        if not cls._screen_taken() and cls._waiting:
-            cls._build(cls._waiting.popleft())
+        cls._move_the_line()
+
+    @classmethod
+    def _move_the_line(cls) -> None:
+        """Gives the screen to the entries at the head of the line while it stays free.
+
+        A turn that raises leaves the entries behind it for a coming frame, so the line goes on there,
+        and an entry asked for meanwhile waits behind them.
+        """
+        moved = False
+        try:
+            while cls._waiting and not cls._screen_taken():
+                cls._take(cls._waiting.popleft())
+            moved = True
+        finally:
+            if not moved:
+                cls._take_a_turn()
 
     @classmethod
     def _run_hand_offs(cls) -> None:
-        hand_offs, cls._hand_offs = cls._hand_offs, []
+        """Runs the hand-offs due, in the order they were handed.
+
+        A hand-off that raises keeps the ones after it for a coming frame, and the line goes on from
+        there, so one failing answer leaves the screen to the rest of the conversation and the line.
+        """
+        hand_offs, cls._hand_offs = deque(cls._hand_offs), []
         cls._handing_off = True
+        ran = False
         try:
-            for continuation in hand_offs:
-                continuation()
+            while hand_offs:
+                hand_offs.popleft()()
+            ran = True
         finally:
             cls._handing_off = False
+            if not ran:
+                cls._hand_offs = list(hand_offs) + cls._hand_offs
+                cls._take_a_turn()
 
     @classmethod
     def _bring_back(cls) -> bool:

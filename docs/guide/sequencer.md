@@ -144,7 +144,8 @@ it. The channel names in the **Order** grid work the same way.
 
 **Playback ▸ Channels** shows which channels play. **Unmute all channels** unmutes all four. Keys
 `1` to `4` mute and unmute a channel when the cursor is outside the grids. Inside the grids, the
-digit keys type values.
+digit keys type values, and `Ctrl+1` to `Ctrl+4` mute and unmute the channels instead. `Ctrl+1` to `Ctrl+4`
+work outside the grids too.
 
 Muting changes only what you hear. Saving, exporting, rendering and undo use every channel. Opening,
 creating or closing a project unmutes all channels.

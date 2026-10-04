@@ -1,8 +1,6 @@
 import operator
 from functools import partial
 
-import pytest
-
 from sampletones_application.ui.themes.channels import PARTIAL_CHANNEL_THEME_TAGS
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.main.row_settings.constants import PAIR, PAIR_TAKES
@@ -70,11 +68,6 @@ class TestTheCardFollowsABoxClicked:
     to the folder.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: a box clicked in the list leaves Source settings where it stood",
-    )
     def test_the_card_names_the_row_whose_box_was_clicked(self, screen: Screen) -> None:
         """Source settings names the take whose box was clicked, then the folder once its box is clicked."""
         main = screen.main

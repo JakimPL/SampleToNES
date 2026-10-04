@@ -16,6 +16,7 @@ from sampletones_application.coordinators.export.instrument import (
 )
 from sampletones_application.coordinators.export.setup import ExportSetup
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
+from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.logic.history.manager import HistoryManager
@@ -91,7 +92,7 @@ from sampletones_application.ui.panels.reconstruction.plot import (
 from sampletones_application.ui.panels.reconstruction.stems import (
     GUIReconstructionStemsPanel,
 )
-from sampletones_application.utils.callbacks.gates import Gate, gated
+from sampletones_application.utils.callbacks.gates import Wait, gated
 from sampletones_application.utils.file_dialogs.api import save_file_dialog
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
@@ -145,7 +146,7 @@ class ReconstructionTabCoordinator:
         on_favorite_changed: Callable[[FileSystemNode], None],
         on_rewrite_requested: Callable[[Rewrite], None],
         pending_changes: PendingChangesProtocol,
-        after_edits: Gate,
+        after_edits: Wait,
         original_audio_locator: OriginalAudioLocator,
         instrument_exports: InstrumentExportCoordinator,
         history: HistoryManager,
@@ -156,6 +157,7 @@ class ReconstructionTabCoordinator:
         layout: ReconstructionTabParameters,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
+        playback_failures: PlaybackFailurePresenter,
         status_bar: GUIStatusBar,
     ) -> None:
         self._language_manager = language_manager
@@ -171,6 +173,7 @@ class ReconstructionTabCoordinator:
         self._format_setups = format_setups
         self._instrument_exports = instrument_exports
         self._dialogs = dialogs
+        self._playback_failures = playback_failures
         self._original_audio_locator = original_audio_locator
         self._on_rewrite_requested = on_rewrite_requested
 
@@ -227,8 +230,7 @@ class ReconstructionTabCoordinator:
         )
         self._guarded_player = GuardedPlayer(
             self._reconstruction_player_logic,
-            dialogs=dialogs,
-            error_message=language_manager["global.player.message.audio_playback_error"],
+            failures=playback_failures,
         )
         self._reconstruction_audio_panel: GUIReconstructionAudioPanel = GUIReconstructionAudioPanel(
             path_colors=layout.path_colors,
@@ -837,7 +839,7 @@ class ReconstructionTabCoordinator:
         same way: on the frame after the one that failed, which leaves the gesture that started it
         finished before a dialog is raised.
         """
-        FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
+        FrameCallbackManager.set_frame_callback(lambda: self._playback_failures.present(exception, message=None))
 
     def _on_audio_data_changed(self, audio_data: Optional[AudioData]) -> None:
         if audio_data is None:

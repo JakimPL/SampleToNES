@@ -61,18 +61,18 @@ class ReconstructionConverter(TaskProcessor[Path]):
         return tuple(output_path for output_path in results if output_path.exists())
 
     def _notify_progress(self) -> None:
-        self.current_item = self._running_source()
+        job = self.job_under_way(self.completed_tasks)
+        self.current_item = str(job.sources[0]) if job is not None else None
         super()._notify_progress()
 
-    def _running_source(self) -> Optional[str]:
-        """The recording the job the run has been working on longest is reading.
+    def job_under_way(self, completed: int) -> Optional[ConversionJob]:
+        """The job the run names itself by once ``completed`` jobs are counted.
 
         Jobs are answered in the order they were handed out, so the first one the run has yet to
         count is the earliest still under way — and once every job is counted, the last one is
-        what the run finished on.
+        what the run finished on. A run that has yet to read its plan holds no job.
         """
         if not self.jobs:
             return None
 
-        index = min(self.completed_tasks, len(self.jobs) - 1)
-        return str(self.jobs[index].sources[0])
+        return self.jobs[min(completed, len(self.jobs) - 1)]

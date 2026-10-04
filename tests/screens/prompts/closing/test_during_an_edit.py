@@ -27,13 +27,9 @@ class TestClosingTheWindowWhileAnEditIsOnItsWay:
         """Opens a reconstruction with no project."""
         return Startup(reconstruction=OPEN_RECONSTRUCTION, project=None)
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: two closes before the first is answered ask twice",
-    )
     def test_two_closes_ask_once(self, screen: Screen, regeneration_hold: RegenerationHold) -> None:
-        """Two closes during a held rebuild bring one question, and Cancel leaves the screen quiet."""
+        """Two closes during a held rebuild bring one question, Cancel leaves the screen quiet, and a
+        further close asks again."""
         reconstructions = screen.reconstructions
         prompt = reconstructions.unsaved_prompt
 
@@ -61,10 +57,19 @@ class TestClosingTheWindowWhileAnEditIsOnItsWay:
             screen.frames(SETTLING_FRAMES)
             assert screen.shown_windows() == ()
 
+        def close_once_more_and_leave(screen: Screen) -> None:
+            screen.close_window()
+            screen.expect(prompt.is_shown, bool, description="the question about leaving again")
+
+            prompt.confirm()
+
+            assert screen.wait_for_exit()
+
         screen.scenario(
             edit_and_close_twice_while_the_rebuild_is_held,
             the_edit_lands_and_one_question_comes,
             cancel_leaves_no_question,
+            close_once_more_and_leave,
         ).run()
 
     def test_an_edit_made_after_the_close_is_drawn_away(

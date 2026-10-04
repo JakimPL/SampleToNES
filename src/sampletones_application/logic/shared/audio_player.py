@@ -5,7 +5,6 @@ from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE, START_OF_AUDIO
-from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
@@ -85,6 +84,9 @@ class AudioPlayer(CallbackMixin):
 
         Args:
             start: The sample playback begins at, clamped to the audio.
+
+        Raises:
+            NoOutputDeviceError: If no output device is in force.
         """
         if not self.audio_data.is_loaded():
             self._notify_audio_state_changed()
@@ -93,18 +95,12 @@ class AudioPlayer(CallbackMixin):
         self.audio_device_manager.set_position_callback(
             self._on_device_position_changed,
         )
-        audio = self.audio_data.sample
-
-        try:
-            self.audio_device_manager.play(
-                audio,
-                priority=PlaybackPriority.NORMAL,
-                owner=self,
-                start=start,
-            )
-        except ValueError as exception:
-            raise PlaybackError(f"Audio playback failed: {exception}") from exception
-
+        self.audio_device_manager.play(
+            self.audio_data.sample,
+            priority=PlaybackPriority.NORMAL,
+            owner=self,
+            start=start,
+        )
         self._notify_audio_state_changed()
 
     def pause(self) -> None:

@@ -1,6 +1,7 @@
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Tuple
-from unittest.mock import MagicMock
+from typing import Callable, Final, Tuple
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -10,20 +11,32 @@ from sampletones_application.coordinators.tabs.hooks import MainTabHooks
 from sampletones_application.coordinators.tabs.main import MainTabCoordinator
 from sampletones_application.logic.main.converter.run import ConversionSuccess
 from sampletones_application.logic.main.sources.scan import FolderScan
+from sampletones_application.services.folder_scan.service import FolderScanService
 from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION
 from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_DIALOG_CANCEL,
-    TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS,
+    TAG_MAIN_CONVERTER_DIALOG_CONVERSION_RUNNING,
     TAG_MAIN_CONVERTER_DIALOG_LOAD,
     TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET,
-    TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
 )
-from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.constants.enums import ChannelName
+from tests.suite.application import settled
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
+from tests.suite.files import LOCKED_FOLDER, held_at, requires_folder_permissions
+from tests.suite.frames import held_frames
 from tests.suite.language import FakeLanguageManager
+from tests.suite.questions import (
+    StandingWindow,
+    assert_the_answers_reach,
+    dialogs_on_the_line,
+    standing_window,
+)
 
-CONVERTER_RUNNING_MESSAGE_KEY: Final[str] = "main.explorer.message.converter_running_msg"
-CONVERTER_RUNNING_TITLE_KEY: Final[str] = "main.explorer.title.converter_running_dialog"
+__all__ = ["held_frames", "standing_window"]
+
+CONVERSION_RUNNING_MESSAGE_KEY: Final[str] = "main.converter.message.conversion_running"
+CONVERSION_RUNNING_TITLE_KEY: Final[str] = "main.converter.title.conversion_running_dialog"
 LOAD_FILE_MESSAGE_KEY: Final[str] = "main.converter.message.load_file_prompt"
 LOAD_BUTTON_KEY: Final[str] = "main.converter.label.load_button"
 OPEN_BUTTON_KEY: Final[str] = "main.converter.label.open_button"
@@ -33,6 +46,7 @@ CONTINUE_BUTTON_KEY: Final[str] = "main.converter.label.continue_button"
 NOTHING_BELOW_KEY: Final[str] = "main.converter.message.scan_nothing_below"
 EXIT_CONVERSION_MESSAGE_KEY: Final[str] = "global.dialog.message.exit_conversion_in_progress"
 EXIT_LABEL_KEY: Final[str] = "global.dialog.label.exit"
+MAIN_MODULE: Final[str] = "sampletones_application.coordinators.tabs.main"
 
 
 def _hooks(*, operation_active: bool) -> MainTabHooks:
@@ -40,8 +54,7 @@ def _hooks(*, operation_active: bool) -> MainTabHooks:
     return MainTabHooks(
         is_operation_active=lambda: operation_active,
         on_busy_state_changed=MagicMock(),
-        on_reconstruct_file=MagicMock(),
-        on_reconstruct_directory=MagicMock(),
+        on_reconstruct_listed=MagicMock(),
         on_load_reconstruction=MagicMock(),
         on_load_library=MagicMock(),
         on_load_file=MagicMock(),
@@ -52,41 +65,164 @@ def _hooks(*, operation_active: bool) -> MainTabHooks:
     )
 
 
-def _coordinator(*, operation_active: bool) -> MainTabCoordinator:
-    """A coordinator with only the state the reconstruct guards touch, bypassing the heavy
-    constructor."""
+def _coordinator(*, operation_active: bool, converting: bool = False) -> MainTabCoordinator:
+    """A coordinator with only the state the doors to the list touch, bypassing the heavy
+    constructor.
+
+    ``converting`` is the converter's own run holding the list, and ``operation_active`` the busy
+    authority, which a conversion and every other exclusive operation answer."""
     coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
-    coordinator._hooks = _hooks(operation_active=operation_active)
-    coordinator._dialogs = MagicMock()
+    coordinator._hooks = _hooks(operation_active=operation_active or converting)
+    coordinator._dialogs = dialogs_on_the_line()
     coordinator._language_manager = FakeLanguageManager()
+    coordinator._session_manager = MagicMock()
     coordinator._converter_logic = MagicMock()
+    coordinator._converter_logic.live = not converting
     coordinator._converter_logic.mixes = False
     coordinator._converter_logic.gathered_paths = ()
+    coordinator._folder_scan = MagicMock()
+    coordinator._scan_window = MagicMock()
     return coordinator
 
 
-class TestConverterRunningNotice:
-    """The busy-authority guard at the intent entry point: an active exclusive operation raises
-    the converter-running notice and reports the caller must decline; an idle authority stays
-    silent so the caller proceeds."""
+def _refused(coordinator: MainTabCoordinator) -> bool:
+    """Whether the one notice saying the run holds the list was shown, and nothing else."""
+    coordinator._dialogs.show_info.assert_called_once_with(
+        TAG_MAIN_CONVERTER_DIALOG_CONVERSION_RUNNING,
+        CONVERSION_RUNNING_MESSAGE_KEY,
+        CONVERSION_RUNNING_TITLE_KEY,
+    )
+    return True
 
-    def test_active_operation_notifies_and_reports_true(self) -> None:
+
+Door = Callable[[MainTabCoordinator, Path], None]
+Reached = Callable[[MainTabCoordinator], bool]
+
+
+def _menu_reconstruct_file(coordinator: MainTabCoordinator, path: Path) -> None:
+    with patch(f"{MAIN_MODULE}.open_file_dialog", return_value=path):
+        coordinator.reconstruct_file_dialog()
+
+
+def _menu_reconstruct_directory(coordinator: MainTabCoordinator, path: Path) -> None:
+    with patch(f"{MAIN_MODULE}.select_directory_dialog", return_value=path):
+        coordinator.reconstruct_directory_dialog()
+
+
+class TestEveryDoorToTheList(BaseTestSuite):
+    """Every door that lists recordings meets one rule: the list refuses changes only while the
+    converter's own run holds it, with one notice.
+
+    Listing starts nothing, so a library generation, a render or an export leaves the list open,
+    and the busy authority keeps Convert greyed until it ends. Ctrl-click and a double-click reach
+    the same door Add as stem and Add folder do, since they gather too.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        door: Door
+        reached: Reached
+
+    test_cases = (
+        TestCase(
+            label="Reconstruct file... in the menu",
+            door=_menu_reconstruct_file,
+            reached=lambda coordinator: coordinator._hooks.on_reconstruct_listed.called,
+        ),
+        TestCase(
+            label="Reconstruct folder... in the menu",
+            door=_menu_reconstruct_directory,
+            reached=lambda coordinator: coordinator._hooks.on_reconstruct_listed.called,
+        ),
+        TestCase(
+            label="Reconstruct file in the browser",
+            door=MainTabCoordinator.request_reconstruct_file,
+            reached=lambda coordinator: coordinator._hooks.on_reconstruct_listed.called,
+        ),
+        TestCase(
+            label="Reconstruct directory in the browser",
+            door=MainTabCoordinator.request_reconstruct_directory,
+            reached=lambda coordinator: coordinator._hooks.on_reconstruct_listed.called,
+        ),
+        TestCase(
+            label="Add as stem, Ctrl-click or double-click on a recording",
+            door=MainTabCoordinator._on_file_add_requested,
+            reached=lambda coordinator: coordinator._converter_logic.gather_recordings.called,
+        ),
+        TestCase(
+            label="Add folder or Ctrl-click on a folder",
+            door=MainTabCoordinator._on_directory_add_requested,
+            reached=lambda coordinator: coordinator._folder_scan.start.called,
+        ),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
+    def test_a_run_holding_the_list_refuses_it_with_one_notice(self, test_case: TestCase) -> None:
+        coordinator = _coordinator(operation_active=True, converting=True)
+
+        test_case.door(coordinator, Path("/audio/take.wav"))
+
+        assert (_refused(coordinator), test_case.reached(coordinator)) == (True, False)
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
+    def test_another_operation_leaves_the_list_open(self, test_case: TestCase) -> None:
+        """A library generation holds the busy authority, and the list takes the recording all the same."""
         coordinator = _coordinator(operation_active=True)
 
-        assert coordinator._notify_converter_running() is True
+        test_case.door(coordinator, Path("/audio/take.wav"))
 
-        coordinator._dialogs.show_info.assert_called_once_with(
-            TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
-            CONVERTER_RUNNING_MESSAGE_KEY,
-            CONVERTER_RUNNING_TITLE_KEY,
-        )
+        assert (test_case.reached(coordinator), coordinator._dialogs.show_info.called) == (True, False)
 
-    def test_idle_reports_false_silently(self) -> None:
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
+    def test_each_attempt_shows_the_notice_again(self, test_case: TestCase) -> None:
+        coordinator = _coordinator(operation_active=True, converting=True)
+
+        test_case.door(coordinator, Path("/audio/take.wav"))
+        test_case.door(coordinator, Path("/audio/take.wav"))
+
+        assert coordinator._dialogs.show_info.call_count == 2
+
+
+class TestAGestureLandingAfterARunStarted:
+    """A gesture that lands later meets the rule again where it lands, since a run may have started in
+    between: a folder read coming back, and a question answered."""
+
+    def test_a_folder_read_for_add_folder_lists_nothing(self) -> None:
+        coordinator = _coordinator(operation_active=True, converting=True)
+
+        coordinator._gather_read(Path("/audio"), (Path("/audio/take.wav"),))
+
+        assert (_refused(coordinator), coordinator._converter_logic.gather_folder.called) == (True, False)
+        coordinator._scan_window.close.assert_called_once_with()
+
+    def test_a_folder_read_for_a_reconstruct_lists_nothing(self) -> None:
+        coordinator = _coordinator(operation_active=True, converting=True)
+
+        coordinator._take_up_read(Path("/audio"), (Path("/audio/take.wav"),))
+
+        assert (_refused(coordinator), coordinator._converter_logic.take_up_folder.called) == (True, False)
+        coordinator._scan_window.close.assert_called_once_with()
+
+    def test_replacing_the_mix_answered_after_a_run_started_lists_nothing(self) -> None:
         coordinator = _coordinator(operation_active=False)
+        coordinator._converter_logic.mixes = True
+        coordinator._converter_logic.gathered_paths = (Path("/audio/a.wav"),)
+        coordinator.request_reconstruct_file(Path("/audio/b.wav"))
+        coordinator._converter_logic.live = False
 
-        assert coordinator._notify_converter_running() is False
+        coordinator._dialogs.show_confirmation.call_args.args[3]()
 
-        coordinator._dialogs.show_info.assert_not_called()
+        assert (_refused(coordinator), coordinator._hooks.on_reconstruct_listed.called) == (True, False)
+
+    def test_a_mix_picked_after_a_run_started_changes_nothing(self) -> None:
+        coordinator = _stems_coordinator(mixes=True, folder_rows=_rows_holding(MAX_STEM_SOURCES, 1))
+        coordinator._gather_read(Path("/audio"), tuple(Path(f"/audio/{index}.wav") for index in range(9)))
+        coordinator._converter_logic.live = False
+        _rows, _room, answer = coordinator._stem_selection_window.open.call_args.args
+
+        answer((Path("/audio/0.wav"),))
+
+        assert (_refused(coordinator), coordinator._converter_logic.mix_only.called) == (True, False)
 
 
 class TestTheChannelKeys:
@@ -102,48 +238,9 @@ class TestTheChannelKeys:
         assert coordinator._converter_logic.toggle_channel.called is keys_active
 
 
-class TestReconstructGuards:
-    """Reconstruction and conversion share the exclusive worker pool, so the reconstruct intents
-    decline while an operation runs and delegate to the wired callbacks when idle."""
-
-    def test_file_request_declines_while_an_operation_is_active(self) -> None:
-        coordinator = _coordinator(operation_active=True)
-
-        coordinator.request_reconstruct_file(Path("/audio/sample.wav"))
-
-        coordinator._hooks.on_reconstruct_file.assert_not_called()
-        coordinator._dialogs.show_info.assert_called_once()
-
-    def test_file_request_delegates_when_idle(self) -> None:
-        coordinator = _coordinator(operation_active=False)
-        filepath = Path("/audio/sample.wav")
-
-        coordinator.request_reconstruct_file(filepath)
-
-        coordinator._hooks.on_reconstruct_file.assert_called_once_with(filepath)
-        coordinator._dialogs.show_info.assert_not_called()
-
-    def test_directory_request_declines_while_an_operation_is_active(self) -> None:
-        coordinator = _coordinator(operation_active=True)
-
-        coordinator.request_reconstruct_directory(Path("/audio"))
-
-        coordinator._hooks.on_reconstruct_directory.assert_not_called()
-        coordinator._dialogs.show_info.assert_called_once()
-
-    def test_directory_request_delegates_when_idle(self) -> None:
-        coordinator = _coordinator(operation_active=False)
-        directory = Path("/audio")
-
-        coordinator.request_reconstruct_directory(directory)
-
-        coordinator._hooks.on_reconstruct_directory.assert_called_once_with(directory)
-        coordinator._dialogs.show_info.assert_not_called()
-
-
 def _success_coordinator() -> MainTabCoordinator:
     coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
-    coordinator._dialogs = MagicMock()
+    coordinator._dialogs = dialogs_on_the_line()
     coordinator._hooks = _hooks(operation_active=False)
     coordinator._converter_logic = MagicMock()
     coordinator._language_manager = FakeLanguageManager()
@@ -188,7 +285,7 @@ class TestCancelConfirmation:
 
     def test_cancel_request_confirms_before_stopping(self) -> None:
         coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
-        coordinator._dialogs = MagicMock()
+        coordinator._dialogs = dialogs_on_the_line()
         coordinator._converter_logic = MagicMock()
         coordinator._language_manager = FakeLanguageManager()
 
@@ -204,6 +301,7 @@ class TestCancelConfirmation:
 
 
 DISCARD_STEMS_PROMPT_KEY: Final[str] = "main.converter.message.discard_stems_prompt"
+SCAN_FAILED_KEY: Final[str] = "main.converter.message.scan_failed"
 DISCARD_STEMS_BUTTON_KEY: Final[str] = "main.converter.label.discard_stems_button"
 KEEP_STEMS_BUTTON_KEY: Final[str] = "main.converter.label.keep_stems_button"
 
@@ -220,10 +318,11 @@ def _stems_coordinator(
 ) -> MainTabCoordinator:
     coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
     coordinator._hooks = _hooks(operation_active=operation_active)
-    coordinator._notify_converter_running = lambda: operation_active
-    coordinator._dialogs = MagicMock()
+    coordinator._dialogs = dialogs_on_the_line()
     coordinator._language_manager = FakeLanguageManager()
+    coordinator._session_manager = MagicMock()
     coordinator._converter_logic = MagicMock()
+    coordinator._converter_logic.live = True
     coordinator._converter_logic.mixes = mixes
     coordinator._converter_logic.gathered_paths = gathered
     coordinator._converter_logic.source_count = len(gathered)
@@ -235,10 +334,11 @@ def _stems_coordinator(
     coordinator._stem_selection_window = MagicMock()
     coordinator._scan_window = MagicMock()
     coordinator._repaint_priority = 0
-    coordinator._folder_scan = FolderScan()
-    coordinator._folder_scan.on_started = coordinator._on_scan_started
-    coordinator._folder_scan.on_progress = coordinator._on_scan_progress
-    coordinator._folder_scan.on_stopped = coordinator._on_scan_stopped
+    coordinator._folder_scan = FolderScan(FolderScanService(priority=coordinator._repaint_priority))
+    coordinator._folder_scan.on_started = coordinator._scan_window.open
+    coordinator._folder_scan.on_progress = coordinator._scan_window.report
+    coordinator._folder_scan.on_stopped = coordinator._scan_window.close
+    coordinator._folder_scan.on_failed = coordinator._on_scan_failed
     return coordinator
 
 
@@ -253,9 +353,12 @@ def _folder_of(tmp_path: Path, count: int) -> Path:
 
 
 def _add_folder(coordinator: MainTabCoordinator, root: Path) -> None:
-    """Asks for the folder and waits for the reading, the way a reader does."""
-    coordinator._on_directory_add_requested(root)
-    SingleThreadExecutor.join_all()
+    """Asks for the folder and waits for the reading, the way a reader does.
+
+    The walk's reports reach the coordinator through the queue the render loop drains, so the case
+    drains it once the walk has ended.
+    """
+    settled(lambda: coordinator._on_directory_add_requested(root))
 
 
 class TestOutputSwitch:
@@ -288,7 +391,8 @@ class TestOutputSwitch:
         rows, room, answer = coordinator._stem_selection_window.open.call_args.args
         assert rows == listed
         assert room == MAX_STEM_SOURCES
-        assert answer == coordinator._converter_logic.mix_only
+        answer([gathered[0]])
+        coordinator._converter_logic.mix_only.assert_called_once_with([gathered[0]])
 
     def test_a_list_a_mix_holds_takes_effect_at_once(self) -> None:
         gathered = tuple(Path(f"/audio/{index}.wav") for index in range(MAX_STEM_SOURCES))
@@ -313,13 +417,6 @@ class TestDirectoryAdd:
         assert gathered == root
         assert {path.name for path in found} == {"take_00.wav", "take_01.wav"}
 
-    def test_a_busy_application_ignores_the_gesture(self, tmp_path: Path) -> None:
-        coordinator = _stems_coordinator(operation_active=True)
-
-        coordinator._on_directory_add_requested(tmp_path)
-
-        coordinator._converter_logic.gather_folder.assert_not_called()
-
     def test_a_folder_holding_no_recordings_says_so(self, tmp_path: Path) -> None:
         """The reading is what knows what a folder holds, so the answer arrives when it comes back
         and the setup stands as it was."""
@@ -330,6 +427,19 @@ class TestDirectoryAdd:
 
         coordinator._converter_logic.gather_folder.assert_not_called()
         assert coordinator._dialogs.show_info.call_args.args[1] == NOTHING_BELOW_KEY
+
+    @requires_folder_permissions
+    def test_a_folder_it_may_not_open_says_so_and_adds_nothing(self, tmp_path: Path) -> None:
+        coordinator = _stems_coordinator(mixes=False)
+        root = _folder_of(tmp_path, 2)
+
+        with held_at(root, LOCKED_FOLDER):
+            _add_folder(coordinator, root)
+
+        coordinator._converter_logic.gather_folder.assert_not_called()
+        failure, message = coordinator._dialogs.show_error.call_args.args
+        assert isinstance(failure, PermissionError)
+        assert message == SCAN_FAILED_KEY
 
 
 class TestFileAdd:
@@ -343,26 +453,6 @@ class TestFileAdd:
         coordinator._on_file_add_requested(recording)
 
         coordinator._converter_logic.gather_recordings.assert_called_once_with([recording])
-
-    def test_a_busy_application_ignores_the_gesture(self, tmp_path: Path) -> None:
-        coordinator = _stems_coordinator(operation_active=True)
-
-        coordinator._on_file_add_requested(tmp_path / "bass.wav")
-
-        coordinator._converter_logic.gather_recordings.assert_not_called()
-
-
-class TestModifierAddAvailability:
-    """The modifier click gathers a recording whenever the converter is free to take one."""
-
-    def test_a_gathered_list_takes_the_click(self) -> None:
-        assert _stems_coordinator()._can_add_stems() is True
-
-    def test_a_classic_conversion_takes_the_click_and_opens_a_list(self) -> None:
-        assert _stems_coordinator(mixes=False)._can_add_stems() is True
-
-    def test_a_busy_application_leaves_the_click_alone(self) -> None:
-        assert _stems_coordinator(operation_active=True)._can_add_stems() is False
 
 
 OVERWRITE_TARGET_PROMPT_KEY: Final[str] = "main.converter.message.overwrite_target_prompt"
@@ -414,91 +504,105 @@ class TestOverwritePrompt:
         coordinator._converter_logic.start_conversion.assert_not_called()
 
 
-class TestReconstructReplacesTheSetup:
-    """A Reconstruct converts what it names alone, so a setup already holding sources is asked about."""
+class TestReconstructListsWhatItNames:
+    """A Reconstruct lists what it names to convert one apiece, asking first only about a mix it replaces."""
 
     def _coordinator(self, *, mixes: bool, gathered: Tuple[Path, ...] = ()) -> MainTabCoordinator:
-        return _stems_coordinator(mixes=mixes, gathered=gathered)
+        coordinator = _stems_coordinator(mixes=mixes, gathered=gathered)
+        coordinator._folder_scan = MagicMock()
+        return coordinator
 
-    def test_an_empty_setup_reconstructs_straight_away(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("gathered", [(), (Path("/audio/a.wav"),)])
+    def test_a_list_writing_one_apiece_takes_it_straight_away(self, tmp_path: Path, gathered: Tuple[Path, ...]) -> None:
+        coordinator = self._coordinator(mixes=False, gathered=gathered)
+
+        coordinator.request_reconstruct_file(tmp_path / "a.wav")
+
+        coordinator._converter_logic.take_up_recording.assert_called_once_with(tmp_path / "a.wav")
+        coordinator._hooks.on_reconstruct_listed.assert_called_once_with()
+        coordinator._dialogs.show_confirmation.assert_not_called()
+
+    def test_a_recording_listed_leaves_its_folder_for_the_next_reconstruct_dialog(self, tmp_path: Path) -> None:
         coordinator = self._coordinator(mixes=False)
 
         coordinator.request_reconstruct_file(tmp_path / "a.wav")
 
-        coordinator._hooks.on_reconstruct_file.assert_called_once_with(tmp_path / "a.wav")
+        coordinator._session_manager.set_audio_input_path.assert_called_once_with(tmp_path)
+
+    def test_a_folder_listed_is_left_for_the_next_reconstruct_dialog(self, tmp_path: Path) -> None:
+        coordinator = self._coordinator(mixes=False)
+
+        coordinator.request_reconstruct_directory(tmp_path)
+
+        coordinator._session_manager.set_audio_input_path.assert_called_once_with(tmp_path)
+
+    def test_an_empty_mix_gives_way_straight_away(self, tmp_path: Path) -> None:
+        coordinator = self._coordinator(mixes=True)
+
+        coordinator.request_reconstruct_directory(tmp_path)
+
+        coordinator._folder_scan.start.assert_called_once_with(tmp_path, coordinator._take_up_read)
+        coordinator._hooks.on_reconstruct_listed.assert_called_once_with()
         coordinator._dialogs.show_confirmation.assert_not_called()
 
-    @pytest.mark.parametrize("gesture", ["request_reconstruct_file", "request_reconstruct_directory"])
-    def test_a_gathered_list_is_asked_about_first(self, tmp_path: Path, gesture: str) -> None:
+    def test_a_mix_holding_recordings_is_asked_about_first(self, tmp_path: Path) -> None:
         coordinator = self._coordinator(mixes=True, gathered=(Path("/audio/a.wav"),))
 
-        getattr(coordinator, gesture)(tmp_path)
+        coordinator.request_reconstruct_file(tmp_path / "b.wav")
+        coordinator.request_reconstruct_directory(tmp_path)
 
-        coordinator._hooks.on_reconstruct_file.assert_not_called()
-        coordinator._hooks.on_reconstruct_directory.assert_not_called()
-        assert coordinator._dialogs.show_confirmation.call_args.args[1] == DISCARD_STEMS_PROMPT_KEY
+        coordinator._hooks.on_reconstruct_listed.assert_not_called()
+        prompts = [call.args[1] for call in coordinator._dialogs.show_confirmation.call_args_list]
+        assert prompts == [DISCARD_STEMS_PROMPT_KEY, DISCARD_STEMS_PROMPT_KEY]
 
-    def test_confirming_converts_what_was_named(self, tmp_path: Path) -> None:
+    def test_confirming_lists_what_was_named(self, tmp_path: Path) -> None:
         coordinator = self._coordinator(mixes=True, gathered=(Path("/audio/a.wav"),))
 
         coordinator.request_reconstruct_directory(tmp_path)
         coordinator._dialogs.show_confirmation.call_args.args[3]()
 
-        coordinator._hooks.on_reconstruct_directory.assert_called_once_with(tmp_path)
+        coordinator._folder_scan.start.assert_called_once_with(tmp_path, coordinator._take_up_read)
 
-    def test_declining_converts_nothing(self, tmp_path: Path) -> None:
+    def test_declining_keeps_the_mix(self, tmp_path: Path) -> None:
         coordinator = self._coordinator(mixes=True, gathered=(Path("/audio/a.wav"),))
 
         coordinator.request_reconstruct_directory(tmp_path)
         coordinator._dialogs.show_confirmation.call_args.kwargs["on_cancel"]()
 
         coordinator._converter_logic.set_output.assert_not_called()
-        coordinator._hooks.on_reconstruct_directory.assert_not_called()
+        coordinator._hooks.on_reconstruct_listed.assert_not_called()
 
 
-class TestReconstructingAFileOverAGatheredList:
-    """Reconstruct on a file while recordings stand gathered asks about them first, and the
-    conversion it goes on to can ask about writing over a reconstruction in turn."""
+class TestTakingUpWhatAReconstructNamed:
+    """A recording is listed at once; a folder is read first and listed once the reading is done."""
 
-    @pytest.fixture(name="coordinator")
-    def coordinator_fixture(self, tmp_path: Path) -> MainTabCoordinator:
-        coordinator = _stems_coordinator(mixes=True, gathered=(Path("/audio/a.wav"),))
-        coordinator._hooks.on_reconstruct_file.side_effect = lambda path: coordinator._confirm_overwriting_target(
-            (path.with_suffix(".stn"),)
-        )
-        coordinator.request_reconstruct_file(tmp_path / "a.wav")
-        return coordinator
+    def test_a_recording_is_listed(self, tmp_path: Path) -> None:
+        coordinator = _stems_coordinator(mixes=False)
 
-    def test_the_gathered_list_is_asked_about_first(self, coordinator: MainTabCoordinator) -> None:
-        assert coordinator._dialogs.show_confirmation.call_args.args[0] == TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS
-        coordinator._hooks.on_reconstruct_file.assert_not_called()
+        coordinator._take_up_path(tmp_path / "take.wav")
 
-    def test_replacing_the_list_reaches_the_conversion(
-        self,
-        coordinator: MainTabCoordinator,
-        tmp_path: Path,
-    ) -> None:
-        coordinator._dialogs.show_confirmation.call_args.args[3]()
+        coordinator._converter_logic.take_up_recording.assert_called_once_with(tmp_path / "take.wav")
+        coordinator._converter_logic.start_conversion.assert_not_called()
 
-        coordinator._hooks.on_reconstruct_file.assert_called_once_with(tmp_path / "a.wav")
+    def test_a_folder_is_listed_with_what_it_holds(self, tmp_path: Path) -> None:
+        coordinator = _stems_coordinator(mixes=False)
+        root = _folder_of(tmp_path, 2)
 
-    def test_the_conversion_asks_about_the_file_it_writes_over_next(
-        self,
-        coordinator: MainTabCoordinator,
-        tmp_path: Path,
-    ) -> None:
-        coordinator._dialogs.show_confirmation.call_args.args[3]()
+        settled(lambda: coordinator._take_up_path(root))
 
-        overwrite = coordinator._dialogs.show_confirmation.call_args
-        assert overwrite.args[0] == TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET
-        assert overwrite.kwargs["path"] == tmp_path / "a.stn"
+        listed, found = coordinator._converter_logic.take_up_folder.call_args.args
+        assert listed == root
+        assert {path.name for path in found} == {"take_00.wav", "take_01.wav"}
+        coordinator._converter_logic.start_conversion.assert_not_called()
 
-    def test_confirming_the_overwrite_starts_the_conversion(self, coordinator: MainTabCoordinator) -> None:
-        coordinator._dialogs.show_confirmation.call_args.args[3]()
+    def test_a_folder_holding_no_recordings_says_so(self, tmp_path: Path) -> None:
+        coordinator = _stems_coordinator(mixes=False)
+        root = _folder_of(tmp_path, 0)
 
-        coordinator._dialogs.show_confirmation.call_args.args[3]()
+        settled(lambda: coordinator._take_up_path(root))
 
-        coordinator._converter_logic.start_conversion.assert_called_once_with(confirmed=True)
+        coordinator._converter_logic.take_up_folder.assert_not_called()
+        assert coordinator._dialogs.show_info.call_args.args[1] == NOTHING_BELOW_KEY
 
 
 def _rows_holding(*counts: int) -> Tuple[MagicMock, ...]:
@@ -535,7 +639,8 @@ class TestGatheringAFolder:
         offered, room, answer = coordinator._stem_selection_window.open.call_args.args
         assert offered == coordinator._converter_logic.gathered_rows + rows
         assert room == MAX_STEM_SOURCES
-        assert answer == coordinator._converter_logic.mix_only
+        answer([Path("/audio/take.wav")])
+        coordinator._converter_logic.mix_only.assert_called_once_with([Path("/audio/take.wav")])
 
     def test_a_full_mix_is_offered_beside_what_the_folder_holds(self, tmp_path: Path) -> None:
         """A mix with no room left is answerable: letting one go is what makes room for another."""
@@ -562,14 +667,6 @@ class TestGatheringAFolder:
 
         coordinator._scan_window.open.assert_called_once_with(root)
 
-    def test_a_busy_application_leaves_the_folder_alone(self, tmp_path: Path) -> None:
-        coordinator = _stems_coordinator(operation_active=True, folder_rows=_rows_holding(1))
-
-        _add_folder(coordinator, _folder_of(tmp_path, 1))
-
-        coordinator._converter_logic.gather_folder.assert_not_called()
-        coordinator._stem_selection_window.open.assert_not_called()
-
 
 class TestTheExitAsksAboutARunningConversion:
     """Exiting stops a running conversion, so the reader is asked first."""
@@ -582,8 +679,30 @@ class TestTheExitAsksAboutARunningConversion:
     def test_an_idle_converter_lets_the_exit_go_on(self) -> None:
         coordinator = self._coordinator(active=False)
         proceed = MagicMock()
+        decline = MagicMock()
 
-        coordinator.guard_exit(proceed)
+        coordinator.guard_exit(proceed, decline)
+
+        proceed.assert_called_once_with()
+        decline.assert_not_called()
+        coordinator._dialogs.show_confirmation.assert_not_called()
+
+    def test_a_question_waits_while_another_window_stands(self, standing_window: StandingWindow) -> None:
+        coordinator = self._coordinator(active=True)
+
+        coordinator.guard_exit(MagicMock(), MagicMock())
+
+        coordinator._dialogs.show_confirmation.assert_not_called()
+        standing_window.leave()
+        coordinator._dialogs.show_confirmation.assert_called_once()
+
+    def test_a_conversion_ending_meanwhile_lets_the_exit_go_on(self, standing_window: StandingWindow) -> None:
+        coordinator = self._coordinator(active=True)
+        proceed = MagicMock()
+        coordinator.guard_exit(proceed, MagicMock())
+
+        coordinator._converter_logic.is_active = False
+        standing_window.leave()
 
         proceed.assert_called_once_with()
         coordinator._dialogs.show_confirmation.assert_not_called()
@@ -591,12 +710,14 @@ class TestTheExitAsksAboutARunningConversion:
     def test_a_running_conversion_asks_first(self) -> None:
         coordinator = self._coordinator(active=True)
         proceed = MagicMock()
+        decline = MagicMock()
 
-        coordinator.guard_exit(proceed)
+        coordinator.guard_exit(proceed, decline)
 
         proceed.assert_not_called()
+        decline.assert_not_called()
         args, kwargs = coordinator._dialogs.show_confirmation.call_args
         assert args[0] == TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION
         assert args[1] == EXIT_CONVERSION_MESSAGE_KEY
-        assert args[3] is proceed
         assert kwargs["ok_label"] == EXIT_LABEL_KEY
+        assert_the_answers_reach(confirm=args[3], cancel=kwargs["on_cancel"], proceed=proceed, decline=decline)

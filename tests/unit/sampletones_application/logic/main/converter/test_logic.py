@@ -12,8 +12,8 @@ from sampletones_application.constants.sources import SettingsField, SourceKind
 from sampletones_application.logic.instruction.readiness import LibraryReadiness
 from sampletones_application.logic.main.converter.logic import ConverterLogic
 from sampletones_application.logic.main.converter.run import ConversionSuccess
-from sampletones_application.services.conversion.result import ConversionResult
-from sampletones_application.services.result import ServiceError, ServiceSuccess
+from sampletones_application.services.conversion.result import ConversionItem, ConversionResult
+from sampletones_application.services.result import ServiceError, ServiceProgress, ServiceSuccess
 from sampletones_application.view_model.main.converter import (
     ACTIVE_PHASES,
     ConversionPhase,
@@ -24,7 +24,7 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import UNIT_DRIVE
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.library import LibraryState
-from sampletones_core.reconstructions.converter import GroupConversion
+from sampletones_core.reconstructions.converter import ConversionJob, GroupConversion
 from sampletones_core.reconstructions.converter.paths import get_audio_files
 from tests.suite.base import BaseTestSuite
 from tests.suite.language import FakeLanguageManager
@@ -126,6 +126,11 @@ def _card_channels(converter_logic: ConverterLogic) -> FrozenSet[ChannelName]:
     return frozenset(
         channel.channel for channel in converter_logic.source_settings_view.channels if channel.use is Agreement.ALL
     )
+
+
+def _item_of(job: ConversionJob) -> ConversionItem:
+    """The item the conversion service reports for ``job`` while the run works on it."""
+    return ConversionItem(source=job.sources[0], output_path=job.output_path)
 
 
 def _started_plan(converter_logic: ConverterLogic, service: MagicMock) -> GroupConversion:
@@ -513,6 +518,37 @@ class TestWhatACompletedConversionLeaves(BaseTestSuite):
         converter_logic.on_load_directory.assert_called_once_with()
 
 
+class TestTheLineARunOfOneShows(BaseTestSuite):
+    """A run with one job names the reconstruction that job writes, whatever the setup is named after."""
+
+    def test_a_folder_left_with_one_job_names_its_recording(
+        self,
+        converter_logic: ConverterLogic,
+        service: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """A rerun over a folder writes only the recordings still to be written, so a folder left with
+        one names that recording, and the folder its destination names stays out of the line."""
+        loops = tmp_path / "loops"
+        loops.mkdir()
+        for name in ("bass.wav", "lead.wav"):
+            (loops / name).touch()
+        converter_logic.gather_folder(loops, get_audio_files(loops, sort=True))
+        plan = _started_plan(converter_logic, service)
+        config: Config = service.start.call_args.args[0]
+        written, still_to_write = plan.jobs(config)
+        written.output_path.parent.mkdir(parents=True)
+        written.output_path.touch()
+        (job,) = plan.jobs(config)
+
+        _reports(service, ServiceProgress(completed=0, total=1, current_item=_item_of(job)))
+
+        assert (job, _view(converter_logic).status_text) == (
+            still_to_write,
+            TEXTS["main.converter.template.single_progress_template"].format(job.output_path.stem),
+        )
+
+
 class TestFailureReturnsToIdle(BaseTestSuite):
     """With no Close button, a failure reports through ``on_error`` and schedules its own return to
     idle so the panel never strands on the failed phase."""
@@ -630,29 +666,13 @@ class TestTheSetupARunHolds(BaseTestSuite):
         converter_logic: ConverterLogic,
         tmp_path: Path,
     ) -> None:
-        """A **Reconstruct** names its own recording, which lets the whole setup go where it runs."""
+        """A **Reconstruct** lists what it names, and the list stands inert while the run holds it."""
         source = self._waiting(converter_logic, tmp_path)
         other = tmp_path / "take.wav"
         other.touch()
 
-        converter_logic.convert_recording(other)
-
-        assert converter_logic.gathered_paths == (source,)
-
-    def test_a_reconstruct_during_another_operation_leaves_the_setup_standing(
-        self,
-        converter_logic: ConverterLogic,
-        tmp_path: Path,
-    ) -> None:
-        """A library generation holds the resources too, and a Reconstruct reaching the converter
-        meanwhile leaves what the reader gathered."""
-        source = _aimed_at_a_recording(converter_logic, tmp_path)
-        other = tmp_path / "take.wav"
-        other.touch()
-        converter_logic._is_operation_active = lambda: True
-
-        converter_logic.convert_recording(other)
-        converter_logic.convert_folder(tmp_path, [other])
+        converter_logic.take_up_recording(other)
+        converter_logic.take_up_folder(tmp_path, [other])
 
         assert converter_logic.gathered_paths == (source,)
 
@@ -814,6 +834,52 @@ class TestGatheringRecordings(BaseTestSuite):
             ("b.wav", 0, 2),
             ("a.wav", 1, 2),
         ]
+
+
+class TestWhatAReconstructLists(BaseTestSuite):
+    """A Reconstruct lists what it names for a run writing one reconstruction apiece, and starts nothing.
+
+    The reader sees the recordings and their settings before converting, so the run is theirs to start.
+    """
+
+    def test_a_recording_joins_the_list_beside_what_it_holds(
+        self,
+        converter_logic: ConverterLogic,
+        service: MagicMock,
+    ) -> None:
+        _listed(converter_logic, "bass")
+
+        converter_logic.take_up_recording(Path("/audio/lead.wav"))
+
+        assert converter_logic.gathered_paths == (Path("/audio/bass.wav"), Path("/audio/lead.wav"))
+        assert converter_logic.mixes is False
+        service.start.assert_not_called()
+
+    def test_a_folder_joins_the_list_as_a_folder(
+        self,
+        converter_logic: ConverterLogic,
+        service: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        root = tmp_path / "album"
+        root.mkdir()
+        found = [root / "a.wav", root / "b.wav"]
+        for recording in found:
+            recording.touch()
+
+        converter_logic.take_up_folder(root, found)
+
+        assert [row.name for row in _view(converter_logic).stem_sources] == [root.name]
+        assert converter_logic.gathered_paths == tuple(found)
+        service.start.assert_not_called()
+
+    def test_a_mix_gives_way_to_a_list_of_what_was_named(self, converter_logic: ConverterLogic) -> None:
+        _mixing(converter_logic, "bass", "lead")
+
+        converter_logic.take_up_recording(Path("/audio/drums.wav"))
+
+        assert converter_logic.mixes is False
+        assert converter_logic.gathered_paths == (Path("/audio/drums.wav"),)
 
 
 class TestAnsweringWhichRecordingsToMix(BaseTestSuite):
@@ -1027,6 +1093,87 @@ class TestAFolderInTheList(BaseTestSuite):
 
         rows = _view(converter_logic).stem_sources
         assert [row.stands_for_a_folder for row in rows] == [False, False]
+
+
+class TestABoxPicksItsRow(BaseTestSuite):
+    """A click on a row's box picks that row, as a click on its name does, so the card follows the box."""
+
+    @staticmethod
+    def _folder(converter_logic: ConverterLogic, tmp_path: Path) -> Path:
+        root = tmp_path / "sources"
+        root.mkdir()
+        for name in ("a.wav", "b.wav"):
+            (root / name).touch()
+
+        converter_logic.gather_folder(root, get_audio_files(root, sort=True))
+        return root
+
+    def test_a_recordings_box_picks_the_recording(self, converter_logic: ConverterLogic) -> None:
+        _listed(converter_logic, "kick", "snare")
+        snare = Path("/audio/snare.wav")
+        converter_logic.select_row(Path("/audio/kick.wav"), SourceKind.RECORDING)
+
+        converter_logic.set_source_channels(snare, frozenset({ChannelName.PULSE1}))
+
+        subject = converter_logic.source_settings_view.subject
+        assert subject is not None
+        assert (_view(converter_logic).selected_key, subject.name, subject.kind) == (
+            str(snare),
+            snare.stem,
+            SourceKind.RECORDING,
+        )
+
+    def test_a_box_with_nothing_picked_picks_its_row(self, converter_logic: ConverterLogic) -> None:
+        _listed(converter_logic, "kick")
+        kick = Path("/audio/kick.wav")
+        assert converter_logic.source_settings_view.edits_new_recordings is True
+
+        converter_logic.set_source_channels(kick, frozenset({ChannelName.PULSE1}))
+
+        assert converter_logic.source_settings_view.edits_new_recordings is False
+        assert _view(converter_logic).selected_key == str(kick)
+
+    def test_the_row_picked_before_keeps_its_channels(self, converter_logic: ConverterLogic) -> None:
+        _listed(converter_logic, "kick", "snare")
+        kick = Path("/audio/kick.wav")
+        converter_logic.select_row(kick, SourceKind.RECORDING)
+        standing = _card_channels(converter_logic)
+
+        converter_logic.set_source_channels(Path("/audio/snare.wav"), frozenset({ChannelName.NOISE}))
+        converter_logic.select_row(kick, SourceKind.RECORDING)
+
+        assert _card_channels(converter_logic) == standing
+
+    def test_a_box_inside_a_folder_picks_that_recording(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        root = self._folder(converter_logic, tmp_path)
+        converter_logic.select_row(root, SourceKind.FOLDER)
+
+        converter_logic.set_source_channels(root / "a.wav", frozenset({ChannelName.PULSE1}))
+
+        assert _view(converter_logic).selected_key == str(root / "a.wav")
+        assert _card_channels(converter_logic) == frozenset({ChannelName.PULSE1})
+
+    def test_a_folders_box_picks_the_folder(
+        self,
+        converter_logic: ConverterLogic,
+        tmp_path: Path,
+    ) -> None:
+        root = self._folder(converter_logic, tmp_path)
+        converter_logic.select_row(root / "a.wav", SourceKind.RECORDING)
+
+        converter_logic.toggle_folder_channel(root, ChannelName.TRIANGLE)
+
+        subject = converter_logic.source_settings_view.subject
+        assert subject is not None
+        assert (_view(converter_logic).selected_key, subject.name, subject.kind) == (
+            str(root),
+            root.name,
+            SourceKind.FOLDER,
+        )
 
 
 class TestTheChannelAKeyReaches(BaseTestSuite):

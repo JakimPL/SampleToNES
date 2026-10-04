@@ -22,9 +22,11 @@ changes away. **Cancel** keeps the one you have open.
 The **Source** card switches playback between **Reconstruction** and **Original audio**, so you can
 compare the two. Its **NES frequency** field retimes the reconstruction: type a new rate and press
 `Enter`. The field is locked for a reconstruction that belongs to a project, which follows the project's
-rate.
+rate. It is also locked after you remove the open reconstruction, or its folder, in the **Browser**.
+Save it to a file to unlock the field.
 
 The **Waveform** card has a checkbox for each channel, and keys `1` to `4` switch the same checkboxes.
+`Ctrl+1` to `Ctrl+4` switch them too, also while you type in a field.
 
 Click the waveform to play from that point. While playback is paused, a click moves the playback
 position. Drag the waveform to move the view, and double-click to fit the view. Scroll to zoom, hold **Alt** and

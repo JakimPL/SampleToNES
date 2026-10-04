@@ -14,8 +14,10 @@ from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.project import save_project_as
 from tests.suite.screens.steps.reconstructions import (
     expect_open,
+    load_from_the_browser,
     marked,
     raise_the_first_level,
+    raise_the_first_level_while_held,
     stored_levels,
     titled,
     voice_title,
@@ -23,7 +25,16 @@ from tests.suite.screens.steps.reconstructions import (
 from tests.suite.screens.steps.sequencer import open_voice
 from tests.suite.screens.views.bar_graph import BarGraph
 from tests.suite.screens.views.instruments import Instruments
-from tests.suite.screens.worlds.recordings import SHORT_RECONSTRUCTION, SONG, SONG_SAMPLE, STEMS_RECONSTRUCTION
+from tests.suite.screens.vocabulary.dialogs import LOAD_TITLE
+from tests.suite.screens.worlds.recordings import (
+    OPEN_RECONSTRUCTION,
+    PLAYABLE_RECONSTRUCTION,
+    SECOND_PLAYABLE,
+    SHORT_RECONSTRUCTION,
+    SONG,
+    SONG_SAMPLE,
+    STEMS_RECONSTRUCTION,
+)
 
 DRAGGED_ITEM: Final[int] = 5
 FIRST_ITEM: Final[int] = 1
@@ -300,4 +311,58 @@ class TestTwoDimensionsBeforeTheFadeEnds:
             drag_the_arpeggio_meanwhile,
             both_stay,
             leave_letting_it_go,
+        ).run()
+
+
+class TestTwoOpensWhileAnEditIsOnItsWay:
+    """Two reconstructions double-clicked while an edit is on its way ask once, and the answer opens the second.
+
+    The first level is raised while the rebuild is held, and two other reconstructions are double-clicked in
+    the browser. Once released, one question about the unsaved changes shows. Discard opens the second
+    reconstruction, and nothing asks after it.
+    """
+
+    @pytest.fixture
+    def startup(self) -> Startup:
+        """A reconstruction is open at start, with no project."""
+        return Startup(reconstruction=OPEN_RECONSTRUCTION, project=None)
+
+    def test_the_second_opens(self, screen: Screen, regeneration_hold: RegenerationHold) -> None:
+        """One question shows, and Discard opens the reconstruction double-clicked last."""
+        prompt = screen.reconstructions.unsaved_prompt
+
+        def edit_while_the_rebuild_is_held(screen: Screen) -> None:
+            expect_open(screen, OPEN_RECONSTRUCTION)
+
+            raise_the_first_level_while_held(screen, regeneration_hold, ChannelName.PULSE1)
+
+        def open_two_while_it_is_held(screen: Screen) -> None:
+            load_from_the_browser(screen, PLAYABLE_RECONSTRUCTION)
+            load_from_the_browser(screen, SECOND_PLAYABLE)
+
+            screen.frames(SETTLE_FRAMES)
+            assert screen.shown_windows() == ()
+            assert screen.reconstructions.shows_open(OPEN_RECONSTRUCTION)
+
+        def the_edit_lands_and_one_question_comes(screen: Screen) -> None:
+            regeneration_hold.release()
+
+            screen.expect(prompt.is_shown, bool, description="the question about unsaved changes")
+            assert prompt.title() == screen.words(LOAD_TITLE)
+            screen.frames(SETTLE_FRAMES)
+            assert len(screen.shown_windows()) == 1
+
+        def discard_opens_the_second(screen: Screen) -> None:
+            prompt.confirm()
+
+            expect_open(screen, SECOND_PLAYABLE)
+            screen.frames(SETTLE_FRAMES)
+            assert screen.shown_windows() == ()
+            assert screen.title() == titled(screen, SECOND_PLAYABLE.name)
+
+        screen.scenario(
+            edit_while_the_rebuild_is_held,
+            open_two_while_it_is_held,
+            the_edit_lands_and_one_question_comes,
+            discard_opens_the_second,
         ).run()

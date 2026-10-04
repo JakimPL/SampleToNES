@@ -49,6 +49,27 @@ class TestOpen:
             key for key in ("library", "reconstruction", "project") if key != field
         ]
 
+    @pytest.mark.parametrize(
+        ("name", "field"),
+        [("song.stp", "project"), ("song.stn", "reconstruction"), ("library.ins", "library")],
+    )
+    def test_a_file_named_from_the_working_folder_is_handed_on_whole(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        name: str,
+        field: str,
+    ) -> None:
+        """The session remembers the file the run opened, so a later run reopens it from any folder."""
+        application = RecordedApplication()
+        monkeypatch.setattr(LAUNCHER, application)
+        empty_file(tmp_path, name)
+        monkeypatch.chdir(tmp_path)
+
+        assert dispatch(COMMANDS, ["open", name]) == 0
+
+        assert application.starts[0][field] == (tmp_path / name).resolve()
+
     def test_a_recording_is_pointed_at_convert(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         application = RecordedApplication()
         monkeypatch.setattr(LAUNCHER, application)

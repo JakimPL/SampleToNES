@@ -1,4 +1,6 @@
+import logging
 from pathlib import Path
+from typing import List, Mapping, Optional
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -6,7 +8,7 @@ from pydantic import ValidationError
 
 from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.paths import KEYBINDINGS_DIRECTORY
-from sampletones_application.utils.gui.keyboard.combination import KeyCombination
+from sampletones_application.utils.gui.keyboard.combination import KeyCombination, display_combinations
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, CTRL_SHIFT
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
@@ -29,6 +31,12 @@ name: minimal
 bindings:
   Play: {combination: "Space"}
 """
+
+
+def _reported(caplog: pytest.LogCaptureFixture, overrides: Mapping[str, Optional[str]]) -> List[str]:
+    """The overrides a warning names, in the order the overrides list them."""
+    warnings = [record.getMessage() for record in caplog.records if record.levelno == logging.WARNING]
+    return [name for name in overrides if any(repr(name) in warning for warning in warnings)]
 
 
 def _press(text: str) -> KeyEvent:
@@ -171,34 +179,42 @@ class TestClaimant:
 
 class TestWithBinding:
     def test_an_action_answers_the_combination_it_is_given(self, shipped: ShortcutScheme) -> None:
-        scheme = shipped.with_binding(ShortcutId.UNDO, KeyCombination.parse("Ctrl+Alt+U"))
+        scheme = shipped.with_binding(ShortcutId.UNDO, (KeyCombination.parse("Ctrl+Alt+U"),))
 
         assert scheme.shortcut(ShortcutId.UNDO).display() == "Ctrl+Alt+U"
 
-    def test_an_action_answers_that_combination_alone(self, shipped: ShortcutScheme) -> None:
-        scheme = shipped.with_binding(ShortcutId.ORDER_INSERT_FRAME, KeyCombination.parse("Ctrl+Alt+I"))
+    def test_an_action_given_one_key_answers_that_key_alone(self, shipped: ShortcutScheme) -> None:
+        scheme = shipped.with_binding(ShortcutId.ORDER_INSERT_FRAME, (KeyCombination.parse("Ctrl+Alt+I"),))
 
         assert scheme.shortcut(ShortcutId.ORDER_INSERT_FRAME).aliases == ()
 
+    def test_an_action_given_several_keys_answers_each_and_displays_the_first(self, shipped: ShortcutScheme) -> None:
+        given = (KeyCombination.parse("Ctrl+Alt+I"), KeyCombination.parse("Ctrl+Alt+Shift+I"))
+
+        scheme = shipped.with_binding(ShortcutId.ORDER_INSERT_FRAME, given)
+
+        assert scheme.shortcut(ShortcutId.ORDER_INSERT_FRAME).combinations() == given
+        assert scheme.shortcut(ShortcutId.ORDER_INSERT_FRAME).display() == given[0].display()
+
     def test_an_action_given_no_combination_is_left_unbound(self, shipped: ShortcutScheme) -> None:
-        scheme = shipped.with_binding(ShortcutId.UNDO, None)
+        scheme = shipped.with_binding(ShortcutId.UNDO, ())
 
         assert scheme.shortcut(ShortcutId.UNDO).combinations() == ()
 
     def test_a_combination_the_category_already_answers_raises(self, shipped: ShortcutScheme) -> None:
         """An editor is told which action holds the keys, so the reader decides who keeps them."""
         with pytest.raises(SystemError):
-            shipped.with_binding(ShortcutId.ABOUT_DIALOG, KeyCombination.parse("Ctrl+S"))
+            shipped.with_binding(ShortcutId.ABOUT_DIALOG, (KeyCombination.parse("Ctrl+S"),))
 
     def test_a_combination_another_category_holds_stands(self, shipped: ShortcutScheme) -> None:
-        scheme = shipped.with_binding(ShortcutId.ABOUT_DIALOG, KeyCombination.parse(TABLE_COMBINATION))
+        scheme = shipped.with_binding(ShortcutId.ABOUT_DIALOG, (KeyCombination.parse(TABLE_COMBINATION),))
         combination = KeyCombination.parse(TABLE_COMBINATION)
 
         assert scheme.claimant(ShortcutCategory.APPLICATION, combination) is ShortcutId.ABOUT_DIALOG
 
     def test_a_combination_naming_no_key_raises(self, shipped: ShortcutScheme) -> None:
         with pytest.raises(KeyError):
-            shipped.with_binding(ShortcutId.UNDO, KeyCombination(UNNAMED_KEY))
+            shipped.with_binding(ShortcutId.UNDO, (KeyCombination(UNNAMED_KEY),))
 
 
 class TestWithBindings:
@@ -206,8 +222,8 @@ class TestWithBindings:
         """A whole set is read at once, so a swap arrives without either action holding both keys."""
         scheme = shipped.with_bindings(
             {
-                ShortcutId.UNDO: KeyCombination.parse("Ctrl+Y"),
-                ShortcutId.REDO: KeyCombination.parse("Ctrl+Z"),
+                ShortcutId.UNDO: (KeyCombination.parse("Ctrl+Y"),),
+                ShortcutId.REDO: (KeyCombination.parse("Ctrl+Z"),),
             },
         )
 
@@ -215,7 +231,7 @@ class TestWithBindings:
         assert scheme.claimant(ShortcutCategory.APPLICATION, KeyCombination.parse("Ctrl+Z")) is ShortcutId.REDO
 
     def test_the_actions_no_binding_names_keep_the_scheme_s_keys(self, shipped: ShortcutScheme) -> None:
-        scheme = shipped.with_bindings({ShortcutId.UNDO: KeyCombination.parse("Ctrl+Alt+U")})
+        scheme = shipped.with_bindings({ShortcutId.UNDO: (KeyCombination.parse("Ctrl+Alt+U"),)})
 
         assert scheme.shortcut(ShortcutId.REDO) == shipped.shortcut(ShortcutId.REDO)
 
@@ -233,11 +249,27 @@ class TestWithOverrides:
         assert scheme.action(ShortcutCategory.APPLICATION, _press("Ctrl+Z")) is None
 
     def test_an_override_states_the_whole_of_what_reaches_the_action(self, shipped: ShortcutScheme) -> None:
-        """A reader names one combination, so the keypad alias the scheme shipped goes with it."""
+        """An override lists every key of its action, so one naming a single key leaves the shipped keypad
+        alias out.
+        """
         scheme = shipped.with_overrides({"OrderInsertFrame": "Ctrl+Alt+I"})
 
         assert scheme.shortcut(ShortcutId.ORDER_INSERT_FRAME).aliases == ()
         assert scheme.action(ShortcutCategory.ORDER, _press("Num+")) is None
+
+    def test_an_override_listing_several_keys_reaches_the_action_from_each(self, shipped: ShortcutScheme) -> None:
+        scheme = shipped.with_overrides({"OrderInsertFrame": "Ctrl+Alt+I, Num+"})
+
+        assert scheme.shortcut(ShortcutId.ORDER_INSERT_FRAME).display() == "Ctrl+Alt+I"
+        assert scheme.action(ShortcutCategory.ORDER, _press("Ctrl+Alt+I")) is ShortcutId.ORDER_INSERT_FRAME
+        assert scheme.action(ShortcutCategory.ORDER, _press("Num+")) is ShortcutId.ORDER_INSERT_FRAME
+
+    def test_an_override_naming_no_key_in_one_place_is_left_out_whole(self, shipped: ShortcutScheme) -> None:
+        """An override that is unreadable in part costs only itself, and its action keeps the shipped keys."""
+        scheme = shipped.with_overrides({"Redo": "Ctrl+Alt+R, Ctrl+Gibberish", "Undo": "Ctrl+Alt+U"})
+
+        assert scheme.shortcut(ShortcutId.REDO) == shipped.shortcut(ShortcutId.REDO)
+        assert scheme.shortcut(ShortcutId.UNDO).display() == "Ctrl+Alt+U"
 
     def test_a_rebound_action_keeps_the_transparency_its_role_carries(self, shipped: ShortcutScheme) -> None:
         """Switching tabs outranks text entry whichever keys it answers to."""
@@ -288,6 +320,56 @@ class TestWithOverrides:
 
         assert scheme.action(ShortcutCategory.APPLICATION, _press("Ctrl+S")) is ShortcutId.ABOUT_DIALOG
         assert scheme.shortcut(ShortcutId.SAVE_PROJECT).combinations() == ()
+
+    def test_a_pair_moving_a_key_stands_beside_a_stale_entry_and_the_stale_entry_alone_is_reported(
+        self,
+        shipped: ShortcutScheme,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """An editor writes the action taking a key ahead of the action giving it up, and a later build
+        can give a stored key to an action of its own. The pair still moves the key, and the stale
+        entry costs only itself."""
+        taken = display_combinations(shipped.shortcut(ShortcutId.SAVE_PROJECT).combinations())
+        held = display_combinations(shipped.shortcut(ShortcutId.TOGGLE_CHANNEL_PULSE_1).combinations())
+        overrides = {
+            ShortcutId.ABOUT_DIALOG.value: taken,
+            ShortcutId.SAVE_PROJECT.value: None,
+            ShortcutId.KEYBOARD_SETTINGS.value: held,
+        }
+        caplog.set_level(logging.WARNING)
+
+        scheme = shipped.with_overrides(overrides)
+
+        assert (
+            display_combinations(scheme.shortcut(ShortcutId.ABOUT_DIALOG).combinations()),
+            scheme.shortcut(ShortcutId.SAVE_PROJECT).combinations(),
+            scheme.shortcut(ShortcutId.KEYBOARD_SETTINGS) == shipped.shortcut(ShortcutId.KEYBOARD_SETTINGS),
+        ) == (taken, (), True)
+        assert _reported(caplog, overrides) == [ShortcutId.KEYBOARD_SETTINGS.value]
+
+    def test_two_actions_trading_their_keys_stand_beside_a_stale_entry(
+        self,
+        shipped: ShortcutScheme,
+    ) -> None:
+        undo_keys = display_combinations(shipped.shortcut(ShortcutId.UNDO).combinations())
+        redo_keys = display_combinations(shipped.shortcut(ShortcutId.REDO).combinations())
+        held = display_combinations(shipped.shortcut(ShortcutId.TOGGLE_CHANNEL_PULSE_1).combinations())
+
+        scheme = shipped.with_overrides(
+            {
+                ShortcutId.UNDO.value: redo_keys,
+                ShortcutId.REDO.value: undo_keys,
+                ShortcutId.KEYBOARD_SETTINGS.value: held,
+            }
+        )
+
+        assert (
+            scheme.shortcut(ShortcutId.UNDO).combinations(),
+            scheme.shortcut(ShortcutId.REDO).combinations(),
+        ) == (
+            shipped.shortcut(ShortcutId.REDO).combinations(),
+            shipped.shortcut(ShortcutId.UNDO).combinations(),
+        )
 
     def test_a_scheme_without_overrides_is_the_one_it_started_as(self, shipped: ShortcutScheme) -> None:
         assert shipped.with_overrides({}) is shipped

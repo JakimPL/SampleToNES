@@ -1,8 +1,22 @@
 import operator
-from typing import List
+from typing import Final, List
+
+import pytest
 
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from tests.screens.interface.display.constants import HAND_SIZE, HAND_X, HAND_Y
+from tests.screens.interface.display.steps import (
+    another_size,
+    at_its_own_size_and_place,
+    hand_sized_world,
+    kept,
+    open_display_settings,
+    size_named,
+    window_position,
+    window_size,
+)
 from tests.suite.screens.screen import Screen
+from tests.suite.screens.worlds.home import World
 
 
 class TestDiscardingADisplayChange:
@@ -79,3 +93,54 @@ class TestTheKeyboardOnDisplaySettings:
 
         screen.expect(settings.is_shown, operator.not_, description="the dialog closed")
         assert not settings.discard_prompt.is_shown()
+
+
+class TestDiscardingOnAHandSizedWindow:
+    """Discarding a new size puts a window the user sized by hand back at its own size and place.
+
+    The window opens between the sizes Display settings offers, so the dialog names the offered size
+    nearest it. The scenario keeps another size and discards it, and expects the window back at the
+    size and place it opened with.
+    """
+
+    @pytest.fixture
+    def world(self) -> World:
+        """A home whose window the user sized by hand, between the sizes Display settings offers."""
+        return hand_sized_world()
+
+    def test_discarding_puts_back_the_window_s_own_size(self, screen: Screen) -> None:
+        """The window stands at its own size and place once the new size is discarded."""
+        settings = screen.display_settings
+        prompt = settings.discard_prompt
+
+        def a_size_between_the_offered_ones(screen: Screen) -> None:
+            assert window_size(screen) == (HAND_SIZE.width, HAND_SIZE.height)
+            assert window_position(screen) == (HAND_X, HAND_Y)
+
+            open_display_settings(screen)
+
+            assert HAND_SIZE not in [size_named(label) for label in settings.resolutions()]
+            assert size_named(settings.resolution()) != HAND_SIZE
+
+        def keep_another_size(screen: Screen) -> None:
+            label = another_size(screen)
+
+            settings.choose_resolution(label)
+            kept(screen)
+
+            screen.expect(
+                lambda: window_size(screen),
+                (size_named(label).width, size_named(label).height).__eq__,
+                description="the window at the size picked",
+            )
+
+        def discard_it(screen: Screen) -> None:
+            settings.cancel()
+            screen.expect(prompt.is_shown, bool, description="the discard prompt")
+
+            prompt.confirm()
+
+            screen.expect(settings.is_shown, operator.not_, description="the dialog closed")
+            at_its_own_size_and_place(screen)
+
+        screen.scenario(a_size_between_the_offered_ones, keep_another_size, discard_it).run()

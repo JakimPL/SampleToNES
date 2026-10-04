@@ -32,12 +32,13 @@ class ReconstructionStep:
 class ConversionItem:
     """The reconstruction a conversion is building, and what it is doing to build it.
 
-    A run knows which recording it is reading from the moment it starts, and hears what that
-    reconstruction is doing once the reconstruction has something to say, so the step arrives on
-    an item that already names its source.
+    A run knows which recording its job reads and which file it writes from the moment it starts,
+    and hears what that reconstruction is doing once the reconstruction has something to say, so
+    the step arrives on an item that already names its source and its output.
     """
 
     source: Path
+    output_path: Path
     step: Optional[ReconstructionStep] = None
 
 

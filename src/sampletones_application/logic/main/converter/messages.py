@@ -36,19 +36,16 @@ class ConverterMessages:
             ReconstructionStage.GATHERING: language_manager["main.converter.message.stage_gathering"],
         }
 
-    def progress_text(
-        self,
-        progress: ServiceProgress[ConversionItem],
-        reconstruction_name: str,
-    ) -> str:
+    def progress_text(self, progress: ServiceProgress[ConversionItem]) -> str:
         """What the run is doing, how far it has come, and how long it has left.
 
-        A run writing one reconstruction names the document it is making and the stage that
-        document is at, which is the whole of what a reader watching one reconstruction has. A
+        A run writing one reconstruction names the file its job writes and the stage that
+        reconstruction is at, which is the whole of what a reader watching one reconstruction has.
+        That holds for a mix, a single recording and a rerun left with one recording to write. A
         batch writes many at once, so a count of the ones written says where it stands.
         """
         return (
-            self._run_text(progress, reconstruction_name)
+            self._run_text(progress)
             + self._stage_text(progress)
             + time_estimation(self._language_manager, progress.eta_seconds)
         )
@@ -90,14 +87,11 @@ class ConverterMessages:
 
         return self._language_manager["main.converter.label.convert_button"]
 
-    def _run_text(
-        self,
-        progress: ServiceProgress[ConversionItem],
-        reconstruction_name: str,
-    ) -> str:
-        if progress.is_single:
+    def _run_text(self, progress: ServiceProgress[ConversionItem]) -> str:
+        item = progress.current_item
+        if progress.is_single and item is not None:
             return self._language_manager["main.converter.template.single_progress_template"].format(
-                reconstruction_name
+                item.output_path.stem
             )
 
         return self._language_manager["main.converter.template.progress_template"].format(

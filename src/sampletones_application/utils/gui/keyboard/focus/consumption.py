@@ -3,8 +3,15 @@ from typing import Dict, Final, FrozenSet
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.utils.gui.keyboard.focus.kind import FieldKind
-from sampletones_application.utils.gui.keyboard.keys import FUNCTION_KEYS
-from sampletones_application.utils.gui.keyboard.modifiers import Modifier, ModifierSet
+from sampletones_application.utils.gui.keyboard.keys import CHARACTER_KEYS, FUNCTION_KEYS
+from sampletones_application.utils.gui.keyboard.modifiers import (
+    CTRL,
+    CTRL_SHIFT,
+    SUPER,
+    SUPER_SHIFT,
+    Modifier,
+    ModifierSet,
+)
 
 EDITING_KEYS: Final[FrozenSet[int]] = frozenset(
     {
@@ -25,18 +32,23 @@ EDITING_KEYS: Final[FrozenSet[int]] = frozenset(
 
 NO_KEYS: Final[FrozenSet[int]] = frozenset()
 
+TEXT_EDIT_KEYS: Final[FrozenSet[int]] = frozenset(
+    {
+        dpg.mvKey_A,
+        dpg.mvKey_C,
+        dpg.mvKey_V,
+        dpg.mvKey_X,
+        dpg.mvKey_Z,
+        dpg.mvKey_Y,
+    }
+)
+REDO_KEYS: Final[FrozenSet[int]] = frozenset({dpg.mvKey_Z})
+
 TEXT_EDIT_CHORDS: Final[Dict[ModifierSet, FrozenSet[int]]] = {
-    frozenset({Modifier.CTRL}): frozenset(
-        {
-            dpg.mvKey_A,
-            dpg.mvKey_C,
-            dpg.mvKey_V,
-            dpg.mvKey_X,
-            dpg.mvKey_Z,
-            dpg.mvKey_Y,
-        }
-    ),
-    frozenset({Modifier.CTRL, Modifier.SHIFT}): frozenset({dpg.mvKey_Z}),
+    CTRL: TEXT_EDIT_KEYS,
+    CTRL_SHIFT: REDO_KEYS,
+    SUPER: TEXT_EDIT_KEYS,
+    SUPER_SHIFT: REDO_KEYS,
 }
 
 
@@ -44,25 +56,39 @@ def field_consumes_key(kind: FieldKind, key: int, modifiers: ModifierSet) -> boo
     """Whether a focused field of ``kind`` acts on this key, so a matching shortcut yields to it.
 
     A field keeps the keys it uses and lets the rest reach the shortcut. Plain characters and the
-    caret, commit, and cancel keys belong to whichever field is focused; a text-entry field also
-    keeps the chords the modifiers name it, so Ctrl+Z undoes and Ctrl+Shift+Z redoes the text.
-    Every other combination passes through: command chords such as Ctrl+Space, the Ctrl+Shift
-    combinations a text field has no use for, Alt shortcuts, and the function keys, so intentional
-    playback and Stop stay reachable while a field is focused.
+    caret, commit, and cancel keys belong to whichever field is focused.
+
+    A command chord, one held with Ctrl or Super, reaches the shortcuts, so Ctrl+Space plays and
+    Cmd+S saves from a field. A field that types keeps the text-edit chords alone: select all,
+    copy, cut, paste, undo and redo, spelled with Ctrl and with Super, the key macOS spells them
+    with. Super decides first, so Cmd+Option+S is a command as well.
+
+    A text-entry field also keeps an Alt chord on a key that types a character, because AltGr and
+    Option type characters that way: Linux reports AltGr as Alt and Windows as Ctrl+Alt. An Alt
+    chord on a function, caret or editing key reaches the shortcuts, so Alt+F4 stays reachable
+    while a field is focused. A number field types no such character, so every Alt chord reaches
+    the shortcuts from it.
     """
     if kind is FieldKind.NONE:
         return False
 
+    if Modifier.SUPER in modifiers:
+        return _keeps_text_edit_chord(kind, key, modifiers)
+
     if Modifier.ALT in modifiers:
-        return False
+        return kind is FieldKind.TEXT_ENTRY and key in CHARACTER_KEYS
 
     if Modifier.CTRL in modifiers:
-        return kind is FieldKind.TEXT_ENTRY and key in TEXT_EDIT_CHORDS.get(
-            modifiers,
-            NO_KEYS,
-        )
+        return _keeps_text_edit_chord(kind, key, modifiers)
 
     if key in EDITING_KEYS:
         return True
 
-    return kind is FieldKind.TEXT_ENTRY and key not in FUNCTION_KEYS
+    return kind.takes_typing and key not in FUNCTION_KEYS
+
+
+def _keeps_text_edit_chord(kind: FieldKind, key: int, modifiers: ModifierSet) -> bool:
+    return kind.takes_typing and key in TEXT_EDIT_CHORDS.get(
+        modifiers,
+        NO_KEYS,
+    )

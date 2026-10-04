@@ -7,6 +7,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.logic.instruction.details import (
@@ -62,6 +63,7 @@ from sampletones_application.ui.panels.instruction.spectrum import (
 from sampletones_application.ui.panels.instruction.waveform import (
     GUIInstructionWaveformPanel,
 )
+from sampletones_application.utils.callbacks.gates import asking
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
@@ -103,6 +105,7 @@ class InstructionsTabCoordinator:
         layout: InstructionsTabParameters,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
+        playback_failures: PlaybackFailurePresenter,
         status_bar: GUIStatusBar,
     ) -> None:
         self._language_manager = language_manager
@@ -146,7 +149,7 @@ class InstructionsTabCoordinator:
             is_operation_active=is_operation_active,
         )
         self._library_panel.set_collapse_handler(self._on_library_collapse_changed)
-        self._library_tree_logic.on_lock_state_changed = self._library_panel.set_tree_enabled
+        self._library_tree_logic.on_lock_state_changed = self._on_library_tree_lock_changed
         self._library_tree_logic.on_favorite_changed = self._repaint_library_favorites
         self._library_tree_logic.on_search_update_needed = self._library_panel.update_tree_visibility
 
@@ -176,8 +179,7 @@ class InstructionsTabCoordinator:
         )
         self._guarded_player = GuardedPlayer(
             self._instruction_player_logic,
-            dialogs=dialogs,
-            error_message=language_manager["global.player.message.audio_playback_error"],
+            failures=playback_failures,
         )
         self._waveform_panel = GUIInstructionWaveformPanel(
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM),
@@ -372,6 +374,13 @@ class InstructionsTabCoordinator:
         """Persists a center-column card's collapsed state so it restores on the next launch."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
 
+    def _on_library_tree_lock_changed(self, is_unlocked: bool) -> None:
+        """Enables the catalog's tree along with its lock, and loads a folder's remembered library once
+        the lock is let go."""
+        self._library_panel.set_tree_enabled(is_unlocked)
+        if is_unlocked:
+            self._library_logic.reload_remembered_library()
+
     def _repaint_library_favorites(self, node: FileSystemNode) -> None:
         """Repaints the row whose star was toggled: the catalog lists a library once, so it is one row."""
         self._library_panel.update_favorite_indicators((node,))
@@ -501,18 +510,22 @@ class InstructionsTabCoordinator:
     def is_library_generating(self) -> bool:
         return self._library_logic.is_library_generating()
 
-    def guard_exit(self, proceed: VoidCallback) -> None:
-        """Lets the exit go on, asking first while a library is being built, which exiting stops."""
-        if not self.is_library_generating():
-            proceed()
-            return
+    def guard_exit(self, proceed: VoidCallback, decline: VoidCallback) -> None:
+        """Lets the exit go on, asking first while a library is being built, which exiting stops.
 
+        The question reads the library once the screen is free for it, so a build that ended
+        meanwhile is asked about no more. Cancel keeps the library building and turns the exit away.
+        """
+        asking(self.is_library_generating, self._ask_before_exit, self._dialogs.when_free)(proceed, decline)
+
+    def _ask_before_exit(self, proceed: VoidCallback, decline: VoidCallback) -> None:
         self._dialogs.show_confirmation(
             TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
             self._language_manager["global.dialog.message.exit_library_generation_in_progress"],
             self._language_manager["global.dialog.title.exit_confirmation"],
             proceed,
             ok_label=self._language_manager["global.dialog.label.exit"],
+            on_cancel=decline,
         )
 
     def refresh_generate_button(self) -> None:

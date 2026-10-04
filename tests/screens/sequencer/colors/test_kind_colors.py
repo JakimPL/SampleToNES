@@ -12,7 +12,7 @@ from sampletones_core.utils.display import NOTE_OFF
 from tests.suite.screens.dearpygui.items.colors import rounded_color
 from tests.suite.screens.palettes import Color, shipped_palettes, token_color
 from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import forgive_the_hover_race, leave_letting_the_project_go
+from tests.suite.screens.steps.sequencer import leave_letting_the_project_go
 from tests.suite.screens.views.history import HistoryLine
 from tests.suite.screens.worlds.songs import BASS_ROW, BASS_VOICE, LINE, PAD, PAD_ROW
 
@@ -193,7 +193,6 @@ class TestColorsFollowTheVoice:
             older = lines[len(lines) - count]
             assert older.segments == line.segments
             assert position_color(older, PAD_NUMBER) == instrument
-            forgive_the_hover_race(screen)
 
         screen.scenario(
             place_the_instrument,

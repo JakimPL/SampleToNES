@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Final
 
 import pytest
 
@@ -8,6 +9,7 @@ from sampletones_core.library.data import InstructionLibraryData
 from sampletones_core.library.key import InstructionLibraryKey
 from sampletones_core.library.library import InstructionLibrary
 from sampletones_core.library.state import LibraryState
+from tests.suite.files import requires_symlinks
 
 
 @pytest.fixture(scope="module")
@@ -37,6 +39,10 @@ def library_key(
 @pytest.fixture
 def empty_library_data(config: Config) -> InstructionLibraryData:
     return InstructionLibraryData.create(config, {})
+
+
+LINK_TARGET: Final[str] = "libraries"
+LINK: Final[str] = "linked_libraries"
 
 
 class TestInstructionLibraryFromConfig:
@@ -133,3 +139,18 @@ class TestInstructionLibrarySaveLoad:
     ) -> None:
         path = library.get_path(library_key)
         assert path.name == library_key.filename
+
+    @requires_symlinks
+    def test_a_library_written_through_a_link_to_a_folder_yet_to_exist_makes_that_folder(
+        self,
+        library_key: InstructionLibraryKey,
+        empty_library_data: InstructionLibraryData,
+        tmp_path: Path,
+    ) -> None:
+        target = tmp_path / LINK_TARGET
+        link = tmp_path / LINK
+        link.symlink_to(target, target_is_directory=True)
+
+        InstructionLibrary(directory=str(link)).write_data(library_key, empty_library_data)
+
+        assert (target / library_key.filename).is_file()

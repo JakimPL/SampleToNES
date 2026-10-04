@@ -11,7 +11,16 @@ from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_EXIT_CONFIRMA
 from sampletones_application.tags.instructions import TAG_INSTRUCTIONS_LIBRARY_DIALOG_REBUILD_CONFIRMATION
 from sampletones_core.library import LibraryState
 from sampletones_shared.exceptions import LibraryDisplayError
+from tests.suite.frames import held_frames
 from tests.suite.language import FakeLanguageManager
+from tests.suite.questions import (
+    StandingWindow,
+    assert_the_answers_reach,
+    dialogs_on_the_line,
+    standing_window,
+)
+
+__all__ = ["held_frames", "standing_window"]
 
 GENERATION_STATUS_TITLE_KEY: Final[str] = "instructions.library.title.generation_status_dialog"
 REMOVE_LIBRARY_MESSAGE_KEY: Final[str] = "instructions.library.message.remove_library_message"
@@ -27,7 +36,7 @@ def _coordinator(state: LibraryState) -> InstructionsTabCoordinator:
     coordinator = InstructionsTabCoordinator.__new__(InstructionsTabCoordinator)
     coordinator._library_logic = MagicMock()
     coordinator._library_logic.config_library_state.return_value = state
-    coordinator._dialogs = MagicMock()
+    coordinator._dialogs = dialogs_on_the_line()
     coordinator._language_manager = FakeLanguageManager()
     return coordinator
 
@@ -90,7 +99,7 @@ def _generation_coordinator(
     heavy constructor."""
     coordinator = InstructionsTabCoordinator.__new__(InstructionsTabCoordinator)
     coordinator._is_converter_visible = lambda: converter_visible
-    coordinator._dialogs = MagicMock()
+    coordinator._dialogs = dialogs_on_the_line()
     coordinator._language_manager = FakeLanguageManager()
     coordinator._ttl_generation_status = GENERATION_STATUS_TITLE_KEY
     return coordinator
@@ -122,7 +131,7 @@ def _remove_library_coordinator(
     coordinator = InstructionsTabCoordinator.__new__(InstructionsTabCoordinator)
     coordinator._library_logic = MagicMock()
     coordinator._library_logic.current_library_key = current_library_key
-    coordinator._dialogs = MagicMock()
+    coordinator._dialogs = dialogs_on_the_line()
     coordinator._instruction_player_logic = MagicMock()
     coordinator._on_audio_state_changed = MagicMock()
     coordinator._close_instruction = MagicMock()
@@ -298,7 +307,7 @@ def _loaded_coordinator(*, display_error: Exception) -> InstructionsTabCoordinat
     coordinator._spectrum_panel = MagicMock()
     coordinator._instruction_player_logic = MagicMock()
     coordinator._instruction_details_logic = MagicMock()
-    coordinator._dialogs = MagicMock()
+    coordinator._dialogs = dialogs_on_the_line()
     coordinator._language_manager = FakeLanguageManager()
     coordinator._on_audio_state_changed = MagicMock()
     return coordinator
@@ -338,8 +347,30 @@ class TestTheExitAsksAboutALibraryBeingBuilt:
     def test_an_idle_library_lets_the_exit_go_on(self) -> None:
         coordinator = self._coordinator(generating=False)
         proceed = MagicMock()
+        decline = MagicMock()
 
-        coordinator.guard_exit(proceed)
+        coordinator.guard_exit(proceed, decline)
+
+        proceed.assert_called_once_with()
+        decline.assert_not_called()
+        coordinator._dialogs.show_confirmation.assert_not_called()
+
+    def test_a_question_waits_while_another_window_stands(self, standing_window: StandingWindow) -> None:
+        coordinator = self._coordinator(generating=True)
+
+        coordinator.guard_exit(MagicMock(), MagicMock())
+
+        coordinator._dialogs.show_confirmation.assert_not_called()
+        standing_window.leave()
+        coordinator._dialogs.show_confirmation.assert_called_once()
+
+    def test_a_library_finished_meanwhile_lets_the_exit_go_on(self, standing_window: StandingWindow) -> None:
+        coordinator = self._coordinator(generating=True)
+        proceed = MagicMock()
+        coordinator.guard_exit(proceed, MagicMock())
+
+        coordinator._library_logic.is_library_generating.return_value = False
+        standing_window.leave()
 
         proceed.assert_called_once_with()
         coordinator._dialogs.show_confirmation.assert_not_called()
@@ -347,12 +378,14 @@ class TestTheExitAsksAboutALibraryBeingBuilt:
     def test_a_library_being_built_asks_first(self) -> None:
         coordinator = self._coordinator(generating=True)
         proceed = MagicMock()
+        decline = MagicMock()
 
-        coordinator.guard_exit(proceed)
+        coordinator.guard_exit(proceed, decline)
 
         proceed.assert_not_called()
+        decline.assert_not_called()
         args, kwargs = coordinator._dialogs.show_confirmation.call_args
         assert args[0] == TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION
         assert args[1] == EXIT_LIBRARY_MESSAGE_KEY
-        assert args[3] is proceed
         assert kwargs["ok_label"] == EXIT_LABEL_KEY
+        assert_the_answers_reach(confirm=args[3], cancel=kwargs["on_cancel"], proceed=proceed, decline=decline)

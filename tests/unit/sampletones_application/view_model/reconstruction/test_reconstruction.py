@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 import pytest
 
@@ -9,6 +10,7 @@ from sampletones_application.view_model.reconstruction.paths.path import (
 from sampletones_application.view_model.reconstruction.paths.state import (
     ReconstructionPathState,
 )
+from sampletones_application.view_model.reconstruction.rate import RateLock
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
@@ -105,6 +107,7 @@ class TestReconstructionViewModelEnablement:
             reconstruction_file=ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, paths=()),
             original_audio=ReconstructionPathViewModel(state=case.original_audio_state, paths=()),
             nes_frequency=None,
+            rate_lock=None,
         )
 
         assert view_model.audio_source_enabled is case.audio_source_enabled
@@ -113,10 +116,11 @@ class TestReconstructionViewModelEnablement:
 
 
 class TestReconstructionViewModelNesFrequency:
-    """The rate is the tab's to change while the document has a file, and the project's once detached."""
+    """The rate is the tab's to change while nothing locks it, and a lock always comes with its hint."""
 
     @staticmethod
-    def _view_model(*, loaded: bool, file_state: ReconstructionPathState) -> ReconstructionViewModel:
+    def _view_model(*, loaded: bool, rate_lock: Optional[RateLock]) -> ReconstructionViewModel:
+        file_state = ReconstructionPathState.AVAILABLE if loaded else ReconstructionPathState.EMPTY
         return ReconstructionViewModel(
             reconstruction_loaded=loaded,
             playing_channels=frozenset(),
@@ -124,27 +128,26 @@ class TestReconstructionViewModelNesFrequency:
             reconstruction_file=ReconstructionPathViewModel(state=file_state, paths=()),
             original_audio=ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, paths=()),
             nes_frequency=None,
+            rate_lock=rate_lock,
         )
 
-    @pytest.mark.parametrize(
-        "file_state",
-        [ReconstructionPathState.AVAILABLE, ReconstructionPathState.NOT_FOUND],
-        ids=lambda state: state.name.lower(),
-    )
-    def test_a_document_with_a_file_takes_a_new_rate(self, file_state: ReconstructionPathState) -> None:
-        view_model = self._view_model(loaded=True, file_state=file_state)
+    def test_a_document_nothing_locks_takes_a_new_rate(self) -> None:
+        view_model = self._view_model(loaded=True, rate_lock=None)
 
         assert view_model.nes_frequency_editable
         assert not view_model.show_nes_frequency_hint
 
-    def test_a_document_detached_from_its_file_follows_the_project(self) -> None:
-        view_model = self._view_model(loaded=True, file_state=ReconstructionPathState.NOT_APPLICABLE)
+    @pytest.mark.parametrize("rate_lock", list(RateLock), ids=lambda rate_lock: rate_lock.value)
+    def test_a_locked_document_keeps_its_rate_and_explains_it(self, rate_lock: RateLock) -> None:
+        """A project sample and a document with no file are both locked, each for its own reason."""
+        view_model = self._view_model(loaded=True, rate_lock=rate_lock)
 
         assert not view_model.nes_frequency_editable
         assert view_model.show_nes_frequency_hint
+        assert view_model.rate_lock is rate_lock
 
     def test_an_empty_tab_takes_and_explains_nothing(self) -> None:
-        view_model = self._view_model(loaded=False, file_state=ReconstructionPathState.EMPTY)
+        view_model = self._view_model(loaded=False, rate_lock=None)
 
         assert not view_model.nes_frequency_editable
         assert not view_model.show_nes_frequency_hint

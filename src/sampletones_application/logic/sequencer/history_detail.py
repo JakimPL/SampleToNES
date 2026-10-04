@@ -89,7 +89,12 @@ class SequencerHistoryDetail:
     read as two-digit hex; channels use the ``P``/``p``/``T``/``N`` abbreviations,
     concatenated when a sample-column gesture spans several channels. A gesture on the
     voice pool names its voice in the color of the kind that voice is, so a recording
-    and a hand-written one read apart down the list of entries.
+    and a hand-written one read apart down the list of entries. Every line about a voice
+    the pool holds, whether the gesture removes, replaces, renames, moves or duplicates it,
+    names the voice the same way, by its position and by its name, so a reader finds it in
+    the list whichever gesture the line records. A line about an added voice names it by
+    its name, which is what the adding hook carries. A line about an edit inside a voice
+    names the voice by its position, beside what the edit touched.
     """
 
     def __init__(
@@ -263,10 +268,7 @@ class SequencerHistoryDetail:
         return (self._name(name, VoiceKind.INSTRUMENT),)
 
     def remove_voice(self, voice_id: str) -> Segments:
-        return (
-            self._voice(voice_id, colon=True),
-            self._voice_name(voice_id),
-        )
+        return self._named_voice(voice_id)
 
     def replace_sample(self, voice_id: str, name: str) -> Segments:
         """Describes a reconstruction substitution as the sample's position and the two names.
@@ -275,36 +277,36 @@ class SequencerHistoryDetail:
         caller builds this detail while the sample still holds the reconstruction being replaced.
         """
         return (
-            self._voice(voice_id, colon=True),
-            self._voice_name(voice_id),
+            *self._named_voice(voice_id),
             self._arrow(),
             self._name(name, VoiceKind.SAMPLE),
         )
 
     def rename_voice(self, voice_id: str, name: str) -> Segments:
-        """Describes a rename as the name the voice carries and the one it takes.
+        """Describes a rename as the voice as it stands and the name it takes.
 
-        Both read in the voice's own kind, which the caller builds this detail under while the
-        pool still holds the name being left behind.
+        Both names read in the voice's own kind, which the caller builds this detail under while
+        the pool still holds the name being left behind.
         """
         return (
-            self._voice_name(voice_id),
+            *self._named_voice(voice_id),
             self._arrow(),
             self._name(name, self._voices_logic.voice_kind(voice_id)),
         )
 
     def move_voice(self, voice_id: str, to_index: int) -> Segments:
+        """Describes a move as the voice where it stands and the position it takes.
+
+        The caller builds this detail while the voice still stands where the move takes it from.
+        """
         return (
-            self._voice(voice_id),
+            *self._named_voice(voice_id),
             self._arrow(),
             self._value(display_id(to_index)),
         )
 
     def duplicate_voice(self, voice_id: str) -> Segments:
-        return (
-            self._voice(voice_id, colon=True),
-            self._voice_name(voice_id),
-        )
+        return self._named_voice(voice_id)
 
     def edit_reconstruction(
         self,
@@ -467,6 +469,13 @@ class SequencerHistoryDetail:
         kind: Optional[VoiceKind],
     ) -> HistoryDetailSegment:
         return HistoryDetailSegment(text=text, role=_kind_role(kind))
+
+    def _named_voice(self, voice_id: str) -> Segments:
+        """A voice the pool holds, read as its position and its name in the color of its kind."""
+        return (
+            self._voice(voice_id, colon=True),
+            self._voice_name(voice_id),
+        )
 
     def _voice_name(self, voice_id: str) -> HistoryDetailSegment:
         """The name a voice in the pool carries, read in the color of the kind it is."""

@@ -9,13 +9,13 @@ class KeybindingRow(BaseModel, frozen=True):
     """One action as the keybindings dialog lists it: its name, its label, and the keys it answers.
 
     An action travels under the name a keybinding file writes it by, which is the identity a stored
-    preference is keyed by as well, so a row states which action it stands for without the view
-    reaching into the shortcut vocabulary.
+    preference is keyed by as well, so a row states which action it stands for in the terms the view
+    reads. Its keys read as a list joined by commas, main key first, and empty while it is unbound.
     """
 
     action: str
     label: str
-    combination: str
+    keys: str
 
     def matches(self, text: str) -> bool:
         """Whether the row answers a filter, which reads both what it is called and what it answers.
@@ -24,10 +24,10 @@ class KeybindingRow(BaseModel, frozen=True):
             text: What the reader typed, matched in any capitalization.
 
         Returns:
-            bool: True while the label or the combination holds the text, and for an empty filter.
+            bool: True while the label or the keys hold the text, and for an empty filter.
         """
         wanted = text.strip().casefold()
-        return wanted in self.label.casefold() or wanted in self.combination.casefold()
+        return wanted in self.label.casefold() or wanted in self.keys.casefold()
 
 
 class KeybindingGroup(BaseModel, frozen=True):
@@ -46,13 +46,14 @@ class KeybindingGroup(BaseModel, frozen=True):
 class KeybindingsViewModel(BaseModel, frozen=True):
     """What the keybindings dialog draws: the actions listed, the selection standing, and its state.
 
-    The dialog edits a draft the owner holds, so what shows here is the draft rather than the keys
-    the application is running under; the two meet when the reader confirms.
+    The dialog edits a draft the owner holds, so what shows here is the draft. It reaches the keys
+    the application runs under when the reader confirms. ``keys`` is what the entry box shows: the
+    selected action's keys joined by commas.
     """
 
     groups: Tuple[KeybindingGroup, ...]
     schemes: Tuple[str, ...]
     scheme: str
     selected: Optional[str]
-    combination: str
+    keys: str
     message: str

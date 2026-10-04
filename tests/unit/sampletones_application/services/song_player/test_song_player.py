@@ -3,6 +3,7 @@ from typing import Callable, Final, List, Optional, Tuple
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+import pytest
 
 from sampletones_application.services.song_player.result import (
     SongPlaybackError,
@@ -14,9 +15,12 @@ from sampletones_application.services.song_player.service import (
     SongPlayerService,
     _RenderedRow,
 )
+from sampletones_core.audio.device import CurrentDevice
 from sampletones_core.project.song_position import SongPosition
+from sampletones_shared.exceptions import NoOutputDeviceError, PlaybackError
 
 SAMPLE_RATE: Final[int] = 44100
+SPEAKERS: Final[CurrentDevice] = CurrentDevice(device_index=0, name="Speakers", sample_rate=SAMPLE_RATE, host_api=0)
 WRITE_BLOCK: Final[int] = 64
 WAIT_TIMEOUT: Final[float] = 5.0
 SHORT_JOIN_TIMEOUT: Final[float] = 0.05
@@ -113,6 +117,7 @@ def _close_stream(stream: _FakeStream) -> None:
 def _make_device_manager(stream: Optional[_FakeStream] = None) -> MagicMock:
     """A device manager that winds a handed-back stream down as the real one does."""
     audio_device_manager = MagicMock()
+    audio_device_manager.require_output.return_value = SPEAKERS
     audio_device_manager.sample_rate = SAMPLE_RATE
     audio_device_manager.buffer_size = WRITE_BLOCK
     audio_device_manager.open_output_stream.return_value = stream
@@ -132,6 +137,13 @@ def _make_streaming_service(
         should_loop=lambda: False,
         master_gain=lambda: 1.0,
     )
+
+
+def _assert_names_the_failed_write(result: SongPlayerResult, error: OSError) -> None:
+    """Holds the song's end to the playback error a failed write names, the words every playback reports it in."""
+    assert isinstance(result, SongPlaybackError)
+    assert isinstance(result.error, PlaybackError)
+    assert result.error.__cause__ is error
 
 
 def _wedged_thread(gate: threading.Event) -> threading.Thread:
@@ -183,7 +195,7 @@ class TestSongPlayerServiceSeek:
 
     def test_seek_sets_synthesizer_position_when_alive(self) -> None:
         service = _make_service()
-        service._write_thread = MagicMock(is_alive=MagicMock(return_value=True))
+        service._holding_output.set()
 
         service.seek(2)
 
@@ -191,7 +203,7 @@ class TestSongPlayerServiceSeek:
 
     def test_seek_does_not_reset_voices(self) -> None:
         service = _make_service()
-        service._write_thread = MagicMock(is_alive=MagicMock(return_value=True))
+        service._holding_output.set()
 
         service.seek(2)
 
@@ -208,7 +220,7 @@ class TestSongPlayerServiceRelocate:
 
     def test_relocate_keeps_current_row_when_alive(self) -> None:
         service = _make_service()
-        service._write_thread = MagicMock(is_alive=MagicMock(return_value=True))
+        service._holding_output.set()
         service._synthesizer.row_index = 5
 
         service.relocate(2)
@@ -217,7 +229,7 @@ class TestSongPlayerServiceRelocate:
 
     def test_relocate_does_not_reset_voices(self) -> None:
         service = _make_service()
-        service._write_thread = MagicMock(is_alive=MagicMock(return_value=True))
+        service._holding_output.set()
         service._synthesizer.row_index = 0
 
         service.relocate(2)
@@ -392,7 +404,8 @@ class TestSongPlayerServicePrefetch:
         assert list(service._buffer) == [None]
         service._synthesizer.render_row.assert_not_called()
 
-    def test_drain_writes_buffered_rows_then_reports_stopped(self) -> None:
+    def test_drain_writes_buffered_rows_then_answers_the_end(self) -> None:
+        """The drain answers that the song ended, and the writer reports it once the stream is back."""
         service = _make_service()
         received = []
         service.subscribe(received.append)
@@ -403,12 +416,12 @@ class TestSongPlayerServicePrefetch:
         service._buffer.append(None)
 
         mock_stream = MagicMock()
-        service._drain_to_stream(mock_stream)
+        ended = service._drain_to_stream(mock_stream)
 
+        assert ended is True
         mock_stream.write.assert_called_once()
-        assert isinstance(received[0], SongPositionUpdate)
+        assert [type(result) for result in received] == [SongPositionUpdate]
         assert received[0].position is position
-        assert isinstance(received[-1], SongPlaybackStopped)
 
     def test_drain_returns_without_terminal_when_stopping(self) -> None:
         service = _make_service()
@@ -419,8 +432,9 @@ class TestSongPlayerServicePrefetch:
         service._buffer.append(_RenderedRow(chunk=np.ones(10, dtype=np.float32), position=SongPosition()))
 
         mock_stream = MagicMock()
-        service._drain_to_stream(mock_stream)
+        ended = service._drain_to_stream(mock_stream)
 
+        assert ended is False
         mock_stream.write.assert_not_called()
         assert received == []
 
@@ -510,6 +524,7 @@ class TestSongPlayerServiceStopQuiescence:
     def test_stop_keeps_a_worker_that_outlives_the_deadline(self) -> None:
         gate = threading.Event()
         service = _make_service()
+        service._holding_output.set()
         service._write_thread = _wedged_thread(gate)
 
         try:
@@ -525,6 +540,7 @@ class TestSongPlayerServiceStopQuiescence:
         gate = threading.Event()
         audio_device_manager = _make_device_manager(_FakeStream())
         service = _make_streaming_service(audio_device_manager)
+        service._holding_output.set()
         service._write_thread = _wedged_thread(gate)
 
         try:
@@ -534,6 +550,161 @@ class TestSongPlayerServiceStopQuiescence:
             audio_device_manager.open_output_stream.assert_not_called()
         finally:
             gate.set()
+
+
+class TestSongPlayerServiceWithNoOutput:
+    """A machine offering no output device refuses the song as it starts, before a thread starts.
+
+    The refusal is the device manager's own, raised from ``start`` for the caller's recovery boundary,
+    and the service stays idle with its synthesizer where it stood. A device in force starts the song.
+    """
+
+    def test_start_raises_the_refusal_and_stays_idle(self) -> None:
+        audio_device_manager = _make_device_manager(_FakeStream())
+        audio_device_manager.require_output.side_effect = NoOutputDeviceError("no device")
+        synthesizer = MagicMock()
+        service = SongPlayerService(
+            audio_device_manager,
+            synthesizer,
+            should_loop=lambda: False,
+            master_gain=lambda: 1.0,
+        )
+
+        with pytest.raises(NoOutputDeviceError):
+            service.start(order_position=2, row_index=3)
+
+        assert service.alive is False
+        assert service._render_thread is None
+        assert service._write_thread is None
+        synthesizer.set_position.assert_not_called()
+        audio_device_manager.open_output_stream.assert_not_called()
+
+    def test_a_device_in_force_starts_the_song(self) -> None:
+        stream = _FakeStream()
+        service = _make_streaming_service(_make_device_manager(stream))
+        service.subscribe(lambda result: None)
+
+        service.start()
+
+        assert stream.entered_write.wait(timeout=WAIT_TIMEOUT)
+        service.stop()
+
+
+class TestSongPlayerServiceEndOfSong:
+    """The song lets go of the output before it reports how it ended, so a listener reads it free."""
+
+    def record_ends(self, service: SongPlayerService) -> Tuple[List[Tuple[SongPlayerResult, bool]], threading.Event]:
+        """Subscribes a listener noting each terminal result with whether the song held the output then."""
+        ends: List[Tuple[SongPlayerResult, bool]] = []
+        reported = threading.Event()
+
+        def listen(result: SongPlayerResult) -> None:
+            if isinstance(result, (SongPlaybackStopped, SongPlaybackError)):
+                ends.append((result, service.alive))
+                reported.set()
+
+        service.subscribe(listen)
+        return ends, reported
+
+    def test_the_output_is_held_from_the_start(self) -> None:
+        gate = threading.Event()
+        stream = _FakeStream(gate=gate)
+        service = _make_streaming_service(_make_device_manager(stream), rows=8)
+        service.subscribe(lambda result: None)
+
+        service.start()
+        try:
+            assert service.alive is True
+            assert stream.entered_write.wait(timeout=WAIT_TIMEOUT)
+            assert service.alive is True
+        finally:
+            gate.set()
+            service.stop()
+
+    def test_a_song_reaching_its_end_reports_it_with_the_output_free(self) -> None:
+        stream = _FakeStream()
+        service = _make_streaming_service(_make_device_manager(stream))
+        ends, reported = self.record_ends(service)
+
+        service.start()
+
+        assert reported.wait(timeout=WAIT_TIMEOUT)
+        assert ends == [(SongPlaybackStopped(), False)]
+        assert stream.closed.is_set()
+
+    def test_a_failing_write_reports_it_with_the_output_free(self) -> None:
+        error = OSError("device disappeared")
+        service = _make_streaming_service(_make_device_manager(_FakeStream(error=error)))
+        ends, reported = self.record_ends(service)
+
+        service.start()
+
+        assert reported.wait(timeout=WAIT_TIMEOUT)
+        [(result, alive)] = ends
+        _assert_names_the_failed_write(result, error)
+        assert alive is False
+
+    def test_a_stream_the_device_refuses_reports_the_error_with_the_output_free(self) -> None:
+        """The refusal reaches the listener once, as the error the device manager raised."""
+        refusal = PlaybackError("Failed to open audio stream: device busy")
+        audio_device_manager = _make_device_manager()
+        audio_device_manager.open_output_stream.side_effect = refusal
+        service = _make_streaming_service(audio_device_manager)
+        ends, reported = self.record_ends(service)
+
+        service.start()
+
+        assert reported.wait(timeout=WAIT_TIMEOUT)
+        assert service._write_thread is not None
+        service._write_thread.join(timeout=WAIT_TIMEOUT)
+        assert ends == [(SongPlaybackError(error=refusal), False)]
+
+    def test_a_close_the_device_fails_reports_it_with_the_output_free(self) -> None:
+        failure = PlaybackError("Failed to close the audio stream: the device went away")
+        audio_device_manager = _make_device_manager(_FakeStream())
+        audio_device_manager.close_output_stream.side_effect = failure
+        service = _make_streaming_service(audio_device_manager)
+        ends, reported = self.record_ends(service)
+
+        service.start()
+
+        assert reported.wait(timeout=WAIT_TIMEOUT)
+        assert ends == [(SongPlaybackError(error=failure), False)]
+
+    def test_a_close_the_device_failed_leaves_the_song_free_to_start_again(self) -> None:
+        audio_device_manager = _make_device_manager(_FakeStream())
+        audio_device_manager.close_output_stream.side_effect = PlaybackError("Failed to close the audio stream")
+        service = _make_streaming_service(audio_device_manager)
+        _, reported = self.record_ends(service)
+        service.start()
+        assert reported.wait(timeout=WAIT_TIMEOUT)
+        assert service._write_thread is not None
+        service._write_thread.join(timeout=WAIT_TIMEOUT)
+
+        audio_device_manager.close_output_stream.side_effect = _close_stream
+        service.start()
+        service.stop()
+
+        assert audio_device_manager.open_output_stream.call_count == 2
+
+    def test_a_stop_reports_no_end(self) -> None:
+        gate = threading.Event()
+        stream = _FakeStream(gate=gate)
+        service = _make_streaming_service(_make_device_manager(stream), rows=8)
+        ends, _ = self.record_ends(service)
+
+        service.start()
+        assert stream.entered_write.wait(timeout=WAIT_TIMEOUT)
+        releaser = threading.Timer(WRITE_RELEASE_DELAY, gate.set)
+        releaser.start()
+        try:
+            service.stop()
+        finally:
+            releaser.cancel()
+            gate.set()
+
+        assert ends == []
+        assert service.alive is False
 
 
 class TestSongPlayerServiceStreamOwnership:
@@ -573,7 +744,8 @@ class TestSongPlayerServiceWriteFailure:
 
         service._write_loop()
 
-        assert received == [SongPlaybackError(error=error)]
+        [result] = received
+        _assert_names_the_failed_write(result, error)
 
     def test_a_failing_write_still_closes_the_stream(self) -> None:
         stream = _FakeStream(error=OSError("device disappeared"))

@@ -11,6 +11,7 @@ from sampletones_application.constants.playback import FollowMode
 from sampletones_application.coordinators.edit.protocol import EditSurfaceProtocol
 from sampletones_application.coordinators.export import InstrumentExportCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
+from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.coordinators.tabs.sequencer.blocks import SequencerBlocks
@@ -62,7 +63,7 @@ from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequenc
 from sampletones_application.ui.panels.sequencer.voices.panel import (
     GUISequencerVoicesPanel,
 )
-from sampletones_application.utils.callbacks.gates import Gate, gated
+from sampletones_application.utils.callbacks.gates import Wait, gated
 from sampletones_application.utils.gui.clipboard.selection import select_text_clipboard
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
@@ -108,6 +109,7 @@ class SequencerTabCoordinator:
         layout: SequencerTabParameters,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
+        playback_failures: PlaybackFailurePresenter,
         status_bar: GUIStatusBar,
         on_edit_voice_requested: StringCallback,
         on_favorite_changed: Callable[[FileSystemNode], None],
@@ -115,7 +117,8 @@ class SequencerTabCoordinator:
         on_tab_switch: Callable[[Tab], None],
         on_nes_frequency_changed: Callable[[int], None],
         on_channels_changed: VoidCallback,
-        after_edits: Gate,
+        on_audio_state_changed: VoidCallback,
+        after_edits: Wait,
     ) -> None:
         self._project_controller = project_controller
         self._session_manager = session_manager
@@ -128,9 +131,11 @@ class SequencerTabCoordinator:
         self._on_tab_switch = on_tab_switch
         self._on_nes_frequency_changed = on_nes_frequency_changed
         self._on_channels_changed = on_channels_changed
+        self._on_audio_state_changed = on_audio_state_changed
         self._after_edits = after_edits
         self._language_manager = language_manager
         self._dialogs = dialogs
+        self._playback_failures = playback_failures
 
         self._nes_frequency_change_acknowledged: bool = False
 
@@ -191,8 +196,7 @@ class SequencerTabCoordinator:
         )
         self._guarded_player = GuardedPlayer(
             self._song_player_logic,
-            dialogs=dialogs,
-            error_message=language_manager["global.player.message.audio_playback_error"],
+            failures=playback_failures,
         )
         self._sequencer_tracker_panel: GUISequencerTrackerPanel = GUISequencerTrackerPanel(
             self._sequencer_tracker_logic.settings,
@@ -476,7 +480,7 @@ class SequencerTabCoordinator:
             self._frames.clear,
             detail=self._history_detail.clear_frame,
         )
-        self._sequencer_order_panel.on_play_from_requested = self._frames.play_from
+        self._sequencer_order_panel.on_play_from_requested = self._play_from_frame
         self._sequencer_order_panel.on_move_requested = self._recorder.undoable(
             HistoryAction.MOVE_FRAME,
             self._frames.move,
@@ -603,6 +607,7 @@ class SequencerTabCoordinator:
         self._song_player_logic.on_position_changed = self._on_player_position_changed
         self._song_player_logic.on_view_changed = self._on_player_view_changed
         self._song_player_logic.on_error = self._on_player_error
+        self._song_player_logic.on_change_audio_state = self._on_audio_state_changed
 
     def _wire_project_callbacks(self) -> None:
         self._project_controller.on_settings_changed = self._sequencer_tracker_logic.push_settings
@@ -644,7 +649,11 @@ class SequencerTabCoordinator:
 
     def play_from_current_frame(self) -> None:
         """Plays from the frame the tracker is showing, seeking in place when already playing."""
-        self._frames.play_from(self._sequencer_tracker_logic.frame_index)
+        self._play_from_frame(self._sequencer_tracker_logic.frame_index)
+
+    def _play_from_frame(self, position: int) -> None:
+        """Plays from a frame inside the player's recovery boundary, the one Play goes through."""
+        self._guarded_player.run_guarded(partial(self._frames.play_from, position))
 
     def add_instrument(self) -> None:
         """Appends a hand-written voice to the pool, the menu bar's entry to the gesture."""
@@ -740,6 +749,7 @@ class SequencerTabCoordinator:
         self._sequencer_tracker_panel.set_enabled(is_open)
         self._sequencer_order_panel.set_enabled(is_open)
         self._sequencer_history_panel.set_enabled(is_open)
+        self._sequencer_voices_panel.set_enabled(is_open)
 
     def repaint(self) -> None:
         """Draws every table again so its tints take the palette now in place.
@@ -771,7 +781,8 @@ class SequencerTabCoordinator:
         self._sequencer_order_logic.push_order()
 
     def _on_player_error(self, error: Exception) -> None:
-        self._dialogs.show_error(error)
+        """Shows the reader what stopped the song on the thread playing it, the way every tab shows it."""
+        self._playback_failures.present_playing_failure(error)
 
     def _on_player_view_changed(self, view_model: SongPlayerViewModel) -> None:
         """Settles the marks the transport owns, and how far the grid chases the playhead.
@@ -801,7 +812,7 @@ class SequencerTabCoordinator:
         self._playhead.mark()
 
     def _on_preview_error(self, exception: Exception) -> None:
-        FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
+        FrameCallbackManager.set_frame_callback(lambda: self._playback_failures.present(exception, message=None))
 
     def _on_browser_recordings_requested(self, path: Path) -> None:
         """Hands the browser what a document names, where it has already been read."""
@@ -837,9 +848,12 @@ class SequencerTabCoordinator:
 
     def _on_tracker_play_from_row(self, row_index: int) -> None:
         """Starts playback from the right-clicked row of the frame the tracker is showing."""
-        self._song_player_logic.play_from(
-            self._sequencer_tracker_logic.frame_index,
-            row_index,
+        self._guarded_player.run_guarded(
+            partial(
+                self._song_player_logic.play_from,
+                self._sequencer_tracker_logic.frame_index,
+                row_index,
+            )
         )
 
     def _on_voices_changed(

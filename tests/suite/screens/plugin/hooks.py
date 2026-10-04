@@ -8,8 +8,9 @@ from tests.suite.screens.application.running import ScreenApplication
 from tests.suite.screens.dearpygui.hosting import host
 from tests.suite.screens.dearpygui.isolation import ReportRecorder, run_isolated
 from tests.suite.screens.environment import REPORT_VARIABLE, ScenarioFolders, child_environment
+from tests.suite.screens.homes import let_go, make_worker_homes
 from tests.suite.screens.paths import SCREENS_DIRECTORY
-from tests.suite.screens.plugin.constants import DISPLAY_KEY
+from tests.suite.screens.plugin.constants import DISPLAY_KEY, HOMES_KEY
 from tests.suite.screens.plugin.fixtures import _worker_display
 
 CHILD_TIMEOUT_SECONDS: Final[float] = 600.0
@@ -42,7 +43,7 @@ def pytest_runtest_protocol(
     if is_child_process() or not is_screen_item(item):
         return None
 
-    folders = ScenarioFolders.of(item.nodeid)
+    folders = ScenarioFolders.of(item.nodeid, _worker_homes(item.config))
     folders.prepare()
     environment = child_environment(
         os.environ,
@@ -50,6 +51,7 @@ def pytest_runtest_protocol(
         display=_worker_display(item.config),
     )
     item.ihook.pytest_runtest_logstart(nodeid=item.nodeid, location=item.location)
+    failed = False
     for report in run_isolated(
         item,
         environment=environment,
@@ -57,10 +59,27 @@ def pytest_runtest_protocol(
         report_path=folders.reports,
         timeout=CHILD_TIMEOUT_SECONDS,
     ):
+        failed = failed or report.failed
         item.ihook.pytest_runtest_logreport(report=report)
 
+    folders.finish(failed=failed)
     item.ihook.pytest_runtest_logfinish(nodeid=item.nodeid, location=item.location)
     return True
+
+
+def _worker_homes(config: pytest.Config) -> Path:
+    """The temporary folder this worker's scenarios keep their homes in, made with the first of them.
+
+    Each worker makes its own, named after its process, so runs from several checkouts at once keep
+    their homes apart, and each worker's first scenario lets go of what crashed workers left.
+    """
+    homes = config.stash.get(HOMES_KEY, None)
+    if homes is not None:
+        return homes
+
+    homes = make_worker_homes()
+    config.stash[HOMES_KEY] = homes
+    return homes
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -71,10 +90,14 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 def pytest_unconfigure(config: pytest.Config) -> None:
-    """Stops the virtual display this worker started, if it started one."""
+    """Stops the virtual display this worker started, and lets its temporary homes go, if it made them."""
     display = config.stash.get(DISPLAY_KEY, None)
     if display is not None:
         display.stop()
+
+    homes = config.stash.get(HOMES_KEY, None)
+    if homes is not None:
+        let_go(homes)
 
 
 @pytest.hookimpl(wrapper=True)

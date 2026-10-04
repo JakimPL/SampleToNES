@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Dict, Final, List, Optional, Tuple
 
 from sampletones_application.categories.elements.settings import (
     KeybindingActionElements,
@@ -15,7 +15,11 @@ from sampletones_application.tags.settings import (
 )
 from sampletones_application.ui.panels.dialogs.keybindings import GUIKeybindingsWindow
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
-from sampletones_application.utils.gui.keyboard.combination import KeyCombination
+from sampletones_application.utils.gui.keyboard.combination import (
+    KeyCombination,
+    combination_parts,
+    display_combinations,
+)
 from sampletones_application.utils.gui.shortcuts.catalog import ShortcutCatalog
 from sampletones_application.utils.gui.shortcuts.draft import ShortcutDraft
 from sampletones_application.utils.gui.shortcuts.ids import (
@@ -30,9 +34,11 @@ from sampletones_application.view_model.shared.keybindings import (
     KeybindingRow,
     KeybindingsViewModel,
 )
+from sampletones_shared.types.callback import VoidCallback
 
-NO_COMBINATION: str = ""
-NO_MESSAGE: str = ""
+NO_KEYS: Final[str] = ""
+NO_MESSAGE: Final[str] = ""
+ASSIGNMENT_SEPARATOR: Final[str] = "\n"
 
 
 class KeybindingsCoordinator:
@@ -43,8 +49,13 @@ class KeybindingsCoordinator:
     hands the draft's scheme to the source every action resolves against and writes the scheme name
     and the rebound actions to the session; canceling drops the draft and leaves the keys alone.
 
-    An assignment onto keys another action of the same scope holds is offered after a prompt naming
-    that action, which is then left unbound — one combination reaches one action within a scope.
+    An action answers a list of keys, main key first. A pressed key becomes the action's main key
+    and the keys it had follow it, while a written list becomes exactly its keys. An assignment
+    onto keys other actions of the same scope hold is offered after one prompt naming each holder,
+    which then gives up those keys and keeps the rest, since one combination reaches one action
+    within a scope. Declining the prompt brings the dialog back where the reader gave the keys: a
+    written list returns to the entry box, and a pressed key returns to its row listening for the
+    next press.
     """
 
     def __init__(
@@ -106,59 +117,132 @@ class KeybindingsCoordinator:
         self._window.update_view(self._view_model())
 
     def _type_combination(self, text: str) -> None:
-        """Gives the selected action the keys a reader wrote out, reporting what reads as no key."""
+        """Gives the selected action the list of keys a reader wrote out, reporting a part that reads
+        as no key.
+        """
         shortcut_id = self._require_selected()
-        try:
-            combination = KeyCombination.parse(text)
-        except KeyError:
-            self._message = self._template(KeybindingsElements.UNREADABLE_COMBINATION).format(combination=text)
-            self._window.update_view(self._view_model())
+        combinations = self._read_typed(text)
+        if combinations is None:
             return
 
-        self._assign(shortcut_id, combination)
+        self._assign(
+            shortcut_id,
+            combinations,
+            on_declined=self._window.resume,
+        )
+
+    def _read_typed(self, text: str) -> Optional[Tuple[KeyCombination, ...]]:
+        """The keys a written list names, or ``None`` once a part naming no key is reported."""
+        combinations: List[KeyCombination] = []
+        for part in combination_parts(text):
+            try:
+                combination = KeyCombination.parse(part)
+            except KeyError:
+                self._message = self._template(KeybindingsElements.UNREADABLE_COMBINATION).format(combination=part)
+                self._window.update_view(self._view_model())
+                return None
+
+            combinations.append(combination)
+
+        return tuple(combinations)
 
     def _capture_combination(self, combination: KeyCombination) -> None:
-        """Gives the selected action the keys a reader pressed."""
-        self._assign(self._require_selected(), combination)
+        """Makes the key a reader pressed the selected action's main key, its other keys following."""
+        shortcut_id = self._require_selected()
+        self._assign(
+            shortcut_id,
+            self._require_draft().keys_led_by(shortcut_id, combination),
+            on_declined=self._window.listen_again,
+        )
 
-    def _assign(self, shortcut_id: ShortcutId, combination: KeyCombination) -> None:
-        """Assigns the combination, asking first where another action of the scope holds it."""
+    def _assign(
+        self,
+        shortcut_id: ShortcutId,
+        combinations: Tuple[KeyCombination, ...],
+        *,
+        on_declined: VoidCallback,
+    ) -> None:
+        """Assigns the keys, asking first where other actions of the scope hold any of them.
+
+        Args:
+            shortcut_id: The action the keys go to.
+            combinations: Its keys, main key first.
+            on_declined: What brings the dialog back once the reader declines to take the keys.
+        """
         draft = self._require_draft()
         self._message = NO_MESSAGE
-        claimant = draft.claimant(shortcut_id, combination)
-        if claimant is None:
-            self._apply(draft.assign(shortcut_id, combination))
+        holders = draft.holders(shortcut_id, combinations)
+        if not holders:
+            self._apply(draft.assign(shortcut_id, combinations))
             return
 
-        self._window.yield_to(lambda: self._ask_to_reassign(shortcut_id, combination, claimant))
+        self._window.yield_to(
+            lambda: self._ask_to_reassign(
+                shortcut_id,
+                combinations,
+                holders,
+                on_declined=on_declined,
+            ),
+        )
 
     def _ask_to_reassign(
         self,
         shortcut_id: ShortcutId,
-        combination: KeyCombination,
-        claimant: ShortcutId,
+        combinations: Tuple[KeyCombination, ...],
+        holders: Dict[KeyCombination, ShortcutId],
+        *,
+        on_declined: VoidCallback,
     ) -> None:
-        message = self._template(KeybindingsElements.REASSIGN_CONFIRMATION).format(
-            combination=combination.display(),
-            holder=self._action_label(claimant),
-            action=self._action_label(shortcut_id),
-        )
         self._dialogs.show_confirmation(
             tag=TAG_SETTINGS_KEYBINDINGS_DIALOG_REASSIGN,
             title=self._title(KeybindingsElements.REASSIGN_CONFIRMATION),
-            message=message,
-            on_confirm=lambda: self._reassign(shortcut_id, combination),
-            on_cancel=self._window.resume,
+            message=self._reassign_question(shortcut_id, holders),
+            on_confirm=lambda: self._reassign(shortcut_id, combinations),
+            on_cancel=on_declined,
             ok_label=self._label(KeybindingsElements.REASSIGN_BUTTON),
         )
 
-    def _reassign(self, shortcut_id: ShortcutId, combination: KeyCombination) -> None:
-        """Takes the keys for the action the reader named, leaving the action that held them free."""
-        self._apply(self._require_draft().assign(shortcut_id, combination))
+    def _reassign_question(
+        self,
+        shortcut_id: ShortcutId,
+        holders: Dict[KeyCombination, ShortcutId],
+    ) -> str:
+        """The question naming each action that holds keys the reader is giving away.
+
+        One key taken reads as one sentence; several list each key beside the action holding it.
+        """
+        action = self._action_label(shortcut_id)
+        if len(holders) == 1:
+            ((combination, holder),) = holders.items()
+            return self._template(KeybindingsElements.REASSIGN_CONFIRMATION).format(
+                combination=combination.display(),
+                holder=self._action_label(holder),
+                action=action,
+            )
+
+        assignments = ASSIGNMENT_SEPARATOR.join(
+            self._template(KeybindingsElements.ASSIGNMENT).format(
+                combination=combination.display(),
+                holder=self._action_label(holder),
+            )
+            for combination, holder in holders.items()
+        )
+        return self._template(KeybindingsElements.REASSIGN_SEVERAL_CONFIRMATION).format(
+            assignments=assignments,
+            action=action,
+        )
+
+    def _reassign(
+        self,
+        shortcut_id: ShortcutId,
+        combinations: Tuple[KeyCombination, ...],
+    ) -> None:
+        """Gives the action the keys the reader named, each holder keeping the keys it has left."""
+        self._apply(self._require_draft().assign(shortcut_id, combinations))
         self._window.resume()
 
     def _clear(self) -> None:
-        """Leaves the selected action unbound, its keys free for another action to take."""
+        """Leaves the selected action unbound, every key it held free for another action to take."""
         self._message = NO_MESSAGE
         self._apply(self._require_draft().clear(self._require_selected()))
 
@@ -225,7 +309,7 @@ class KeybindingsCoordinator:
             schemes=self._shortcut_catalog.names,
             scheme=self._scheme_name,
             selected=None if self._selected is None else self._selected.value,
-            combination=self._selected_combination(draft),
+            keys=self._selected_keys(draft),
             message=self._message,
         )
 
@@ -245,22 +329,18 @@ class KeybindingsCoordinator:
             KeybindingRow(
                 action=shortcut_id.value,
                 label=self._action_label(shortcut_id),
-                combination=self._displayed(draft.combination(shortcut_id)),
+                keys=display_combinations(draft.keys(shortcut_id)),
             )
             for shortcut_id in ShortcutId
             if shortcut_id.category is category
         )
 
-    def _selected_combination(self, draft: ShortcutDraft) -> str:
-        """The keys the entry box shows, empty while no action is selected."""
+    def _selected_keys(self, draft: ShortcutDraft) -> str:
+        """The keys the entry box shows, joined by commas, and empty while no action is selected."""
         if self._selected is None:
-            return NO_COMBINATION
+            return NO_KEYS
 
-        return self._displayed(draft.combination(self._selected))
-
-    @staticmethod
-    def _displayed(combination: Optional[KeyCombination]) -> str:
-        return NO_COMBINATION if combination is None else combination.display()
+        return display_combinations(draft.keys(self._selected))
 
     def _action_label(self, shortcut_id: ShortcutId) -> str:
         """The name a reader finds an action under, which its element mirrors member for member."""

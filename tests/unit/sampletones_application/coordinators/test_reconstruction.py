@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
+from functools import partial
 from pathlib import Path
-from typing import Final, List, Optional, Tuple
+from typing import Callable, Final, List, Optional, Tuple
 from unittest.mock import MagicMock, call, patch
 
 import pytest
@@ -28,6 +29,7 @@ from sampletones_application.logic.reconstruction.rewrites.steps import (
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import ServiceSuccess
 from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED
+from sampletones_application.utils.callbacks.gates import Gate, pass_gates
 from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.constants.general import SILENT_VOLUME
@@ -42,11 +44,19 @@ from sampletones_shared.exceptions import (
     InvalidReconstructionValuesError,
 )
 from sampletones_shared.paths.extensions import EXT_FILE_PROJECT
+from sampletones_shared.types.callback import VoidCallback
 from tests.conftest import ReconstructionFactory
 from tests.suite.application import HeldQueue, held_queue, scheduling, synchronous_executor
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.frames import held_frames
 from tests.suite.language import FakeLanguageManager
+from tests.suite.questions import (
+    StandingWindow,
+    assert_the_answers_reach,
+    dialogs_on_the_line,
+    standing_window,
+)
 from tests.suite.stems import (
     SHARED_CHANNEL,
     SHARED_OWNERS,
@@ -59,7 +69,15 @@ from tests.suite.stems import (
     taking_turns_file,
 )
 
-__all__ = ["held_queue", "scheduling", "synchronous_executor", "taking_turns", "taking_turns_file"]
+__all__ = [
+    "held_frames",
+    "held_queue",
+    "scheduling",
+    "standing_window",
+    "synchronous_executor",
+    "taking_turns",
+    "taking_turns_file",
+]
 
 OPEN_VOICE_ID: Final[str] = "lead-id"
 HISTORY_BUDGET: Final[int] = 16
@@ -117,6 +135,39 @@ def _undo(coordinator: ReconstructionCoordinator, history: HistoryManager) -> No
     coordinator.after_edits(history.undo)
 
 
+def _load_by_hand(
+    coordinator: ReconstructionCoordinator,
+    filepath: Path,
+    decline: VoidCallback,
+) -> None:
+    """Asks to open ``filepath`` the way the reconstruction menu does, past the question it raises."""
+    pass_gates((coordinator.guard_load,), partial(coordinator.open, filepath), decline)
+
+
+def _load_converted(
+    coordinator: ReconstructionCoordinator,
+    filepath: Path,
+    decline: VoidCallback,
+) -> None:
+    """Asks to load what a conversion wrote the way the Converter's Load does, past the question it raises."""
+    pass_gates((partial(coordinator.guard_load_converted, filepath),), partial(coordinator.load, filepath), decline)
+
+
+def _edit_voice(
+    coordinator: ReconstructionCoordinator,
+    voice_id: str,
+    decline: VoidCallback,
+) -> None:
+    """Asks to edit a voice of the project the way the Sequencer does, past the question it raises."""
+    pass_gates((coordinator.guard_edit_voice,), partial(coordinator.open_project_voice, voice_id), decline)
+
+
+@pytest.fixture
+def decline() -> MagicMock:
+    """What a request the gates turn away runs, recording that it ran."""
+    return MagicMock()
+
+
 def _save(coordinator: ReconstructionCoordinator) -> None:
     """The reader pressing Save reconstruction, which the application holds until the edits before it land."""
     coordinator.after_edits(coordinator.save)
@@ -136,7 +187,7 @@ def reconstruction_coordinator() -> ReconstructionCoordinator:
         MagicMock(),
         MagicMock(),
         MagicMock(),
-        dialogs=MagicMock(),
+        dialogs=dialogs_on_the_line(),
         language_manager=MagicMock(),
         on_tab_switch=MagicMock(),
         on_session_state_changed=MagicMock(),
@@ -156,7 +207,7 @@ def _gating_coordinator(
         MagicMock(),
         MagicMock(),
         MagicMock(),
-        dialogs=MagicMock(),
+        dialogs=dialogs_on_the_line(),
         language_manager=MagicMock(),
         on_tab_switch=MagicMock(),
         on_session_state_changed=MagicMock(),
@@ -252,7 +303,7 @@ class TestAnEditIsRecordedBeforeItIsShown:
             MagicMock(),
             MagicMock(),
             MagicMock(),
-            dialogs=MagicMock(),
+            dialogs=dialogs_on_the_line(),
             language_manager=MagicMock(),
             on_tab_switch=MagicMock(),
             on_session_state_changed=MagicMock(),
@@ -402,6 +453,88 @@ class TestReconstructionRestorePropagatesUnexpected:
         reconstruction_coordinator._session_manager.set_current_reconstruction.assert_not_called()
 
 
+def _asked(coordinator: ReconstructionCoordinator) -> bool:
+    """Whether the coordinator put a question about the open document to the reader."""
+    return bool(coordinator._dialogs.show_save_confirmation.called or coordinator._dialogs.show_confirmation.called)
+
+
+class TestAQuestionAboutTheDocumentWaitsForTheScreen(BaseTestSuite):
+    """A guard asks about the open document once the screen is free for its question, reading it then.
+
+    A document saved or closed meanwhile lets the request through with no question.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        guard: Callable[[ReconstructionCoordinator], Gate]
+
+    test_cases = (
+        TestCase(label="load", guard=lambda coordinator: coordinator.guard_load),
+        TestCase(
+            label="load_converted",
+            guard=lambda coordinator: partial(coordinator.guard_load_converted, Path("written.stn")),
+        ),
+        TestCase(label="close", guard=lambda coordinator: coordinator.guard_close),
+        TestCase(label="exit", guard=lambda coordinator: coordinator.guard_exit),
+        TestCase(label="edit_voice", guard=lambda coordinator: coordinator.guard_edit_voice),
+    )
+
+    @pytest.fixture(name="unsaved")
+    def unsaved_fixture(self) -> ReconstructionCoordinator:
+        return _gating_coordinator(unsaved=True, embedded=False)
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_question_waits_while_another_window_stands(
+        self,
+        test_case: TestCase,
+        unsaved: ReconstructionCoordinator,
+        standing_window: StandingWindow,
+    ) -> None:
+        proceed = MagicMock()
+        decline = MagicMock()
+
+        test_case.guard(unsaved)(proceed, decline)
+
+        assert not _asked(unsaved)
+        proceed.assert_not_called()
+        decline.assert_not_called()
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_question_asks_once_the_window_leaves(
+        self,
+        test_case: TestCase,
+        unsaved: ReconstructionCoordinator,
+        standing_window: StandingWindow,
+    ) -> None:
+        proceed = MagicMock()
+        decline = MagicMock()
+        test_case.guard(unsaved)(proceed, decline)
+
+        standing_window.leave()
+
+        assert _asked(unsaved)
+        proceed.assert_not_called()
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_document_saved_meanwhile_goes_on_with_no_question(
+        self,
+        test_case: TestCase,
+        unsaved: ReconstructionCoordinator,
+        standing_window: StandingWindow,
+    ) -> None:
+        """Save on a question asked about a document closed meanwhile would ask the same question again."""
+        proceed = MagicMock()
+        decline = MagicMock()
+        test_case.guard(unsaved)(proceed, decline)
+
+        unsaved._reconstruction_manager.session.unsaved_changes = False
+        standing_window.leave()
+
+        proceed.assert_called_once_with()
+        decline.assert_not_called()
+        assert not _asked(unsaved)
+
+
 class TestSaveConfirmationGating(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
@@ -454,7 +587,7 @@ class TestSaveConfirmationGating(BaseTestSuite):
             embedded=test_case.embedded,
         )
 
-        coordinator.close_with_confirmation()
+        coordinator.guard_close(coordinator.close, MagicMock())
 
         if test_case.expects_prompt:
             coordinator._dialogs.show_save_confirmation.assert_called_once()
@@ -471,6 +604,7 @@ class TestSaveConfirmationGating(BaseTestSuite):
     def test_load_prompts_only_for_standalone_unsaved(
         self,
         test_case: TestCase,
+        decline: MagicMock,
     ) -> None:
         coordinator = _gating_coordinator(
             unsaved=test_case.unsaved,
@@ -478,7 +612,7 @@ class TestSaveConfirmationGating(BaseTestSuite):
         )
         path = Path("lead.stn")
 
-        coordinator.load_with_confirmation(path)
+        _load_by_hand(coordinator, path, decline)
 
         if test_case.expects_prompt:
             coordinator._dialogs.show_save_confirmation.assert_called_once()
@@ -486,6 +620,7 @@ class TestSaveConfirmationGating(BaseTestSuite):
         else:
             coordinator._dialogs.show_save_confirmation.assert_not_called()
             coordinator._reconstructions_tab.load_reconstruction.assert_called_once_with(path)
+        decline.assert_not_called()
 
 
 @pytest.fixture
@@ -559,7 +694,7 @@ def following_coordinator(
         MagicMock(),
         project_controller,
         history,
-        dialogs=MagicMock(),
+        dialogs=dialogs_on_the_line(),
         language_manager=FakeLanguageManager({}),
         on_tab_switch=MagicMock(),
         on_session_state_changed=MagicMock(),
@@ -585,11 +720,12 @@ def open_sample(
     tab: MagicMock,
     held_queue: HeldQueue,
     reconstruction_factory: ReconstructionFactory,
+    decline: MagicMock,
 ) -> Sample:
     """A sample added to the project and opened on the tab, with the calls opening it cleared."""
     with history.transaction(HistoryAction.ADD_SAMPLE):
         sample = project_controller.add_sample(reconstruction_factory(), "lead")
-    following_coordinator.open_project_voice(sample.id)
+    _edit_voice(following_coordinator, sample.id, decline)
     held_queue.drain()
     tab.reset_mock()
     return sample
@@ -713,11 +849,12 @@ class TestTheTabFollowsTheVoiceItShows:
         project_controller: ProjectController,
         history: HistoryManager,
         open_sample: Sample,
+        decline: MagicMock,
     ) -> None:
         with history.transaction(HistoryAction.REMOVE_VOICE):
             project_controller.remove_voice(open_sample.id)
         history.undo()
-        following_coordinator.open_project_voice(open_sample.id)
+        _edit_voice(following_coordinator, open_sample.id, decline)
 
         history.redo()
 
@@ -887,16 +1024,18 @@ class TestOpeningAProjectVoice(BaseTestSuite):
         history: HistoryManager,
         tab: MagicMock,
         reconstruction_factory: ReconstructionFactory,
+        decline: MagicMock,
     ) -> None:
         voice_id = self._add_voice(VoiceKind.SAMPLE, project_controller, history, reconstruction_factory)
         sample = project_controller.project.voice(voice_id)
         assert isinstance(sample, Sample)
 
-        following_coordinator.open_project_voice(voice_id)
+        _edit_voice(following_coordinator, voice_id, decline)
 
         assert reconstruction_manager.voice_id == voice_id
         assert reconstruction_manager.reconstruction is sample.reconstruction
         tab.release_instrument.assert_called_once_with()
+        decline.assert_not_called()
 
     def test_an_instrument_opens_in_the_editor_on_its_tab(
         self,
@@ -905,21 +1044,24 @@ class TestOpeningAProjectVoice(BaseTestSuite):
         history: HistoryManager,
         tab: MagicMock,
         reconstruction_factory: ReconstructionFactory,
+        decline: MagicMock,
     ) -> None:
         voice_id = self._add_voice(VoiceKind.INSTRUMENT, project_controller, history, reconstruction_factory)
 
-        following_coordinator.open_project_voice(voice_id)
+        _edit_voice(following_coordinator, voice_id, decline)
 
         tab.edit_instrument.assert_called_once_with(voice_id)
         following_coordinator._on_tab_switch.assert_called_once_with(Tab.RECONSTRUCTIONS)
+        decline.assert_not_called()
 
     def test_an_unknown_voice_opens_nothing(
         self,
         following_coordinator: ReconstructionCoordinator,
         reconstruction_manager: ReconstructionManager,
         tab: MagicMock,
+        decline: MagicMock,
     ) -> None:
-        following_coordinator.open_project_voice("gone")
+        _edit_voice(following_coordinator, "gone", decline)
 
         assert reconstruction_manager.current_reconstruction is None
         tab.edit_instrument.assert_not_called()
@@ -939,15 +1081,17 @@ class TestOpeningAProjectVoice(BaseTestSuite):
         tab: MagicMock,
         standalone_path: Path,
         reconstruction_factory: ReconstructionFactory,
+        decline: MagicMock,
     ) -> None:
         voice_id = self._add_voice(test_case.kind, project_controller, history, reconstruction_factory)
         reconstruction_manager.mark_updated()
 
-        following_coordinator.open_project_voice(voice_id)
+        _edit_voice(following_coordinator, voice_id, decline)
 
         following_coordinator._dialogs.show_save_confirmation.assert_called_once()
         assert reconstruction_manager.filepath == standalone_path
         tab.edit_instrument.assert_not_called()
+        decline.assert_not_called()
 
     @pytest.mark.parametrize(
         "test_case",
@@ -964,10 +1108,11 @@ class TestOpeningAProjectVoice(BaseTestSuite):
         tab: MagicMock,
         standalone_path: Path,
         reconstruction_factory: ReconstructionFactory,
+        decline: MagicMock,
     ) -> None:
         voice_id = self._add_voice(test_case.kind, project_controller, history, reconstruction_factory)
         reconstruction_manager.mark_updated()
-        following_coordinator.open_project_voice(voice_id)
+        _edit_voice(following_coordinator, voice_id, decline)
 
         following_coordinator._dialogs.show_save_confirmation.call_args.kwargs["on_confirm"]()
 
@@ -976,6 +1121,7 @@ class TestOpeningAProjectVoice(BaseTestSuite):
                 assert reconstruction_manager.voice_id == voice_id
             case VoiceKind.INSTRUMENT:
                 tab.edit_instrument.assert_called_once_with(voice_id)
+        decline.assert_not_called()
 
     def test_an_edited_project_sample_opens_another_voice_at_once(
         self,
@@ -985,15 +1131,17 @@ class TestOpeningAProjectVoice(BaseTestSuite):
         history: HistoryManager,
         open_sample: Sample,
         reconstruction_factory: ReconstructionFactory,
+        decline: MagicMock,
     ) -> None:
         """A project sample's edits belong to the project, so putting it away loses nothing."""
         voice_id = self._add_voice(VoiceKind.SAMPLE, project_controller, history, reconstruction_factory)
         reconstruction_manager.mark_updated()
 
-        following_coordinator.open_project_voice(voice_id)
+        _edit_voice(following_coordinator, voice_id, decline)
 
         following_coordinator._dialogs.show_save_confirmation.assert_not_called()
         assert reconstruction_manager.voice_id == voice_id
+        decline.assert_not_called()
 
 
 class TestAnOutsideRewriteOfTheOpenSample:
@@ -1205,7 +1353,7 @@ class TestLoadingAConversion(BaseTestSuite):
             MagicMock(),
             MagicMock(),
             MagicMock(),
-            dialogs=MagicMock(),
+            dialogs=dialogs_on_the_line(),
             language_manager=FakeLanguageManager(),
             on_tab_switch=MagicMock(),
             on_session_state_changed=MagicMock(),
@@ -1256,12 +1404,14 @@ class TestLoadingAConversion(BaseTestSuite):
         test_case: TestCase,
         reconstruction_factory: ReconstructionFactory,
         tmp_path: Path,
+        decline: MagicMock,
     ) -> None:
         coordinator = self._coordinator(test_case, reconstruction_factory, tmp_path)
 
-        coordinator.load_converted(self._converted(test_case, tmp_path))
+        _load_converted(coordinator, self._converted(test_case, tmp_path), decline)
 
         assert self._asked(coordinator) == test_case.expected
+        decline.assert_not_called()
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1273,11 +1423,12 @@ class TestLoadingAConversion(BaseTestSuite):
         test_case: TestCase,
         reconstruction_factory: ReconstructionFactory,
         tmp_path: Path,
+        decline: MagicMock,
     ) -> None:
         coordinator = self._coordinator(test_case, reconstruction_factory, tmp_path)
         converted = self._converted(test_case, tmp_path)
 
-        coordinator.load_converted(converted)
+        _load_converted(coordinator, converted, decline)
         asked = self._asked(coordinator)
         if asked == SAVE_PROMPT:
             coordinator._dialogs.show_save_confirmation.call_args.kwargs["on_confirm"]()
@@ -1285,6 +1436,7 @@ class TestLoadingAConversion(BaseTestSuite):
             coordinator._dialogs.show_confirmation.call_args.kwargs["on_confirm"]()
 
         coordinator._tab.load_reconstruction.assert_called_once_with(converted)
+        decline.assert_not_called()
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1296,24 +1448,27 @@ class TestLoadingAConversion(BaseTestSuite):
         test_case: TestCase,
         reconstruction_factory: ReconstructionFactory,
         tmp_path: Path,
+        decline: MagicMock,
     ) -> None:
         coordinator = self._coordinator(test_case, reconstruction_factory, tmp_path)
 
-        coordinator.load_converted(self._converted(test_case, tmp_path))
+        _load_converted(coordinator, self._converted(test_case, tmp_path), decline)
 
         coordinator._tab.load_reconstruction.assert_not_called()
         assert coordinator.is_unsaved()
+        decline.assert_not_called()
 
     def test_a_replaced_file_offers_to_discard_the_changes(
         self,
         reconstruction_factory: ReconstructionFactory,
         tmp_path: Path,
+        decline: MagicMock,
     ) -> None:
         """Saving would write the old document over the conversion, so the prompt offers no Save."""
         test_case = next(test_case for test_case in self.test_cases if test_case.expected == REPLACED_PROMPT)
         coordinator = self._coordinator(test_case, reconstruction_factory, tmp_path)
 
-        coordinator.load_converted(self._converted(test_case, tmp_path))
+        _load_converted(coordinator, self._converted(test_case, tmp_path), decline)
 
         prompt = coordinator._dialogs.show_confirmation.call_args.kwargs
         assert prompt["message"] == REPLACED_MESSAGE_KEY
@@ -1324,10 +1479,11 @@ class TestLoadingAConversion(BaseTestSuite):
         self,
         reconstruction_factory: ReconstructionFactory,
         tmp_path: Path,
+        decline: MagicMock,
     ) -> None:
         test_case = next(test_case for test_case in self.test_cases if test_case.expected == SAVE_PROMPT)
         coordinator = self._coordinator(test_case, reconstruction_factory, tmp_path)
-        coordinator.load_converted(self._converted(test_case, tmp_path))
+        _load_converted(coordinator, self._converted(test_case, tmp_path), decline)
 
         outcome = coordinator._dialogs.show_save_confirmation.call_args.kwargs["on_save"]()
 
@@ -1358,21 +1514,45 @@ class TestTheExitAsksAboutTheReconstruction(BaseTestSuite):
     def test_the_exit_asks_only_about_a_standalone_document(self, test_case: TestCase) -> None:
         coordinator = _gating_coordinator(unsaved=test_case.unsaved, embedded=test_case.embedded)
         proceed = MagicMock()
+        decline = MagicMock()
 
-        coordinator.guard_exit(proceed)
+        coordinator.guard_exit(proceed, decline)
 
         assert coordinator._dialogs.show_save_confirmation.called is test_case.expected
         assert proceed.called is not test_case.expected
+        decline.assert_not_called()
 
-    def test_the_answer_lets_the_exit_go_on(self) -> None:
+    def test_the_answer_lets_the_exit_go_on_and_cancel_turns_it_away(self) -> None:
         coordinator = _gating_coordinator(unsaved=True, embedded=False)
         proceed = MagicMock()
+        decline = MagicMock()
 
-        coordinator.guard_exit(proceed)
+        coordinator.guard_exit(proceed, decline)
 
         prompt = coordinator._dialogs.show_save_confirmation.call_args.kwargs
         assert prompt["on_save"] == coordinator.save
-        assert prompt["on_confirm"] is proceed
+        assert_the_answers_reach(
+            confirm=prompt["on_confirm"],
+            cancel=prompt["on_cancel"],
+            proceed=proceed,
+            decline=decline,
+        )
+
+    @pytest.mark.parametrize("guard", ["guard_load", "guard_close"])
+    def test_cancel_on_a_load_or_a_close_turns_the_request_away(self, guard: str) -> None:
+        coordinator = _gating_coordinator(unsaved=True, embedded=False)
+        proceed = MagicMock()
+        decline = MagicMock()
+
+        {"guard_load": coordinator.guard_load, "guard_close": coordinator.guard_close}[guard](proceed, decline)
+
+        prompt = coordinator._dialogs.show_save_confirmation.call_args.kwargs
+        assert_the_answers_reach(
+            confirm=prompt["on_confirm"],
+            cancel=prompt["on_cancel"],
+            proceed=proceed,
+            decline=decline,
+        )
 
 
 @pytest.fixture
@@ -1383,11 +1563,12 @@ def turns_sample(
     tab: MagicMock,
     held_queue: HeldQueue,
     taking_turns: Reconstruction,
+    decline: MagicMock,
 ) -> Sample:
     """The two-recording document added to the project and opened on the tab."""
     with history.transaction(HistoryAction.ADD_SAMPLE):
         sample = project_controller.add_sample(taking_turns, "turns")
-    following_coordinator.open_project_voice(sample.id)
+    _edit_voice(following_coordinator, sample.id, decline)
     held_queue.drain()
     tab.reset_mock()
     return sample
@@ -1475,13 +1656,14 @@ class TestTheDocumentChangesOneStepAtATime:
         held_queue: HeldQueue,
         turns_sample: Sample,
         reconstruction_factory: ReconstructionFactory,
+        decline: MagicMock,
     ) -> None:
         with history.transaction(HistoryAction.ADD_SAMPLE):
             other = project_controller.add_sample(reconstruction_factory(), "other")
         original = other.reconstruction
         entries = len(history.entries)
         _move(following_coordinator, SHARED_CHANNEL, FeatureKey.VOLUME, EDITED_VOLUME)
-        following_coordinator.open_project_voice(other.id)
+        _edit_voice(following_coordinator, other.id, decline)
         held_queue.drain()
 
         sample = project_controller.project.voice(other.id)
@@ -1498,7 +1680,7 @@ class TestTheDocumentChangesOneStepAtATime:
         turns_path: Path,
     ) -> None:
         _move(following_coordinator, SHARED_CHANNEL, FeatureKey.VOLUME, EDITED_VOLUME)
-        following_coordinator.close_with_confirmation()
+        following_coordinator.guard_close(following_coordinator.close, MagicMock())
         held_queue.drain()
 
         assert reconstruction_manager.current_reconstruction is None

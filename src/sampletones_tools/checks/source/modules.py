@@ -77,8 +77,9 @@ def is_visible(path: Path) -> bool:
 def source_paths(roots: Iterable[Path]) -> List[Path]:
     """Every Python file under the given roots, in path order.
 
-    The sweep visits visible paths, so a virtual environment or a tooling cache sitting inside a
-    root stays aside from a whole-repository run. A check built on a sweep that reads nothing
+    The sweep visits the paths visible below each root, so a virtual environment or a tooling cache
+    sitting inside a root stays aside from a whole-repository run, while a root standing inside a
+    hidden folder, such as a worktree, is swept whole. A check built on a sweep that reads nothing
     reports nothing, which reads as a clean tree, so each root must name a directory and the roots
     together must hold source to read.
 
@@ -98,7 +99,7 @@ def source_paths(roots: Iterable[Path]) -> List[Path]:
         if not root.is_dir():
             raise NotADirectoryError(f"The source root {root} names no directory to sweep")
 
-    found = {path for root in directories for path in root.rglob(SOURCE_PATTERN) if is_visible(path)}
+    found = {path for root in directories for path in root.rglob(SOURCE_PATTERN) if is_visible(path.relative_to(root))}
     if not found:
         listed = ", ".join(str(root) for root in directories)
         raise FileNotFoundError(f"The source roots hold no {SOURCE_PATTERN} file to read: {listed}")

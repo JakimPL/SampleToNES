@@ -65,7 +65,7 @@ path that means something only on the author's machine.
 
 `project.json` records the project format version it was written with. A file at the supported version
 loads as it stands. A file at an older version the upgrade chain reaches is migrated in memory to the
-current shape first. Any other file is declined. [Data compatibility](../development/release/compatibility.md)
+current shape first. Any other file is declined for its version, before the rest of it is read. [Data compatibility](../development/release/compatibility.md)
 describes the chain. Unknown or extra fields within a matching version are ignored, which leaves room
 for the format to grow.
 

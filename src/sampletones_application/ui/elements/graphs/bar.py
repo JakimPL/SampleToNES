@@ -26,6 +26,7 @@ from sampletones_application.utils.gui.dpg import (
 )
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL_ALT_SHIFT, capture_modifiers
 from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_color
+from sampletones_application.utils.gui.press import LeftPress
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.palette.colors.faded import FadedColor
 from sampletones_shared.types.application import Sender
@@ -42,7 +43,28 @@ class DrawStroke:
     value: float
 
 
+@dataclass
+class HeldStroke:
+    """The stroke a held press draws: the bar it drew on the frame before, which the next bar joins."""
+
+    last: Optional[DrawStroke] = None
+
+    def take_last(self) -> Optional[DrawStroke]:
+        """The bar drawn on the frame before, leaving the stroke to record the bar this frame draws."""
+        last = self.last
+        self.last = None
+        return last
+
+
 class GUIBarGraph(GUIGraph[BarLayer]):
+    """A plot of bars the reader draws by pressing and dragging over them.
+
+    A press belongs to the plot it went down on: the plot's own click starts it and the release
+    ends it, and bars are drawn only in between. A button already held as the plot comes under
+    the pointer, such as the second press of a double-click that brought the plot forward, draws
+    nothing.
+    """
+
     tag: str
     parent: str
     width: int
@@ -85,7 +107,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self.on_bar_point_clicked: Optional[OnBarPointClickedCallback] = None
         self.on_bar_point_hovered: Optional[OnBarPointHoveredCallback] = None
 
-        self._draw_stroke: Optional[DrawStroke] = None
+        self._press: LeftPress[HeldStroke] = LeftPress()
 
         _min_x = layout.graph.min_x
         _max_x = layout.graph.max_x
@@ -139,9 +161,26 @@ class GUIBarGraph(GUIGraph[BarLayer]):
 
     def _setup_handlers(self) -> None:
         super()._setup_handlers()
+        dpg.add_item_clicked_handler(
+            button=dpg.mvMouseButton_Left,
+            callback=self._on_press,
+            parent=self.event_handler_tag,
+        )
         with dpg.handler_registry(tag=self.mouse_handler_tag):
             dpg.add_mouse_move_handler(callback=self._on_mouse_action)
-            dpg.add_mouse_click_handler(callback=self._on_mouse_action)
+            dpg.add_mouse_release_handler(
+                button=dpg.mvMouseButton_Left,
+                callback=self._on_release,
+            )
+
+    def _on_press(self, sender: Sender) -> None:
+        """Starts a press on the plot, which draws the bar it lands on."""
+        self._press.begin(HeldStroke())
+        self._on_mouse_action(sender)
+
+    def _on_release(self, _sender: Sender) -> None:
+        """Ends the press, so the next stroke starts afresh."""
+        self._press.end()
 
     def _on_hover(self, sender: Sender, app_data: int, user_data: Any) -> None:
         super()._on_hover(sender, app_data, user_data)
@@ -327,8 +366,15 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             dpg.set_axis_ticks(self.y_axis_tag, tuple(zip(tick_labels, self.y_ticks)))
 
     def _on_mouse_action(self, _sender: Sender) -> None:
-        previous_stroke = self._draw_stroke
-        self._draw_stroke = None
+        """Answers one frame of the pointer over the plot, drawing the bar under it while a press is held.
+
+        The mouse move runs whether or not the button is down, so a release the plot never heard,
+        such as one outside the window, ends the press here once the button reads up, and a later
+        press begun elsewhere draws nothing. A stroke joins the bar it reaches to the one it drew on
+        the frame before.
+        """
+        stroke = self._press.held()
+        previous_stroke = None if stroke is None else stroke.take_last()
 
         if capture_modifiers() & CTRL_ALT_SHIFT:
             return
@@ -358,10 +404,14 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self._set_hover_bar_position(bar_index, clamped_y)
         self.call(self.on_bar_point_hovered, name, bar_index)
 
-        if self._presses_a_bar(mouse_y) and (
-            dpg.is_mouse_button_down(dpg.mvMouseButton_Left) or dpg.is_mouse_button_clicked(dpg.mvMouseButton_Left)
-        ):
-            self._draw_bar(layer, bar_index, clamped_y, previous_stroke)
+        if stroke is not None and self._presses_a_bar(mouse_y):
+            self._draw_bar(
+                layer,
+                bar_index,
+                clamped_y,
+                stroke,
+                previous_stroke,
+            )
 
     def _presses_a_bar(self, mouse_y: float) -> bool:
         """Whether a press at ``mouse_y`` stands on the grid the bars are drawn across.
@@ -376,6 +426,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         layer: BarLayer,
         bar_index: int,
         value: float,
+        stroke: HeldStroke,
         previous_stroke: Optional[DrawStroke],
     ) -> None:
         if previous_stroke is not None and previous_stroke.index != bar_index:
@@ -389,6 +440,6 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         else:
             layer.y_data[bar_index] = value
 
-        self._draw_stroke = DrawStroke(index=bar_index, value=value)
+        stroke.last = DrawStroke(index=bar_index, value=value)
         self._update_display()
         self.call(self.on_bar_point_clicked, layer.y_data)

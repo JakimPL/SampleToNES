@@ -82,7 +82,11 @@ from sampletones_application.ui.themes.inline import (
     create_selectable_text_theme,
 )
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_delete_item
+from sampletones_application.utils.gui.dpg import (
+    dpg_configure_item,
+    dpg_delete_item,
+    dpg_get_item_user_data,
+)
 from sampletones_application.utils.gui.keyboard import (
     PRIORITY_PANEL,
     ActivePredicate,
@@ -1000,7 +1004,7 @@ class GUISequencerOrderPanel(GUIPanel):
         if mouse_button != dpg.mvMouseButton_Right:
             return
 
-        key = dpg.get_item_user_data(clicked_item)
+        key = dpg_get_item_user_data(clicked_item)
         if key is None:
             return
 
@@ -1329,10 +1333,10 @@ class GUISequencerOrderPanel(GUIPanel):
     def _type_character(self, event: KeyEvent) -> bool:
         """Types a hex digit into the cell under the cursor, reporting whether the press was one.
 
-        A press holding Ctrl or Alt is an application gesture, so cell entry reads the plain keys
-        and leaves the rest to the global shortcuts.
+        A press holding Ctrl, Alt or Super is an application gesture, so cell entry reads the plain
+        keys and leaves the rest to the global shortcuts.
         """
-        if Modifier.CTRL in event.modifiers or Modifier.ALT in event.modifiers:
+        if not event.is_plain:
             return False
 
         char = HEX_KEYS.get(event.key)

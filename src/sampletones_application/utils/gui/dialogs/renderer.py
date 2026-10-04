@@ -37,9 +37,10 @@ from sampletones_application.utils.gui.dialogs.windows.save_confirmation import 
 )
 from sampletones_application.utils.gui.dpg import dpg_delete_item
 from sampletones_application.utils.gui.keyboard import KeyRouter
+from sampletones_application.utils.gui.modal_queue import ModalQueue
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
-from sampletones_shared.types.callback import Callback, StringCallback
+from sampletones_shared.types.callback import Callback, StringCallback, VoidCallback
 
 _TEMPLATE_PLACEHOLDER: Pattern[str] = re.compile(r"\{(\w+)\}")
 DIALOG_TEXT_MARGIN: Final[int] = 10
@@ -82,6 +83,15 @@ class DialogsRenderer:
         self._lbl_ok = language_manager["global.dialog.label.ok"]
         self._lbl_cancel = language_manager["global.dialog.label.cancel"]
         self._lbl_save = language_manager["global.dialog.label.save"]
+
+    @staticmethod
+    def when_free(continuation: VoidCallback) -> None:
+        """Runs ``continuation`` once the screen is free for it, as a turn in the modal line.
+
+        The signature is a :data:`Wait`, so a guard reads what it asks about once its question may
+        reach the screen.
+        """
+        ModalQueue.when_free(continuation)
 
     def show_modal(
         self,
@@ -317,6 +327,7 @@ class DialogsRenderer:
         title: str,
         on_save: Callable[[], SaveOutcome],
         on_confirm: Callback,
+        on_cancel: Callback,
         *,
         ok_label: str,
     ) -> None:
@@ -325,9 +336,10 @@ class DialogsRenderer:
         Every answer runs once the prompt has left the screen, so whatever it opens stands alone.
         ``on_save`` writes the document and reports a :class:`SaveOutcome`: a written document
         runs ``on_confirm``, a save the reader called off brings the prompt back with the same
-        question, and a failed save leaves the error it showed alone on screen. The middle button
-        discards the pending changes and runs ``on_confirm`` to proceed, and Cancel — the initially
-        focused button — dismisses the prompt.
+        question, and a failed save leaves the error it showed alone on screen and runs
+        ``on_cancel``. The middle button discards the pending changes and runs ``on_confirm`` to
+        proceed. Cancel, the initially focused button, runs ``on_cancel``, and so do Escape and the
+        title bar's close button.
         """
         GUISaveConfirmationWindow(
             tag=get_dialog_tag(tag),
@@ -342,6 +354,7 @@ class DialogsRenderer:
             title,
             on_save,
             on_confirm,
+            on_cancel,
             ok_label=ok_label,
         )
 

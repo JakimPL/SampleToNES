@@ -7,6 +7,7 @@ import pytest
 from sampletones_application.ui.elements.graphs import bar as bar_module
 from sampletones_application.ui.elements.graphs.bar import GUIBarGraph
 from sampletones_application.ui.elements.graphs.layers.bar import BarLayer
+from sampletones_application.utils.gui.press import LeftPress
 from sampletones_application.utils.palette.colors.literal import LiteralColor
 
 BAND_SHARE: Final[float] = 0.2
@@ -41,7 +42,7 @@ def _graph() -> GUIBarGraph:
             bar_weight=BAR_WEIGHT,
         )
     }
-    graph._draw_stroke = None
+    graph._press = LeftPress()
     graph.on_bar_point_clicked = None
     graph.on_bar_point_hovered = None
     return graph
@@ -56,15 +57,14 @@ def _reserve_band(graph: GUIBarGraph, share: float) -> Tuple[float, float]:
         return graph.reserve_band(share)
 
 
-def _press(
-    graph: GUIBarGraph,
+def _point_at(
     monkeypatch: pytest.MonkeyPatch,
     position: Tuple[float, float],
 ) -> None:
-    """One frame of the left button held with the pointer standing at ``position`` in the plot.
+    """Stands the pointer at ``position`` in the plot.
 
     The plot's own items are DearPyGui's, so the reading answers that none of them is built and
-    the case reads the values the press leaves behind.
+    the case reads the values a gesture leaves behind.
     """
     monkeypatch.setattr(bar_module.dpg, "does_item_exist", lambda tag: False)
     monkeypatch.setattr(bar_module, "dpg_is_item_hovered", lambda tag: True)
@@ -72,8 +72,44 @@ def _press(
     monkeypatch.setattr(bar_module.dpg, "is_key_down", lambda key: False)
     monkeypatch.setattr(bar_module.dpg, "get_plot_mouse_pos", lambda: position)
     monkeypatch.setattr(bar_module.dpg, "is_mouse_button_down", lambda button: True)
-    monkeypatch.setattr(bar_module.dpg, "is_mouse_button_clicked", lambda button: False)
+
+
+def _press(
+    graph: GUIBarGraph,
+    monkeypatch: pytest.MonkeyPatch,
+    position: Tuple[float, float],
+) -> None:
+    """A left press going down on the plot with the pointer standing at ``position``."""
+    _point_at(monkeypatch, position)
+    graph._on_press(PLOT_TAG)
+
+
+def _hover(
+    graph: GUIBarGraph,
+    monkeypatch: pytest.MonkeyPatch,
+    position: Tuple[float, float],
+) -> None:
+    """One frame of the pointer standing at ``position``, as the hover and the move report it."""
+    _point_at(monkeypatch, position)
     graph._on_mouse_action(PLOT_TAG)
+
+
+def _hover_with_the_button_up(
+    graph: GUIBarGraph,
+    monkeypatch: pytest.MonkeyPatch,
+    position: Tuple[float, float],
+) -> None:
+    """One frame of the pointer standing at ``position`` with the left button up."""
+    _point_at(monkeypatch, position)
+    monkeypatch.setattr(bar_module.dpg, "is_mouse_button_down", lambda button: False)
+    graph._on_mouse_action(PLOT_TAG)
+
+
+def _with_bar(index: int, value: float) -> List[int]:
+    """The plotted values with one bar written."""
+    expected = list(BAR_VALUES)
+    expected[index] = int(value)
+    return expected
 
 
 class TestPressingTheBars:
@@ -84,9 +120,70 @@ class TestPressingTheBars:
 
         _press(graph, monkeypatch, (PRESSED_BAR + 0.5, PRESSED_VALUE))
 
-        expected = list(BAR_VALUES)
-        expected[PRESSED_BAR] = int(PRESSED_VALUE)
+        assert list(graph.layers[LAYER_NAME].y_data) == _with_bar(PRESSED_BAR, PRESSED_VALUE)
+
+    def test_a_drag_from_the_press_writes_every_bar_it_crosses(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        graph = _graph()
+        last_bar = len(BAR_VALUES) - 1
+
+        _press(graph, monkeypatch, (0.5, PRESSED_VALUE))
+        _hover(graph, monkeypatch, (last_bar + 0.5, PRESSED_VALUE))
+
+        assert list(graph.layers[LAYER_NAME].y_data) == [int(PRESSED_VALUE)] * len(BAR_VALUES)
+
+
+class TestAPressBelongsToThePlotItWentDownOn:
+    """A button held before the plot came under the pointer draws nothing, and a release ends a press.
+
+    A double-click on a voice brings the plot forward while its second press is still down.
+    """
+
+    def test_a_button_held_as_the_plot_comes_under_the_pointer_draws_nothing(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        graph = _graph()
+
+        _hover(graph, monkeypatch, (PRESSED_BAR + 0.5, PRESSED_VALUE))
+
+        assert list(graph.layers[LAYER_NAME].y_data) == list(BAR_VALUES)
+        _press(graph, monkeypatch, (PRESSED_BAR + 0.5, PRESSED_VALUE))
+        assert list(graph.layers[LAYER_NAME].y_data) == _with_bar(PRESSED_BAR, PRESSED_VALUE)
+
+    def test_a_button_held_carries_on_hovering_without_drawing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The pointer still marks the bar it stands over, so a reader sees where a press would land."""
+        graph = _graph()
+        hovered: List[Tuple[Optional[str], Optional[int]]] = []
+        graph.on_bar_point_hovered = lambda name, index: hovered.append((name, index))
+
+        _hover(graph, monkeypatch, (PRESSED_BAR + 0.5, PRESSED_VALUE))
+
+        assert hovered == [(LAYER_NAME, PRESSED_BAR)]
+
+    def test_a_release_ends_the_press(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        graph = _graph()
+        last_bar = len(BAR_VALUES) - 1
+        _press(graph, monkeypatch, (PRESSED_BAR + 0.5, PRESSED_VALUE))
+
+        graph._on_release(PLOT_TAG)
+        _hover(graph, monkeypatch, (last_bar + 0.5, PRESSED_VALUE))
+
+        assert list(graph.layers[LAYER_NAME].y_data) == _with_bar(PRESSED_BAR, PRESSED_VALUE)
+        _press(graph, monkeypatch, (last_bar + 0.5, PRESSED_VALUE))
+        expected = _with_bar(PRESSED_BAR, PRESSED_VALUE)
+        expected[last_bar] = int(PRESSED_VALUE)
         assert list(graph.layers[LAYER_NAME].y_data) == expected
+
+    def test_a_release_the_plot_missed_ends_the_press(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A button that reads up ends the press, so a button held again later draws nothing."""
+        graph = _graph()
+        last_bar = len(BAR_VALUES) - 1
+        _press(graph, monkeypatch, (PRESSED_BAR + 0.5, PRESSED_VALUE))
+
+        _hover_with_the_button_up(graph, monkeypatch, (last_bar + 0.5, PRESSED_VALUE))
+        _hover(graph, monkeypatch, (last_bar + 0.5, PRESSED_VALUE))
+
+        assert list(graph.layers[LAYER_NAME].y_data) == _with_bar(PRESSED_BAR, PRESSED_VALUE)
 
 
 class TestPressingTheBandBeneathTheBars:
@@ -127,6 +224,4 @@ class TestPressingTheBandBeneathTheBars:
 
         _press(graph, monkeypatch, (PRESSED_BAR + 0.5, PRESSED_VALUE))
 
-        expected = list(BAR_VALUES)
-        expected[PRESSED_BAR] = int(PRESSED_VALUE)
-        assert list(graph.layers[LAYER_NAME].y_data) == expected
+        assert list(graph.layers[LAYER_NAME].y_data) == _with_bar(PRESSED_BAR, PRESSED_VALUE)

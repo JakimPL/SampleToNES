@@ -34,6 +34,8 @@ A report comes from the thread writing the audio, and the mark is a widget, so e
 
 Priority ranks the two kinds and settles every contest for the device. Starting intentional playback preempts a sounding preview, and a preview requested while intentional playback holds the device is declined.
 
+**A sound starts only on a device in force.** Every request, of either kind, asks the device manager for the output before a thread or a stream opens, so a machine offering no output device refuses the request at once with `NoOutputDeviceError`. One presenter, `PlaybackFailurePresenter` (`coordinators/playback/failures.py`), tells the reader what stopped any sound: a missing output reads as a plain notice, and every other failure as an error. A failure on the thread playing the sound, such as a stream the device refused or a write it failed, reads the same whichever source played it, and is told once.
+
 ## Engagement
 
 A source is **engaged** while it owns the device output, whether it is sounding or held paused. A source therefore reports itself engaged only while *its own* audio is the one on the device. While a preview sounds, ownership rests outside every source and each of them reports itself idle.
@@ -71,6 +73,8 @@ Because the target prefers the active tab's own source, Play/Pause acts on what 
 ## What the surfaces show
 
 The toolbar's transport strip and the Playback menu describe the target. The Play/Pause/Resume label and the paused indicator report what the toggle will do. Stop is available while any sound is on the device, engaged or previewed. The display therefore carries across tabs that play nothing of their own, showing the source sounding elsewhere, and shows the local source on tabs that have one. A verb tied to one screen, such as playing from the shown frame, is offered on that screen with its document open.
+
+**A source reports its own transitions.** Each source tells the surfaces when it starts, pauses, resumes, stops or ends, whichever gesture moved it: the transport, a context menu, a key a grid owns, or the end of the sound. The surfaces therefore stay in step with a source no caller remembered to mention. A preview belongs to no source, so the surfaces read the device for it.
 
 The sequencer view reports the playhead too, at the reach the **follow mode** chooses: the sounding row, the frame that holds it, or the view the user placed. The mode is one setting with two derived answers: whether the tracker shows the frame being played, and whether it scrolls to keep the sounding row in sight. Those two are its whole contract, and every surface that follows the playhead reads them. The song player holds the mode and emits it with every position, so the menu's check and the grid's scrolling settle in one step when the mode changes mid-playback.
 
@@ -110,6 +114,8 @@ Two things differ between them, and whoever asks for the audio sets each. The **
 
 A rate is asked for once there is audio to take it, which is the first row the synthesizer renders. A device has been chosen by the time playback starts, and a format by the time a render does. A session on a machine with no output device opens on that rule, and everything that writes and does not sound works on it: editing, exporting a module and rendering to a file.
 
+The session keeps the device the user last applied in Audio settings. A remembered device unplugged for one run is therefore looked for again in the next, the way a remembered folder is.
+
 The song's exact length follows from the timing model before a sample is rendered. The order's length in rows gives the ticks, and the tick clock gives the samples those ticks span. That figure is what the progress bar counts against and what a finished file measures.
 
 Rendering is an exclusive operation (architecture principle 10). It occupies the application from the moment its dialog opens until that dialog closes. It joins the same busy authority as conversion and library generation, so each of the three holds the others off and every surface offering one reads a single answer.
@@ -124,6 +130,8 @@ The device is torn down once every source holding a stream has released it. A so
 
 The device holds a release per stream it handed out and invokes it whenever it needs the output free: as the backend is torn down, and on a device change, where the release stops the song so the new device opens cleanly. A stream that outlives its release leaves the running backend in place. The manager reports the failure and keeps the instance, since the source still writes to memory that terminating would reclaim.
 
+The manager's own playback is held to the same rule. A stop waits a while for its worker and then lets it go, since a device can be slow to open a stream. The manager keeps a worker it let go of, and a teardown waits for it, so the backend is never terminated under an open in progress. A worker that outlives that wait leaves the backend running, as a stream that outlives its release does.
+
 ## Who governs what
 
 | Concern | Owner |
@@ -132,7 +140,8 @@ The device holds a release per stream it handed out and invokes it whenever it n
 | The ranking that settles a contest for the device | `PlaybackPriority` (`logic/shared/`) |
 | The verbs, target resolution, and the registry of sources | `coordinators/playback/router.py` |
 | A source's engagement reporting | the transport's player protocol, implemented per source |
-| Error presentation for a source's failures | `GuardedPlayer` (`coordinators/playback/guard.py`) |
+| What the reader is told when a sound fails | `PlaybackFailurePresenter` (`coordinators/playback/failures.py`) |
+| The boundary that hands a transport command's failure to the presenter | `GuardedPlayer` (`coordinators/playback/guard.py`) |
 | The sequencer's mute set, its mask, and solo | `SequencerChannelsLogic` (`logic/sequencer/channels.py`) |
 | Row mixing, and the mask it pulls while rendering | `RowSynthesizer` (`logic/sequencer/playback/synthesizer/`) |
 | The values a note starts from and a channel holds between frames | `ChannelPerformance` (`sampletones_core/performance/state.py`) |

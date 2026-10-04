@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -47,7 +47,8 @@ class _FakeDPG:
     def get_item_alias(self, item_id: int) -> str:
         return self.id_to_alias.get(item_id, "")
 
-    def delete_item(self, item_id: int) -> None:
+    def delete_item(self, item: Union[int, str]) -> None:
+        item_id = self.alias_to_id.get(item, -1) if isinstance(item, str) else item
         self.deleted.append(item_id)
         for children in self.children.values():
             if item_id in children:
@@ -212,6 +213,73 @@ class TestWaveformDataUpdateRefit:
         graph.update_waveform_data(self._waveform_data(), refit=True)
 
         ranges.assert_not_called()
+
+
+class TestAnUpdateDrawsTheLayersItsDataDisplays:
+    """An update draws what the fresh data displays, so a layer the data no longer carries leaves the plot."""
+
+    @staticmethod
+    def _drawing_both(fake_dpg: _FakeDPG) -> GUIWaveformGraph:
+        """A graph showing the original and the reconstruction, each with its series on the axis."""
+        graph = _graph()
+        graph.current_data = TestWaveformDataUpdateRefit._waveform_data()
+        graph.layers = {"Original": _Layer("Original"), "Reconstruction": _Layer("Reconstruction")}
+        fake_dpg.set_children(
+            "axis",
+            [graph._series_tag("Original"), graph._series_tag("Reconstruction"), "indicator", "overlay"],
+        )
+        return graph
+
+    def test_a_layer_the_data_no_longer_displays_leaves_with_its_series(
+        self,
+        fake_dpg: _FakeDPG,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        graph = self._drawing_both(fake_dpg)
+        original_series = fake_dpg.alias_to_id[graph._series_tag("Original")]
+        monkeypatch.setattr(graph, "_display_layers", lambda *_args, **_kwargs: [_Layer("Reconstruction")])
+
+        graph.update_waveform_data(TestWaveformDataUpdateRefit._waveform_data())
+
+        assert (list(graph.layers), fake_dpg.deleted) == (["Reconstruction"], [original_series])
+
+    def test_layers_the_data_still_displays_stay(
+        self,
+        fake_dpg: _FakeDPG,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        graph = self._drawing_both(fake_dpg)
+        monkeypatch.setattr(
+            graph,
+            "_display_layers",
+            lambda *_args, **_kwargs: [_Layer("Original"), _Layer("Reconstruction")],
+        )
+
+        graph.update_waveform_data(TestWaveformDataUpdateRefit._waveform_data())
+
+        assert (list(graph.layers), fake_dpg.deleted) == (["Original", "Reconstruction"], [])
+
+    def test_a_layer_joining_the_plot_is_drawn_in_the_layers_order(
+        self,
+        fake_dpg: _FakeDPG,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The series already drawn is taken off and added back behind the one that joins, as ordered."""
+        graph = _graph()
+        graph.current_data = TestWaveformDataUpdateRefit._waveform_data()
+        graph.layers = {"Reconstruction": _Layer("Reconstruction")}
+        fake_dpg.set_children("axis", [graph._series_tag("Reconstruction"), "indicator", "overlay"])
+        added: List[str] = []
+        monkeypatch.setattr(waveform_module.dpg, "add_line_series", lambda *args, **kwargs: added.append(kwargs["tag"]))
+        monkeypatch.setattr(
+            graph,
+            "_display_layers",
+            lambda *_args, **_kwargs: [_Layer("Reconstruction"), _Layer("Original")],
+        )
+
+        graph.update_waveform_data(TestWaveformDataUpdateRefit._waveform_data())
+
+        assert added == [graph._series_tag("Reconstruction"), graph._series_tag("Original")]
 
 
 class TestWaveformReconstructionDim:

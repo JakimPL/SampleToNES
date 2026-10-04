@@ -11,7 +11,7 @@ from sampletones_application.view_model.shared.audio_settings import (
     MasterGainReadout,
 )
 from sampletones_core.audio import AudioDevice, CurrentDevice
-from sampletones_core.constants.audio import BUFFER_SIZES, BufferSize
+from sampletones_core.constants.audio import BUFFER_SIZES, BufferSize, SampleRate
 from sampletones_shared.constants.audio import UNITY_GAIN
 
 DEVICE_LABEL_FORMAT = "{index}: {name}"
@@ -32,7 +32,7 @@ def _device(index: int, name: str) -> AudioDevice:
 
 def _view_model(
     devices: Dict[int, AudioDevice],
-    current_device: CurrentDevice,
+    current_device: Optional[CurrentDevice],
     buffer_size: BufferSize,
     master_gain: float = UNITY_GAIN,
 ) -> AudioSettingsViewModel:
@@ -47,9 +47,12 @@ def _view_model(
 class MappingCase:
     label: str
     devices: Dict[int, AudioDevice]
-    current_device: CurrentDevice
+    current_device: Optional[CurrentDevice]
     buffer_size: BufferSize
+    current_device_index: Optional[int]
+    current_sample_rate: Optional[SampleRate]
     current_device_label: str
+    current_sample_rate_label: str
 
 
 MAPPING_CASES = [
@@ -58,21 +61,40 @@ MAPPING_CASES = [
         devices={0: _device(0, "Speakers")},
         current_device=CurrentDevice(device_index=0, name="Speakers", sample_rate=44100, host_api=0),
         buffer_size=1024,
+        current_device_index=0,
+        current_sample_rate=44100,
         current_device_label="0: Speakers",
+        current_sample_rate_label="44100 Hz",
     ),
     MappingCase(
         label="multiple_devices",
         devices={0: _device(0, "Speakers"), 3: _device(3, "Headphones")},
         current_device=CurrentDevice(device_index=3, name="Headphones", sample_rate=48000, host_api=0),
         buffer_size=256,
+        current_device_index=3,
+        current_sample_rate=48000,
         current_device_label="3: Headphones",
+        current_sample_rate_label="48000 Hz",
     ),
     MappingCase(
         label="no_devices",
         devices={},
-        current_device=CurrentDevice.default(),
+        current_device=None,
         buffer_size=512,
+        current_device_index=None,
+        current_sample_rate=None,
         current_device_label="",
+        current_sample_rate_label="",
+    ),
+    MappingCase(
+        label="devices_with_none_in_force",
+        devices={0: _device(0, "Speakers")},
+        current_device=None,
+        buffer_size=512,
+        current_device_index=None,
+        current_sample_rate=None,
+        current_device_label="",
+        current_sample_rate_label="",
     ),
 ]
 
@@ -80,6 +102,9 @@ MAPPING_CASES = [
 class TestFromDeviceManager:
     """The projection carries display labels alongside the typed values a selection commits, so
     the window renders and resolves selections without formatting or parsing of its own.
+
+    A manager with no device in force, as on a machine offering no output device, projects no
+    current device and no rate, and their labels read empty.
     """
 
     @pytest.mark.parametrize("case", MAPPING_CASES, ids=lambda case: case.label)
@@ -87,9 +112,15 @@ class TestFromDeviceManager:
         view_model = _view_model(case.devices, case.current_device, case.buffer_size)
 
         assert view_model.devices == tuple(AudioDeviceItem.from_device(device) for device in case.devices.values())
-        assert view_model.current_device_index == case.current_device.device_index
-        assert view_model.current_sample_rate == case.current_device.sample_rate
+        assert view_model.current_device_index == case.current_device_index
+        assert view_model.current_sample_rate == case.current_sample_rate
         assert view_model.buffer_size == case.buffer_size
+
+    @pytest.mark.parametrize("case", MAPPING_CASES, ids=lambda case: case.label)
+    def test_current_sample_rate_label_reads_the_rate_in_force(self, case: MappingCase) -> None:
+        view_model = _view_model(case.devices, case.current_device, case.buffer_size)
+
+        assert view_model.current_sample_rate_label(SAMPLE_RATE_FORMAT) == case.current_sample_rate_label
 
     def test_carries_the_master_gain(self) -> None:
         view_model = _view_model(

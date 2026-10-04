@@ -4,6 +4,7 @@ import pytest
 
 from sampletones_application.utils.gui.keyboard.focus.items import (
     CHOICE_ITEM_TYPES,
+    NUMBER_ENTRY_ITEM_TYPES,
     TEXT_ENTRY_ITEM_TYPES,
     field_kind,
     reports_child_focus,
@@ -40,14 +41,14 @@ class TestFieldKindOfItemType(BaseTestSuite):
             expected=FieldKind.TEXT_ENTRY,
         ),
         TestCase(
-            label="integer input types characters",
+            label="integer input types a number",
             item_type=INPUT_INT,
-            expected=FieldKind.TEXT_ENTRY,
+            expected=FieldKind.NUMBER_ENTRY,
         ),
         TestCase(
-            label="slider types characters",
+            label="slider types a number",
             item_type=SLIDER_INT,
-            expected=FieldKind.TEXT_ENTRY,
+            expected=FieldKind.NUMBER_ENTRY,
         ),
         TestCase(
             label="combo navigates options",
@@ -84,11 +85,16 @@ class TestTaxonomyCoverage:
     def test_every_text_entry_type_maps_to_text_entry(self) -> None:
         assert {field_kind(item_type) for item_type in TEXT_ENTRY_ITEM_TYPES} == {FieldKind.TEXT_ENTRY}
 
+    def test_every_number_entry_type_maps_to_number_entry(self) -> None:
+        assert {field_kind(item_type) for item_type in NUMBER_ENTRY_ITEM_TYPES} == {FieldKind.NUMBER_ENTRY}
+
     def test_every_choice_type_maps_to_choice(self) -> None:
         assert {field_kind(item_type) for item_type in CHOICE_ITEM_TYPES} == {FieldKind.CHOICE}
 
-    def test_the_two_field_taxonomies_stay_disjoint(self) -> None:
-        assert TEXT_ENTRY_ITEM_TYPES.isdisjoint(CHOICE_ITEM_TYPES)
+    def test_the_field_taxonomies_stay_disjoint(self) -> None:
+        taxonomies = (TEXT_ENTRY_ITEM_TYPES, NUMBER_ENTRY_ITEM_TYPES, CHOICE_ITEM_TYPES)
+
+        assert sum(len(taxonomy) for taxonomy in taxonomies) == len(frozenset().union(*taxonomies))
 
 
 class TestReportsChildFocus(BaseTestSuite):

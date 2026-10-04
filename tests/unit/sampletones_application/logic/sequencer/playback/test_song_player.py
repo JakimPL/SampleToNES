@@ -1,4 +1,5 @@
-from typing import List, Tuple
+from dataclasses import dataclass
+from typing import Callable, List, Tuple
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,6 +13,8 @@ from sampletones_application.services.song_player.result import (
 )
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 from sampletones_core.project.song_position import SongPosition
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 from tests.unit.sampletones_application.logic.sequencer.playback.conftest import (
     make_controller,
 )
@@ -313,6 +316,93 @@ class TestOnServiceResult:
         logic._on_service_result(SongPlaybackError(error=error))
 
         assert errors == [error]
+
+
+class TestTheTransitionHook(BaseTestSuite):
+    """Every transition of the song reaches ``on_change_audio_state`` once, and nothing else does.
+
+    The menu and the toolbar follow the song through that hook, whichever gesture moved it.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        gesture: Callable[[SongPlayerLogic], None]
+        is_open: bool = True
+        playing: bool = False
+        paused: bool = False
+        expected: int
+
+    test_cases = (
+        TestCase(label="play", gesture=SongPlayerLogic.play, expected=1),
+        TestCase(label="play with no project", gesture=SongPlayerLogic.play, is_open=False, expected=0),
+        TestCase(label="play from a row", gesture=lambda logic: logic.play_from(1, 4), expected=1),
+        TestCase(label="the toggle starting", gesture=SongPlayerLogic.pause_or_resume, expected=1),
+        TestCase(label="pause", gesture=SongPlayerLogic.pause_or_resume, playing=True, expected=1),
+        TestCase(label="resume", gesture=SongPlayerLogic.pause_or_resume, paused=True, expected=1),
+        TestCase(label="stop while playing", gesture=SongPlayerLogic.stop, playing=True, expected=1),
+        TestCase(label="stop while paused", gesture=SongPlayerLogic.stop, paused=True, expected=1),
+        TestCase(label="stop of a silent song", gesture=SongPlayerLogic.stop, expected=0),
+        TestCase(
+            label="the song ending by itself",
+            gesture=lambda logic: logic._on_service_result(SongPlaybackStopped()),
+            playing=True,
+            expected=1,
+        ),
+        TestCase(
+            label="a playback error",
+            gesture=lambda logic: logic._on_service_result(SongPlaybackError(error=RuntimeError("device lost"))),
+            playing=True,
+            expected=1,
+        ),
+        TestCase(
+            label="a row played",
+            gesture=lambda logic: logic._on_service_result(
+                SongPositionUpdate(position=SongPosition(order_position=0, row_index=1))
+            ),
+            playing=True,
+            expected=0,
+        ),
+        TestCase(label="a seek while playing", gesture=lambda logic: logic.seek(2), playing=True, expected=0),
+        TestCase(
+            label="a follow mode chosen",
+            gesture=lambda logic: logic.set_follow_mode(FollowMode.PATTERNS),
+            playing=True,
+            expected=0,
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_transitions_reach_the_hook(self, test_case: TestCase) -> None:
+        logic = _make_logic(is_open=test_case.is_open)
+        logic._service.is_playing = test_case.playing
+        logic._service.is_paused = test_case.paused
+        logic._service.alive = test_case.playing or test_case.paused
+        logic.on_view_changed = lambda _view: None
+        logic.on_position_changed = lambda _order, _row: None
+        logic.on_error = lambda _error: None
+        transitions: List[None] = []
+        logic.on_change_audio_state = lambda: transitions.append(None)
+
+        test_case.gesture(logic)
+
+        assert len(transitions) == test_case.expected
+
+    def test_the_hook_reads_the_state_the_transition_left(self) -> None:
+        """The surfaces read the song as the hook fires, so the song is engaged by then."""
+        logic = _make_logic()
+        logic._service.alive = False
+        engaged: List[bool] = []
+        logic.on_view_changed = lambda _view: None
+        logic._service.start.side_effect = lambda **_position: setattr(logic._service, "alive", True)
+        logic.on_change_audio_state = lambda: engaged.append(logic.is_engaged())
+
+        logic.play()
+
+        assert engaged == [True]
 
 
 class TestOnProjectReplaced:

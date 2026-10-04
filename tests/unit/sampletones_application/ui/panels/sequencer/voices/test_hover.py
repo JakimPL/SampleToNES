@@ -107,6 +107,8 @@ class TestWhatARowSaysAboutItsVoice:
 
 @pytest.mark.usefixtures("context")
 class TestAHoverReportedAfterTheRowWent:
+    """A hover is answered a frame after it happened, and the list rebuilds every row on each update."""
+
     def test_a_standing_cell_names_its_voice(self) -> None:
         status_bar = RecordedStatusBar()
         panel = _panel(SAMPLE_FOOTPRINT)
@@ -130,3 +132,7 @@ class TestAHoverReportedAfterTheRowWent:
         panel._on_row_hovered(0, cell)
 
         assert status_bar.messages == []
+        with dpg.window():
+            standing = dpg.add_text("Kick", user_data=(0, SAMPLE_ID))
+        panel._on_row_hovered(0, standing)
+        assert len(status_bar.messages) == 1

@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Callable, List, Tuple
 from unittest.mock import MagicMock
 
 import pytest
@@ -352,26 +352,54 @@ class TestVoiceDetails:
             ("Kick", HistoryDetailRole.SAMPLE),
         ]
 
-    def test_rename_sample_shows_old_and_new(self) -> None:
+    def test_rename_sample_shows_the_voice_then_its_new_name(self) -> None:
         controller = _controller()
         sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="Bass")
         formatter = _formatter(controller)
 
         assert _pairs(formatter.rename_voice(sample.id, "Kick")) == [
+            ("00:", HistoryDetailRole.SAMPLE),
             ("Bass", HistoryDetailRole.SAMPLE),
             (">", HistoryDetailRole.SEPARATOR),
             ("Kick", HistoryDetailRole.SAMPLE),
         ]
 
-    def test_move_sample_shows_source_position_and_destination(self) -> None:
+    def test_move_sample_shows_the_voice_then_its_destination(self) -> None:
         controller = _controller()
         sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="Bass")
         formatter = _formatter(controller)
 
         assert _pairs(formatter.move_voice(sample.id, 5)) == [
-            ("00", HistoryDetailRole.SAMPLE),
+            ("00:", HistoryDetailRole.SAMPLE),
+            ("Bass", HistoryDetailRole.SAMPLE),
             (">", HistoryDetailRole.SEPARATOR),
             ("05", HistoryDetailRole.VALUE),
+        ]
+
+    @pytest.mark.parametrize(
+        "line",
+        [
+            lambda formatter, voice_id: formatter.remove_voice(voice_id),
+            lambda formatter, voice_id: formatter.replace_sample(voice_id, "Kick"),
+            lambda formatter, voice_id: formatter.rename_voice(voice_id, "Kick"),
+            lambda formatter, voice_id: formatter.move_voice(voice_id, 0),
+            lambda formatter, voice_id: formatter.duplicate_voice(voice_id),
+        ],
+        ids=["remove", "replace", "rename", "move", "duplicate"],
+    )
+    def test_every_pool_line_opens_with_the_voice_position_and_name(
+        self,
+        line: Callable[[SequencerHistoryDetail, str], Tuple[HistoryDetailSegment, ...]],
+    ) -> None:
+        """A reader finds the voice in the list whichever gesture the line records."""
+        controller = _controller()
+        controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="Lead")
+        sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="Bass")
+        formatter = _formatter(controller)
+
+        assert _pairs(line(formatter, sample.id))[:2] == [
+            ("01:", HistoryDetailRole.SAMPLE),
+            ("Bass", HistoryDetailRole.SAMPLE),
         ]
 
     def test_value_wraps_a_number(self) -> None:
@@ -405,6 +433,7 @@ class TestWhichKindADetailNames:
         formatter = _formatter(controller)
 
         assert _pairs(formatter.rename_voice(instrument.id, "Strings")) == [
+            ("00:", HistoryDetailRole.INSTRUMENT),
             ("Pad", HistoryDetailRole.INSTRUMENT),
             (">", HistoryDetailRole.SEPARATOR),
             ("Strings", HistoryDetailRole.INSTRUMENT),

@@ -6,7 +6,12 @@ import pytest
 
 from sampletones_application.categories.elements.global_ import ContextElements
 from sampletones_application.categories.elements.sequencer import SequencerVoicesElements
-from sampletones_application.tags.sequencer import TAG_SEQUENCER_VOICES_PANEL
+from sampletones_application.tags.sequencer import (
+    TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT,
+    TAG_SEQUENCER_VOICES_PANEL,
+    TAG_SEQUENCER_VOICES_TOOLTIP_NEW_INSTRUMENT,
+    TAG_SEQUENCER_VOICES_TOOLTIP_NEW_INSTRUMENT_NO_PROJECT,
+)
 from sampletones_application.ui.elements import context_menu as context_menu_module
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -151,6 +156,7 @@ def _panel(
     footprint_wired: bool = True,
     instruments: Tuple[Optional[ChannelName], ...] = ONE_INSTRUMENT,
     channels: Tuple[ChannelName, ...] = NO_CHANNELS,
+    accepts_voices: bool = True,
 ) -> VoicesPanelFixture:
     """A voices panel whose menu builder can run with no DearPyGui context behind it.
 
@@ -166,6 +172,7 @@ def _panel(
     panel._selected_row = selected_row
     panel._editing_voice_id = editing
     panel._list_menu_pending = False
+    panel._accepts_voices = accepts_voices
     panel._tab_active = lambda: tab_active
     panel._router = _Router(field_focused=field_focused)
     panel.voice_footprint = (lambda _voice_id: footprint) if footprint_wired else None
@@ -693,6 +700,61 @@ class TestThePoolItems:
         ]
 
 
+class TestThePoolItemsFollowTheProject:
+    """The ways a voice comes in answer while a project stands open to take one, as the card's button does."""
+
+    def test_the_items_answer_while_a_project_is_open(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        recorder: _MenuRecorder,
+    ) -> None:
+        _panel(monkeypatch, accepts_voices=True).menu.add_pool_items()
+
+        assert [item.enabled for item in recorder.items] == [True, True, True]
+
+    def test_the_items_are_grayed_out_with_no_project(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        recorder: _MenuRecorder,
+    ) -> None:
+        _panel(monkeypatch, accepts_voices=False).menu.add_pool_items()
+
+        assert [item.enabled for item in recorder.items] == [False, False, False]
+
+    @pytest.mark.parametrize("enabled", [True, False])
+    def test_the_button_its_tooltip_and_the_menus_follow_one_answer(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        recorder: _MenuRecorder,
+        enabled: bool,
+    ) -> None:
+        """The button's own tooltip shows while it answers, and the one naming what brings it back while it
+        stands greyed out."""
+        configured: List[Tuple[str, bool]] = []
+        tooltips: List[Tuple[str, bool]] = []
+        monkeypatch.setattr(
+            panel_module,
+            "dpg_configure_item",
+            lambda tag, **kwargs: configured.append((tag, kwargs["enabled"])),
+        )
+        monkeypatch.setattr(
+            panel_module,
+            "set_tooltip_visible",
+            lambda tag, visible: tooltips.append((tag, visible)),
+        )
+        fixture = _panel(monkeypatch, accepts_voices=not enabled)
+
+        fixture.panel.set_enabled(enabled)
+        fixture.menu.add_pool_items()
+
+        assert configured == [(TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT, enabled)]
+        assert tooltips == [
+            (TAG_SEQUENCER_VOICES_TOOLTIP_NEW_INSTRUMENT, enabled),
+            (TAG_SEQUENCER_VOICES_TOOLTIP_NEW_INSTRUMENT_NO_PROJECT, not enabled),
+        ]
+        assert [item.enabled for item in recorder.items] == [enabled] * len(recorder.items)
+
+
 class TestWhichDoorAnswersAPress:
     """The list and the row are offered the same press, the list first, so one of them answers it."""
 
@@ -718,7 +780,7 @@ class TestWhichDoorAnswersAPress:
         _deferred_calls(monkeypatch)
         monkeypatch.setattr(fixture.panel, "_pointer_within_list", lambda: True)
         monkeypatch.setattr(fixture.panel, "_show_context_menu", lambda _position, _voice_id: None)
-        monkeypatch.setattr(panel_module.dpg, "get_item_user_data", lambda _item: (SELECTED_ROW, SELECTED_ID))
+        monkeypatch.setattr(panel_module, "dpg_get_item_user_data", lambda _item: (SELECTED_ROW, SELECTED_ID))
 
         fixture.panel._on_list_right_clicked(0, RIGHT_BUTTON)
         fixture.panel._on_voice_clicked(0, (RIGHT_BUTTON, 0))

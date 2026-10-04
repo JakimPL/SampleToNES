@@ -5,7 +5,7 @@ import pytest
 
 from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
-from sampletones_shared.exceptions import InvalidReconstructionError
+from sampletones_shared.exceptions import InvalidReconstructionError, NoOutputDeviceError
 from sampletones_shared.paths import extensions
 
 RECONSTRUCTION_LOAD = "sampletones_application.logic.shared.file_playback.Reconstruction.load"
@@ -87,3 +87,31 @@ class TestAReconstructionThatWillNotRead:
             playback.play(tmp_path / f"sample{extensions.EXT_FILE_RECONSTRUCTION}")
 
         playback.on_error.assert_not_called()
+
+
+class TestADeviceThatRefuses:
+    """A device with no output in force refuses the playback, and the refusal reports through ``on_error``
+    for an audio file and for a reconstruction alike."""
+
+    def test_an_audio_file_reports_the_refusal(self, tmp_path: Path) -> None:
+        refusal = NoOutputDeviceError("no device")
+        audio_device_manager = MagicMock()
+        audio_device_manager.play_file.side_effect = refusal
+        playback = FilePlayback(audio_device_manager)
+        playback.on_error = MagicMock()
+
+        playback.play_at(tmp_path / "audio.wav", PlaybackPriority.PREVIEW)
+
+        playback.on_error.assert_called_once_with(refusal)
+
+    def test_a_reconstruction_reports_the_refusal(self, tmp_path: Path) -> None:
+        refusal = NoOutputDeviceError("no device")
+        audio_device_manager = MagicMock()
+        audio_device_manager.play.side_effect = refusal
+        playback = FilePlayback(audio_device_manager)
+        playback.on_error = MagicMock()
+
+        with patch(RECONSTRUCTION_LOAD):
+            playback.play(tmp_path / f"sample{extensions.EXT_FILE_RECONSTRUCTION}")
+
+        playback.on_error.assert_called_once_with(refusal)

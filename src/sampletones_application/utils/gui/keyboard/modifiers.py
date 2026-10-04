@@ -33,6 +33,8 @@ SUPER: Final[ModifierSet] = frozenset({Modifier.SUPER})
 CTRL_ALT: Final[ModifierSet] = frozenset({Modifier.CTRL, Modifier.ALT})
 CTRL_SHIFT: Final[ModifierSet] = frozenset({Modifier.CTRL, Modifier.SHIFT})
 CTRL_ALT_SHIFT: Final[ModifierSet] = frozenset({Modifier.CTRL, Modifier.ALT, Modifier.SHIFT})
+SUPER_SHIFT: Final[ModifierSet] = frozenset({Modifier.SUPER, Modifier.SHIFT})
+TYPING_MODIFIERS: Final[ModifierSet] = SHIFT
 
 MODIFIER_NAMES: Final[Dict[str, Modifier]] = {
     "ctrl": Modifier.CTRL,

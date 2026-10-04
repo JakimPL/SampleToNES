@@ -85,9 +85,7 @@ Every scenario is held to the same after-checks. A failing gesture is logged and
 keeps running, which is why the checks read the log as well as the screen.
 
 - **Quiet.** The application logged no error and no thread let an exception escape. A scenario that
-  provokes a failure claims the error it provokes, and an error nobody claims still fails it. A defect
-  the bugs ledger records, which a scenario's gestures meet by chance, is forgiven by name in the
-  scenarios about something else, while the ledger entry names it for its fix.
+  provokes a failure claims the error it provokes, and an error nobody claims still fails it.
 - **Contained.** The application started no program, and every file dialog it opened had an answer
   waiting.
 - **Settled.** No modal conversation is left open, and every window lies inside the viewport.
@@ -129,7 +127,9 @@ since a dialog sized by its content settles its place over its first frames ([di
 
 A control in a region that scrolls is brought into view the way a person brings it: the wheel turns over a
 region that takes the wheel, and the grip of a region's scrollbar is dragged where the region ignores the
-wheel.
+wheel. The hand measures how far to scroll once a frame has laid the control out: a row found in the frame
+that built it has no place yet, and a region learns how far it scrolls a frame after it draws what it
+holds.
 
 Keys are pressed on the real keyboard, with modifiers held a frame before the key. A scenario names an
 action by its `ShortcutId`, and the keys come from the scheme in place. The display repeats no held key.
@@ -180,7 +180,12 @@ how a menu popup's width is measured.
   on the disk, as a native dialog's does, and a save may pick one of the file types the dialog offers by
   its name.
 - **Audio.** The default output device plays into silence in real time, so playback runs and nothing is
-  heard. A scenario can start on a machine offering no device at all.
+  heard. It is the one device the application finds on every machine: the scenario's ALSA reads a
+  configuration of its own, which keeps the machine's sound cards and sound server outside the run, and a
+  clock returns each write and each stop when a device would. JACK looks for a server no one runs and
+  starts none, so a JACK server on the machine stays outside the run too. A scenario can start on a
+  machine offering no device at all, or on one whose device refuses every stream, with the same
+  configuration in place.
 - **Programs.** An audit hook refuses every program the application tries to start: a file manager, a
   browser or a dialog tool would open on the desktop around the run. A shared library lookup passes, and
   so do the stand-ins below.
@@ -297,9 +302,18 @@ To follow a scenario as it plays, draw on Xephyr, which opens its screen as a wi
 SAMPLETONES_SCREENS_DISPLAY=xephyr uv run python -m pytest tests/screens --no-cov -k display_settings
 ```
 
-Each scenario keeps its files under `build/screens/`, in a folder named after the test: the home the
-application lived in, and a screenshot of the last frame when the scenario failed. `screen.capture` keeps a
-picture as evidence of a look, for a pull request rather than an assertion.
+A scenario's home is scratch: it is built from the scenario's world in a temporary folder made for each
+worker, whose path holds no hidden folder, so the application's browsers reach it from a worktree under
+`.worktrees/` too, and it goes once the scenario ends. A temporary folder inside a hidden folder is
+refused, and `TMPDIR` points the run at another. The worker's folder is named after its process, and each
+worker's first scenario removes the folders whose process has gone, such as a crashed worker's, and leaves
+another live run's alone. A folder a scenario left locked opens again before its home is copied and
+removed.
+
+What a run keeps lies under `build/screens/`, in a folder named after the test: the reports, and when the
+scenario failed, a screenshot of the last frame and a copy of the home it left. A copy that lost files
+leaves a note beside it. `screen.capture` keeps a picture as evidence of a look, for a pull request rather
+than an assertion.
 
 ## Who governs what
 

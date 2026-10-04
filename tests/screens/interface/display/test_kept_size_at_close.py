@@ -1,32 +1,34 @@
 from typing import List, Tuple
 
-import pytest
-
-from tests.screens.interface.display.steps import another_size, kept, open_display_settings, size_named, window_size
+from tests.screens.interface.display.steps import (
+    another_size,
+    kept,
+    open_display_settings,
+    size_named,
+    window_position,
+    window_size,
+)
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.written import written_state
 
 
 class TestClosingWithASizeKeptButNotConfirmed:
     """Closing the window while Display settings holds a size kept on the countdown but left unconfirmed
-    writes the size the dialog opened with.
+    writes the size and the place the dialog opened with.
 
-    The session keeps that size, as it does for every setting the dialog has yet to commit. The
-    scenario keeps another size, closes the window, and expects the opening size in the written
+    The session keeps them, as it does for every setting the dialog has yet to commit. The scenario
+    keeps another size, closes the window, and expects the opening size and place in the written
     session.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: closing the window writes a size Display settings never confirmed",
-    )
     def test_leaving_writes_the_confirmed_size(self, screen: Screen) -> None:
         settings = screen.display_settings
         opened: List[Tuple[int, int]] = []
+        placed: List[Tuple[int, int]] = []
 
         def keep_a_size_without_confirming_it(screen: Screen) -> None:
             opened.append(window_size(screen))
+            placed.append(window_position(screen))
             open_display_settings(screen)
             label = another_size(screen)
 
@@ -45,5 +47,6 @@ class TestClosingWithASizeKeptButNotConfirmed:
             assert screen.wait_for_exit()
             viewport = written_state().viewport
             assert (viewport.width, viewport.height) == opened[0]
+            assert (viewport.x, viewport.y) == placed[0]
 
         screen.scenario(keep_a_size_without_confirming_it, close_the_window).run()

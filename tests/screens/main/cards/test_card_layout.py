@@ -102,11 +102,6 @@ class TestTheCardsOfTheMainTab:
 
         screen.scenario(advanced_off_and_on_again, the_two_side_by_side).run()
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: General settings stops short of the Converter's edge with Advanced put away",
-    )
     def test_general_fills_the_row_with_advanced_put_away(self, screen: Screen) -> None:
         """With Advanced put away, General ends at the Converter's right edge."""
         screen.press_shortcut(ShortcutId.TOGGLE_ADVANCED_SETTINGS)

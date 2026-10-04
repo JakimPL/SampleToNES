@@ -9,7 +9,7 @@ from sampletones_application.config.session.application.config import Applicatio
 from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.playback import FollowMode
-from sampletones_core.audio import AudioDeviceManager, CurrentDevice
+from sampletones_core.audio import CurrentDevice
 from sampletones_core.constants.audio import BufferSize
 from sampletones_core.constants.enums import HierarchyMode
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
@@ -169,11 +169,13 @@ class SessionManager:
     def current_project(self) -> Optional[Path]:
         return self._state_manager.current_project
 
-    def set_current_audio_device(
+    def set_audio_settings(
         self,
-        audio_device_manager: AudioDeviceManager,
+        current_device: CurrentDevice,
+        buffer_size: BufferSize,
     ) -> None:
-        self._config_manager.set_current_audio_device(audio_device_manager)
+        """Records the output device, its rate and the buffer size the user committed."""
+        self._config_manager.set_audio_settings(current_device, buffer_size)
 
     def set_master_gain(self, value: float) -> None:
         self._config_manager.set_master_gain(value)

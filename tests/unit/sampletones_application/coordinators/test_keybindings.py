@@ -2,10 +2,16 @@ from typing import Any, Dict, Final, List, Optional, Tuple
 
 import pytest
 
+from sampletones_application.categories.elements.settings import KeybindingActionElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.coordinators.keybindings import KeybindingsCoordinator
 from sampletones_application.paths import LANG_EN
-from sampletones_application.utils.gui.keyboard.combination import KeyCombination
+from sampletones_application.utils.gui.keyboard.combination import (
+    KEY_LIST_JOINER,
+    KeyCombination,
+    display_combinations,
+)
 from sampletones_application.utils.gui.shortcuts.ids import (
     EDITABLE_SHORTCUT_CATEGORIES,
     ShortcutId,
@@ -27,7 +33,32 @@ SAVE_COMBINATION: Final[str] = "Ctrl+S"
 UNDO_COMBINATION: Final[str] = "Ctrl+Z"
 REDO_COMBINATION: Final[str] = "Ctrl+Y"
 FREE_COMBINATION: Final[str] = "Ctrl+Alt+B"
+SECOND_FREE_COMBINATION: Final[str] = "Ctrl+Alt+N"
+COMMA_COMBINATION: Final[str] = "Ctrl+,"
 UNREADABLE_COMBINATION: Final[str] = "Ctrl+Nonsense"
+FREE_KEYS: Final[str] = KEY_LIST_JOINER.join((FREE_COMBINATION, SECOND_FREE_COMBINATION))
+NO_KEYS: Final[str] = ""
+TWO_HOLDERS: Final[Tuple[ShortcutId, ...]] = (ShortcutId.SAVE_PROJECT, ShortcutId.OPEN_PROJECT)
+
+
+def _action_label(shortcut_id: ShortcutId) -> str:
+    """The name the editor lists an action under, read from the language file."""
+    return LanguageManager(LANG_EN)[
+        Page.SETTINGS,
+        Panel.KEYBINDINGS,
+        TextType.LABEL,
+        KeybindingActionElements[shortcut_id.name],
+    ]
+
+
+def _unbound_action() -> str:
+    """An action the shipped scheme gives no keys."""
+    scheme = shipped_scheme()
+    return next(
+        shortcut_id.value
+        for shortcut_id in ShortcutId
+        if shortcut_id.category in EDITABLE_SHORTCUT_CATEGORIES and not scheme.shortcut(shortcut_id).combinations()
+    )
 
 
 class _SessionRecorder:
@@ -61,6 +92,7 @@ class _WindowRecorder:
     def __init__(self) -> None:
         self.view_models: List[KeybindingsViewModel] = []
         self.visible = False
+        self.listening = False
         self.on_scheme_selected: Any = None
         self.on_action_selected: Any = None
         self.on_combination_typed: Any = None
@@ -83,6 +115,10 @@ class _WindowRecorder:
 
     def resume(self) -> None:
         self.visible = True
+
+    def listen_again(self) -> None:
+        self.visible = True
+        self.listening = True
 
     def hide(self) -> None:
         self.visible = False
@@ -168,10 +204,10 @@ def harness_fixture() -> Harness:
 
 class TestOpening:
     def test_the_dialog_shows_the_keys_in_force(self, harness: Harness) -> None:
-        assert harness.row(SAVE_PROJECT).combination == SAVE_COMBINATION
+        assert harness.row(SAVE_PROJECT).keys == SAVE_COMBINATION
 
     def test_an_unbound_action_is_listed_carrying_no_keys(self, harness: Harness) -> None:
-        assert harness.row(ABOUT_DIALOG).combination == ""
+        assert harness.row(ABOUT_DIALOG).keys == ""
 
     def test_every_editable_scope_is_listed(self, harness: Harness) -> None:
         assert tuple(group.category for group in harness.window.view_model.groups) == tuple(
@@ -199,7 +235,7 @@ class TestOpening:
         harness.session.shortcut_overrides = {SAVE_PROJECT: FREE_COMBINATION}
         harness.open()
 
-        assert harness.row(SAVE_PROJECT).combination == FREE_COMBINATION
+        assert harness.row(SAVE_PROJECT).keys == FREE_COMBINATION
 
 
 class TestSelection:
@@ -207,12 +243,12 @@ class TestSelection:
         harness.select(SAVE_PROJECT)
 
         assert harness.window.view_model.selected == SAVE_PROJECT
-        assert harness.window.view_model.combination == SAVE_COMBINATION
+        assert harness.window.view_model.keys == SAVE_COMBINATION
 
     def test_an_unbound_action_leaves_the_entry_box_empty(self, harness: Harness) -> None:
         harness.select(ABOUT_DIALOG)
 
-        assert harness.window.view_model.combination == ""
+        assert harness.window.view_model.keys == ""
 
     def test_a_combination_arriving_with_nothing_selected_is_refused(self, harness: Harness) -> None:
         with pytest.raises(SystemError):
@@ -224,26 +260,26 @@ class TestAssignment:
         harness.select(ABOUT_DIALOG)
         harness.type_combination(FREE_COMBINATION)
 
-        assert harness.row(ABOUT_DIALOG).combination == FREE_COMBINATION
+        assert harness.row(ABOUT_DIALOG).keys == FREE_COMBINATION
 
     def test_a_written_combination_reads_back_the_way_it_is_displayed(self, harness: Harness) -> None:
         harness.select(ABOUT_DIALOG)
         harness.type_combination("shift+ctrl+alt+b")
 
-        assert harness.row(ABOUT_DIALOG).combination == "Ctrl+Alt+Shift+B"
+        assert harness.row(ABOUT_DIALOG).keys == "Ctrl+Alt+Shift+B"
 
     def test_a_captured_press_reaches_the_action(self, harness: Harness) -> None:
         harness.select(ABOUT_DIALOG)
         harness.capture(FREE_COMBINATION)
 
-        assert harness.row(ABOUT_DIALOG).combination == FREE_COMBINATION
+        assert harness.row(ABOUT_DIALOG).keys == FREE_COMBINATION
 
     def test_a_combination_naming_no_key_is_reported_and_the_keys_stand(self, harness: Harness) -> None:
         harness.select(SAVE_PROJECT)
         harness.type_combination(UNREADABLE_COMBINATION)
 
         assert UNREADABLE_COMBINATION in harness.window.view_model.message
-        assert harness.row(SAVE_PROJECT).combination == SAVE_COMBINATION
+        assert harness.row(SAVE_PROJECT).keys == SAVE_COMBINATION
 
     def test_a_later_assignment_clears_the_message(self, harness: Harness) -> None:
         harness.select(SAVE_PROJECT)
@@ -266,7 +302,7 @@ class TestTakenCombination:
         harness.type_combination(SAVE_COMBINATION)
 
         assert len(harness.dialogs.confirmations) == 1
-        assert harness.row(ABOUT_DIALOG).combination == ""
+        assert harness.row(ABOUT_DIALOG).keys == ""
 
     def test_the_prompt_names_the_action_the_keys_are_taken_from(self, harness: Harness) -> None:
         harness.select(ABOUT_DIALOG)
@@ -285,8 +321,8 @@ class TestTakenCombination:
         harness.type_combination(SAVE_COMBINATION)
         harness.dialogs.confirm()
 
-        assert harness.row(ABOUT_DIALOG).combination == SAVE_COMBINATION
-        assert harness.row(SAVE_PROJECT).combination == ""
+        assert harness.row(ABOUT_DIALOG).keys == SAVE_COMBINATION
+        assert harness.row(SAVE_PROJECT).keys == ""
         assert harness.window.visible
 
     def test_declining_leaves_both_actions_on_the_keys_they_had(self, harness: Harness) -> None:
@@ -294,25 +330,59 @@ class TestTakenCombination:
         harness.type_combination(SAVE_COMBINATION)
         harness.dialogs.decline()
 
-        assert harness.row(ABOUT_DIALOG).combination == ""
-        assert harness.row(SAVE_PROJECT).combination == SAVE_COMBINATION
+        assert harness.row(ABOUT_DIALOG).keys == ""
+        assert harness.row(SAVE_PROJECT).keys == SAVE_COMBINATION
         assert harness.window.visible
 
-    def test_an_alias_another_action_answers_is_taken_the_same_way(self, harness: Harness) -> None:
-        """Redo answers Ctrl+Shift+Z beside its own keys, which an assignment takes with them."""
+    def test_declining_a_pressed_combination_brings_its_row_back_listening(self, harness: Harness) -> None:
+        """The reader declined the keys they pressed, so the row waits for the press they meant."""
         harness.select(ABOUT_DIALOG)
-        harness.type_combination("Ctrl+Shift+Z")
+        harness.capture(SAVE_COMBINATION)
+        harness.dialogs.decline()
+
+        assert harness.window.visible
+        assert harness.window.listening
+        assert harness.row(SAVE_PROJECT).keys == SAVE_COMBINATION
+
+    def test_declining_a_written_combination_brings_the_dialog_back_listening_for_nothing(
+        self,
+        harness: Harness,
+    ) -> None:
+        harness.select(ABOUT_DIALOG)
+        harness.type_combination(SAVE_COMBINATION)
+        harness.dialogs.decline()
+
+        assert harness.window.visible
+        assert not harness.window.listening
+
+    def test_confirming_a_pressed_combination_brings_the_dialog_back_listening_for_nothing(
+        self,
+        harness: Harness,
+    ) -> None:
+        harness.select(ABOUT_DIALOG)
+        harness.capture(SAVE_COMBINATION)
         harness.dialogs.confirm()
 
-        assert harness.row(ABOUT_DIALOG).combination == "Ctrl+Shift+Z"
-        assert harness.row(ShortcutId.REDO.value).combination == ""
+        assert harness.window.visible
+        assert not harness.window.listening
+        assert harness.row(ABOUT_DIALOG).keys == SAVE_COMBINATION
+
+    def test_an_alias_another_action_answers_is_taken_alone(self, harness: Harness) -> None:
+        """Redo answers an alias beside its main key, and taking the alias leaves Redo its main key."""
+        redo = shipped_scheme().shortcut(ShortcutId.REDO)
+        harness.select(ABOUT_DIALOG)
+        harness.type_combination(redo.aliases[0].display())
+        harness.dialogs.confirm()
+
+        assert harness.row(ABOUT_DIALOG).keys == redo.aliases[0].display()
+        assert harness.row(REDO).keys == redo.display()
 
     def test_the_keys_an_action_already_answers_are_assigned_without_asking(self, harness: Harness) -> None:
         harness.select(SAVE_PROJECT)
         harness.type_combination(SAVE_COMBINATION)
 
         assert harness.dialogs.confirmations == []
-        assert harness.row(SAVE_PROJECT).combination == SAVE_COMBINATION
+        assert harness.row(SAVE_PROJECT).keys == SAVE_COMBINATION
 
 
 class TestClear:
@@ -320,7 +390,7 @@ class TestClear:
         harness.select(SAVE_PROJECT)
         harness.clear()
 
-        assert harness.row(SAVE_PROJECT).combination == ""
+        assert harness.row(SAVE_PROJECT).keys == ""
 
     def test_the_keys_a_cleared_action_held_are_free_to_take(self, harness: Harness) -> None:
         harness.select(SAVE_PROJECT)
@@ -329,7 +399,7 @@ class TestClear:
         harness.type_combination(SAVE_COMBINATION)
 
         assert harness.dialogs.confirmations == []
-        assert harness.row(ABOUT_DIALOG).combination == SAVE_COMBINATION
+        assert harness.row(ABOUT_DIALOG).keys == SAVE_COMBINATION
 
 
 class TestReset:
@@ -347,7 +417,7 @@ class TestReset:
         harness.reset()
         harness.dialogs.confirm()
 
-        assert harness.row(SAVE_PROJECT).combination == SAVE_COMBINATION
+        assert harness.row(SAVE_PROJECT).keys == SAVE_COMBINATION
         assert harness.window.visible
 
     def test_declining_leaves_the_edits_standing(self, harness: Harness) -> None:
@@ -356,7 +426,7 @@ class TestReset:
         harness.reset()
         harness.dialogs.decline()
 
-        assert harness.row(SAVE_PROJECT).combination == FREE_COMBINATION
+        assert harness.row(SAVE_PROJECT).keys == FREE_COMBINATION
 
     def test_a_reset_stores_no_overrides(self, harness: Harness) -> None:
         harness.select(SAVE_PROJECT)
@@ -411,8 +481,8 @@ class TestCommit:
         harness.commit()
         harness.open()
 
-        assert harness.row(ABOUT_DIALOG).combination == SAVE_COMBINATION
-        assert harness.row(SAVE_PROJECT).combination == ""
+        assert harness.row(ABOUT_DIALOG).keys == SAVE_COMBINATION
+        assert harness.row(SAVE_PROJECT).keys == ""
 
 
 class TestCancel:
@@ -437,7 +507,7 @@ class TestCancel:
         harness.dialogs.decline()
 
         assert harness.window.visible
-        assert harness.row(ABOUT_DIALOG).combination == FREE_COMBINATION
+        assert harness.row(ABOUT_DIALOG).keys == FREE_COMBINATION
 
     def test_discarding_leaves_the_keys_in_force_alone(self, harness: Harness) -> None:
         harness.select(ABOUT_DIALOG)
@@ -463,7 +533,7 @@ class TestScheme:
         harness.type_combination(FREE_COMBINATION)
         harness.select_scheme(shipped_scheme().name)
 
-        assert harness.row(ABOUT_DIALOG).combination == FREE_COMBINATION
+        assert harness.row(ABOUT_DIALOG).keys == FREE_COMBINATION
 
     def test_an_unknown_scheme_falls_back_to_the_one_the_build_defaults_to(self, harness: Harness) -> None:
         harness.select_scheme("nonexistent")
@@ -484,8 +554,8 @@ class TestTrade:
         return harness
 
     def test_each_action_arrives_at_the_keys_the_other_left(self, traded: Harness) -> None:
-        assert traded.row(UNDO).combination == REDO_COMBINATION
-        assert traded.row(REDO).combination == UNDO_COMBINATION
+        assert traded.row(UNDO).keys == REDO_COMBINATION
+        assert traded.row(REDO).keys == UNDO_COMBINATION
 
     def test_the_traded_keys_reach_the_scheme_put_in_force(self, traded: Harness) -> None:
         traded.commit()
@@ -497,5 +567,103 @@ class TestTrade:
         traded.commit()
         traded.open()
 
-        assert traded.row(UNDO).combination == REDO_COMBINATION
-        assert traded.row(REDO).combination == UNDO_COMBINATION
+        assert traded.row(UNDO).keys == REDO_COMBINATION
+        assert traded.row(REDO).keys == UNDO_COMBINATION
+
+
+class TestEveryKey:
+    """An action answers a list of keys, its main key first, and the editor keeps every one of them."""
+
+    def test_a_typed_list_becomes_every_key_of_the_action(self, harness: Harness) -> None:
+        harness.select(ABOUT_DIALOG)
+        harness.type_combination(FREE_KEYS)
+
+        assert harness.row(ABOUT_DIALOG).keys == FREE_KEYS
+
+    def test_a_pressed_key_leads_and_the_other_keys_stay(self, harness: Harness) -> None:
+        redo = shipped_scheme().shortcut(ShortcutId.REDO)
+        harness.select(REDO)
+        harness.capture(FREE_COMBINATION)
+
+        assert harness.row(REDO).keys == display_combinations(
+            (KeyCombination.parse(FREE_COMBINATION), *redo.combinations())
+        )
+
+    def test_pressing_an_own_alias_moves_it_to_the_front_without_asking(self, harness: Harness) -> None:
+        redo = shipped_scheme().shortcut(ShortcutId.REDO)
+        harness.select(REDO)
+        harness.capture(redo.aliases[0].display())
+
+        assert harness.dialogs.confirmations == []
+        assert harness.row(REDO).keys == display_combinations((*redo.aliases, redo.combinations()[0]))
+
+    def test_a_typed_list_taking_keys_from_two_actions_asks_once_naming_both(self, harness: Harness) -> None:
+        scheme = shipped_scheme()
+        taken = display_combinations(scheme.shortcut(shortcut_id).combinations()[0] for shortcut_id in TWO_HOLDERS)
+        harness.select(ABOUT_DIALOG)
+        harness.type_combination(taken)
+
+        assert len(harness.dialogs.confirmations) == 1
+        assert all(
+            _action_label(shortcut_id) in harness.dialogs.confirmations[-1]["message"] for shortcut_id in TWO_HOLDERS
+        )
+
+    def test_confirming_a_list_taken_from_two_actions_moves_both_keys(self, harness: Harness) -> None:
+        scheme = shipped_scheme()
+        taken = display_combinations(scheme.shortcut(shortcut_id).combinations()[0] for shortcut_id in TWO_HOLDERS)
+        harness.select(ABOUT_DIALOG)
+        harness.type_combination(taken)
+        harness.dialogs.confirm()
+
+        assert harness.row(ABOUT_DIALOG).keys == taken
+        assert all(harness.row(shortcut_id.value).keys == "" for shortcut_id in TWO_HOLDERS)
+
+    def test_clearing_unbinds_every_key(self, harness: Harness) -> None:
+        harness.select(REDO)
+        harness.clear()
+
+        assert harness.row(REDO).keys == ""
+
+    def test_an_empty_entry_unbinds_a_bound_action(self, harness: Harness) -> None:
+        harness.select(SAVE_PROJECT)
+        harness.type_combination(NO_KEYS)
+        harness.commit()
+
+        assert dict(harness.session.writes)["overrides"] == {SAVE_PROJECT: None}
+
+    def test_an_empty_entry_for_an_unbound_action_leaves_nothing_to_discard(self, harness: Harness) -> None:
+        harness.select(_unbound_action())
+        harness.type_combination(NO_KEYS)
+        harness.cancel()
+
+        assert (harness.dialogs.confirmations, harness.window.visible) == ([], False)
+
+    def test_clearing_an_unbound_action_leaves_nothing_to_discard(self, harness: Harness) -> None:
+        harness.select(_unbound_action())
+        harness.clear()
+        harness.cancel()
+
+        assert (harness.dialogs.confirmations, harness.window.visible) == ([], False)
+
+    def test_a_typed_comma_key_reaches_the_action(self, harness: Harness) -> None:
+        harness.select(ABOUT_DIALOG)
+        harness.type_combination(COMMA_COMBINATION)
+
+        assert (harness.window.view_model.message, harness.row(ABOUT_DIALOG).keys) == (
+            "",
+            KeyCombination.parse(COMMA_COMBINATION).display(),
+        )
+
+    def test_a_list_is_stored_as_written(self, harness: Harness) -> None:
+        harness.select(ABOUT_DIALOG)
+        harness.type_combination(FREE_KEYS)
+        harness.commit()
+
+        assert dict(harness.session.writes)["overrides"] == {ABOUT_DIALOG: FREE_KEYS}
+
+    def test_a_list_naming_no_key_in_one_place_is_reported_and_the_keys_stand(self, harness: Harness) -> None:
+        harness.select(SAVE_PROJECT)
+        harness.type_combination(KEY_LIST_JOINER.join((FREE_COMBINATION, UNREADABLE_COMBINATION)))
+
+        assert UNREADABLE_COMBINATION in harness.window.view_model.message
+        assert harness.row(SAVE_PROJECT).keys == SAVE_COMBINATION

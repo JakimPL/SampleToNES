@@ -1,20 +1,26 @@
+import operator
 from functools import partial
 from typing import Final, List, Optional, Tuple
-
-import pytest
 
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.utils.display import NOTE_BLANK
-from tests.screens.sequencer.tracker.constants import LINE_NUMBER, PAD_NUMBER, PIANO_C, SAMPLE_COLUMN, TYPING_FRAMES
+from tests.screens.sequencer.tracker.constants import (
+    LINE_NUMBER,
+    PAD_NUMBER,
+    PIANO_C,
+    PLAY_FROM_THIS_FRAME,
+    SAMPLE_COLUMN,
+    TYPING_FRAMES,
+)
 from tests.screens.sequencer.tracker.steps import play_a_note, type_into
 from tests.suite.screens.dearpygui.items.texts import read_label
 from tests.suite.screens.dearpygui.keys import IMGUI_LETTER_A
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.sequencer import leave_letting_the_project_go, on_the_sequencer
 from tests.suite.screens.views.tracker import tracker_cell, tracker_cell_theme
-from tests.suite.screens.vocabulary.playback import PAUSE
+from tests.suite.screens.vocabulary.playback import PAUSE, PLAY
 from tests.suite.screens.worlds.songs import PAD_ROW
 
 PIANO_C_UP: Final[int] = IMGUI_LETTER_A + ord("q") - ord("a")
@@ -174,20 +180,64 @@ class TestAVoiceTyped:
         ).run()
 
 
+def reads_as_playing(screen: Screen) -> None:
+    """Expects the Playback menu to offer Pause, with Stop answering."""
+    playback = screen.sequencer.playback
+    screen.expect(playback.can_stop, bool, description="Stop answering")
+    assert playback.play_entry() == screen.words(PAUSE)
+
+
+def reads_as_stopped(screen: Screen) -> None:
+    """Expects the Playback menu to offer Play, with Stop greyed out."""
+    playback = screen.sequencer.playback
+    screen.expect(lambda: not playback.can_stop(), bool, description="Stop greyed out")
+    assert playback.play_entry() == screen.words(PLAY)
+
+
 class TestPlayingFromATrackerRow:
-    """Playing the song from the caret's row reads as playing in the Playback menu, Stop answering."""
+    """Playing the song from the tracker reads as playing in the Playback menu, Stop answering, whichever way it
+    started, and stopping it reads as stopped again.
+    """
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: playing from a tracker row leaves the Playback menu reading Play",
-    )
     def test_the_menu_follows(self, screen: Screen) -> None:
-        """After the play-from-row shortcut, the Playback menu offers Pause and Stop answers."""
-        on_the_sequencer(screen)
-        screen.sequencer.tracker.click(1, ChannelName.PULSE1, SubColumn.VOICE)
+        """The cell menu's Play from this frame and the play-from-row shortcut each turn the menu to Pause, and
+        the Stop key and Stop on the menu each turn it back to Play.
 
-        screen.press_shortcut(ShortcutId.TRACKER_PLAY_FROM_ROW)
+        Every gesture on a cell comes before the song first plays, since a playing song moves the grid.
+        """
+        tracker = screen.sequencer.tracker
+        menu = screen.context_menu
 
-        screen.expect(screen.sequencer.playback.can_stop, bool, description="Stop answering")
-        assert screen.sequencer.playback.play_entry() == screen.words(PAUSE)
+        def the_cell_menu_plays_from_the_frame(screen: Screen) -> None:
+            on_the_sequencer(screen)
+            tracker.click(1, ChannelName.PULSE1, SubColumn.VOICE)
+            reads_as_stopped(screen)
+            tracker.right_click(1, ChannelName.PULSE1, SubColumn.VOICE)
+            screen.expect(menu.is_shown, bool, description="the cell's menu")
+
+            menu.choose(screen.words(PLAY_FROM_THIS_FRAME))
+
+            screen.expect(menu.is_shown, operator.not_, description="the menu answered")
+            reads_as_playing(screen)
+
+        def the_stop_key_reads_as_stopped(screen: Screen) -> None:
+            screen.press_shortcut(ShortcutId.STOP)
+
+            reads_as_stopped(screen)
+
+        def the_shortcut_plays_from_the_row(screen: Screen) -> None:
+            screen.press_shortcut(ShortcutId.TRACKER_PLAY_FROM_ROW)
+
+            reads_as_playing(screen)
+
+        def stop_from_the_menu_reads_as_stopped(screen: Screen) -> None:
+            screen.sequencer.playback.stop()
+
+            reads_as_stopped(screen)
+
+        screen.scenario(
+            the_cell_menu_plays_from_the_frame,
+            the_stop_key_reads_as_stopped,
+            the_shortcut_plays_from_the_row,
+            stop_from_the_menu_reads_as_stopped,
+        ).run()

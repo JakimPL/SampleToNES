@@ -1,4 +1,4 @@
-from typing import Final, Iterator, List
+from typing import Callable, Final, Iterator, List
 from unittest.mock import patch
 
 import dearpygui.dearpygui as dpg
@@ -18,15 +18,17 @@ from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
 from sampletones_application.utils.gui.dialogs.windows.save_confirmation import (
     GUISaveConfirmationWindow,
 )
-from sampletones_application.utils.gui.keyboard import KeyRouter
+from sampletones_application.utils.gui.keyboard import KeyEvent, KeyRouter
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_shared.types.callback import VoidCallback
 from tests.suite.frames import Frames
-from tests.suite.shortcuts import shipped_source
+from tests.suite.shortcuts import shipped_scheme, shipped_source
 
 WINDOW_TAG: Final[str] = get_dialog_tag(TAG_GLOBAL_DIALOG_FILE_NOT_FOUND)
 MESSAGE: Final[str] = "Save first?"
 SAVED: Final[str] = "saved"
 CONFIRMED: Final[str] = "confirmed"
+CANCELED: Final[str] = "canceled"
 
 
 @pytest.fixture(name="router")
@@ -63,11 +65,22 @@ def render(
         answers.append(SAVED)
         return save_outcome
 
+    build(window, save=save, answers=answers)
+
+
+def build(
+    window: GUISaveConfirmationWindow,
+    *,
+    save: Callable[[], SaveOutcome],
+    answers: List[str],
+) -> None:
+    """Builds the prompt over ``save``, recording each way forward and back in ``answers``."""
     window.prepare(
         MESSAGE,
         "Title",
         save,
         lambda: answers.append(CONFIRMED),
+        lambda: answers.append(CANCELED),
         ok_label="Proceed",
     )
     window.create_window()
@@ -81,6 +94,13 @@ def button_callback(suffix: str) -> VoidCallback:
 
 def press(suffix: str) -> None:
     button_callback(suffix)()
+
+
+def escape(router: KeyRouter) -> None:
+    """The press the shipped scheme cancels a dialog with, routed the way the keyboard sends it."""
+    combination = shipped_scheme().shortcut(ShortcutId.DIALOG_CANCEL).combination
+    assert combination is not None
+    router.route(KeyEvent(key=combination.key, modifiers=combination.modifiers))
 
 
 @pytest.fixture(name="placed")
@@ -170,20 +190,42 @@ class TestSavingFromThePrompt:
 
         assert len(router._modal_stack) == 1
 
-    def test_a_failed_save_leaves_the_error_alone_on_screen(
+    def test_a_failed_save_leaves_the_error_alone_on_screen_and_answers_cancel(
         self,
         window: GUISaveConfirmationWindow,
         held_frames: Frames,
     ) -> None:
+        """The request the prompt guarded goes no further, and its caller hears that it ended."""
         answers: List[str] = []
         render(window, save_outcome=SaveOutcome.FAILED, answers=answers)
 
         press(SUF_BUTTON_SAVE)
         held_frames.render()
 
-        assert answers == [SAVED]
+        assert answers == [SAVED, CANCELED]
         assert not dpg.does_item_exist(WINDOW_TAG)
         assert held_frames.pending == 0
+
+    def test_a_save_that_raises_answers_cancel_and_lets_the_error_through(
+        self,
+        window: GUISaveConfirmationWindow,
+        held_frames: Frames,
+    ) -> None:
+        """A save failing with an error it names no outcome for still ends the request the prompt guarded."""
+        answers: List[str] = []
+
+        def save() -> SaveOutcome:
+            answers.append(SAVED)
+            raise RuntimeError("the save broke")
+
+        build(window, save=save, answers=answers)
+        press(SUF_BUTTON_SAVE)
+
+        with pytest.raises(RuntimeError):
+            held_frames.render()
+
+        assert answers == [SAVED, CANCELED]
+        assert not dpg.does_item_exist(WINDOW_TAG)
 
 
 class TestTheOtherAnswers:
@@ -202,7 +244,20 @@ class TestTheOtherAnswers:
         held_frames.render()
         assert answers == [CONFIRMED]
 
-    def test_cancel_leaves_and_answers_nothing(
+    def test_cancel_leaves_before_it_answers(
+        self,
+        window: GUISaveConfirmationWindow,
+        held_frames: Frames,
+    ) -> None:
+        answers: List[str] = []
+        render(window, save_outcome=SaveOutcome.WRITTEN, answers=answers)
+
+        press(SUF_BUTTON_CANCEL)
+
+        assert not dpg.does_item_exist(WINDOW_TAG)
+        assert answers == []
+
+    def test_cancel_answers_cancel_a_frame_later(
         self,
         window: GUISaveConfirmationWindow,
         router: KeyRouter,
@@ -214,9 +269,54 @@ class TestTheOtherAnswers:
         press(SUF_BUTTON_CANCEL)
         held_frames.render()
 
-        assert answers == []
+        assert answers == [CANCELED]
         assert not dpg.does_item_exist(WINDOW_TAG)
         assert not router.is_modal_open
+
+    def test_escape_answers_as_cancel(
+        self,
+        window: GUISaveConfirmationWindow,
+        router: KeyRouter,
+        held_frames: Frames,
+    ) -> None:
+        answers: List[str] = []
+        render(window, save_outcome=SaveOutcome.WRITTEN, answers=answers)
+
+        escape(router)
+        held_frames.render()
+
+        assert answers == [CANCELED]
+        assert not dpg.does_item_exist(WINDOW_TAG)
+
+    def test_the_title_bar_close_answers_as_cancel(
+        self,
+        window: GUISaveConfirmationWindow,
+        held_frames: Frames,
+    ) -> None:
+        answers: List[str] = []
+        render(window, save_outcome=SaveOutcome.WRITTEN, answers=answers)
+
+        dpg.get_item_configuration(WINDOW_TAG)["on_close"]()
+        held_frames.render()
+
+        assert answers == [CANCELED]
+        assert not dpg.does_item_exist(WINDOW_TAG)
+
+    def test_a_save_called_off_and_then_canceled_answers_cancel(
+        self,
+        window: GUISaveConfirmationWindow,
+        held_frames: Frames,
+        placed: None,
+    ) -> None:
+        answers: List[str] = []
+        render(window, save_outcome=SaveOutcome.CALLED_OFF, answers=answers)
+        press(SUF_BUTTON_SAVE)
+        held_frames.render()
+
+        press(SUF_BUTTON_CANCEL)
+        held_frames.render()
+
+        assert answers == [SAVED, CANCELED]
 
     def test_a_second_press_answers_nothing(
         self,

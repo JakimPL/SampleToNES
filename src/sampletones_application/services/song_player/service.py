@@ -20,6 +20,7 @@ from sampletones_application.services.song_player.result import (
 )
 from sampletones_application.services.synthesis.protocol import RowSynthesizerProtocol
 from sampletones_core.audio import AudioDeviceManager, clip_audio_inplace
+from sampletones_core.audio.stream import write_to_stream
 from sampletones_core.constants.audio import DEFAULT_BUFFER_SIZE
 from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.constants.audio import UNITY_GAIN
@@ -62,6 +63,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         self._master_gain = master_gain
         self._stop_event = threading.Event()
         self._resume_event = threading.Event()
+        self._holding_output = threading.Event()
         self._render_thread: Optional[threading.Thread] = None
         self._write_thread: Optional[threading.Thread] = None
 
@@ -74,7 +76,12 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
 
     @property
     def alive(self) -> bool:
-        return self._write_thread is not None and self._write_thread.is_alive()
+        """Whether the song holds the output, from :meth:`start` until the writer hands its stream back.
+
+        The writer lets go before it reports the song's end, so a listener reading ``alive`` on
+        ``SongPlaybackStopped`` or ``SongPlaybackError`` reads the output free.
+        """
+        return self._holding_output.is_set()
 
     @property
     def is_playing(self) -> bool:
@@ -90,6 +97,15 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         order_position: int = 0,
         row_index: int = 0,
     ) -> None:
+        """Starts the song at a row, replacing any song this service is playing.
+
+        The device manager is asked for the output first, so a machine offering no output device
+        refuses the song before any thread starts and leaves the playback as it stands.
+
+        Raises:
+            NoOutputDeviceError: If no output device is in force.
+        """
+        output = self._audio_device_manager.require_output()
         self.stop()
         if self.alive:
             logger.error(f"{self.class_name}: the previous writer still holds the output; start ignored")
@@ -101,12 +117,13 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         self._prefetch_samples = max(
             1,
             round(
-                PREFETCH_SECONDS * self._audio_device_manager.sample_rate,
+                PREFETCH_SECONDS * output.sample_rate,
             ),
         )
         self._write_block_frames = self._audio_device_manager.buffer_size
         self._stop_event.clear()
         self._resume_event.set()
+        self._holding_output.set()
         self._render_thread = threading.Thread(
             target=self._render_loop,
             daemon=True,
@@ -161,9 +178,9 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
     def _join_worker(self, thread: Optional[threading.Thread]) -> Optional[threading.Thread]:
         """Joins one worker; keeps the thread when it outlives the stop deadline.
 
-        Keeping a surviving writer is what makes ``alive`` report the truth: the thread still
-        holds the output stream, so callers waiting on quiescence — the audio device before it
-        tears the backend down — can see that the stream is still outstanding.
+        A surviving writer still holds the output stream, and ``alive`` goes on reporting it, so
+        callers waiting on quiescence — the audio device before it tears the backend down — can see
+        that the stream is still outstanding.
         """
         if thread is None:
             return None
@@ -196,51 +213,81 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
             self._enqueue_end()
 
     def _write_loop(self) -> None:
-        stream = self._open_stream()
-        if stream is None:
+        """Drains the song to the device, hands the stream back, and then reports how the song ended.
+
+        This is the writer thread's whole task, so a stream the device refuses ends here as the song's
+        error, and so do a write and a hand-back the device fails. Each is reported once, with the
+        output free.
+        """
+        try:
+            stream = self._open_stream()
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+            self._end_refused(exception)
             return
 
+        ended = True
         try:
-            self._drain_to_stream(stream)
+            ended = self._play_through(stream)
         except Exception as exception:  # pylint: disable=broad-exception-caught
             logger.error_with_traceback(exception, f"{self.class_name}: playback error")
             self._playback_error = exception
+        finally:
+            self._holding_output.clear()
+
+        if ended:
             self._emit_terminal()
+
+    def _play_through(self, stream: pyaudio.Stream) -> bool:
+        """Drains the song to ``stream``, and then hands the stream back to the device however the drain ended.
+
+        Returns:
+            True once the song reached its end, False when a stop ended the drain.
+        """
+        try:
+            return self._drain_to_stream(stream)
         finally:
             self._audio_device_manager.close_output_stream(stream)
 
-    def _open_stream(self) -> Optional[pyaudio.Stream]:
-        try:
-            sample_rate = self._audio_device_manager.sample_rate
-            stream = self._audio_device_manager.open_output_stream(
-                sample_rate=sample_rate,
-                buffer_size=self._audio_device_manager.buffer_size,
-                release=self.stop,
-            )
-            logger.debug(f"{self.class_name}: audio stream opened at {sample_rate} Hz")
-            return stream
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-            logger.error(f"{self.class_name}: failed to open audio stream: {exception}")
-            self._emit(SongPlaybackStopped())
-            self._stop_event.set()
-            self._wake_buffer()
-            return None
+    def _open_stream(self) -> pyaudio.Stream:
+        sample_rate = self._audio_device_manager.sample_rate
+        stream = self._audio_device_manager.open_output_stream(
+            sample_rate=sample_rate,
+            buffer_size=self._audio_device_manager.buffer_size,
+            release=self.stop,
+        )
+        logger.debug(f"{self.class_name}: audio stream opened at {sample_rate} Hz")
+        return stream
 
-    def _drain_to_stream(self, stream: pyaudio.Stream) -> None:
+    def _end_refused(self, exception: Exception) -> None:
+        """Ends a song whose stream never opened: the renderer stops, the output goes free, and the error is told."""
+        logger.error_with_traceback(exception, f"{self.class_name}: failed to open audio stream")
+        self._playback_error = exception
+        self._stop_event.set()
+        self._wake_buffer()
+        self._holding_output.clear()
+        self._emit_terminal()
+
+    def _drain_to_stream(self, stream: pyaudio.Stream) -> bool:
+        """Hands the buffered rows to the device until the song ends or a stop comes.
+
+        Returns:
+            True once the song reached its end, False when a stop ended the drain.
+        """
         while not self._stop_event.is_set():
             self._resume_event.wait()
             if self._stop_event.is_set():
-                return
+                return False
 
             popped, row = self._dequeue()
             if not popped or self._stop_event.is_set():
-                return
+                return False
 
             if row is None:
-                self._emit_terminal()
-                return
+                return True
 
             self._play_row(stream, row)
+
+        return False
 
     def _play_row(self, stream: pyaudio.Stream, row: _RenderedRow) -> None:
         """Hands one row to the device, reporting its position once the whole row is written.
@@ -265,7 +312,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
             if self._stop_event.is_set():
                 return False
 
-            stream.write(chunk[offset : offset + self._write_block_frames].tobytes())
+            write_to_stream(stream, chunk[offset : offset + self._write_block_frames].tobytes())
 
         return True
 

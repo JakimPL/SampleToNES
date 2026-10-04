@@ -1,7 +1,5 @@
 from typing import Callable, Final, List, Tuple
 
-import pytest
-
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.screens.sequencer.history.cases import GESTURES, Gesture
@@ -9,7 +7,6 @@ from tests.screens.sequencer.history.constants import PAD_POSITION, POSITION_MAR
 from tests.screens.sequencer.history.steps import pick, rename
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.reconstructions import titled
-from tests.suite.screens.steps.sequencer import forgive_the_hover_race
 from tests.suite.screens.views.history import HistoryLine
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT, BASS_VOICE, LINE, PAD
 
@@ -86,7 +83,6 @@ def one_entry_per_gesture(gesture_name: str, gesture: Gesture, voice: str, posit
 
 def leave_as_opened(screen: Screen) -> None:
     """Exits a project whose gestures were all undone; the window closes at once."""
-    forgive_the_hover_race(screen)
     assert screen.title() == titled(screen, ARRANGED_PROJECT.stem)
 
     screen.press_shortcut(ShortcutId.EXIT)
@@ -112,11 +108,6 @@ class TestEachVoiceGestureIsOneEntry:
 
         screen.scenario(*steps, leave_as_opened).run()
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: the history lines of a renamed or a moved voice name it one way alone",
-    )
     def test_every_line_names_the_voice_by_position_and_name(self, screen: Screen) -> None:
         """The entries of a renamed and of a moved sample each name it by its position and by its name."""
         history = screen.sequencer.history
@@ -130,7 +121,6 @@ class TestEachVoiceGestureIsOneEntry:
             screen.press_shortcut(ShortcutId.UNDO)
             screen.expect(screen.sequencer.voices.names, [LINE, BASS_VOICE, PAD].__eq__, description="undone")
 
-        forgive_the_hover_race(screen)
         assert all(names_by_position_and_name(line, LINE, LINE_POSITION) for line in lines)
 
     def test_a_new_instrument_is_one_entry(self, screen: Screen) -> None:

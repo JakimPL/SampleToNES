@@ -339,11 +339,24 @@ class TestGridCellEntry:
         assert panel._on_key_pressed(_press("C")) is True
         assert states[-1].pending == "C"
 
-    def test_a_modified_key_reaches_the_application(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    @pytest.mark.parametrize("written", ["Ctrl+D", "Alt+D", "Super+D"])
+    def test_a_modified_key_reaches_the_application(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        written: str,
+    ) -> None:
         """Ctrl+D opens the display settings, so cell entry keeps the plain hex key alone."""
         panel = _panel()
         states: List[TrackerInputState] = []
         monkeypatch.setattr(panel, "_apply_state", states.append)
 
-        assert panel._on_key_pressed(_press("Ctrl+D")) is False
+        assert panel._on_key_pressed(_press(written)) is False
         assert states == []
+
+    def test_a_key_under_shift_types_as_a_capital(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        panel = _panel()
+        states: List[TrackerInputState] = []
+        monkeypatch.setattr(panel, "_apply_state", states.append)
+
+        assert panel._on_key_pressed(_press("Shift+C")) is True
+        assert states[-1].pending == "C"

@@ -9,7 +9,8 @@ class ShortcutsConfig(BaseModel):
     """The keys the application answers to: the scheme it runs under and the actions rebound on it.
 
     A scheme names a whole set of keys the build ships, while an override rebinds one action on top
-    of it, so a reader who changes a single combination keeps every other key the scheme gives them.
+    of it, so a reader who changes a single action keeps every other key the scheme gives them. An
+    override lists every key of its action, so a stored single key reads as an action with one key.
     Both are stored by name — the same names a keybinding file writes — which lets a preference
     outlive the build that wrote it, since the names a build carries are what it reads back.
 
@@ -24,7 +25,7 @@ class ShortcutsConfig(BaseModel):
     overrides: Dict[str, Optional[str]] = Field(
         default_factory=dict,
         description=(
-            "The combination each rebound action answers to, keyed by the action's name, "
-            "stating null for an action the reader left unbound."
+            "The keys each rebound action answers to, main key first and joined by commas, "
+            "keyed by the action's name, and null for an action the reader left unbound."
         ),
     )

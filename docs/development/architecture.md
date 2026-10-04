@@ -186,7 +186,7 @@ A view model is the UI's contract with the logic layer: it states exactly what d
 
 Owns domain state and implements the state-machine transitions that govern it, knowing nothing of the UI framework.
 
-*Managers* own a domain object's lifecycle (load, save, close). They hold the current object and a `Session` that tracks dirty state, and they fire `CallbackMixin` callbacks when the state changes.
+*Managers* own a domain object's lifecycle (load, save, close). They hold the current object, the file it was last loaded from or saved to, and a `Session` that tracks dirty state, and they fire `CallbackMixin` callbacks when the state changes. Whoever saves or remembers a document reads its file from the manager, so a document opened by any route is saved where it came from.
 
 *Controllers* are thin mutation façades over a manager. `ProjectController` exposes named, typed mutation methods and emits a finer-grained callback per mutation kind, so the UI answers exactly what changed. Its `batch()` widens that grain to a whole gesture. Each mutation still applies the moment it is made, while the callbacks wait for the scope to close and then arrive once each. A gesture that writes hundreds of rows therefore rebuilds its subscribers once.
 
@@ -205,7 +205,7 @@ Runs long operations (file conversion, waveform regeneration, export, playback s
 
 - Every service inherits `ServiceBase[ResultType]`, which provides `subscribe(handler)`, `unsubscribe(handler)` and `_emit(result)`.
 - `_emit` posts the result to `CallbackQueue`, which puts every handler on the render thread (principle 6).
-- Result types are a tagged union of `ServiceStarted`, `ServiceProgress`, `ServiceIntermediate`, `ServiceSuccess`, `ServiceError` and `ServiceCanceled`, so a subscriber matches exhaustively.
+- Result types are a tagged union, so a subscriber matches exhaustively. A long operation reports through `ServiceStarted`, `ServiceProgress`, `ServiceIntermediate`, `ServiceSuccess`, `ServiceError` and `ServiceCanceled`, and a service whose reports carry more, such as the playhead or the request they answer, declares a union of its own in its `result.py`.
 - A service is one subpackage holding `service.py` and `result.py`, so its implementation and the contract its subscribers type against are reached separately. The generic contracts every service reports through are in `services/result.py`. `ServiceProgress.fraction` is the one reading a bar draws. See [`progress.md`](progress.md).
 - A service knows no panel, view model or logic object.
 

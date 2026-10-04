@@ -24,7 +24,7 @@ The application orders its scopes by priority, from highest to lowest:
 | `PANEL` | a sub-panel the keys are meant for | its tab is in front, its card is open, and the sub-panel holds what the keys act on: a cursor, a row picked out, or an open audition | handles the keys its own category names and yields every combination it does not own, so a higher-reaching shortcut still wins |
 | `SHORTCUT` | application shortcuts (`ShortcutManager`) | always | fires the matching shortcut while no field is being edited, or whenever the shortcut is `field_transparent` |
 
-The router offers a panel the key ahead of the shortcut scope. A panel therefore returns `False` on any combination it does not own. The grid, for example, yields every `Ctrl`-modified press. That lets field-transparent shortcuts, such as the tab switch, reach the shortcut scope while a grid cursor is set.
+The router offers a panel the key ahead of the shortcut scope. A panel therefore returns `False` on any combination it does not own. A panel that reads keys as entry, such as notes or hex digits, takes **plain presses** alone: a key pressed on its own or with Shift, the way a character is typed. Ctrl, Alt and Super make a press a command, and a command goes on to the shortcuts. The grid therefore lets `Ctrl+D` through, and an open instrument's note keys let `Ctrl+Z` through. That lets field-transparent shortcuts, such as the tab switch, reach the shortcut scope while a grid cursor is set.
 
 ### A panel scope answers on its own tab, from an open card
 
@@ -38,7 +38,9 @@ Whether a text or value field keeps a plain key for itself is one router query, 
 
 The query resolves the focused item to the field behind it. A `dpg.group` reports the state of the widget inside it, and DearPyGui names the outermost such group as the focused item. The instruments panel's sequence input, laid out beside its copy button inside a card body group, reaches the keyboard as that group. An active group therefore answers with the field being edited below it. The query follows the one branch that reports focus, so a panel-spanning group costs a key press only the path down to its field.
 
-**Focus is claimed per key.** A focused input keeps the keys it genuinely consumes and yields the rest. A text or number field consumes `Space` and `Shift+Space`, because space is a character it types, and `Escape`, which cancels the field. Those keys serve the field while it holds focus. A modified combination stays global and fires from anywhere, which is why playing from the shown frame works while typing. Playing from the cursor row belongs to the grid: the sequencer grid claims it while the grid itself holds the keyboard.
+**Focus is claimed per key.** A focused input keeps the keys it genuinely consumes and yields the rest. A text or number field consumes `Space` and `Shift+Space`, because space is a character it types, and `Escape`, which cancels the field. Those keys serve the field while it holds focus.
+
+A command, a combination held with Ctrl or Super, fires from anywhere, which is why playing from the shown frame works while typing. A text or number field keeps only the commands that edit what it holds: select all, copy, cut, paste, undo and redo, spelled with Ctrl and with Super. Alt is a typing key as well as a modifier: AltGr and Option type characters through it, and Windows reports AltGr as Ctrl+Alt. A text field therefore keeps an Alt combination on a key that types a character, while one on a function, caret or editing key fires, so `Alt+F4` reaches its action from a field. A number field types no such character, so every Alt combination fires from it. An action meant to fire while the reader types takes Ctrl or Super. Playing from the cursor row belongs to the grid: the sequencer grid claims it while the grid itself holds the keyboard.
 
 **Interactive widgets release the keyboard.** A selectable cell or a transport button hands focus back after its click, so the next playback key reaches the router. `Space` and `Escape` therefore stay live in the moment after any click.
 
@@ -62,15 +64,17 @@ One key table (`utils/gui/keyboard/keys.py`) reads a key both ways: the name a f
 
 ### A preference layers over the shipped scheme
 
-`ShortcutsConfig` holds the scheme name and the per-action overrides, both written the way a keybinding file writes them, so a preference outlives the build that stored it. `ShortcutCatalog.select` answers with the default for a scheme a build stopped shipping. An override is reported and left out when it names an action this build does not have, a key the table does not have, or a combination its category already gives away. One stale entry therefore costs only itself.
+`ShortcutsConfig` holds the scheme name and the per-action overrides, both written the way a keybinding file writes them, so a preference outlives the build that stored it. `ShortcutCatalog.select` answers with the default for a scheme a build stopped shipping. An override lists every key of its action, main key first and joined by commas, and a key spells the comma as `Comma`. A stored single key is therefore an action with one key. The overrides are read together, so entries that move keys between their actions stand in whatever order they were written. An override is reported and left out whole when it names an action this build does not have, a key the table does not have, or a combination another action of its category keeps. A stale entry therefore costs itself, and its action keeps the scheme's keys.
 
 A change reaches the running application through `ShortcutSource.on_bindings_changed`, the keyboard's analog of the palette switch ([`palette.md`](palette.md)). The dispatcher re-reads the keys, and the menus re-print their accelerators. Each registration names the action it fires, so a rebind has little to catch up.
 
 ### A scheme is edited through a draft
 
-`ShortcutDraft` (`utils/gui/shortcuts/draft.py`) holds the scheme being edited together with the actions the reader has touched: the combination each was given, or nothing where it was left unbound. Only those actions reach the preference, and every other key follows the scheme beneath.
+`ShortcutDraft` (`utils/gui/shortcuts/draft.py`) holds the scheme being edited together with the actions the reader has touched: every key each now answers, main key first, and none where it was left unbound. Only those actions reach the preference, and every other key follows the scheme beneath.
 
-An assignment displaces. Giving an action a combination its category already answers takes the key from the holder in the same step, so every scheme a draft produces is valid. The dialog names the holder and asks before that step is taken. The dialog edits the draft, and a commit activates it, so a reader rebinding Escape, Tab or Enter keeps the keys the dialog is operated by until they are done.
+An edit changes the keys the reader names, and the action keeps the rest. A pressed key becomes the action's main key, the one the menus print, and the keys it had follow it. A list written in the entry box becomes exactly the action's keys, each named once, and a comma written where a key goes is the comma key. Clear unbinds every key. An action left on the keys the scheme ships holds no edit, so a change that leaves the keys as they were gives the reader nothing to store or discard.
+
+An assignment displaces only what it takes. Giving an action keys its category already answers takes those keys from their holders in the same step, so every scheme a draft produces is valid. A holder keeps its other keys, the next one becoming its main key. The dialog names every holder in one question and asks before that step is taken. Cancel on that question brings the reader back to where they gave the keys: a written list to the entry box, and a pressed key to its row, listening for the next press. A row reads as listening exactly while it takes the keys. The dialog edits the draft, and a commit activates it, so a reader rebinding Escape, Tab or Enter keeps the keys the dialog is operated by until they are done.
 
 ### A scheme belongs to a platform; an action does not
 

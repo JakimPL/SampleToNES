@@ -1,14 +1,21 @@
-from typing import List
+from typing import Final, List
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from sampletones_core.data import Metadata
+from sampletones_core.data import Metadata, MetadataContract
 from sampletones_core.project.voices.record import VoiceRecord
 from sampletones_shared.application import SAMPLETONES_PROJECT_DATA_VERSION
+from sampletones_shared.exceptions import IncompatibleProjectVersionError
 
 from .info import ProjectInfo
 from .settings import ProjectSettings
 from .song import Song
+
+PROJECT_DATA_CONTRACT: Final[MetadataContract] = MetadataContract(
+    label="Project data",
+    expected_version=SAMPLETONES_PROJECT_DATA_VERSION,
+    error=IncompatibleProjectVersionError,
+)
 
 
 class ProjectDocument(BaseModel):

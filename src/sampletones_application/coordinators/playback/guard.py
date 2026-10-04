@@ -1,28 +1,27 @@
+from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
-from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.types.callback import VoidCallback
 
 
 class GuardedPlayer:
     """Drives an ``AudioPlayerProtocol`` player on behalf of panels and the
-    ``PlaybackRouter``, presenting playback failures as dialogs.
+    ``PlaybackRouter``, handing playback failures to the presenter.
 
     Panels only fire intent hooks, so this wrapper is the coordinator-layer
     recovery boundary for the transport commands that can raise
-    ``PlaybackError``; queries pass straight through.
+    ``PlaybackError``; queries pass straight through. A start that fails at once
+    reads the way a failure on the playing thread does.
     """
 
     def __init__(
         self,
         player: AudioPlayerProtocol,
         *,
-        dialogs: DialogsRenderer,
-        error_message: str,
+        failures: PlaybackFailurePresenter,
     ) -> None:
         self._player = player
-        self._dialogs = dialogs
-        self._error_message = error_message
+        self._failures = failures
 
     def play(self) -> None:
         self.run_guarded(self._player.play)
@@ -46,7 +45,7 @@ class GuardedPlayer:
         return self._player.is_loaded()
 
     def run_guarded(self, command: VoidCallback) -> None:
-        """Runs a playback command, presenting a failure to start the audio as a dialog.
+        """Runs a playback command, showing the reader a failure to start the audio.
 
         A command beyond the transport — sounding a sample from a point the reader clicked — goes
         through the same boundary the transport commands do.
@@ -54,4 +53,4 @@ class GuardedPlayer:
         try:
             command()
         except PlaybackError as exception:
-            self._dialogs.show_error(exception, self._error_message)
+            self._failures.present_playing_failure(exception)

@@ -3,13 +3,16 @@ import shutil
 from pathlib import Path
 from typing import Dict, Final, List
 
-from tests.screens.main.run.constants import BASS, DRUMS, LEAD, RECONSTRUCTION_SUFFIX
+from sampletones_application.constants.output import OutputKind
+from sampletones_shared.paths.user import RECONSTRUCTIONS_DIRECTORY
+from tests.screens.main.run.constants import ALBUM, BASS, DRUMS, LEAD, RECONSTRUCTION_SUFFIX
 from tests.screens.main.run.steps import modified, run_to_its_end, wait_for_the_end, written
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.main import explorer_row, gather, home_path
 
 OTHER_RECONSTRUCTION: Final[str] = "other.stn"
 RECONSTRUCT_FILE: Final[str] = "main.explorer.label.context_reconstruct_file"
+RECONSTRUCT_DIRECTORY: Final[str] = "main.explorer.label.context_reconstruct_directory"
 
 
 class TestReplacingWhatARunWrote:
@@ -68,45 +71,64 @@ class TestReplacingWhatARunWrote:
         ).run()
 
 
-class TestReconstructingAFileWhileAListStands:
-    """Reconstruct file with a list gathered asks first: Keep the list converts nothing, Replace it
-    converts the file.
+class TestReconstructingLists:
+    """Reconstruct lists what it names to convert one apiece and leaves the run to the reader; over a mix it
+    asks first.
 
-    Two recordings are gathered and Reconstruct file chosen from the explorer's menu on a third.
-    Cancel keeps the list and writes nothing. Choosing it again and confirming runs the third alone.
+    Two recordings are gathered and Reconstruct file chosen on a third: it joins the list and nothing is
+    written. The list then turns into a mix, and Reconstruct directory on the Album asks about it: Keep the
+    mix leaves it standing, and Replace it lists the Album alone, one reconstruction per recording, with
+    nothing written.
     """
 
-    def test_keep_the_list_then_replace_it(self, screen: Screen) -> None:
-        converter = screen.main.converter
+    def test_a_list_takes_it_and_a_mix_is_asked_about(self, screen: Screen) -> None:
+        main = screen.main
+        converter = main.converter
         prompt = converter.replace_prompt
-        destinations: List[Path] = []
+        listed = [home_path(BASS), home_path(LEAD), home_path(DRUMS)]
+        standing: List[List[Path]] = []
 
-        def ask_from_the_browser(screen: Screen) -> None:
+        def choose_from_the_browser(screen: Screen, path: Path, entry: str) -> None:
+            screen.explorer.right_click(explorer_row(screen, path))
+            screen.expect(screen.context_menu.is_shown, bool, description="the browser's menu")
+            screen.context_menu.choose(screen.words(entry))
+
+        def a_list_takes_the_file(screen: Screen) -> None:
+            standing.append(written(RECONSTRUCTIONS_DIRECTORY))
             gather(screen, home_path(BASS), home_path(LEAD))
-            destinations.append(Path(converter.destination()))
-            screen.explorer.right_click(explorer_row(screen, home_path(DRUMS)))
-            screen.expect(screen.context_menu.is_shown, bool, description="the recording's menu")
-            screen.context_menu.choose(screen.words(RECONSTRUCT_FILE))
 
-            screen.expect(prompt.is_shown, bool, description="the question about the list")
+            choose_from_the_browser(screen, home_path(DRUMS), RECONSTRUCT_FILE)
 
-        def keep_the_list(screen: Screen) -> None:
+            screen.expect(
+                lambda: converter.list.has_row(home_path(DRUMS)), bool, description="the third recording listed"
+            )
+            assert converter.list.rows() == [converter.list.row(path) for path in listed]
+            assert not prompt.is_shown()
+            assert not converter.run_shown()
+            assert written(RECONSTRUCTIONS_DIRECTORY) == standing[0]
+
+        def keep_the_mix(screen: Screen) -> None:
+            main.choose_output(OutputKind.MIXED)
+            screen.expect(main.output, OutputKind.MIXED.__eq__, description="a mix")
+
+            choose_from_the_browser(screen, home_path(ALBUM), RECONSTRUCT_DIRECTORY)
+            screen.expect(prompt.is_shown, bool, description="the question about the mix")
             prompt.cancel()
 
             screen.expect(prompt.is_shown, operator.not_, description="the question gone")
-            assert not converter.run_shown()
-            assert converter.list.rows() == [converter.list.row(home_path(BASS)), converter.list.row(home_path(LEAD))]
-            assert written(destinations[0]) == []
+            assert main.output() is OutputKind.MIXED
+            assert all(converter.list.has_row(path) for path in listed)
 
         def replace_it(screen: Screen) -> None:
-            screen.explorer.right_click(explorer_row(screen, home_path(DRUMS)))
-            screen.expect(screen.context_menu.is_shown, bool, description="the menu again")
-            screen.context_menu.choose(screen.words(RECONSTRUCT_FILE))
+            choose_from_the_browser(screen, home_path(ALBUM), RECONSTRUCT_DIRECTORY)
             screen.expect(prompt.is_shown, bool, description="the question again")
 
             prompt.confirm()
 
-            wait_for_the_end(screen)
-            assert [file.stem for file in written(destinations[0])] == [home_path(DRUMS).stem]
+            screen.expect(lambda: converter.list.has_row(home_path(ALBUM)), bool, description="the Album listed")
+            assert main.output() is OutputKind.PER_RECORDING
+            assert converter.list.rows() == [converter.list.row(home_path(ALBUM))]
+            assert not converter.run_shown()
+            assert written(RECONSTRUCTIONS_DIRECTORY) == standing[0]
 
-        screen.scenario(ask_from_the_browser, keep_the_list, replace_it).run()
+        screen.scenario(a_list_takes_the_file, keep_the_mix, replace_it).run()

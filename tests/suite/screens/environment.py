@@ -6,7 +6,14 @@ from typing import Dict, Final, Mapping, Tuple
 
 from sampletones_shared.application import SAMPLETONES_ENV_PREFIX
 from tests.suite.screens.dearpygui.display import DisplayBackend, ScreenSize
-from tests.suite.screens.paths import ARTIFACTS_DIRECTORY, HOME_FOLDER, NO_BUS_FILE, REPORTS_FILE
+from tests.suite.screens.homes import let_go, reopen_folders
+from tests.suite.screens.paths import (
+    ARTIFACTS_DIRECTORY,
+    HOME_COPY_NOTE,
+    HOME_FOLDER,
+    NO_BUS_FILE,
+    REPORTS_FILE,
+)
 
 DISPLAY_BACKEND_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_DISPLAY"
 ARTIFACTS_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_ARTIFACTS"
@@ -27,7 +34,12 @@ def display_backend(environment: Mapping[str, str]) -> DisplayBackend:
 
 @dataclass(frozen=True)
 class ScenarioFolders:
-    """Where one scenario's run keeps its files: the home its application lives in, and its reports.
+    """Where one scenario's run keeps its files: the home its application lives in, and what the run keeps.
+
+    The home is scratch, built afresh from the scenario's world in a temporary folder whose path holds no
+    hidden folder, so the application's browsers reach it from any checkout. What the run keeps lies under
+    the run's artifacts in the checkout: the reports, a screenshot of a failure, and a copy of the home a
+    failed scenario left, with a note where that copy lost files.
 
     Attributes:
         root: The scenario's folder under the run's artifacts, kept after the run for a reader.
@@ -40,19 +52,50 @@ class ScenarioFolders:
     reports: Path
 
     @classmethod
-    def of(cls, nodeid: str) -> "ScenarioFolders":
-        """The folders of the scenario ``nodeid`` names, under a name a file system accepts."""
-        root = ARTIFACTS_DIRECTORY / UNSAFE_CHARACTERS.sub("_", nodeid)
+    def of(cls, nodeid: str, homes: Path) -> "ScenarioFolders":
+        """The folders of the scenario ``nodeid`` names, under a name a file system accepts.
+
+        Args:
+            nodeid: The scenario's pytest node id.
+            homes: The temporary folder holding the homes of this worker's scenarios.
+        """
+        name = UNSAFE_CHARACTERS.sub("_", nodeid)
+        root = ARTIFACTS_DIRECTORY / name
         return cls(
             root=root,
-            home=root / HOME_FOLDER,
+            home=homes / name / HOME_FOLDER,
             reports=root / REPORTS_FILE,
         )
 
     def prepare(self) -> None:
-        """Clears what an earlier run of the scenario left, and lays out an empty home."""
+        """Clears what an earlier run of the scenario left, and lays out an empty home and artifacts folder."""
         shutil.rmtree(self.root, ignore_errors=True)
+        shutil.rmtree(self.home, ignore_errors=True)
+        self.root.mkdir(parents=True)
         self.home.mkdir(parents=True)
+
+    def finish(self, *, failed: bool) -> None:
+        """Lets the scratch home go, keeping a copy among the artifacts where the scenario failed.
+
+        A scenario can leave a folder of its home locked, so every folder opens again first. The copy
+        keeps what it can read, a note beside the artifacts says what it lost, and the home goes
+        however the copy ended.
+        """
+        reopen_folders(self.home.parent)
+        try:
+            if failed:
+                self._keep_the_home()
+        finally:
+            let_go(self.home.parent)
+
+    def _keep_the_home(self) -> None:
+        try:
+            shutil.copytree(self.home, self.root / HOME_FOLDER, symlinks=True)
+        except OSError as error:
+            (self.root / HOME_COPY_NOTE).write_text(
+                f"The copy of the scenario's home is incomplete:\n{error}\n",
+                encoding="utf-8",
+            )
 
 
 def child_environment(
@@ -63,7 +106,7 @@ def child_environment(
 ) -> Dict[str, str]:
     """The environment a scenario's process starts under: ``base``, pointed at the scenario's own world.
 
-    The home and every XDG directory lie inside the scenario's folder, so settings, session state
+    The home and every XDG directory lie inside the scenario's home, so settings, session state
     and the documents folder start empty and stay apart from the user's. The display is the
     worker's own server, the session bus address leads nowhere, and the input method is off, so
     everything a scenario does stays on its own display and in its own home.

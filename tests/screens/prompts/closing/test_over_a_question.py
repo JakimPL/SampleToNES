@@ -1,8 +1,6 @@
 import operator
 from typing import Final
 
-import pytest
-
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.paths.user import PROJECTS_DIRECTORY
@@ -10,7 +8,7 @@ from tests.screens.prompts.closing.constants import SETTLING_FRAMES
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.main import convert_alone, home_path
 from tests.suite.screens.steps.project import retitle_project, save_project_as, saved_project_title
-from tests.suite.screens.vocabulary.dialogs import EXIT_PROJECT_MESSAGE
+from tests.suite.screens.vocabulary.dialogs import CLOSE_PROJECT_MESSAGE, EXIT_PROJECT_MESSAGE
 from tests.suite.screens.worlds.recordings import BASS, LEAD
 
 PROJECT: Final[str] = "Closing.stp"
@@ -47,11 +45,6 @@ class TestClosingTheWindowTwiceAtOnce:
     application, and a further close asks once more and leaves on Exit.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: two closes before the first is answered ask twice",
-    )
     def test_one_question_and_cancel_keeps_the_application(self, screen: Screen) -> None:
         """Two closes bring one question, and Cancel keeps the application running."""
         prompt = screen.project.unsaved_prompt
@@ -78,6 +71,46 @@ class TestClosingTheWindowTwiceAtOnce:
             leave_letting_the_project_go(screen)
 
         screen.scenario(change_a_saved_project, close_twice, cancel_leaves_no_question, close_once_more).run()
+
+
+class TestClosingTheWindowOverTheCloseProjectQuestion:
+    """Closing the window while Close project asks about the unsaved project leaves once Discard closes it.
+
+    The saved project is retitled and Close project asks. The window close waits behind that question, and
+    Discard closes the project, which leaves nothing for the exit to ask about: the application stops with
+    no second question, and the file keeps its saved title.
+    """
+
+    def test_discard_leaves_without_a_second_question(self, screen: Screen) -> None:
+        """The exit reads the project once Discard has closed it, so it asks nothing and leaves."""
+        prompt = screen.project.unsaved_prompt
+
+        def close_the_project(screen: Screen) -> None:
+            screen.project.close()
+
+            screen.expect(prompt.is_shown, bool, description="the question about closing the project")
+            assert prompt.words() == screen.words(CLOSE_PROJECT_MESSAGE)
+
+        def close_the_window(screen: Screen) -> None:
+            screen.close_window()
+
+            screen.frames(SETTLING_FRAMES)
+            assert prompt.words() == screen.words(CLOSE_PROJECT_MESSAGE)
+            assert len(screen.shown_windows()) == 1
+            assert screen.is_running()
+
+        def discard_and_leave(screen: Screen) -> None:
+            prompt.confirm()
+
+            assert screen.wait_for_exit()
+            assert saved_project_title(PROJECTS_DIRECTORY / PROJECT) == SAVED_TITLE
+
+        screen.scenario(
+            change_a_saved_project,
+            close_the_project,
+            close_the_window,
+            discard_and_leave,
+        ).run()
 
 
 class TestClosingTheWindowOverTheReassignQuestion:

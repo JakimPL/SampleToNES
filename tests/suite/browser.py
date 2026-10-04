@@ -540,17 +540,6 @@ def set_row_expanded(
     panel._expansion.remember(panel._generate_node_tag(node), expanded=expanded)
 
 
-def set_filter(
-    panel: GUITreePanel,
-    *,
-    favorites_only: bool,
-    query: str = "",
-) -> None:
-    """States what the browser is now asked to show, as a change of the control or the search box."""
-    panel._filter = TreeFilter(query=query, favorites_only=favorites_only)
-    panel._resolve_filter()
-
-
 def select_favorites(panel: GUITreePanel) -> None:
     """Switches the favorites mode on the way the reader's click does, and resolves the pass it starts.
 

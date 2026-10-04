@@ -188,10 +188,6 @@ class Exports:
         """Chooses Reconstruction ▸ Export instruments ▸ ``item``."""
         self._menu.choose(MenuElements.GROUP_RECONSTRUCTION, item)
 
-    def is_offered(self, group: MenuElements, item: MenuElements) -> bool:
-        """Whether the entry ``item`` of the menu ``group`` answers a press."""
-        return self._menu.is_enabled(group, item)
-
 
 def _channel_box(channel: ChannelName) -> str:
     return compose_tag(TAG_SETTINGS_NSF_CHECKBOX_CHANNEL, channel.value)

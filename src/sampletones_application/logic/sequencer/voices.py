@@ -41,7 +41,6 @@ from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.utils.display import display_voice
 from sampletones_shared.exceptions import PlaybackError
-from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import StringCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
@@ -331,9 +330,5 @@ class SequencerVoicesLogic(CallbackMixin):
                 update=False,
                 priority=priority,
             )
-        except (PlaybackError, ValueError) as exception:
-            logger.error_with_traceback(
-                exception,
-                f"Failed to preview voice: {voice_id}",
-            )
+        except PlaybackError as exception:
             self.call(self.on_autoplay_error, exception)

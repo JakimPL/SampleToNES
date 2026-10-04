@@ -416,6 +416,69 @@ class TestStemFilteredProjections:
         np.testing.assert_allclose(data.original_mix_for(_heard(0)), data.original_audio)
 
 
+class TestTheOriginalAMissingRecordingLeaves:
+    """With no recording loaded there is no original to mix, so the approximation stands alone."""
+
+    @staticmethod
+    def _missing_a_recording(
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> ReconstructionData:
+        """A document recorded from two takes, the second of which is gone, which costs the whole original."""
+        first = tmp_path / "kick.wav"
+        write_wave(first, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        reconstruction = recorded_from(reconstruction_factory(), (first, tmp_path / "gone.wav"))
+        return ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+    def test_no_recording_mixes_into_no_original(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        data = self._missing_a_recording(reconstruction_factory, tmp_path)
+
+        assert data.original_mix_for(_heard(0, 1)) is None
+        assert data.original_mix_for(_heard()) is None
+
+    def test_the_heard_waveform_carries_no_original_line(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        data = self._missing_a_recording(reconstruction_factory, tmp_path)
+
+        assert data.waveform_data(_heard(0, 1)).original_audio is None
+
+    def test_a_detached_document_mixes_into_no_original(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        reconstruction.detach_source()
+
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        assert data.original_mix_for(_heard(0)) is None
+
+    def test_a_loaded_recording_heard_nowhere_is_a_silent_line(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        """A loaded recording the reader switched off still has an original, which is silence."""
+        source_audio = tmp_path / "source.wav"
+        write_wave(source_audio, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        data = ReconstructionData.from_reconstruction(
+            recorded_from(reconstruction_factory(), (source_audio,)),
+            name="Sample",
+        )
+
+        original = data.waveform_data(_heard()).original_audio
+
+        assert original is not None
+        np.testing.assert_array_equal(original, np.zeros_like(data.reconstruction.approximation))
+
+
 class TestRebindingToAnEditedReconstruction:
     def _three_recordings(
         self,

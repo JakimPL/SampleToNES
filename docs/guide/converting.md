@@ -14,6 +14,9 @@ browser:
   **Add as stem**. A [stem](../glossary.md#stem) is one recording that goes into a reconstruction.
 - Ctrl-click a folder, or right-click it and choose **Add folder**, to add every recording inside it,
   at any depth in the folder tree.
+- **Reconstruction ▸ Reconstruct file...** and **Reconstruct directory...**, and the same commands on a
+  right-click in the browser, add recordings for one reconstruction each. If the list holds a mix, the
+  app asks before replacing it.
 
 Turn on **Playback ▸ Autoplay** (`Ctrl+P`) to play a recording with a single click. This lets you
 listen through a folder before adding anything from it. With Autoplay off, right-click a recording and
@@ -93,12 +96,15 @@ Click the button under **Output** to start the conversion. Its label says what i
 reads **Cancel** while the conversion runs. Only one conversion runs at a time.
 
 **Destination:** shows where the result is saved: a single file for one conversion, or a folder for a
-longer run. Click the path to open it in your file manager. If the conversion would replace an
+longer run. Each reconstruction goes into a folder named after the channels its recording uses, so
+recordings with different channels are saved in different folders, and **Destination** shows the folder
+that holds them all. Click the path to open it in your file manager. If the conversion would replace an
 existing reconstruction, the app asks you first.
 
 When the conversion finishes, click **Load** to open the result on the **Reconstruction** tab, where
-you can [listen to it and export it](reconstruction.md). After a conversion of several recordings, the
-button opens the folder instead.
+you can [listen to it and export it](reconstruction.md). When a conversion saves several
+reconstructions, the button reads **Open** and takes you to the **Reconstruction** tab, where you pick
+one in the **Browser**.
 
 If the reconstruction you have open has unsaved changes, **Load** asks whether to save them first. If
 the conversion wrote over that same reconstruction, you can't save your changes there. **Discard**

@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, Final, List, Optional
+from typing import Callable, Dict, Final, List, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,6 +10,7 @@ from sampletones_application.categories.instrument import InstrumentImportMessag
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.playback import FollowMode
 from sampletones_application.constants.sequencer import CHANNEL_AXIS
+from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.tabs.sequencer import voices as voices_module
 from sampletones_application.coordinators.tabs.sequencer.blocks import SequencerBlocks
@@ -69,6 +70,8 @@ from sampletones_core.project.voices.instrument import Instrument
 from sampletones_shared.exceptions import (
     InvalidReconstructionValuesError,
     MalformedInstrumentError,
+    NoOutputDeviceError,
+    PlaybackError,
 )
 from tests.suite.gates import HeldGate, held_gate
 from tests.suite.language import FakeLanguageManager
@@ -337,6 +340,65 @@ class TestImportInstrument:
         instrument_voices._history.transaction.assert_not_called()
 
 
+POOL_GESTURES: Final[Dict[str, Callable[[SequencerVoices], None]]] = {
+    "new instrument": SequencerVoices.add_instrument,
+    "add sample from file": SequencerVoices.add_sample_from_file,
+    "import instrument": SequencerVoices.import_instrument,
+}
+
+
+@pytest.fixture
+def pool_voices() -> SequencerVoices:
+    """The pool gestures over an open project holding no voice yet."""
+    project_controller = MagicMock()
+    project_controller.is_open = True
+    project_controller.voice_count = 0
+    voices_logic = MagicMock()
+    voices_logic.read_instrument.return_value = _imported()
+    return _voices(voices_logic, project_controller, MagicMock(), MagicMock())
+
+
+class TestAVoiceComesIntoAnOpenProjectAlone:
+    """Every way a voice comes in asks for an open project as it starts, wherever the gesture came from.
+
+    The menus grey these doors without a project, and a key bound to one reaches it all the same.
+    """
+
+    @pytest.mark.parametrize("gesture", POOL_GESTURES.values(), ids=POOL_GESTURES.keys())
+    def test_with_no_project_nothing_is_asked_for_and_nothing_added(
+        self,
+        pool_voices: SequencerVoices,
+        located_file: List[Dict[str, object]],
+        gesture: Callable[[SequencerVoices], None],
+    ) -> None:
+        pool_voices._project_controller.is_open = False
+
+        gesture(pool_voices)
+
+        assert located_file == []
+        pool_voices._voices_logic.add_new_instrument.assert_not_called()
+        pool_voices._voices_logic.add_instrument.assert_not_called()
+        pool_voices._import_reconstruction.assert_not_called()
+        pool_voices._history.transaction.assert_not_called()
+        pool_voices._dialogs.show_info.assert_called_once()
+
+    def test_with_a_project_a_new_instrument_joins_the_pool(self, pool_voices: SequencerVoices) -> None:
+        pool_voices.add_instrument()
+
+        pool_voices._voices_logic.add_new_instrument.assert_called_once()
+        pool_voices._dialogs.show_info.assert_not_called()
+
+    def test_with_a_project_a_sample_is_asked_for_and_brought_in(
+        self,
+        pool_voices: SequencerVoices,
+        located_file: List[Dict[str, object]],
+    ) -> None:
+        pool_voices.add_sample_from_file()
+
+        assert len(located_file) == 1
+        pool_voices._import_reconstruction.assert_called_once_with(INSTRUMENT_FILE)
+
+
 @pytest.fixture
 def samples_voices() -> SequencerVoices:
     """The pool gestures with only the collaborators the samples-menu handlers touch."""
@@ -596,6 +658,19 @@ def playback_coordinator() -> SequencerTabCoordinator:
         instance._playhead,
     )
     return instance
+
+
+class TestASongThatFailsWhilePlaying:
+    """A song that fails on the thread playing it reads the way every playback failing there reads."""
+
+    def test_a_refused_stream_is_presented_as_a_failure_while_playing(self) -> None:
+        coordinator = object.__new__(SequencerTabCoordinator)
+        coordinator._playback_failures = MagicMock(spec=PlaybackFailurePresenter)
+        refusal = PlaybackError("Failed to open audio stream: device busy")
+
+        coordinator._on_player_error(refusal)
+
+        coordinator._playback_failures.present_playing_failure.assert_called_once_with(refusal)
 
 
 class TestFollowMode:
@@ -1716,8 +1791,7 @@ def exposure_coordinator() -> SequencerTabCoordinator:
     instance._song_player_logic = MagicMock()
     instance._guarded_player = GuardedPlayer(
         instance._song_player_logic,
-        dialogs=MagicMock(),
-        error_message="playback failed",
+        failures=MagicMock(),
     )
     return instance
 
@@ -1728,6 +1802,67 @@ class TestPlayerExposure:
         exposure_coordinator: SequencerTabCoordinator,
     ) -> None:
         assert isinstance(exposure_coordinator.player, GuardedPlayer)
+
+
+@pytest.fixture(name="failures")
+def failures_fixture() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture(name="refusing_coordinator")
+def refusing_coordinator_fixture(failures: MagicMock) -> SequencerTabCoordinator:
+    """A coordinator whose song player is refused by a machine offering no output device."""
+    instance = object.__new__(SequencerTabCoordinator)
+    instance._song_player_logic = MagicMock()
+    instance._song_player_logic.play_from.side_effect = NoOutputDeviceError("no device")
+    instance._song_player_logic.is_playing.return_value = False
+    instance._sequencer_tracker_logic = MagicMock()
+    instance._frames = SequencerFrames(
+        MagicMock(),
+        instance._sequencer_tracker_logic,
+        instance._song_player_logic,
+        MagicMock(),
+        MagicMock(),
+    )
+    instance._guarded_player = GuardedPlayer(
+        instance._song_player_logic,
+        failures=failures,
+    )
+    return instance
+
+
+class TestPlayingFromAPlaceWithNoOutput:
+    """Every way to play the song from a place reaches the presenter with the refusal, the way Play does."""
+
+    def test_play_from_this_frame_reaches_the_presenter(
+        self,
+        refusing_coordinator: SequencerTabCoordinator,
+        failures: MagicMock,
+    ) -> None:
+        refusing_coordinator.play_from_current_frame()
+
+        failures.present_playing_failure.assert_called_once()
+        assert isinstance(failures.present_playing_failure.call_args.args[0], NoOutputDeviceError)
+
+    def test_play_from_a_row_reaches_the_presenter(
+        self,
+        refusing_coordinator: SequencerTabCoordinator,
+        failures: MagicMock,
+    ) -> None:
+        refusing_coordinator._on_tracker_play_from_row(4)
+
+        failures.present_playing_failure.assert_called_once()
+        assert isinstance(failures.present_playing_failure.call_args.args[0], NoOutputDeviceError)
+
+    def test_play_from_an_order_frame_reaches_the_presenter(
+        self,
+        refusing_coordinator: SequencerTabCoordinator,
+        failures: MagicMock,
+    ) -> None:
+        refusing_coordinator._play_from_frame(1)
+
+        failures.present_playing_failure.assert_called_once()
+        assert isinstance(failures.present_playing_failure.call_args.args[0], NoOutputDeviceError)
 
 
 PULSE1_CELL: Final[TrackerRegion] = TrackerRegion(

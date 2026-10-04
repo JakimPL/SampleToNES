@@ -30,6 +30,9 @@ class SequencerVoices:
     Every one of them is a whole gesture, so each records the single history entry that takes the
     pool back to where it stood. A gesture reaching a file reads it before the pool is touched,
     which leaves a file the reader cannot use with the project and the history as they were.
+
+    A voice enters the pool while a project is open. Each way in asks for the open project as it
+    starts, so the rule holds wherever the gesture came from: a button, a menu, or a key bound to it.
     """
 
     def __init__(
@@ -64,6 +67,9 @@ class SequencerVoices:
         envelopes stay the reader's to write; naming it by its position gives the list a readable
         entry until they rename it.
         """
+        if not self._open_project.met():
+            return
+
         name = self._language_manager["sequencer.voices.template.instrument_name"].format(
             position=display_id(self._project_controller.voice_count),
         )
@@ -106,8 +112,11 @@ class SequencerVoices:
 
         The tree beside the list reaches the reconstructions folder, so a file kept elsewhere
         arrives through the system's own browser, which opens on the folder the last one came
-        from.
+        from. A project is asked for first, since a voice needs a pool to land in.
         """
+        if not self._open_project.met():
+            return
+
         filepath = open_file_dialog(
             title=self._language_manager["sequencer.voices.title.add_sample_dialog"],
             initial_directory=self._session_manager.get_reconstruction_path(),

@@ -1,8 +1,6 @@
 import operator
 from typing import Final, List, Tuple
 
-import pytest
-
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
@@ -86,11 +84,6 @@ class TestSavingAProjectOpenedAtStart:
     saved notice and no file dialog.
     """
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AssertionError,
-        reason="bugs-and-todos § Bugs: a project opened at start is saved as though it had no file",
-    )
     def test_save_writes_its_file(self, screen: Screen) -> None:
         """Save shows the saved notice and opens no dialog."""
         on_the_sequencer(screen)

@@ -16,7 +16,14 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.library import InstructionLibraryKey, LibraryState
 from sampletones_core.structures.tree import LibraryNode
 from tests.suite.compatibility import LIBRARY_VERSION, archived
-from tests.suite.library import OTHER_LIBRARIES, WrittenLibrary, write_empty_library
+from tests.suite.files import requires_symlinks
+from tests.suite.library import (
+    LINKED_LIBRARIES,
+    OTHER_LIBRARIES,
+    WrittenLibrary,
+    aim_library_directory,
+    write_empty_library,
+)
 
 
 @pytest.fixture
@@ -114,31 +121,198 @@ class TestTheLibrariesTheCatalogLists:
 
 
 class TestTheDirectoryTheCatalogStandsAt:
-    """The catalog holds the libraries it loaded for as long as it reads the same directory."""
+    """The folder the catalog stands at keeps the libraries it loaded. A folder left lets them go and keeps
+    the one it took up, so the reader coming back finds that choice again."""
+
+    @staticmethod
+    def _loaded_here(library_manager: InstructionsLibraryManager, key: InstructionLibraryKey) -> None:
+        """Writes the library ``key`` names into the directory the catalog stands at, and loads it."""
+        _create_library_file(library_manager, key)
+        library_manager.load_library(key)
 
     def test_the_directory_it_stands_at_keeps_what_it_loaded(
         self,
         config_manager: ConfigManager,
         library_manager: InstructionsLibraryManager,
     ) -> None:
-        library_manager._library.save_data(config_manager.key, WrittenLibrary())
+        self._loaded_here(library_manager, config_manager.key)
 
-        library_manager.set_library_directory(config_manager.get_library_directory())
+        moved = library_manager.set_library_directory(config_manager.get_library_directory())
 
-        assert library_manager.is_library_loaded(config_manager.key) is True
+        assert (moved, library_manager.is_library_loaded(config_manager.key)) == (False, True)
 
-    def test_another_directory_starts_with_nothing_loaded(
+    def test_another_directory_starts_with_nothing_loaded_or_taken_up(
         self,
         config_manager: ConfigManager,
         library_manager: InstructionsLibraryManager,
         tmp_path: Path,
     ) -> None:
-        library_manager._library.save_data(config_manager.key, WrittenLibrary())
+        self._loaded_here(library_manager, config_manager.key)
         other = tmp_path / OTHER_LIBRARIES
 
-        library_manager.set_library_directory(other)
+        moved = library_manager.set_library_directory(other)
 
-        assert (library_manager.library_directory, library_manager._library.data) == (other, {})
+        assert (
+            moved,
+            library_manager.library_directory,
+            library_manager.is_library_loaded(config_manager.key),
+            library_manager.current_library_key,
+        ) == (True, other, False, None)
+
+    def test_pointing_away_lets_the_data_go_and_keeps_the_choice(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        tmp_path: Path,
+    ) -> None:
+        """A folder left holds no library in memory, and the reader coming back finds its choice standing
+        unloaded, for the catalog's logic to load again."""
+        ours = config_manager.get_library_directory()
+        self._loaded_here(library_manager, config_manager.key)
+        left = library_manager._catalog
+
+        library_manager.set_library_directory(tmp_path / OTHER_LIBRARIES)
+        library_manager.gather_available_libraries()
+        held_while_away = dict(left.library.data)
+        library_manager.set_library_directory(ours)
+        library_manager.gather_available_libraries()
+
+        assert (
+            held_while_away,
+            library_manager.is_library_loaded(config_manager.key),
+            library_manager.current_library_key,
+        ) == ({}, False, config_manager.key)
+
+    def test_the_way_back_hands_over_the_library_loaded_when_the_reader_left_once(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        tmp_path: Path,
+    ) -> None:
+        ours = config_manager.get_library_directory()
+        self._loaded_here(library_manager, config_manager.key)
+        library_manager.set_library_directory(tmp_path / OTHER_LIBRARIES)
+        library_manager.set_library_directory(ours)
+
+        assert (library_manager.take_released_library(), library_manager.take_released_library()) == (
+            config_manager.key,
+            None,
+        )
+
+    def test_a_library_taken_up_unloaded_leaves_nothing_to_load_on_the_way_back(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        tmp_path: Path,
+    ) -> None:
+        """The configuration's library is taken up at a start without loading, so the reader never opened
+        it and a way back has nothing to load again."""
+        ours = config_manager.get_library_directory()
+        _create_library_file(library_manager, config_manager.key)
+        library_manager.sync_with_config_key(config_manager.key)
+        library_manager.set_library_directory(tmp_path / OTHER_LIBRARIES)
+        library_manager.set_library_directory(ours)
+
+        assert (library_manager.current_library_key, library_manager.take_released_library()) == (
+            config_manager.key,
+            None,
+        )
+
+    def test_what_the_other_directory_took_up_stays_with_it(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        tmp_path: Path,
+    ) -> None:
+        ours = config_manager.get_library_directory()
+        other = tmp_path / OTHER_LIBRARIES
+        library_manager.set_library_directory(other)
+        self._loaded_here(library_manager, config_manager.key)
+
+        library_manager.set_library_directory(ours)
+
+        assert (library_manager.is_library_loaded(config_manager.key), library_manager.current_library_key) == (
+            False,
+            None,
+        )
+        library_manager.set_library_directory(other)
+        assert library_manager.current_library_key == config_manager.key
+
+    def test_a_library_whose_file_left_while_away_is_let_go(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        tmp_path: Path,
+    ) -> None:
+        ours = config_manager.get_library_directory()
+        self._loaded_here(library_manager, config_manager.key)
+        library_manager.set_library_directory(tmp_path / OTHER_LIBRARIES)
+        library_manager.gather_available_libraries()
+        (ours / config_manager.key.filename).unlink()
+
+        library_manager.set_library_directory(ours)
+        library_manager.gather_available_libraries()
+
+        assert library_manager.is_library_loaded(config_manager.key) is False
+
+
+class TestAnotherSpellingOfTheFolder:
+    """Two spellings of one folder name one catalog, so pointing the catalog at another spelling keeps
+    what the folder loaded and moves nowhere. The folder goes by the spelling given last."""
+
+    @staticmethod
+    def _respelled_keeps_what_it_loaded(
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        spelling: Path,
+    ) -> None:
+        _create_library_file(library_manager, config_manager.key)
+        library_manager.load_library(config_manager.key)
+
+        moved = library_manager.set_library_directory(spelling)
+
+        assert (
+            moved,
+            library_manager.is_library_loaded(config_manager.key),
+            library_manager.library_directory,
+            library_manager.get_path(config_manager.key),
+        ) == (False, True, spelling, spelling / config_manager.key.filename)
+
+    def test_a_detour_through_the_parent(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+    ) -> None:
+        folder = config_manager.get_library_directory()
+        detour = folder.parent / ".." / folder.parent.name / folder.name
+
+        self._respelled_keeps_what_it_loaded(config_manager, library_manager, detour)
+
+    @requires_symlinks
+    def test_a_link_to_the_folder(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        tmp_path: Path,
+    ) -> None:
+        link = tmp_path / LINKED_LIBRARIES
+        link.symlink_to(config_manager.get_library_directory(), target_is_directory=True)
+
+        self._respelled_keeps_what_it_loaded(config_manager, library_manager, link)
+
+    @requires_symlinks
+    def test_a_folder_configured_through_a_link_goes_by_the_link_from_the_start(
+        self,
+        config_manager: ConfigManager,
+        tmp_path: Path,
+    ) -> None:
+        link = tmp_path / LINKED_LIBRARIES
+        link.symlink_to(config_manager.get_library_directory(), target_is_directory=True)
+        aim_library_directory(config_manager, link)
+
+        library_manager = InstructionsLibraryManager(config_manager, language_manager=MagicMock())
+
+        assert library_manager.get_path(config_manager.key) == link / config_manager.key.filename
 
 
 class TestCompleteGeneration:
@@ -153,15 +327,15 @@ class TestCompleteGeneration:
         self,
         library_manager: InstructionsLibraryManager,
     ) -> None:
-        library = MagicMock()
-        library.save_data.side_effect = PermissionError("save failed")
+        catalog = MagicMock()
+        catalog.library.write_data.side_effect = PermissionError("save failed")
         error_callback = MagicMock()
         completed_callback = MagicMock()
         library_manager.on_generation_error = error_callback
         library_manager.on_generation_completed = completed_callback
 
         with pytest.raises(PermissionError):
-            library_manager._complete_generation(library, (MagicMock(), MagicMock()))
+            library_manager._complete_generation(catalog, (MagicMock(), MagicMock()))
 
         error_callback.assert_called_once()
         completed_callback.assert_not_called()
@@ -170,13 +344,13 @@ class TestCompleteGeneration:
         self,
         library_manager: InstructionsLibraryManager,
     ) -> None:
-        library = MagicMock()
-        library.save_data.side_effect = RuntimeError("unexpected")
+        catalog = MagicMock()
+        catalog.library.write_data.side_effect = RuntimeError("unexpected")
         error_callback = MagicMock()
         library_manager.on_generation_error = error_callback
 
         with pytest.raises(RuntimeError):
-            library_manager._complete_generation(library, (MagicMock(), MagicMock()))
+            library_manager._complete_generation(catalog, (MagicMock(), MagicMock()))
 
         error_callback.assert_not_called()
 
@@ -184,14 +358,14 @@ class TestCompleteGeneration:
         self,
         library_manager: InstructionsLibraryManager,
     ) -> None:
-        library_manager._library = MagicMock()
+        library_manager._catalog.library = MagicMock()
         completed_callback = MagicMock()
         library_manager.on_generation_completed = completed_callback
         key = MagicMock()
 
-        library_manager._complete_generation(library_manager._library, (key, MagicMock()))
+        library_manager._complete_generation(library_manager._catalog, (key, MagicMock()))
 
-        assert library_manager._current_library_key is key
+        assert library_manager.current_library_key is key
         completed_callback.assert_called_once()
 
     def test_a_library_lands_where_its_generation_started(
@@ -200,16 +374,37 @@ class TestCompleteGeneration:
         library_manager: InstructionsLibraryManager,
         tmp_path: Path,
     ) -> None:
-        started_in = library_manager._library
+        started_in = library_manager._catalog
         library_manager.set_library_directory(tmp_path / OTHER_LIBRARIES)
 
         library_manager._complete_generation(started_in, (config_manager.key, WrittenLibrary()))
 
-        assert started_in.get_path(config_manager.key).exists()
+        assert started_in.library.get_path(config_manager.key).exists()
         assert (library_manager.library_state(config_manager.key), library_manager.current_library_key) == (
             LibraryState.MISSING,
             None,
         )
+
+    def test_a_library_generated_while_away_is_written_and_chosen_and_held_nowhere(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        tmp_path: Path,
+    ) -> None:
+        """The folder the generation started in is left, so it keeps the library's file and its choice and
+        no data, and the reader coming back finds the library chosen there."""
+        ours = config_manager.get_library_directory()
+        started_in = library_manager._catalog
+        library_manager.set_library_directory(tmp_path / OTHER_LIBRARIES)
+
+        library_manager._complete_generation(started_in, (config_manager.key, WrittenLibrary()))
+        library_manager.set_library_directory(ours)
+
+        assert (
+            started_in.library.get_path(config_manager.key).exists(),
+            started_in.library.data,
+            library_manager.current_library_key,
+        ) == (True, {}, config_manager.key)
 
 
 class TestTheLibraryAConversionWaitsFor:

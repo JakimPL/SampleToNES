@@ -40,8 +40,11 @@ from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_application.view_model.shared.stems import StemsListViewModel
+from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.reconstructions.converter.paths.utils import config_directory_path
+from sampletones_core.reconstructions.converter.plan.batch import BatchConversion
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from tests.suite.base import BaseTestSuite
 from tests.suite.timing import seconds
@@ -50,6 +53,7 @@ SMALL_FOLDER: Final[int] = 1_000
 LARGE_FOLDER: Final[int] = 10_000
 GROWTH_ALLOWANCE: Final[float] = 2.0
 UNREADABLE: Final[float] = float("inf")
+NAMING_SHARE: Final[float] = 0.1
 SETTINGS: Final[StemSettings] = StemSettings(channels=[ChannelName.PULSE1], bends=[])
 SMALL_ROOT: Final[Path] = Path("/gathered/small")
 LARGE_ROOT: Final[Path] = Path("/gathered/large")
@@ -187,6 +191,32 @@ class TestReadingWhereEachRecordingIsWritten(BaseTestSuite):
 
         assert len(entries) == LARGE_FOLDER
         assert entries[0].base_directory == LARGE_ROOT
+
+
+class TestReadingWhereABatchWrites(BaseTestSuite):
+    """Every gesture follows the setup to its destination, which reads where every recording is written.
+
+    Recordings sharing their channels share one folder, and the folder's name carries a hash of the
+    settings. Naming that folder again for each recording costs a hash apiece, which is the shape this
+    bound catches. A reading of that shape costs the whole of naming a folder for every recording and
+    more, while one that names a folder per channel set and looks the rest up costs a small share of
+    it, so ``NAMING_SHARE`` stands between the two.
+    """
+
+    def test_it_names_a_folder_per_channel_set(self) -> None:
+        config = Config()
+        plan = BatchConversion(entries=batch_entries(state_of(LARGE_ROOT, LARGE_FOLDER)))
+        channels = plan.entries[0].stems.covered_channels
+        naming = seconds(lambda: config_directory_path(config, channels))
+        reading = seconds(lambda: plan.destination(config))
+        report = (
+            f"one folder named {naming * 1_000_000:.1f} us, "
+            f"{LARGE_FOLDER} recordings read {reading * 1000:.1f} ms, "
+            f"{reading / (naming * LARGE_FOLDER):.3f} of naming a folder for each"
+        )
+        print(report)
+
+        assert reading < naming * LARGE_FOLDER * NAMING_SHARE, report
 
 
 class TestSettlingAChannel(BaseTestSuite):

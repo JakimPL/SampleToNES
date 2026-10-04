@@ -41,6 +41,14 @@ def _gap(tag: str) -> float:
     return float(dpg.get_item_configuration(compose_tag(tag, SUF_TABLE_GAP))["init_width_or_weight"])
 
 
+def _stands(tag: str) -> bool:
+    return bool(dpg.get_item_configuration(compose_tag(tag, SUF_TABLE_COLUMN))["enabled"])
+
+
+def _gap_stands(tag: str) -> bool:
+    return bool(dpg.get_item_configuration(compose_tag(tag, SUF_TABLE_GAP))["enabled"])
+
+
 class TestARowDeclaresWhatItsColumnsTake(BaseTestSuite):
     """A row states each column's share rather than reading it back from the card inside it, so the
     proportions hold whatever its cards draw and a column put away can come back at the share it
@@ -73,51 +81,58 @@ class TestARowDeclaresWhatItsColumnsTake(BaseTestSuite):
 
 
 class TestARowDividesItselfAmongTheColumnsStanding(BaseTestSuite):
-    """A card the reader puts away leaves its column nothing to hold, so the row gives its share to
-    the columns still standing and keeps one gap between each of them."""
+    """A card the reader puts away leaves its column nothing to hold, so the column leaves the row
+    and the columns still standing divide it, keeping one gap between each of them."""
 
     @dataclass(frozen=True, kw_only=True)
     class StandingCase(BaseRegularTestCase):
         declared: Tuple[str, ...]
         standing: Tuple[str, ...]
-        expected_weights: Tuple[float, ...]
-        expected_gaps: Tuple[float, ...]
+        expected_columns: Tuple[bool, ...]
+        expected_gaps: Tuple[bool, ...]
 
     test_cases = (
         StandingCase(
             label="both_stand",
             declared=(_LEFT, _RIGHT),
             standing=(_LEFT, _RIGHT),
-            expected_weights=(1.0, 1.0),
-            expected_gaps=(_PANEL_GAP,),
+            expected_columns=(True, True),
+            expected_gaps=(True,),
         ),
         StandingCase(
             label="the_last_is_put_away",
             declared=(_LEFT, _RIGHT),
             standing=(_LEFT,),
-            expected_weights=(1.0, 0.0),
-            expected_gaps=(0.0,),
+            expected_columns=(True, False),
+            expected_gaps=(False,),
         ),
         StandingCase(
             label="the_first_is_put_away",
             declared=(_LEFT, _RIGHT),
             standing=(_RIGHT,),
-            expected_weights=(0.0, 1.0),
-            expected_gaps=(0.0,),
+            expected_columns=(False, True),
+            expected_gaps=(False,),
         ),
         StandingCase(
             label="the_middle_is_put_away",
             declared=(_LEFT, _MIDDLE, _RIGHT),
             standing=(_LEFT, _RIGHT),
-            expected_weights=(1.0, 0.0, 1.0),
-            expected_gaps=(0.0, _PANEL_GAP),
+            expected_columns=(True, False, True),
+            expected_gaps=(False, True),
+        ),
+        StandingCase(
+            label="the_first_two_are_put_away",
+            declared=(_LEFT, _MIDDLE, _RIGHT),
+            standing=(_RIGHT,),
+            expected_columns=(False, False, True),
+            expected_gaps=(False, False),
         ),
         StandingCase(
             label="every_column_is_put_away",
             declared=(_LEFT, _RIGHT),
             standing=(),
-            expected_weights=(0.0, 0.0),
-            expected_gaps=(0.0,),
+            expected_columns=(False, False),
+            expected_gaps=(False,),
         ),
     )
 
@@ -127,18 +142,30 @@ class TestARowDividesItselfAmongTheColumnsStanding(BaseTestSuite):
         with dpg.window():
             TabColumns.row(panel_gap=_PANEL_GAP, columns=columns)
 
-        TabColumns.stand_columns(columns, frozenset(case.standing), _PANEL_GAP)
+        TabColumns.stand_columns(columns, frozenset(case.standing))
 
-        assert tuple(_weight(tag) for tag in case.declared) == case.expected_weights
-        assert tuple(_gap(tag) for tag in case.declared[1:]) == case.expected_gaps
+        assert tuple(_stands(tag) for tag in case.declared) == case.expected_columns
+        assert tuple(_gap_stands(tag) for tag in case.declared[1:]) == case.expected_gaps
+
+    def test_a_column_put_away_keeps_the_share_it_was_declared_with(self, dpg_context: None) -> None:
+        """The share stays declared while the column is away, so what stands divides the row by theirs."""
+        columns = _columns(_LEFT, _RIGHT)
+        with dpg.window():
+            TabColumns.row(panel_gap=_PANEL_GAP, columns=columns)
+        declared = (_weight(_LEFT), _weight(_RIGHT), _gap(_RIGHT))
+
+        TabColumns.stand_columns(columns, frozenset({_LEFT}))
+
+        assert (_weight(_LEFT), _weight(_RIGHT), _gap(_RIGHT)) == declared
 
     def test_a_column_comes_back_at_the_share_it_was_declared_with(self, dpg_context: None) -> None:
         columns = _columns(_LEFT, _RIGHT)
         with dpg.window():
             TabColumns.row(panel_gap=_PANEL_GAP, columns=columns)
 
-        TabColumns.stand_columns(columns, frozenset({_LEFT}), _PANEL_GAP)
-        TabColumns.stand_columns(columns, frozenset({_LEFT, _RIGHT}), _PANEL_GAP)
+        TabColumns.stand_columns(columns, frozenset({_LEFT}))
+        TabColumns.stand_columns(columns, frozenset({_LEFT, _RIGHT}))
 
+        assert (_stands(_LEFT), _stands(_RIGHT), _gap_stands(_RIGHT)) == (True, True, True)
         assert _weight(_LEFT) == _weight(_RIGHT)
         assert _gap(_RIGHT) == _PANEL_GAP

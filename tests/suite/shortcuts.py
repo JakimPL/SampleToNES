@@ -36,5 +36,5 @@ def rebound_source(shortcut_id: ShortcutId, combination: str) -> ShortcutSource:
     """
     scheme = shipped_scheme()
     rebound = dict(scheme.bindings)
-    rebound[shortcut_id] = rebound[shortcut_id].rebound(combination)
+    rebound[shortcut_id] = rebound[shortcut_id].rebound((combination,))
     return ShortcutSource(ShortcutScheme(name=scheme.name, bindings=rebound))

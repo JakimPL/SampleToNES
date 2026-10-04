@@ -1,4 +1,9 @@
-from .audio import AudioWriteError, PlaybackError, UnsupportedAudioFormatError
+from .audio import (
+    AudioWriteError,
+    NoOutputDeviceError,
+    PlaybackError,
+    UnsupportedAudioFormatError,
+)
 from .base import SampleToNESError
 from .callback import CallbackQueueStop
 from .cuda import CuPyNotInstalledWarning
@@ -38,6 +43,7 @@ from .project import (
     LoadProjectError,
     MissingProjectDataFileError,
     NotAValidArchiveError,
+    ProjectTuningError,
     UnhandledProjectError,
 )
 from .reconstruction import (
@@ -93,11 +99,13 @@ __all__ = [
     "MissingTextError",
     "NoFilesToProcessError",
     "NoLibraryDataError",
+    "NoOutputDeviceError",
     "NotAValidArchiveError",
     "NotAnInstrumentFileError",
     "OperationCanceled",
     "PlaybackError",
     "PlayerError",
+    "ProjectTuningError",
     "ReconstructionError",
     "SampleToNESError",
     "SerializationError",

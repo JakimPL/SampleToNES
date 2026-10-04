@@ -140,6 +140,17 @@ def dpg_configure_item(tag: Sender, /, *args: Any, **kwargs: Any) -> None:
     dpg.configure_item(tag, *args, **kwargs)
 
 
+@dpg_wrapper()
+def dpg_get_item_user_data(tag: Sender, /) -> Any:
+    """The user data an item carries, or ``None`` once the item is gone.
+
+    A widget's callback runs a frame after DearPyGui gathered it, by which time a rebuild may have
+    taken the item it names away. A callback reading what a hover, a click or a drop landed on
+    therefore reads the items still standing, and a gesture on a row that is gone says nothing.
+    """
+    return dpg.get_item_user_data(tag)
+
+
 @dpg_wrapper(button_function=GUIButton.set_item_callback)
 def dpg_set_item_callback(
     tag: Sender,

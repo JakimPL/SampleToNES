@@ -8,6 +8,7 @@ from sampletones_core.constants.enums import ChannelName
 from tests.screens.interface.shortcuts.steps import on_a_tab
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.steps.reconstructions import expect_open
+from tests.suite.screens.steps.sequencer import channels_sounding, checked
 from tests.suite.screens.vocabulary.playback import PAUSE, PLAY
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION
 
@@ -38,19 +39,6 @@ FOLLOW_SHORTCUTS: Final[Tuple[Tuple[ShortcutId, MenuElements], ...]] = (
 )
 
 FOLLOW_ITEMS: Final[Tuple[MenuElements, ...]] = tuple(item for _, item in FOLLOW_SHORTCUTS)
-
-
-def checked(screen: Screen, group: MenuElements, label: str) -> bool:
-    """Whether the entry labeled ``label`` in the menu ``group`` carries its check mark."""
-    return next(entry.checked for entry in screen.menu.entries(group) if entry.label == label)
-
-
-def sounding(screen: Screen) -> List[bool]:
-    """Which channels Playback ▸ Channels marks as sounding, in channel order."""
-    return [
-        checked(screen, MenuElements.GROUP_PLAYBACK_CHANNELS, screen.channel_words(channel))
-        for channel in ChannelName.items()
-    ]
 
 
 def followed(screen: Screen) -> List[bool]:
@@ -87,12 +75,12 @@ class TestShortcutsSwitchingWhatIsShown:
                 screen.press_shortcut(shortcut_id)
 
                 expected = [position > index for position in range(len(CHANNEL_SHORTCUTS))]
-                screen.expect(partial(sounding, screen), expected.__eq__, description=f"{channel} muted")
+                screen.expect(partial(channels_sounding, screen), expected.__eq__, description=f"{channel} muted")
 
             for shortcut_id, channel in CHANNEL_SHORTCUTS:
                 screen.press_shortcut(shortcut_id)
 
-            screen.expect(partial(sounding, screen), all, description="every channel sounding again")
+            screen.expect(partial(channels_sounding, screen), all, description="every channel sounding again")
 
         def switches(screen: Screen) -> None:
             for shortcut_id, group, item in CHECKED_SHORTCUTS:

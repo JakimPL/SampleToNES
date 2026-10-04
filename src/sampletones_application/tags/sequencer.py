@@ -158,6 +158,24 @@ TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT = TagName(
     Widget.BUTTON,
     "new_instrument",
 )
+TAG_SEQUENCER_VOICES_GROUP_NEW_INSTRUMENT = TagName(
+    Page.SEQUENCER,
+    Panel.VOICES,
+    Widget.GROUP,
+    "new_instrument",
+)
+TAG_SEQUENCER_VOICES_TOOLTIP_NEW_INSTRUMENT = TagName(
+    Page.SEQUENCER,
+    Panel.VOICES,
+    Widget.TOOLTIP,
+    "new_instrument",
+)
+TAG_SEQUENCER_VOICES_TOOLTIP_NEW_INSTRUMENT_NO_PROJECT = TagName(
+    Page.SEQUENCER,
+    Panel.VOICES,
+    Widget.TOOLTIP,
+    "new_instrument_no_project",
+)
 TAG_SEQUENCER_VOICES_TABLE = TagName(
     Page.SEQUENCER,
     Panel.VOICES,

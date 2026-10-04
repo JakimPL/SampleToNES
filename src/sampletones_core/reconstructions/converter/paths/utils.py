@@ -1,5 +1,7 @@
+import errno
+import os
 from pathlib import Path
-from typing import AbstractSet, Iterator, List, Tuple
+from typing import AbstractSet, Dict, FrozenSet, Iterator, List, Tuple
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
@@ -27,17 +29,54 @@ def get_relative_path(
     return Path(output_path.absolute())
 
 
+def reconstructions_directory(config: Config) -> Path:
+    """The directory holding the folder of every setting a run writes under."""
+    return to_path(config.general.reconstructions_directory)
+
+
+class ConfigDirectories:
+    """The directories one configuration writes its reconstructions into, one per channel set.
+
+    A directory is named after the settings that shaped the library and the channels the
+    reconstruction was handed, so reconstructions that differ in either keep apart. The settings'
+    part of the name, with its hash, is read once when this is built, and each channel set names
+    its directory the first time it is asked for. A plan reads where its recordings are written
+    through one of these, so the reading costs one hash, however many recordings it names.
+    """
+
+    def __init__(self, config: Config) -> None:
+        self._config = config
+        self._root = reconstructions_directory(config)
+        self._settings_hash = ConfigDirectoryFields.settings_hash(config)
+        self._named: Dict[FrozenSet[ChannelName], Path] = {}
+
+    @property
+    def root(self) -> Path:
+        """The directory holding the directory of every channel set."""
+        return self._root
+
+    def directory(self, channels: AbstractSet[ChannelName]) -> Path:
+        """The directory of the reconstructions handed ``channels``."""
+        channel_set = frozenset(channels)
+        directory = self._named.get(channel_set)
+        if directory is None:
+            fields = ConfigDirectoryFields.from_hashed_config(
+                self._config,
+                channel_set,
+                settings_hash=self._settings_hash,
+            )
+            directory = self._root / fields.directory_name
+            self._named[channel_set] = directory
+
+        return directory
+
+
 def config_directory_path(
     config: Config,
     channels: AbstractSet[ChannelName],
 ) -> Path:
-    """The directory a run writes its reconstructions into.
-
-    The directory is named after the settings that shaped the library and the channels the run
-    hands out, so runs that differ in either keep their results apart.
-    """
-    config_directory = ConfigDirectoryFields.generate_config_directory_name(config, channels)
-    return to_path(config.general.reconstructions_directory) / config_directory
+    """The directory a reconstruction handed ``channels`` is written into, as :class:`ConfigDirectories` names it."""
+    return ConfigDirectories(config).directory(channels)
 
 
 def get_output_path(
@@ -82,16 +121,46 @@ def group_output_path(
     Raises:
         ValueError: If ``sources`` is empty.
     """
-    output_directory = config_directory_path(config, channels)
-    return Path((output_directory / f"{derive_name(sources)}{suffix}").absolute())
+    return named_output_path(config_directory_path(config, channels), sources, suffix)
+
+
+def named_output_path(
+    directory: Path,
+    sources: Tuple[Path, ...],
+    suffix: str = EXT_FILE_RECONSTRUCTION,
+) -> Path:
+    """Where the one reconstruction built from ``sources`` is written inside ``directory``.
+
+    The file takes the name the source rules derive: one source names it after itself, and several
+    after what they share.
+
+    Raises:
+        ValueError: If ``sources`` is empty.
+    """
+    return Path((directory / f"{derive_name(sources)}{suffix}").absolute())
 
 
 def walk_entries(input_directory: Path) -> Iterator[Path]:
     """Every path below a directory, reported as the walk meets it.
 
     A caller that has to answer between entries — one counting what it has found, or one a reader
-    may stop partway — reads the tree through this and decides for itself what each entry is.
+    may stop partway — reads the tree through this and decides for itself what each entry is. A
+    folder below the directory that the reader may not open is passed over with everything it
+    holds, so one locked folder leaves the rest of the tree to the walk.
+
+    A POSIX directory opens its entries through its execute permission, so a directory may list its
+    names and keep its entries closed. ``os.access`` reads that permission, and it answers True on
+    Windows, whose folders carry none.
+
+    Raises:
+        OSError: If the directory itself cannot be opened, which leaves the walk nothing to read.
+        PermissionError: If the directory lists its names and keeps its entries closed, which leaves
+            the walk nothing to read either.
     """
+    os.scandir(input_directory).close()
+    if not os.access(input_directory, os.X_OK):
+        raise PermissionError(errno.EACCES, os.strerror(errno.EACCES), str(input_directory))
+
     return input_directory.rglob("*")
 
 

@@ -62,9 +62,15 @@ class AudioDeviceItem(BaseModel, frozen=True):
 
 
 class AudioSettingsViewModel(BaseModel, frozen=True):
+    """The audio settings dialog's values: the devices to choose from, the one in force and its rate.
+
+    A machine offering no output device has no device in force, so the current index and rate are
+    ``None`` and their labels read empty.
+    """
+
     devices: Tuple[AudioDeviceItem, ...]
-    current_device_index: int
-    current_sample_rate: SampleRate
+    current_device_index: Optional[int]
+    current_sample_rate: Optional[SampleRate]
     buffer_size: BufferSize
     master_gain: float
 
@@ -80,8 +86,8 @@ class AudioSettingsViewModel(BaseModel, frozen=True):
             devices=tuple(
                 AudioDeviceItem.from_device(device) for device in audio_device_manager.list_devices().values()
             ),
-            current_device_index=current_device.device_index,
-            current_sample_rate=current_device.sample_rate,
+            current_device_index=None if current_device is None else current_device.device_index,
+            current_sample_rate=None if current_device is None else current_device.sample_rate,
             buffer_size=audio_device_manager.buffer_size,
             master_gain=master_gain,
         )
@@ -103,6 +109,10 @@ class AudioSettingsViewModel(BaseModel, frozen=True):
         return None
 
     def current_sample_rate_label(self, sample_rate_format: str) -> str:
+        """The rate in force, formatted, or empty while no device is in force."""
+        if self.current_sample_rate is None:
+            return ""
+
         return format_sample_rate(self.current_sample_rate, sample_rate_format)
 
     @property

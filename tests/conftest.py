@@ -4,6 +4,7 @@ import pytest
 
 from sampletones_application.utils.gui.modal_queue import ModalQueue
 from sampletones_application.utils.gui.palette.palette import PaletteBindings
+from sampletones_application.utils.gui.render_thread import reset_render_thread
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.sequencer import sample_reconstruction
@@ -21,6 +22,18 @@ def modal_queue() -> Iterator[None]:
     ModalQueue.clear()
     yield
     ModalQueue.clear()
+
+
+@pytest.fixture(autouse=True)
+def render_thread() -> Iterator[None]:
+    """Gives each test a context no run has claimed.
+
+    The thread a run claims outlives the run, and a test taking an application down leaves it named,
+    so each test starts where an interface is built and leaves the next one the same.
+    """
+    reset_render_thread()
+    yield
+    reset_render_thread()
 
 
 @pytest.fixture(autouse=True)

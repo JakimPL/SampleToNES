@@ -85,3 +85,39 @@ class TestApplying:
         held_frames.render()
 
         assert committed == [(DEVICE_INDEX, DEFAULT_SAMPLE_RATE, DEFAULT_BUFFER_SIZE)]
+
+
+class TestApplyingWithNoDevice:
+    """Apply on a machine offering no output device closes the window and leaves the settings as they
+    are: the owner hears nothing, even once the frames after it have run."""
+
+    @pytest.fixture(name="nothing_offered")
+    def nothing_offered_fixture(self, window: GUIAudioSettingsWindow) -> List[Committed]:
+        """The settings the owner heard, from a window built over a machine offering no device."""
+        committed: List[Committed] = []
+        window.on_commit = lambda device_index, sample_rate, buffer_size: committed.append(
+            (device_index, sample_rate, buffer_size)
+        )
+        window._seed(
+            AudioSettingsViewModel(
+                devices=(),
+                current_device_index=None,
+                current_sample_rate=None,
+                buffer_size=DEFAULT_BUFFER_SIZE,
+                master_gain=UNITY_GAIN,
+            )
+        )
+        window.create_window()
+        return committed
+
+    def test_the_window_closes_and_the_owner_hears_nothing(
+        self,
+        window: GUIAudioSettingsWindow,
+        nothing_offered: List[Committed],
+        held_frames: Frames,
+    ) -> None:
+        window._commit()
+        held_frames.render()
+
+        assert not dpg.does_item_exist(TAG_SETTINGS_AUDIO_WINDOW)
+        assert nothing_offered == []

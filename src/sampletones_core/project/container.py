@@ -1,3 +1,4 @@
+import json
 import zipfile
 from pathlib import Path
 from typing import Dict
@@ -5,8 +6,8 @@ from typing import Dict
 from pydantic import ValidationError
 
 from sampletones_core.compatibility.kind import ObjectKind
-from sampletones_core.compatibility.upgrade import upgrade_json
-from sampletones_core.project.document import ProjectDocument
+from sampletones_core.compatibility.upgrade import read_version, upgrade_json
+from sampletones_core.project.document import PROJECT_DATA_CONTRACT, ProjectDocument
 from sampletones_core.project.project import Project
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.record import SampleRecord, VoiceRecord
@@ -14,12 +15,10 @@ from sampletones_core.project.voices.sample import Sample
 from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures import IdentifiedCollection
-from sampletones_shared.application import SAMPLETONES_PROJECT_DATA_VERSION
 from sampletones_shared.constants.project import (
     PROJECT_DOCUMENT_NAME,
     RECONSTRUCTIONS_DIRECTORY,
 )
-from sampletones_shared.deployment.version import compare_versions
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleProjectVersionError,
@@ -67,13 +66,7 @@ class ProjectContainer:
     def load(path: Pathlike) -> Project:
         try:
             with zipfile.ZipFile(path, "r") as archive:
-                document = ProjectDocument.model_validate_json(
-                    upgrade_json(
-                        ObjectKind.PROJECT,
-                        archive.read(PROJECT_DOCUMENT_NAME),
-                    )
-                )
-                ProjectContainer._validate_document(document)
+                document = ProjectContainer._read_document(archive.read(PROJECT_DOCUMENT_NAME))
                 reconstructions = ProjectContainer._read_reconstructions(archive)
             return ProjectContainer._build_project(document, reconstructions)
         except zipfile.BadZipFile as exception:
@@ -86,7 +79,7 @@ class ProjectContainer:
             raise MissingProjectDataFileError(
                 f'The project "{Path(path)}" is incomplete: missing {exception}'
             ) from exception
-        except ValidationError as exception:
+        except (ValidationError, json.JSONDecodeError, UnicodeDecodeError) as exception:
             raise InvalidProjectDataValuesError(
                 f'Failed to load project data from "{Path(path)}" due to validation error: {exception}',
                 exception,
@@ -101,15 +94,25 @@ class ProjectContainer:
             ) from exception
 
     @staticmethod
-    def _validate_document(document: ProjectDocument) -> None:
-        format_version = document.format_version
-        if compare_versions(format_version, SAMPLETONES_PROJECT_DATA_VERSION) != 0:
-            raise IncompatibleProjectVersionError(
-                f"Project data version mismatch: expected "
-                f"{SAMPLETONES_PROJECT_DATA_VERSION}, got {format_version}.",
-                expected_version=SAMPLETONES_PROJECT_DATA_VERSION,
-                actual_version=format_version,
-            )
+    def _read_document(raw: bytes) -> ProjectDocument:
+        """The document an archive stores, upgraded, with its version checked before its shape.
+
+        A document no upgrade reaches keeps the shape of the build that wrote it, so the version is
+        checked first and the refusal names both versions. A document stating no version is read at
+        the version its model gives it.
+
+        Raises:
+            IncompatibleProjectVersionError: If the document states a version no upgrade reaches.
+            json.JSONDecodeError: If the document is not JSON.
+            UnicodeDecodeError: If the document is not text.
+            ValidationError: If the document's shape departs from the one this build reads.
+        """
+        payload = json.loads(upgrade_json(ObjectKind.PROJECT, raw))
+        stated_version = read_version(ObjectKind.PROJECT, payload)
+        if stated_version is not None:
+            PROJECT_DATA_CONTRACT.validate_version(stated_version)
+
+        return ProjectDocument.model_validate(payload)
 
     @staticmethod
     def _build_document(project: Project) -> ProjectDocument:

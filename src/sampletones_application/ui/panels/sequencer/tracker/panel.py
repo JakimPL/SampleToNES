@@ -100,7 +100,10 @@ from sampletones_application.ui.panels.sequencer.tracker.callbacks import (
 from sampletones_application.ui.panels.sequencer.tracker.menu import TrackerMenu
 from sampletones_application.ui.panels.sequencer.tracker.themes import TrackerThemes
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.dpg import dpg_delete_children
+from sampletones_application.utils.gui.dpg import (
+    dpg_delete_children,
+    dpg_get_item_user_data,
+)
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import (
     PRIORITY_PANEL,
@@ -114,7 +117,7 @@ from sampletones_application.utils.gui.keyboard.modifiers import (
     Modifier,
     capture_modifiers,
 )
-from sampletones_application.utils.gui.keyboard.piano import PIANO_KEYS
+from sampletones_application.utils.gui.keyboard.piano import semitone_of
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.utils.gui.tooltip import show_tooltip
@@ -1361,7 +1364,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         if mouse_button != dpg.mvMouseButton_Right:
             return
 
-        key = dpg.get_item_user_data(clicked_item)
+        key = dpg_get_item_user_data(clicked_item)
         if key is None:
             return
 
@@ -1773,10 +1776,10 @@ class GUISequencerTrackerPanel(GUIPanel):
         """Types a note, digit or sign into the cell under the cursor, reporting whether the press
         was one.
 
-        A press holding Ctrl or Alt is an application gesture, so cell entry reads the plain keys
-        and leaves the rest to the global shortcuts.
+        A press holding Ctrl, Alt or Super is an application gesture, so cell entry reads the plain
+        keys and leaves the rest to the global shortcuts.
         """
-        if Modifier.CTRL in event.modifiers or Modifier.ALT in event.modifiers:
+        if not event.is_plain:
             return False
 
         if self._type_note(event):
@@ -1808,7 +1811,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         if speaks_in_periods(cursor.channel):
             return False
 
-        semitone = PIANO_KEYS.get(event.key)
+        semitone = semitone_of(event)
         if semitone is None:
             return False
 
@@ -1843,10 +1846,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         )
 
     def _on_row_hovered(self, _sender: Sender, app_data: int) -> None:
-        if not dpg.does_item_exist(app_data):
-            return
-
-        row_index = dpg.get_item_user_data(app_data)
+        row_index = dpg_get_item_user_data(app_data)
         if row_index is not None:
             self._highlighted_row = row_index
 

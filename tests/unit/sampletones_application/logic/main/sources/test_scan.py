@@ -1,214 +1,317 @@
 from pathlib import Path
-from typing import List, Tuple
+from typing import Callable, Final, List, Optional, Tuple
 
 import pytest
 
-from sampletones_application.logic.main.sources import scan as scan_module
-from sampletones_application.logic.main.sources.scan import REPORT_EVERY, FolderScan
-from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
-from tests.suite.base import BaseTestSuite
+from sampletones_application.logic.main.sources.scan import FolderScan, ScanPhase
+from sampletones_application.services.folder_scan.result import (
+    FolderScanCanceled,
+    FolderScanError,
+    FolderScanProgress,
+    FolderScanRequest,
+    FolderScanResult,
+    FolderScanStarted,
+    FolderScanSuccess,
+)
+
+MANY: Final[Path] = Path("many")
+FEW: Final[Path] = Path("few")
+OTHER: Final[Path] = Path("other")
+COUNT: Final[int] = 64
+FOUND: Final[Tuple[Path, ...]] = (Path("few/a.wav"), Path("few/b.wav"))
+
+Answered = List[Tuple[Path, Tuple[Path, ...]]]
+
+
+class ScanServiceStandIn:
+    """The walk a scan drives, its reports handed back by the case the way the render loop drains them."""
+
+    def __init__(self) -> None:
+        self.started: List[FolderScanRequest] = []
+        self.stops = 0
+        self._handler: Optional[Callable[[FolderScanResult], None]] = None
+
+    def subscribe(self, handler: Callable[[FolderScanResult], None]) -> None:
+        self._handler = handler
+
+    def start(self, request: FolderScanRequest) -> None:
+        self.started.append(request)
+
+    def stop(self) -> None:
+        self.stops += 1
+
+    @property
+    def latest(self) -> FolderScanRequest:
+        return self.started[-1]
+
+    def report(self, result: FolderScanResult) -> None:
+        assert self._handler is not None
+        self._handler(result)
+
+
+class Heard:
+    """What the reader is told: the folder named, the count, the reading given up, and a failure."""
+
+    def __init__(self, scan: FolderScan) -> None:
+        self.started: List[Path] = []
+        self.counts: List[int] = []
+        self.stopped = 0
+        self.failures: List[Exception] = []
+        scan.on_started = self.started.append
+        scan.on_progress = self.counts.append
+        scan.on_stopped = self._stop
+        scan.on_failed = self.failures.append
+
+    def _stop(self) -> None:
+        self.stopped += 1
+
+
+@pytest.fixture(name="service")
+def service_fixture() -> ScanServiceStandIn:
+    return ScanServiceStandIn()
 
 
 @pytest.fixture(name="scan")
-def scan_fixture() -> FolderScan:
-    return FolderScan()
+def scan_fixture(service: ScanServiceStandIn) -> FolderScan:
+    return FolderScan(service)
 
 
-def tree(root: Path, count: int, *, deep: int = 0) -> Path:
-    """A folder holding ``count`` recordings, and ``deep`` more in a folder below it."""
-    root.mkdir(parents=True, exist_ok=True)
-    for index in range(count):
-        (root / f"take_{index:04d}.wav").touch()
-
-    if deep:
-        tree(root / "below", deep)
-
-    return root
+@pytest.fixture(name="heard")
+def heard_fixture(scan: FolderScan) -> Heard:
+    return Heard(scan)
 
 
-def read(scan: FolderScan, root: Path) -> List[Tuple[Path, Tuple[Path, ...]]]:
-    """Reads the folder and waits for the walk, reporting what the answer was handed."""
-    answered: List[Tuple[Path, Tuple[Path, ...]]] = []
-    scan.start(root, lambda found_root, found: answered.append((found_root, found)))
-    SingleThreadExecutor.join_all()
-    return answered
+@pytest.fixture(name="answered")
+def answered_fixture() -> Answered:
+    return []
 
 
-class TestWhatAWalkFinds(BaseTestSuite):
-    """The walk goes as deep as the folder does and hands what it found to whoever asked."""
-
-    def test_every_recording_below_the_folder(self, scan: FolderScan, tmp_path: Path) -> None:
-        root = tree(tmp_path / "takes", 3, deep=2)
-
-        answered = read(scan, root)
-
-        assert len(answered[0][1]) == 5
-
-    def test_the_folder_it_was_asked_about(self, scan: FolderScan, tmp_path: Path) -> None:
-        root = tree(tmp_path / "takes", 1)
-
-        answered = read(scan, root)
-
-        assert answered[0][0] == root
-
-    def test_they_arrive_in_name_order(self, scan: FolderScan, tmp_path: Path) -> None:
-        root = tree(tmp_path / "takes", 4)
-
-        found = read(scan, root)[0][1]
-
-        assert list(found) == sorted(found)
-
-    def test_a_folder_holding_none_answers_with_none(self, scan: FolderScan, tmp_path: Path) -> None:
-        root = tree(tmp_path / "takes", 0)
-
-        assert read(scan, root)[0][1] == ()
+def answer_into(answered: Answered) -> Callable[[Path, Tuple[Path, ...]], None]:
+    return lambda root, recordings: answered.append((root, recordings))
 
 
-class TestWhatTheReaderIsTold(BaseTestSuite):
-    """The reader hears which folder is being read and how far the walk has got."""
+class TestAReading:
+    """A folder asked for is read, and the reader is told what the walk reports about it."""
 
-    def test_the_folder_is_named_before_the_walk(self, scan: FolderScan, tmp_path: Path) -> None:
-        named: List[Path] = []
-        scan.on_started = named.append
-        root = tree(tmp_path / "takes", 1)
+    def test_a_folder_asked_for_is_read(self, scan: FolderScan, service: ScanServiceStandIn) -> None:
+        scan.start(MANY, lambda _root, _found: None)
 
-        read(scan, root)
+        assert [request.root for request in service.started] == [MANY]
+        assert scan.phase is ScanPhase.READING
 
-        assert named == [root]
-
-    def test_the_count_rises_while_it_walks(self, scan: FolderScan, tmp_path: Path) -> None:
-        counted: List[int] = []
-        scan.on_progress = counted.append
-        root = tree(tmp_path / "takes", REPORT_EVERY * 2)
-
-        read(scan, root)
-
-        assert counted == [REPORT_EVERY, REPORT_EVERY * 2]
-
-
-class TestGivingUp(BaseTestSuite):
-    """A reader who asked for the wrong folder stops the walk rather than waiting it out."""
-
-    def test_a_stopped_walk_answers_nobody(self, scan: FolderScan, tmp_path: Path) -> None:
-        root = tree(tmp_path / "takes", REPORT_EVERY * 4)
-        answered: List[Tuple[Path, Tuple[Path, ...]]] = []
-        scan.on_progress = lambda _count: scan.stop()
-
-        scan.start(root, lambda found_root, found: answered.append((found_root, found)))
-        SingleThreadExecutor.join_all()
-
-        assert answered == []
-
-    def test_it_says_that_it_stopped(self, scan: FolderScan, tmp_path: Path) -> None:
-        root = tree(tmp_path / "takes", REPORT_EVERY * 4)
-        stopped: List[bool] = []
-        scan.on_stopped = lambda: stopped.append(True)
-        scan.on_progress = lambda _count: scan.stop()
-
-        scan.start(root, lambda _root, _found: None)
-        SingleThreadExecutor.join_all()
-
-        assert stopped == [True]
-
-    def test_a_walk_that_ended_leaves_the_next_free_to_start(
+    def test_the_reader_is_told_the_folder_and_the_count(
         self,
         scan: FolderScan,
-        tmp_path: Path,
+        service: ScanServiceStandIn,
+        heard: Heard,
     ) -> None:
-        root = tree(tmp_path / "takes", 1)
-        read(scan, root)
+        scan.start(MANY, lambda _root, _found: None)
 
-        assert scan.running is False
-        assert len(read(scan, root)) == 1
+        service.report(FolderScanStarted(request=service.latest))
+        service.report(FolderScanProgress(request=service.latest, count=COUNT))
 
+        assert heard.started == [MANY]
+        assert heard.counts == [COUNT]
 
-class TestOneWalkAtATime(BaseTestSuite):
-    """The answer travels with the walk that earns it, and a walk is let go however it ends."""
-
-    def test_each_walk_answers_the_caller_that_asked_for_it(
+    def test_what_was_found_reaches_whoever_asked(
         self,
         scan: FolderScan,
-        tmp_path: Path,
+        service: ScanServiceStandIn,
+        answered: Answered,
     ) -> None:
-        """Two callers ask this one scan — a gathering and a conversion — so a walk that reported
-        to the other one would convert a folder nobody asked about."""
-        first = tree(tmp_path / "first", 2)
-        second = tree(tmp_path / "second", 3)
-        gathered: List[Tuple[Path, Tuple[Path, ...]]] = []
-        converted: List[Tuple[Path, Tuple[Path, ...]]] = []
+        scan.start(FEW, answer_into(answered))
 
-        scan.start(first, lambda root, found: gathered.append((root, found)))
-        SingleThreadExecutor.join_all()
-        scan.start(second, lambda root, found: converted.append((root, found)))
-        SingleThreadExecutor.join_all()
+        service.report(FolderScanSuccess(request=service.latest, recordings=FOUND))
 
-        assert [root for root, _ in gathered] == [first]
-        assert [root for root, _ in converted] == [second]
+        assert answered == [(FEW, FOUND)]
+        assert scan.phase is ScanPhase.IDLE
 
-    def test_a_walk_that_fails_leaves_the_next_free_to_start(
+    def test_each_reading_answers_the_caller_that_asked_for_it(
         self,
         scan: FolderScan,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        service: ScanServiceStandIn,
     ) -> None:
-        """A reading that dies partway holds nothing back, so the reader may ask again."""
-        root = tree(tmp_path / "takes", 2)
+        """A gathering and a conversion ask the one scan, so a reading answering the other would convert a
+        folder nobody asked about."""
+        gathered: Answered = []
+        converted: Answered = []
+        scan.start(MANY, answer_into(gathered))
+        service.report(FolderScanSuccess(request=service.latest, recordings=()))
 
-        def raising(_root: Path) -> List[Path]:
-            raise OSError("the tree went away")
+        scan.start(FEW, answer_into(converted))
+        service.report(FolderScanSuccess(request=service.latest, recordings=FOUND))
 
-        monkeypatch.setattr(scan_module, "walk_entries", raising)
-        scan.start(root, lambda _root, _found: None)
-        SingleThreadExecutor.join_all()
-
-        assert scan.running is False
-
-        monkeypatch.undo()
-        assert len(read(scan, root)) == 1
+        assert gathered == [(MANY, ())]
+        assert converted == [(FEW, FOUND)]
 
     def test_a_folder_asked_for_while_one_is_read_is_turned_away(
         self,
         scan: FolderScan,
-        tmp_path: Path,
+        service: ScanServiceStandIn,
+        answered: Answered,
     ) -> None:
-        """One walk runs at a time, so the second answer hears nothing until it is asked again."""
-        root = tree(tmp_path / "takes", 2)
-        answered: List[Path] = []
-        scan._running.set()
+        scan.start(MANY, lambda _root, _found: None)
 
-        scan.start(root, lambda found_root, _found: answered.append(found_root))
-        SingleThreadExecutor.join_all()
+        scan.start(FEW, answer_into(answered))
+        service.report(FolderScanSuccess(request=service.latest, recordings=()))
 
+        assert [request.root for request in service.started] == [MANY]
         assert answered == []
 
-    def test_a_walk_stands_as_running_while_it_hands_its_answer_over(
+    def test_a_failed_reading_is_reported_and_lets_the_next_start(
         self,
         scan: FolderScan,
-        tmp_path: Path,
+        service: ScanServiceStandIn,
+        heard: Heard,
     ) -> None:
-        """The worker outlives its own answer, and a folder asked for in that moment reaches an
-        executor still holding the last one, so the scan reads as running for as long as it does."""
-        root = tree(tmp_path / "takes", 2)
-        standing: List[bool] = []
+        failure = OSError("the tree went away")
+        scan.start(MANY, lambda _root, _found: None)
 
-        scan.start(root, lambda _root, _found: standing.append(scan.running))
-        SingleThreadExecutor.join_all()
+        service.report(FolderScanError(request=service.latest, exception=failure))
+        scan.start(FEW, lambda _root, _found: None)
 
-        assert standing == [True]
+        assert heard.failures == [failure]
+        assert [request.root for request in service.started] == [MANY, FEW]
 
-    def test_a_walk_stands_as_running_while_it_says_it_stopped(
+
+class TestStoppingAReading:
+    """Stop gives a reading up for the reader at once, while the walk winds down until it is heard to give up.
+
+    A folder asked for in that span is read once the walk has given up, the latest one asked for
+    taking the place of an earlier one. Reports of the reading let go are set aside.
+    """
+
+    @pytest.fixture(name="stopped")
+    def stopped_fixture(self, scan: FolderScan, service: ScanServiceStandIn, answered: Answered) -> FolderScan:
+        """A reading of the large folder, stopped and winding down."""
+        scan.start(MANY, answer_into(answered))
+        service.report(FolderScanStarted(request=service.latest))
+        scan.stop()
+        return scan
+
+    def test_stop_asks_the_walk_to_give_up_once(self, stopped: FolderScan, service: ScanServiceStandIn) -> None:
+        stopped.stop()
+
+        assert stopped.phase is ScanPhase.WINDING_DOWN
+        assert service.stops == 1
+
+    def test_the_count_of_a_stopped_reading_is_set_aside(
         self,
-        scan: FolderScan,
-        tmp_path: Path,
+        stopped: FolderScan,
+        service: ScanServiceStandIn,
+        heard: Heard,
     ) -> None:
-        """A walk the reader gave up on reports the same way its answer does, so both leave the
-        scan free at the one moment the worker does."""
-        root = tree(tmp_path / "takes", REPORT_EVERY * 4)
-        standing: List[bool] = []
-        scan.on_progress = lambda _count: scan.stop()
-        scan.on_stopped = lambda: standing.append(scan.running)
+        service.report(FolderScanProgress(request=service.latest, count=COUNT))
 
-        scan.start(root, lambda _root, _found: None)
-        SingleThreadExecutor.join_all()
+        assert heard.counts == []
 
-        assert standing == [True]
+    def test_the_walk_giving_up_ends_the_reading(
+        self,
+        stopped: FolderScan,
+        service: ScanServiceStandIn,
+        heard: Heard,
+    ) -> None:
+        service.report(FolderScanCanceled(request=service.latest))
+
+        assert heard.stopped == 1
+        assert stopped.phase is ScanPhase.IDLE
+
+    def test_a_folder_asked_for_meanwhile_waits_for_the_walk(
+        self,
+        stopped: FolderScan,
+        service: ScanServiceStandIn,
+    ) -> None:
+        stopped.start(FEW, lambda _root, _found: None)
+
+        assert [request.root for request in service.started] == [MANY]
+        assert stopped.phase is ScanPhase.WINDING_DOWN
+
+    def test_the_folder_asked_for_meanwhile_is_read_once_the_walk_gives_up(
+        self,
+        stopped: FolderScan,
+        service: ScanServiceStandIn,
+    ) -> None:
+        stopped.start(FEW, lambda _root, _found: None)
+
+        service.report(FolderScanCanceled(request=service.latest))
+
+        assert [request.root for request in service.started] == [MANY, FEW]
+        assert stopped.phase is ScanPhase.READING
+
+    def test_the_latest_folder_asked_for_is_the_one_read(
+        self,
+        stopped: FolderScan,
+        service: ScanServiceStandIn,
+    ) -> None:
+        stopped.start(OTHER, lambda _root, _found: None)
+        stopped.start(FEW, lambda _root, _found: None)
+
+        service.report(FolderScanCanceled(request=service.latest))
+
+        assert [request.root for request in service.started] == [MANY, FEW]
+
+    def test_the_folder_read_next_answers_its_own_caller(
+        self,
+        stopped: FolderScan,
+        service: ScanServiceStandIn,
+        answered: Answered,
+    ) -> None:
+        converted: Answered = []
+        stopped.start(FEW, answer_into(converted))
+        service.report(FolderScanCanceled(request=service.latest))
+
+        service.report(FolderScanSuccess(request=service.latest, recordings=FOUND))
+
+        assert answered == []
+        assert converted == [(FEW, FOUND)]
+
+    def test_a_walk_finishing_before_it_heard_stop_answers_nobody(
+        self,
+        stopped: FolderScan,
+        service: ScanServiceStandIn,
+        heard: Heard,
+        answered: Answered,
+    ) -> None:
+        service.report(FolderScanSuccess(request=service.latest, recordings=FOUND))
+
+        assert answered == []
+        assert heard.stopped == 1
+
+    def test_a_walk_failing_as_it_winds_down_ends_the_way_a_stopped_one_does(
+        self,
+        stopped: FolderScan,
+        service: ScanServiceStandIn,
+        heard: Heard,
+    ) -> None:
+        """The reader gave the reading up, so its failure reads as the stop, and the folder asked for meanwhile is read."""
+        stopped.start(FEW, lambda _root, _found: None)
+
+        service.report(FolderScanError(request=service.latest, exception=OSError("the tree went away")))
+
+        assert heard.failures == []
+        assert heard.stopped == 1
+        assert [request.root for request in service.started] == [MANY, FEW]
+
+    def test_a_late_report_of_the_reading_let_go_is_set_aside(
+        self,
+        stopped: FolderScan,
+        service: ScanServiceStandIn,
+        heard: Heard,
+        answered: Answered,
+    ) -> None:
+        let_go = service.latest
+        stopped.start(FEW, lambda _root, _found: None)
+        service.report(FolderScanCanceled(request=let_go))
+
+        service.report(FolderScanProgress(request=let_go, count=COUNT))
+        service.report(FolderScanSuccess(request=let_go, recordings=FOUND))
+
+        assert heard.counts == []
+        assert answered == []
+        assert stopped.phase is ScanPhase.READING
+
+    def test_stop_with_nothing_read_asks_nothing(self, scan: FolderScan, service: ScanServiceStandIn) -> None:
+        scan.stop()
+
+        assert service.stops == 0
+        assert scan.phase is ScanPhase.IDLE

@@ -132,6 +132,33 @@ def upgrade_json(kind: ObjectKind, raw: bytes) -> bytes:
     return json.dumps(upgraded).encode("utf-8")
 
 
+def read_version(kind: ObjectKind, payload: Any) -> Optional[str]:
+    """The data version a parsed payload states, read where its format keeps it.
+
+    A load reads the version before the rest of the payload, so the format's contract can refuse a
+    version no upgrade reaches before any model reads the shape.
+
+    Returns:
+        Optional[str]: The stated version, or ``None`` when the payload is not a mapping or states
+        no version as text.
+    """
+    if not isinstance(payload, dict):
+        return None
+
+    path = _version_path(kind)
+    section_name = path.section
+    if section_name is None:
+        value = payload.get(path.field)
+    else:
+        section = payload.get(section_name)
+        if not isinstance(section, dict):
+            return None
+
+        value = section.get(path.field)
+
+    return value if isinstance(value, str) else None
+
+
 def _upgrade_kind(
     kind: ObjectKind,
     version: str,
@@ -156,10 +183,7 @@ def _upgrade_payload(
     when it is not a mapping, when it lacks the format's version field, or when
     the chain does not apply.
     """
-    if not isinstance(payload, dict):
-        return None
-
-    version = _read_version(kind, payload)
+    version = read_version(kind, payload)
     if version is None:
         return None
 
@@ -178,21 +202,6 @@ def _version_path(kind: ObjectKind) -> _VersionPath:
         section="metadata",
         field=f"{kind.value}_data_version",
     )
-
-
-def _read_version(kind: ObjectKind, data: SerializedData) -> Optional[str]:
-    path = _version_path(kind)
-    section_name = path.section
-    if section_name is None:
-        value = data.get(path.field)
-    else:
-        section = data.get(section_name)
-        if not isinstance(section, dict):
-            return None
-
-        value = section.get(path.field)
-
-    return value if isinstance(value, str) else None
 
 
 def _stamp(

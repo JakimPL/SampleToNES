@@ -22,7 +22,6 @@ from sampletones_core.parallelization.task import TaskStep
 from sampletones_core.reconstructions.converter import ConversionPlan, ReconstructionConverter
 from sampletones_core.reconstructions.stage import ReconstructionStage
 from sampletones_shared.logger import logger
-from sampletones_shared.utils.system.paths import to_path
 
 
 class ConversionService(ServiceBase[ConversionResult]):
@@ -122,20 +121,23 @@ class ConversionService(ServiceBase[ConversionResult]):
 
         return self._eta_estimator.update(covered)
 
-    @staticmethod
     def _item(
+        self,
         task_progress: TaskProgress,
         step: Optional[ReconstructionStep],
     ) -> Optional[ConversionItem]:
-        """The reconstruction the run names itself by, where it has a recording to name.
+        """The reconstruction the run names itself by, where it has a job to name.
 
         A run works on as many reconstructions as it has workers and names the one it has been at
-        longest, so a reader watching a batch sees the run move through its recordings.
+        longest, so a reader watching a batch sees the run move through its recordings. The item
+        names that job's recording and the file it writes.
         """
-        if task_progress.current_item is None:
+        converter = self._converter
+        job = converter.job_under_way(task_progress.completed) if converter is not None else None
+        if job is None:
             return None
 
-        return ConversionItem(source=to_path(task_progress.current_item), step=step)
+        return ConversionItem(source=job.sources[0], output_path=job.output_path, step=step)
 
     @staticmethod
     def _step(task_progress: TaskProgress) -> Optional[ReconstructionStep]:

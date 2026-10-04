@@ -17,8 +17,7 @@ class MainTabHooks:
 
     is_operation_active: Callable[[], bool]
     on_busy_state_changed: VoidCallback
-    on_reconstruct_file: PathCallback
-    on_reconstruct_directory: PathCallback
+    on_reconstruct_listed: VoidCallback
     on_load_reconstruction: Callable[[Optional[Path]], None]
     on_load_library: PathCallback
     on_load_file: PathCallback

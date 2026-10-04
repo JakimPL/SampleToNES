@@ -82,7 +82,7 @@ def instrument_source(
         InstrumentSource: The instrument, awaiting the name its destination gives it.
 
     Raises:
-        ValueError: If the project's samples were reconstructed against tunings that differ.
+        ProjectTuningError: If the project's samples were reconstructed against tunings that differ.
     """
     return InstrumentSource(
         channel=sounding_channel(entry),
@@ -106,7 +106,7 @@ def exportable_instrument(
         ExportableInstrument: The instrument and the name to suggest for it.
 
     Raises:
-        ValueError: If the project's samples were reconstructed against tunings that differ.
+        ProjectTuningError: If the project's samples were reconstructed against tunings that differ.
     """
     return ExportableInstrument(
         name=entry.name,
@@ -158,7 +158,7 @@ def voice_instrument(
         channel.
 
     Raises:
-        ValueError: If the project's samples were reconstructed against tunings that differ.
+        ProjectTuningError: If the project's samples were reconstructed against tunings that differ.
     """
     voice = project.voices.get(voice_id)
     if voice is None:

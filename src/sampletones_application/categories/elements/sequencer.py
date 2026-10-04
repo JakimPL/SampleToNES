@@ -71,6 +71,7 @@ class SequencerOrderElements(AbstractElement):
 class SequencerVoicesElements(AbstractElement):
     VOICES_TEXT = "voices_text"
     NEW_INSTRUMENT = "new_instrument"
+    NEW_INSTRUMENT_NO_PROJECT = "new_instrument_no_project"
     ADD_SAMPLE = "add_sample"
     IMPORT_INSTRUMENT = "import_instrument"
     KIND_SAMPLE = "kind_sample"

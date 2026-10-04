@@ -7,14 +7,17 @@ import pytest
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.tags.sequencer import TAG_SEQUENCER_VOICES_INPUT_RENAME
-from sampletones_application.utils.gui.keyboard.combination import KeyCombination
+from sampletones_application.utils.gui.keyboard.combination import (
+    KeyCombination,
+    display_combinations,
+    parse_combinations,
+)
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.suite.screens.application.startup import Startup
 from tests.suite.screens.dearpygui.items.reading import read_item
 from tests.suite.screens.dearpygui.keys import IMGUI_ENTER, IMGUI_ESCAPE
 from tests.suite.screens.keyboard import press_combination
 from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import forgive_the_hover_race
 from tests.suite.screens.vocabulary.settings import LISTENING
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT, BASS_VOICE, LINE, PAD
 from tests.suite.screens.written import written_application_config
@@ -49,9 +52,11 @@ def rename_the_line(screen: Screen) -> None:
 class TestRebindingUndo:
     """Undo rebound: the new keys undo and the old ones leave the document as it was, and the menu prints the new keys.
 
-    Escape cancels a capture, keys another action holds ask before they are taken, and leaving writes
-    the rebind. The scenario rebinds Undo to Ctrl+Alt+U, renames a voice, tries the old keys and then
-    the new ones, tries to take the Redo keys and cancels, and leaves the application.
+    Escape cancels a capture, a pressed key leads the keys Undo had, keys written in the entry box become
+    exactly Undo's keys, keys another action holds ask before they are taken, and leaving writes the rebind.
+    The scenario presses Ctrl+Alt+U on Undo's row, writes it alone in the entry box, renames a voice, tries
+    the old keys and then the new ones, tries to take Redo's main key and cancels, and leaves the
+    application.
     """
 
     def test_the_new_keys_undo(self, screen: Screen) -> None:
@@ -86,8 +91,15 @@ class TestRebindingUndo:
 
             screen.expect(
                 partial(settings.keys_of, ShortcutId.UNDO),
+                display_combinations((NEW_UNDO, *parse_combinations(original[ShortcutId.UNDO]))).__eq__,
+                description="the new keys ahead of the old ones",
+            )
+            settings.write_keys(ShortcutId.UNDO, NEW_UNDO.display())
+
+            screen.expect(
+                partial(settings.keys_of, ShortcutId.UNDO),
                 NEW_UNDO.display().__eq__,
-                description="the new keys",
+                description="the new keys alone",
             )
             settings.confirm()
             screen.expect(settings.is_shown, operator.not_, description="Keyboard settings closed")
@@ -101,7 +113,7 @@ class TestRebindingUndo:
         def the_old_keys_do_nothing_and_the_new_undo(screen: Screen) -> None:
             rename_the_line(screen)
 
-            press_combination(screen.hand, KeyCombination.parse(original[ShortcutId.UNDO]))
+            press_combination(screen.hand, parse_combinations(original[ShortcutId.UNDO])[0])
 
             screen.frames(SETTLING_FRAMES)
             assert voices.names() == [RENAMED, BASS_VOICE, PAD]
@@ -114,7 +126,7 @@ class TestRebindingUndo:
             screen.expect(settings.is_shown, bool, description="Keyboard settings")
             settings.listen_for(ShortcutId.UNDO)
 
-            press_combination(screen.hand, KeyCombination.parse(original[ShortcutId.REDO]))
+            press_combination(screen.hand, parse_combinations(original[ShortcutId.REDO])[0])
 
             screen.expect(reassign.is_shown, bool, description="the question about reassigning")
             reassign.cancel()
@@ -124,7 +136,6 @@ class TestRebindingUndo:
             screen.expect(settings.is_shown, operator.not_, description="Keyboard settings closed")
 
         def leaving_writes_the_rebind(screen: Screen) -> None:
-            forgive_the_hover_race(screen)
             screen.press_shortcut(ShortcutId.EXIT)
 
             assert screen.wait_for_exit()

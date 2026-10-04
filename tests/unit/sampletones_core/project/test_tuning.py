@@ -5,6 +5,7 @@ import pytest
 from sampletones_core.project.project import Project
 from sampletones_core.project.tuning import UNTUNED_PROJECT, tuning_from_project
 from sampletones_core.project.voices.sample import Sample
+from sampletones_shared.exceptions import ProjectTuningError
 from sampletones_shared.music import Tuning
 from tests.suite.performance import (
     make_pulse_reconstruction,
@@ -59,5 +60,7 @@ class TestTheTuningAProjectSounds:
                 ),
             )
         )
-        with pytest.raises(ValueError, match=str(BAROQUE_PITCH)):
+        with pytest.raises(ProjectTuningError, match=str(BAROQUE_PITCH)) as refused:
             tuning_from_project(project)
+
+        assert isinstance(refused.value, ValueError)
