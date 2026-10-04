@@ -3,12 +3,12 @@ from typing import Final, List
 
 import pytest
 
-from sampletones_application.config.session.state.state import ApplicationState
-from sampletones_application.config.session.state.window import ViewportState
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from sampletones_shared.display import Resolution
+from tests.screens.interface.display.constants import HAND_SIZE, HAND_X, HAND_Y
 from tests.screens.interface.display.steps import (
     another_size,
+    at_its_own_size_and_place,
+    hand_sized_world,
     kept,
     open_display_settings,
     size_named,
@@ -17,10 +17,6 @@ from tests.screens.interface.display.steps import (
 )
 from tests.suite.screens.screen import Screen
 from tests.suite.screens.worlds.home import World
-
-HAND_SIZE: Final[Resolution] = Resolution(width=1300, height=820)
-HAND_X: Final[int] = 100
-HAND_Y: Final[int] = 60
 
 
 class TestDiscardingADisplayChange:
@@ -110,19 +106,7 @@ class TestDiscardingOnAHandSizedWindow:
     @pytest.fixture
     def world(self) -> World:
         """A home whose window the user sized by hand, between the sizes Display settings offers."""
-        return World(
-            state=ApplicationState(
-                viewport=ViewportState(
-                    width=HAND_SIZE.width,
-                    height=HAND_SIZE.height,
-                    x=HAND_X,
-                    y=HAND_Y,
-                )
-            ),
-            application_config=None,
-            config=None,
-            files=(),
-        )
+        return hand_sized_world()
 
     def test_discarding_puts_back_the_window_s_own_size(self, screen: Screen) -> None:
         """The window stands at its own size and place once the new size is discarded."""
@@ -157,11 +141,6 @@ class TestDiscardingOnAHandSizedWindow:
             prompt.confirm()
 
             screen.expect(settings.is_shown, operator.not_, description="the dialog closed")
-            screen.expect(
-                lambda: window_size(screen),
-                (HAND_SIZE.width, HAND_SIZE.height).__eq__,
-                description="the window at its own size",
-            )
-            assert window_position(screen) == (HAND_X, HAND_Y)
+            at_its_own_size_and_place(screen)
 
         screen.scenario(a_size_between_the_offered_ones, keep_another_size, discard_it).run()

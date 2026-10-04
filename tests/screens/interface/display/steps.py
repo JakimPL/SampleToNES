@@ -1,10 +1,13 @@
 import operator
 from typing import Tuple
 
+from sampletones_application.config.session.state.state import ApplicationState
+from sampletones_application.config.session.state.window import ViewportState
 from sampletones_shared.display import Resolution
-from tests.screens.interface.display.constants import SIZE_SEPARATOR
+from tests.screens.interface.display.constants import HAND_SIZE, HAND_X, HAND_Y, SIZE_SEPARATOR
 from tests.suite.screens.dearpygui.items.viewport import read_viewport, read_viewport_decorated
 from tests.suite.screens.screen import Screen
+from tests.suite.screens.worlds.home import World
 
 
 def size_named(label: str) -> Resolution:
@@ -50,3 +53,30 @@ def kept(screen: Screen) -> None:
     screen.expect(settings.countdown_shown, bool, description="the countdown")
     settings.keep()
     screen.expect(settings.countdown_shown, operator.not_, description="the countdown gone")
+
+
+def hand_sized_world() -> World:
+    """A home whose window the user sized by hand, between the sizes Display settings offers."""
+    return World(
+        state=ApplicationState(
+            viewport=ViewportState(
+                width=HAND_SIZE.width,
+                height=HAND_SIZE.height,
+                x=HAND_X,
+                y=HAND_Y,
+            )
+        ),
+        application_config=None,
+        config=None,
+        files=(),
+    )
+
+
+def at_its_own_size_and_place(screen: Screen) -> None:
+    """Waits until the window stands at the size it was sized to by hand, and checks its place."""
+    screen.expect(
+        lambda: window_size(screen),
+        (HAND_SIZE.width, HAND_SIZE.height).__eq__,
+        description="the window at its own size",
+    )
+    assert window_position(screen) == (HAND_X, HAND_Y)

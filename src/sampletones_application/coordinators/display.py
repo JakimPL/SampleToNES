@@ -1,4 +1,5 @@
 import math
+from dataclasses import dataclass
 from typing import Optional
 
 from sampletones_application.categories.manager import LanguageManager
@@ -23,6 +24,18 @@ from sampletones_application.viewport import ViewportManager, WindowPlacement
 from sampletones_shared.display import Resolution
 
 
+@dataclass(frozen=True)
+class ReadableWindow:
+    """A window mode last seen readable, with the place and size the window stood at under it.
+
+    A window sitting at a size of its own reads as the offered size nearest it, so the placement is
+    what carries the size the window had.
+    """
+
+    mode: WindowMode
+    placement: WindowPlacement
+
+
 class DisplayCoordinator:
     """Owns the display settings: the options offered, the live application of a change, and the
     countdown that returns a window mode nobody confirmed.
@@ -35,8 +48,9 @@ class DisplayCoordinator:
 
     Changing the window's size, its frame, or fullscreen can leave the window unreadable, so each
     of those arms a countdown over the dialog: keeping it disarms the clock and leaves the change
-    pending, and letting the clock run out brings the last confirmed window mode back while every
-    other pending edit stays.
+    pending, and letting the clock run out puts the window back as it stood under the last confirmed
+    mode, at its own place and size, while every other pending edit stays. Cancel and the clock put a
+    window back the same way.
     """
 
     def __init__(
@@ -69,7 +83,7 @@ class DisplayCoordinator:
         self._settings: Optional[DisplaySettings] = None
         self._snapshot: Optional[DisplaySettings] = None
         self._opening_placement: Optional[WindowPlacement] = None
-        self._armed: Optional[WindowMode] = None
+        self._armed: Optional[ReadableWindow] = None
         self._remaining: float = 0.0
 
         self._window.on_settings_changed = self._change
@@ -114,17 +128,21 @@ class DisplayCoordinator:
         self._countdown.set_remaining(self._displayed_seconds())
 
     def _change(self, settings: DisplaySettings) -> None:
-        """Puts an edit on screen, arming the countdown when it changed the window mode."""
+        """Puts an edit on screen, arming the countdown when it changed the window mode.
+
+        The window is read before the change reaches it, which is the window the countdown puts back.
+        """
         previous = self._require_settings()
+        readable = ReadableWindow(mode=previous.window, placement=self._viewport_manager.placement)
         self._settings = settings
         self._apply(previous, settings)
         if settings.window != previous.window:
-            self._arm(previous.window)
+            self._arm(readable)
 
         self._window.update_view(self._view_model(settings))
 
-    def _arm(self, restorable: WindowMode) -> None:
-        """Starts the countdown that brings ``restorable`` back unless the change is confirmed.
+    def _arm(self, restorable: ReadableWindow) -> None:
+        """Starts the countdown that puts ``restorable`` back unless the change is confirmed.
 
         A countdown already running keeps the mode it was going to restore and starts its count
         again on the prompt already on screen, so a run of unconfirmed changes still returns to
@@ -154,19 +172,27 @@ class DisplayCoordinator:
         self._disarm()
 
     def _revert(self) -> None:
-        """Brings the last confirmed window mode back, leaving every other pending edit in place."""
+        """Puts the window back as it stood under the last confirmed mode, leaving every other pending edit."""
         restorable = self._armed
         self._disarm()
         if restorable is None:
             return
 
-        self._restore(self._require_settings().with_window(restorable))
+        self._put_back(self._require_settings().with_window(restorable.mode), restorable.placement)
 
-    def _restore(self, settings: DisplaySettings) -> None:
-        """Puts ``settings`` on screen as the state in force, without arming a countdown."""
+    def _put_back(self, settings: DisplaySettings, placement: WindowPlacement) -> None:
+        """Puts ``settings`` on screen as the state in force, and a windowed window back at ``placement``.
+
+        A place and a size set directly reach DearPyGui's reading of the window at once, while a
+        fullscreen change reaches it on a drawn frame alone, so a windowed window is placed after its
+        settings, and a record of the window taken right after names that place and size.
+        """
         previous = self._require_settings()
         self._settings = settings
         self._apply(previous, settings)
+        if not settings.window.fullscreen:
+            self._viewport_manager.place(placement)
+
         self._window.update_view(self._view_model(settings))
 
     def _commit(self) -> None:
@@ -203,29 +229,15 @@ class DisplayCoordinator:
         )
 
     def _discard(self) -> None:
-        """Puts back the display the dialog opened with and closes it."""
+        """Puts back the display the dialog opened with, a windowed window at its own place and size, and
+        closes it."""
         self._disarm()
-        self._restore_opening_display()
-        self._close()
-
-    def _restore_opening_display(self) -> None:
-        """Re-applies the settings the dialog opened with, and puts a windowed window back at its own place
-        and size.
-
-        A window sitting at a size of its own opens the dialog on the offered size nearest it, and the
-        placement taken at opening is what carries the size the window had. A place and a size set
-        directly reach DearPyGui's reading of the window at once, while a fullscreen change reaches it
-        on a drawn frame alone, so a window that opened windowed is placed after its settings, and a
-        record of the window taken right after names its opening place and size.
-        """
         snapshot = self._snapshot
         placement = self._opening_placement
-        if snapshot is None or placement is None:
-            return
+        if snapshot is not None and placement is not None:
+            self._put_back(snapshot, placement)
 
-        self._apply(self._require_settings(), snapshot)
-        if not snapshot.window.fullscreen:
-            self._viewport_manager.place(placement)
+        self._close()
 
     def _close(self) -> None:
         self._settings = None

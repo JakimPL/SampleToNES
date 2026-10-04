@@ -434,11 +434,13 @@ class TestCancel:
 
 
 class TestCancelingAHandSizedWindow:
-    """A window sitting at a size of its own goes back to that exact size and place on Cancel.
+    """A window sitting at a size of its own goes back to that exact size and place on Cancel and when the
+    countdown puts a change back.
 
     The dialog shows the offered size nearest the window's own, and a discard puts back the opening
-    place and size the run ending while the dialog stands puts back. A dialog opened in fullscreen goes
-    back to fullscreen and is placed nowhere.
+    place and size the run ending while the dialog stands puts back. The countdown puts back the window
+    as it stood before the change it guards. A dialog opened in fullscreen goes back to fullscreen and is
+    placed nowhere.
     """
 
     OPENING_PLACEMENT = WindowPlacement(x=OPENING_X, y=OPENING_Y, resolution=HAND_SIZED)
@@ -476,6 +478,29 @@ class TestCancelingAHandSizedWindow:
 
         assert hand_sized.viewport.fullscreen_toggles == 2
         assert hand_sized.viewport.placement == self.OPENING_PLACEMENT
+
+    def test_the_clock_running_out_puts_back_the_window_s_own(self, hand_sized: Harness) -> None:
+        hand_sized.change(hand_sized.settings.with_window(hand_sized.settings.window.with_resolution(WIDESCREEN)))
+        hand_sized.elapse(COUNTDOWN_SECONDS)
+
+        assert hand_sized.viewport.placement == self.OPENING_PLACEMENT
+        assert hand_sized.window.visible
+
+    def test_reverting_puts_back_the_window_s_own(self, hand_sized: Harness) -> None:
+        hand_sized.change(hand_sized.settings.with_window(hand_sized.settings.window.with_resolution(WIDESCREEN)))
+        hand_sized.revert()
+
+        assert hand_sized.viewport.placement == self.OPENING_PLACEMENT
+
+    def test_a_kept_size_is_what_a_later_clock_puts_back(self, hand_sized: Harness) -> None:
+        hand_sized.change(hand_sized.settings.with_window(hand_sized.settings.window.with_resolution(WIDESCREEN)))
+        hand_sized.keep()
+        kept = hand_sized.viewport.placement
+        hand_sized.change(hand_sized.settings.with_window(hand_sized.settings.window.with_borderless(True)))
+        hand_sized.elapse(COUNTDOWN_SECONDS)
+
+        assert hand_sized.viewport.placement == kept
+        assert kept.resolution == WIDESCREEN
 
     def test_a_dialog_opened_in_fullscreen_goes_back_to_fullscreen(self) -> None:
         harness = Harness()
