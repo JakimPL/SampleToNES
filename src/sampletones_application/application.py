@@ -160,6 +160,7 @@ from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.palette.palette import PaletteBindings
 from sampletones_application.utils.gui.render_thread import (
     claim_render_thread,
+    on_render_thread,
     release_render_thread,
 )
 from sampletones_application.utils.gui.shortcuts.catalog import ShortcutCatalog
@@ -1194,8 +1195,14 @@ class Application:
         self._main_tab.request_reconstruct_directory(directory_path)
 
     def _on_playback_error(self, exception: Exception) -> None:
+        """Reports a playback the device refused, on the render thread whichever thread heard of it.
+
+        The device manager reports a stream that failed to open from the thread playing the audio, and
+        the report raises a dialog, so it crosses to the render thread the way every worker's result does.
+        """
         logger.error_with_traceback(exception, "Playback error occurred")
-        self._playback_failures.present(
+        on_render_thread(
+            self._playback_failures.present,
             exception,
             message=self.language_manager["global.dialog.message.audio_playback_error"],
         )

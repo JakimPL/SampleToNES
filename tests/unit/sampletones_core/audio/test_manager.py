@@ -200,6 +200,24 @@ class TestPlaybackStart(BaseTestSuite):
         assert positions_at_thread_start == [test_case.expected]
 
 
+class TestAStreamTheDeviceRefuses:
+    """A stream the device refuses to open leaves the playback idle before the refusal is reported."""
+
+    def test_the_playback_reads_stopped_when_the_refusal_is_reported(self) -> None:
+        manager = _manager()
+        manager._pyaudio.open.side_effect = OSError("the device is busy")
+        manager._position_callback = MagicMock()
+        playing_when_reported: List[bool] = []
+        manager.on_playback_error = lambda _error: playing_when_reported.append(manager.is_playing())
+        manager._playing = True
+        manager._audio_data = np.zeros(TestPlaybackStart.AUDIO_LENGTH, dtype=np.float32)
+
+        manager._playback_worker(output=manager.require_output(), update=True)
+
+        assert playing_when_reported == [False]
+        manager._position_callback.assert_called_once_with(0)
+
+
 class TestSeekingAPlayback(BaseTestSuite):
     """A seek moves the playback of the owner asking for it, clamped to the audio, under one lock."""
 

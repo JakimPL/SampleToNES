@@ -714,8 +714,9 @@ class AudioDeviceManager(CallbackMixin):
         """
         Playback thread worker function.
 
-        Opens an audio stream, runs the playback loop, and ensures cleanup.
-        Handles stream opening errors by invoking the error callback.
+        Opens an audio stream, runs the playback loop, and ensures cleanup. A stream the device
+        refuses to open leaves the playback idle, as a finished one does, before the error callback
+        reports it, so whoever follows the playback reads it stopped.
 
         Args:
             output: The device and rate in force when the playback was asked for.
@@ -732,6 +733,7 @@ class AudioDeviceManager(CallbackMixin):
                 output_device_index=output.device_index,
             )
         except OSError as exception:
+            self._reset(update=update)
             playback_error = PlaybackError(f"Failed to open audio stream: {exception}")
             self.call(self.on_playback_error, playback_error)
             return

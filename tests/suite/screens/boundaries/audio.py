@@ -13,12 +13,15 @@ ALSA_CONFIGURATION_FILE: Final[str] = ".asound.conf"
 ALSA_CONFIGURATION_VARIABLE: Final[str] = "ALSA_CONFIG_PATH"
 DEVICE_BUFFER_SECONDS: Final[float] = 0.05
 SILENT_DEFAULT_DEVICE: Final[str] = "pcm.!default {\n    type null\n}\n"
+REFUSED_STREAM: Final[str] = "A screen scenario's device refuses every stream"
 
 
 class OutputDevice(StrEnum):
-    """The output a scenario's machine offers: a device that plays into silence, or none at all."""
+    """The output a scenario's machine offers: a device that plays into silence, one that refuses every
+    stream, or none at all."""
 
     SILENT = "silent"
+    REFUSING = "refusing"
     NONE = "none"
 
 
@@ -148,8 +151,20 @@ def provide_output_device(
     match device:
         case OutputDevice.SILENT:
             SilentOutputDevice().install(home, monkeypatch)
+        case OutputDevice.REFUSING:
+            SilentOutputDevice().install(home, monkeypatch)
+            _refusing_output_device(monkeypatch)
         case OutputDevice.NONE:
             _no_output_device(monkeypatch)
+
+
+def _refusing_output_device(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Offers the silent device and refuses every stream opened on it, as a device another program holds."""
+    monkeypatch.setattr(pyaudio.PyAudio, "open", _refused_stream)
+
+
+def _refused_stream(_: pyaudio.PyAudio, **__: object) -> pyaudio.PyAudio.Stream:
+    raise OSError(REFUSED_STREAM)
 
 
 def _no_output_device(monkeypatch: pytest.MonkeyPatch) -> None:
