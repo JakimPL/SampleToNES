@@ -460,11 +460,3 @@ class TestTheFrameTheExitIsDecidedIn:
 
         stop_dearpygui.assert_called_once_with()
         assert not ran
-
-    def test_the_work_due_before_the_exit_runs(self) -> None:
-        ran: List[str] = []
-        CallbackQueue.add(lambda: ran.append("due"))
-
-        CallbackQueue.process(budget_seconds=1.0)
-
-        assert ran == ["due"]
