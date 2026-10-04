@@ -1792,7 +1792,6 @@ def exposure_coordinator() -> SequencerTabCoordinator:
     instance._guarded_player = GuardedPlayer(
         instance._song_player_logic,
         failures=MagicMock(),
-        error_message="playback failed",
     )
     return instance
 
@@ -1828,7 +1827,6 @@ def refusing_coordinator_fixture(failures: MagicMock) -> SequencerTabCoordinator
     instance._guarded_player = GuardedPlayer(
         instance._song_player_logic,
         failures=failures,
-        error_message="playback failed",
     )
     return instance
 
@@ -1843,8 +1841,8 @@ class TestPlayingFromAPlaceWithNoOutput:
     ) -> None:
         refusing_coordinator.play_from_current_frame()
 
-        failures.present.assert_called_once()
-        assert isinstance(failures.present.call_args.args[0], NoOutputDeviceError)
+        failures.present_playing_failure.assert_called_once()
+        assert isinstance(failures.present_playing_failure.call_args.args[0], NoOutputDeviceError)
 
     def test_play_from_a_row_reaches_the_presenter(
         self,
@@ -1853,8 +1851,8 @@ class TestPlayingFromAPlaceWithNoOutput:
     ) -> None:
         refusing_coordinator._on_tracker_play_from_row(4)
 
-        failures.present.assert_called_once()
-        assert isinstance(failures.present.call_args.args[0], NoOutputDeviceError)
+        failures.present_playing_failure.assert_called_once()
+        assert isinstance(failures.present_playing_failure.call_args.args[0], NoOutputDeviceError)
 
     def test_play_from_an_order_frame_reaches_the_presenter(
         self,
@@ -1863,8 +1861,8 @@ class TestPlayingFromAPlaceWithNoOutput:
     ) -> None:
         refusing_coordinator._play_from_frame(1)
 
-        failures.present.assert_called_once()
-        assert isinstance(failures.present.call_args.args[0], NoOutputDeviceError)
+        failures.present_playing_failure.assert_called_once()
+        assert isinstance(failures.present_playing_failure.call_args.args[0], NoOutputDeviceError)
 
 
 PULSE1_CELL: Final[TrackerRegion] = TrackerRegion(

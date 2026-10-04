@@ -231,7 +231,6 @@ class ReconstructionTabCoordinator:
         self._guarded_player = GuardedPlayer(
             self._reconstruction_player_logic,
             failures=playback_failures,
-            error_message=language_manager["global.player.message.audio_playback_error"],
         )
         self._reconstruction_audio_panel: GUIReconstructionAudioPanel = GUIReconstructionAudioPanel(
             path_colors=layout.path_colors,

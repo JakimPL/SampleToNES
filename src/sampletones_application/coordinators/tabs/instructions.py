@@ -180,7 +180,6 @@ class InstructionsTabCoordinator:
         self._guarded_player = GuardedPlayer(
             self._instruction_player_logic,
             failures=playback_failures,
-            error_message=language_manager["global.player.message.audio_playback_error"],
         )
         self._waveform_panel = GUIInstructionWaveformPanel(
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM),

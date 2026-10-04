@@ -49,9 +49,9 @@ class PlaybackFailurePresenter:
                 self._dialogs.show_error(exception, message)
 
     def present_playing_failure(self, exception: Exception) -> None:
-        """Shows the reader what stopped a playback on the thread playing it, such as a stream the device refused.
+        """Shows the reader what stopped a playback they asked for, such as a stream the device refused.
 
-        Every source reports such a failure with the same opening line, so one refusal reads alike on
-        every tab.
+        Every source reports such a failure with the same opening line, whether its start failed at
+        once or on the thread playing it, so one refusal reads alike on every tab.
         """
         self.present(exception, message=self._language_manager["global.dialog.message.audio_playback_error"])

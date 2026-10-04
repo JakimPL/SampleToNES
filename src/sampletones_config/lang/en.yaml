@@ -313,7 +313,6 @@ global.player.label.play: "Play"
 global.player.label.pause: "Pause"
 global.player.label.resume: "Resume"
 global.player.label.stop: "Stop"
-global.player.message.audio_playback_error: "Audio playback error."
 
 # =============================================================================
 # Global — Graph
