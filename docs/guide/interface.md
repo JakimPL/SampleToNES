@@ -25,7 +25,7 @@ Project properties belong to a project and are covered in the [sequencer guide](
 
 ## Keyboard shortcuts
 
-**View ▸ Keyboard shortcuts...** (`Ctrl+K`) lists everything you can do from the keyboard and lets you change any shortcut. Click an action's shortcut and press the keys you want. If another action already uses those keys, the app names that action and asks whether to reassign them.
+**View ▸ Keyboard shortcuts...** (`Ctrl+K`) lists everything you can do from the keyboard and lets you change any shortcut. Click an action's shortcut and press the keys you want. They become its main shortcut, and the action keeps its other shortcuts. To set all of an action's shortcuts at once, select the action, type them in the **Shortcut** box separated by commas, and press `Enter`. If another action already uses those keys, the app names that action and asks whether to reassign them.
 
 **Reset to defaults** restores the original shortcuts. Your changes take effect when you click **OK**, and the app keeps them for the next time you start.
 

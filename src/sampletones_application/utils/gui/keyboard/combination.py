@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Final, Set
+from typing import Final, Iterable, Set, Tuple
 
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.keyboard.keys import (
@@ -18,6 +18,8 @@ from sampletones_application.utils.gui.keyboard.modifiers import (
 )
 
 COMBINATION_SEPARATOR: Final[str] = "+"
+KEY_LIST_SEPARATOR: Final[str] = ","
+KEY_LIST_JOINER: Final[str] = ", "
 
 
 @dataclass(frozen=True)
@@ -84,3 +86,26 @@ class KeyCombination:
             key=key_code(COMBINATION_SEPARATOR.join(parts[index:])),
             modifiers=frozenset(modifiers),
         )
+
+
+def combination_parts(text: str) -> Tuple[str, ...]:
+    """The combinations a written list such as ``"Ctrl+Y, Ctrl+Shift+Z"`` names, each as it is written.
+
+    The list is split at its commas and each part is trimmed, and a blank part names nothing. A key
+    spells the comma as ``Comma``, which keeps the comma free to separate the combinations.
+    """
+    return tuple(part.strip() for part in text.split(KEY_LIST_SEPARATOR) if part.strip())
+
+
+def parse_combinations(text: str) -> Tuple[KeyCombination, ...]:
+    """The combinations a written list names, in the order it names them.
+
+    Raises:
+        KeyError: If a part of the list names no key.
+    """
+    return tuple(KeyCombination.parse(part) for part in combination_parts(text))
+
+
+def display_combinations(combinations: Iterable[KeyCombination]) -> str:
+    """The combinations as a list reads them, in their order and joined by commas."""
+    return KEY_LIST_JOINER.join(combination.display() for combination in combinations)

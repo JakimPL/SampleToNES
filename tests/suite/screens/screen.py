@@ -19,6 +19,7 @@ from sampletones_application.tags.general import (
 from sampletones_application.tags.main import TAG_MAIN_EXPLORER_TREE
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_core.constants.enums import ChannelName, GeneratorName
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
 from tests.suite.screens.boundaries.audio import OutputRecord
@@ -135,6 +136,10 @@ class Screen:
     def words(self, key: Union[str, TextKeyTuple]) -> str:
         """What the language file says under ``key``, which is what the application shows the user."""
         return self._language[key]
+
+    def shortcut(self, shortcut_id: ShortcutId) -> Shortcut:
+        """The binding the scheme in place gives ``shortcut_id``: its main key and the further ones."""
+        return self._shortcuts.shortcut(shortcut_id)
 
     def shortcut_words(self, shortcut_id: ShortcutId) -> str:
         """How a menu prints the keys of ``shortcut_id`` under the scheme in place."""

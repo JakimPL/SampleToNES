@@ -3,10 +3,12 @@ from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_BUTTON
 from sampletones_application.tags.settings import (
     PRE_SETTINGS_KEYBINDINGS_ROW,
+    SUF_SETTINGS_KEYBINDINGS_ACTION,
     SUF_SETTINGS_KEYBINDINGS_SHORTCUT,
     TAG_SETTINGS_KEYBINDINGS_BUTTON_CANCEL,
     TAG_SETTINGS_KEYBINDINGS_BUTTON_OK,
     TAG_SETTINGS_KEYBINDINGS_DIALOG_REASSIGN,
+    TAG_SETTINGS_KEYBINDINGS_INPUT_SHORTCUT,
     TAG_SETTINGS_KEYBINDINGS_WINDOW,
 )
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
@@ -14,6 +16,7 @@ from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.hand import Hand
 from tests.suite.screens.dearpygui.items.reading import read_item
 from tests.suite.screens.dearpygui.items.texts import read_label
+from tests.suite.screens.dearpygui.keys import IMGUI_ENTER
 from tests.suite.screens.views.menus import MenuBar
 from tests.suite.screens.views.prompts import Prompt
 
@@ -46,6 +49,16 @@ class KeyboardSettings:
         self._hand.scroll_into_view(cell)
         self._hand.click(cell)
 
+    def write_keys(self, shortcut_id: ShortcutId, text: str) -> None:
+        """Picks the row of ``shortcut_id`` by its name, writes ``text`` over the keys in the entry box
+        and presses Enter, which gives the action exactly the keys written.
+        """
+        action = _action_cell(shortcut_id)
+        self._hand.scroll_into_view(action)
+        self._hand.click(action)
+        self._hand.replace_text(TAG_SETTINGS_KEYBINDINGS_INPUT_SHORTCUT, text)
+        self._hand.press_key(IMGUI_ENTER, modifiers=[])
+
     def keys_of(self, shortcut_id: ShortcutId) -> str:
         """What the row of ``shortcut_id`` shows as its keys."""
         return self._bridge.ask(lambda: read_label(_shortcut_cell(shortcut_id)))
@@ -61,3 +74,7 @@ class KeyboardSettings:
 
 def _shortcut_cell(shortcut_id: ShortcutId) -> str:
     return compose_tag(PRE_SETTINGS_KEYBINDINGS_ROW, shortcut_id.value, SUF_SETTINGS_KEYBINDINGS_SHORTCUT)
+
+
+def _action_cell(shortcut_id: ShortcutId) -> str:
+    return compose_tag(PRE_SETTINGS_KEYBINDINGS_ROW, shortcut_id.value, SUF_SETTINGS_KEYBINDINGS_ACTION)

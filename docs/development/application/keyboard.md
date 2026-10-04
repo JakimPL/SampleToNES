@@ -64,15 +64,17 @@ One key table (`utils/gui/keyboard/keys.py`) reads a key both ways: the name a f
 
 ### A preference layers over the shipped scheme
 
-`ShortcutsConfig` holds the scheme name and the per-action overrides, both written the way a keybinding file writes them, so a preference outlives the build that stored it. `ShortcutCatalog.select` answers with the default for a scheme a build stopped shipping. An override is reported and left out when it names an action this build does not have, a key the table does not have, or a combination its category already gives away. One stale entry therefore costs only itself.
+`ShortcutsConfig` holds the scheme name and the per-action overrides, both written the way a keybinding file writes them, so a preference outlives the build that stored it. `ShortcutCatalog.select` answers with the default for a scheme a build stopped shipping. An override lists every key of its action, main key first and joined by commas, and a key spells the comma as `Comma`. A stored single key is therefore an action with one key. An override is reported and left out whole when it names an action this build does not have, a key the table does not have, or a combination its category already gives away. One stale entry therefore costs only itself, and its action keeps the scheme's keys.
 
 A change reaches the running application through `ShortcutSource.on_bindings_changed`, the keyboard's analog of the palette switch ([`palette.md`](palette.md)). The dispatcher re-reads the keys, and the menus re-print their accelerators. Each registration names the action it fires, so a rebind has little to catch up.
 
 ### A scheme is edited through a draft
 
-`ShortcutDraft` (`utils/gui/shortcuts/draft.py`) holds the scheme being edited together with the actions the reader has touched: the combination each was given, or nothing where it was left unbound. Only those actions reach the preference, and every other key follows the scheme beneath.
+`ShortcutDraft` (`utils/gui/shortcuts/draft.py`) holds the scheme being edited together with the actions the reader has touched: every key each now answers, main key first, and none where it was left unbound. Only those actions reach the preference, and every other key follows the scheme beneath.
 
-An assignment displaces. Giving an action a combination its category already answers takes the key from the holder in the same step, so every scheme a draft produces is valid. The dialog names the holder and asks before that step is taken. Cancel on that question brings the reader back to where they gave the keys: a written combination to the entry box, and a pressed one to its row, listening for the next press. A row reads as listening exactly while it takes the keys. The dialog edits the draft, and a commit activates it, so a reader rebinding Escape, Tab or Enter keeps the keys the dialog is operated by until they are done.
+An edit changes the keys the reader names, and the action keeps the rest. A pressed key becomes the action's main key, the one the menus print, and the keys it had follow it. A list written in the entry box becomes exactly the action's keys. Clear unbinds every key.
+
+An assignment displaces only what it takes. Giving an action keys its category already answers takes those keys from their holders in the same step, so every scheme a draft produces is valid. A holder keeps its other keys, the next one becoming its main key. The dialog names every holder in one question and asks before that step is taken. Cancel on that question brings the reader back to where they gave the keys: a written list to the entry box, and a pressed key to its row, listening for the next press. A row reads as listening exactly while it takes the keys. The dialog edits the draft, and a commit activates it, so a reader rebinding Escape, Tab or Enter keeps the keys the dialog is operated by until they are done.
 
 ### A scheme belongs to a platform; an action does not
 

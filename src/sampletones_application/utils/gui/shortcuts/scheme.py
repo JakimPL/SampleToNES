@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from functools import cached_property
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Self
+from typing import Dict, List, Mapping, Optional, Self, Tuple
 
 from pydantic import BaseModel, model_validator
 
-from sampletones_application.utils.gui.keyboard.combination import KeyCombination
+from sampletones_application.utils.gui.keyboard.combination import KeyCombination, parse_combinations
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.shortcuts.ids import (
     SHORTCUT_IDS_BY_NAME,
@@ -118,35 +118,36 @@ class ShortcutScheme(BaseModel, frozen=True):
     def with_binding(
         self,
         shortcut_id: ShortcutId,
-        combination: Optional[KeyCombination],
+        combinations: Tuple[KeyCombination, ...],
     ) -> ShortcutScheme:
-        """The scheme with one action answering ``combination``, as it stands for every other entry.
+        """The scheme with one action answering ``combinations``, as it stands for every other entry.
 
         Args:
             shortcut_id: The action being given keys.
-            combination: The keys it answers to, ``None`` leaving it unbound.
+            combinations: The keys it answers to, main key first; an empty list leaves it unbound.
 
         Returns:
             ShortcutScheme: The scheme every action resolves against once the binding is read.
 
         Raises:
-            SystemError: when another action of the same category already answers the combination.
-            KeyError: when the combination names a key the key table holds none of.
+            SystemError: when another action of the same category already answers one of the keys.
+            KeyError: when a combination names a key the key table holds none of.
         """
-        return self.with_bindings({shortcut_id: combination})
+        return self.with_bindings({shortcut_id: combinations})
 
     def with_bindings(
         self,
-        combinations: Mapping[ShortcutId, Optional[KeyCombination]],
+        bindings: Mapping[ShortcutId, Tuple[KeyCombination, ...]],
     ) -> ShortcutScheme:
-        """The scheme as the named actions answer the combinations given, read in one step.
+        """The scheme as the named actions answer the keys given, read in one step.
 
-        A named action answers the combination stated and that alone, so the aliases the scheme
-        shipped it with go with the keys they extended. Reading the whole set at once is what lets
-        two actions trade combinations, each arriving at keys the other is leaving.
+        A named action answers the list stated: its first key is the one the action displays, and
+        the rest answer beside it. Reading the whole set at once is what lets two actions trade
+        keys, each arriving at keys the other is leaving.
 
         Args:
-            combinations: The keys each named action answers to, ``None`` leaving an action unbound.
+            bindings: The keys each named action answers to, main key first; an empty list leaves an
+                action unbound.
 
         Returns:
             ShortcutScheme: The scheme every action resolves against once the bindings are read.
@@ -157,9 +158,9 @@ class ShortcutScheme(BaseModel, frozen=True):
         """
         entries: Dict[ShortcutId, WrittenShortcut] = {
             shortcut_id: self.bindings[shortcut_id].rebound(
-                None if combination is None else combination.display(),
+                tuple(combination.display() for combination in combinations),
             )
-            for shortcut_id, combination in combinations.items()
+            for shortcut_id, combinations in bindings.items()
         }
 
         return ShortcutScheme(
@@ -174,12 +175,13 @@ class ShortcutScheme(BaseModel, frozen=True):
         """The scheme as a reader rebound it, each entry giving one action the keys it names.
 
         An override names its action the way a keybinding file writes it, which lets a preference
-        outlive the build that stored it. The set is read at once, so entries that pass combinations
-        between them arrive together; where the whole leaves the scheme unresolvable, the entries are
-        read one at a time and each that stands aside costs only itself.
+        outlive the build that stored it, and lists the action's keys joined by commas. The set is
+        read at once, so entries that pass keys between them arrive together; where the whole leaves
+        the scheme unresolvable, the entries are read one at a time and each that stands aside costs
+        only itself.
 
         Args:
-            overrides: The combination each rebound action answers to, keyed by the action's name.
+            overrides: The keys each rebound action answers to, keyed by the action's name.
 
         Returns:
             ShortcutScheme: The scheme every action resolves against once the overrides are read.
@@ -193,16 +195,17 @@ class ShortcutScheme(BaseModel, frozen=True):
             logger.warning(f"Keybindings overrides read one entry at a time: {exception}")
             return self._rebound_each(overrides)
 
-    def rebound(self, name: str, combination: Optional[str]) -> ShortcutScheme:
+    def rebound(self, name: str, keys: Optional[str]) -> ShortcutScheme:
         """The scheme as one stored preference rebinds it, read the way a preference is read.
 
-        An entry takes effect while it names an action this build carries, a key the table holds and
-        a combination its category has room for; anything else is reported and the scheme is
-        returned as it stands, so one unreadable preference costs only itself.
+        An entry takes effect while it names an action this build carries, keys the table holds and
+        combinations its category has room for. Anything else is reported and the scheme is
+        returned as it stands, so one unreadable preference costs only itself, and its action keeps
+        every key the scheme gives it.
 
         Args:
             name: The action the entry rebinds, named the way a keybinding file writes it.
-            combination: The keys it answers to, ``None`` leaving the action unbound.
+            keys: The keys it answers to, joined by commas; ``None`` leaves the action unbound.
 
         Returns:
             ShortcutScheme: The scheme the entry leaves in place.
@@ -213,12 +216,9 @@ class ShortcutScheme(BaseModel, frozen=True):
             return self
 
         try:
-            return self.with_binding(
-                shortcut_id,
-                None if combination is None else KeyCombination.parse(combination),
-            )
+            return self.with_binding(shortcut_id, self._read_keys(keys))
         except (KeyError, SystemError) as exception:
-            logger.warning(f"Keybinding override giving {name!r} the combination {combination!r} left out: {exception}")
+            logger.warning(f"Keybinding override giving {name!r} the keys {keys!r} left out: {exception}")
             return self
 
     @classmethod
@@ -242,23 +242,29 @@ class ShortcutScheme(BaseModel, frozen=True):
     def _read_overrides(
         self,
         overrides: Mapping[str, Optional[str]],
-    ) -> Dict[ShortcutId, Optional[KeyCombination]]:
-        """Every override as the action and the combination it names.
+    ) -> Dict[ShortcutId, Tuple[KeyCombination, ...]]:
+        """Every override as the action and the keys it names.
 
         Raises:
             KeyError: when an entry names an action this build carries none of, or a key the table
                 holds none of.
         """
-        return {
-            SHORTCUT_IDS_BY_NAME[name]: None if combination is None else KeyCombination.parse(combination)
-            for name, combination in overrides.items()
-        }
+        return {SHORTCUT_IDS_BY_NAME[name]: self._read_keys(keys) for name, keys in overrides.items()}
+
+    @staticmethod
+    def _read_keys(keys: Optional[str]) -> Tuple[KeyCombination, ...]:
+        """The keys a stored override lists, none for an override stating ``None``.
+
+        Raises:
+            KeyError: when a listed combination names a key the table holds none of.
+        """
+        return () if keys is None else parse_combinations(keys)
 
     def _rebound_each(self, overrides: Mapping[str, Optional[str]]) -> ShortcutScheme:
         """The scheme as every override that stands rebinds it, read one entry at a time."""
         scheme = self
-        for name, combination in overrides.items():
-            scheme = scheme.rebound(name, combination)
+        for name, keys in overrides.items():
+            scheme = scheme.rebound(name, keys)
 
         return scheme
 
