@@ -85,9 +85,7 @@ Every scenario is held to the same after-checks. A failing gesture is logged and
 keeps running, which is why the checks read the log as well as the screen.
 
 - **Quiet.** The application logged no error and no thread let an exception escape. A scenario that
-  provokes a failure claims the error it provokes, and an error nobody claims still fails it. A defect
-  the bugs ledger records, which a scenario's gestures meet by chance, is forgiven by name in the
-  scenarios about something else, while the ledger entry names it for its fix.
+  provokes a failure claims the error it provokes, and an error nobody claims still fails it.
 - **Contained.** The application started no program, and every file dialog it opened had an answer
   waiting.
 - **Settled.** No modal conversation is left open, and every window lies inside the viewport.

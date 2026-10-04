@@ -21,19 +21,6 @@ def bar_rows(meter: Meter, frames: int) -> Tuple[int, ...]:
     return tuple(starts)
 
 
-def beat_spans(meter: Meter, frames: int) -> Tuple[Tuple[int, int], ...]:
-    """The first row and the row count of every beat of ``frames`` patterns."""
-    spans: List[Tuple[int, int]] = []
-    for frame in range(frames):
-        row = frame * meter.rows
-        for beats in meter.spans:
-            for beat in beats:
-                spans.append((row, beat))
-                row += beat
-
-    return tuple(spans)
-
-
 def bar_line_drift(
     ticks: Sequence[int],
     starts: Sequence[int],

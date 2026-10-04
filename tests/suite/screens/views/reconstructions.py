@@ -130,10 +130,6 @@ class Reconstructions:
         """Whether the box of ``channel`` above the waveform stands ticked."""
         return bool(self._bridge.ask(lambda: read_value(_channel_box(channel))))
 
-    def channel_plays(self, channel: ChannelName) -> bool:
-        """Whether the box of ``channel`` answers, which it does for a channel the reconstruction plays."""
-        return self._bridge.ask(lambda: read_item(_channel_box(channel))).enabled
-
     def tick_channel(self, channel: ChannelName) -> None:
         """Clicks the box of ``channel`` above the waveform, which flips its tick."""
         self._hand.click(_channel_box(channel))

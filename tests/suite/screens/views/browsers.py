@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -35,18 +35,6 @@ class FileTree:
     def file_row(self, path: Path) -> Optional[Item]:
         """The first row naming the file or folder at ``path``, if one is drawn."""
         return self._row(lambda node: isinstance(node, FileSystemNode) and node.filepath == path)
-
-    def file_rows(self, path: Path) -> List[Item]:
-        """Every row naming the file at ``path``, which a browser listing it under several headings draws
-        again.
-        """
-
-        def rows() -> List[Item]:
-            found: List[Item] = []
-            find_item(self._tree, lambda item: _collect(item, path, found))
-            return found
-
-        return self._bridge.ask(rows)
 
     def generator_row(self, generator: GeneratorName) -> Optional[Item]:
         """The first row standing for ``generator``, if one is drawn."""
@@ -118,12 +106,3 @@ def _node_matches(item: Item, matches: NodeTest) -> bool:
 
     node = user_data[0]
     return isinstance(node, TreeNode) and bool(matches(node))
-
-
-def _collect(item: Item, path: Path, found: List[Item]) -> bool:
-    if _is_tree_row(item) and _node_matches(
-        item, lambda node: isinstance(node, FileSystemNode) and node.filepath == path
-    ):
-        found.append(item)
-
-    return False

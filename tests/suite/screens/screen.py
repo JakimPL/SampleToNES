@@ -285,15 +285,6 @@ class Screen:
             description=f"an error naming '{naming}'",
         )
 
-    def forgive_known_error(self, naming: str) -> None:
-        """Claims every error holding ``naming``, which a defect the bugs ledger records provokes by chance.
-
-        A scenario about something else stays quiet about a defect its gestures may meet, while the
-        scenario reproducing the defect holds it to account.
-        """
-        while self._errors.claim(naming):
-            continue
-
     def press_shortcut(self, shortcut_id: ShortcutId) -> None:
         """Presses the keys the scheme in place gives ``shortcut_id`` on the real keyboard."""
         press_combination(self.hand, primary_combination(self._shortcuts.shortcut(shortcut_id)))
