@@ -67,7 +67,6 @@ from sampletones_application.utils.callbacks.gates import asking
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
-from sampletones_application.utils.gui.modal_queue import ModalQueue
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_application.view_model.instruction.details import (
     InstructionDetailsPanelViewModel,
@@ -181,7 +180,6 @@ class InstructionsTabCoordinator:
         self._guarded_player = GuardedPlayer(
             self._instruction_player_logic,
             failures=playback_failures,
-            error_message=language_manager["global.player.message.audio_playback_error"],
         )
         self._waveform_panel = GUIInstructionWaveformPanel(
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM),
@@ -518,7 +516,7 @@ class InstructionsTabCoordinator:
         The question reads the library once the screen is free for it, so a build that ended
         meanwhile is asked about no more. Cancel keeps the library building and turns the exit away.
         """
-        asking(self.is_library_generating, self._ask_before_exit, ModalQueue.when_free)(proceed, decline)
+        asking(self.is_library_generating, self._ask_before_exit, self._dialogs.when_free)(proceed, decline)
 
     def _ask_before_exit(self, proceed: VoidCallback, decline: VoidCallback) -> None:
         self._dialogs.show_confirmation(

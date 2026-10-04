@@ -35,7 +35,9 @@ def asking(
     While ``unsettled`` reads false, the request goes on at once, whatever holds the screen. Otherwise
     the gate waits for the screen and reads ``unsettled`` again there, so the question speaks of the
     state it shows over. A thing another conversation settled meanwhile, such as a project its answer
-    closed, lets the request through with no question.
+    closed, lets the request through with no question. The step on the free screen runs from the
+    line, so one that raises before it hands the request on turns the request away, and the error
+    goes on up.
 
     Args:
         unsettled: Whether there is something to ask about.
@@ -48,15 +50,72 @@ def asking(
             proceed()
             return
 
-        def ask_on_the_screen() -> None:
+        def ask_on_the_screen(go_on: VoidCallback, turn_away: VoidCallback) -> None:
             if unsettled():
-                question(proceed, decline)
+                question(go_on, turn_away)
             else:
-                proceed()
+                go_on()
 
-        screen(ask_on_the_screen)
+        screen(_declining_on_failure(ask_on_the_screen, proceed, decline))
 
     return gate
+
+
+def waiting_for_the_screen(
+    unsettled: Callable[[], bool],
+    screen: Wait,
+) -> Gate:
+    """A gate that holds a chain of questions for the screen while any of them has something to ask.
+
+    With nothing unsettled the request goes on at once, whatever holds the screen. Otherwise it waits
+    for the screen, and every guard after the gate reads its state there. A dialog standing as the
+    request was made can change that state, such as Project properties leaving the project unsaved,
+    so a guard with nothing to ask at the request asks once the dialog has left.
+
+    Args:
+        unsettled: Whether any guard after the gate has something to ask about.
+        screen: The wait for the screen, such as the modal line's turn.
+    """
+
+    def gate(proceed: VoidCallback, _decline: VoidCallback) -> None:
+        if unsettled():
+            screen(proceed)
+        else:
+            proceed()
+
+    return gate
+
+
+def _declining_on_failure(
+    step: Gate,
+    proceed: VoidCallback,
+    decline: VoidCallback,
+) -> VoidCallback:
+    """``step`` as a callback handed ``proceed`` and ``decline``, which calls ``decline`` where it raises before either.
+
+    A step that called one of the two has handed the request on, and a failure after that belongs to
+    the continuation it called.
+    """
+
+    def run() -> None:
+        settled = False
+
+        def settling(continuation: VoidCallback) -> VoidCallback:
+            def settle() -> None:
+                nonlocal settled
+                settled = True
+                continuation()
+
+            return settle
+
+        try:
+            step(settling(proceed), settling(decline))
+            settled = True
+        finally:
+            if not settled:
+                decline()
+
+    return run
 
 
 def pass_gates(
@@ -128,10 +187,10 @@ class SingleFlight(ABC, Generic[GestureParameters]):
     asked for until the gates let it through or turn it away, and a gesture asked for after that asks
     again. A gesture asked for while it is in flight asks nothing, and the kind of flight decides which
     request its end lets through. A conversation that turns the gesture away drops the request it
-    holds. A gate, or a continuation a gate runs after an answer or a wait, that raises ends the
-    flight the same way, so one failure leaves the gesture to be asked for again. Each take-off has a
-    ticket, and a continuation acts on the flight of its own ticket alone, so an answer reaching a
-    conversation that has ended leaves the newer one as it stands.
+    holds. A gate that raises, as it is reached or in a step it runs after an answer, a wait or a
+    turn in the line, ends the flight the same way, so one failure leaves the gesture to be asked for
+    again. Each take-off has a ticket, and a continuation acts on the flight of its own ticket alone,
+    so an answer reaching a conversation that has ended leaves the newer one as it stands.
     """
 
     def __init__(self, arrive: Callable[GestureParameters, GestureResult]) -> None:

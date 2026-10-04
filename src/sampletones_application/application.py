@@ -144,6 +144,7 @@ from sampletones_application.utils.callbacks.gates import (
     LatestRequestFlight,
     gated,
     waiting,
+    waiting_for_the_screen,
 )
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.fps import FPSTimer
@@ -1632,18 +1633,30 @@ class Application:
         """The exit as one conversation, in which each owner of something unfinished asks in turn.
 
         The edits of the open reconstruction land first, so each question asks about what the
-        reader has drawn. A close asked for again while the questions stand is absorbed, and Cancel
-        on any of them ends the conversation.
+        reader has drawn. While any owner has something to ask, the questions wait for the screen,
+        and every owner reads what it holds there, so a dialog standing as the window was closed has
+        settled what it changes. A close asked for again while the questions stand is absorbed, and
+        Cancel on any of them ends the conversation.
         """
         return LatestRequestFlight(
             (
                 waiting(self._reconstruction_coordinator.after_edits),
+                waiting_for_the_screen(self._has_anything_to_ask_before_exit, self.dialogs.when_free),
                 self._project_coordinator.guard_exit,
                 self._reconstruction_coordinator.guard_exit,
                 self._main_tab.guard_exit,
                 self._instructions_tab.guard_exit,
             ),
             self._exit_application,
+        )
+
+    def _has_anything_to_ask_before_exit(self) -> bool:
+        """Whether any owner the exit asks holds something unfinished: unsaved work, a conversion or a library build."""
+        return (
+            self._project_coordinator.is_unsaved
+            or self._reconstruction_coordinator.is_unsaved_standalone()
+            or self._main_tab.is_converter_active()
+            or self._instructions_tab.is_library_generating()
         )
 
     def _is_project_open(self) -> bool:

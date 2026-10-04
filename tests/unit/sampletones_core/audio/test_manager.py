@@ -9,6 +9,7 @@ import pytest
 
 from sampletones_core.audio.device import AudioDevice, CurrentDevice
 from sampletones_core.audio.manager import AudioDeviceManager
+from sampletones_core.audio.stream import write_to_stream
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE, START_OF_AUDIO, SampleRate
 from sampletones_shared.exceptions import NoOutputDeviceError, PlaybackError
 from tests.suite.base import BaseTestSuite
@@ -17,6 +18,10 @@ from tests.suite.case import BaseRegularTestCase
 _LOW = 0
 _HIGH = 1
 _RELEASE_TIMEOUT: Final[float] = 5.0
+_OPEN_DELAY: Final[float] = 0.2
+_SHORT_JOIN: Final[float] = 0.05
+_STOP_JOIN_TARGET: Final[str] = "sampletones_core.audio.manager.STOP_JOIN_SECONDS"
+_LET_GO_JOIN_TARGET: Final[str] = "sampletones_core.audio.manager.LET_GO_JOIN_SECONDS"
 _BACKEND: Final[str] = "sampletones_core.audio.manager.pyaudio.PyAudio"
 _SPEAKERS_INDEX: Final[int] = 0
 _SPEAKERS_NAME: Final[str] = "Speakers"
@@ -56,6 +61,7 @@ def _manager() -> AudioDeviceManager:
     manager._playing = False
     manager._active_priority = 0
     manager._generation = 0
+    manager._let_go_workers = []
     manager._stream_owners = {}
     manager.on_acquire_output = None
     manager.external_output_priority = None
@@ -324,6 +330,163 @@ class TestAPlaybackANewerOneReplaced:
         assert not manager.is_playing()
 
 
+class TestADeviceFailingMidPlayback:
+    """A write or a stop the device fails leaves the playback idle, and then reports the failure once.
+
+    The failure reaches the reader the way a refused stream does, and only while the playback that met it
+    is the one in force.
+    """
+
+    LENGTH: Final[int] = 8
+
+    @pytest.fixture(name="playing")
+    def playing_fixture(self) -> Tuple[AudioDeviceManager, Dict[str, Any], MagicMock]:
+        """A manager playing a buffer, the arguments its worker was started with, and the stream it opens."""
+        manager = _manager()
+        manager._buffer_size = self.LENGTH
+        manager._position_callback = None
+        manager._playback_thread = None
+        stream = MagicMock()
+        manager._pyaudio.open.return_value = stream
+        with patch("sampletones_core.audio.manager.threading.Thread") as thread:
+            manager.play(np.zeros(self.LENGTH, dtype=np.float32))
+
+        return manager, thread.call_args.kwargs["kwargs"], stream
+
+    @staticmethod
+    def record_reports(manager: AudioDeviceManager) -> List[Tuple[PlaybackError, bool]]:
+        """Notes each failure reported with whether the playback read playing then."""
+        reports: List[Tuple[PlaybackError, bool]] = []
+        manager.on_playback_error = lambda error: reports.append((error, manager.is_playing()))
+        return reports
+
+    def test_a_failed_write_is_reported_once_with_the_playback_stopped(
+        self,
+        playing: Tuple[AudioDeviceManager, Dict[str, Any], MagicMock],
+    ) -> None:
+        manager, worker, stream = playing
+        stream.write.side_effect = OSError("the device went away")
+        reports = self.record_reports(manager)
+
+        manager._playback_worker(**worker)
+
+        assert [is_playing for _, is_playing in reports] == [False]
+        assert "the device went away" in str(reports[0][0])
+        stream.close.assert_called_once_with()
+
+    def test_a_failed_stop_still_closes_the_stream_and_leaves_the_playback_idle(
+        self,
+        playing: Tuple[AudioDeviceManager, Dict[str, Any], MagicMock],
+    ) -> None:
+        manager, worker, stream = playing
+        stream.stop_stream.side_effect = OSError("the device went away")
+        reports = self.record_reports(manager)
+
+        manager._playback_worker(**worker)
+
+        assert [is_playing for _, is_playing in reports] == [False]
+        stream.close.assert_called_once_with()
+        assert not manager.is_playing()
+
+    def test_a_write_failing_after_a_newer_play_reports_nothing(
+        self,
+        playing: Tuple[AudioDeviceManager, Dict[str, Any], MagicMock],
+    ) -> None:
+        """The newer playback stands, and the failure belongs to the playback it replaced."""
+        manager, worker, stream = playing
+
+        def replaced_then_failing(_data: bytes) -> None:
+            with patch("sampletones_core.audio.manager.threading.Thread"):
+                manager.play(np.ones(self.LENGTH, dtype=np.float32))
+            raise OSError("the device went away")
+
+        stream.write.side_effect = replaced_then_failing
+        reports = self.record_reports(manager)
+
+        manager._playback_worker(**worker)
+
+        assert reports == []
+        assert manager.is_playing()
+
+    def test_a_failed_write_reads_as_the_failed_write_of_a_handed_out_stream(
+        self,
+        playing: Tuple[AudioDeviceManager, Dict[str, Any], MagicMock],
+    ) -> None:
+        """Both kinds of playback name the failure alike, so the reader reads the same words."""
+        manager, worker, stream = playing
+        stream.write.side_effect = OSError("the device went away")
+        reports = self.record_reports(manager)
+        manager._playback_worker(**worker)
+
+        with pytest.raises(PlaybackError) as raised:
+            write_to_stream(stream, np.zeros(self.LENGTH, dtype=np.float32).tobytes())
+
+        assert [str(error) for error, _ in reports] == [str(raised.value)]
+
+
+class TestAPlaybackAStopLetGo:
+    """A worker a stop let go of plays for nobody, so what its device does later reaches nothing.
+
+    Stopping waits a while for the worker, and a device slow to open can keep it longer. A song taking the
+    device stops the manager's playback first, so the worker can meet a refusal while the song plays.
+    """
+
+    LENGTH: Final[int] = 8
+
+    @pytest.fixture(name="let_go")
+    def let_go_fixture(self) -> Tuple[AudioDeviceManager, Dict[str, Any]]:
+        """A stopped manager, and the arguments the worker of its stopped playback was started with."""
+        manager = _manager()
+        manager._buffer_size = self.LENGTH
+        manager._position_callback = MagicMock()
+        manager._playback_thread = None
+        with patch("sampletones_core.audio.manager.threading.Thread") as thread:
+            manager.play(np.zeros(self.LENGTH, dtype=np.float32))
+            manager.stop()
+
+        manager._position_callback.reset_mock()
+        return manager, thread.call_args.kwargs["kwargs"]
+
+    def test_a_refusal_it_meets_later_reports_nothing_and_resets_nothing(
+        self,
+        let_go: Tuple[AudioDeviceManager, Dict[str, Any]],
+    ) -> None:
+        manager, worker = let_go
+        manager._pyaudio.open.side_effect = OSError("the device is busy")
+        reported: List[Exception] = []
+        manager.on_playback_error = reported.append
+
+        manager._playback_worker(**worker)
+
+        assert reported == []
+        manager._position_callback.assert_not_called()
+
+    def test_a_stream_it_opens_later_closes_unplayed(self, let_go: Tuple[AudioDeviceManager, Dict[str, Any]]) -> None:
+        manager, worker = let_go
+        stream = MagicMock()
+        manager._pyaudio.open.return_value = stream
+
+        manager._playback_worker(**worker)
+
+        stream.write.assert_not_called()
+        stream.close.assert_called_once_with()
+        manager._position_callback.assert_not_called()
+
+    def test_a_playback_started_after_the_stop_stands(self, let_go: Tuple[AudioDeviceManager, Dict[str, Any]]) -> None:
+        """The worker let go of leaves the playback asked for after it as it is."""
+        manager, worker = let_go
+        manager._pyaudio.open.side_effect = OSError("the device is busy")
+        reported: List[Exception] = []
+        manager.on_playback_error = reported.append
+        with patch("sampletones_core.audio.manager.threading.Thread"):
+            manager.play(np.ones(self.LENGTH, dtype=np.float32))
+
+        manager._playback_worker(**worker)
+
+        assert manager.is_playing()
+        assert reported == []
+
+
 class TestSeekingAPlayback(BaseTestSuite):
     """A seek moves the playback of the owner asking for it, clamped to the audio, under one lock."""
 
@@ -498,6 +661,83 @@ class TestBackendTeardown:
 
         assert owner.handed_back.is_set()
         assert manager._pyaudio is None
+
+
+class TestTeardownAfterAStopLetAWorkerGo:
+    """Teardown waits for a worker a stop let go of, so the backend goes once nothing reaches into it.
+
+    A device slow to open keeps the worker past the stop's wait, and terminating the backend under an
+    open in progress pulls it from under the worker.
+    """
+
+    LENGTH: Final[int] = 8
+
+    @pytest.fixture(name="slow_open")
+    def slow_open_fixture(self) -> Iterator[Tuple[AudioDeviceManager, threading.Event, List[str]]]:
+        """A manager whose playback a stop let go of while its stream opens, the open's gate, and what happened."""
+        events: List[str] = []
+        opening = threading.Event()
+        manager = _manager()
+        manager._buffer_size = self.LENGTH
+        manager._position_callback = None
+        manager._playback_thread = None
+        manager.on_playback_error = None
+
+        def open_slowly(**_options: Any) -> MagicMock:
+            opening.wait(timeout=_RELEASE_TIMEOUT)
+            events.append("opened")
+            return MagicMock()
+
+        manager._pyaudio.open.side_effect = open_slowly
+        manager._pyaudio.terminate.side_effect = lambda: events.append("terminate")
+        manager.play(np.zeros(self.LENGTH, dtype=np.float32))
+        with patch(_STOP_JOIN_TARGET, _SHORT_JOIN):
+            manager.stop()
+
+        yield manager, opening, events
+        opening.set()
+
+    def test_terminate_waits_for_the_worker_to_finish_its_open(
+        self,
+        slow_open: Tuple[AudioDeviceManager, threading.Event, List[str]],
+    ) -> None:
+        manager, opening, events = slow_open
+        releaser = threading.Timer(_OPEN_DELAY, opening.set)
+        releaser.start()
+        try:
+            manager.terminate()
+        finally:
+            releaser.cancel()
+            opening.set()
+
+        assert events == ["opened", "terminate"]
+        assert manager._pyaudio is None
+
+    def test_terminate_keeps_the_backend_while_the_worker_outlives_the_wait(
+        self,
+        slow_open: Tuple[AudioDeviceManager, threading.Event, List[str]],
+    ) -> None:
+        manager, _, events = slow_open
+        instance = manager._pyaudio
+
+        with patch(_LET_GO_JOIN_TARGET, _SHORT_JOIN):
+            manager.terminate()
+
+        assert events == []
+        assert manager._pyaudio is instance
+
+    def test_reinitialize_refuses_while_the_worker_outlives_the_wait(
+        self,
+        slow_open: Tuple[AudioDeviceManager, threading.Event, List[str]],
+    ) -> None:
+        manager, _, events = slow_open
+        instance = manager._pyaudio
+
+        with patch(_LET_GO_JOIN_TARGET, _SHORT_JOIN), pytest.raises(PlaybackError):
+            manager.reinitialize()
+
+        assert events == []
+        assert manager._pyaudio is instance
 
 
 @pytest.fixture(name="backend")

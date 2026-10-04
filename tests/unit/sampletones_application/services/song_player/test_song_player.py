@@ -139,6 +139,13 @@ def _make_streaming_service(
     )
 
 
+def _assert_names_the_failed_write(result: SongPlayerResult, error: OSError) -> None:
+    """Holds the song's end to the playback error a failed write names, the words every playback reports it in."""
+    assert isinstance(result, SongPlaybackError)
+    assert isinstance(result.error, PlaybackError)
+    assert result.error.__cause__ is error
+
+
 def _wedged_thread(gate: threading.Event) -> threading.Thread:
     """A started worker that stays alive until ``gate`` is set."""
     thread = threading.Thread(
@@ -633,7 +640,9 @@ class TestSongPlayerServiceEndOfSong:
         service.start()
 
         assert reported.wait(timeout=WAIT_TIMEOUT)
-        assert ends == [(SongPlaybackError(error=error), False)]
+        [(result, alive)] = ends
+        _assert_names_the_failed_write(result, error)
+        assert alive is False
 
     def test_a_stream_the_device_refuses_reports_the_error_with_the_output_free(self) -> None:
         """The refusal reaches the listener once, as the error the device manager raised."""
@@ -649,6 +658,34 @@ class TestSongPlayerServiceEndOfSong:
         assert service._write_thread is not None
         service._write_thread.join(timeout=WAIT_TIMEOUT)
         assert ends == [(SongPlaybackError(error=refusal), False)]
+
+    def test_a_close_the_device_fails_reports_it_with_the_output_free(self) -> None:
+        failure = PlaybackError("Failed to close the audio stream: the device went away")
+        audio_device_manager = _make_device_manager(_FakeStream())
+        audio_device_manager.close_output_stream.side_effect = failure
+        service = _make_streaming_service(audio_device_manager)
+        ends, reported = self.record_ends(service)
+
+        service.start()
+
+        assert reported.wait(timeout=WAIT_TIMEOUT)
+        assert ends == [(SongPlaybackError(error=failure), False)]
+
+    def test_a_close_the_device_failed_leaves_the_song_free_to_start_again(self) -> None:
+        audio_device_manager = _make_device_manager(_FakeStream())
+        audio_device_manager.close_output_stream.side_effect = PlaybackError("Failed to close the audio stream")
+        service = _make_streaming_service(audio_device_manager)
+        _, reported = self.record_ends(service)
+        service.start()
+        assert reported.wait(timeout=WAIT_TIMEOUT)
+        assert service._write_thread is not None
+        service._write_thread.join(timeout=WAIT_TIMEOUT)
+
+        audio_device_manager.close_output_stream.side_effect = _close_stream
+        service.start()
+        service.stop()
+
+        assert audio_device_manager.open_output_stream.call_count == 2
 
     def test_a_stop_reports_no_end(self) -> None:
         gate = threading.Event()
@@ -707,7 +744,8 @@ class TestSongPlayerServiceWriteFailure:
 
         service._write_loop()
 
-        assert received == [SongPlaybackError(error=error)]
+        [result] = received
+        _assert_names_the_failed_write(result, error)
 
     def test_a_failing_write_still_closes_the_stream(self) -> None:
         stream = _FakeStream(error=OSError("device disappeared"))

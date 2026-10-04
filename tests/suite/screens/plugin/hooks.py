@@ -71,7 +71,7 @@ def _worker_homes(config: pytest.Config) -> Path:
     """The temporary folder this worker's scenarios keep their homes in, made with the first of them.
 
     Each worker makes its own, named after its process, so runs from several checkouts at once keep
-    their homes apart, and the first scenario of a run lets go of what crashed workers left.
+    their homes apart, and each worker's first scenario lets go of what crashed workers left.
     """
     homes = config.stash.get(HOMES_KEY, None)
     if homes is not None:

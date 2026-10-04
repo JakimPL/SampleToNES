@@ -505,7 +505,7 @@ class TestReconstructionSaveAsDetachment:
         app.reconstruction_manager.mark_updated()
 
         assert app._reconstruction_coordinator.is_unsaved()
-        assert not app._reconstruction_coordinator._requires_save_confirmation()
+        assert not app._reconstruction_coordinator.is_unsaved_standalone()
 
     def test_save_as_detaches_open_document_from_the_project(
         self,

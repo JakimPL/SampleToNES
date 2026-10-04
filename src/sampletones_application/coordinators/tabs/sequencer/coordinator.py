@@ -197,7 +197,6 @@ class SequencerTabCoordinator:
         self._guarded_player = GuardedPlayer(
             self._song_player_logic,
             failures=playback_failures,
-            error_message=language_manager["global.player.message.audio_playback_error"],
         )
         self._sequencer_tracker_panel: GUISequencerTrackerPanel = GUISequencerTrackerPanel(
             self._sequencer_tracker_logic.settings,

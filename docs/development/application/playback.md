@@ -34,7 +34,7 @@ A report comes from the thread writing the audio, and the mark is a widget, so e
 
 Priority ranks the two kinds and settles every contest for the device. Starting intentional playback preempts a sounding preview, and a preview requested while intentional playback holds the device is declined.
 
-**A sound starts only on a device in force.** Every request, of either kind, asks the device manager for the output before a thread or a stream opens, so a machine offering no output device refuses the request at once with `NoOutputDeviceError`. One presenter, `PlaybackFailurePresenter` (`coordinators/playback/failures.py`), tells the reader what stopped any sound: a missing output reads as a plain notice, and every other failure as an error. A failure on the thread playing the sound, such as a stream the device refused, reads the same whichever source played it, and is told once.
+**A sound starts only on a device in force.** Every request, of either kind, asks the device manager for the output before a thread or a stream opens, so a machine offering no output device refuses the request at once with `NoOutputDeviceError`. One presenter, `PlaybackFailurePresenter` (`coordinators/playback/failures.py`), tells the reader what stopped any sound: a missing output reads as a plain notice, and every other failure as an error. A failure on the thread playing the sound, such as a stream the device refused or a write it failed, reads the same whichever source played it, and is told once.
 
 ## Engagement
 
@@ -129,6 +129,8 @@ The device is torn down once every source holding a stream has released it. A so
 `PlaybackRouter.shutdown()` is the entry point the application calls as it quits. It reaches every registered source and not only the engaged one, so a source holding a stream is wound down whatever the transport reports at that moment.
 
 The device holds a release per stream it handed out and invokes it whenever it needs the output free: as the backend is torn down, and on a device change, where the release stops the song so the new device opens cleanly. A stream that outlives its release leaves the running backend in place. The manager reports the failure and keeps the instance, since the source still writes to memory that terminating would reclaim.
+
+The manager's own playback is held to the same rule. A stop waits a while for its worker and then lets it go, since a device can be slow to open a stream. The manager keeps a worker it let go of, and a teardown waits for it, so the backend is never terminated under an open in progress. A worker that outlives that wait leaves the backend running, as a stream that outlives its release does.
 
 ## Who governs what
 

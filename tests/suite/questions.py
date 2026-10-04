@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Final, List, Optional
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -32,6 +33,13 @@ def standing_window(held_frames: Frames) -> StandingWindow:
     window = StandingWindow(held_frames)
     window.stand()
     return window
+
+
+def dialogs_on_the_line() -> MagicMock:
+    """A stand-in for the dialogs renderer whose wait for the screen is the modal line's own turn."""
+    dialogs = MagicMock()
+    dialogs.when_free.side_effect = ModalQueue.when_free
+    return dialogs
 
 
 @dataclass(frozen=True)
@@ -95,3 +103,19 @@ class OnScreenDocument:
         question, self._standing = self._standing, None
         ModalQueue.leave(question.tag)
         return question
+
+
+def assert_the_answers_reach(
+    *,
+    confirm: VoidCallback,
+    cancel: VoidCallback,
+    proceed: MagicMock,
+    decline: MagicMock,
+) -> None:
+    """Holds a question's answers to the gate that asked it: the one going on reaches ``proceed``, Cancel ``decline``."""
+    confirm()
+    proceed.assert_called_once_with()
+    decline.assert_not_called()
+
+    cancel()
+    decline.assert_called_once_with()

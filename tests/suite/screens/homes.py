@@ -70,8 +70,13 @@ def _let_stale_homes_go(parent: Path) -> None:
     """Removes the homes folders under ``parent`` whose worker process has gone, and keeps every other one.
 
     A worker removes its own folder as it ends, so a folder left behind belongs to a worker that crashed,
-    or to a run still going. A folder whose name carries no process is left alone.
+    or to a run still going. A folder whose name carries no process is left alone. Whether a process runs
+    is read from the process folder Linux keeps, as the tier runs on Linux, so a machine without that
+    folder keeps every homes folder.
     """
+    if not PROCESSES_DIRECTORY.is_dir():
+        return
+
     for folder in parent.glob(f"{HOMES_PREFIX}*"):
         process = _owner_process(folder)
         if process is not None and not _is_running(process):

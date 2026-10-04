@@ -13,6 +13,7 @@ from sampletones_application.utils.callbacks.gates import (
     gated,
     pass_gates,
     waiting,
+    waiting_for_the_screen,
 )
 from sampletones_shared.types.callback import VoidCallback
 from tests.suite.base import BaseTestSuite
@@ -241,6 +242,131 @@ class TestAQuestionAskedOnTheScreen:
 
         assert reached == ["question", DECLINED]
 
+    def test_a_question_that_fails_on_the_free_screen_turns_the_request_away(
+        self,
+        screen: HeldWait,
+        reached: List[str],
+    ) -> None:
+        """The failure goes on up from the turn, and whoever waits on the request hears it ended."""
+
+        def broken(_proceed: VoidCallback, _decline: VoidCallback) -> None:
+            raise RuntimeError("the question could not be asked")
+
+        pass_gates(
+            (asking(lambda: True, broken, screen),),
+            lambda: reached.append(ARRIVED),
+            lambda: reached.append(DECLINED),
+        )
+
+        with pytest.raises(RuntimeError):
+            screen.release()
+
+        assert reached == [DECLINED]
+
+    def test_a_reading_that_fails_on_the_free_screen_turns_the_request_away(
+        self,
+        question: Guard,
+        screen: HeldWait,
+        reached: List[str],
+    ) -> None:
+        readings = [True]
+
+        def unsettled() -> bool:
+            if not readings:
+                raise RuntimeError("the state could not be read")
+
+            return readings.pop()
+
+        pass_gates(
+            (asking(unsettled, question, screen),),
+            lambda: reached.append(ARRIVED),
+            lambda: reached.append(DECLINED),
+        )
+
+        with pytest.raises(RuntimeError):
+            screen.release()
+
+        assert reached == [DECLINED]
+        assert not question.is_asking
+
+    def test_a_failure_after_the_answer_reaches_whoever_asked_once(
+        self,
+        screen: HeldWait,
+        reached: List[str],
+    ) -> None:
+        """A question that went on before it failed has handed the request over, so nothing declines it again."""
+
+        def going_on_then_failing(proceed: VoidCallback, _decline: VoidCallback) -> None:
+            proceed()
+            raise RuntimeError("the question failed after it went on")
+
+        pass_gates(
+            (asking(lambda: True, going_on_then_failing, screen),),
+            lambda: reached.append(ARRIVED),
+            lambda: reached.append(DECLINED),
+        )
+
+        with pytest.raises(RuntimeError):
+            screen.release()
+
+        assert reached == [ARRIVED]
+
+
+class TestAChainWaitingForTheScreen:
+    """A chain of questions waits for the screen while any guard in it has something to ask, and every guard
+    reads its state once the screen is free."""
+
+    @pytest.fixture(name="screen")
+    def screen_fixture(self) -> HeldWait:
+        return HeldWait()
+
+    def test_nothing_to_ask_goes_on_while_the_screen_is_taken(self, screen: HeldWait, reached: List[str]) -> None:
+        pass_gates(
+            (waiting_for_the_screen(lambda: False, screen), Guard("clean", reached, unfinished=False)),
+            lambda: reached.append(ARRIVED),
+            lambda: reached.append(DECLINED),
+        )
+
+        assert reached == ["clean", ARRIVED]
+
+    def test_something_to_ask_holds_every_guard_until_the_screen_is_free(
+        self,
+        screen: HeldWait,
+        reached: List[str],
+    ) -> None:
+        pass_gates(
+            (
+                waiting_for_the_screen(lambda: True, screen),
+                Guard("clean", reached, unfinished=False),
+                Guard("unfinished", reached, unfinished=True),
+            ),
+            lambda: reached.append(ARRIVED),
+            lambda: reached.append(DECLINED),
+        )
+
+        assert reached == []
+
+    def test_a_guard_clean_at_the_request_reads_its_state_on_the_free_screen(
+        self,
+        screen: HeldWait,
+        reached: List[str],
+    ) -> None:
+        """A dialog standing as the request was made left the first guard's thing unfinished, so it asks first."""
+        clean = Guard("clean", reached, unfinished=False)
+        unfinished = Guard("unfinished", reached, unfinished=True)
+        pass_gates(
+            (waiting_for_the_screen(lambda: clean.unfinished or unfinished.unfinished, screen), clean, unfinished),
+            lambda: reached.append(ARRIVED),
+            lambda: reached.append(DECLINED),
+        )
+
+        clean.unfinished = True
+        screen.release()
+
+        assert reached == ["clean"]
+        assert clean.is_asking
+        assert not unfinished.is_asking
+
 
 class RaisingOnce:
     """A gate that fails the first time it is reached and lets every later request through."""
@@ -427,6 +553,26 @@ class TestEitherFlight(BaseTestSuite):
         assert guard.is_asking
         guard.answer()
         assert reached == ["question", "broken", "question", "broken", ARRIVED]
+        assert not flight.in_flight
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_raise_once_the_screen_is_free_ends_the_flight(self, test_case: TestCase, reached: List[str]) -> None:
+        """A question waiting for the screen fails as it is asked there, and the gesture asks again when asked for."""
+        screen = HeldWait()
+        flight = test_case.build(
+            (asking(lambda: True, RaisingOnce(reached), screen),),
+            lambda: reached.append(ARRIVED),
+        )
+        flight()
+
+        with pytest.raises(RuntimeError):
+            screen.release()
+
+        assert not flight.in_flight
+        flight()
+        assert flight.in_flight
+        screen.release()
+        assert reached == ["broken", "broken", ARRIVED]
         assert not flight.in_flight
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)

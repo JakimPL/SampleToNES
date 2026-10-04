@@ -10,7 +10,8 @@ class GuardedPlayer:
 
     Panels only fire intent hooks, so this wrapper is the coordinator-layer
     recovery boundary for the transport commands that can raise
-    ``PlaybackError``; queries pass straight through.
+    ``PlaybackError``; queries pass straight through. A start that fails at once
+    reads the way a failure on the playing thread does.
     """
 
     def __init__(
@@ -18,11 +19,9 @@ class GuardedPlayer:
         player: AudioPlayerProtocol,
         *,
         failures: PlaybackFailurePresenter,
-        error_message: str,
     ) -> None:
         self._player = player
         self._failures = failures
-        self._error_message = error_message
 
     def play(self) -> None:
         self.run_guarded(self._player.play)
@@ -54,4 +53,4 @@ class GuardedPlayer:
         try:
             command()
         except PlaybackError as exception:
-            self._failures.present(exception, message=self._error_message)
+            self._failures.present_playing_failure(exception)

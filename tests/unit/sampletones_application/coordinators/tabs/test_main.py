@@ -26,7 +26,12 @@ from tests.suite.case import BaseRegularTestCase
 from tests.suite.files import LOCKED_FOLDER, held_at, requires_folder_permissions
 from tests.suite.frames import held_frames
 from tests.suite.language import FakeLanguageManager
-from tests.suite.questions import StandingWindow, standing_window
+from tests.suite.questions import (
+    StandingWindow,
+    assert_the_answers_reach,
+    dialogs_on_the_line,
+    standing_window,
+)
 
 __all__ = ["held_frames", "standing_window"]
 
@@ -68,7 +73,7 @@ def _coordinator(*, operation_active: bool, converting: bool = False) -> MainTab
     authority, which a conversion and every other exclusive operation answer."""
     coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
     coordinator._hooks = _hooks(operation_active=operation_active or converting)
-    coordinator._dialogs = MagicMock()
+    coordinator._dialogs = dialogs_on_the_line()
     coordinator._language_manager = FakeLanguageManager()
     coordinator._session_manager = MagicMock()
     coordinator._converter_logic = MagicMock()
@@ -235,7 +240,7 @@ class TestTheChannelKeys:
 
 def _success_coordinator() -> MainTabCoordinator:
     coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
-    coordinator._dialogs = MagicMock()
+    coordinator._dialogs = dialogs_on_the_line()
     coordinator._hooks = _hooks(operation_active=False)
     coordinator._converter_logic = MagicMock()
     coordinator._language_manager = FakeLanguageManager()
@@ -280,7 +285,7 @@ class TestCancelConfirmation:
 
     def test_cancel_request_confirms_before_stopping(self) -> None:
         coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
-        coordinator._dialogs = MagicMock()
+        coordinator._dialogs = dialogs_on_the_line()
         coordinator._converter_logic = MagicMock()
         coordinator._language_manager = FakeLanguageManager()
 
@@ -313,7 +318,7 @@ def _stems_coordinator(
 ) -> MainTabCoordinator:
     coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
     coordinator._hooks = _hooks(operation_active=operation_active)
-    coordinator._dialogs = MagicMock()
+    coordinator._dialogs = dialogs_on_the_line()
     coordinator._language_manager = FakeLanguageManager()
     coordinator._session_manager = MagicMock()
     coordinator._converter_logic = MagicMock()
@@ -714,6 +719,5 @@ class TestTheExitAsksAboutARunningConversion:
         args, kwargs = coordinator._dialogs.show_confirmation.call_args
         assert args[0] == TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION
         assert args[1] == EXIT_CONVERSION_MESSAGE_KEY
-        assert args[3] is proceed
         assert kwargs["ok_label"] == EXIT_LABEL_KEY
-        assert kwargs["on_cancel"] is decline
+        assert_the_answers_reach(confirm=args[3], cancel=kwargs["on_cancel"], proceed=proceed, decline=decline)

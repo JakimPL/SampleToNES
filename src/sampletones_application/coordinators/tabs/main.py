@@ -65,7 +65,6 @@ from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRouter
-from sampletones_application.utils.gui.modal_queue import ModalQueue
 from sampletones_application.utils.gui.render_thread import on_render_thread
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.view_model.main.advanced import (
@@ -813,7 +812,7 @@ class MainTabCoordinator:
         The question reads the converter once the screen is free for it, so a run that ended
         meanwhile is asked about no more. Cancel keeps the conversion running and turns the exit away.
         """
-        asking(self.is_converter_active, self._ask_before_exit, ModalQueue.when_free)(proceed, decline)
+        asking(self.is_converter_active, self._ask_before_exit, self._dialogs.when_free)(proceed, decline)
 
     def _ask_before_exit(self, proceed: VoidCallback, decline: VoidCallback) -> None:
         self._dialogs.show_confirmation(

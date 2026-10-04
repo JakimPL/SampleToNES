@@ -3,7 +3,7 @@ import os
 import sys
 import threading
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, List, Optional, cast
+from typing import Any, Callable, Dict, Final, Generator, List, Optional, cast
 
 import numpy as np
 import pyaudio
@@ -23,10 +23,13 @@ from sampletones_shared.utils.system.locales import to_utf8
 
 from .device import AudioDevice, CurrentDevice
 from .io import load_audio
+from .stream import close_stream, write_to_stream
 from .validation import validate_buffer_size, validate_sample_rate
 
 CHANNELS = 1
 FORMAT = pyaudio.paFloat32
+STOP_JOIN_SECONDS: Final[float] = 1.0
+LET_GO_JOIN_SECONDS: Final[float] = 2.0
 
 OnPlaybackErrorCallback = Callable[[PlaybackError], None]
 
@@ -94,6 +97,7 @@ class AudioDeviceManager(CallbackMixin):
         self._generation: int = 0
 
         self._playback_thread: Optional[threading.Thread] = None
+        self._let_go_workers: List[threading.Thread] = []
         self._stream_owners: Dict[pyaudio.Stream, VoidCallback] = {}
         self._lock: threading.Lock = threading.Lock()
         self._resume_event: threading.Event = threading.Event()
@@ -114,11 +118,13 @@ class AudioDeviceManager(CallbackMixin):
         Creates a new PyAudio instance if none exists, or terminates the existing
         instance and creates a new one. Active playback is stopped and every handed-out
         output stream is released first, since terminating closes any stream still open
-        while its owner writes to it.
+        while its owner writes to it. A worker a stop let go of is waited for too, since it
+        may still be opening its stream.
 
         Raises:
             PlaybackError: If an output stream is still held after its owner was asked to
-                release it, which leaves the running instance in place.
+                release it, or a worker a stop let go of outlives the wait, which leaves the
+                running instance in place.
         """
         with _capture_stderr_to_logger():
             if self._pyaudio is None:
@@ -129,6 +135,9 @@ class AudioDeviceManager(CallbackMixin):
             self.stop()
             if not self._release_output_streams():
                 raise PlaybackError("An output stream is still held; the audio backend stays as it is")
+
+            if not self._join_let_go_workers():
+                raise PlaybackError("A playback worker still reaches into the audio backend; it stays as it is")
 
             self._pyaudio.terminate()
             self._pyaudio = pyaudio.PyAudio()
@@ -710,7 +719,7 @@ class AudioDeviceManager(CallbackMixin):
                 self._position += chunk_size
                 current_position = self._position
 
-            stream.write(chunk.tobytes())
+            write_to_stream(stream, chunk.tobytes())
 
             if update and self._position_callback is not None:
                 self.call(self._position_callback, current_position)
@@ -726,13 +735,14 @@ class AudioDeviceManager(CallbackMixin):
         Playback thread worker function.
 
         Opens an audio stream, runs the playback loop, and ensures cleanup. A stream the device
-        refuses to open leaves the playback idle, as a finished one does, before the error callback
-        reports it, so whoever follows the playback reads it stopped.
+        refuses to open, a write it fails and a stream it fails to stop each leave the playback
+        idle, as a finished one does, before the error callback reports the failure, so whoever
+        follows the playback reads it stopped.
 
         A stop waits a while for the worker and then lets it go, so a device slow to open can bring
-        the worker back after a newer play has begun. The worker acts for its own ``generation``
-        alone: a refusal it meets then is left unreported, a stream it opens then closes unplayed,
-        and the newer playback stands as it was.
+        the worker back once its playback was stopped, or after a newer play has begun. The worker
+        acts for its own ``generation`` alone: a refusal it meets then is left unreported, a stream
+        it opens then closes unplayed, and the state stands as the stop or the newer play left it.
 
         Args:
             output: The device and rate in force when the playback was asked for.
@@ -741,42 +751,50 @@ class AudioDeviceManager(CallbackMixin):
         """
         logger.debug(f"Starting playback: device_index={output.device_index}, sample_rate={output.sample_rate}")
         try:
+            self._play_generation(output=output, update=update, generation=generation)
+        except PlaybackError as playback_error:
+            if self._is_current(generation):
+                self.call(self.on_playback_error, playback_error)
+
+    def _play_generation(
+        self,
+        *,
+        output: CurrentDevice,
+        update: bool,
+        generation: int,
+    ) -> None:
+        """Plays ``generation``'s audio on a stream of its own, and leaves the playback idle however that ends.
+
+        Raises:
+            PlaybackError: If the device refuses the stream, fails a write, or fails to stop the stream.
+        """
+        try:
             stream = self._open_stream(
                 device_index=output.device_index,
                 sample_rate=output.sample_rate,
                 frames_per_buffer=pyaudio.paFramesPerBufferUnspecified,
             )
-        except PlaybackError as playback_error:
-            if self._reset_generation(generation, update=update):
-                self.call(self.on_playback_error, playback_error)
-            return
-
-        try:
-            if self._is_current(generation):
-                self._playback_loop(stream, update, generation)
+            try:
+                if self._is_current(generation):
+                    self._playback_loop(stream, update, generation)
+            finally:
+                close_stream(stream)
         finally:
-            stream.stop_stream()
-            stream.close()
             self._reset_generation(generation, update=update)
 
     def _is_current(self, generation: int) -> bool:
         with self._lock:
             return generation == self._generation
 
-    def _reset_generation(self, generation: int, *, update: bool) -> bool:
-        """Resets playback state to idle while ``generation`` is the playback in force.
-
-        Returns:
-            bool: Whether ``generation`` was in force, and the state was reset.
-        """
+    def _reset_generation(self, generation: int, *, update: bool) -> None:
+        """Resets playback state to idle while ``generation`` is the playback in force."""
         with self._lock:
             if generation != self._generation:
-                return False
+                return
 
             self._clear_playback()
 
         self._report_the_start(update=update)
-        return True
 
     def _reset(self, *, update: bool = True) -> None:
         """
@@ -832,18 +850,52 @@ class AudioDeviceManager(CallbackMixin):
         """
         Stop playback and reset state.
 
-        Signals the playback thread to stop, waits for it to terminate (up to 1 second),
-        and resets all playback state.
+        Signals the playback thread to stop, waits for it to terminate (up to
+        ``STOP_JOIN_SECONDS``), and resets all playback state. The stopped playback's generation
+        ends here, so a worker the wait lets go of acts for no playback: a refusal it meets later
+        reaches nobody, and the state stays as the stop left it. The manager keeps that worker, so
+        a teardown of the backend waits for it.
         """
         with self._lock:
             self._stop = True
+            self._generation += 1
 
         self._resume_event.set()
         if self._playback_thread is not None:
-            self._playback_thread.join(timeout=1.0)
+            self._let_go(self._playback_thread)
 
         self._playback_thread = None
         self._reset()
+
+    def _let_go(self, worker: threading.Thread) -> None:
+        """Waits a while for a stopped worker, and keeps one that outlives the wait for a teardown to join."""
+        worker.join(timeout=STOP_JOIN_SECONDS)
+        with self._lock:
+            self._let_go_workers = [kept for kept in self._let_go_workers if kept.is_alive()]
+            if worker.is_alive():
+                self._let_go_workers.append(worker)
+
+    def _join_let_go_workers(self) -> bool:
+        """Waits a while for each worker a stop let go of, and reports whether every one has ended.
+
+        Such a worker may still be opening its stream on the backend, so the backend is torn down only
+        once it has ended. A worker that outlives ``LET_GO_JOIN_SECONDS`` is logged and kept, as a
+        stream that outlives its release is.
+        """
+        with self._lock:
+            workers, self._let_go_workers = self._let_go_workers, []
+
+        outliving: List[threading.Thread] = []
+        for worker in workers:
+            worker.join(timeout=LET_GO_JOIN_SECONDS)
+            if worker.is_alive():
+                logger.error(f"AudioDeviceManager: {worker.name} outlived the teardown deadline")
+                outliving.append(worker)
+
+        with self._lock:
+            self._let_go_workers.extend(outliving)
+
+        return not outliving
 
     def is_playing(self) -> bool:
         """
@@ -963,22 +1015,27 @@ class AudioDeviceManager(CallbackMixin):
         """Take a handed-out stream back and close it.
 
         Called by the owner from the thread that wrote to the stream, once that writing has
-        finished. Returning the stream is what tells the manager the backend is free again.
+        finished. Returning the stream is what tells the manager the backend is free again, so
+        the manager takes it back before it winds the stream down.
+
+        Raises:
+            PlaybackError: If the device fails to stop or to close the stream.
         """
         with self._lock:
             self._stream_owners.pop(stream, None)
 
-        stream.stop_stream()
-        stream.close()
+        close_stream(stream)
 
     def terminate(self) -> None:
         """
         Clean up and terminate the audio device manager.
 
-        Stops any active playback, releases every handed-out output stream, and terminates
-        the PyAudio instance. A stream that survives its release leaves the instance running,
-        since terminating closes any open stream and the owning thread would go on writing to
-        freed memory. Should be called once you are finished with the manager.
+        Stops any active playback, releases every handed-out output stream, waits for the
+        workers a stop let go of, and terminates the PyAudio instance. A stream that survives its
+        release leaves the instance running, since terminating closes any open stream and the
+        owning thread would go on writing to freed memory. A worker that outlives the wait leaves it
+        running too, since it may still be opening its stream. Should be called once you are
+        finished with the manager.
         """
         if self._pyaudio is None:
             return
@@ -986,6 +1043,10 @@ class AudioDeviceManager(CallbackMixin):
         self.stop()
         if not self._release_output_streams():
             logger.error("AudioDeviceManager: an output stream is still held; PyAudio left running")
+            return
+
+        if not self._join_let_go_workers():
+            logger.error("AudioDeviceManager: a playback worker is still running; PyAudio left running")
             return
 
         self._pyaudio.terminate()

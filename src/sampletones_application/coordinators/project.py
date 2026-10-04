@@ -36,7 +36,6 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
-from sampletones_application.utils.gui.modal_queue import ModalQueue
 from sampletones_core.exporters.skipped import SkippedRow
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.backend import ExportBackend
@@ -211,7 +210,7 @@ class ProjectCoordinator:
                 ok_label=self._label(ok_label),
             )
 
-        return asking(lambda: self.is_unsaved, ask, ModalQueue.when_free)
+        return asking(lambda: self.is_unsaved, ask, self._dialogs.when_free)
 
     def save(self) -> SaveOutcome:
         """Saves the project to its current file, prompting for one when it has none, and says so.
@@ -435,7 +434,7 @@ class ProjectCoordinator:
                 decline=decline,
             )
 
-        asking(lambda: self._project_controller.is_open, ask, ModalQueue.when_free)(proceed, decline)
+        asking(lambda: self._project_controller.is_open, ask, self._dialogs.when_free)(proceed, decline)
 
     def _ask_before_replacing(
         self,

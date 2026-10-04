@@ -21,12 +21,16 @@ def failures() -> MagicMock:
 
 @pytest.fixture
 def guarded_player(player_logic: MagicMock, failures: MagicMock) -> GuardedPlayer:
-    return GuardedPlayer(player_logic, failures=failures, error_message="playback failed")
+    return GuardedPlayer(player_logic, failures=failures)
 
 
 class TestGuardedCommands:
     """The transport commands that can raise ``PlaybackError`` hand it to the presenter instead of
-    propagating, so a panel hook or the playback router can invoke them bare."""
+    propagating, so a panel hook or the playback router can invoke them bare.
+
+    A start that fails at once reads the way a failure on the playing thread does, so one refusal reads
+    alike however soon the device refused.
+    """
 
     @pytest.mark.parametrize("command", GUARDED_COMMANDS)
     def test_delegates_to_the_logic(
@@ -39,7 +43,7 @@ class TestGuardedCommands:
         getattr(guarded_player, command)()
 
         getattr(player_logic, command).assert_called_once_with()
-        failures.present.assert_not_called()
+        failures.present_playing_failure.assert_not_called()
 
     @pytest.mark.parametrize("command", GUARDED_COMMANDS)
     @pytest.mark.parametrize(
@@ -59,7 +63,7 @@ class TestGuardedCommands:
 
         getattr(guarded_player, command)()
 
-        failures.present.assert_called_once_with(exception, message="playback failed")
+        failures.present_playing_failure.assert_called_once_with(exception)
 
 
 class TestAGuardedRun:
@@ -71,7 +75,7 @@ class TestAGuardedRun:
         guarded_player.run_guarded(lambda: ran.append(400))
 
         assert ran == [400]
-        failures.present.assert_not_called()
+        failures.present_playing_failure.assert_not_called()
 
     def test_a_playback_error_reaches_the_presenter(self, guarded_player: GuardedPlayer, failures: MagicMock) -> None:
         exception = PlaybackError("device unavailable")
@@ -81,4 +85,4 @@ class TestAGuardedRun:
 
         guarded_player.run_guarded(failing)
 
-        failures.present.assert_called_once_with(exception, message="playback failed")
+        failures.present_playing_failure.assert_called_once_with(exception)
