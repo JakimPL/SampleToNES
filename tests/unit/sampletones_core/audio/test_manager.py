@@ -18,6 +18,10 @@ from tests.suite.case import BaseRegularTestCase
 _LOW = 0
 _HIGH = 1
 _RELEASE_TIMEOUT: Final[float] = 5.0
+_OPEN_DELAY: Final[float] = 0.2
+_SHORT_JOIN: Final[float] = 0.05
+_STOP_JOIN_TARGET: Final[str] = "sampletones_core.audio.manager.STOP_JOIN_SECONDS"
+_LET_GO_JOIN_TARGET: Final[str] = "sampletones_core.audio.manager.LET_GO_JOIN_SECONDS"
 _BACKEND: Final[str] = "sampletones_core.audio.manager.pyaudio.PyAudio"
 _SPEAKERS_INDEX: Final[int] = 0
 _SPEAKERS_NAME: Final[str] = "Speakers"
@@ -57,6 +61,7 @@ def _manager() -> AudioDeviceManager:
     manager._playing = False
     manager._active_priority = 0
     manager._generation = 0
+    manager._let_go_workers = []
     manager._stream_owners = {}
     manager.on_acquire_output = None
     manager.external_output_priority = None
@@ -656,6 +661,83 @@ class TestBackendTeardown:
 
         assert owner.handed_back.is_set()
         assert manager._pyaudio is None
+
+
+class TestTeardownAfterAStopLetAWorkerGo:
+    """Teardown waits for a worker a stop let go of, so the backend goes once nothing reaches into it.
+
+    A device slow to open keeps the worker past the stop's wait, and terminating the backend under an
+    open in progress pulls it from under the worker.
+    """
+
+    LENGTH: Final[int] = 8
+
+    @pytest.fixture(name="slow_open")
+    def slow_open_fixture(self) -> Iterator[Tuple[AudioDeviceManager, threading.Event, List[str]]]:
+        """A manager whose playback a stop let go of while its stream opens, the open's gate, and what happened."""
+        events: List[str] = []
+        opening = threading.Event()
+        manager = _manager()
+        manager._buffer_size = self.LENGTH
+        manager._position_callback = None
+        manager._playback_thread = None
+        manager.on_playback_error = None
+
+        def open_slowly(**_options: Any) -> MagicMock:
+            opening.wait(timeout=_RELEASE_TIMEOUT)
+            events.append("opened")
+            return MagicMock()
+
+        manager._pyaudio.open.side_effect = open_slowly
+        manager._pyaudio.terminate.side_effect = lambda: events.append("terminate")
+        manager.play(np.zeros(self.LENGTH, dtype=np.float32))
+        with patch(_STOP_JOIN_TARGET, _SHORT_JOIN):
+            manager.stop()
+
+        yield manager, opening, events
+        opening.set()
+
+    def test_terminate_waits_for_the_worker_to_finish_its_open(
+        self,
+        slow_open: Tuple[AudioDeviceManager, threading.Event, List[str]],
+    ) -> None:
+        manager, opening, events = slow_open
+        releaser = threading.Timer(_OPEN_DELAY, opening.set)
+        releaser.start()
+        try:
+            manager.terminate()
+        finally:
+            releaser.cancel()
+            opening.set()
+
+        assert events == ["opened", "terminate"]
+        assert manager._pyaudio is None
+
+    def test_terminate_keeps_the_backend_while_the_worker_outlives_the_wait(
+        self,
+        slow_open: Tuple[AudioDeviceManager, threading.Event, List[str]],
+    ) -> None:
+        manager, _, events = slow_open
+        instance = manager._pyaudio
+
+        with patch(_LET_GO_JOIN_TARGET, _SHORT_JOIN):
+            manager.terminate()
+
+        assert events == []
+        assert manager._pyaudio is instance
+
+    def test_reinitialize_refuses_while_the_worker_outlives_the_wait(
+        self,
+        slow_open: Tuple[AudioDeviceManager, threading.Event, List[str]],
+    ) -> None:
+        manager, _, events = slow_open
+        instance = manager._pyaudio
+
+        with patch(_LET_GO_JOIN_TARGET, _SHORT_JOIN), pytest.raises(PlaybackError):
+            manager.reinitialize()
+
+        assert events == []
+        assert manager._pyaudio is instance
 
 
 @pytest.fixture(name="backend")

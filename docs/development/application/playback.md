@@ -130,6 +130,8 @@ The device is torn down once every source holding a stream has released it. A so
 
 The device holds a release per stream it handed out and invokes it whenever it needs the output free: as the backend is torn down, and on a device change, where the release stops the song so the new device opens cleanly. A stream that outlives its release leaves the running backend in place. The manager reports the failure and keeps the instance, since the source still writes to memory that terminating would reclaim.
 
+The manager's own playback is held to the same rule. A stop waits a while for its worker and then lets it go, since a device can be slow to open a stream. The manager keeps a worker it let go of, and a teardown waits for it, so the backend is never terminated under an open in progress. A worker that outlives that wait leaves the backend running, as a stream that outlives its release does.
+
 ## Who governs what
 
 | Concern | Owner |
