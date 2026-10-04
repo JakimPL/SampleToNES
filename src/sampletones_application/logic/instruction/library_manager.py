@@ -46,11 +46,34 @@ class _Catalog:
     """The libraries one directory holds in memory, and the one taken up as current there.
 
     Only the directory the catalog stands at holds libraries in memory. Every directory keeps its
-    choice of current library.
+    choice of current library. A directory left keeps, as ``released_key``, the current library it
+    had loaded, which the reader coming back gets loaded again.
     """
 
     library: InstructionLibrary
     current_key: Optional[InstructionLibraryKey]
+    released_key: Optional[InstructionLibraryKey] = None
+
+    def name_by(self, directory: Path) -> None:
+        """Names the folder by ``directory``, the spelling the reader configured last, keeping what the
+        folder holds.
+
+        Every spelling names one folder, so a generation writing through the spelling it read first
+        lands in the same place.
+        """
+        spelling = str(directory)
+        if self.library.directory != spelling:
+            self.library = self.library.model_copy(update={"directory": spelling})
+
+    def release(self) -> None:
+        """Lets go of every library loaded here, remembering the current one where it was loaded.
+
+        A release still waiting to be taken stays until a loaded current library replaces it.
+        """
+        if self.current_key is not None and self.current_key in self.library.data:
+            self.released_key = self.current_key
+
+        self.library.data.clear()
 
 
 class InstructionsLibraryManager(CallbackMixin):
@@ -85,26 +108,39 @@ class InstructionsLibraryManager(CallbackMixin):
         """Roots the catalog at ``directory``, and answers whether that moved it to another folder.
 
         The folder left lets go of the libraries it loaded and keeps the one it had taken up as
-        current, so a reader coming back finds that choice again, for the caller to load. Every
-        spelling of one folder, a link to it included, names the same catalog.
+        current. Where that library was loaded, the folder remembers it, and a reader coming back
+        gets it from :meth:`take_released_library` to load again. Every spelling of one folder, a
+        link to it included, names the same catalog, and the catalog goes by the spelling given last.
         """
         catalog = self._catalog_at(directory)
         with self._catalog_lock:
+            catalog.name_by(to_path(directory))
             if catalog is self._catalog:
                 return False
 
-            self._catalog.library.data.clear()
+            self._catalog.release()
             self._catalog = catalog
 
         return True
 
+    def take_released_library(self) -> Optional[InstructionLibraryKey]:
+        """The library the folder the catalog stands at had loaded when the reader last left it, handed
+        over once."""
+        with self._catalog_lock:
+            key = self._catalog.released_key
+            self._catalog.released_key = None
+
+        return key
+
     def _catalog_at(self, directory: Path) -> _Catalog:
-        """The catalog of ``directory``, started empty the first time the directory is read."""
-        root = to_path(directory).resolve()
+        """The catalog of the folder ``directory`` names, started empty under that spelling the first time
+        the folder is read."""
+        spelling = to_path(directory)
+        root = spelling.resolve()
         catalog = self._catalogs.get(root)
         if catalog is None:
             catalog = _Catalog(
-                library=InstructionLibrary(directory=str(root)),
+                library=InstructionLibrary(directory=str(spelling)),
                 current_key=None,
             )
             self._catalogs[root] = catalog
@@ -244,7 +280,8 @@ class InstructionsLibraryManager(CallbackMixin):
         makes it that catalog's current library.
 
         The library stays in memory only where the catalog still stands there. A catalog left holds
-        the file and the choice, and the reader coming back loads it from the file.
+        the file and the choice, and remembers the library as loaded, so the reader coming back
+        loads it from the file.
         """
         key, library_data = result
         try:
@@ -257,6 +294,8 @@ class InstructionsLibraryManager(CallbackMixin):
             catalog.current_key = key
             if catalog is self._catalog:
                 catalog.library.data[key] = library_data
+            else:
+                catalog.released_key = key
 
         self.call(self.on_generation_completed)
 

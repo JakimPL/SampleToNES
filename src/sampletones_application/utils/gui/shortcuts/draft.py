@@ -16,9 +16,10 @@ class ShortcutDraft:
 
     An editor works on a draft and hands a scheme over once, which leaves the keys in force steady
     while Escape, Tab and Enter are themselves being rebound. A draft is kept as the actions the
-    reader touched and the whole list of keys each answers, main key first, since an override
-    replaces a whole binding: every other action answers the scheme the build ships, and the touched
-    entries are what a session stores. An empty list leaves an action unbound.
+    reader moved off the keys the scheme ships and the whole list of keys each answers, main key
+    first, since an override replaces a whole binding: every other action answers the scheme the
+    build ships, and the moved entries are what a session stores. An empty list leaves an action
+    unbound.
     """
 
     base: ShortcutScheme
@@ -137,7 +138,8 @@ class ShortcutDraft:
         A holder gives up the keys taken and keeps the rest, its next key becoming its main key,
         which keeps every scheme a draft produces valid, since one combination reaches one action
         within a category. An edit is held to the keys the table names, which is what lets every
-        draft be written down and read back.
+        draft be written down and read back. An action left on the keys the scheme ships records no
+        edit, so an assignment that changes nothing leaves the draft as it was.
 
         Args:
             shortcut_id: The action given the keys.
@@ -152,11 +154,26 @@ class ShortcutDraft:
             if not combination.is_writable:
                 raise KeyError(f"The key {combination.key} carries no name a binding is written under")
 
-        edits: Dict[ShortcutId, Keys] = {**self.edits, shortcut_id: given}
+        edits: Dict[ShortcutId, Keys] = dict(self.edits)
+        self._record(edits, shortcut_id, given)
         for holder in dict.fromkeys(self.holders(shortcut_id, given).values()):
-            edits[holder] = tuple(key for key in self.keys(holder) if key not in given)
+            self._record(edits, holder, tuple(key for key in self.keys(holder) if key not in given))
 
         return replace(self, edits=edits)
+
+    def _record(
+        self,
+        edits: Dict[ShortcutId, Keys],
+        shortcut_id: ShortcutId,
+        keys: Keys,
+    ) -> None:
+        """Writes ``keys`` into ``edits`` as the keys an action answers, an action on the keys the
+        scheme ships recording no edit."""
+        if keys == self.base.shortcut(shortcut_id).combinations():
+            edits.pop(shortcut_id, None)
+            return
+
+        edits[shortcut_id] = keys
 
     def clear(self, shortcut_id: ShortcutId) -> ShortcutDraft:
         """The draft with an action left unbound, every key it held free for another action to take."""

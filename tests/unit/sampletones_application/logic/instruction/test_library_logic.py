@@ -396,6 +396,7 @@ class Catalog:
     views: List[LibraryPanelViewModel] = field(default_factory=list)
     outdated: List[InstructionLibraryKey] = field(default_factory=list)
     missing: List[Path] = field(default_factory=list)
+    errors: List[Exception] = field(default_factory=list)
     shown: List[Any] = field(default_factory=list)
 
     @property
@@ -444,6 +445,7 @@ def catalog(
     logic.on_apply_library_config = config_manager.apply_library_config
     logic.on_library_outdated = catalog.outdated.append
     logic.on_load_file_not_found = lambda path, message: catalog.missing.append(path)
+    logic.on_load_error = lambda exception, message: catalog.errors.append(exception)
     logic.on_instruction_loaded = catalog.shown.append
     return catalog
 
@@ -594,6 +596,42 @@ class TestTheCatalogFollowingTheConfiguration:
             "Regenerate",
         )
 
+    def test_a_library_the_folder_only_took_up_stays_unloaded_on_the_way_back(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        """A start takes up the library the configuration names without loading it, so the reader never
+        opened it and the way back leaves it as it stood."""
+        ours = catalog.config_manager.get_library_directory()
+        key = _write_library(ours, catalog.config_manager.config.library, SAMPLETONES_LIBRARY_DATA_VERSION)
+        catalog.logic.refresh_libraries(load_if_needed=False)
+        taken_up = (catalog.manager.current_library_key, catalog.manager.is_library_loaded(key))
+
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        aim_library_directory(catalog.config_manager, ours)
+
+        assert (taken_up, catalog.manager.is_library_loaded(key), catalog.views[-1].generate_button_label) == (
+            (key, False),
+            False,
+            "Generate",
+        )
+
+    def test_a_library_never_opened_whose_file_left_while_away_goes_unreported(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        ours = catalog.config_manager.get_library_directory()
+        key = _write_library(ours, catalog.config_manager.config.library, SAMPLETONES_LIBRARY_DATA_VERSION)
+        catalog.logic.refresh_libraries(load_if_needed=False)
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        (ours / key.filename).unlink()
+
+        aim_library_directory(catalog.config_manager, ours)
+
+        assert (catalog.missing, catalog.errors) == ([], [])
+
     @requires_symlinks
     def test_a_link_to_the_same_folder_repaints_over_what_is_loaded(
         self,
@@ -610,6 +648,46 @@ class TestTheCatalogFollowingTheConfiguration:
 
         assert (len(catalog.rebuilds_under_lock), catalog.manager.is_library_loaded(key)) == (rebuilds, True)
         assert catalog.views[-1].generate_button_label == "Regenerate"
+
+    @requires_symlinks
+    def test_a_notice_names_the_folder_by_the_link_the_reader_chose(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        key = _opened_library(catalog)
+        link = tmp_path / LINKED_LIBRARIES
+        link.symlink_to(catalog.config_manager.get_library_directory(), target_is_directory=True)
+        aim_library_directory(catalog.config_manager, link)
+        (link / key.filename).unlink()
+
+        catalog.logic.load_library_and_set_current(key)
+
+        assert catalog.missing == [link / key.filename]
+
+    @requires_symlinks
+    def test_a_library_generated_across_a_respelling_lands_loaded_under_the_new_spelling(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        """A link names the folder the generation started in, so the generation's library stays in memory,
+        and its path goes through the link."""
+        ours = catalog.config_manager.get_library_directory()
+        ours.mkdir(parents=True)
+        link = tmp_path / LINKED_LIBRARIES
+        link.symlink_to(ours, target_is_directory=True)
+        catalog.start_generation()
+
+        aim_library_directory(catalog.config_manager, link)
+        catalog.write_library()
+        catalog.queue.drain()
+
+        key = catalog.config_manager.key
+        assert (catalog.manager.is_library_loaded(key), catalog.manager.get_path(key)) == (
+            True,
+            link / key.filename,
+        )
 
     def test_a_library_whose_file_left_while_away_is_reported_on_the_way_back(
         self,
@@ -633,6 +711,47 @@ class TestTheCatalogFollowingTheConfiguration:
             False,
             None,
         )
+
+    def test_a_library_another_build_rewrote_while_away_asks_to_be_rebuilt_on_the_way_back(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        """The way back opens the library as a Load does, so a file another version wrote meanwhile asks
+        for a rebuild, and the folder's choice goes with it."""
+        ours = catalog.config_manager.get_library_directory()
+        key = _opened_library(catalog)
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        _write_library(ours, catalog.config_manager.config.library, EARLIER_VERSION)
+
+        aim_library_directory(catalog.config_manager, ours)
+
+        assert (
+            catalog.outdated,
+            catalog.errors,
+            catalog.manager.is_library_loaded(key),
+            catalog.manager.current_library_key,
+        ) == ([key], [], False, None)
+
+    def test_the_way_back_keeps_the_settings_the_reader_left_with(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        """The way back brings the folder's library back as it stood, and the settings stay as the reader
+        set them while away."""
+        ours = catalog.config_manager.get_library_directory()
+        key = _opened_library(catalog)
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        settings = _other_settings(catalog)
+        catalog.config_manager.apply_library_config(
+            InstructionLibraryKey.create(settings, Window.from_config(settings)),
+            settings,
+        )
+
+        aim_library_directory(catalog.config_manager, ours)
+
+        assert (catalog.manager.is_library_loaded(key), catalog.config_manager.config.library) == (True, settings)
 
     def test_a_library_generated_while_away_is_written_held_nowhere_and_loaded_on_the_way_back(
         self,

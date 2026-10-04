@@ -2,10 +2,16 @@ from typing import Any, Dict, Final, List, Optional, Tuple
 
 import pytest
 
+from sampletones_application.categories.elements.settings import KeybindingActionElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.coordinators.keybindings import KeybindingsCoordinator
 from sampletones_application.paths import LANG_EN
-from sampletones_application.utils.gui.keyboard.combination import KeyCombination
+from sampletones_application.utils.gui.keyboard.combination import (
+    KEY_LIST_JOINER,
+    KeyCombination,
+    display_combinations,
+)
 from sampletones_application.utils.gui.shortcuts.ids import (
     EDITABLE_SHORTCUT_CATEGORIES,
     ShortcutId,
@@ -27,10 +33,32 @@ SAVE_COMBINATION: Final[str] = "Ctrl+S"
 UNDO_COMBINATION: Final[str] = "Ctrl+Z"
 REDO_COMBINATION: Final[str] = "Ctrl+Y"
 FREE_COMBINATION: Final[str] = "Ctrl+Alt+B"
+SECOND_FREE_COMBINATION: Final[str] = "Ctrl+Alt+N"
+COMMA_COMBINATION: Final[str] = "Ctrl+,"
 UNREADABLE_COMBINATION: Final[str] = "Ctrl+Nonsense"
-FREE_KEYS: Final[str] = "Ctrl+Alt+B, Ctrl+Alt+N"
+FREE_KEYS: Final[str] = KEY_LIST_JOINER.join((FREE_COMBINATION, SECOND_FREE_COMBINATION))
+NO_KEYS: Final[str] = ""
 TWO_HOLDERS: Final[Tuple[ShortcutId, ...]] = (ShortcutId.SAVE_PROJECT, ShortcutId.OPEN_PROJECT)
-TWO_HOLDER_LABELS: Final[Tuple[str, ...]] = ("Save project", "Open project")
+
+
+def _action_label(shortcut_id: ShortcutId) -> str:
+    """The name the editor lists an action under, read from the language file."""
+    return LanguageManager(LANG_EN)[
+        Page.SETTINGS,
+        Panel.KEYBINDINGS,
+        TextType.LABEL,
+        KeybindingActionElements[shortcut_id.name],
+    ]
+
+
+def _unbound_action() -> str:
+    """An action the shipped scheme gives no keys."""
+    scheme = shipped_scheme()
+    return next(
+        shortcut_id.value
+        for shortcut_id in ShortcutId
+        if shortcut_id.category in EDITABLE_SHORTCUT_CATEGORIES and not scheme.shortcut(shortcut_id).combinations()
+    )
 
 
 class _SessionRecorder:
@@ -557,8 +585,8 @@ class TestEveryKey:
         harness.select(REDO)
         harness.capture(FREE_COMBINATION)
 
-        assert harness.row(REDO).keys == ", ".join(
-            (FREE_COMBINATION, *(combination.display() for combination in redo.combinations()))
+        assert harness.row(REDO).keys == display_combinations(
+            (KeyCombination.parse(FREE_COMBINATION), *redo.combinations())
         )
 
     def test_pressing_an_own_alias_moves_it_to_the_front_without_asking(self, harness: Harness) -> None:
@@ -567,22 +595,22 @@ class TestEveryKey:
         harness.capture(redo.aliases[0].display())
 
         assert harness.dialogs.confirmations == []
-        assert harness.row(REDO).keys == ", ".join(
-            combination.display() for combination in (*redo.aliases, redo.combinations()[0])
-        )
+        assert harness.row(REDO).keys == display_combinations((*redo.aliases, redo.combinations()[0]))
 
     def test_a_typed_list_taking_keys_from_two_actions_asks_once_naming_both(self, harness: Harness) -> None:
         scheme = shipped_scheme()
-        taken = ", ".join(scheme.shortcut(shortcut_id).display() for shortcut_id in TWO_HOLDERS)
+        taken = display_combinations(scheme.shortcut(shortcut_id).combinations()[0] for shortcut_id in TWO_HOLDERS)
         harness.select(ABOUT_DIALOG)
         harness.type_combination(taken)
 
         assert len(harness.dialogs.confirmations) == 1
-        assert all(label in harness.dialogs.confirmations[-1]["message"] for label in TWO_HOLDER_LABELS)
+        assert all(
+            _action_label(shortcut_id) in harness.dialogs.confirmations[-1]["message"] for shortcut_id in TWO_HOLDERS
+        )
 
     def test_confirming_a_list_taken_from_two_actions_moves_both_keys(self, harness: Harness) -> None:
         scheme = shipped_scheme()
-        taken = ", ".join(scheme.shortcut(shortcut_id).display() for shortcut_id in TWO_HOLDERS)
+        taken = display_combinations(scheme.shortcut(shortcut_id).combinations()[0] for shortcut_id in TWO_HOLDERS)
         harness.select(ABOUT_DIALOG)
         harness.type_combination(taken)
         harness.dialogs.confirm()
@@ -596,6 +624,36 @@ class TestEveryKey:
 
         assert harness.row(REDO).keys == ""
 
+    def test_an_empty_entry_unbinds_a_bound_action(self, harness: Harness) -> None:
+        harness.select(SAVE_PROJECT)
+        harness.type_combination(NO_KEYS)
+        harness.commit()
+
+        assert dict(harness.session.writes)["overrides"] == {SAVE_PROJECT: None}
+
+    def test_an_empty_entry_for_an_unbound_action_leaves_nothing_to_discard(self, harness: Harness) -> None:
+        harness.select(_unbound_action())
+        harness.type_combination(NO_KEYS)
+        harness.cancel()
+
+        assert (harness.dialogs.confirmations, harness.window.visible) == ([], False)
+
+    def test_clearing_an_unbound_action_leaves_nothing_to_discard(self, harness: Harness) -> None:
+        harness.select(_unbound_action())
+        harness.clear()
+        harness.cancel()
+
+        assert (harness.dialogs.confirmations, harness.window.visible) == ([], False)
+
+    def test_a_typed_comma_key_reaches_the_action(self, harness: Harness) -> None:
+        harness.select(ABOUT_DIALOG)
+        harness.type_combination(COMMA_COMBINATION)
+
+        assert (harness.window.view_model.message, harness.row(ABOUT_DIALOG).keys) == (
+            "",
+            KeyCombination.parse(COMMA_COMBINATION).display(),
+        )
+
     def test_a_list_is_stored_as_written(self, harness: Harness) -> None:
         harness.select(ABOUT_DIALOG)
         harness.type_combination(FREE_KEYS)
@@ -605,7 +663,7 @@ class TestEveryKey:
 
     def test_a_list_naming_no_key_in_one_place_is_reported_and_the_keys_stand(self, harness: Harness) -> None:
         harness.select(SAVE_PROJECT)
-        harness.type_combination(f"{FREE_COMBINATION}, {UNREADABLE_COMBINATION}")
+        harness.type_combination(KEY_LIST_JOINER.join((FREE_COMBINATION, UNREADABLE_COMBINATION)))
 
         assert UNREADABLE_COMBINATION in harness.window.view_model.message
         assert harness.row(SAVE_PROJECT).keys == SAVE_COMBINATION

@@ -442,11 +442,28 @@ class MainTabCoordinator:
 
     @ignore_none_path
     def _reconstruct_file(self, filepath: Path) -> None:
-        self._giving_way_to_one_apiece(lambda: self._hooks.on_reconstruct_file(filepath))
+        self._giving_way_to_one_apiece(
+            lambda: self._list_for_reconstruct(
+                filepath,
+                input_folder=filepath.parent,
+            )
+        )
 
     @ignore_none_path
     def _reconstruct_directory(self, directory_path: Path) -> None:
-        self._giving_way_to_one_apiece(lambda: self._hooks.on_reconstruct_directory(directory_path))
+        self._giving_way_to_one_apiece(
+            lambda: self._list_for_reconstruct(
+                directory_path,
+                input_folder=directory_path,
+            )
+        )
+
+    def _list_for_reconstruct(self, path: Path, *, input_folder: Path) -> None:
+        """Lists what a Reconstruct named, and keeps ``input_folder`` as the folder the next
+        Reconstruct dialog opens at."""
+        self._take_up_path(path)
+        self._session_manager.set_audio_input_path(input_folder)
+        self._hooks.on_reconstruct_listed()
 
     def _giving_way_to_one_apiece(self, take_up: VoidCallback) -> None:
         """Takes up what a Reconstruct named, asking first about a mix it would replace.
@@ -814,7 +831,7 @@ class MainTabCoordinator:
     def refresh_converter_view(self) -> None:
         self._converter_logic.refresh_view()
 
-    def take_up_path(self, path: Path) -> None:
+    def _take_up_path(self, path: Path) -> None:
         """Lists what a Reconstruct named, a recording or a folder, for the reader to convert one apiece.
 
         A folder is read before it is listed, and the reader watches the reading count what it finds.

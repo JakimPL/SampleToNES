@@ -17,7 +17,13 @@ from sampletones_core.library import InstructionLibraryKey, LibraryState
 from sampletones_core.structures.tree import LibraryNode
 from tests.suite.compatibility import LIBRARY_VERSION, archived
 from tests.suite.files import requires_symlinks
-from tests.suite.library import LINKED_LIBRARIES, OTHER_LIBRARIES, WrittenLibrary, write_empty_library
+from tests.suite.library import (
+    LINKED_LIBRARIES,
+    OTHER_LIBRARIES,
+    WrittenLibrary,
+    aim_library_directory,
+    write_empty_library,
+)
 
 
 @pytest.fixture
@@ -177,6 +183,41 @@ class TestTheDirectoryTheCatalogStandsAt:
             library_manager.current_library_key,
         ) == ({}, False, config_manager.key)
 
+    def test_the_way_back_hands_over_the_library_loaded_when_the_reader_left_once(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        tmp_path: Path,
+    ) -> None:
+        ours = config_manager.get_library_directory()
+        self._loaded_here(library_manager, config_manager.key)
+        library_manager.set_library_directory(tmp_path / OTHER_LIBRARIES)
+        library_manager.set_library_directory(ours)
+
+        assert (library_manager.take_released_library(), library_manager.take_released_library()) == (
+            config_manager.key,
+            None,
+        )
+
+    def test_a_library_taken_up_unloaded_leaves_nothing_to_load_on_the_way_back(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        tmp_path: Path,
+    ) -> None:
+        """The configuration's library is taken up at a start without loading, so the reader never opened
+        it and a way back has nothing to load again."""
+        ours = config_manager.get_library_directory()
+        _create_library_file(library_manager, config_manager.key)
+        library_manager.sync_with_config_key(config_manager.key)
+        library_manager.set_library_directory(tmp_path / OTHER_LIBRARIES)
+        library_manager.set_library_directory(ours)
+
+        assert (library_manager.current_library_key, library_manager.take_released_library()) == (
+            config_manager.key,
+            None,
+        )
+
     def test_what_the_other_directory_took_up_stays_with_it(
         self,
         config_manager: ConfigManager,
@@ -217,7 +258,7 @@ class TestTheDirectoryTheCatalogStandsAt:
 
 class TestAnotherSpellingOfTheFolder:
     """Two spellings of one folder name one catalog, so pointing the catalog at another spelling keeps
-    what the folder loaded and moves nowhere."""
+    what the folder loaded and moves nowhere. The folder goes by the spelling given last."""
 
     @staticmethod
     def _respelled_keeps_what_it_loaded(
@@ -230,7 +271,12 @@ class TestAnotherSpellingOfTheFolder:
 
         moved = library_manager.set_library_directory(spelling)
 
-        assert (moved, library_manager.is_library_loaded(config_manager.key)) == (False, True)
+        assert (
+            moved,
+            library_manager.is_library_loaded(config_manager.key),
+            library_manager.library_directory,
+            library_manager.get_path(config_manager.key),
+        ) == (False, True, spelling, spelling / config_manager.key.filename)
 
     def test_a_detour_through_the_parent(
         self,
@@ -253,6 +299,20 @@ class TestAnotherSpellingOfTheFolder:
         link.symlink_to(config_manager.get_library_directory(), target_is_directory=True)
 
         self._respelled_keeps_what_it_loaded(config_manager, library_manager, link)
+
+    @requires_symlinks
+    def test_a_folder_configured_through_a_link_goes_by_the_link_from_the_start(
+        self,
+        config_manager: ConfigManager,
+        tmp_path: Path,
+    ) -> None:
+        link = tmp_path / LINKED_LIBRARIES
+        link.symlink_to(config_manager.get_library_directory(), target_is_directory=True)
+        aim_library_directory(config_manager, link)
+
+        library_manager = InstructionsLibraryManager(config_manager, language_manager=MagicMock())
+
+        assert library_manager.get_path(config_manager.key) == link / config_manager.key.filename
 
 
 class TestCompleteGeneration:

@@ -6,7 +6,11 @@ from typing import Dict, List, Mapping, Optional, Self, Tuple
 
 from pydantic import BaseModel, model_validator
 
-from sampletones_application.utils.gui.keyboard.combination import KeyCombination, parse_combinations
+from sampletones_application.utils.gui.keyboard.combination import (
+    KeyCombination,
+    display_combinations,
+    parse_combinations,
+)
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.shortcuts.ids import (
     SHORTCUT_IDS_BY_NAME,
@@ -175,10 +179,11 @@ class ShortcutScheme(BaseModel, frozen=True):
         """The scheme as a reader rebound it, each entry giving one action the keys it names.
 
         An override names its action the way a keybinding file writes it, which lets a preference
-        outlive the build that stored it, and lists the action's keys joined by commas. The set is
-        read at once, so entries that pass keys between them arrive together; where the whole leaves
-        the scheme unresolvable, the entries are read one at a time and each that stands aside costs
-        only itself.
+        outlive the build that stored it, and lists the action's keys joined by commas. The entries
+        are read together, in any order, so entries that pass keys between their actions all stand.
+        An entry naming an action or a key this build has none of is reported and left out, and so
+        is one giving its action a key another action of the category keeps. The action of an entry
+        left out keeps the scheme's keys.
 
         Args:
             overrides: The keys each rebound action answers to, keyed by the action's name.
@@ -189,37 +194,7 @@ class ShortcutScheme(BaseModel, frozen=True):
         if not overrides:
             return self
 
-        try:
-            return self.with_bindings(self._read_overrides(overrides))
-        except (KeyError, SystemError) as exception:
-            logger.warning(f"Keybindings overrides read one entry at a time: {exception}")
-            return self._rebound_each(overrides)
-
-    def rebound(self, name: str, keys: Optional[str]) -> ShortcutScheme:
-        """The scheme as one stored preference rebinds it, read the way a preference is read.
-
-        An entry takes effect while it names an action this build carries, keys the table holds and
-        combinations its category has room for. Anything else is reported and the scheme is
-        returned as it stands, so one unreadable preference costs only itself, and its action keeps
-        every key the scheme gives it.
-
-        Args:
-            name: The action the entry rebinds, named the way a keybinding file writes it.
-            keys: The keys it answers to, joined by commas; ``None`` leaves the action unbound.
-
-        Returns:
-            ShortcutScheme: The scheme the entry leaves in place.
-        """
-        shortcut_id = SHORTCUT_IDS_BY_NAME.get(name)
-        if shortcut_id is None:
-            logger.warning(f"Keybinding override names unknown action {name!r}, keeping the scheme's own keys")
-            return self
-
-        try:
-            return self.with_binding(shortcut_id, self._read_keys(keys))
-        except (KeyError, SystemError) as exception:
-            logger.warning(f"Keybinding override giving {name!r} the keys {keys!r} left out: {exception}")
-            return self
+        return self.with_bindings(self._standing_overrides(self._readable_overrides(overrides)))
 
     @classmethod
     def load(cls, path: Path) -> ShortcutScheme:
@@ -239,17 +214,25 @@ class ShortcutScheme(BaseModel, frozen=True):
 
         return cls.model_validate(raw)
 
-    def _read_overrides(
+    def _readable_overrides(
         self,
         overrides: Mapping[str, Optional[str]],
     ) -> Dict[ShortcutId, Tuple[KeyCombination, ...]]:
-        """Every override as the action and the keys it names.
+        """Every override naming an action this build carries and keys the table holds, as that action
+        and its keys, each other override reported and left out."""
+        readable: Dict[ShortcutId, Tuple[KeyCombination, ...]] = {}
+        for name, keys in overrides.items():
+            shortcut_id = SHORTCUT_IDS_BY_NAME.get(name)
+            if shortcut_id is None:
+                logger.warning(f"Keybinding override names unknown action {name!r}, keeping the scheme's own keys")
+                continue
 
-        Raises:
-            KeyError: when an entry names an action this build carries none of, or a key the table
-                holds none of.
-        """
-        return {SHORTCUT_IDS_BY_NAME[name]: self._read_keys(keys) for name, keys in overrides.items()}
+            try:
+                readable[shortcut_id] = self._read_keys(keys)
+            except KeyError as exception:
+                logger.warning(f"Keybinding override giving {name!r} the keys {keys!r} left out: {exception}")
+
+        return readable
 
     @staticmethod
     def _read_keys(keys: Optional[str]) -> Tuple[KeyCombination, ...]:
@@ -260,13 +243,44 @@ class ShortcutScheme(BaseModel, frozen=True):
         """
         return () if keys is None else parse_combinations(keys)
 
-    def _rebound_each(self, overrides: Mapping[str, Optional[str]]) -> ShortcutScheme:
-        """The scheme as every override that stands rebinds it, read one entry at a time."""
-        scheme = self
-        for name, keys in overrides.items():
-            scheme = scheme.rebound(name, keys)
+    def _standing_overrides(
+        self, readable: Dict[ShortcutId, Tuple[KeyCombination, ...]]
+    ) -> Dict[ShortcutId, Tuple[KeyCombination, ...]]:
+        """The overrides left once each one sharing a key with another action of its category is
+        reported and left out.
 
-        return scheme
+        An entry left out brings its action's keys back, which can meet the keys of another entry, so
+        the check runs again until every key reaches one action of its category.
+        """
+        standing = dict(readable)
+        colliding = self._colliding_overrides(standing)
+        while colliding:
+            for shortcut_id in colliding:
+                logger.warning(
+                    f"Keybinding override giving {shortcut_id.value!r} the keys "
+                    f"{display_combinations(standing.pop(shortcut_id))!r} left out: "
+                    f"another action of the {shortcut_id.category} category answers one of them"
+                )
+
+            colliding = self._colliding_overrides(standing)
+
+        return standing
+
+    def _colliding_overrides(self, overrides: Dict[ShortcutId, Tuple[KeyCombination, ...]]) -> Tuple[ShortcutId, ...]:
+        """The overrides answering a key another action of their category answers, every action not
+        overridden keeping the scheme's keys."""
+        holders: Dict[Tuple[ShortcutCategory, KeyCombination], Dict[ShortcutId, None]] = {}
+        for shortcut_id in ShortcutId:
+            keys = overrides[shortcut_id] if shortcut_id in overrides else self.shortcut(shortcut_id).combinations()
+            for combination in keys:
+                holders.setdefault((shortcut_id.category, combination), {})[shortcut_id] = None
+
+        colliding: Dict[ShortcutId, None] = {}
+        for actions in holders.values():
+            if len(actions) > 1:
+                colliding.update(dict.fromkeys(shortcut_id for shortcut_id in actions if shortcut_id in overrides))
+
+        return tuple(colliding)
 
     def _require_every_action_answered(self) -> None:
         unanswered: List[str] = [shortcut_id.value for shortcut_id in ShortcutId if shortcut_id not in self.bindings]

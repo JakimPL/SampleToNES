@@ -44,6 +44,9 @@ class ReconstructionData:
         holds, so changes propagate live. Such a sample lives only in memory,
         hence ``filepath`` is ``None`` and its display name is supplied by the
         caller (the project sample's name).
+
+        A document whose file was removed in the Browser is wrapped the same way, under the name
+        it had. It keeps the locations of its recordings, so its original audio loads again from them.
         """
         return cls._assemble(
             reconstruction,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Final, Iterable, Set, Tuple
+from typing import Final, Iterable, List, Set, Tuple
 
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.keyboard.keys import (
@@ -91,19 +91,52 @@ class KeyCombination:
 def combination_parts(text: str) -> Tuple[str, ...]:
     """The combinations a written list such as ``"Ctrl+Y, Ctrl+Shift+Z"`` names, each as it is written.
 
-    The list is split at its commas and each part is trimmed, and a blank part names nothing. A key
-    spells the comma as ``Comma``, which keeps the comma free to separate the combinations.
+    A comma separates two combinations, and a comma written where a key goes is the comma key: one
+    after the modifiers of a combination, as in ``"Ctrl+,"``, and one standing alone before a
+    separator or the end of the list. Each part is trimmed, and a blank part names nothing. A list
+    is displayed with the comma key spelled ``Comma``, so a displayed list reads back as itself.
     """
-    return tuple(part.strip() for part in text.split(KEY_LIST_SEPARATOR) if part.strip())
+    parts: List[str] = []
+    part = ""
+    for index, character in enumerate(text):
+        if character == KEY_LIST_SEPARATOR and not _is_comma_key(part, text[index + 1 :]):
+            parts.append(part)
+            part = ""
+        else:
+            part += character
+
+    parts.append(part)
+    return tuple(part.strip() for part in parts if part.strip())
+
+
+def _is_comma_key(written: str, rest: str) -> bool:
+    """Whether a comma after ``written`` and ahead of ``rest`` in one part of a list is a key."""
+    before = written.strip()
+    if before:
+        return _awaits_key(before)
+
+    after = rest.lstrip()
+    return not after or after.startswith(KEY_LIST_SEPARATOR)
+
+
+def _awaits_key(written: str) -> bool:
+    """Whether ``written`` names modifiers alone, each followed by the separator, so its key comes next."""
+    if not written.endswith(COMBINATION_SEPARATOR):
+        return False
+
+    return all(
+        part.casefold() in MODIFIER_NAMES
+        for part in written.removesuffix(COMBINATION_SEPARATOR).split(COMBINATION_SEPARATOR)
+    )
 
 
 def parse_combinations(text: str) -> Tuple[KeyCombination, ...]:
-    """The combinations a written list names, in the order it names them.
+    """The combinations a written list names, in the order it names them, each one once.
 
     Raises:
         KeyError: If a part of the list names no key.
     """
-    return tuple(KeyCombination.parse(part) for part in combination_parts(text))
+    return tuple(dict.fromkeys(KeyCombination.parse(part) for part in combination_parts(text)))
 
 
 def display_combinations(combinations: Iterable[KeyCombination]) -> str:

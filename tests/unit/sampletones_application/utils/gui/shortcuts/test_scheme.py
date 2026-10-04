@@ -1,4 +1,6 @@
+import logging
 from pathlib import Path
+from typing import List, Mapping, Optional
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -6,7 +8,7 @@ from pydantic import ValidationError
 
 from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
 from sampletones_application.paths import KEYBINDINGS_DIRECTORY
-from sampletones_application.utils.gui.keyboard.combination import KeyCombination
+from sampletones_application.utils.gui.keyboard.combination import KeyCombination, display_combinations
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, CTRL_SHIFT
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
@@ -29,6 +31,12 @@ name: minimal
 bindings:
   Play: {combination: "Space"}
 """
+
+
+def _reported(caplog: pytest.LogCaptureFixture, overrides: Mapping[str, Optional[str]]) -> List[str]:
+    """The overrides a warning names, in the order the overrides list them."""
+    warnings = [record.getMessage() for record in caplog.records if record.levelno == logging.WARNING]
+    return [name for name in overrides if any(repr(name) in warning for warning in warnings)]
 
 
 def _press(text: str) -> KeyEvent:
@@ -312,6 +320,56 @@ class TestWithOverrides:
 
         assert scheme.action(ShortcutCategory.APPLICATION, _press("Ctrl+S")) is ShortcutId.ABOUT_DIALOG
         assert scheme.shortcut(ShortcutId.SAVE_PROJECT).combinations() == ()
+
+    def test_a_pair_moving_a_key_stands_beside_a_stale_entry_and_the_stale_entry_alone_is_reported(
+        self,
+        shipped: ShortcutScheme,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """An editor writes the action taking a key ahead of the action giving it up, and a later build
+        can give a stored key to an action of its own. The pair still moves the key, and the stale
+        entry costs only itself."""
+        taken = display_combinations(shipped.shortcut(ShortcutId.SAVE_PROJECT).combinations())
+        held = display_combinations(shipped.shortcut(ShortcutId.TOGGLE_CHANNEL_PULSE_1).combinations())
+        overrides = {
+            ShortcutId.ABOUT_DIALOG.value: taken,
+            ShortcutId.SAVE_PROJECT.value: None,
+            ShortcutId.KEYBOARD_SETTINGS.value: held,
+        }
+        caplog.set_level(logging.WARNING)
+
+        scheme = shipped.with_overrides(overrides)
+
+        assert (
+            display_combinations(scheme.shortcut(ShortcutId.ABOUT_DIALOG).combinations()),
+            scheme.shortcut(ShortcutId.SAVE_PROJECT).combinations(),
+            scheme.shortcut(ShortcutId.KEYBOARD_SETTINGS) == shipped.shortcut(ShortcutId.KEYBOARD_SETTINGS),
+        ) == (taken, (), True)
+        assert _reported(caplog, overrides) == [ShortcutId.KEYBOARD_SETTINGS.value]
+
+    def test_two_actions_trading_their_keys_stand_beside_a_stale_entry(
+        self,
+        shipped: ShortcutScheme,
+    ) -> None:
+        undo_keys = display_combinations(shipped.shortcut(ShortcutId.UNDO).combinations())
+        redo_keys = display_combinations(shipped.shortcut(ShortcutId.REDO).combinations())
+        held = display_combinations(shipped.shortcut(ShortcutId.TOGGLE_CHANNEL_PULSE_1).combinations())
+
+        scheme = shipped.with_overrides(
+            {
+                ShortcutId.UNDO.value: redo_keys,
+                ShortcutId.REDO.value: undo_keys,
+                ShortcutId.KEYBOARD_SETTINGS.value: held,
+            }
+        )
+
+        assert (
+            scheme.shortcut(ShortcutId.UNDO).combinations(),
+            scheme.shortcut(ShortcutId.REDO).combinations(),
+        ) == (
+            shipped.shortcut(ShortcutId.REDO).combinations(),
+            shipped.shortcut(ShortcutId.UNDO).combinations(),
+        )
 
     def test_a_scheme_without_overrides_is_the_one_it_started_as(self, shipped: ShortcutScheme) -> None:
         assert shipped.with_overrides({}) is shipped
