@@ -50,6 +50,10 @@ dimension the import starts carrying.
   with no ceiling, and every gesture the list offers one row must reach each picked row.
 * Selection operations on a reconstruction
 * Reconstruction trimming
+* Marking broken files where the browsers list them, so fewer notices reach the reader. A reconstruction
+  that fails to load, one whose recordings are missing and a recording that cannot be read could stand in a
+  warning or an error color. Today every attempt to open or play one raises its notice, once per attempt,
+  and a mark would tell the reader before they try.
 
 ### Features
 
