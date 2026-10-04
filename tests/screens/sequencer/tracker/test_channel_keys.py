@@ -1,60 +1,81 @@
 from functools import partial
 from typing import Final, List
 
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.sequencer.tracker.constants import TYPING_FRAMES
-from tests.screens.sequencer.tracker.steps import play_a_note
-from tests.suite.screens.dearpygui.keys import IMGUI_DIGIT_ZERO, IMGUI_LEFT_ALT
 from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import channels_sounding, leave_letting_the_project_go, on_the_sequencer
+from tests.suite.screens.steps.sequencer import (
+    channels_sounding,
+    leave_letting_the_project_go,
+    on_the_sequencer,
+    sounding_but,
+)
 from tests.suite.screens.worlds.songs import PAD_ROW
 
-DIGIT_TWO: Final[int] = IMGUI_DIGIT_ZERO + 2
-EVERY_CHANNEL_SOUNDING: Final[List[bool]] = [True, True, True, True]
-PULSE_TWO_MUTED: Final[List[bool]] = [True, False, True, True]
+CARET_ROW: Final[int] = PAD_ROW + 1
+TOGGLE_PULSE_TWO: Final[ShortcutId] = ShortcutId.TOGGLE_CHANNEL_PULSE_2
 
 
 class TestTheChannelKeysBesideTheNotes:
-    """With the cursor in a pitch column, 2 types the note it names, and Alt+2 mutes Pulse 2 all the same.
+    """With the cursor in a pitch column, Pulse 2's key types the note it names, and its chord mutes Pulse 2
+    all the same.
 
-    A note is typed with 2 and the mix stays whole. Alt+2 then mutes Pulse 2 and leaves the note, and Alt+2
-    again brings it back.
+    The key types a note on the Pad row, which moves the caret a row down, and the mix stays whole. The chord
+    then mutes Pulse 2 and types nothing on the caret's row, and the chord again brings it back. The key
+    pressed once more types a note on that row, which is where a chord that typed would have written.
     """
 
-    def test_two_types_a_note_and_alt_two_mutes_pulse_two(self, screen: Screen) -> None:
+    def test_the_key_types_a_note_and_the_chord_mutes_pulse_two(self, screen: Screen) -> None:
         tracker = screen.sequencer.tracker
-        typed: List[str] = []
+        caret_row: List[str] = []
 
-        def two_types_a_note(screen: Screen) -> None:
+        def caret_row_label() -> str:
+            return tracker.label(CARET_ROW, ChannelName.PULSE2, SubColumn.TRANSPOSE)
+
+        def the_key_types_a_note(screen: Screen) -> None:
             on_the_sequencer(screen)
             before = tracker.label(PAD_ROW, ChannelName.PULSE2, SubColumn.TRANSPOSE)
+            tracker.click(PAD_ROW, ChannelName.PULSE2, SubColumn.TRANSPOSE)
 
-            play_a_note(screen, PAD_ROW, ChannelName.PULSE2, DIGIT_TWO)
+            screen.press_shortcut(TOGGLE_PULSE_TWO)
 
-            typed.append(tracker.label(PAD_ROW, ChannelName.PULSE2, SubColumn.TRANSPOSE))
-            assert typed[0] != before
-            assert channels_sounding(screen) == EVERY_CHANNEL_SOUNDING
-
-        def alt_two_mutes_pulse_two(screen: Screen) -> None:
-            screen.hand.press_key(DIGIT_TWO, modifiers=[IMGUI_LEFT_ALT])
-
-            screen.expect(partial(channels_sounding, screen), PULSE_TWO_MUTED.__eq__, description="Pulse 2 muted")
             screen.frames(TYPING_FRAMES)
-            assert tracker.label(PAD_ROW, ChannelName.PULSE2, SubColumn.TRANSPOSE) == typed[0]
+            assert tracker.label(PAD_ROW, ChannelName.PULSE2, SubColumn.TRANSPOSE) != before
+            assert channels_sounding(screen) == sounding_but()
+            caret_row.append(caret_row_label())
 
-        def alt_two_brings_it_back(screen: Screen) -> None:
-            screen.hand.press_key(DIGIT_TWO, modifiers=[IMGUI_LEFT_ALT])
+        def the_chord_mutes_pulse_two_and_types_nothing(screen: Screen) -> None:
+            screen.press_shortcut_alias(TOGGLE_PULSE_TWO)
 
             screen.expect(
                 partial(channels_sounding, screen),
-                EVERY_CHANNEL_SOUNDING.__eq__,
+                sounding_but(ChannelName.PULSE2).__eq__,
+                description="Pulse 2 muted",
+            )
+            screen.frames(TYPING_FRAMES)
+            assert caret_row_label() == caret_row[0]
+
+        def the_chord_brings_it_back(screen: Screen) -> None:
+            screen.press_shortcut_alias(TOGGLE_PULSE_TWO)
+
+            screen.expect(
+                partial(channels_sounding, screen),
+                sounding_but().__eq__,
                 description="every channel sounding again",
             )
 
+        def the_key_types_on_the_caret_row(screen: Screen) -> None:
+            screen.press_shortcut(TOGGLE_PULSE_TWO)
+
+            screen.expect(caret_row_label, caret_row[0].__ne__, description="a note typed on the caret's row")
+            assert channels_sounding(screen) == sounding_but()
+
         screen.scenario(
-            two_types_a_note,
-            alt_two_mutes_pulse_two,
-            alt_two_brings_it_back,
+            the_key_types_a_note,
+            the_chord_mutes_pulse_two_and_types_nothing,
+            the_chord_brings_it_back,
+            the_key_types_on_the_caret_row,
             leave_letting_the_project_go,
         ).run()

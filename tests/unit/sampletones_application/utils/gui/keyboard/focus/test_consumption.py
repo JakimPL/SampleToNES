@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Final
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -10,13 +11,20 @@ from sampletones_application.utils.gui.keyboard.focus.kind import FieldKind
 from sampletones_application.utils.gui.keyboard.modifiers import (
     ALT,
     CTRL,
+    CTRL_ALT,
     CTRL_SHIFT,
     NO_MODIFIERS,
     SHIFT,
+    SUPER,
+    SUPER_SHIFT,
+    Modifier,
     ModifierSet,
 )
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+
+ALT_SHIFT: Final[ModifierSet] = frozenset({Modifier.ALT, Modifier.SHIFT})
+SUPER_ALT: Final[ModifierSet] = frozenset({Modifier.SUPER, Modifier.ALT})
 
 
 class TestFieldConsumesKey(BaseTestSuite):
@@ -109,11 +117,123 @@ class TestFieldConsumesKey(BaseTestSuite):
             expected=False,
         ),
         TestCase(
-            label="text field yields Alt+F4",
+            label="text field yields Alt on a function key, so Alt+F4 exits",
             kind=FieldKind.TEXT_ENTRY,
             key=dpg.mvKey_F4,
             modifiers=ALT,
             expected=False,
+        ),
+        TestCase(
+            label="text field yields Alt on a caret key, so Alt+Up reaches its shortcut",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_Up,
+            modifiers=ALT,
+            expected=False,
+        ),
+        TestCase(
+            label="text field yields Alt on an editing key, so Alt+Home reaches its shortcut",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_Home,
+            modifiers=ALT,
+            expected=False,
+        ),
+        TestCase(
+            label="text field types AltGr on a digit, which Linux reports as Alt+2",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_2,
+            modifiers=ALT,
+            expected=True,
+        ),
+        TestCase(
+            label="text field types AltGr on a letter, which Linux reports as Alt+E",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_E,
+            modifiers=ALT,
+            expected=True,
+        ),
+        TestCase(
+            label="text field types a shifted AltGr letter, Alt+Shift+S",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_S,
+            modifiers=ALT_SHIFT,
+            expected=True,
+        ),
+        TestCase(
+            label="text field types AltGr on punctuation, Alt+Period",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_Period,
+            modifiers=ALT,
+            expected=True,
+        ),
+        TestCase(
+            label="text field types AltGr on a letter, which Windows reports as Ctrl+Alt+S",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_S,
+            modifiers=CTRL_ALT,
+            expected=True,
+        ),
+        TestCase(
+            label="text field yields Ctrl+Alt on a caret key",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_Left,
+            modifiers=CTRL_ALT,
+            expected=False,
+        ),
+        TestCase(
+            label="text field yields Super+S, so Cmd+S saves from a field",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_S,
+            modifiers=SUPER,
+            expected=False,
+        ),
+        TestCase(
+            label="text field yields Super+Space",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_Spacebar,
+            modifiers=SUPER,
+            expected=False,
+        ),
+        TestCase(
+            label="text field yields Super+Alt+S, so Cmd+Option+S saves from a field",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_S,
+            modifiers=SUPER_ALT,
+            expected=False,
+        ),
+        TestCase(
+            label="text field yields Super+Shift+A",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_A,
+            modifiers=SUPER_SHIFT,
+            expected=False,
+        ),
+        TestCase(
+            label="text field copies on Super+C",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_C,
+            modifiers=SUPER,
+            expected=True,
+        ),
+        TestCase(
+            label="text field pastes on Super+V",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_V,
+            modifiers=SUPER,
+            expected=True,
+        ),
+        TestCase(
+            label="text field undoes on Super+Z",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_Z,
+            modifiers=SUPER,
+            expected=True,
+        ),
+        TestCase(
+            label="text field redoes on Super+Shift+Z",
+            kind=FieldKind.TEXT_ENTRY,
+            key=dpg.mvKey_Z,
+            modifiers=SUPER_SHIFT,
+            expected=True,
         ),
         TestCase(
             label="text field yields F11",
@@ -138,6 +258,13 @@ class TestFieldConsumesKey(BaseTestSuite):
             kind=FieldKind.CHOICE,
             key=dpg.mvKey_A,
             modifiers=CTRL,
+            expected=False,
+        ),
+        TestCase(
+            label="open combo yields Alt+2",
+            kind=FieldKind.CHOICE,
+            key=dpg.mvKey_2,
+            modifiers=ALT,
             expected=False,
         ),
     )

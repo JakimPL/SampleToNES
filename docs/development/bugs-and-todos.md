@@ -107,6 +107,8 @@ dimension the import starts carrying.
   silences a channel or lets a recording go is reversible only by reloading the file.
 * In-application console
 * Improve performance of the browser's favorite scan of the entire tree per click
+* The Command key on macOS. The macOS scheme and the text-field rule read Command as Super, and whether
+  DearPyGui reports it as Super there or swaps it with Ctrl is unverified on a Mac.
 
 ## Architecture
 

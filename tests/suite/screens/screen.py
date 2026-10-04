@@ -38,7 +38,7 @@ from tests.suite.screens.dearpygui.items.viewport import read_pointer, read_view
 from tests.suite.screens.dearpygui.recording import FrameRecording
 from tests.suite.screens.dearpygui.screenshot import capture, drawn_frame
 from tests.suite.screens.dearpygui.windows import WindowManager
-from tests.suite.screens.keyboard import press_combination, primary_combination
+from tests.suite.screens.keyboard import first_alias, press_combination, primary_combination
 from tests.suite.screens.render_thread import QueueRenderThread
 from tests.suite.screens.views.audio_settings import AudioSettings
 from tests.suite.screens.views.browsers import FileTree
@@ -288,6 +288,10 @@ class Screen:
     def press_shortcut(self, shortcut_id: ShortcutId) -> None:
         """Presses the keys the scheme in place gives ``shortcut_id`` on the real keyboard."""
         press_combination(self.hand, primary_combination(self._shortcuts.shortcut(shortcut_id)))
+
+    def press_shortcut_alias(self, shortcut_id: ShortcutId) -> None:
+        """Presses the first alias the scheme in place gives ``shortcut_id`` on the real keyboard."""
+        press_combination(self.hand, first_alias(self._shortcuts.shortcut(shortcut_id)))
 
     def scenario(self, *steps: Callable[["Screen"], None]) -> BaseTestScenario["Screen"]:
         """The ordered steps of one scenario, each named after its function in a failure it raises."""

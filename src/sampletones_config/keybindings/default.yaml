@@ -50,10 +50,10 @@ bindings:
   FollowPatterns: {combination: "Ctrl+Shift+F"}
   FollowOff: {combination: "Ctrl+Alt+F"}
   ToggleLoopSong: {combination: "Ctrl+L"}
-  ToggleChannelPulse1: {combination: "1", aliases: ["Alt+1"]}
-  ToggleChannelPulse2: {combination: "2", aliases: ["Alt+2"]}
-  ToggleChannelTriangle: {combination: "3", aliases: ["Alt+3"]}
-  ToggleChannelNoise: {combination: "4", aliases: ["Alt+4"]}
+  ToggleChannelPulse1: {combination: "1", aliases: ["Ctrl+1"]}
+  ToggleChannelPulse2: {combination: "2", aliases: ["Ctrl+2"]}
+  ToggleChannelTriangle: {combination: "3", aliases: ["Ctrl+3"]}
+  ToggleChannelNoise: {combination: "4", aliases: ["Ctrl+4"]}
   UnmuteAllChannels: {combination: ~}
 
   # view

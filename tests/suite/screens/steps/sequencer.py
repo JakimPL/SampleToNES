@@ -57,6 +57,11 @@ def checked(screen: Screen, group: MenuElements, label: str) -> bool:
     return next(entry.checked for entry in screen.menu.entries(group) if entry.label == label)
 
 
+def sounding_but(*muted: ChannelName) -> List[bool]:
+    """What Playback ▸ Channels marks while exactly ``muted`` are silenced, in channel order."""
+    return [channel not in muted for channel in ChannelName.items()]
+
+
 def channels_sounding(screen: Screen) -> List[bool]:
     """Which channels Playback ▸ Channels marks as sounding, in channel order."""
     return [
