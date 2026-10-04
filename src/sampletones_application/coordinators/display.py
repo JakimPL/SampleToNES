@@ -28,9 +28,10 @@ class DisplayCoordinator:
     countdown that returns a window mode nobody confirmed.
 
     A change reaches the screen the moment it is made, so a user judges it by looking at it, while
-    the session keeps the values the dialog opened with until OK commits them. Cancel re-applies
-    that snapshot, asking first when there is something to lose, and a run that ends while the
-    dialog stands puts it back the same way before the session is written.
+    the session keeps the values the dialog opened with until OK commits them. Cancel puts back the
+    display the dialog opened with, a windowed window at its own place and size, asking first when
+    there is something to lose, and a run that ends while the dialog stands puts it back the same
+    way before the session is written.
 
     Changing the window's size, its frame, or fullscreen can leave the window unreadable, so each
     of those arms a countdown over the dialog: keeping it disarms the clock and leaves the change
@@ -93,18 +94,12 @@ class DisplayCoordinator:
         """Puts back the display the dialog opened with when the run ends while it stands, as Cancel does.
 
         The session keeps the opening values until OK, and leaving records the window as it stands, so
-        the window returns to its opening place and size before that record is taken. A fullscreen
-        change reaches DearPyGui's reading of the window on a drawn frame alone, while a place and a
-        size set directly reach it at once, so a window that opened windowed is placed as well.
+        the window returns to its opening place and size before that record is taken.
         """
-        snapshot = self._snapshot
-        placement = self._opening_placement
-        if snapshot is None or placement is None:
+        if self._snapshot is None:
             return
 
         self._discard()
-        if not snapshot.window.fullscreen:
-            self._viewport_manager.place(placement)
 
     def tick(self, delta_time: float) -> None:
         """Advances an armed countdown, restoring the last confirmed window mode when it runs out."""
@@ -208,13 +203,29 @@ class DisplayCoordinator:
         )
 
     def _discard(self) -> None:
-        """Puts back the settings the dialog opened with and closes it."""
+        """Puts back the display the dialog opened with and closes it."""
         self._disarm()
-        snapshot = self._snapshot
-        if snapshot is not None:
-            self._apply(self._require_settings(), snapshot)
-
+        self._restore_opening_display()
         self._close()
+
+    def _restore_opening_display(self) -> None:
+        """Re-applies the settings the dialog opened with, and puts a windowed window back at its own place
+        and size.
+
+        A window sitting at a size of its own opens the dialog on the offered size nearest it, and the
+        placement taken at opening is what carries the size the window had. A place and a size set
+        directly reach DearPyGui's reading of the window at once, while a fullscreen change reaches it
+        on a drawn frame alone, so a window that opened windowed is placed after its settings, and a
+        record of the window taken right after names its opening place and size.
+        """
+        snapshot = self._snapshot
+        placement = self._opening_placement
+        if snapshot is None or placement is None:
+            return
+
+        self._apply(self._require_settings(), snapshot)
+        if not snapshot.window.fullscreen:
+            self._viewport_manager.place(placement)
 
     def _close(self) -> None:
         self._settings = None
