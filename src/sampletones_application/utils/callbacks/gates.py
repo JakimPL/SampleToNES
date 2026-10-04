@@ -61,6 +61,31 @@ def asking(
     return gate
 
 
+def waiting_for_the_screen(
+    unsettled: Callable[[], bool],
+    screen: Wait,
+) -> Gate:
+    """A gate that holds a chain of questions for the screen while any of them has something to ask.
+
+    With nothing unsettled the request goes on at once, whatever holds the screen. Otherwise it waits
+    for the screen, and every guard after the gate reads its state there. A dialog standing as the
+    request was made can change that state, such as Project properties leaving the project unsaved,
+    so a guard with nothing to ask at the request asks once the dialog has left.
+
+    Args:
+        unsettled: Whether any guard after the gate has something to ask about.
+        screen: The wait for the screen, such as the modal line's turn.
+    """
+
+    def gate(proceed: VoidCallback, _decline: VoidCallback) -> None:
+        if unsettled():
+            screen(proceed)
+        else:
+            proceed()
+
+    return gate
+
+
 def _declining_on_failure(
     step: Gate,
     proceed: VoidCallback,

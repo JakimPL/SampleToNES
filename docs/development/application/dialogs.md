@@ -59,9 +59,12 @@ the line.
 **A question reads what it asks about once the screen is free for it.** A guard with something to ask
 takes a turn in the line, and reads its state again when the line reaches that turn. The conversation that
 held the screen has settled what it changes by then. An exit asked for while Close project asks therefore
-finds the project Discard closed, and asks nothing about it. A guard with nothing to ask lets the request
-through at once, whatever holds the screen, so closing the window over a dialog leaves at once when nothing
-is unsaved. A turn that opens no question lets the line go on to the next window in the same frame.
+finds the project Discard closed, and asks nothing about it. A chain of several guards, such as the exit's,
+waits for the screen as a whole while any of them has something to ask. Every guard then reads its state on
+the free screen, so a project that Project properties left unsaved is asked about, though it was clean when
+the window was closed. A request with nothing to ask goes on at once, whatever holds the screen, so closing
+the window over a dialog leaves at once when nothing is unsaved. A turn that opens no question lets the line
+go on to the next window in the same frame.
 
 `ModalQueue` (`utils/gui/modal_queue.py`) keeps the line. `GUIWindow.show` is the only way a window enters
 it. A guard takes its turn through the `when_free` of the `DialogsRenderer` it was given, which `asking`

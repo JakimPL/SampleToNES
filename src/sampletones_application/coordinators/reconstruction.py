@@ -130,12 +130,13 @@ class ReconstructionCoordinator:
     def is_saveable(self) -> bool:
         return self._reconstruction_manager.is_file_backed
 
-    def _requires_save_confirmation(self) -> bool:
-        """Reports pending edits that a save prompt can resolve.
+    def is_unsaved_standalone(self) -> bool:
+        """Whether the open document has unsaved changes that a save prompt can resolve.
 
         A prompt is warranted only for a standalone reconstruction with unsaved changes. A
         project sample has no file of its own, and its edits belong to the project — closing or
-        replacing it loses nothing, so it needs no prompt.
+        replacing it loses nothing, so it needs no prompt. This is what every save prompt of the
+        document reads, the exit's included.
         """
         return self.is_unsaved() and not self._reconstruction_manager.is_project_sample
 
@@ -255,7 +256,7 @@ class ReconstructionCoordinator:
         the question leads the loading's conversation.
         """
         asking(
-            self._requires_save_confirmation,
+            self.is_unsaved_standalone,
             partial(self._ask_before_loading_converted, filepath),
             self._dialogs.when_free,
         )(proceed, decline)
@@ -607,7 +608,7 @@ class ReconstructionCoordinator:
                 decline=decline,
             )
 
-        asking(self._requires_save_confirmation, ask, self._dialogs.when_free)(proceed, decline)
+        asking(self.is_unsaved_standalone, ask, self._dialogs.when_free)(proceed, decline)
 
     def _offer_save(
         self,

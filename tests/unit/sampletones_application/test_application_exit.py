@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from typing import Final, Iterator, List, Optional, Tuple
-from unittest.mock import MagicMock, patch
+from typing import Callable, Final, Iterator, List, Optional, Tuple
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
@@ -12,7 +12,7 @@ from sampletones_shared.types.callback import VoidCallback
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.frames import Frames, held_frames
-from tests.suite.questions import OnScreenDocument
+from tests.suite.questions import OnScreenDocument, dialogs_on_the_line
 
 __all__ = ["held_frames"]
 
@@ -24,10 +24,15 @@ OWNERS: Final[Tuple[str, ...]] = (PROJECT, RECONSTRUCTION, CONVERSION, LIBRARY)
 CLOSE: Final[str] = "close"
 EXIT: Final[str] = "exit"
 JOB_REPORT: Final[str] = "job report"
+PROJECT_PROPERTIES: Final[str] = "project properties"
 
 
 class Owner:
-    """One owner of something the exit asks about, answering the way a real prompt would."""
+    """One owner of something the exit asks about, answering the way a real prompt would.
+
+    It stands in for each of the four owners, so it answers each one's reading of whether it has
+    something to ask by whether it is unfinished.
+    """
 
     def __init__(self, name: str, asked: List[str]) -> None:
         self.name = name
@@ -53,6 +58,19 @@ class Owner:
         self.editing = False
         for gesture in gestures:
             gesture()
+
+    @property
+    def is_unsaved(self) -> bool:
+        return self.unfinished
+
+    def is_unsaved_standalone(self) -> bool:
+        return self.unfinished
+
+    def is_converter_active(self) -> bool:
+        return self.unfinished
+
+    def is_library_generating(self) -> bool:
+        return self.unfinished
 
     def guard_exit(self, proceed: VoidCallback, decline: VoidCallback) -> None:
         if not self.unfinished:
@@ -93,6 +111,7 @@ class Exiting:
         self.application._reconstruction_coordinator = self.owners[RECONSTRUCTION]
         self.application._main_tab = self.owners[CONVERSION]
         self.application._instructions_tab = self.owners[LIBRARY]
+        self.application.dialogs = dialogs_on_the_line()
         self.exit = MagicMock()
         self.application._exit_application = self.exit
         self.application._exiting = self.application._exit_flight()
@@ -307,6 +326,11 @@ class LeavingOverAQuestion:
         self.application._main_tab.guard_exit.side_effect = self.documents[CONVERSION].guard(EXIT)
         self.application._instructions_tab = MagicMock()
         self.application._instructions_tab.guard_exit.side_effect = self.documents[LIBRARY].guard(EXIT)
+        type(project).is_unsaved = PropertyMock(side_effect=self.unfinished(PROJECT))
+        reconstruction.is_unsaved_standalone.side_effect = self.unfinished(RECONSTRUCTION)
+        self.application._main_tab.is_converter_active.side_effect = self.unfinished(CONVERSION)
+        self.application._instructions_tab.is_library_generating.side_effect = self.unfinished(LIBRARY)
+        self.application.dialogs = dialogs_on_the_line()
         self.exit = MagicMock()
         self.application._exit_application = self.exit
         self.leave = self.application._exit_flight()
@@ -317,6 +341,10 @@ class LeavingOverAQuestion:
 
     def close(self, name: str) -> LatestRequestFlight[[]]:
         return self.closing[name]
+
+    def unfinished(self, name: str) -> Callable[[], bool]:
+        """The owner's reading of whether it has something to ask, taken when the application reads it."""
+        return lambda: self.documents[name].unfinished
 
 
 @pytest.fixture(name="leaving")
@@ -436,6 +464,69 @@ class TestAnExitAskedWhileAWindowStands:
 
         assert leaving.asked == [f"{CONVERSION} {EXIT}"]
         leaving.exit.assert_not_called()
+
+
+class TestAnExitAskedWhileAnEditingDialogStands:
+    """A dialog standing as the window is closed can leave something unsaved, so every owner reads what it holds
+    once the dialog has left.
+
+    The reported case: Project properties stands over a clean project and an unsaved reconstruction, the window
+    is closed, and OK changes the title. The exit then asks about the project before the reconstruction.
+    """
+
+    @pytest.fixture(name="edited")
+    def edited_fixture(self, leaving: LeavingOverAQuestion, held_frames: Frames) -> LeavingOverAQuestion:
+        leaving.documents[RECONSTRUCTION].unfinished = True
+        ModalQueue.open(PROJECT_PROPERTIES, lambda: None)
+        leaving.leave()
+
+        leaving.documents[PROJECT].unfinished = True
+        ModalQueue.leave(PROJECT_PROPERTIES)
+        held_frames.render()
+        return leaving
+
+    def test_the_project_the_dialog_left_unsaved_is_asked_about_first(self, edited: LeavingOverAQuestion) -> None:
+        assert edited.asked == [f"{PROJECT} {EXIT}"]
+        edited.exit.assert_not_called()
+
+    def test_the_exit_leaves_once_both_are_answered(
+        self,
+        edited: LeavingOverAQuestion,
+        held_frames: Frames,
+    ) -> None:
+        edited.documents[PROJECT].go_on()
+        held_frames.render()
+        edited.documents[RECONSTRUCTION].go_on()
+        held_frames.render()
+
+        assert edited.asked == [f"{PROJECT} {EXIT}", f"{RECONSTRUCTION} {EXIT}"]
+        edited.exit.assert_called_once_with()
+
+    def test_cancel_on_the_project_keeps_the_application_open(
+        self,
+        edited: LeavingOverAQuestion,
+        held_frames: Frames,
+    ) -> None:
+        edited.documents[PROJECT].cancel()
+        held_frames.render()
+
+        assert edited.asked == [f"{PROJECT} {EXIT}"]
+        edited.exit.assert_not_called()
+        assert ModalQueue.snapshot().is_settled
+
+    def test_a_dialog_that_changed_nothing_leaves_the_question_to_the_reconstruction(
+        self,
+        leaving: LeavingOverAQuestion,
+        held_frames: Frames,
+    ) -> None:
+        leaving.documents[RECONSTRUCTION].unfinished = True
+        ModalQueue.open(PROJECT_PROPERTIES, lambda: None)
+        leaving.leave()
+
+        ModalQueue.leave(PROJECT_PROPERTIES)
+        held_frames.render()
+
+        assert leaving.asked == [f"{RECONSTRUCTION} {EXIT}"]
 
 
 class TestTheFrameTheExitIsDecidedIn:

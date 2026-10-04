@@ -13,6 +13,7 @@ from sampletones_application.utils.callbacks.gates import (
     gated,
     pass_gates,
     waiting,
+    waiting_for_the_screen,
 )
 from sampletones_shared.types.callback import VoidCallback
 from tests.suite.base import BaseTestSuite
@@ -309,6 +310,62 @@ class TestAQuestionAskedOnTheScreen:
             screen.release()
 
         assert reached == [ARRIVED]
+
+
+class TestAChainWaitingForTheScreen:
+    """A chain of questions waits for the screen while any guard in it has something to ask, and every guard
+    reads its state once the screen is free."""
+
+    @pytest.fixture(name="screen")
+    def screen_fixture(self) -> HeldWait:
+        return HeldWait()
+
+    def test_nothing_to_ask_goes_on_while_the_screen_is_taken(self, screen: HeldWait, reached: List[str]) -> None:
+        pass_gates(
+            (waiting_for_the_screen(lambda: False, screen), Guard("clean", reached, unfinished=False)),
+            lambda: reached.append(ARRIVED),
+            lambda: reached.append(DECLINED),
+        )
+
+        assert reached == ["clean", ARRIVED]
+
+    def test_something_to_ask_holds_every_guard_until_the_screen_is_free(
+        self,
+        screen: HeldWait,
+        reached: List[str],
+    ) -> None:
+        pass_gates(
+            (
+                waiting_for_the_screen(lambda: True, screen),
+                Guard("clean", reached, unfinished=False),
+                Guard("unfinished", reached, unfinished=True),
+            ),
+            lambda: reached.append(ARRIVED),
+            lambda: reached.append(DECLINED),
+        )
+
+        assert reached == []
+
+    def test_a_guard_clean_at_the_request_reads_its_state_on_the_free_screen(
+        self,
+        screen: HeldWait,
+        reached: List[str],
+    ) -> None:
+        """A dialog standing as the request was made left the first guard's thing unfinished, so it asks first."""
+        clean = Guard("clean", reached, unfinished=False)
+        unfinished = Guard("unfinished", reached, unfinished=True)
+        pass_gates(
+            (waiting_for_the_screen(lambda: clean.unfinished or unfinished.unfinished, screen), clean, unfinished),
+            lambda: reached.append(ARRIVED),
+            lambda: reached.append(DECLINED),
+        )
+
+        clean.unfinished = True
+        screen.release()
+
+        assert reached == ["clean"]
+        assert clean.is_asking
+        assert not unfinished.is_asking
 
 
 class RaisingOnce:
