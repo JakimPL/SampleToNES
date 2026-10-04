@@ -56,12 +56,6 @@ TAG_MAIN_EXPLORER_DIALOG_NOTHING_BELOW = TagName(
     Widget.DIALOG,
     "nothing_below",
 )
-TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING = TagName(
-    Page.MAIN,
-    Panel.EXPLORER,
-    Widget.DIALOG,
-    "converter_running",
-)
 TAG_MAIN_EXPLORER_BUTTON_REFRESH = TagName(
     Page.MAIN,
     Panel.EXPLORER,
@@ -324,6 +318,12 @@ TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS = TagName(
     Panel.CONVERTER,
     Widget.DIALOG,
     "discard_stems",
+)
+TAG_MAIN_CONVERTER_DIALOG_CONVERSION_RUNNING = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.DIALOG,
+    "conversion_running",
 )
 TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET = TagName(
     Page.MAIN,

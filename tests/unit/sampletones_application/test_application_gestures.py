@@ -23,6 +23,7 @@ COLLABORATORS: Final[Tuple[str, ...]] = (
     "_config_coordinator",
     "_display_coordinator",
     "_keybindings_coordinator",
+    "_main_tab",
     "_shell",
 )
 OWN_GESTURES: Final[Tuple[str, ...]] = (

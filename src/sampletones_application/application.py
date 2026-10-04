@@ -146,12 +146,6 @@ from sampletones_application.utils.callbacks.gates import (
     waiting,
 )
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.utils.file_dialogs.api import (
-    open_file_dialog,
-    select_directory_dialog,
-)
-from sampletones_application.utils.file_dialogs.filter import FileFilter
-from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.frame_limiter import FrameLimiter
 from sampletones_application.utils.gui.callbacks import run_held_callbacks
@@ -200,7 +194,6 @@ from sampletones_shared.application import (
 )
 from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.logger import logger
-from sampletones_shared.paths.extensions import EXT_FILES_AUDIO
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 
@@ -773,8 +766,8 @@ class Application:
             exit=self._exiting,
             undo=self._sequencer_tab.undo,
             redo=self._sequencer_tab.redo,
-            reconstruct_file=self._reconstruct_file_dialog,
-            reconstruct_directory=self._reconstruct_directory_dialog,
+            reconstruct_file=self._main_tab.reconstruct_file_dialog,
+            reconstruct_directory=self._main_tab.reconstruct_directory_dialog,
             load_generation_settings=self._config_coordinator.load_dialog,
             save_generation_settings=self._config_coordinator.save_dialog,
             open_reconstruction=self._reconstruction_opening,
@@ -1088,36 +1081,6 @@ class Application:
         )
         self._update_menu()
 
-    def _reconstruct_file_dialog(self) -> None:
-        if self._is_operation_active():
-            logger.warning("A conversion or library generation is already in progress; cannot start a new one")
-            return
-
-        filepath = open_file_dialog(
-            title=self.language_manager["global.dialog.title.reconstruct_file"],
-            initial_directory=self.session_manager.get_audio_input_path(),
-            filters=(
-                FileFilter.for_extensions(
-                    self.language_manager["global.dialog.filter.audio"],
-                    EXT_FILES_AUDIO,
-                ),
-            ),
-        )
-
-        self._handle_reconstruct_file(filepath)
-
-    def _reconstruct_directory_dialog(self) -> None:
-        if self._is_operation_active():
-            logger.warning("A conversion or library generation is already in progress; cannot start a new one")
-            return
-
-        directory = select_directory_dialog(
-            title=self.language_manager["global.dialog.title.reconstruct_directory"],
-            initial_directory=self.session_manager.get_audio_input_path(),
-        )
-
-        self._handle_reconstruct_directory(directory)
-
     def _is_converter_panel_visible(self) -> bool:
         if self._main_tab is None:
             return False
@@ -1194,19 +1157,11 @@ class Application:
         self._set_current_tab(Tab.INSTRUCTIONS)
         self._update_menu()
 
-    @ignore_none_path
-    def _handle_reconstruct_file(self, filepath: Path) -> None:
-        self._main_tab.request_reconstruct_file(filepath)
-
     def _reconstruct_directory(self, directory_path: Path) -> None:
         self._main_tab.take_up_path(directory_path)
         self.session_manager.set_audio_input_path(directory_path)
         self._set_current_tab(Tab.MAIN)
         self._update_menu()
-
-    @ignore_none_path
-    def _handle_reconstruct_directory(self, directory_path: Path) -> None:
-        self._main_tab.request_reconstruct_directory(directory_path)
 
     def _on_playback_error(self, exception: Exception) -> None:
         """Reports a playback the device refused, on the render thread whichever thread heard of it.
