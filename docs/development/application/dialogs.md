@@ -53,8 +53,8 @@ The screen therefore belongs to one conversation at a time. A conversation is a 
 hands the screen to while it steps aside, and the ones its answers raise. A modal asked for from anywhere
 else, such as the report of a job that finished, waits in line. It opens once the conversation holding the
 screen has ended, a frame after its last window left, and the line opens in the order it was asked. A dialog
-asked for again while it waits keeps its place with the newer request, and one hidden while it waits leaves
-the line.
+asked for again while it waits takes one place, at the back of the line, with the newer request. One hidden
+while it waits leaves the line.
 
 **A question reads what it asks about once the screen is free for it.** A guard with something to ask
 takes a turn in the line, and reads its state again when the line reaches that turn. The conversation that

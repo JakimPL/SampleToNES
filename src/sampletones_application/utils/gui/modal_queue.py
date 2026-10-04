@@ -69,8 +69,8 @@ class ModalQueue(metaclass=NonInstantiableMeta):
     the screen to while it steps aside, and the ones its answers raise. A modal asked for from
     anywhere else, such as the report of a job that finished, takes its place in line and opens once
     the conversation holding the screen has ended, a frame after its last window left. A window asked
-    for again while it waits keeps its place in line with the newer request. The line is one for the
-    process, as DearPyGui's context is.
+    for again while it waits takes one place, at the back of the line, with the newer request. The line
+    is one for the process, as DearPyGui's context is.
 
     A guard with something to ask takes a turn in the line, so it reads what it asks about once the
     screen is free for its question. The conversation that held the screen has settled what it
