@@ -551,8 +551,7 @@ class Application:
             hooks=MainTabHooks(
                 is_operation_active=self._is_operation_active,
                 on_busy_state_changed=self._refresh_busy_state,
-                on_reconstruct_file=self._reconstruct_file,
-                on_reconstruct_directory=self._reconstruct_directory,
+                on_reconstruct_listed=self._show_reconstruct_listing,
                 on_load_reconstruction=self._reconstruction_opening,
                 on_load_library=self._load_library,
                 on_load_file=self._converted_loading_flight(),
@@ -1145,9 +1144,8 @@ class Application:
         if self._reconstruction_coordinator.check_loaded():
             self._reconstructions_tab.request_export_instruments_dialog(export_format)
 
-    def _reconstruct_file(self, filepath: Path) -> None:
-        self._main_tab.take_up_path(filepath)
-        self.session_manager.set_audio_input_path(filepath.parent)
+    def _show_reconstruct_listing(self) -> None:
+        """Brings the Main tab forward on what a Reconstruct listed, with the menu following it."""
         self._set_current_tab(Tab.MAIN)
         self._update_menu()
 
@@ -1155,12 +1153,6 @@ class Application:
         self._instructions_tab.load_library_file(filepath)
         self.config_manager.update_gui()
         self._set_current_tab(Tab.INSTRUCTIONS)
-        self._update_menu()
-
-    def _reconstruct_directory(self, directory_path: Path) -> None:
-        self._main_tab.take_up_path(directory_path)
-        self.session_manager.set_audio_input_path(directory_path)
-        self._set_current_tab(Tab.MAIN)
         self._update_menu()
 
     def _on_playback_error(self, exception: Exception) -> None:

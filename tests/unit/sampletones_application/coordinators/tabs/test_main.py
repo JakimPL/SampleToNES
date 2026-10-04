@@ -49,8 +49,7 @@ def _hooks(*, operation_active: bool) -> MainTabHooks:
     return MainTabHooks(
         is_operation_active=lambda: operation_active,
         on_busy_state_changed=MagicMock(),
-        on_reconstruct_file=MagicMock(),
-        on_reconstruct_directory=MagicMock(),
+        on_reconstruct_listed=MagicMock(),
         on_load_reconstruction=MagicMock(),
         on_load_library=MagicMock(),
         on_load_file=MagicMock(),
@@ -123,22 +122,22 @@ class TestEveryDoorToTheList(BaseTestSuite):
         TestCase(
             label="Reconstruct file... in the menu",
             door=_menu_reconstruct_file,
-            reached=lambda coordinator: coordinator._hooks.on_reconstruct_file.called,
+            reached=lambda coordinator: coordinator._hooks.on_reconstruct_listed.called,
         ),
         TestCase(
             label="Reconstruct folder... in the menu",
             door=_menu_reconstruct_directory,
-            reached=lambda coordinator: coordinator._hooks.on_reconstruct_directory.called,
+            reached=lambda coordinator: coordinator._hooks.on_reconstruct_listed.called,
         ),
         TestCase(
             label="Reconstruct file in the browser",
             door=MainTabCoordinator.request_reconstruct_file,
-            reached=lambda coordinator: coordinator._hooks.on_reconstruct_file.called,
+            reached=lambda coordinator: coordinator._hooks.on_reconstruct_listed.called,
         ),
         TestCase(
             label="Reconstruct directory in the browser",
             door=MainTabCoordinator.request_reconstruct_directory,
-            reached=lambda coordinator: coordinator._hooks.on_reconstruct_directory.called,
+            reached=lambda coordinator: coordinator._hooks.on_reconstruct_listed.called,
         ),
         TestCase(
             label="Add as stem, Ctrl-click or double-click on a recording",
@@ -208,7 +207,7 @@ class TestAGestureLandingAfterARunStarted:
 
         coordinator._dialogs.show_confirmation.call_args.args[3]()
 
-        assert (_refused(coordinator), coordinator._hooks.on_reconstruct_file.called) == (True, False)
+        assert (_refused(coordinator), coordinator._hooks.on_reconstruct_listed.called) == (True, False)
 
     def test_a_mix_picked_after_a_run_started_changes_nothing(self) -> None:
         coordinator = _stems_coordinator(mixes=True, folder_rows=_rows_holding(MAX_STEM_SOURCES, 1))
@@ -316,6 +315,7 @@ def _stems_coordinator(
     coordinator._hooks = _hooks(operation_active=operation_active)
     coordinator._dialogs = MagicMock()
     coordinator._language_manager = FakeLanguageManager()
+    coordinator._session_manager = MagicMock()
     coordinator._converter_logic = MagicMock()
     coordinator._converter_logic.live = True
     coordinator._converter_logic.mixes = mixes
@@ -503,7 +503,9 @@ class TestReconstructListsWhatItNames:
     """A Reconstruct lists what it names to convert one apiece, asking first only about a mix it replaces."""
 
     def _coordinator(self, *, mixes: bool, gathered: Tuple[Path, ...] = ()) -> MainTabCoordinator:
-        return _stems_coordinator(mixes=mixes, gathered=gathered)
+        coordinator = _stems_coordinator(mixes=mixes, gathered=gathered)
+        coordinator._folder_scan = MagicMock()
+        return coordinator
 
     @pytest.mark.parametrize("gathered", [(), (Path("/audio/a.wav"),)])
     def test_a_list_writing_one_apiece_takes_it_straight_away(self, tmp_path: Path, gathered: Tuple[Path, ...]) -> None:
@@ -511,15 +513,31 @@ class TestReconstructListsWhatItNames:
 
         coordinator.request_reconstruct_file(tmp_path / "a.wav")
 
-        coordinator._hooks.on_reconstruct_file.assert_called_once_with(tmp_path / "a.wav")
+        coordinator._converter_logic.take_up_recording.assert_called_once_with(tmp_path / "a.wav")
+        coordinator._hooks.on_reconstruct_listed.assert_called_once_with()
         coordinator._dialogs.show_confirmation.assert_not_called()
+
+    def test_a_recording_listed_leaves_its_folder_for_the_next_reconstruct_dialog(self, tmp_path: Path) -> None:
+        coordinator = self._coordinator(mixes=False)
+
+        coordinator.request_reconstruct_file(tmp_path / "a.wav")
+
+        coordinator._session_manager.set_audio_input_path.assert_called_once_with(tmp_path)
+
+    def test_a_folder_listed_is_left_for_the_next_reconstruct_dialog(self, tmp_path: Path) -> None:
+        coordinator = self._coordinator(mixes=False)
+
+        coordinator.request_reconstruct_directory(tmp_path)
+
+        coordinator._session_manager.set_audio_input_path.assert_called_once_with(tmp_path)
 
     def test_an_empty_mix_gives_way_straight_away(self, tmp_path: Path) -> None:
         coordinator = self._coordinator(mixes=True)
 
         coordinator.request_reconstruct_directory(tmp_path)
 
-        coordinator._hooks.on_reconstruct_directory.assert_called_once_with(tmp_path)
+        coordinator._folder_scan.start.assert_called_once_with(tmp_path, coordinator._take_up_read)
+        coordinator._hooks.on_reconstruct_listed.assert_called_once_with()
         coordinator._dialogs.show_confirmation.assert_not_called()
 
     def test_a_mix_holding_recordings_is_asked_about_first(self, tmp_path: Path) -> None:
@@ -528,8 +546,7 @@ class TestReconstructListsWhatItNames:
         coordinator.request_reconstruct_file(tmp_path / "b.wav")
         coordinator.request_reconstruct_directory(tmp_path)
 
-        coordinator._hooks.on_reconstruct_file.assert_not_called()
-        coordinator._hooks.on_reconstruct_directory.assert_not_called()
+        coordinator._hooks.on_reconstruct_listed.assert_not_called()
         prompts = [call.args[1] for call in coordinator._dialogs.show_confirmation.call_args_list]
         assert prompts == [DISCARD_STEMS_PROMPT_KEY, DISCARD_STEMS_PROMPT_KEY]
 
@@ -539,7 +556,7 @@ class TestReconstructListsWhatItNames:
         coordinator.request_reconstruct_directory(tmp_path)
         coordinator._dialogs.show_confirmation.call_args.args[3]()
 
-        coordinator._hooks.on_reconstruct_directory.assert_called_once_with(tmp_path)
+        coordinator._folder_scan.start.assert_called_once_with(tmp_path, coordinator._take_up_read)
 
     def test_declining_keeps_the_mix(self, tmp_path: Path) -> None:
         coordinator = self._coordinator(mixes=True, gathered=(Path("/audio/a.wav"),))
@@ -548,7 +565,7 @@ class TestReconstructListsWhatItNames:
         coordinator._dialogs.show_confirmation.call_args.kwargs["on_cancel"]()
 
         coordinator._converter_logic.set_output.assert_not_called()
-        coordinator._hooks.on_reconstruct_directory.assert_not_called()
+        coordinator._hooks.on_reconstruct_listed.assert_not_called()
 
 
 class TestTakingUpWhatAReconstructNamed:
@@ -557,7 +574,7 @@ class TestTakingUpWhatAReconstructNamed:
     def test_a_recording_is_listed(self, tmp_path: Path) -> None:
         coordinator = _stems_coordinator(mixes=False)
 
-        coordinator.take_up_path(tmp_path / "take.wav")
+        coordinator._take_up_path(tmp_path / "take.wav")
 
         coordinator._converter_logic.take_up_recording.assert_called_once_with(tmp_path / "take.wav")
         coordinator._converter_logic.start_conversion.assert_not_called()
@@ -566,7 +583,7 @@ class TestTakingUpWhatAReconstructNamed:
         coordinator = _stems_coordinator(mixes=False)
         root = _folder_of(tmp_path, 2)
 
-        settled(lambda: coordinator.take_up_path(root))
+        settled(lambda: coordinator._take_up_path(root))
 
         listed, found = coordinator._converter_logic.take_up_folder.call_args.args
         assert listed == root
@@ -577,7 +594,7 @@ class TestTakingUpWhatAReconstructNamed:
         coordinator = _stems_coordinator(mixes=False)
         root = _folder_of(tmp_path, 0)
 
-        settled(lambda: coordinator.take_up_path(root))
+        settled(lambda: coordinator._take_up_path(root))
 
         coordinator._converter_logic.take_up_folder.assert_not_called()
         assert coordinator._dialogs.show_info.call_args.args[1] == NOTHING_BELOW_KEY
