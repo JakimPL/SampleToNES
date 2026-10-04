@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Final, List, Optional, Sequence
+from typing import Callable, Final, List, Optional, Sequence, Tuple
 
 import pytest
 
@@ -180,6 +180,16 @@ class RaisingOnce:
         proceed()
 
 
+class Answers:
+    """A gate that asks each time it is reached and keeps every pair of answers it was handed, stale ones included."""
+
+    def __init__(self) -> None:
+        self.handed: List[Tuple[VoidCallback, VoidCallback]] = []
+
+    def __call__(self, proceed: VoidCallback, decline: VoidCallback) -> None:
+        self.handed.append((proceed, decline))
+
+
 def latest_request(gates: Sequence[Gate], arrive: VoidCallback) -> SingleFlight[[]]:
     return LatestRequestFlight(gates, arrive)
 
@@ -302,6 +312,112 @@ class TestEitherFlight(BaseTestSuite):
         with pytest.raises(RuntimeError):
             flight()
         assert reached == ["broken", "broken"]
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_raise_once_the_wait_lets_go_ends_the_flight(self, test_case: TestCase, reached: List[str]) -> None:
+        """The edits landing run the rest of the conversation, and a failure there leaves the gesture to ask again."""
+        wait = HeldWait()
+        flight = test_case.build((waiting(wait), RaisingOnce(reached)), lambda: reached.append(ARRIVED))
+        flight()
+
+        with pytest.raises(RuntimeError):
+            wait.release()
+
+        assert not flight.in_flight
+        flight()
+        assert flight.in_flight
+        wait.release()
+        assert reached == ["broken", "broken", ARRIVED]
+        assert not flight.in_flight
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_raise_once_the_question_is_answered_ends_the_flight(
+        self,
+        test_case: TestCase,
+        guard: Guard,
+        reached: List[str],
+    ) -> None:
+        """An answer runs the rest of the conversation, and a failure there leaves the gesture to ask again."""
+        flight = test_case.build((guard, RaisingOnce(reached)), lambda: reached.append(ARRIVED))
+        flight()
+
+        with pytest.raises(RuntimeError):
+            guard.answer()
+
+        assert not flight.in_flight
+        flight()
+        assert guard.is_asking
+        guard.answer()
+        assert reached == ["question", "broken", "question", "broken", ARRIVED]
+        assert not flight.in_flight
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_stale_answer_going_on_leaves_the_newer_flight_standing(
+        self,
+        test_case: TestCase,
+        reached: List[str],
+    ) -> None:
+        """An answer handed to a conversation that has ended reaches nothing the newer one holds."""
+        answers = Answers()
+        flight = test_case.build((answers,), lambda: reached.append(ARRIVED))
+        flight()
+        stale_proceed, stale_decline = answers.handed[0]
+        stale_decline()
+        flight()
+
+        stale_proceed()
+
+        assert flight.in_flight
+        assert reached == []
+        newer_proceed, _ = answers.handed[1]
+        newer_proceed()
+        assert reached == [ARRIVED]
+        assert not flight.in_flight
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_stale_answer_turning_away_leaves_the_newer_flight_standing(
+        self,
+        test_case: TestCase,
+        reached: List[str],
+    ) -> None:
+        answers = Answers()
+        flight = test_case.build((answers,), lambda: reached.append(ARRIVED))
+        flight()
+        stale_proceed, stale_decline = answers.handed[0]
+        stale_proceed()
+        flight()
+
+        stale_decline()
+
+        assert flight.in_flight
+        newer_proceed, _ = answers.handed[1]
+        newer_proceed()
+        assert reached == [ARRIVED, ARRIVED]
+        assert not flight.in_flight
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_an_arrival_that_asks_again_and_raises_keeps_the_newer_flight(
+        self,
+        test_case: TestCase,
+        reached: List[str],
+    ) -> None:
+        """A gesture whose arrival asks for it again and then fails leaves the question it asked standing."""
+        guard = Guard("question", reached, unfinished=False)
+
+        def arrive() -> None:
+            reached.append(ARRIVED)
+            guard.unfinished = True
+            flight()
+            raise RuntimeError("the arrival failed after asking again")
+
+        flight = test_case.build((guard,), arrive)
+
+        with pytest.raises(RuntimeError):
+            flight()
+
+        assert flight.in_flight
+        assert guard.is_asking
+        assert reached == ["question", ARRIVED, "question"]
 
 
 class TestLatestRequestFlight:

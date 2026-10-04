@@ -66,7 +66,8 @@ opens at once.
 A dialog that closes on its answer leaves the screen first, and the answer runs a frame later as a hand-off
 of its conversation. Whatever the answer raises, such as a question of its own or an error, opens ahead of
 the line. Leaving also releases the dialog's keyboard claim, so a prompt the answer raises holds the
-keyboard alone. `GUIWindow._leave_then` is that step.
+keyboard alone. `GUIWindow._leave_then` is that step. An answer that fails with an error leaves the hand-offs
+after it, and the line, to go on a frame later.
 
 What the answer needs, such as a ticked box or the fields of a form, is read before the dialog leaves. Only
 the first answer runs: a second click reaches a dialog that has already gone.
@@ -87,7 +88,8 @@ stands aside, so nothing waiting in line opens between it and the prompt it rais
 A gesture that asks before it replaces a document, closes one or leaves the application holds one
 conversation at a time. The conversation is the chain of questions the gesture passes, and every way out of
 a question reaches whoever asked it. An answer that goes on lets the request through. Cancel, Escape, the
-title bar's close and a save that failed turn it away. A request therefore always ends in one of the two.
+title bar's close and a save that failed turn it away. So does an error raised anywhere along the chain,
+before a question or after its answer. A request therefore always ends in one of the two.
 
 While a conversation stands, the same gesture asked for again asks nothing, so two closes before the first is
 answered ask once. Once the conversation has ended, the gesture asks again. The span covers the wait for the

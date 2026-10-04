@@ -256,6 +256,40 @@ class TestAConversation:
         assert screen.built == [DIALOG, PROMPT, SECOND]
 
 
+class TestAHandOffThatRaises:
+    """A hand-off that fails leaves the conversation and the line to go on in a coming frame."""
+
+    @staticmethod
+    def broken() -> None:
+        raise RuntimeError("the answer failed")
+
+    def test_the_hand_offs_after_it_run_in_a_coming_frame(self, screen: Screen, held_frames: Frames) -> None:
+        screen.open(FIRST)
+        screen.open(SECOND)
+        ModalQueue.leave(FIRST)
+        ModalQueue.hand_off(self.broken)
+        ModalQueue.hand_off(lambda: screen.open(PROMPT))
+
+        with pytest.raises(RuntimeError):
+            held_frames.render()
+        assert screen.built == [FIRST]
+        held_frames.render()
+
+        assert screen.built == [FIRST, PROMPT]
+
+    def test_the_line_moves_on_behind_it(self, screen: Screen, held_frames: Frames) -> None:
+        screen.open(FIRST)
+        screen.open(SECOND)
+        ModalQueue.leave(FIRST)
+        ModalQueue.hand_off(self.broken)
+
+        with pytest.raises(RuntimeError):
+            held_frames.render()
+        held_frames.render()
+
+        assert screen.built == [FIRST, SECOND]
+
+
 class TestTheSnapshot:
     """A reader outside the line sees which window stands, which wait, and whether the line moves."""
 

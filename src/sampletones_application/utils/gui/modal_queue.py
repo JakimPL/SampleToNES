@@ -204,13 +204,23 @@ class ModalQueue(metaclass=NonInstantiableMeta):
 
     @classmethod
     def _run_hand_offs(cls) -> None:
-        hand_offs, cls._hand_offs = cls._hand_offs, []
+        """Runs the hand-offs due, in the order they were handed.
+
+        A hand-off that raises keeps the ones after it for a coming frame, and the line goes on from
+        there, so one failing answer leaves the screen to the rest of the conversation and the line.
+        """
+        hand_offs, cls._hand_offs = deque(cls._hand_offs), []
         cls._handing_off = True
+        ran = False
         try:
-            for continuation in hand_offs:
-                continuation()
+            while hand_offs:
+                hand_offs.popleft()()
+            ran = True
         finally:
             cls._handing_off = False
+            if not ran:
+                cls._hand_offs = list(hand_offs) + cls._hand_offs
+                cls._take_a_turn()
 
     @classmethod
     def _bring_back(cls) -> bool:
