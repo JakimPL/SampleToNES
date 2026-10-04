@@ -91,6 +91,7 @@ class AudioDeviceManager(CallbackMixin):
         self._active_priority: int = 0
         self._paused: bool = False
         self._stop: bool = False
+        self._generation: int = 0
 
         self._playback_thread: Optional[threading.Thread] = None
         self._stream_owners: Dict[pyaudio.Stream, VoidCallback] = {}
@@ -629,11 +630,13 @@ class AudioDeviceManager(CallbackMixin):
             self._active_priority = priority
             self._paused = False
             self._stop = False
+            self._generation += 1
+            generation = self._generation
 
         self._resume_event.set()
         self._playback_thread = threading.Thread(
             target=self._playback_worker,
-            kwargs={"output": output, "update": update},
+            kwargs={"output": output, "update": update, "generation": generation},
             daemon=True,
             name="AudioPlaybackWorker",
         )
@@ -670,22 +673,29 @@ class AudioDeviceManager(CallbackMixin):
             self._position = min(self._position, len(self._audio_data))
             return True
 
-    def _playback_loop(self, stream: pyaudio.Stream, update: bool) -> None:
+    def _playback_loop(
+        self,
+        stream: pyaudio.Stream,
+        update: bool,
+        generation: int,
+    ) -> None:
         """
         Internal audio playback loop.
 
         Continuously reads audio chunks and writes them to the stream until stopped,
-        paused, or audio ends. Respects pause state and stop flag.
+        paused, or audio ends. Respects pause state and stop flag, and ends once a newer
+        playback has taken the generation over.
 
         Args:
             stream: PyAudio stream to write audio data to.
             update: If True, invoke position callback after each chunk.
+            generation: The playback this loop plays.
         """
         while True:
             self._resume_event.wait(timeout=0.1)
 
             with self._lock:
-                if self._stop or self._audio_data is None:
+                if self._stop or self._audio_data is None or generation != self._generation:
                     break
 
                 if self._paused:
@@ -710,6 +720,7 @@ class AudioDeviceManager(CallbackMixin):
         *,
         output: CurrentDevice,
         update: bool,
+        generation: int,
     ) -> None:
         """
         Playback thread worker function.
@@ -718,32 +729,54 @@ class AudioDeviceManager(CallbackMixin):
         refuses to open leaves the playback idle, as a finished one does, before the error callback
         reports it, so whoever follows the playback reads it stopped.
 
+        A stop waits a while for the worker and then lets it go, so a device slow to open can bring
+        the worker back after a newer play has begun. The worker acts for its own ``generation``
+        alone: a refusal it meets then is left unreported, a stream it opens then closes unplayed,
+        and the newer playback stands as it was.
+
         Args:
             output: The device and rate in force when the playback was asked for.
             update: If True, invoke position callback during playback.
+            generation: The playback this worker plays, stamped by :meth:`play`.
         """
-        assert self._pyaudio is not None, "PyAudio instance is not initialized"
         logger.debug(f"Starting playback: device_index={output.device_index}, sample_rate={output.sample_rate}")
         try:
-            stream = self._pyaudio.open(
-                format=FORMAT,
-                channels=CHANNELS,
-                rate=output.sample_rate,
-                output=True,
-                output_device_index=output.device_index,
+            stream = self._open_stream(
+                device_index=output.device_index,
+                sample_rate=output.sample_rate,
+                frames_per_buffer=pyaudio.paFramesPerBufferUnspecified,
             )
-        except OSError as exception:
-            self._reset(update=update)
-            playback_error = PlaybackError(f"Failed to open audio stream: {exception}")
-            self.call(self.on_playback_error, playback_error)
+        except PlaybackError as playback_error:
+            if self._reset_generation(generation, update=update):
+                self.call(self.on_playback_error, playback_error)
             return
 
         try:
-            self._playback_loop(stream, update)
+            if self._is_current(generation):
+                self._playback_loop(stream, update, generation)
         finally:
             stream.stop_stream()
             stream.close()
-            self._reset(update=update)
+            self._reset_generation(generation, update=update)
+
+    def _is_current(self, generation: int) -> bool:
+        with self._lock:
+            return generation == self._generation
+
+    def _reset_generation(self, generation: int, *, update: bool) -> bool:
+        """Resets playback state to idle while ``generation`` is the playback in force.
+
+        Returns:
+            bool: Whether ``generation`` was in force, and the state was reset.
+        """
+        with self._lock:
+            if generation != self._generation:
+                return False
+
+            self._clear_playback()
+
+        self._report_the_start(update=update)
+        return True
 
     def _reset(self, *, update: bool = True) -> None:
         """
@@ -756,12 +789,19 @@ class AudioDeviceManager(CallbackMixin):
             update: If True, invoke position callback with 0.
         """
         with self._lock:
-            self._playing = False
-            self._paused = False
-            self._position = 0
-            self._audio_data = None
-            self._output_owner = None
+            self._clear_playback()
 
+        self._report_the_start(update=update)
+
+    def _clear_playback(self) -> None:
+        """Puts the playback state at idle. The caller holds the lock."""
+        self._playing = False
+        self._paused = False
+        self._position = 0
+        self._audio_data = None
+        self._output_owner = None
+
+    def _report_the_start(self, *, update: bool) -> None:
         if update and self._position_callback is not None:
             self.call(self._position_callback, 0)
 
@@ -873,7 +913,7 @@ class AudioDeviceManager(CallbackMixin):
             release: Winds the caller's writing down; returns once the stream is handed back.
 
         Raises:
-            PlaybackError: If PyAudio is not initialized.
+            PlaybackError: If PyAudio is not initialized, or the device refuses to open the stream.
             NoOutputDeviceError: If no output device is in force.
         """
         if self._pyaudio is None:
@@ -881,18 +921,43 @@ class AudioDeviceManager(CallbackMixin):
 
         output = self.require_output()
         self.stop()
-        stream = self._pyaudio.open(
-            format=FORMAT,
-            channels=CHANNELS,
-            rate=sample_rate,
-            output=True,
-            output_device_index=output.device_index,
+        stream = self._open_stream(
+            device_index=output.device_index,
+            sample_rate=sample_rate,
             frames_per_buffer=buffer_size,
         )
         with self._lock:
             self._stream_owners[stream] = release
 
         return stream
+
+    def _open_stream(
+        self,
+        *,
+        device_index: int,
+        sample_rate: int,
+        frames_per_buffer: int,
+    ) -> pyaudio.Stream:
+        """Opens an output stream on the device, naming a refusal the way every playback reports it.
+
+        Both kinds of playback open their stream here, the one this manager plays and the one it hands
+        out, so a reader told of a refused stream reads the same words whichever source asked.
+
+        Raises:
+            PlaybackError: If the device refuses to open the stream.
+        """
+        assert self._pyaudio is not None, "PyAudio instance is not initialized"
+        try:
+            return self._pyaudio.open(
+                format=FORMAT,
+                channels=CHANNELS,
+                rate=sample_rate,
+                output=True,
+                output_device_index=device_index,
+                frames_per_buffer=frames_per_buffer,
+            )
+        except OSError as exception:
+            raise PlaybackError(f"Failed to open audio stream: {exception}") from exception
 
     def close_output_stream(self, stream: pyaudio.Stream) -> None:
         """Take a handed-out stream back and close it.

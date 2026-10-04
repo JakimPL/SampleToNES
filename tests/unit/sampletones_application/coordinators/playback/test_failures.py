@@ -13,6 +13,7 @@ LANGUAGE_MANAGER: Final[LanguageManager] = LanguageManager(LANG_EN)
 NO_OUTPUT_MESSAGE: Final[str] = "global.dialog.message.no_audio_output"
 NO_OUTPUT_TITLE: Final[str] = "global.dialog.title.no_audio_output"
 ERROR_MESSAGE: Final[str] = "playback failed"
+PLAYING_FAILURE_MESSAGE: Final[str] = "global.dialog.message.audio_playback_error"
 
 
 @pytest.fixture(name="dialogs")
@@ -64,3 +65,28 @@ class TestOtherFailures:
 
         dialogs.show_error.assert_called_once_with(exception, ERROR_MESSAGE)
         dialogs.show_info.assert_not_called()
+
+
+class TestAFailureWhilePlaying:
+    """A playback that fails on the thread playing it reads the same whichever source played it."""
+
+    def test_a_refused_stream_reads_as_an_error_with_the_playback_line(
+        self,
+        presenter: PlaybackFailurePresenter,
+        dialogs: MagicMock,
+    ) -> None:
+        refusal = PlaybackError("Failed to open audio stream: device busy")
+
+        presenter.present_playing_failure(refusal)
+
+        dialogs.show_error.assert_called_once_with(refusal, LANGUAGE_MANAGER[PLAYING_FAILURE_MESSAGE])
+
+    def test_a_missing_output_still_reads_as_a_notice(
+        self,
+        presenter: PlaybackFailurePresenter,
+        dialogs: MagicMock,
+    ) -> None:
+        presenter.present_playing_failure(NoOutputDeviceError("no device"))
+
+        dialogs.show_info.assert_called_once()
+        dialogs.show_error.assert_not_called()

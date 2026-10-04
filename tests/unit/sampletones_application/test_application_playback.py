@@ -1,5 +1,5 @@
 import threading
-from typing import Final, Iterator, List, Optional, Tuple
+from typing import Iterator, List, Tuple
 from unittest.mock import MagicMock
 
 import pytest
@@ -9,19 +9,16 @@ from sampletones_application.coordinators.playback.failures import PlaybackFailu
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.gui.render_thread import claim_render_thread, release_render_thread
 from sampletones_shared.exceptions import PlaybackError
-from tests.suite.language import FakeLanguageManager
-
-FAILURE_MESSAGE_KEY: Final[str] = "global.dialog.message.audio_playback_error"
 
 
 class _PresenterRecorder:
     """Notes the thread each failure is presented on, which is where its dialog is built."""
 
     def __init__(self) -> None:
-        self.presented: List[Tuple[int, Exception, Optional[str]]] = []
+        self.presented: List[Tuple[int, Exception]] = []
 
-    def present(self, exception: Exception, *, message: Optional[str]) -> None:
-        self.presented.append((threading.get_ident(), exception, message))
+    def present_playing_failure(self, exception: Exception) -> None:
+        self.presented.append((threading.get_ident(), exception))
 
 
 @pytest.fixture(name="presenter")
@@ -33,8 +30,7 @@ def presenter_fixture() -> _PresenterRecorder:
 def application_fixture(presenter: _PresenterRecorder) -> Application:
     application = Application.__new__(Application)
     application._playback_failures = MagicMock(spec=PlaybackFailurePresenter)
-    application._playback_failures.present.side_effect = presenter.present
-    application.language_manager = FakeLanguageManager()
+    application._playback_failures.present_playing_failure.side_effect = presenter.present_playing_failure
     return application
 
 
@@ -66,7 +62,7 @@ class TestAPlaybackTheDeviceRefused:
         assert presenter.presented == []
         CallbackQueue.process(1.0)
 
-        assert presenter.presented == [(threading.get_ident(), failure, FAILURE_MESSAGE_KEY)]
+        assert presenter.presented == [(threading.get_ident(), failure)]
 
     @pytest.mark.usefixtures("drawing")
     def test_a_report_on_the_render_thread_is_presented_at_once(
@@ -78,4 +74,4 @@ class TestAPlaybackTheDeviceRefused:
 
         application._on_playback_error(failure)
 
-        assert presenter.presented == [(threading.get_ident(), failure, FAILURE_MESSAGE_KEY)]
+        assert presenter.presented == [(threading.get_ident(), failure)]

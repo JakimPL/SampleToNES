@@ -17,7 +17,7 @@ from sampletones_application.services.song_player.service import (
 )
 from sampletones_core.audio.device import CurrentDevice
 from sampletones_core.project.song_position import SongPosition
-from sampletones_shared.exceptions import NoOutputDeviceError
+from sampletones_shared.exceptions import NoOutputDeviceError, PlaybackError
 
 SAMPLE_RATE: Final[int] = 44100
 SPEAKERS: Final[CurrentDevice] = CurrentDevice(device_index=0, name="Speakers", sample_rate=SAMPLE_RATE, host_api=0)
@@ -635,16 +635,20 @@ class TestSongPlayerServiceEndOfSong:
         assert reported.wait(timeout=WAIT_TIMEOUT)
         assert ends == [(SongPlaybackError(error=error), False)]
 
-    def test_a_stream_the_device_refuses_reports_the_stop_with_the_output_free(self) -> None:
+    def test_a_stream_the_device_refuses_reports_the_error_with_the_output_free(self) -> None:
+        """The refusal reaches the listener once, as the error the device manager raised."""
+        refusal = PlaybackError("Failed to open audio stream: device busy")
         audio_device_manager = _make_device_manager()
-        audio_device_manager.open_output_stream.side_effect = OSError("device busy")
+        audio_device_manager.open_output_stream.side_effect = refusal
         service = _make_streaming_service(audio_device_manager)
         ends, reported = self.record_ends(service)
 
         service.start()
 
         assert reported.wait(timeout=WAIT_TIMEOUT)
-        assert ends == [(SongPlaybackStopped(), False)]
+        assert service._write_thread is not None
+        service._write_thread.join(timeout=WAIT_TIMEOUT)
+        assert ends == [(SongPlaybackError(error=refusal), False)]
 
     def test_a_stop_reports_no_end(self) -> None:
         gate = threading.Event()

@@ -1170,11 +1170,7 @@ class Application:
         the report raises a dialog, so it crosses to the render thread the way every worker's result does.
         """
         logger.error_with_traceback(exception, "Playback error occurred")
-        on_render_thread(
-            self._playback_failures.present,
-            exception,
-            message=self.language_manager["global.dialog.message.audio_playback_error"],
-        )
+        on_render_thread(self._playback_failures.present_playing_failure, exception)
 
     def _refresh_browsers(self) -> None:
         """Reads the disk afresh in every browser, so a reconstruction just written stands in each.

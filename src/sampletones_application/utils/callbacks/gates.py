@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from functools import partial
 from typing import Callable, Generic, Optional, ParamSpec, Sequence, TypeVar
 
@@ -11,10 +12,6 @@ GestureParameters = ParamSpec("GestureParameters")
 GestureResult = TypeVar("GestureResult")
 
 
-def ignore() -> None:
-    """Answers a request turned away whose asker carries on as it stands, so the request ends where it stopped."""
-
-
 def waiting(wait: Wait) -> Gate:
     """``wait`` as a gate that holds a request until it may go on, and then lets it through.
 
@@ -24,6 +21,40 @@ def waiting(wait: Wait) -> Gate:
 
     def gate(proceed: VoidCallback, _decline: VoidCallback) -> None:
         wait(proceed)
+
+    return gate
+
+
+def asking(
+    unsettled: Callable[[], bool],
+    question: Gate,
+    screen: Wait,
+) -> Gate:
+    """A gate that asks ``question`` about something unsettled once ``screen`` is free for the question.
+
+    While ``unsettled`` reads false, the request goes on at once, whatever holds the screen. Otherwise
+    the gate waits for the screen and reads ``unsettled`` again there, so the question speaks of the
+    state it shows over. A thing another conversation settled meanwhile, such as a project its answer
+    closed, lets the request through with no question.
+
+    Args:
+        unsettled: Whether there is something to ask about.
+        question: The gate that asks, which runs only while the screen is free for it.
+        screen: The wait for the screen, such as the modal line's turn.
+    """
+
+    def gate(proceed: VoidCallback, decline: VoidCallback) -> None:
+        if not unsettled():
+            proceed()
+            return
+
+        def ask_on_the_screen() -> None:
+            if unsettled():
+                question(proceed, decline)
+            else:
+                proceed()
+
+        screen(ask_on_the_screen)
 
     return gate
 
@@ -76,6 +107,20 @@ def gated(
     return call
 
 
+@dataclass(eq=False)
+class Ticket:
+    """One take-off of a gesture, and the request its end lets through.
+
+    Each take-off gets a ticket of its own, so a continuation handed out during one conversation
+    reaches that conversation alone.
+
+    Attributes:
+        request: The gesture's arrival the end of the flight lets through.
+    """
+
+    request: VoidCallback
+
+
 class SingleFlight(ABC, Generic[GestureParameters]):
     """A gesture that holds one conversation at a time, and lets one request through at its end.
 
@@ -83,18 +128,20 @@ class SingleFlight(ABC, Generic[GestureParameters]):
     asked for until the gates let it through or turn it away, and a gesture asked for after that asks
     again. A gesture asked for while it is in flight asks nothing, and the kind of flight decides which
     request its end lets through. A conversation that turns the gesture away drops the request it
-    holds. A gate that raises ends the flight the same way, so one failure leaves the gesture to be
-    asked for again.
+    holds. A gate, or a continuation a gate runs after an answer or a wait, that raises ends the
+    flight the same way, so one failure leaves the gesture to be asked for again. Each take-off has a
+    ticket, and a continuation acts on the flight of its own ticket alone, so an answer reaching a
+    conversation that has ended leaves the newer one as it stands.
     """
 
     def __init__(self, arrive: Callable[GestureParameters, GestureResult]) -> None:
         self._arrive = arrive
-        self._standing: Optional[VoidCallback] = None
+        self._ticket: Optional[Ticket] = None
 
     @property
     def in_flight(self) -> bool:
         """Whether a conversation of this gesture is under way, from the moment it is asked for to its end."""
-        return self._standing is not None
+        return self._ticket is not None
 
     @abstractmethod
     def __call__(self, *args: GestureParameters.args, **kwargs: GestureParameters.kwargs) -> None:
@@ -110,28 +157,54 @@ class SingleFlight(ABC, Generic[GestureParameters]):
 
     def _take_off(self, gates: Sequence[Gate], request: VoidCallback) -> None:
         """Asks ``gates`` with ``request`` standing, and holds the flight until they let it through or turn it away."""
-        self._standing = request
-        asked = False
-        try:
-            pass_gates(gates, self._land, self._turn_away)
-            asked = True
-        finally:
-            if not asked:
-                self._turn_away()
+        ticket = Ticket(request=request)
+        self._ticket = ticket
+        conversation = partial(
+            pass_gates,
+            [self._guarded_gate(ticket, gate) for gate in gates],
+            partial(self._land, ticket),
+            partial(self._turn_away, ticket),
+        )
+        self._guarded(ticket, conversation)()
 
     def _redirect(self, request: VoidCallback) -> None:
         """Lets ``request`` through at the end of the flight under way, in the place of the one standing."""
-        self._standing = request
+        assert self._ticket is not None, "A request was redirected with no flight under way"
+        self._ticket.request = request
 
-    def _land(self) -> None:
-        """Ends the flight, and then lets the request standing through, so its arrival may ask anew."""
-        request = self._standing
-        assert request is not None, "A conversation let its gesture through after its flight had ended"
-        self._standing = None
-        request()
+    def _guarded_gate(self, ticket: Ticket, gate: Gate) -> Gate:
+        """``gate`` handed continuations that end the flight of ``ticket`` when they raise."""
 
-    def _turn_away(self) -> None:
-        self._standing = None
+        def guarded(proceed: VoidCallback, decline: VoidCallback) -> None:
+            gate(self._guarded(ticket, proceed), self._guarded(ticket, decline))
+
+        return guarded
+
+    def _guarded(self, ticket: Ticket, continuation: VoidCallback) -> VoidCallback:
+        """``continuation`` turning the flight of ``ticket`` away when it raises, with the error going on up."""
+
+        def run() -> None:
+            went_on = False
+            try:
+                continuation()
+                went_on = True
+            finally:
+                if not went_on:
+                    self._turn_away(ticket)
+
+        return run
+
+    def _land(self, ticket: Ticket) -> None:
+        """Ends the flight of ``ticket``, and then lets its request through, so its arrival may ask anew."""
+        if self._ticket is not ticket:
+            return
+
+        self._ticket = None
+        ticket.request()
+
+    def _turn_away(self, ticket: Ticket) -> None:
+        if self._ticket is ticket:
+            self._ticket = None
 
 
 class LatestRequestFlight(SingleFlight[GestureParameters]):

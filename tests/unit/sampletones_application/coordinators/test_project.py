@@ -14,6 +14,7 @@ from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.paths import LANG_EN
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
+from sampletones_application.utils.callbacks.gates import Gate
 from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
 from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS, SkippedRow, SkipReason
 from sampletones_core.exporters.truncation import EnvelopeTruncation
@@ -32,7 +33,11 @@ from sampletones_shared.exceptions import (
 from sampletones_shared.paths.extensions import EXT_FILE_MODULE
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.frames import held_frames
+from tests.suite.questions import StandingWindow, standing_window
 from tests.suite.silent_rows import MISSING_VOICE_ID, SILENT_CHANNEL
+
+__all__ = ["held_frames", "standing_window"]
 
 ORIGINAL_TITLE: Final[str] = "As saved"
 EDITED_TITLE: Final[str] = "As edited"
@@ -689,3 +694,102 @@ class TestReplacingOrClosingTheProject:
         proceed.assert_not_called()
         decline.assert_called_once_with()
         project_coordinator._dialogs.show_save_confirmation.assert_not_called()
+
+
+def _close_the_project(controller: MagicMock) -> None:
+    controller.is_open = False
+    controller.is_dirty = False
+
+
+def _save_the_project(controller: MagicMock) -> None:
+    controller.is_dirty = False
+
+
+class TestAQuestionAboutTheProjectWaitsForTheScreen(BaseTestSuite):
+    """A guard asks about the open project once the screen is free for its question, reading the project then.
+
+    A project another conversation closed or saved meanwhile lets the request through with no question.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        guard: Callable[[ProjectCoordinator], Gate]
+        settle: Callable[[MagicMock], None]
+
+    test_cases = (
+        TestCase(label="new", guard=lambda coordinator: coordinator.guard_new, settle=_close_the_project),
+        TestCase(label="open", guard=lambda coordinator: coordinator.guard_open, settle=_close_the_project),
+        TestCase(label="close", guard=lambda coordinator: coordinator.guard_close, settle=_save_the_project),
+        TestCase(label="exit", guard=lambda coordinator: coordinator.guard_exit, settle=_save_the_project),
+    )
+
+    @pytest.fixture(name="unsaved")
+    def unsaved_fixture(self, project_coordinator: ProjectCoordinator) -> ProjectCoordinator:
+        project_coordinator._project_controller.is_open = True
+        project_coordinator._project_controller.is_dirty = True
+        return project_coordinator
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_question_waits_while_another_window_stands(
+        self,
+        test_case: TestCase,
+        unsaved: ProjectCoordinator,
+        standing_window: StandingWindow,
+    ) -> None:
+        proceed = MagicMock()
+        decline = MagicMock()
+
+        test_case.guard(unsaved)(proceed, decline)
+
+        unsaved._dialogs.show_save_confirmation.assert_not_called()
+        proceed.assert_not_called()
+        decline.assert_not_called()
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_question_asks_once_the_window_leaves(
+        self,
+        test_case: TestCase,
+        unsaved: ProjectCoordinator,
+        standing_window: StandingWindow,
+    ) -> None:
+        proceed = MagicMock()
+        decline = MagicMock()
+        test_case.guard(unsaved)(proceed, decline)
+
+        standing_window.leave()
+
+        prompt = unsaved._dialogs.show_save_confirmation.call_args.kwargs
+        assert prompt["on_confirm"] is proceed
+        assert prompt["on_cancel"] is decline
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_project_settled_meanwhile_goes_on_with_no_question(
+        self,
+        test_case: TestCase,
+        unsaved: ProjectCoordinator,
+        standing_window: StandingWindow,
+    ) -> None:
+        proceed = MagicMock()
+        decline = MagicMock()
+        test_case.guard(unsaved)(proceed, decline)
+
+        test_case.settle(unsaved._project_controller)
+        standing_window.leave()
+
+        proceed.assert_called_once_with()
+        decline.assert_not_called()
+        unsaved._dialogs.show_save_confirmation.assert_not_called()
+        unsaved._dialogs.show_confirmation.assert_not_called()
+
+    def test_a_saved_project_lets_the_exit_go_on_while_another_window_stands(
+        self,
+        project_coordinator: ProjectCoordinator,
+        standing_window: StandingWindow,
+    ) -> None:
+        """Leaving while a dialog stands goes on at once when there is nothing to ask about."""
+        project_coordinator._project_controller.is_dirty = False
+        proceed = MagicMock()
+
+        project_coordinator.guard_exit(proceed, MagicMock())
+
+        proceed.assert_called_once_with()

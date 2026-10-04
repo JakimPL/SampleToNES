@@ -51,13 +51,21 @@ another one left in meets the same fate, since that frame still draws the one th
 
 The screen therefore belongs to one conversation at a time. A conversation is a dialog, the modals it
 hands the screen to while it steps aside, and the ones its answers raise. A modal asked for from anywhere
-else, such as the report of a job that finished or a prompt raised by a gesture that waited for edits,
-waits in line. It opens once the conversation holding the screen has ended, a frame after its last window
-left, and the line opens in the order it was asked. A dialog asked for again while it waits keeps its place
-with the newer request, and one hidden while it waits leaves the line.
+else, such as the report of a job that finished, waits in line. It opens once the conversation holding the
+screen has ended, a frame after its last window left, and the line opens in the order it was asked. A dialog
+asked for again while it waits keeps its place with the newer request, and one hidden while it waits leaves
+the line.
 
-`ModalQueue` (`utils/gui/modal_queue.py`) keeps the line, and `GUIWindow.show` is the only way into it, so
-a caller raises a dialog whenever it has one to raise and never waits a frame of its own for the screen. A
+**A question reads what it asks about once the screen is free for it.** A guard with something to ask
+takes a turn in the line, and reads its state again when the line reaches that turn. The conversation that
+held the screen has settled what it changes by then. An exit asked for while Close project asks therefore
+finds the project Discard closed, and asks nothing about it. A guard with nothing to ask lets the request
+through at once, whatever holds the screen, so closing the window over a dialog leaves at once when nothing
+is unsaved. A turn that opens no question lets the line go on to the next window in the same frame.
+
+`ModalQueue` (`utils/gui/modal_queue.py`) keeps the line. `GUIWindow.show` is the only way a window enters
+it, and `ModalQueue.when_free` is how a guard takes its turn, through `asking` (`utils/callbacks/gates.py`).
+A caller raises a dialog whenever it has one to raise and never waits a frame of its own for the screen. A
 window that reports work under way and leaves the rest of the interface live beside it is no modal, so it
 opens at once.
 
@@ -66,7 +74,8 @@ opens at once.
 A dialog that closes on its answer leaves the screen first, and the answer runs a frame later as a hand-off
 of its conversation. Whatever the answer raises, such as a question of its own or an error, opens ahead of
 the line. Leaving also releases the dialog's keyboard claim, so a prompt the answer raises holds the
-keyboard alone. `GUIWindow._leave_then` is that step.
+keyboard alone. `GUIWindow._leave_then` is that step. An answer that fails with an error leaves the hand-offs
+after it, and the line, to go on a frame later.
 
 What the answer needs, such as a ticked box or the fields of a form, is read before the dialog leaves. Only
 the first answer runs: a second click reaches a dialog that has already gone.
@@ -87,11 +96,13 @@ stands aside, so nothing waiting in line opens between it and the prompt it rais
 A gesture that asks before it replaces a document, closes one or leaves the application holds one
 conversation at a time. The conversation is the chain of questions the gesture passes, and every way out of
 a question reaches whoever asked it. An answer that goes on lets the request through. Cancel, Escape, the
-title bar's close and a save that failed turn it away. A request therefore always ends in one of the two.
+title bar's close and a save that failed turn it away. So does an error raised anywhere along the chain,
+before a question or after its answer. A request therefore always ends in one of the two.
 
 While a conversation stands, the same gesture asked for again asks nothing, so two closes before the first is
 answered ask once. Once the conversation has ended, the gesture asks again. The span covers the wait for the
-edits of the open reconstruction too, so a gesture repeated while an edit is on its way asks once it lands.
+edits of the open reconstruction and the turn in the line too. A gesture repeated while an edit is on its way
+asks once the edit lands, and one repeated while another conversation holds the screen asks once it ends.
 `SingleFlight` (`utils/callbacks/gates.py`) holds the conversation, and the composition root wraps every such
 gesture in one, whichever door it is asked for through.
 

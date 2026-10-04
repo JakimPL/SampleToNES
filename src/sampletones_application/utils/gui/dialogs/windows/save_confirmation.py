@@ -138,9 +138,10 @@ class GUISaveConfirmationWindow(GUIDialogWindow):
 
         A written document goes on to what the prompt was guarding. A save the reader called off
         puts the same question again. A failed save showed its error, which stands alone, and the
-        request the prompt guarded goes back the way Cancel takes it.
+        request the prompt guarded goes back the way Cancel takes it. A save that raises turns the
+        request back the same way, and its error goes on up.
         """
-        match self._on_save():
+        match self._saved():
             case SaveOutcome.WRITTEN:
                 self._on_confirm()
             case SaveOutcome.CALLED_OFF:
@@ -154,3 +155,15 @@ class GUISaveConfirmationWindow(GUIDialogWindow):
                 )
             case SaveOutcome.FAILED:
                 self._on_cancel()
+
+    def _saved(self) -> SaveOutcome:
+        """What the save came to, with the request the prompt guarded turned back where the save raises."""
+        reported = False
+        try:
+            outcome = self._on_save()
+            reported = True
+        finally:
+            if not reported:
+                self._on_cancel()
+
+        return outcome

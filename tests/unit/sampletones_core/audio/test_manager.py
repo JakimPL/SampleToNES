@@ -1,7 +1,7 @@
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, Final, Iterator, List, Union
+from typing import Any, Callable, Dict, Final, Iterator, List, Tuple, Union
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -55,6 +55,7 @@ def _manager() -> AudioDeviceManager:
     manager._resume_event = threading.Event()
     manager._playing = False
     manager._active_priority = 0
+    manager._generation = 0
     manager._stream_owners = {}
     manager.on_acquire_output = None
     manager.external_output_priority = None
@@ -212,10 +213,115 @@ class TestAStreamTheDeviceRefuses:
         manager._playing = True
         manager._audio_data = np.zeros(TestPlaybackStart.AUDIO_LENGTH, dtype=np.float32)
 
-        manager._playback_worker(output=manager.require_output(), update=True)
+        manager._playback_worker(output=manager.require_output(), update=True, generation=manager._generation)
 
         assert playing_when_reported == [False]
         manager._position_callback.assert_called_once_with(0)
+
+    def test_a_handed_out_stream_refused_raises_a_playback_error(self) -> None:
+        manager = _manager()
+        manager.stop = MagicMock()
+        manager._pyaudio.open.side_effect = OSError("the device is busy")
+
+        with pytest.raises(PlaybackError, match="the device is busy"):
+            manager.open_output_stream(sample_rate=DEFAULT_SAMPLE_RATE, buffer_size=800, release=MagicMock())
+
+        assert manager._stream_owners == {}
+
+    def test_both_kinds_of_playback_name_the_refusal_alike(self) -> None:
+        """A refused stream reads the same whether the manager plays the audio or hands the stream out."""
+        manager = _manager()
+        manager.stop = MagicMock()
+        manager._pyaudio.open.side_effect = OSError("the device is busy")
+        manager._position_callback = None
+        reported: List[Exception] = []
+        manager.on_playback_error = reported.append
+        manager._playing = True
+        manager._audio_data = np.zeros(TestPlaybackStart.AUDIO_LENGTH, dtype=np.float32)
+        manager._playback_worker(output=manager.require_output(), update=False, generation=manager._generation)
+
+        with pytest.raises(PlaybackError) as raised:
+            manager.open_output_stream(sample_rate=DEFAULT_SAMPLE_RATE, buffer_size=800, release=MagicMock())
+
+        assert [str(error) for error in reported] == [str(raised.value)]
+
+
+class TestAPlaybackANewerOneReplaced:
+    """A worker whose stream opens only after a newer play leaves the newer playback as it stands.
+
+    Stopping waits a while for the worker, and a device slow to open can keep it longer, so the older
+    worker can come back after the newer play has begun. Its refusal is the older playback's alone, and a
+    stream it opened late closes without a sound.
+    """
+
+    FIRST_LENGTH: Final[int] = 8
+    SECOND_LENGTH: Final[int] = 16
+
+    @pytest.fixture(name="replaced")
+    def replaced_fixture(self) -> Tuple[AudioDeviceManager, Dict[str, Any]]:
+        """A manager playing a second buffer, and the arguments the worker of the first one was started with."""
+        manager = _manager()
+        manager._buffer_size = self.FIRST_LENGTH
+        manager._position_callback = MagicMock()
+        manager._playback_thread = None
+        with patch("sampletones_core.audio.manager.threading.Thread") as thread:
+            manager.play(np.zeros(self.FIRST_LENGTH, dtype=np.float32))
+            manager.play(np.ones(self.SECOND_LENGTH, dtype=np.float32))
+
+        manager._position_callback.reset_mock()
+        return manager, thread.call_args_list[0].kwargs["kwargs"]
+
+    @staticmethod
+    def assert_the_newer_playback_stands(manager: AudioDeviceManager) -> None:
+        assert manager.is_playing()
+        assert manager._audio_data is not None
+        assert len(manager._audio_data) == TestAPlaybackANewerOneReplaced.SECOND_LENGTH
+        manager._position_callback.assert_not_called()
+
+    def test_an_older_worker_refused_late_leaves_the_newer_playback_alone(
+        self,
+        replaced: Tuple[AudioDeviceManager, Dict[str, Any]],
+    ) -> None:
+        manager, first_worker = replaced
+        manager._pyaudio.open.side_effect = OSError("the device is busy")
+        reported: List[Exception] = []
+        manager.on_playback_error = reported.append
+
+        manager._playback_worker(**first_worker)
+
+        self.assert_the_newer_playback_stands(manager)
+        assert reported == []
+
+    def test_an_older_worker_opened_late_closes_its_stream_unplayed(
+        self,
+        replaced: Tuple[AudioDeviceManager, Dict[str, Any]],
+    ) -> None:
+        manager, first_worker = replaced
+        stream = MagicMock()
+        manager._pyaudio.open.return_value = stream
+
+        manager._playback_worker(**first_worker)
+
+        stream.write.assert_not_called()
+        stream.close.assert_called_once_with()
+        self.assert_the_newer_playback_stands(manager)
+
+    def test_the_newer_worker_refused_reports_it(
+        self,
+        replaced: Tuple[AudioDeviceManager, Dict[str, Any]],
+    ) -> None:
+        """The refusal of the playback in force still reaches the reader."""
+        manager, _ = replaced
+        manager._pyaudio.open.side_effect = OSError("the device is busy")
+        reported: List[Exception] = []
+        manager.on_playback_error = reported.append
+        with patch("sampletones_core.audio.manager.threading.Thread") as thread:
+            manager.play(np.ones(self.SECOND_LENGTH, dtype=np.float32))
+
+        manager._playback_worker(**thread.call_args.kwargs["kwargs"])
+
+        assert len(reported) == 1
+        assert not manager.is_playing()
 
 
 class TestSeekingAPlayback(BaseTestSuite):

@@ -1,4 +1,4 @@
-from typing import Final, Iterator, List
+from typing import Callable, Final, Iterator, List
 from unittest.mock import patch
 
 import dearpygui.dearpygui as dpg
@@ -65,6 +65,16 @@ def render(
         answers.append(SAVED)
         return save_outcome
 
+    build(window, save=save, answers=answers)
+
+
+def build(
+    window: GUISaveConfirmationWindow,
+    *,
+    save: Callable[[], SaveOutcome],
+    answers: List[str],
+) -> None:
+    """Builds the prompt over ``save``, recording each way forward and back in ``answers``."""
     window.prepare(
         MESSAGE,
         "Title",
@@ -195,6 +205,27 @@ class TestSavingFromThePrompt:
         assert answers == [SAVED, CANCELED]
         assert not dpg.does_item_exist(WINDOW_TAG)
         assert held_frames.pending == 0
+
+    def test_a_save_that_raises_answers_cancel_and_lets_the_error_through(
+        self,
+        window: GUISaveConfirmationWindow,
+        held_frames: Frames,
+    ) -> None:
+        """A save failing with an error it names no outcome for still ends the request the prompt guarded."""
+        answers: List[str] = []
+
+        def save() -> SaveOutcome:
+            answers.append(SAVED)
+            raise RuntimeError("the save broke")
+
+        build(window, save=save, answers=answers)
+        press(SUF_BUTTON_SAVE)
+
+        with pytest.raises(RuntimeError):
+            held_frames.render()
+
+        assert answers == [SAVED, CANCELED]
+        assert not dpg.does_item_exist(WINDOW_TAG)
 
 
 class TestTheOtherAnswers:

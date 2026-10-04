@@ -27,6 +27,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_PROJECT_SAVED,
     TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
 )
+from sampletones_application.utils.callbacks.gates import Gate, asking
 from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
     save_file_dialog,
@@ -35,6 +36,7 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
+from sampletones_application.utils.gui.modal_queue import ModalQueue
 from sampletones_core.exporters.skipped import SkippedRow
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.backend import ExportBackend
@@ -158,26 +160,19 @@ class ProjectCoordinator:
     def guard_close(self, proceed: VoidCallback, decline: VoidCallback) -> None:
         """Lets the open project close, asking first to save unsaved changes.
 
-        With no project open there is nothing to close, so the request is turned away. The
-        signature is a :data:`Gate`, so the question leads the closing's conversation.
+        With no project open there is nothing to close, so the request is turned away. The question
+        reads the project once the screen is free for it. The signature is a :data:`Gate`, so the
+        question leads the closing's conversation.
         """
         if not self._project_controller.is_open:
             decline()
             return
 
-        if not self.is_unsaved:
-            proceed()
-            return
-
-        self._dialogs.show_save_confirmation(
-            tag=TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
-            title=self._title(GlobalDialogTitleElements.CLOSE_UNSAVED_PROJECT),
-            message=self._message(GlobalMessageElements.CLOSE_UNSAVED_PROJECT),
-            on_save=self._write_project,
-            on_confirm=proceed,
-            on_cancel=decline,
-            ok_label=self._label(DialogElements.DISCARD),
-        )
+        self._asking_to_save(
+            title=GlobalDialogTitleElements.CLOSE_UNSAVED_PROJECT,
+            message=GlobalMessageElements.CLOSE_UNSAVED_PROJECT,
+            ok_label=DialogElements.DISCARD,
+        )(proceed, decline)
 
     def close_project(self) -> None:
         self._project_controller.close()
@@ -185,22 +180,38 @@ class ProjectCoordinator:
     def guard_exit(self, proceed: VoidCallback, decline: VoidCallback) -> None:
         """Lets the exit go on, asking first to save a project with unsaved changes.
 
-        Save and Exit both go on, so what the exit asks about next is asked in turn, and Cancel
-        keeps the application open and turns the exit away.
+        The question reads the project once the screen is free for it, so a project another
+        conversation saved or closed meanwhile is asked about no more. Save and Exit both go on, so
+        what the exit asks about next is asked in turn, and Cancel keeps the application open and
+        turns the exit away.
         """
-        if not self.is_unsaved:
-            proceed()
-            return
+        self._asking_to_save(
+            title=GlobalDialogTitleElements.EXIT_CONFIRMATION,
+            message=GlobalMessageElements.EXIT_UNSAVED_PROJECT,
+            ok_label=DialogElements.EXIT,
+        )(proceed, decline)
 
-        self._dialogs.show_save_confirmation(
-            tag=TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
-            title=self._title(GlobalDialogTitleElements.EXIT_CONFIRMATION),
-            message=self._message(GlobalMessageElements.EXIT_UNSAVED_PROJECT),
-            on_save=self._write_project,
-            on_confirm=proceed,
-            on_cancel=decline,
-            ok_label=self._label(DialogElements.EXIT),
-        )
+    def _asking_to_save(
+        self,
+        *,
+        title: GlobalDialogTitleElements,
+        message: GlobalMessageElements,
+        ok_label: DialogElements,
+    ) -> Gate:
+        """The gate that offers to save the project's unsaved changes once the screen is free for the question."""
+
+        def ask(proceed: VoidCallback, decline: VoidCallback) -> None:
+            self._dialogs.show_save_confirmation(
+                tag=TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
+                title=self._title(title),
+                message=self._message(message),
+                on_save=self._write_project,
+                on_confirm=proceed,
+                on_cancel=decline,
+                ok_label=self._label(ok_label),
+            )
+
+        return asking(lambda: self.is_unsaved, ask, ModalQueue.when_free)
 
     def save(self) -> SaveOutcome:
         """Saves the project to its current file, prompting for one when it has none, and says so.
@@ -411,12 +422,31 @@ class ProjectCoordinator:
         """Lets another project take the open one's place, asking first while one is open.
 
         Unsaved changes are offered a save, and an open project holding none is still asked about,
-        so a project is replaced only by an answer. Cancel turns the request away.
+        so a project is replaced only by an answer. The question reads the project once the screen
+        is free for it. Cancel turns the request away.
         """
-        if not self._project_controller.is_open:
-            proceed()
-            return
 
+        def ask(proceed: VoidCallback, decline: VoidCallback) -> None:
+            self._ask_before_replacing(
+                title=title,
+                message=message,
+                open_message=open_message,
+                proceed=proceed,
+                decline=decline,
+            )
+
+        asking(lambda: self._project_controller.is_open, ask, ModalQueue.when_free)(proceed, decline)
+
+    def _ask_before_replacing(
+        self,
+        *,
+        title: GlobalDialogTitleElements,
+        message: GlobalMessageElements,
+        open_message: GlobalMessageElements,
+        proceed: VoidCallback,
+        decline: VoidCallback,
+    ) -> None:
+        """Asks what becomes of the open project: a save of its unsaved changes, or its place alone."""
         if self.is_unsaved:
             self._dialogs.show_save_confirmation(
                 tag=TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,

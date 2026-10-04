@@ -11,7 +11,11 @@ from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_EXIT_CONFIRMA
 from sampletones_application.tags.instructions import TAG_INSTRUCTIONS_LIBRARY_DIALOG_REBUILD_CONFIRMATION
 from sampletones_core.library import LibraryState
 from sampletones_shared.exceptions import LibraryDisplayError
+from tests.suite.frames import held_frames
 from tests.suite.language import FakeLanguageManager
+from tests.suite.questions import StandingWindow, standing_window
+
+__all__ = ["held_frames", "standing_window"]
 
 GENERATION_STATUS_TITLE_KEY: Final[str] = "instructions.library.title.generation_status_dialog"
 REMOVE_LIBRARY_MESSAGE_KEY: Final[str] = "instructions.library.message.remove_library_message"
@@ -344,6 +348,26 @@ class TestTheExitAsksAboutALibraryBeingBuilt:
 
         proceed.assert_called_once_with()
         decline.assert_not_called()
+        coordinator._dialogs.show_confirmation.assert_not_called()
+
+    def test_a_question_waits_while_another_window_stands(self, standing_window: StandingWindow) -> None:
+        coordinator = self._coordinator(generating=True)
+
+        coordinator.guard_exit(MagicMock(), MagicMock())
+
+        coordinator._dialogs.show_confirmation.assert_not_called()
+        standing_window.leave()
+        coordinator._dialogs.show_confirmation.assert_called_once()
+
+    def test_a_library_finished_meanwhile_lets_the_exit_go_on(self, standing_window: StandingWindow) -> None:
+        coordinator = self._coordinator(generating=True)
+        proceed = MagicMock()
+        coordinator.guard_exit(proceed, MagicMock())
+
+        coordinator._library_logic.is_library_generating.return_value = False
+        standing_window.leave()
+
+        proceed.assert_called_once_with()
         coordinator._dialogs.show_confirmation.assert_not_called()
 
     def test_a_library_being_built_asks_first(self) -> None:
