@@ -7,6 +7,7 @@ import pytest
 from sampletones_application.utils.gui.keyboard.focus.consumption import (
     field_consumes_key,
 )
+from sampletones_application.utils.gui.keyboard.focus.items import field_kind
 from sampletones_application.utils.gui.keyboard.focus.kind import FieldKind
 from sampletones_application.utils.gui.keyboard.modifiers import (
     ALT,
@@ -22,6 +23,7 @@ from sampletones_application.utils.gui.keyboard.modifiers import (
 )
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.unit.sampletones_application.utils.gui.keyboard.focus.item_tree import INPUT_INT, SLIDER_INT
 
 ALT_SHIFT: Final[ModifierSet] = frozenset({Modifier.ALT, Modifier.SHIFT})
 SUPER_ALT: Final[ModifierSet] = frozenset({Modifier.SUPER, Modifier.ALT})
@@ -124,14 +126,14 @@ class TestFieldConsumesKey(BaseTestSuite):
             expected=False,
         ),
         TestCase(
-            label="text field yields Alt on a caret key, so Alt+Up reaches its shortcut",
+            label="text field yields Alt on a caret key, Alt+Up",
             kind=FieldKind.TEXT_ENTRY,
             key=dpg.mvKey_Up,
             modifiers=ALT,
             expected=False,
         ),
         TestCase(
-            label="text field yields Alt on an editing key, so Alt+Home reaches its shortcut",
+            label="text field yields Alt on an editing key, Alt+Home",
             kind=FieldKind.TEXT_ENTRY,
             key=dpg.mvKey_Home,
             modifiers=ALT,
@@ -242,6 +244,65 @@ class TestFieldConsumesKey(BaseTestSuite):
             expected=False,
         ),
         TestCase(
+            label="number field types a digit",
+            kind=FieldKind.NUMBER_ENTRY,
+            key=dpg.mvKey_2,
+            expected=True,
+        ),
+        TestCase(
+            label="number field types a minus sign",
+            kind=FieldKind.NUMBER_ENTRY,
+            key=dpg.mvKey_Minus,
+            expected=True,
+        ),
+        TestCase(
+            label="number field commits on Enter",
+            kind=FieldKind.NUMBER_ENTRY,
+            key=dpg.mvKey_Return,
+            expected=True,
+        ),
+        TestCase(
+            label="number field selects all on Ctrl+A",
+            kind=FieldKind.NUMBER_ENTRY,
+            key=dpg.mvKey_A,
+            modifiers=CTRL,
+            expected=True,
+        ),
+        TestCase(
+            label="number field pastes on Super+V",
+            kind=FieldKind.NUMBER_ENTRY,
+            key=dpg.mvKey_V,
+            modifiers=SUPER,
+            expected=True,
+        ),
+        TestCase(
+            label="number field yields Ctrl+S",
+            kind=FieldKind.NUMBER_ENTRY,
+            key=dpg.mvKey_S,
+            modifiers=CTRL,
+            expected=False,
+        ),
+        TestCase(
+            label="number field yields Ctrl+Alt+S, which types nothing in a number",
+            kind=FieldKind.NUMBER_ENTRY,
+            key=dpg.mvKey_S,
+            modifiers=CTRL_ALT,
+            expected=False,
+        ),
+        TestCase(
+            label="number field yields Alt+2, which types nothing in a number",
+            kind=FieldKind.NUMBER_ENTRY,
+            key=dpg.mvKey_2,
+            modifiers=ALT,
+            expected=False,
+        ),
+        TestCase(
+            label="number field yields F11",
+            kind=FieldKind.NUMBER_ENTRY,
+            key=dpg.mvKey_F11,
+            expected=False,
+        ),
+        TestCase(
             label="open combo yields a plain space",
             kind=FieldKind.CHOICE,
             key=dpg.mvKey_Spacebar,
@@ -296,3 +357,26 @@ class TestChordsFollowTheirModifiers:
 
     def test_redo_stays_with_the_field_as_a_ctrl_shift_chord(self) -> None:
         assert field_consumes_key(FieldKind.TEXT_ENTRY, dpg.mvKey_Z, CTRL_SHIFT) is True
+
+
+class TestANumberFieldYieldsAltChords(BaseTestSuite):
+    """A number field types no character with AltGr or Option, so an Alt chord pressed in one reaches
+    its shortcut."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        item_type: str
+        modifiers: ModifierSet
+
+    test_cases = (
+        TestCase(label="Ctrl+Alt+S from an integer input", item_type=INPUT_INT, modifiers=CTRL_ALT),
+        TestCase(label="Alt+S from a slider", item_type=SLIDER_INT, modifiers=ALT),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_the_chord_reaches_its_shortcut(self, test_case: TestCase) -> None:
+        assert field_consumes_key(field_kind(test_case.item_type), dpg.mvKey_S, test_case.modifiers) is False

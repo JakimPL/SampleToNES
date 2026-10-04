@@ -59,14 +59,15 @@ def field_consumes_key(kind: FieldKind, key: int, modifiers: ModifierSet) -> boo
     caret, commit, and cancel keys belong to whichever field is focused.
 
     A command chord, one held with Ctrl or Super, reaches the shortcuts, so Ctrl+Space plays and
-    Cmd+S saves from a field. A text-entry field keeps the text-edit chords alone: select all,
+    Cmd+S saves from a field. A field that types keeps the text-edit chords alone: select all,
     copy, cut, paste, undo and redo, spelled with Ctrl and with Super, the key macOS spells them
     with. Super decides first, so Cmd+Option+S is a command as well.
 
     A text-entry field also keeps an Alt chord on a key that types a character, because AltGr and
     Option type characters that way: Linux reports AltGr as Alt and Windows as Ctrl+Alt. An Alt
-    chord on a function, caret or editing key reaches the shortcuts, so Alt+F4 and Alt+Up stay
-    reachable while a field is focused.
+    chord on a function, caret or editing key reaches the shortcuts, so Alt+F4 stays reachable
+    while a field is focused. A number field types no such character, so every Alt chord reaches
+    the shortcuts from it.
     """
     if kind is FieldKind.NONE:
         return False
@@ -83,11 +84,11 @@ def field_consumes_key(kind: FieldKind, key: int, modifiers: ModifierSet) -> boo
     if key in EDITING_KEYS:
         return True
 
-    return kind is FieldKind.TEXT_ENTRY and key not in FUNCTION_KEYS
+    return kind.takes_typing and key not in FUNCTION_KEYS
 
 
 def _keeps_text_edit_chord(kind: FieldKind, key: int, modifiers: ModifierSet) -> bool:
-    return kind is FieldKind.TEXT_ENTRY and key in TEXT_EDIT_CHORDS.get(
+    return kind.takes_typing and key in TEXT_EDIT_CHORDS.get(
         modifiers,
         NO_KEYS,
     )

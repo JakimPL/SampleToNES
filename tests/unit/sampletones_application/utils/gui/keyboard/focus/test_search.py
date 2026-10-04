@@ -46,7 +46,7 @@ class TestEditedFieldKind(BaseTestSuite):
         TestCase(
             label="actively edited integer input",
             items={FOCUSED: editing(INPUT_INT)},
-            expected=FieldKind.TEXT_ENTRY,
+            expected=FieldKind.NUMBER_ENTRY,
         ),
         TestCase(
             label="open combo",
