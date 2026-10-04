@@ -29,6 +29,8 @@ POOL_ACTIONS: Final[Tuple[str, ...]] = (
 )
 
 PLAY_VOICE: Final[str] = "global.context.label.play"
+NEW_INSTRUMENT_TIP: Final[str] = "sequencer.voices.tooltip.new_instrument"
+NO_PROJECT_TIP: Final[str] = "sequencer.voices.tooltip.new_instrument_no_project"
 STATUS_SAMPLE: Final[str] = "sequencer.voices.template.status_sample"
 STATUS_SEPARATOR: Final[str] = "sequencer.voices.template.status_channel_separator"
 
@@ -203,7 +205,8 @@ class TestTheKeysOfACollapsedVoicesCard:
 class TestNewInstrumentWithNoProjectOpen:
     """With no project open, every way a voice comes in stands greyed out and the voice list stays empty.
 
-    A new project brings the ways back, and New instrument then adds one voice.
+    Hovering the greyed-out New instrument says what brings it back. A new project brings the ways back,
+    hovering New instrument then says what it adds, and a click adds one voice.
     """
 
     def test_nothing_is_offered_until_a_project_opens(self, screen: Screen) -> None:
@@ -221,6 +224,14 @@ class TestNewInstrumentWithNoProjectOpen:
 
         def every_way_in_stands_greyed_out(screen: Screen) -> None:
             screen.expect(lambda: not voices.new_instrument_answers(), bool, description="New instrument greyed out")
+            voices.hover_new_instrument()
+            screen.expect(
+                partial(screen.shows_text, screen.words(NO_PROJECT_TIP)),
+                bool,
+                description="the tooltip saying what brings New instrument back",
+            )
+            assert not screen.shows_text(screen.words(NEW_INSTRUMENT_TIP))
+
             right_click_the_empty_list(screen)
             screen.expect(menu.is_shown, bool, description="the list's menu")
             entries = menu.entries()
@@ -235,6 +246,13 @@ class TestNewInstrumentWithNoProjectOpen:
         def a_new_project_takes_a_new_instrument(screen: Screen) -> None:
             screen.project.create()
             screen.expect(voices.new_instrument_answers, bool, description="New instrument answering")
+            voices.hover_new_instrument()
+            screen.expect(
+                partial(screen.shows_text, screen.words(NEW_INSTRUMENT_TIP)),
+                bool,
+                description="New instrument's own tooltip",
+            )
+            assert not screen.shows_text(screen.words(NO_PROJECT_TIP))
 
             voices.new_instrument()
 

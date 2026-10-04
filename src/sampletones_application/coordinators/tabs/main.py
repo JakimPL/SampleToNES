@@ -7,6 +7,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.output import OutputKind
+from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.tabs.hooks import MainTabHooks
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
@@ -105,6 +106,7 @@ class MainTabCoordinator:
         layout: MainTabParameters,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
+        playback_failures: PlaybackFailurePresenter,
         status_bar: GUIStatusBar,
         stem_selection_window: GUIStemSelectionWindow,
         key_router: KeyRouter,
@@ -117,6 +119,7 @@ class MainTabCoordinator:
         self._library_manager = library_manager
         self._hooks = hooks
         self._dialogs = dialogs
+        self._playback_failures = playback_failures
         self._stem_selection_window = stem_selection_window
 
         self._geometry = layout.geometry
@@ -362,7 +365,7 @@ class MainTabCoordinator:
         self._explorer_panel.update_favorite_indicators((node,))
 
     def _on_explorer_autoplay_error(self, exception: Exception) -> None:
-        FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
+        FrameCallbackManager.set_frame_callback(lambda: self._playback_failures.present(exception, message=None))
 
     def _on_converter_view_changed(self, view_model: ConverterViewModel) -> None:
         """The converter's own view, and the settings card that follows what it has picked out.

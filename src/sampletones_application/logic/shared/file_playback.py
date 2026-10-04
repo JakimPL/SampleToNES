@@ -4,7 +4,7 @@ from typing import Callable, Optional
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_shared.exceptions import SampleToNESError
+from sampletones_shared.exceptions import PlaybackError, SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.paths import extensions
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -38,7 +38,17 @@ class FilePlayback(CallbackMixin):
         self.play_at(path, PlaybackPriority.NORMAL)
 
     def play_at(self, path: Path, priority: PlaybackPriority) -> None:
-        """Play a file at the priority the gesture asking for it carries."""
+        """Play a file at the priority the gesture asking for it carries.
+
+        A device that refuses the playback reports through ``on_error``, the way a file that
+        fails to read does.
+        """
+        try:
+            self._play_file(path, priority)
+        except PlaybackError as exception:
+            self.call(self.on_error, exception)
+
+    def _play_file(self, path: Path, priority: PlaybackPriority) -> None:
         match path.suffix.lower():
             case extensions.EXT_FILE_RECONSTRUCTION:
                 self._play_reconstruction(path, priority)

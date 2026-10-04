@@ -22,6 +22,7 @@ DARK = "dark"
 
 WIDESCREEN = Resolution(width=1600, height=900)
 DEFAULT_RESOLUTION = Resolution(width=1280, height=800)
+HAND_SIZED = Resolution(width=1300, height=820)
 
 COUNTDOWN_SECONDS = 10.0
 
@@ -418,9 +419,10 @@ class TestCancel:
         harness.cancel()
         harness.dialogs.confirm()
 
-        assert harness.viewport.calls[-1] == (
-            "resolution",
-            (DEFAULT_RESOLUTION.width, DEFAULT_RESOLUTION.height),
+        assert harness.viewport.placement == WindowPlacement(
+            x=OPENING_X,
+            y=OPENING_Y,
+            resolution=DEFAULT_RESOLUTION,
         )
 
     def test_discarding_writes_nothing_to_the_session(self, harness: Harness) -> None:
@@ -429,6 +431,63 @@ class TestCancel:
         harness.dialogs.confirm()
 
         assert harness.session.writes == []
+
+
+class TestCancelingAHandSizedWindow:
+    """A window sitting at a size of its own goes back to that exact size and place on Cancel.
+
+    The dialog shows the offered size nearest the window's own, and a discard puts back the opening
+    place and size the run ending while the dialog stands puts back. A dialog opened in fullscreen goes
+    back to fullscreen and is placed nowhere.
+    """
+
+    OPENING_PLACEMENT = WindowPlacement(x=OPENING_X, y=OPENING_Y, resolution=HAND_SIZED)
+
+    @pytest.fixture(name="hand_sized")
+    def hand_sized_fixture(self) -> Harness:
+        """The dialog opened over a window the user sized by hand, between the sizes on offer."""
+        harness = Harness()
+        harness.viewport.resolution = (HAND_SIZED.width, HAND_SIZED.height)
+        harness.open()
+        return harness
+
+    def test_the_dialog_shows_the_offered_size_nearest_the_window(self, hand_sized: Harness) -> None:
+        assert hand_sized.settings.window.resolution == DEFAULT_RESOLUTION
+
+    def test_discarding_a_new_size_puts_back_the_window_s_own(self, hand_sized: Harness) -> None:
+        hand_sized.change(hand_sized.settings.with_window(hand_sized.settings.window.with_resolution(WIDESCREEN)))
+        hand_sized.keep()
+        hand_sized.cancel()
+        hand_sized.dialogs.confirm()
+
+        assert hand_sized.viewport.placement == self.OPENING_PLACEMENT
+        assert not hand_sized.window.visible
+
+    def test_canceling_an_untouched_dialog_leaves_the_window_s_own_size(self, hand_sized: Harness) -> None:
+        hand_sized.cancel()
+
+        assert hand_sized.viewport.placement == self.OPENING_PLACEMENT
+
+    def test_discarding_fullscreen_puts_back_the_window_s_own_place(self, hand_sized: Harness) -> None:
+        hand_sized.change(hand_sized.settings.with_window(hand_sized.settings.window.with_fullscreen(True)))
+        hand_sized.keep()
+        hand_sized.cancel()
+        hand_sized.dialogs.confirm()
+
+        assert hand_sized.viewport.fullscreen_toggles == 2
+        assert hand_sized.viewport.placement == self.OPENING_PLACEMENT
+
+    def test_a_dialog_opened_in_fullscreen_goes_back_to_fullscreen(self) -> None:
+        harness = Harness()
+        harness.session.fullscreen = True
+        harness.open()
+        harness.change(harness.settings.with_window(harness.settings.window.with_fullscreen(False)))
+        harness.keep()
+        harness.cancel()
+        harness.dialogs.confirm()
+
+        assert harness.viewport.fullscreen_toggles == 2
+        assert all(name != "place" for name, _ in harness.viewport.calls)
 
 
 class TestCountdown:
@@ -534,10 +593,11 @@ class TestCountdown:
     def test_a_kept_change_is_still_undone_by_canceling(self, harness: Harness) -> None:
         harness.change(harness.settings.with_window(harness.settings.window.with_borderless(True)))
         harness.keep()
+        made_before_canceling = len(harness.viewport.calls)
         harness.cancel()
         harness.dialogs.confirm()
 
-        assert harness.viewport.calls[-1] == ("borderless", False)
+        assert ("borderless", False) in harness.viewport.calls[made_before_canceling:]
 
     def test_reverting_by_hand_puts_the_window_mode_back_at_once(self, harness: Harness) -> None:
         harness.change(harness.settings.with_window(harness.settings.window.with_resolution(WIDESCREEN)))

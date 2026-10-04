@@ -3,6 +3,7 @@ from typing import Callable, Final, List, Optional, Tuple
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+import pytest
 
 from sampletones_application.services.song_player.result import (
     SongPlaybackError,
@@ -14,9 +15,12 @@ from sampletones_application.services.song_player.service import (
     SongPlayerService,
     _RenderedRow,
 )
+from sampletones_core.audio.device import CurrentDevice
 from sampletones_core.project.song_position import SongPosition
+from sampletones_shared.exceptions import NoOutputDeviceError
 
 SAMPLE_RATE: Final[int] = 44100
+SPEAKERS: Final[CurrentDevice] = CurrentDevice(device_index=0, name="Speakers", sample_rate=SAMPLE_RATE, host_api=0)
 WRITE_BLOCK: Final[int] = 64
 WAIT_TIMEOUT: Final[float] = 5.0
 SHORT_JOIN_TIMEOUT: Final[float] = 0.05
@@ -113,6 +117,7 @@ def _close_stream(stream: _FakeStream) -> None:
 def _make_device_manager(stream: Optional[_FakeStream] = None) -> MagicMock:
     """A device manager that winds a handed-back stream down as the real one does."""
     audio_device_manager = MagicMock()
+    audio_device_manager.require_output.return_value = SPEAKERS
     audio_device_manager.sample_rate = SAMPLE_RATE
     audio_device_manager.buffer_size = WRITE_BLOCK
     audio_device_manager.open_output_stream.return_value = stream
@@ -538,6 +543,44 @@ class TestSongPlayerServiceStopQuiescence:
             audio_device_manager.open_output_stream.assert_not_called()
         finally:
             gate.set()
+
+
+class TestSongPlayerServiceWithNoOutput:
+    """A machine offering no output device refuses the song as it starts, before a thread starts.
+
+    The refusal is the device manager's own, raised from ``start`` for the caller's recovery boundary,
+    and the service stays idle with its synthesizer where it stood. A device in force starts the song.
+    """
+
+    def test_start_raises_the_refusal_and_stays_idle(self) -> None:
+        audio_device_manager = _make_device_manager(_FakeStream())
+        audio_device_manager.require_output.side_effect = NoOutputDeviceError("no device")
+        synthesizer = MagicMock()
+        service = SongPlayerService(
+            audio_device_manager,
+            synthesizer,
+            should_loop=lambda: False,
+            master_gain=lambda: 1.0,
+        )
+
+        with pytest.raises(NoOutputDeviceError):
+            service.start(order_position=2, row_index=3)
+
+        assert service.alive is False
+        assert service._render_thread is None
+        assert service._write_thread is None
+        synthesizer.set_position.assert_not_called()
+        audio_device_manager.open_output_stream.assert_not_called()
+
+    def test_a_device_in_force_starts_the_song(self) -> None:
+        stream = _FakeStream()
+        service = _make_streaming_service(_make_device_manager(stream))
+        service.subscribe(lambda result: None)
+
+        service.start()
+
+        assert stream.entered_write.wait(timeout=WAIT_TIMEOUT)
+        service.stop()
 
 
 class TestSongPlayerServiceEndOfSong:

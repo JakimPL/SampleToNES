@@ -9,6 +9,8 @@ from sampletones_application.categories.elements.sequencer import SequencerVoice
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT,
     TAG_SEQUENCER_VOICES_PANEL,
+    TAG_SEQUENCER_VOICES_TOOLTIP_NEW_INSTRUMENT,
+    TAG_SEQUENCER_VOICES_TOOLTIP_NEW_INSTRUMENT_NO_PROJECT,
 )
 from sampletones_application.ui.elements import context_menu as context_menu_module
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -720,17 +722,25 @@ class TestThePoolItemsFollowTheProject:
         assert [item.enabled for item in recorder.items] == [False, False, False]
 
     @pytest.mark.parametrize("enabled", [True, False])
-    def test_the_button_and_the_menus_follow_one_answer(
+    def test_the_button_its_tooltip_and_the_menus_follow_one_answer(
         self,
         monkeypatch: pytest.MonkeyPatch,
         recorder: _MenuRecorder,
         enabled: bool,
     ) -> None:
+        """The button's own tooltip shows while it answers, and the one naming what brings it back while it
+        stands greyed out."""
         configured: List[Tuple[str, bool]] = []
+        tooltips: List[Tuple[str, bool]] = []
         monkeypatch.setattr(
             panel_module,
             "dpg_configure_item",
             lambda tag, **kwargs: configured.append((tag, kwargs["enabled"])),
+        )
+        monkeypatch.setattr(
+            panel_module,
+            "set_tooltip_visible",
+            lambda tag, visible: tooltips.append((tag, visible)),
         )
         fixture = _panel(monkeypatch, accepts_voices=not enabled)
 
@@ -738,6 +748,10 @@ class TestThePoolItemsFollowTheProject:
         fixture.menu.add_pool_items()
 
         assert configured == [(TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT, enabled)]
+        assert tooltips == [
+            (TAG_SEQUENCER_VOICES_TOOLTIP_NEW_INSTRUMENT, enabled),
+            (TAG_SEQUENCER_VOICES_TOOLTIP_NEW_INSTRUMENT_NO_PROJECT, not enabled),
+        ]
         assert [item.enabled for item in recorder.items] == [enabled] * len(recorder.items)
 
 

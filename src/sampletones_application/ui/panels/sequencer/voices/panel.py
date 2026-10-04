@@ -12,10 +12,13 @@ from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_HANDLER_LIST, SUF_HANDLER_REGISTRY
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT,
+    TAG_SEQUENCER_VOICES_GROUP_NEW_INSTRUMENT,
     TAG_SEQUENCER_VOICES_INPUT_RENAME,
     TAG_SEQUENCER_VOICES_PANEL,
     TAG_SEQUENCER_VOICES_TABLE,
     TAG_SEQUENCER_VOICES_THEME_ROW,
+    TAG_SEQUENCER_VOICES_TOOLTIP_NEW_INSTRUMENT,
+    TAG_SEQUENCER_VOICES_TOOLTIP_NEW_INSTRUMENT_NO_PROJECT,
     TAG_SEQUENCER_VOICES_WINDOW,
 )
 from sampletones_application.ui.elements.context_menu import context_menu_under_pointer
@@ -46,7 +49,7 @@ from sampletones_application.utils.gui.keyboard import (
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutCategory, ShortcutId
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
-from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.utils.gui.tooltip import attach_disabled_tooltip, set_tooltip_visible, show_tooltip
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.view_model.sequencer.voices import (
     SequencerVoicesViewModel,
@@ -92,6 +95,10 @@ class GUISequencerVoicesPanel(GUIPanel):
         self._entries: Tuple[VoiceEntryViewModel, ...] = ()
         self._accepts_voices = False
         self._tip_new_instrument = self._tooltip(language_manager, SequencerVoicesElements.NEW_INSTRUMENT)
+        self._tip_new_instrument_no_project = self._tooltip(
+            language_manager,
+            SequencerVoicesElements.NEW_INSTRUMENT_NO_PROJECT,
+        )
         self._tip_kind_sample = self._tooltip(language_manager, SequencerVoicesElements.KIND_SAMPLE)
         self._tip_kind_instrument = self._tooltip(language_manager, SequencerVoicesElements.KIND_INSTRUMENT)
         self._footprint_text = VoiceFootprintText(language_manager)
@@ -205,25 +212,43 @@ class GUISequencerVoicesPanel(GUIPanel):
         )
 
     def _create_new_instrument_button(self) -> None:
-        """Offers a hand-written voice, which is the one kind no browser brings in."""
-        button = dpg.add_button(
-            tag=TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT,
-            label=self._label(self._language_manager, SequencerVoicesElements.NEW_INSTRUMENT),
-            width=-1,
-            enabled=self._accepts_voices,
-            callback=lambda: self.call(self.on_new_instrument_requested),
-        )
+        """Offers a hand-written voice, which is the one kind no browser brings in.
+
+        A greyed-out button shows no tooltip of its own, so the group around it says what brings
+        the button back while no project is open.
+        """
+        with dpg.group(tag=TAG_SEQUENCER_VOICES_GROUP_NEW_INSTRUMENT):
+            button = dpg.add_button(
+                tag=TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT,
+                label=self._label(self._language_manager, SequencerVoicesElements.NEW_INSTRUMENT),
+                width=-1,
+                enabled=self._accepts_voices,
+                callback=lambda: self.call(self.on_new_instrument_requested),
+            )
+
         FontRegistry.bind_to_item(button, Font.REGULAR_SMALL)
-        show_tooltip(button, self._tip_new_instrument)
+        show_tooltip(button, self._tip_new_instrument, tag=TAG_SEQUENCER_VOICES_TOOLTIP_NEW_INSTRUMENT)
+        attach_disabled_tooltip(
+            TAG_SEQUENCER_VOICES_GROUP_NEW_INSTRUMENT,
+            self._tip_new_instrument_no_project,
+            tag=TAG_SEQUENCER_VOICES_TOOLTIP_NEW_INSTRUMENT_NO_PROJECT,
+        )
+        self._show_new_instrument_tooltip()
 
     def set_enabled(self, enabled: bool) -> None:
         """Offers the ways a voice comes in while a project stands open to take one.
 
-        The button above the list and the pool section of every menu the list raises follow the
-        one answer.
+        The button above the list, its tooltip and the pool section of every menu the list raises
+        follow the one answer.
         """
         self._accepts_voices = enabled
         dpg_configure_item(TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT, enabled=enabled)
+        self._show_new_instrument_tooltip()
+
+    def _show_new_instrument_tooltip(self) -> None:
+        """Shows the tooltip that fits the button's state: what it adds, or what brings it back."""
+        set_tooltip_visible(TAG_SEQUENCER_VOICES_TOOLTIP_NEW_INSTRUMENT, self._accepts_voices)
+        set_tooltip_visible(TAG_SEQUENCER_VOICES_TOOLTIP_NEW_INSTRUMENT_NO_PROJECT, not self._accepts_voices)
 
     @property
     def accepts_voices(self) -> bool:

@@ -276,9 +276,14 @@ class GUIAudioSettingsWindow(GUIDialogWindow):
         """Reports the chosen device, rate and buffer once the window has left the screen.
 
         Applying them can fail with a playback error, and that error opens alone once the window
-        is gone, so the choices are read while the combos still stand.
+        is gone, so the choices are read while the combos still stand. With no device picked, as on
+        a machine offering none, the window leaves and the settings stay as they are.
         """
-        device = self._devices_by_label[dpg.get_value(TAG_SETTINGS_AUDIO_COMBO_DEVICE)]
+        device = self._devices_by_label.get(dpg.get_value(TAG_SETTINGS_AUDIO_COMBO_DEVICE))
+        if device is None:
+            self.hide()
+            return
+
         sample_rate = self._sample_rates_by_label[dpg.get_value(TAG_SETTINGS_AUDIO_COMBO_SAMPLE_RATE)]
         buffer_size = BUFFER_SIZE_ITEMS[dpg.get_value(TAG_SETTINGS_AUDIO_COMBO_BUFFER_SIZE)]
         self._leave_then(partial(self.call, self.on_commit, device.device_index, sample_rate, buffer_size))

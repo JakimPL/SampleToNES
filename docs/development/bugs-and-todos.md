@@ -146,10 +146,3 @@ currently out of line. An entry leaves when the code meets the contract again.
   moved.
 
 ## Bugs
-
-* Playing on a machine that offers no output device fails without a word. The song player reads the
-  device's rate as playback starts, and a recording's playback reads it on its own thread, and with no
-  device in force both raise `ValueError: No audio device selected` where the user should read that
-  nothing can play.
-* Apply in Audio settings on a machine that offers no output device logs a `KeyError` and leaves the
-  window open: the window looks the empty device choice up among the devices it lists.

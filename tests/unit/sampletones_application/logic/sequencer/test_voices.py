@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, List, Tuple
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -31,7 +31,7 @@ from sampletones_core.formats.famitracker.voice import InstrumentOmission
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_shared.exceptions import LoadInstrumentError
+from sampletones_shared.exceptions import LoadInstrumentError, NoOutputDeviceError
 from tests.suite.sequencer import sample_reconstruction
 
 
@@ -359,6 +359,20 @@ class TestPlaySample:
         logic.play_voice("missing")
 
         audio_device_manager.play.assert_not_called()
+
+    def test_a_device_refusing_the_preview_reports_the_refusal(
+        self, reconstruction_factory: Callable[[], Reconstruction]
+    ) -> None:
+        controller, logic, _, audio_device_manager = _logic_with_mocks()
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        refusal = NoOutputDeviceError("no device")
+        audio_device_manager.play.side_effect = refusal
+        reported: List[Exception] = []
+        logic.on_autoplay_error = reported.append
+
+        logic.play_voice(sample.id)
+
+        assert reported == [refusal]
 
 
 class TestAutoplay:

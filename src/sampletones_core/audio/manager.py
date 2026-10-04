@@ -15,7 +15,7 @@ from sampletones_core.constants.audio import (
     BufferSize,
     SampleRate,
 )
-from sampletones_shared.exceptions import PlaybackError
+from sampletones_shared.exceptions import NoOutputDeviceError, PlaybackError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -250,10 +250,10 @@ class AudioDeviceManager(CallbackMixin):
             The device index.
 
         Raises:
-            ValueError: If no audio device is currently selected.
+            NoOutputDeviceError: If no audio device is currently selected.
         """
         if self._device_index is None:
-            raise ValueError("No audio device selected")
+            raise NoOutputDeviceError("No audio device selected")
 
         return self._device_index
 
@@ -324,10 +324,10 @@ class AudioDeviceManager(CallbackMixin):
             Sample rate in Hz.
 
         Raises:
-            ValueError: If no audio device is currently selected.
+            NoOutputDeviceError: If no audio device is currently selected.
         """
         if self._sample_rate is None:
-            raise ValueError("No audio device selected")
+            raise NoOutputDeviceError("No audio device selected")
 
         return self._sample_rate
 
@@ -371,6 +371,27 @@ class AudioDeviceManager(CallbackMixin):
             return None
 
         return CurrentDevice.from_device(device, self._sample_rate)
+
+    def require_output(self) -> CurrentDevice:
+        """
+        Answer the device and rate a playback opens its stream on.
+
+        Every way to start playback asks here first, so a machine offering no output device, or a
+        refresh that took the chosen one off the list, refuses the playback before any thread or
+        stream starts.
+
+        Returns:
+            The device in force and the rate it plays at.
+
+        Raises:
+            NoOutputDeviceError: If no listed device is selected.
+        """
+        current_device = self.get_current_device()
+        if current_device is None:
+            logger.warning("Playback refused: no audio output device is in force")
+            raise NoOutputDeviceError("No audio output device is in force")
+
+        return current_device
 
     def set_current_device(self, current_device: CurrentDevice) -> None:
         """
@@ -535,11 +556,17 @@ class AudioDeviceManager(CallbackMixin):
         """
         Load and play an audio file.
 
+        The output is asked for before the file is read, so a refused playback reads nothing.
+
         Args:
             filepath: Path to the audio file.
             update: If True, invoke position callback during playback.
             priority: Output-request priority; see :meth:`play`.
+
+        Raises:
+            NoOutputDeviceError: If no output device is in force.
         """
+        self.require_output()
         audio = load_audio(filepath, normalize=False, quantize=False)
         self.play(audio, update=update, priority=priority)
 
@@ -575,7 +602,11 @@ class AudioDeviceManager(CallbackMixin):
         Returns:
             bool: Whether this request took the output, which is what a caller following its own
                 playback — drawing a cursor along it — waits for before it starts following.
+
+        Raises:
+            NoOutputDeviceError: If no output device is in force.
         """
+        output = self.require_output()
         external_priority = self.call(self.external_output_priority)
         with self._lock:
             internal_priority = self._active_priority if self._playing else None
@@ -602,7 +633,7 @@ class AudioDeviceManager(CallbackMixin):
         self._resume_event.set()
         self._playback_thread = threading.Thread(
             target=self._playback_worker,
-            kwargs={"update": update},
+            kwargs={"output": output, "update": update},
             daemon=True,
             name="AudioPlaybackWorker",
         )
@@ -674,7 +705,12 @@ class AudioDeviceManager(CallbackMixin):
             if update and self._position_callback is not None:
                 self.call(self._position_callback, current_position)
 
-    def _playback_worker(self, *, update: bool = True) -> None:
+    def _playback_worker(
+        self,
+        *,
+        output: CurrentDevice,
+        update: bool,
+    ) -> None:
         """
         Playback thread worker function.
 
@@ -682,17 +718,18 @@ class AudioDeviceManager(CallbackMixin):
         Handles stream opening errors by invoking the error callback.
 
         Args:
+            output: The device and rate in force when the playback was asked for.
             update: If True, invoke position callback during playback.
         """
         assert self._pyaudio is not None, "PyAudio instance is not initialized"
-        logger.debug(f"Starting playback: device_index={self._device_index}, sample_rate={self._sample_rate}")
+        logger.debug(f"Starting playback: device_index={output.device_index}, sample_rate={output.sample_rate}")
         try:
             stream = self._pyaudio.open(
                 format=FORMAT,
                 channels=CHANNELS,
-                rate=self.sample_rate,
+                rate=output.sample_rate,
                 output=True,
-                output_device_index=self._device_index,
+                output_device_index=output.device_index,
             )
         except OSError as exception:
             playback_error = PlaybackError(f"Failed to open audio stream: {exception}")
@@ -835,17 +872,19 @@ class AudioDeviceManager(CallbackMixin):
 
         Raises:
             PlaybackError: If PyAudio is not initialized.
+            NoOutputDeviceError: If no output device is in force.
         """
         if self._pyaudio is None:
             raise PlaybackError("PyAudio not initialized; call reinitialize() first")
 
+        output = self.require_output()
         self.stop()
         stream = self._pyaudio.open(
             format=FORMAT,
             channels=CHANNELS,
             rate=sample_rate,
             output=True,
-            output_device_index=self._device_index,
+            output_device_index=output.device_index,
             frames_per_buffer=buffer_size,
         )
         with self._lock:

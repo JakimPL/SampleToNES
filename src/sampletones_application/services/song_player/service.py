@@ -96,6 +96,15 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         order_position: int = 0,
         row_index: int = 0,
     ) -> None:
+        """Starts the song at a row, replacing any song this service is playing.
+
+        The device manager is asked for the output first, so a machine offering no output device
+        refuses the song before any thread starts and leaves the playback as it stands.
+
+        Raises:
+            NoOutputDeviceError: If no output device is in force.
+        """
+        output = self._audio_device_manager.require_output()
         self.stop()
         if self.alive:
             logger.error(f"{self.class_name}: the previous writer still holds the output; start ignored")
@@ -107,7 +116,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         self._prefetch_samples = max(
             1,
             round(
-                PREFETCH_SECONDS * self._audio_device_manager.sample_rate,
+                PREFETCH_SECONDS * output.sample_rate,
             ),
         )
         self._write_block_frames = self._audio_device_manager.buffer_size

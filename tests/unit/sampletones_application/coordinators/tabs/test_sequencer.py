@@ -69,6 +69,7 @@ from sampletones_core.project.voices.instrument import Instrument
 from sampletones_shared.exceptions import (
     InvalidReconstructionValuesError,
     MalformedInstrumentError,
+    NoOutputDeviceError,
 )
 from tests.suite.gates import HeldGate, held_gate
 from tests.suite.language import FakeLanguageManager
@@ -1775,7 +1776,7 @@ def exposure_coordinator() -> SequencerTabCoordinator:
     instance._song_player_logic = MagicMock()
     instance._guarded_player = GuardedPlayer(
         instance._song_player_logic,
-        dialogs=MagicMock(),
+        failures=MagicMock(),
         error_message="playback failed",
     )
     return instance
@@ -1787,6 +1788,68 @@ class TestPlayerExposure:
         exposure_coordinator: SequencerTabCoordinator,
     ) -> None:
         assert isinstance(exposure_coordinator.player, GuardedPlayer)
+
+
+@pytest.fixture(name="failures")
+def failures_fixture() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture(name="refusing_coordinator")
+def refusing_coordinator_fixture(failures: MagicMock) -> SequencerTabCoordinator:
+    """A coordinator whose song player is refused by a machine offering no output device."""
+    instance = object.__new__(SequencerTabCoordinator)
+    instance._song_player_logic = MagicMock()
+    instance._song_player_logic.play_from.side_effect = NoOutputDeviceError("no device")
+    instance._song_player_logic.is_playing.return_value = False
+    instance._sequencer_tracker_logic = MagicMock()
+    instance._frames = SequencerFrames(
+        MagicMock(),
+        instance._sequencer_tracker_logic,
+        instance._song_player_logic,
+        MagicMock(),
+        MagicMock(),
+    )
+    instance._guarded_player = GuardedPlayer(
+        instance._song_player_logic,
+        failures=failures,
+        error_message="playback failed",
+    )
+    return instance
+
+
+class TestPlayingFromAPlaceWithNoOutput:
+    """Every way to play the song from a place reaches the presenter with the refusal, the way Play does."""
+
+    def test_play_from_this_frame_reaches_the_presenter(
+        self,
+        refusing_coordinator: SequencerTabCoordinator,
+        failures: MagicMock,
+    ) -> None:
+        refusing_coordinator.play_from_current_frame()
+
+        failures.present.assert_called_once()
+        assert isinstance(failures.present.call_args.args[0], NoOutputDeviceError)
+
+    def test_play_from_a_row_reaches_the_presenter(
+        self,
+        refusing_coordinator: SequencerTabCoordinator,
+        failures: MagicMock,
+    ) -> None:
+        refusing_coordinator._on_tracker_play_from_row(4)
+
+        failures.present.assert_called_once()
+        assert isinstance(failures.present.call_args.args[0], NoOutputDeviceError)
+
+    def test_play_from_an_order_frame_reaches_the_presenter(
+        self,
+        refusing_coordinator: SequencerTabCoordinator,
+        failures: MagicMock,
+    ) -> None:
+        refusing_coordinator._play_from_frame(1)
+
+        failures.present.assert_called_once()
+        assert isinstance(failures.present.call_args.args[0], NoOutputDeviceError)
 
 
 PULSE1_CELL: Final[TrackerRegion] = TrackerRegion(
