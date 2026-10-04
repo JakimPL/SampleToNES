@@ -212,30 +212,30 @@ class ConverterLogic(CallbackMixin):
 
         self._rewrite(self._state.with_gathering(self._gathering_folder(root, found)))
 
-    def convert_recording(self, path: Path) -> None:
-        """Converts exactly the recording the reader named, which is what a Reconstruct asks for.
+    def take_up_recording(self, path: Path) -> None:
+        """Lists the recording a Reconstruct names, to be converted into a reconstruction of its own.
 
-        The setup is replaced only where a conversion may start, so a Reconstruct reaching the
-        converter while another operation runs leaves what the reader gathered standing.
+        A Reconstruct asks for one reconstruction per recording, so a mix standing in the converter
+        gives way to a list of that kind, and a list of that kind takes the recording beside what it
+        holds. The reader starts the run once the list and its settings are as they want them.
         """
-        if self._declines_to_start():
-            return
-
-        self._replace_setup()
+        self._turn_to_one_apiece()
         self.gather_recordings([path])
-        self.start_conversion()
 
-    def convert_folder(self, root: Path, found: Sequence[Path]) -> None:
-        """Converts the recordings ``found`` below a folder, writing one reconstruction apiece."""
-        if self._declines_to_start():
+    def take_up_folder(self, root: Path, found: Sequence[Path]) -> None:
+        """Lists the folder a Reconstruct names, standing for the recordings ``found`` below it.
+
+        The folder joins a list writing one reconstruction per recording, as :meth:`take_up_recording`
+        describes.
+        """
+        self._turn_to_one_apiece()
+        self.gather_folder(root, found)
+
+    def _turn_to_one_apiece(self) -> None:
+        """Lets a mix go for an empty list writing one reconstruction per recording."""
+        if not self.mixes:
             return
 
-        self._replace_setup()
-        self.gather_folder(root, found)
-        self.start_conversion()
-
-    def _replace_setup(self) -> None:
-        """Lets whatever was gathered go, since a Reconstruct names what it converts on its own."""
         self._rewrite(
             self._state.with_settings(self._settings.with_output(OutputKind.PER_RECORDING)).with_gathering(
                 Gathering.empty()

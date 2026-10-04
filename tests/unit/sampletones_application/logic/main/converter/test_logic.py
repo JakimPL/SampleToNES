@@ -630,29 +630,13 @@ class TestTheSetupARunHolds(BaseTestSuite):
         converter_logic: ConverterLogic,
         tmp_path: Path,
     ) -> None:
-        """A **Reconstruct** names its own recording, which lets the whole setup go where it runs."""
+        """A **Reconstruct** lists what it names, and the list stands inert while the run holds it."""
         source = self._waiting(converter_logic, tmp_path)
         other = tmp_path / "take.wav"
         other.touch()
 
-        converter_logic.convert_recording(other)
-
-        assert converter_logic.gathered_paths == (source,)
-
-    def test_a_reconstruct_during_another_operation_leaves_the_setup_standing(
-        self,
-        converter_logic: ConverterLogic,
-        tmp_path: Path,
-    ) -> None:
-        """A library generation holds the resources too, and a Reconstruct reaching the converter
-        meanwhile leaves what the reader gathered."""
-        source = _aimed_at_a_recording(converter_logic, tmp_path)
-        other = tmp_path / "take.wav"
-        other.touch()
-        converter_logic._is_operation_active = lambda: True
-
-        converter_logic.convert_recording(other)
-        converter_logic.convert_folder(tmp_path, [other])
+        converter_logic.take_up_recording(other)
+        converter_logic.take_up_folder(tmp_path, [other])
 
         assert converter_logic.gathered_paths == (source,)
 
@@ -814,6 +798,52 @@ class TestGatheringRecordings(BaseTestSuite):
             ("b.wav", 0, 2),
             ("a.wav", 1, 2),
         ]
+
+
+class TestWhatAReconstructLists(BaseTestSuite):
+    """A Reconstruct lists what it names for a run writing one reconstruction apiece, and starts nothing.
+
+    The reader sees the recordings and their settings before converting, so the run is theirs to start.
+    """
+
+    def test_a_recording_joins_the_list_beside_what_it_holds(
+        self,
+        converter_logic: ConverterLogic,
+        service: MagicMock,
+    ) -> None:
+        _listed(converter_logic, "bass")
+
+        converter_logic.take_up_recording(Path("/audio/lead.wav"))
+
+        assert converter_logic.gathered_paths == (Path("/audio/bass.wav"), Path("/audio/lead.wav"))
+        assert converter_logic.mixes is False
+        service.start.assert_not_called()
+
+    def test_a_folder_joins_the_list_as_a_folder(
+        self,
+        converter_logic: ConverterLogic,
+        service: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        root = tmp_path / "album"
+        root.mkdir()
+        found = [root / "a.wav", root / "b.wav"]
+        for recording in found:
+            recording.touch()
+
+        converter_logic.take_up_folder(root, found)
+
+        assert [row.name for row in _view(converter_logic).stem_sources] == [root.name]
+        assert converter_logic.gathered_paths == tuple(found)
+        service.start.assert_not_called()
+
+    def test_a_mix_gives_way_to_a_list_of_what_was_named(self, converter_logic: ConverterLogic) -> None:
+        _mixing(converter_logic, "bass", "lead")
+
+        converter_logic.take_up_recording(Path("/audio/drums.wav"))
+
+        assert converter_logic.mixes is False
+        assert converter_logic.gathered_paths == (Path("/audio/drums.wav"),)
 
 
 class TestAnsweringWhichRecordingsToMix(BaseTestSuite):

@@ -14,6 +14,9 @@ browser:
   **Add as stem**. A [stem](../glossary.md#stem) is one recording that goes into a reconstruction.
 - Ctrl-click a folder, or right-click it and choose **Add folder**, to add every recording inside it,
   at any depth in the folder tree.
+- **Reconstruction ▸ Reconstruct file...** and **Reconstruct directory...**, and the same commands on a
+  right-click in the browser, add recordings for one reconstruction each. If the list holds a mix, the
+  app asks before replacing it.
 
 Turn on **Playback ▸ Autoplay** (`Ctrl+P`) to play a recording with a single click. This lets you
 listen through a folder before adding anything from it. With Autoplay off, right-click a recording and

@@ -1159,7 +1159,7 @@ class Application:
             self._reconstructions_tab.request_export_instruments_dialog(export_format)
 
     def _reconstruct_file(self, filepath: Path) -> None:
-        self._main_tab.convert_path(filepath)
+        self._main_tab.take_up_path(filepath)
         self.session_manager.set_audio_input_path(filepath.parent)
         self._set_current_tab(Tab.MAIN)
         self._update_menu()
@@ -1175,7 +1175,7 @@ class Application:
         self._main_tab.request_reconstruct_file(filepath)
 
     def _reconstruct_directory(self, directory_path: Path) -> None:
-        self._main_tab.convert_path(directory_path)
+        self._main_tab.take_up_path(directory_path)
         self.session_manager.set_audio_input_path(directory_path)
         self._set_current_tab(Tab.MAIN)
         self._update_menu()

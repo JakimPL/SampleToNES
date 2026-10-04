@@ -379,31 +379,31 @@ class MainTabCoordinator:
         self._hooks.on_busy_state_changed()
 
     def request_reconstruct_file(self, filepath: Path) -> None:
-        """Converts the recording a Reconstruct named, asking first where it drops what was gathered."""
+        """Lists the recording a Reconstruct named, asking first where it would replace a mix."""
         if self._notify_converter_running():
             return
 
-        self._replacing_the_setup(lambda: self._hooks.on_reconstruct_file(filepath))
+        self._giving_way_to_one_apiece(lambda: self._hooks.on_reconstruct_file(filepath))
 
     def request_reconstruct_directory(self, directory_path: Path) -> None:
-        """Converts the folder a Reconstruct named, asking first where it drops what was gathered."""
+        """Lists the folder a Reconstruct named, asking first where it would replace a mix."""
         if self._notify_converter_running():
             return
 
-        self._replacing_the_setup(lambda: self._hooks.on_reconstruct_directory(directory_path))
+        self._giving_way_to_one_apiece(lambda: self._hooks.on_reconstruct_directory(directory_path))
 
-    def _replacing_the_setup(self, reconstruct: VoidCallback) -> None:
-        """Runs a conversion the browser asked for, asking first where it would drop what was gathered.
+    def _giving_way_to_one_apiece(self, take_up: VoidCallback) -> None:
+        """Takes up what a Reconstruct named, asking first about a mix it would replace.
 
-        A Reconstruct names one file or one folder and converts that alone, so a setup already
-        holding sources is what the reader is being asked about. Declining leaves the setup as it
-        stands and starts nothing.
+        A Reconstruct lists recordings to convert one apiece, so a list of that kind takes them
+        beside what it holds and an empty mix gives way at once. A mix holding recordings is the
+        reader's work, so it gives way once they confirm; declining leaves it as it stands.
         """
-        if not self._converter_logic.gathered_paths:
-            reconstruct()
+        if not (self._converter_logic.mixes and self._converter_logic.gathered_paths):
+            take_up()
             return
 
-        self._confirm_discarding_stems(reconstruct)
+        self._confirm_discarding_stems(take_up)
 
     def _confirm_discarding_stems(self, on_confirm: VoidCallback) -> None:
         self._dialogs.show_confirmation(
@@ -548,10 +548,14 @@ class MainTabCoordinator:
             self._language_manager["main.converter.title.scan_dialog"],
         )
 
-    def _convert_read(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
-        """Converts what the walk found."""
+    def _take_up_read(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
+        """Lists what the walk found for a Reconstruct, saying so where the folder holds no recordings."""
         self._scan_window.close()
-        self._converter_logic.convert_folder(directory_path, found)
+        if not found:
+            self._nothing_below(directory_path)
+            return
+
+        self._converter_logic.take_up_folder(directory_path, found)
 
     def _mixing_beyond_room(self, found: Tuple[Path, ...]) -> bool:
         """Whether what was read brings in more than the mix has room for, which is a question.
@@ -769,17 +773,17 @@ class MainTabCoordinator:
     def refresh_converter_view(self) -> None:
         self._converter_logic.refresh_view()
 
-    def convert_path(self, path: Path) -> None:
-        """Converts exactly what a Reconstruct named, replacing whatever the reader gathered.
+    def take_up_path(self, path: Path) -> None:
+        """Lists what a Reconstruct named, a recording or a folder, for the reader to convert one apiece.
 
-        A folder is read before it is converted, which is work the reader watches rather than
-        waits blindly through.
+        A folder is read before it is listed, which is work the reader watches rather than waits
+        blindly through.
         """
         if not path.is_dir():
-            self._converter_logic.convert_recording(path)
+            self._converter_logic.take_up_recording(path)
             return
 
-        self._folder_scan.start(path, self._convert_read)
+        self._folder_scan.start(path, self._take_up_read)
 
     def save_browser_shape(self) -> None:
         """Writes down the folders the explorer stands open, so a later run reads down to them."""

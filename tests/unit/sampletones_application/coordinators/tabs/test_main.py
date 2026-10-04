@@ -14,7 +14,6 @@ from sampletones_application.services.folder_scan.service import FolderScanServi
 from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION
 from sampletones_application.tags.main import (
     TAG_MAIN_CONVERTER_DIALOG_CANCEL,
-    TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS,
     TAG_MAIN_CONVERTER_DIALOG_LOAD,
     TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET,
     TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
@@ -434,31 +433,41 @@ class TestOverwritePrompt:
         coordinator._converter_logic.start_conversion.assert_not_called()
 
 
-class TestReconstructReplacesTheSetup:
-    """A Reconstruct converts what it names alone, so a setup already holding sources is asked about."""
+class TestReconstructListsWhatItNames:
+    """A Reconstruct lists what it names to convert one apiece, asking first only about a mix it replaces."""
 
     def _coordinator(self, *, mixes: bool, gathered: Tuple[Path, ...] = ()) -> MainTabCoordinator:
         return _stems_coordinator(mixes=mixes, gathered=gathered)
 
-    def test_an_empty_setup_reconstructs_straight_away(self, tmp_path: Path) -> None:
-        coordinator = self._coordinator(mixes=False)
+    @pytest.mark.parametrize("gathered", [(), (Path("/audio/a.wav"),)])
+    def test_a_list_writing_one_apiece_takes_it_straight_away(self, tmp_path: Path, gathered: Tuple[Path, ...]) -> None:
+        coordinator = self._coordinator(mixes=False, gathered=gathered)
 
         coordinator.request_reconstruct_file(tmp_path / "a.wav")
 
         coordinator._hooks.on_reconstruct_file.assert_called_once_with(tmp_path / "a.wav")
         coordinator._dialogs.show_confirmation.assert_not_called()
 
-    @pytest.mark.parametrize("gesture", ["request_reconstruct_file", "request_reconstruct_directory"])
-    def test_a_gathered_list_is_asked_about_first(self, tmp_path: Path, gesture: str) -> None:
+    def test_an_empty_mix_gives_way_straight_away(self, tmp_path: Path) -> None:
+        coordinator = self._coordinator(mixes=True)
+
+        coordinator.request_reconstruct_directory(tmp_path)
+
+        coordinator._hooks.on_reconstruct_directory.assert_called_once_with(tmp_path)
+        coordinator._dialogs.show_confirmation.assert_not_called()
+
+    def test_a_mix_holding_recordings_is_asked_about_first(self, tmp_path: Path) -> None:
         coordinator = self._coordinator(mixes=True, gathered=(Path("/audio/a.wav"),))
 
-        getattr(coordinator, gesture)(tmp_path)
+        coordinator.request_reconstruct_file(tmp_path / "b.wav")
+        coordinator.request_reconstruct_directory(tmp_path)
 
         coordinator._hooks.on_reconstruct_file.assert_not_called()
         coordinator._hooks.on_reconstruct_directory.assert_not_called()
-        assert coordinator._dialogs.show_confirmation.call_args.args[1] == DISCARD_STEMS_PROMPT_KEY
+        prompts = [call.args[1] for call in coordinator._dialogs.show_confirmation.call_args_list]
+        assert prompts == [DISCARD_STEMS_PROMPT_KEY, DISCARD_STEMS_PROMPT_KEY]
 
-    def test_confirming_converts_what_was_named(self, tmp_path: Path) -> None:
+    def test_confirming_lists_what_was_named(self, tmp_path: Path) -> None:
         coordinator = self._coordinator(mixes=True, gathered=(Path("/audio/a.wav"),))
 
         coordinator.request_reconstruct_directory(tmp_path)
@@ -466,7 +475,7 @@ class TestReconstructReplacesTheSetup:
 
         coordinator._hooks.on_reconstruct_directory.assert_called_once_with(tmp_path)
 
-    def test_declining_converts_nothing(self, tmp_path: Path) -> None:
+    def test_declining_keeps_the_mix(self, tmp_path: Path) -> None:
         coordinator = self._coordinator(mixes=True, gathered=(Path("/audio/a.wav"),))
 
         coordinator.request_reconstruct_directory(tmp_path)
@@ -476,49 +485,36 @@ class TestReconstructReplacesTheSetup:
         coordinator._hooks.on_reconstruct_directory.assert_not_called()
 
 
-class TestReconstructingAFileOverAGatheredList:
-    """Reconstruct on a file while recordings stand gathered asks about them first, and the
-    conversion it goes on to can ask about writing over a reconstruction in turn."""
+class TestTakingUpWhatAReconstructNamed:
+    """A recording is listed at once; a folder is read first and listed once the reading is done."""
 
-    @pytest.fixture(name="coordinator")
-    def coordinator_fixture(self, tmp_path: Path) -> MainTabCoordinator:
-        coordinator = _stems_coordinator(mixes=True, gathered=(Path("/audio/a.wav"),))
-        coordinator._hooks.on_reconstruct_file.side_effect = lambda path: coordinator._confirm_overwriting_target(
-            (path.with_suffix(".stn"),)
-        )
-        coordinator.request_reconstruct_file(tmp_path / "a.wav")
-        return coordinator
+    def test_a_recording_is_listed(self, tmp_path: Path) -> None:
+        coordinator = _stems_coordinator(mixes=False)
 
-    def test_the_gathered_list_is_asked_about_first(self, coordinator: MainTabCoordinator) -> None:
-        assert coordinator._dialogs.show_confirmation.call_args.args[0] == TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS
-        coordinator._hooks.on_reconstruct_file.assert_not_called()
+        coordinator.take_up_path(tmp_path / "take.wav")
 
-    def test_replacing_the_list_reaches_the_conversion(
-        self,
-        coordinator: MainTabCoordinator,
-        tmp_path: Path,
-    ) -> None:
-        coordinator._dialogs.show_confirmation.call_args.args[3]()
+        coordinator._converter_logic.take_up_recording.assert_called_once_with(tmp_path / "take.wav")
+        coordinator._converter_logic.start_conversion.assert_not_called()
 
-        coordinator._hooks.on_reconstruct_file.assert_called_once_with(tmp_path / "a.wav")
+    def test_a_folder_is_listed_with_what_it_holds(self, tmp_path: Path) -> None:
+        coordinator = _stems_coordinator(mixes=False)
+        root = _folder_of(tmp_path, 2)
 
-    def test_the_conversion_asks_about_the_file_it_writes_over_next(
-        self,
-        coordinator: MainTabCoordinator,
-        tmp_path: Path,
-    ) -> None:
-        coordinator._dialogs.show_confirmation.call_args.args[3]()
+        settled(lambda: coordinator.take_up_path(root))
 
-        overwrite = coordinator._dialogs.show_confirmation.call_args
-        assert overwrite.args[0] == TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET
-        assert overwrite.kwargs["path"] == tmp_path / "a.stn"
+        listed, found = coordinator._converter_logic.take_up_folder.call_args.args
+        assert listed == root
+        assert {path.name for path in found} == {"take_00.wav", "take_01.wav"}
+        coordinator._converter_logic.start_conversion.assert_not_called()
 
-    def test_confirming_the_overwrite_starts_the_conversion(self, coordinator: MainTabCoordinator) -> None:
-        coordinator._dialogs.show_confirmation.call_args.args[3]()
+    def test_a_folder_holding_no_recordings_says_so(self, tmp_path: Path) -> None:
+        coordinator = _stems_coordinator(mixes=False)
+        root = _folder_of(tmp_path, 0)
 
-        coordinator._dialogs.show_confirmation.call_args.args[3]()
+        settled(lambda: coordinator.take_up_path(root))
 
-        coordinator._converter_logic.start_conversion.assert_called_once_with(confirmed=True)
+        coordinator._converter_logic.take_up_folder.assert_not_called()
+        assert coordinator._dialogs.show_info.call_args.args[1] == NOTHING_BELOW_KEY
 
 
 def _rows_holding(*counts: int) -> Tuple[MagicMock, ...]:
