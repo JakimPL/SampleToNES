@@ -1,8 +1,10 @@
 from functools import partial
-from typing import Final
+from typing import Final, List
 
+from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_core.constants.enums import ChannelName
 from tests.suite.screens.dearpygui.items.types import Item
 from tests.suite.screens.screen import Screen
 
@@ -48,3 +50,16 @@ def on_the_sequencer(screen: Screen) -> None:
     """Brings the Sequencer tab to the front and waits until the project's voices are listed."""
     screen.tabs.bring_to_front(Tab.SEQUENCER)
     screen.expect(screen.sequencer.voices.names, bool, description="the project's voices")
+
+
+def checked(screen: Screen, group: MenuElements, label: str) -> bool:
+    """Whether the entry labeled ``label`` in the menu ``group`` carries its check mark."""
+    return next(entry.checked for entry in screen.menu.entries(group) if entry.label == label)
+
+
+def channels_sounding(screen: Screen) -> List[bool]:
+    """Which channels Playback ▸ Channels marks as sounding, in channel order."""
+    return [
+        checked(screen, MenuElements.GROUP_PLAYBACK_CHANNELS, screen.channel_words(channel))
+        for channel in ChannelName.items()
+    ]
