@@ -5,7 +5,7 @@ from typing import Final, List
 import pytest
 
 from sampletones_application.categories.hierarchy import Tab
-from sampletones_application.utils.gui.keyboard.combination import KeyCombination
+from sampletones_application.utils.gui.keyboard.combination import KeyCombination, display_combinations
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.screens.application.startup import Startup
@@ -17,7 +17,6 @@ from tests.suite.screens.written import written_application_config
 
 TOGGLE_PULSE_TWO: Final[ShortcutId] = ShortcutId.TOGGLE_CHANNEL_PULSE_2
 NEW_MAIN_KEY: Final[KeyCombination] = KeyCombination.parse("Ctrl+Shift+2")
-KEY_LIST_SEPARATOR: Final[str] = ", "
 SETTLING_FRAMES: Final[int] = 20
 
 
@@ -25,10 +24,6 @@ SETTLING_FRAMES: Final[int] = 20
 def startup() -> Startup:
     """Opens the application with the arranged project and no reconstruction."""
     return Startup(reconstruction=None, project=ARRANGED_PROJECT)
-
-
-def written_out(combinations: List[KeyCombination]) -> str:
-    return KEY_LIST_SEPARATOR.join(combination.display() for combination in combinations)
 
 
 class TestEditingARowKeepsEveryKey:
@@ -49,7 +44,7 @@ class TestEditingARowKeepsEveryKey:
             screen.expect(settings.is_shown, bool, description="Keyboard settings")
 
             assert len(shipped) > 1
-            assert settings.keys_of(TOGGLE_PULSE_TWO) == written_out(shipped)
+            assert settings.keys_of(TOGGLE_PULSE_TWO) == display_combinations(shipped)
 
         def a_pressed_key_leads_the_others(screen: Screen) -> None:
             settings.listen_for(TOGGLE_PULSE_TWO)
@@ -58,7 +53,7 @@ class TestEditingARowKeepsEveryKey:
 
             screen.expect(
                 partial(settings.keys_of, TOGGLE_PULSE_TWO),
-                written_out([NEW_MAIN_KEY, *shipped]).__eq__,
+                display_combinations([NEW_MAIN_KEY, *shipped]).__eq__,
                 description="the new key ahead of the others",
             )
             settings.confirm()
@@ -90,7 +85,7 @@ class TestEditingARowKeepsEveryKey:
 
             assert screen.wait_for_exit()
             assert written_application_config().shortcuts.overrides == {
-                TOGGLE_PULSE_TWO.value: written_out([NEW_MAIN_KEY, *shipped]),
+                TOGGLE_PULSE_TWO.value: display_combinations([NEW_MAIN_KEY, *shipped]),
             }
 
         screen.scenario(

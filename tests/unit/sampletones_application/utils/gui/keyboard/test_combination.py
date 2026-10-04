@@ -1,9 +1,15 @@
 from dataclasses import dataclass
+from typing import Final, Tuple
 
 import dearpygui.dearpygui as dpg
 import pytest
 
-from sampletones_application.utils.gui.keyboard.combination import KeyCombination
+from sampletones_application.utils.gui.keyboard.combination import (
+    KEY_LIST_JOINER,
+    KeyCombination,
+    display_combinations,
+    parse_combinations,
+)
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.utils.gui.keyboard.keys import (
     KEY_MODIFIER_ALT,
@@ -22,6 +28,12 @@ from sampletones_application.utils.gui.keyboard.modifiers import (
 from sampletones_shared.constants.symbols import PLUS
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+
+CTRL_COMMA: Final[KeyCombination] = KeyCombination(dpg.mvKey_Comma, CTRL)
+CTRL_Y: Final[KeyCombination] = KeyCombination(dpg.mvKey_Y, CTRL)
+CTRL_SHIFT_Z: Final[KeyCombination] = KeyCombination(dpg.mvKey_Z, CTRL_SHIFT)
+COMMA: Final[KeyCombination] = KeyCombination(dpg.mvKey_Comma)
+CTRL_PLUS: Final[KeyCombination] = KeyCombination(KEY_PLUS, CTRL)
 
 WRITTEN_COMBINATIONS = (
     "Ctrl+Shift+Z",
@@ -257,3 +269,52 @@ class TestParse(BaseTestSuite):
     ) -> None:
         """A reader writes a combination however they know it and reads back one canonical form."""
         assert KeyCombination.parse(written).display() == expected
+
+
+class TestKeyLists(BaseTestSuite):
+    """A written list names several combinations apart by commas, and a comma written where a key goes
+    is the comma key."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        text: str
+        expected: Tuple[KeyCombination, ...]
+
+    test_cases = (
+        TestCase(label="nothing", text="", expected=()),
+        TestCase(label="one combination", text="Ctrl+Y", expected=(CTRL_Y,)),
+        TestCase(label="two combinations", text="Ctrl+Y, Ctrl+Shift+Z", expected=(CTRL_Y, CTRL_SHIFT_Z)),
+        TestCase(label="two combinations written tight", text="Ctrl+Y,Ctrl+Shift+Z", expected=(CTRL_Y, CTRL_SHIFT_Z)),
+        TestCase(label="a blank between two commas", text="Ctrl+Y,,Ctrl+Shift+Z", expected=(CTRL_Y, CTRL_SHIFT_Z)),
+        TestCase(label="the comma as a modified key", text="Ctrl+,", expected=(CTRL_COMMA,)),
+        TestCase(label="the comma written out", text="Ctrl+Comma", expected=(CTRL_COMMA,)),
+        TestCase(
+            label="the comma as a modified key ahead of another", text="Ctrl+,, Ctrl+Y", expected=(CTRL_COMMA, CTRL_Y)
+        ),
+        TestCase(
+            label="the comma as a modified key after another", text="Ctrl+Y, Ctrl+,", expected=(CTRL_Y, CTRL_COMMA)
+        ),
+        TestCase(label="the plus key ahead of another", text="Ctrl++, Ctrl+Y", expected=(CTRL_PLUS, CTRL_Y)),
+        TestCase(label="the comma alone", text=",", expected=(COMMA,)),
+        TestCase(label="the comma alone after another", text="Ctrl+Y, ,", expected=(CTRL_Y, COMMA)),
+        TestCase(label="a combination named twice", text="Ctrl+Y, Ctrl+Y", expected=(CTRL_Y,)),
+        TestCase(label="a combination spelled two ways", text="Ctrl+Y, ctrl+y", expected=(CTRL_Y,)),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_parse_combinations(self, test_case: TestCase) -> None:
+        assert parse_combinations(test_case.text) == test_case.expected
+
+    def test_a_displayed_list_reads_back_as_itself(self) -> None:
+        combinations = (CTRL_COMMA, COMMA, CTRL_Y)
+
+        assert parse_combinations(display_combinations(combinations)) == combinations
+
+    def test_a_displayed_list_joins_its_combinations_by_the_joiner(self) -> None:
+        assert display_combinations((CTRL_Y, CTRL_SHIFT_Z)) == KEY_LIST_JOINER.join(
+            (CTRL_Y.display(), CTRL_SHIFT_Z.display())
+        )

@@ -4,7 +4,11 @@ from typing import Dict, Optional, Tuple
 import dearpygui.dearpygui as dpg
 import pytest
 
-from sampletones_application.utils.gui.keyboard.combination import KeyCombination, display_combinations
+from sampletones_application.utils.gui.keyboard.combination import (
+    KEY_LIST_JOINER,
+    KeyCombination,
+    display_combinations,
+)
 from sampletones_application.utils.gui.keyboard.keys import (
     KEY_DISPLAY_NAMES,
     KEY_MODIFIER_ALT,
@@ -26,6 +30,11 @@ UNNAMED_KEY = -1
 
 def keys(*written: str) -> Tuple[KeyCombination, ...]:
     return tuple(KeyCombination.parse(combination) for combination in written)
+
+
+def unbound_action(draft: ShortcutDraft) -> ShortcutId:
+    """An action the scheme the draft opened on ships with no keys."""
+    return next(shortcut_id for shortcut_id in ShortcutId if not draft.keys(shortcut_id))
 
 
 @pytest.fixture
@@ -75,6 +84,14 @@ class TestOpen:
         draft = ShortcutDraft.open(shipped, {"Redo": FREE_COMBINATION})
 
         assert draft.keys(ShortcutId.REDO) == keys(FREE_COMBINATION)
+
+    def test_a_stored_list_naming_a_key_twice_opens_and_stores_it_once(self, shipped: ShortcutScheme) -> None:
+        draft = ShortcutDraft.open(shipped, {"Redo": f"{FREE_COMBINATION}{KEY_LIST_JOINER}{FREE_COMBINATION}"})
+
+        assert (draft.keys(ShortcutId.REDO), draft.overrides()) == (
+            keys(FREE_COMBINATION),
+            {"Redo": FREE_COMBINATION},
+        )
 
     def test_a_stored_list_opens_as_every_key_it_names(self, shipped: ShortcutScheme) -> None:
         draft = ShortcutDraft.open(shipped, {"Redo": f"{FREE_COMBINATION}, {SECOND_FREE_COMBINATION}"})
@@ -280,6 +297,24 @@ class TestAssign(BaseTestSuite):
 
         assert edited.keys(ShortcutId.UNDO) == keys("Ctrl+Z")
 
+    def test_an_action_given_the_keys_it_already_answers_records_nothing(self, draft: ShortcutDraft) -> None:
+        edited = draft.assign(ShortcutId.UNDO, draft.keys(ShortcutId.UNDO))
+
+        assert (edited.is_dirty, edited.overrides()) == (False, {})
+
+    def test_an_unbound_action_given_no_keys_records_nothing(self, draft: ShortcutDraft) -> None:
+        edited = draft.assign(unbound_action(draft), ())
+
+        assert (edited.is_dirty, edited.overrides()) == (False, {})
+
+    def test_an_action_given_back_its_shipped_keys_records_nothing(self, draft: ShortcutDraft) -> None:
+        edited = draft.assign(ShortcutId.UNDO, keys(FREE_COMBINATION)).assign(
+            ShortcutId.UNDO,
+            draft.keys(ShortcutId.UNDO),
+        )
+
+        assert (edited.is_dirty, edited.overrides()) == (False, {})
+
     def test_a_list_taking_keys_from_two_actions_takes_each_from_its_holder(
         self,
         draft: ShortcutDraft,
@@ -363,6 +398,11 @@ class TestUnwritableCombination(BaseTestSuite):
 
 
 class TestClear:
+    def test_clearing_an_unbound_action_records_nothing(self, draft: ShortcutDraft) -> None:
+        edited = draft.clear(unbound_action(draft))
+
+        assert (edited.is_dirty, edited.overrides()) == (False, {})
+
     def test_a_cleared_action_stores_as_unbound(self, draft: ShortcutDraft) -> None:
         edited = draft.clear(ShortcutId.UNDO)
 

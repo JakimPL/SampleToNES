@@ -7,7 +7,11 @@ import pytest
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.tags.sequencer import TAG_SEQUENCER_VOICES_INPUT_RENAME
-from sampletones_application.utils.gui.keyboard.combination import KeyCombination, parse_combinations
+from sampletones_application.utils.gui.keyboard.combination import (
+    KeyCombination,
+    display_combinations,
+    parse_combinations,
+)
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.suite.screens.application.startup import Startup
 from tests.suite.screens.dearpygui.items.reading import read_item
@@ -21,7 +25,6 @@ from tests.suite.screens.written import written_application_config
 NEW_UNDO: Final[KeyCombination] = KeyCombination.parse("Ctrl+Alt+U")
 RENAMED: Final[str] = "Renamed"
 SETTLING_FRAMES: Final[int] = 20
-KEY_LIST_SEPARATOR: Final[str] = ", "
 
 
 @pytest.fixture
@@ -88,7 +91,7 @@ class TestRebindingUndo:
 
             screen.expect(
                 partial(settings.keys_of, ShortcutId.UNDO),
-                f"{NEW_UNDO.display()}{KEY_LIST_SEPARATOR}{original[ShortcutId.UNDO]}".__eq__,
+                display_combinations((NEW_UNDO, *parse_combinations(original[ShortcutId.UNDO]))).__eq__,
                 description="the new keys ahead of the old ones",
             )
             settings.write_keys(ShortcutId.UNDO, NEW_UNDO.display())
