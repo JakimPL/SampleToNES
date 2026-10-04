@@ -88,6 +88,7 @@ class ModalQueue(metaclass=NonInstantiableMeta):
     _waiting: ClassVar[Deque[WaitingEntry]] = deque()
     _clearing: ClassVar[bool] = False
     _handing_off: ClassVar[bool] = False
+    _turning: ClassVar[bool] = False
     _turn_due: ClassVar[bool] = False
 
     @classmethod
@@ -189,6 +190,7 @@ class ModalQueue(metaclass=NonInstantiableMeta):
         cls._waiting = deque()
         cls._clearing = False
         cls._handing_off = False
+        cls._turning = False
         cls._turn_due = False
 
     @classmethod
@@ -200,15 +202,26 @@ class ModalQueue(metaclass=NonInstantiableMeta):
     def _admit(cls, entry: WaitingEntry) -> None:
         """Takes ``entry`` now where the screen is free for it, and puts it in line otherwise.
 
-        An entry a hand-off asks for joins the conversation that handed it the screen, ahead of every
-        entry waiting in line. Any other one waits for the conversation holding the screen to end.
+        An entry a hand-off or a turn asks for joins the conversation at the head of the line, ahead of
+        every entry waiting. Any other one takes a free screen only while nothing waits in line, so an
+        entry asked for in the frame after a failing turn waits behind the ones the failure left.
         """
-        if cls._shown is None and not cls._clearing and (cls._handing_off or not cls._screen_taken()):
+        if cls._shown is None and not cls._clearing and cls._head_is_free():
             cls._take(entry)
-        elif cls._handing_off:
+        elif cls._joins_the_head():
             cls._waiting.appendleft(entry)
         else:
             cls._waiting.append(entry)
+
+    @classmethod
+    def _joins_the_head(cls) -> bool:
+        """Whether what is asked for now comes from the head of the line: a hand-off or a turn running."""
+        return cls._handing_off or cls._turning
+
+    @classmethod
+    def _head_is_free(cls) -> bool:
+        """Whether an entry asked for now stands at the head of a line free for it."""
+        return cls._joins_the_head() or (not cls._screen_taken() and not cls._waiting)
 
     @classmethod
     def _take(cls, entry: WaitingEntry) -> None:
@@ -218,7 +231,16 @@ class ModalQueue(metaclass=NonInstantiableMeta):
                 cls._shown = tag
                 build()
             case WaitingTurn(continuation=continuation):
-                continuation()
+                cls._run_turn(continuation)
+
+    @classmethod
+    def _run_turn(cls, continuation: VoidCallback) -> None:
+        """Runs a turn at the head of the line, so what it asks for joins it ahead of the entries waiting."""
+        turning, cls._turning = cls._turning, True
+        try:
+            continuation()
+        finally:
+            cls._turning = turning
 
     @classmethod
     def _forget_waiting(cls, tag: str) -> None:
@@ -256,7 +278,8 @@ class ModalQueue(metaclass=NonInstantiableMeta):
     def _move_the_line(cls) -> None:
         """Gives the screen to the entries at the head of the line while it stays free.
 
-        A turn that raises leaves the entries behind it for a coming frame, so the line goes on there.
+        A turn that raises leaves the entries behind it for a coming frame, so the line goes on there,
+        and an entry asked for meanwhile waits behind them.
         """
         moved = False
         try:

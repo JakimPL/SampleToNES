@@ -327,11 +327,8 @@ class TestATurnInTheLine:
         assert screen.built == [FIRST, PROMPT, SECOND]
 
     def test_a_turn_that_raises_leaves_the_line_moving(self, screen: Screen, held_frames: Frames) -> None:
-        def broken() -> None:
-            raise RuntimeError("the gesture failed")
-
         screen.open(FIRST)
-        ModalQueue.when_free(broken)
+        ModalQueue.when_free(self.broken)
         screen.open(SECOND)
         ModalQueue.leave(FIRST)
 
@@ -340,6 +337,52 @@ class TestATurnInTheLine:
         held_frames.render()
 
         assert screen.built == [FIRST, SECOND]
+
+    def test_a_modal_asked_for_after_a_raising_turn_waits_behind_the_line(
+        self,
+        screen: Screen,
+        held_frames: Frames,
+    ) -> None:
+        """The line goes on a frame after the failure, in the order it was asked."""
+        screen.open(FIRST)
+        ModalQueue.when_free(self.broken)
+        screen.open(SECOND)
+        ModalQueue.leave(FIRST)
+        with pytest.raises(RuntimeError):
+            held_frames.render()
+
+        screen.open(THIRD)
+        assert screen.built == [FIRST]
+        held_frames.render()
+        ModalQueue.leave(SECOND)
+        held_frames.render()
+
+        assert screen.built == [FIRST, SECOND, THIRD]
+
+    def test_a_turn_asked_for_after_a_raising_turn_waits_behind_the_line(
+        self,
+        screen: Screen,
+        held_frames: Frames,
+    ) -> None:
+        screen.open(FIRST)
+        ModalQueue.when_free(self.broken)
+        screen.open(SECOND)
+        ModalQueue.leave(FIRST)
+        with pytest.raises(RuntimeError):
+            held_frames.render()
+
+        screen.take_a_turn()
+        assert screen.built == [FIRST]
+        held_frames.render()
+        assert screen.built == [FIRST, SECOND]
+        ModalQueue.leave(SECOND)
+        held_frames.render()
+
+        assert screen.built == [FIRST, SECOND, TURN]
+
+    @staticmethod
+    def broken() -> None:
+        raise RuntimeError("the gesture failed")
 
 
 class TestAHandOffThatRaises:
