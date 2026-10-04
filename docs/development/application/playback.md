@@ -138,7 +138,8 @@ The device holds a release per stream it handed out and invokes it whenever it n
 | The ranking that settles a contest for the device | `PlaybackPriority` (`logic/shared/`) |
 | The verbs, target resolution, and the registry of sources | `coordinators/playback/router.py` |
 | A source's engagement reporting | the transport's player protocol, implemented per source |
-| Error presentation for a source's failures | `GuardedPlayer` (`coordinators/playback/guard.py`) |
+| What the reader is told when a sound fails | `PlaybackFailurePresenter` (`coordinators/playback/failures.py`) |
+| The boundary that hands a transport command's failure to the presenter | `GuardedPlayer` (`coordinators/playback/guard.py`) |
 | The sequencer's mute set, its mask, and solo | `SequencerChannelsLogic` (`logic/sequencer/channels.py`) |
 | Row mixing, and the mask it pulls while rendering | `RowSynthesizer` (`logic/sequencer/playback/synthesizer/`) |
 | The values a note starts from and a channel holds between frames | `ChannelPerformance` (`sampletones_core/performance/state.py`) |
