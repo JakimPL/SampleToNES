@@ -1116,7 +1116,7 @@ class Application:
         panel reads the live ``_is_operation_active`` state for itself; this only nudges them to
         re-apply, so the busy truth lives in one place. The menu follows the same edge, since what
         grays an entry offering another such operation is one already running."""
-        self._instructions_tab.refresh_generate_button()
+        self._instructions_tab.follow_busy_state()
         self._update_menu()
 
     def _on_dialog_activity_changed(self) -> None:
@@ -1127,7 +1127,7 @@ class Application:
         converter's own view, and the menu entries that would start another exclusive operation.
         """
         self._refresh_busy_state()
-        self._main_tab.refresh_converter_view()
+        self._main_tab.follow_busy_state()
 
     def _on_library_operation_changed(self) -> None:
         """Responds to a library generation starting or finishing: refreshes the cross-tab action
@@ -1135,7 +1135,7 @@ class Application:
         operation. The converter's own view changes refresh only the action buttons, so this extra
         converter refresh fires solely on library edges and stays clear of a refresh loop."""
         self._refresh_busy_state()
-        self._main_tab.refresh_converter_view()
+        self._main_tab.follow_busy_state()
 
     def _export_reconstruction_wav_dialog(self) -> None:
         if self._reconstruction_coordinator.check_loaded():

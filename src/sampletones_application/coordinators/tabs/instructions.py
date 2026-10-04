@@ -528,7 +528,7 @@ class InstructionsTabCoordinator:
             on_cancel=decline,
         )
 
-    def refresh_generate_button(self) -> None:
+    def follow_busy_state(self) -> None:
         self._library_panel.refresh_action_buttons()
 
     @property

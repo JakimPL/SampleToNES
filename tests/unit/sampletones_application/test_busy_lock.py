@@ -1,5 +1,9 @@
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 from unittest.mock import MagicMock
+
+import pytest
 
 from sampletones_application.application import Application
 from sampletones_application.services.export.kind import ExportKind
@@ -7,6 +11,8 @@ from sampletones_application.services.export.success import ExportSuccess
 from sampletones_application.services.result import ServiceProgress, ServiceStarted
 from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS
 from sampletones_core.exports.stage import ExportStage
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 NOTHING_MEASURED: int = 0
 BYTES_SO_FAR: int = 812
@@ -102,14 +108,29 @@ class TestBusyRefreshPropagation:
     def test_refresh_nudges_both_tabs(self) -> None:
         application = _application()
         application._refresh_busy_state()
-        application._instructions_tab.refresh_generate_button.assert_called_once_with()
+        application._instructions_tab.follow_busy_state.assert_called_once_with()
 
     def test_refresh_reaches_the_menu(self) -> None:
         application = _application()
         application._refresh_busy_state()
         application._update_menu.assert_called_once_with()
 
-    def test_a_dialog_edge_refreshes_the_converter_view(self) -> None:
+
+class TestOtherOperationEdges(BaseTestSuite):
+    """The edge of an operation outside the converter reaches the converter's view, which hears of
+    its own edges by itself."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        edge: Callable[[Application], None]
+
+    test_cases = (
+        TestCase(label="a_dialog_edge", edge=Application._on_dialog_activity_changed),
+        TestCase(label="a_library_edge", edge=Application._on_library_operation_changed),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_edge_reaches_the_converter_view(self, test_case: TestCase) -> None:
         application = _application()
-        application._on_dialog_activity_changed()
-        application._main_tab.refresh_converter_view.assert_called_once_with()
+        test_case.edge(application)
+        application._main_tab.follow_busy_state.assert_called_once_with()
