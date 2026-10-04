@@ -93,7 +93,9 @@ Click the button under **Output** to start the conversion. Its label says what i
 reads **Cancel** while the conversion runs. Only one conversion runs at a time.
 
 **Destination:** shows where the result is saved: a single file for one conversion, or a folder for a
-longer run. Click the path to open it in your file manager. If the conversion would replace an
+longer run. Each reconstruction goes into a folder named after the channels its recording uses, so
+recordings with different channels are saved in different folders, and **Destination** shows the folder
+that holds them all. Click the path to open it in your file manager. If the conversion would replace an
 existing reconstruction, the app asks you first.
 
 When the conversion finishes, click **Load** to open the result on the **Reconstruction** tab, where

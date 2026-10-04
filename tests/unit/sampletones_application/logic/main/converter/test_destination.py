@@ -54,7 +54,7 @@ class TestWhereARunWrites(BaseTestSuite):
 
         assert Destination.unset().aimed_at(config, plan).output_path == plan.destination(config)
 
-    def test_a_batch_names_the_folder_its_plan_writes_into(self, tmp_path: Path) -> None:
+    def test_a_batch_names_the_folder_holding_what_its_plan_writes(self, tmp_path: Path) -> None:
         config = Config()
         plan = BatchConversion(
             entries=(
@@ -66,4 +66,4 @@ class TestWhereARunWrites(BaseTestSuite):
         output_path = Destination.unset().aimed_at(config, plan).output_path
 
         assert output_path == plan.destination(config)
-        assert all(job.output_path.parent == output_path for job in plan.jobs(config))
+        assert all(output_path in job.output_path.parents for job in plan.jobs(config))

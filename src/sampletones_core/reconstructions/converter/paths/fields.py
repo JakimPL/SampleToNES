@@ -47,7 +47,7 @@ class ConfigDirectoryFields(BaseModel):
 
     @classmethod
     def from_config(cls, config: Config, channels: AbstractSet[ChannelName]) -> Self:
-        """The fields a run's own directory is named from: its settings, and the channels it hands out.
+        """The fields a reconstruction's directory is named from: the settings, and the channels it was handed.
 
         The channels come from the setup rather than the configuration, so the name is written in
         the order the application states them however the caller gathered the set.

@@ -36,7 +36,7 @@ class Destination:
         """The destination the plan a run amounts to names.
 
         A run of one names the document it writes, which is what a reader converting a single file
-        is looking at; a larger one names the folder every reconstruction it writes lands in. A run
+        is looking at; a larger one names the folder holding every reconstruction it writes. A run
         with nobody taking part names nothing of its own, so the destination it last held stands
         until a recording joins it.
         """

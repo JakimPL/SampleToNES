@@ -28,17 +28,22 @@ def get_relative_path(
     return Path(output_path.absolute())
 
 
+def reconstructions_directory(config: Config) -> Path:
+    """The directory holding the folder of every setting a run writes under."""
+    return to_path(config.general.reconstructions_directory)
+
+
 def config_directory_path(
     config: Config,
     channels: AbstractSet[ChannelName],
 ) -> Path:
-    """The directory a run writes its reconstructions into.
+    """The directory a reconstruction is written into.
 
-    The directory is named after the settings that shaped the library and the channels the run
-    hands out, so runs that differ in either keep their results apart.
+    The directory is named after the settings that shaped the library and the channels the
+    reconstruction was handed, so reconstructions that differ in either keep apart.
     """
     config_directory = ConfigDirectoryFields.generate_config_directory_name(config, channels)
-    return to_path(config.general.reconstructions_directory) / config_directory
+    return reconstructions_directory(config) / config_directory
 
 
 def get_output_path(
