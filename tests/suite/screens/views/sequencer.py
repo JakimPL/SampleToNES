@@ -93,6 +93,18 @@ class Voices:
         """Whether New instrument above the list answers a press, which it does while a project is open."""
         return self._bridge.ask(lambda: read_item(TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT)).enabled
 
+    def hover_new_instrument(self) -> None:
+        """Rests the pointer on New instrument above the list, whether it answers or stands greyed out.
+
+        Raises:
+            LookupError: If the button reports no box.
+        """
+        box = self._bridge.ask(lambda: read_item(TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT)).rect
+        if box is None:
+            raise LookupError("New instrument stands nowhere")
+
+        self._hand.move_to(box.center)
+
     def names(self) -> List[str]:
         """The names the rows show, top to bottom."""
 

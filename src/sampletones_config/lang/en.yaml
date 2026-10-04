@@ -682,6 +682,7 @@ sequencer.voices.label.omission_cumulative_bend: "a bend outrunning its arpeggio
 sequencer.voices.label.omission_release_point: "a release point"
 sequencer.voices.label.omission_arpeggio_mode: "an arpeggio in fixed, relative or scheme mode"
 sequencer.voices.tooltip.new_instrument: "Add an instrument playable on any channel"
+sequencer.voices.tooltip.new_instrument_no_project: "Open or create a project to add voices."
 sequencer.voices.tooltip.kind_sample: "Sample"
 sequencer.voices.tooltip.kind_instrument: "Instrument"
 sequencer.voices.message.instrument_not_found: "The instrument file could not be found."
