@@ -38,22 +38,30 @@ class TestResolve:
 
 class TestRebound:
     def test_a_rebound_entry_answers_the_combination_the_reader_named(self) -> None:
-        entry = WrittenShortcut(combination="Ctrl+Y").rebound("Ctrl+Alt+R")
+        entry = WrittenShortcut(combination="Ctrl+Y").rebound(("Ctrl+Alt+R",))
 
         assert entry.combination == "Ctrl+Alt+R"
 
-    def test_a_rebound_entry_answers_that_combination_alone(self) -> None:
-        entry = WrittenShortcut(combination="Ctrl+Y", aliases=("Ctrl+Shift+Z",)).rebound("Ctrl+Alt+R")
+    def test_a_rebound_entry_answers_the_keys_named_and_those_alone(self) -> None:
+        """A reader states every key of the action, so one key leaves the earlier aliases out."""
+        entry = WrittenShortcut(combination="Ctrl+Y", aliases=("Ctrl+Shift+Z",)).rebound(("Ctrl+Alt+R",))
 
         assert entry.aliases == ()
 
+    def test_a_rebound_entry_displays_the_first_key_and_answers_the_rest(self) -> None:
+        entry = WrittenShortcut(combination="Ctrl+Y").rebound(("Ctrl+Alt+R", "Ctrl+Shift+Z"))
+
+        assert entry.combination == "Ctrl+Alt+R"
+        assert entry.aliases == ("Ctrl+Shift+Z",)
+
     def test_an_entry_rebound_to_no_combination_is_left_unbound(self) -> None:
         """A reader takes an action's keys away by giving it none."""
-        entry = WrittenShortcut(combination="Ctrl+Y").rebound(None)
+        entry = WrittenShortcut(combination="Ctrl+Y", aliases=("Ctrl+Shift+Z",)).rebound(())
 
         assert entry.combination is None
+        assert entry.aliases == ()
 
     def test_a_rebound_entry_keeps_the_transparency_the_action_carries(self) -> None:
-        entry = WrittenShortcut(combination="Ctrl+PgDn", field_transparent=True).rebound("Ctrl+Alt+N")
+        entry = WrittenShortcut(combination="Ctrl+PgDn", field_transparent=True).rebound(("Ctrl+Alt+N",))
 
         assert entry.field_transparent is True

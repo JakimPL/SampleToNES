@@ -23,17 +23,20 @@ class WrittenShortcut(BaseModel, frozen=True):
     aliases: Tuple[str, ...] = NO_WRITTEN_ALIASES
     field_transparent: bool = False
 
-    def rebound(self, combination: Optional[str]) -> WrittenShortcut:
-        """The entry as a reader rebound it, answering the combination they named and that alone.
+    def rebound(self, combinations: Tuple[str, ...]) -> WrittenShortcut:
+        """The entry as a reader rebound it, answering the keys they named, the first one displayed.
 
-        The reader states one combination, which is the whole of what reaches the action; the field
-        transparency stays, since it follows from the action's role rather than from its keys.
+        The reader states the whole list of keys that reach the action: the first is the one menus
+        print and the rest answer beside it. The field transparency stays, since it follows from the
+        action's role.
 
         Args:
-            combination: The keys the action answers to, ``None`` leaving it unbound.
+            combinations: The keys the action answers to, main key first; an empty list leaves it
+                unbound.
         """
         return WrittenShortcut(
-            combination=combination,
+            combination=combinations[0] if combinations else None,
+            aliases=combinations[1:],
             field_transparent=self.field_transparent,
         )
 

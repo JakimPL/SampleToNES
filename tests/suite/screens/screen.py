@@ -13,12 +13,14 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_ERROR,
     TAG_GLOBAL_DIALOG_FILE_NOT_FOUND,
     TAG_GLOBAL_DIALOG_NO_AUDIO_OUTPUT,
+    TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
     TAG_GLOBAL_STATUS_BAR,
     TAG_GLOBAL_WINDOW_MAIN,
 )
 from sampletones_application.tags.main import TAG_MAIN_EXPLORER_TREE
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.gui.shortcuts.shortcut import Shortcut
 from sampletones_core.constants.enums import ChannelName, GeneratorName
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
 from tests.suite.screens.boundaries.audio import OutputRecord
@@ -38,7 +40,7 @@ from tests.suite.screens.dearpygui.items.viewport import read_pointer, read_view
 from tests.suite.screens.dearpygui.recording import FrameRecording
 from tests.suite.screens.dearpygui.screenshot import capture, drawn_frame
 from tests.suite.screens.dearpygui.windows import WindowManager
-from tests.suite.screens.keyboard import press_combination, primary_combination
+from tests.suite.screens.keyboard import first_alias, press_combination, primary_combination
 from tests.suite.screens.render_thread import QueueRenderThread
 from tests.suite.screens.views.audio_settings import AudioSettings
 from tests.suite.screens.views.browsers import FileTree
@@ -116,6 +118,7 @@ class Screen:
         self.error_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_ERROR)
         self.file_not_found_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_FILE_NOT_FOUND)
         self.no_output_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_NO_AUDIO_OUTPUT)
+        self.no_project_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN)
 
     def expect(
         self,
@@ -135,6 +138,10 @@ class Screen:
     def words(self, key: Union[str, TextKeyTuple]) -> str:
         """What the language file says under ``key``, which is what the application shows the user."""
         return self._language[key]
+
+    def shortcut(self, shortcut_id: ShortcutId) -> Shortcut:
+        """The binding the scheme in place gives ``shortcut_id``: its main key and the further ones."""
+        return self._shortcuts.shortcut(shortcut_id)
 
     def shortcut_words(self, shortcut_id: ShortcutId) -> str:
         """How a menu prints the keys of ``shortcut_id`` under the scheme in place."""
@@ -288,6 +295,10 @@ class Screen:
     def press_shortcut(self, shortcut_id: ShortcutId) -> None:
         """Presses the keys the scheme in place gives ``shortcut_id`` on the real keyboard."""
         press_combination(self.hand, primary_combination(self._shortcuts.shortcut(shortcut_id)))
+
+    def press_shortcut_alias(self, shortcut_id: ShortcutId) -> None:
+        """Presses the first alias the scheme in place gives ``shortcut_id`` on the real keyboard."""
+        press_combination(self.hand, first_alias(self._shortcuts.shortcut(shortcut_id)))
 
     def scenario(self, *steps: Callable[["Screen"], None]) -> BaseTestScenario["Screen"]:
         """The ordered steps of one scenario, each named after its function in a failure it raises."""

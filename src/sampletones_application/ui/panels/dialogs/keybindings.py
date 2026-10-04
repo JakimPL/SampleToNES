@@ -203,7 +203,7 @@ class GUIKeybindingsWindow(GUISeededDialogWindow[KeybindingsViewModel]):
             )
             dpg.add_selectable(
                 tag=compose_tag(row_tag, SUF_SETTINGS_KEYBINDINGS_SHORTCUT),
-                label=row.combination,
+                label=row.keys,
                 user_data=row.action,
                 callback=self._on_shortcut_clicked,
             )
@@ -277,7 +277,7 @@ class GUIKeybindingsWindow(GUISeededDialogWindow[KeybindingsViewModel]):
         """Shows each action's keys, the standing selection, and what the filter leaves listed."""
         view_model = self.view_model
         dpg_set_value(TAG_SETTINGS_KEYBINDINGS_COMBO_SCHEME, view_model.scheme)
-        dpg_set_value(TAG_SETTINGS_KEYBINDINGS_INPUT_SHORTCUT, view_model.combination)
+        dpg_set_value(TAG_SETTINGS_KEYBINDINGS_INPUT_SHORTCUT, view_model.keys)
         dpg_set_value(TAG_SETTINGS_KEYBINDINGS_TEXT_MESSAGE, view_model.message)
         for group in view_model.groups:
             self._render_group(group, view_model.selected)
@@ -320,7 +320,7 @@ class GUIKeybindingsWindow(GUISeededDialogWindow[KeybindingsViewModel]):
         if is_selected and self._capture is not None and self._capture.is_listening:
             return self._msg_capturing
 
-        return row.combination if row.combination else self._lbl_unbound
+        return row.keys if row.keys else self._lbl_unbound
 
     def _on_scheme_changed(self, _sender: Sender, app_data: str) -> None:
         self.call(self.on_scheme_selected, app_data)

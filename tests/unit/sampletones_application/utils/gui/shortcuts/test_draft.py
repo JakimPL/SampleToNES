@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 import pytest
 
-from sampletones_application.utils.gui.keyboard.combination import KeyCombination
+from sampletones_application.utils.gui.keyboard.combination import KeyCombination, display_combinations
 from sampletones_application.utils.gui.keyboard.keys import (
     KEY_DISPLAY_NAMES,
     KEY_MODIFIER_ALT,
@@ -18,9 +18,14 @@ from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
 FREE_COMBINATION = "Ctrl+Alt+B"
+SECOND_FREE_COMBINATION = "Ctrl+Alt+N"
 TABLE_COMBINATION = "Del"
 
 UNNAMED_KEY = -1
+
+
+def keys(*written: str) -> Tuple[KeyCombination, ...]:
+    return tuple(KeyCombination.parse(combination) for combination in written)
 
 
 @pytest.fixture
@@ -31,7 +36,7 @@ def draft(shipped: ShortcutScheme) -> ShortcutDraft:
 
 class TestOpen:
     def test_a_session_storing_nothing_opens_on_the_keys_the_scheme_ships(self, draft: ShortcutDraft) -> None:
-        assert draft.combination(ShortcutId.UNDO) == KeyCombination.parse("Ctrl+Z")
+        assert draft.keys(ShortcutId.UNDO) == keys("Ctrl+Z")
 
     def test_a_draft_opens_on_what_the_session_holds(self, shipped: ShortcutScheme) -> None:
         """A dialog asks whether the reader changed anything, which counts from the moment it opened."""
@@ -40,7 +45,7 @@ class TestOpen:
     def test_a_stored_override_opens_as_the_keys_its_action_answers(self, shipped: ShortcutScheme) -> None:
         draft = ShortcutDraft.open(shipped, {"Undo": "Ctrl+Alt+U"})
 
-        assert draft.combination(ShortcutId.UNDO) == KeyCombination.parse("Ctrl+Alt+U")
+        assert draft.keys(ShortcutId.UNDO) == keys("Ctrl+Alt+U")
 
     def test_a_stored_override_reads_back_as_the_preference_it_came_from(self, shipped: ShortcutScheme) -> None:
         overrides: Dict[str, Optional[str]] = {"Undo": "Ctrl+Alt+U"}
@@ -50,13 +55,38 @@ class TestOpen:
     def test_a_stored_override_stating_no_combination_opens_unbound(self, shipped: ShortcutScheme) -> None:
         draft = ShortcutDraft.open(shipped, {"Undo": None})
 
-        assert draft.combination(ShortcutId.UNDO) is None
+        assert draft.keys(ShortcutId.UNDO) == ()
 
-    def test_a_stored_override_dropping_the_aliases_alone_opens_as_an_edit(self, shipped: ShortcutScheme) -> None:
-        """An override states the whole of what reaches an action, so the aliases go with it."""
-        draft = ShortcutDraft.open(shipped, {"OrderInsertFrame": "Plus"})
+    def test_a_stored_override_listing_the_main_key_alone_opens_as_an_edit(self, shipped: ShortcutScheme) -> None:
+        """An override lists every key of its action, so one naming the main key alone leaves out the rest."""
+        main = shipped.shortcut(ShortcutId.ORDER_INSERT_FRAME).display()
+        draft = ShortcutDraft.open(shipped, {"OrderInsertFrame": main})
 
-        assert draft.overrides() == {"OrderInsertFrame": "Plus"}
+        assert draft.overrides() == {"OrderInsertFrame": main}
+
+    def test_a_stored_override_listing_every_shipped_key_opens_as_no_edit(self, shipped: ShortcutScheme) -> None:
+        every = display_combinations(shipped.shortcut(ShortcutId.ORDER_INSERT_FRAME).combinations())
+        draft = ShortcutDraft.open(shipped, {"OrderInsertFrame": every})
+
+        assert draft.overrides() == {}
+
+    def test_a_stored_single_key_opens_as_an_action_with_that_key_alone(self, shipped: ShortcutScheme) -> None:
+        """A preference stored as one key per action reads the same way, as a list of one key."""
+        draft = ShortcutDraft.open(shipped, {"Redo": FREE_COMBINATION})
+
+        assert draft.keys(ShortcutId.REDO) == keys(FREE_COMBINATION)
+
+    def test_a_stored_list_opens_as_every_key_it_names(self, shipped: ShortcutScheme) -> None:
+        draft = ShortcutDraft.open(shipped, {"Redo": f"{FREE_COMBINATION}, {SECOND_FREE_COMBINATION}"})
+
+        assert draft.keys(ShortcutId.REDO) == keys(FREE_COMBINATION, SECOND_FREE_COMBINATION)
+
+    def test_a_stored_list_naming_no_key_in_one_place_stays_behind_whole(self, shipped: ShortcutScheme) -> None:
+        """An override that is unreadable in part costs its action alone, which keeps every shipped key."""
+        draft = ShortcutDraft.open(shipped, {"Redo": f"{FREE_COMBINATION}, Ctrl+Nonsense", "Undo": "Ctrl+Alt+U"})
+
+        assert draft.overrides() == {"Undo": "Ctrl+Alt+U"}
+        assert draft.keys(ShortcutId.REDO) == shipped.shortcut(ShortcutId.REDO).combinations()
 
     def test_a_stored_override_this_build_carries_no_action_for_stays_behind(self, shipped: ShortcutScheme) -> None:
         """A preference outlives the build that stored it, so a stale entry costs only itself."""
@@ -70,22 +100,58 @@ class TestOpen:
         assert draft.overrides() == {}
 
 
-class TestCombination:
-    def test_an_untouched_action_reads_the_keys_the_scheme_gives_it(self, draft: ShortcutDraft) -> None:
-        assert draft.combination(ShortcutId.SAVE_PROJECT) == KeyCombination.parse("Ctrl+S")
+class TestKeys:
+    def test_an_untouched_action_reads_every_key_the_scheme_gives_it(
+        self,
+        draft: ShortcutDraft,
+        shipped: ShortcutScheme,
+    ) -> None:
+        assert draft.keys(ShortcutId.REDO) == shipped.shortcut(ShortcutId.REDO).combinations()
 
     def test_an_assigned_action_reads_the_keys_the_reader_gave_it(self, draft: ShortcutDraft) -> None:
-        edited = draft.assign(ShortcutId.UNDO, KeyCombination.parse(FREE_COMBINATION))
+        edited = draft.assign(ShortcutId.UNDO, keys(FREE_COMBINATION, SECOND_FREE_COMBINATION))
 
-        assert edited.combination(ShortcutId.UNDO) == KeyCombination.parse(FREE_COMBINATION)
+        assert edited.keys(ShortcutId.UNDO) == keys(FREE_COMBINATION, SECOND_FREE_COMBINATION)
+
+    def test_a_key_given_twice_counts_once(self, draft: ShortcutDraft) -> None:
+        edited = draft.assign(ShortcutId.UNDO, keys(FREE_COMBINATION, FREE_COMBINATION))
+
+        assert edited.keys(ShortcutId.UNDO) == keys(FREE_COMBINATION)
 
     def test_a_cleared_action_reads_as_unbound(self, draft: ShortcutDraft) -> None:
-        edited = draft.clear(ShortcutId.UNDO)
+        edited = draft.clear(ShortcutId.REDO)
 
-        assert edited.combination(ShortcutId.UNDO) is None
+        assert edited.keys(ShortcutId.REDO) == ()
 
     def test_an_action_the_scheme_leaves_unbound_reads_as_unbound(self, draft: ShortcutDraft) -> None:
-        assert draft.combination(ShortcutId.ABOUT_DIALOG) is None
+        assert draft.keys(ShortcutId.ABOUT_DIALOG) == ()
+
+
+class TestKeysLedBy:
+    """A pressed key becomes the action's main key, and the keys it had follow it."""
+
+    def test_a_new_key_leads_the_keys_the_action_had(self, draft: ShortcutDraft, shipped: ShortcutScheme) -> None:
+        led = draft.keys_led_by(ShortcutId.REDO, KeyCombination.parse(FREE_COMBINATION))
+
+        assert led == (KeyCombination.parse(FREE_COMBINATION), *shipped.shortcut(ShortcutId.REDO).combinations())
+
+    def test_an_own_alias_moves_to_the_front_and_nothing_drops(
+        self,
+        draft: ShortcutDraft,
+        shipped: ShortcutScheme,
+    ) -> None:
+        redo = shipped.shortcut(ShortcutId.REDO)
+
+        led = draft.keys_led_by(ShortcutId.REDO, redo.aliases[0])
+
+        assert led[0] == redo.aliases[0]
+        assert set(led) == set(redo.combinations())
+        assert len(led) == len(redo.combinations())
+
+    def test_an_own_alias_asks_no_one(self, draft: ShortcutDraft, shipped: ShortcutScheme) -> None:
+        redo = shipped.shortcut(ShortcutId.REDO)
+
+        assert draft.holders(ShortcutId.REDO, draft.keys_led_by(ShortcutId.REDO, redo.aliases[0])) == {}
 
 
 class TestClaimant:
@@ -95,7 +161,7 @@ class TestClaimant:
         assert claimant is ShortcutId.SAVE_PROJECT
 
     def test_an_alias_is_held_as_firmly_as_the_combination_it_extends(self, draft: ShortcutDraft) -> None:
-        """An assignment takes every key that reaches the holder, aliases included."""
+        """An alias is a key its holder answers, so giving it away asks the holder as the main key does."""
         claimant = draft.claimant(ShortcutId.ORDER_ADD_FRAME, KeyCombination.parse("NumPlus"))
 
         assert claimant is ShortcutId.ORDER_INSERT_FRAME
@@ -111,18 +177,29 @@ class TestClaimant:
         assert draft.claimant(ShortcutId.UNDO, KeyCombination.parse("Ctrl+Z")) is None
 
     def test_the_keys_an_edit_left_behind_are_free(self, draft: ShortcutDraft) -> None:
-        edited = draft.assign(ShortcutId.UNDO, KeyCombination.parse(FREE_COMBINATION))
+        edited = draft.assign(ShortcutId.UNDO, keys(FREE_COMBINATION))
 
         assert edited.claimant(ShortcutId.ABOUT_DIALOG, KeyCombination.parse("Ctrl+Z")) is None
 
-    def test_the_aliases_an_edit_left_behind_are_free(self, draft: ShortcutDraft) -> None:
-        edited = draft.assign(ShortcutId.ORDER_INSERT_FRAME, KeyCombination.parse("Ctrl+Alt+I"))
+    def test_the_aliases_a_written_list_leaves_out_are_free(self, draft: ShortcutDraft) -> None:
+        edited = draft.assign(ShortcutId.ORDER_INSERT_FRAME, keys("Ctrl+Alt+I"))
 
         assert edited.claimant(ShortcutId.ORDER_ADD_FRAME, KeyCombination.parse("NumPlus")) is None
 
+    def test_the_aliases_a_pressed_key_leads_stay_held(self, draft: ShortcutDraft) -> None:
+        """A pressed key joins the keys an action had, so its aliases still answer it."""
+        led = draft.keys_led_by(ShortcutId.ORDER_INSERT_FRAME, KeyCombination.parse("Ctrl+Alt+I"))
+        edited = draft.assign(ShortcutId.ORDER_INSERT_FRAME, led)
+
+        assert edited.claimant(ShortcutId.ORDER_ADD_FRAME, KeyCombination.parse("NumPlus")) is (
+            ShortcutId.ORDER_INSERT_FRAME
+        )
+
 
 class TestAssign(BaseTestSuite):
-    """An assignment takes the combination from whichever action of the category holds it."""
+    """An assignment takes the combination from whichever action of the category holds it, and the holder
+    keeps every other key it had.
+    """
 
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
@@ -156,14 +233,18 @@ class TestAssign(BaseTestSuite):
         test_cases,
         ids=lambda test_case: test_case.label,
     )
-    def test_the_action_that_held_the_combination_is_left_unbound(
+    def test_the_action_that_held_the_combination_keeps_its_other_keys(
         self,
         test_case: TestCase,
         draft: ShortcutDraft,
+        shipped: ShortcutScheme,
     ) -> None:
-        edited = draft.assign(test_case.shortcut_id, KeyCombination.parse(test_case.written))
+        taken = KeyCombination.parse(test_case.written)
+        edited = draft.assign(test_case.shortcut_id, (taken,))
 
-        assert edited.combination(test_case.holder) is None
+        assert edited.keys(test_case.holder) == tuple(
+            key for key in shipped.shortcut(test_case.holder).combinations() if key != taken
+        )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -176,24 +257,47 @@ class TestAssign(BaseTestSuite):
         draft: ShortcutDraft,
     ) -> None:
         combination = KeyCombination.parse(test_case.written)
-        scheme = draft.assign(test_case.shortcut_id, combination).scheme()
+        scheme = draft.assign(test_case.shortcut_id, (combination,)).scheme()
 
         assert scheme.claimant(test_case.shortcut_id.category, combination) is test_case.shortcut_id
 
     def test_an_assignment_leaves_the_draft_holding_keys_to_store(self, draft: ShortcutDraft) -> None:
-        edited = draft.assign(ShortcutId.UNDO, KeyCombination.parse(FREE_COMBINATION))
+        edited = draft.assign(ShortcutId.UNDO, keys(FREE_COMBINATION))
 
         assert edited.is_dirty is True
 
-    def test_the_actions_an_assignment_leaves_alone_keep_their_keys(self, draft: ShortcutDraft) -> None:
-        edited = draft.assign(ShortcutId.UNDO, KeyCombination.parse(FREE_COMBINATION))
+    def test_the_actions_an_assignment_leaves_alone_keep_their_keys(
+        self,
+        draft: ShortcutDraft,
+        shipped: ShortcutScheme,
+    ) -> None:
+        edited = draft.assign(ShortcutId.UNDO, keys(FREE_COMBINATION))
 
-        assert edited.combination(ShortcutId.REDO) == KeyCombination.parse("Ctrl+Y")
+        assert edited.keys(ShortcutId.REDO) == shipped.shortcut(ShortcutId.REDO).combinations()
 
     def test_an_action_given_the_keys_it_already_answers_keeps_them(self, draft: ShortcutDraft) -> None:
-        edited = draft.assign(ShortcutId.UNDO, KeyCombination.parse("Ctrl+Z"))
+        edited = draft.assign(ShortcutId.UNDO, keys("Ctrl+Z"))
 
-        assert edited.combination(ShortcutId.UNDO) == KeyCombination.parse("Ctrl+Z")
+        assert edited.keys(ShortcutId.UNDO) == keys("Ctrl+Z")
+
+    def test_a_list_taking_keys_from_two_actions_takes_each_from_its_holder(
+        self,
+        draft: ShortcutDraft,
+        shipped: ShortcutScheme,
+    ) -> None:
+        taken = (
+            shipped.shortcut(ShortcutId.SAVE_PROJECT).combinations()[0],
+            shipped.shortcut(ShortcutId.REDO).aliases[0],
+        )
+
+        edited = draft.assign(ShortcutId.ABOUT_DIALOG, taken)
+
+        assert edited.holders(ShortcutId.ABOUT_DIALOG, taken) == {}
+        assert draft.holders(ShortcutId.ABOUT_DIALOG, taken) == {
+            taken[0]: ShortcutId.SAVE_PROJECT,
+            taken[1]: ShortcutId.REDO,
+        }
+        assert edited.keys(ShortcutId.REDO) == (shipped.shortcut(ShortcutId.REDO).combinations()[0],)
 
 
 class TestUnwritableCombination(BaseTestSuite):
@@ -234,7 +338,7 @@ class TestUnwritableCombination(BaseTestSuite):
     )
     def test_assigning_it_is_refused(self, test_case: TestCase, draft: ShortcutDraft) -> None:
         with pytest.raises(KeyError):
-            draft.assign(ShortcutId.UNDO, test_case.combination)
+            draft.assign(ShortcutId.UNDO, (test_case.combination,))
 
     @pytest.mark.parametrize(
         "test_case",
@@ -243,9 +347,9 @@ class TestUnwritableCombination(BaseTestSuite):
     )
     def test_the_action_keeps_the_keys_it_had(self, test_case: TestCase, draft: ShortcutDraft) -> None:
         with pytest.raises(KeyError):
-            draft.assign(ShortcutId.UNDO, test_case.combination)
+            draft.assign(ShortcutId.UNDO, (test_case.combination,))
 
-        assert draft.combination(ShortcutId.UNDO) == KeyCombination.parse("Ctrl+Z")
+        assert draft.keys(ShortcutId.UNDO) == keys("Ctrl+Z")
         assert draft.is_dirty is False
 
     @pytest.mark.parametrize(
@@ -264,6 +368,15 @@ class TestClear:
 
         assert edited.overrides() == {"Undo": None}
 
+    def test_every_key_a_cleared_action_held_is_free_for_another(
+        self,
+        draft: ShortcutDraft,
+        shipped: ShortcutScheme,
+    ) -> None:
+        edited = draft.clear(ShortcutId.REDO)
+
+        assert edited.holders(ShortcutId.ABOUT_DIALOG, shipped.shortcut(ShortcutId.REDO).combinations()) == {}
+
     def test_the_keys_a_cleared_action_held_are_free_for_another(self, draft: ShortcutDraft) -> None:
         edited = draft.clear(ShortcutId.UNDO)
 
@@ -279,7 +392,7 @@ class TestReset:
     def test_a_reset_draft_reads_the_keys_the_scheme_ships(self, shipped: ShortcutScheme) -> None:
         draft = ShortcutDraft.open(shipped, {"Undo": "Ctrl+Alt+U"}).reset()
 
-        assert draft.combination(ShortcutId.UNDO) == KeyCombination.parse("Ctrl+Z")
+        assert draft.keys(ShortcutId.UNDO) == keys("Ctrl+Z")
 
     def test_a_reset_draft_stores_no_override(self, shipped: ShortcutScheme) -> None:
         draft = ShortcutDraft.open(shipped, {"Undo": "Ctrl+Alt+U"}).reset()
@@ -297,25 +410,38 @@ class TestReset:
 
 class TestScheme:
     def test_the_scheme_answers_the_keys_the_reader_gave(self, draft: ShortcutDraft) -> None:
-        scheme = draft.assign(ShortcutId.UNDO, KeyCombination.parse(FREE_COMBINATION)).scheme()
+        scheme = draft.assign(ShortcutId.UNDO, keys(FREE_COMBINATION, SECOND_FREE_COMBINATION)).scheme()
 
-        assert scheme.shortcut(ShortcutId.UNDO).display() == FREE_COMBINATION
+        assert scheme.shortcut(ShortcutId.UNDO).combinations() == keys(FREE_COMBINATION, SECOND_FREE_COMBINATION)
 
-    def test_an_untouched_action_keeps_the_aliases_the_scheme_ships(self, draft: ShortcutDraft) -> None:
-        scheme = draft.assign(ShortcutId.UNDO, KeyCombination.parse(FREE_COMBINATION)).scheme()
+    def test_an_untouched_action_keeps_the_aliases_the_scheme_ships(
+        self,
+        draft: ShortcutDraft,
+        shipped: ShortcutScheme,
+    ) -> None:
+        scheme = draft.assign(ShortcutId.UNDO, keys(FREE_COMBINATION)).scheme()
 
-        assert scheme.shortcut(ShortcutId.REDO).aliases == (KeyCombination.parse("Ctrl+Shift+Z"),)
+        assert scheme.shortcut(ShortcutId.REDO).aliases == shipped.shortcut(ShortcutId.REDO).aliases
 
-    def test_a_touched_action_answers_the_combination_it_was_given_alone(self, draft: ShortcutDraft) -> None:
-        scheme = draft.assign(ShortcutId.ORDER_INSERT_FRAME, KeyCombination.parse("Ctrl+Alt+I")).scheme()
+    def test_a_pressed_key_leaves_the_action_answering_its_aliases_too(
+        self,
+        draft: ShortcutDraft,
+        shipped: ShortcutScheme,
+    ) -> None:
+        """A pressed key becomes the main key the menus print, and every key the action had still answers."""
+        pressed = KeyCombination.parse("Ctrl+Alt+I")
+        led = draft.keys_led_by(ShortcutId.ORDER_INSERT_FRAME, pressed)
 
-        assert scheme.shortcut(ShortcutId.ORDER_INSERT_FRAME).aliases == ()
+        shortcut = draft.assign(ShortcutId.ORDER_INSERT_FRAME, led).scheme().shortcut(ShortcutId.ORDER_INSERT_FRAME)
+
+        assert shortcut.combination == pressed
+        assert shortcut.aliases == shipped.shortcut(ShortcutId.ORDER_INSERT_FRAME).combinations()
 
     def test_two_actions_trade_the_combinations_they_held(self, draft: ShortcutDraft) -> None:
         """Every edit is read at once, so a swap arrives without either action holding both keys."""
-        edited = draft.assign(ShortcutId.UNDO, KeyCombination.parse("Ctrl+Y")).assign(
+        edited = draft.assign(ShortcutId.UNDO, keys("Ctrl+Y")).assign(
             ShortcutId.REDO,
-            KeyCombination.parse("Ctrl+Z"),
+            keys("Ctrl+Z"),
         )
         scheme = edited.scheme()
 
@@ -327,7 +453,9 @@ class TestScheme:
 
     def test_every_key_the_table_names_produces_a_scheme_that_resolves(self, draft: ShortcutDraft) -> None:
         """What a reader may assign is what the application then runs on, key for key."""
-        assigned = {key: draft.assign(ShortcutId.UNDO, KeyCombination(key, CTRL)).scheme() for key in KEY_DISPLAY_NAMES}
+        assigned = {
+            key: draft.assign(ShortcutId.UNDO, (KeyCombination(key, CTRL),)).scheme() for key in KEY_DISPLAY_NAMES
+        }
 
         assert all(
             scheme.shortcut(ShortcutId.UNDO).combination == KeyCombination(key, CTRL)
@@ -337,31 +465,60 @@ class TestScheme:
 
 class TestOverrides:
     def test_an_edit_stores_under_the_name_a_keybinding_file_writes(self, draft: ShortcutDraft) -> None:
-        edited = draft.assign(ShortcutId.UNDO, KeyCombination.parse(FREE_COMBINATION))
+        edited = draft.assign(ShortcutId.UNDO, keys(FREE_COMBINATION))
 
         assert edited.overrides() == {"Undo": FREE_COMBINATION}
 
     def test_an_edit_stores_the_combination_as_it_reads(self, draft: ShortcutDraft) -> None:
         """A stored preference is written the way the dialog shows it, whatever the reader typed."""
-        edited = draft.assign(ShortcutId.UNDO, KeyCombination.parse("shift+ctrl+alt+u"))
+        edited = draft.assign(ShortcutId.UNDO, keys("shift+ctrl+alt+u"))
 
         assert edited.overrides() == {"Undo": "Ctrl+Alt+Shift+U"}
 
     def test_a_displaced_action_stores_as_unbound(self, draft: ShortcutDraft) -> None:
-        edited = draft.assign(ShortcutId.ABOUT_DIALOG, KeyCombination.parse("Ctrl+S"))
+        edited = draft.assign(ShortcutId.ABOUT_DIALOG, keys("Ctrl+S"))
 
         assert edited.overrides() == {"AboutDialog": "Ctrl+S", "SaveProject": None}
 
+    def test_an_edit_stores_every_key_joined_by_commas(self, draft: ShortcutDraft) -> None:
+        edited = draft.assign(ShortcutId.UNDO, keys(FREE_COMBINATION, SECOND_FREE_COMBINATION))
+
+        assert edited.overrides() == {"Undo": f"{FREE_COMBINATION}, {SECOND_FREE_COMBINATION}"}
+
+    def test_a_list_reopens_on_every_key_it_stored(self, draft: ShortcutDraft) -> None:
+        edited = draft.assign(ShortcutId.UNDO, keys(FREE_COMBINATION, "Comma", SECOND_FREE_COMBINATION))
+
+        reopened = ShortcutDraft.open(draft.base, edited.overrides())
+
+        assert reopened.keys(ShortcutId.UNDO) == keys(FREE_COMBINATION, "Comma", SECOND_FREE_COMBINATION)
+
     def test_the_actions_the_reader_left_alone_store_nothing(self, draft: ShortcutDraft) -> None:
         """A preference states the actions the reader touched, so the rest follow the scheme."""
-        edited = draft.assign(ShortcutId.UNDO, KeyCombination.parse(FREE_COMBINATION))
+        edited = draft.assign(ShortcutId.UNDO, keys(FREE_COMBINATION))
 
         assert set(edited.overrides()) == {"Undo"}
 
     def test_a_stored_draft_reopens_on_the_keys_it_stored(self, draft: ShortcutDraft) -> None:
-        edited = draft.assign(ShortcutId.ABOUT_DIALOG, KeyCombination.parse("Ctrl+S"))
+        edited = draft.assign(ShortcutId.ABOUT_DIALOG, keys("Ctrl+S"))
 
         reopened = ShortcutDraft.open(draft.base, edited.overrides())
 
         assert reopened.edits == edited.edits
         assert reopened.is_dirty is False
+
+
+class TestEveryKey:
+    def test_taking_an_alias_leaves_its_holder_answering_its_main_key(
+        self,
+        draft: ShortcutDraft,
+        shipped: ShortcutScheme,
+    ) -> None:
+        redo = shipped.shortcut(ShortcutId.REDO)
+        edited = draft.assign(ShortcutId.ABOUT_DIALOG, (redo.aliases[0],))
+
+        assert edited.keys(ShortcutId.REDO) == (redo.combinations()[0],)
+
+    def test_a_stored_list_reads_back_as_the_preference_it_came_from(self, shipped: ShortcutScheme) -> None:
+        overrides: Dict[str, Optional[str]] = {"Redo": "Ctrl+Alt+R, Ctrl+Alt+Shift+R"}
+
+        assert ShortcutDraft.open(shipped, overrides).overrides() == overrides

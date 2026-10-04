@@ -62,7 +62,7 @@ def group_tag(category: str) -> str:
 def view_model(
     *,
     selected: Optional[str] = None,
-    combination: str = "",
+    keys: str = "",
     message: str = "",
 ) -> KeybindingsViewModel:
     return KeybindingsViewModel(
@@ -71,20 +71,20 @@ def view_model(
                 category="application",
                 label="Application",
                 rows=(
-                    KeybindingRow(action=SAVE_PROJECT, label="Save project", combination="Ctrl+S"),
-                    KeybindingRow(action=ABOUT_DIALOG, label="About", combination=""),
+                    KeybindingRow(action=SAVE_PROJECT, label="Save project", keys="Ctrl+S"),
+                    KeybindingRow(action=ABOUT_DIALOG, label="About", keys=""),
                 ),
             ),
             KeybindingGroup(
                 category="tracker",
                 label="Tracker",
-                rows=(KeybindingRow(action=TRACKER_NEXT_ROW, label="Next row", combination="Down"),),
+                rows=(KeybindingRow(action=TRACKER_NEXT_ROW, label="Next row", keys="Down"),),
             ),
         ),
         schemes=SCHEMES,
         scheme="default",
         selected=selected,
-        combination=combination,
+        keys=keys,
         message=message,
     )
 
@@ -201,20 +201,20 @@ class TestActionList:
                         category="application",
                         label="Application",
                         rows=(
-                            KeybindingRow(action=SAVE_PROJECT, label="Save project", combination="Ctrl+Alt+B"),
-                            KeybindingRow(action=ABOUT_DIALOG, label="About", combination=""),
+                            KeybindingRow(action=SAVE_PROJECT, label="Save project", keys="Ctrl+Alt+B"),
+                            KeybindingRow(action=ABOUT_DIALOG, label="About", keys=""),
                         ),
                     ),
                     KeybindingGroup(
                         category="tracker",
                         label="Tracker",
-                        rows=(KeybindingRow(action=TRACKER_NEXT_ROW, label="Next row", combination="Down"),),
+                        rows=(KeybindingRow(action=TRACKER_NEXT_ROW, label="Next row", keys="Down"),),
                     ),
                 ),
                 schemes=SCHEMES,
                 scheme="default",
                 selected=None,
-                combination="",
+                keys="",
                 message="",
             )
         )
@@ -293,7 +293,7 @@ class TestSelection:
         assert dpg.get_value(action_tag(ABOUT_DIALOG)) is False
 
     def test_the_entry_box_shows_the_selected_action_keys(self, harness: Harness) -> None:
-        harness.render(view_model(selected=SAVE_PROJECT, combination="Ctrl+S"))
+        harness.render(view_model(selected=SAVE_PROJECT, keys="Ctrl+S"))
 
         assert dpg.get_value(TAG_SETTINGS_KEYBINDINGS_INPUT_SHORTCUT) == "Ctrl+S"
 

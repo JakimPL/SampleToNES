@@ -7,11 +7,17 @@ from tests.suite.screens.dearpygui.hand import Hand
 
 LEFT_KEY: Final[int] = 0
 PRIMARY_COMBINATION: Final[int] = 0
+FIRST_ALIAS: Final[int] = 0
 
 
 def primary_combination(shortcut: Shortcut) -> KeyCombination:
     """The combination an action displays, which is the one a person presses."""
     return shortcut.combinations()[PRIMARY_COMBINATION]
+
+
+def first_alias(shortcut: Shortcut) -> KeyCombination:
+    """The first further combination an action answers to, beside the one it displays."""
+    return shortcut.aliases[FIRST_ALIAS]
 
 
 def press_combination(hand: Hand, combination: KeyCombination) -> None:

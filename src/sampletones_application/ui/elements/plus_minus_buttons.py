@@ -19,6 +19,7 @@ from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import dpg_delete_item
+from sampletones_application.utils.gui.press import LeftPress
 from sampletones_shared.constants.symbols import MINUS, PLUS
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
@@ -50,9 +51,10 @@ class GUIPlusMinusButtons(CallbackMixin):
     sign occupies. With ``hold_repeat`` a held button repeats its press after an initial
     delay, matching the stepping feel of a numeric field; otherwise each button fires once
     per click. A hold belongs to the button the press went down on and repeats while the
-    pointer stays on it, so a press carried in from elsewhere steps nothing. Either button
-    can be enabled or disabled independently, so a control can gray out a step that would
-    have no effect.
+    pointer stays on it, so a press carried in from elsewhere steps nothing. A hold ends on
+    the release, and on the first mouse move with the button up, which ends one whose release
+    landed outside the window. Either button can be enabled or disabled independently, so a
+    control can gray out a step that would have no effect.
     """
 
     def __init__(
@@ -77,7 +79,7 @@ class GUIPlusMinusButtons(CallbackMixin):
         self._hold_repeat = hold_repeat
         self._font = font
 
-        self._held: Optional[HeldPress] = None
+        self._press: LeftPress[HeldPress] = LeftPress()
 
         self._table_tag = compose_tag(tag, SUF_TABLE)
         self._decrement_button_tag = compose_tag(tag, SUF_BUTTON_DECREMENT)
@@ -209,6 +211,7 @@ class GUIPlusMinusButtons(CallbackMixin):
                 button=dpg.mvMouseButton_Left,
                 callback=self._on_mouse_release,
             )
+            dpg.add_mouse_move_handler(callback=self._on_mouse_move)
 
     @staticmethod
     def _bind_press_handler(
@@ -248,9 +251,16 @@ class GUIPlusMinusButtons(CallbackMixin):
 
     def _arm_hold(self, direction: int) -> None:
         """Starts a hold on the button a press went down on, with a longer delay before the first repeat."""
-        self._held = HeldPress(
-            direction=direction,
-            remaining=HOLD_INITIAL_DELAY_FACTOR * self._layout.hold_delay,
+        self._press.begin(
+            HeldPress(
+                direction=direction,
+                remaining=HOLD_INITIAL_DELAY_FACTOR * self._layout.hold_delay,
+            )
+        )
+
+    def _buttons_exist(self) -> bool:
+        return bool(dpg.does_item_exist(self._decrement_button_tag)) and bool(
+            dpg.does_item_exist(self._increment_button_tag)
         )
 
     def _on_mouse_down(
@@ -259,7 +269,7 @@ class GUIPlusMinusButtons(CallbackMixin):
         _app_data: Any,
         _user_data: Any,
     ) -> None:
-        if not dpg.does_item_exist(self._decrement_button_tag) or not dpg.does_item_exist(self._increment_button_tag):
+        if not self._buttons_exist():
             dpg_delete_item(sender)
             return
 
@@ -267,12 +277,26 @@ class GUIPlusMinusButtons(CallbackMixin):
         if direction is not None:
             self._step(direction)
 
+    def _on_mouse_move(
+        self,
+        sender: Sender,
+        _app_data: Any,
+        _user_data: Any,
+    ) -> None:
+        """Ends a hold once the button reads up, from a handler that runs whether or not it is down."""
+        if not self._buttons_exist():
+            dpg_delete_item(sender)
+            return
+
+        self._press.settle()
+
     def _held_button_hovered(self) -> bool:
         """Whether the pointer stands on the button the hold began on."""
-        if self._held is None:
+        held = self._press.held()
+        if held is None:
             return False
 
-        button = self._increment_button if self._held.direction > 0 else self._decrement_button
+        button = self._increment_button if held.direction > 0 else self._decrement_button
         return button is not None and bool(button.is_item_hovered())
 
     def _on_mouse_release(
@@ -281,7 +305,7 @@ class GUIPlusMinusButtons(CallbackMixin):
         _app_data: Any,
         _user_data: Any,
     ) -> None:
-        self._held = None
+        self._press.end()
 
     def _advance_hold(
         self,
@@ -300,12 +324,13 @@ class GUIPlusMinusButtons(CallbackMixin):
         Returns:
             Optional[int]: The step direction on a frame that repeats the press, otherwise ``None``.
         """
-        if self._held is None or not hovered:
+        held = self._press.held()
+        if held is None or not hovered:
             return None
 
-        self._held.remaining -= delta_time
-        if self._held.remaining > 0:
+        held.remaining -= delta_time
+        if held.remaining > 0:
             return None
 
-        self._held.remaining = self._layout.hold_delay
-        return self._held.direction
+        held.remaining = self._layout.hold_delay
+        return held.direction
