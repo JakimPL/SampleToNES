@@ -298,9 +298,12 @@ To follow a scenario as it plays, draw on Xephyr, which opens its screen as a wi
 SAMPLETONES_SCREENS_DISPLAY=xephyr uv run python -m pytest tests/screens --no-cov -k display_settings
 ```
 
-Each scenario keeps its files under `build/screens/`, in a folder named after the test: the home the
-application lived in, and a screenshot of the last frame when the scenario failed. `screen.capture` keeps a
-picture as evidence of a look, for a pull request rather than an assertion.
+A scenario's home is scratch: it is built from the scenario's world in a temporary folder made for each
+worker, whose path holds no hidden folder, so the application's browsers reach it from a worktree under
+`.worktrees/` too, and it goes once the scenario ends. What a run keeps lies under `build/screens/`, in a
+folder named after the test: the reports, and when the scenario failed, a screenshot of the last frame and
+a copy of the home it left. `screen.capture` keeps a picture as evidence of a look, for a pull request
+rather than an assertion.
 
 ## Who governs what
 
