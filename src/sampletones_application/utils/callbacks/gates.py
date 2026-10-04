@@ -25,6 +25,40 @@ def waiting(wait: Wait) -> Gate:
     return gate
 
 
+def asking(
+    unsettled: Callable[[], bool],
+    question: Gate,
+    screen: Wait,
+) -> Gate:
+    """A gate that asks ``question`` about something unsettled once ``screen`` is free for the question.
+
+    While ``unsettled`` reads false, the request goes on at once, whatever holds the screen. Otherwise
+    the gate waits for the screen and reads ``unsettled`` again there, so the question speaks of the
+    state it shows over. A thing another conversation settled meanwhile, such as a project its answer
+    closed, lets the request through with no question.
+
+    Args:
+        unsettled: Whether there is something to ask about.
+        question: The gate that asks, which runs only while the screen is free for it.
+        screen: The wait for the screen, such as the modal line's turn.
+    """
+
+    def gate(proceed: VoidCallback, decline: VoidCallback) -> None:
+        if not unsettled():
+            proceed()
+            return
+
+        def ask_on_the_screen() -> None:
+            if unsettled():
+                question(proceed, decline)
+            else:
+                proceed()
+
+        screen(ask_on_the_screen)
+
+    return gate
+
+
 def pass_gates(
     gates: Sequence[Gate],
     arrive: VoidCallback,

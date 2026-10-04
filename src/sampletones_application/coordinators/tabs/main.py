@@ -57,12 +57,14 @@ from sampletones_application.ui.panels.main.config import GUIConfigPanel
 from sampletones_application.ui.panels.main.converter.panel import GUIConverterPanel
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
 from sampletones_application.ui.panels.main.source.panel import GUISourceSettingsPanel
+from sampletones_application.utils.callbacks.gates import asking
 from sampletones_application.utils.file_dialogs.api import select_directory_dialog
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRouter
+from sampletones_application.utils.gui.modal_queue import ModalQueue
 from sampletones_application.utils.gui.render_thread import on_render_thread
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.view_model.main.advanced import (
@@ -755,12 +757,12 @@ class MainTabCoordinator:
     def guard_exit(self, proceed: VoidCallback, decline: VoidCallback) -> None:
         """Lets the exit go on, asking first while a conversion runs, which exiting stops.
 
-        Cancel keeps the conversion running and turns the exit away.
+        The question reads the converter once the screen is free for it, so a run that ended
+        meanwhile is asked about no more. Cancel keeps the conversion running and turns the exit away.
         """
-        if not self.is_converter_active():
-            proceed()
-            return
+        asking(self.is_converter_active, self._ask_before_exit, ModalQueue.when_free)(proceed, decline)
 
+    def _ask_before_exit(self, proceed: VoidCallback, decline: VoidCallback) -> None:
         self._dialogs.show_confirmation(
             TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
             self._language_manager["global.dialog.message.exit_conversion_in_progress"],

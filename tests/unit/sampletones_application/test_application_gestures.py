@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Final, Tuple
+from typing import Callable, Final, List, Tuple
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,9 +12,11 @@ from sampletones_core.exports.format import ExportFormat
 from sampletones_shared.types.callback import VoidCallback
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.frames import Frames, held_frames
 from tests.suite.gates import HeldGate, held_gate
+from tests.suite.questions import OnScreenDocument
 
-__all__ = ["held_gate"]
+__all__ = ["held_frames", "held_gate"]
 
 COLLABORATORS: Final[Tuple[str, ...]] = (
     "_project_coordinator",
@@ -35,6 +37,9 @@ PROJECT_GUARDS: Final[Tuple[str, ...]] = ("guard_new", "guard_open", "guard_clos
 RECONSTRUCTION_GUARDS: Final[Tuple[str, ...]] = ("guard_load", "guard_close")
 FIRST_VOICE: Final[str] = "first-voice"
 SECOND_VOICE: Final[str] = "second-voice"
+PROJECT: Final[str] = "project"
+CLOSE: Final[str] = "close"
+OPEN: Final[str] = "open"
 
 
 def let_through(proceed: VoidCallback, _decline: VoidCallback) -> None:
@@ -328,6 +333,79 @@ class TestADocumentGestureAsksOnce(BaseTestSuite):
         proceed, _ = guard.call_args.args
         proceed()
         app._reconstruction_coordinator.open_project_voice.assert_called_once_with(SECOND_VOICE)
+
+
+class TestAnOpenAskedWhileACloseAsks:
+    """Opening a project while the question of its close stands asks about the project the answer leaves.
+
+    Discard closes the project, so the opening has nothing to ask and goes on to its file dialog. Cancel
+    keeps the changes, so the opening asks about them.
+    """
+
+    @pytest.fixture
+    def asked(self) -> List[str]:
+        return []
+
+    @pytest.fixture
+    def project(self, app: Application, asked: List[str]) -> OnScreenDocument:
+        project = OnScreenDocument(PROJECT, asked)
+        project.unfinished = True
+        app._project_coordinator.guard_close.side_effect = project.guard(CLOSE)
+        app._project_coordinator.guard_open.side_effect = project.guard(OPEN)
+        app._project_coordinator.close_project.side_effect = project.finish
+        return project
+
+    @pytest.fixture
+    def opening_over_the_close(
+        self,
+        bindings: ShortcutBindings,
+        held_gate: HeldGate,
+        project: OnScreenDocument,
+    ) -> OnScreenDocument:
+        """Close project asked for, its question standing, and Open project asked for after it."""
+        bindings.close_project()
+        held_gate.release()
+        bindings.open_project()
+        return project
+
+    def test_the_opening_asks_nothing_while_the_close_asks(
+        self,
+        app: Application,
+        opening_over_the_close: OnScreenDocument,
+        asked: List[str],
+        held_frames: Frames,
+    ) -> None:
+        held_frames.render()
+
+        assert asked == [f"{PROJECT} {CLOSE}"]
+        app._project_coordinator.open_project.assert_not_called()
+
+    def test_discard_opens_without_a_second_question(
+        self,
+        app: Application,
+        opening_over_the_close: OnScreenDocument,
+        asked: List[str],
+        held_frames: Frames,
+    ) -> None:
+        opening_over_the_close.go_on()
+        held_frames.render()
+
+        assert asked == [f"{PROJECT} {CLOSE}"]
+        app._project_coordinator.close_project.assert_called_once_with()
+        app._project_coordinator.open_project.assert_called_once_with()
+
+    def test_cancel_leaves_the_opening_to_ask_about_the_changes_kept(
+        self,
+        app: Application,
+        opening_over_the_close: OnScreenDocument,
+        asked: List[str],
+        held_frames: Frames,
+    ) -> None:
+        opening_over_the_close.cancel()
+        held_frames.render()
+
+        assert asked == [f"{PROJECT} {CLOSE}", f"{PROJECT} {OPEN}"]
+        app._project_coordinator.open_project.assert_not_called()
 
 
 class TestLoadingWhatARunWroteAsksOnce:

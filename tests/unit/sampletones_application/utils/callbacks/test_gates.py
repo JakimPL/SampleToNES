@@ -9,6 +9,7 @@ from sampletones_application.utils.callbacks.gates import (
     Gate,
     LatestRequestFlight,
     SingleFlight,
+    asking,
     gated,
     pass_gates,
     waiting,
@@ -162,6 +163,83 @@ class TestAWaitAsAGate:
         wait.release()
 
         assert opened == [Path("song.stp")]
+
+
+class TestAQuestionAskedOnTheScreen:
+    """A question waits for the screen, and reads what it asks about once the screen is free for it.
+
+    The thing asked about is a guard's own state: ``unfinished`` decides whether there is anything to ask.
+    """
+
+    @pytest.fixture(name="screen")
+    def screen_fixture(self) -> HeldWait:
+        return HeldWait()
+
+    @pytest.fixture(name="question")
+    def question_fixture(self, reached: List[str]) -> Guard:
+        return Guard("question", reached, unfinished=True)
+
+    @staticmethod
+    def ask(question: Guard, screen: HeldWait, reached: List[str]) -> None:
+        pass_gates(
+            (asking(lambda: question.unfinished, question, screen),),
+            lambda: reached.append(ARRIVED),
+            lambda: reached.append(DECLINED),
+        )
+
+    def test_nothing_unfinished_goes_on_while_the_screen_is_taken(
+        self,
+        question: Guard,
+        screen: HeldWait,
+        reached: List[str],
+    ) -> None:
+        question.unfinished = False
+
+        self.ask(question, screen, reached)
+
+        assert reached == [ARRIVED]
+
+    def test_a_question_waits_for_the_screen(self, question: Guard, screen: HeldWait, reached: List[str]) -> None:
+        self.ask(question, screen, reached)
+
+        assert reached == []
+        assert not question.is_asking
+
+    def test_a_question_asks_once_the_screen_is_free(
+        self,
+        question: Guard,
+        screen: HeldWait,
+        reached: List[str],
+    ) -> None:
+        self.ask(question, screen, reached)
+
+        screen.release()
+
+        assert reached == ["question"]
+        assert question.is_asking
+
+    def test_a_thing_settled_while_the_screen_was_taken_asks_nothing(
+        self,
+        question: Guard,
+        screen: HeldWait,
+        reached: List[str],
+    ) -> None:
+        """A project another conversation closed meanwhile lets the request through with no question."""
+        self.ask(question, screen, reached)
+
+        question.unfinished = False
+        screen.release()
+
+        assert reached == [ARRIVED]
+        assert not question.is_asking
+
+    def test_the_answer_reaches_whoever_asked(self, question: Guard, screen: HeldWait, reached: List[str]) -> None:
+        self.ask(question, screen, reached)
+        screen.release()
+
+        question.cancel()
+
+        assert reached == ["question", DECLINED]
 
 
 class RaisingOnce:

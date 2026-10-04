@@ -1,17 +1,29 @@
+from dataclasses import dataclass
 from typing import Final, Iterator, List, Optional, Tuple
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from sampletones_application.application import Application
+from sampletones_application.utils.callbacks.gates import LatestRequestFlight
 from sampletones_application.utils.callbacks.queue import CallbackQueue
+from sampletones_application.utils.gui.modal_queue import ModalQueue
 from sampletones_shared.types.callback import VoidCallback
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
+from tests.suite.frames import Frames, held_frames
+from tests.suite.questions import OnScreenDocument
+
+__all__ = ["held_frames"]
 
 PROJECT: Final[str] = "project"
 RECONSTRUCTION: Final[str] = "reconstruction"
 CONVERSION: Final[str] = "conversion"
 LIBRARY: Final[str] = "library"
 OWNERS: Final[Tuple[str, ...]] = (PROJECT, RECONSTRUCTION, CONVERSION, LIBRARY)
+CLOSE: Final[str] = "close"
+EXIT: Final[str] = "exit"
+JOB_REPORT: Final[str] = "job report"
 
 
 class Owner:
@@ -262,6 +274,168 @@ class TestClosingTwiceBeforeTheAnswer:
         exiting.owners[RECONSTRUCTION].land()
 
         assert exiting.asked == [RECONSTRUCTION]
+
+
+def run_at_once(gesture: VoidCallback) -> None:
+    """The edits of the open reconstruction, with none on their way."""
+    gesture()
+
+
+class LeavingOverAQuestion:
+    """An application whose owners ask on the screen, so an exit can be asked for while another question stands.
+
+    The project and the reconstruction each close through a conversation of their own, and closing one
+    settles its changes.
+    """
+
+    def __init__(self) -> None:
+        self.asked: List[str] = []
+        self.documents = {name: OnScreenDocument(name, self.asked) for name in OWNERS}
+        project = MagicMock()
+        project.guard_close.side_effect = self.documents[PROJECT].guard(CLOSE)
+        project.guard_exit.side_effect = self.documents[PROJECT].guard(EXIT)
+        project.close_project.side_effect = self.documents[PROJECT].finish
+        reconstruction = MagicMock()
+        reconstruction.after_edits.side_effect = run_at_once
+        reconstruction.guard_close.side_effect = self.documents[RECONSTRUCTION].guard(CLOSE)
+        reconstruction.guard_exit.side_effect = self.documents[RECONSTRUCTION].guard(EXIT)
+        reconstruction.close.side_effect = self.documents[RECONSTRUCTION].finish
+        self.application = Application.__new__(Application)
+        self.application._project_coordinator = project
+        self.application._reconstruction_coordinator = reconstruction
+        self.application._main_tab = MagicMock()
+        self.application._main_tab.guard_exit.side_effect = self.documents[CONVERSION].guard(EXIT)
+        self.application._instructions_tab = MagicMock()
+        self.application._instructions_tab.guard_exit.side_effect = self.documents[LIBRARY].guard(EXIT)
+        self.exit = MagicMock()
+        self.application._exit_application = self.exit
+        self.leave = self.application._exit_flight()
+        self.closing = {
+            PROJECT: self.application._document_flight(project.guard_close, project.close_project),
+            RECONSTRUCTION: self.application._document_flight(reconstruction.guard_close, reconstruction.close),
+        }
+
+    def close(self, name: str) -> LatestRequestFlight[[]]:
+        return self.closing[name]
+
+
+@pytest.fixture(name="leaving")
+def leaving_fixture() -> LeavingOverAQuestion:
+    return LeavingOverAQuestion()
+
+
+class TestAnExitAskedWhileACloseAsks(BaseTestSuite):
+    """An exit asked for while the question of a close stands waits for that question's answer, and then asks
+    about what the answer left.
+
+    The reported case: the project's close asks, the window is closed, and Discard closes the project. The exit
+    then has nothing left to ask about the project, so the application leaves.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        document: str
+
+    test_cases = (
+        TestCase(label="project", document=PROJECT),
+        TestCase(label="reconstruction", document=RECONSTRUCTION),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_exit_asks_nothing_while_the_close_asks(
+        self,
+        test_case: TestCase,
+        leaving: LeavingOverAQuestion,
+        held_frames: Frames,
+    ) -> None:
+        leaving.documents[test_case.document].unfinished = True
+        leaving.close(test_case.document)()
+
+        leaving.leave()
+        held_frames.render()
+
+        assert leaving.asked == [f"{test_case.document} {CLOSE}"]
+        assert ModalQueue.snapshot().turns == 1
+        leaving.exit.assert_not_called()
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_discard_leaves_without_a_second_question(
+        self,
+        test_case: TestCase,
+        leaving: LeavingOverAQuestion,
+        held_frames: Frames,
+    ) -> None:
+        leaving.documents[test_case.document].unfinished = True
+        leaving.close(test_case.document)()
+        leaving.leave()
+
+        leaving.documents[test_case.document].go_on()
+        held_frames.render()
+
+        assert leaving.asked == [f"{test_case.document} {CLOSE}"]
+        leaving.exit.assert_called_once_with()
+        assert ModalQueue.snapshot().is_settled
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_cancel_leaves_the_exit_to_ask_about_the_changes_kept(
+        self,
+        test_case: TestCase,
+        leaving: LeavingOverAQuestion,
+        held_frames: Frames,
+    ) -> None:
+        leaving.documents[test_case.document].unfinished = True
+        leaving.close(test_case.document)()
+        leaving.leave()
+
+        leaving.documents[test_case.document].cancel()
+        held_frames.render()
+
+        assert leaving.asked == [f"{test_case.document} {CLOSE}", f"{test_case.document} {EXIT}"]
+        leaving.exit.assert_not_called()
+
+
+class TestAnExitAskedWhileAWindowStands:
+    """An exit asked for while another window holds the screen reads what it asks about once the window leaves."""
+
+    def test_a_conversion_ending_meanwhile_is_asked_about_no_more(
+        self,
+        leaving: LeavingOverAQuestion,
+        held_frames: Frames,
+    ) -> None:
+        leaving.documents[CONVERSION].unfinished = True
+        ModalQueue.open(JOB_REPORT, lambda: None)
+        leaving.leave()
+
+        leaving.documents[CONVERSION].finish()
+        ModalQueue.leave(JOB_REPORT)
+        held_frames.render()
+
+        assert leaving.asked == []
+        leaving.exit.assert_called_once_with()
+
+    def test_nothing_unfinished_leaves_at_once(self, leaving: LeavingOverAQuestion, held_frames: Frames) -> None:
+        """Closing the window over a dialog, with nothing to ask about, leaves with the dialog standing."""
+        ModalQueue.open(JOB_REPORT, lambda: None)
+
+        leaving.leave()
+
+        leaving.exit.assert_called_once_with()
+        assert leaving.asked == []
+
+    def test_a_conversion_still_running_is_asked_about(
+        self,
+        leaving: LeavingOverAQuestion,
+        held_frames: Frames,
+    ) -> None:
+        leaving.documents[CONVERSION].unfinished = True
+        ModalQueue.open(JOB_REPORT, lambda: None)
+        leaving.leave()
+
+        ModalQueue.leave(JOB_REPORT)
+        held_frames.render()
+
+        assert leaving.asked == [f"{CONVERSION} {EXIT}"]
+        leaving.exit.assert_not_called()
 
 
 class TestTheFrameTheExitIsDecidedIn:

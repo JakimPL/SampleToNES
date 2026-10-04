@@ -21,7 +21,11 @@ from sampletones_application.tags.main import (
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.application import settled
 from tests.suite.files import LOCKED_FOLDER, held_at, requires_folder_permissions
+from tests.suite.frames import held_frames
 from tests.suite.language import FakeLanguageManager
+from tests.suite.questions import StandingWindow, standing_window
+
+__all__ = ["held_frames", "standing_window"]
 
 CONVERTER_RUNNING_MESSAGE_KEY: Final[str] = "main.explorer.message.converter_running_msg"
 CONVERTER_RUNNING_TITLE_KEY: Final[str] = "main.explorer.title.converter_running_dialog"
@@ -604,6 +608,26 @@ class TestTheExitAsksAboutARunningConversion:
 
         proceed.assert_called_once_with()
         decline.assert_not_called()
+        coordinator._dialogs.show_confirmation.assert_not_called()
+
+    def test_a_question_waits_while_another_window_stands(self, standing_window: StandingWindow) -> None:
+        coordinator = self._coordinator(active=True)
+
+        coordinator.guard_exit(MagicMock(), MagicMock())
+
+        coordinator._dialogs.show_confirmation.assert_not_called()
+        standing_window.leave()
+        coordinator._dialogs.show_confirmation.assert_called_once()
+
+    def test_a_conversion_ending_meanwhile_lets_the_exit_go_on(self, standing_window: StandingWindow) -> None:
+        coordinator = self._coordinator(active=True)
+        proceed = MagicMock()
+        coordinator.guard_exit(proceed, MagicMock())
+
+        coordinator._converter_logic.is_active = False
+        standing_window.leave()
+
+        proceed.assert_called_once_with()
         coordinator._dialogs.show_confirmation.assert_not_called()
 
     def test_a_running_conversion_asks_first(self) -> None:

@@ -13,6 +13,7 @@ SECOND: Final[str] = "second"
 THIRD: Final[str] = "third"
 DIALOG: Final[str] = "dialog"
 PROMPT: Final[str] = "prompt"
+TURN: Final[str] = "turn"
 
 
 class Screen:
@@ -30,6 +31,10 @@ class Screen:
 
     def revealer(self, tag: str) -> VoidCallback:
         return lambda: self.revealed.append(tag)
+
+    def take_a_turn(self) -> None:
+        """A gesture waiting for the screen, which records the moment it reads what it asks about."""
+        ModalQueue.when_free(lambda: self.built.append(TURN))
 
 
 @pytest.fixture
@@ -256,6 +261,87 @@ class TestAConversation:
         assert screen.built == [DIALOG, PROMPT, SECOND]
 
 
+class TestATurnInTheLine:
+    """A gesture waiting for the screen goes on once the screen is free for it, in its place in the line."""
+
+    def test_a_turn_runs_at_once_on_a_free_screen(self, screen: Screen) -> None:
+        screen.take_a_turn()
+
+        assert screen.built == [TURN]
+
+    def test_a_turn_waits_behind_a_standing_conversation(self, screen: Screen, held_frames: Frames) -> None:
+        screen.open(FIRST)
+
+        screen.take_a_turn()
+        held_frames.render()
+
+        assert screen.built == [FIRST]
+
+    def test_a_turn_runs_a_frame_after_the_conversation_ends(self, screen: Screen, held_frames: Frames) -> None:
+        screen.open(FIRST)
+        screen.take_a_turn()
+
+        ModalQueue.leave(FIRST)
+        assert screen.built == [FIRST]
+        held_frames.render()
+
+        assert screen.built == [FIRST, TURN]
+
+    def test_a_turn_joins_the_conversation_a_hand_off_carries(self, screen: Screen, held_frames: Frames) -> None:
+        """An answer that asks for the screen goes on at once, ahead of the modals waiting in line."""
+        screen.open(FIRST)
+        screen.open(SECOND)
+        ModalQueue.leave(FIRST)
+
+        ModalQueue.hand_off(lambda: ModalQueue.when_free(lambda: screen.open(PROMPT)))
+        held_frames.render()
+
+        assert screen.built == [FIRST, PROMPT]
+
+    def test_the_line_keeps_its_order_across_turns_and_windows(self, screen: Screen, held_frames: Frames) -> None:
+        """A turn that opens nothing lets the line go on to the next window in the same frame."""
+        screen.open(FIRST)
+        screen.open(SECOND)
+        screen.take_a_turn()
+        screen.open(THIRD)
+
+        ModalQueue.leave(FIRST)
+        held_frames.render()
+        assert screen.built == [FIRST, SECOND]
+        ModalQueue.leave(SECOND)
+        held_frames.render()
+
+        assert screen.built == [FIRST, SECOND, TURN, THIRD]
+
+    def test_a_turn_that_opens_a_modal_holds_the_line(self, screen: Screen, held_frames: Frames) -> None:
+        screen.open(FIRST)
+        ModalQueue.when_free(lambda: screen.open(PROMPT))
+        screen.open(SECOND)
+
+        ModalQueue.leave(FIRST)
+        held_frames.render()
+        assert screen.built == [FIRST, PROMPT]
+        ModalQueue.leave(PROMPT)
+        held_frames.render()
+
+        assert screen.built == [FIRST, PROMPT, SECOND]
+
+    def test_a_turn_that_raises_leaves_the_line_moving(self, screen: Screen, held_frames: Frames) -> None:
+        def broken() -> None:
+            raise RuntimeError("the gesture failed")
+
+        screen.open(FIRST)
+        ModalQueue.when_free(broken)
+        screen.open(SECOND)
+        ModalQueue.leave(FIRST)
+
+        with pytest.raises(RuntimeError):
+            held_frames.render()
+        held_frames.render()
+
+        assert screen.built == [FIRST, SECOND]
+
+
 class TestAHandOffThatRaises:
     """A hand-off that fails leaves the conversation and the line to go on in a coming frame."""
 
@@ -332,6 +418,17 @@ class TestTheSnapshot:
         held_frames.render()
 
         assert ModalQueue.snapshot().is_settled
+
+    def test_a_turn_waiting_reads_apart_from_the_windows(self, screen: Screen) -> None:
+        screen.open(FIRST)
+        screen.take_a_turn()
+        screen.open(SECOND)
+
+        snapshot = ModalQueue.snapshot()
+
+        assert snapshot.waiting == (SECOND,)
+        assert snapshot.turns == 1
+        assert not snapshot.is_settled
 
     def test_a_dialog_standing_aside_reads_aside(self, screen: Screen, held_frames: Frames) -> None:
         screen.open(DIALOG)

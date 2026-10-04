@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import partial
 from pathlib import Path
-from typing import Final, List, Optional, Tuple
+from typing import Callable, Final, List, Optional, Tuple
 from unittest.mock import MagicMock, call, patch
 
 import pytest
@@ -29,7 +29,7 @@ from sampletones_application.logic.reconstruction.rewrites.steps import (
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import ServiceSuccess
 from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED
-from sampletones_application.utils.callbacks.gates import pass_gates
+from sampletones_application.utils.callbacks.gates import Gate, pass_gates
 from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.constants.general import SILENT_VOLUME
@@ -49,7 +49,9 @@ from tests.conftest import ReconstructionFactory
 from tests.suite.application import HeldQueue, held_queue, scheduling, synchronous_executor
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.frames import held_frames
 from tests.suite.language import FakeLanguageManager
+from tests.suite.questions import StandingWindow, standing_window
 from tests.suite.stems import (
     SHARED_CHANNEL,
     SHARED_OWNERS,
@@ -62,7 +64,15 @@ from tests.suite.stems import (
     taking_turns_file,
 )
 
-__all__ = ["held_queue", "scheduling", "synchronous_executor", "taking_turns", "taking_turns_file"]
+__all__ = [
+    "held_frames",
+    "held_queue",
+    "scheduling",
+    "standing_window",
+    "synchronous_executor",
+    "taking_turns",
+    "taking_turns_file",
+]
 
 OPEN_VOICE_ID: Final[str] = "lead-id"
 HISTORY_BUDGET: Final[int] = 16
@@ -436,6 +446,88 @@ class TestReconstructionRestorePropagatesUnexpected:
             reconstruction_coordinator.load_reconstruction_safely(Path("lead.stn"))
 
         reconstruction_coordinator._session_manager.set_current_reconstruction.assert_not_called()
+
+
+def _asked(coordinator: ReconstructionCoordinator) -> bool:
+    """Whether the coordinator put a question about the open document to the reader."""
+    return bool(coordinator._dialogs.show_save_confirmation.called or coordinator._dialogs.show_confirmation.called)
+
+
+class TestAQuestionAboutTheDocumentWaitsForTheScreen(BaseTestSuite):
+    """A guard asks about the open document once the screen is free for its question, reading it then.
+
+    A document saved or closed meanwhile lets the request through with no question.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        guard: Callable[[ReconstructionCoordinator], Gate]
+
+    test_cases = (
+        TestCase(label="load", guard=lambda coordinator: coordinator.guard_load),
+        TestCase(
+            label="load_converted",
+            guard=lambda coordinator: partial(coordinator.guard_load_converted, Path("written.stn")),
+        ),
+        TestCase(label="close", guard=lambda coordinator: coordinator.guard_close),
+        TestCase(label="exit", guard=lambda coordinator: coordinator.guard_exit),
+        TestCase(label="edit_voice", guard=lambda coordinator: coordinator.guard_edit_voice),
+    )
+
+    @pytest.fixture(name="unsaved")
+    def unsaved_fixture(self) -> ReconstructionCoordinator:
+        return _gating_coordinator(unsaved=True, embedded=False)
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_question_waits_while_another_window_stands(
+        self,
+        test_case: TestCase,
+        unsaved: ReconstructionCoordinator,
+        standing_window: StandingWindow,
+    ) -> None:
+        proceed = MagicMock()
+        decline = MagicMock()
+
+        test_case.guard(unsaved)(proceed, decline)
+
+        assert not _asked(unsaved)
+        proceed.assert_not_called()
+        decline.assert_not_called()
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_question_asks_once_the_window_leaves(
+        self,
+        test_case: TestCase,
+        unsaved: ReconstructionCoordinator,
+        standing_window: StandingWindow,
+    ) -> None:
+        proceed = MagicMock()
+        decline = MagicMock()
+        test_case.guard(unsaved)(proceed, decline)
+
+        standing_window.leave()
+
+        assert _asked(unsaved)
+        proceed.assert_not_called()
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_document_saved_meanwhile_goes_on_with_no_question(
+        self,
+        test_case: TestCase,
+        unsaved: ReconstructionCoordinator,
+        standing_window: StandingWindow,
+    ) -> None:
+        """Save on a question asked about a document closed meanwhile would ask the same question again."""
+        proceed = MagicMock()
+        decline = MagicMock()
+        test_case.guard(unsaved)(proceed, decline)
+
+        unsaved._reconstruction_manager.session.unsaved_changes = False
+        standing_window.leave()
+
+        proceed.assert_called_once_with()
+        decline.assert_not_called()
+        assert not _asked(unsaved)
 
 
 class TestSaveConfirmationGating(BaseTestSuite):

@@ -63,9 +63,11 @@ from sampletones_application.ui.panels.instruction.spectrum import (
 from sampletones_application.ui.panels.instruction.waveform import (
     GUIInstructionWaveformPanel,
 )
+from sampletones_application.utils.callbacks.gates import asking
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.modal_queue import ModalQueue
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_application.view_model.instruction.details import (
     InstructionDetailsPanelViewModel,
@@ -506,12 +508,12 @@ class InstructionsTabCoordinator:
     def guard_exit(self, proceed: VoidCallback, decline: VoidCallback) -> None:
         """Lets the exit go on, asking first while a library is being built, which exiting stops.
 
-        Cancel keeps the library building and turns the exit away.
+        The question reads the library once the screen is free for it, so a build that ended
+        meanwhile is asked about no more. Cancel keeps the library building and turns the exit away.
         """
-        if not self.is_library_generating():
-            proceed()
-            return
+        asking(self.is_library_generating, self._ask_before_exit, ModalQueue.when_free)(proceed, decline)
 
+    def _ask_before_exit(self, proceed: VoidCallback, decline: VoidCallback) -> None:
         self._dialogs.show_confirmation(
             TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
             self._language_manager["global.dialog.message.exit_library_generation_in_progress"],

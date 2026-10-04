@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 from typing import Callable, Optional, Tuple
 
@@ -28,6 +29,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED,
     TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
 )
+from sampletones_application.utils.callbacks.gates import asking
 from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
     save_file_dialog,
@@ -36,6 +38,7 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
+from sampletones_application.utils.gui.modal_queue import ModalQueue
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
@@ -248,10 +251,24 @@ class ReconstructionCoordinator:
         A conversion can write over the very file the open document came from, and a save would
         then write the old document over the new one. The question in that case is whether to
         discard the changes and load, and Cancel keeps them for a save to another file. Every other
-        document is asked about the way one opened by hand is. With ``filepath`` bound, the
-        signature is a :data:`Gate`, so the question leads the loading's conversation.
+        document is asked about the way one opened by hand is. The question reads the open document
+        once the screen is free for it. With ``filepath`` bound, the signature is a :data:`Gate`, so
+        the question leads the loading's conversation.
         """
-        if self._requires_save_confirmation() and self._reconstruction_manager.is_backed_by(filepath):
+        asking(
+            self._requires_save_confirmation,
+            partial(self._ask_before_loading_converted, filepath),
+            ModalQueue.when_free,
+        )(proceed, decline)
+
+    def _ask_before_loading_converted(
+        self,
+        filepath: Path,
+        proceed: VoidCallback,
+        decline: VoidCallback,
+    ) -> None:
+        """Asks what becomes of the unsaved changes before the file a conversion wrote loads."""
+        if self._reconstruction_manager.is_backed_by(filepath):
             self._dialogs.show_confirmation(
                 tag=TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED,
                 message=self._language_manager["global.dialog.message.load_replaced_reconstruction"],
@@ -262,7 +279,13 @@ class ReconstructionCoordinator:
             )
             return
 
-        self.guard_load(proceed, decline)
+        self._offer_save(
+            title=self._language_manager["global.dialog.title.load_unsaved_reconstruction"],
+            message=self._language_manager["global.dialog.message.load_unsaved_reconstruction"],
+            ok_label=self._language_manager["global.dialog.label.discard"],
+            proceed=proceed,
+            decline=decline,
+        )
 
     def load_reconstruction_safely(self, path: Path) -> None:
         """Loads the persisted reconstruction when the application starts.
@@ -565,6 +588,9 @@ class ReconstructionCoordinator:
     ) -> None:
         """Goes on with ``proceed``, offering first to save a standalone document with unsaved changes.
 
+        The offer reads the document once the screen is free for it, so a document another
+        conversation saved or closed meanwhile goes on with no question.
+
         Args:
             title: The prompt's title.
             message: What the prompt says would be lost.
@@ -572,10 +598,28 @@ class ReconstructionCoordinator:
             proceed: What runs once the document is saved, or once the reader lets the changes go.
             decline: What runs once the reader keeps the changes, or once the save fails.
         """
-        if not self._requires_save_confirmation():
-            proceed()
-            return
 
+        def ask(proceed: VoidCallback, decline: VoidCallback) -> None:
+            self._offer_save(
+                title=title,
+                message=message,
+                ok_label=ok_label,
+                proceed=proceed,
+                decline=decline,
+            )
+
+        asking(self._requires_save_confirmation, ask, ModalQueue.when_free)(proceed, decline)
+
+    def _offer_save(
+        self,
+        *,
+        title: str,
+        message: str,
+        ok_label: str,
+        proceed: VoidCallback,
+        decline: VoidCallback,
+    ) -> None:
+        """Puts the save prompt for the open document to the reader."""
         self._dialogs.show_save_confirmation(
             tag=TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
             title=title,
