@@ -51,7 +51,12 @@ from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.frames import held_frames
 from tests.suite.language import FakeLanguageManager
-from tests.suite.questions import StandingWindow, assert_the_answers_reach, standing_window
+from tests.suite.questions import (
+    StandingWindow,
+    assert_the_answers_reach,
+    dialogs_on_the_line,
+    standing_window,
+)
 from tests.suite.stems import (
     SHARED_CHANNEL,
     SHARED_OWNERS,
@@ -182,7 +187,7 @@ def reconstruction_coordinator() -> ReconstructionCoordinator:
         MagicMock(),
         MagicMock(),
         MagicMock(),
-        dialogs=MagicMock(),
+        dialogs=dialogs_on_the_line(),
         language_manager=MagicMock(),
         on_tab_switch=MagicMock(),
         on_session_state_changed=MagicMock(),
@@ -202,7 +207,7 @@ def _gating_coordinator(
         MagicMock(),
         MagicMock(),
         MagicMock(),
-        dialogs=MagicMock(),
+        dialogs=dialogs_on_the_line(),
         language_manager=MagicMock(),
         on_tab_switch=MagicMock(),
         on_session_state_changed=MagicMock(),
@@ -298,7 +303,7 @@ class TestAnEditIsRecordedBeforeItIsShown:
             MagicMock(),
             MagicMock(),
             MagicMock(),
-            dialogs=MagicMock(),
+            dialogs=dialogs_on_the_line(),
             language_manager=MagicMock(),
             on_tab_switch=MagicMock(),
             on_session_state_changed=MagicMock(),
@@ -689,7 +694,7 @@ def following_coordinator(
         MagicMock(),
         project_controller,
         history,
-        dialogs=MagicMock(),
+        dialogs=dialogs_on_the_line(),
         language_manager=FakeLanguageManager({}),
         on_tab_switch=MagicMock(),
         on_session_state_changed=MagicMock(),
@@ -1348,7 +1353,7 @@ class TestLoadingAConversion(BaseTestSuite):
             MagicMock(),
             MagicMock(),
             MagicMock(),
-            dialogs=MagicMock(),
+            dialogs=dialogs_on_the_line(),
             language_manager=FakeLanguageManager(),
             on_tab_switch=MagicMock(),
             on_session_state_changed=MagicMock(),

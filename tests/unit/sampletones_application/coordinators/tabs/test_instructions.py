@@ -13,7 +13,12 @@ from sampletones_core.library import LibraryState
 from sampletones_shared.exceptions import LibraryDisplayError
 from tests.suite.frames import held_frames
 from tests.suite.language import FakeLanguageManager
-from tests.suite.questions import StandingWindow, assert_the_answers_reach, standing_window
+from tests.suite.questions import (
+    StandingWindow,
+    assert_the_answers_reach,
+    dialogs_on_the_line,
+    standing_window,
+)
 
 __all__ = ["held_frames", "standing_window"]
 
@@ -31,7 +36,7 @@ def _coordinator(state: LibraryState) -> InstructionsTabCoordinator:
     coordinator = InstructionsTabCoordinator.__new__(InstructionsTabCoordinator)
     coordinator._library_logic = MagicMock()
     coordinator._library_logic.config_library_state.return_value = state
-    coordinator._dialogs = MagicMock()
+    coordinator._dialogs = dialogs_on_the_line()
     coordinator._language_manager = FakeLanguageManager()
     return coordinator
 
@@ -94,7 +99,7 @@ def _generation_coordinator(
     heavy constructor."""
     coordinator = InstructionsTabCoordinator.__new__(InstructionsTabCoordinator)
     coordinator._is_converter_visible = lambda: converter_visible
-    coordinator._dialogs = MagicMock()
+    coordinator._dialogs = dialogs_on_the_line()
     coordinator._language_manager = FakeLanguageManager()
     coordinator._ttl_generation_status = GENERATION_STATUS_TITLE_KEY
     return coordinator
@@ -126,7 +131,7 @@ def _remove_library_coordinator(
     coordinator = InstructionsTabCoordinator.__new__(InstructionsTabCoordinator)
     coordinator._library_logic = MagicMock()
     coordinator._library_logic.current_library_key = current_library_key
-    coordinator._dialogs = MagicMock()
+    coordinator._dialogs = dialogs_on_the_line()
     coordinator._instruction_player_logic = MagicMock()
     coordinator._on_audio_state_changed = MagicMock()
     coordinator._close_instruction = MagicMock()
@@ -302,7 +307,7 @@ def _loaded_coordinator(*, display_error: Exception) -> InstructionsTabCoordinat
     coordinator._spectrum_panel = MagicMock()
     coordinator._instruction_player_logic = MagicMock()
     coordinator._instruction_details_logic = MagicMock()
-    coordinator._dialogs = MagicMock()
+    coordinator._dialogs = dialogs_on_the_line()
     coordinator._language_manager = FakeLanguageManager()
     coordinator._on_audio_state_changed = MagicMock()
     return coordinator

@@ -34,7 +34,12 @@ from sampletones_shared.paths.extensions import EXT_FILE_MODULE
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.frames import held_frames
-from tests.suite.questions import StandingWindow, assert_the_answers_reach, standing_window
+from tests.suite.questions import (
+    StandingWindow,
+    assert_the_answers_reach,
+    dialogs_on_the_line,
+    standing_window,
+)
 from tests.suite.silent_rows import MISSING_VOICE_ID, SILENT_CHANNEL
 
 __all__ = ["held_frames", "standing_window"]
@@ -52,7 +57,7 @@ def project_coordinator() -> ProjectCoordinator:
         MagicMock(),
         export_backends={},
         format_setups={},
-        dialogs=MagicMock(),
+        dialogs=dialogs_on_the_line(),
         language_manager=MagicMock(),
         on_tab_switch=MagicMock(),
         on_session_state_changed=MagicMock(),
@@ -95,7 +100,7 @@ class TestAProjectOpenedAtStart:
             MagicMock(),
             export_backends={},
             format_setups={},
-            dialogs=MagicMock(),
+            dialogs=dialogs_on_the_line(),
             language_manager=MagicMock(),
             on_tab_switch=MagicMock(),
             on_session_state_changed=MagicMock(),
@@ -270,7 +275,7 @@ class TestAFormatWithASetupOpensIt:
             MagicMock(),
             export_backends={ExportFormat.FAMITRACKER: backend},
             format_setups={ExportFormat.NSF: setup},
-            dialogs=MagicMock(),
+            dialogs=dialogs_on_the_line(),
             language_manager=MagicMock(),
             on_tab_switch=MagicMock(),
             on_session_state_changed=MagicMock(),
@@ -324,7 +329,7 @@ def coordinator_fixture() -> ProjectCoordinator:
         MagicMock(),
         export_backends={},
         format_setups={},
-        dialogs=MagicMock(),
+        dialogs=dialogs_on_the_line(),
         language_manager=LanguageManager(LANG_EN),
         on_tab_switch=MagicMock(),
         on_session_state_changed=MagicMock(),

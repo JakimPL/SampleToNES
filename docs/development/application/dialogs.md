@@ -64,10 +64,10 @@ through at once, whatever holds the screen, so closing the window over a dialog 
 is unsaved. A turn that opens no question lets the line go on to the next window in the same frame.
 
 `ModalQueue` (`utils/gui/modal_queue.py`) keeps the line. `GUIWindow.show` is the only way a window enters
-it, and `ModalQueue.when_free` is how a guard takes its turn, through `asking` (`utils/callbacks/gates.py`).
-A caller raises a dialog whenever it has one to raise and never waits a frame of its own for the screen. A
-window that reports work under way and leaves the rest of the interface live beside it is no modal, so it
-opens at once.
+it. A guard takes its turn through the `when_free` of the `DialogsRenderer` it was given, which `asking`
+(`utils/callbacks/gates.py`) waits on. A caller raises a dialog whenever it has one to raise and never waits
+a frame of its own for the screen. A window that reports work under way and leaves the rest of the interface
+live beside it is no modal, so it opens at once.
 
 ## How a dialog answers
 

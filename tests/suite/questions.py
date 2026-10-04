@@ -35,6 +35,13 @@ def standing_window(held_frames: Frames) -> StandingWindow:
     return window
 
 
+def dialogs_on_the_line() -> MagicMock:
+    """A stand-in for the dialogs renderer whose wait for the screen is the modal line's own turn."""
+    dialogs = MagicMock()
+    dialogs.when_free.side_effect = ModalQueue.when_free
+    return dialogs
+
+
 @dataclass(frozen=True)
 class StandingQuestion:
     """A question on the screen, with the two ways out of it."""

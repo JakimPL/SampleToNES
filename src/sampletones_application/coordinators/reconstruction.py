@@ -38,7 +38,6 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
-from sampletones_application.utils.gui.modal_queue import ModalQueue
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
@@ -258,7 +257,7 @@ class ReconstructionCoordinator:
         asking(
             self._requires_save_confirmation,
             partial(self._ask_before_loading_converted, filepath),
-            ModalQueue.when_free,
+            self._dialogs.when_free,
         )(proceed, decline)
 
     def _ask_before_loading_converted(
@@ -608,7 +607,7 @@ class ReconstructionCoordinator:
                 decline=decline,
             )
 
-        asking(self._requires_save_confirmation, ask, ModalQueue.when_free)(proceed, decline)
+        asking(self._requires_save_confirmation, ask, self._dialogs.when_free)(proceed, decline)
 
     def _offer_save(
         self,
