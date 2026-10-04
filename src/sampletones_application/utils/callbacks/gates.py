@@ -11,10 +11,6 @@ GestureParameters = ParamSpec("GestureParameters")
 GestureResult = TypeVar("GestureResult")
 
 
-def ignore() -> None:
-    """Answers a request turned away whose asker carries on as it stands, so the request ends where it stopped."""
-
-
 def waiting(wait: Wait) -> Gate:
     """``wait`` as a gate that holds a request until it may go on, and then lets it through.
 
