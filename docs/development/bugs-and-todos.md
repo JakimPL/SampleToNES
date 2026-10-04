@@ -9,9 +9,8 @@ behind. Each entry says what is owed and why, and the code and the change that c
 ### Navigation
 
 * Interface scale
-* Tree navigation using keys
-* Keyboard navigation of the converter's list of gathered recordings: a cursor the arrow keys move, `Home`
-  and `End`, and folders opened and closed from the keyboard.
+* Keyboard navigation of the trees, and of the converter's list of gathered recordings: a cursor the arrow
+  keys move, `Home` and `End`, and folders opened and closed from the keyboard.
 * Waveform LOD for zooming
 * Drag and drop of browser nodes onto views, such as a reconstruction onto Samples.
 * Tabs for several reconstructions in the Reconstruction view.
@@ -44,23 +43,25 @@ dimension the import starts carrying.
 
 * In-application guide/tutorial
 * Language selector
-* Reading only the bins the refinement asks for. The pitch reading transforms every bin the spectrum covers
-  and uses a handful per frame, which is a tenth or more of a short conversion on a CPU build.
+* Reading only the bins the refinement asks for. The pitch refinement bends notes by reading the audio's
+  spectrum, and it transforms every frequency bin the spectrum covers while using a handful per frame,
+  which is a tenth or more of a short conversion on a CPU build.
 * Keeping the recordings a stopped folder scan has found, so stopping a long walk keeps the count the reader
   watched climb.
-* Calibrating the pitch refinement. Its confidence threshold, change weight and window are chosen by hand,
-  and [the calibration](../tools/calibration.md) could measure them. The change weight trades vibrato
-  against jitter.
+* Calibrating the pitch refinement. The settings that decide how a pitch reading bends a note (a
+  confidence threshold, a change weight and a window) are chosen by hand, and
+  [the calibration](../tools/calibration.md) could measure them. The change weight trades vibrato against
+  jitter.
 
 ### Technical
 
 * Screen scenarios on Windows and macOS. They run on Linux alone, and whether DearPyGui opens its window on
   GitHub's Windows and macOS runners is unverified.
-* An upgrade step and an archived corpus for the configuration and the session state. Both load through
-  recovery, which drops what no longer validates, and neither has a version an upgrade could start from.
-* The element enums that outlived their keys. The language-keys check expands a `_label(element)` helper
-  over its whole enum, so a member no call names is reached all the same. Spelling the keys at the call
-  site makes each entry exactly checkable.
+* An upgrade path for the configuration and the session state. A file an older build left behind is read
+  as the loader happens to, and no archived files of older builds test it.
+* The element enums that outlived their keys. The language-keys check treats a key named through an
+  element enum as the whole enum, so a key no call uses goes unnoticed. Spelling each key at its call site
+  makes the check exact.
 * Per-tab undo routing
 * A history of its own for a standalone reconstruction document, one loaded from disk and not opened as a
   project sample. An edit to such a document is undoable nowhere ([undo](application/undo.md)), so an edit
