@@ -1,9 +1,9 @@
 from functools import partial
-from typing import Final
+from typing import Final, Optional, Tuple
 
 from tests.suite.screens.dearpygui.bridge import ONE_FRAME
 from tests.suite.screens.dearpygui.geometry import Point
-from tests.suite.screens.dearpygui.gestures.constants import HOVER_FRAMES, SETTLE_FRAMES
+from tests.suite.screens.dearpygui.gestures.constants import HOVER_FRAMES, REACH_TIMEOUT_SECONDS, SETTLE_FRAMES
 from tests.suite.screens.dearpygui.gestures.pointer import Pointer
 from tests.suite.screens.dearpygui.items.reading import read_item
 from tests.suite.screens.dearpygui.items.regions import (
@@ -23,6 +23,8 @@ EDGE_INSET: Final[int] = 3
 GRIP_MARGIN_PIXELS: Final[float] = 8.0
 GRIP_DRAGS: Final[int] = 4
 IMGUI_GRAB_MIN_SIZE: Final[float] = 12.0
+
+RegionLayout = Tuple[float, float]
 
 
 class Scrolling(Pointer):
@@ -110,10 +112,36 @@ class Scrolling(Pointer):
         Raises:
             UnreachableError: If a region stops moving, or the wheel runs out of turns, first.
         """
-        for region in self._bridge.ask(lambda: enclosing_regions(item)):
+        regions = self._bridge.ask(lambda: enclosing_regions(item))
+        self._await_layout(item, regions)
+        for region in regions:
             self._scroll_within(item, region)
 
         self._settle(SETTLE_FRAMES)
+
+    def _await_layout(self, item: Item, regions: Tuple[Item, ...]) -> None:
+        """Waits until a frame has laid ``item`` out in ``regions`` and the regions have measured what they hold.
+
+        A row built in the frame it is found in has no place yet, and a region learns how far it can
+        scroll a frame after it draws what it holds, so a reading taken sooner finds nothing to scroll.
+        The layout has settled once where the item stands in each region's content and how far each
+        region can scroll read the same two frames running. Both are counted from the content's top,
+        so a region scrolling on its own, such as one following the playback, settles all the same.
+
+        Raises:
+            UnreachableError: If the layout keeps changing until the wait runs out.
+        """
+        deadline = self._bridge.deadline(REACH_TIMEOUT_SECONDS)
+        previous: Optional[Tuple[RegionLayout, ...]] = None
+        while True:
+            layout = self._bridge.ask(partial(_layout_in, item, regions))
+            if layout is not None and layout == previous:
+                return
+            if deadline.passed():
+                raise UnreachableError(f"{item!r} found no place in its regions: it stood at {previous}, then {layout}")
+
+            previous = layout
+            self._bridge.frames(ONE_FRAME)
 
     def _scroll_within(self, item: Item, region: Item) -> None:
         notch = 0.0
@@ -151,6 +179,27 @@ class Scrolling(Pointer):
             self._settle(WHEEL_FRAMES)
             self._device.button_up(button)
             self._settle(WHEEL_FRAMES)
+
+
+def _layout_in(item: Item, regions: Tuple[Item, ...]) -> Optional[Tuple[RegionLayout, ...]]:
+    """Where ``item`` stands in the content of each region, and how far each region can scroll.
+
+    Reads ``None`` while the item or a region reports no box. Runs on the render thread.
+    """
+    item_box = read_item(item).rect
+    if item_box is None:
+        return None
+
+    layout = []
+    for region in regions:
+        region_box = read_region_view(region)
+        if region_box is None:
+            return None
+
+        scroll = read_scroll(region)
+        layout.append((item_box.y - region_box.y + scroll.position, scroll.maximum))
+
+    return tuple(layout)
 
 
 def _distance_from_view(item: Item, region: Item) -> float:
