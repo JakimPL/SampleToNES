@@ -478,9 +478,9 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     ) -> List[Union[ArrayLayer, InstructionLayer]]:
         """Builds the ordered waveform layers for the current data.
 
-        The original-audio layer joins the reconstruction layer only when the source audio is
-        present, so a detached reconstruction or one whose source file is missing shows the
-        approximation on its own.
+        The original-audio layer joins the reconstruction layer while the source audio is loaded,
+        so a reconstruction whose recordings are missing or unreadable shows the approximation on
+        its own.
         """
         original_audio, approximation_data, _ = self._extract_reconstruction_layer_data(
             waveform_data,
@@ -502,10 +502,9 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     ) -> None:
         """Redraws the loaded waveform from fresh data, keeping the view the reader left it at.
 
-        The plot draws the layers the fresh data displays, so a layer the data no longer carries
-        leaves it, and a layer joining it is drawn in the layers' order, with the audible source on
-        top. ``refit`` names the update a retune is: the audio's own length changed, so the view is
-        re-fitted to the new span.
+        The plot holds exactly the layers the fresh data displays, drawn in the layers' order with
+        the audible source on top. ``refit`` names the update a retune is: the audio's own length
+        changed, so the view is re-fitted to the new span.
         """
         if not isinstance(self.current_data, WaveformData):
             return

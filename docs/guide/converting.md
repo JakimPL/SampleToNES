@@ -102,8 +102,9 @@ that holds them all. Click the path to open it in your file manager. If the conv
 existing reconstruction, the app asks you first.
 
 When the conversion finishes, click **Load** to open the result on the **Reconstruction** tab, where
-you can [listen to it and export it](reconstruction.md). After a conversion of several recordings, the
-button opens the folder instead.
+you can [listen to it and export it](reconstruction.md). When a conversion saves several
+reconstructions, the button reads **Open** and takes you to the **Reconstruction** tab, where you pick
+one in the **Browser**.
 
 If the reconstruction you have open has unsaved changes, **Load** asks whether to save them first. If
 the conversion wrote over that same reconstruction, you can't save your changes there. **Discard**

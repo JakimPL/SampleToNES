@@ -33,6 +33,7 @@ def is_audio_file(path: Path, extensions: Tuple[str, ...] = EXT_FILES_AUDIO) -> 
     """Whether a path names a recording a run converts.
 
     A recording is a file the reader may inspect, so an entry of a folder that lists its names and
-    keeps the rest to itself reads as none.
+    keeps the rest to itself reads as none. ``os.path.isfile`` answers False for such an entry,
+    where ``Path.is_file`` raises ``PermissionError``, so a walk goes on past it.
     """
     return path.suffix.lower() in extensions and os.path.isfile(path)
