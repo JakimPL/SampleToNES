@@ -730,9 +730,9 @@ class AudioDeviceManager(CallbackMixin):
         reports it, so whoever follows the playback reads it stopped.
 
         A stop waits a while for the worker and then lets it go, so a device slow to open can bring
-        the worker back after a newer play has begun. The worker acts for its own ``generation``
-        alone: a refusal it meets then is left unreported, a stream it opens then closes unplayed,
-        and the newer playback stands as it was.
+        the worker back once its playback was stopped, or after a newer play has begun. The worker
+        acts for its own ``generation`` alone: a refusal it meets then is left unreported, a stream
+        it opens then closes unplayed, and the state stands as the stop or the newer play left it.
 
         Args:
             output: The device and rate in force when the playback was asked for.
@@ -833,10 +833,13 @@ class AudioDeviceManager(CallbackMixin):
         Stop playback and reset state.
 
         Signals the playback thread to stop, waits for it to terminate (up to 1 second),
-        and resets all playback state.
+        and resets all playback state. The stopped playback's generation ends here, so a worker
+        the wait lets go of acts for no playback: a refusal it meets later reaches nobody, and the
+        state stays as the stop left it.
         """
         with self._lock:
             self._stop = True
+            self._generation += 1
 
         self._resume_event.set()
         if self._playback_thread is not None:

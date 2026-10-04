@@ -324,6 +324,69 @@ class TestAPlaybackANewerOneReplaced:
         assert not manager.is_playing()
 
 
+class TestAPlaybackAStopLetGo:
+    """A worker a stop let go of plays for nobody, so what its device does later reaches nothing.
+
+    Stopping waits a while for the worker, and a device slow to open can keep it longer. A song taking the
+    device stops the manager's playback first, so the worker can meet a refusal while the song plays.
+    """
+
+    LENGTH: Final[int] = 8
+
+    @pytest.fixture(name="let_go")
+    def let_go_fixture(self) -> Tuple[AudioDeviceManager, Dict[str, Any]]:
+        """A stopped manager, and the arguments the worker of its stopped playback was started with."""
+        manager = _manager()
+        manager._buffer_size = self.LENGTH
+        manager._position_callback = MagicMock()
+        manager._playback_thread = None
+        with patch("sampletones_core.audio.manager.threading.Thread") as thread:
+            manager.play(np.zeros(self.LENGTH, dtype=np.float32))
+            manager.stop()
+
+        manager._position_callback.reset_mock()
+        return manager, thread.call_args.kwargs["kwargs"]
+
+    def test_a_refusal_it_meets_later_reports_nothing_and_resets_nothing(
+        self,
+        let_go: Tuple[AudioDeviceManager, Dict[str, Any]],
+    ) -> None:
+        manager, worker = let_go
+        manager._pyaudio.open.side_effect = OSError("the device is busy")
+        reported: List[Exception] = []
+        manager.on_playback_error = reported.append
+
+        manager._playback_worker(**worker)
+
+        assert reported == []
+        manager._position_callback.assert_not_called()
+
+    def test_a_stream_it_opens_later_closes_unplayed(self, let_go: Tuple[AudioDeviceManager, Dict[str, Any]]) -> None:
+        manager, worker = let_go
+        stream = MagicMock()
+        manager._pyaudio.open.return_value = stream
+
+        manager._playback_worker(**worker)
+
+        stream.write.assert_not_called()
+        stream.close.assert_called_once_with()
+        manager._position_callback.assert_not_called()
+
+    def test_a_playback_started_after_the_stop_stands(self, let_go: Tuple[AudioDeviceManager, Dict[str, Any]]) -> None:
+        """The worker let go of leaves the playback asked for after it as it is."""
+        manager, worker = let_go
+        manager._pyaudio.open.side_effect = OSError("the device is busy")
+        reported: List[Exception] = []
+        manager.on_playback_error = reported.append
+        with patch("sampletones_core.audio.manager.threading.Thread"):
+            manager.play(np.ones(self.LENGTH, dtype=np.float32))
+
+        manager._playback_worker(**worker)
+
+        assert manager.is_playing()
+        assert reported == []
+
+
 class TestSeekingAPlayback(BaseTestSuite):
     """A seek moves the playback of the owner asking for it, clamped to the audio, under one lock."""
 
