@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Final, List, Optional
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -95,3 +96,19 @@ class OnScreenDocument:
         question, self._standing = self._standing, None
         ModalQueue.leave(question.tag)
         return question
+
+
+def assert_the_answers_reach(
+    *,
+    confirm: VoidCallback,
+    cancel: VoidCallback,
+    proceed: MagicMock,
+    decline: MagicMock,
+) -> None:
+    """Holds a question's answers to the gate that asked it: the one going on reaches ``proceed``, Cancel ``decline``."""
+    confirm()
+    proceed.assert_called_once_with()
+    decline.assert_not_called()
+
+    cancel()
+    decline.assert_called_once_with()

@@ -96,8 +96,9 @@ stands aside, so nothing waiting in line opens between it and the prompt it rais
 A gesture that asks before it replaces a document, closes one or leaves the application holds one
 conversation at a time. The conversation is the chain of questions the gesture passes, and every way out of
 a question reaches whoever asked it. An answer that goes on lets the request through. Cancel, Escape, the
-title bar's close and a save that failed turn it away. So does an error raised anywhere along the chain,
-before a question or after its answer. A request therefore always ends in one of the two.
+title bar's close and a save that failed turn it away. So does an error raised anywhere along the chain:
+before a question, as the question reaches the screen, or after its answer. A request therefore always ends
+in one of the two.
 
 While a conversation stands, the same gesture asked for again asks nothing, so two closes before the first is
 answered ask once. Once the conversation has ended, the gesture asks again. The span covers the wait for the

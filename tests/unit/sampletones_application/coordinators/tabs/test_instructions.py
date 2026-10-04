@@ -13,7 +13,7 @@ from sampletones_core.library import LibraryState
 from sampletones_shared.exceptions import LibraryDisplayError
 from tests.suite.frames import held_frames
 from tests.suite.language import FakeLanguageManager
-from tests.suite.questions import StandingWindow, standing_window
+from tests.suite.questions import StandingWindow, assert_the_answers_reach, standing_window
 
 __all__ = ["held_frames", "standing_window"]
 
@@ -382,6 +382,5 @@ class TestTheExitAsksAboutALibraryBeingBuilt:
         args, kwargs = coordinator._dialogs.show_confirmation.call_args
         assert args[0] == TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION
         assert args[1] == EXIT_LIBRARY_MESSAGE_KEY
-        assert args[3] is proceed
         assert kwargs["ok_label"] == EXIT_LABEL_KEY
-        assert kwargs["on_cancel"] is decline
+        assert_the_answers_reach(confirm=args[3], cancel=kwargs["on_cancel"], proceed=proceed, decline=decline)

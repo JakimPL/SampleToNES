@@ -34,7 +34,7 @@ from sampletones_shared.paths.extensions import EXT_FILE_MODULE
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.frames import held_frames
-from tests.suite.questions import StandingWindow, standing_window
+from tests.suite.questions import StandingWindow, assert_the_answers_reach, standing_window
 from tests.suite.silent_rows import MISSING_VOICE_ID, SILENT_CHANNEL
 
 __all__ = ["held_frames", "standing_window"]
@@ -587,8 +587,12 @@ class TestTheExitAsksAboutTheProject:
         decline.assert_not_called()
         prompt = project_coordinator._dialogs.show_save_confirmation.call_args.kwargs
         assert prompt["on_save"] == project_coordinator._write_project
-        assert prompt["on_confirm"] is proceed
-        assert prompt["on_cancel"] is decline
+        assert_the_answers_reach(
+            confirm=prompt["on_confirm"],
+            cancel=prompt["on_cancel"],
+            proceed=proceed,
+            decline=decline,
+        )
 
 
 class TestReplacingOrClosingTheProject:
@@ -643,8 +647,12 @@ class TestReplacingOrClosingTheProject:
 
         proceed.assert_not_called()
         prompt = project_coordinator._dialogs.show_save_confirmation.call_args.kwargs
-        assert prompt["on_confirm"] is proceed
-        assert prompt["on_cancel"] is decline
+        assert_the_answers_reach(
+            confirm=prompt["on_confirm"],
+            cancel=prompt["on_cancel"],
+            proceed=proceed,
+            decline=decline,
+        )
 
     @pytest.mark.parametrize("guard", ["guard_new", "guard_open"])
     def test_a_saved_project_is_asked_about_and_cancel_turns_the_request_away(
@@ -664,8 +672,12 @@ class TestReplacingOrClosingTheProject:
 
         proceed.assert_not_called()
         prompt = project_coordinator._dialogs.show_confirmation.call_args.kwargs
-        assert prompt["on_confirm"] is proceed
-        assert prompt["on_cancel"] is decline
+        assert_the_answers_reach(
+            confirm=prompt["on_confirm"],
+            cancel=prompt["on_cancel"],
+            proceed=proceed,
+            decline=decline,
+        )
 
     def test_a_saved_project_closes_at_once(
         self,
@@ -759,8 +771,12 @@ class TestAQuestionAboutTheProjectWaitsForTheScreen(BaseTestSuite):
         standing_window.leave()
 
         prompt = unsaved._dialogs.show_save_confirmation.call_args.kwargs
-        assert prompt["on_confirm"] is proceed
-        assert prompt["on_cancel"] is decline
+        assert_the_answers_reach(
+            confirm=prompt["on_confirm"],
+            cancel=prompt["on_cancel"],
+            proceed=proceed,
+            decline=decline,
+        )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_a_project_settled_meanwhile_goes_on_with_no_question(
