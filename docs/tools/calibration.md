@@ -201,5 +201,4 @@ closer to a sine than silence is". Rankings it is known to get wrong are recorde
 ### Which referee leads
 
 The report lists `mr-auditory-dB` first. `mr-loudness-dB` takes the lead once by-ear ratings of a sweep
-of renders agree with its scores. [Bugs and to-dos](../development/bugs-and-todos.md) tracks the bar
-that agreement must reach.
+of renders agree with its scores.
