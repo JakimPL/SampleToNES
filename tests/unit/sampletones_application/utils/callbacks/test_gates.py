@@ -1,10 +1,21 @@
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, List, Optional
+from typing import Callable, Final, List, Optional, Sequence
 
 import pytest
 
-from sampletones_application.utils.callbacks.gates import Gate, SingleFlight, fixed, gated, pass_gates, waiting
+from sampletones_application.utils.callbacks.gates import (
+    FirstRequestFlight,
+    Gate,
+    LatestRequestFlight,
+    SingleFlight,
+    gated,
+    pass_gates,
+    waiting,
+)
 from sampletones_shared.types.callback import VoidCallback
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 ARRIVED: Final[str] = "arrived"
 DECLINED: Final[str] = "declined"
@@ -153,38 +164,63 @@ class TestAWaitAsAGate:
         assert opened == [Path("song.stp")]
 
 
-class TestSingleFlight:
-    """A gesture holds one conversation at a time: a repeat while it is in flight is absorbed.
+class RaisingOnce:
+    """A gate that fails the first time it is reached and lets every later request through."""
+
+    def __init__(self, reached: List[str]) -> None:
+        self._reached = reached
+        self._raised = False
+
+    def __call__(self, proceed: VoidCallback, _decline: VoidCallback) -> None:
+        self._reached.append("broken")
+        if not self._raised:
+            self._raised = True
+            raise RuntimeError("the question could not be asked")
+
+        proceed()
+
+
+def latest_request(gates: Sequence[Gate], arrive: VoidCallback) -> SingleFlight[[]]:
+    return LatestRequestFlight(gates, arrive)
+
+
+def first_request(gates: Sequence[Gate], arrive: VoidCallback) -> SingleFlight[[]]:
+    return FirstRequestFlight(lambda: gates, arrive)
+
+
+class TestEitherFlight(BaseTestSuite):
+    """A gesture holds one conversation at a time, whichever request its end lets through.
 
     The flight ends when the gates let the gesture through or turn it away, so a gesture asked for
     after either asks again.
     """
 
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        build: Callable[[Sequence[Gate], VoidCallback], SingleFlight[[]]]
+
+    test_cases = (
+        TestCase(label="latest_request", build=latest_request),
+        TestCase(label="first_request", build=first_request),
+    )
+
     @pytest.fixture(name="guard")
     def guard_fixture(self, reached: List[str]) -> Guard:
         return Guard("question", reached, unfinished=True)
 
-    @pytest.fixture(name="flight")
-    def flight_fixture(self, guard: Guard, reached: List[str]) -> SingleFlight[[]]:
-        return SingleFlight(fixed((guard,)), lambda: reached.append(ARRIVED))
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_two_requests_ask_once(self, test_case: TestCase, guard: Guard, reached: List[str]) -> None:
+        flight = test_case.build((guard,), lambda: reached.append(ARRIVED))
 
-    def test_a_repeat_while_the_question_stands_is_absorbed(
-        self,
-        flight: SingleFlight[[]],
-        reached: List[str],
-    ) -> None:
         flight()
         flight()
 
         assert reached == ["question"]
         assert flight.in_flight
 
-    def test_the_absorbed_repeat_arrives_once(
-        self,
-        flight: SingleFlight[[]],
-        guard: Guard,
-        reached: List[str],
-    ) -> None:
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_answer_arrives_once(self, test_case: TestCase, guard: Guard, reached: List[str]) -> None:
+        flight = test_case.build((guard,), lambda: reached.append(ARRIVED))
         flight()
         flight()
 
@@ -193,12 +229,14 @@ class TestSingleFlight:
         assert reached == ["question", ARRIVED]
         assert not flight.in_flight
 
-    def test_a_gesture_after_an_arrival_asks_again(
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_request_after_an_arrival_asks_again(
         self,
-        flight: SingleFlight[[]],
+        test_case: TestCase,
         guard: Guard,
         reached: List[str],
     ) -> None:
+        flight = test_case.build((guard,), lambda: reached.append(ARRIVED))
         flight()
         guard.answer()
 
@@ -207,12 +245,14 @@ class TestSingleFlight:
         assert reached == ["question", ARRIVED, "question"]
         assert flight.in_flight
 
-    def test_a_gesture_after_a_decline_asks_again(
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_request_after_a_decline_asks_again(
         self,
-        flight: SingleFlight[[]],
+        test_case: TestCase,
         guard: Guard,
         reached: List[str],
     ) -> None:
+        flight = test_case.build((guard,), lambda: reached.append(ARRIVED))
         flight()
         guard.cancel()
         assert not flight.in_flight
@@ -222,10 +262,15 @@ class TestSingleFlight:
         assert reached == ["question", "question"]
         assert guard.is_asking
 
-    def test_a_repeat_while_a_wait_holds_the_gesture_is_absorbed(self, reached: List[str]) -> None:
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_two_requests_while_a_wait_holds_the_gesture_ask_once(
+        self,
+        test_case: TestCase,
+        guard: Guard,
+        reached: List[str],
+    ) -> None:
         wait = HeldWait()
-        guard = Guard("question", reached, unfinished=True)
-        flight: SingleFlight[[]] = SingleFlight(fixed((waiting(wait), guard)), lambda: reached.append(ARRIVED))
+        flight = test_case.build((waiting(wait), guard), lambda: reached.append(ARRIVED))
 
         flight()
         flight()
@@ -233,15 +278,147 @@ class TestSingleFlight:
 
         assert reached == ["question"]
 
-    def test_the_arrival_takes_the_arguments_of_the_gesture_that_asked(self, reached: List[str]) -> None:
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_gesture_with_nothing_to_ask_arrives_and_lands(self, test_case: TestCase, reached: List[str]) -> None:
+        flight = test_case.build((Guard("clear", reached, unfinished=False),), lambda: reached.append(ARRIVED))
+
+        flight()
+        flight()
+
+        assert reached == ["clear", ARRIVED, "clear", ARRIVED]
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_gate_that_raises_ends_the_flight(self, test_case: TestCase, reached: List[str]) -> None:
+        def broken(_proceed: VoidCallback, _decline: VoidCallback) -> None:
+            reached.append("broken")
+            raise RuntimeError("the question could not be asked")
+
+        flight = test_case.build((broken,), lambda: reached.append(ARRIVED))
+
+        with pytest.raises(RuntimeError):
+            flight()
+
+        assert not flight.in_flight
+        with pytest.raises(RuntimeError):
+            flight()
+        assert reached == ["broken", "broken"]
+
+
+class TestLatestRequestFlight:
+    """A conversation that is the same whatever the gesture carries lets the latest request through.
+
+    The question is asked once for the whole flight, a decline drops every request made during it, and
+    a request made after the flight ended asks again with what it carries.
+    """
+
+    @pytest.fixture(name="guard")
+    def guard_fixture(self, reached: List[str]) -> Guard:
+        return Guard("question", reached, unfinished=True)
+
+    @pytest.fixture(name="opened")
+    def opened_fixture(self) -> List[Path]:
+        return []
+
+    @pytest.fixture(name="flight")
+    def flight_fixture(self, guard: Guard, opened: List[Path]) -> LatestRequestFlight[[Path]]:
+        return LatestRequestFlight((guard,), opened.append)
+
+    def test_the_answer_goes_on_with_the_latest_request(
+        self,
+        flight: LatestRequestFlight[[Path]],
+        guard: Guard,
+        reached: List[str],
+        opened: List[Path],
+    ) -> None:
+        flight(Path("first.stn"))
+        flight(Path("second.stn"))
+        flight(Path("third.stn"))
+
+        guard.answer()
+
+        assert reached == ["question"]
+        assert opened == [Path("third.stn")]
+
+    def test_a_request_made_while_a_wait_holds_the_gesture_arrives(
+        self,
+        guard: Guard,
+        reached: List[str],
+        opened: List[Path],
+    ) -> None:
+        """Two files opened while the edits are on their way ask once, and the answer opens the second."""
+        wait = HeldWait()
+        flight: LatestRequestFlight[[Path]] = LatestRequestFlight((waiting(wait), guard), opened.append)
+        flight(Path("drums.stn"))
+        flight(Path("bass.stn"))
+        wait.release()
+
+        guard.answer()
+
+        assert reached == ["question"]
+        assert opened == [Path("bass.stn")]
+
+    def test_a_decline_drops_every_request_of_the_flight(
+        self,
+        flight: LatestRequestFlight[[Path]],
+        guard: Guard,
+        reached: List[str],
+        opened: List[Path],
+    ) -> None:
+        flight(Path("first.stn"))
+        flight(Path("second.stn"))
+        guard.cancel()
+
+        flight(Path("third.stn"))
+        guard.answer()
+
+        assert reached == ["question", "question"]
+        assert opened == [Path("third.stn")]
+
+    def test_a_request_after_the_arrival_starts_a_new_conversation(
+        self,
+        flight: LatestRequestFlight[[Path]],
+        guard: Guard,
+        reached: List[str],
+        opened: List[Path],
+    ) -> None:
+        flight(Path("first.stn"))
+        guard.answer()
+
+        flight(Path("second.stn"))
+        assert opened == [Path("first.stn")]
+        guard.answer()
+
+        assert reached == ["question", "question"]
+        assert opened == [Path("first.stn"), Path("second.stn")]
+
+    def test_a_gate_that_raises_drops_its_request(self, reached: List[str], opened: List[Path]) -> None:
+        flight: LatestRequestFlight[[Path]] = LatestRequestFlight((RaisingOnce(reached),), opened.append)
+        with pytest.raises(RuntimeError):
+            flight(Path("first.stn"))
+
+        flight(Path("second.stn"))
+
+        assert reached == ["broken", "broken"]
+        assert opened == [Path("second.stn")]
+
+
+class TestFirstRequestFlight:
+    """A conversation built from the request keeps the first request, so the answer holds for what it asked about.
+
+    A request made while the question stands is absorbed, and one made after the answer asks about
+    what it carries.
+    """
+
+    def test_the_answer_goes_on_with_the_first_request(self, reached: List[str]) -> None:
         guard = Guard("question", reached, unfinished=True)
         opened: List[Path] = []
-        flight: SingleFlight[[Path]] = SingleFlight(fixed((guard,)), opened.append)
+        flight: FirstRequestFlight[[Path]] = FirstRequestFlight(lambda _path: (guard,), opened.append)
 
         flight(Path("first.stn"))
         flight(Path("second.stn"))
         guard.answer()
 
+        assert reached == ["question"]
         assert opened == [Path("first.stn")]
 
     def test_the_question_is_built_from_the_gesture_that_asked(self, reached: List[str]) -> None:
@@ -254,7 +431,7 @@ class TestSingleFlight:
             return [guard]
 
         opened: List[Path] = []
-        flight: SingleFlight[[Path]] = SingleFlight(conversation, opened.append)
+        flight: FirstRequestFlight[[Path]] = FirstRequestFlight(conversation, opened.append)
 
         flight(Path("first.stn"))
         flight(Path("second.stn"))
@@ -269,36 +446,10 @@ class TestSingleFlight:
         def conversation() -> List[Gate]:
             raise RuntimeError("the question could not be built")
 
-        flight: SingleFlight[[]] = SingleFlight(conversation, lambda: reached.append(ARRIVED))
+        flight: FirstRequestFlight[[]] = FirstRequestFlight(conversation, lambda: reached.append(ARRIVED))
 
         with pytest.raises(RuntimeError):
             flight()
 
         assert not flight.in_flight
         assert not reached
-
-    def test_a_gesture_with_nothing_to_ask_arrives_and_lands(self, reached: List[str]) -> None:
-        flight: SingleFlight[[]] = SingleFlight(
-            fixed((Guard("clear", reached, unfinished=False),)),
-            lambda: reached.append(ARRIVED),
-        )
-
-        flight()
-        flight()
-
-        assert reached == ["clear", ARRIVED, "clear", ARRIVED]
-
-    def test_a_gate_that_raises_ends_the_flight(self, reached: List[str]) -> None:
-        def broken(_proceed: VoidCallback, _decline: VoidCallback) -> None:
-            reached.append("broken")
-            raise RuntimeError("the question could not be asked")
-
-        flight: SingleFlight[[]] = SingleFlight(fixed((broken,)), lambda: reached.append(ARRIVED))
-
-        with pytest.raises(RuntimeError):
-            flight()
-
-        assert not flight.in_flight
-        with pytest.raises(RuntimeError):
-            flight()
-        assert reached == ["broken", "broken"]

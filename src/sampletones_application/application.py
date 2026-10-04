@@ -137,11 +137,11 @@ from sampletones_application.ui.panels.dialogs.stem_selection import GUIStemSele
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.callbacks.gates import (
+    FirstRequestFlight,
     Gate,
     GestureParameters,
     GestureResult,
-    SingleFlight,
-    fixed,
+    LatestRequestFlight,
     gated,
     waiting,
 )
@@ -483,7 +483,7 @@ class Application:
             on_session_state_changed=self._on_reconstruction_state_changed,
             on_reconstruction_updated=self._on_reconstruction_updated,
         )
-        self._reconstruction_opening: SingleFlight[[Optional[Path]]] = self._reconstruction_opening_flight()
+        self._reconstruction_opening: LatestRequestFlight[[Optional[Path]]] = self._reconstruction_opening_flight()
 
         self._original_audio_locator = OriginalAudioLocator(
             dialogs=self.dialogs,
@@ -596,10 +596,7 @@ class Application:
             dialogs=self.dialogs,
             playback_failures=self._playback_failures,
             status_bar=self.status_bar,
-            on_edit_voice_requested=self._document_flight(
-                self._reconstruction_coordinator.guard_edit_voice,
-                self._reconstruction_coordinator.open_project_voice,
-            ),
+            on_edit_voice_requested=self._voice_editing_flight(),
             on_favorite_changed=self._repaint_reconstruction_favorites,
             on_sample_reconstruction_replaced=self._reconstruction_coordinator.replace_sample,
             on_tab_switch=self._set_current_tab,
@@ -679,7 +676,7 @@ class Application:
             instructions_tab=self._instructions_tab,
         )
         self.browser_manager.on_recordings_read = self._show_reconstruction_recordings
-        self._exiting: SingleFlight[[]] = self._exit_flight()
+        self._exiting: LatestRequestFlight[[]] = self._exit_flight()
 
         self._setup_gui()
         self._restore_current_items(
@@ -751,7 +748,8 @@ class Application:
         A gesture that reads or puts away a whole document, the project or the open reconstruction,
         waits for the edits of the open reconstruction made before it, so it acts on what the
         reader has drawn. A gesture that replaces or closes a document, or leaves, holds one
-        conversation at a time, so asking for it again before its question is answered asks once.
+        conversation at a time, so asking for it again before its question is answered asks once,
+        and the answer goes on with the request made last.
         """
         after_edits = self._reconstruction_coordinator.after_edits
         return ShortcutBindings(
@@ -820,20 +818,26 @@ class Application:
         self,
         guard: Gate,
         arrive: Callable[GestureParameters, GestureResult],
-    ) -> SingleFlight[GestureParameters]:
-        """A gesture on a whole document as one conversation: the edits on their way land, then ``guard`` asks."""
-        return SingleFlight(
-            fixed(
-                (
-                    waiting(self._reconstruction_coordinator.after_edits),
-                    guard,
-                )
+    ) -> LatestRequestFlight[GestureParameters]:
+        """A gesture on a whole document as one conversation: the edits on their way land, then ``guard`` asks.
+
+        ``guard`` asks the same question whatever the gesture carries, so its answer lets through the
+        request made last.
+        """
+        return LatestRequestFlight(
+            (
+                waiting(self._reconstruction_coordinator.after_edits),
+                guard,
             ),
             arrive,
         )
 
-    def _converted_loading_flight(self) -> SingleFlight[[Path]]:
-        """Loading what a run wrote as one conversation, whose question speaks of the file it loads."""
+    def _converted_loading_flight(self) -> FirstRequestFlight[[Path]]:
+        """Loading what a run wrote as one conversation, whose question speaks of the file it loads.
+
+        The question reads whether the open document is backed by that very file, so its answer holds
+        for that file alone, and the request that raised it is the one the answer loads.
+        """
         coordinator = self._reconstruction_coordinator
 
         def conversation(filepath: Path) -> Sequence[Gate]:
@@ -842,13 +846,23 @@ class Application:
                 partial(coordinator.guard_load_converted, filepath),
             )
 
-        return SingleFlight(conversation, coordinator.load)
+        return FirstRequestFlight(conversation, coordinator.load)
 
-    def _reconstruction_opening_flight(self) -> SingleFlight[[Optional[Path]]]:
-        """Opening a reconstruction as one conversation, whichever door asks: the menu or a browser."""
+    def _reconstruction_opening_flight(self) -> LatestRequestFlight[[Optional[Path]]]:
+        """Opening a reconstruction as one conversation, whichever door asks: the menu or a browser.
+
+        The answer opens what was asked for last, a browser's file or the menu's file dialog.
+        """
         return self._document_flight(
             self._reconstruction_coordinator.guard_load,
             self._reconstruction_coordinator.open,
+        )
+
+    def _voice_editing_flight(self) -> LatestRequestFlight[[str]]:
+        """Editing a voice of the project as one conversation, whose answer opens the voice asked for last."""
+        return self._document_flight(
+            self._reconstruction_coordinator.guard_edit_voice,
+            self._reconstruction_coordinator.open_project_voice,
         )
 
     def _setup_shell(self, bindings: ShortcutBindings) -> None:
@@ -1671,22 +1685,20 @@ class Application:
         """Flips one channel of the sequencer's mix, the gesture the Channels submenu offers."""
         self._sequencer_tab.toggle_channel(generator)
 
-    def _exit_flight(self) -> SingleFlight[[]]:
+    def _exit_flight(self) -> LatestRequestFlight[[]]:
         """The exit as one conversation, in which each owner of something unfinished asks in turn.
 
         The edits of the open reconstruction land first, so each question asks about what the
         reader has drawn. A close asked for again while the questions stand is absorbed, and Cancel
         on any of them ends the conversation.
         """
-        return SingleFlight(
-            fixed(
-                (
-                    waiting(self._reconstruction_coordinator.after_edits),
-                    self._project_coordinator.guard_exit,
-                    self._reconstruction_coordinator.guard_exit,
-                    self._main_tab.guard_exit,
-                    self._instructions_tab.guard_exit,
-                )
+        return LatestRequestFlight(
+            (
+                waiting(self._reconstruction_coordinator.after_edits),
+                self._project_coordinator.guard_exit,
+                self._reconstruction_coordinator.guard_exit,
+                self._main_tab.guard_exit,
+                self._instructions_tab.guard_exit,
             ),
             self._exit_application,
         )

@@ -33,6 +33,8 @@ OWN_GESTURES: Final[Tuple[str, ...]] = (
 )
 PROJECT_GUARDS: Final[Tuple[str, ...]] = ("guard_new", "guard_open", "guard_close")
 RECONSTRUCTION_GUARDS: Final[Tuple[str, ...]] = ("guard_load", "guard_close")
+FIRST_VOICE: Final[str] = "first-voice"
+SECOND_VOICE: Final[str] = "second-voice"
 
 
 def let_through(proceed: VoidCallback, _decline: VoidCallback) -> None:
@@ -192,7 +194,7 @@ class TestAWholeDocumentGestureWaitsForTheEdits(BaseTestSuite):
 
 class TestADocumentGestureAsksOnce(BaseTestSuite):
     """A gesture that replaces or closes a document, asked for twice while the edits before it are on
-    their way, asks its question once.
+    their way, asks its question once, and the answer goes on with the request made last.
     """
 
     @dataclass(frozen=True, kw_only=True)
@@ -277,7 +279,10 @@ class TestADocumentGestureAsksOnce(BaseTestSuite):
         bindings: ShortcutBindings,
         held_gate: HeldGate,
     ) -> None:
-        """Opening a reconstruction asks once whichever door it was asked for through."""
+        """Opening a reconstruction asks once whichever door it was asked for through.
+
+        The menu's Open, asked for last, is what the answer goes on with, so the reader picks a file.
+        """
         guard = app._reconstruction_coordinator.guard_load
         guard.side_effect = None
 
@@ -288,11 +293,48 @@ class TestADocumentGestureAsksOnce(BaseTestSuite):
         guard.assert_called_once()
         proceed, _ = guard.call_args.args
         proceed()
-        app._reconstruction_coordinator.open.assert_called_once_with(Path("browsed.stn"))
+        app._reconstruction_coordinator.open.assert_called_once_with()
+
+    def test_two_browsed_files_open_the_second(
+        self,
+        app: Application,
+        held_gate: HeldGate,
+    ) -> None:
+        guard = app._reconstruction_coordinator.guard_load
+        guard.side_effect = None
+
+        app._reconstruction_opening(Path("drums.stn"))
+        app._reconstruction_opening(Path("bass.stn"))
+        held_gate.release()
+
+        guard.assert_called_once()
+        proceed, _ = guard.call_args.args
+        proceed()
+        app._reconstruction_coordinator.open.assert_called_once_with(Path("bass.stn"))
+
+    def test_editing_two_voices_opens_the_second(
+        self,
+        app: Application,
+        held_gate: HeldGate,
+    ) -> None:
+        guard = app._reconstruction_coordinator.guard_edit_voice
+        editing = app._voice_editing_flight()
+
+        editing(FIRST_VOICE)
+        editing(SECOND_VOICE)
+        held_gate.release()
+
+        guard.assert_called_once()
+        proceed, _ = guard.call_args.args
+        proceed()
+        app._reconstruction_coordinator.open_project_voice.assert_called_once_with(SECOND_VOICE)
 
 
 class TestLoadingWhatARunWroteAsksOnce:
-    """The Converter's Load asks about the file it loads once, however often it is pressed meanwhile."""
+    """The Converter's Load asks about the file it loads once, however often it is pressed meanwhile.
+
+    The question speaks of the file the first press asked for, so the answer loads that file.
+    """
 
     @pytest.fixture
     def guard(self, app: Application) -> MagicMock:
@@ -315,6 +357,24 @@ class TestLoadingWhatARunWroteAsksOnce:
         guard.assert_called_once()
         assert guard.call_args.args[0] == Path("written.stn")
         app._reconstruction_coordinator.load.assert_not_called()
+
+    def test_a_second_file_asked_for_meanwhile_keeps_the_first(
+        self,
+        app: Application,
+        guard: MagicMock,
+        held_gate: HeldGate,
+    ) -> None:
+        loading = app._converted_loading_flight()
+
+        loading(Path("written.stn"))
+        loading(Path("rewritten.stn"))
+        held_gate.release()
+
+        guard.assert_called_once()
+        filepath, proceed, _ = guard.call_args.args
+        assert filepath == Path("written.stn")
+        proceed()
+        app._reconstruction_coordinator.load.assert_called_once_with(Path("written.stn"))
 
     def test_the_answer_loads_the_file_the_question_spoke_of(
         self,

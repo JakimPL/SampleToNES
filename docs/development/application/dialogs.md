@@ -89,12 +89,22 @@ conversation at a time. The conversation is the chain of questions the gesture p
 a question reaches whoever asked it. An answer that goes on lets the request through. Cancel, Escape, the
 title bar's close and a save that failed turn it away. A request therefore always ends in one of the two.
 
-While a conversation stands, the same gesture asked for again is absorbed, so two closes before the first is
+While a conversation stands, the same gesture asked for again asks nothing, so two closes before the first is
 answered ask once. Once the conversation has ended, the gesture asks again. The span covers the wait for the
 edits of the open reconstruction too, so a gesture repeated while an edit is on its way asks once it lands.
-`SingleFlight` (`utils/callbacks/gates.py`) holds the conversation, built from the request so a question can
-speak of what the gesture asks for, and the composition root wraps every such gesture in one, whichever door it
-is asked for through.
+`SingleFlight` (`utils/callbacks/gates.py`) holds the conversation, and the composition root wraps every such
+gesture in one, whichever door it is asked for through.
+
+**The latest request wins.** A gesture whose question is the same whatever it carries goes on with the
+request made last. Starting or opening a document, editing a voice, closing and leaving ask this way. A
+reader who double-clicks one file and then another before the question shows opens the second. The menu's
+Open, asked for after a browser's file, shows the file dialog. Cancel drops every request the conversation
+gathered. `LatestRequestFlight` holds such a conversation.
+
+**A question built from the request keeps its request.** Loading what a run wrote asks whether the open
+document is backed by that very file, so the answer holds for that file alone. A press made while the question
+stands is absorbed, and the answer loads the file the question named. `FirstRequestFlight` holds such a
+conversation.
 
 ## Where it is written
 

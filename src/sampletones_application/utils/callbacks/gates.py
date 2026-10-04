@@ -1,5 +1,6 @@
+from abc import ABC, abstractmethod
 from functools import partial
-from typing import Callable, Generic, ParamSpec, Sequence, TypeVar
+from typing import Callable, Generic, Optional, ParamSpec, Sequence, TypeVar
 
 from sampletones_shared.types.callback import VoidCallback
 
@@ -25,20 +26,6 @@ def waiting(wait: Wait) -> Gate:
         wait(proceed)
 
     return gate
-
-
-def fixed(gates: Sequence[Gate]) -> Callable[..., Sequence[Gate]]:
-    """A conversation that asks ``gates`` whatever a request carries.
-
-    Args:
-        gates: What stands between every request and its arrival, in the order the gates are asked.
-    """
-    held = tuple(gates)
-
-    def conversation(*_args: object, **_kwargs: object) -> Sequence[Gate]:
-        return held
-
-    return conversation
 
 
 def pass_gates(
@@ -89,14 +76,95 @@ def gated(
     return call
 
 
-class SingleFlight(Generic[GestureParameters]):
-    """A gesture that holds one conversation at a time, absorbing a repeat asked for while one is in flight.
+class SingleFlight(ABC, Generic[GestureParameters]):
+    """A gesture that holds one conversation at a time, and lets one request through at its end.
 
-    The conversation is the gates the gesture passes, built from the request's arguments, so a
-    question can speak of what the request asks for. It is in flight from the moment the gesture is
-    asked for until the gates let it through or turn it away. A gesture asked for twice before its
-    question is answered therefore asks once, and one asked for after the answer asks again. A gate
-    that raises ends the flight too, so one failure leaves the gesture to be asked for again.
+    The conversation is the gates the gesture passes. It is in flight from the moment the gesture is
+    asked for until the gates let it through or turn it away, and a gesture asked for after that asks
+    again. A gesture asked for while it is in flight asks nothing, and the kind of flight decides which
+    request its end lets through. A conversation that turns the gesture away drops the request it
+    holds. A gate that raises ends the flight the same way, so one failure leaves the gesture to be
+    asked for again.
+    """
+
+    def __init__(self, arrive: Callable[GestureParameters, GestureResult]) -> None:
+        self._arrive = arrive
+        self._standing: Optional[VoidCallback] = None
+
+    @property
+    def in_flight(self) -> bool:
+        """Whether a conversation of this gesture is under way, from the moment it is asked for to its end."""
+        return self._standing is not None
+
+    @abstractmethod
+    def __call__(self, *args: GestureParameters.args, **kwargs: GestureParameters.kwargs) -> None:
+        """Asks for the gesture with these arguments."""
+
+    def _request(self, *args: GestureParameters.args, **kwargs: GestureParameters.kwargs) -> VoidCallback:
+        """The gesture's arrival with these arguments, which discards what the gesture returns."""
+
+        def arrival() -> None:
+            self._arrive(*args, **kwargs)
+
+        return arrival
+
+    def _take_off(self, gates: Sequence[Gate], request: VoidCallback) -> None:
+        """Asks ``gates`` with ``request`` standing, and holds the flight until they let it through or turn it away."""
+        self._standing = request
+        asked = False
+        try:
+            pass_gates(gates, self._land, self._turn_away)
+            asked = True
+        finally:
+            if not asked:
+                self._turn_away()
+
+    def _redirect(self, request: VoidCallback) -> None:
+        """Lets ``request`` through at the end of the flight under way, in the place of the one standing."""
+        self._standing = request
+
+    def _land(self) -> None:
+        """Ends the flight, and then lets the request standing through, so its arrival may ask anew."""
+        request = self._standing
+        assert request is not None, "A conversation let its gesture through after its flight had ended"
+        self._standing = None
+        request()
+
+    def _turn_away(self) -> None:
+        self._standing = None
+
+
+class LatestRequestFlight(SingleFlight[GestureParameters]):
+    """A gesture whose conversation is the same whatever it carries, letting the latest request through.
+
+    The gates are asked once for the whole flight, and a request made meanwhile takes the place of the
+    one standing. The answer therefore goes on with what the reader asked for last, such as the second
+    of two files opened before the question showed.
+    """
+
+    def __init__(
+        self,
+        gates: Sequence[Gate],
+        arrive: Callable[GestureParameters, GestureResult],
+    ) -> None:
+        super().__init__(arrive)
+        self._gates = tuple(gates)
+
+    def __call__(self, *args: GestureParameters.args, **kwargs: GestureParameters.kwargs) -> None:
+        request = self._request(*args, **kwargs)
+        if self.in_flight:
+            self._redirect(request)
+            return
+
+        self._take_off(self._gates, request)
+
+
+class FirstRequestFlight(SingleFlight[GestureParameters]):
+    """A gesture whose conversation speaks of what it carries, keeping the first request to the end.
+
+    The conversation is built from the request's arguments, so a question can name the file it asks
+    about, and its answer holds for that request alone. A request made while the question stands is
+    therefore absorbed, and one made after the answer asks about what it carries.
     """
 
     def __init__(
@@ -104,31 +172,11 @@ class SingleFlight(Generic[GestureParameters]):
         conversation: Callable[GestureParameters, Sequence[Gate]],
         arrive: Callable[GestureParameters, GestureResult],
     ) -> None:
+        super().__init__(arrive)
         self._conversation = conversation
-        self._arrive = arrive
-        self._in_flight: bool = False
-
-    @property
-    def in_flight(self) -> bool:
-        """Whether a conversation of this gesture is under way, from the moment it is asked for to its end."""
-        return self._in_flight
 
     def __call__(self, *args: GestureParameters.args, **kwargs: GestureParameters.kwargs) -> None:
-        if self._in_flight:
+        if self.in_flight:
             return
 
-        def arrive() -> None:
-            self._land()
-            self._arrive(*args, **kwargs)
-
-        self._in_flight = True
-        asked = False
-        try:
-            pass_gates(self._conversation(*args, **kwargs), arrive, self._land)
-            asked = True
-        finally:
-            if not asked:
-                self._land()
-
-    def _land(self) -> None:
-        self._in_flight = False
+        self._take_off(self._conversation(*args, **kwargs), self._request(*args, **kwargs))
