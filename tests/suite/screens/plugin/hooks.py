@@ -1,6 +1,4 @@
 import os
-import shutil
-import tempfile
 from pathlib import Path
 from typing import Final, Generator, Optional
 
@@ -10,7 +8,8 @@ from tests.suite.screens.application.running import ScreenApplication
 from tests.suite.screens.dearpygui.hosting import host
 from tests.suite.screens.dearpygui.isolation import ReportRecorder, run_isolated
 from tests.suite.screens.environment import REPORT_VARIABLE, ScenarioFolders, child_environment
-from tests.suite.screens.paths import HOMES_PREFIX, SCREENS_DIRECTORY
+from tests.suite.screens.homes import let_go, make_worker_homes
+from tests.suite.screens.paths import SCREENS_DIRECTORY
 from tests.suite.screens.plugin.constants import DISPLAY_KEY, HOMES_KEY
 from tests.suite.screens.plugin.fixtures import _worker_display
 
@@ -71,13 +70,14 @@ def pytest_runtest_protocol(
 def _worker_homes(config: pytest.Config) -> Path:
     """The temporary folder this worker's scenarios keep their homes in, made with the first of them.
 
-    Each worker makes its own, so runs from several checkouts at once keep their homes apart.
+    Each worker makes its own, named after its process, so runs from several checkouts at once keep
+    their homes apart, and the first scenario of a run lets go of what crashed workers left.
     """
     homes = config.stash.get(HOMES_KEY, None)
     if homes is not None:
         return homes
 
-    homes = Path(tempfile.mkdtemp(prefix=HOMES_PREFIX))
+    homes = make_worker_homes()
     config.stash[HOMES_KEY] = homes
     return homes
 
@@ -97,7 +97,7 @@ def pytest_unconfigure(config: pytest.Config) -> None:
 
     homes = config.stash.get(HOMES_KEY, None)
     if homes is not None:
-        shutil.rmtree(homes, ignore_errors=True)
+        let_go(homes)
 
 
 @pytest.hookimpl(wrapper=True)

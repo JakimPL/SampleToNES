@@ -6,7 +6,14 @@ from typing import Dict, Final, Mapping, Tuple
 
 from sampletones_shared.application import SAMPLETONES_ENV_PREFIX
 from tests.suite.screens.dearpygui.display import DisplayBackend, ScreenSize
-from tests.suite.screens.paths import ARTIFACTS_DIRECTORY, HOME_FOLDER, NO_BUS_FILE, REPORTS_FILE
+from tests.suite.screens.homes import let_go, reopen_folders
+from tests.suite.screens.paths import (
+    ARTIFACTS_DIRECTORY,
+    HOME_COPY_NOTE,
+    HOME_FOLDER,
+    NO_BUS_FILE,
+    REPORTS_FILE,
+)
 
 DISPLAY_BACKEND_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_DISPLAY"
 ARTIFACTS_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_ARTIFACTS"
@@ -32,7 +39,7 @@ class ScenarioFolders:
     The home is scratch, built afresh from the scenario's world in a temporary folder whose path holds no
     hidden folder, so the application's browsers reach it from any checkout. What the run keeps lies under
     the run's artifacts in the checkout: the reports, a screenshot of a failure, and a copy of the home a
-    failed scenario left.
+    failed scenario left, with a note where that copy lost files.
 
     Attributes:
         root: The scenario's folder under the run's artifacts, kept after the run for a reader.
@@ -68,11 +75,27 @@ class ScenarioFolders:
         self.home.mkdir(parents=True)
 
     def finish(self, *, failed: bool) -> None:
-        """Lets the scratch home go, keeping a copy among the artifacts where the scenario failed."""
-        if failed:
-            shutil.copytree(self.home, self.root / HOME_FOLDER, symlinks=True)
+        """Lets the scratch home go, keeping a copy among the artifacts where the scenario failed.
 
-        shutil.rmtree(self.home.parent, ignore_errors=True)
+        A scenario can leave a folder of its home locked, so every folder opens again first. The copy
+        keeps what it can read, a note beside the artifacts says what it lost, and the home goes
+        however the copy ended.
+        """
+        reopen_folders(self.home.parent)
+        try:
+            if failed:
+                self._keep_the_home()
+        finally:
+            let_go(self.home.parent)
+
+    def _keep_the_home(self) -> None:
+        try:
+            shutil.copytree(self.home, self.root / HOME_FOLDER, symlinks=True)
+        except OSError as error:
+            (self.root / HOME_COPY_NOTE).write_text(
+                f"The copy of the scenario's home is incomplete:\n{error}\n",
+                encoding="utf-8",
+            )
 
 
 def child_environment(

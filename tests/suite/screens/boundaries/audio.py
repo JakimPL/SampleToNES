@@ -14,6 +14,10 @@ ALSA_CONFIGURATION_VARIABLE: Final[str] = "ALSA_CONFIG_PATH"
 DEVICE_BUFFER_SECONDS: Final[float] = 0.05
 SILENT_DEFAULT_DEVICE: Final[str] = "pcm.!default {\n    type null\n}\n"
 REFUSED_STREAM: Final[str] = "A screen scenario's device refuses every stream"
+JACK_SERVER_VARIABLE: Final[str] = "JACK_DEFAULT_SERVER"
+JACK_NO_START_VARIABLE: Final[str] = "JACK_NO_START_SERVER"
+ABSENT_JACK_SERVER: Final[str] = "sampletones-screens-absent"
+JACK_STAYS_DOWN: Final[str] = "1"
 
 
 class OutputDevice(StrEnum):
@@ -101,12 +105,15 @@ class SilentOutputDevice:
     def __init__(self) -> None:
         self._clocks: WeakKeyDictionary[pyaudio.PyAudio.Stream, DeviceClock] = WeakKeyDictionary()
 
-    def install(self, home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Points ALSA at the null sink and puts a clock behind every stream before the application starts."""
+    @staticmethod
+    def configure(home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Points the scenario's ALSA at a configuration of its own, whose one device is the null sink."""
         configuration = home / ALSA_CONFIGURATION_FILE
         configuration.write_text(SILENT_DEFAULT_DEVICE, encoding="utf-8")
         monkeypatch.setenv(ALSA_CONFIGURATION_VARIABLE, str(configuration))
 
+    def keep_time(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Puts a clock behind every stream before the application starts, so the null sink plays in real time."""
         open_stream = pyaudio.PyAudio.open
         write = pyaudio.PyAudio.Stream.write
         stop_stream = pyaudio.PyAudio.Stream.stop_stream
@@ -147,15 +154,28 @@ def provide_output_device(
     home: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Gives the application the output ``device`` before it starts."""
+    """Gives the application the output ``device`` before it starts, with the machine's own sound kept out.
+
+    Whatever the device, the scenario's ALSA reads its own configuration and JACK looks for a server no
+    one runs, so neither the sound cards nor a sound server running on the machine reach the run.
+    """
+    silent = SilentOutputDevice()
+    silent.configure(home, monkeypatch)
+    _away_from_jack(monkeypatch)
     match device:
         case OutputDevice.SILENT:
-            SilentOutputDevice().install(home, monkeypatch)
+            silent.keep_time(monkeypatch)
         case OutputDevice.REFUSING:
-            SilentOutputDevice().install(home, monkeypatch)
+            silent.keep_time(monkeypatch)
             _refusing_output_device(monkeypatch)
         case OutputDevice.NONE:
             _no_output_device(monkeypatch)
+
+
+def _away_from_jack(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Points JACK at a server no one runs, and keeps it from starting one."""
+    monkeypatch.setenv(JACK_SERVER_VARIABLE, ABSENT_JACK_SERVER)
+    monkeypatch.setenv(JACK_NO_START_VARIABLE, JACK_STAYS_DOWN)
 
 
 def _refusing_output_device(monkeypatch: pytest.MonkeyPatch) -> None:

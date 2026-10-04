@@ -180,8 +180,10 @@ how a menu popup's width is measured.
 - **Audio.** The default output device plays into silence in real time, so playback runs and nothing is
   heard. It is the one device the application finds on every machine: the scenario's ALSA reads a
   configuration of its own, which keeps the machine's sound cards and sound server outside the run, and a
-  clock returns each write and each stop when a device would. A scenario can start on a machine offering
-  no device at all.
+  clock returns each write and each stop when a device would. JACK looks for a server no one runs and
+  starts none, so a JACK server on the machine stays outside the run too. A scenario can start on a
+  machine offering no device at all, or on one whose device refuses every stream, with the same
+  configuration in place.
 - **Programs.** An audit hook refuses every program the application tries to start: a file manager, a
   browser or a dialog tool would open on the desktop around the run. A shared library lookup passes, and
   so do the stand-ins below.
@@ -300,10 +302,16 @@ SAMPLETONES_SCREENS_DISPLAY=xephyr uv run python -m pytest tests/screens --no-co
 
 A scenario's home is scratch: it is built from the scenario's world in a temporary folder made for each
 worker, whose path holds no hidden folder, so the application's browsers reach it from a worktree under
-`.worktrees/` too, and it goes once the scenario ends. What a run keeps lies under `build/screens/`, in a
-folder named after the test: the reports, and when the scenario failed, a screenshot of the last frame and
-a copy of the home it left. `screen.capture` keeps a picture as evidence of a look, for a pull request
-rather than an assertion.
+`.worktrees/` too, and it goes once the scenario ends. A temporary folder inside a hidden folder is
+refused, and `TMPDIR` points the run at another. The worker's folder is named after its process, and a
+run's first scenario removes the folders whose process has gone, such as a crashed worker's, and leaves
+another live run's alone. A folder a scenario left locked opens again before its home is copied and
+removed.
+
+What a run keeps lies under `build/screens/`, in a folder named after the test: the reports, and when the
+scenario failed, a screenshot of the last frame and a copy of the home it left. A copy that lost files
+leaves a note beside it. `screen.capture` keeps a picture as evidence of a look, for a pull request rather
+than an assertion.
 
 ## Who governs what
 
