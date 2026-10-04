@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Final, Tuple
 
@@ -29,5 +30,9 @@ EXT_FILES_AUDIO: Final[Tuple[str, ...]] = (
 
 
 def is_audio_file(path: Path, extensions: Tuple[str, ...] = EXT_FILES_AUDIO) -> bool:
-    """Whether a path names a recording a run converts."""
-    return path.is_file() and path.suffix.lower() in extensions
+    """Whether a path names a recording a run converts.
+
+    A recording is a file the reader may inspect, so an entry of a folder that lists its names and
+    keeps the rest to itself reads as none.
+    """
+    return path.suffix.lower() in extensions and os.path.isfile(path)

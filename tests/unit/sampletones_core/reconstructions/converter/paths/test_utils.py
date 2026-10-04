@@ -11,8 +11,10 @@ from sampletones_core.reconstructions.converter.paths import (
     get_output_path,
     get_relative_path,
     group_output_path,
+    walk_entries,
 )
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
+from tests.suite.files import LOCKED_FOLDER, held_at, requires_folder_permissions
 
 CHANNELS = frozenset(DEFAULT_CHANNELS)
 
@@ -102,6 +104,29 @@ class TestGetAudioFiles:
         result = get_audio_files(tmp_path, sort=True)
         names = [path.name for path in result]
         assert names == sorted(names)
+
+
+@requires_folder_permissions
+class TestWalkEntries:
+    """A walk reads every folder it may open and passes over the ones it may not."""
+
+    def test_a_locked_folder_is_passed_over_with_what_it_holds(self, tmp_path: Path) -> None:
+        (tmp_path / "open").mkdir()
+        (tmp_path / "open" / "kept.wav").touch()
+        locked = tmp_path / "locked"
+        (locked / "deeper").mkdir(parents=True)
+        (locked / "hidden.wav").touch()
+
+        with held_at(locked, LOCKED_FOLDER):
+            names = sorted(path.name for path in walk_entries(tmp_path))
+
+        assert names == ["kept.wav", "locked", "open"]
+
+    def test_a_folder_that_cannot_be_opened_raises(self, tmp_path: Path) -> None:
+        (tmp_path / "take.wav").touch()
+
+        with held_at(tmp_path, LOCKED_FOLDER), pytest.raises(PermissionError):
+            walk_entries(tmp_path)
 
 
 class TestFilterFiles:

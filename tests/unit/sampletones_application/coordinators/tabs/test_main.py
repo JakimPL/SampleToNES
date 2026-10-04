@@ -21,6 +21,7 @@ from sampletones_application.tags.main import (
 )
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.application import settled
+from tests.suite.files import LOCKED_FOLDER, held_at, requires_folder_permissions
 from tests.suite.language import FakeLanguageManager
 
 CONVERTER_RUNNING_MESSAGE_KEY: Final[str] = "main.explorer.message.converter_running_msg"
@@ -205,6 +206,7 @@ class TestCancelConfirmation:
 
 
 DISCARD_STEMS_PROMPT_KEY: Final[str] = "main.converter.message.discard_stems_prompt"
+SCAN_FAILED_KEY: Final[str] = "main.converter.message.scan_failed"
 DISCARD_STEMS_BUTTON_KEY: Final[str] = "main.converter.label.discard_stems_button"
 KEEP_STEMS_BUTTON_KEY: Final[str] = "main.converter.label.keep_stems_button"
 
@@ -335,6 +337,19 @@ class TestDirectoryAdd:
 
         coordinator._converter_logic.gather_folder.assert_not_called()
         assert coordinator._dialogs.show_info.call_args.args[1] == NOTHING_BELOW_KEY
+
+    @requires_folder_permissions
+    def test_a_folder_it_may_not_open_says_so_and_adds_nothing(self, tmp_path: Path) -> None:
+        coordinator = _stems_coordinator(mixes=False)
+        root = _folder_of(tmp_path, 2)
+
+        with held_at(root, LOCKED_FOLDER):
+            _add_folder(coordinator, root)
+
+        coordinator._converter_logic.gather_folder.assert_not_called()
+        failure, message = coordinator._dialogs.show_error.call_args.args
+        assert isinstance(failure, PermissionError)
+        assert message == SCAN_FAILED_KEY
 
 
 class TestFileAdd:

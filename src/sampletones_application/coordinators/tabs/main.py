@@ -519,9 +519,9 @@ class MainTabCoordinator:
         self._folder_scan.start(directory_path, self._gather_read)
 
     def _on_scan_failed(self, exception: Exception) -> None:
-        """Takes the wait away and shows the failure that ended the reading."""
+        """Takes the wait away and shows the failure that ended the reading, which added nothing."""
         self._scan_window.close()
-        self._dialogs.show_error(exception)
+        self._dialogs.show_error(exception, self._language_manager["main.converter.message.scan_failed"])
 
     def _gather_read(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
         """Gathers what the walk found, saying so where the folder holds no recordings."""

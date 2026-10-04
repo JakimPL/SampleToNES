@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import AbstractSet, Iterator, List, Tuple
 
@@ -105,8 +106,14 @@ def walk_entries(input_directory: Path) -> Iterator[Path]:
     """Every path below a directory, reported as the walk meets it.
 
     A caller that has to answer between entries — one counting what it has found, or one a reader
-    may stop partway — reads the tree through this and decides for itself what each entry is.
+    may stop partway — reads the tree through this and decides for itself what each entry is. A
+    folder below the directory that the reader may not open is passed over with everything it
+    holds, so one locked folder leaves the rest of the tree to the walk.
+
+    Raises:
+        OSError: If the directory itself cannot be opened, which leaves the walk nothing to read.
     """
+    os.scandir(input_directory).close()
     return input_directory.rglob("*")
 
 

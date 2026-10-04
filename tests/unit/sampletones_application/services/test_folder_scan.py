@@ -15,6 +15,12 @@ from sampletones_application.services.folder_scan.result import (
 )
 from sampletones_application.services.folder_scan.service import REPORT_EVERY, FolderScanService
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
+from tests.suite.files import (
+    LOCKED_FOLDER,
+    NAMES_ONLY_FOLDER,
+    held_at,
+    requires_folder_permissions,
+)
 
 PRIORITY = 0
 
@@ -101,6 +107,23 @@ class TestWhatAWalkFinds:
 
         assert found(reports)[0].recordings == ()
 
+    @requires_folder_permissions
+    def test_the_folders_it_may_not_read_are_passed_over(
+        self,
+        service: FolderScanService,
+        reports: List[FolderScanResult],
+        tmp_path: Path,
+    ) -> None:
+        """A locked folder and one listing names only keep their recordings; the rest are found."""
+        root = tree(tmp_path / "takes", 2, deep=1)
+        locked = tree(root / "locked", 3)
+        names_only = tree(root / "names_only", 3)
+
+        with held_at(locked, LOCKED_FOLDER), held_at(names_only, NAMES_ONLY_FOLDER):
+            service.start(FolderScanRequest(root=root))
+
+        assert len(found(reports)[0].recordings) == 3
+
 
 class TestWhatTheReaderIsTold:
     """The reader hears that the reading began and how far it has got."""
@@ -174,6 +197,21 @@ class TestGivingUp:
 
         assert isinstance(reports[-1], FolderScanError)
         assert reports[-1].exception is failure
+
+    @requires_folder_permissions
+    def test_a_folder_it_may_not_open_reports_its_failure(
+        self,
+        service: FolderScanService,
+        reports: List[FolderScanResult],
+        tmp_path: Path,
+    ) -> None:
+        root = tree(tmp_path / "takes", 2)
+
+        with held_at(root, LOCKED_FOLDER):
+            service.start(FolderScanRequest(root=root))
+
+        assert isinstance(reports[-1], FolderScanError)
+        assert isinstance(reports[-1].exception, PermissionError)
 
 
 class TestShuttingDown:
