@@ -17,7 +17,13 @@ from sampletones_core.library import InstructionLibraryKey, LibraryState
 from sampletones_core.structures.tree import LibraryNode
 from tests.suite.compatibility import LIBRARY_VERSION, archived
 from tests.suite.files import requires_symlinks
-from tests.suite.library import LINKED_LIBRARIES, OTHER_LIBRARIES, WrittenLibrary, write_empty_library
+from tests.suite.library import (
+    LINKED_LIBRARIES,
+    OTHER_LIBRARIES,
+    WrittenLibrary,
+    aim_library_directory,
+    write_empty_library,
+)
 
 
 @pytest.fixture
@@ -252,7 +258,7 @@ class TestTheDirectoryTheCatalogStandsAt:
 
 class TestAnotherSpellingOfTheFolder:
     """Two spellings of one folder name one catalog, so pointing the catalog at another spelling keeps
-    what the folder loaded and moves nowhere."""
+    what the folder loaded and moves nowhere. The folder goes by the spelling given last."""
 
     @staticmethod
     def _respelled_keeps_what_it_loaded(
@@ -265,7 +271,12 @@ class TestAnotherSpellingOfTheFolder:
 
         moved = library_manager.set_library_directory(spelling)
 
-        assert (moved, library_manager.is_library_loaded(config_manager.key)) == (False, True)
+        assert (
+            moved,
+            library_manager.is_library_loaded(config_manager.key),
+            library_manager.library_directory,
+            library_manager.get_path(config_manager.key),
+        ) == (False, True, spelling, spelling / config_manager.key.filename)
 
     def test_a_detour_through_the_parent(
         self,
@@ -288,6 +299,20 @@ class TestAnotherSpellingOfTheFolder:
         link.symlink_to(config_manager.get_library_directory(), target_is_directory=True)
 
         self._respelled_keeps_what_it_loaded(config_manager, library_manager, link)
+
+    @requires_symlinks
+    def test_a_folder_configured_through_a_link_goes_by_the_link_from_the_start(
+        self,
+        config_manager: ConfigManager,
+        tmp_path: Path,
+    ) -> None:
+        link = tmp_path / LINKED_LIBRARIES
+        link.symlink_to(config_manager.get_library_directory(), target_is_directory=True)
+        aim_library_directory(config_manager, link)
+
+        library_manager = InstructionsLibraryManager(config_manager, language_manager=MagicMock())
+
+        assert library_manager.get_path(config_manager.key) == link / config_manager.key.filename
 
 
 class TestCompleteGeneration:

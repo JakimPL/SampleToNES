@@ -46,7 +46,6 @@ from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.filesystem import remove_path
-from sampletones_shared.utils.system.paths import is_same_path
 
 OnLoadInstructionCallback = Callable[[InstructionUnion], None]
 OnApplyLibraryConfigCallback = Callable[[InstructionLibraryKey, Optional[InstructionsLibraryConfig]], None]
@@ -163,11 +162,11 @@ class LibraryLogic(CallbackMixin):
         library directory and repainting the status otherwise.
 
         Another spelling of the folder the catalog stands at, a link to it included, names the same
-        folder, so the catalog stays as it is. A generation writes into the catalog it was started
-        in, so the catalog follows a change at once, whatever is running; the tree it lists is drawn
-        once the generation lets its lock go.
+        folder, so the catalog keeps what it holds and takes that spelling for the paths it shows. A
+        generation writes into the catalog it was started in, so the catalog follows a change at
+        once, whatever is running; the tree it lists is drawn once the generation lets its lock go.
         """
-        if not is_same_path(self._library_manager.library_directory, self._config_manager.get_library_directory()):
+        if self._library_manager.set_library_directory(self._config_manager.get_library_directory()):
             self.refresh_libraries(load_if_needed=False)
             return
 

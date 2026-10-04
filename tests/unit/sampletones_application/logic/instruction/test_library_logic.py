@@ -649,6 +649,46 @@ class TestTheCatalogFollowingTheConfiguration:
         assert (len(catalog.rebuilds_under_lock), catalog.manager.is_library_loaded(key)) == (rebuilds, True)
         assert catalog.views[-1].generate_button_label == "Regenerate"
 
+    @requires_symlinks
+    def test_a_notice_names_the_folder_by_the_link_the_reader_chose(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        key = _opened_library(catalog)
+        link = tmp_path / LINKED_LIBRARIES
+        link.symlink_to(catalog.config_manager.get_library_directory(), target_is_directory=True)
+        aim_library_directory(catalog.config_manager, link)
+        (link / key.filename).unlink()
+
+        catalog.logic.load_library_and_set_current(key)
+
+        assert catalog.missing == [link / key.filename]
+
+    @requires_symlinks
+    def test_a_library_generated_across_a_respelling_lands_loaded_under_the_new_spelling(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        """A link names the folder the generation started in, so the generation's library stays in memory,
+        and its path goes through the link."""
+        ours = catalog.config_manager.get_library_directory()
+        ours.mkdir(parents=True)
+        link = tmp_path / LINKED_LIBRARIES
+        link.symlink_to(ours, target_is_directory=True)
+        catalog.start_generation()
+
+        aim_library_directory(catalog.config_manager, link)
+        catalog.write_library()
+        catalog.queue.drain()
+
+        key = catalog.config_manager.key
+        assert (catalog.manager.is_library_loaded(key), catalog.manager.get_path(key)) == (
+            True,
+            link / key.filename,
+        )
+
     def test_a_library_whose_file_left_while_away_is_reported_on_the_way_back(
         self,
         catalog: Catalog,

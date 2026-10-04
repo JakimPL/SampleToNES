@@ -54,6 +54,17 @@ class _Catalog:
     current_key: Optional[InstructionLibraryKey]
     released_key: Optional[InstructionLibraryKey] = None
 
+    def name_by(self, directory: Path) -> None:
+        """Names the folder by ``directory``, the spelling the reader configured last, keeping what the
+        folder holds.
+
+        Every spelling names one folder, so a generation writing through the spelling it read first
+        lands in the same place.
+        """
+        spelling = str(directory)
+        if self.library.directory != spelling:
+            self.library = self.library.model_copy(update={"directory": spelling})
+
     def release(self) -> None:
         """Lets go of every library loaded here, remembering the current one where it was loaded.
 
@@ -99,10 +110,11 @@ class InstructionsLibraryManager(CallbackMixin):
         The folder left lets go of the libraries it loaded and keeps the one it had taken up as
         current. Where that library was loaded, the folder remembers it, and a reader coming back
         gets it from :meth:`take_released_library` to load again. Every spelling of one folder, a
-        link to it included, names the same catalog.
+        link to it included, names the same catalog, and the catalog goes by the spelling given last.
         """
         catalog = self._catalog_at(directory)
         with self._catalog_lock:
+            catalog.name_by(to_path(directory))
             if catalog is self._catalog:
                 return False
 
@@ -121,12 +133,14 @@ class InstructionsLibraryManager(CallbackMixin):
         return key
 
     def _catalog_at(self, directory: Path) -> _Catalog:
-        """The catalog of ``directory``, started empty the first time the directory is read."""
-        root = to_path(directory).resolve()
+        """The catalog of the folder ``directory`` names, started empty under that spelling the first time
+        the folder is read."""
+        spelling = to_path(directory)
+        root = spelling.resolve()
         catalog = self._catalogs.get(root)
         if catalog is None:
             catalog = _Catalog(
-                library=InstructionLibrary(directory=str(root)),
+                library=InstructionLibrary(directory=str(spelling)),
                 current_key=None,
             )
             self._catalogs[root] = catalog

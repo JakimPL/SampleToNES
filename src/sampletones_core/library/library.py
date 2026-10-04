@@ -130,12 +130,14 @@ class InstructionLibrary(BaseModel):
     def write_data(self, key: InstructionLibraryKey, library_data: InstructionLibraryData) -> None:
         """Writes a library to its file on disk, creating the library directory where it is missing.
 
+        A directory named through a link creates the folder the link points to.
+
         Args:
             key: The key identifying the library.
             library_data: The library to persist.
         """
         path = self.get_path(key)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        path.parent.resolve().mkdir(parents=True, exist_ok=True)
         library_data.save(path)
 
     def load_data(self, key: InstructionLibraryKey) -> None:
