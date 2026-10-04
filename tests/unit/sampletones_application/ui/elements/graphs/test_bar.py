@@ -7,6 +7,7 @@ import pytest
 from sampletones_application.ui.elements.graphs import bar as bar_module
 from sampletones_application.ui.elements.graphs.bar import GUIBarGraph
 from sampletones_application.ui.elements.graphs.layers.bar import BarLayer
+from sampletones_application.utils.gui.press import LeftPress
 from sampletones_application.utils.palette.colors.literal import LiteralColor
 
 BAND_SHARE: Final[float] = 0.2
@@ -41,8 +42,7 @@ def _graph() -> GUIBarGraph:
             bar_weight=BAR_WEIGHT,
         )
     }
-    graph._draw_stroke = None
-    graph._pressed = False
+    graph._press = LeftPress()
     graph.on_bar_point_clicked = None
     graph.on_bar_point_hovered = None
     return graph

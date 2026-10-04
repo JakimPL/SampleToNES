@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Callable, List, Optional
 from unittest.mock import MagicMock
 
+import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.layout.general.plus_minus_buttons import (
@@ -12,6 +13,7 @@ from sampletones_application.ui.elements.plus_minus_buttons import (
     HOLD_INITIAL_DELAY_FACTOR,
     GUIPlusMinusButtons,
 )
+from sampletones_application.utils.gui.press import LeftPress
 
 LAYOUT = PlusMinusButtonsLayout(
     button_width=30,
@@ -21,14 +23,19 @@ LAYOUT = PlusMinusButtonsLayout(
 
 FIRST_REPEAT = HOLD_INITIAL_DELAY_FACTOR * LAYOUT.hold_delay
 FRAME = LAYOUT.hold_delay / 10
+DECREMENT_TAG = "decrement"
+INCREMENT_TAG = "increment"
 
 
 @dataclass
 class Pointer:
-    """Which of the pair's buttons the pointer stands on, as their hover reads it."""
+    """Which of the pair's buttons the pointer stands on, as their hover reads it, and whether the left
+    button is down.
+    """
 
     on_increment: bool = False
     on_decrement: bool = False
+    down: bool = True
 
 
 def _button(hovered: Callable[[], bool]) -> GUIButton:
@@ -43,14 +50,18 @@ def pointer() -> Pointer:
 
 
 @pytest.fixture
-def buttons(pointer: Pointer) -> GUIPlusMinusButtons:
+def buttons(pointer: Pointer, monkeypatch: pytest.MonkeyPatch) -> GUIPlusMinusButtons:
     """A pair carrying only the state the tested methods touch, bypassing the DearPyGui-dependent
-    constructor."""
+    constructor, with the left button read from ``pointer``."""
+    monkeypatch.setattr(dpg, "is_mouse_button_down", lambda button: pointer.down)
+    monkeypatch.setattr(dpg, "does_item_exist", lambda tag: True)
     pair = GUIPlusMinusButtons.__new__(GUIPlusMinusButtons)
     pair.on_increment = None
     pair.on_decrement = None
     pair._layout = LAYOUT
-    pair._held = None
+    pair._decrement_button_tag = DECREMENT_TAG
+    pair._increment_button_tag = INCREMENT_TAG
+    pair._press = LeftPress()
     pair._increment_button = _button(lambda: pointer.on_increment)
     pair._decrement_button = _button(lambda: pointer.on_decrement)
     return pair
@@ -139,5 +150,24 @@ class TestAHoldBelongsToTheButtonItWentDownOn:
 
         buttons._on_mouse_release(0, None, None)
 
-        assert buttons._held is None
+        assert buttons._press.held() is None
         assert _frame(buttons, FIRST_REPEAT) is None
+
+    def test_a_release_the_buttons_missed_ends_the_hold(
+        self,
+        buttons: GUIPlusMinusButtons,
+        pointer: Pointer,
+    ) -> None:
+        """A mouse move with the button up ends the hold, so a press later carried onto the button steps
+        nothing.
+        """
+        pointer.on_increment = True
+        buttons._on_increment_pressed()
+
+        pointer.on_increment = False
+        pointer.down = False
+        buttons._on_mouse_move(0, None, None)
+        pointer.down = True
+        pointer.on_increment = True
+
+        assert [_frame(buttons, FIRST_REPEAT) for _ in range(3)] == [None, None, None]
