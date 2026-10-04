@@ -23,6 +23,7 @@ from sampletones_shared.utils.system.locales import to_utf8
 
 from .device import AudioDevice, CurrentDevice
 from .io import load_audio
+from .stream import close_stream, write_to_stream
 from .validation import validate_buffer_size, validate_sample_rate
 
 CHANNELS = 1
@@ -710,7 +711,7 @@ class AudioDeviceManager(CallbackMixin):
                 self._position += chunk_size
                 current_position = self._position
 
-            stream.write(chunk.tobytes())
+            write_to_stream(stream, chunk.tobytes())
 
             if update and self._position_callback is not None:
                 self.call(self._position_callback, current_position)
@@ -726,8 +727,9 @@ class AudioDeviceManager(CallbackMixin):
         Playback thread worker function.
 
         Opens an audio stream, runs the playback loop, and ensures cleanup. A stream the device
-        refuses to open leaves the playback idle, as a finished one does, before the error callback
-        reports it, so whoever follows the playback reads it stopped.
+        refuses to open, a write it fails and a stream it fails to stop each leave the playback
+        idle, as a finished one does, before the error callback reports the failure, so whoever
+        follows the playback reads it stopped.
 
         A stop waits a while for the worker and then lets it go, so a device slow to open can bring
         the worker back once its playback was stopped, or after a newer play has begun. The worker
@@ -741,42 +743,50 @@ class AudioDeviceManager(CallbackMixin):
         """
         logger.debug(f"Starting playback: device_index={output.device_index}, sample_rate={output.sample_rate}")
         try:
+            self._play_generation(output=output, update=update, generation=generation)
+        except PlaybackError as playback_error:
+            if self._is_current(generation):
+                self.call(self.on_playback_error, playback_error)
+
+    def _play_generation(
+        self,
+        *,
+        output: CurrentDevice,
+        update: bool,
+        generation: int,
+    ) -> None:
+        """Plays ``generation``'s audio on a stream of its own, and leaves the playback idle however that ends.
+
+        Raises:
+            PlaybackError: If the device refuses the stream, fails a write, or fails to stop the stream.
+        """
+        try:
             stream = self._open_stream(
                 device_index=output.device_index,
                 sample_rate=output.sample_rate,
                 frames_per_buffer=pyaudio.paFramesPerBufferUnspecified,
             )
-        except PlaybackError as playback_error:
-            if self._reset_generation(generation, update=update):
-                self.call(self.on_playback_error, playback_error)
-            return
-
-        try:
-            if self._is_current(generation):
-                self._playback_loop(stream, update, generation)
+            try:
+                if self._is_current(generation):
+                    self._playback_loop(stream, update, generation)
+            finally:
+                close_stream(stream)
         finally:
-            stream.stop_stream()
-            stream.close()
             self._reset_generation(generation, update=update)
 
     def _is_current(self, generation: int) -> bool:
         with self._lock:
             return generation == self._generation
 
-    def _reset_generation(self, generation: int, *, update: bool) -> bool:
-        """Resets playback state to idle while ``generation`` is the playback in force.
-
-        Returns:
-            bool: Whether ``generation`` was in force, and the state was reset.
-        """
+    def _reset_generation(self, generation: int, *, update: bool) -> None:
+        """Resets playback state to idle while ``generation`` is the playback in force."""
         with self._lock:
             if generation != self._generation:
-                return False
+                return
 
             self._clear_playback()
 
         self._report_the_start(update=update)
-        return True
 
     def _reset(self, *, update: bool = True) -> None:
         """
@@ -966,13 +976,16 @@ class AudioDeviceManager(CallbackMixin):
         """Take a handed-out stream back and close it.
 
         Called by the owner from the thread that wrote to the stream, once that writing has
-        finished. Returning the stream is what tells the manager the backend is free again.
+        finished. Returning the stream is what tells the manager the backend is free again, so
+        the manager takes it back before it winds the stream down.
+
+        Raises:
+            PlaybackError: If the device fails to stop or to close the stream.
         """
         with self._lock:
             self._stream_owners.pop(stream, None)
 
-        stream.stop_stream()
-        stream.close()
+        close_stream(stream)
 
     def terminate(self) -> None:
         """

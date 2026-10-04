@@ -9,6 +9,7 @@ import pytest
 
 from sampletones_core.audio.device import AudioDevice, CurrentDevice
 from sampletones_core.audio.manager import AudioDeviceManager
+from sampletones_core.audio.stream import write_to_stream
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE, START_OF_AUDIO, SampleRate
 from sampletones_shared.exceptions import NoOutputDeviceError, PlaybackError
 from tests.suite.base import BaseTestSuite
@@ -322,6 +323,100 @@ class TestAPlaybackANewerOneReplaced:
 
         assert len(reported) == 1
         assert not manager.is_playing()
+
+
+class TestADeviceFailingMidPlayback:
+    """A write or a stop the device fails leaves the playback idle, and then reports the failure once.
+
+    The failure reaches the reader the way a refused stream does, and only while the playback that met it
+    is the one in force.
+    """
+
+    LENGTH: Final[int] = 8
+
+    @pytest.fixture(name="playing")
+    def playing_fixture(self) -> Tuple[AudioDeviceManager, Dict[str, Any], MagicMock]:
+        """A manager playing a buffer, the arguments its worker was started with, and the stream it opens."""
+        manager = _manager()
+        manager._buffer_size = self.LENGTH
+        manager._position_callback = None
+        manager._playback_thread = None
+        stream = MagicMock()
+        manager._pyaudio.open.return_value = stream
+        with patch("sampletones_core.audio.manager.threading.Thread") as thread:
+            manager.play(np.zeros(self.LENGTH, dtype=np.float32))
+
+        return manager, thread.call_args.kwargs["kwargs"], stream
+
+    @staticmethod
+    def record_reports(manager: AudioDeviceManager) -> List[Tuple[PlaybackError, bool]]:
+        """Notes each failure reported with whether the playback read playing then."""
+        reports: List[Tuple[PlaybackError, bool]] = []
+        manager.on_playback_error = lambda error: reports.append((error, manager.is_playing()))
+        return reports
+
+    def test_a_failed_write_is_reported_once_with_the_playback_stopped(
+        self,
+        playing: Tuple[AudioDeviceManager, Dict[str, Any], MagicMock],
+    ) -> None:
+        manager, worker, stream = playing
+        stream.write.side_effect = OSError("the device went away")
+        reports = self.record_reports(manager)
+
+        manager._playback_worker(**worker)
+
+        assert [is_playing for _, is_playing in reports] == [False]
+        assert "the device went away" in str(reports[0][0])
+        stream.close.assert_called_once_with()
+
+    def test_a_failed_stop_still_closes_the_stream_and_leaves_the_playback_idle(
+        self,
+        playing: Tuple[AudioDeviceManager, Dict[str, Any], MagicMock],
+    ) -> None:
+        manager, worker, stream = playing
+        stream.stop_stream.side_effect = OSError("the device went away")
+        reports = self.record_reports(manager)
+
+        manager._playback_worker(**worker)
+
+        assert [is_playing for _, is_playing in reports] == [False]
+        stream.close.assert_called_once_with()
+        assert not manager.is_playing()
+
+    def test_a_write_failing_after_a_newer_play_reports_nothing(
+        self,
+        playing: Tuple[AudioDeviceManager, Dict[str, Any], MagicMock],
+    ) -> None:
+        """The newer playback stands, and the failure belongs to the playback it replaced."""
+        manager, worker, stream = playing
+
+        def replaced_then_failing(_data: bytes) -> None:
+            with patch("sampletones_core.audio.manager.threading.Thread"):
+                manager.play(np.ones(self.LENGTH, dtype=np.float32))
+            raise OSError("the device went away")
+
+        stream.write.side_effect = replaced_then_failing
+        reports = self.record_reports(manager)
+
+        manager._playback_worker(**worker)
+
+        assert reports == []
+        assert manager.is_playing()
+
+    def test_a_failed_write_reads_as_the_failed_write_of_a_handed_out_stream(
+        self,
+        playing: Tuple[AudioDeviceManager, Dict[str, Any], MagicMock],
+    ) -> None:
+        """Both kinds of playback name the failure alike, so the reader reads the same words."""
+        manager, worker, stream = playing
+        stream.write.side_effect = OSError("the device went away")
+        reports = self.record_reports(manager)
+        manager._playback_worker(**worker)
+
+        with pytest.raises(PlaybackError) as raised:
+            write_to_stream(stream, np.zeros(self.LENGTH, dtype=np.float32).tobytes())
+
+        assert [str(error) for error, _ in reports] == [str(raised.value)]
 
 
 class TestAPlaybackAStopLetGo:

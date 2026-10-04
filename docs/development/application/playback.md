@@ -34,7 +34,7 @@ A report comes from the thread writing the audio, and the mark is a widget, so e
 
 Priority ranks the two kinds and settles every contest for the device. Starting intentional playback preempts a sounding preview, and a preview requested while intentional playback holds the device is declined.
 
-**A sound starts only on a device in force.** Every request, of either kind, asks the device manager for the output before a thread or a stream opens, so a machine offering no output device refuses the request at once with `NoOutputDeviceError`. One presenter, `PlaybackFailurePresenter` (`coordinators/playback/failures.py`), tells the reader what stopped any sound: a missing output reads as a plain notice, and every other failure as an error. A failure on the thread playing the sound, such as a stream the device refused, reads the same whichever source played it, and is told once.
+**A sound starts only on a device in force.** Every request, of either kind, asks the device manager for the output before a thread or a stream opens, so a machine offering no output device refuses the request at once with `NoOutputDeviceError`. One presenter, `PlaybackFailurePresenter` (`coordinators/playback/failures.py`), tells the reader what stopped any sound: a missing output reads as a plain notice, and every other failure as an error. A failure on the thread playing the sound, such as a stream the device refused or a write it failed, reads the same whichever source played it, and is told once.
 
 ## Engagement
 

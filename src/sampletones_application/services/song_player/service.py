@@ -20,6 +20,7 @@ from sampletones_application.services.song_player.result import (
 )
 from sampletones_application.services.synthesis.protocol import RowSynthesizerProtocol
 from sampletones_core.audio import AudioDeviceManager, clip_audio_inplace
+from sampletones_core.audio.stream import write_to_stream
 from sampletones_core.constants.audio import DEFAULT_BUFFER_SIZE
 from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.constants.audio import UNITY_GAIN
@@ -215,7 +216,8 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         """Drains the song to the device, hands the stream back, and then reports how the song ended.
 
         This is the writer thread's whole task, so a stream the device refuses ends here as the song's
-        error, reported once with the output free.
+        error, and so do a write and a hand-back the device fails. Each is reported once, with the
+        output free.
         """
         try:
             stream = self._open_stream()
@@ -225,16 +227,26 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
 
         ended = True
         try:
-            ended = self._drain_to_stream(stream)
+            ended = self._play_through(stream)
         except Exception as exception:  # pylint: disable=broad-exception-caught
             logger.error_with_traceback(exception, f"{self.class_name}: playback error")
             self._playback_error = exception
         finally:
-            self._audio_device_manager.close_output_stream(stream)
             self._holding_output.clear()
 
         if ended:
             self._emit_terminal()
+
+    def _play_through(self, stream: pyaudio.Stream) -> bool:
+        """Drains the song to ``stream``, and then hands the stream back to the device however the drain ended.
+
+        Returns:
+            True once the song reached its end, False when a stop ended the drain.
+        """
+        try:
+            return self._drain_to_stream(stream)
+        finally:
+            self._audio_device_manager.close_output_stream(stream)
 
     def _open_stream(self) -> pyaudio.Stream:
         sample_rate = self._audio_device_manager.sample_rate
@@ -300,7 +312,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
             if self._stop_event.is_set():
                 return False
 
-            stream.write(chunk[offset : offset + self._write_block_frames].tobytes())
+            write_to_stream(stream, chunk[offset : offset + self._write_block_frames].tobytes())
 
         return True
 
