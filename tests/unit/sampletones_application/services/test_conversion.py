@@ -15,8 +15,12 @@ from sampletones_application.services.result import (
     ServiceStarted,
     ServiceSuccess,
 )
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.parallelization import TaskProgress, TaskStatus
 from sampletones_core.parallelization.task import TaskStep
+from sampletones_core.reconstructions.converter import ConversionJob
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_core.reconstructions.stage import ReconstructionStage
 from tests.suite.base import BaseTestSuite
 
@@ -25,6 +29,12 @@ Service: TypeAlias = Tuple[ConversionService, MagicMock, Dict[str, Callable[...,
 Reading: TypeAlias = Callable[[TaskProgress], ServiceProgress[ConversionItem]]
 
 SOURCE: Final[str] = "/audio/kick.wav"
+OUTPUT: Final[str] = "/reconstructions/kick.stn"
+JOB: Final[ConversionJob] = ConversionJob(
+    sources=(Path(SOURCE),),
+    stems=StemsConfig.single_entry(StemSettings.covering([ChannelName.PULSE1])),
+    output_path=Path(OUTPUT),
+)
 FRAMES: Final[int] = 1100
 ONE_RECONSTRUCTION: Final[int] = 1
 SEVERAL_RECONSTRUCTIONS: Final[int] = 5
@@ -80,6 +90,7 @@ def mock_converter_class() -> Iterator[MockConverterClass]:
         instance.is_running.return_value = False
         instance.status = TaskStatus.COMPLETED
         instance.total_tasks = 5
+        instance.job_under_way.return_value = JOB
 
         captured: Dict[str, Callable[..., Any]] = {}
         instance.set_callbacks.side_effect = lambda **kwargs: captured.update(kwargs)
@@ -167,7 +178,7 @@ class TestConversionServiceEmissions:
         callbacks["on_start"]()
         results.clear()
 
-        progress = TaskProgress(total=5, completed=2, current_item="/some/file.wav")
+        progress = TaskProgress(total=5, completed=2, current_item=SOURCE)
         callbacks["on_progress"](TaskStatus.RUNNING, progress)
 
         assert len(results) == 1
@@ -175,8 +186,19 @@ class TestConversionServiceEmissions:
         assert isinstance(result, ServiceProgress)
         assert result.completed == 2
         assert result.total == 5
-        assert result.current_item is not None
-        assert result.current_item.source == Path("/some/file.wav")
+        assert result.current_item == ConversionItem(source=Path(SOURCE), output_path=Path(OUTPUT))
+
+    def test_the_item_names_the_job_the_progress_counts_up_to(
+        self,
+        service: Service,
+    ) -> None:
+        """The item is read from the job the converter is at once the progress's jobs are counted."""
+        _, converter, callbacks, _ = service
+        callbacks["on_start"]()
+
+        callbacks["on_progress"](TaskStatus.RUNNING, TaskProgress(total=5, completed=3))
+
+        converter.job_under_way.assert_called_with(3)
 
     def test_on_progress_canceling_emits_service_progress(
         self,
@@ -222,7 +244,8 @@ class TestConversionServiceEmissions:
         self,
         service: Service,
     ) -> None:
-        _, _, callbacks, results = service
+        _, converter, callbacks, results = service
+        converter.job_under_way.return_value = None
         callbacks["on_start"]()
         results.clear()
 
@@ -397,9 +420,7 @@ class TestTheUnitARunReadsIn(BaseTestSuite):
 
         reading = read(_account(SEVERAL_RECONSTRUCTIONS, TWO_WRITTEN, _under_way(EARLY, HALFWAY, NEARLY_DONE)))
 
-        assert reading.current_item is not None
-        assert reading.current_item.source == Path(SOURCE)
-        assert reading.current_item.step is None
+        assert reading.current_item == ConversionItem(source=Path(SOURCE), output_path=Path(OUTPUT))
 
     def test_a_batch_reads_as_the_reconstructions_it_has_written(self, service: Service) -> None:
         read = _run_of(service, SEVERAL_RECONSTRUCTIONS)

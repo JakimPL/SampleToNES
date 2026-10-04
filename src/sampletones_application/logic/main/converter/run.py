@@ -51,7 +51,6 @@ class ConversionRequest:
 
     config: Config
     plan: ConversionPlan
-    reconstruction_name: str
     library_key: InstructionLibraryKey
     library_state: LibraryState
 
@@ -98,8 +97,7 @@ class ConversionRun(CallbackMixin):
 
     The run owns the phase, the service driving it and the taskbar progress that follows it, and
     reports where it stands after every step it takes. What it converts is settled before it
-    starts: a run takes a plan and the name of the document it is writing, and answers only for
-    what happens to them.
+    starts: a run takes a plan and answers only for what happens to it.
     """
 
     def __init__(
@@ -113,7 +111,6 @@ class ConversionRun(CallbackMixin):
         self._system_progress = SystemProgress()
         self._phase: ConversionPhase = ConversionPhase.IDLE
         self._written: Tuple[Path, ...] = ()
-        self._reconstruction_name: str = ""
         self._request: Optional[ConversionRequest] = None
 
         self._service.subscribe(self._on_service_result)
@@ -156,7 +153,6 @@ class ConversionRun(CallbackMixin):
 
     def begin(self, request: ConversionRequest) -> None:
         """Hands the request to the service, which is where the conversion itself starts."""
-        self._reconstruction_name = request.reconstruction_name
         self._system_progress.initialize()
         self._service.start(request.config, request.plan)
 
@@ -216,7 +212,7 @@ class ConversionRun(CallbackMixin):
             SYSTEM_PROGRESS_STEPS,
         )
         self._report(
-            self._messages.progress_text(progress, self._reconstruction_name),
+            self._messages.progress_text(progress),
             progress.fraction,
             input_path=self._item_path(progress),
         )

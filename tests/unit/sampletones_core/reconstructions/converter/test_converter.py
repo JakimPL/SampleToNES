@@ -58,6 +58,36 @@ class TestReconstructionConverterStart:
         assert converter.monitor_thread is None
 
 
+class TestTheJobUnderWay:
+    """A run names itself by the earliest job it has yet to count, and by the last once every job is
+    counted."""
+
+    def test_the_count_walks_the_jobs_and_rests_on_the_last(
+        self,
+        config: Config,
+        stems: StemsConfig,
+        tmp_path: Path,
+    ) -> None:
+        for name in ("a.wav", "b.wav"):
+            (tmp_path / name).touch()
+        converter = ReconstructionConverter(config, DirectoryConversion(directory=tmp_path, stems=stems))
+        with patch(_RECONSTRUCTOR_PATCH):
+            converter._create_tasks()
+        first, second = converter.jobs
+
+        assert [converter.job_under_way(completed) for completed in range(3)] == [first, second, second]
+
+    def test_a_run_yet_to_read_its_plan_names_no_job(
+        self,
+        config: Config,
+        stems: StemsConfig,
+        tmp_path: Path,
+    ) -> None:
+        converter = ReconstructionConverter(config, _group(tmp_path / "song.wav", stems))
+
+        assert converter.job_under_way(0) is None
+
+
 class TestReconstructionConverterCreateTasks:
     def test_a_group_plan_returns_a_single_task(
         self,

@@ -1,5 +1,6 @@
 import os
 import sys
+import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Final, Iterator
@@ -14,6 +15,30 @@ FOLDER_PERMISSIONS_HOLD: Final[bool] = sys.platform != "win32" and os.geteuid() 
 requires_folder_permissions = pytest.mark.skipif(
     not FOLDER_PERMISSIONS_HOLD,
     reason="a folder's permissions lock it on a POSIX system for a reader other than root",
+)
+
+
+def _symlinks_are_permitted() -> bool:
+    """Reports whether this machine lets an unprivileged process create a symlink.
+
+    Windows grants the privilege only under Developer Mode or elevation, so the probe
+    creates one in a throwaway directory and reads the answer from the attempt.
+    """
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        try:
+            (root / "probe").symlink_to(root, target_is_directory=True)
+        except OSError:
+            return False
+
+    return True
+
+
+SYMLINKS_PERMITTED: Final[bool] = _symlinks_are_permitted()
+
+requires_symlinks = pytest.mark.skipif(
+    not SYMLINKS_PERMITTED,
+    reason="creating a symlink requires a privilege this machine withholds",
 )
 
 

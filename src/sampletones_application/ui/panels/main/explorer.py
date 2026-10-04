@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, List, Optional, Protocol, Tuple
+from typing import Any, List, Optional, Protocol, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -94,7 +94,6 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
 
         self.on_directory_add_requested: Optional[PathCallback] = None
         self.on_file_add_requested: Optional[PathCallback] = None
-        self.can_add_stems: Optional[Callable[[], bool]] = None
         self.on_reconstruct_directory: Optional[PathCallback] = None
         self.on_reconstruct_file: Optional[PathCallback] = None
         self.on_load_reconstruction: Optional[PathCallback] = None
@@ -287,22 +286,18 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
 
         A plain click previews the recording and leaves the conversion as it stands, so walking the
         browser to hear what a file holds costs the run nothing. Ctrl is the gathering gesture
-        throughout the browser, so it reaches a recording the same way it reaches a folder and does
-        what **Add as stem** does, opening a stems conversion where none is being built; where the
-        converter is busy it is a plain click, and the recording plays.
+        throughout the browser, so it reaches a recording the same way it reaches a folder and asks
+        what **Add as stem** asks, which the converter answers.
         """
-        if Modifier.CTRL in capture_modifiers() and self._gather_audio_node(node):
+        if Modifier.CTRL in capture_modifiers():
+            self._gather_audio_node(node)
             return
 
         self._logic.request_autoplay(node)
 
-    def _gather_audio_node(self, node: FileSystemNode) -> bool:
-        """Hands a recording to the converter where it is free to take one, saying whether it went."""
-        if not self.query(self.can_add_stems, default=False):
-            return False
-
+    def _gather_audio_node(self, node: FileSystemNode) -> None:
+        """Asks the converter to gather a recording, as **Add as stem** does."""
         self.call(self.on_file_add_requested, node.filepath)
-        return True
 
     def _on_file_node_double_clicked(
         self,
@@ -357,17 +352,17 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
     ) -> None:
         """Answers a click on a folder: Ctrl gathers its recordings, and a plain click opens it.
 
-        Gathering a folder reads every recording below it, which is work a reader asks for rather
-        than work that follows them around the browser. Ctrl does what **Add folder** does, so the
-        folder joins the conversion without the reader leaving the row; a plain click opens the
-        folder and leaves the conversion as it stands, and so does every click while the converter
-        is busy.
+        Gathering a folder reads every recording below it, so it waits for the reader to ask for
+        it. Ctrl asks what **Add folder** asks, so the
+        folder joins the conversion without the reader leaving the row, and the converter answers
+        for whether its list takes it. A plain click opens the folder and leaves the conversion as
+        it stands.
         """
         has_content = self._explorer_logic.has_relevant_content(node.filepath)
         if not has_content:
             return
 
-        if Modifier.CTRL in capture_modifiers() and self.query(self.can_add_stems, default=False):
+        if Modifier.CTRL in capture_modifiers():
             self.call(self.on_directory_add_requested, node.filepath)
             return
 

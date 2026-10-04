@@ -212,14 +212,13 @@ class FakeAutoplayLogic:
 class RecordingClick:
     """A panel wired to record where a click on a recording went."""
 
-    def __init__(self, *, can_add_stems: bool) -> None:
+    def __init__(self) -> None:
         tree = explorer_tree()
         self.panel = build_panel(tree)
         self.node = tree.find_nodes(FileSystemNode, lambda node: node.filepath == MUSIC / "song.wav")[0]
         self.autoplay = FakeAutoplayLogic()
         self.gathered: List[Path] = []
         self.panel._logic = self.autoplay  # type: ignore[assignment]
-        self.panel.can_add_stems = lambda: can_add_stems
         self.panel.on_file_add_requested = self.gathered.append
 
     def click(self, monkeypatch: pytest.MonkeyPatch, *, holding_ctrl: bool) -> None:
@@ -236,10 +235,14 @@ class RecordingClick:
 
 
 class TestClickingARecording:
-    """A plain click plays a recording; Ctrl and a double-click each gather it as a stem."""
+    """A plain click plays a recording; Ctrl and a double-click each ask to gather it as a stem.
+
+    The two gathering gestures always reach the converter, which answers for whether its list takes
+    the recording, so they ask the way Add as stem asks.
+    """
 
     def test_a_plain_click_plays_the_recording_and_gathers_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        clicked = RecordingClick(can_add_stems=True)
+        clicked = RecordingClick()
 
         clicked.click(monkeypatch, holding_ctrl=False)
 
@@ -247,31 +250,16 @@ class TestClickingARecording:
         assert clicked.gathered == []
 
     def test_holding_ctrl_gathers_the_recording_as_a_stem(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        clicked = RecordingClick(can_add_stems=True)
+        clicked = RecordingClick()
 
         clicked.click(monkeypatch, holding_ctrl=True)
 
         assert clicked.gathered == [MUSIC / "song.wav"]
         assert clicked.autoplay.played == []
 
-    def test_a_busy_converter_leaves_ctrl_the_plain_click(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        clicked = RecordingClick(can_add_stems=False)
-
-        clicked.click(monkeypatch, holding_ctrl=True)
-
-        assert clicked.autoplay.played == [clicked.node]
-        assert clicked.gathered == []
-
     def test_a_double_click_gathers_the_recording(self) -> None:
-        clicked = RecordingClick(can_add_stems=True)
+        clicked = RecordingClick()
 
         clicked.double_click()
 
         assert clicked.gathered == [MUSIC / "song.wav"]
-
-    def test_a_double_click_gathers_nothing_while_the_converter_is_busy(self) -> None:
-        clicked = RecordingClick(can_add_stems=False)
-
-        clicked.double_click()
-
-        assert clicked.gathered == []

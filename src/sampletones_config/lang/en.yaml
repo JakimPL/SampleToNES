@@ -348,8 +348,6 @@ main.explorer.label.context_set_output_directory: "Set as output directory"
 main.explorer.message.status_node_audio_no_autoplay: "Double-click to add audio to the converter. Right-click to open context menu."
 main.explorer.message.status_node_audio: "Click to play audio. Double-click to add it to the converter. Right-click to open context menu."
 main.explorer.message.status_refresh: "Rescan the filesystem for audio files."
-main.explorer.message.converter_running_msg: "A conversion is already running. Please wait for it to complete or cancel the current operation before starting a new one."
-main.explorer.title.converter_running_dialog: "Conversion in progress"
 
 # =============================================================================
 # Main tab — Config panel
@@ -416,6 +414,8 @@ main.converter.template.scan_progress: "Found {count} recordings in {name}"
 main.converter.message.scan_opening: "Looking through {name}..."
 main.converter.message.scan_nothing_below: "There are no recordings in this folder."
 main.converter.message.scan_failed: "Can't read this folder, so no recordings were added."
+main.converter.message.conversion_running: "Wait for the conversion to finish before you add recordings."
+main.converter.title.conversion_running_dialog: "Conversion running"
 main.converter.label.stop_scan_button: "Stop"
 main.converter.title.progress_dialog: "Reconstruction progress"
 main.converter.title.load_dialog: "Reconstruction complete"

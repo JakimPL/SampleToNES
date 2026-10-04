@@ -124,6 +124,24 @@ class TestWhatAWalkFinds:
 
         assert len(found(reports)[0].recordings) == 3
 
+    @requires_folder_permissions
+    def test_a_folder_listing_names_only_is_a_failure(
+        self,
+        service: FolderScanService,
+        reports: List[FolderScanResult],
+        tmp_path: Path,
+    ) -> None:
+        """The folder asked for lists its recordings and keeps them closed, so the reader hears that it
+        can't be read, as for a folder that can't be opened."""
+        root = tree(tmp_path / "takes", 2)
+
+        with held_at(root, NAMES_ONLY_FOLDER):
+            service.start(FolderScanRequest(root=root))
+
+        failure = reports[-1]
+        assert isinstance(failure, FolderScanError)
+        assert isinstance(failure.exception, PermissionError)
+
 
 class TestWhatTheReaderIsTold:
     """The reader hears that the reading began and how far it has got."""

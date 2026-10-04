@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -38,11 +38,11 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
     TAG_MAIN_CONFIG_TABLE_CONFIG_ROW,
     TAG_MAIN_CONVERTER_DIALOG_CANCEL,
+    TAG_MAIN_CONVERTER_DIALOG_CONVERSION_RUNNING,
     TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS,
     TAG_MAIN_CONVERTER_DIALOG_LOAD,
     TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET,
     TAG_MAIN_CONVERTER_PANEL,
-    TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
     TAG_MAIN_EXPLORER_DIALOG_NOTHING_BELOW,
     TAG_MAIN_EXPLORER_PANEL,
     TAG_MAIN_SOURCE_PANEL,
@@ -57,7 +57,8 @@ from sampletones_application.ui.panels.main.config import GUIConfigPanel
 from sampletones_application.ui.panels.main.converter.panel import GUIConverterPanel
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
 from sampletones_application.ui.panels.main.source.panel import GUISourceSettingsPanel
-from sampletones_application.utils.file_dialogs.api import select_directory_dialog
+from sampletones_application.utils.file_dialogs.api import open_file_dialog, select_directory_dialog
+from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
@@ -75,6 +76,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.library import library_state
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.logger import logger
+from sampletones_shared.paths.extensions import EXT_FILES_AUDIO
 from sampletones_shared.types.callback import VoidCallback
 
 _LEFT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_MAIN, SUF_PANEL_LEFT)
@@ -297,7 +299,6 @@ class MainTabCoordinator:
         self._explorer_panel.set_callbacks(
             on_directory_add_requested=self._on_directory_add_requested,
             on_file_add_requested=self._on_file_add_requested,
-            can_add_stems=self._can_add_stems,
             on_reconstruct_file=self.request_reconstruct_file,
             on_reconstruct_directory=self.request_reconstruct_directory,
             on_load_reconstruction=self._hooks.on_load_reconstruction,
@@ -381,18 +382,68 @@ class MainTabCoordinator:
         self._update_source_panel_view()
         self._hooks.on_busy_state_changed()
 
+    def reconstruct_file_dialog(self) -> None:
+        """Asks for a recording to list for a Reconstruct, once the list takes changes."""
+        self._changing_the_list(self._choose_recording_to_reconstruct)
+
+    def reconstruct_directory_dialog(self) -> None:
+        """Asks for a folder to list for a Reconstruct, once the list takes changes."""
+        self._changing_the_list(self._choose_folder_to_reconstruct)
+
     def request_reconstruct_file(self, filepath: Path) -> None:
         """Lists the recording a Reconstruct named, asking first where it would replace a mix."""
-        if self._notify_converter_running():
-            return
-
-        self._giving_way_to_one_apiece(lambda: self._hooks.on_reconstruct_file(filepath))
+        self._changing_the_list(lambda: self._reconstruct_file(filepath))
 
     def request_reconstruct_directory(self, directory_path: Path) -> None:
         """Lists the folder a Reconstruct named, asking first where it would replace a mix."""
-        if self._notify_converter_running():
+        self._changing_the_list(lambda: self._reconstruct_directory(directory_path))
+
+    def _changing_the_list(self, gesture: VoidCallback) -> None:
+        """Runs a gesture that lists recordings, or tells the reader the conversion holds the list.
+
+        Every door to the list comes here: Reconstruct in the menu and in the browser, Add as stem,
+        Add folder, Ctrl-click and a double-click. The list refuses changes only while the converter's
+        own run holds it. A library generation, a render or an export leaves it open, since listing
+        starts nothing, and the busy authority keeps Convert greyed until they end. A gesture that
+        lands later, once a folder is read or a question is answered, comes here again, since a run
+        may have started in between.
+        """
+        if self._converter_logic.live:
+            gesture()
             return
 
+        self._dialogs.show_info(
+            TAG_MAIN_CONVERTER_DIALOG_CONVERSION_RUNNING,
+            self._language_manager["main.converter.message.conversion_running"],
+            self._language_manager["main.converter.title.conversion_running_dialog"],
+        )
+
+    def _choose_recording_to_reconstruct(self) -> None:
+        filepath = open_file_dialog(
+            title=self._language_manager["global.dialog.title.reconstruct_file"],
+            initial_directory=self._session_manager.get_audio_input_path(),
+            filters=(
+                FileFilter.for_extensions(
+                    self._language_manager["global.dialog.filter.audio"],
+                    EXT_FILES_AUDIO,
+                ),
+            ),
+        )
+        self._reconstruct_file(filepath)
+
+    def _choose_folder_to_reconstruct(self) -> None:
+        directory_path = select_directory_dialog(
+            title=self._language_manager["global.dialog.title.reconstruct_directory"],
+            initial_directory=self._session_manager.get_audio_input_path(),
+        )
+        self._reconstruct_directory(directory_path)
+
+    @ignore_none_path
+    def _reconstruct_file(self, filepath: Path) -> None:
+        self._giving_way_to_one_apiece(lambda: self._hooks.on_reconstruct_file(filepath))
+
+    @ignore_none_path
+    def _reconstruct_directory(self, directory_path: Path) -> None:
         self._giving_way_to_one_apiece(lambda: self._hooks.on_reconstruct_directory(directory_path))
 
     def _giving_way_to_one_apiece(self, take_up: VoidCallback) -> None:
@@ -406,7 +457,7 @@ class MainTabCoordinator:
             take_up()
             return
 
-        self._confirm_discarding_stems(take_up)
+        self._confirm_discarding_stems(lambda: self._changing_the_list(take_up))
 
     def _confirm_discarding_stems(self, on_confirm: VoidCallback) -> None:
         self._dialogs.show_confirmation(
@@ -444,19 +495,6 @@ class MainTabCoordinator:
             ok_label=self._language_manager["main.converter.label.overwrite_target_button"],
             path=targets[0] if one else None,
         )
-
-    def _notify_converter_running(self) -> bool:
-        if not self._hooks.is_operation_active():
-            return False
-
-        logger.warning("Conversion is already running. Wait or cancel the current operation.")
-        self._dialogs.show_info(
-            TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
-            self._language_manager["main.explorer.message.converter_running_msg"],
-            self._language_manager["main.explorer.title.converter_running_dialog"],
-        )
-
-        return True
 
     def _on_conversion_success(self, success: ConversionSuccess) -> None:
         self._hooks.on_refresh_trees()
@@ -496,19 +534,16 @@ class MainTabCoordinator:
         self._stem_selection_window.open(
             self._converter_logic.gathered_rows,
             self._converter_logic.mix_ceiling,
-            self._converter_logic.mix_only,
+            self._answer_mix,
         )
 
-    def _can_add_stems(self) -> bool:
-        """The converter is free to gather recordings into a stems conversion."""
-        return not self._hooks.is_operation_active()
+    def _answer_mix(self, paths: List[Path]) -> None:
+        """Takes the recordings the reader picked to mix, once the list takes changes."""
+        self._changing_the_list(lambda: self._converter_logic.mix_only(paths))
 
     def _on_file_add_requested(self, filepath: Path) -> None:
-        """Gathers one recording into a stems conversion, opening one where none is being built."""
-        if self._hooks.is_operation_active():
-            return
-
-        self._converter_logic.gather_recordings([filepath])
+        """Gathers one recording into the list, opening a stems conversion where none is being built."""
+        self._changing_the_list(lambda: self._converter_logic.gather_recordings([filepath]))
 
     def _on_directory_add_requested(self, directory_path: Path) -> None:
         """Reads what a folder holds, and gathers it once the reading is done.
@@ -516,10 +551,7 @@ class MainTabCoordinator:
         A tree is read one entry at a time and a large one takes seconds, so the reading runs
         beside the interface and says how far it has got.
         """
-        if self._hooks.is_operation_active():
-            return
-
-        self._folder_scan.start(directory_path, self._gather_read)
+        self._changing_the_list(lambda: self._folder_scan.start(directory_path, self._gather_read))
 
     def _on_scan_failed(self, exception: Exception) -> None:
         """Takes the wait away and shows the failure that ended the reading, which added nothing."""
@@ -533,6 +565,10 @@ class MainTabCoordinator:
             self._nothing_below(directory_path)
             return
 
+        self._changing_the_list(lambda: self._gather_found(directory_path, found))
+
+    def _gather_found(self, directory_path: Path, found: Tuple[Path, ...]) -> None:
+        """Gathers the recordings a folder holds, asking first which to mix where a mix overflows."""
         if self._mixing_beyond_room(found):
             return
 
@@ -558,7 +594,7 @@ class MainTabCoordinator:
             self._nothing_below(directory_path)
             return
 
-        self._converter_logic.take_up_folder(directory_path, found)
+        self._changing_the_list(lambda: self._converter_logic.take_up_folder(directory_path, found))
 
     def _mixing_beyond_room(self, found: Tuple[Path, ...]) -> bool:
         """Whether what was read brings in more than the mix has room for, which is a question.
@@ -578,7 +614,7 @@ class MainTabCoordinator:
         self._stem_selection_window.open(
             self._converter_logic.gathered_rows + offered,
             self._converter_logic.mix_ceiling,
-            self._converter_logic.mix_only,
+            self._answer_mix,
         )
         return True
 
@@ -779,8 +815,7 @@ class MainTabCoordinator:
     def take_up_path(self, path: Path) -> None:
         """Lists what a Reconstruct named, a recording or a folder, for the reader to convert one apiece.
 
-        A folder is read before it is listed, which is work the reader watches rather than waits
-        blindly through.
+        A folder is read before it is listed, and the reader watches the reading count what it finds.
         """
         if not path.is_dir():
             self._converter_logic.take_up_recording(path)

@@ -1,3 +1,5 @@
+from typing import FrozenSet
+
 import pytest
 
 from sampletones_core.configs import Config
@@ -24,44 +26,53 @@ def config() -> Config:
     return Config()
 
 
-class TestGenerateConfigDirectoryName:
+def _directory_name(config: Config, channels: FrozenSet[ChannelName]) -> str:
+    return ConfigDirectoryFields.from_config(config, channels).directory_name
+
+
+class TestTheDirectoryNameOfAConfiguration:
     def test_result_contains_sample_rate(self, config: Config) -> None:
-        name = ConfigDirectoryFields.generate_config_directory_name(config, CHANNELS)
+        name = _directory_name(config, CHANNELS)
         assert str(config.library.sample_rate) in name
 
     def test_result_contains_nes_frequency(self, config: Config) -> None:
-        name = ConfigDirectoryFields.generate_config_directory_name(config, CHANNELS)
+        name = _directory_name(config, CHANNELS)
         assert str(config.library.nes_frequency) in name
 
     def test_same_config_produces_same_name(self, config: Config) -> None:
-        assert ConfigDirectoryFields.generate_config_directory_name(
-            config, CHANNELS
-        ) == ConfigDirectoryFields.generate_config_directory_name(config, CHANNELS)
+        assert _directory_name(config, CHANNELS) == _directory_name(config, CHANNELS)
 
     def test_different_channel_sets_produce_different_names(self, config: Config) -> None:
         """The directory names what a run hands out, so two sets of channels never share one."""
-        assert ConfigDirectoryFields.generate_config_directory_name(
-            config, CHANNELS
-        ) != ConfigDirectoryFields.generate_config_directory_name(config, frozenset({ChannelName.PULSE1}))
+        assert _directory_name(config, CHANNELS) != _directory_name(config, frozenset({ChannelName.PULSE1}))
 
     def test_the_name_reads_the_same_however_the_set_was_gathered(self, config: Config) -> None:
         """A set has no order of its own, so the name states the channels in the app's own order."""
         reversed_set = frozenset(reversed(list(DEFAULT_CHANNELS)))
 
-        assert ConfigDirectoryFields.generate_config_directory_name(
-            config, CHANNELS
-        ) == ConfigDirectoryFields.generate_config_directory_name(config, reversed_set)
+        assert _directory_name(config, CHANNELS) == _directory_name(config, reversed_set)
+
+    def test_a_hash_taken_once_names_the_same_directory(self, config: Config) -> None:
+        """A caller naming several channel sets hashes the settings once, and each name reads as the
+        configuration's own."""
+        settings_hash = ConfigDirectoryFields.settings_hash(config)
+
+        assert ConfigDirectoryFields.from_hashed_config(
+            config,
+            CHANNELS,
+            settings_hash=settings_hash,
+        ) == ConfigDirectoryFields.from_config(config, CHANNELS)
 
 
 class TestConfigDirectoryFields:
-    def test_round_trips_with_generate_config_directory_name(self, config: Config) -> None:
-        name = ConfigDirectoryFields.generate_config_directory_name(config, CHANNELS)
+    def test_round_trips_with_the_directory_name(self, config: Config) -> None:
+        name = _directory_name(config, CHANNELS)
         fields = ConfigDirectoryFields.from_directory_name(name)
         assert fields is not None
         assert fields.directory_name == name
 
     def test_parses_components(self, config: Config) -> None:
-        name = ConfigDirectoryFields.generate_config_directory_name(config, CHANNELS)
+        name = _directory_name(config, CHANNELS)
         fields = ConfigDirectoryFields.from_directory_name(name)
         assert fields is not None
         assert fields.sr == config.library.sample_rate
@@ -71,7 +82,7 @@ class TestConfigDirectoryFields:
         assert fields.channels == tuple(DEFAULT_CHANNELS)
 
     def test_directory_name_embeds_field_keys(self, config: Config) -> None:
-        name = ConfigDirectoryFields.generate_config_directory_name(config, CHANNELS)
+        name = _directory_name(config, CHANNELS)
         segments = name.split("_")
         assert {"sr", "nf", "sm", "tg", "gn", "ch"}.issubset(segments)
 

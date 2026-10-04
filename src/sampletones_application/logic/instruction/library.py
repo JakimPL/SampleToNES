@@ -46,6 +46,7 @@ from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.filesystem import remove_path
+from sampletones_shared.utils.system.paths import is_same_path
 
 OnLoadInstructionCallback = Callable[[InstructionUnion], None]
 OnApplyLibraryConfigCallback = Callable[[InstructionLibraryKey, Optional[InstructionsLibraryConfig]], None]
@@ -71,6 +72,7 @@ class LibraryLogic(CallbackMixin):
         self._library_manager = library_manager
         self._is_operation_active = is_operation_active
         self._eta_estimator: Optional[ETAEstimator] = None
+        self._remembered_key: Optional[InstructionLibraryKey] = None
 
         self._lock_function: Optional[VoidCallback] = None
         self._unlock_function: Optional[VoidCallback] = None
@@ -146,21 +148,53 @@ class LibraryLogic(CallbackMixin):
         self._library_manager.rebuild_tree()
 
     def refresh_libraries(self, load_if_needed: bool = True) -> None:
-        self._library_manager.set_library_directory(self._config_manager.get_library_directory())
+        """Reads the catalog of the configuration's library directory and asks for its tree.
+
+        A directory the catalog moves to brings back the library it had taken up when the reader
+        left it, which :meth:`reload_remembered_library` loads again.
+        """
+        if self._library_manager.set_library_directory(self._config_manager.get_library_directory()):
+            self._remembered_key = self._library_manager.current_library_key
+
         self._library_manager.gather_available_libraries()
         self._sync_with_config_key(load_if_needed=load_if_needed)
+        self.reload_remembered_library()
         self.call(self.on_rebuild_tree_needed)
 
     def follow_config(self) -> None:
         """Follows a configuration change, reading the catalog afresh where the change names another
         library directory and repainting the status otherwise.
 
-        A generation writes into the catalog it was started in, so the catalog follows a change at
-        once, whatever is running; the tree it lists is drawn once the generation lets its lock go.
+        Another spelling of the folder the catalog stands at, a link to it included, names the same
+        folder, so the catalog stays as it is. A generation writes into the catalog it was started
+        in, so the catalog follows a change at once, whatever is running; the tree it lists is drawn
+        once the generation lets its lock go.
         """
-        if self._library_manager.library_directory != self._config_manager.get_library_directory():
+        if not is_same_path(self._library_manager.library_directory, self._config_manager.get_library_directory()):
             self.refresh_libraries(load_if_needed=False)
             return
+
+        self.update_status()
+
+    def reload_remembered_library(self) -> None:
+        """Loads again the library a directory had taken up when the reader left it, once the reader is
+        back and the tree stands free.
+
+        The load is the one a Load runs, so a failure, such as a file removed meanwhile, is reported
+        the same way, and the directory lets that choice go. The library loads only while it is still
+        the directory's choice. A generation or a rebuild holding the tree's lock keeps the load
+        waiting, and the coordinator calls this again once the lock is let go.
+        """
+        key = self._remembered_key
+        if key is None or self._is_locked:
+            return
+
+        self._remembered_key = None
+        if self.current_library_key != key or self._library_manager.is_library_loaded(key):
+            return
+
+        if self._load_library(key) is None:
+            self._library_manager.clear_current_library()
 
         self.update_status()
 

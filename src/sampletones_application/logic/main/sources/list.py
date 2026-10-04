@@ -88,7 +88,7 @@ class SourceList:
         """The root of the folder holding ``path``, which is the tree a run mirrors for it.
 
         A recording the reader named answers with nothing, and its reconstruction sits directly in
-        the directory the run's settings are named after.
+        the folder named after the channels it is handed.
         """
         return self._roots.get(path)
 

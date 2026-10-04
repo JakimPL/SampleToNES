@@ -89,10 +89,11 @@ class SequencerHistoryDetail:
     read as two-digit hex; channels use the ``P``/``p``/``T``/``N`` abbreviations,
     concatenated when a sample-column gesture spans several channels. A gesture on the
     voice pool names its voice in the color of the kind that voice is, so a recording
-    and a hand-written one read apart down the list of entries. Every line about a gesture
-    on the pool itself, whether it adds, removes, replaces, renames, moves or duplicates a
-    voice, names the voice the same way, by its position and by its name, so a reader finds
-    it in the list whichever gesture the line records. A line about an edit inside a voice
+    and a hand-written one read apart down the list of entries. Every line about a voice
+    the pool holds, whether the gesture removes, replaces, renames, moves or duplicates it,
+    names the voice the same way, by its position and by its name, so a reader finds it in
+    the list whichever gesture the line records. A line about an added voice names it by
+    its name, which is what the adding hook carries. A line about an edit inside a voice
     names the voice by its position, beside what the edit touched.
     """
 

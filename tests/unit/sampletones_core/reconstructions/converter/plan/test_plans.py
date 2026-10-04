@@ -1,13 +1,16 @@
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import Callable, Final, List, Optional, Tuple
 
 import pytest
+from pydantic import BaseModel
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
     ChannelName,
 )
+from sampletones_core.reconstructions.converter.paths import fields as fields_module
 from sampletones_core.reconstructions.converter.paths.utils import (
     config_directory_path,
     get_output_path,
@@ -19,6 +22,9 @@ from sampletones_core.reconstructions.converter.plan.group import GroupConversio
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import NoFilesToProcessError
+from sampletones_shared.utils.hashing import hash_models
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 
 @pytest.fixture(scope="module")
@@ -27,6 +33,7 @@ def config() -> Config:
 
 
 CHANNELS = frozenset(DEFAULT_CHANNELS)
+BATCH_RECORDINGS: Final[int] = 6
 
 
 @pytest.fixture(scope="module")
@@ -470,6 +477,52 @@ class TestOneFolderPerChannelSet:
             jobs[0].output_path
             == config_directory_path(config, frozenset({ChannelName.PULSE1})) / root.name / "bass.stn"
         )
+
+
+class TestReadingABatchHashesItsSettingsOnce(BaseTestSuite):
+    """A batch names the folder of each channel set from one hash of its settings per reading, however
+    many recordings it holds."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        read: Callable[[BatchConversion, Config], object]
+
+    test_cases = (
+        TestCase(label="where it writes", read=BatchConversion.destination),
+        TestCase(label="its jobs", read=BatchConversion.jobs),
+        TestCase(label="the targets standing", read=BatchConversion.existing_targets),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
+    def test_one_hash_names_every_folder(
+        self,
+        config: Config,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        test_case: TestCase,
+    ) -> None:
+        hashed: List[Tuple[BaseModel, ...]] = []
+
+        def counted(*models: BaseModel) -> str:
+            hashed.append(models)
+            return hash_models(*models)
+
+        monkeypatch.setattr(fields_module, "hash_models", counted)
+        sources = _write_audio_files(tmp_path, [f"{index}.wav" for index in range(BATCH_RECORDINGS)])
+        channel_sets = (
+            StemsConfig.single_entry(StemSettings.covering([ChannelName.PULSE1])),
+            StemsConfig.single_entry(StemSettings.covering([ChannelName.PULSE1, ChannelName.TRIANGLE])),
+        )
+        plan = BatchConversion(
+            entries=tuple(
+                BatchEntry(source=source, stems=channel_sets[index % len(channel_sets)], base_directory=None)
+                for index, source in enumerate(sources)
+            )
+        )
+
+        test_case.read(plan, config)
+
+        assert len(hashed) == 1
 
 
 class TestEveryJobWritesWhereItsPlanSays:

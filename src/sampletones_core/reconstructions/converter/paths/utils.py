@@ -1,6 +1,7 @@
+import errno
 import os
 from pathlib import Path
-from typing import AbstractSet, Iterator, List, Tuple
+from typing import AbstractSet, Dict, FrozenSet, Iterator, List, Tuple
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
@@ -33,17 +34,49 @@ def reconstructions_directory(config: Config) -> Path:
     return to_path(config.general.reconstructions_directory)
 
 
+class ConfigDirectories:
+    """The directories one configuration writes its reconstructions into, one per channel set.
+
+    A directory is named after the settings that shaped the library and the channels the
+    reconstruction was handed, so reconstructions that differ in either keep apart. The settings'
+    part of the name, with its hash, is read once when this is built, and each channel set names
+    its directory the first time it is asked for. A plan reads where its recordings are written
+    through one of these, so the reading costs one hash, however many recordings it names.
+    """
+
+    def __init__(self, config: Config) -> None:
+        self._config = config
+        self._root = reconstructions_directory(config)
+        self._settings_hash = ConfigDirectoryFields.settings_hash(config)
+        self._named: Dict[FrozenSet[ChannelName], Path] = {}
+
+    @property
+    def root(self) -> Path:
+        """The directory holding the directory of every channel set."""
+        return self._root
+
+    def directory(self, channels: AbstractSet[ChannelName]) -> Path:
+        """The directory of the reconstructions handed ``channels``."""
+        channel_set = frozenset(channels)
+        directory = self._named.get(channel_set)
+        if directory is None:
+            fields = ConfigDirectoryFields.from_hashed_config(
+                self._config,
+                channel_set,
+                settings_hash=self._settings_hash,
+            )
+            directory = self._root / fields.directory_name
+            self._named[channel_set] = directory
+
+        return directory
+
+
 def config_directory_path(
     config: Config,
     channels: AbstractSet[ChannelName],
 ) -> Path:
-    """The directory a reconstruction is written into.
-
-    The directory is named after the settings that shaped the library and the channels the
-    reconstruction was handed, so reconstructions that differ in either keep apart.
-    """
-    config_directory = ConfigDirectoryFields.generate_config_directory_name(config, channels)
-    return reconstructions_directory(config) / config_directory
+    """The directory a reconstruction handed ``channels`` is written into, as :class:`ConfigDirectories` names it."""
+    return ConfigDirectories(config).directory(channels)
 
 
 def get_output_path(
@@ -115,10 +148,19 @@ def walk_entries(input_directory: Path) -> Iterator[Path]:
     folder below the directory that the reader may not open is passed over with everything it
     holds, so one locked folder leaves the rest of the tree to the walk.
 
+    A POSIX directory opens its entries through its execute permission, so a directory may list its
+    names and keep its entries closed. ``os.access`` reads that permission, and it answers True on
+    Windows, whose folders carry none.
+
     Raises:
         OSError: If the directory itself cannot be opened, which leaves the walk nothing to read.
+        PermissionError: If the directory lists its names and keeps its entries closed, which leaves
+            the walk nothing to read either.
     """
     os.scandir(input_directory).close()
+    if not os.access(input_directory, os.X_OK):
+        raise PermissionError(errno.EACCES, os.strerror(errno.EACCES), str(input_directory))
+
     return input_directory.rglob("*")
 
 

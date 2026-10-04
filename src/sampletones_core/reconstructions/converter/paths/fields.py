@@ -49,8 +49,23 @@ class ConfigDirectoryFields(BaseModel):
     def from_config(cls, config: Config, channels: AbstractSet[ChannelName]) -> Self:
         """The fields a reconstruction's directory is named from: the settings, and the channels it was handed.
 
-        The channels come from the setup rather than the configuration, so the name is written in
-        the order the application states them however the caller gathered the set.
+        The channels come from the setup, so the name is written in the order the application
+        states them however the caller gathered the set.
+        """
+        return cls.from_hashed_config(config, channels, settings_hash=cls.settings_hash(config))
+
+    @classmethod
+    def from_hashed_config(
+        cls,
+        config: Config,
+        channels: AbstractSet[ChannelName],
+        *,
+        settings_hash: str,
+    ) -> Self:
+        """The fields :meth:`from_config` names, with the hash of the settings given.
+
+        A caller naming the directories of several channel sets under one configuration hashes the
+        settings once with :meth:`settings_hash` and names each set from that hash.
         """
         return cls(
             sr=config.library.sample_rate,
@@ -58,8 +73,13 @@ class ConfigDirectoryFields(BaseModel):
             sm=config.library.spectrum_method,
             tg=config.library.transformation_gamma,
             gn=abbreviate_channel_names(ordered_channels(channels)),
-            ch=hash_models(config.library, config.generation),
+            ch=settings_hash,
         )
+
+    @staticmethod
+    def settings_hash(config: Config) -> str:
+        """The hash a directory's name carries, folding in the library and generation settings."""
+        return hash_models(config.library, config.generation)
 
     @classmethod
     def from_directory_name(cls, name: str) -> Optional[Self]:
@@ -102,7 +122,3 @@ class ConfigDirectoryFields(BaseModel):
                 self.gn,
             ]
         )
-
-    @classmethod
-    def generate_config_directory_name(cls, config: Config, channels: AbstractSet[ChannelName]) -> str:
-        return cls.from_config(config, channels).directory_name
