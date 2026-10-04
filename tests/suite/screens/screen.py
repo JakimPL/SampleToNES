@@ -13,6 +13,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_ERROR,
     TAG_GLOBAL_DIALOG_FILE_NOT_FOUND,
     TAG_GLOBAL_DIALOG_NO_AUDIO_OUTPUT,
+    TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
     TAG_GLOBAL_STATUS_BAR,
     TAG_GLOBAL_WINDOW_MAIN,
 )
@@ -117,6 +118,7 @@ class Screen:
         self.error_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_ERROR)
         self.file_not_found_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_FILE_NOT_FOUND)
         self.no_output_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_NO_AUDIO_OUTPUT)
+        self.no_project_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN)
 
     def expect(
         self,
