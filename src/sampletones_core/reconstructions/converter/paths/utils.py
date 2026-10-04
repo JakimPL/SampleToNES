@@ -1,3 +1,4 @@
+import errno
 import os
 from pathlib import Path
 from typing import AbstractSet, Dict, FrozenSet, Iterator, List, Tuple
@@ -147,10 +148,19 @@ def walk_entries(input_directory: Path) -> Iterator[Path]:
     folder below the directory that the reader may not open is passed over with everything it
     holds, so one locked folder leaves the rest of the tree to the walk.
 
+    A POSIX directory opens its entries through its execute permission, so a directory may list its
+    names and keep its entries closed. ``os.access`` reads that permission, and it answers True on
+    Windows, whose folders carry none.
+
     Raises:
         OSError: If the directory itself cannot be opened, which leaves the walk nothing to read.
+        PermissionError: If the directory lists its names and keeps its entries closed, which leaves
+            the walk nothing to read either.
     """
     os.scandir(input_directory).close()
+    if not os.access(input_directory, os.X_OK):
+        raise PermissionError(errno.EACCES, os.strerror(errno.EACCES), str(input_directory))
+
     return input_directory.rglob("*")
 
 

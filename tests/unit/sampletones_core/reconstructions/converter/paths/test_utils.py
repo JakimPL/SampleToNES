@@ -1,3 +1,4 @@
+import errno
 from pathlib import Path
 from typing import List
 
@@ -17,7 +18,7 @@ from sampletones_core.reconstructions.converter.paths import (
 )
 from sampletones_core.reconstructions.converter.paths.utils import ConfigDirectories
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
-from tests.suite.files import LOCKED_FOLDER, held_at, requires_folder_permissions
+from tests.suite.files import LOCKED_FOLDER, NAMES_ONLY_FOLDER, held_at, requires_folder_permissions
 
 CHANNELS = frozenset(DEFAULT_CHANNELS)
 
@@ -144,6 +145,18 @@ class TestWalkEntries:
 
         with held_at(tmp_path, LOCKED_FOLDER), pytest.raises(PermissionError):
             walk_entries(tmp_path)
+
+    def test_a_folder_listing_names_only_raises_naming_itself(self, tmp_path: Path) -> None:
+        """A folder may list its names and keep its recordings closed, which leaves the walk nothing
+        to read, as a folder that cannot be opened does."""
+        root = tmp_path / "names_only"
+        root.mkdir()
+        (root / "take.wav").touch()
+
+        with held_at(root, NAMES_ONLY_FOLDER), pytest.raises(PermissionError) as raised:
+            walk_entries(root)
+
+        assert (raised.value.errno, raised.value.filename) == (errno.EACCES, str(root))
 
 
 class TestFilterFiles:
