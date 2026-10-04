@@ -16,6 +16,7 @@ from sampletones_application.coordinators.export.instrument import (
 )
 from sampletones_application.coordinators.export.setup import ExportSetup
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
+from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.logic.history.manager import HistoryManager
@@ -156,6 +157,7 @@ class ReconstructionTabCoordinator:
         layout: ReconstructionTabParameters,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
+        playback_failures: PlaybackFailurePresenter,
         status_bar: GUIStatusBar,
     ) -> None:
         self._language_manager = language_manager
@@ -171,6 +173,7 @@ class ReconstructionTabCoordinator:
         self._format_setups = format_setups
         self._instrument_exports = instrument_exports
         self._dialogs = dialogs
+        self._playback_failures = playback_failures
         self._original_audio_locator = original_audio_locator
         self._on_rewrite_requested = on_rewrite_requested
 
@@ -227,7 +230,7 @@ class ReconstructionTabCoordinator:
         )
         self._guarded_player = GuardedPlayer(
             self._reconstruction_player_logic,
-            dialogs=dialogs,
+            failures=playback_failures,
             error_message=language_manager["global.player.message.audio_playback_error"],
         )
         self._reconstruction_audio_panel: GUIReconstructionAudioPanel = GUIReconstructionAudioPanel(
@@ -837,7 +840,7 @@ class ReconstructionTabCoordinator:
         same way: on the frame after the one that failed, which leaves the gesture that started it
         finished before a dialog is raised.
         """
-        FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
+        FrameCallbackManager.set_frame_callback(lambda: self._playback_failures.present(exception, message=None))
 
     def _on_audio_data_changed(self, audio_data: Optional[AudioData]) -> None:
         if audio_data is None:

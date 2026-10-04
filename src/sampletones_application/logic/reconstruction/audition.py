@@ -21,7 +21,6 @@ from sampletones_core.performance.audition import audition_audio, audition_ticks
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_shared.constants.music import OCTAVE_OFFSET, OCTAVE_SEMITONES
 from sampletones_shared.exceptions import PlaybackError
-from sampletones_shared.logger import logger
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
@@ -86,7 +85,7 @@ class InstrumentAuditionLogic(CallbackMixin):
         if audio is None:
             return
 
-        self._play(audio, instrument.id)
+        self._play(audio)
 
     def _waveform(self) -> Optional[InstrumentWaveformViewModel]:
         """The audio the open instrument makes at the pitch it stands at, drawn as it sounds.
@@ -141,12 +140,13 @@ class InstrumentAuditionLogic(CallbackMixin):
             sample_rate=settings.sample_rate,
         )
 
-    def _play(self, audio: np.ndarray, voice_id: str) -> None:
+    def _play(self, audio: np.ndarray) -> None:
         """Sounds the rendering, following it with a cursor while the audition holds the output.
 
         A preview yields to playback the reader asked for, so the cursor is followed only once the
         audition has the device: an audition that stands aside leaves the mark of whatever is
-        sounding where it is.
+        sounding where it is. A device that refuses the audition reports through
+        ``on_audition_error``.
         """
         try:
             sounding = self._audio_device_manager.play(
@@ -155,11 +155,7 @@ class InstrumentAuditionLogic(CallbackMixin):
                 priority=PlaybackPriority.PREVIEW,
                 owner=self,
             )
-        except (PlaybackError, ValueError) as exception:
-            logger.error_with_traceback(
-                exception,
-                f"Failed to audition instrument: {voice_id}",
-            )
+        except PlaybackError as exception:
             self.call(self.on_audition_error, exception)
             return
 

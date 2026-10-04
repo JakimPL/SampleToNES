@@ -96,15 +96,21 @@ class SongPlayerLogic(CallbackMixin):
         self._start_from(SongPosition(order_position=order_position, row_index=row_index))
 
     def _start_from(self, position: SongPosition) -> None:
+        """Starts the song at ``position``, which the playhead takes once the service has the output.
+
+        Raises:
+            NoOutputDeviceError: If no output device is in force, which leaves the playhead where it
+                stands.
+        """
         if not self._project_controller.is_open:
             return
 
-        self._position = position
-        self._awaiting_seek_order = None
         self._service.start(
             order_position=position.order_position,
             row_index=position.row_index,
         )
+        self._position = position
+        self._awaiting_seek_order = None
         self._emit_view()
         self._notify_audio_state_changed()
 

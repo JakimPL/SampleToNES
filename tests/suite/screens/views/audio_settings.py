@@ -3,6 +3,7 @@ from typing import Final, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.tags.settings import (
+    TAG_SETTINGS_AUDIO_BUTTON_APPLY,
     TAG_SETTINGS_AUDIO_SLIDER_MASTER_GAIN,
     TAG_SETTINGS_AUDIO_TEXT_MASTER_GAIN_DB,
     TAG_SETTINGS_AUDIO_WINDOW,
@@ -18,8 +19,8 @@ MIDDLE: Final[float] = 0.5
 
 
 class AudioSettings:
-    """The Audio settings dialog, as far as its master gain: the slider and the line reading its level in
-    decibels.
+    """The Audio settings dialog, as far as its master gain and Apply: the slider, the line reading its level
+    in decibels, and the button that applies the choices.
     """
 
     def __init__(
@@ -33,6 +34,10 @@ class AudioSettings:
     def is_shown(self) -> bool:
         """Whether the dialog stands on the screen."""
         return self._bridge.ask(lambda: read_item(TAG_SETTINGS_AUDIO_WINDOW)).shown
+
+    def apply(self) -> None:
+        """Clicks Apply."""
+        self._hand.click(TAG_SETTINGS_AUDIO_BUTTON_APPLY)
 
     def gain(self) -> float:
         """The master gain the slider stands at."""

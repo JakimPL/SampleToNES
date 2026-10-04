@@ -9,6 +9,7 @@ from sampletones_application.logic.sequencer.playback.synthesizer import RowSynt
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming, TickClock
+from sampletones_shared.exceptions import NoOutputDeviceError
 from tests.suite.base import BaseTestSuite
 from tests.suite.performance import make_pulse_reconstruction
 from tests.unit.sampletones_application.logic.sequencer.playback.conftest import (
@@ -166,7 +167,7 @@ class _LateRate:
     def __call__(self) -> int:
         self.reads += 1
         if self.rate is None:
-            raise ValueError("No audio device selected")
+            raise NoOutputDeviceError("No audio device selected")
 
         return self.rate
 

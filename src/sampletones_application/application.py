@@ -27,6 +27,7 @@ from sampletones_application.coordinators.export.nsf import NSFExportCoordinator
 from sampletones_application.coordinators.export.setup import ExportSetup
 from sampletones_application.coordinators.keybindings import KeybindingsCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
+from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.coordinators.playback.router import PlaybackRouter
 from sampletones_application.coordinators.project import ProjectCoordinator
@@ -258,6 +259,10 @@ class Application:
             status_bar=self.status_bar,
             key_router=self.key_router,
             shortcut_source=self._shortcut_source,
+        )
+        self._playback_failures: PlaybackFailurePresenter = PlaybackFailurePresenter(
+            dialogs=self.dialogs,
+            language_manager=self.language_manager,
         )
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path)
@@ -521,6 +526,7 @@ class Application:
             layout=ReconstructionTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
+            playback_failures=self._playback_failures,
             status_bar=self.status_bar,
         )
 
@@ -538,6 +544,7 @@ class Application:
             layout=InstructionsTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
+            playback_failures=self._playback_failures,
             status_bar=self.status_bar,
         )
 
@@ -563,6 +570,7 @@ class Application:
             layout=MainTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
+            playback_failures=self._playback_failures,
             status_bar=self.status_bar,
             stem_selection_window=self.stem_selection_window,
             key_router=self.key_router,
@@ -585,6 +593,7 @@ class Application:
             layout=SequencerTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
+            playback_failures=self._playback_failures,
             status_bar=self.status_bar,
             on_edit_voice_requested=self._document_flight(
                 self._reconstruction_coordinator.guard_edit_voice,
@@ -1186,9 +1195,9 @@ class Application:
 
     def _on_playback_error(self, exception: Exception) -> None:
         logger.error_with_traceback(exception, "Playback error occurred")
-        self.dialogs.show_error(
+        self._playback_failures.present(
             exception,
-            self.language_manager["global.dialog.message.audio_playback_error"],
+            message=self.language_manager["global.dialog.message.audio_playback_error"],
         )
 
     def _refresh_browsers(self) -> None:

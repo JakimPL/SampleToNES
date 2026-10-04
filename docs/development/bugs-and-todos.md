@@ -147,12 +147,6 @@ currently out of line. An entry leaves when the code meets the contract again.
 
 ## Bugs
 
-* Playing on a machine that offers no output device fails without a word. The song player reads the
-  device's rate as playback starts, and a recording's playback reads it on its own thread, and with no
-  device in force both raise `ValueError: No audio device selected` where the user should read that
-  nothing can play.
-* Apply in Audio settings on a machine that offers no output device logs a `KeyError` and leaves the
-  window open: the window looks the empty device choice up among the devices it lists.
 * A rerun over a folder skips a recording whose channels changed while the run's channels together stayed
   the same: a run writes every recording into the one folder named after all its channels, and the rerun
   skips each recording whose reconstruction stands there, whatever channels that file was made with.

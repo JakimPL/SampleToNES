@@ -1,15 +1,16 @@
 import threading
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Dict, Final, Iterator, List, Union
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
 
-from sampletones_core.audio.device import CurrentDevice
+from sampletones_core.audio.device import AudioDevice, CurrentDevice
 from sampletones_core.audio.manager import AudioDeviceManager
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE, START_OF_AUDIO, SampleRate
-from sampletones_shared.exceptions import PlaybackError
+from sampletones_shared.exceptions import NoOutputDeviceError, PlaybackError
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -28,6 +29,15 @@ _SPEAKERS: Final[Dict[str, Union[int, str]]] = {
     "defaultSampleRate": DEFAULT_SAMPLE_RATE,
     "hostApi": _SPEAKERS_HOST_API,
 }
+_SPEAKERS_DEVICE: Final[AudioDevice] = AudioDevice(
+    index=_SPEAKERS_INDEX,
+    name=_SPEAKERS_NAME,
+    default_sample_rate=DEFAULT_SAMPLE_RATE,
+    supported_sample_rates=[DEFAULT_SAMPLE_RATE],
+    host_api=_SPEAKERS_HOST_API,
+)
+_AUDIO_FILE: Final[str] = "recording.wav"
+_LOAD_AUDIO: Final[str] = "sampletones_core.audio.manager.load_audio"
 
 
 def _manager() -> AudioDeviceManager:
@@ -38,7 +48,9 @@ def _manager() -> AudioDeviceManager:
     """
     manager = object.__new__(AudioDeviceManager)
     manager._pyaudio = MagicMock()
-    manager._device_index = 0
+    manager._devices = {_SPEAKERS_INDEX: _SPEAKERS_DEVICE}
+    manager._device_index = _SPEAKERS_INDEX
+    manager._sample_rate = DEFAULT_SAMPLE_RATE
     manager._lock = threading.Lock()
     manager._resume_event = threading.Event()
     manager._playing = False
@@ -364,6 +376,27 @@ class TestBackendTeardown:
         assert manager._pyaudio is None
 
 
+@pytest.fixture(name="backend")
+def backend_fixture() -> Iterator[MagicMock]:
+    """The audio backend of a machine offering one pair of speakers as its default output."""
+    with patch(_BACKEND) as backend_class:
+        backend = backend_class.return_value
+        backend.get_device_count.return_value = 1
+        backend.get_device_info_by_index.return_value = _SPEAKERS
+        backend.get_default_output_device_info.return_value = _SPEAKERS
+        yield backend
+
+
+@pytest.fixture(name="silent_backend")
+def silent_backend_fixture() -> Iterator[MagicMock]:
+    """The audio backend of a machine offering no output device at all."""
+    with patch(_BACKEND) as backend_class:
+        backend = backend_class.return_value
+        backend.get_device_count.return_value = 0
+        backend.get_default_output_device_info.side_effect = OSError
+        yield backend
+
+
 class TestCurrentDevice:
     """The device in force reads as ``None`` wherever nothing is selected.
 
@@ -371,25 +404,6 @@ class TestCurrentDevice:
     selected device off the list leaves nothing selected too. Each answers ``None``, where a machine
     with a device answers the device and the rate it plays at.
     """
-
-    @pytest.fixture(name="backend")
-    def backend_fixture(self) -> Iterator[MagicMock]:
-        """The audio backend of a machine offering one pair of speakers as its default output."""
-        with patch(_BACKEND) as backend_class:
-            backend = backend_class.return_value
-            backend.get_device_count.return_value = 1
-            backend.get_device_info_by_index.return_value = _SPEAKERS
-            backend.get_default_output_device_info.return_value = _SPEAKERS
-            yield backend
-
-    @pytest.fixture(name="silent_backend")
-    def silent_backend_fixture(self) -> Iterator[MagicMock]:
-        """The audio backend of a machine offering no output device at all."""
-        with patch(_BACKEND) as backend_class:
-            backend = backend_class.return_value
-            backend.get_device_count.return_value = 0
-            backend.get_default_output_device_info.side_effect = OSError
-            yield backend
 
     def test_the_default_device_is_in_force(self, backend: MagicMock) -> None:
         manager = AudioDeviceManager()
@@ -423,3 +437,83 @@ class TestCurrentDevice:
 
         assert configured.sample_rate == _CHOSEN_RATE
         assert manager.get_current_device() == configured
+
+
+class TestPlayingWithNoOutput:
+    """Every way to start a sound asks the manager for the output first, and with none in force the
+    manager refuses at once, before a thread or a stream starts.
+
+    Each refusal is the typed ``NoOutputDeviceError``, which every recovery boundary catches as a
+    ``PlaybackError``. A machine offering speakers answers the device and rate the stream opens on.
+    """
+
+    @pytest.fixture(name="silent_manager")
+    def silent_manager_fixture(self, silent_backend: MagicMock) -> AudioDeviceManager:
+        """A manager on a machine offering no output device."""
+        return AudioDeviceManager()
+
+    def test_a_device_in_force_answers_what_the_stream_opens_on(self, backend: MagicMock) -> None:
+        manager = AudioDeviceManager()
+
+        assert manager.require_output() == manager.get_current_device()
+
+    def test_asking_for_the_output_is_refused(self, silent_manager: AudioDeviceManager) -> None:
+        with pytest.raises(NoOutputDeviceError):
+            silent_manager.require_output()
+
+    def test_a_refusal_is_a_playback_error(self) -> None:
+        assert issubclass(NoOutputDeviceError, PlaybackError)
+
+    def test_playing_audio_is_refused_before_a_thread_starts(self, silent_manager: AudioDeviceManager) -> None:
+        with (
+            patch("sampletones_core.audio.manager.threading.Thread") as thread,
+            pytest.raises(NoOutputDeviceError),
+        ):
+            silent_manager.play(np.zeros(4, dtype=np.float32), priority=_HIGH)
+
+        thread.assert_not_called()
+        assert silent_manager.is_playing() is False
+
+    def test_playing_a_file_is_refused_before_the_file_is_read(self, silent_manager: AudioDeviceManager) -> None:
+        with (
+            patch(_LOAD_AUDIO) as load_audio,
+            pytest.raises(NoOutputDeviceError),
+        ):
+            silent_manager.play_file(Path(_AUDIO_FILE))
+
+        load_audio.assert_not_called()
+
+    def test_a_stream_is_refused_before_it_opens(
+        self,
+        silent_manager: AudioDeviceManager,
+        silent_backend: MagicMock,
+    ) -> None:
+        with pytest.raises(NoOutputDeviceError):
+            silent_manager.open_output_stream(sample_rate=DEFAULT_SAMPLE_RATE, buffer_size=800, release=MagicMock())
+
+        silent_backend.open.assert_not_called()
+        assert silent_manager._stream_owners == {}
+
+    def test_the_rate_reads_as_the_same_refusal(self, silent_manager: AudioDeviceManager) -> None:
+        with pytest.raises(NoOutputDeviceError):
+            _ = silent_manager.sample_rate
+
+    def test_a_device_taken_off_the_list_refuses_a_playback(self, backend: MagicMock) -> None:
+        manager = AudioDeviceManager()
+        backend.get_device_count.return_value = 0
+        manager.refresh_devices()
+
+        with (
+            patch("sampletones_core.audio.manager.threading.Thread") as thread,
+            pytest.raises(NoOutputDeviceError),
+        ):
+            manager.play(np.zeros(4, dtype=np.float32))
+
+        thread.assert_not_called()
+
+    def test_a_playback_opens_its_stream_on_the_device_in_force(self, backend: MagicMock) -> None:
+        manager = AudioDeviceManager()
+        with patch("sampletones_core.audio.manager.threading.Thread") as thread:
+            manager.play(np.zeros(4, dtype=np.float32))
+
+        assert thread.call_args.kwargs["kwargs"]["output"] == manager.get_current_device()

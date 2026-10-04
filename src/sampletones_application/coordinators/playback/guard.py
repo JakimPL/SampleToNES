@@ -1,12 +1,12 @@
+from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
-from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.types.callback import VoidCallback
 
 
 class GuardedPlayer:
     """Drives an ``AudioPlayerProtocol`` player on behalf of panels and the
-    ``PlaybackRouter``, presenting playback failures as dialogs.
+    ``PlaybackRouter``, handing playback failures to the presenter.
 
     Panels only fire intent hooks, so this wrapper is the coordinator-layer
     recovery boundary for the transport commands that can raise
@@ -17,11 +17,11 @@ class GuardedPlayer:
         self,
         player: AudioPlayerProtocol,
         *,
-        dialogs: DialogsRenderer,
+        failures: PlaybackFailurePresenter,
         error_message: str,
     ) -> None:
         self._player = player
-        self._dialogs = dialogs
+        self._failures = failures
         self._error_message = error_message
 
     def play(self) -> None:
@@ -46,7 +46,7 @@ class GuardedPlayer:
         return self._player.is_loaded()
 
     def run_guarded(self, command: VoidCallback) -> None:
-        """Runs a playback command, presenting a failure to start the audio as a dialog.
+        """Runs a playback command, showing the reader a failure to start the audio.
 
         A command beyond the transport — sounding a sample from a point the reader clicked — goes
         through the same boundary the transport commands do.
@@ -54,4 +54,4 @@ class GuardedPlayer:
         try:
             command()
         except PlaybackError as exception:
-            self._dialogs.show_error(exception, self._error_message)
+            self._failures.present(exception, message=self._error_message)

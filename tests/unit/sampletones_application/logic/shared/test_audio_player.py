@@ -7,6 +7,7 @@ import pytest
 from sampletones_application.logic.shared.audio_player import AudioPlayer
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE, START_OF_AUDIO
+from sampletones_shared.exceptions import NoOutputDeviceError
 from tests.suite.application import HeldQueue
 from tests.suite.device import FakeAudioDevice
 
@@ -109,6 +110,24 @@ class TestPlayStartsWhereItIsAsked:
 
         assert device.owner is player
         assert device.position == 30
+
+
+class TestARefusedPlay:
+    """A device with no output in force refuses the play, and the refusal reaches the caller's recovery
+    boundary as the device raised it, with no change of state reported."""
+
+    def test_the_refusal_reaches_the_caller(self) -> None:
+        refusal = NoOutputDeviceError("no device")
+        player, device = _player(owned=False, paused=False)
+        player.load_audio_data(AudioData.from_array(np.zeros(AUDIO_LENGTH, dtype=np.float32), DEFAULT_SAMPLE_RATE))
+        device.play.side_effect = refusal
+        reports = Reports(player)
+
+        with pytest.raises(NoOutputDeviceError) as raised:
+            player.play(start=START_OF_AUDIO)
+
+        assert raised.value is refusal
+        assert reports.state_changes == 0
 
 
 class TestDeviceReportsCrossToTheRenderThread:

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
-from sampletones_shared.exceptions import PlaybackError
+from sampletones_shared.exceptions import NoOutputDeviceError, PlaybackError
 
 GUARDED_COMMANDS = ("play", "pause_or_resume")
 
@@ -15,17 +15,17 @@ def player_logic() -> MagicMock:
 
 
 @pytest.fixture
-def dialogs() -> MagicMock:
+def failures() -> MagicMock:
     return MagicMock()
 
 
 @pytest.fixture
-def guarded_player(player_logic: MagicMock, dialogs: MagicMock) -> GuardedPlayer:
-    return GuardedPlayer(player_logic, dialogs=dialogs, error_message="playback failed")
+def guarded_player(player_logic: MagicMock, failures: MagicMock) -> GuardedPlayer:
+    return GuardedPlayer(player_logic, failures=failures, error_message="playback failed")
 
 
 class TestGuardedCommands:
-    """The transport commands that can raise ``PlaybackError`` surface it as a dialog instead of
+    """The transport commands that can raise ``PlaybackError`` hand it to the presenter instead of
     propagating, so a panel hook or the playback router can invoke them bare."""
 
     @pytest.mark.parametrize("command", GUARDED_COMMANDS)
@@ -33,42 +33,47 @@ class TestGuardedCommands:
         self,
         guarded_player: GuardedPlayer,
         player_logic: MagicMock,
-        dialogs: MagicMock,
+        failures: MagicMock,
         command: str,
     ) -> None:
         getattr(guarded_player, command)()
 
         getattr(player_logic, command).assert_called_once_with()
-        dialogs.show_error.assert_not_called()
+        failures.present.assert_not_called()
 
     @pytest.mark.parametrize("command", GUARDED_COMMANDS)
-    def test_playback_error_becomes_a_dialog(
+    @pytest.mark.parametrize(
+        "exception",
+        [PlaybackError("device unavailable"), NoOutputDeviceError("no device")],
+        ids=["playback", "no_output"],
+    )
+    def test_a_playback_error_reaches_the_presenter(
         self,
         guarded_player: GuardedPlayer,
         player_logic: MagicMock,
-        dialogs: MagicMock,
+        failures: MagicMock,
         command: str,
+        exception: PlaybackError,
     ) -> None:
-        exception = PlaybackError("device unavailable")
         getattr(player_logic, command).side_effect = exception
 
         getattr(guarded_player, command)()
 
-        dialogs.show_error.assert_called_once_with(exception, "playback failed")
+        failures.present.assert_called_once_with(exception, message="playback failed")
 
 
 class TestAGuardedRun:
     """A command beyond the transport runs under the same boundary the transport commands keep."""
 
-    def test_the_command_runs(self, guarded_player: GuardedPlayer, dialogs: MagicMock) -> None:
+    def test_the_command_runs(self, guarded_player: GuardedPlayer, failures: MagicMock) -> None:
         ran: List[int] = []
 
         guarded_player.run_guarded(lambda: ran.append(400))
 
         assert ran == [400]
-        dialogs.show_error.assert_not_called()
+        failures.present.assert_not_called()
 
-    def test_playback_error_becomes_a_dialog(self, guarded_player: GuardedPlayer, dialogs: MagicMock) -> None:
+    def test_a_playback_error_reaches_the_presenter(self, guarded_player: GuardedPlayer, failures: MagicMock) -> None:
         exception = PlaybackError("device unavailable")
 
         def failing() -> None:
@@ -76,4 +81,4 @@ class TestAGuardedRun:
 
         guarded_player.run_guarded(failing)
 
-        dialogs.show_error.assert_called_once_with(exception, "playback failed")
+        failures.present.assert_called_once_with(exception, message="playback failed")

@@ -620,6 +620,12 @@ TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN = TagName(
     Widget.DIALOG,
     "no_project_open",
 )
+TAG_GLOBAL_DIALOG_NO_AUDIO_OUTPUT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.DIALOG,
+    "no_audio_output",
+)
 TAG_GLOBAL_DIALOG_PROJECT_OPEN = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

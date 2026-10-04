@@ -1,4 +1,9 @@
-from .audio import AudioWriteError, PlaybackError, UnsupportedAudioFormatError
+from .audio import (
+    AudioWriteError,
+    NoOutputDeviceError,
+    PlaybackError,
+    UnsupportedAudioFormatError,
+)
 from .base import SampleToNESError
 from .callback import CallbackQueueStop
 from .cuda import CuPyNotInstalledWarning
@@ -94,6 +99,7 @@ __all__ = [
     "MissingTextError",
     "NoFilesToProcessError",
     "NoLibraryDataError",
+    "NoOutputDeviceError",
     "NotAValidArchiveError",
     "NotAnInstrumentFileError",
     "OperationCanceled",
