@@ -72,7 +72,6 @@ class LibraryLogic(CallbackMixin):
         self._library_manager = library_manager
         self._is_operation_active = is_operation_active
         self._eta_estimator: Optional[ETAEstimator] = None
-        self._remembered_key: Optional[InstructionLibraryKey] = None
 
         self._lock_function: Optional[VoidCallback] = None
         self._unlock_function: Optional[VoidCallback] = None
@@ -150,12 +149,10 @@ class LibraryLogic(CallbackMixin):
     def refresh_libraries(self, load_if_needed: bool = True) -> None:
         """Reads the catalog of the configuration's library directory and asks for its tree.
 
-        A directory the catalog moves to brings back the library it had taken up when the reader
-        left it, which :meth:`reload_remembered_library` loads again.
+        A directory the reader comes back to loads again the library it had loaded when the reader
+        left it, through :meth:`reload_remembered_library`.
         """
-        if self._library_manager.set_library_directory(self._config_manager.get_library_directory()):
-            self._remembered_key = self._library_manager.current_library_key
-
+        self._library_manager.set_library_directory(self._config_manager.get_library_directory())
         self._library_manager.gather_available_libraries()
         self._sync_with_config_key(load_if_needed=load_if_needed)
         self.reload_remembered_library()
@@ -177,7 +174,7 @@ class LibraryLogic(CallbackMixin):
         self.update_status()
 
     def reload_remembered_library(self) -> None:
-        """Loads again the library a directory had taken up when the reader left it, once the reader is
+        """Loads again the library a directory had loaded when the reader left it, once the reader is
         back and the tree stands free.
 
         The load is the one a Load runs, so a failure, such as a file removed meanwhile, is reported
@@ -185,12 +182,11 @@ class LibraryLogic(CallbackMixin):
         the directory's choice. A generation or a rebuild holding the tree's lock keeps the load
         waiting, and the coordinator calls this again once the lock is let go.
         """
-        key = self._remembered_key
-        if key is None or self._is_locked:
+        if self._is_locked:
             return
 
-        self._remembered_key = None
-        if self.current_library_key != key or self._library_manager.is_library_loaded(key):
+        key = self._library_manager.take_released_library()
+        if key is None or self.current_library_key != key or self._library_manager.is_library_loaded(key):
             return
 
         if self._load_library(key) is None:

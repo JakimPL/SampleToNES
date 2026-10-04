@@ -396,6 +396,7 @@ class Catalog:
     views: List[LibraryPanelViewModel] = field(default_factory=list)
     outdated: List[InstructionLibraryKey] = field(default_factory=list)
     missing: List[Path] = field(default_factory=list)
+    errors: List[Exception] = field(default_factory=list)
     shown: List[Any] = field(default_factory=list)
 
     @property
@@ -444,6 +445,7 @@ def catalog(
     logic.on_apply_library_config = config_manager.apply_library_config
     logic.on_library_outdated = catalog.outdated.append
     logic.on_load_file_not_found = lambda path, message: catalog.missing.append(path)
+    logic.on_load_error = lambda exception, message: catalog.errors.append(exception)
     logic.on_instruction_loaded = catalog.shown.append
     return catalog
 
@@ -593,6 +595,42 @@ class TestTheCatalogFollowingTheConfiguration:
             True,
             "Regenerate",
         )
+
+    def test_a_library_the_folder_only_took_up_stays_unloaded_on_the_way_back(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        """A start takes up the library the configuration names without loading it, so the reader never
+        opened it and the way back leaves it as it stood."""
+        ours = catalog.config_manager.get_library_directory()
+        key = _write_library(ours, catalog.config_manager.config.library, SAMPLETONES_LIBRARY_DATA_VERSION)
+        catalog.logic.refresh_libraries(load_if_needed=False)
+        taken_up = (catalog.manager.current_library_key, catalog.manager.is_library_loaded(key))
+
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        aim_library_directory(catalog.config_manager, ours)
+
+        assert (taken_up, catalog.manager.is_library_loaded(key), catalog.views[-1].generate_button_label) == (
+            (key, False),
+            False,
+            "Generate",
+        )
+
+    def test_a_library_never_opened_whose_file_left_while_away_goes_unreported(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        ours = catalog.config_manager.get_library_directory()
+        key = _write_library(ours, catalog.config_manager.config.library, SAMPLETONES_LIBRARY_DATA_VERSION)
+        catalog.logic.refresh_libraries(load_if_needed=False)
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        (ours / key.filename).unlink()
+
+        aim_library_directory(catalog.config_manager, ours)
+
+        assert (catalog.missing, catalog.errors) == ([], [])
 
     @requires_symlinks
     def test_a_link_to_the_same_folder_repaints_over_what_is_loaded(

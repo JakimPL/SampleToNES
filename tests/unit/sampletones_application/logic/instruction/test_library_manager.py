@@ -177,6 +177,41 @@ class TestTheDirectoryTheCatalogStandsAt:
             library_manager.current_library_key,
         ) == ({}, False, config_manager.key)
 
+    def test_the_way_back_hands_over_the_library_loaded_when_the_reader_left_once(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        tmp_path: Path,
+    ) -> None:
+        ours = config_manager.get_library_directory()
+        self._loaded_here(library_manager, config_manager.key)
+        library_manager.set_library_directory(tmp_path / OTHER_LIBRARIES)
+        library_manager.set_library_directory(ours)
+
+        assert (library_manager.take_released_library(), library_manager.take_released_library()) == (
+            config_manager.key,
+            None,
+        )
+
+    def test_a_library_taken_up_unloaded_leaves_nothing_to_load_on_the_way_back(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        tmp_path: Path,
+    ) -> None:
+        """The configuration's library is taken up at a start without loading, so the reader never opened
+        it and a way back has nothing to load again."""
+        ours = config_manager.get_library_directory()
+        _create_library_file(library_manager, config_manager.key)
+        library_manager.sync_with_config_key(config_manager.key)
+        library_manager.set_library_directory(tmp_path / OTHER_LIBRARIES)
+        library_manager.set_library_directory(ours)
+
+        assert (library_manager.current_library_key, library_manager.take_released_library()) == (
+            config_manager.key,
+            None,
+        )
+
     def test_what_the_other_directory_took_up_stays_with_it(
         self,
         config_manager: ConfigManager,
