@@ -217,6 +217,33 @@ class TestAStreamTheDeviceRefuses:
         assert playing_when_reported == [False]
         manager._position_callback.assert_called_once_with(0)
 
+    def test_a_handed_out_stream_refused_raises_a_playback_error(self) -> None:
+        manager = _manager()
+        manager.stop = MagicMock()
+        manager._pyaudio.open.side_effect = OSError("the device is busy")
+
+        with pytest.raises(PlaybackError, match="the device is busy"):
+            manager.open_output_stream(sample_rate=DEFAULT_SAMPLE_RATE, buffer_size=800, release=MagicMock())
+
+        assert manager._stream_owners == {}
+
+    def test_both_kinds_of_playback_name_the_refusal_alike(self) -> None:
+        """A refused stream reads the same whether the manager plays the audio or hands the stream out."""
+        manager = _manager()
+        manager.stop = MagicMock()
+        manager._pyaudio.open.side_effect = OSError("the device is busy")
+        manager._position_callback = None
+        reported: List[Exception] = []
+        manager.on_playback_error = reported.append
+        manager._playing = True
+        manager._audio_data = np.zeros(TestPlaybackStart.AUDIO_LENGTH, dtype=np.float32)
+        manager._playback_worker(output=manager.require_output(), update=False)
+
+        with pytest.raises(PlaybackError) as raised:
+            manager.open_output_stream(sample_rate=DEFAULT_SAMPLE_RATE, buffer_size=800, release=MagicMock())
+
+        assert [str(error) for error in reported] == [str(raised.value)]
+
 
 class TestSeekingAPlayback(BaseTestSuite):
     """A seek moves the playback of the owner asking for it, clamped to the audio, under one lock."""

@@ -782,7 +782,8 @@ class SequencerTabCoordinator:
         self._sequencer_order_logic.push_order()
 
     def _on_player_error(self, error: Exception) -> None:
-        self._playback_failures.present(error, message=None)
+        """Shows the reader what stopped the song on the thread playing it, the way every tab shows it."""
+        self._playback_failures.present_playing_failure(error)
 
     def _on_player_view_changed(self, view_model: SongPlayerViewModel) -> None:
         """Settles the marks the transport owns, and how far the grid chases the playhead.

@@ -10,6 +10,7 @@ from sampletones_application.categories.instrument import InstrumentImportMessag
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.playback import FollowMode
 from sampletones_application.constants.sequencer import CHANNEL_AXIS
+from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.tabs.sequencer import voices as voices_module
 from sampletones_application.coordinators.tabs.sequencer.blocks import SequencerBlocks
@@ -70,6 +71,7 @@ from sampletones_shared.exceptions import (
     InvalidReconstructionValuesError,
     MalformedInstrumentError,
     NoOutputDeviceError,
+    PlaybackError,
 )
 from tests.suite.gates import HeldGate, held_gate
 from tests.suite.language import FakeLanguageManager
@@ -656,6 +658,19 @@ def playback_coordinator() -> SequencerTabCoordinator:
         instance._playhead,
     )
     return instance
+
+
+class TestASongThatFailsWhilePlaying:
+    """A song that fails on the thread playing it reads the way every playback failing there reads."""
+
+    def test_a_refused_stream_is_presented_as_a_failure_while_playing(self) -> None:
+        coordinator = object.__new__(SequencerTabCoordinator)
+        coordinator._playback_failures = MagicMock(spec=PlaybackFailurePresenter)
+        refusal = PlaybackError("Failed to open audio stream: device busy")
+
+        coordinator._on_player_error(refusal)
+
+        coordinator._playback_failures.present_playing_failure.assert_called_once_with(refusal)
 
 
 class TestFollowMode:

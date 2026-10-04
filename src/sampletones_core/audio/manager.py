@@ -722,19 +722,15 @@ class AudioDeviceManager(CallbackMixin):
             output: The device and rate in force when the playback was asked for.
             update: If True, invoke position callback during playback.
         """
-        assert self._pyaudio is not None, "PyAudio instance is not initialized"
         logger.debug(f"Starting playback: device_index={output.device_index}, sample_rate={output.sample_rate}")
         try:
-            stream = self._pyaudio.open(
-                format=FORMAT,
-                channels=CHANNELS,
-                rate=output.sample_rate,
-                output=True,
-                output_device_index=output.device_index,
+            stream = self._open_stream(
+                device_index=output.device_index,
+                sample_rate=output.sample_rate,
+                frames_per_buffer=pyaudio.paFramesPerBufferUnspecified,
             )
-        except OSError as exception:
+        except PlaybackError as playback_error:
             self._reset(update=update)
-            playback_error = PlaybackError(f"Failed to open audio stream: {exception}")
             self.call(self.on_playback_error, playback_error)
             return
 
@@ -873,7 +869,7 @@ class AudioDeviceManager(CallbackMixin):
             release: Winds the caller's writing down; returns once the stream is handed back.
 
         Raises:
-            PlaybackError: If PyAudio is not initialized.
+            PlaybackError: If PyAudio is not initialized, or the device refuses to open the stream.
             NoOutputDeviceError: If no output device is in force.
         """
         if self._pyaudio is None:
@@ -881,18 +877,43 @@ class AudioDeviceManager(CallbackMixin):
 
         output = self.require_output()
         self.stop()
-        stream = self._pyaudio.open(
-            format=FORMAT,
-            channels=CHANNELS,
-            rate=sample_rate,
-            output=True,
-            output_device_index=output.device_index,
+        stream = self._open_stream(
+            device_index=output.device_index,
+            sample_rate=sample_rate,
             frames_per_buffer=buffer_size,
         )
         with self._lock:
             self._stream_owners[stream] = release
 
         return stream
+
+    def _open_stream(
+        self,
+        *,
+        device_index: int,
+        sample_rate: int,
+        frames_per_buffer: int,
+    ) -> pyaudio.Stream:
+        """Opens an output stream on the device, naming a refusal the way every playback reports it.
+
+        Both kinds of playback open their stream here, the one this manager plays and the one it hands
+        out, so a reader told of a refused stream reads the same words whichever source asked.
+
+        Raises:
+            PlaybackError: If the device refuses to open the stream.
+        """
+        assert self._pyaudio is not None, "PyAudio instance is not initialized"
+        try:
+            return self._pyaudio.open(
+                format=FORMAT,
+                channels=CHANNELS,
+                rate=sample_rate,
+                output=True,
+                output_device_index=device_index,
+                frames_per_buffer=frames_per_buffer,
+            )
+        except OSError as exception:
+            raise PlaybackError(f"Failed to open audio stream: {exception}") from exception
 
     def close_output_stream(self, stream: pyaudio.Stream) -> None:
         """Take a handed-out stream back and close it.

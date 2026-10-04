@@ -212,11 +212,15 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
             self._enqueue_end()
 
     def _write_loop(self) -> None:
-        """Drains the song to the device, hands the stream back, and then reports how the song ended."""
-        stream = self._open_stream()
-        if stream is None:
-            self._holding_output.clear()
-            self._emit(SongPlaybackStopped())
+        """Drains the song to the device, hands the stream back, and then reports how the song ended.
+
+        This is the writer thread's whole task, so a stream the device refuses ends here as the song's
+        error, reported once with the output free.
+        """
+        try:
+            stream = self._open_stream()
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+            self._end_refused(exception)
             return
 
         ended = True
@@ -232,21 +236,24 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         if ended:
             self._emit_terminal()
 
-    def _open_stream(self) -> Optional[pyaudio.Stream]:
-        try:
-            sample_rate = self._audio_device_manager.sample_rate
-            stream = self._audio_device_manager.open_output_stream(
-                sample_rate=sample_rate,
-                buffer_size=self._audio_device_manager.buffer_size,
-                release=self.stop,
-            )
-            logger.debug(f"{self.class_name}: audio stream opened at {sample_rate} Hz")
-            return stream
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-            logger.error(f"{self.class_name}: failed to open audio stream: {exception}")
-            self._stop_event.set()
-            self._wake_buffer()
-            return None
+    def _open_stream(self) -> pyaudio.Stream:
+        sample_rate = self._audio_device_manager.sample_rate
+        stream = self._audio_device_manager.open_output_stream(
+            sample_rate=sample_rate,
+            buffer_size=self._audio_device_manager.buffer_size,
+            release=self.stop,
+        )
+        logger.debug(f"{self.class_name}: audio stream opened at {sample_rate} Hz")
+        return stream
+
+    def _end_refused(self, exception: Exception) -> None:
+        """Ends a song whose stream never opened: the renderer stops, the output goes free, and the error is told."""
+        logger.error_with_traceback(exception, f"{self.class_name}: failed to open audio stream")
+        self._playback_error = exception
+        self._stop_event.set()
+        self._wake_buffer()
+        self._holding_output.clear()
+        self._emit_terminal()
 
     def _drain_to_stream(self, stream: pyaudio.Stream) -> bool:
         """Hands the buffered rows to the device until the song ends or a stop comes.
