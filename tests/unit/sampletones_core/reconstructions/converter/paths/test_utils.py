@@ -4,15 +4,18 @@ from typing import List
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import DEFAULT_CHANNELS
+from sampletones_core.constants.enums import DEFAULT_CHANNELS, ChannelName
 from sampletones_core.reconstructions.converter.paths import (
+    ConfigDirectoryFields,
     filter_files,
     get_audio_files,
     get_output_path,
     get_relative_path,
     group_output_path,
+    reconstructions_directory,
     walk_entries,
 )
+from sampletones_core.reconstructions.converter.paths.utils import ConfigDirectories
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 from tests.suite.files import LOCKED_FOLDER, held_at, requires_folder_permissions
 
@@ -45,6 +48,20 @@ class TestGetRelativePath:
         output = Path("output")
         result = get_relative_path(base, audio_file, output)
         assert result.is_absolute()
+
+
+class TestConfigDirectories:
+    """A configuration names one directory per channel set under its reconstructions directory, as
+    its own fields name it."""
+
+    def test_each_channel_set_names_its_own_directory(self, config: Config) -> None:
+        directories = ConfigDirectories(config)
+        channel_sets = (CHANNELS, frozenset({ChannelName.PULSE1}), CHANNELS)
+
+        assert [directories.directory(channels) for channels in channel_sets] == [
+            reconstructions_directory(config) / ConfigDirectoryFields.from_config(config, channels).directory_name
+            for channels in channel_sets
+        ]
 
 
 class TestGetOutputPath:
