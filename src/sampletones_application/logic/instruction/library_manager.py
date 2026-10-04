@@ -1,3 +1,4 @@
+import threading
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
@@ -42,7 +43,11 @@ OnGenerationErrorCallback = Callable[[Exception], None]
 
 @dataclass
 class _Catalog:
-    """The libraries one directory holds in memory, and the one taken up as current there."""
+    """The libraries one directory holds in memory, and the one taken up as current there.
+
+    Only the directory the catalog stands at holds libraries in memory. Every directory keeps its
+    choice of current library.
+    """
 
     library: InstructionLibrary
     current_key: Optional[InstructionLibraryKey]
@@ -58,6 +63,7 @@ class InstructionsLibraryManager(CallbackMixin):
         self._language_manager = language_manager
         self._config_manager = config_manager
         self._catalogs: Dict[Path, _Catalog] = {}
+        self._catalog_lock = threading.Lock()
         self._catalog = self._catalog_at(config_manager.get_library_directory())
         self._listed_libraries: Dict[InstructionLibraryKey, bool] = {}
 
@@ -75,17 +81,26 @@ class InstructionsLibraryManager(CallbackMixin):
     def library_directory(self) -> Path:
         return to_path(self._catalog.library.directory)
 
-    def set_library_directory(self, directory: Path) -> None:
-        """Roots the catalog at ``directory``, keeping what every directory has loaded.
+    def set_library_directory(self, directory: Path) -> bool:
+        """Roots the catalog at ``directory``, and answers whether that moved it to another folder.
 
-        A directory read before brings back the libraries it loaded and the one it had taken up as
-        current, so a reader pointing the catalog away and back finds it as they left it.
+        The folder left lets go of the libraries it loaded and keeps the one it had taken up as
+        current, so a reader coming back finds that choice again, for the caller to load. Every
+        spelling of one folder, a link to it included, names the same catalog.
         """
-        self._catalog = self._catalog_at(directory)
+        catalog = self._catalog_at(directory)
+        with self._catalog_lock:
+            if catalog is self._catalog:
+                return False
+
+            self._catalog.library.data.clear()
+            self._catalog = catalog
+
+        return True
 
     def _catalog_at(self, directory: Path) -> _Catalog:
         """The catalog of ``directory``, started empty the first time the directory is read."""
-        root = to_path(directory)
+        root = to_path(directory).resolve()
         catalog = self._catalogs.get(root)
         if catalog is None:
             catalog = _Catalog(
@@ -225,19 +240,23 @@ class InstructionsLibraryManager(CallbackMixin):
         catalog: _Catalog,
         result: Tuple[InstructionLibraryKey, InstructionLibraryData],
     ) -> None:
-        """Writes the generated library into ``catalog``, the one the generation was started in.
+        """Writes the generated library into ``catalog``, the one the generation was started in, and
+        makes it that catalog's current library.
 
-        The library becomes the current one only where the catalog still stands there.
+        The library stays in memory only where the catalog still stands there. A catalog left holds
+        the file and the choice, and the reader coming back loads it from the file.
         """
         key, library_data = result
         try:
-            catalog.library.save_data(key, library_data)
+            catalog.library.write_data(key, library_data)
         except OSError as exception:
             self.call(self.on_generation_error, exception)
             raise
 
-        if catalog is self._catalog:
+        with self._catalog_lock:
             catalog.current_key = key
+            if catalog is self._catalog:
+                catalog.library.data[key] = library_data
 
         self.call(self.on_generation_completed)
 

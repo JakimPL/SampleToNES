@@ -148,7 +148,7 @@ class InstructionsTabCoordinator:
             is_operation_active=is_operation_active,
         )
         self._library_panel.set_collapse_handler(self._on_library_collapse_changed)
-        self._library_tree_logic.on_lock_state_changed = self._library_panel.set_tree_enabled
+        self._library_tree_logic.on_lock_state_changed = self._on_library_tree_lock_changed
         self._library_tree_logic.on_favorite_changed = self._repaint_library_favorites
         self._library_tree_logic.on_search_update_needed = self._library_panel.update_tree_visibility
 
@@ -373,6 +373,13 @@ class InstructionsTabCoordinator:
     def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
         """Persists a center-column card's collapsed state so it restores on the next launch."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
+
+    def _on_library_tree_lock_changed(self, is_unlocked: bool) -> None:
+        """Enables the catalog's tree along with its lock, and loads a folder's remembered library once
+        the lock is let go."""
+        self._library_panel.set_tree_enabled(is_unlocked)
+        if is_unlocked:
+            self._library_logic.reload_remembered_library()
 
     def _repaint_library_favorites(self, node: FileSystemNode) -> None:
         """Repaints the row whose star was toggled: the catalog lists a library once, so it is one row."""

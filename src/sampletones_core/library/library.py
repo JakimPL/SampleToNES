@@ -118,15 +118,24 @@ class InstructionLibrary(BaseModel):
         return Path(self.directory) / key.filename
 
     def save_data(self, key: InstructionLibraryKey, library_data: InstructionLibraryData) -> None:
-        """Caches a library and writes it to its file on disk.
+        """Writes a library to its file on disk and caches it once the file is written.
 
         Args:
             key: The key identifying the library.
             library_data: The library to cache and persist.
         """
+        self.write_data(key, library_data)
+        self.data[key] = library_data
+
+    def write_data(self, key: InstructionLibraryKey, library_data: InstructionLibraryData) -> None:
+        """Writes a library to its file on disk, creating the library directory where it is missing.
+
+        Args:
+            key: The key identifying the library.
+            library_data: The library to persist.
+        """
         path = self.get_path(key)
         path.parent.mkdir(parents=True, exist_ok=True)
-        self.data[key] = library_data
         library_data.save(path)
 
     def load_data(self, key: InstructionLibraryKey) -> None:

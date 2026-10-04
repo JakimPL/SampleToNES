@@ -16,7 +16,8 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.library import InstructionLibraryKey, LibraryState
 from sampletones_core.structures.tree import LibraryNode
 from tests.suite.compatibility import LIBRARY_VERSION, archived
-from tests.suite.library import OTHER_LIBRARIES, WrittenLibrary, write_empty_library
+from tests.suite.files import requires_symlinks
+from tests.suite.library import LINKED_LIBRARIES, OTHER_LIBRARIES, WrittenLibrary, write_empty_library
 
 
 @pytest.fixture
@@ -114,8 +115,8 @@ class TestTheLibrariesTheCatalogLists:
 
 
 class TestTheDirectoryTheCatalogStandsAt:
-    """Each directory keeps the libraries it loaded and the one it took up, however often the catalog
-    moves away and back."""
+    """The folder the catalog stands at keeps the libraries it loaded. A folder left lets them go and keeps
+    the one it took up, so the reader coming back finds that choice again."""
 
     @staticmethod
     def _loaded_here(library_manager: InstructionsLibraryManager, key: InstructionLibraryKey) -> None:
@@ -130,9 +131,9 @@ class TestTheDirectoryTheCatalogStandsAt:
     ) -> None:
         self._loaded_here(library_manager, config_manager.key)
 
-        library_manager.set_library_directory(config_manager.get_library_directory())
+        moved = library_manager.set_library_directory(config_manager.get_library_directory())
 
-        assert library_manager.is_library_loaded(config_manager.key) is True
+        assert (moved, library_manager.is_library_loaded(config_manager.key)) == (False, True)
 
     def test_another_directory_starts_with_nothing_loaded_or_taken_up(
         self,
@@ -143,32 +144,38 @@ class TestTheDirectoryTheCatalogStandsAt:
         self._loaded_here(library_manager, config_manager.key)
         other = tmp_path / OTHER_LIBRARIES
 
-        library_manager.set_library_directory(other)
+        moved = library_manager.set_library_directory(other)
 
         assert (
+            moved,
             library_manager.library_directory,
             library_manager.is_library_loaded(config_manager.key),
             library_manager.current_library_key,
-        ) == (other, False, None)
+        ) == (True, other, False, None)
 
-    def test_pointing_away_and_back_finds_the_library_loaded_and_taken_up(
+    def test_pointing_away_lets_the_data_go_and_keeps_the_choice(
         self,
         config_manager: ConfigManager,
         library_manager: InstructionsLibraryManager,
         tmp_path: Path,
     ) -> None:
+        """A folder left holds no library in memory, and the reader coming back finds its choice standing
+        unloaded, for the catalog's logic to load again."""
         ours = config_manager.get_library_directory()
         self._loaded_here(library_manager, config_manager.key)
+        left = library_manager._catalog
 
         library_manager.set_library_directory(tmp_path / OTHER_LIBRARIES)
         library_manager.gather_available_libraries()
+        held_while_away = dict(left.library.data)
         library_manager.set_library_directory(ours)
         library_manager.gather_available_libraries()
 
-        assert (library_manager.is_library_loaded(config_manager.key), library_manager.current_library_key) == (
-            True,
-            config_manager.key,
-        )
+        assert (
+            held_while_away,
+            library_manager.is_library_loaded(config_manager.key),
+            library_manager.current_library_key,
+        ) == ({}, False, config_manager.key)
 
     def test_what_the_other_directory_took_up_stays_with_it(
         self,
@@ -208,6 +215,46 @@ class TestTheDirectoryTheCatalogStandsAt:
         assert library_manager.is_library_loaded(config_manager.key) is False
 
 
+class TestAnotherSpellingOfTheFolder:
+    """Two spellings of one folder name one catalog, so pointing the catalog at another spelling keeps
+    what the folder loaded and moves nowhere."""
+
+    @staticmethod
+    def _respelled_keeps_what_it_loaded(
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        spelling: Path,
+    ) -> None:
+        _create_library_file(library_manager, config_manager.key)
+        library_manager.load_library(config_manager.key)
+
+        moved = library_manager.set_library_directory(spelling)
+
+        assert (moved, library_manager.is_library_loaded(config_manager.key)) == (False, True)
+
+    def test_a_detour_through_the_parent(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+    ) -> None:
+        folder = config_manager.get_library_directory()
+        detour = folder.parent / ".." / folder.parent.name / folder.name
+
+        self._respelled_keeps_what_it_loaded(config_manager, library_manager, detour)
+
+    @requires_symlinks
+    def test_a_link_to_the_folder(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        tmp_path: Path,
+    ) -> None:
+        link = tmp_path / LINKED_LIBRARIES
+        link.symlink_to(config_manager.get_library_directory(), target_is_directory=True)
+
+        self._respelled_keeps_what_it_loaded(config_manager, library_manager, link)
+
+
 class TestCompleteGeneration:
     """A failed library save is an operational failure the user must see.
 
@@ -221,7 +268,7 @@ class TestCompleteGeneration:
         library_manager: InstructionsLibraryManager,
     ) -> None:
         catalog = MagicMock()
-        catalog.library.save_data.side_effect = PermissionError("save failed")
+        catalog.library.write_data.side_effect = PermissionError("save failed")
         error_callback = MagicMock()
         completed_callback = MagicMock()
         library_manager.on_generation_error = error_callback
@@ -238,7 +285,7 @@ class TestCompleteGeneration:
         library_manager: InstructionsLibraryManager,
     ) -> None:
         catalog = MagicMock()
-        catalog.library.save_data.side_effect = RuntimeError("unexpected")
+        catalog.library.write_data.side_effect = RuntimeError("unexpected")
         error_callback = MagicMock()
         library_manager.on_generation_error = error_callback
 
@@ -278,21 +325,26 @@ class TestCompleteGeneration:
             None,
         )
 
-    def test_a_library_generated_while_away_stands_loaded_on_the_way_back(
+    def test_a_library_generated_while_away_is_written_and_chosen_and_held_nowhere(
         self,
         config_manager: ConfigManager,
         library_manager: InstructionsLibraryManager,
         tmp_path: Path,
     ) -> None:
-        """The generation's catalog is the one its directory brings back, so the library is held there."""
+        """The folder the generation started in is left, so it keeps the library's file and its choice and
+        no data, and the reader coming back finds the library chosen there."""
         ours = config_manager.get_library_directory()
         started_in = library_manager._catalog
         library_manager.set_library_directory(tmp_path / OTHER_LIBRARIES)
-        library_manager._complete_generation(started_in, (config_manager.key, WrittenLibrary()))
 
+        library_manager._complete_generation(started_in, (config_manager.key, WrittenLibrary()))
         library_manager.set_library_directory(ours)
 
-        assert library_manager.is_library_loaded(config_manager.key) is True
+        assert (
+            started_in.library.get_path(config_manager.key).exists(),
+            started_in.library.data,
+            library_manager.current_library_key,
+        ) == (True, {}, config_manager.key)
 
 
 class TestTheLibraryAConversionWaitsFor:

@@ -14,6 +14,7 @@ from sampletones_core.library.key import InstructionLibraryKey
 from sampletones_tools.corpus.catalog import CHANNELS, build_mini_library
 
 OTHER_LIBRARIES: Final[str] = "other_libraries"
+LINKED_LIBRARIES: Final[str] = "linked_libraries"
 
 
 class WrittenLibrary:
