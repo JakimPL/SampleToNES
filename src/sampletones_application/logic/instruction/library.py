@@ -177,10 +177,12 @@ class LibraryLogic(CallbackMixin):
         """Loads again the library a directory had loaded when the reader left it, once the reader is
         back and the tree stands free.
 
-        The load is the one a Load runs, so a failure, such as a file removed meanwhile, is reported
-        the same way, and the directory lets that choice go. The library loads only while it is still
-        the directory's choice. A generation or a rebuild holding the tree's lock keeps the load
-        waiting, and the coordinator calls this again once the lock is let go.
+        The library opens the way a Load opens it, so a file removed meanwhile is reported missing, a
+        file another version wrote asks for a rebuild, and a file that fails to load is reported. A
+        library that stays unloaded stops being the directory's choice. The settings stay as the
+        reader left them. The library loads only while it is still the directory's choice. A
+        generation or a rebuild holding the tree's lock keeps the load waiting, and the coordinator
+        calls this again once the lock is let go.
         """
         if self._is_locked:
             return
@@ -189,7 +191,7 @@ class LibraryLogic(CallbackMixin):
         if key is None or self.current_library_key != key or self._library_manager.is_library_loaded(key):
             return
 
-        if self._load_library(key) is None:
+        if self._load_readable_library(key) is None:
             self._library_manager.clear_current_library()
 
         self.update_status()
@@ -338,23 +340,35 @@ class LibraryLogic(CallbackMixin):
         Returns:
             bool: Whether the library is loaded.
         """
-        if self._is_locked:
-            return False
-
-        match self._library_manager.library_state(library_key):
-            case LibraryState.OUTDATED:
-                self.call(self.on_library_outdated, library_key)
-                return False
-            case LibraryState.MISSING:
-                self._report_missing(library_key)
-                return False
-
-        library_data = self._load_library(library_key)
+        library_data = self._load_readable_library(library_key)
         if library_data is not None:
             self.call(self.on_apply_library_config, library_key, library_data.config)
 
         self.update_status()
         return library_data is not None
+
+    def _load_readable_library(self, library_key: InstructionLibraryKey) -> Optional[InstructionLibraryData]:
+        """Loads the library ``library_key`` names where this build reads it.
+
+        A library another version built is put to the reader through ``on_library_outdated``, and a
+        missing one is reported.
+
+        Returns:
+            Optional[InstructionLibraryData]: The library loaded, or ``None`` where the tree is locked
+                or the library stays unloaded.
+        """
+        if self._is_locked:
+            return None
+
+        match self._library_manager.library_state(library_key):
+            case LibraryState.OUTDATED:
+                self.call(self.on_library_outdated, library_key)
+                return None
+            case LibraryState.MISSING:
+                self._report_missing(library_key)
+                return None
+
+        return self._load_library(library_key)
 
     def _report_missing(self, library_key: InstructionLibraryKey) -> None:
         logger.warning(f"Library file not found for key {library_key}")

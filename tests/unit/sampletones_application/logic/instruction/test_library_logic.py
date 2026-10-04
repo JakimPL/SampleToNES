@@ -672,6 +672,47 @@ class TestTheCatalogFollowingTheConfiguration:
             None,
         )
 
+    def test_a_library_another_build_rewrote_while_away_asks_to_be_rebuilt_on_the_way_back(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        """The way back opens the library as a Load does, so a file another version wrote meanwhile asks
+        for a rebuild, and the folder's choice goes with it."""
+        ours = catalog.config_manager.get_library_directory()
+        key = _opened_library(catalog)
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        _write_library(ours, catalog.config_manager.config.library, EARLIER_VERSION)
+
+        aim_library_directory(catalog.config_manager, ours)
+
+        assert (
+            catalog.outdated,
+            catalog.errors,
+            catalog.manager.is_library_loaded(key),
+            catalog.manager.current_library_key,
+        ) == ([key], [], False, None)
+
+    def test_the_way_back_keeps_the_settings_the_reader_left_with(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        """The way back brings the folder's library back as it stood, and the settings stay as the reader
+        set them while away."""
+        ours = catalog.config_manager.get_library_directory()
+        key = _opened_library(catalog)
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        settings = _other_settings(catalog)
+        catalog.config_manager.apply_library_config(
+            InstructionLibraryKey.create(settings, Window.from_config(settings)),
+            settings,
+        )
+
+        aim_library_directory(catalog.config_manager, ours)
+
+        assert (catalog.manager.is_library_loaded(key), catalog.config_manager.config.library) == (True, settings)
+
     def test_a_library_generated_while_away_is_written_held_nowhere_and_loaded_on_the_way_back(
         self,
         catalog: Catalog,
