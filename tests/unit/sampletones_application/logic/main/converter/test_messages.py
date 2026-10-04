@@ -33,35 +33,37 @@ def _progress(
     )
 
 
-def _item(stage: ReconstructionStage, completed: int) -> ConversionItem:
+def _item(output_name: str, step: Optional[ReconstructionStep] = None) -> ConversionItem:
+    """The item a run reports while it writes the reconstruction ``output_name`` from a kick drum."""
     return ConversionItem(
         source=Path("/audio/kick.wav"),
-        step=ReconstructionStep(stage=stage, completed=completed, total=FRAMES),
+        output_path=Path(f"/reconstructions/{output_name}.stn"),
+        step=step,
     )
 
 
+def _step(stage: ReconstructionStage, completed: int) -> ReconstructionStep:
+    return ReconstructionStep(stage=stage, completed=completed, total=FRAMES)
+
+
 class TestProgressText(BaseTestSuite):
-    """A batch counts the files it has written; a run of one names the reconstruction it is making.
+    """A batch counts the files it has written; a run of one names the reconstruction its job writes.
 
     The reading states which of the two the run is, and carries a stage where the run has one
     reconstruction to name a stage for, so the words follow the unit the run reports in.
     """
 
     def test_a_batch_counts_its_files(self) -> None:
-        assert messages().progress_text(_progress(2, 5), "track") == "Progress: 2/5 files"
+        assert messages().progress_text(_progress(2, 5, item=_item("kick"))) == "Progress: 2/5 files"
 
     def test_a_single_job_names_the_reconstruction_it_writes(self) -> None:
-        assert messages().progress_text(_progress(0, 1), "track") == "Reconstructing track..."
+        """The job's file names the line, which differs from the recording it reads."""
+        assert messages().progress_text(_progress(0, 1, item=_item("track"))) == "Reconstructing track..."
 
     def test_the_status_names_the_stage_and_its_counts(self) -> None:
-        progress = _progress(0, 1, item=_item(ReconstructionStage.MATCHING, 412), partial=0.35)
+        progress = _progress(0, 1, item=_item("kick", _step(ReconstructionStage.MATCHING, 412)), partial=0.35)
 
-        assert messages().progress_text(progress, "kick") == "Reconstructing kick... - matching 412/1100"
-
-    def test_a_run_yet_to_say_anything_still_names_its_recording(self) -> None:
-        progress = _progress(0, 1, item=ConversionItem(source=Path("/audio/kick.wav")))
-
-        assert messages().progress_text(progress, "kick") == "Reconstructing kick..."
+        assert messages().progress_text(progress) == "Reconstructing kick... - matching 412/1100"
 
 
 class TestActionLabel(BaseTestSuite):

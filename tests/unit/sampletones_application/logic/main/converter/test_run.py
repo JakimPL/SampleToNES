@@ -29,11 +29,10 @@ from tests.unit.sampletones_application.logic.main.converter.texts import messag
 WRITTEN: Tuple[Path, ...] = (Path("/reconstructions/kick.stn"),)
 
 
-def _request(reconstruction_name: str, library_state: LibraryState) -> ConversionRequest:
+def _request(library_state: LibraryState) -> ConversionRequest:
     return ConversionRequest(
         config=Config(),
         plan=MagicMock(),
-        reconstruction_name=reconstruction_name,
         library_key=MagicMock(),
         library_state=library_state,
     )
@@ -66,8 +65,8 @@ class Driver:
         """Hands the run a result the conversion service would report to it."""
         self._handler(result)
 
-    def begin(self, reconstruction_name: str = "kick") -> None:
-        request = _request(reconstruction_name, LibraryState.CURRENT)
+    def begin(self) -> None:
+        request = _request(LibraryState.CURRENT)
         self.run.wait(request)
         self.run.begin(request)
 
@@ -84,7 +83,7 @@ class TestWhereARunStands(BaseTestSuite):
         assert (driver.run.phase, driver.run.is_active) == (ConversionPhase.IDLE, False)
 
     def test_a_request_waits_for_the_library_it_converts_against(self, driver: Driver) -> None:
-        driver.run.wait(_request("kick", LibraryState.MISSING))
+        driver.run.wait(_request(LibraryState.MISSING))
 
         assert (driver.run.phase, driver.run.is_active) == (ConversionPhase.WAITING, True)
 
@@ -127,14 +126,20 @@ class TestWhereARunStands(BaseTestSuite):
 
 class TestWhatARunReports(BaseTestSuite):
     def test_a_request_says_it_is_waiting(self, driver: Driver) -> None:
-        driver.run.wait(_request("kick", LibraryState.MISSING))
+        driver.run.wait(_request(LibraryState.MISSING))
 
         assert driver.reports[-1].status_text == "main.converter.message.status_waiting"
 
-    def test_progress_names_the_document_being_written(self, driver: Driver) -> None:
-        driver.begin(reconstruction_name="track")
+    def test_progress_names_the_document_its_job_writes(self, driver: Driver) -> None:
+        driver.begin()
 
-        driver.reports_from_service(ServiceProgress(completed=0, total=1))
+        driver.reports_from_service(
+            ServiceProgress(
+                completed=0,
+                total=1,
+                current_item=ConversionItem(source=Path("/audio/kick.wav"), output_path=Path("/out/track.stn")),
+            )
+        )
 
         assert driver.reports[-1].status_text == "Reconstructing track..."
 
@@ -142,7 +147,11 @@ class TestWhatARunReports(BaseTestSuite):
         driver.begin()
 
         driver.reports_from_service(
-            ServiceProgress(completed=0, total=2, current_item=ConversionItem(source=Path("/audio/snare.wav")))
+            ServiceProgress(
+                completed=0,
+                total=2,
+                current_item=ConversionItem(source=Path("/audio/snare.wav"), output_path=Path("/out/snare.stn")),
+            )
         )
 
         assert driver.reports[-1].input_path == Path("/audio/snare.wav")
@@ -164,7 +173,7 @@ class TestWhatARunReports(BaseTestSuite):
         assert driver.run.phase == ConversionPhase.CANCELING
 
     def test_library_progress_moves_the_bar_while_waiting(self, driver: Driver) -> None:
-        driver.run.wait(_request("kick", LibraryState.MISSING))
+        driver.run.wait(_request(LibraryState.MISSING))
 
         driver.reports_from_service(ServiceStarted(total=1))
         driver.reports_from_service(_library_progress(completed=3, total=4))
@@ -185,7 +194,7 @@ class TestWhatARunReports(BaseTestSuite):
         library_state: LibraryState,
         status_text: str,
     ) -> None:
-        driver.run.wait(_request("kick", library_state))
+        driver.run.wait(_request(library_state))
 
         driver.reports_from_service(_library_progress(completed=1, total=4))
 
@@ -229,7 +238,7 @@ class TestWhatACompletedRunHandsOver(BaseTestSuite):
         driver.run.on_canceled.assert_called_once_with()
 
     def test_a_request_given_up_before_the_service_took_it_cancels_all_the_same(self, driver: Driver) -> None:
-        driver.run.wait(_request("kick", LibraryState.MISSING))
+        driver.run.wait(_request(LibraryState.MISSING))
 
         driver.run.abandon()
 

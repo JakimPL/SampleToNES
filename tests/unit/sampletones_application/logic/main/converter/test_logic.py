@@ -12,8 +12,8 @@ from sampletones_application.constants.sources import SettingsField, SourceKind
 from sampletones_application.logic.instruction.readiness import LibraryReadiness
 from sampletones_application.logic.main.converter.logic import ConverterLogic
 from sampletones_application.logic.main.converter.run import ConversionSuccess
-from sampletones_application.services.conversion.result import ConversionResult
-from sampletones_application.services.result import ServiceError, ServiceSuccess
+from sampletones_application.services.conversion.result import ConversionItem, ConversionResult
+from sampletones_application.services.result import ServiceError, ServiceProgress, ServiceSuccess
 from sampletones_application.view_model.main.converter import (
     ACTIVE_PHASES,
     ConversionPhase,
@@ -24,7 +24,7 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import UNIT_DRIVE
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.library import LibraryState
-from sampletones_core.reconstructions.converter import GroupConversion
+from sampletones_core.reconstructions.converter import ConversionJob, GroupConversion
 from sampletones_core.reconstructions.converter.paths import get_audio_files
 from tests.suite.base import BaseTestSuite
 from tests.suite.language import FakeLanguageManager
@@ -126,6 +126,11 @@ def _card_channels(converter_logic: ConverterLogic) -> FrozenSet[ChannelName]:
     return frozenset(
         channel.channel for channel in converter_logic.source_settings_view.channels if channel.use is Agreement.ALL
     )
+
+
+def _item_of(job: ConversionJob) -> ConversionItem:
+    """The item the conversion service reports for ``job`` while the run works on it."""
+    return ConversionItem(source=job.sources[0], output_path=job.output_path)
 
 
 def _started_plan(converter_logic: ConverterLogic, service: MagicMock) -> GroupConversion:
@@ -511,6 +516,37 @@ class TestWhatACompletedConversionLeaves(BaseTestSuite):
         )
         converter_logic.handle_load_request()
         converter_logic.on_load_directory.assert_called_once_with()
+
+
+class TestTheLineARunOfOneShows(BaseTestSuite):
+    """A run with one job names the reconstruction that job writes, whatever the setup is named after."""
+
+    def test_a_folder_left_with_one_job_names_its_recording(
+        self,
+        converter_logic: ConverterLogic,
+        service: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """A rerun over a folder writes only the recordings still to be written, so a folder left with
+        one names that recording, and the folder its destination names stays out of the line."""
+        loops = tmp_path / "loops"
+        loops.mkdir()
+        for name in ("bass.wav", "lead.wav"):
+            (loops / name).touch()
+        converter_logic.gather_folder(loops, get_audio_files(loops, sort=True))
+        plan = _started_plan(converter_logic, service)
+        config: Config = service.start.call_args.args[0]
+        written, still_to_write = plan.jobs(config)
+        written.output_path.parent.mkdir(parents=True)
+        written.output_path.touch()
+        (job,) = plan.jobs(config)
+
+        _reports(service, ServiceProgress(completed=0, total=1, current_item=_item_of(job)))
+
+        assert (job, _view(converter_logic).status_text) == (
+            still_to_write,
+            TEXTS["main.converter.template.single_progress_template"].format(job.output_path.stem),
+        )
 
 
 class TestFailureReturnsToIdle(BaseTestSuite):

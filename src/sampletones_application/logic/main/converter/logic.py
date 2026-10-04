@@ -408,7 +408,6 @@ class ConverterLogic(CallbackMixin):
             ConversionRequest(
                 config=config,
                 plan=plan,
-                reconstruction_name=self._state.destination.reconstruction_name,
                 library_key=library_key,
                 library_state=self.query(
                     self.library_state,

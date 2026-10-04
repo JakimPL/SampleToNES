@@ -24,14 +24,6 @@ class Destination:
         """The destination a converter opens with, before a reader has picked anything."""
         return cls(input_path=None, output_path=None, is_file=True)
 
-    @property
-    def reconstruction_name(self) -> str:
-        """The document a single job writes, which is what a run of one is making."""
-        if self.output_path is not None:
-            return self.output_path.stem
-
-        return self.input_path.stem if self.input_path is not None else ""
-
     def aimed_at(self, config: Config, plan: Optional[ConversionPlan]) -> Self:
         """The destination the plan a run amounts to names.
 
