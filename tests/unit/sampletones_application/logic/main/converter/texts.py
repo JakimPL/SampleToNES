@@ -1,4 +1,4 @@
-from typing import Dict, Final
+from typing import Dict, Final, Mapping
 
 from sampletones_application.logic.main.converter.messages import ConverterMessages
 from tests.suite.language import FakeLanguageManager
@@ -23,4 +23,9 @@ TEXTS: Final[Dict[str, str]] = {
 
 def messages() -> ConverterMessages:
     """The converter's phrases over a language manager stating the ones a test reads."""
-    return ConverterMessages(FakeLanguageManager(TEXTS))  # type: ignore[arg-type]
+    return messages_reading(TEXTS)
+
+
+def messages_reading(texts: Mapping[str, str]) -> ConverterMessages:
+    """The converter's phrases over a language manager answering from ``texts`` as they stand."""
+    return ConverterMessages(FakeLanguageManager(texts))  # type: ignore[arg-type]

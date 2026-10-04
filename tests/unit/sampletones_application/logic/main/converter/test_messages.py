@@ -13,7 +13,7 @@ from sampletones_application.view_model.main.converter import ConversionPhase
 from sampletones_core.reconstructions.stage import ReconstructionStage
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
-from tests.unit.sampletones_application.logic.main.converter.texts import TEXTS, messages
+from tests.unit.sampletones_application.logic.main.converter.texts import TEXTS, messages, messages_reading
 
 FRAMES: Final[int] = 1100
 
@@ -64,6 +64,26 @@ class TestProgressText(BaseTestSuite):
         progress = _progress(0, 1, item=_item("kick", _step(ReconstructionStage.MATCHING, 412)), partial=0.35)
 
         assert messages().progress_text(progress) == "Reconstructing kick... - matching 412/1100"
+
+
+class TestTextAtThePointOfUse(BaseTestSuite):
+    """Every phrase reads the language file when it is shown, so a language chosen mid-run reaches
+    the next reading."""
+
+    def test_a_status_line_reads_the_text_standing_when_shown(self) -> None:
+        texts = dict(TEXTS)
+        converter_messages = messages_reading(texts)
+        texts["main.converter.message.status_idle"] = "Ready"
+
+        assert converter_messages.idle == "Ready"
+
+    def test_a_stage_reads_the_text_standing_when_shown(self) -> None:
+        texts = dict(TEXTS)
+        converter_messages = messages_reading(texts)
+        texts["main.converter.message.stage_matching"] = "comparing"
+        progress = _progress(0, 1, item=_item("kick", _step(ReconstructionStage.MATCHING, 412)))
+
+        assert converter_messages.progress_text(progress) == "Reconstructing kick... - comparing 412/1100"
 
 
 class TestActionLabel(BaseTestSuite):
