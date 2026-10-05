@@ -337,9 +337,10 @@ fundamental the harmonics below it agreed on. This places the note **within a te
 whole range.
 
 The reading also says how much of the frame stands behind it: the share of the column's energy its
-harmonics hold. A pitched frame reads around 0.5, a frame sharing the channel with another tone around
-0.3, and noise around 0.04. One threshold therefore separates the frames worth bending from the frames
-with no pitch to read.
+harmonics hold, with every bin measured on the scale the features use. On that scale a bass takes the
+share its level gives it in every register, so a melody over a low bass keeps its reading. A pitched frame
+reads around 0.6, a frame sharing the channel with another tone around 0.3, and noise around 0.02. One
+threshold therefore separates the frames worth bending from the frames with no pitch to read.
 
 ### 6.2 Landing the note, and holding it
 
