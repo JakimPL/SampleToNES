@@ -360,7 +360,8 @@ chases. The per-frame proposals are therefore settled by a change-penalized walk
 Viterbi decoder uses to settle a note contour. The cost of a bend is how far it is from that frame's
 reading, plus a toll on changing at all. The states a frame may take are the bends its neighborhood
 proposed, together with no bend. That keeps the walk to a handful of states even where a note owns tens of
-dividers.
+dividers. A bend counts divider steps from its own note, so each note's frames are settled on their own: a
+frame that reads nothing keeps a bend its own note read, and a new note starts from its own reading.
 
 ### 6.3 What it costs, and what it leaves alone
 

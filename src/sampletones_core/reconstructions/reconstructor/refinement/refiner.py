@@ -41,7 +41,8 @@ class PitchRefiner:
 
     A frame whose sound is not pitched enough for that reading to mean anything makes no proposal,
     and the run of bends is then settled against a toll on changing, so a stream holds a tuning
-    rather than chasing one.
+    rather than chasing one. A bend counts divider steps from its own note, so each note's frames are
+    settled on their own, and a frame that reads nothing keeps a bend its own note read.
 
     Which recordings are carried, and on which channels, each stem entry states for itself, so a
     channel a stem leaves alone keeps the note the matching chose.
@@ -124,11 +125,16 @@ class PitchRefiner:
             self._proposal(generator, channel_name, candidate, frame, stem_ids, readers)
             for frame, candidate in enumerate(stream)
         ]
-        bends = smoothed(
-            proposals,
-            window=settings.window,
-            change_weight=settings.change_weight,
-        )
+        bends: List[int] = []
+        for run in _note_runs(stream):
+            bends.extend(
+                smoothed(
+                    [proposals[frame] for frame in run],
+                    window=settings.window,
+                    change_weight=settings.change_weight,
+                )
+            )
+
         return [self._bent(candidate, bend) for candidate, bend in zip(stream, bends)]
 
     def _proposal(
@@ -180,3 +186,24 @@ class PitchRefiner:
             return candidate
 
         return replace(candidate, instruction=instruction.model_copy(update={"detune": bend}))
+
+
+def _note_runs(stream: List[ScoredCandidate]) -> List[range]:
+    """The stream's frames cut wherever the note they sound changes, a rest standing as a note of its own."""
+    runs: List[range] = []
+    start = 0
+    for frame in range(1, len(stream) + 1):
+        if frame == len(stream) or _note(stream[frame]) != _note(stream[start]):
+            runs.append(range(start, frame))
+            start = frame
+
+    return runs
+
+
+def _note(candidate: ScoredCandidate) -> Optional[int]:
+    """The note one frame sounds, which a bend counts its divider steps from, and nothing where it rests."""
+    instruction = candidate.instruction
+    if not isinstance(instruction, (PulseInstruction, TriangleInstruction)) or not instruction.on:
+        return None
+
+    return instruction.pitch

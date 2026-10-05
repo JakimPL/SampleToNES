@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Final, List, Tuple
+from typing import Dict, Final, List, Optional, Tuple
 
 import numpy as np
 import pytest
@@ -8,7 +8,8 @@ from sampletones_core.configs import Config
 from sampletones_core.configs.generation import GenerationConfig
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.generators import get_generators_by_channels
+from sampletones_core.fft.instantaneous import FundamentalReading
+from sampletones_core.generators import PulseGenerator, get_generators_by_channels
 from sampletones_core.instructions import PulseInstruction, TriangleInstruction
 from sampletones_core.reconstructions.reconstructor.contribution import Contribution
 from sampletones_core.reconstructions.reconstructor.matching import ScoredCandidate
@@ -23,6 +24,8 @@ from tests.suite.case import BaseRegularTestCase
 
 TONES: Final[List[ChannelName]] = [ChannelName.PULSE1, ChannelName.TRIANGLE]
 PITCH: Final[int] = 60
+NEXT_PITCH: Final[int] = 62
+SILENT_FRAMES: Final[int] = 2
 VOLUME: Final[int] = 12
 FRAMES: Final[int] = 4
 BEND: Final[int] = 3
@@ -123,6 +126,52 @@ class TestWhichChannelsAStemCarries(BaseTestSuite):
                 assert any(bends), f"{channel_name} was named and stayed at its note"
             else:
                 assert not any(bends), f"{channel_name} was left out and moved anyway"
+
+
+class TestEachNoteHoldsItsOwnBend:
+    """A bend counts divider steps from its own note, so a note's frames are settled on their own."""
+
+    @staticmethod
+    def _two_notes(config: Config, monkeypatch: pytest.MonkeyPatch) -> List[int]:
+        """The bends of a note that reads nothing followed by one that reads ``BEND``."""
+        sounding = PulseGenerator(config).sounds_at(NEXT_PITCH, BEND)
+
+        class SilentThenBent:
+            def __init__(self, recording: np.ndarray, sample_rate: int, hop_length: int) -> None:
+                del recording, sample_rate, hop_length
+
+            def at(self, frame: int, reference: float) -> Optional[FundamentalReading]:
+                del reference
+                return FundamentalReading(frequency=sounding, confidence=1.0) if frame >= SILENT_FRAMES else None
+
+        monkeypatch.setattr(refiner, "InstantaneousPitch", SilentThenBent)
+        pitches = [PITCH] * SILENT_FRAMES + [NEXT_PITCH] * FRAMES
+        stream = [
+            ScoredCandidate(
+                instruction=PulseInstruction(on=True, pitch=pitch, volume=VOLUME, duty_cycle=2),
+                cost=0.0,
+                contribution=Contribution.silence(1, 1),
+            )
+            for pitch in pitches
+        ]
+        stems = _stems(StemEntry(id=STEM_A, settings=StemSettings(channels=TONES, bends=list(TONES))))
+        refined = PitchRefiner(config=config, channels=get_generators_by_channels(config, TONES), stems=stems)
+        streams = refined.refine(
+            {ChannelName.PULSE1: stream},
+            {ChannelName.PULSE1: [STEM_A] * len(pitches)},
+            {STEM_A: _recording(config, ChannelName.PULSE1)},
+        )
+        return _bends(streams, ChannelName.PULSE1)
+
+    def test_a_note_that_reads_nothing_stays_at_its_note(self, config: Config, monkeypatch: pytest.MonkeyPatch) -> None:
+        bends = self._two_notes(config, monkeypatch)
+
+        assert bends[:SILENT_FRAMES] == [0] * SILENT_FRAMES
+
+    def test_the_next_note_takes_the_bend_it_reads(self, config: Config, monkeypatch: pytest.MonkeyPatch) -> None:
+        bends = self._two_notes(config, monkeypatch)
+
+        assert bends[SILENT_FRAMES:] == [BEND] * FRAMES
 
 
 class TestWhatTheRefinementReadsPerStem:
