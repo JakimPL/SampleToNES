@@ -25,6 +25,9 @@ BASS_SECONDS: Final[float] = 2.0
 BASS_LEVEL: Final[float] = 0.3
 LOW_BASS_FREQUENCY: Final[float] = 36.71
 SHARE_TOLERANCE: Final[float] = 0.1
+BASS_FREQUENCY: Final[float] = 65.41
+BESIDE_FIFTH_HARMONIC: Final[float] = 349.23
+ON_FOURTH_HARMONIC: Final[float] = 4 * BASS_FREQUENCY
 
 
 def _harmonic(frequency: float, seed: int = 0, seconds: float = SECONDS) -> np.ndarray:
@@ -48,6 +51,20 @@ def _bass(frequency: float, level: float) -> np.ndarray:
     time = np.arange(int(SAMPLE_RATE * BASS_SECONDS)) / SAMPLE_RATE
     audio: np.ndarray = (level * np.sin(2 * np.pi * frequency * time)).astype(np.float32)
     return audio
+
+
+def _triangle(frequency: float) -> np.ndarray:
+    """A triangle wave, whose odd harmonics leave every other harmonic bin to the voices around it."""
+    phase = frequency * np.arange(int(SAMPLE_RATE * BASS_SECONDS)) / SAMPLE_RATE
+    audio: np.ndarray = (BASS_LEVEL * (1.0 - 4.0 * np.abs((phase % 1.0) - 0.5))).astype(np.float32)
+    return audio
+
+
+def _bass_cents_under(melody_frequency: float) -> float:
+    """Where a triangle bass is read, in cents from where it stands, under a melody note."""
+    melody = _harmonic(melody_frequency, seconds=BASS_SECONDS)
+    readings = _readings(_triangle(BASS_FREQUENCY) + melody, BASS_FREQUENCY)
+    return _median_cents(readings, BASS_FREQUENCY)
 
 
 def _melody_share(bass: np.ndarray) -> float:
@@ -116,6 +133,19 @@ class TestTheTrianglesLowestOctave:
             for reading in readings
             if reading is not None
         )
+
+
+class TestAnotherVoiceBesideTheHarmonics:
+    """A harmonic reads where its partial stands, so a partial another voice sounds a bin away from one
+    of a note's harmonics would pull the note's reading toward it."""
+
+    def test_a_voice_beside_a_harmonic_leaves_the_reading_in_place(self) -> None:
+        assert abs(_bass_cents_under(BESIDE_FIFTH_HARMONIC)) < CENT_TOLERANCE
+
+    def test_a_voice_on_a_harmonic_agrees_with_the_note(self) -> None:
+        """The triangle has no fourth harmonic, so the melody's fundamental fills that bin alone, at the
+        frequency the note puts it."""
+        assert abs(_bass_cents_under(ON_FOURTH_HARMONIC)) < CENT_TOLERANCE
 
 
 class TestHowMuchOfAFrameStandsBehindItsReading:

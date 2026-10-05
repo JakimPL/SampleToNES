@@ -4,12 +4,14 @@ from typing import Final, Optional
 import numpy as np
 
 from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
+from sampletones_shared.constants.music import OCTAVE_SEMITONES
 
 from .cqt.frequencies import calculate_cqt_frequencies
 from .cqt.normalization import normalize_cqt_energy
 from .cqt.transform import calculate_cqt_frames
 
 HARMONIC_COUNT: Final[int] = 5
+HARMONIC_ROOM: Final[float] = 2.0 ** (1.0 / (2 * OCTAVE_SEMITONES))
 MINIMUM_COLUMN_ENERGY: Final[float] = 1e-20
 
 
@@ -39,7 +41,9 @@ class InstantaneousPitch:
     bins carry the note's harmonics, and each harmonic's estimate is divided back down and weighted
     by the energy standing behind it. The harmonics are read in order, each one settled against the
     fundamental the ones below it agreed on, which is what keeps an upper harmonic on the right side
-    of the whole turn its phase states the reading to within.
+    of the whole turn its phase states the reading to within. A later harmonic counts where its partial
+    stands within half a semitone of where that fundamental puts it, the room a note owns, so a
+    partial another voice sounds beside it stays out of the reading.
 
     The confidence measures every bin on the scale the features use, its energy divided by the
     length of its wavelet. A bass then takes the share of a frame its level gives it in every
@@ -103,7 +107,11 @@ class InstantaneousPitch:
             if bin_index is None:
                 continue
 
-            partial = self._partial_frequency(bin_index, opening, closing, running * harmonic)
+            expected = running * harmonic
+            partial = self._partial_frequency(bin_index, opening, closing, expected)
+            if weight > 0.0 and not expected / HARMONIC_ROOM <= partial <= expected * HARMONIC_ROOM:
+                continue
+
             energy = float(self._magnitudes[bin_index, opening]) ** 2
             weighted += energy * partial / harmonic
             weight += energy

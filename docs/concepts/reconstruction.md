@@ -333,8 +333,9 @@ and the spectrum discards. A partial standing between two bin centers still adva
 rate. Comparing that advance across two columns against the rate the bin itself turns at gives the
 partial's frequency far more finely than the bins are spaced. The reading takes the first few harmonics of
 the note the decoder chose. It weights each by the energy behind it and settles each against the
-fundamental the harmonics below it agreed on. This places the note **within a tenth of a cent** across the
-whole range.
+fundamental the harmonics below it agreed on. A harmonic counts where its partial stands within half a
+semitone of where that fundamental puts it, the room a note owns, so a partial another voice sounds a bin
+away stays out of the reading. This places the note **within a tenth of a cent** across the whole range.
 
 The reading also says how much of the frame stands behind it: the share of the column's energy its
 harmonics hold, with every bin measured on the scale the features use. On that scale a bass takes the
