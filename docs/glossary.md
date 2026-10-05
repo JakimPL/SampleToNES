@@ -20,7 +20,8 @@ and the classes that implement it.
 ### Pulse (square)
 
 A channel that plays a square wave. Its duty cycle is selectable and it has 15 volume levels. The chip
-has two independent pulse channels: `pulse1` and `pulse2`.
+has two independent pulse channels: `pulse1` and `pulse2`. The chip silences a pulse whose
+[divider](#divider) is below 8, so a bend that goes higher than that at the top notes goes quiet.
 
 ### Triangle
 
