@@ -827,7 +827,12 @@ class MainTabCoordinator:
     def is_converter_panel_visible(self) -> bool:
         return self._converter_panel.is_visible()
 
-    def refresh_converter_view(self) -> None:
+    def follow_busy_state(self) -> None:
+        """Re-applies the converter's view to the busy state after another operation starts or ends.
+
+        The converter's own view changes already reach the busy state through
+        ``on_busy_state_changed``, so this answers the edges of other operations alone.
+        """
         self._converter_logic.refresh_view()
 
     def _take_up_path(self, path: Path) -> None:

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Final, Tuple
+from typing import Final, Tuple
 
 from sampletones_application.categories.estimate import time_estimation
 from sampletones_application.categories.manager import LanguageManager
@@ -21,20 +21,30 @@ class ConverterMessages:
 
     def __init__(self, language_manager: LanguageManager) -> None:
         self._language_manager = language_manager
-        self.idle: str = language_manager["main.converter.message.status_idle"]
-        self.waiting: str = language_manager["main.converter.message.status_waiting"]
-        self._generating_library: str = language_manager["main.converter.message.status_generating_library"]
-        self._updating_library: str = language_manager["main.converter.message.status_updating_library"]
-        self.canceling: str = language_manager["main.converter.message.status_canceling"]
-        self.canceled: str = language_manager["main.converter.message.status_canceled"]
-        self.completed: str = language_manager["main.converter.message.status_reconstruction_completed"]
-        self.failed: str = language_manager["main.converter.message.status_error"]
-        self._stages: Dict[ReconstructionStage, str] = {
-            ReconstructionStage.LOADING: language_manager["main.converter.message.stage_loading"],
-            ReconstructionStage.MATCHING: language_manager["main.converter.message.stage_matching"],
-            ReconstructionStage.DECODING: language_manager["main.converter.message.stage_decoding"],
-            ReconstructionStage.GATHERING: language_manager["main.converter.message.stage_gathering"],
-        }
+
+    @property
+    def idle(self) -> str:
+        return self._language_manager["main.converter.message.status_idle"]
+
+    @property
+    def waiting(self) -> str:
+        return self._language_manager["main.converter.message.status_waiting"]
+
+    @property
+    def canceling(self) -> str:
+        return self._language_manager["main.converter.message.status_canceling"]
+
+    @property
+    def canceled(self) -> str:
+        return self._language_manager["main.converter.message.status_canceled"]
+
+    @property
+    def completed(self) -> str:
+        return self._language_manager["main.converter.message.status_reconstruction_completed"]
+
+    @property
+    def failed(self) -> str:
+        return self._language_manager["main.converter.message.status_error"]
 
     def progress_text(self, progress: ServiceProgress[ConversionItem]) -> str:
         """What the run is doing, how far it has come, and how long it has left.
@@ -54,9 +64,9 @@ class ConverterMessages:
         """The line a run shows while its library is prepared: an update of a library another
         version built, and a generation of a missing one."""
         if state is LibraryState.OUTDATED:
-            return self._updating_library
+            return self._language_manager["main.converter.message.status_updating_library"]
 
-        return self._generating_library
+        return self._language_manager["main.converter.message.status_generating_library"]
 
     def action_label(
         self,
@@ -104,7 +114,18 @@ class ConverterMessages:
             return ""
 
         return self._language_manager["main.converter.template.stage_template"].format(
-            stage=self._stages[step.stage],
+            stage=self._stage_name(step.stage),
             completed=step.completed,
             total=step.total,
         )
+
+    def _stage_name(self, stage: ReconstructionStage) -> str:
+        match stage:
+            case ReconstructionStage.LOADING:
+                return self._language_manager["main.converter.message.stage_loading"]
+            case ReconstructionStage.MATCHING:
+                return self._language_manager["main.converter.message.stage_matching"]
+            case ReconstructionStage.DECODING:
+                return self._language_manager["main.converter.message.stage_decoding"]
+            case ReconstructionStage.GATHERING:
+                return self._language_manager["main.converter.message.stage_gathering"]

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Final, List
+from typing import Any, Callable, Dict, Final, List
 
 import numpy as np
 import pytest
@@ -22,15 +22,20 @@ from sampletones_core.library import (
 from sampletones_core.reconstructions import Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from sampletones_tools.synthesis.oscillators.walk_noise import WalkNoiseOscillator
 from tests.suite.analysis import analyzed_config
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 NOISE_ONLY: Final[List[ChannelName]] = [ChannelName.NOISE]
-EVERY_CHANNEL: Final[List[ChannelName]] = [ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE]
+EVERY_CHANNEL: Final[List[ChannelName]] = ChannelName.items()
+LIBRARY_CHANNELS: Final[List[ChannelName]] = [ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE]
 TONAL_PITCH: Final[int] = 69
 TONAL_NEIGHBORHOOD: Final[range] = range(TONAL_PITCH - 2, TONAL_PITCH + 3)
-WHITE_NOISE_SEED: Final[int] = 11
+NOISE_RECORDING_SEED: Final[int] = 11
 WHITE_NOISE_DEVIATION: Final[float] = 0.3
-WHITE_NOISE_SECONDS: Final[float] = 1.0
+NOISE_SECONDS: Final[float] = 1.0
+DARK_NOISE_PEAK: Final[float] = 0.9
 EDGE_FRAMES: Final[int] = 1
 QUIET_VOLUMES: Final[range] = range(1, 4)
 LOUD_VOLUMES: Final[range] = range(12, 16)
@@ -44,10 +49,19 @@ HISS_DEVIATION: Final[float] = BURST_DEVIATION / 11.0
 HISS: Final[slice] = slice(BURST_FRAMES + GAP_FRAMES, BURST_FRAMES + GAP_FRAMES + HISS_FRAMES)
 
 
+NoiseBuilder = Callable[[np.ndarray, np.random.Generator], np.ndarray]
+
+
 @dataclass(frozen=True)
 class Converted:
     hiss_frames: np.ndarray
     instructions: List[InstructionUnion]
+
+
+@dataclass(frozen=True)
+class Analysis:
+    config: Config
+    library: InstructionLibrary
 
 
 def _config(method: SpectrumMethod) -> Config:
@@ -90,12 +104,16 @@ def _burst_then_hiss(path: Path, config: Config) -> Path:
 
 
 def _every_channel_library(config: Config) -> InstructionLibrary:
-    """Every noise instruction beside the notes around one pitch, so a tonal answer stands within reach."""
+    """Every noise instruction beside the notes around one pitch, so a tonal answer stands within reach.
+
+    Both pulse channels play the pulse instructions, so the first pulse channel's instructions
+    serve the second.
+    """
     window = Window.from_config(config)
     extractor = get_feature_extractor(config, window)
 
     data: Dict[InstructionUnion, InstructionLibraryFragment[Any]] = {}
-    for channel_name, generator in get_generators_by_channels(config, EVERY_CHANNEL).items():
+    for channel_name, generator in get_generators_by_channels(config, LIBRARY_CHANNELS).items():
         for instruction in generator.get_possible_instructions():
             if channel_name != ChannelName.NOISE and instruction.on and instruction.pitch not in TONAL_NEIGHBORHOOD:
                 continue
@@ -107,12 +125,18 @@ def _every_channel_library(config: Config) -> InstructionLibrary:
     return library
 
 
-def _white_noise(path: Path, config: Config) -> Path:
-    sample_rate = config.library.sample_rate
-    count = int(sample_rate * WHITE_NOISE_SECONDS)
-    audio = np.random.default_rng(WHITE_NOISE_SEED).normal(0.0, WHITE_NOISE_DEVIATION, count)
+def _white_noise(time: np.ndarray, generator: np.random.Generator) -> np.ndarray:
+    return generator.normal(0.0, WHITE_NOISE_DEVIATION, time.shape[0])
 
-    write_wave(path, sample_rate, audio)
+
+def _dark_noise(time: np.ndarray, generator: np.random.Generator) -> np.ndarray:
+    return DARK_NOISE_PEAK * WalkNoiseOscillator(kind="walk_noise").render(time, generator=generator)
+
+
+def _noise_recording(path: Path, config: Config, noise: NoiseBuilder) -> Path:
+    sample_rate = config.library.sample_rate
+    time = np.arange(int(sample_rate * NOISE_SECONDS)) / sample_rate
+    write_wave(path, sample_rate, noise(time, np.random.default_rng(NOISE_RECORDING_SEED)))
     return path
 
 
@@ -142,15 +166,43 @@ def converted(
     )
 
 
-class TestWhiteNoise:
-    def test_white_noise_sounds_on_the_noise_channel(self, tmp_path: Path) -> None:
-        """
-        White noise resembles the noise channel's contribution on average, so the noise channel
-        carries it through.
-        """
-        config = Config()
-        path = _white_noise(tmp_path / "white.wav", config)
-        reconstructor = Reconstructor(config, frozenset(EVERY_CHANNEL), library=_every_channel_library(config))
+@pytest.fixture(
+    scope="module",
+    params=list(SpectrumMethod),
+    ids=lambda method: method.value,
+)
+def every_channel_analysis(request: pytest.FixtureRequest) -> Analysis:
+    """Every channel's library under one spectrum method, shared by every noise reconstructed with it."""
+    config = _config(request.param)
+    return Analysis(config=config, library=_every_channel_library(config))
+
+
+class TestNoiseSoundsOnTheNoiseChannel(BaseTestSuite):
+    """
+    A recording built from noise reconstructs with the noise channel sounding, with every channel
+    offered and under every spectrum method. Noise resembles the noise channel's contribution on
+    average, so the noise channel carries it through, whether the noise is white or dark.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        noise: NoiseBuilder
+
+    test_cases = (
+        TestCase(label="white", noise=_white_noise),
+        TestCase(label="dark", noise=_dark_noise),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_noise_channel_sounds(
+        self,
+        test_case: TestCase,
+        every_channel_analysis: Analysis,
+        tmp_path: Path,
+    ) -> None:
+        config = every_channel_analysis.config
+        path = _noise_recording(tmp_path / f"{test_case.label}.wav", config, test_case.noise)
+        reconstructor = Reconstructor(config, frozenset(EVERY_CHANNEL), library=every_channel_analysis.library)
 
         reconstruction = reconstructor.reconstruct(
             [path], StemsConfig.single_entry(StemSettings(channels=EVERY_CHANNEL, bends=[]))
