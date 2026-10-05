@@ -411,6 +411,9 @@ be shown and played on a common scale.
   and the coefficient is one global scalar. Material whose *useful* content spans a wider range than that
   cannot be fully captured. A long crescendo and a very quiet passage under a loud one are examples.
   Content far below the working level falls under the quietest playable note and is rendered as silence.
+- **The triangle's fixed level.** The triangle plays at one volume. A bass a few decibels quieter than that
+  level is left out, and the calibration referees score the result closer to the recording than the same
+  conversion with the bass played too loud. A bass near that level is played.
 - **CQT time resolution.** Constant-Q analysis needs long windows at low frequencies, so low-pitched
   transients are smeared in time under `cqt`. `fft` and `logfft` localize time better at the cost of
   low-frequency resolution.
