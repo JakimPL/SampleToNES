@@ -8,6 +8,7 @@ APU_CLOCK: Final[float] = 1789773.0
 TIMER_CYCLE_DIVIDER: Final[int] = 16
 MIN_TIMER: Final[int] = 1
 MIN_SOUNDING_PULSE_TIMER: Final[int] = 8
+MIN_SOUNDING_TRIANGLE_TIMER: Final[int] = 2
 MAX_TIMER: Final[int] = 0x7FF
 MIN_PITCH: Final[int] = 33
 MAX_PITCH: Final[int] = 119
