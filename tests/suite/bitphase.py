@@ -1,5 +1,6 @@
 import gzip
 import json
+import math
 from dataclasses import dataclass
 from typing import Any, Dict, Final, List, Optional, Tuple
 
@@ -11,6 +12,7 @@ BITPHASE_DEFAULT_PATTERN_LENGTH: Final[int] = 64
 BITPHASE_DEFAULT_ROW_COUNT: Final[int] = 64
 BITPHASE_DEFAULT_INTERRUPT_FREQUENCY: Final[int] = 50
 BITPHASE_DEFAULT_INITIAL_SPEED: Final[int] = 3
+BITPHASE_SPEED_CLOCK_TEMPO: Final[int] = 0
 BITPHASE_DEFAULT_CHIP_VARIANT: Final[str] = "NTSC"
 BITPHASE_DEFAULT_A4_TUNING: Final[float] = 440.0
 BITPHASE_DEFAULT_CHIP_TYPE: Final[str] = "ay"
@@ -81,6 +83,8 @@ BITPHASE_NOISE_TIMERS: Final[Tuple[int, ...]] = (
 
 MIN_INITIAL_SPEED: Final[int] = 1
 MAX_INITIAL_SPEED: Final[int] = 255
+MIN_TEMPO: Final[int] = 0
+MAX_TEMPO: Final[int] = 255
 MIN_PATTERN_LENGTH: Final[int] = 1
 MAX_PATTERN_LENGTH: Final[int] = 256
 
@@ -186,6 +190,7 @@ class LoadedSong:
     interrupt_frequency: int
     a4_tuning_hz: float
     initial_speed: int
+    tempo: int
     default_pattern_length: int
     tuning_table: List[int]
     patterns: List[LoadedPattern]
@@ -207,7 +212,7 @@ def sample_index(tick: int, length: int, loop: int) -> int:
 
     An instrument macro and a table each advance one entry per tick and circle once they run
     out, from the loop entry where it stands among them and from the first otherwise. Read from
-    ``sampleInstrumentMacroIndex`` and ``processTables`` of the tracker at commit ``265ff70``.
+    ``sampleInstrumentMacroIndex`` and ``processTables`` of the tracker at commit ``aa91809``.
 
     Args:
         tick: Ticks since the note started.
@@ -260,13 +265,14 @@ def sounded_period(
 def noise_register(note_index: int) -> int:
     """The period register value the noise channel writes for the note it reaches, as the engine resolves it.
 
-    The driver counts the note index down from the top of each cycle of sixteen, and the register
-    selects the timer from ``BITPHASE_NOISE_TIMERS``, the NTSC table fastest first. Read from
+    The note it reaches is the base note, its table step and the instrument's tone offset added
+    together. The driver counts that index down from the top of each cycle of sixteen, and the
+    register selects the timer from ``BITPHASE_NOISE_TIMERS``, the NTSC table fastest first. Read from
     ``resolveNesNoisePeriodFromSemitoneOffset`` of ``nes-audio-driver.js``, the ``$400E`` write of
-    ``nes-apu-engine.js`` and ``wavlen_table`` of ``nsfplug/nes_dmc.c`` at commit ``265ff70``.
+    ``nes-apu-engine.js`` and ``wavlen_table`` of ``nsfplug/nes_dmc.c`` at commit ``aa91809``.
 
     Args:
-        note_index: The note the channel reaches, its table step added.
+        note_index: The note the channel reaches, its table step and tone offset added.
 
     Returns:
         int: The value the period register holds.
@@ -282,7 +288,7 @@ def reached_note(
 ) -> int:
     """The note a channel reaches on a tick of a sounding note, held within the tuning table.
 
-    Read from ``processTables`` of ``tracker-pattern-processor.js`` at commit ``265ff70``.
+    Read from ``processTables`` of ``tracker-pattern-processor.js`` at commit ``aa91809``.
 
     Args:
         tuning_table: The song's period per note index.
@@ -302,7 +308,7 @@ def pattern_volume(carried: int, stored: int) -> int:
     A stored ``-1`` silences the channel, a level above zero replaces the one it carries, and any
     other value leaves the carried level alone. A channel opens at the full level. Read from
     ``_processVolume`` of ``tracker-pattern-processor.js`` and ``nes-state.js`` of the tracker at
-    commit ``265ff70``. The triangle sounds a full-level instrument while this level is above zero,
+    commit ``aa91809``. The triangle sounds a full-level instrument while this level is above zero,
     since the driver enables it on the PT3 product of the two, which for a full instrument is the
     pattern level itself.
 
@@ -456,6 +462,19 @@ def _initial_speed(data: Dict[str, Any]) -> int:
     return BITPHASE_DEFAULT_INITIAL_SPEED
 
 
+def _tempo(data: Dict[str, Any]) -> int:
+    """The tempo a song plays at, as ``reconstructSong`` of ``file-import.ts`` reads it.
+
+    The loader floors a tempo within its range and plays any other value, a missing one included,
+    on the speed clock, which ``song-timeline.js`` runs while the tempo is zero.
+    """
+    tempo = data.get("tempo")
+    if isinstance(tempo, (int, float)) and MIN_TEMPO <= tempo <= MAX_TEMPO:
+        return math.floor(tempo)
+
+    return BITPHASE_SPEED_CLOCK_TEMPO
+
+
 def _default_pattern_length(data: Dict[str, Any]) -> int:
     """The line count a pattern added to the song takes, within the range Bitphase keeps."""
     length = data.get("defaultPatternLength")
@@ -473,6 +492,7 @@ def _song(data: Dict[str, Any], labels: List[str]) -> LoadedSong:
         interrupt_frequency=data.get("interruptFrequency", BITPHASE_DEFAULT_INTERRUPT_FREQUENCY),
         a4_tuning_hz=data.get("a4TuningHz", BITPHASE_DEFAULT_A4_TUNING),
         initial_speed=_initial_speed(data),
+        tempo=_tempo(data),
         default_pattern_length=_default_pattern_length(data),
         tuning_table=list(data.get("tuningTable") or []),
         patterns=[_pattern(pattern, labels) for pattern in data.get("patterns") or []],
@@ -507,7 +527,7 @@ def parse_btp(data: bytes, channel_labels: List[str]) -> LoadedProject:
 
 
 def note_value(note: LoadedNote) -> int:
-    """The note index a pattern cell names, as ``_processNote`` of the tracker at commit ``265ff70`` reads it."""
+    """The note index a pattern cell names, as ``_processNote`` of the tracker at commit ``aa91809`` reads it."""
     return note.name - BITPHASE_FIRST_NOTE_NAME + (note.octave - BITPHASE_FIRST_OCTAVE) * BITPHASE_NOTE_RANGE
 
 
@@ -523,7 +543,8 @@ def _next_step(position: int, table: LoadedTable) -> int:
 def row_speeds(document: LoadedProject) -> List[List[int]]:
     """The ticks each row of every pattern lasts, the order played once through as the engine reads it.
 
-    The song starts at its initial speed, and a speed effect sets the speed from its row on, the last
+    The rows run on the speed clock, which ``advancePosition`` of ``song-timeline.js`` keeps while the
+    song's tempo is zero. The song starts at its initial speed, and a speed effect sets the speed from its row on, the last
     one on a row winning across its channels, as ``readLastSpeedCommandOnRow`` of
     ``playback-speed.ts`` reads it. Every speed the export states rides a speed effect's own
     parameter.
@@ -566,7 +587,7 @@ class _ChannelReplay:
         """Moves the channel onto one row: its note, then its table, then its effects.
 
         Read from ``parsePatternRow``, ``_processNote``, ``_processTable`` and
-        ``_initChannelOrnamentPosition`` of ``tracker-pattern-processor.js`` at commit ``265ff70``.
+        ``_initChannelOrnamentPosition`` of ``tracker-pattern-processor.js`` at commit ``aa91809``.
         """
         if row.note.name == BITPHASE_NOTE_OFF:
             self.note = None
@@ -588,7 +609,7 @@ class _ChannelReplay:
     def tick(self, tuning_table: List[int]) -> Optional[int]:
         """The note the channel sounds on one tick, its table stepping on after it.
 
-        Read from ``processTables`` of ``tracker-pattern-processor.js`` at commit ``265ff70``.
+        Read from ``processTables`` of ``tracker-pattern-processor.js`` at commit ``aa91809``.
         """
         if self.note is None or self.table is None:
             return self.note

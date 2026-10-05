@@ -11,6 +11,7 @@ from sampletones_core.formats.bitphase.specification.chip import (
     MAX_INITIAL_SPEED,
     MIN_A4_TUNING,
     MIN_INITIAL_SPEED,
+    SPEED_CLOCK_TEMPO,
     ChipVariant,
 )
 from sampletones_core.formats.bitphase.specification.patterns import (
@@ -25,6 +26,10 @@ class BitphaseSong(BaseModel):
     ``interrupt_frequency`` is the engine tick rate in Hz, so it carries the rate a
     reconstruction's envelopes were measured at; ``initial_speed`` is how many of those
     ticks each pattern line lasts.
+
+    ``tempo`` stays at the value that lets the speed alone time each line. A tempo above it
+    spreads the ticks of a line by FamiTracker's accumulator, so the speed clock keeps every
+    line at the tick count the speed effects of the groove state.
 
     ``a4_tuning_hz`` and ``tuning_table`` state one tuning together. Bitphase builds the table
     again from that frequency and the chip clock when it loads a song, so the two are written in
@@ -46,6 +51,10 @@ class BitphaseSong(BaseModel):
         ge=MIN_INITIAL_SPEED,
         le=MAX_INITIAL_SPEED,
         description="Engine ticks per pattern line.",
+    )
+    tempo: int = Field(
+        default=SPEED_CLOCK_TEMPO,
+        description="Tempo spreading a line's ticks, at the value leaving the speed to time each line.",
     )
     default_pattern_length: int = Field(
         ...,

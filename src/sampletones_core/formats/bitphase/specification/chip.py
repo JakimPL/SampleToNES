@@ -36,3 +36,4 @@ MAX_A4_TUNING: Final[float] = 880.0
 
 MIN_INITIAL_SPEED: Final[int] = 1
 MAX_INITIAL_SPEED: Final[int] = 255
+SPEED_CLOCK_TEMPO: Final[int] = 0

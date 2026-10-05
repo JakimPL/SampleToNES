@@ -113,8 +113,9 @@ them onto the console's call (section 4). The stream stores how long each row's 
 phrase, so a frame whose groove differs from the one before costs a few more bytes than a frame that
 repeats it.
 
-**Bitphase plays the app's rows.** Its song has a speed and no tempo, so the export writes a speed effect
-on every row that lasts differently from the row before it. [Tempo as a
+**Bitphase plays the app's rows.** Its song has a speed and a tempo. At tempo 0 the speed alone sets each
+row, so the export writes tempo 0 and a speed effect on every row that lasts differently from the row
+before it. [Tempo as a
 groove](../formats/bitphase.md#d-tempo-as-a-groove) has the details.
 
 **FamiTracker places the longer rows by its own count.** The export writes the project's speed and tempo

@@ -31,8 +31,8 @@ with every field below loads exactly as it was written.
 ```
 Project    { name, author, songs[], loopPointId, patternOrder[], tables[],
              patternOrderColors{}, instruments[] }
-Song       { patterns[], tuningTable[], initialSpeed, defaultPatternLength, chipType,
-             chipVariant, chipFrequency, interruptFrequency, a4TuningHz,
+Song       { patterns[], tuningTable[], initialSpeed, tempo, defaultPatternLength,
+             chipType, chipVariant, chipFrequency, interruptFrequency, a4TuningHz,
              virtualChannelMap{} }
 Pattern    { id, length, channels[], patternRows[] }
 Channel    { rows[], label, effectColumnCount }
@@ -218,11 +218,16 @@ in common time lasts 68 4/7 ticks, so the song's first two frames play:
 5 4 4 4 5 4 4 4 5 4 4 4 5 4 4 4      68 ticks
 ```
 
+A Bitphase song has a **tempo** too. Above `0`, Bitphase spreads the ticks over the rows the way
+FamiTracker's tempo does, with a running count from row to row. At `0`, the speed alone sets each row.
+The exporter writes `0` and places the ticks itself, by bar and by beat.
+
 **The groove reaches the engine as speed effects.** A speed effect sets the ticks a row lasts from its
 row on, so the exporter writes one wherever a row lasts differently from the row played before it:
 
 | Part | What the exporter writes |
 | --- | --- |
+| `tempo` | `0`, so the speed alone sets the ticks of every row |
 | `initialSpeed` | the ticks the song's first row lasts |
 | The effect | `S` with `delay = 0`, the row's ticks as its parameter, and `tableIndex = -1` |
 | Its place | the DPCM channel, on every row whose length differs from the row before it |
@@ -373,8 +378,9 @@ instruments were shortened. A project counts each slice as one instrument.
 so the exporter leaves the comment out.
 
 **A field a reconstruction does not decide gets no macro.** The hardware envelope, the length counter, the
-phase retrigger, the sweep and the tone accumulator each take the default in section B. Bitphase also
-stores DPCM sample data on an instrument but never plays it, so the exporter writes none of it.
+phase retrigger, the sweep and the tone accumulator each take the default in section B. Bitphase plays
+the DPCM samples an instrument assigns to its notes (`dpcmSamples`, `dpcmAssignments`). The exporter
+writes no sample and no note on the DPCM channel, so that channel rests.
 
 `interruptFrequency` carries the reconstruction's own tick rate. Bitphase's settings panel offers 50 and
 60 Hz beside a custom value, and its loader and timeline accept any rate. A rate outside that pair plays

@@ -34,6 +34,7 @@ SONG_KEYS: Final[List[str]] = [
     "patterns",
     "tuningTable",
     "initialSpeed",
+    "tempo",
     "defaultPatternLength",
     "chipType",
     "chipVariant",

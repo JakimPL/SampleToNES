@@ -51,6 +51,7 @@ from sampletones_core.timing import SongTiming
 from sampletones_tools.samples.bitphase import GROOVE_TEMPO, at_tempo
 from tests.suite.bitphase import (
     BITPHASE_NO_EFFECTS,
+    BITPHASE_SPEED_CLOCK_TEMPO,
     LoadedNote,
     LoadedProject,
     LoadedRow,
@@ -232,6 +233,12 @@ class TestTheGrooveReachesTheFile:
         expected = [list(timing.groove(frame).ticks) for frame in range(project.song.order_length())]
 
         assert row_speeds(groove_document) == expected
+
+    def test_the_song_plays_its_rows_on_the_speed_clock(self, groove_document: LoadedProject) -> None:
+        """The speed clock plays each row the ticks its speed effects state. A tempo above it spreads
+        the ticks by FamiTracker's accumulator.
+        """
+        assert groove_document.songs[0].tempo == BITPHASE_SPEED_CLOCK_TEMPO
 
     def test_every_speed_is_one_the_engine_reads(self, groove_document: LoadedProject) -> None:
         speeds = [
