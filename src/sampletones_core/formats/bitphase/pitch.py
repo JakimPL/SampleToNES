@@ -1,11 +1,10 @@
 from typing import Sequence
 
-from sampletones_core.formats.bitphase.specification.chip import (
-    MAX_TUNING_PERIOD,
-    MIN_TUNING_PERIOD,
-)
+from sampletones_core.formats.bitphase.specification.chip import PERIOD_OVER_TIMER
 from sampletones_core.formats.bitphase.specification.instruments import MAX_TONE_ADD, MIN_TONE_ADD
 from sampletones_core.formats.bitphase.specification.patterns import MAX_NOTE_INDEX, MIN_NOTE_INDEX
+from sampletones_core.timers.arithmetic import bent_timer
+from sampletones_shared.utils.arrays import clamp
 
 
 def contour_period(
@@ -30,9 +29,10 @@ def contour_period(
 def sounding_offset(base_period: int, offset: int) -> int:
     """The tone offset that bends a period by as much as the channel goes on sounding.
 
-    Bitphase adds the offset to the period its note resolves to, and a channel sounds while
-    that sum stands within the timer's range, so the offset is held to what keeps it there.
-    This is the rule ``bent_timer`` states for a divider, read in the periods Bitphase counts.
+    Bitphase adds the offset to the period its note resolves to and loads the timer with that
+    period less one, so the offset follows ``bent_timer`` on the timer the period stands for. The
+    bent note then sounds the divider in-app playback sounds, the longest one the register holds
+    included.
 
     Args:
         base_period: The period the tick's note resolves to.
@@ -41,5 +41,5 @@ def sounding_offset(base_period: int, offset: int) -> int:
     Returns:
         int: The offset to write, within both the timer's range and the field's own.
     """
-    period = min(max(base_period + offset, MIN_TUNING_PERIOD), MAX_TUNING_PERIOD)
-    return min(max(period - base_period, MIN_TONE_ADD), MAX_TONE_ADD)
+    period = bent_timer(base_period - PERIOD_OVER_TIMER, offset) + PERIOD_OVER_TIMER
+    return clamp(period - base_period, MIN_TONE_ADD, MAX_TONE_ADD)

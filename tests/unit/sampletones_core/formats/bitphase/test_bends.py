@@ -4,15 +4,14 @@ from typing import Final, List, Optional, Sequence
 import pytest
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.constants.general import HI_PITCH_FACTOR
+from sampletones_core.constants.general import HI_PITCH_FACTOR, MAX_TIMER, MIN_TIMER
 from sampletones_core.formats.bitphase.envelopes import features_to_envelopes
 from sampletones_core.formats.bitphase.notes import pitch_to_note_index
 from sampletones_core.formats.bitphase.preset import instrument_to_preset
 from sampletones_core.formats.bitphase.specification.chip import (
     DEFAULT_A4_TUNING,
     DEFAULT_CPU_FREQUENCY,
-    MAX_TUNING_PERIOD,
-    MIN_TUNING_PERIOD,
+    PERIOD_OVER_TIMER,
 )
 from sampletones_core.formats.bitphase.specification.instruments import (
     MAX_TONE_ADD,
@@ -34,6 +33,8 @@ BASE_PERIOD: Final[int] = DEFAULT_TUNING_TABLE[BASE_INDEX]
 LOW_PITCH: Final[int] = 33
 LOWERED_A4_TUNING: Final[float] = 432.0
 DOWNWARD_BEND: Final[int] = 100
+SHORTEST_PERIOD: Final[int] = MIN_TIMER + PERIOD_OVER_TIMER
+LONGEST_PERIOD: Final[int] = MAX_TIMER + PERIOD_OVER_TIMER
 
 
 def offsets(
@@ -103,10 +104,10 @@ class TestABendThePeriodRangeHolds:
     @pytest.mark.parametrize("steps", [MIN_TONE_ADD, MAX_TONE_ADD], ids=["down", "up"])
     def test_the_period_it_reaches_stays_within_the_timer(self, steps: int) -> None:
         written = offsets(bend=[steps] * len(VOLUME_ENVELOPE))
-        assert all(MIN_TUNING_PERIOD <= BASE_PERIOD + offset <= MAX_TUNING_PERIOD for offset in written)
+        assert all(SHORTEST_PERIOD <= BASE_PERIOD + offset <= LONGEST_PERIOD for offset in written)
 
     def test_a_bend_past_the_shortest_period_stops_there(self) -> None:
-        assert offsets(bend=[-BASE_PERIOD - 100] * len(VOLUME_ENVELOPE))[0] == MIN_TUNING_PERIOD - BASE_PERIOD
+        assert offsets(bend=[-BASE_PERIOD - 100] * len(VOLUME_ENVELOPE))[0] == SHORTEST_PERIOD - BASE_PERIOD
 
     def test_every_offset_fits_the_field(self) -> None:
         written = offsets(bend=[MAX_TONE_ADD] * len(VOLUME_ENVELOPE))
@@ -115,8 +116,8 @@ class TestABendThePeriodRangeHolds:
 
 class TestTheTableABendIsBoundedBy(BaseTestSuite):
     """Bitphase adds the offset to the period the song's own table gives the note, so the offset
-    is bounded against that table. A lowered tuning lengthens a low note's period to the longest
-    the timer holds, which leaves a downward bend no room at all.
+    is measured against that table. A lowered tuning holds a low note at the longest period the
+    table holds, one step short of the longest timer, and a downward bend reaches that timer.
     """
 
     @dataclass(frozen=True, kw_only=True)
@@ -149,7 +150,7 @@ class TestTheTableABendIsBoundedBy(BaseTestSuite):
         ).macros[NesMacroField.TONE_ADD]
 
         base_period = tuning_table[pitch_to_note_index(LOW_PITCH)]
-        assert all(base_period + offset == MAX_TUNING_PERIOD for offset in written.values)
+        assert all(base_period + offset == LONGEST_PERIOD for offset in written.values)
 
 
 class TestAPresetCarriesBothMovements:

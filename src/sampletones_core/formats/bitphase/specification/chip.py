@@ -29,6 +29,7 @@ TUNING_A4_INDEX: Final[int] = 45
 TUNING_PERIOD_DIVISOR: Final[int] = 16
 MIN_TUNING_PERIOD: Final[int] = 1
 MAX_TUNING_PERIOD: Final[int] = 2047
+PERIOD_OVER_TIMER: Final[int] = 1
 
 DEFAULT_A4_TUNING: Final[float] = A4_FREQUENCY
 MIN_A4_TUNING: Final[float] = 220.0
@@ -36,3 +37,4 @@ MAX_A4_TUNING: Final[float] = 880.0
 
 MIN_INITIAL_SPEED: Final[int] = 1
 MAX_INITIAL_SPEED: Final[int] = 255
+SPEED_CLOCK_TEMPO: Final[int] = 0
