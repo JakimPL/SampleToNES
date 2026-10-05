@@ -14,10 +14,7 @@ from sampletones_core.formats.bitphase.btp import write_btp
 from sampletones_core.formats.bitphase.builder import instrument_to_bitphase, sample_to_bitphase
 from sampletones_core.formats.bitphase.notes import pitch_to_note_index
 from sampletones_core.formats.bitphase.specification.channels import CHANNEL_LABELS, ChannelIndex
-from sampletones_core.formats.bitphase.specification.chip import (
-    MAX_TUNING_PERIOD,
-    MIN_TUNING_PERIOD,
-)
+from sampletones_core.formats.bitphase.specification.chip import PERIOD_OVER_TIMER
 from sampletones_core.formats.bitphase.specification.instruments import (
     MAX_VOLUME_OR_RATE,
     MIN_VOLUME_OR_RATE,
@@ -36,6 +33,8 @@ from sampletones_player.registers.noise import NoiseRegisters
 from sampletones_shared.constants.music import OCTAVE_SEMITONES
 from sampletones_shared.music import Tuning
 from tests.suite.bitphase import (
+    BITPHASE_MAX_PERIOD,
+    BITPHASE_SILENT_PERIOD,
     LoadedInstrument,
     LoadedNote,
     LoadedProject,
@@ -54,7 +53,6 @@ PITCH_CONTOUR: Final[Tuple[int, ...]] = (0, 0, 5, 5, 7, 7)
 BEND_STEPS: Final[Tuple[int, ...]] = (0, -4, -9, -15, -22, -30)
 COARSE_STEPS: Final[Tuple[int, ...]] = (0, 0, 0, 1, 1, 2)
 TICKS_SAMPLED: Final[int] = 64
-PERIOD_OVER_TIMER: Final[int] = 1
 LOWERED_A4_FREQUENCY: Final[float] = 432.0
 C5_PITCH: Final[int] = 72
 SEMITONES_FROM_A4_TO_C5: Final[int] = 3
@@ -168,7 +166,7 @@ class TestAPeriodTheEngineResolves:
 
         for instrument, contour in voices(bent_document):
             periods = [sounded_period(table, note_index, instrument, contour, tick) for tick in range(TICKS_SAMPLED)]
-            assert all(MIN_TUNING_PERIOD <= period <= MAX_TUNING_PERIOD for period in periods)
+            assert all(BITPHASE_SILENT_PERIOD < period <= BITPHASE_MAX_PERIOD for period in periods)
 
 
 class TestWhatEveryTickOfADocumentReads:

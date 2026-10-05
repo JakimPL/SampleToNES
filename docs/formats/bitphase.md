@@ -142,8 +142,9 @@ the [NSF export](../development/player.md#the-song-a-file-carries) refuses it.
 note cell covers too. A pattern cell stores the index as a semitone and an octave, which playback resolves
 back with `name - 2 + (octave - 1) * 12`. At concert pitch the nine indices below pitch 33 ask for a
 period longer than the register holds. _SampleToNES_ plays pitches 24–119 and sounds each of those nine
-at the longest timer the register holds, `0x7FF`, as FamiTracker does. Bitphase holds a pulse or
-triangle period at 2047 at most, which is timer 2046, so those notes sound one step higher there.
+at the longest timer the register holds, `0x7FF`, as FamiTracker does. Bitphase's tuning table holds a
+period at 2047 at most, which is timer 2046, so those notes sound one step higher there. Its engine
+plays periods up to 2048, so a bend reaches `0x7FF` (section C.4).
 
 The triangle channel's period comes from the same table, so a written note sounds an octave below.
 _SampleToNES_ and FamiTracker share that convention.
@@ -197,7 +198,7 @@ is the `toneAdd` macro, one value per tick.
 | moves the note by the table step, then reads that note's period | each value is measured from the note its own contour step reaches, so a transposed trigger keeps its bend |
 | adds `toneAdd` to that period | the two bend dimensions added together, one value per tick |
 | leaves `toneAccumulation` clear | a whole offset per tick, not a step added to a running one |
-| silences a channel whose period reaches zero | an offset bounded to keep the period within 1–2047, the rule the timer follows, measured from the period the song's own table gives the note |
+| holds the period within 0–2048, silences a channel at zero, and loads the timer with the period less one | an offset that keeps the timer within 1–`0x7FF`, as in-app playback bends it, measured from the period the song's own table gives the note |
 
 The squares and the triangle add the offset to the period. The noise channel adds it to the note, which
 carries the period itself, so a noise slice's bend is written as it stands: one period step per unit. A

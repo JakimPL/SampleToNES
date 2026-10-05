@@ -33,7 +33,7 @@ BITPHASE_DEFAULT_LOOP: Final[int] = 0
 BITPHASE_DEFAULT_TABLE_ID: Final[int] = 0
 BITPHASE_MAX_MACRO_LENGTH: Final[int] = 512
 BITPHASE_SILENT_PERIOD: Final[int] = 0
-BITPHASE_MAX_PERIOD: Final[int] = 2047
+BITPHASE_MAX_PERIOD: Final[int] = 2048
 BITPHASE_OPENING_PATTERN_VOLUME: Final[int] = 15
 BITPHASE_STORED_VOLUME_OFF: Final[int] = -1
 BITPHASE_SILENCED_PATTERN_VOLUME: Final[int] = 0
@@ -244,8 +244,9 @@ def sounded_period(
     """The channel period a tone channel sounds on a tick, as the engine resolves it.
 
     The table moves the note, the tuning table resolves the period that note sounds at, and the
-    instrument's tone offset moves it from there. Read from ``nes-audio-driver.js`` of the
-    tracker at commit ``265ff70``, where a period of zero silences the channel.
+    instrument's tone offset moves it from there. Read from ``_applyToneOffset`` of
+    ``nes-audio-driver.js`` of the tracker at commit ``aa91809``, which holds the sum within
+    ``0..2048``, where a period of zero silences the channel.
 
     Args:
         tuning_table: The song's period per note index.

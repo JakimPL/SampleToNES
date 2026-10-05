@@ -65,6 +65,15 @@ voices:
         - { count: 24, frame: { "on": true, pitch: 36, volume: 15, duty_cycle: 2 } }
       triangle:
         - { count: 24, frame: { "on": true, pitch: 36 } }
+  edges:
+    kind: sample
+    channels:
+      pulse1:
+        - { count: 12, frame: { "on": true, pitch: 34, volume: 15, duty_cycle: 2, coarse_detune: 10 } }
+        - { count: 12, frame: { "on": true, pitch: 30, volume: 15, duty_cycle: 2, detune: 5 } }
+      triangle:
+        - { count: 12, frame: { "on": true, pitch: 110, detune: -30 } }
+        - { count: 12, frame: { "on": true, pitch: 119, coarse_detune: -1 } }
   long:
     kind: sample
     channels:
@@ -421,6 +430,24 @@ projects:
             0:
               - { row: 0, voice: low, transpose: -8, volume: 15 }
               - { row: 4, voice: low, transpose: -2, volume: 15 }
+
+  - name: bend-limits
+    purpose: Bends pushing a note past the longest and the shortest timer the register holds, where the note sounds that timer.
+    module: { title: Bend limits, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
+    voices: [edges]
+    song:
+      rows_per_pattern: 8
+      order:
+        - { pulse1: 0, triangle: 0 }
+      channels:
+        pulse1:
+          patterns:
+            0:
+              - { row: 0, voice: edges, volume: 15 }
+        triangle:
+          patterns:
+            0:
+              - { row: 0, voice: edges, volume: 15 }
 
   - name: long-slice
     purpose: A slice whose volume changes over more values than a tracker instrument holds, which the export shortens and reports.
