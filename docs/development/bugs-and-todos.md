@@ -48,10 +48,12 @@ dimension the import starts carrying.
   which is a tenth or more of a short conversion on a CPU build.
 * Keeping the recordings a stopped folder scan has found, so stopping a long walk keeps the count the reader
   watched climb.
-* Calibrating the pitch refinement. The settings that decide how a pitch reading bends a note (a
-  confidence threshold, a change weight and a window) are chosen by hand, and
-  [the calibration](../tools/calibration.md) could measure them. The change weight trades vibrato against
-  jitter.
+* Calibrating the pitch refinement's change weight and window. The confidence threshold was measured on
+  bending probes; the change weight and the window are chosen by hand, and
+  [the calibration](../tools/calibration.md) could measure them. The change weight counts divider steps,
+  which span about 2 cents at 110 Hz and about 27 cents at 1760 Hz. One weight therefore lets noise played
+  as low notes change its bend often while it holds high vibrato back. Counting it in cents weighs every
+  register alike, and its value then needs choosing again.
 * A setting for the lowest frequency the analysis reads. The analysis starts at the triangle's lowest
   note, about 27.3 Hz, so every note the chip plays is read from its fundamental, and its longest window
   spans over half a second. Music that stays above the triangle's lowest octave would convert about a
