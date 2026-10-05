@@ -335,7 +335,11 @@ partial's frequency far more finely than the bins are spaced. The reading takes 
 the note the decoder chose. It weights each by the energy behind it and settles each against the
 fundamental the harmonics below it agreed on. A harmonic counts where its partial stands within half a
 semitone of where that fundamental puts it, the room a note owns, so a partial another voice sounds a bin
-away stays out of the reading. This places the note **within a tenth of a cent** across the whole range.
+away stays out of the reading. The advance across two columns repeats every `sample_rate / hop` hertz
+(60 Hz at the defaults), which from about 1 kHz up is narrower than a note's room. There a second reading,
+of the advance over a sixteenth of a hop, names the repeat the first harmonic stands on, and the advance
+across two columns keeps its precision inside it. This places the note **within a tenth of a cent** across
+the whole range.
 
 The reading also says how much of the frame stands behind it: the share of the column's energy its
 harmonics hold, with every bin measured on the scale the features use. On that scale a bass takes the
@@ -361,8 +365,8 @@ dividers.
 ### 6.3 What it costs, and what it leaves alone
 
 The refinement enumerates no candidate and rescores nothing. It leaves the library, the per-frame matching
-and the decoder's lattice exactly as they were. It adds one transform per recording and a small walk per
-channel.
+and the decoder's lattice exactly as they were. It adds one transform per recording, two short ones over
+the bins from about 1 kHz up for the second reading, and a small walk per channel.
 
 The transform's cost depends on the machine. On a CUDA build it is too small to measure. On a CPU build it
 is a tenth or more of a short conversion, because the reading needs a handful of bins per frame and the

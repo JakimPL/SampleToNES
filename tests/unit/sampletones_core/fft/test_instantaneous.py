@@ -25,6 +25,15 @@ BASS_SECONDS: Final[float] = 2.0
 BASS_LEVEL: Final[float] = 0.3
 LOW_BASS_FREQUENCY: Final[float] = 36.71
 SHARE_TOLERANCE: Final[float] = 0.1
+HIGH_FREQUENCIES: Final[tuple[float, ...]] = (1760.0, 3520.0)
+FAR_INSIDE_CENTS: Final[tuple[float, ...]] = (-40.0, 40.0)
+PULSE_A6_DIVIDER_FREQUENCY: Final[float] = 1747.8
+PAST_HALF_A_SEMITONE_CENTS: Final[float] = 52.0
+VIBRATO_FREQUENCY: Final[float] = 1760.0
+VIBRATO_DEPTH_CENTS: Final[float] = 35.0
+VIBRATO_RATE: Final[float] = 5.5
+VIBRATO_SECONDS: Final[float] = 2.0
+VIBRATO_CENT_TOLERANCE: Final[float] = 10.0
 BASS_FREQUENCY: Final[float] = 65.41
 BESIDE_FIFTH_HARMONIC: Final[float] = 349.23
 ON_FOURTH_HARMONIC: Final[float] = 4 * BASS_FREQUENCY
@@ -110,6 +119,55 @@ class TestReadingAFundamental:
         reader = InstantaneousPitch(_harmonic(A4_FREQUENCY), SAMPLE_RATE, HOP)
 
         assert reader.at(1, SAMPLE_RATE) is None
+
+
+def _vibrato() -> tuple[np.ndarray, np.ndarray]:
+    """A square-wave vibrato and the frequency it sounds at between each pair of columns."""
+    time = np.arange(int(SAMPLE_RATE * VIBRATO_SECONDS)) / SAMPLE_RATE
+    depth = VIBRATO_DEPTH_CENTS / CENTS_PER_OCTAVE
+    frequency = VIBRATO_FREQUENCY * 2 ** (depth * np.sin(2 * np.pi * VIBRATO_RATE * time))
+    phase = np.cumsum(frequency) / SAMPLE_RATE
+    audio = (0.3 * np.where(phase % 1.0 < 0.5, 1.0, -1.0)).astype(np.float32)
+    frames = len(time) // HOP
+    sounding = frequency[: frames * HOP].reshape(frames, HOP).mean(axis=1)
+    return audio, sounding
+
+
+class TestTheTopOfTheRange:
+    """A reading repeats every ``sample_rate / hop`` hertz, a span narrower than a note's room from about
+    1 kHz up. A tone far inside its room there is read on its own side."""
+
+    @pytest.mark.parametrize("frequency", HIGH_FREQUENCIES, ids=lambda frequency: f"{frequency:g} Hz")
+    @pytest.mark.parametrize("cents", FAR_INSIDE_CENTS, ids=lambda cents: f"{cents:+.0f}c")
+    def test_a_tone_far_inside_its_room_is_read_where_it_stands(self, frequency: float, cents: float) -> None:
+        truth = frequency * 2 ** (cents / CENTS_PER_OCTAVE)
+
+        readings = _readings(_harmonic(truth), frequency)
+
+        assert abs(_median_cents(readings, frequency) - cents) < CENT_TOLERANCE
+
+    def test_a_tone_nearest_a_note_whose_divider_stands_flat_is_read_where_it_stands(self) -> None:
+        """The pulse's A6 divider sounds 12 cents flat, so a tone 40 cents sharp of A6 stands 52 cents
+        from the note the decoder names, which is still the nearest one."""
+        cents = PAST_HALF_A_SEMITONE_CENTS
+        truth = PULSE_A6_DIVIDER_FREQUENCY * 2 ** (cents / CENTS_PER_OCTAVE)
+
+        readings = _readings(_harmonic(truth), PULSE_A6_DIVIDER_FREQUENCY)
+
+        assert abs(_median_cents(readings, PULSE_A6_DIVIDER_FREQUENCY) - cents) < CENT_TOLERANCE
+
+    def test_a_vibrato_is_read_on_its_own_side_at_every_frame(self) -> None:
+        audio, sounding = _vibrato()
+        reader = InstantaneousPitch(audio, SAMPLE_RATE, HOP)
+
+        errors = [
+            abs(CENTS_PER_OCTAVE * math.log2(reading.frequency / sounding[frame]))
+            for frame in range(SETTLED_FRAMES, len(sounding) - SETTLED_FRAMES)
+            if (reading := reader.at(frame, VIBRATO_FREQUENCY)) is not None
+        ]
+
+        assert errors
+        assert max(errors) < VIBRATO_CENT_TOLERANCE
 
 
 class TestTheTrianglesLowestOctave:

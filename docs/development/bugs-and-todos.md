@@ -110,9 +110,6 @@ currently out of line. An entry leaves when the code meets the contract again.
 * A silent triangle renders the middle of its wave, where the console holds the step it stopped on. A
   faithful hold needs a DC-blocking output stage at every mix (the reconstruction's render, the sequencer
   and the song render), since nothing drains a held level today.
-* A bend on a high note reads on the wrong side. The pitch reading compares a note's phase one frame
-  apart, which tells frequencies apart within 30 Hz of the note at a 60 Hz frame rate. From about
-  1.7 kHz up that is under 30 cents, so a wider vibrato folds over and its notes stay unbent.
 * Another voice inside a harmonic's bin pulls the pitch reading. A partial of another voice within half a
   semitone of one of a note's harmonics shares that harmonic's bin and adds to its reading: a 65 Hz bass
   under a steady 330 Hz pulse reads about 4 cents off, and within a cent alone.
