@@ -6,6 +6,7 @@ import numpy as np
 from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
 
 from .cqt.frequencies import calculate_cqt_frequencies
+from .cqt.normalization import normalize_cqt_energy
 from .cqt.transform import calculate_cqt_frames
 
 HARMONIC_COUNT: Final[int] = 5
@@ -39,6 +40,10 @@ class InstantaneousPitch:
     by the energy standing behind it. The harmonics are read in order, each one settled against the
     fundamental the ones below it agreed on, which is what keeps an upper harmonic on the right side
     of the whole turn its phase states the reading to within.
+
+    The confidence measures every bin on the scale the features use, its energy divided by the
+    length of its wavelet. A bass then takes the share of a frame its level gives it in every
+    register, and a melody above it keeps the rest.
     """
 
     def __init__(
@@ -58,7 +63,13 @@ class InstantaneousPitch:
             cutoff,
             bins_per_octave,
         )
-        self._energies: np.ndarray = np.sum(self._magnitudes**2, axis=0)
+        self._bin_energies: np.ndarray = normalize_cqt_energy(
+            self._magnitudes**2,
+            self._frequencies,
+            sample_rate,
+            bins_per_octave,
+        )
+        self._column_energies: np.ndarray = np.sum(self._bin_energies, axis=0)
         self._turn_per_column: np.ndarray = 2.0 * np.pi * self._frequencies * hop_length / sample_rate
         self._resolution: float = sample_rate / (2.0 * np.pi * hop_length)
         self._ambiguity: float = sample_rate / hop_length
@@ -85,6 +96,7 @@ class InstantaneousPitch:
 
         weighted = 0.0
         weight = 0.0
+        share = 0.0
         running = reference
         for harmonic in range(1, HARMONIC_COUNT + 1):
             bin_index = self._bin_for(reference * harmonic)
@@ -95,6 +107,7 @@ class InstantaneousPitch:
             energy = float(self._magnitudes[bin_index, opening]) ** 2
             weighted += energy * partial / harmonic
             weight += energy
+            share += float(self._bin_energies[bin_index, opening])
             running = weighted / weight
 
         if weight <= 0.0:
@@ -102,7 +115,7 @@ class InstantaneousPitch:
 
         return FundamentalReading(
             frequency=weighted / weight,
-            confidence=weight / max(float(self._energies[opening]), MINIMUM_COLUMN_ENERGY),
+            confidence=share / max(float(self._column_energies[opening]), MINIMUM_COLUMN_ENERGY),
         )
 
     def _pair(self, frame: int) -> tuple[Optional[int], Optional[int]]:

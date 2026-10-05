@@ -21,12 +21,16 @@ NOISE_SEED: Final[int] = 4
 TRIANGLE_FRAMES: Final[int] = 120
 SETTLED_FRAMES: Final[int] = 30
 TRIANGLE_CENT_TOLERANCE: Final[float] = 20.0
+BASS_SECONDS: Final[float] = 2.0
+BASS_LEVEL: Final[float] = 0.3
+LOW_BASS_FREQUENCY: Final[float] = 36.71
+SHARE_TOLERANCE: Final[float] = 0.1
 
 
-def _harmonic(frequency: float, seed: int = 0) -> np.ndarray:
+def _harmonic(frequency: float, seed: int = 0, seconds: float = SECONDS) -> np.ndarray:
     """A steady tone with a full harmonic series, which is what a pitched frame looks like."""
     generator = np.random.default_rng(seed)
-    count = int(SAMPLE_RATE * SECONDS)
+    count = int(SAMPLE_RATE * seconds)
     time = np.arange(count) / SAMPLE_RATE
     audio = np.zeros(count)
     for harmonic in range(1, 20):
@@ -35,7 +39,22 @@ def _harmonic(frequency: float, seed: int = 0) -> np.ndarray:
 
         audio += np.sin(2 * np.pi * frequency * harmonic * time + generator.uniform(0, 2 * np.pi)) / harmonic
 
-    return (audio / np.abs(audio).max() * 0.3).astype(np.float32)
+    scaled: np.ndarray = (audio / np.abs(audio).max() * 0.3).astype(np.float32)
+    return scaled
+
+
+def _bass(frequency: float, level: float) -> np.ndarray:
+    """A pure low tone lasting long enough for the lowest bins to settle."""
+    time = np.arange(int(SAMPLE_RATE * BASS_SECONDS)) / SAMPLE_RATE
+    audio: np.ndarray = (level * np.sin(2 * np.pi * frequency * time)).astype(np.float32)
+    return audio
+
+
+def _melody_share(bass: np.ndarray) -> float:
+    """The median confidence of a melody note read over a bass."""
+    melody = _harmonic(A4_FREQUENCY, seconds=BASS_SECONDS)
+    readings = _readings(melody + bass, A4_FREQUENCY)
+    return float(np.median([reading.confidence for reading in readings]))
 
 
 def _readings(audio: np.ndarray, reference: float) -> List[FundamentalReading]:
@@ -124,3 +143,16 @@ class TestHowMuchOfAFrameStandsBehindItsReading:
         assert float(np.median([reading.confidence for reading in readings])) < float(
             np.median([reading.confidence for reading in _readings(alone, A4_FREQUENCY)])
         )
+
+    def test_a_bass_takes_the_same_share_in_every_register(self) -> None:
+        """A bass an octave lower is no louder, so a melody over it keeps the share it holds."""
+        low = _melody_share(_bass(LOW_BASS_FREQUENCY, BASS_LEVEL))
+        higher = _melody_share(_bass(2 * LOW_BASS_FREQUENCY, BASS_LEVEL))
+
+        assert abs(low - higher) < SHARE_TOLERANCE * higher
+
+    def test_a_louder_bass_takes_a_larger_share(self) -> None:
+        quiet = _melody_share(_bass(LOW_BASS_FREQUENCY, BASS_LEVEL))
+        loud = _melody_share(_bass(LOW_BASS_FREQUENCY, 2 * BASS_LEVEL))
+
+        assert loud < quiet

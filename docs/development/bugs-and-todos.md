@@ -52,6 +52,12 @@ dimension the import starts carrying.
   confidence threshold, a change weight and a window) are chosen by hand, and
   [the calibration](../tools/calibration.md) could measure them. The change weight trades vibrato against
   jitter.
+* A setting for the lowest frequency the analysis reads. The analysis starts at the triangle's lowest
+  note, about 27.3 Hz, so every note the chip plays is read from its fundamental, and its longest window
+  spans over half a second. Music that stays above the triangle's lowest octave would convert about a
+  tenth faster with the floor an octave higher. In lower music, a pulse then plays those notes at their
+  third harmonic. A floor below the triangle's lowest note needs longer library samples, since each must
+  last three windows.
 
 ### Technical
 
@@ -105,6 +111,12 @@ currently out of line. An entry leaves when the code meets the contract again.
   faithful hold needs a DC-blocking output stage at every mix (the reconstruction's render, the sequencer
   and the song render), since nothing drains a held level today.
 * A triangle bent to divider 1 renders aliased, where the console plays it above hearing.
+* A bend on a high note reads on the wrong side. The pitch reading compares a note's phase one frame
+  apart, which tells frequencies apart within 30 Hz of the note at a 60 Hz frame rate. From about
+  1.7 kHz up that is under 30 cents, so a wider vibrato folds over and its notes stay unbent.
+* Another voice pulls the pitch reading. A partial of another voice beside one of a note's harmonics
+  adds to that harmonic's reading: a bass sliding from 82 Hz under a steady 440 Hz pulse reads about
+  9 cents off, and within a cent alone.
 * The Sample column shows no sample on a frame's first rows, since its reading starts over at each frame. It
   offers no transpose or volume there, while playback applies them to the sample the previous frame left
   sounding.

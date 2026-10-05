@@ -117,6 +117,13 @@ sharper frequency resolution requires a longer time window, and vice versa):
   triangle's, an octave below the pulse's, since the triangle steps through its wave
   at half the pulse's rate. A bass line on the triangle is therefore read from its
   fundamental, which is where the pitch of a bent note is read from too.
+  This floor is a measured choice. Each bin's wavelet depends on its own frequency alone,
+  so every bin above the pulse's lowest note is the same at either floor, and so is what
+  the conversion makes of the music there. The lower floor adds the triangle's lowest
+  octave. Starting at the pulse's lowest note (54.6 Hz), a pulse took a triangle sliding
+  from 37 Hz at its third harmonic, and a 37 Hz bass under a melody went unplayed (44.1 kHz
+  audio at a 60 Hz frame rate, converted onto pulse 1, the triangle and noise). The lower
+  floor costs about a tenth more conversion time and a larger library.
   The price is time support: its low-frequency basis functions are long (hundreds of
   milliseconds), so brief events are smeared in time at the low end. _SampleToNES_
   computes the CQT **once over the whole signal** with a hop of one frame, so each
