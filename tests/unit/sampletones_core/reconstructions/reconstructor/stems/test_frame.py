@@ -778,7 +778,6 @@ def _silent(fragment: Fragment) -> Fragment:
     return Fragment(
         audio=np.zeros_like(np.asarray(fragment.audio)),
         feature=Histogram(edges=fragment.feature.edges, values=np.zeros_like(np.asarray(fragment.feature.values))),
-        windowed_audio=np.zeros_like(np.asarray(fragment.windowed_audio)),
         config=fragment.config,
     )
 

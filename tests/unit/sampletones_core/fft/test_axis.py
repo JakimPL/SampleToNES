@@ -5,7 +5,8 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import SpectrumMethod
-from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
+from sampletones_core.constants.general import MIN_TRIANGLE_FREQUENCY
+from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY, LOG_FFT_CUTOFF_FREQUENCY
 from sampletones_core.fft import (
     FFTTransformer,
     Window,
@@ -13,6 +14,7 @@ from sampletones_core.fft import (
     calculate_weights_from_edges,
 )
 from sampletones_core.fft.features import get_feature_extractor
+from sampletones_core.fft.spectrum.spectrum import calculate_spectrum
 
 
 def _config(method: SpectrumMethod) -> Config:
@@ -36,6 +38,28 @@ class TestWindowSizeRule:
         quality = 1.0 / (2.0 ** (1.0 / BINS_PER_OCTAVE) - 1.0)
         expected = int(np.ceil(quality * library.sample_rate / CQT_CUTOFF_FREQUENCY))
         assert library.window_size == max(library.frame_length, expected)
+
+
+class TestEachMethodsFloor:
+    """The constant-Q transform reaches the lowest note the chip sounds, the triangle's an octave below
+    the pulse's. The log-spaced FFT starts where its window spans two cycles, whatever the constant-Q
+    floor is."""
+
+    def test_the_constant_q_axis_reaches_the_triangles_lowest_note(self) -> None:
+        config = _config(SpectrumMethod.CQT)
+        window = Window.from_config(config)
+
+        spectrum = calculate_spectrum(SpectrumMethod.CQT, _signal(window), config.library.sample_rate)
+
+        assert float(spectrum.edges[0]) <= MIN_TRIANGLE_FREQUENCY
+
+    def test_the_log_spaced_fft_axis_starts_at_its_own_floor(self) -> None:
+        config = _config(SpectrumMethod.LOG_SPACED_FFT)
+        window = Window.from_config(config)
+
+        spectrum = calculate_spectrum(SpectrumMethod.LOG_SPACED_FFT, _signal(window), config.library.sample_rate)
+
+        assert float(spectrum.edges[0]) == pytest.approx(LOG_FFT_CUTOFF_FREQUENCY)
 
 
 class TestFragmentAxis:

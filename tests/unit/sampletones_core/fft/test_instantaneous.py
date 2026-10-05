@@ -4,7 +4,10 @@ from typing import Final, List, Optional
 import numpy as np
 import pytest
 
+from sampletones_core.configs import Config
 from sampletones_core.fft.instantaneous import FundamentalReading, InstantaneousPitch
+from sampletones_core.generators.implementation.triangle import TriangleGenerator
+from sampletones_core.instructions import TriangleInstruction
 
 SAMPLE_RATE: Final[int] = 44100
 HOP: Final[int] = 735
@@ -15,6 +18,9 @@ CENT_TOLERANCE: Final[float] = 1.0
 PITCHED_CONFIDENCE: Final[float] = 0.2
 UNPITCHED_CONFIDENCE: Final[float] = 0.1
 NOISE_SEED: Final[int] = 4
+TRIANGLE_FRAMES: Final[int] = 120
+SETTLED_FRAMES: Final[int] = 30
+TRIANGLE_CENT_TOLERANCE: Final[float] = 20.0
 
 
 def _harmonic(frequency: float, seed: int = 0) -> np.ndarray:
@@ -68,6 +74,29 @@ class TestReadingAFundamental:
         reader = InstantaneousPitch(_harmonic(A4_FREQUENCY), SAMPLE_RATE, HOP)
 
         assert reader.at(1, SAMPLE_RATE) is None
+
+
+class TestTheTrianglesLowestOctave:
+    """The triangle sounds an octave below the pulse at the same divider, so its lowest notes stand
+    below every pulse note. The transform reaches them, and their fundamental is read where the
+    channel sounds it on every frame, the frames a recording's edges cut short aside."""
+
+    @pytest.mark.parametrize("pitch", (33, 37, 41, 44), ids=lambda pitch: f"pitch {pitch}")
+    def test_every_settled_frame_is_read_where_the_channel_sounds(self, pitch: int) -> None:
+        generator = TriangleGenerator(Config())
+        instruction = TriangleInstruction(on=True, pitch=pitch)
+        audio = np.concatenate([generator(instruction, save=True) for _ in range(TRIANGLE_FRAMES)])
+        sounding = generator.sounds_at(pitch, 0)
+        reader = InstantaneousPitch(audio, SAMPLE_RATE, HOP)
+
+        readings = [reader.at(frame, sounding) for frame in range(SETTLED_FRAMES, TRIANGLE_FRAMES - SETTLED_FRAMES)]
+
+        assert all(reading is not None for reading in readings)
+        assert all(
+            abs(CENTS_PER_OCTAVE * math.log2(reading.frequency / sounding)) < TRIANGLE_CENT_TOLERANCE
+            for reading in readings
+            if reading is not None
+        )
 
 
 class TestHowMuchOfAFrameStandsBehindItsReading:

@@ -96,7 +96,7 @@ rate:
 |----------|---------------------------|-----------------------------------------|---------------------------|
 | `fft`    | linear                    | uniform, `Δf ≈ sample_rate / N ≈ 27 Hz` | one short window (~37 ms) |
 | `logfft` | logarithmic, floored at `Δf` | the FFT's `Δf`, on a musical axis     | one short window (~37 ms) |
-| `cqt`    | logarithmic (constant-Q)  | constant *relative* (fine low end)      | long for low notes (~300 ms) |
+| `cqt`    | logarithmic (constant-Q)  | constant *relative* (fine low end)      | long for low notes (~600 ms) |
 
 They sit at different points of the **time–frequency trade-off** (the Gabor limit:
 sharper frequency resolution requires a longer time window, and vice versa):
@@ -113,7 +113,10 @@ sharper frequency resolution requires a longer time window, and vice versa):
   sharply in time.
 - **CQT** (constant-Q transform) places bins geometrically and gives
   every musical interval the same number of bins, so it resolves low pitches finely.
-  It is the default.
+  It is the default. Its lowest bin sits at the lowest note the chip sounds: the
+  triangle's, an octave below the pulse's, since the triangle steps through its wave
+  at half the pulse's rate. A bass line on the triangle is therefore read from its
+  fundamental, which is where the pitch of a bent note is read from too.
   The price is time support: its low-frequency basis functions are long (hundreds of
   milliseconds), so brief events are smeared in time at the low end. _SampleToNES_
   computes the CQT **once over the whole signal** with a hop of one frame, so each

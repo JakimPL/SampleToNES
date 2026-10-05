@@ -8,6 +8,7 @@ from sampletones_core.constants.general import (
     MIN_PITCH,
     MIXER_TRIANGLE,
     TRIANGLE_OFFSET,
+    TRIANGLE_PHASE_INCREMENT,
 )
 from sampletones_core.instructions import (
     InstructionTypeUnion,
@@ -30,7 +31,7 @@ class TriangleGenerator(TonalGenerator[TriangleInstruction]):
             sample_rate=config.library.sample_rate,
             nes_frequency=config.library.nes_frequency,
             reset_phase=config.generation.reset_phase,
-            phase_increment=0.5,
+            phase_increment=TRIANGLE_PHASE_INCREMENT,
         )
 
     def __call__(

@@ -20,8 +20,12 @@ class WindowedFeatureExtractor(FeatureExtractor):
     so one class serves both.)
     """
 
-    def _frame_features(self, audio: np.ndarray, windowed_frames: List[np.ndarray]) -> List[Histogram]:
-        return [self._windowed_feature(windowed_audio) for windowed_audio in windowed_frames]
+    def _frame_features(self, audio: np.ndarray, count: int) -> List[Histogram]:
+        frame_length = self.window.frame_length
+        return [
+            self._windowed_feature(self.window.get_windowed_frame(audio, frame_id * frame_length))
+            for frame_id in range(count)
+        ]
 
     def reference_feature(self, sample: CyclicArray) -> Histogram:
         """The feature of the spectrum the sample averages to over the phases a frame starts on.

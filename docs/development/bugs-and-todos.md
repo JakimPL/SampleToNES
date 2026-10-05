@@ -67,6 +67,9 @@ dimension the import starts carrying.
   project sample. An edit to such a document is undoable nowhere ([undo](application/undo.md)), so an edit
   that silences a channel or lets a recording go is reversible only by reloading the file.
 * Improve performance of the browser's favorite scan of the entire tree per click
+* The `fft` and `logfft` analysis floors. Their window spans two cycles of the pulse's lowest note, so the
+  triangle's lowest octave reaches them by its harmonics alone. Covering it doubles their window and
+  coarsens their timing.
 
 ## Architecture
 

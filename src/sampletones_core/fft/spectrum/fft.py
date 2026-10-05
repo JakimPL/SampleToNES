@@ -5,7 +5,7 @@ import numpy as np
 from sampletones_core.audio import validate_audio_array
 from sampletones_core.constants.spectrum import (
     BINS_PER_OCTAVE,
-    CQT_CUTOFF_FREQUENCY,
+    LOG_FFT_CUTOFF_FREQUENCY,
 )
 from sampletones_core.structures.histogram import Histogram
 
@@ -48,7 +48,7 @@ def calculate_log_spaced_fft_spectrum(
     audio: np.ndarray,
     sample_rate: int,
     fft_size: Optional[int] = None,
-    cutoff: float = CQT_CUTOFF_FREQUENCY,
+    cutoff: float = LOG_FFT_CUTOFF_FREQUENCY,
     bins_per_octave: int = BINS_PER_OCTAVE,
 ) -> Histogram:
     """
@@ -57,7 +57,8 @@ def calculate_log_spaced_fft_spectrum(
     Computes the linear FFT spectrum and rebins it onto a logarithmic axis whose
     bin widths respect the FFT resolution: bins widen to the linear spacing where
     a musical interval falls below it, so low tones stay compact and adjacent bins
-    aggregate independent FFT measurements at every frequency.
+    aggregate independent FFT measurements at every frequency. The axis starts at the
+    pulse's lowest note, the lowest frequency the FFT window spans two cycles of.
 
     Args:
         audio: Input audio as array.
