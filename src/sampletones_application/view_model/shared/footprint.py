@@ -10,7 +10,7 @@ from sampletones_core.formats.famitracker.footprint import (
 
 
 class InstrumentSizeViewModel(BaseModel, frozen=True):
-    """The bytes one instrument occupies once a tracker compiles it.
+    """The raw bytes one instrument's envelopes take, every item counted.
 
     The measurement is carried as it was taken, both regions intact, so a display naming the
     whole and one naming a region read the same figure. An instrument naming a channel is a

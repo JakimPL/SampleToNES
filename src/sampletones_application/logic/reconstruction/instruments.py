@@ -227,11 +227,11 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         self,
         channels: Dict[ChannelName, Features],
     ) -> VoiceFootprintViewModel:
-        """Measures each playing channel's instrument as the size its own export writes.
+        """Measures the raw size of each playing channel's instrument.
 
-        Each instrument is measured at the lengths its own envelopes state, matching what
-        **Export instrument...** produces. A channel standing by is written nowhere, so it is
-        measured nowhere and the sample's total names what the export costs.
+        Each instrument is measured at the whole lengths its own envelopes state. A channel standing
+        by is written nowhere, so it is measured nowhere and the sample's total names the channels
+        that play.
         """
         return VoiceFootprintViewModel.from_footprints(
             {

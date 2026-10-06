@@ -3,11 +3,7 @@ from typing import Dict, Iterable
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
-from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
-from sampletones_core.formats.famitracker.model.sequence import InstrumentSequence
-from sampletones_core.formats.famitracker.sequences.features import (
-    features_to_instrument_sequences,
-)
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.specification.memory import (
     INSTRUMENT_DEFINITION_BYTES,
     SEQUENCE_HEADER_BYTES,
@@ -19,12 +15,13 @@ from sampletones_core.reconstructions import Reconstruction
 
 @dataclass(frozen=True)
 class InstrumentFootprint:
-    """The bytes an instrument occupies once FamiTracker compiles it into an NSF.
+    """The raw bytes an instrument's envelopes take, laid out the way FamiTracker's driver lays them out.
 
     The two fields are the two regions the driver keeps an instrument in, which FamiTracker's
     own export log reports side by side: the instrument list and body under ``instrument_bytes``,
-    the sequence chunks the body points at under ``sequence_bytes``. See
-    `docs/formats/famitracker.md` for the layout each figure counts.
+    the sequence chunks the body points at under ``sequence_bytes``. Every item an envelope
+    carries is counted, so the figure is the size of the sound's data before any compression.
+    See `docs/formats/famitracker.md` for the layout each figure counts.
 
     Attributes:
         instrument_bytes: Bytes the instrument's table entry and body occupy.
@@ -40,38 +37,18 @@ class InstrumentFootprint:
         return self.instrument_bytes + self.sequence_bytes
 
 
-def sequence_footprint(sequence: InstrumentSequence) -> int:
-    """Measures the bytes one sequence chunk occupies: its four-field header and its items."""
-    return SEQUENCE_HEADER_BYTES + SEQUENCE_ITEM_BYTES * len(sequence.items)
-
-
-def sequences_footprint(
-    sequences: Iterable[InstrumentSequence],
-) -> InstrumentFootprint:
-    """Measures the instrument the given sequences make up.
-
-    A populated sequence earns the instrument a pointer to its chunk and contributes the chunk
-    itself; an empty one is written as a disabled slot the driver stores nothing for, so the
-    populated sequences alone decide both figures.
-    """
-    populated = [sequence for sequence in sequences if sequence.enabled]
-    return InstrumentFootprint(
-        instrument_bytes=INSTRUMENT_DEFINITION_BYTES + SEQUENCE_POINTER_BYTES * len(populated),
-        sequence_bytes=sum(sequence_footprint(sequence) for sequence in populated),
-    )
-
-
-def instrument_footprint(instrument: Instrument2A03) -> InstrumentFootprint:
-    """Measures one built instrument, the form an export writes."""
-    return sequences_footprint(instrument.sequences.values())
+def envelope_footprint(envelope: Envelope[int]) -> int:
+    """Measures the bytes one envelope occupies as a sequence chunk: its four-field header and its items."""
+    return SEQUENCE_HEADER_BYTES + SEQUENCE_ITEM_BYTES * len(envelope.items)
 
 
 def features_footprint(features: Features) -> InstrumentFootprint:
-    """Measures the instrument a channel slice's envelopes export to.
+    """Measures the instrument a channel slice's envelopes make up, every item they carry counted.
 
-    The envelopes pass through the same builder an export uses, so the measured item counts are
-    the ones a file carries: each at the length it was written, capped at what a FamiTracker
-    sequence holds.
+    A written envelope earns the instrument a pointer to its chunk and contributes the chunk at
+    its whole length; a dimension left to the channel is a disabled slot the driver stores
+    nothing for. The figure describes the envelopes as the application plays them, and an export
+    to FamiTracker shapes them to its own sequences (see `docs/formats/famitracker.md`).
 
     Args:
         features: The per-dimension envelopes describing the slice.
@@ -79,8 +56,11 @@ def features_footprint(features: Features) -> InstrumentFootprint:
     Returns:
         InstrumentFootprint: The footprint of the instrument those envelopes describe.
     """
-    sequences = features_to_instrument_sequences(features, repitched=False)
-    return sequences_footprint(sequences.values())
+    written = [envelope for envelope in features.envelopes.values() if envelope.written]
+    return InstrumentFootprint(
+        instrument_bytes=INSTRUMENT_DEFINITION_BYTES + SEQUENCE_POINTER_BYTES * len(written),
+        sequence_bytes=sum(envelope_footprint(envelope) for envelope in written),
+    )
 
 
 def reconstruction_footprints(reconstruction: Reconstruction) -> Dict[ChannelName, InstrumentFootprint]:

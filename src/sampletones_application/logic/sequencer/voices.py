@@ -190,7 +190,7 @@ class SequencerVoicesLogic(CallbackMixin):
         self,
         voice_id: str,
     ) -> Optional[VoiceFootprintViewModel]:
-        """Measures one voice's instruments as the module export writes them.
+        """Measures the raw size of one voice's instruments, every item their envelopes carry.
 
         A sample yields a figure per channel its reconstruction covers; an instrument yields one,
         since every channel reaches the same envelopes. Measuring a single voice on demand keeps a

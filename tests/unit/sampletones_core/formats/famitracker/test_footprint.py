@@ -1,32 +1,24 @@
 from dataclasses import dataclass
 from typing import Final, Optional, Sequence
 
-import numpy as np
 import pytest
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.features.envelope import Envelope
-from sampletones_core.formats.famitracker.builder import build_instrument
 from sampletones_core.formats.famitracker.footprint import (
     InstrumentFootprint,
+    envelope_footprint,
     features_footprint,
-    instrument_footprint,
     reconstruction_footprints,
-    sequence_footprint,
-    sequences_footprint,
     total_footprint,
 )
-from sampletones_core.formats.famitracker.model.sequence import InstrumentSequence
 from sampletones_core.formats.famitracker.specification.memory import (
     INSTRUMENT_DEFINITION_BYTES,
     SEQUENCE_HEADER_BYTES,
     SEQUENCE_POINTER_BYTES,
 )
-from sampletones_core.formats.famitracker.specification.sequences import (
-    MAX_SEQUENCE_ITEMS,
-    SequenceKind,
-)
+from sampletones_core.formats.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -96,8 +88,11 @@ class TestFeaturesFootprint(BaseTestSuite):
                 [0] * OVER_LONG_LENGTH,
                 None,
             ),
-            expected=InstrumentFootprint(instrument_bytes=7, sequence_bytes=512),
-            label="capped_at_the_sequence_limit",
+            expected=InstrumentFootprint(
+                instrument_bytes=7,
+                sequence_bytes=2 * (SEQUENCE_HEADER_BYTES + OVER_LONG_LENGTH),
+            ),
+            label="past_the_sequence_limit",
         ),
         TestCase(
             features=build_features(
@@ -106,7 +101,7 @@ class TestFeaturesFootprint(BaseTestSuite):
                 [0] * MAX_SEQUENCE_ITEMS,
             ),
             expected=InstrumentFootprint(instrument_bytes=9, sequence_bytes=768),
-            label="largest_instrument_famitracker_holds",
+            label="at_the_sequence_limit",
         ),
     )
 
@@ -118,28 +113,19 @@ class TestFeaturesFootprint(BaseTestSuite):
         assert features_footprint(test_case.features) == test_case.expected
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
-    def test_the_built_instrument_measures_the_same(self, test_case: TestCase) -> None:
-        """Both entry points measure one export, so a slice reads the same either way."""
-        instrument = build_instrument(0, test_case.label, test_case.features, repitched=False)
-        assert instrument_footprint(instrument) == test_case.expected
-
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_the_total_sums_both_regions(self, test_case: TestCase) -> None:
         footprint = features_footprint(test_case.features)
         assert footprint.total_bytes == test_case.expected.instrument_bytes + test_case.expected.sequence_bytes
 
 
-class TestSequenceFootprint:
-    def test_a_sequence_holds_its_header_and_one_byte_per_item(self) -> None:
-        sequence = InstrumentSequence(kind=SequenceKind.VOLUME, items=(15, 12, 9))
-        assert sequence_footprint(sequence) == SEQUENCE_HEADER_BYTES + 3
+class TestEnvelopeFootprint:
+    def test_an_envelope_holds_its_header_and_one_byte_per_item(self) -> None:
+        envelope = Envelope[int](items=(15, 12, 9))
+        assert envelope_footprint(envelope) == SEQUENCE_HEADER_BYTES + 3
 
-    def test_a_disabled_sequence_costs_nothing(self) -> None:
-        sequences = (
-            InstrumentSequence(kind=SequenceKind.VOLUME, items=(15, 12)),
-            InstrumentSequence(kind=SequenceKind.PITCH, items=()),
-        )
-        footprint = sequences_footprint(sequences)
+    def test_an_empty_dimension_costs_nothing(self) -> None:
+        features = build_features([15, 12], [], None)
+        footprint = features_footprint(features)
         assert footprint.instrument_bytes == INSTRUMENT_DEFINITION_BYTES + SEQUENCE_POINTER_BYTES
         assert footprint.sequence_bytes == SEQUENCE_HEADER_BYTES + 2
 
