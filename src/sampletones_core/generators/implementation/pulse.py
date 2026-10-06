@@ -8,6 +8,7 @@ from sampletones_core.constants.general import (
     DUTY_CYCLES,
     MAX_VOLUME,
     MIN_PITCH,
+    MIN_SOUNDING_PULSE_TIMER,
     MIXER_PULSE,
 )
 from sampletones_core.instructions import InstructionTypeUnion, PulseInstruction
@@ -18,6 +19,12 @@ from ..tonal import TonalGenerator
 
 
 class PulseGenerator(TonalGenerator[PulseInstruction]):
+    """The square channel, one of the chip's two pulses.
+
+    A timer below ``MIN_SOUNDING_PULSE_TIMER`` renders silence while the timer runs on. The sweep unit
+    mutes the channel there whatever the sweep's own setting, and the waveform keeps stepping.
+    """
+
     def __init__(
         self,
         config: Config,
@@ -51,6 +58,9 @@ class PulseGenerator(TonalGenerator[PulseInstruction]):
         )
 
         self.save_state(save, pulse_instruction)
+
+        if self.timer.timer < MIN_SOUNDING_PULSE_TIMER:
+            return np.zeros(self.frame_length, dtype=np.float32)
 
         return output
 

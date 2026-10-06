@@ -5,7 +5,7 @@ from typing import Final, Iterator, Protocol
 from sampletones_shared.types.path import Pathlike
 
 DOCUMENT_MAGIC: Final[bytes] = b"\x1f\x8b"
-COMPRESSION_LEVEL: Final[int] = 9
+COMPRESSION_LEVEL: Final[int] = 6
 STATED_TIMESTAMP: Final[int] = 0
 
 

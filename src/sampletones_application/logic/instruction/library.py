@@ -71,6 +71,7 @@ class LibraryLogic(CallbackMixin):
         self._library_manager = library_manager
         self._is_operation_active = is_operation_active
         self._eta_estimator: Optional[ETAEstimator] = None
+        self._replaced_library_path: Optional[Path] = None
 
         self._lock_function: Optional[VoidCallback] = None
         self._unlock_function: Optional[VoidCallback] = None
@@ -278,14 +279,19 @@ class LibraryLogic(CallbackMixin):
         it was built for, the exclusive-operation gate permitting.
 
         Those settings become the configuration's before the generation starts, which writes the
-        library in the place of the one it replaces.
+        library in the place of the one it replaces. Where this build names that library's file
+        differently, the replaced file is removed once the new one is written.
         """
         if self._is_operation_active():
             logger.warning("A conversion or library generation is already in progress")
             return
 
         self.call(self.on_apply_library_config, library_key, self._library_manager.stored_config(library_key))
+        replaced = self._library_manager.get_path(library_key)
+        rebuilt = self._library_manager.get_path(self._config_manager.key)
         self.generate_library()
+        if self._library_manager.is_generating() and replaced != rebuilt:
+            self._replaced_library_path = replaced
 
     def generate_library(self) -> None:
         if self._library_manager.is_generating():
@@ -511,20 +517,30 @@ class LibraryLogic(CallbackMixin):
         )
 
     def _on_generation_completed(self) -> None:
-        """Closes the generation and reads the catalog again, which lists the library it wrote."""
+        """Closes the generation, removes the file a rebuild replaced under another name, and reads
+        the catalog again, which lists the library it wrote."""
         self.call(self.on_generation_completed)
         self._close_generation()
+        self._remove_replaced_library()
         self.refresh_libraries(load_if_needed=False)
 
     def _on_generation_error(self, exception: Exception) -> None:
         self.call(self.on_generation_error, exception)
         self._close_generation()
+        self._replaced_library_path = None
         self.update_status()
 
     def _on_generation_canceled(self) -> None:
         self.call(self.on_generation_canceled)
         self._close_generation()
+        self._replaced_library_path = None
         self.update_status()
+
+    def _remove_replaced_library(self) -> None:
+        """Removes the file a rebuild replaced under another name, where it still stands."""
+        replaced, self._replaced_library_path = self._replaced_library_path, None
+        if replaced is not None and replaced.is_file():
+            remove_path(replaced)
 
     def _close_generation(self) -> None:
         """Lets the creator go along with the tree lock the generation took when it was asked for,

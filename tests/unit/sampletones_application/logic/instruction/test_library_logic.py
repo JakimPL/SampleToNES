@@ -53,6 +53,8 @@ GENERATED_INSTRUCTIONS: Final[int] = 8
 EARLIER_VERSION: Final[str] = "2.0"
 OTHER_GAMMA: Final[int] = 50
 OTHER_TUNING: Final[float] = 432.0
+EARLIER_WINDOW_SIZE: Final[int] = 13579
+DERIVED_WINDOW_SIZE: Final[int] = 0
 
 TEXTS: Final[Dict[str, str]] = {
     INCOMPATIBLE_VERSION_KEY: "got {} expected {}",
@@ -465,10 +467,12 @@ def _write_library(
     directory: Path,
     library_config: InstructionsLibraryConfig,
     library_data_version: str,
+    window_size: int = DERIVED_WINDOW_SIZE,
 ) -> InstructionLibraryKey:
     """Writes an empty library built for ``library_config`` under ``directory``, stated at
-    ``library_data_version``."""
-    key = InstructionLibraryKey.create(library_config, Window.from_config(library_config))
+    ``library_data_version``, its window ``window_size`` samples long where that is given and the one
+    this build derives otherwise."""
+    key = InstructionLibraryKey.create(library_config, Window.from_config(library_config, custom_size=window_size))
     library = InstructionLibraryData.create(Config().model_copy(update={"library": library_config}), {})
     stated = library.metadata.model_copy(update={"library_data_version": library_data_version})
     directory.mkdir(parents=True, exist_ok=True)
@@ -485,6 +489,12 @@ def _opened_library(catalog: Catalog) -> InstructionLibraryKey:
     )
     catalog.logic.load_library_and_set_current(key)
     return key
+
+
+def _rebuild(catalog: Catalog) -> None:
+    """Takes the start report the generation a rebuild asked for sends."""
+    catalog.creator.callbacks["on_start"]()
+    catalog.queue.drain()
 
 
 def _complete(catalog: Catalog) -> None:
@@ -899,6 +909,50 @@ class TestRebuildingALibrary:
             library_config,
             True,
         )
+
+    def test_a_library_rebuilt_under_another_name_leaves_only_the_new_file(self, catalog: Catalog) -> None:
+        """A library an earlier build wrote for another window carries that window in its name, and the
+        rebuild writes the library this build derives in its place."""
+        directory = catalog.manager.library_directory
+        key = _write_library(directory, _other_settings(catalog), EARLIER_VERSION, EARLIER_WINDOW_SIZE)
+        replaced = catalog.manager.get_path(key)
+
+        catalog.logic.rebuild_library(key)
+        _rebuild(catalog)
+        catalog.write_library()
+        catalog.queue.drain()
+
+        assert (replaced.exists(), catalog.manager.get_path(catalog.config_manager.key).exists()) == (False, True)
+
+    def test_a_library_rebuilt_under_its_own_name_stays(self, catalog: Catalog) -> None:
+        key = _write_library(catalog.manager.library_directory, _other_settings(catalog), EARLIER_VERSION)
+
+        catalog.logic.rebuild_library(key)
+        _rebuild(catalog)
+        catalog.write_library()
+        catalog.queue.drain()
+
+        assert (catalog.config_manager.key, catalog.manager.library_state(key)) == (key, LibraryState.CURRENT)
+
+    @pytest.mark.parametrize("ending", [_cancel, _fail], ids=["canceled", "failed"])
+    def test_a_rebuild_that_ends_unwritten_keeps_the_file_through_later_generations(
+        self,
+        catalog: Catalog,
+        ending: Any,
+    ) -> None:
+        directory = catalog.manager.library_directory
+        key = _write_library(directory, _other_settings(catalog), EARLIER_VERSION, EARLIER_WINDOW_SIZE)
+        replaced = catalog.manager.get_path(key)
+
+        catalog.logic.rebuild_library(key)
+        _rebuild(catalog)
+        ending(catalog)
+        catalog.queue.drain()
+        catalog.start_generation()
+        catalog.write_library()
+        catalog.queue.drain()
+
+        assert replaced.exists()
 
     def test_a_rebuild_during_another_operation_changes_nothing(self, catalog: Catalog) -> None:
         settings = catalog.config_manager.config

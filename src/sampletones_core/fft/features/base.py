@@ -41,33 +41,26 @@ class FeatureExtractor(ABC):
 
     def extract(self, audio: np.ndarray) -> List[Fragment]:
         """
-        Build one `Fragment` per frame of `audio` (its central slice, its analysis
-        window, and its spectral feature).
+        Build one `Fragment` per whole frame of `audio`: its slice and its spectral feature.
         """
         frame_length = self.window.frame_length
         count = audio.shape[0] // frame_length
         if count == 0:
             return []
 
-        windowed_frames = [self.window.get_windowed_frame(audio, frame_id * frame_length) for frame_id in range(count)]
-        features = self._frame_features(audio, windowed_frames)
+        features = self._frame_features(audio, count)
         return [
             Fragment(
-                audio=self.window.get_frame_from_window(windowed_audio),
+                audio=audio[frame_id * frame_length : (frame_id + 1) * frame_length],
                 feature=feature,
-                windowed_audio=windowed_audio,
                 config=self.config,
             )
-            for windowed_audio, feature in zip(windowed_frames, features)
+            for frame_id, feature in enumerate(features)
         ]
 
     @abstractmethod
-    def _frame_features(
-        self,
-        audio: np.ndarray,
-        windowed_frames: List[np.ndarray],
-    ) -> List[Histogram]:
-        """Per-frame features; `windowed_frames` are the frame-centered analysis windows."""
+    def _frame_features(self, audio: np.ndarray, count: int) -> List[Histogram]:
+        """The features of the first `count` frames of `audio`, each read around its own frame."""
 
     @abstractmethod
     def reference_feature(self, sample: CyclicArray) -> Histogram:

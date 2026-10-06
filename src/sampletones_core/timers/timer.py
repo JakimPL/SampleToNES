@@ -53,6 +53,16 @@ class Timer(ABC):
         return round(cycles * cycle_length)
 
     def generate_sample(self) -> CyclicArray:
+        """The library sample of the waveform the timer runs, a stretch that loops.
+
+        A sample spans whole cycles, at least ``MIN_SAMPLE_LENGTH`` seconds, so it loops without a
+        seam. A cycle longer than ``MAX_SAMPLE_LENGTH``, the slow noise periods in the long mode, keeps
+        its middle ``MAX_SAMPLE_LENGTH`` seconds and loops with a seam there. That length covers the
+        stretch a constant-Q reference feature reads, so the reference stays clear of the seam.
+
+        Returns:
+            CyclicArray: The sample, at the frequency the timer runs.
+        """
         min_sample_length = round(MIN_SAMPLE_LENGTH * self.sample_rate)
         max_sample_length = round(MAX_SAMPLE_LENGTH * self.sample_rate)
         base_length = self.calculate_base_length(min_sample_length)

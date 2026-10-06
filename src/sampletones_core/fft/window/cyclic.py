@@ -56,6 +56,16 @@ class CyclicArray(DataModel):
         windowed_fragment: np.ndarray = fragment * window.envelope
         return windowed_fragment
 
+    def get_frame(self, phase: float, window: Window) -> np.ndarray:
+        """The frame at the middle of the windowed fragment ``phase`` reads, under the envelope there.
+
+        It reads the frame's own samples, so its cost follows the frame length however wide the
+        window spans.
+        """
+        envelope = window.get_frame_from_window(window.envelope, copy=False)
+        frame: np.ndarray = self.get_fragment(phase, window.frame_length) * envelope
+        return frame
+
     @property
     def length(self) -> int:
         return len(self.array)

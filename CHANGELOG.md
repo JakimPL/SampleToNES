@@ -9,6 +9,7 @@
 * Added stems conversion: to mix several recordings into one reconstruction.
 * Changed drive to reach for louder instructions while a recording converts; reconvert anything converted at a drive other than `1.00`.
 * Improved clarity of reconstructions.
+* Fixed the lowest triangle notes wobbling in pitch after a conversion; libraries are built again for it.
 * Optimized the size of reconstructions.
 * Bumped the reconstruction data-version to `2.2` with backward compatibility for `2.1`.
 * Bumped the library data-version to `2.1`.

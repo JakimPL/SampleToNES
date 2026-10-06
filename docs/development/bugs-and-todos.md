@@ -48,10 +48,18 @@ dimension the import starts carrying.
   which is a tenth or more of a short conversion on a CPU build.
 * Keeping the recordings a stopped folder scan has found, so stopping a long walk keeps the count the reader
   watched climb.
-* Calibrating the pitch refinement. The settings that decide how a pitch reading bends a note (a
-  confidence threshold, a change weight and a window) are chosen by hand, and
-  [the calibration](../tools/calibration.md) could measure them. The change weight trades vibrato against
-  jitter.
+* Calibrating the pitch refinement's change weight and window. The confidence threshold was measured on
+  bending probes; the change weight and the window are chosen by hand, and
+  [the calibration](../tools/calibration.md) could measure them. The change weight counts divider steps,
+  which span about 2 cents at 110 Hz and about 27 cents at 1760 Hz. One weight therefore lets noise played
+  as low notes change its bend often while it holds high vibrato back. Counting it in cents weighs every
+  register alike, and its value then needs choosing again.
+* A setting for the lowest frequency the analysis reads. The analysis starts at the triangle's lowest
+  note, about 27.3 Hz, so every note the chip plays is read from its fundamental, and its longest window
+  spans over half a second. Music that stays above the triangle's lowest octave would convert about a
+  tenth faster with the floor an octave higher. In lower music, a pulse then plays those notes at their
+  third harmonic. A floor below the triangle's lowest note needs longer library samples, since each must
+  last three windows.
 
 ### Technical
 
@@ -67,6 +75,9 @@ dimension the import starts carrying.
   project sample. An edit to such a document is undoable nowhere ([undo](application/undo.md)), so an edit
   that silences a channel or lets a recording go is reversible only by reloading the file.
 * Improve performance of the browser's favorite scan of the entire tree per click
+* The `fft` and `logfft` analysis floors. Their window spans two cycles of the pulse's lowest note, so the
+  triangle's lowest octave reaches them by its harmonics alone. Covering it doubles their window and
+  coarsens their timing.
 
 ## Architecture
 
@@ -98,6 +109,12 @@ currently out of line. An entry leaves when the code meets the contract again.
 
 ## Bugs
 
+* A silent triangle renders the middle of its wave, where the console holds the step it stopped on. A
+  faithful hold needs a DC-blocking output stage at every mix (the reconstruction's render, the sequencer
+  and the song render), since nothing drains a held level today.
+* Another voice inside a harmonic's bin pulls the pitch reading. A partial of another voice within half a
+  semitone of one of a note's harmonics shares that harmonic's bin and adds to its reading: a 65 Hz bass
+  under a steady 330 Hz pulse reads about 4 cents off, and within a cent alone.
 * The Sample column shows no sample on a frame's first rows, since its reading starts over at each frame. It
   offers no transpose or volume there, while playback applies them to the sample the previous frame left
   sounding.

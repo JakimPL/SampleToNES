@@ -6,8 +6,10 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.constants.general import (
     MIN_PITCH,
+    MIN_SOUNDING_TRIANGLE_TIMER,
     MIXER_TRIANGLE,
     TRIANGLE_OFFSET,
+    TRIANGLE_PHASE_INCREMENT,
 )
 from sampletones_core.instructions import (
     InstructionTypeUnion,
@@ -20,6 +22,12 @@ from ..tonal import TonalGenerator
 
 
 class TriangleGenerator(TonalGenerator[TriangleInstruction]):
+    """The triangle channel, a fixed-volume wave an octave below a pulse at the same divider.
+
+    A timer below ``MIN_SOUNDING_TRIANGLE_TIMER`` renders the middle of the wave while the timer runs
+    on. The sequencer steps above hearing there, and the console's output settles at its mean level.
+    """
+
     def __init__(
         self,
         config: Config,
@@ -30,7 +38,7 @@ class TriangleGenerator(TonalGenerator[TriangleInstruction]):
             sample_rate=config.library.sample_rate,
             nes_frequency=config.library.nes_frequency,
             reset_phase=config.generation.reset_phase,
-            phase_increment=0.5,
+            phase_increment=TRIANGLE_PHASE_INCREMENT,
         )
 
     def __call__(
@@ -53,6 +61,9 @@ class TriangleGenerator(TonalGenerator[TriangleInstruction]):
         )
 
         self.save_state(save, triangle_instruction)
+
+        if self.timer.timer < MIN_SOUNDING_TRIANGLE_TIMER:
+            return np.zeros(self.frame_length, dtype=np.float32)
 
         return output
 

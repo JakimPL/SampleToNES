@@ -19,13 +19,12 @@ class CQTFeatureExtractor(FeatureExtractor):
     """
     Whole-signal extraction for the `cqt` method. The constant-Q window spans several
     frames, so the transform runs once over the whole signal, yielding one column per
-    frame centered on its hop position. Each frame is aligned to its own time position,
-    and `windowed_frames` supplies the frame count.
+    frame centered on its hop position. Each frame is aligned to its own time position.
     """
 
-    def _frame_features(self, audio: np.ndarray, windowed_frames: List[np.ndarray]) -> List[Histogram]:
+    def _frame_features(self, audio: np.ndarray, count: int) -> List[Histogram]:
         spectra = calculate_cqt_spectrum_columns(audio, self.sample_rate, self.window.frame_length)
-        return [self.transformer.forward(spectrum) for spectrum in spectra[: len(windowed_frames)]]
+        return [self.transformer.forward(spectrum) for spectrum in spectra[:count]]
 
     def reference_feature(self, sample: CyclicArray) -> Histogram:
         buffer = sample.get_fragment(0, CQT_REFERENCE_CONTEXT_FACTOR * self.window.size)

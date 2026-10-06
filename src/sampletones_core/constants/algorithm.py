@@ -23,7 +23,7 @@ MINIMUM_AUDIO_LEVEL: Final[float] = 1e-12
 # Library creation
 
 MIN_SAMPLE_LENGTH: Final[float] = 0.05
-MAX_SAMPLE_LENGTH: Final[float] = 1.0
+MAX_SAMPLE_LENGTH: Final[float] = 2.0
 LIBRARY_PHASES_PER_SAMPLE: Final[int] = 100
 
 # Calculation methods

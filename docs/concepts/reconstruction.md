@@ -96,7 +96,7 @@ rate:
 |----------|---------------------------|-----------------------------------------|---------------------------|
 | `fft`    | linear                    | uniform, `Δf ≈ sample_rate / N ≈ 27 Hz` | one short window (~37 ms) |
 | `logfft` | logarithmic, floored at `Δf` | the FFT's `Δf`, on a musical axis     | one short window (~37 ms) |
-| `cqt`    | logarithmic (constant-Q)  | constant *relative* (fine low end)      | long for low notes (~300 ms) |
+| `cqt`    | logarithmic (constant-Q)  | constant *relative* (fine low end)      | long for low notes (~600 ms) |
 
 They sit at different points of the **time–frequency trade-off** (the Gabor limit:
 sharper frequency resolution requires a longer time window, and vice versa):
@@ -113,7 +113,17 @@ sharper frequency resolution requires a longer time window, and vice versa):
   sharply in time.
 - **CQT** (constant-Q transform) places bins geometrically and gives
   every musical interval the same number of bins, so it resolves low pitches finely.
-  It is the default.
+  It is the default. Its lowest bin sits at the lowest note the chip sounds: the
+  triangle's, an octave below the pulse's, since the triangle steps through its wave
+  at half the pulse's rate. A bass line on the triangle is therefore read from its
+  fundamental, which is where the pitch of a bent note is read from too.
+  This floor is a measured choice. Each bin's wavelet depends on its own frequency alone,
+  so every bin above the pulse's lowest note is the same at either floor, and so is what
+  the conversion makes of the music there. The lower floor adds the triangle's lowest
+  octave. Starting at the pulse's lowest note (54.6 Hz), a pulse took a triangle sliding
+  from 37 Hz at its third harmonic, and a 37 Hz bass under a melody went unplayed (44.1 kHz
+  audio at a 60 Hz frame rate, converted onto pulse 1, the triangle and noise). The lower
+  floor costs about a tenth more conversion time and a larger library.
   The price is time support: its low-frequency basis functions are long (hundreds of
   milliseconds), so brief events are smeared in time at the low end. _SampleToNES_
   computes the CQT **once over the whole signal** with a hop of one frame, so each
@@ -323,13 +333,19 @@ and the spectrum discards. A partial standing between two bin centers still adva
 rate. Comparing that advance across two columns against the rate the bin itself turns at gives the
 partial's frequency far more finely than the bins are spaced. The reading takes the first few harmonics of
 the note the decoder chose. It weights each by the energy behind it and settles each against the
-fundamental the harmonics below it agreed on. This places the note **within a tenth of a cent** across the
-whole range.
+fundamental the harmonics below it agreed on. A harmonic counts where its partial stands within half a
+semitone of where that fundamental puts it, the room a note owns, so a partial another voice sounds a bin
+away stays out of the reading. The advance across two columns repeats every `sample_rate / hop` hertz
+(60 Hz at the defaults), which from about 1 kHz up is narrower than a note's room. There a second reading,
+of the advance over a sixteenth of a hop, names the repeat the first harmonic stands on, and the advance
+across two columns keeps its precision inside it. This places the note **within a tenth of a cent** across
+the whole range.
 
 The reading also says how much of the frame stands behind it: the share of the column's energy its
-harmonics hold. A pitched frame reads around 0.5, a frame sharing the channel with another tone around
-0.3, and noise around 0.04. One threshold therefore separates the frames worth bending from the frames
-with no pitch to read.
+harmonics hold, with every bin measured on the scale the features use. On that scale a bass takes the
+share its level gives it in every register, so a melody over a low bass keeps its reading. A pitched frame
+reads around 0.6, a frame sharing the channel with another tone around 0.3, and noise around 0.02. One
+threshold therefore separates the frames worth bending from the frames with no pitch to read.
 
 ### 6.2 Landing the note, and holding it
 
@@ -344,13 +360,14 @@ chases. The per-frame proposals are therefore settled by a change-penalized walk
 Viterbi decoder uses to settle a note contour. The cost of a bend is how far it is from that frame's
 reading, plus a toll on changing at all. The states a frame may take are the bends its neighborhood
 proposed, together with no bend. That keeps the walk to a handful of states even where a note owns tens of
-dividers.
+dividers. A bend counts divider steps from its own note, so each note's frames are settled on their own: a
+frame that reads nothing keeps a bend its own note read, and a new note starts from its own reading.
 
 ### 6.3 What it costs, and what it leaves alone
 
 The refinement enumerates no candidate and rescores nothing. It leaves the library, the per-frame matching
-and the decoder's lattice exactly as they were. It adds one transform per recording and a small walk per
-channel.
+and the decoder's lattice exactly as they were. It adds one transform per recording, two short ones over
+the bins from about 1 kHz up for the second reading, and a small walk per channel.
 
 The transform's cost depends on the machine. On a CUDA build it is too small to measure. On a CPU build it
 is a tenth or more of a short conversion, because the reading needs a handful of bins per frame and the
@@ -394,6 +411,9 @@ be shown and played on a common scale.
   and the coefficient is one global scalar. Material whose *useful* content spans a wider range than that
   cannot be fully captured. A long crescendo and a very quiet passage under a loud one are examples.
   Content far below the working level falls under the quietest playable note and is rendered as silence.
+- **The triangle's fixed level.** The triangle plays at one volume. A bass a few decibels quieter than that
+  level is left out, and the calibration referees score the result closer to the recording than the same
+  conversion with the bass played too loud. A bass near that level is played.
 - **CQT time resolution.** Constant-Q analysis needs long windows at low frequencies, so low-pitched
   transients are smeared in time under `cqt`. `fft` and `logfft` localize time better at the cost of
   low-frequency resolution.

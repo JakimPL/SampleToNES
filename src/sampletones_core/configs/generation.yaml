@@ -25,6 +25,6 @@ decoder:
   on_off_weight: 0.2
 
 refinement:
-  confidence: 0.15
+  confidence: 0.10
   change_weight: 2.0
   window: 4

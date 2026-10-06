@@ -7,13 +7,18 @@ from sampletones_shared.constants.music import LIMIT_MIN_PITCH
 APU_CLOCK: Final[float] = 1789773.0
 TIMER_CYCLE_DIVIDER: Final[int] = 16
 MIN_TIMER: Final[int] = 1
+MIN_SOUNDING_PULSE_TIMER: Final[int] = 8
+MIN_SOUNDING_TRIANGLE_TIMER: Final[int] = 2
 MAX_TIMER: Final[int] = 0x7FF
 MIN_PITCH: Final[int] = 33
 MAX_PITCH: Final[int] = 119
 MIN_PLAYED_PITCH: Final[int] = LIMIT_MIN_PITCH
 PITCH_RANGE: Final[int] = MAX_PITCH - MIN_PITCH
 
+TRIANGLE_PHASE_INCREMENT: Final[float] = 0.5
+
 MIN_FREQUENCY: Final[float] = APU_CLOCK / (TIMER_CYCLE_DIVIDER * (MAX_TIMER + 1))
+MIN_TRIANGLE_FREQUENCY: Final[float] = MIN_FREQUENCY * TRIANGLE_PHASE_INCREMENT
 MAX_FREQUENCY: Final[float] = APU_CLOCK / TIMER_CYCLE_DIVIDER
 
 NOTE_NAMES: Tuple[str, ...] = (

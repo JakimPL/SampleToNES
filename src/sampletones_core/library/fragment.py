@@ -73,12 +73,9 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
         return instruction
 
     def get_fragment(self, shift: int, config: Config, window: Window) -> Fragment:
-        windowed_audio = self.sample.get_windowed_fragment(shift, window)
-        audio = window.get_frame_from_window(windowed_audio)
         return Fragment(
-            audio=audio,
+            audio=self.sample.get_frame(shift, window),
             feature=self.feature,
-            windowed_audio=windowed_audio,
             config=config,
         )
 

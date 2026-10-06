@@ -1,14 +1,22 @@
+from dataclasses import dataclass
+
 import numpy as np
 import pytest
 
+from sampletones_core.constants.enums import CQTWindow
 from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
+from sampletones_core.fft.cqt import transform as transform_module
 from sampletones_core.fft.cqt.frequencies import calculate_cqt_frequencies
+from sampletones_core.fft.cqt.kernel import build_cqt_kernel
 from sampletones_core.fft.cqt.transform import calculate_cqt, calculate_cqt_frames
 from sampletones_core.fft.spectrum.cqt import calculate_cqt_spectrum_columns
 from sampletones_core.fft.utils import calculate_n_bins
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 SAMPLE_RATE = 22050
 HOP_LENGTH = 512
+ROUNDING_SHARE = 1e-5
 
 
 def _bin_count() -> int:
@@ -43,6 +51,33 @@ class TestForwardTransform:
         signal = _tone(440.0, 4096)
         cqt = calculate_cqt(signal, SAMPLE_RATE)
         assert cqt.shape == (_bin_count(), 1)
+
+
+class TestGatheringInBlocks(BaseTestSuite):
+    """The frames are gathered a block of columns at a time, and every column comes out as one pass
+    over the whole recording gives it, within the float32 rounding of a product that sums each frame
+    in another order."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        columns_per_block: int
+
+    test_cases = (
+        TestCase(label="one column a block", columns_per_block=1),
+        TestCase(label="blocks leaving a shorter last one", columns_per_block=7),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_columns_equal_one_pass(self, test_case: TestCase, monkeypatch: pytest.MonkeyPatch) -> None:
+        signal = _tone(440.0, 2 * SAMPLE_RATE)
+        whole = calculate_cqt_frames(signal, SAMPLE_RATE, HOP_LENGTH)
+        kernel = build_cqt_kernel(SAMPLE_RATE, _bin_count(), CQT_CUTOFF_FREQUENCY, BINS_PER_OCTAVE, CQTWindow.HANN)
+        monkeypatch.setattr(transform_module, "MAX_GATHERED_SAMPLES", test_case.columns_per_block * kernel.frame_length)
+
+        blocked = calculate_cqt_frames(signal, SAMPLE_RATE, HOP_LENGTH)
+
+        assert blocked.shape == whole.shape
+        assert float(np.abs(blocked - whole).max()) <= ROUNDING_SHARE * float(np.abs(whole).max())
 
 
 class TestToneNormalization:

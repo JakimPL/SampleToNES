@@ -18,6 +18,5 @@ def amplified(extractor: FeatureExtractor, fragment: Fragment, gain: float) -> F
     return Fragment(
         audio=fragment.audio * gain,
         feature=feature.astype(precision),
-        windowed_audio=fragment.windowed_audio * gain,
         config=fragment.config,
     )

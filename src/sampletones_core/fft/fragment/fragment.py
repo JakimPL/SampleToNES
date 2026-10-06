@@ -10,12 +10,10 @@ from sampletones_shared.types.array import Array
 @dataclass(frozen=True)
 class Fragment:
     """
-    A single analysis frame: its central time-domain slice, the larger analysis
-    window it was taken from, and its spectral feature. A data holder — features are
-    produced by a `FeatureExtractor`.
+    A single analysis frame: its time-domain slice and its spectral feature. A data
+    holder — features are produced by a `FeatureExtractor`.
     """
 
     audio: Array
     feature: Histogram
-    windowed_audio: Array
     config: Config

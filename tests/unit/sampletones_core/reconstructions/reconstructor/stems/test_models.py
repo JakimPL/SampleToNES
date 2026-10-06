@@ -28,7 +28,6 @@ def _fragment(config: Config) -> Fragment:
     return Fragment(
         audio=audio,
         feature=Histogram(edges=np.array([0.0, 1.0], dtype=np.float32), values=np.zeros(1, dtype=np.float32)),
-        windowed_audio=audio,
         config=config,
     )
 

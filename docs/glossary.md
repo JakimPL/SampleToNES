@@ -20,7 +20,8 @@ and the classes that implement it.
 ### Pulse (square)
 
 A channel that plays a square wave. Its duty cycle is selectable and it has 15 volume levels. The chip
-has two independent pulse channels: `pulse1` and `pulse2`.
+has two independent pulse channels: `pulse1` and `pulse2`. The chip silences a pulse whose
+[divider](#divider) is below 8, so a bend that goes higher than that at the top notes goes quiet.
 
 ### Triangle
 
@@ -28,7 +29,8 @@ A channel that plays a triangle wave of fixed shape and volume. Only its pitch v
 the APU clock by 32 where the pulse timers divide by 16, and all three read the same period table. A
 triangle note therefore sounds an octave below the pulse note with the same period, so a triangle
 instruction of pitch P sounds at pitch P−12. FamiTracker uses the same convention, so an exported note
-plays at the pitch _SampleToNES_ played it.
+plays at the pitch _SampleToNES_ played it. Below [divider](#divider) 2 the chip's triangle steps above
+hearing, and its output rests at the middle of the wave.
 
 ### Noise
 
