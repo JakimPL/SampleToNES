@@ -43,7 +43,7 @@ say:
   channel, so the app asks which channel to export.
 
 The same commands are on the **Edit** menu for the voice you selected. The right-click menu also
-shows how many bytes the voice takes on the NES. This matters when you export an NSF program.
+shows how many bytes the voice takes before compression. An NSF export compresses it.
 
 Removing a voice that patterns still use asks you first, and clears every row that uses it.
 
