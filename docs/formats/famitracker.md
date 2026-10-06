@@ -411,8 +411,8 @@ reports this instead of writing a corrupt order.
 ## E. Driver memory footprint
 
 Compiling a module into an NSF lays each instrument out across two regions of the driver's data. An
-instrument's sequences size both regions. The application shows the size before an export, so the cost of
-a sample is visible in advance.
+instrument's sequences size both regions. The application measures every sample and instrument in this
+layout, counting each item its envelopes carry, and shows the result as the size before compression.
 
 The **instrument region** holds the instrument list, one pointer per instrument, followed by each
 instrument's body: a sequence-enable bitmask, then one pointer per populated sequence. The **sequence
@@ -431,11 +431,12 @@ the instrument region and `Σ (4 + sᵢ)` of the sequence region. A dimension th
 written as a disabled slot, and only populated sequences are charged. A reconstruction that bent no note
 charges 3 sequences on the pulse and noise channels (volume, arpeggio, duty) and 2 on triangle. Each bend
 an instrument writes adds one more. Each sequence is charged at its own length (section B), so shortening
-any one dimension shows in the figure. An instrument tops out at 777 bytes: three sequences at the
-252-item limit.
+any one dimension shows in the figure. The largest instrument FamiTracker stores takes 777 bytes: three
+sequences at the 252-item limit.
 
 FamiTracker itself prints these two figures while creating an NSF, as `Instruments used: N (X bytes)` and
-`Sequences used: M (Y bytes)`. A measurement can be checked against them.
+`Sequences used: M (Y bytes)`. An instrument within the bounds under **Length** below can be checked
+against them.
 
 **Version.** The figures are for vanilla FamiTracker 0.4.6, the target named at the top of this document.
 The 0CC and Dn-FamiTracker forks open each instrument body with a channel-type byte, so an instrument
@@ -446,7 +447,9 @@ with the same volume envelope pay for that chunk once. A per-instrument or per-s
 instrument's own cost, so a module total is at most the sum of them. Within one instrument each kind
 appears once, so its own sequences are charged once each.
 
-**Length.** A sequence is written at the length it holds (section B), so a figure counts each dimension as
-it stands. A loop point on one dimension adds a byte and no padding. The figure for a voice is therefore
-what its **Export instrument...** writes. In a module, an instrument a note slide reaches and that writes
-no arpeggio takes a one-item arpeggio of its own (section B), which adds a sequence to its figure.
+**Length.** The application's figure counts each dimension at the whole length its envelope carries, so a
+long sample reads at its full size. A loop point on one dimension adds a byte and no padding. An export
+shapes the envelopes to the file (section B): it keeps the first 252 items of a sequence, writes an
+arpeggio under a bend that needs one, and gives an instrument a note slide reaches a one-item arpeggio of
+its own. Within the item limit, and apart from those arpeggios, the figure is what a voice's
+**Export instrument...** writes.

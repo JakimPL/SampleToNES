@@ -268,10 +268,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     ) -> None:
         """Draws a read-only byte figure, styled as the pitch stepper's readout is.
 
-        The figure names how much of the NES data area an export spends, so it reads as
-        information beside the fields that change: the label column aligns with the stepper
-        below it, and the value carries the stepper's own read-only color and font. A tooltip
-        names the export the figure measures, since the formats spend differently.
+        The figure names the raw size of the sound's data, so it reads as information beside the
+        fields that change: the label column aligns with the stepper below it, and the value
+        carries the stepper's own read-only color and font. A tooltip says the figure is measured
+        before compression, which an NSF export applies.
         """
         with labeled_field(
             label,

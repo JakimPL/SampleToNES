@@ -190,8 +190,8 @@ global.context.label.detail_reconstructions: "Reconstructions"
 global.context.label.detail_stems: "Stems"
 global.context.label.instrument_size: "Instrument size"
 global.context.label.sample_size: "Sample size"
-global.context.template.size_bytes: "{bytes} B"
-global.context.tooltip.size_bytes: "How many bytes this takes as a FamiTracker instrument."
+global.context.template.size_bytes: "{bytes} B (uncompressed)"
+global.context.tooltip.size_bytes: "The size of this sound's data before NSF compression."
 
 # =============================================================================
 # Global — Menu
@@ -690,8 +690,8 @@ sequencer.voices.title.add_sample_dialog: "Add sample"
 sequencer.voices.title.import_instrument_dialog: "Import instrument"
 sequencer.voices.title.instrument_imported: "Instrument imported"
 sequencer.voices.template.instrument_name: "Instrument {position}"
-sequencer.voices.template.status_sample: "{name} is a sample playing {channels}. It takes {bytes} as FamiTracker instruments."
-sequencer.voices.template.status_instrument: "{name} is an instrument every channel can play. It takes {bytes} as a FamiTracker instrument."
+sequencer.voices.template.status_sample: "{name} is a sample playing {channels}. It takes {bytes}."
+sequencer.voices.template.status_instrument: "{name} is an instrument every channel can play. It takes {bytes}."
 sequencer.voices.template.status_channel_separator: ", "
 sequencer.voices.template.instrument_omissions: "\"{name}\" plays every envelope the file states.\nThe file also states:"
 

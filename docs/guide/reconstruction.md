@@ -83,7 +83,7 @@ says how many values each export keeps.
 Clear a sequence to play its default on every note. An empty volume sequence plays at the volume the
 pattern sets. An empty arpeggio, pitch or hi-pitch sequence keeps the note where the pattern puts it. An
 empty duty cycle sequence plays duty 0 on a pulse channel and the long mode on noise. Each channel shows
-how many bytes its instrument takes on the NES, so you can see how much space an edit uses.
+how many bytes its instrument takes before compression, so you can see how much space an edit uses.
 
 You can edit an [**instrument**](../glossary.md#instrument) here as well. It is a voice you write by
 hand, described in the [sequencer guide](sequencer.md#voices-samples-and-instruments). Right-click one

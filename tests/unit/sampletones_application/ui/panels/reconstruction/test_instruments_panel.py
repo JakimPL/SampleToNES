@@ -62,6 +62,7 @@ from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
 SEQUENCE_STATUS_KEY: Final[str] = "reconstructions.instruments.message.status_sequence"
+SIZE_TEMPLATE_KEY: Final[str] = "global.context.template.size_bytes"
 KEPT_KEYS: Final[Dict[ExportFormat, str]] = {
     ExportFormat.FAMITRACKER: "reconstructions.instruments.template.kept_famitracker",
     ExportFormat.BITPHASE: "reconstructions.instruments.template.kept_bitphase",
@@ -549,19 +550,24 @@ class TestTheExportsASequenceStatusNames(BaseTestSuite):
         assert str(test_case.item_count) in message
 
 
+def size_text(panel: GUIReconstructionInstrumentsPanel, byte_count: int) -> str:
+    """A byte figure as the shipped template prints it."""
+    return panel._language_manager[SIZE_TEMPLATE_KEY].format(bytes=byte_count)
+
+
 class TestSizeFields(BaseTestSuite):
     """The two read-only byte figures: the sample's above the tabs, each channel's inside its tab."""
 
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
         channel_footprints: Dict[ChannelName, InstrumentFootprint]
-        expected: str
+        expected_bytes: int
 
     test_cases = (
         TestCase(
             label="a single channel spends what its instrument does",
             channel_footprints={ChannelName.PULSE1: LARGEST_PULSE},
-            expected="777 B",
+            expected_bytes=777,
         ),
         TestCase(
             label="three channels spend their instruments together",
@@ -570,12 +576,12 @@ class TestSizeFields(BaseTestSuite):
                 ChannelName.TRIANGLE: LARGEST_TRIANGLE,
                 ChannelName.NOISE: LARGEST_PULSE,
             },
-            expected="2073 B",
+            expected_bytes=2073,
         ),
         TestCase(
             label="a silent channel spends the instrument definition alone",
             channel_footprints={ChannelName.TRIANGLE: SILENT_INSTRUMENT},
-            expected="3 B",
+            expected_bytes=3,
         ),
     )
 
@@ -587,7 +593,7 @@ class TestSizeFields(BaseTestSuite):
         test_case: TestCase,
     ) -> None:
         panel.update_view(build_view_model(test_case.channel_footprints))
-        assert written[panel.sample_size_tag] == test_case.expected
+        assert written[panel.sample_size_tag] == size_text(panel, test_case.expected_bytes)
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_each_channel_states_its_own_size(
@@ -601,7 +607,7 @@ class TestSizeFields(BaseTestSuite):
             channel_name: written[panel._get_instrument_size_tag(channel_name)]
             for channel_name in test_case.channel_footprints
         } == {
-            channel_name: f"{footprint.total_bytes} B"
+            channel_name: size_text(panel, footprint.total_bytes)
             for channel_name, footprint in test_case.channel_footprints.items()
         }
 
@@ -619,7 +625,7 @@ class TestSizeFields(BaseTestSuite):
             for channel_name in ChannelName.items()
             if channel_name not in test_case.channel_footprints
         } == {
-            channel_name: "0 B"
+            channel_name: size_text(panel, 0)
             for channel_name in ChannelName.items()
             if channel_name not in test_case.channel_footprints
         }
