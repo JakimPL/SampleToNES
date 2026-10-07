@@ -16,6 +16,7 @@ from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
+from tests.suite.history.projects import every_part_project
 from tests.suite.performance import place_instrument
 from tests.suite.screens.seeds.constants import TURNING_LEVELS
 from tests.suite.screens.seeds.reconstructions import (
@@ -53,6 +54,18 @@ class StoredProject:
         project.voices.append(Instrument(name=self.instrument))
         self.destination.parent.mkdir(parents=True, exist_ok=True)
         ProjectContainer.save(project, self.destination)
+
+
+@dataclass(frozen=True)
+class EveryPartProject:
+    """The project holding something in every part a history gesture reaches, as the history tiers below build it."""
+
+    destination: Path
+
+    def write(self) -> None:
+        """Saves the project to the destination."""
+        self.destination.parent.mkdir(parents=True, exist_ok=True)
+        ProjectContainer.save(every_part_project(), self.destination)
 
 
 @dataclass(frozen=True)

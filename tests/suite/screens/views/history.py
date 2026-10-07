@@ -59,6 +59,12 @@ class History:
         """The line of the entry the project stands at."""
         return next(line for line in self.lines() if line.current)
 
+    def jump_to(self, line: int) -> None:
+        """Clicks the ``line``-th line from the top, which puts the project at the entry it names."""
+        selectable = self._bridge.ask(lambda: read_line_selectables()[line])
+        self._hand.scroll_into_view(selectable)
+        self._hand.click(selectable)
+
     def undo(self) -> None:
         """Clicks Undo below the list, which steps the project back one entry."""
         self._hand.click(compose_tag(TAG_SEQUENCER_HISTORY_BUTTON_UNDO, SUF_BUTTON))
@@ -84,6 +90,19 @@ def read_history() -> Tuple[HistoryLine, ...]:
         lines.append(HistoryLine(segments=_segments(group), current=bool(dpg.get_value(selectable))))
 
     return tuple(lines)
+
+
+def read_line_selectables() -> Tuple[Item, ...]:
+    """The clickable row of each line the History card draws, newest first. Runs on the render thread."""
+    tables = [
+        child
+        for child in dpg.get_item_children(TAG_SEQUENCER_HISTORY_WINDOW_LIST, 1)
+        if dpg.get_item_info(child)["type"] == TABLE_TYPE
+    ]
+    if not tables:
+        return ()
+
+    return tuple(dpg.get_item_children(row, 1)[0] for row in dpg.get_item_children(tables[0], 1))
 
 
 def _segments(group: Item) -> Tuple[HistorySegment, ...]:

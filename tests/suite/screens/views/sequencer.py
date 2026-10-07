@@ -14,6 +14,9 @@ from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_BROWSER_TREE,
     TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
     TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
+    TAG_SEQUENCER_MODULE_INPUT_ROWS,
+    TAG_SEQUENCER_MODULE_INPUT_SPEED,
+    TAG_SEQUENCER_MODULE_INPUT_TEMPO,
     TAG_SEQUENCER_ORDER_TABLE,
     TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT,
     TAG_SEQUENCER_VOICES_DIALOG_REMOVE,
@@ -219,8 +222,38 @@ class ModuleOptions:
 
     def retype_nes_frequency(self, frequency: int) -> None:
         """Types ``frequency`` over the NES frequency field and presses Enter, which commits it."""
-        self._hand.scroll_into_view(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY)
-        self._hand.replace_text(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, str(frequency))
+        self._retype(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, frequency)
+
+    def tempo(self) -> int:
+        """The tempo the field holds."""
+        return self._read(TAG_SEQUENCER_MODULE_INPUT_TEMPO)
+
+    def retype_tempo(self, tempo: int) -> None:
+        """Types ``tempo`` over the tempo field and presses Enter, which commits it."""
+        self._retype(TAG_SEQUENCER_MODULE_INPUT_TEMPO, tempo)
+
+    def speed(self) -> int:
+        """The speed the field holds."""
+        return self._read(TAG_SEQUENCER_MODULE_INPUT_SPEED)
+
+    def retype_speed(self, speed: int) -> None:
+        """Types ``speed`` over the speed field and presses Enter, which commits it."""
+        self._retype(TAG_SEQUENCER_MODULE_INPUT_SPEED, speed)
+
+    def rows(self) -> int:
+        """The rows per pattern the field holds."""
+        return self._read(TAG_SEQUENCER_MODULE_INPUT_ROWS)
+
+    def retype_rows(self, rows: int) -> None:
+        """Types ``rows`` over the rows per pattern field and presses Enter, which commits it."""
+        self._retype(TAG_SEQUENCER_MODULE_INPUT_ROWS, rows)
+
+    def _read(self, field: str) -> int:
+        return int(self._bridge.ask(lambda: dpg.get_value(field)))
+
+    def _retype(self, field: str, value: int) -> None:
+        self._hand.scroll_into_view(field)
+        self._hand.replace_text(field, str(value))
         self._hand.press_key(IMGUI_ENTER, modifiers=[])
 
 

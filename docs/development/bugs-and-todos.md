@@ -116,6 +116,8 @@ currently out of line. An entry leaves when the code meets the contract again.
 
 ## Bugs
 
+* A click on the History card's line in force takes its highlight off. The jump goes nowhere, so the card
+  repaints nothing and shows no line in force until the next step.
 * A rate change's retune can land as an entry of its own. When another gesture commits before the
   samples' background retune lands, the retuned samples record a second entry, so undoing it leaves the
   project at the new rate over samples tuned for the old one.

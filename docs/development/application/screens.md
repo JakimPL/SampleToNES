@@ -249,8 +249,9 @@ A bug fix's scenario is shown failing on the code before the fix, and the pull r
 
 ## How the scenarios are laid out
 
-`tests/screens/` has a package per area of the application (`application`, `exports`, `instructions`,
-`interface`, `main`, `prompts`, `reconstructions`, `sequencer`), and an area has a package per subject.
+`tests/screens/` has a package per area of the application (`application`, `exports`, `history`,
+`instructions`, `interface`, `main`, `prompts`, `reconstructions`, `sequencer`), and an area has a package
+per subject.
 A subject package holds one file per responsibility: the classes in a file prove one family of rules of
 that subject, and a file that grows past about 300 lines or starts answering a second question is split
 by subject. A file name says its responsibility, such as `test_note_keys.py`.
