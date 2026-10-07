@@ -127,6 +127,14 @@ class Voices:
         self._hand.scroll_into_view(row)
         self._hand.right_click(row)
 
+    def click_below_the_rows(self) -> None:
+        """Clicks the empty foot of the list, which clears the mark on a voice."""
+        view = self._bridge.ask(lambda: read_region_view(TAG_SEQUENCER_VOICES_WINDOW))
+        if view is None:
+            raise LookupError("The list of voices stands nowhere")
+
+        self._hand.click_at(Point(x=view.center.x, y=round(view.y + view.height) - CLEAR_OF_THE_EDGE))
+
     def right_click_below_the_rows(self) -> None:
         """Clicks the empty foot of the list with the right button, which opens the list's own menu."""
         view = self._bridge.ask(lambda: read_region_view(TAG_SEQUENCER_VOICES_WINDOW))

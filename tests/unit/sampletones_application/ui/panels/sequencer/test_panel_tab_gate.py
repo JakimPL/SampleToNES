@@ -72,6 +72,7 @@ def _samples(tab_active: ActivePredicate) -> GUISequencerVoicesPanel:
     panel._router = KeyRouter()
     panel._tab_active = tab_active
     panel._selected_voice_id = SELECTED_ID
+    panel._focused = True
     panel._editing_voice_id = None
     return panel
 

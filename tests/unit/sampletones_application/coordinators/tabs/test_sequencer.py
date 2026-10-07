@@ -2353,3 +2353,32 @@ class TestPasteAwaitsTheClipboard:
 
         assert answered == [True]
         assert coordinator._blocks.can_paste_order()
+
+
+class TestACellTakingFocus:
+    """A cell picked in the grid or the order takes the keyboard and leaves the voices' mark standing."""
+
+    def test_a_tracker_cell_keeps_the_marked_voice(self, history_coordinator: SequencerTabCoordinator) -> None:
+        history_coordinator._sequencer_order_panel = MagicMock()
+        history_coordinator._sequencer_voices_panel = MagicMock()
+
+        history_coordinator._on_tracker_cell_focused()
+
+        history_coordinator._sequencer_order_panel.deselect_cell.assert_called_once_with()
+        history_coordinator._sequencer_voices_panel.blur.assert_called_once_with()
+        history_coordinator._sequencer_voices_panel.deselect.assert_not_called()
+
+    def test_an_order_cell_keeps_the_marked_voice(self, history_coordinator: SequencerTabCoordinator) -> None:
+        history_coordinator._sequencer_tracker_panel = MagicMock()
+        history_coordinator._sequencer_voices_panel = MagicMock()
+
+        history_coordinator._on_order_cell_focused()
+
+        history_coordinator._sequencer_tracker_panel.deselect_cell.assert_called_once_with()
+        history_coordinator._sequencer_voices_panel.blur.assert_called_once_with()
+        history_coordinator._sequencer_voices_panel.deselect.assert_not_called()
+
+    def test_the_grid_reads_the_mark_from_the_voices_list(self, history_coordinator: SequencerTabCoordinator) -> None:
+        history_coordinator._sequencer_voices_panel = MagicMock()
+
+        assert history_coordinator._marked_voice() is history_coordinator._sequencer_voices_panel.selection

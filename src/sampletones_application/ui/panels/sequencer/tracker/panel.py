@@ -81,6 +81,7 @@ from sampletones_application.ui.panels.sequencer.tracker.adjust import (
 )
 from sampletones_application.ui.panels.sequencer.tracker.callbacks import (
     CanPasteBlockQuery,
+    MarkedVoiceQuery,
     OnAdjustCallback,
     OnBlockRegionCallback,
     OnCellSelectedCallback,
@@ -240,6 +241,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self.on_delete_block: Optional[OnBlockRegionCallback] = None
         self.on_paste_block: Optional[OnPasteBlockCallback] = None
         self.can_paste_block: Optional[CanPasteBlockQuery] = None
+        self.marked_voice: Optional[MarkedVoiceQuery] = None
         self.refresh_paste_block: Optional[RefreshPasteBlockRequest] = None
         self.on_channel_mute_toggled: Optional[OnChannelMuteToggledCallback] = None
         self.on_channel_soloed: Optional[OnChannelSoloedCallback] = None
@@ -1044,12 +1046,11 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         An :class:`EditAction` only ever carries the subcolumn under the cursor;
         the others are ``None`` meaning "leave unchanged". Forwarding those ``None``
-        values lets the downstream partial update preserve the rest of the row.
+        values lets the downstream partial update preserve the rest of the row. A pitch
+        typed while the voices list marks a voice carries that voice into the cell too — see
+        :meth:`_place_marked_voice`.
         """
         row, channel = action.row, action.channel
-
-        if not self._offset_lands(action):
-            return
 
         if action.note_off:
             self._show_voice(row, channel, NOTE_OFF, None)
@@ -1069,6 +1070,11 @@ class GUISequencerTrackerPanel(GUIPanel):
                     tracker_display.format_committed(SubColumn.VOICE, sample_index),
                     voice.kind,
                 )
+        elif action.pitch is not None:
+            voice_id = self._place_marked_voice(row, channel)
+
+        if voice_id is None and not self._offset_lands(action):
+            return
 
         if action.pitch is not None:
             self._editable_cells.values[(row, channel, SubColumn.TRANSPOSE)] = display_pitch(action.pitch)
@@ -1087,6 +1093,26 @@ class GUISequencerTrackerPanel(GUIPanel):
             action.pitch,
             action.volume,
         )
+
+    def _place_marked_voice(self, row: int, channel: Optional[ChannelName]) -> Optional[str]:
+        """The marked voice a typed pitch carries into the cell, shown at once where the column takes it.
+
+        A pitch typed while the voices list marks a voice places that voice too, which is how a
+        melody is typed without naming the voice on every row. The column decides as it does for a
+        typed number: a channel column takes either kind, and the sample column takes a sample and
+        writes the pitch alone for a marked instrument.
+        """
+        mark = self.query(self.marked_voice, default=None)
+        if mark is None or not column_takes(channel, mark.kind):
+            return None
+
+        self._show_voice(
+            row,
+            channel,
+            tracker_display.format_committed(SubColumn.VOICE, mark.position),
+            mark.kind,
+        )
+        return mark.voice_id
 
     def _offset_lands(self, action: EditAction) -> bool:
         """Whether the pitch or volume an edit carries has a channel to reach.

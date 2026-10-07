@@ -202,14 +202,16 @@ class SequencerTrackerLogic(CallbackMixin):
         pitch: Optional[RowPitch],
         volume: Optional[int],
     ) -> None:
-        """Writes the value a cell edit carries, keeping the rest of the cell as it stands.
+        """Writes the values a cell edit carries, keeping the rest of the cell as it stands.
 
-        An edit names one subcolumn, so a sample takes the write whenever one
-        arrives, and an offset lands on its own otherwise.
+        A voice is placed first, and the pitch and the volume reach the cell after it, so a pitch
+        typed with a marked voice lands on the channels the voice was just placed on: in the sample
+        column the sample spreads over its channels, then the pitch reaches them.
         """
         if voice_id is not None:
             self.place_note(row_index, channel, voice_id)
-        elif pitch is not None or volume is not None:
+
+        if pitch is not None or volume is not None:
             self.set_cell_subcolumn(
                 row_index,
                 channel,

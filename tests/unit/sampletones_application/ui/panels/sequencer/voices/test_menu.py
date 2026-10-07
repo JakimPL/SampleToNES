@@ -170,6 +170,7 @@ def _panel(
     panel._entries = ENTRIES
     panel._selected_voice_id = None if selected_row is None else SELECTED_ID
     panel._selected_row = selected_row
+    panel._focused = selected_row is not None
     panel._editing_voice_id = editing
     panel._list_menu_pending = False
     panel._accepts_voices = accepts_voices

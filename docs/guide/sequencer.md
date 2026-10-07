@@ -60,6 +60,9 @@ The grid has a **Sample** column and a column for each channel: **Pulse 1**, **P
 Click a cell and type its value. Right-click a cell for the same commands as a menu, including
 **Note off**, which stops the note.
 
+Click a voice in the **Voices** list, then type pitches: each pitch you type places that voice in
+the cell too. Click below the list to type pitches on their own again.
+
 The [**Sample** column](../glossary.md#sample-column) places a sample on every channel the sample
 uses, and clears the other channels of the row. It takes samples only. To place an instrument, use
 the column of the channel you want it on.

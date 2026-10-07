@@ -10,7 +10,7 @@ from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME
-from sampletones_core.project.patterns.pitch import Step
+from sampletones_core.project.patterns.pitch import Note, Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.project.voices.note_off import NoteOff
@@ -202,6 +202,35 @@ class TestWriteCell:
         assert isinstance(command, NoteOn)
         assert command.voice_id == sample.id
         assert _row(controller, ChannelName.PULSE1).command is None
+
+    def test_a_voice_and_a_pitch_land_together_in_a_channel_cell(self) -> None:
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+        sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="lead")
+
+        logic.write_cell(0, ChannelName.PULSE1, sample.id, Note(value=60), None)
+
+        row = _row(controller, ChannelName.PULSE1)
+        assert row.command == NoteOn(voice_id=sample.id)
+        assert row.pitch == Note(value=60)
+
+    def test_a_sample_and_a_pitch_in_the_sample_column_reach_the_channels_the_sample_spreads_over(self) -> None:
+        """The sample is placed first, so the pitch finds the channels it has just covered."""
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+        sample = controller.add_sample(
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
+            name="lead",
+        )
+
+        logic.write_cell(0, None, sample.id, Note(value=60), None)
+
+        for channel in (ChannelName.PULSE1, ChannelName.TRIANGLE):
+            assert _row(controller, channel).command == NoteOn(voice_id=sample.id)
+            assert _row(controller, channel).pitch == Note(value=60)
+
+        for channel in (ChannelName.PULSE2, ChannelName.NOISE):
+            assert _row(controller, channel).pitch is None
 
     def test_a_volume_in_a_channel_cell_leaves_the_rest_of_the_cell_standing(self) -> None:
         controller = _controller()

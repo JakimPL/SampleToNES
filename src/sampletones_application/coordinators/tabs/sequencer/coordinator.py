@@ -1,6 +1,6 @@
 from functools import partial
 from pathlib import Path
-from typing import Callable, Sequence, Tuple
+from typing import Callable, Optional, Sequence, Tuple
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.categories.instrument import InstrumentImportMessages
@@ -78,6 +78,7 @@ from sampletones_application.view_model.sequencer.settings import (
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 from sampletones_application.view_model.sequencer.voices import (
     SequencerVoicesViewModel,
+    VoiceSelection,
 )
 from sampletones_application.view_model.shared.history import (
     HistoryDetail,
@@ -378,6 +379,7 @@ class SequencerTabCoordinator:
             detail=self._history_detail.note_off,
             coalesce=self._recorder.cell_key,
         )
+        self._sequencer_tracker_panel.marked_voice = self._marked_voice
         self._sequencer_tracker_panel.on_octave_changed = self._session_manager.set_octave
         self._sequencer_tracker_panel.on_cell_selected = self._on_tracker_cell_focused
         self._sequencer_tracker_panel.on_play_from_row = self._on_tracker_play_from_row
@@ -913,19 +915,24 @@ class SequencerTabCoordinator:
         self._nes_frequency_change_acknowledged = True
 
     def _on_tracker_cell_focused(self) -> None:
-        """Drops the order cursor and sample selection when the tracker tracker takes focus.
+        """Drops the order cursor and takes the keyboard from the voices when the tracker takes focus.
 
-        The tracker, order, and samples panels each register a key-router scope active only while
-        it holds a selection; keeping a single selection across the three lets only the focused
-        panel consume keystrokes.
+        The tracker, order, and voices panels each register a key-router scope active only while
+        it holds the keyboard; keeping a single holder across the three lets only the focused
+        panel consume keystrokes. The voices panel keeps its mark, which the pitches typed into
+        the grid carry.
         """
         self._sequencer_order_panel.deselect_cell()
-        self._sequencer_voices_panel.deselect()
+        self._sequencer_voices_panel.blur()
 
     def _on_order_cell_focused(self) -> None:
-        """Drops the tracker cursor and sample selection when the order tracker takes focus."""
+        """Drops the tracker cursor and takes the keyboard from the voices when the order takes focus."""
         self._sequencer_tracker_panel.deselect_cell()
-        self._sequencer_voices_panel.deselect()
+        self._sequencer_voices_panel.blur()
+
+    def _marked_voice(self) -> Optional[VoiceSelection]:
+        """The voice the voices list marks, which a pitch typed into the grid places beside itself."""
+        return self._sequencer_voices_panel.selection
 
     def create_tab(self) -> None:
         """Builds this tab, which the layout holds and refits from here on."""
