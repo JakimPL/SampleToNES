@@ -150,14 +150,30 @@ class SequencerRowViewModel(BaseModel, frozen=True):
         return aggregate_labels(values, default=default)
 
 
+class SequencerContextRowViewModel(BaseModel, frozen=True):
+    """A row of another frame, drawn beside the shown one so the song reads on past the frame's edges.
+
+    ``row`` reads as it does while its own frame is shown, and ``frame_index`` names that frame.
+    """
+
+    frame_index: int
+    row: SequencerRowViewModel
+
+
 class SequencerTrackerViewModel(BaseModel, frozen=True):
-    """The tracker view for a single order frame across the four channels.
+    """The tracker view for a single order frame across the four channels, with the song around it.
 
     Each channel plays its ``order[frame_index]`` pattern; the grid shows those
     patterns aligned row by row. Channels whose order is shorter than
     ``frame_index`` contribute empty cells.
+
+    ``lead`` holds the rows the song plays before the frame and ``trail`` the rows it plays after,
+    each in playing order and as many as the tracker reaches, so a row near the frame's edge stands
+    among its neighbors. Both end where the song does.
     """
 
     frame_index: int
     frame_count: int
     rows: Tuple[SequencerRowViewModel, ...]
+    lead: Tuple[SequencerContextRowViewModel, ...]
+    trail: Tuple[SequencerContextRowViewModel, ...]

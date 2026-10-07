@@ -109,7 +109,7 @@ def bound(monkeypatch: pytest.MonkeyPatch) -> Dict[Sender, int]:
 
 
 def _view_model(rows: Tuple[SequencerRowViewModel, ...]) -> SequencerTrackerViewModel:
-    return SequencerTrackerViewModel(frame_index=0, frame_count=1, rows=rows)
+    return SequencerTrackerViewModel(frame_index=0, frame_count=1, rows=rows, lead=(), trail=())
 
 
 def _row(

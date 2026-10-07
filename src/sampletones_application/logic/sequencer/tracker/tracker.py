@@ -1,6 +1,7 @@
-from typing import Callable, Dict, FrozenSet, List, Mapping, Optional, Set
+from typing import Callable, Dict, Final, FrozenSet, List, Mapping, Optional, Set, Tuple
 
 from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.logic.sequencer.tracker.context import rows_after, rows_before
 from sampletones_application.view_model.sequencer.kind import (
     voice_kind,
 )
@@ -31,6 +32,8 @@ from sampletones_core.utils.display import (
 )
 from sampletones_shared.utils.callbacks import CallbackMixin
 
+NO_REACH: Final[int] = 0
+
 _EMPTY_CELL = SequencerCellViewModel(
     voice=display_id(None),
     transpose=display_pitch(None),
@@ -45,8 +48,8 @@ _EMPTY_CELL = SequencerCellViewModel(
 class SequencerTrackerLogic(CallbackMixin):
     """Builds the tracker grid and module-options view models from the project.
 
-    Holds the only piece of grid-local UI state, the visible order frame, and
-    translates raw panel events into :class:`ProjectController` mutations. The
+    Holds the grid-local UI state, the visible order frame and how far the grid reaches past it,
+    and translates raw panel events into :class:`ProjectController` mutations. The
     controller's change events are wired (by the coordinator) back to the push
     methods here, so a single mutation round-trips into a refreshed view.
 
@@ -58,6 +61,7 @@ class SequencerTrackerLogic(CallbackMixin):
     def __init__(self, project_controller: ProjectController) -> None:
         self._controller = project_controller
         self._frame_index: int = 0
+        self._reach: int = NO_REACH
 
         self.on_settings_changed: Optional[Callable[[SequencerSettingsViewModel], None]] = None
         self.on_tracker_changed: Optional[Callable[[SequencerTrackerViewModel], None]] = None
@@ -77,21 +81,46 @@ class SequencerTrackerLogic(CallbackMixin):
         )
 
     def build_grid(self) -> SequencerTrackerViewModel:
+        """The shown frame's rows, with as many rows of the song on each side as the grid reaches."""
         song = self._controller.project.song
         frame_count = song.order_length()
         frame_index = self._clamp_frame(frame_count)
-
-        patterns = self._frame_patterns()
-        carried: Dict[ChannelName, Optional[VoiceUnion]] = {channel: None for channel in ChannelName.items()}
-        rows = tuple(self._build_row(index, patterns, carried) for index in range(self.frame_row_count()))
         return SequencerTrackerViewModel(
             frame_index=frame_index,
             frame_count=frame_count,
-            rows=rows,
+            rows=self.frame_rows(frame_index),
+            lead=rows_before(frame_index, self._reach, self.frame_rows),
+            trail=rows_after(frame_index, frame_count, self._reach, self.frame_rows),
         )
 
+    def frame_rows(self, frame_index: int) -> Tuple[SequencerRowViewModel, ...]:
+        """The rows of one frame, each channel read in the terms of the voice it carries there.
+
+        The reading starts afresh at the frame's first row, so a row reads the same whether its own
+        frame is shown or it stands beside another.
+        """
+        patterns = self._frame_patterns(frame_index)
+        carried: Dict[ChannelName, Optional[VoiceUnion]] = {channel: None for channel in ChannelName.items()}
+        return tuple(self._build_row(index, patterns, carried) for index in range(self._row_count_at(frame_index)))
+
     def frame_row_count(self) -> int:
-        """Rows the current frame holds, the height a whole-frame edit spans.
+        """Rows the shown frame holds, the height a whole-frame edit spans."""
+        return self._row_count_at(self._frame_index)
+
+    def set_reach(self, rows: int) -> None:
+        """Has the grid carry ``rows`` rows of the song on each side of the frame.
+
+        The tracker centers the row it follows, so it asks for the room half its height takes,
+        and the grid is built again once that room changes.
+        """
+        if rows == self._reach:
+            return
+
+        self._reach = rows
+        self.push_tracker()
+
+    def _row_count_at(self, frame_index: int) -> int:
+        """Rows a frame holds.
 
         A frame is as tall as its longest pattern. Empty (None) slots contribute no
         pattern, so a frame whose channels are all empty falls back to
@@ -103,25 +132,25 @@ class SequencerTrackerLogic(CallbackMixin):
         if song.order_length() == 0:
             return 0
 
-        lengths = [pattern.length for pattern in self._frame_patterns().values()]
+        lengths = [pattern.length for pattern in self._frame_patterns(frame_index).values()]
         if lengths:
             return max(lengths)
 
         return song.rows_per_pattern
 
-    def _frame_patterns(self) -> Dict[ChannelName, Pattern]:
-        """The patterns the current frame's channels point at.
+    def _frame_patterns(self, frame_index: int) -> Dict[ChannelName, Pattern]:
+        """The patterns a frame's channels point at.
 
         A channel contributes an entry once its slot names a pattern the song holds,
         so the result covers exactly the channels carrying content at this frame.
         """
         song = self._controller.project.song
-        if self._frame_index >= song.order_length():
+        if frame_index >= song.order_length():
             return {}
 
         patterns: Dict[ChannelName, Pattern] = {}
         for channel in ChannelName.items():
-            index = song.order[self._frame_index].get(channel)
+            index = song.order[frame_index].get(channel)
             pattern = song.pattern(channel, index) if index is not None else None
             if pattern is not None:
                 patterns[channel] = pattern
@@ -545,6 +574,16 @@ class SequencerTrackerLogic(CallbackMixin):
         return self._frame_index
 
     def select_frame(self, frame_index: int) -> None:
+        """Shows a frame, building the grid only when the frame changes.
+
+        The grid follows every change to the song on its own, so the frame already shown stands as
+        built, and a followed song walking down its rows builds nothing. Whoever follows the frame
+        hears it either way.
+        """
+        if frame_index == self._frame_index:
+            self.call(self.on_frame_changed, frame_index)
+            return
+
         self._frame_index = frame_index
         self.push_tracker()
 
