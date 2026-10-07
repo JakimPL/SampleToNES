@@ -71,19 +71,21 @@ class SequencerReconstructions:
 
         self._add_with_frequency_check(reconstruction, filepath.stem)
 
-    def import_object(self, reconstruction: Reconstruction, name: str) -> None:
+    def import_object(
+        self,
+        reconstruction: Reconstruction,
+        name: str,
+    ) -> None:
         """Adds an in-memory reconstruction — the one open in the Reconstruction tab — as a sample.
 
-        The sample embeds an independent copy, so the open document keeps its own source-audio
-        location and file backing while the project stores a self-contained, detached sample.
+        The project stores the detached document, so the open document keeps its own source-audio
+        location and file backing while the sample stays self-contained. A reconstruction never
+        changes once made, so the two share every part the detachment leaves alone.
         """
         if not self._open_project.met():
             return
 
-        self._add_with_frequency_check(
-            reconstruction.model_copy(deep=True),
-            name,
-        )
+        self._add_with_frequency_check(reconstruction, name)
 
     def replace_from_file(self, filepath: Path) -> None:
         """Substitutes the selected sample's reconstruction with a browser file's.
@@ -251,5 +253,5 @@ class SequencerReconstructions:
                 self._tracker_logic.set_nes_frequency(adopt_frequency)
 
             self._voices_logic.rename_voice(voice_id, name)
-            self._browser_logic.replace_reconstruction(voice_id, reconstruction)
-            self._on_sample_reconstruction_replaced(voice_id, reconstruction)
+            held = self._browser_logic.replace_reconstruction(voice_id, reconstruction)
+            self._on_sample_reconstruction_replaced(voice_id, held)

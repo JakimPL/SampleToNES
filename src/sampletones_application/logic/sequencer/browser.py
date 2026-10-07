@@ -59,10 +59,13 @@ class SequencerBrowserLogic(CallbackMixin):
         self,
         voice_id: str,
         reconstruction: Reconstruction,
-    ) -> None:
+    ) -> Reconstruction:
         """Substitutes an existing sample's reconstruction with an already-loaded one.
 
         The sample keeps its identity, so the patterns referencing it sound the new
         reconstruction while their rows stay as they were.
+
+        Returns:
+            Reconstruction: The document the sample now holds, in the form the project keeps it.
         """
-        self._controller.replace_sample_reconstruction(voice_id, reconstruction)
+        return self._controller.replace_sample_reconstruction(voice_id, reconstruction)

@@ -119,7 +119,7 @@ def _stored(
 
 def _edited(reconstruction: Reconstruction, instructions: List[InstructionUnion]) -> Reconstruction:
     edited = reconstruction.model_copy(deep=True)
-    edited.update_channel_data(
+    edited = edited.with_channel_data(
         ChannelName.PULSE1,
         instructions,
         initial_pitch=reconstruction.initial_pitches[ChannelName.PULSE1],
@@ -264,7 +264,7 @@ class TestTheRecordAfterEveryGesture(BaseTestSuite):
 
 def _detached(reconstruction: Reconstruction) -> Reconstruction:
     detached = reconstruction.model_copy(deep=True)
-    detached.detach_source()
+    detached = detached.detached()
     return detached
 
 

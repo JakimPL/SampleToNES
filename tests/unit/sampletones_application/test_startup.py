@@ -501,8 +501,12 @@ class TestTheReconstructionsTabFollowsTheProject:
 
     @staticmethod
     def _edit(app: Application, reconstruction_factory: ReconstructionFactory) -> Reconstruction:
-        """A regenerated instrument landing on the open sample, the way a drag on the panel lands."""
-        edited = reconstruction_factory()
+        """A regenerated instrument landing on the open sample, the way a drag on the panel lands.
+
+        A rebuild starts from the open sample, which names no recording's location, so the edit
+        it lands names none either.
+        """
+        edited = reconstruction_factory().detached()
         app._reconstruction_coordinator.apply_edit(
             ChannelEdit(
                 reconstruction=edited,

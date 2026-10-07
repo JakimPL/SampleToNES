@@ -250,7 +250,7 @@ class TestReconstructionPanelLogicPathRows:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
         _open(
             mock_reconstruction_manager,
             ReconstructionData.from_reconstruction(reconstruction, name="Sample"),
@@ -428,12 +428,14 @@ class TestReconstructionPanelLogicPlayingChannels:
     ) -> None:
         _open(mock_reconstruction_manager, loaded_data)
         panel_logic.display_reconstruction()
-        loaded_data.reconstruction.update_channel_data(
-            ChannelName.TRIANGLE,
-            [TriangleInstruction(on=True, pitch=48)],
-            48,
-            (),
-            heard=loaded_data.reconstruction.recorded_stem_ids,
+        mock_reconstruction_manager.current_reconstruction = loaded_data.with_reconstruction(
+            loaded_data.reconstruction.with_channel_data(
+                ChannelName.TRIANGLE,
+                [TriangleInstruction(on=True, pitch=48)],
+                48,
+                (),
+                heard=loaded_data.reconstruction.recorded_stem_ids,
+            )
         )
         received = self._received(panel_logic)
 
@@ -450,12 +452,14 @@ class TestReconstructionPanelLogicPlayingChannels:
     ) -> None:
         _open(mock_reconstruction_manager, loaded_data)
         panel_logic.display_reconstruction()
-        loaded_data.reconstruction.update_channel_data(
-            ChannelName.PULSE1,
-            [],
-            60,
-            (),
-            heard=loaded_data.reconstruction.recorded_stem_ids,
+        mock_reconstruction_manager.current_reconstruction = loaded_data.with_reconstruction(
+            loaded_data.reconstruction.with_channel_data(
+                ChannelName.PULSE1,
+                [],
+                60,
+                (),
+                heard=loaded_data.reconstruction.recorded_stem_ids,
+            )
         )
         received = self._received(panel_logic)
 
@@ -661,7 +665,7 @@ class TestReconstructionPanelLogicAudioSource:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
         _open(
             mock_reconstruction_manager,
             ReconstructionData.from_reconstruction(reconstruction, name="Sample"),

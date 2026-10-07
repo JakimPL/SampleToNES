@@ -42,7 +42,7 @@ def _instrument(name: str) -> Instrument:
 
 
 def _stand_by(sample: Sample, channel: ChannelName) -> None:
-    sample.reconstruction.update_channel_data(
+    sample.reconstruction = sample.reconstruction.with_channel_data(
         channel,
         [],
         sample.reconstruction.initial_pitches[channel],

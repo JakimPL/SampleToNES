@@ -73,7 +73,7 @@ def make_pulse_reconstruction(
     instructions: List[InstructionUnion] = [PulseInstruction(on=True, pitch=pitch, volume=volume, duty_cycle=0)] * count
     reconstruction = _reconstruction(ChannelName.PULSE1, instructions)
     if held_features:
-        reconstruction.update_channel_data(
+        reconstruction = reconstruction.with_channel_data(
             ChannelName.PULSE1,
             list(instructions),
             reconstruction.initial_pitches[ChannelName.PULSE1],

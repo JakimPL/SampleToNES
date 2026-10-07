@@ -68,7 +68,7 @@ class TestFromReconstruction:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
 
         data = ReconstructionData.from_reconstruction(
             reconstruction,
@@ -225,7 +225,7 @@ class TestDetachedCopy:
         tmp_path: Path,
     ) -> None:
         reconstruction = reconstruction_factory()
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
         data = ReconstructionData.from_reconstruction(
             reconstruction,
             name="Sample",
@@ -454,7 +454,7 @@ class TestTheOriginalAMissingRecordingLeaves:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
 
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
@@ -542,7 +542,7 @@ class TestRebindingToAnEditedReconstruction:
         stream = list(data.reconstruction.instructions[ChannelName.PULSE1])
         stream[1] = PulseInstruction.null_instruction()
         edited = data.reconstruction.model_copy(deep=True)
-        edited.update_channel_data(
+        edited = edited.with_channel_data(
             ChannelName.PULSE1,
             stream,
             edited.initial_pitches[ChannelName.PULSE1],

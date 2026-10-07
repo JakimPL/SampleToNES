@@ -13,9 +13,9 @@ class TestSampleClone:
 
         assert sample.clone().name == "lead"
 
-    def test_clone_deep_copies_the_reconstruction(self) -> None:
+    def test_clone_shares_the_reconstruction(self) -> None:
         reconstruction = Mock()
         sample = Sample(name="lead", reconstruction=reconstruction)
         clone = sample.clone()
-        reconstruction.model_copy.assert_called_once_with(deep=True)
-        assert clone.reconstruction is reconstruction.model_copy.return_value
+        assert clone.reconstruction is reconstruction
+        assert clone.id != sample.id

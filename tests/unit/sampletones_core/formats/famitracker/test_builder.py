@@ -115,7 +115,7 @@ class TestBuildInstrumentTable:
             PulseInstruction(on=True, pitch=LEAD_PITCH + OCTAVE, volume=15, duty_cycle=0),
             PulseInstruction(on=True, pitch=LEAD_PITCH, volume=8, duty_cycle=0),
         ]
-        project_fixture.lead.reconstruction.update_channel_data(
+        project_fixture.lead.reconstruction = project_fixture.lead.reconstruction.with_channel_data(
             ChannelName.PULSE1,
             arpeggiated,
             LEAD_PITCH,

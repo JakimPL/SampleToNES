@@ -106,7 +106,7 @@ def _edited(
     heard: AbstractSet[int] = EVERY_STEM,
 ) -> Reconstruction:
     edited = reconstruction.model_copy(deep=True)
-    edited.update_channel_data(
+    edited = edited.with_channel_data(
         channel_name,
         list(instructions),
         initial_pitch=reconstruction.initial_pitches[channel_name],
@@ -416,7 +416,7 @@ class TestADetachedDocument:
     def test_it_keeps_every_recording_it_was_built_from(self, reconstruction: Reconstruction) -> None:
         detached = reconstruction.model_copy(deep=True)
 
-        detached.detach_source()
+        detached = detached.detached()
 
         assert detached.audio_filepath == ()
         assert detached.stems_data.assignments_by_channel == reconstruction.stems_data.assignments_by_channel
@@ -427,7 +427,7 @@ class TestADetachedDocument:
     def test_it_edits_the_way_an_attached_one_does(self, reconstruction: Reconstruction) -> None:
         channel_name = _contested_channel(reconstruction)
         detached = reconstruction.model_copy(deep=True)
-        detached.detach_source()
+        detached = detached.detached()
 
         edited = _edited(detached, channel_name, _changed_stream(detached, channel_name))
 

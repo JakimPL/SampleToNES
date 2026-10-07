@@ -516,7 +516,7 @@ class TestAnEditLettingARecordingGo:
     def _edited(reconstruction: Reconstruction) -> Reconstruction:
         """The document with the second recording's frame written silent, which it held alone."""
         edited = reconstruction.model_copy(deep=True)
-        edited.update_channel_data(
+        edited = edited.with_channel_data(
             ChannelName.PULSE1,
             [_two_frames()[0], PulseInstruction.null_instruction()],
             edited.initial_pitches[ChannelName.PULSE1],

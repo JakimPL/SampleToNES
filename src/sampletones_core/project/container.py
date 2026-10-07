@@ -1,7 +1,7 @@
 import json
 import zipfile
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Set, Tuple, TypeAlias
 
 from pydantic import ValidationError
 
@@ -12,7 +12,7 @@ from sampletones_core.project.project import Project
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.record import SampleRecord, VoiceRecord
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.project.voices.voice import VoiceUnion
+from sampletones_core.project.voices.voice import VoiceUnion, samples
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures import IdentifiedCollection
 from sampletones_shared.constants.project import (
@@ -34,13 +34,15 @@ from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import JSON_INDENT
 from sampletones_shared.utils.system.paths import get_filename
 
+StoredReconstructions: TypeAlias = Dict[int, Tuple[str, Reconstruction]]
+
 
 class ProjectContainer:
     """Reads and writes a project as a compressed archive.
 
     The archive (``.stp``) is a zip holding a single ``project.json`` -- the
-    validated :class:`ProjectDocument` -- plus one ``reconstructions/<id>.stn`` per
-    unique reconstruction in its existing binary format. A sample embeds its
+    validated :class:`ProjectDocument` -- plus one ``reconstructions/<key>.stn`` per
+    distinct reconstruction in its existing binary format. A sample embeds its
     reconstruction in memory but references it by ``reconstruction_id`` on disk,
     so a reconstruction shared by several voices is stored exactly once.
 
@@ -50,15 +52,18 @@ class ProjectContainer:
     """
 
     @staticmethod
-    def save(project: Project, path: Pathlike) -> None:
-        document = ProjectContainer._build_document(project)
+    def save(
+        project: Project,
+        path: Pathlike,
+    ) -> None:
+        stored = ProjectContainer._stored_reconstructions(project)
+        document = ProjectContainer._build_document(project, stored)
         payload = document.model_dump_json(indent=JSON_INDENT).encode("utf-8")
-        reconstructions = ProjectContainer._unique_reconstructions(project)
 
         with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
             archive.writestr(PROJECT_DOCUMENT_NAME, payload)
-            for reconstruction_id, reconstruction in reconstructions.items():
-                filename = get_filename(reconstruction_id, EXT_FILE_RECONSTRUCTION)
+            for key, reconstruction in stored.values():
+                filename = get_filename(key, EXT_FILE_RECONSTRUCTION)
                 name = f"{RECONSTRUCTIONS_DIRECTORY}/{filename}"
                 archive.writestr(name, reconstruction.serialize())
 
@@ -115,12 +120,15 @@ class ProjectContainer:
         return ProjectDocument.model_validate(payload)
 
     @staticmethod
-    def _build_document(project: Project) -> ProjectDocument:
+    def _build_document(
+        project: Project,
+        stored: StoredReconstructions,
+    ) -> ProjectDocument:
         return ProjectDocument(
             metadata=project.metadata,
             info=project.info,
             settings=project.settings,
-            voices=[ProjectContainer._voice_record(voice) for voice in project.voices],
+            voices=[ProjectContainer._voice_record(voice, stored) for voice in project.voices],
             song=project.song,
         )
 
@@ -142,14 +150,18 @@ class ProjectContainer:
         )
 
     @staticmethod
-    def _voice_record(voice: VoiceUnion) -> VoiceRecord:
+    def _voice_record(
+        voice: VoiceUnion,
+        stored: StoredReconstructions,
+    ) -> VoiceRecord:
         """The record a voice is written as: a reference for a sample, the whole of it for an instrument."""
         match voice:
             case Sample():
+                key, _ = stored[id(voice.reconstruction)]
                 return SampleRecord(
                     id=voice.id,
                     name=voice.name,
-                    reconstruction_id=voice.reconstruction.id,
+                    reconstruction_id=key,
                 )
             case Instrument():
                 return voice
@@ -176,13 +188,26 @@ class ProjectContainer:
                 return record
 
     @staticmethod
-    def _unique_reconstructions(project: Project) -> Dict[str, Reconstruction]:
-        reconstructions: Dict[str, Reconstruction] = {}
-        for voice in project.voices:
-            if isinstance(voice, Sample):
-                reconstructions[voice.reconstruction.id] = voice.reconstruction
+    def _stored_reconstructions(project: Project) -> StoredReconstructions:
+        """The key each distinct reconstruction is stored under, with the reconstruction itself.
 
-        return reconstructions
+        Samples sharing one reconstruction object store it once. A reconstruction keeps the key
+        its own id gives it, and a distinct object whose id an earlier one already took is stored
+        under the id of the sample holding it, so every document the samples play reaches the
+        archive whole.
+        """
+        stored: StoredReconstructions = {}
+        taken: Set[str] = set()
+        for sample in samples(project.voices):
+            reconstruction = sample.reconstruction
+            if id(reconstruction) in stored:
+                continue
+
+            key = reconstruction.id if reconstruction.id not in taken else sample.id
+            taken.add(key)
+            stored[id(reconstruction)] = (key, reconstruction)
+
+        return stored
 
     @staticmethod
     def _read_reconstructions(archive: zipfile.ZipFile) -> Dict[str, Reconstruction]:

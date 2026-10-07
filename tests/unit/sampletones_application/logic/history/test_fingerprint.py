@@ -152,9 +152,8 @@ class TestHashCache:
     ) -> None:
         counting = CountingHash()
         cache = ReconstructionHashCache(reconstruction_hash=counting)
-        kept = reconstruction_factory()
+        kept = project_controller.add_sample(reconstruction_factory(), name="kept").reconstruction
         discarded = reconstruction_factory()
-        project_controller.add_sample(kept, name="kept")
         cache.hash(kept)
         cache.hash(discarded)
 

@@ -162,7 +162,7 @@ class TestTheRecordedSetup:
         assert remaining.audio_filepath == (RECORDINGS[STEM_A], RECORDINGS[STEM_C])
 
     def test_a_detached_reconstruction_stays_detached(self, reconstruction: Reconstruction) -> None:
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
 
         remaining = without_stem(reconstruction, STEM_B)
 

@@ -18,7 +18,6 @@ TIGHT_BUDGET: Final[int] = 5
 LEAD_ENVELOPE: Final[Envelope[int]] = Envelope[int](items=(13, 10))
 COPY_ENVELOPE: Final[Envelope[int]] = Envelope[int](items=(3, 2))
 ORIGINAL_ENVELOPE: Final[Envelope[int]] = Envelope[int](items=(8, 4))
-COLLISION: Final[str] = "Two samples carrying one reconstruction id are stored as one reconstruction"
 
 
 @pytest.fixture
@@ -122,7 +121,6 @@ class TestADuplicateEditedApart:
 
         assert session.sample(BASS).reconstruction is not _last_sample(session).reconstruction
 
-    @pytest.mark.xfail(strict=True, reason=COLLISION)
     def test_a_save_keeps_both_documents(self, session: HistorySession) -> None:
         self._diverge(session)
 

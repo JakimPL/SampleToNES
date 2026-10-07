@@ -130,13 +130,12 @@ def regenerated(
     features: Features,
 ) -> Reconstruction:
     """The document a regeneration leaves once it rebuilds one channel from ``features``, every recording heard."""
-    rebuilt = reconstruction.model_copy(deep=True)
-    rebuilt.update_channel_data(
+    rebuilt = reconstruction.with_channel_data(
         channel_name,
         list(CHANNEL_TO_EXPORTER_MAP[channel_name].from_features(features)),
         features.initial_pitch,
         features.held_features,
-        heard=rebuilt.recorded_stem_ids,
+        heard=reconstruction.recorded_stem_ids,
     )
     return rebuilt
 

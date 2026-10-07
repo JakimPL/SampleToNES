@@ -233,7 +233,7 @@ class TestSourcePaths:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
         assert reconstruction.audio_filepath == (Path("/dev/null"),)
 
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
 
         assert reconstruction.audio_filepath == ()
 
@@ -261,7 +261,7 @@ class TestRoundTrip:
         reconstruction_factory: ReconstructionFactory,
     ) -> None:
         reconstruction = reconstruction_factory()
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
         path = tmp_path / "detached.stn"
 
         reconstruction.save(path)
@@ -302,7 +302,7 @@ class TestDetachSource:
         reconstruction = reconstruction_factory()
         assert reconstruction.audio_filepath
 
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
 
         assert reconstruction.audio_filepath == ()
 
@@ -462,7 +462,7 @@ class TestInitialPitchReference:
             _pulse(_BASE_PITCH),
             _pulse(_BASE_PITCH),
         ]
-        reconstruction.update_channel_data(
+        reconstruction = reconstruction.with_channel_data(
             ChannelName.PULSE1,
             arpeggiated,
             _BASE_PITCH,
@@ -478,7 +478,7 @@ class TestInitialPitchReference:
     def test_update_generator_data_replaces_the_reference(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
 
-        reconstruction.update_channel_data(
+        reconstruction = reconstruction.with_channel_data(
             ChannelName.PULSE1,
             [_pulse(_RESET_PITCH)],
             _RESET_PITCH,
@@ -523,7 +523,7 @@ class TestHeldFeatures:
     def test_a_held_dimension_exports_an_empty_envelope(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
 
-        reconstruction.update_channel_data(
+        reconstruction = reconstruction.with_channel_data(
             ChannelName.PULSE1,
             [_pulse(_BASE_PITCH)] * 3,
             _BASE_PITCH,
@@ -538,7 +538,7 @@ class TestHeldFeatures:
     def test_the_written_dimensions_export_their_items(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
 
-        reconstruction.update_channel_data(
+        reconstruction = reconstruction.with_channel_data(
             ChannelName.PULSE1,
             [_pulse(_BASE_PITCH)] * 3,
             _BASE_PITCH,
@@ -558,7 +558,7 @@ class TestHeldFeatures:
         """
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
 
-        reconstruction.update_channel_data(
+        reconstruction = reconstruction.with_channel_data(
             ChannelName.PULSE1,
             [_pulse(_BASE_PITCH)] * 3,
             _BASE_PITCH,
@@ -581,7 +581,7 @@ class TestHeldFeatures:
         """A channel edited out of play reads the same as one that never played."""
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
 
-        reconstruction.update_channel_data(
+        reconstruction = reconstruction.with_channel_data(
             ChannelName.PULSE1,
             [],
             resting_reference(ChannelName.PULSE1),
@@ -593,7 +593,7 @@ class TestHeldFeatures:
 
     def test_held_dimensions_survive_a_save_load_round_trip(self, tmp_path: Path) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
-        reconstruction.update_channel_data(
+        reconstruction = reconstruction.with_channel_data(
             ChannelName.PULSE1,
             [_pulse(_BASE_PITCH)] * 3,
             _BASE_PITCH,
@@ -643,7 +643,7 @@ class TestChannelSet:
         """Taking a channel out of play leaves its stream in place, so the edit is reversible."""
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)] * 3)
 
-        reconstruction.update_channel_data(
+        reconstruction = reconstruction.with_channel_data(
             ChannelName.PULSE1,
             [],
             _BASE_PITCH,
@@ -659,7 +659,7 @@ class TestChannelSet:
     def test_a_frame_puts_a_channel_standing_by_into_play(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
 
-        reconstruction.update_channel_data(
+        reconstruction = reconstruction.with_channel_data(
             ChannelName.PULSE2,
             [_pulse(_BASE_PITCH)] * 2,
             _BASE_PITCH,
@@ -674,7 +674,7 @@ class TestChannelSet:
     def test_a_reconstruction_of_channels_standing_by_stays_valid(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
 
-        reconstruction.update_channel_data(
+        reconstruction = reconstruction.with_channel_data(
             ChannelName.PULSE1,
             [],
             _BASE_PITCH,
@@ -707,7 +707,7 @@ class TestChannelSet:
     def test_editing_such_a_file_writes_the_whole_channel_set(self, tmp_path: Path) -> None:
         loaded = Reconstruction.load(_saved_playing_channels_only(tmp_path / "one_channel.stn"))
 
-        loaded.update_channel_data(
+        loaded = loaded.with_channel_data(
             ChannelName.PULSE2,
             [_pulse(_BASE_PITCH)],
             _BASE_PITCH,
@@ -772,7 +772,7 @@ class TestWithNesFrequency:
     def test_a_reconstruction_of_channels_standing_by_retunes_to_silence(self) -> None:
         """Every channel standing by leaves nothing to render, and the retuned copy says so."""
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
-        reconstruction.update_channel_data(
+        reconstruction = reconstruction.with_channel_data(
             ChannelName.PULSE1,
             [],
             _BASE_PITCH,

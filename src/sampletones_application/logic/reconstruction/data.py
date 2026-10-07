@@ -58,12 +58,12 @@ class ReconstructionData:
         """Builds an independent, file-backed copy of this data anchored at ``filepath``.
 
         Save As writes the reconstruction to its own file and adopts this copy as the open
-        document. The copy owns a fresh reconstruction object, so a document that was a project
-        sample becomes a standalone entity: later edits reach only the saved file, leaving the
-        project's sample unchanged. The copy shares the loaded recordings, so the original
-        audio carries over without a reload.
+        document. The copy holds a reconstruction object of its own, which shares every part with
+        the one it was copied from, so a document that was a project sample becomes a standalone
+        entity: later edits reach only the saved file, leaving the project's sample unchanged. The
+        copy shares the loaded recordings, so the original audio carries over without a reload.
         """
-        reconstruction = self.reconstruction.model_copy(deep=True)
+        reconstruction = self.reconstruction.model_copy()
         return replace(
             self,
             reconstruction=reconstruction,

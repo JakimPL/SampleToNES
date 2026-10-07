@@ -1,8 +1,6 @@
 from pathlib import Path
 from typing import Final
 
-import pytest
-
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.features.envelope import Envelope
@@ -15,7 +13,6 @@ from tests.suite.history.session import HistorySession
 
 COPY_ENVELOPE: Final[Envelope[int]] = Envelope[int](items=(3, 2))
 SHARED_NAME: Final[str] = "shared.stp"
-COLLISION: Final[str] = "Two samples carrying one reconstruction id are stored as one reconstruction"
 
 
 def _edit_a_channel(
@@ -48,7 +45,6 @@ class TestEachSampleKeepsItsOwnDocumentThroughASave:
 
         assert session.stored_fingerprint() == session.audit.model.live.fingerprint
 
-    @pytest.mark.xfail(strict=True, reason=COLLISION)
     def test_a_duplicate_edited_apart_from_its_original(self, session: HistorySession) -> None:
         perform(session, GESTURES_BY_LABEL["duplicate a sample"])
         _edit_a_channel(session, _last_sample(session), ChannelName.NOISE)
@@ -57,7 +53,6 @@ class TestEachSampleKeepsItsOwnDocumentThroughASave:
 
         assert session.stored_fingerprint() == session.audit.model.live.fingerprint
 
-    @pytest.mark.xfail(strict=True, reason=COLLISION)
     def test_a_file_added_twice_and_edited_once(self, session: HistorySession) -> None:
         arriving = write_arriving_sample(session)
         for _ in range(2):
@@ -73,7 +68,6 @@ class TestEachSampleKeepsItsOwnDocumentThroughASave:
 
         assert session.stored_fingerprint() == session.audit.model.live.fingerprint
 
-    @pytest.mark.xfail(strict=True, reason=COLLISION)
     def test_a_project_whose_samples_share_a_document(
         self,
         session: HistorySession,

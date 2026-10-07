@@ -144,7 +144,13 @@ class StemsData(DataModel):
         )
 
     def detached(self) -> StemsData:
-        """The record with every recording's location let go of, keeping the names it holds."""
+        """The record with every recording's location let go of, keeping the names it holds.
+
+        A record holding no location is returned as it stands.
+        """
+        if all(source.path is None for source in self.sources):
+            return self
+
         return self._with_sources([source.detached() for source in self.sources])
 
     def with_assignments(self, assignments: List[ChannelAssignment]) -> StemsData:

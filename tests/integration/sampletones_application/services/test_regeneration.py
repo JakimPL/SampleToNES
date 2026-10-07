@@ -40,7 +40,7 @@ OCTAVE = 12
 
 class TestRegenerationServicePipeline:
     """Full synthesis pipeline: real Config, Features (via PulseExporter), real PulseGenerator,
-    and real Reconstruction.update_channel_data. Nothing is mocked.
+    and real Reconstruction.with_channel_data. Nothing is mocked.
 
     Tests call _run() directly to bypass the executor; the synchronous_executor fixture
     from the parent conftest covers start() in the final test.

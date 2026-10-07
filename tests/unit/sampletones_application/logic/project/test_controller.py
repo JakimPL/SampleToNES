@@ -73,7 +73,7 @@ class TestSamples:
         assert controller.project.voice(sample.id) is sample
         assert emitted == ["voices"]
 
-    def test_add_sample_detaches_source_but_keeps_object_identity(
+    def test_add_sample_holds_the_document_detached_and_leaves_the_given_one(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
@@ -83,8 +83,20 @@ class TestSamples:
 
         sample = controller.add_sample(reconstruction, name="lead")
 
-        assert sample.reconstruction is reconstruction
         assert sample.reconstruction.audio_filepath == ()
+        assert reconstruction.audio_filepath
+        assert sample.reconstruction.instructions_data == reconstruction.instructions_data
+
+    def test_add_sample_holds_a_detached_document_as_it_is(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        controller = _controller()
+        detached = reconstruction_factory().detached()
+
+        sample = controller.add_sample(detached, name="lead")
+
+        assert sample.reconstruction is detached
 
     def test_remove_sample_purges_row_references(
         self,
@@ -181,7 +193,7 @@ class TestSamples:
         assert "voices" in emitted
         assert "song" in emitted
 
-    def test_duplicate_sample_appends_independent_copy(
+    def test_duplicate_sample_appends_a_copy_sharing_the_document(
         self, reconstruction_factory: Callable[[], Reconstruction]
     ) -> None:
         controller = _controller()
@@ -191,7 +203,7 @@ class TestSamples:
 
         assert clone.id != source.id
         assert clone.name == source.name
-        assert clone.reconstruction is not source.reconstruction
+        assert clone.reconstruction is source.reconstruction
         assert [sample.name for sample in controller.project.voices] == [
             "lead",
             "lead",
@@ -221,7 +233,7 @@ class TestSamples:
 
         controller.replace_sample_reconstruction(sample.id, replacement)
 
-        assert sample.reconstruction is replacement
+        assert sample.reconstruction.id == replacement.id
         assert sample.name == "lead"
         assert controller.project.voice(sample.id) is sample
 
@@ -236,7 +248,8 @@ class TestSamples:
 
         controller.replace_sample_reconstruction(sample.id, replacement)
 
-        assert replacement.audio_filepath == ()
+        assert sample.reconstruction.audio_filepath == ()
+        assert replacement.audio_filepath
 
     def test_replace_sample_reconstruction_preserves_row_references(
         self,
@@ -610,12 +623,12 @@ class TestLiveLinkedReconstruction:
         self, reconstruction_factory: Callable[[], Reconstruction]
     ) -> None:
         controller = _controller()
-        reconstruction = reconstruction_factory()
+        reconstruction = reconstruction_factory().detached()
         sample = controller.add_sample(reconstruction, name="lead")
 
         assert controller.project.voice(sample.id).reconstruction is reconstruction
 
-    def test_in_place_reconstruction_edit_is_visible_through_project(
+    def test_an_edit_reaches_the_project_as_the_document_it_installs(
         self, reconstruction_factory: Callable[[], Reconstruction]
     ) -> None:
         controller = _controller()
@@ -630,16 +643,19 @@ class TestLiveLinkedReconstruction:
                 duty_cycle=1,
             )
         ]
-        reconstruction.update_channel_data(
+        edited = sample.reconstruction.with_channel_data(
             ChannelName.PULSE1,
             new_instructions,
             72,
             (),
             heard=reconstruction.recorded_stem_ids,
         )
+        controller.replace_sample_reconstruction(sample.id, edited)
 
         stored = controller.project.voice(sample.id).reconstruction
+        assert stored is edited
         assert stored.get_channel_instructions(ChannelName.PULSE1) == new_instructions
+        assert reconstruction.get_channel_instructions(ChannelName.PULSE1) != new_instructions
 
 
 class TestBatch:

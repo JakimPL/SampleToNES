@@ -45,7 +45,7 @@ BASS_RECORDINGS: Final[Tuple[Path, Path]] = (Path("bass-a.wav"), Path("bass-b.wa
 def lead_reconstruction() -> Reconstruction:
     """Two recordings taking turns on pulse 1, the second holding pulse 2 alone, so a removal applies."""
     reconstruction = taking_turns_reconstruction(LEAD_RECORDINGS)
-    reconstruction.detach_source()
+    reconstruction = reconstruction.detached()
     return reconstruction
 
 
@@ -55,7 +55,7 @@ def bass_reconstruction() -> Reconstruction:
         sample_reconstruction([ChannelName.TRIANGLE, ChannelName.NOISE]),
         BASS_RECORDINGS,
     )
-    reconstruction.detach_source()
+    reconstruction = reconstruction.detached()
     return reconstruction
 
 

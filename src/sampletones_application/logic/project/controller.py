@@ -196,10 +196,10 @@ class ProjectController(CallbackMixin):
         """Embeds a reconstruction as a project sample, detaching its local source-audio origin.
 
         A project is a self-contained, shareable artifact, so a sample keeps only the reconstruction
-        itself and the display name given here.
+        itself and the display name given here. The sample holds the detached document, which is
+        the very one handed in where it names no location.
         """
-        reconstruction.detach_source()
-        sample = Sample(name=name, reconstruction=reconstruction)
+        sample = Sample(name=name, reconstruction=reconstruction.detached())
         self.project.voices.append(sample)
         self._touch()
         self._announce(self.on_voices_changed)
@@ -249,19 +249,23 @@ class ProjectController(CallbackMixin):
 
         return voice
 
-    def replace_sample_reconstruction(self, voice_id: str, reconstruction: Reconstruction) -> None:
+    def replace_sample_reconstruction(self, voice_id: str, reconstruction: Reconstruction) -> Reconstruction:
         """Substitutes a sample's reconstruction, detaching its local source-audio origin.
 
         The sample keeps its id, so every pattern row referencing it stays valid and the tracker
         shows the same position. Detaching matches :meth:`add_sample`: whichever path embeds a
-        reconstruction, the project stays a self-contained, shareable artifact.
+        reconstruction, the project stays a self-contained, shareable artifact, and the sample holds
+        the very document handed in where it names no location.
+
+        Returns:
+            Reconstruction: The document the sample now holds, in the form the project keeps it.
         """
-        reconstruction.detach_source()
         voice = self._sample(voice_id)
-        voice.reconstruction = reconstruction
+        voice.reconstruction = reconstruction.detached()
         self._touch()
         self._announce(self.on_voices_changed)
         self._announce(self.on_song_changed)
+        return voice.reconstruction
 
     def rename_voice(self, voice_id: str, name: str) -> None:
         self.project.voices[voice_id].name = name

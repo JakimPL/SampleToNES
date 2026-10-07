@@ -1109,9 +1109,10 @@ class TestReplaceReconstruction:
         replace_coordinator.replace_from_file(Path("kick_02.stn"))
 
         assert [call[0] for call in order.mock_calls] == ["replace", "announce"]
+        replace_coordinator._browser_logic.replace_reconstruction.assert_called_once_with("bass-id", reconstruction)
         replace_coordinator._on_sample_reconstruction_replaced.assert_called_once_with(
             "bass-id",
-            reconstruction,
+            replace_coordinator._browser_logic.replace_reconstruction.return_value,
         )
 
     def test_sole_sample_adopts_the_reconstruction_frequency_silently(
