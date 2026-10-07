@@ -11,16 +11,28 @@ from sampletones_application.constants.playback import FollowMode
 from sampletones_application.coordinators.edit.protocol import EditSurfaceProtocol
 from sampletones_application.coordinators.export import InstrumentExportCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
-from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
+from sampletones_application.coordinators.playback.failures import (
+    PlaybackFailurePresenter,
+)
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.coordinators.tabs.sequencer.blocks import SequencerBlocks
 from sampletones_application.coordinators.tabs.sequencer.frames import SequencerFrames
-from sampletones_application.coordinators.tabs.sequencer.history import SequencerHistoryRecorder
-from sampletones_application.coordinators.tabs.sequencer.layout import SequencerTabLayout
-from sampletones_application.coordinators.tabs.sequencer.playhead import SequencerPlayhead
-from sampletones_application.coordinators.tabs.sequencer.project import OpenProjectRequirement
-from sampletones_application.coordinators.tabs.sequencer.reconstructions import SequencerReconstructions
+from sampletones_application.coordinators.tabs.sequencer.history import (
+    SequencerHistoryRecorder,
+)
+from sampletones_application.coordinators.tabs.sequencer.layout import (
+    SequencerTabLayout,
+)
+from sampletones_application.coordinators.tabs.sequencer.playhead import (
+    SequencerPlayhead,
+)
+from sampletones_application.coordinators.tabs.sequencer.project import (
+    OpenProjectRequirement,
+)
+from sampletones_application.coordinators.tabs.sequencer.reconstructions import (
+    SequencerReconstructions,
+)
 from sampletones_application.coordinators.tabs.sequencer.voices import SequencerVoices
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
@@ -58,8 +70,12 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.sequencer.history import GUISequencerHistoryPanel
 from sampletones_application.ui.panels.sequencer.module import GUISequencerModulePanel
-from sampletones_application.ui.panels.sequencer.order.panel import GUISequencerOrderPanel
-from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.order.panel import (
+    GUISequencerOrderPanel,
+)
+from sampletones_application.ui.panels.sequencer.tracker.panel import (
+    GUISequencerTrackerPanel,
+)
 from sampletones_application.ui.panels.sequencer.voices.panel import (
     GUISequencerVoicesPanel,
 )
@@ -88,7 +104,6 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
-from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import StringCallback, VoidCallback
 
 
@@ -206,6 +221,7 @@ class SequencerTabCoordinator:
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_TRACKER_PANEL),
             initial_octave=session_manager.octave,
             language_manager=language_manager,
+            status_bar=status_bar,
             key_router=key_router,
             tab_active=tab_active,
             shortcut_source=shortcut_source,
@@ -863,7 +879,6 @@ class SequencerTabCoordinator:
         self._sequencer_tracker_panel.deselect_cell()
         self._sequencer_order_panel.deselect_cell()
         self._sequencer_voices_logic.request_autoplay(voice_id)
-        logger.debug(f"Sequencer sample selected: {voice_id}")
 
     def _request_nes_frequency_change(self, nes_frequency: int) -> None:
         """Applies a NES-frequency change, confirming first when it would re-time existing samples.

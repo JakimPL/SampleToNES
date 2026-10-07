@@ -31,6 +31,7 @@ from sampletones_application.tags.sequencer import (
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.elements.table.selection import TableSelection
@@ -98,6 +99,7 @@ from sampletones_application.ui.panels.sequencer.tracker.callbacks import (
     TrackerEditSurface,
 )
 from sampletones_application.ui.panels.sequencer.tracker.menu import TrackerMenu
+from sampletones_application.ui.panels.sequencer.tracker.status import CellStatusText
 from sampletones_application.ui.panels.sequencer.tracker.themes import TrackerThemes
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dpg import (
@@ -172,6 +174,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         layout: SequencerLayout,
         channel_colors: ChannelColors,
         language_manager: LanguageManager,
+        status_bar: GUIStatusBar,
         key_router: KeyRouter,
         tab_active: ActivePredicate,
         shortcut_source: ShortcutSource,
@@ -183,6 +186,8 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._octave = initial_octave
         self._settings = initial_settings
         self._language_manager = language_manager
+        self._status_bar = status_bar
+        self._status_text = CellStatusText(language_manager)
         self._router = key_router
         self._tab_active = tab_active
         self._shortcuts = shortcut_source
@@ -203,6 +208,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._header_columns: Dict[Sender, Optional[ChannelName]] = {}
         self._editable_cells: EditableCells[CellKey] = EditableCells()
         self._current_row_count: int = 0
+        self._current_rows: Dict[int, SequencerRowViewModel] = {}
         self._rows_taking_offsets: FrozenSet[int] = frozenset()
         self._highlighted_row: Optional[int] = None
         self._displayed_frame: Optional[int] = None
@@ -363,6 +369,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         with dpg.item_handler_registry(tag=self._cell_handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_cell_right_clicked)
             dpg.add_item_active_handler(callback=self._on_cell_held)
+            dpg.add_item_hover_handler(callback=self._on_cell_hovered)
 
         with dpg.item_handler_registry(tag=self._header_handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_header_right_clicked)
@@ -485,6 +492,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         """
         cell_values = self._compute_cell_values(view_model)
         cell_kinds = self._compute_cell_kinds(view_model)
+        self._current_rows = {row.index: row for row in view_model.rows}
         self._rows_taking_offsets = frozenset(row.index for row in view_model.rows if row.takes_offsets)
         self._show_frame(view_model.frame_index)
         if len(view_model.rows) != self._current_row_count:
@@ -1251,6 +1259,24 @@ class GUISequencerTrackerPanel(GUIPanel):
             return
 
         self._apply_state(TrackerInputState(cursor=cursor, pending=""))
+
+    def _on_cell_hovered(self, _sender: Sender, app_data: int) -> None:
+        """Says what the slot under the pointer holds, read from the row the grid shows there.
+
+        The hover is reported a frame after it happened, by which time a rebuilt grid may have
+        taken the cell away, so the handler answers for the cells still standing.
+        """
+        key = dpg_get_item_user_data(app_data)
+        if not isinstance(key, tuple):
+            return
+
+        row_index, channel, subcolumn = key
+        row = self._current_rows.get(row_index)
+        if row is None:
+            return
+
+        voices = self._current_samples.voices if self._current_samples is not None else ()
+        self._status_bar.set(self._status_text.describe(row, channel, subcolumn, voices))
 
     # TODO: to abstract [_on_cell_held]
     def _on_cell_held(self, _sender: Sender, app_data: Sender) -> None:

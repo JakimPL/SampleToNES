@@ -99,6 +99,16 @@ class Tracker:
         self._hand.scroll_into_view(item)
         self._hand.click(item)
 
+    def hover(self, row: int, channel: Optional[ChannelName], subcolumn: SubColumn) -> None:
+        """Rests the pointer on one slot, which the status bar then describes."""
+        item = self._bridge.ask(lambda: tracker_cell(row, channel, subcolumn))
+        self._hand.scroll_into_view(item)
+        self._hand.hover(item)
+
+    def leave(self) -> None:
+        """Rests the pointer on the octave field above the grid, away from every slot."""
+        self._hand.hover(TAG_SEQUENCER_TRACKER_INPUT_OCTAVE)
+
     def shift_click(self, row: int, channel: Optional[ChannelName], subcolumn: SubColumn) -> None:
         """Clicks one slot holding Shift, which stretches the block from the caret to it."""
         item = self._bridge.ask(lambda: tracker_cell(row, channel, subcolumn))

@@ -37,6 +37,14 @@ class SequencerTrackerElements(AbstractElement):
     CONTEXT_UNSOLO = "context_unsolo"
     CONTEXT_MUTE_ALL = "context_mute_all"
     CONTEXT_UNMUTE_ALL = "context_unmute_all"
+    STATUS_VOICE = "status_voice"
+    STATUS_SAMPLE = "status_sample"
+    STATUS_PITCH = "status_pitch"
+    STATUS_VOLUME = "status_volume"
+    STATUS_NOTE_OFF = "status_note_off"
+    STATUS_DIFFERENT_VOICES = "status_different_voices"
+    STATUS_DIFFERENT_PITCHES = "status_different_pitches"
+    STATUS_DIFFERENT_VOLUMES = "status_different_volumes"
 
 
 class SequencerOrderElements(AbstractElement):
