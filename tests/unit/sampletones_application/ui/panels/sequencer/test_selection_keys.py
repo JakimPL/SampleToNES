@@ -9,12 +9,14 @@ from sampletones_application.ui.panels.sequencer.input.order import (
 )
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.ui.panels.sequencer.order.panel import GUISequencerOrderPanel
+from sampletones_application.ui.panels.sequencer.tracker.band import TrackerRows
 from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.view_model.sequencer.region import OrderRegion, TrackerRegion
 from sampletones_application.view_model.sequencer.slot import SLOT_COUNT, TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.tracker import NO_REACH
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.shortcuts import shipped_source
 
@@ -37,7 +39,7 @@ def _tracker(
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
     panel._shortcuts = shipped_source()
     panel._input_state = TrackerInputState(cursor=TrackerCursor(CURSOR_ROW, channel, subcolumn))
-    panel._current_row_count = ROW_COUNT
+    panel._rows_layout = TrackerRows(reach=NO_REACH, frame_rows=ROW_COUNT)
     return panel
 
 

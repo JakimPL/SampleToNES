@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Final, FrozenSet, List, Mapping, Optional, Set, Tuple
+from typing import Callable, Dict, FrozenSet, List, Mapping, Optional, Set, Tuple
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.tracker.context import rows_after, rows_before
@@ -10,6 +10,7 @@ from sampletones_application.view_model.sequencer.settings import (
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.tracker import (
+    NO_REACH,
     SequencerCellViewModel,
     SequencerRowViewModel,
     SequencerTrackerViewModel,
@@ -31,8 +32,6 @@ from sampletones_core.utils.display import (
     display_volume,
 )
 from sampletones_shared.utils.callbacks import CallbackMixin
-
-NO_REACH: Final[int] = 0
 
 _EMPTY_CELL = SequencerCellViewModel(
     voice=display_id(None),

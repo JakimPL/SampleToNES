@@ -130,7 +130,8 @@ A control in a region that scrolls is brought into view the way a person brings 
 region that takes the wheel, and the grip of a region's scrollbar is dragged where the region ignores the
 wheel. The hand measures how far to scroll once a frame has laid the control out: a row found in the frame
 that built it has no place yet, and a region learns how far it scrolls a frame after it draws what it
-holds.
+holds. A table that scrolls its own rows, such as the tracker's, is a region for those rows: its view
+begins below the rows it freezes, and those stay in view whatever the scroll.
 
 Keys are pressed on the real keyboard, with modifiers held a frame before the key. A scenario names an
 action by its `ShortcutId`, and the keys come from the scheme in place. The display repeats no held key.

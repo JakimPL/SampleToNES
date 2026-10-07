@@ -3,7 +3,7 @@ from typing import Final, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.tags.sequencer import TAG_SEQUENCER_TRACKER_INPUT_OCTAVE, TAG_SEQUENCER_TRACKER_TABLE
-from sampletones_application.ui.panels.sequencer.columns import tracker_table_column, tracker_table_row
+from sampletones_application.ui.panels.sequencer.columns import tracker_table_column
 from sampletones_application.view_model.sequencer.slot import SUBCOLUMNS
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
@@ -22,12 +22,28 @@ CELL_GROUP: Final[int] = 0
 HALF: Final[float] = 0.5
 
 
+def frame_table_row(row: int) -> int:
+    """Where a pattern row of the shown frame stands among the table's rows. Runs on the render thread.
+
+    The table holds the header and the rows of the song either side of the frame as well, so a
+    frame row is found by the pattern row it carries rather than by its place.
+
+    Raises:
+        UnreachableError: If the table holds no such row.
+    """
+    for index, table_row in enumerate(dpg.get_item_children(TAG_SEQUENCER_TRACKER_TABLE, 1)):
+        if dpg.get_item_user_data(table_row) == row:
+            return index
+
+    raise UnreachableError(f"The tracker holds no row {row}")
+
+
 def tracker_cell(row: int, channel: Optional[ChannelName], subcolumn: SubColumn) -> Item:
     """The selectable drawing one subcolumn of one channel's cell on a pattern row. Runs on the render thread.
 
     The Sample column stands for ``channel`` ``None``.
     """
-    table_row = dpg.get_item_children(TAG_SEQUENCER_TRACKER_TABLE, 1)[tracker_table_row(row)]
+    table_row = dpg.get_item_children(TAG_SEQUENCER_TRACKER_TABLE, 1)[frame_table_row(row)]
     cell = dpg.get_item_children(table_row, 1)[tracker_table_column(channel)]
     group = dpg.get_item_children(cell, 1)[CELL_GROUP]
     slot: Item = dpg.get_item_children(group, 1)[SUBCOLUMNS.index(subcolumn)]
@@ -126,7 +142,7 @@ class Tracker:
         return bool(
             self._bridge.ask(
                 lambda: dpg.is_table_cell_highlighted(
-                    TAG_SEQUENCER_TRACKER_TABLE, tracker_table_row(row), tracker_table_column(channel)
+                    TAG_SEQUENCER_TRACKER_TABLE, frame_table_row(row), tracker_table_column(channel)
                 )
             )
         )
@@ -134,7 +150,7 @@ class Tracker:
     def is_row_tinted(self, row: int) -> bool:
         """Whether the row carries a background, as a beat, a bar, the caret's row or the playing row does."""
         return bool(
-            self._bridge.ask(lambda: dpg.is_table_row_highlighted(TAG_SEQUENCER_TRACKER_TABLE, tracker_table_row(row)))
+            self._bridge.ask(lambda: dpg.is_table_row_highlighted(TAG_SEQUENCER_TRACKER_TABLE, frame_table_row(row)))
         )
 
     def octave(self) -> int:

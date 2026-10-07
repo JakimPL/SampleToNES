@@ -6,12 +6,16 @@ import pytest
 
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.ui.panels.sequencer.tracker import panel as tracker
+from sampletones_application.ui.panels.sequencer.tracker.band import TrackerRows
+from sampletones_application.ui.panels.sequencer.tracker.context import ContextRows
 from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.tracker.themes import TrackerThemes
 from sampletones_application.utils.gui.keyboard import KeyEvent
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination
 from sampletones_application.utils.gui.keyboard.keys import KEY_PAGE_DOWN, KEY_PAGE_UP
 from sampletones_application.utils.gui.keyboard.modifiers import NO_MODIFIERS
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.tracker import NO_REACH
 from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.types.callback import VoidCallback
 from tests.suite.shortcuts import shipped_source
@@ -41,7 +45,9 @@ def _panel() -> GUISequencerTrackerPanel:
     panel._playing_row = None
     panel._painted_row = None
     panel._follows_playing_row = False
-    panel._current_row_count = ROW_COUNT
+    panel._rows_layout = TrackerRows(reach=NO_REACH, frame_rows=ROW_COUNT)
+    panel._context = ContextRows(layout=panel._layout, themes=TrackerThemes(panel._layout), subcolumn_widths={})
+    panel._settings = SimpleNamespace(first_highlight=4, second_highlight=16)
     panel._rows = {row_index: f"row_{row_index}" for row_index in range(ROW_COUNT)}
     return panel
 

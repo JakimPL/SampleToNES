@@ -22,6 +22,7 @@ from sampletones_application.ui.panels.sequencer.order import panel as order_mod
 from sampletones_application.ui.panels.sequencer.order.menu import OrderMenu
 from sampletones_application.ui.panels.sequencer.tracker import adjust
 from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
+from sampletones_application.ui.panels.sequencer.tracker.band import TrackerRows
 from sampletones_application.ui.panels.sequencer.tracker.menu import TrackerMenu
 from sampletones_application.view_model.sequencer.region import (
     OrderCell,
@@ -31,6 +32,7 @@ from sampletones_application.view_model.sequencer.region import (
 )
 from sampletones_application.view_model.sequencer.slot import SLOT_COUNT, TrackerSlot, slot_from_flat
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.tracker import NO_REACH
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.grid import (
     ORDER_BLOCK_SHORTCUTS,
@@ -251,7 +253,7 @@ def _tracker_selections(
 ) -> List[TrackerInputState]:
     """The states a select item applies, on a grid holding a cursor and the rows to reach."""
     panel._input_state = TrackerInputState(cursor=_tracker_cell(ChannelName.PULSE1))
-    panel._current_row_count = ROW_COUNT
+    panel._rows_layout = TrackerRows(reach=NO_REACH, frame_rows=ROW_COUNT)
     states: List[TrackerInputState] = []
     monkeypatch.setattr(panel, "_apply_state", states.append)
     monkeypatch.setattr(panel, "_scroll_cursor_into_view", lambda: None)

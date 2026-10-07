@@ -9,10 +9,12 @@ from sampletones_application.ui.panels.sequencer.input.tracker import (
     TrackerCursor,
     TrackerInputState,
 )
+from sampletones_application.ui.panels.sequencer.tracker.band import TrackerRows
 from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.tracker import NO_REACH
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_PITCH, NUM_PERIODS
 from sampletones_core.project.patterns.pitch import Note
@@ -38,7 +40,7 @@ def _panel(
     """A tracker panel carrying only the state the note path reads, its edits recorded in place of committed."""
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
     panel._octave = DEFAULT_OCTAVE
-    panel._current_row_count = ROW_COUNT
+    panel._rows_layout = TrackerRows(reach=NO_REACH, frame_rows=ROW_COUNT)
     panel._input_state = TrackerInputState(cursor=TrackerCursor(ROW, channel, subcolumn))
 
     fixture = PianoFixture(panel=panel)

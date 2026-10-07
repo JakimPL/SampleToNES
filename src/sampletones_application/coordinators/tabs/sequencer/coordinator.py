@@ -415,6 +415,7 @@ class SequencerTabCoordinator:
         )
         self._sequencer_tracker_logic.on_settings_changed = self._on_settings_changed
         self._sequencer_tracker_logic.on_tracker_changed = self._sequencer_tracker_panel.update_tracker
+        self._sequencer_tracker_panel.on_reach_changed = self._sequencer_tracker_logic.set_reach
         self._sequencer_tracker_logic.on_frame_changed = self._sequencer_order_panel.select_position
 
     def _wire_channels_callbacks(self) -> None:

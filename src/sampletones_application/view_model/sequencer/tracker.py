@@ -1,4 +1,4 @@
-from typing import Callable, Dict, FrozenSet, Optional, Set, Tuple
+from typing import Callable, Dict, Final, FrozenSet, Optional, Set, Tuple
 
 from pydantic import BaseModel
 
@@ -13,6 +13,8 @@ from sampletones_core.utils.display import (
     display_volume,
 )
 from sampletones_shared.utils.agreement import Agreement
+
+NO_REACH: Final[int] = 0
 
 
 class SequencerCellViewModel(BaseModel, frozen=True):

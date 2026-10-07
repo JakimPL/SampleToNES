@@ -9,10 +9,12 @@ from sampletones_application.ui.panels.sequencer.input.order import (
 )
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.ui.panels.sequencer.order.panel import GUISequencerOrderPanel
+from sampletones_application.ui.panels.sequencer.tracker.band import TrackerRows
 from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard import KeyEvent
 from sampletones_application.utils.gui.keyboard.modifiers import NO_MODIFIERS
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.tracker import NO_REACH
 from tests.suite.shortcuts import shipped_source
 
 
@@ -44,7 +46,7 @@ class TestTrackerEscapeYieldsToGlobalStop:
         """A selection is state the grid holds, so Escape takes it down before it reaches Stop."""
         panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
         panel._shortcuts = shipped_source()
-        panel._current_row_count = 64
+        panel._rows_layout = TrackerRows(reach=NO_REACH, frame_rows=64)
         panel._input_state = TrackerInputState(
             cursor=TrackerCursor(4, None, SubColumn.VOICE),
             anchor=TrackerCursor(2, None, SubColumn.VOICE),

@@ -6,6 +6,7 @@ import pytest
 from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.panels.sequencer.display import CellKey, CellKinds
 from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
+from sampletones_application.ui.panels.sequencer.tracker.band import TrackerRows
 from sampletones_application.ui.panels.sequencer.tracker.callbacks import ThemeKey
 from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
 from sampletones_application.ui.panels.sequencer.tracker.themes import TrackerThemes
@@ -16,6 +17,7 @@ from sampletones_application.view_model.sequencer.channels import (
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.tracker import (
+    NO_REACH,
     SequencerCellViewModel,
     SequencerRowViewModel,
     SequencerTrackerViewModel,
@@ -92,7 +94,7 @@ def _panel(
     panel._cell_kinds = dict(cell_kinds or {})
     panel._themes = _themes(THEME_IDS, MUTED_THEME_IDS)
     panel._current_channels = SequencerChannelsViewModel(muted=muted)
-    panel._current_row_count = ROW_COUNT
+    panel._rows_layout = TrackerRows(reach=NO_REACH, frame_rows=ROW_COUNT)
     panel._editable_cells = EditableCells()
     for key in _keys():
         panel._editable_cells.register(key, _cell_widget(key))
