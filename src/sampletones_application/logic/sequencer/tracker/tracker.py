@@ -370,7 +370,7 @@ class SequencerTrackerLogic(CallbackMixin):
         the remaining channels on that row are cleared so the row plays exactly that sample.
         An empty voice id wipes the whole row.
 
-        The column speaks for samples, which carry a slice per channel. A hand-written voice sounds
+        The column speaks for samples, which carry a slice per channel. An instrument sounds
         on whichever channel the reader names it in, so it is placed in a channel column and this
         one leaves the row as it stands.
         """
@@ -664,7 +664,7 @@ class SequencerTrackerLogic(CallbackMixin):
         """The channels spanned by the samples a row names.
 
         A sample contributes the channels its reconstruction covers, so the sample column reasons
-        about its whole span including channels whose cells stand empty. A hand-written instrument
+        about its whole span including channels whose cells stand empty. An instrument
         sounds on the one channel it is named in, so it contributes none and leaves the column
         speaking for samples alone. A row naming a voice the project no longer holds contributes
         the channel it sits on, which keeps that cell reachable while the reference stands.

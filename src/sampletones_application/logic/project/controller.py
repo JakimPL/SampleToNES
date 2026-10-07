@@ -206,7 +206,7 @@ class ProjectController(CallbackMixin):
         return sample
 
     def add_instrument(self, instrument: Instrument) -> Instrument:
-        """Appends a hand-written voice, which the voice list holds and the tracker can name.
+        """Appends an instrument, which the voice list holds and the tracker can name.
 
         An instrument is its own record, so whoever made it — a reader asking for a new one, an
         instrument file read from disk, a sample's channel frozen into envelopes — hands the

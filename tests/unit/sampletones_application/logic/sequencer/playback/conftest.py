@@ -60,7 +60,7 @@ def add_instrument(
     *,
     name: str = "test",
 ) -> Instrument:
-    """A hand-written voice sustaining at full volume, sounding for as long as a row holds it."""
+    """An instrument sustaining at full volume, sounding for as long as a row holds it."""
     return controller.add_instrument(new_instrument(name))
 
 

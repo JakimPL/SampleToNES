@@ -96,7 +96,7 @@ class TestAnExportedVoiceComesBack:
     everything as it was, and the import adds one voice playing the same envelopes, with no notice,
     which one undo takes away.
 
-    The hand-written voice is exported from its menu. Cancel on the open dialog leaves the voices and
+    The instrument is exported from its menu. Cancel on the open dialog leaves the voices and
     the history as they were. Choosing the exported file adds the voice and one history line. The new
     voice shows the envelopes of the original, and one undo removes it.
     """
@@ -110,9 +110,9 @@ class TestAnExportedVoiceComesBack:
         before: List[List[Tuple[HistorySegment, ...]]] = []
         envelopes: List[Tuple[str, str]] = []
 
-        def export_the_hand_written_voice(screen: Screen) -> None:
+        def export_the_instrument(screen: Screen) -> None:
             open_voice(screen, PAD)
-            screen.expect(instruments.offers_audition, bool, description="the hand-written voice open")
+            screen.expect(instruments.offers_audition, bool, description="the instrument open")
             envelopes.append(
                 (
                     instruments.envelope(INSTRUMENT_CHANNEL, FeatureKey.VOLUME),
@@ -166,7 +166,7 @@ class TestAnExportedVoiceComesBack:
             screen.expect(voices.names, VOICES.__eq__, description="the import undone")
 
         screen.scenario(
-            export_the_hand_written_voice,
+            export_the_instrument,
             cancel_changes_nothing,
             the_import_adds_the_voice_quietly,
             it_plays_the_same_envelopes,

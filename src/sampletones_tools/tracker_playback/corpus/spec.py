@@ -41,7 +41,7 @@ class SampleSpec(BaseModel):
 
 
 class InstrumentSpec(BaseModel):
-    """A hand-written voice: envelopes every channel reads its own way.
+    """An instrument: envelopes every channel reads its own way.
 
     Attributes:
         kind: Marks the voice as an instrument.

@@ -64,7 +64,7 @@ def is_dimmed(color: Optional[Color], full: Color) -> bool:
 
 
 class TestKindColorsInEveryPalette:
-    """A recording reads in the sample color and a hand-written voice in the instrument color, as kind marks and as tracker cells, in every palette and live on a swap.
+    """A sample reads in the sample color and an instrument in the instrument color, as kind marks and as tracker cells, in every palette and live on a swap.
 
     An empty cell and a cut read neutral, and a muted channel's cells keep their hue, fainter. The scenario cuts a cell and mutes the triangle, then checks the default palette and every shipped palette in Display settings.
     """

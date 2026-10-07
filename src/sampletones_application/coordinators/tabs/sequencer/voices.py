@@ -61,7 +61,7 @@ class SequencerVoices:
         self._import_reconstruction = import_reconstruction
 
     def add_instrument(self) -> None:
-        """Appends a hand-written voice, named for the position it takes in the list.
+        """Appends an instrument, named for the position it takes in the list.
 
         An instrument arrives sustaining at full volume, so it plays as soon as it is placed and the
         envelopes stay the reader's to write; naming it by its position gives the list a readable

@@ -49,7 +49,7 @@ def build_voice(
     name: str,
     spec: VoiceSpec,
 ) -> VoiceUnion:
-    """The voice a spec describes: a sample playing its written frames, or a hand-written instrument.
+    """The voice a spec describes: a sample playing its written frames, or an instrument.
 
     Args:
         name: The voice's name.

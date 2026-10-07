@@ -31,7 +31,7 @@ def _new_instrument_id() -> str:
 
 
 class Instrument(BaseModel):
-    """A hand-written voice: envelopes with no recording behind them, playable on any channel.
+    """A voice made of envelopes alone, playable on any channel.
 
     Where a sample carries the frames a conversion found for each channel, an instrument carries
     one set of envelopes, and every channel reads what it can of them — the dimensions its

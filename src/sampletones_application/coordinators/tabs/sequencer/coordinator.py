@@ -669,7 +669,7 @@ class SequencerTabCoordinator:
         self._guarded_player.run_guarded(partial(self._frames.play_from, position))
 
     def add_instrument(self) -> None:
-        """Appends a hand-written voice to the pool, the menu bar's entry to the gesture."""
+        """Appends an instrument to the pool, the menu bar's entry to the gesture."""
         self._voices.add_instrument()
 
     def add_instrument_from_channel(
@@ -730,7 +730,7 @@ class SequencerTabCoordinator:
         voice_id: str,
         feature_key: FeatureKey,
     ) -> HistoryDetail:
-        """Describes a hand-written voice's edited dimension for the project history."""
+        """Describes an instrument's edited dimension for the project history."""
         return self._history_detail.edit_instrument(voice_id, feature_key)
 
     def reconstruction_stem_detail(

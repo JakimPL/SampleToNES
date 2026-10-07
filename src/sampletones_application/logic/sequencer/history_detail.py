@@ -83,13 +83,13 @@ class SequencerHistoryDetail:
     """Builds the colored detail line for each undoable sequencer gesture.
 
     Every method mirrors the signature of the coordinator hook it describes, so it
-    can be handed straight to ``_undoable`` as the ``detail`` callable. Each returns
+    can be handed straight to ``SequencerHistoryRecorder.undoable`` as the ``detail`` callable. Each returns
     an ordered tuple of :class:`HistoryDetailSegment`, tagging each token with a
     semantic role that the panel later paints. Positions, rows and pattern indices
     read as two-digit hex; channels use the ``P``/``p``/``T``/``N`` abbreviations,
     concatenated when a sample-column gesture spans several channels. A gesture on the
-    voice pool names its voice in the color of the kind that voice is, so a recording
-    and a hand-written one read apart down the list of entries. Every line about a voice
+    voice pool names its voice in the color of the kind that voice is, so a sample
+    and an instrument read apart down the list of entries. Every line about a voice
     the pool holds, whether the gesture removes, replaces, renames, moves or duplicates it,
     names the voice the same way, by its position and by its name, so a reader finds it in
     the list whichever gesture the line records. A line about an added voice names it by
@@ -314,7 +314,7 @@ class SequencerHistoryDetail:
         voice_id: str,
         feature_key: FeatureKey,
     ) -> Segments:
-        """Describes a hand-written voice's edited dimension: its position and the dimension.
+        """Describes an instrument's edited dimension: its position and the dimension.
 
         An instrument is one set of envelopes every channel reads what it can of, so the line
         names the dimension alone, as the feature's one-letter code in the color the details tab

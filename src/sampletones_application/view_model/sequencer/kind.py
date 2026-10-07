@@ -27,8 +27,8 @@ def column_takes(channel: Optional[ChannelName], kind: VoiceKind) -> bool:
     """Whether the column a cell stands in places a voice of this kind.
 
     A channel column sounds whatever it is given, so it takes either kind. The sample column
-    spreads a voice over the channels it covers, which a recording states and a hand-written voice
-    does not, so it takes a recording alone.
+    spreads a voice over the channels it covers, which a sample states and an instrument does not,
+    so it takes a sample alone.
 
     Args:
         channel: The channel the column carries, ``None`` for the sample column.

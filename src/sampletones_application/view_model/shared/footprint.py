@@ -58,7 +58,7 @@ class VoiceFootprintViewModel(BaseModel, frozen=True):
 
     @classmethod
     def from_instrument(cls, footprint: InstrumentFootprint) -> Self:
-        """Carries one instrument every channel reaches, which is what a hand-written voice exports."""
+        """Carries one instrument every channel reaches, which is what an instrument exports."""
         return cls(instruments=(InstrumentSizeViewModel(channel=None, footprint=footprint),))
 
     @property

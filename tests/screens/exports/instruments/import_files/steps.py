@@ -34,7 +34,7 @@ def choose_import(screen: Screen) -> None:
 
 
 def export_kept(screen: Screen) -> Path:
-    """Exports the hand-written voice from its menu to the kept folder under the name :data:`KEPT`."""
+    """Exports the instrument from its menu to the kept folder under the name :data:`KEPT`."""
     path = kept_folder() / f"{KEPT}{EXT_FILE_INSTRUMENT}"
     notice = screen.exports.file_notice
     screen.answer_next_dialog(DialogKind.SAVE, path)

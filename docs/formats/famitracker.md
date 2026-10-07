@@ -264,7 +264,7 @@ instrument at `initial_pitch` replays that contour. Volume, duty (or noise mode)
 sequences carry across directly. A conversion that bent no note records both bend dimensions as ones the
 channel governs, so they reach the file as disabled slots. The DPCM key-assignment table is always empty.
 
-An [instrument](../glossary.md#instrument) written by hand is one set of envelopes that every channel
+An [instrument](../glossary.md#instrument) is one set of envelopes that every channel
 reads, as in FamiTracker itself. It becomes a single instrument, however many channels play it. The noise
 channel reads it the way FamiTracker and Bitphase do: the duty item's lowest bit selects the short mode,
 and each pitch item moves the period one step, as an arpeggio step does. Each
@@ -275,8 +275,8 @@ channels, its period on noise.
 
 **Where a row's note comes from.** A voice has a reference, the place where its zero is, and a row has a
 step from it. A pattern cell therefore holds `reference + transpose`, wrapped into the sixteen periods on
-noise. A sample's reference is the offset origin its conversion chose. A hand-written instrument's
-reference is its initial pitch.
+noise. A sample's reference is the offset origin its conversion chose. An instrument's reference
+is its initial pitch.
 
 The conversion chooses the origin once, when the reconstruction is built, and stores it as that channel's
 reference pitch (see [Reconstructions](reconstructions.md#contents)). For the pitched channels
@@ -357,13 +357,13 @@ its level.
 ## C. Reading an instrument file
 
 An `.fti` is read as well as written. **Import instrument...** in the sequencer brings one into the voice
-pool as a hand-written [instrument](../glossary.md#instrument). `instrument.py::read_fti` parses the
+pool as an [instrument](../glossary.md#instrument). `instrument.py::read_fti` parses the
 layout in section A.1, and `voice.py::instrument_to_voice` makes a voice from the 2A03 instrument it
 holds.
 
 A voice has all five dimensions, each with the item it repeats from, so they come across as they stand.
 The voice takes the name in the file. A file without a name leaves the voice named after the file itself.
-The arpeggio is read as offsets from the pitch a hand-written voice rests at, because a tracker
+The arpeggio is read as offsets from the pitch an instrument rests at, because a tracker
 instrument sounds at whatever note a row names it with.
 
 A sequence that loops from one of its items gives that dimension the point. A sequence that halts at its
@@ -394,7 +394,7 @@ that ends its note.
 
 | Quantity | FamiTracker limit | Project bound | Exporter behavior |
 | --- | --- | --- | --- |
-| Instruments | 64 total | unbounded (1–4 per sample, one per hand-written instrument) | raises when the instruments exceed 64 |
+| Instruments | 64 total | unbounded (1–4 per sample, one per instrument) | raises when the instruments exceed 64 |
 | Sequences per kind | 128 | unbounded | raises when a kind's pool exceeds 128 |
 | Items per sequence | 252 | one item per frame, plus the volume's release; unbounded | keeps the opening items, a volume dimension ending at its release, and reports what it left out in every scope, the module included |
 | Patterns per channel | 128 (indices 0–127) | pool keyed by arbitrary ints | raises when a pattern index exceeds 127 |

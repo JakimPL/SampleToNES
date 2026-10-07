@@ -92,8 +92,8 @@ class TestTheRowsEachChannelDraws:
         screen.scenario(each_tab_draws_its_rows, a_bend_field_explains_a_step, the_volume_field_explains_no_bend).run()
 
 
-class TestAHandWrittenVoice:
-    """A hand-written voice offers the Audition switch and only its own tab, and Export follows its
+class TestAnInstrument:
+    """An instrument offers the Audition switch and only its own tab, and Export follows its
     envelopes.
 
     The opened instrument shows the Pulse 1 tab alone, with Export unavailable. A typed volume makes

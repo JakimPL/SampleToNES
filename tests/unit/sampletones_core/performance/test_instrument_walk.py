@@ -36,7 +36,7 @@ def _resting(channel_name: ChannelName) -> object:
 
 
 class TestAnInstrumentSoundsOnEveryChannel(BaseTestSuite):
-    """A hand-written voice is placed on any channel, and the walk sounds the frames it makes there."""
+    """An instrument is placed on any channel, and the walk sounds the frames it makes there."""
 
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):

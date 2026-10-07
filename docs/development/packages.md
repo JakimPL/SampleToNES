@@ -67,8 +67,8 @@ registry.
 arrangement into the instruction each channel sounds on each engine tick. It walks the order frame by
 frame. A row's note column starts a voice, and the row's transpose and volume bend what that voice carries.
 A voice with a loop point circles, and one without falls silent. One reading answers for both kinds of
-voice: a sample plays the frames its conversion found for the channel, and a hand-written instrument plays
-the frames its envelopes make of it.
+voice: a sample plays the frames its conversion found for the channel, and an instrument plays the
+frames its envelopes make of it.
 
 The sequencer renders those instructions to audio, and the player encodes them into register values. What
 a listener hears and what the console plays are therefore the same walk read two ways, and not two

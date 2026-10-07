@@ -474,7 +474,7 @@ class TestExportingTheVoicesInstruments:
         monkeypatch: pytest.MonkeyPatch,
         recorder: _MenuRecorder,
     ) -> None:
-        """A hand-written voice reads the same envelopes on every channel, so it carries its own name."""
+        """An instrument reads the same envelopes on every channel, so it carries its own name."""
         _panel(monkeypatch, instruments=(None, ChannelName.NOISE)).panel.build_edit_actions()
 
         assert recorder.items[EXPORT_ITEM].label == "Bass"

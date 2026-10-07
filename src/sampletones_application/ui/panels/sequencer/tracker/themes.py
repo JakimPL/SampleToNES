@@ -95,7 +95,7 @@ class TrackerThemes:
         """The theme a cell wears: its slot's color, dimmed while its channel is silenced.
 
         A voice slot takes the color of the kind of voice standing in it, so a reader tells a
-        recording from a hand-written one across the whole grid; a slot naming none takes the
+        sample from an instrument across the whole grid; a slot naming none takes the
         neutral shade the other slots' colors are read against.
 
         Args:

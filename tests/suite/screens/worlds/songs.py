@@ -40,7 +40,7 @@ def sequencer_world() -> World:
     """A home holding :data:`ARRANGED_PROJECT`, its voices placed on its first pattern, and the playing
     world's files.
 
-    The project's sample :data:`LINE` starts the pattern on Pulse 1, its hand-written :data:`PAD`
+    The project's sample :data:`LINE` starts the pattern on Pulse 1, its instrument :data:`PAD`
     comes in on Pulse 2 at :data:`PAD_ROW`, and its sample :data:`BASS_VOICE` on the triangle at
     :data:`BASS_ROW`.
     """

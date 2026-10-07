@@ -48,7 +48,7 @@ def _sample_reading(cell: SequencerCellViewModel) -> str:
     """A cell's voice reading as the sample column speaks it.
 
     The column places a recording over the channels it covers, so it reads a sample by its number
-    and a cut as a cut. A hand-written instrument is placed in the channel column that names it, so
+    and a cut as a cut. An instrument is placed in the channel column that names it, so
     it reads as empty here and leaves the summary to the channels the column governs.
     """
     if cell.kind is VoiceKind.INSTRUMENT:
@@ -65,7 +65,7 @@ class SequencerRowViewModel(BaseModel, frozen=True):
 
     A sample governs the channels its reconstruction covers, so the sample column reads its
     reference across exactly those and a sample missing from one of them reads as mixed. A row
-    naming only hand-written instruments spans none, since each of those sounds on the one
+    naming only instruments spans none, since each of those sounds on the one
     channel it is named in.
     """
     carried_channels: FrozenSet[ChannelName]

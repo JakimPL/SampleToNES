@@ -64,8 +64,8 @@ make tracker-playback BITPHASE=path/to/bitphase FAMITRACKER=path/to/FamiTracker.
 Without `--project`, the run plays the corpus that comes with _SampleToNES_:
 
 - Small projects that each exercise one thing a song can do. They cover notes on every channel,
-  volume rows, transpose rows, note-offs, hand-written instruments, instruments taking the pitch a note
-  left on the channel, samples with arpeggios and bends,
+  volume rows, transpose rows, note-offs, instruments with looping envelopes, instruments taking the pitch
+  a note left on the channel, samples with arpeggios and bends,
   noise at several periods in both modes, a tempo whose rows last unequal ticks, an order that revisits
   patterns, notes pushed below A-0, bends pushed past the lowest and the highest note the chip plays, and
   a slice longer than a tracker instrument holds.

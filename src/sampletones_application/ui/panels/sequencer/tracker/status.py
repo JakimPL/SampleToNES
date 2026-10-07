@@ -22,7 +22,7 @@ Voices = Tuple[VoiceEntryViewModel, ...]
 
 
 def _sample_command(cell: SequencerCellViewModel) -> Optional[NoteCommand]:
-    """The command the sample column reads from a cell: a hand-written instrument reads as none there."""
+    """The command the sample column reads from a cell: an instrument reads as none there."""
     if cell.kind is VoiceKind.INSTRUMENT:
         return None
 

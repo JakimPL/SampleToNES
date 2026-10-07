@@ -52,7 +52,7 @@ class SequencerVoicesLogic(CallbackMixin):
 
     Every pool edit goes through the controller so the project stays the single source of truth.
     ``on_edit_voice_requested`` hands a voice id to the application, which opens that voice in the
-    Reconstructions tab — a recording as the reconstruction behind it, a hand-written one as its
+    Reconstructions tab — a sample as the reconstruction behind it, an instrument as its
     envelopes.
 
     Previewing mirrors the reconstruction browser: a single click schedules a debounced autoplay
