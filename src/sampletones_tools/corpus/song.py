@@ -93,7 +93,7 @@ def _pattern(
     for spec in row_specs:
         rows[spec.row] = _row(spec, channel, voices_by_name)
 
-    return Pattern(rows=rows)
+    return Pattern(rows=tuple(rows))
 
 
 def _channels(

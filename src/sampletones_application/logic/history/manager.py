@@ -3,7 +3,6 @@ from datetime import UTC, datetime
 from typing import Iterator, List, Optional, Tuple
 
 from sampletones_application.logic.project.controller import ProjectController
-from sampletones_application.logic.shared.project_source import snapshot_project
 from sampletones_application.view_model.shared.history import HistoryDetail
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -283,7 +282,7 @@ class HistoryManager(CallbackMixin):
             else None
         )
         return HistoryEntry(
-            project=snapshot_project(project),
+            project=project.snapshot(),
             action=action,
             created=datetime.now(UTC),
             detail=detail,
@@ -305,7 +304,7 @@ class HistoryManager(CallbackMixin):
         self._restoring = True
         try:
             self._controller.replace_project(
-                snapshot_project(entry.project),
+                entry.project.snapshot(),
                 clean=self._cursor == self._saved_cursor,
             )
         finally:

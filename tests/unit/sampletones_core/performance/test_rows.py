@@ -72,9 +72,10 @@ LOOKUP: Final[VoiceLookup] = VOICES.get
 def _song() -> Song:
     """A one-frame song whose pulse pattern names a sample on ``SOUNDING_ROW``."""
     song = Song.empty(ROWS_PER_PATTERN)
-    pattern = song.channels[ChannelName.PULSE1].patterns[0]
-    pattern.rows[SOUNDING_ROW] = Row(
-        command=NoteOn(voice_id=SAMPLE.id),
+    song.channels[ChannelName.PULSE1].set_row(
+        0,
+        SOUNDING_ROW,
+        Row(command=NoteOn(voice_id=SAMPLE.id)),
     )
     return song
 

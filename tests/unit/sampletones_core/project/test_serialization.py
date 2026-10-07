@@ -15,13 +15,14 @@ from sampletones_shared.constants.project import (
 
 
 def _pattern_with_instrument() -> Pattern:
-    pattern = Pattern.empty(4, name="intro")
-    pattern.rows[0] = Row(
-        pitch=Step(value=0),
-        volume=15,
-        instrument=NoteOn(voice_id="abc123"),
+    return Pattern.empty(4, name="intro").with_row(
+        0,
+        Row(
+            pitch=Step(value=0),
+            volume=15,
+            instrument=NoteOn(voice_id="abc123"),
+        ),
     )
-    return pattern
 
 
 class TestPatternSerialization:

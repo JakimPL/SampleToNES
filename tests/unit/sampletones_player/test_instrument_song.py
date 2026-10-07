@@ -27,8 +27,8 @@ def _project() -> Project:
     )
     project = Project.create(title="Demo", rows_per_pattern=ROWS_PER_PATTERN)
     project.voices.append(instrument)
-    pattern = project.song[ChannelName.PULSE1].ensure_pattern(0, ROWS_PER_PATTERN)
-    pattern.rows[0] = Row(command=NoteOn(voice_id=instrument.id), pitch=Step(value=0))
+    project.song[ChannelName.PULSE1].ensure_pattern(0, ROWS_PER_PATTERN)
+    project.song[ChannelName.PULSE1].set_row(0, 0, Row(command=NoteOn(voice_id=instrument.id), pitch=Step(value=0)))
     project.song.set_order_entry(0, ChannelName.PULSE1, 0)
     return project
 

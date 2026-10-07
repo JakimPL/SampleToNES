@@ -162,14 +162,19 @@ def place_instrument(
     pattern_index: int = 0,
 ) -> None:
     """Writes a note column naming ``sample`` onto one row of one channel's pattern."""
-    pattern = project.song.channels[channel_name].ensure_pattern(
+    channel = project.song.channels[channel_name]
+    channel.ensure_pattern(
         pattern_index,
         project.song.rows_per_pattern,
     )
-    pattern.rows[row_index] = Row(
-        command=NoteOn(voice_id=sample.id),
-        pitch=Step(value=transpose) if transpose is not None else None,
-        volume=volume,
+    channel.set_row(
+        pattern_index,
+        row_index,
+        Row(
+            command=NoteOn(voice_id=sample.id),
+            pitch=Step(value=transpose) if transpose is not None else None,
+            volume=volume,
+        ),
     )
 
 

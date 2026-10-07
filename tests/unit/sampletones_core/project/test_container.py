@@ -91,12 +91,17 @@ def _populated_project(
 
     song = project.song
     channel = song[ChannelName.PULSE1]
-    pattern = channel.patterns[0]
-    pattern.name = "intro"
-    pattern.rows[0] = Row(
-        pitch=Step(value=0),
-        command=NoteOn(voice_id=first.id),
-        volume=15,
+    channel.patterns[0] = (
+        channel.patterns[0]
+        .model_copy(update={"name": "intro"})
+        .with_row(
+            0,
+            Row(
+                pitch=Step(value=0),
+                command=NoteOn(voice_id=first.id),
+                volume=15,
+            ),
+        )
     )
 
     extra_index = channel.add_pattern(song.rows_per_pattern, name="verse")
@@ -221,7 +226,7 @@ class TestInstrumentsRoundTrip:
         project = Project.create(title="Demo")
         instrument = Instrument(name="lead", envelopes=InstrumentEnvelopes(volume=Envelope(items=(15,))))
         project.voices.append(instrument)
-        project.song[ChannelName.PULSE1].patterns[0].rows[0] = Row(command=NoteOn(voice_id=instrument.id))
+        project.song[ChannelName.PULSE1].set_row(0, 0, Row(command=NoteOn(voice_id=instrument.id)))
         path = tmp_path / "demo.stp"
 
         ProjectContainer.save(project, path)

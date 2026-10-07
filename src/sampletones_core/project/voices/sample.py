@@ -32,6 +32,12 @@ class Sample:
             reconstruction=self.reconstruction,
         )
 
+    def snapshot(self) -> Self:
+        """A sample of its own with the same id and name, holding the very same reconstruction."""
+        copied = type(self)(name=self.name, reconstruction=self.reconstruction)
+        copied.id = self.id
+        return copied
+
     def __hash__(self) -> int:
         return hash(self.id)
 

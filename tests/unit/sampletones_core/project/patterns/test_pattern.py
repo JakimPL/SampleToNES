@@ -47,14 +47,11 @@ class TestPatternIsEmpty:
         assert _empty_pattern().is_empty()
 
     def test_pattern_with_one_filled_row_is_not_empty(self) -> None:
-        pattern = _empty_pattern()
-        pattern.rows[0] = _row_with_instrument()
+        pattern = _empty_pattern().with_row(0, _row_with_instrument())
 
         assert not pattern.is_empty()
 
     def test_pattern_with_all_filled_rows_is_not_empty(self) -> None:
-        pattern = _empty_pattern()
-        for i in range(_LENGTH):
-            pattern.rows[i] = _row_with_instrument()
+        pattern = _empty_pattern().with_rows({index: _row_with_instrument() for index in range(_LENGTH)})
 
         assert not pattern.is_empty()

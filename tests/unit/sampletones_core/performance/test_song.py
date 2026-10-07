@@ -302,8 +302,8 @@ class TestAnInstrumentGoesOnFromTheSamplesPitch:
         lead = Instrument(name="lead", envelopes=LEADER_ENVELOPES, initial_pitch=FOLLOWER_PITCH + 12)
         project.voices.append(lead)
         place_instrument(project, channel_name=ChannelName.PULSE1, row_index=0, sample=sample, transpose=5)
-        pattern = project.song.channels[ChannelName.PULSE1].ensure_pattern(0, ROWS_PER_PATTERN)
-        pattern.rows[2] = Row(command=NoteOn(voice_id=lead.id))
+        project.song.channels[ChannelName.PULSE1].ensure_pattern(0, ROWS_PER_PATTERN)
+        project.song.channels[ChannelName.PULSE1].set_row(0, 2, Row(command=NoteOn(voice_id=lead.id)))
         timing = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS)
 
         stream = song_instructions(project)[ChannelName.PULSE1]
@@ -319,9 +319,10 @@ class TestAnInstrumentGoesOnFromTheSamplesPitch:
             settings=SETTINGS,
         )
         lead = project.voices[0]
-        pattern = project.song.channels[ChannelName.PULSE1].ensure_pattern(0, ROWS_PER_PATTERN)
-        pattern.rows[0] = Row(command=NoteOn(voice_id=lead.id))
-        pattern.rows[2] = Row(command=NoteOn(voice_id=lead.id), pitch=Step(value=0))
+        channel = project.song.channels[ChannelName.PULSE1]
+        channel.ensure_pattern(0, ROWS_PER_PATTERN)
+        channel.set_row(0, 0, Row(command=NoteOn(voice_id=lead.id)))
+        channel.set_row(0, 2, Row(command=NoteOn(voice_id=lead.id), pitch=Step(value=0)))
         timing = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS)
 
         stream = song_instructions(project)[ChannelName.PULSE1]

@@ -20,11 +20,15 @@ class TestPatternPool:
 
     def test_clone_pattern_copies_rows_with_new_identity(self) -> None:
         channel = _channel()
-        source = channel.patterns[0]
-        source.rows[0] = Row(
-            instrument=NoteOn(voice_id="abc"),
-            volume=10,
+        channel.set_row(
+            0,
+            0,
+            Row(
+                instrument=NoteOn(voice_id="abc"),
+                volume=10,
+            ),
         )
+        source = channel.patterns[0]
 
         clone_index = channel.clone_pattern(0)
         clone = channel.pattern(clone_index)

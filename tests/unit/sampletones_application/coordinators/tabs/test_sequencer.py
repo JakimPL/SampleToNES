@@ -36,7 +36,6 @@ from sampletones_application.logic.sequencer.order import (
 from sampletones_application.logic.sequencer.tracker import (
     SequencerTrackerLogic,
 )
-from sampletones_application.logic.shared.project_source import snapshot_project
 from sampletones_application.paths import LANG_EN
 from sampletones_application.ui.panels.sequencer import channels as channels_module
 from sampletones_application.ui.panels.sequencer.order.panel import GUISequencerOrderPanel
@@ -1230,7 +1229,7 @@ class TestHistoryResetWiring:
             controller.set_tempo(150)
 
         controller.replace_project(
-            snapshot_project(controller.project),
+            controller.project.snapshot(),
             clean=False,
         )
 

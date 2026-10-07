@@ -160,7 +160,7 @@ def corpus_project(reconstruction: Reconstruction) -> Project:
     project.voices.append(second)
     project.song.channels[EMBEDDED_CHANNEL].patterns[0] = Pattern(
         name=PATTERN_NAME,
-        rows=_rows(first.id, second.id),
+        rows=tuple(_rows(first.id, second.id)),
     )
     return project
 

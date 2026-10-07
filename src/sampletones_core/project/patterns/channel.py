@@ -69,9 +69,8 @@ class Channel(BaseModel):
         own keys, so a caller that knows of indices referenced elsewhere (order slots
         whose patterns are not yet materialized) keeps the clone from taking one of them.
         """
-        source = self.patterns[index]
         clone_index = self._next_index(reserved_indices)
-        self.patterns[clone_index] = Pattern(name=source.name, rows=list(source.rows))
+        self.patterns[clone_index] = self.patterns[index].model_copy()
         return clone_index
 
     def remove_pattern(self, index: int) -> None:
@@ -81,7 +80,13 @@ class Channel(BaseModel):
         return self.patterns[index].rows[row_index]
 
     def set_row(self, index: int, row_index: int, row: Row) -> None:
-        self.patterns[index].rows[row_index] = row
+        """Puts the pattern holding ``row`` at ``row_index`` in place of the one at ``index``."""
+        self.patterns[index] = self.patterns[index].with_row(row_index, row)
+
+    def snapshot(self) -> Channel:
+        """A pool of its own holding the very patterns this one holds, which an edit of either replaces."""
+        copied: Channel = self.model_copy(update={"patterns": dict(self.patterns)})
+        return copied
 
     def __repr__(self) -> str:
         return f"Channel(name={self.name}, patterns={len(self.patterns)})"

@@ -2,10 +2,11 @@ from typing import Dict
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project import Project
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.history.gestures import GESTURES_BY_LABEL, perform
-from tests.suite.history.projects import LEAD
+from tests.suite.history.projects import FIRST_PATTERN, LEAD, PAD
 from tests.suite.history.session import HistorySession
 
 
@@ -50,3 +51,30 @@ class TestAnEntryOwnsWhatItsGestureReplaced:
                 left is right
                 for left, right in zip(after[voice_id].instructions_data, document.instructions_data, strict=True)
             )
+
+    def test_a_tracker_edit_shares_every_other_pattern(self, session: HistorySession) -> None:
+        perform(session, GESTURES_BY_LABEL["type a note with a sample"])
+
+        before, after = _entry(session, 0).song.channels, _entry(session, 1).song.channels
+        for name, channel in after.items():
+            for index, pattern in channel.patterns.items():
+                edited = name is ChannelName.PULSE1 and index == FIRST_PATTERN
+                assert (pattern is before[name].patterns[index]) is not edited
+
+    def test_an_instrument_edit_shares_every_other_voice(self, session: HistorySession) -> None:
+        pad = session.voice_id(PAD)
+
+        perform(session, GESTURES_BY_LABEL["edit an instrument's envelope"])
+
+        before = {voice.id: voice for voice in _entry(session, 0).voices}
+        after = {voice.id: voice for voice in _entry(session, 1).voices}
+        for voice_id, voice in after.items():
+            match voice:
+                case Instrument():
+                    held = before[voice_id]
+                    assert isinstance(held, Instrument)
+                    assert (voice.envelopes is held.envelopes) is (voice_id != pad)
+                case Sample():
+                    held = before[voice_id]
+                    assert isinstance(held, Sample)
+                    assert voice.reconstruction is held.reconstruction

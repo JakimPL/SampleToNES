@@ -183,6 +183,10 @@ class Instrument(BaseModel):
         """
         self.__dict__.pop("_instructions", None)
 
+    def snapshot(self) -> Self:
+        """An instrument of its own with the same id, holding the very same envelopes."""
+        return self.model_copy()
+
     def clone(self) -> Self:
         """Return an independent copy with a fresh id, carrying the name, pitch and envelopes."""
         return type(self)(
