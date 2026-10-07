@@ -129,6 +129,3 @@ currently out of line. An entry leaves when the code meets the contract again.
 * The Sample column shows no sample on a frame's first rows, since its reading starts over at each frame. It
   offers no transpose or volume there, while playback applies them to the sample the previous frame left
   sounding.
-* A task that raises in a `LatestWinsExecutor` (`utils/parallelization/coalescing.py`) leaves it marked
-  running, so it runs nothing submitted later. A reconstruction file the browser's recordings reader fails
-  on in a way nobody named is reported, and the reader then reads no other file.

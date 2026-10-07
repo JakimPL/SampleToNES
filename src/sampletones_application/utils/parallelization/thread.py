@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import threading
 import time
-from functools import wraps
+from functools import partial, wraps
 from typing import Any, Callable, ClassVar, Final, List, Optional, Set, cast
 
 from sampletones_application.utils.callbacks.failures import UnhandledFailures
@@ -117,6 +117,24 @@ class SingleThreadExecutor:
             logger.warning(f"Background workers still running after the shutdown deadline: {names}")
 
 
+def run_background_task(task: VoidCallback, origin: str) -> None:
+    """Runs one task a worker thread was handed, where the task's failure ends the task alone.
+
+    A worker thread is an entry point, so whatever escapes a task is reported here and the worker goes
+    on to its next task. A task unwinding through :class:`BackgroundWorkCanceled` ends quietly.
+
+    Args:
+        task: The work to run.
+        origin: The log line's opening, naming the task that failed.
+    """
+    try:
+        task()
+    except BackgroundWorkCanceled:
+        return
+    except Exception as exception:  # pylint: disable=broad-exception-caught
+        UnhandledFailures.report(exception, origin)
+
+
 def concurrent(
     wait: bool = True,
     method_bound: bool = False,
@@ -139,15 +157,10 @@ def concurrent(
                 if SingleThreadExecutor.is_shutting_down():
                     return
 
-                try:
-                    function(self, *args, **kwargs)
-                except BackgroundWorkCanceled:
-                    return
-                except Exception as exception:  # pylint: disable=broad-exception-caught
-                    UnhandledFailures.report(
-                        exception,
-                        f"Error in background task {function.__qualname__}",
-                    )
+                run_background_task(
+                    partial(function, self, *args, **kwargs),
+                    f"Error in background task {function.__qualname__}",
+                )
 
             executor.execute(task, wait=wait)
 

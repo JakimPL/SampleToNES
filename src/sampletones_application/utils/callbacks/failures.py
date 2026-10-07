@@ -31,11 +31,11 @@ class UnhandledFailures(metaclass=NonInstantiableMeta):
     """The one channel a failure no coordinator recovered from takes to reach the reader.
 
     Every place where control enters the application hands it what escapes the work it runs: the
-    callback queue for gestures, frame callbacks and queued deliveries, the ``concurrent`` workers,
-    and any other thread through the thread hook installed while a presenter is attached. A report
-    is logged with its traceback, and the presenter is posted to the render thread, whichever
-    thread failed. A failure on a worker while the interface is still being built is therefore
-    presented by the first drain.
+    callback queue for gestures, frame callbacks and queued deliveries, the runner every executor
+    worker runs its tasks through, and any other thread through the thread hook installed while a
+    presenter is attached. A report is logged with its traceback, and the presenter is posted to
+    the render thread, whichever thread failed. A failure on a worker while the interface is still
+    being built is therefore presented by the first drain.
 
     The composition root attaches the presenter and the post that carries it to the render thread,
     and the teardown detaches them, so a report outside a running interface is logged alone. A

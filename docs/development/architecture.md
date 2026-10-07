@@ -260,7 +260,7 @@ When a manager does recover, it records *what happened* as domain data and lets 
 
 ### Services — a broad catch that delivers
 
-Services run tasks on background threads. If an unhandled exception escapes the worker, the thread dies silently and `CallbackQueue` never delivers the result. `ServiceBase` subclasses therefore catch the exception at the outer boundary of the async task, wrap it in `ServiceError`, and emit it through `CallbackQueue`, so the coordinator that asked hears the failure as a result. The catch belongs in the top-level task wrapper and not in helper methods.
+Services run tasks on background threads. An exception that escapes the worker is reported as a last resort (see below), and the coordinator that asked hears nothing back. `ServiceBase` subclasses therefore catch the exception at the outer boundary of the async task, wrap it in `ServiceError`, and emit it through `CallbackQueue`, so the coordinator that asked hears the failure as a result. The catch belongs in the top-level task wrapper and not in helper methods.
 
 ### Coordinators — the recovery boundary
 
@@ -277,7 +277,7 @@ A coordinator catches precisely. Broad catches (`except Exception`, bare `except
 Every failure ends in a recovery or in a report. A failure no layer recovered from is reported where control entered the application:
 
 - `CallbackQueue.run` runs every gesture DearPyGui gathered, every frame callback and every queued delivery.
-- The `concurrent` task wrapper runs a widget's background work.
+- `run_background_task` runs every task a worker thread is handed: a widget's `concurrent` work and each task of a latest-wins executor. A failing task ends alone, and the worker goes on to the next one.
 - The thread hook hears every other thread.
 
 Each hands the exception to `UnhandledFailures` (`utils/callbacks/failures.py`). It logs the failure with its traceback and posts the report to the render thread through the queue, whichever thread failed. `UnhandledFailurePresenter` shows the error dialog: one plain line saying the last action did not finish, then the error and its traceback. A report standing on the screen or waiting for it absorbs later ones until the reader dismisses it, so a failure repeating every frame is read once. The composition root attaches the presenter and the teardown detaches it, so a failure outside a running interface is logged alone.
