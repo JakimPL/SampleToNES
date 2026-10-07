@@ -63,7 +63,7 @@ build on is refused by name.
 
 The Makefile is the developer's index, one line per target. A target names the script that does the work
 and passes its flag. The `run` and `calibration` targets name the `sampletones` command they start with no
-options, and the `tracker-playback` target passes the inputs its command takes: the Bitphase checkout
+options, and the `tracker-playback` target passes the inputs its command takes: the Bitphase source folder
 its `BITPHASE` variable names, the `FamiTracker.exe` its `FAMITRACKER` variable names, and the project
 files in `PROJECT`, if any. It runs each target it is given. `install.sh` and `install.bat` at the root
 exist for the double-click path and call the same bundle script.
@@ -131,5 +131,5 @@ shipped file to reaching nothing beyond the page, which lets one open from a fil
 fact in one place. `layout.py` holds the repository root and every path, notice and clean target a script
 names. `project.py` holds what `pyproject.toml` says, read with `tomllib`, which it holds the file to.
 
-The tests are run as named passes: the suite, the doctests and the benchmarks. Each pass is a make target,
-a pre-push hook and a CI step of its own, so a failure names its pass.
+The tests are run as named passes: the suite, the doctests, the screen scenarios and the benchmarks. Each pass is a make target.
+CI runs the doctests, the suite and the screen scenarios as steps of their own, so a failure names its pass. The benchmarks run locally, where timings are reproducible.

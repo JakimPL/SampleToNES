@@ -25,7 +25,7 @@ Use it to:
 For the `bitphase` target:
 
 - [Node.js](https://nodejs.org), so that the `node` program runs in a terminal.
-- A copy of the Bitphase source code with its packages installed. Clone
+- A copy of the Bitphase source code with its packages installed. Clone or download
   `https://github.com/paator/bitphase` and run `pnpm install` in that folder.
 
 The check reads that copy and leaves it as it is.
@@ -43,7 +43,7 @@ FamiTracker exports the file without opening a window.
 In an installed copy, name the target and what it needs:
 
 ```
-sampletones tracker-playback bitphase --checkout path/to/bitphase
+sampletones tracker-playback bitphase --directory path/to/bitphase
 sampletones tracker-playback famitracker --executable path/to/FamiTracker.exe
 ```
 
@@ -127,7 +127,7 @@ follow from it.
 
 ## Options
 
-- `bitphase --checkout <folder>`: the copy of the Bitphase source code. The `bitphase` target needs it.
+- `bitphase --directory <folder>`: the folder with the Bitphase source code. The `bitphase` target needs it.
 - `famitracker --executable <file>`: `FamiTracker.exe`. The `famitracker` target needs it.
 - `--project <file>`: a project file to check. Repeat it to check several. Without it, the run plays
   the corpus.

@@ -75,7 +75,7 @@ class TestTrackerPlayback:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        arguments = [COMMAND, "bitphase", "--checkout", str(tmp_path), "-o", str(tmp_path / "run")]
+        arguments = [COMMAND, "bitphase", "--directory", str(tmp_path), "-o", str(tmp_path / "run")]
 
         assert dispatch(COMMANDS, arguments) == 0
         (run,) = started.runs
@@ -94,11 +94,11 @@ class TestTrackerPlayback:
     ) -> None:
         monkeypatch.setattr(DEFAULT_OUTPUT, lambda: tmp_path / "stamped")
 
-        assert dispatch(COMMANDS, [COMMAND, "bitphase", "--checkout", str(tmp_path)]) == 0
+        assert dispatch(COMMANDS, [COMMAND, "bitphase", "--directory", str(tmp_path)]) == 0
         assert [run.output for run in started.runs] == [tmp_path / "stamped"]
 
     def test_a_run_given_no_project_checks_the_corpus(self, started: StartedRuns, tmp_path: Path) -> None:
-        assert dispatch(COMMANDS, [COMMAND, "bitphase", "--checkout", str(tmp_path)]) == 0
+        assert dispatch(COMMANDS, [COMMAND, "bitphase", "--directory", str(tmp_path)]) == 0
         assert started.projects == [[CORPUS_PROJECT]]
 
     def test_a_run_given_projects_checks_those_alone_in_the_order_given(
@@ -112,7 +112,7 @@ class TestTrackerPlayback:
         arguments = [
             COMMAND,
             "bitphase",
-            "--checkout",
+            "--directory",
             str(tmp_path),
             "--project",
             str(tmp_path / "chorus.stp"),
@@ -124,7 +124,7 @@ class TestTrackerPlayback:
         assert started.projects == [["chorus", "verse"]]
 
     def test_a_project_that_fails_to_open_is_reported(self, started: StartedRuns, tmp_path: Path) -> None:
-        arguments = [COMMAND, "bitphase", "--checkout", str(tmp_path), "--project", str(tmp_path / "absent.stp")]
+        arguments = [COMMAND, "bitphase", "--directory", str(tmp_path), "--project", str(tmp_path / "absent.stp")]
 
         with pytest.raises(SystemExit, match="absent.stp"):
             dispatch(COMMANDS, arguments)
@@ -142,9 +142,9 @@ class TestTrackerPlayback:
         monkeypatch.setattr(BitphaseTarget, "located", classmethod(located))
 
         with pytest.raises(SystemExit, match="node is absent"):
-            dispatch(COMMANDS, [COMMAND, "bitphase", "--checkout", str(tmp_path)])
+            dispatch(COMMANDS, [COMMAND, "bitphase", "--directory", str(tmp_path)])
 
-    def test_the_bitphase_checkout_is_required(self) -> None:
+    def test_the_bitphase_directory_is_required(self) -> None:
         with pytest.raises(SystemExit) as leaving:
             dispatch(COMMANDS, [COMMAND, "bitphase"])
 
