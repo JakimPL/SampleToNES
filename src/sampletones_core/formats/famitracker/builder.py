@@ -3,6 +3,7 @@ from typing import Final, FrozenSet, List, Mapping, Optional, Sequence, Tuple
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.rows.levels import cell_volume, full_level_notes
+from sampletones_core.exporters.rows.transpose import PatternCell, PitchWalk, unreached_start
 from sampletones_core.exporters.skipped import BuiltDocument, find_skipped_rows, in_song_order
 from sampletones_core.exporters.slices import (
     InstrumentEntry,
@@ -24,7 +25,7 @@ from sampletones_core.formats.famitracker.sequences.features import (
     features_to_instrument_sequences,
     features_truncation,
 )
-from sampletones_core.formats.famitracker.slides import PatternCell, SlidePlan, slide_effect
+from sampletones_core.formats.famitracker.slides import SlidePlan, slide_effect
 from sampletones_core.formats.famitracker.specification.channels import (
     CHANNEL_COUNT_2A03,
     CHANNEL_TO_ID,
@@ -60,6 +61,7 @@ from sampletones_core.project.project import Project
 from sampletones_core.project.song import Song
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.voice import VoiceLookup
 from sampletones_shared.application import SAMPLETONES_COPYRIGHT
 
 NO_REPITCHED_INSTRUMENTS: Final[FrozenSet[int]] = frozenset()
@@ -148,16 +150,19 @@ def _row_cell(
     channel_generator: ChannelName,
     targets: RowTargets,
     slide: Optional[int],
+    start: Optional[int],
     *,
     full_level: bool,
 ) -> Optional[RowCell]:
     """Converts one tracker line to the cell that plays it, and ``None`` where the line is empty.
 
     A note-on naming a voice with no instrument on this channel plays nothing in the song, so it
-    becomes the note cut that silences the channel. The volume column states what
-    :func:`cell_volume` gives the row, which is the full level on a note FamiTracker would otherwise
-    start at the level the channel carries. A transpose row moving the note sounding writes the note
-    slide ``slide`` names — see :class:`SlidePlan`.
+    becomes the note cut that silences the channel. A note-on starts the voice at the step ``start``
+    the song's walk gave it, so an instrument placed without a pitch writes the note the channel was
+    sounding, which FamiTracker would otherwise leave standing; a note-on that started nothing
+    writes an empty note. The volume column states what :func:`cell_volume` gives the row, which is
+    the full level on a note FamiTracker would otherwise start at the level the channel carries. A
+    pitch row moving the note sounding writes the note slide ``slide`` names — see :class:`SlidePlan`.
     """
     note = EMPTY_NOTE
     octave = MIN_OCTAVE
@@ -172,9 +177,9 @@ def _row_cell(
             target = targets.get((reference.voice_id, channel_generator))
             if target is None:
                 note = int(NoteValue.HALT)
-            else:
+            elif start is not None:
                 instrument = target.slot.index
-                cell_note = target.note_cell(row.transpose or 0, channel_generator)
+                cell_note = target.note_cell(start, channel_generator)
                 note, octave = cell_note.note, cell_note.octave
         case None:
             pass
@@ -218,8 +223,13 @@ def _channel_patterns(
     targets: RowTargets,
     full_level_cells: FrozenSet[PatternCell],
     slides: Mapping[PatternCell, int],
+    starts: Mapping[PatternCell, Optional[int]],
+    voices: VoiceLookup,
 ) -> List[PatternData]:
-    """Converts one channel's pattern pool, writing the full level and the note slides on the cells named."""
+    """Converts one channel's pattern pool, writing the full level, the note slides and the starts on the cells named.
+
+    A cell the order never reaches starts its note as the song would from silence.
+    """
     channel_id = CHANNEL_TO_ID[name]
     patterns: List[PatternData] = []
 
@@ -237,6 +247,7 @@ def _channel_patterns(
                     name,
                     targets,
                     slides.get((index, row_number)),
+                    starts.get((index, row_number), unreached_start(row, name, voices)),
                     full_level=(index, row_number) in full_level_cells,
                 )
                 for row_number, row in enumerate(pattern.rows)
@@ -306,7 +317,8 @@ def build_module(project: Project) -> BuiltDocument[FamiTrackerModule]:
     song = project.song
     plain_instruments, slots = _instrument_table(entries, NO_REPITCHED_INSTRUMENTS)
     targets = row_targets(plain_instruments, slots)
-    slides = SlidePlan.build(song, targets)
+    walks = {channel: PitchWalk.walk(song, channel, targets, project.voice) for channel in ChannelName.items()}
+    slides = SlidePlan.build(walks, targets)
     instruments, _ = _instrument_table(entries, slides.repitched)
     settings = project.settings
     info = project.info
@@ -337,6 +349,8 @@ def build_module(project: Project) -> BuiltDocument[FamiTrackerModule]:
                 targets,
                 _full_level_cells(song, channel),
                 slides.slides[channel],
+                walks[channel].pattern_starts(),
+                project.voice,
             ),
         )
 

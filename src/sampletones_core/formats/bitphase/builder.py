@@ -4,6 +4,7 @@ from typing import Final, FrozenSet, List, Mapping, Optional, Sequence, Tuple
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.exporters.rows.levels import RowPlace, cell_volume, full_level_notes
+from sampletones_core.exporters.rows.transpose import PitchWalk, unreached_start
 from sampletones_core.exporters.skipped import BuiltDocument, find_skipped_rows
 from sampletones_core.exporters.slices import iterate_voice_slices
 from sampletones_core.exporters.truncation import EnvelopeTruncation
@@ -64,6 +65,7 @@ from sampletones_core.project.project import Project
 from sampletones_core.project.tuning import tuning_from_project
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.voice import VoiceLookup
 from sampletones_core.timing import SongTiming, TickBounds
 from sampletones_shared.constants.project import DEFAULT_ROWS_PER_PATTERN, DEFAULT_SPEED
 
@@ -368,16 +370,20 @@ def _row_cell(
     channel_generator: ChannelName,
     voices: SliceVoiceTable,
     transpose: Optional[TransposeCell],
+    start: Optional[int],
     *,
     full_level: bool,
 ) -> BitphaseRow:
     """Converts one tracker line to the Bitphase row that plays it.
 
     A note-on naming a voice with no instrument on this channel plays nothing in the song, so it
-    becomes the note cut that silences the channel. The volume column states what
-    :func:`cell_volume` gives the row, which is the full level on a note Bitphase would otherwise
-    start at the level the channel carries. A transpose row moving the note sounding writes the
-    table and the effect its ``transpose`` cell names — see :class:`TransposePlan`.
+    becomes the note cut that silences the channel. A note-on starts the voice at the step ``start``
+    the song's walk gave it, so an instrument placed without a pitch writes the note the channel was
+    sounding; a note-on that started nothing writes an empty cell, since an instrument cell alone
+    would restart the slice. The volume column states what :func:`cell_volume` gives the row, which
+    is the full level on a note Bitphase would otherwise start at the level the channel carries. A
+    pitch row moving the note sounding writes the table and the effect its ``transpose`` cell
+    names — see :class:`TransposePlan`.
     """
     volume = _volume_column(cell_volume(row, channel_generator, full_level=full_level))
     cell = BitphaseRow(volume=volume)
@@ -393,10 +399,10 @@ def _row_cell(
             voice = voices.get((reference.voice_id, channel_generator))
             if voice is None:
                 cell = note_cut
-            else:
+            elif start is not None:
                 cell = _trigger_row(
                     voice,
-                    _note_cell(voice, row.transpose or 0),
+                    _note_cell(voice, start),
                     volume,
                 )
         case None if transpose is not None:
@@ -418,14 +424,17 @@ def _channel_rows(
     voices: SliceVoiceTable,
     full_rows: FrozenSet[int],
     transposes: Mapping[int, TransposeCell],
+    starts: Mapping[int, Optional[int]],
+    lookup: VoiceLookup,
 ) -> List[BitphaseRow]:
-    """Converts one channel's pattern within a frame, writing the full level and the transposes on the rows named."""
+    """Converts one channel's pattern within a frame, writing the full level, the transposes and the starts."""
     cells = [
         _row_cell(
             row,
             channel,
             voices,
             transposes.get(row_index),
+            starts.get(row_index, unreached_start(row, channel, lookup)),
             full_level=row_index in full_rows,
         )
         for row_index, row in enumerate(rows[:length])
@@ -531,6 +540,7 @@ def _project_patterns(
     voices: SliceVoiceTable,
     timing: SongTiming,
     transposes: TransposePlan,
+    walks: Mapping[ChannelName, PitchWalk],
 ) -> Tuple[BitphasePattern, ...]:
     """Flattens the song's per-channel arrangement into whole-pattern order positions.
 
@@ -570,6 +580,8 @@ def _project_patterns(
                 voices,
                 _frame_rows(full_levels[channel_name], position),
                 transposes.frame_cells(channel_name, position),
+                walks[channel_name].frame_starts(position),
+                project.voice,
             )
 
         patterns.append(_to_pattern(position, length, channel_rows))
@@ -613,13 +625,18 @@ def build_bitphase(project: Project) -> BuiltDocument[BitphaseProject]:
         project,
         tuning_table=tuning_table,
     )
+    walks = {
+        channel_name: PitchWalk.walk(project.song, channel_name, by_reference, project.voice)
+        for channel_name in ChannelName.items()
+    }
     transposes = TransposePlan.build(
-        project.song,
+        walks,
         by_reference,
         timing,
+        frames=project.song.order_length(),
         first_table_id=_moved_table_id(voices),
     )
-    patterns = _project_patterns(project, by_reference, timing, transposes)
+    patterns = _project_patterns(project, by_reference, timing, transposes, walks)
     settings = project.settings
     info = project.info
 

@@ -12,6 +12,7 @@ from sampletones_application.view_model.sequencer.region import TrackerRegion
 from sampletones_application.view_model.sequencer.slot import SUBCOLUMNS, TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.voices.note_off import NoteOff
 from tests.suite.sequencer import sample_reconstruction
 
@@ -89,12 +90,12 @@ class TestChannelColumn:
             name="lead",
         )
         logic.place_note(0, ChannelName.PULSE1, sample.id)
-        logic.set_cell_subcolumn(0, ChannelName.PULSE1, transpose=5, volume=3)
+        logic.set_cell_subcolumn(0, ChannelName.PULSE1, pitch=Step(value=5), volume=3)
 
         block = reader.read(_column(ChannelName.PULSE1))
 
         assert block.notes[_key(SubColumn.VOICE)] == sample.id
-        assert block.transposes[_key(SubColumn.TRANSPOSE)] == 5
+        assert block.pitches[_key(SubColumn.TRANSPOSE)] == Step(value=5)
         assert block.volumes[_key(SubColumn.VOLUME)] == 3
 
     def test_an_empty_cell_carries_its_emptiness(
@@ -105,7 +106,7 @@ class TestChannelColumn:
         block = reader.read(_column(ChannelName.NOISE))
 
         assert block.notes[_key(SubColumn.VOICE)] is None
-        assert block.transposes[_key(SubColumn.TRANSPOSE)] is None
+        assert block.pitches[_key(SubColumn.TRANSPOSE)] is None
         assert block.volumes[_key(SubColumn.VOLUME)] is None
 
     def test_a_cut_cell_carries_the_cut(
@@ -125,11 +126,11 @@ class TestChannelColumn:
         reader: TrackerBlockReader,
     ) -> None:
         """An explicit zero resets the channel's transpose, so it is a value and not an absence."""
-        logic.set_cell_subcolumn(0, ChannelName.PULSE2, transpose=0)
+        logic.set_cell_subcolumn(0, ChannelName.PULSE2, pitch=Step(value=0))
 
         block = reader.read(_cell(0, ChannelName.PULSE2, SubColumn.TRANSPOSE))
 
-        assert block.transposes[_key(SubColumn.TRANSPOSE)] == 0
+        assert block.pitches[_key(SubColumn.TRANSPOSE)] == Step(value=0)
 
     def test_rows_past_the_pattern_read_empty(
         self,
@@ -161,12 +162,12 @@ class TestSampleColumn:
             name="lead",
         )
         logic.place_note(0, None, sample.id)
-        logic.set_cell_subcolumn(0, None, transpose=7)
+        logic.set_cell_subcolumn(0, None, pitch=Step(value=7))
 
         block = reader.read(_column(None))
 
         assert block.notes[_key(SubColumn.VOICE)] == sample.id
-        assert block.transposes[_key(SubColumn.TRANSPOSE)] == 7
+        assert block.pitches[_key(SubColumn.TRANSPOSE)] == Step(value=7)
 
     def test_a_note_carries_as_the_sample_it_names(
         self,
@@ -197,11 +198,11 @@ class TestSampleColumn:
             name="lead",
         )
         logic.place_note(0, None, sample.id)
-        logic.set_cell_subcolumn(0, ChannelName.PULSE1, transpose=5)
+        logic.set_cell_subcolumn(0, ChannelName.PULSE1, pitch=Step(value=5))
 
         block = reader.read(_cell(0, None, SubColumn.TRANSPOSE))
 
-        assert _key(SubColumn.TRANSPOSE) not in block.transposes
+        assert _key(SubColumn.TRANSPOSE) not in block.pitches
 
     def test_a_row_where_no_sample_plays_carries_its_offsets_as_empty(
         self,
@@ -210,11 +211,11 @@ class TestSampleColumn:
     ) -> None:
         """The column's pitch and volume reach no channel there, so they read empty, as the grid
         shows them, whatever the channel columns hold."""
-        logic.set_cell_subcolumn(0, ChannelName.PULSE1, transpose=5, volume=3)
+        logic.set_cell_subcolumn(0, ChannelName.PULSE1, pitch=Step(value=5), volume=3)
 
         block = reader.read(_column(None))
 
-        assert block.transposes[_key(SubColumn.TRANSPOSE)] is None
+        assert block.pitches[_key(SubColumn.TRANSPOSE)] is None
         assert block.volumes[_key(SubColumn.VOLUME)] is None
 
     def test_offsets_below_a_sample_read_the_channels_it_still_plays_on(
@@ -248,7 +249,7 @@ class TestSampleColumn:
         block = reader.read(_column(None))
 
         assert block.notes[_key(SubColumn.VOICE)] == NoteOff()
-        assert block.transposes[_key(SubColumn.TRANSPOSE)] is None
+        assert block.pitches[_key(SubColumn.TRANSPOSE)] is None
         assert block.volumes[_key(SubColumn.VOLUME)] is None
 
     def test_a_half_cut_row_leaves_its_note_out(
@@ -281,7 +282,7 @@ class TestSampleColumn:
         block = reader.read(_column(None))
 
         assert block.notes[_key(SubColumn.VOICE)] is None
-        assert block.transposes[_key(SubColumn.TRANSPOSE)] is None
+        assert block.pitches[_key(SubColumn.TRANSPOSE)] is None
         assert block.volumes[_key(SubColumn.VOLUME)] is None
 
 
@@ -312,7 +313,7 @@ class TestOffsets:
         )
 
         assert set(block.notes) == {_key(SubColumn.VOICE)}
-        assert set(block.transposes) == {_key(SubColumn.TRANSPOSE)}
+        assert set(block.pitches) == {_key(SubColumn.TRANSPOSE)}
         assert _key(SubColumn.VOLUME) not in block.volumes
 
     def test_the_offsets_are_measured_from_the_column_the_block_begins_in(
@@ -333,6 +334,6 @@ class TestOffsets:
             )
         )
 
-        assert set(block.transposes) == {(0, 1)}
+        assert set(block.pitches) == {(0, 1)}
         assert set(block.volumes) == {(0, 2)}
         assert set(block.notes) == {(0, 3)}

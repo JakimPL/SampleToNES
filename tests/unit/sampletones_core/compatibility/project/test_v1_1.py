@@ -1,10 +1,16 @@
 from typing import Any, Dict
 
+import pytest
+
 from sampletones_core.compatibility.fields import (
     KIND,
     KIND_SAMPLE,
+    KIND_STEP,
     NAME,
+    PITCH,
     SAMPLES,
+    TRANSPOSE,
+    VALUE,
     VOICE_ID,
     VOICES,
 )
@@ -21,6 +27,15 @@ def _pool_with_row(command: Dict[str, Any]) -> Dict[str, Any]:
 
 def _song(command: Dict[str, Any]) -> Dict[str, Any]:
     return {"song": {"channels": {"pulse1": _pool_with_row(command)}}}
+
+
+def _song_of_row(row: Dict[str, Any]) -> Dict[str, Any]:
+    return {"song": {"channels": {"pulse1": {"generator": "pulse1", "patterns": {"0": {"rows": [row]}}}}}}
+
+
+def _first_row(data: Dict[str, Any]) -> Dict[str, Any]:
+    row: Dict[str, Any] = data["song"]["channels"]["pulse1"]["patterns"]["0"]["rows"][0]
+    return row
 
 
 def _first_command(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -70,3 +85,39 @@ class TestProjectV1_1:
         data = {"format_version": "1.0"}
 
         assert update(data) == data
+
+
+class TestARowsTransposeBecomesAStep:
+    """A 1.0 row wrote its pitch as a bare transpose, which 1.1 reads as a step from the voice's reference."""
+
+    @pytest.mark.parametrize("transpose", [3, 0, -12])
+    def test_a_transpose_becomes_a_step_of_the_same_value(self, transpose: int) -> None:
+        upgraded = update(_song_of_row({TRANSPOSE: transpose, "volume": 8}))
+
+        row = _first_row(upgraded)
+        assert row[PITCH] == {KIND: KIND_STEP, VALUE: transpose}
+        assert TRANSPOSE not in row
+        assert row["volume"] == 8
+
+    def test_an_empty_transpose_leaves_the_row_without_a_pitch(self) -> None:
+        row = _first_row(update(_song_of_row({TRANSPOSE: None})))
+
+        assert PITCH not in row
+        assert TRANSPOSE not in row
+
+    def test_a_row_without_the_key_stays_as_it_stands(self) -> None:
+        assert _first_row(update(_song_of_row({"volume": 8}))) == {"volume": 8}
+
+    def test_a_row_carrying_a_command_and_a_transpose_has_both_reshaped(self) -> None:
+        row = _first_row(
+            update(_song_of_row({"command": {"sample_id": "a", "generator_name": "pulse1"}, TRANSPOSE: 5}))
+        )
+
+        assert row == {"command": {VOICE_ID: "a"}, PITCH: {KIND: KIND_STEP, VALUE: 5}}
+
+    def test_the_input_row_is_left_untouched(self) -> None:
+        data = _song_of_row({TRANSPOSE: 5})
+
+        update(data)
+
+        assert _first_row(data) == {TRANSPOSE: 5}

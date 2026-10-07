@@ -7,13 +7,14 @@ from sampletones_application.view_model.sequencer.region import TrackerCell, Tra
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.project.patterns.pitch import RowPitch
 from sampletones_shared.types.callback import VoidCallback
 
 OnClearRowCallback = Callable[[int, Optional[ChannelName]], None]
 OnClearSubcolumnCallback = Callable[[int, Optional[ChannelName], SubColumn], None]
-OnSetRowCallback = Callable[[int, Optional[ChannelName], Optional[str], Optional[int], Optional[int]], None]
+OnSetRowCallback = Callable[[int, Optional[ChannelName], Optional[str], Optional[RowPitch], Optional[int]], None]
 OnSetNoteOffCallback = Callable[[int, Optional[ChannelName]], None]
-OnNoteTypedCallback = Callable[[int, ChannelName, int], None]
+OnNoteTypedCallback = Callable[[int, ChannelName, RowPitch], None]
 OnCellSelectedCallback = VoidCallback
 OnPlayFromRowCallback = Callable[[int], None]
 OnPlayFromFrameCallback = VoidCallback

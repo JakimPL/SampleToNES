@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.song import Song
 from sampletones_core.project.voices.note_off import NoteOff
@@ -67,8 +68,9 @@ def _row(spec: RowSpec, channel: ChannelName, voices_by_name: Mapping[str, Voice
     if spec.off:
         return Row(command=NoteOff(), volume=spec.volume)
 
+    pitch = Step(value=spec.transpose) if spec.transpose is not None else None
     if spec.voice is None:
-        return Row(transpose=spec.transpose, volume=spec.volume)
+        return Row(pitch=pitch, volume=spec.volume)
 
     voice = voices_by_name[spec.voice]
     if channel not in voice_channels(voice):
@@ -76,7 +78,7 @@ def _row(spec: RowSpec, channel: ChannelName, voices_by_name: Mapping[str, Voice
 
     return Row(
         command=NoteOn(voice_id=voice.id),
-        transpose=spec.transpose,
+        pitch=pitch,
         volume=spec.volume,
     )
 

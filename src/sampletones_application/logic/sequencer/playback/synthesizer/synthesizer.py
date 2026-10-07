@@ -189,7 +189,7 @@ class RowSynthesizer:
         state = channels.state(channel_name)
 
         row = resolve_row(song, self._position, channel_name)
-        if row is not None and apply_row(state.performance, row):
+        if row is not None and apply_row(state.performance, row, channel_name, project.voice):
             state.generator.reset()
 
         voice_id = state.performance.voice_id

@@ -1,5 +1,6 @@
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.patterns.channel import Channel
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.voices.note_on import NoteOn
 
@@ -55,7 +56,7 @@ class TestPatternPool:
     def test_set_row_replaces_row(self) -> None:
         channel = _channel()
         pattern_index = 0
-        row = Row(transpose=5, volume=12)
+        row = Row(pitch=Step(value=5), volume=12)
 
         channel.set_row(pattern_index, 3, row)
 

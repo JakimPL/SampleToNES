@@ -14,6 +14,7 @@ from sampletones_application.view_model.sequencer.region import TrackerCell, Tra
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.voices.creation import new_instrument
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -372,7 +373,7 @@ class TestSingleSlotEquivalence:
         pasted = render_frame(grid.logic)
 
         typed = _typed_grid()
-        typed.set_cell_subcolumn(0, ChannelName.PULSE1, transpose=2)
+        typed.set_cell_subcolumn(0, ChannelName.PULSE1, pitch=Step(value=2))
 
         assert pasted == render_frame(typed)
 

@@ -17,10 +17,10 @@ from sampletones_core.instructions import (
 )
 from sampletones_core.performance.rows import apply_row, resolve_row
 from sampletones_core.performance.state import ChannelPerformance
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
-from sampletones_core.project.song import Song
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.note_on import NoteOn
@@ -168,24 +168,25 @@ def place_instrument(
     )
     pattern.rows[row_index] = Row(
         command=NoteOn(voice_id=sample.id),
-        transpose=transpose,
+        pitch=Step(value=transpose) if transpose is not None else None,
         volume=volume,
     )
 
 
-def song_row_volumes(song: Song, channel_name: ChannelName) -> List[Optional[int]]:
+def song_row_volumes(project: Project, channel_name: ChannelName) -> List[Optional[int]]:
     """The level the song walk plays one channel at on each row of the order, ``None`` where it rests.
 
     Rows come frame by frame, each frame lasting the song's rows per pattern, so an index into the
     list names the same row a tracker document laying the order out in turn plays there.
     """
+    song = project.song
     performance = ChannelPerformance()
     volumes: List[Optional[int]] = []
     position = SongPosition()
     while position.order_position < song.order_length():
         row = resolve_row(song, position, channel_name)
         if row is not None:
-            apply_row(performance, row)
+            apply_row(performance, row, channel_name, project.voice)
 
         volumes.append(performance.volume if performance.voice_id is not None else None)
         position.advance(song.rows_per_pattern, song.order_length())

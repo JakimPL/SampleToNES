@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, Final, Optional, Tuple
+from typing import Dict, Final, Mapping, Optional, Tuple
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.exporters.rows.transpose import SoundingNote, sounding_notes
+from sampletones_core.exporters.rows.transpose import PitchWalk, SoundingNote
 from sampletones_core.formats.bitphase.model.pattern import EffectCell
 from sampletones_core.formats.bitphase.model.table import BitphaseTable
 from sampletones_core.formats.bitphase.specification.effects import (
@@ -16,7 +16,6 @@ from sampletones_core.formats.bitphase.specification.effects import (
 from sampletones_core.formats.bitphase.specification.instruments import FIRST_TABLE_STEP, MAX_TABLE_ID
 from sampletones_core.formats.bitphase.specification.patterns import TABLE_COLUMN_OFFSET
 from sampletones_core.formats.bitphase.voices import SliceVoice, SliceVoiceTable
-from sampletones_core.project.song import Song
 from sampletones_core.timing import SongTiming
 
 NOTE_SHIFT: Final[int] = 0
@@ -126,10 +125,11 @@ class TransposePlan:
     @classmethod
     def build(
         cls,
-        song: Song,
+        walks: Mapping[ChannelName, PitchWalk],
         voices: SliceVoiceTable,
         timing: SongTiming,
         *,
+        frames: int,
         first_table_id: int,
     ) -> TransposePlan:
         """Plans every transpose row of the song, following the notes the order sounds.
@@ -141,9 +141,10 @@ class TransposePlan:
         writes nothing.
 
         Args:
-            song: The arrangement being exported.
+            walks: Each channel's pass through the song, as playback makes it.
             voices: The slices a row's note-on reaches, by voice and channel.
             timing: How many ticks every row of the song lasts in the document.
+            frames: How many frames the order holds.
             first_table_id: The id the first moved table takes, above every other table.
 
         Returns:
@@ -156,13 +157,13 @@ class TransposePlan:
         cells: Dict[ChannelName, Dict[Tuple[int, int], TransposeCell]] = {}
         for channel_name in ChannelName.items():
             channel_cells: Dict[Tuple[int, int], TransposeCell] = {}
-            for note in sounding_notes(song, channel_name, voices):
+            for note in walks[channel_name].notes:
                 channel_cells.update(
                     cls._note_cells(
                         note,
                         voices[(note.voice_id, channel_name)],
                         timing,
-                        song.order_length(),
+                        frames,
                         shelf,
                     )
                 )
@@ -188,11 +189,11 @@ class TransposePlan:
         shelf: _TableShelf,
     ) -> Dict[Tuple[int, int], TransposeCell]:
         """The cells the transpose rows reaching one note write."""
-        written = voice.note_index(note.transpose)
+        written = voice.note_index(note.step)
         carried = NOTE_SHIFT
         cells: Dict[Tuple[int, int], TransposeCell] = {}
         for repitch in note.repitches:
-            shift = voice.note_index(repitch.transpose) - written
+            shift = voice.note_index(repitch.step) - written
             if shift == carried:
                 continue
 

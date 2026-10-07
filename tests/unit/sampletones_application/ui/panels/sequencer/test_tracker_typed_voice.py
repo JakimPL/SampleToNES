@@ -73,7 +73,7 @@ class Panel:
                 row=0,
                 channel=channel,
                 sample_index=index,
-                transpose=None,
+                pitch=None,
                 volume=None,
             )
         )
@@ -84,7 +84,7 @@ class Panel:
                 row=0,
                 channel=channel,
                 sample_index=None,
-                transpose=None,
+                pitch=None,
                 volume=volume,
             )
         )
@@ -183,7 +183,7 @@ class TestWhatColorATypedVoiceTakes:
                 row=0,
                 channel=ChannelName.TRIANGLE,
                 sample_index=None,
-                transpose=None,
+                pitch=None,
                 volume=None,
                 note_off=True,
             )

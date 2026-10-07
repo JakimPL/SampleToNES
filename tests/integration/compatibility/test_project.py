@@ -7,6 +7,7 @@ from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.container import ProjectContainer
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.voices.note_off import NoteOff
@@ -114,7 +115,7 @@ class TestTheArrangementAnUpgradedProjectKeeps:
 
         assert isinstance(row.command, NoteOn)
         assert row.command.voice_id == loaded.voices[1].id
-        assert row.transpose == ROW_TRANSPOSE
+        assert row.pitch == Step(value=ROW_TRANSPOSE)
         assert row.volume == ROW_VOLUME
 
     def test_a_row_letting_a_note_go_reads_as_one(self, loaded: Project) -> None:

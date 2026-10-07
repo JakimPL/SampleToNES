@@ -20,7 +20,8 @@ from sampletones_application.view_model.sequencer.slot import (
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
-from sampletones_shared.constants.general import HEXADECIMAL_BASE
+from sampletones_core.project.patterns.pitch import clamped_step
+from sampletones_shared.constants.general import DECIMAL_BASE, HEXADECIMAL_BASE
 from sampletones_shared.constants.symbols import MINUS, PLUS, PLUS_MINUS, SIGNS
 
 DIGIT_COUNT: Final[Dict[SubColumn, int]] = {
@@ -45,7 +46,7 @@ def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
                     row=cursor.row,
                     channel=cursor.channel,
                     sample_index=int(pending, HEXADECIMAL_BASE),
-                    transpose=None,
+                    pitch=None,
                     volume=None,
                 )
             case SubColumn.VOLUME:
@@ -53,7 +54,7 @@ def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
                     row=cursor.row,
                     channel=cursor.channel,
                     sample_index=None,
-                    transpose=None,
+                    pitch=None,
                     volume=min(int(pending, HEXADECIMAL_BASE), MAX_VOLUME),
                 )
             case SubColumn.TRANSPOSE:
@@ -66,7 +67,7 @@ def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
                     row=cursor.row,
                     channel=cursor.channel,
                     sample_index=None,
-                    transpose=sign * int(magnitude, HEXADECIMAL_BASE),
+                    pitch=clamped_step(sign * int(magnitude, DECIMAL_BASE)),
                     volume=None,
                 )
     except ValueError:
@@ -287,7 +288,7 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
             row=cursor.row,
             channel=cursor.channel,
             sample_index=None,
-            transpose=None,
+            pitch=None,
             volume=None,
             note_off=True,
         )
@@ -296,17 +297,21 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
         self,
         char: str,
     ) -> Tuple[TrackerInputState, Optional[EditAction]]:
-        """Drives the signed transpose field: ``[±][H][H]``.
+        """Drives the signed step field: ``[±][D][D]``, in decimal digits.
 
         The first slot is reserved for the sign. A leading sign sets it; a leading
         digit implies ``+``. A sign key pressed later flips the sign in place,
         keeping any digits already entered. The field commits once both magnitude
-        digits are in.
+        digits are in. A key naming no decimal digit and no sign leaves the field
+        as it stands.
         """
         if self.cursor is None:
             return self, None
 
         is_sign = char in SIGNS
+        if not is_sign and not char.isdecimal():
+            return self, None
+
         if not self.pending:
             pending = char if is_sign else f"{PLUS}{char}"
         elif is_sign:

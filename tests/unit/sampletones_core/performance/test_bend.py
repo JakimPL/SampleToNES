@@ -13,6 +13,7 @@ from sampletones_core.performance import (
     apply_row,
     sound_tick,
 )
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
@@ -76,10 +77,13 @@ class TestABendThroughTheSongWalk:
         plain_reading = VoiceReading.read(plain, ChannelName.PULSE1)
         assert bent_reading is not None and plain_reading is not None
 
+        voices = {bent.id: bent, plain.id: plain}
         performance = ChannelPerformance()
-        apply_row(performance, Row(command=NoteOn(voice_id=bent.id)))
+        apply_row(
+            performance, Row(command=NoteOn(voice_id=bent.id), pitch=Step(value=0)), ChannelName.PULSE1, voices.get
+        )
         sound_tick(performance, bent_reading)
-        apply_row(performance, Row(command=NoteOn(voice_id=plain.id)))
+        apply_row(performance, Row(command=NoteOn(voice_id=plain.id)), ChannelName.PULSE1, voices.get)
         sounded = sound_tick(performance, plain_reading)
 
         assert isinstance(sounded, PulseInstruction)

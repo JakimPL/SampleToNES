@@ -106,6 +106,14 @@ The row's level scales the instrument's. A channel sounds their product over the
 
 A pass through the song begins on the same values, so starting the song and looping back to its first row sound the same. Seeking within a running song keeps the values, since the sounding note has reached them.
 
+## What a row's pitch means
+
+A pitch cell holds what the reader typed: a note the channel sounds, or a step from the voice's own reference, on either kind of voice. The row keeps that face, and the walk resolves it when the row is played: a note sounds where it says, and a step moves the voice from where it rests. A note therefore keeps its pitch when the voice under it changes, and a step keeps its interval, which is what each face is for.
+
+A voice placed with a pitch starts there. A sample placed without one plays as it was recorded. An instrument has no pitch of its own to sound, so one placed without a pitch restarts its envelopes on the pitch the channel is sounding, whichever voice sounded it; that is how a row retriggers a note already standing. On a silent channel it starts nothing. A channel is silent from the song's start, after a note-off, and while its voice has no frames on it; a voice whose frames have run out is still the channel's note, since no row has ended it. A pitch without a note-on moves the note already sounding and leaves a silent channel as it is.
+
+The exports write every note at the step the walk gives it, so an instrument-only row reaches a tracker as the note it sounds here, and one that sounds nothing reaches it as an empty cell. The walk is the song's own, driven row by row through the same rule, so the two cannot drift apart.
+
 ## Rendering the song to a file
 
 A render writes the whole song to an audio file through the synthesizer that plays it. `RowSynthesizer` serves both: the player drives it to feed the device, and the render drives it to feed a file writer. The synthesis is therefore written once, and the file and the playback agree on what the song sounds like by construction.
@@ -145,6 +153,8 @@ The manager's own playback is held to the same rule. A stop waits a while for it
 | The sequencer's mute set, its mask, and solo | `SequencerChannelsLogic` (`logic/sequencer/channels.py`) |
 | Row mixing, and the mask it pulls while rendering | `RowSynthesizer` (`logic/sequencer/playback/synthesizer/`) |
 | The values a note starts from and a channel holds between frames | `ChannelPerformance` (`sampletones_core/performance/state.py`) |
+| What a row's voice and pitch start, and what they move | `apply_row` and `note_step` (`sampletones_core/performance/rows.py`) |
+| The face a pitch cell holds and the step it asks for | `Note`, `Step` and `step_of` (`sampletones_core/project/patterns/pitch.py`) |
 | How a row's level and transpose reach what a channel sounds | `apply_modifiers` (`sampletones_core/performance/modifiers.py`) |
 | How long a row lasts, and how many samples its ticks span | `SongTiming` and `TickClock` (`sampletones_core/timing/`) |
 | Rendering the song to a file, its passes and its progress | `SongRenderService` (`services/render/`) |

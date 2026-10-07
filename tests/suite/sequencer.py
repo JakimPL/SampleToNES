@@ -25,6 +25,7 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
+from sampletones_core.project.patterns.pitch import Note, RowPitch, Step
 from sampletones_core.project.patterns.row import NoteCommand
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
@@ -35,7 +36,9 @@ from sampletones_core.utils.display import (
     NOTE_OFF,
     display_id,
 )
-from sampletones_shared.constants.general import HEXADECIMAL_BASE
+from sampletones_core.utils.frequencies import PERIOD_NAME_SUFFIX
+from sampletones_core.utils.pitch_kind import PERIOD_VALUE_KIND, PLAYED_PITCH_VALUE_KIND
+from sampletones_shared.constants.general import DECIMAL_BASE, HEXADECIMAL_BASE
 from sampletones_shared.constants.symbols import MINUS, MIXED, PLUS
 from tests.suite.stems import single_entry_stems_data
 
@@ -183,7 +186,7 @@ def parse_block(
     """
     first_slot = SUBCOLUMNS.index(first_subcolumn)
     notes: Dict[BlockKey, Optional[BlockNote]] = {}
-    transposes: Dict[BlockKey, Optional[int]] = {}
+    pitches: Dict[BlockKey, Optional[RowPitch]] = {}
     volumes: Dict[BlockKey, Optional[int]] = {}
     lines = [_tokens(line, first_slot) for line in rows]
     widths = {len(tokens) for tokens in lines}
@@ -201,13 +204,13 @@ def parse_block(
                 case SubColumn.VOICE:
                     notes[key] = parse_note(token, voice_ids)
                 case SubColumn.TRANSPOSE:
-                    transposes[key] = parse_transpose(token)
+                    pitches[key] = parse_pitch(token)
                 case SubColumn.VOLUME:
                     volumes[key] = parse_volume(token)
 
     return TrackerBlock(
         notes=notes,
-        transposes=transposes,
+        pitches=pitches,
         volumes=volumes,
     )
 
@@ -252,12 +255,17 @@ def parse_note(
     return voice_ids[int(token, HEXADECIMAL_BASE)]
 
 
-def parse_transpose(token: str) -> Optional[int]:
+def parse_pitch(token: str) -> Optional[RowPitch]:
+    """The pitch a token names, as the grid prints it: a signed decimal step, or a note name."""
     if token == NOTE_BLANK:
         return None
 
-    magnitude = int(token[1:], HEXADECIMAL_BASE)
-    return -magnitude if token.startswith(MINUS) else magnitude
+    if token.startswith((PLUS, MINUS)):
+        magnitude = int(token[1:], DECIMAL_BASE)
+        return Step(value=-magnitude if token.startswith(MINUS) else magnitude)
+
+    kind = PERIOD_VALUE_KIND if token.endswith(PERIOD_NAME_SUFFIX) else PLAYED_PITCH_VALUE_KIND
+    return Note(value=kind.sanitized_name_to_value[kind.sanitize(token)])
 
 
 def parse_volume(token: str) -> Optional[int]:
@@ -308,16 +316,16 @@ def _fill_cell(
     once however many of its subcolumns hold a value.
     """
     note = parse_note(tokens[0], voice_ids)
-    transpose = parse_transpose(tokens[1])
+    pitch = parse_pitch(tokens[1])
     volume = parse_volume(tokens[2])
-    if note is None and transpose is None and volume is None:
+    if note is None and pitch is None and volume is None:
         return
 
     tracker_logic.set_row(
         channel,
         row_index,
         command=_command(note, channel),
-        transpose=transpose,
+        pitch=pitch,
         volume=volume,
     )
 

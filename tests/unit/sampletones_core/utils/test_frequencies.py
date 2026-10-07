@@ -853,13 +853,23 @@ class TestSanitizePitch(BaseTestSuite):
         ),
         TestCase(
             name="G--",
-            expected="--",
-            label="multiple_hyphens_g_removed",
+            expected="G--",
+            label="multiple_hyphens_kept",
         ),
         TestCase(
             name="C##4",
             expected="C##4",
             label="double_sharp",
+        ),
+        TestCase(
+            name="G-3",
+            expected="G-3",
+            label="the_seventh_note_letter",
+        ),
+        TestCase(
+            name="H-3",
+            expected="-3",
+            label="a_letter_past_the_notes",
         ),
         TestCase(
             name=None,

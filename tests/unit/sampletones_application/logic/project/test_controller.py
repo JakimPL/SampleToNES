@@ -11,6 +11,7 @@ from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.project import ProjectContainer
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
@@ -295,14 +296,14 @@ class TestSong:
             pattern_id,
             2,
             command=NoteOn(voice_id=sample.id),
-            transpose=0,
+            pitch=Step(value=0),
             volume=10,
         )
 
         row = song.pattern(ChannelName.PULSE1, pattern_id).rows[2]
         assert row.command is not None
         assert row.command.voice_id == sample.id
-        assert row.transpose == 0
+        assert row.pitch == Step(value=0)
         assert row.volume == 10
 
     def test_remove_pattern_drops_from_pool_and_nulls_order_references(self) -> None:

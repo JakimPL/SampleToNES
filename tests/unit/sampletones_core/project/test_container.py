@@ -10,6 +10,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.data import Metadata
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.container import ProjectContainer
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
@@ -86,7 +87,7 @@ def _populated_project(
     pattern = channel.patterns[0]
     pattern.name = "intro"
     pattern.rows[0] = Row(
-        transpose=0,
+        pitch=Step(value=0),
         command=NoteOn(voice_id=first.id),
         volume=15,
     )
@@ -126,7 +127,7 @@ class TestRoundTrip:
         )
         assert first_pattern.name == "intro"
         row = first_pattern.rows[0]
-        assert row.transpose == 0
+        assert row.pitch == Step(value=0)
         assert row.command is not None
         assert row.command.voice_id == loaded.voices[0].id
 

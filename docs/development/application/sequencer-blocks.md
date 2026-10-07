@@ -88,7 +88,9 @@ The form and its reading live in `logic/sequencer/clipboard/`, which deals in bl
 
 **A note names its voice by list position**, the figure the grid prints. A block carried to another project therefore plays whichever voice stands at that position there. A position the project's list falls short of reads as mixed, as the writer already treats a voice it has nothing to place.
 
-A field the form has no reading for makes the whole text a refusal, so a parse answers with a block or with nothing. Digits are read in either case, and transpose and volume are held to the ranges a row accepts, so text typed by hand lands the values the grid would.
+**A pitch field prints the face its cell holds**: a note by its name, a step as a signed decimal offset. A name ending in the noise channel's suffix reads as a period, and any other name as a note the tonal channels play.
+
+A field the form has no reading for makes the whole text a refusal, so a parse answers with a block or with nothing. Names and digits are read in either case, and steps and volumes are held to the ranges a row accepts, so text typed by hand lands the values the grid would.
 
 ### Which block a paste writes
 

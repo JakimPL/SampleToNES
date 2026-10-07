@@ -43,6 +43,7 @@ from sampletones_core.instructions.implementation.pulse import PulseInstruction
 from sampletones_core.performance.modifiers import triangle_sounds_at
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
@@ -416,7 +417,7 @@ class TestTheLevelsAPlayedModuleCarries:
             0: rows_with(
                 (0, lead_note),
                 (1, Row(volume=QUIET_VOLUME)),
-                (2, Row(transpose=TRANSPOSE)),
+                (2, Row(pitch=Step(value=TRANSPOSE))),
                 (3, lead_note),
                 (4, Row(command=NoteOff(), volume=NOTE_OFF_VOLUME)),
                 (5, lead_note),
@@ -454,14 +455,14 @@ class TestTheLevelsAPlayedModuleCarries:
 
     def test_the_pulse_plays_every_sounding_row_at_the_song_level(self, arranged: Project) -> None:
         played = played_volumes(project_to_module(arranged), ChannelId.SQUARE1)
-        song = song_row_volumes(arranged.song, ChannelName.PULSE1) * PLAYED_PASSES
+        song = song_row_volumes(arranged, ChannelName.PULSE1) * PLAYED_PASSES
 
         sounding = [(level, volume) for level, volume in zip(played, song) if volume is not None]
         assert [level for level, _ in sounding] == [volume for _, volume in sounding]
 
     def test_the_triangle_sounds_on_every_row_the_song_sounds_it(self, arranged: Project) -> None:
         played = played_volumes(project_to_module(arranged), ChannelId.TRIANGLE)
-        song = song_row_volumes(arranged.song, ChannelName.TRIANGLE) * PLAYED_PASSES
+        song = song_row_volumes(arranged, ChannelName.TRIANGLE) * PLAYED_PASSES
 
         sounding = [(level, volume) for level, volume in zip(played, song) if volume is not None]
         assert [level > 0 for level, _ in sounding] == [triangle_sounds_at(volume) for _, volume in sounding]
@@ -530,7 +531,11 @@ class TestALowTransposeKeepsTheSongsPitch:
     def _transposed(sample: Sample, transpose: int) -> Tuple[FamiTrackerModule, RowCell]:
         project = arranged_project(
             (sample,),
-            {ChannelName.PULSE1: {0: rows_with((0, Row(command=NoteOn(voice_id=sample.id), transpose=transpose)))}},
+            {
+                ChannelName.PULSE1: {
+                    0: rows_with((0, Row(command=NoteOn(voice_id=sample.id), pitch=Step(value=transpose))))
+                }
+            },
             [{ChannelName.PULSE1: 0}],
         )
         module = project_to_module(project)

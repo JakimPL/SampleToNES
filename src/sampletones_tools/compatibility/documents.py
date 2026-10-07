@@ -15,6 +15,7 @@ from sampletones_core.instructions import (
 from sampletones_core.library import InstructionLibraryFragment
 from sampletones_core.library.data import InstructionLibraryData
 from sampletones_core.project.patterns.pattern import Pattern
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
@@ -168,7 +169,7 @@ def _rows(first_voice_id: str, second_voice_id: str) -> List[Row]:
     """The lines one pattern holds: a note, a second note carrying its columns, a note-off, a blank."""
     return [
         Row(command=NoteOn(voice_id=first_voice_id)),
-        Row(command=NoteOn(voice_id=second_voice_id), transpose=ROW_TRANSPOSE, volume=ROW_VOLUME),
+        Row(command=NoteOn(voice_id=second_voice_id), pitch=Step(value=ROW_TRANSPOSE), volume=ROW_VOLUME),
         Row(command=NoteOff()),
         Row(),
     ]

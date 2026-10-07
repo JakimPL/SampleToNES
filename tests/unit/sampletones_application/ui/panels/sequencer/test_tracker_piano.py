@@ -13,6 +13,7 @@ from sampletones_application.utils.gui.keyboard.combination import KeyCombinatio
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.project.patterns.pitch import Note
 from sampletones_shared.constants.music import OCTAVE_OFFSET, OCTAVE_SEMITONES
 
 ROW: Final[int] = 3
@@ -50,8 +51,8 @@ def _press(text: str) -> KeyEvent:
     return KeyEvent(key=combination.key, modifiers=combination.modifiers)
 
 
-def _pitch(octave: int, semitone: int) -> int:
-    return (octave + OCTAVE_OFFSET) * OCTAVE_SEMITONES + semitone
+def _pitch(octave: int, semitone: int) -> Note:
+    return Note(value=(octave + OCTAVE_OFFSET) * OCTAVE_SEMITONES + semitone)
 
 
 class TestANoteKeyWritesTheNoteItNames:

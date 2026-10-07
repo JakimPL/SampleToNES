@@ -14,10 +14,13 @@ from sampletones_core.instructions import (
     TriangleInstruction,
 )
 from sampletones_core.performance import WalkProgress, song_instructions
+from sampletones_core.project.patterns.pitch import Step
+from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_shared.exceptions import OperationCanceled
 from tests.suite.base import BaseTestSuite
@@ -176,8 +179,8 @@ def _following(
     )
     project = project_with_instrument(first, rows_per_pattern=ROWS_PER_PATTERN, settings=SETTINGS)
     project.voices.append(second)
-    place_instrument(project, channel_name=channel_name, row_index=0, sample=first)
-    place_instrument(project, channel_name=channel_name, row_index=1, sample=second, volume=volume)
+    place_instrument(project, channel_name=channel_name, row_index=0, sample=first, transpose=0)
+    place_instrument(project, channel_name=channel_name, row_index=1, sample=second, transpose=0, volume=volume)
 
     stream = song_instructions(project)[channel_name]
     return stream[SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS).row_ticks(0, 0)]
@@ -285,3 +288,44 @@ class TestANoteStartsFromWhereASongStarts(BaseTestSuite):
         assert isinstance(sounded, (PulseInstruction, NoiseInstruction))
         assert sounded.on is True
         assert sounded.volume == ROW_VOLUME
+
+
+class TestAnInstrumentGoesOnFromTheSamplesPitch:
+    """An instrument placed without a pitch sounds on the pitch the sample before it reached, envelopes restarted."""
+
+    def test_the_instruments_first_tick_sounds_at_the_samples_pitch(self) -> None:
+        project, sample = project_with_sample(
+            make_pulse_reconstruction(pitch=FOLLOWER_PITCH, count=ENVELOPE_TICKS),
+            rows_per_pattern=ROWS_PER_PATTERN,
+            settings=SETTINGS,
+        )
+        lead = Instrument(name="lead", envelopes=LEADER_ENVELOPES, initial_pitch=FOLLOWER_PITCH + 12)
+        project.voices.append(lead)
+        place_instrument(project, channel_name=ChannelName.PULSE1, row_index=0, sample=sample, transpose=5)
+        pattern = project.song.channels[ChannelName.PULSE1].ensure_pattern(0, ROWS_PER_PATTERN)
+        pattern.rows[2] = Row(command=NoteOn(voice_id=lead.id))
+        timing = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS)
+
+        stream = song_instructions(project)[ChannelName.PULSE1]
+
+        first = stream[timing.frame_tick(0) + sum(timing.row_ticks(0, row) for row in range(2))]
+        assert isinstance(first, PulseInstruction)
+        assert first.pitch == FOLLOWER_PITCH + 5 + LEADER_ENVELOPES.arpeggio.items[0]
+
+    def test_an_instrument_placed_on_a_silent_channel_sounds_nothing(self) -> None:
+        project = project_with_instrument(
+            Instrument(name="lead", envelopes=LEADER_ENVELOPES),
+            rows_per_pattern=ROWS_PER_PATTERN,
+            settings=SETTINGS,
+        )
+        lead = project.voices[0]
+        pattern = project.song.channels[ChannelName.PULSE1].ensure_pattern(0, ROWS_PER_PATTERN)
+        pattern.rows[0] = Row(command=NoteOn(voice_id=lead.id))
+        pattern.rows[2] = Row(command=NoteOn(voice_id=lead.id), pitch=Step(value=0))
+        timing = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS)
+
+        stream = song_instructions(project)[ChannelName.PULSE1]
+
+        sounding_from = sum(timing.row_ticks(0, row) for row in range(2))
+        assert all(instruction == _resting(ChannelName.PULSE1) for instruction in stream[:sounding_from])
+        assert stream[sounding_from] != _resting(ChannelName.PULSE1)

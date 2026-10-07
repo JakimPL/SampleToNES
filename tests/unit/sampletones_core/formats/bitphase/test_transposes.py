@@ -29,6 +29,7 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     TABLE_COLUMN_OFFSET,
     NoteName,
 )
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
@@ -125,7 +126,7 @@ class TestTheCellsATransposeRowWrites:
     @pytest.fixture(name="raised")
     def raised_fixture(self, lead: Sample) -> BitphaseProject:
         return project_to_bitphase(
-            moved_project(lead, (0, note(lead)), (RAISED_ROW, Row(transpose=RAISED)), settings=UNIFORM_SETTINGS)
+            moved_project(lead, (0, note(lead)), (RAISED_ROW, Row(pitch=Step(value=RAISED))), settings=UNIFORM_SETTINGS)
         )
 
     def test_the_row_names_the_notes_table_moved_by_the_transpose(self, raised: BitphaseProject) -> None:
@@ -157,8 +158,8 @@ class TestTheCellsATransposeRowWrites:
             moved_project(
                 lead,
                 (0, note(lead)),
-                (RAISED_ROW, Row(transpose=RAISED)),
-                (LOWERED_ROW, Row(transpose=LOWERED)),
+                (RAISED_ROW, Row(pitch=Step(value=RAISED))),
+                (LOWERED_ROW, Row(pitch=Step(value=LOWERED))),
                 settings=UNIFORM_SETTINGS,
             )
         )
@@ -174,7 +175,7 @@ class TestTheCellsATransposeRowWrites:
             moved_project(
                 lead,
                 (0, note(lead, NOTE_TRANSPOSE)),
-                (RAISED_ROW, Row(transpose=RAISED)),
+                (RAISED_ROW, Row(pitch=Step(value=RAISED))),
                 settings=UNIFORM_SETTINGS,
             )
         )
@@ -189,9 +190,9 @@ class TestTheCellsATransposeRowWrites:
             moved_project(
                 lead,
                 (0, note(lead)),
-                (RAISED_ROW, Row(transpose=RAISED)),
+                (RAISED_ROW, Row(pitch=Step(value=RAISED))),
                 (RESET_ROW, note(lead)),
-                (AFTER_RESET_ROW, Row(transpose=LOWERED)),
+                (AFTER_RESET_ROW, Row(pitch=Step(value=LOWERED))),
                 settings=UNIFORM_SETTINGS,
             )
         )
@@ -210,8 +211,8 @@ class TestTheCellsATransposeRowWrites:
             moved_project(
                 lead,
                 (0, note(lead)),
-                (RAISED_ROW, Row(transpose=RAISED)),
-                (LOWERED_ROW, Row(transpose=0)),
+                (RAISED_ROW, Row(pitch=Step(value=RAISED))),
+                (LOWERED_ROW, Row(pitch=Step(value=0))),
                 settings=UNIFORM_SETTINGS,
             )
         )
@@ -223,8 +224,8 @@ class TestTheCellsATransposeRowWrites:
             moved_project(
                 lead,
                 (0, note(lead)),
-                (RAISED_ROW, Row(transpose=RAISED)),
-                (LOWERED_ROW, Row(transpose=RAISED)),
+                (RAISED_ROW, Row(pitch=Step(value=RAISED))),
+                (LOWERED_ROW, Row(pitch=Step(value=RAISED))),
                 settings=UNIFORM_SETTINGS,
             )
         )
@@ -236,9 +237,9 @@ class TestTheCellsATransposeRowWrites:
             moved_project(
                 lead,
                 (0, note(lead)),
-                (RAISED_ROW, Row(transpose=RAISED)),
+                (RAISED_ROW, Row(pitch=Step(value=RAISED))),
                 (RESET_ROW, note(lead)),
-                (AFTER_RESET_ROW, Row(transpose=RAISED)),
+                (AFTER_RESET_ROW, Row(pitch=Step(value=RAISED))),
                 settings=UNIFORM_SETTINGS,
             )
         )
@@ -254,7 +255,7 @@ class TestTheCellsATransposeRowWrites:
             moved_project(
                 flat,
                 (0, note(flat)),
-                (RAISED_ROW, Row(transpose=SUBMERGED_TRANSPOSE)),
+                (RAISED_ROW, Row(pitch=Step(value=SUBMERGED_TRANSPOSE))),
                 settings=UNIFORM_SETTINGS,
             )
         )
@@ -270,7 +271,9 @@ class TestTheStepANoteHasReached:
     """
 
     def test_a_groove_counts_each_row_at_its_own_length(self, lead: Sample) -> None:
-        project = moved_project(lead, (0, note(lead)), (RAISED_ROW, Row(transpose=RAISED)), settings=GROOVE_SETTINGS)
+        project = moved_project(
+            lead, (0, note(lead)), (RAISED_ROW, Row(pitch=Step(value=RAISED))), settings=GROOVE_SETTINGS
+        )
         document = project_to_bitphase(project)
 
         assert channel_row(document, 0, RAISED_ROW).effects == ornament(sum(frame_ticks(project, 0)[:RAISED_ROW]))
@@ -280,7 +283,7 @@ class TestTheStepANoteHasReached:
         project = one_channel_project(
             (lead,),
             CHANNEL,
-            {0: rows_with((LATE_NOTE_ROW, note(lead))), 1: rows_with((RAISED_ROW, Row(transpose=RAISED)))},
+            {0: rows_with((LATE_NOTE_ROW, note(lead))), 1: rows_with((RAISED_ROW, Row(pitch=Step(value=RAISED))))},
             [0, None, 1],
             settings=GROOVE_SETTINGS,
         )
@@ -299,7 +302,7 @@ class TestTheStepANoteHasReached:
         project = one_channel_project(
             (long,),
             CHANNEL,
-            {0: rows_with((0, note(long))), 1: rows_with((0, Row(transpose=RAISED)))},
+            {0: rows_with((0, note(long))), 1: rows_with((0, Row(pitch=Step(value=RAISED))))},
             [0, None, None, 1],
             settings=UNIFORM_SETTINGS,
         )
@@ -331,7 +334,7 @@ class TestTheTablesADocumentHolds:
             frame: rows_with(
                 (0, note(flat)),
                 *(
-                    (row_index, Row(transpose=frame * rows_per_frame + row_index))
+                    (row_index, Row(pitch=Step(value=frame * rows_per_frame + row_index)))
                     for row_index in range(1, TRANSPOSED_ROWS_PER_PATTERN)
                     if frame * rows_per_frame + row_index <= transposes
                 ),
@@ -363,7 +366,7 @@ class TestANoiseTransposeWalksThePeriods:
         project = one_channel_project(
             (drum,),
             ChannelName.NOISE,
-            {0: rows_with((0, note(drum)), (RAISED_ROW, Row(transpose=NOISE_TRANSPOSE)))},
+            {0: rows_with((0, note(drum)), (RAISED_ROW, Row(pitch=Step(value=NOISE_TRANSPOSE))))},
             [0],
             settings=UNIFORM_SETTINGS,
         )
@@ -416,13 +419,13 @@ class TestATransposedSongSoundsTheSongsPitch(BaseTestSuite):
     ) -> None:
         voice = contour_sample(test_case.channel, test_case.frames)
         patterns = {
-            0: rows_with((0, note(voice)), (RAISED_ROW, Row(transpose=RAISED))),
+            0: rows_with((0, note(voice)), (RAISED_ROW, Row(pitch=Step(value=RAISED)))),
             1: rows_with(
-                (2, Row(transpose=LOWERED)),
+                (2, Row(pitch=Step(value=LOWERED))),
                 (RESET_ROW, note(voice)),
-                (AFTER_RESET_ROW, Row(transpose=AFTER_RESET_TRANSPOSE)),
+                (AFTER_RESET_ROW, Row(pitch=Step(value=AFTER_RESET_TRANSPOSE))),
             ),
-            2: rows_with((RAISED_ROW, Row(transpose=LOWERED)), (LOWERED_ROW, Row(transpose=0))),
+            2: rows_with((RAISED_ROW, Row(pitch=Step(value=LOWERED))), (LOWERED_ROW, Row(pitch=Step(value=0)))),
         }
         project = one_channel_project(
             (voice,),

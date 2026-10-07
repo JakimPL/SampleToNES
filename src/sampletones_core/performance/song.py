@@ -57,7 +57,7 @@ def song_instructions(
             performance = performances[channel_name]
             row = resolve_row(song, position, channel_name)
             if row is not None:
-                apply_row(performance, row)
+                apply_row(performance, row, channel_name, project.voice)
 
             streams[channel_name].extend(
                 _channel_ticks(

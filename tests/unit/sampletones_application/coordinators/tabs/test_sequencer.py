@@ -64,6 +64,7 @@ from sampletones_application.view_model.shared.history import (
 from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.voice import ImportedVoice, InstrumentOmission
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
@@ -1975,7 +1976,7 @@ def _place_transpose(
         HistoryAction.EDIT_ROW,
         coordinator._sequencer_tracker_logic.write_cell,
     )
-    edit(0, ChannelName.PULSE1, None, transpose, None)
+    edit(0, ChannelName.PULSE1, None, Step(value=transpose), None)
 
 
 class TestBlockCopy:
@@ -1988,14 +1989,14 @@ class TestBlockCopy:
             coordinator._sequencer_tracker_logic.set_cell_subcolumn(
                 0,
                 ChannelName.PULSE1,
-                transpose=5,
+                pitch=Step(value=5),
             )
 
         coordinator._blocks.copy_tracker(PULSE1_CELL)
 
         block = coordinator._blocks._clipboard.tracker_block
         assert block is not None
-        assert block.transposes[(0, 1)] == 5
+        assert block.pitches[(0, 1)] == Step(value=5)
 
     def test_a_copy_leaves_the_history_stack_as_it_stands(
         self,
@@ -2026,8 +2027,8 @@ class TestBlockEdits:
 
         block = coordinator._blocks._clipboard.tracker_block
         assert block is not None
-        assert block.transposes[(0, 1)] == 5
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 0).transpose is None
+        assert block.pitches[(0, 1)] == Step(value=5)
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 0).pitch is None
 
     def test_a_cut_records_one_entry(
         self,
@@ -2052,7 +2053,7 @@ class TestBlockEdits:
 
         coordinator._sequencer_tracker_panel.on_delete_block(PULSE1_CELL)
 
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 0).transpose is None
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 0).pitch is None
         assert len(coordinator._history.entries) == recorded + 1
         assert coordinator._history.entries[-1].action is HistoryAction.DELETE_BLOCK
 
@@ -2067,7 +2068,7 @@ class TestBlockEdits:
 
         coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE2))
 
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE2, 1).transpose == 5
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE2, 1).pitch == Step(value=5)
         assert len(coordinator._history.entries) == recorded + 1
         assert coordinator._history.entries[-1].action is HistoryAction.PASTE_BLOCK
 
@@ -2201,7 +2202,7 @@ class TestSystemClipboardPrecedence:
 
         coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE1))
 
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose == 9
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).pitch == Step(value=9)
 
     def test_unrelated_text_leaves_the_copied_block_in_hand(
         self,
@@ -2214,7 +2215,7 @@ class TestSystemClipboardPrecedence:
 
         coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE1))
 
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose == 5
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).pitch == Step(value=5)
 
     def test_a_truncated_block_leaves_the_copied_block_in_hand(
         self,
@@ -2227,7 +2228,7 @@ class TestSystemClipboardPrecedence:
 
         coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE1))
 
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose == 5
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).pitch == Step(value=5)
 
     def test_the_other_grid_s_text_leaves_the_copied_block_in_hand(
         self,
@@ -2273,12 +2274,12 @@ class TestPasteAwaitsTheClipboard:
 
         coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE1))
 
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose is None
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).pitch is None
         assert len(coordinator._history.entries) == recorded
 
         clipboard.answer()
 
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose == 9
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).pitch == Step(value=9)
         assert len(coordinator._history.entries) == recorded + 1
         assert coordinator._history.entries[-1].action is HistoryAction.PASTE_BLOCK
 
@@ -2333,7 +2334,7 @@ class TestPasteAwaitsTheClipboard:
         coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE1))
         clipboard.silence()
 
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose is None
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).pitch is None
         assert len(coordinator._history.entries) == recorded
 
     def test_a_menu_the_clipboard_answers_nothing_to_keeps_its_last_answer(

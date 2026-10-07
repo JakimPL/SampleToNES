@@ -1,4 +1,4 @@
-from typing import Dict, Final, Optional, Tuple
+from typing import Dict, Final, Literal, Optional, Tuple
 
 from sampletones_application.ui.elements.table.cells import pending_label
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor
@@ -6,17 +6,18 @@ from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.tracker import SequencerCellViewModel
 from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.utils.display import display_id, display_transpose, display_volume
+from sampletones_core.utils.display import display_id, display_pitch, display_volume
 
 CellKey = Tuple[int, Optional[ChannelName], SubColumn]
 CellValues = Dict[CellKey, str]
 CellKinds = Dict[CellKey, Optional[VoiceKind]]
+NumberSubColumn = Literal[SubColumn.VOICE, SubColumn.VOLUME]
 
 CELL_TITLE_SEPARATOR: Final[str] = " | "
 
 _DEFAULT_LABELS: Final[Dict[SubColumn, str]] = {
     SubColumn.VOICE: display_id(None),
-    SubColumn.TRANSPOSE: display_transpose(None),
+    SubColumn.TRANSPOSE: display_pitch(None),
     SubColumn.VOLUME: display_volume(None),
 }
 
@@ -46,13 +47,14 @@ def cell_display(cell_view_model: SequencerCellViewModel, subcolumn: SubColumn) 
             return cell_view_model.volume
 
 
-def format_committed(subcolumn: SubColumn, value: Optional[int]) -> str:
-    """Format an integer value as the display string stored in the optimistic cell cache."""
+def format_committed(subcolumn: NumberSubColumn, value: Optional[int]) -> str:
+    """Format a number as the display string stored in the optimistic cell cache.
+
+    A pitch prints through :func:`display_pitch`, since the cell holds a note or a step.
+    """
     match subcolumn:
         case SubColumn.VOICE:
             return display_id(value)
-        case SubColumn.TRANSPOSE:
-            return display_transpose(value)
         case SubColumn.VOLUME:
             return display_volume(value)
 

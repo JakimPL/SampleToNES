@@ -306,7 +306,8 @@ the pitch contour a FamiTracker arpeggio sequence would.
 ### Voice
 
 Anything a tracker row can name: a **sample** or an **instrument**. A project keeps its voices in one
-list. A row says which voice to start and the step it plays at.
+list. A row says which voice to start and the pitch it plays at: a note, or a step from the voice's own
+pitch.
 
 ### Sample (sequencer)
 

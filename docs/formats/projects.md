@@ -52,8 +52,17 @@ The arrangement across the four channels:
 | `order` | an ordered list of frames, each mapping every channel to the pattern index it plays, or empty for a silent slot |
 | `channels` | per channel, the `name` of the channel it drives and its pool of `patterns`, each pattern a list of rows |
 
-A row has the `command` its note column holds (the `voice_id` to start, or a note-off), its `transpose`
+A row has the `command` its note column holds (the `voice_id` to start, or a note-off), its `pitch`
 and its `volume`. The channel a voice sounds on is the one whose pool has the row.
+
+A pitch states its `kind` and its `value`:
+
+| `kind` | `value` |
+| --- | --- |
+| `note` | the pitch the channel sounds, or the noise period on the noise channel |
+| `step` | the semitones from the voice's own reference, or the periods on the noise channel |
+
+A row stating no pitch leaves the field out.
 
 ## Detached reconstructions
 

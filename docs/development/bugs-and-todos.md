@@ -27,6 +27,10 @@ dimension the import starts carrying.
 * Compatibility options for the FamiTracker export, so a module plays as the app does where FamiTracker's
   own rules differ, such as how it rounds a pulse level and where it places the longer rows of an uneven
   tempo.
+* A note pasted across channel kinds is clamped: a period landing on a tonal channel reads as its lowest
+  note, and a pitch landing on noise as the last period.
+* Playing from a row starts every channel silent, so an instrument placed without a pitch at that row
+  sounds nothing live, while a full play sounds it on the pitch the rows before left.
 
 ### Workflow
 
@@ -67,6 +71,9 @@ dimension the import starts carrying.
   GitHub's Windows and macOS runners is unverified.
 * An upgrade path for the configuration and the session state. A file an older build left behind is read
   as the loader happens to, and no archived files of older builds test it.
+* A `project.json` the working tree wrote at format 1.1 before a row's pitch gained its face still carries
+  `transpose`, which the loader drops, since the upgrade chain is idle on an equal version. Files a
+  release wrote are carried over.
 * The element enums that outlived their keys. The language-keys check treats a key named through an
   element enum as the whole enum, so a key no call uses goes unnoticed. Spelling each key at its call site
   makes the check exact.

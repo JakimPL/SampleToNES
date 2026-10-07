@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import pytest
 from pydantic import ValidationError
 
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
@@ -42,14 +43,14 @@ class TestNoteOn:
 class TestRowDefaults:
     def test_empty_row(self) -> None:
         row = Row()
-        assert row.transpose is None
+        assert row.pitch is None
         assert row.command is None
         assert row.volume is None
 
     def test_is_frozen(self) -> None:
-        row = Row(transpose=12)
+        row = Row(pitch=Step(value=12))
         with pytest.raises(ValidationError):
-            row.transpose = 13  # type: ignore[misc]
+            row.pitch = Step(value=13)  # type: ignore[misc]
 
 
 class TestRowSerialization(BaseTestSuite):
@@ -59,12 +60,12 @@ class TestRowSerialization(BaseTestSuite):
 
         @property
         def label(self) -> str:
-            return f"transpose={self.expected.transpose}_command={self.expected.command is not None}"
+            return f"pitch={self.expected.pitch}_command={self.expected.command is not None}"
 
     test_cases = (
         TestCase(expected=Row()),
-        TestCase(expected=Row(transpose=0, volume=15)),
-        TestCase(expected=Row(transpose=12, command=_note_on(), volume=8)),
+        TestCase(expected=Row(pitch=Step(value=0), volume=15)),
+        TestCase(expected=Row(pitch=Step(value=12), command=_note_on(), volume=8)),
         TestCase(expected=Row(command=NoteOff())),
     )
 

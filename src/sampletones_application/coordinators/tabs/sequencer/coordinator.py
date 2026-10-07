@@ -380,7 +380,7 @@ class SequencerTabCoordinator:
         )
         self._sequencer_tracker_panel.on_note_typed = self._recorder.undoable(
             HistoryAction.EDIT_ROW,
-            self._sequencer_tracker_logic.write_note,
+            self._sequencer_tracker_logic.write_pitch,
             detail=self._history_detail.note_typed,
             coalesce=self._recorder.note_key,
         )

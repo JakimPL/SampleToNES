@@ -4,6 +4,7 @@ from pydantic import ValidationError
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.song import Song
 from sampletones_core.project.voices.note_on import NoteOn
@@ -16,7 +17,7 @@ from sampletones_shared.constants.project import (
 def _pattern_with_instrument() -> Pattern:
     pattern = Pattern.empty(4, name="intro")
     pattern.rows[0] = Row(
-        transpose=0,
+        pitch=Step(value=0),
         volume=15,
         instrument=NoteOn(voice_id="abc123"),
     )

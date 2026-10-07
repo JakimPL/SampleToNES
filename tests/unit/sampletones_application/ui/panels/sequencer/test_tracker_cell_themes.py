@@ -123,6 +123,9 @@ def _row(
             voice=display_id(None),
             transpose=display_transpose(None),
             volume=display_volume(None),
+            pitch=None,
+            level=None,
+            command=None,
             kind=None,
         )
         for channel in ChannelName.items()
@@ -135,6 +138,9 @@ def _row(
             transpose=display_transpose(None),
             volume=display_volume(None),
             kind=kind,
+            pitch=None,
+            level=None,
+            command=None,
         )
         if kind is VoiceKind.SAMPLE:
             sample_channels = frozenset({channel})

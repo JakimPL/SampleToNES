@@ -5,9 +5,11 @@ from pydantic import BaseModel
 from sampletones_application.view_model.sequencer.aggregate import aggregate_labels
 from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.project.patterns.pitch import RowPitch
+from sampletones_core.project.patterns.row import NoteCommand
 from sampletones_core.utils.display import (
     display_id,
-    display_transpose,
+    display_pitch,
     display_volume,
 )
 from sampletones_shared.utils.agreement import Agreement
@@ -17,8 +19,10 @@ class SequencerCellViewModel(BaseModel, frozen=True):
     """One channel cell on one tracker row, pre-formatted for display.
 
     The columns are produced by :mod:`sampletones_core.utils.display`, the single
-    source of tracker cell formatting (voice position, transpose, volume). The
-    tracker grid renders :attr:`label`, the combined cell text.
+    source of tracker cell formatting (voice position, pitch, volume). The
+    tracker grid renders :attr:`label`, the combined cell text. The values the
+    faces were printed from travel beside them, so a reader describing the cell
+    speaks of what it holds.
     """
 
     voice: str
@@ -31,6 +35,9 @@ class SequencerCellViewModel(BaseModel, frozen=True):
     kind travels beside it so a reader of the cell — the sample column's summary, the color the
     slot takes — knows which of the two it is looking at.
     """
+    pitch: Optional[RowPitch]
+    level: Optional[int]
+    command: Optional[NoteCommand]
 
     @property
     def label(self) -> str:
@@ -114,7 +121,7 @@ class SequencerRowViewModel(BaseModel, frozen=True):
     def transpose(self) -> str:
         return self._aggregate(
             lambda cell: cell.transpose,
-            display_transpose(None),
+            display_pitch(None),
             self.offset_channels,
         )
 

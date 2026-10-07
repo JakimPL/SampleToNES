@@ -5,7 +5,7 @@ from .progress import (
     WalkReporter,
     announce,
 )
-from .rows import apply_row, resolve_row
+from .rows import apply_row, note_step, resolve_row, sounding_pitch, sounding_voice
 from .song import song_instructions
 from .state import ChannelPerformance
 from .ticks import sound_tick
@@ -20,7 +20,10 @@ __all__ = [
     "apply_modifiers",
     "apply_row",
     "audition_audio",
+    "note_step",
     "resolve_row",
     "song_instructions",
     "sound_tick",
+    "sounding_pitch",
+    "sounding_voice",
 ]

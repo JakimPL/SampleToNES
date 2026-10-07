@@ -12,6 +12,7 @@ from sampletones_application.view_model.sequencer.slot import (
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.project.patterns.pitch import RowPitch
 from sampletones_core.project.voices.note_off import NoteOff
 
 from .block import BlockKey, BlockNote, TrackerBlock
@@ -35,12 +36,12 @@ class TrackerBlockWriter:
         """Writes a block anchored at a cell, the cell supplying the column and the block the rest.
 
         Each kind of subcolumn is written in a pass of its own, notes first: a note through the
-        sample column decides the whole row, so the transposes and volumes sharing that row land
+        sample column decides the whole row, so the pitches and volumes sharing that row land
         on top of the channels it settled.
         """
         base = column_slot_base(cell.channel)
         self._write_pass(block.notes, cell, base, self._write_note)
-        self._write_pass(block.transposes, cell, base, self._write_transpose)
+        self._write_pass(block.pitches, cell, base, self._write_pitch)
         self._write_pass(block.volumes, cell, base, self._write_volume)
 
     def clear(self, region: TrackerRegion) -> None:
@@ -102,13 +103,13 @@ class TrackerBlockWriter:
                     SubColumn.VOICE,
                 )
 
-    def _write_transpose(
+    def _write_pitch(
         self,
         row_index: int,
         channel: Optional[ChannelName],
-        transpose: Optional[int],
+        pitch: Optional[RowPitch],
     ) -> None:
-        if transpose is None:
+        if pitch is None:
             self._tracker.clear_cell_subcolumn(
                 row_index,
                 channel,
@@ -118,7 +119,7 @@ class TrackerBlockWriter:
             self._tracker.set_cell_subcolumn(
                 row_index,
                 channel,
-                transpose=transpose,
+                pitch=pitch,
             )
 
     def _write_volume(

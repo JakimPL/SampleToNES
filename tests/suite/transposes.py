@@ -11,6 +11,7 @@ from sampletones_core.instructions import (
 from sampletones_core.performance.song import song_instructions
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
@@ -89,7 +90,7 @@ def rows_with(*cells: Tuple[int, Row]) -> List[Row]:
 
 def note(voice: Sample, transpose: Optional[int] = None) -> Row:
     """A row starting ``voice``, at ``transpose`` where one is given."""
-    return Row(command=NoteOn(voice_id=voice.id), transpose=transpose)
+    return Row(command=NoteOn(voice_id=voice.id), pitch=Step(value=transpose) if transpose is not None else None)
 
 
 def one_channel_project(

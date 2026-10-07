@@ -2,6 +2,7 @@ import pytest
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.patterns.pattern import Pattern
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.voices.note_on import NoteOn
 
@@ -24,7 +25,7 @@ class TestRowIsEmpty:
         assert not Row(command=NoteOn(voice_id="x")).is_empty()
 
     def test_row_with_transpose_is_not_empty(self) -> None:
-        assert not Row(transpose=0).is_empty()
+        assert not Row(pitch=Step(value=0)).is_empty()
 
     def test_row_with_volume_is_not_empty(self) -> None:
         assert not Row(volume=15).is_empty()

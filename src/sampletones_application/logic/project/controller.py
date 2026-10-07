@@ -3,10 +3,11 @@ from pathlib import Path
 from typing import Iterator, Optional
 
 from sampletones_core.constants.enums import ChannelName, FeatureKey
-from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME, MIN_TRANSPOSE
+from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.exports.request import ProjectExport
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.project import Project
+from sampletones_core.project.patterns.pitch import Note, RowPitch, Step, clamped_note, clamped_step
 from sampletones_core.project.patterns.row import NoteCommand, Row
 from sampletones_core.project.song import Song
 from sampletones_core.project.voices.instrument import Instrument
@@ -327,11 +328,16 @@ class ProjectController(CallbackMixin):
         self._touch()
         self._announce(self.on_song_changed)
 
-    def _clamp_transpose(self, transpose: Optional[int]) -> Optional[int]:
-        if transpose is None:
-            return None
-
-        return clamp(transpose, MIN_TRANSPOSE, MAX_TRANSPOSE)
+    @staticmethod
+    def _clamp_pitch(channel: ChannelName, pitch: Optional[RowPitch]) -> Optional[RowPitch]:
+        """A pitch held inside what the channel plays: a note within its range, a step within a row's."""
+        match pitch:
+            case None:
+                return None
+            case Note():
+                return clamped_note(channel, pitch.value)
+            case Step():
+                return clamped_step(pitch.value)
 
     def _clamp_volume(self, volume: Optional[int]) -> Optional[int]:
         if volume is None:
@@ -364,7 +370,7 @@ class ProjectController(CallbackMixin):
         row_index: int,
         *,
         command: Optional[NoteCommand] = None,
-        transpose: Optional[int] = None,
+        pitch: Optional[RowPitch] = None,
         volume: Optional[int] = None,
     ) -> None:
         """Replaces the whole row with the given values; omitted fields are cleared.
@@ -374,7 +380,7 @@ class ProjectController(CallbackMixin):
         """
         row = Row(
             command=command,
-            transpose=self._clamp_transpose(transpose),
+            pitch=self._clamp_pitch(channel, pitch),
             volume=self._clamp_volume(volume),
         )
         channel_pool = self.song[channel]
@@ -397,7 +403,7 @@ class ProjectController(CallbackMixin):
         row_index: int,
         *,
         command: Optional[NoteCommand] = None,
-        transpose: Optional[int] = None,
+        pitch: Optional[RowPitch] = None,
         volume: Optional[int] = None,
     ) -> None:
         """Updates only the provided subcolumns, preserving the rest of the row.
@@ -412,7 +418,7 @@ class ProjectController(CallbackMixin):
             pattern_index,
             row_index,
             command=command if command is not None else existing.command,
-            transpose=transpose if transpose is not None else existing.transpose,
+            pitch=pitch if pitch is not None else existing.pitch,
             volume=volume if volume is not None else existing.volume,
         )
 
@@ -423,7 +429,7 @@ class ProjectController(CallbackMixin):
         row_index: int,
         *,
         voice: bool = True,
-        transpose: bool = True,
+        pitch: bool = True,
         volume: bool = True,
     ) -> None:
         """Clears the selected subcolumns of a row, preserving the rest.
@@ -438,7 +444,7 @@ class ProjectController(CallbackMixin):
             pattern_index,
             row_index,
             command=None if voice else existing.command,
-            transpose=None if transpose else existing.transpose,
+            pitch=None if pitch else existing.pitch,
             volume=None if volume else existing.volume,
         )
 

@@ -20,8 +20,8 @@ from sampletones_core.constants.enums import (
     FeatureKey,
     abbreviate_channel_names,
 )
-from sampletones_core.utils.display import display_id, display_transpose, display_volume
-from sampletones_core.utils.pitch_kind import channel_pitch_kind
+from sampletones_core.project.patterns.pitch import RowPitch
+from sampletones_core.utils.display import display_id, display_pitch, display_transpose, display_volume
 
 Segments = HistoryDetail
 
@@ -110,7 +110,7 @@ class SequencerHistoryDetail:
         row_index: int,
         channel: Optional[ChannelName],
         voice_id: Optional[str],
-        transpose: Optional[int],
+        pitch: Optional[RowPitch],
         volume: Optional[int],
     ) -> Segments:
         affected = self._edit_row_channels(channel, voice_id, row_index)
@@ -119,11 +119,11 @@ class SequencerHistoryDetail:
             segments.append(self._arrow())
             segments.append(self._voice(voice_id))
 
-        if transpose is not None:
+        if pitch is not None:
             segments.append(self._subcolumn(SubColumn.TRANSPOSE))
             segments.append(
                 self._segment(
-                    display_transpose(transpose),
+                    display_pitch(pitch),
                     HistoryDetailRole.TRANSPOSE,
                 ),
             )
@@ -140,14 +140,14 @@ class SequencerHistoryDetail:
         self,
         row_index: int,
         channel: ChannelName,
-        pitch: int,
+        pitch: RowPitch,
     ) -> Segments:
-        """Names a typed note by the cell it landed in and the note the key stood for."""
+        """Names a typed pitch by the cell it landed in and the face the keys gave it."""
         segments = list(self._location(row_index, channel, [channel]))
         segments.append(self._subcolumn(SubColumn.TRANSPOSE))
         segments.append(
             self._segment(
-                channel_pitch_kind(channel).to_name(pitch),
+                display_pitch(pitch),
                 HistoryDetailRole.TRANSPOSE,
             ),
         )

@@ -152,8 +152,9 @@ from sampletones_application.view_model.sequencer.voices import (
 )
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.features import speaks_in_periods
+from sampletones_core.project.patterns.pitch import Note
 from sampletones_core.project.song_position import SongPosition
-from sampletones_core.utils.display import NOTE_OFF, display_id
+from sampletones_core.utils.display import NOTE_OFF, display_id, display_pitch
 from sampletones_shared.constants.music import (
     OCTAVE_OFFSET,
     OCTAVE_SEMITONES,
@@ -1072,11 +1073,8 @@ class GUISequencerTrackerPanel(GUIPanel):
                     voice.kind,
                 )
 
-        if action.transpose is not None:
-            self._editable_cells.values[(row, channel, SubColumn.TRANSPOSE)] = tracker_display.format_committed(
-                SubColumn.TRANSPOSE,
-                action.transpose,
-            )
+        if action.pitch is not None:
+            self._editable_cells.values[(row, channel, SubColumn.TRANSPOSE)] = display_pitch(action.pitch)
 
         if action.volume is not None:
             self._editable_cells.values[(row, channel, SubColumn.VOLUME)] = tracker_display.format_committed(
@@ -1089,7 +1087,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             row,
             channel,
             voice_id,
-            action.transpose,
+            action.pitch,
             action.volume,
         )
 
@@ -1103,7 +1101,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         if action.channel is not None:
             return True
 
-        if action.transpose is None and action.volume is None:
+        if action.pitch is None and action.volume is None:
             return True
 
         return action.row in self._rows_taking_offsets
@@ -1819,7 +1817,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             self.on_note_typed,
             cursor.row,
             cursor.channel,
-            (self._octave + OCTAVE_OFFSET) * OCTAVE_SEMITONES + semitone,
+            Note(value=(self._octave + OCTAVE_OFFSET) * OCTAVE_SEMITONES + semitone),
         )
         self._apply_state(self._input_state.reset_pending().navigate_row(1, self._current_row_count))
         return True

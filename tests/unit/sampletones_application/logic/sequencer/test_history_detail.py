@@ -24,6 +24,7 @@ from sampletones_application.view_model.shared.history import (
     HistoryDetailSegment,
 )
 from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.utils.display import display_id
 from tests.suite.sequencer import UNKNOWN_SAMPLE_ID, sample_reconstruction
@@ -89,7 +90,7 @@ class TestTrackerDetails:
         controller = _controller()
         formatter = _formatter(controller)
 
-        segments = formatter.edit_row(0, ChannelName.TRIANGLE, None, 5, None)
+        segments = formatter.edit_row(0, ChannelName.TRIANGLE, None, Step(value=5), None)
 
         assert _pairs(segments) == [
             ("00", HistoryDetailRole.FRAME),
