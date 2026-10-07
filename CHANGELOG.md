@@ -2,17 +2,17 @@
 
 ## v0.3.2
 
-* Added the tracker playback check: export your own project to [FamiTracker](http://famitracker.com) or [Bitphase](https://github.com/paator/bitphase), play it with the tracker's own playback code, and see every tick a channel sounds differently from _SampleToNES_. Run `sampletones tracker-playback`; the [guide](https://github.com/JakimPL/SampleToNES/blob/main/docs/tools/tracker-playback.md) explains what it needs and how to read its report.
-* Changed how the noise channel plays a hand-written instrument, to match FamiTracker and Bitphase: an odd duty cycle value plays the short mode, and the pitch envelope moves the noise period.
-* Changed notes transposed below A-0 to sound as low as the NES reaches, the way FamiTracker plays them, where they used to stay at A-0.
-* Added NSF player and export.
-* Added stems conversion: to mix several recordings into one reconstruction.
-* Changed drive to reach for louder instructions while a recording converts; reconvert anything converted at a drive other than `1.00`.
-* Improved clarity of reconstructions.
-* Fixed the lowest triangle notes wobbling in pitch after a conversion; libraries are built again for it.
-* Optimized the size of reconstructions.
-* Bumped the reconstruction data-version to `2.2` with backward compatibility for `2.1`.
-* Bumped the library data-version to `2.1`.
+* Added NSF export.
+* Added support for pitch and hi-pitch envelopes.
+* Added stem conversion: mix several recordings into one reconstruction, with in-reconstruction stem separation.
+* Added voices: samples or pure instruments.
+* Improved reconstruction clarity.
+* Optimized reconstruction size.
+* Optimized algorithm memory usage.
+* Improved FamiTracker/Bitphase compatibility.
+* Bumped the reconstruction data- version to `2.2`, with backward compatibility for `2.1`.
+* Bumped the project data version to `1.1`, with backward compatibility.
+* Bumped the library data version to `2.1`.
 
 ## v0.3.1 [2026-08-18]
 
