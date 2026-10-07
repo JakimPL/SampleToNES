@@ -21,7 +21,7 @@ type Constructor<T> = new (...args: any[]) => T;
 
 type Module = Record<string, any>;
 
-const USAGE = "Usage: trace.mts <bitphase checkout> <document.btp> <trace.json>";
+const USAGE = "Usage: trace.mts <bitphase directory> <document.btp> <trace.json>";
 const USAGE_STATUS = 2;
 const PUBLIC_DIRECTORY = "public";
 const NES_CHIP = "nes";

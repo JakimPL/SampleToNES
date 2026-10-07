@@ -14,9 +14,9 @@ from sampletones_tools.tracker_playback.targets.protocol import PlaybackError
 from sampletones_tools.tracker_playback.trace.sound import SongTrace
 
 NODE: Final[str] = "node"
-NODE_PURPOSE: Final[str] = "a Bitphase checkout's own engine plays the exported documents"
+NODE_PURPOSE: Final[str] = "the engine of Bitphase's source code plays the exported documents"
 TSX_CLI: Final[Path] = Path("node_modules") / "tsx" / "dist" / "cli.mjs"
-CHECKOUT_FILES: Final[Tuple[Path, ...]] = (
+SOURCE_FILES: Final[Tuple[Path, ...]] = (
     Path("cli") / "btp-loader.ts",
     Path("cli") / "resource-loader-node.ts",
     Path("src") / "lib" / "chips" / "registry-core.ts",
@@ -34,37 +34,37 @@ INSTALL_HINTS: Final[Dict[System, str]] = {
 
 
 class EngineError(PlaybackError):
-    """Bitphase's engine could not play a document: node is absent, the checkout lacks a file, or the run failed."""
+    """Bitphase's engine could not play a document: node is absent, the source code lacks a file, or the run failed."""
 
 
 @dataclass(frozen=True)
-class BitphaseCheckout:
-    """A Bitphase source checkout whose engine plays the documents, its packages installed.
+class BitphaseSource:
+    """A directory holding Bitphase's source code, its packages installed, whose engine plays the documents.
 
     Attributes:
-        root: The checkout's top directory.
+        root: The source code's top directory.
     """
 
     root: Path
 
     @classmethod
     def located(cls, root: Path) -> Self:
-        """The checkout at ``root``, once every file the trace loads from it is found there.
+        """The source code at ``root``, once every file the trace loads from it is found there.
 
         Args:
-            root: The checkout's top directory.
+            root: The source code's top directory.
 
         Returns:
-            Self: The checkout.
+            Self: The source code.
 
         Raises:
             EngineError: If a file the trace loads is missing, naming each one.
         """
-        missing = [str(relative) for relative in CHECKOUT_FILES if not (root / relative).is_file()]
+        missing = [str(relative) for relative in SOURCE_FILES if not (root / relative).is_file()]
         if missing:
             raise EngineError(
-                f"{root} is no Bitphase checkout with its packages installed; it lacks {', '.join(missing)}. "
-                "Clone https://github.com/paator/bitphase and run pnpm install there."
+                f"{root} holds no Bitphase source code with its packages installed; it lacks {', '.join(missing)}. "
+                "Clone or download https://github.com/paator/bitphase and run pnpm install there."
             )
 
         return cls(root=root)
@@ -72,29 +72,29 @@ class BitphaseCheckout:
 
 @dataclass(frozen=True)
 class BitphaseEngine:
-    """Bitphase's own engine, run through node over one checkout.
+    """Bitphase's own engine, run through node over one copy of its source code.
 
     Attributes:
         node: The node program.
-        checkout: The checkout whose modules play the documents.
+        source: The source code whose modules play the documents.
     """
 
     node: Path
-    checkout: BitphaseCheckout
+    source: BitphaseSource
 
     @classmethod
     def located(cls, root: Path) -> Self:
-        """The engine of the checkout at ``root``, played by the node this system has.
+        """The engine of the source code at ``root``, played by the node this system has.
 
         Args:
-            root: The checkout's top directory.
+            root: The source code's top directory.
 
         Returns:
             Self: The engine.
 
         Raises:
-            EngineError: If node is absent, naming how this system installs it, or the checkout lacks a
-                file the trace loads.
+            EngineError: If node is absent, naming how this system installs it, or the source code lacks
+                a file the trace loads.
         """
         node = locate_program(NODE)
         if node is None:
@@ -108,7 +108,7 @@ class BitphaseEngine:
 
         return cls(
             node=node,
-            checkout=BitphaseCheckout.located(root),
+            source=BitphaseSource.located(root),
         )
 
     def command(
@@ -118,9 +118,9 @@ class BitphaseEngine:
     ) -> List[str]:
         """The command that plays ``document`` and writes its trace to ``output``.
 
-        The checkout's own tsx runs the trace script, so the script loads the checkout's TypeScript
-        modules the way its own command-line tools do. The script runs inside the checkout, so the
-        document and the trace are named by absolute paths.
+        The source code's own tsx runs the trace script, so the script loads Bitphase's TypeScript
+        modules the way its own command-line tools do. The script runs inside the source directory,
+        so the document and the trace are named by absolute paths.
 
         Args:
             document: The `.btp` document to play.
@@ -131,9 +131,9 @@ class BitphaseEngine:
         """
         return [
             str(self.node),
-            str(self.checkout.root / TSX_CLI),
+            str(self.source.root / TSX_CLI),
             str(BITPHASE_TRACE_SCRIPT_PATH),
-            str(self.checkout.root),
+            str(self.source.root),
             str(document.resolve()),
             str(output.resolve()),
         ]
@@ -161,7 +161,7 @@ class BitphaseEngine:
         try:
             subprocess.run(
                 self.command(document, output),
-                cwd=self.checkout.root,
+                cwd=self.source.root,
                 capture_output=True,
                 text=True,
                 check=True,
