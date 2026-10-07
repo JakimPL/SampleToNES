@@ -28,6 +28,7 @@ MODULE_TARGET: Final[Tuple[()]] = ()
 ARRIVING_SAMPLE: Final[str] = "arriving.stn"
 ARRIVING_RECORDINGS: Final[Tuple[Path, Path]] = (Path("arriving-a.wav"), Path("arriving-b.wav"))
 RETUNED_RATE: Final[int] = 50
+RETUNED_AGAIN_RATE: Final[int] = 48
 EDITED_ENVELOPE: Final[Envelope[int]] = Envelope[int](items=(11, 9, 7))
 EDITED_REFERENCE: Final[int] = 64
 REMOVED_STEM_NAME: Final[str] = "b"
@@ -377,6 +378,15 @@ def _rate_target(_session: HistorySession) -> Target:
     return (RETUNED_RATE,)
 
 
+def _retune_the_project_again(session: HistorySession) -> None:
+    session.sequencer._nes_frequency_change_acknowledged = True
+    _module(session).on_nes_frequency(RETUNED_AGAIN_RATE)
+
+
+def _rate_again_target(_session: HistorySession) -> Target:
+    return (RETUNED_AGAIN_RATE,)
+
+
 def _gesture(
     label: str,
     action: HistoryAction,
@@ -501,6 +511,7 @@ GESTURES: Final[Tuple[Gesture, ...]] = (
     _gesture("duplicate an instrument", HistoryAction.DUPLICATE_VOICE, Part.VOICES, _duplicating(PLUCK)),
     _gesture("remove a sample", HistoryAction.REMOVE_VOICE, Part.VOICES, _removing(LEAD)),
     _gesture("remove an instrument", HistoryAction.REMOVE_VOICE, Part.VOICES, _removing(PAD)),
+    _gesture("remove another instrument", HistoryAction.REMOVE_VOICE, Part.VOICES, _removing(PLUCK)),
     _gesture(
         "edit an instrument's envelope",
         HistoryAction.EDIT_INSTRUMENT,
@@ -540,6 +551,13 @@ GESTURES: Final[Tuple[Gesture, ...]] = (
         target=_rate_target,
     ),
     _gesture(
+        "retune the project again",
+        HistoryAction.SET_NES_FREQUENCY,
+        Part.RATE,
+        _retune_the_project_again,
+        target=_rate_again_target,
+    ),
+    _gesture(
         "retune the project with a sample open",
         HistoryAction.SET_NES_FREQUENCY,
         Part.RATE,
@@ -560,3 +578,47 @@ def perform(
     gesture.prepare(session)
     target = gesture.target(session)
     session.audit.perform(lambda: gesture.run(session), action=gesture.action, target=target)
+
+
+PAIR_KINDS: Final[Dict[HistoryAction, Tuple[str, str]]] = {
+    HistoryAction.EDIT_ROW: ("type a note with a sample", "type a note with a sample"),
+    HistoryAction.NOTE_OFF: ("cut a note", "cut a note"),
+    HistoryAction.CLEAR_ROW: ("clear a row", "clear a row"),
+    HistoryAction.CLEAR_SUBCOLUMN: ("clear a volume", "clear a volume"),
+    HistoryAction.ADJUST_TRANSPOSE: ("transpose a block", "transpose a block"),
+    HistoryAction.ADJUST_VOLUME: ("quiet a block", "quiet a block"),
+    HistoryAction.CUT_BLOCK: ("cut a tracker block", "cut an order block"),
+    HistoryAction.DELETE_BLOCK: ("delete an order block", "delete a tracker block"),
+    HistoryAction.PASTE_BLOCK: ("paste a tracker block", "paste an order block"),
+    HistoryAction.ADD_FRAME: ("insert a frame", "insert a frame"),
+    HistoryAction.REMOVE_FRAME: ("remove a frame", "remove a frame"),
+    HistoryAction.DUPLICATE_FRAME: ("duplicate a frame", "duplicate a frame"),
+    HistoryAction.CLONE_FRAME: ("clone a frame", "clone a frame"),
+    HistoryAction.CLEAR_FRAME: ("clear a frame", "clear a frame"),
+    HistoryAction.MOVE_FRAME: ("move a frame", "move a frame"),
+    HistoryAction.SET_ORDER_ENTRY: ("set an order entry", "set a master entry"),
+    HistoryAction.SET_ROWS_PER_PATTERN: ("lengthen the patterns", "shorten the patterns"),
+    HistoryAction.SET_TEMPO: ("set the tempo", "set the tempo"),
+    HistoryAction.SET_SPEED: ("set the speed", "set the speed"),
+    HistoryAction.EDIT_PROJECT_PROPERTIES: ("edit the properties", "edit the properties"),
+    HistoryAction.ADD_SAMPLE: ("add a sample", "add a sample"),
+    HistoryAction.REPLACE_SAMPLE: ("replace a sample", "replace a sample"),
+    HistoryAction.ADD_INSTRUMENT: ("add an instrument", "take a channel as an instrument"),
+    HistoryAction.RENAME_VOICE: ("rename an instrument", "rename a sample"),
+    HistoryAction.MOVE_VOICE: ("move a sample", "move an instrument"),
+    HistoryAction.DUPLICATE_VOICE: ("duplicate a sample", "duplicate an instrument"),
+    HistoryAction.REMOVE_VOICE: ("remove another instrument", "remove an instrument"),
+    HistoryAction.EDIT_INSTRUMENT: ("edit an instrument's envelope", "edit an instrument's envelope"),
+    HistoryAction.EDIT_RECONSTRUCTION: ("edit a channel's envelope", "move a channel's reference"),
+    HistoryAction.SET_NES_FREQUENCY: ("retune the project", "retune the project again"),
+}
+
+
+def attempt(
+    session: HistorySession,
+    gesture: Gesture,
+) -> None:
+    """Prepares a gesture and runs it under the audit, which takes a gesture left nothing to change as none."""
+    gesture.prepare(session)
+    target = gesture.target(session)
+    session.audit.attempt(lambda: gesture.run(session), action=gesture.action, target=target)

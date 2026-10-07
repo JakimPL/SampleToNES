@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Iterator, List
+from typing import Any, Dict, Final, Iterator, List
 from unittest.mock import patch
 
 from sampletones_application.application import Application
@@ -80,6 +80,7 @@ class HistorySession:
     app: Application
     audit: HistoryAudit
     project_file: Path
+    ids: Dict[str, str]
 
     @property
     def controller(self) -> ProjectController:
@@ -108,7 +109,13 @@ class HistorySession:
         return next(voice for voice in self.project.voices if isinstance(voice, Instrument) and voice.name == name)
 
     def voice_id(self, name: str) -> str:
-        return next(voice.id for voice in self.project.voices if voice.name == name)
+        """The id the opened file gave the voice called ``name``, which a rename or a copy leaves standing."""
+        return self.ids[name]
+
+    def reopen(self) -> None:
+        """Opens the every-part project afresh, the stack starting over from it."""
+        self.sequencer._sequencer_voices_panel.deselect()
+        self.audit.transition(lambda: self.app._project_coordinator.load_project_safely(self.project_file))
 
     def open_voice(self, name: str) -> None:
         """Opens a voice on the Reconstructions tab, the way the voices list's Edit does."""
@@ -125,8 +132,12 @@ class HistorySession:
         panel._selected_row = self.project.voices.get_index(self.voice_id(name))
 
     def save(self) -> None:
-        """Saves the project to the file it was opened from, as the menu's Save does."""
-        self.audit.save(self.app._project_coordinator.save)
+        """Saves the project to the file it was opened from, as the menu's Save does, after the edits on their way."""
+        self.audit.save(self.save_door)
+
+    def save_door(self) -> None:
+        """The menu's Save, which waits for the edits of the open document made before it."""
+        self.app._reconstruction_coordinator.after_edits(self.app._project_coordinator.save)
 
     def stored_fingerprint(self) -> str:
         """The state the project file holds, read back by a project manager of its own."""
@@ -156,7 +167,8 @@ def history_session(directory: Path) -> Iterator[HistorySession]:
             settle=settled,
             observers=(lambda: _check_open_voice(app),),
         )
-        yield HistorySession(app=app, audit=audit, project_file=project_file)
+        ids = {voice.name: voice.id for voice in app.project_controller.project.voices}
+        yield HistorySession(app=app, audit=audit, project_file=project_file, ids=ids)
 
 
 def _check_open_voice(app: Application) -> None:

@@ -116,6 +116,9 @@ currently out of line. An entry leaves when the code meets the contract again.
 
 ## Bugs
 
+* A rate change's retune can land as an entry of its own. When another gesture commits before the
+  samples' background retune lands, the retuned samples record a second entry, so undoing it leaves the
+  project at the new rate over samples tuned for the old one.
 * Two samples carrying one reconstruction id are stored as one. A duplicated sample, a file added twice
   and a project file whose samples share a document keep that id through an edit, and a project file
   stores one reconstruction per id, so after a save and a reload both samples play the one written last.

@@ -1,6 +1,7 @@
 from collections.abc import Hashable
+from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Protocol, Sequence, Tuple
+from typing import Callable, Iterator, List, Optional, Protocol, Sequence, Tuple
 
 import numpy as np
 
@@ -87,7 +88,7 @@ class StackModel:
     ) -> None:
         key = (action, target) if target is not None else None
         entry = ExpectedEntry(action, fingerprint)
-        if self._continues_run(key):
+        if self.continues_run(action, target):
             self.entries[self.cursor] = entry
         else:
             if self.saved is not None and self.saved > self.cursor:
@@ -100,7 +101,13 @@ class StackModel:
 
         self.last_key = key
 
-    def _continues_run(self, key: Optional[CommitKey]) -> bool:
+    def continues_run(
+        self,
+        action: HistoryAction,
+        target: Optional[Hashable],
+    ) -> bool:
+        """Whether a commit of ``action`` on ``target`` replaces the top entry rather than appending."""
+        key = (action, target) if target is not None else None
         return (
             key is not None
             and key == self.last_key
@@ -300,11 +307,55 @@ class HistoryAudit:
         self.model.commit(action, target, after)
         self.check()
 
+    def attempt(
+        self,
+        gesture: VoidCallback,
+        *,
+        action: HistoryAction,
+        target: Optional[Hashable],
+    ) -> None:
+        """Runs a gesture the state before it may leave nothing to change, and checks what it records.
+
+        A gesture that changes the project records its one commit, and one that leaves it as it
+        stood records nothing. A pair of gestures reaches this where the first leaves the second
+        nothing to act on, such as a transpose over a block a cut has emptied.
+        """
+        self.check()
+        before = fresh_fingerprint(self._controller.project)
+        self._settle(gesture)
+        after = fresh_fingerprint(self._controller.project)
+        if after != before:
+            self.model.commit(action, target, after)
+
+        self.check()
+
     def refused(self, gesture: VoidCallback) -> None:
         """Runs a gesture meant to leave the project as it stands, and checks the history stays as it was."""
         self.check()
         self._settle(gesture)
         self.check()
+
+    @contextmanager
+    def settling(self, settle: Settle) -> Iterator[None]:
+        """Runs the steps inside the scope through ``settle``, such as one leaving a worker's report held."""
+        standing = self._settle
+        self._settle = settle
+        try:
+            yield
+        finally:
+            self._settle = standing
+
+    def adopt_landed(self, actions: Sequence[Tuple[HistoryAction, Optional[Hashable]]]) -> None:
+        """Takes commits that landed together, out of the case's sight, as the stack now records them.
+
+        Work held back and then released lands several commits at once, so the states between them
+        never stand live. Their order and their actions are what the case states. Each state is read
+        from the entry recording it, and every later restore is then held to it. The case states
+        what else the release did, such as an undo that waited for the edits, before the next check.
+        """
+        for action, target in actions:
+            index = self.model.cursor if self.model.continues_run(action, target) else self.model.cursor + 1
+            self.model.commit(action, target, fresh_fingerprint(self._history.entries[index].project))
 
     def undo(self) -> None:
         self._settle(self._doors.undo)

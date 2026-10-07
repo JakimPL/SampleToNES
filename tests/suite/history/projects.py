@@ -105,7 +105,7 @@ def every_part_project() -> Project:
     """A small project holding something in every part a history gesture can reach.
 
     Two samples carry two recordings each, so a channel edit, a stem removal and a retune all
-    apply, and two instruments carry envelopes. The song plays two frames whose patterns name
+    apply, and two instruments carry envelopes. The song plays three frames whose patterns name
     every voice through notes, steps, volumes and note-offs, and the settings and the
     properties all differ from a new project's.
     """
@@ -181,6 +181,14 @@ def every_part_project() -> Project:
             ChannelName.PULSE1: SECOND_PATTERN,
             ChannelName.PULSE2: FIRST_PATTERN,
             ChannelName.TRIANGLE: None,
+            ChannelName.NOISE: FIRST_PATTERN,
+        }
+    )
+    project.song.order.append(
+        {
+            ChannelName.PULSE1: FIRST_PATTERN,
+            ChannelName.PULSE2: None,
+            ChannelName.TRIANGLE: FIRST_PATTERN,
             ChannelName.NOISE: FIRST_PATTERN,
         }
     )
