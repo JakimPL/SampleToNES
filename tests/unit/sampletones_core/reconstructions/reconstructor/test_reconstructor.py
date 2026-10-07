@@ -18,6 +18,7 @@ from sampletones_core.fft import Fragment, Window
 from sampletones_core.generators import FULL_SCALE_RMS_LEVELS
 from sampletones_core.generators.render import render_channels
 from sampletones_core.library import InstructionLibraryData
+from sampletones_core.reconstructions.reconstruction.renders import rendered_channels
 from sampletones_core.reconstructions.reconstructor.reconstructor import Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
@@ -281,7 +282,7 @@ class TestTheAudioAReconstructionRecords:
         assert reconstruction is not None
         for channel_name in reconstruction.playing_channels:
             frames = len(reconstruction.instructions[channel_name])
-            assert len(reconstruction.approximations[channel_name]) == frames * config.library.frame_length
+            assert len(rendered_channels(reconstruction)[channel_name]) == frames * config.library.frame_length
 
     @pytest.mark.parametrize("reset_phase", [False, True], ids=["carried_phase", "reset_phase"])
     def test_the_recorded_audio_is_what_the_channels_render(
@@ -305,7 +306,7 @@ class TestTheAudioAReconstructionRecords:
         rendered = render_channels(reconstruction.instructions, resetting)
         for channel_name in reconstruction.playing_channels:
             np.testing.assert_allclose(
-                reconstruction.approximations[channel_name],
+                rendered_channels(reconstruction)[channel_name],
                 rendered[channel_name],
                 atol=1e-6,
             )

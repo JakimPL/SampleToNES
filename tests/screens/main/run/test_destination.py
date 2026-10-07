@@ -3,6 +3,7 @@ from typing import Dict, FrozenSet, List
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
+from sampletones_core.reconstructions.reconstruction.renders import rendered_channels
 from sampletones_shared.paths.user import RECONSTRUCTIONS_DIRECTORY
 from tests.screens.main.run.constants import ALBUM, ALBUM_TAKES, BASS, DISC, DISC_TAKES, LEAD, RECONSTRUCTION_SUFFIX
 from tests.screens.main.run.steps import modified, run_to_its_end, written
@@ -12,7 +13,7 @@ from tests.suite.screens.steps.main import gather, give_each_its_own_channel, ho
 
 def converted_channels(path: Path) -> FrozenSet[ChannelName]:
     """The channels a written reconstruction approximates, read off the file."""
-    return frozenset(Reconstruction.load(path).approximations)
+    return frozenset(rendered_channels(Reconstruction.load(path)))
 
 
 def written_as(path: Path) -> Path:

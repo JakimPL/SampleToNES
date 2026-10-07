@@ -14,6 +14,7 @@ from sampletones_application.logic.reconstruction.manager import ReconstructionM
 from sampletones_application.logic.reconstruction.reconstruction import (
     ReconstructionPanelLogic,
 )
+from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.view_model.reconstruction.envelopes import (
     ChannelEnvelopesViewModel,
 )
@@ -50,6 +51,7 @@ from sampletones_shared.paths.extensions import (
     EXT_FILE_MODULE,
     EXT_FILE_NSF,
 )
+from tests.conftest import RENDER_BUDGET
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.stems import RECORDED_SCALE, recorded_from
 
@@ -94,6 +96,7 @@ def mock_reconstruction_manager() -> MagicMock:
     mock.audio_filepath = None
     mock.listening = StemListening()
     mock.refresh_features.side_effect = lambda: _refresh_features(mock)
+    mock.renders = RenderCache(budget_bytes=RENDER_BUDGET)
     return mock
 
 
@@ -1216,6 +1219,7 @@ class TestReconstructionPanelLogicStemSelection:
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         stems_data: ReconstructionData,
+        renders: RenderCache,
     ) -> None:
         _open(mock_reconstruction_manager, stems_data)
         panel_logic.display_reconstruction()
@@ -1227,6 +1231,7 @@ class TestReconstructionPanelLogicStemSelection:
         panel_logic.set_stem_channels(0, frozenset())
 
         expected = stems_data.partials_for(
+            renders,
             panel_logic._selected_channels,
             panel_logic._stem_selection,
         )
@@ -1261,6 +1266,7 @@ class TestReconstructionPanelLogicStemSelection:
         mock_export_service: MagicMock,
         stems_data: ReconstructionData,
         tmp_path: Path,
+        renders: RenderCache,
     ) -> None:
         _open(mock_reconstruction_manager, stems_data)
         panel_logic.display_reconstruction()
@@ -1271,6 +1277,7 @@ class TestReconstructionPanelLogicStemSelection:
         mock_export_service.export_wav.assert_called_once()
         exported_audio = mock_export_service.export_wav.call_args.args[2]
         expected = stems_data.partials_for(
+            renders,
             panel_logic._selected_channels,
             panel_logic._stem_selection,
         )

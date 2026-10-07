@@ -10,6 +10,7 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
+from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.configs import Config
@@ -31,7 +32,9 @@ from sampletones_core.formats.famitracker.voice import InstrumentOmission
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.renders import rendered_mix
 from sampletones_shared.exceptions import LoadInstrumentError, NoOutputDeviceError
+from tests.conftest import RENDER_BUDGET
 from tests.suite.sequencer import sample_reconstruction
 
 
@@ -42,6 +45,7 @@ def _logic() -> Tuple[ProjectController, SequencerVoicesLogic]:
         MagicMock(),
         MagicMock(),
         scheduling=MagicMock(),
+        renders=RenderCache(budget_bytes=RENDER_BUDGET),
     )
     return controller, logic
 
@@ -60,6 +64,7 @@ def _logic_with_mocks() -> Tuple[
         session_manager,
         audio_device_manager,
         scheduling=MagicMock(),
+        renders=RenderCache(budget_bytes=RENDER_BUDGET),
     )
     return controller, logic, session_manager, audio_device_manager
 
@@ -349,7 +354,7 @@ class TestPlaySample:
 
         audio_device_manager.play.assert_called_once()
         call = audio_device_manager.play.call_args
-        assert np.array_equal(call.args[0], sample.reconstruction.approximation)
+        assert np.array_equal(call.args[0], rendered_mix(sample.reconstruction))
         assert call.kwargs["priority"] == PlaybackPriority.NORMAL
         assert call.kwargs["update"] is False
 

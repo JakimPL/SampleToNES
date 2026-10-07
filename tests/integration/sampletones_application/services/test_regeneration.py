@@ -16,6 +16,7 @@ from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.renders import rendered_channels
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
 from tests.suite.stems import everything_heard
 
@@ -75,7 +76,9 @@ class TestRegenerationServicePipeline:
 
         emitted = results[0].value
         assert emitted.reconstruction is not reconstruction_data.reconstruction
-        assert len(emitted.reconstruction.approximations.get(ChannelName.PULSE1, np.array([], dtype=np.float32))) > 0
+        assert (
+            len(rendered_channels(emitted.reconstruction).get(ChannelName.PULSE1, np.array([], dtype=np.float32))) > 0
+        )
 
     def test_run_updates_reconstruction_approximation(self, reconstruction_data, pulse_features) -> None:
         service = RegenerationService()
@@ -87,7 +90,7 @@ class TestRegenerationServicePipeline:
             reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
-        approximation = reconstruction_data.reconstruction.approximations.get(
+        approximation = rendered_channels(reconstruction_data.reconstruction).get(
             ChannelName.PULSE1, np.array([], dtype=np.float32)
         )
         assert len(approximation) > 0

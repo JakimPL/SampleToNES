@@ -10,6 +10,7 @@ from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
 from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
+from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.removal import can_remove_stem, without_stem
@@ -188,7 +189,7 @@ class TestTheReleasedFrames:
     def test_the_frames_it_held_lose_their_samples(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_B)
 
-        audio = remaining.approximations[ChannelName.PULSE1]
+        audio = rendered_channels(remaining)[ChannelName.PULSE1]
         np.testing.assert_array_equal(_frame(audio, 1), np.zeros(_frame_length(), dtype=np.float32))
 
     def test_the_recordings_that_stay_keep_their_frames(self, reconstruction: Reconstruction) -> None:
@@ -200,19 +201,19 @@ class TestTheReleasedFrames:
             )
 
         for index in (0, 2):
-            assert _frame(remaining.approximations[ChannelName.PULSE1], index).any()
+            assert _frame(rendered_channels(remaining)[ChannelName.PULSE1], index).any()
 
     def test_the_channel_keeps_its_length(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_B)
 
-        assert len(remaining.approximations[ChannelName.PULSE1]) == FRAME_COUNT * _frame_length()
+        assert len(rendered_channels(remaining)[ChannelName.PULSE1]) == FRAME_COUNT * _frame_length()
 
     def test_a_channel_the_removal_leaves_alone_keeps_its_audio(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_C)
 
         np.testing.assert_array_equal(
-            remaining.approximations[ChannelName.NOISE],
-            reconstruction.approximations[ChannelName.NOISE],
+            rendered_channels(remaining)[ChannelName.NOISE],
+            rendered_channels(reconstruction)[ChannelName.NOISE],
         )
 
 
@@ -225,7 +226,7 @@ class TestAnEmptiedChannel:
     def test_a_channel_left_entirely_released_sounds_nothing(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_B)
 
-        assert ChannelName.NOISE not in remaining.approximations
+        assert ChannelName.NOISE not in rendered_channels(remaining)
 
     def test_a_channel_left_entirely_released_leaves_the_record(
         self,
@@ -252,8 +253,8 @@ class TestTheMixedApproximation:
         remaining = without_stem(reconstruction, STEM_B)
 
         np.testing.assert_array_equal(
-            remaining.approximation,
-            remaining.approximations[ChannelName.PULSE1],
+            rendered_mix(remaining),
+            rendered_channels(remaining)[ChannelName.PULSE1],
         )
 
 
@@ -267,13 +268,13 @@ class TestTheDocument:
         assert remaining.metadata == reconstruction.metadata
 
     def test_the_source_reconstruction_is_left_as_it_stood(self, reconstruction: Reconstruction) -> None:
-        before = reconstruction.approximations[ChannelName.NOISE].copy()
+        before = rendered_channels(reconstruction)[ChannelName.NOISE].copy()
 
         without_stem(reconstruction, STEM_B)
 
         assert [entry.id for entry in reconstruction.stems_data.config.entries] == [STEM_A, STEM_B, STEM_C]
         assert reconstruction.stems_data.assignments_by_channel[ChannelName.NOISE] == [STEM_B] * FRAME_COUNT
-        np.testing.assert_array_equal(reconstruction.approximations[ChannelName.NOISE], before)
+        np.testing.assert_array_equal(rendered_channels(reconstruction)[ChannelName.NOISE], before)
 
 
 @pytest.fixture

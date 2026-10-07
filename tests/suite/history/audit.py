@@ -168,17 +168,8 @@ def _fresh_reconstruction(reconstruction: Reconstruction) -> Reconstruction:
     return Reconstruction.model_construct(**dict(reconstruction))
 
 
-def _rendered(reconstruction: Reconstruction) -> bool:
-    """Whether a reader has already rendered the reconstruction's audio, which a check leaves unrendered."""
-    return "approximations" in vars(reconstruction)
-
-
 def stale_reconstruction_views(reconstruction: Reconstruction) -> List[str]:
-    """The derived views of a reconstruction that disagree with the ones its fields give afresh.
-
-    Rendered audio is compared only where a reader already rendered it, since rendering every
-    reconstruction a history holds would cost each check far more than the state it reads.
-    """
+    """The derived views of a reconstruction that disagree with the ones its fields give afresh."""
     fresh = _fresh_reconstruction(reconstruction)
     views = {
         "streams": (reconstruction.streams, fresh.streams),
@@ -187,9 +178,6 @@ def stale_reconstruction_views(reconstruction: Reconstruction) -> List[str]:
         "held_features": (reconstruction.held_features, fresh.held_features),
         "playing_channels": (reconstruction.playing_channels, fresh.playing_channels),
     }
-    if _rendered(reconstruction):
-        views["approximations"] = (reconstruction.approximations, fresh.approximations)
-
     return [name for name, (held, recomputed) in views.items() if not _same(held, recomputed)]
 
 

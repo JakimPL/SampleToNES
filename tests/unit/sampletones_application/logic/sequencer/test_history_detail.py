@@ -11,6 +11,7 @@ from sampletones_application.logic.sequencer.history_detail import (
 )
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
 from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
+from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.view_model.sequencer.region import (
     OrderCell,
     OrderRegion,
@@ -27,6 +28,7 @@ from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.utils.display import display_id
+from tests.conftest import RENDER_BUDGET
 from tests.suite.sequencer import UNKNOWN_SAMPLE_ID, sample_reconstruction
 
 Pair = Tuple[str, HistoryDetailRole]
@@ -43,6 +45,7 @@ def _formatter(controller: ProjectController) -> SequencerHistoryDetail:
         MagicMock(),
         MagicMock(),
         scheduling=MagicMock(),
+        renders=RenderCache(budget_bytes=RENDER_BUDGET),
     )
     return SequencerHistoryDetail(tracker_logic, voices_logic)
 

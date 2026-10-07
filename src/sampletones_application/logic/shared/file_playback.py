@@ -4,6 +4,7 @@ from typing import Callable, Optional
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.renders import rendered_mix
 from sampletones_shared.exceptions import PlaybackError, SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.paths import extensions
@@ -63,4 +64,4 @@ class FilePlayback(CallbackMixin):
             self.call(self.on_error, exception)
             return
 
-        self._audio_device_manager.play(reconstruction.approximation, update=False, priority=priority)
+        self._audio_device_manager.play(rendered_mix(reconstruction), update=False, priority=priority)

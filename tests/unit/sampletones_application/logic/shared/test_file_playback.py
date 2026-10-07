@@ -9,6 +9,7 @@ from sampletones_shared.exceptions import InvalidReconstructionError, NoOutputDe
 from sampletones_shared.paths import extensions
 
 RECONSTRUCTION_LOAD = "sampletones_application.logic.shared.file_playback.Reconstruction.load"
+RECONSTRUCTION_RENDER = "sampletones_application.logic.shared.file_playback.rendered_mix"
 
 
 class TestWhatItSounds:
@@ -111,7 +112,7 @@ class TestADeviceThatRefuses:
         playback = FilePlayback(audio_device_manager)
         playback.on_error = MagicMock()
 
-        with patch(RECONSTRUCTION_LOAD):
+        with patch(RECONSTRUCTION_LOAD), patch(RECONSTRUCTION_RENDER):
             playback.play(tmp_path / f"sample{extensions.EXT_FILE_RECONSTRUCTION}")
 
         playback.on_error.assert_called_once_with(refusal)

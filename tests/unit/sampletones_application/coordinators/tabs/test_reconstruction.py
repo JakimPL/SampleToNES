@@ -22,6 +22,7 @@ from sampletones_application.logic.reconstruction.instruments import (
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.rewrites.queue import ReconstructionRewrites
 from sampletones_application.logic.reconstruction.rewrites.steps import RateChange, StemRemovalRequest
+from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.paths import LANG_EN
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
@@ -49,6 +50,7 @@ from sampletones_shared.exceptions import (
     LoadReconstructionError,
     UnhandledReconstructionError,
 )
+from tests.conftest import RENDER_BUDGET
 from tests.suite.history.wiring import wired_history
 from tests.suite.language import FakeLanguageManager
 from tests.suite.regeneration import HeldRegeneration
@@ -560,7 +562,7 @@ class TestTheInstrumentsPanelDrawsTheDocument:
         reconstruction: Reconstruction,
         scheduling: SchedulingBehavior,
     ) -> ReconstructionManager:
-        manager = ReconstructionManager(scheduling=scheduling)
+        manager = ReconstructionManager(scheduling=scheduling, renders=RenderCache(budget_bytes=RENDER_BUDGET))
         manager.load_reconstruction_object(reconstruction, name="lead", voice_id=OPEN_VOICE_ID)
         return manager
 

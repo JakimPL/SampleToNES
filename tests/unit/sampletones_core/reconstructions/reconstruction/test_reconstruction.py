@@ -22,6 +22,7 @@ from sampletones_core.features import resting_held_features, resting_reference
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
+from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
 from sampletones_core.reconstructions.reconstruction.stems.data import (
     ChannelAssignment,
     StemsData,
@@ -253,7 +254,7 @@ class TestRoundTrip:
         assert loaded.id == reconstruction.id
         assert loaded.coefficient == reconstruction.coefficient
         assert loaded.audio_filepath == reconstruction.audio_filepath
-        assert_array_equal(loaded.approximation, reconstruction.approximation)
+        assert_array_equal(rendered_mix(loaded), rendered_mix(reconstruction))
 
     def test_detached_source_round_trips_as_empty(
         self,
@@ -637,7 +638,7 @@ class TestChannelSet:
     def test_a_channel_standing_by_renders_no_audio(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
 
-        assert ChannelName.PULSE2 not in reconstruction.approximations
+        assert ChannelName.PULSE2 not in rendered_channels(reconstruction)
 
     def test_clearing_every_frame_keeps_the_channel(self) -> None:
         """Taking a channel out of play leaves its stream in place, so the edit is reversible."""
@@ -669,7 +670,7 @@ class TestChannelSet:
 
         assert reconstruction.playing_channels == (ChannelName.PULSE1, ChannelName.PULSE2)
         assert reconstruction.export()[ChannelName.PULSE2].has_frames
-        assert ChannelName.PULSE2 in reconstruction.approximations
+        assert ChannelName.PULSE2 in rendered_channels(reconstruction)
 
     def test_a_reconstruction_of_channels_standing_by_stays_valid(self) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
@@ -682,8 +683,8 @@ class TestChannelSet:
             heard=reconstruction.recorded_stem_ids,
         )
 
-        assert reconstruction.approximations == {}
-        assert reconstruction.approximation.size == 0
+        assert rendered_channels(reconstruction) == {}
+        assert rendered_mix(reconstruction).size == 0
 
     def test_the_channel_set_survives_a_save_load_round_trip(self, tmp_path: Path) -> None:
         reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
@@ -733,10 +734,10 @@ class TestWithNesFrequency:
         retuned = reconstruction.with_nes_frequency(_RETUNED_FREQUENCY)
         faster = reconstruction.with_nes_frequency(_FASTER_FREQUENCY)
 
-        generator_approximation = retuned.approximations[ChannelName.PULSE1]
-        assert len(retuned.approximation) == len(generator_approximation)
-        assert len(retuned.approximation) == retuned.config.frame_length
-        assert len(faster.approximation) < len(retuned.approximation)
+        generator_approximation = rendered_channels(retuned)[ChannelName.PULSE1]
+        assert len(rendered_mix(retuned)) == len(generator_approximation)
+        assert len(rendered_mix(retuned)) == retuned.config.frame_length
+        assert len(rendered_mix(faster)) < len(rendered_mix(retuned))
 
     def test_preserves_instructions(self, reconstruction_factory: ReconstructionFactory) -> None:
         reconstruction = reconstruction_factory()
@@ -749,12 +750,12 @@ class TestWithNesFrequency:
     def test_leaves_original_untouched(self, reconstruction_factory: ReconstructionFactory) -> None:
         reconstruction = reconstruction_factory()
         original_frequency = reconstruction.config.nes_frequency
-        original_length = len(reconstruction.approximation)
+        original_length = len(rendered_mix(reconstruction))
 
         reconstruction.with_nes_frequency(_RETUNED_FREQUENCY)
 
         assert reconstruction.config.nes_frequency == original_frequency
-        assert len(reconstruction.approximation) == original_length
+        assert len(rendered_mix(reconstruction)) == original_length
 
     def test_a_channel_standing_by_stays_standing_by(
         self,
@@ -765,7 +766,7 @@ class TestWithNesFrequency:
 
         retuned = reconstruction.with_nes_frequency(_RETUNED_FREQUENCY)
 
-        assert set(retuned.approximations) == {ChannelName.PULSE1}
+        assert set(rendered_channels(retuned)) == {ChannelName.PULSE1}
         assert set(retuned.instructions) == set(ChannelName.items())
         assert retuned.playing_channels == (ChannelName.PULSE1,)
 
@@ -783,8 +784,8 @@ class TestWithNesFrequency:
         retuned = reconstruction.with_nes_frequency(_RETUNED_FREQUENCY)
 
         assert retuned.config.nes_frequency == _RETUNED_FREQUENCY
-        assert retuned.approximations == {}
-        assert retuned.approximation.size == 0
+        assert rendered_channels(retuned) == {}
+        assert rendered_mix(retuned).size == 0
         assert retuned.playing_channels == ()
 
     def test_matching_rate_returns_self(self, reconstruction_factory: ReconstructionFactory) -> None:

@@ -1,15 +1,19 @@
-from typing import Callable, Iterator, TypeAlias
+from typing import Callable, Final, Iterator, TypeAlias
 
 import pytest
 
+from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.utils.gui.modal_queue import ModalQueue
 from sampletones_application.utils.gui.palette.palette import PaletteBindings
 from sampletones_application.utils.gui.render_thread import reset_render_thread
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_shared.constants.general import BYTES_PER_MEGABYTE
 from tests.suite.sequencer import sample_reconstruction
 
 ReconstructionFactory: TypeAlias = Callable[[], Reconstruction]
+
+RENDER_BUDGET: Final[int] = 64 * BYTES_PER_MEGABYTE
 
 
 @pytest.fixture(autouse=True)
@@ -55,3 +59,9 @@ def reconstruction_factory() -> ReconstructionFactory:
         return sample_reconstruction([ChannelName.PULSE1])
 
     return build
+
+
+@pytest.fixture
+def renders() -> RenderCache:
+    """A render cache of the case's own, so every render a case makes leaves with it."""
+    return RenderCache(budget_bytes=RENDER_BUDGET)

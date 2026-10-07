@@ -15,10 +15,12 @@ from sampletones_application.logic.reconstruction.rewrites.steps import (
     RateChange,
     StemRemovalRequest,
 )
+from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
+from tests.conftest import RENDER_BUDGET
 from tests.suite.application import draw_frame, live_queue, scheduling
 from tests.suite.stems import (
     SHARED_CHANNEL,
@@ -46,7 +48,7 @@ def coordinator(
     taking_turns_file: Path,
 ) -> Iterator[ReconstructionCoordinator]:
     """The coordinator over the two-recording document opened from its file, rebuilt on the real worker."""
-    manager = ReconstructionManager(scheduling=scheduling)
+    manager = ReconstructionManager(scheduling=scheduling, renders=RenderCache(budget_bytes=RENDER_BUDGET))
     coordinator = ReconstructionCoordinator(
         manager,
         MagicMock(),

@@ -154,7 +154,10 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.call(self.on_waveform_source_changed, self._current_audio_source)
         self.call(
             self.on_waveform_load_changed,
-            reconstruction_data.waveform_data(self._stem_selection),
+            reconstruction_data.waveform_data(
+                self._reconstruction_manager.renders,
+                self._stem_selection,
+            ),
             self._selected_channels,
         )
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
@@ -180,7 +183,10 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
         self.call(
             self.on_waveform_update_changed,
-            reconstruction_data.waveform_data(self._stem_selection),
+            reconstruction_data.waveform_data(
+                self._reconstruction_manager.renders,
+                self._stem_selection,
+            ),
             self._selected_channels,
             refit=refit_waveform,
         )
@@ -283,7 +289,10 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
         self.call(
             self.on_waveform_load_changed,
-            reconstruction_data.waveform_data(self._stem_selection),
+            reconstruction_data.waveform_data(
+                self._reconstruction_manager.renders,
+                self._stem_selection,
+            ),
             channels,
         )
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
@@ -324,7 +333,10 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
         self.call(
             self.on_waveform_load_changed,
-            reconstruction_data.waveform_data(self._stem_selection),
+            reconstruction_data.waveform_data(
+                self._reconstruction_manager.renders,
+                self._stem_selection,
+            ),
             self._selected_channels,
         )
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
@@ -670,6 +682,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             return
 
         audio_snapshot = reconstruction_data.partials_for(
+            self._reconstruction_manager.renders,
             self._selected_channels,
             self._stem_selection,
         )
@@ -725,6 +738,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             return AudioData.from_array(selected_original_audio, sample_rate)
 
         partial_approximation = reconstruction_data.partials_for(
+            self._reconstruction_manager.renders,
             self._selected_channels,
             self._stem_selection,
         )

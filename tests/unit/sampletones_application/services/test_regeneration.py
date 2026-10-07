@@ -15,6 +15,7 @@ from sampletones_core.exporters import Features
 from sampletones_core.features import CHANNEL_GENERATOR_KIND, supported_features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
 from tests.conftest import ReconstructionFactory
 
 REFERENCE_PITCH: Final[int] = 60
@@ -324,8 +325,8 @@ class TestClearingEveryEnvelope:
 
         regenerated = self._regenerated(reconstruction)
 
-        assert regenerated.approximations == {}
-        assert regenerated.approximation.size == 0
+        assert rendered_channels(regenerated) == {}
+        assert rendered_mix(regenerated).size == 0
 
     def test_the_cleared_channel_records_every_dimension_as_the_channels(
         self,

@@ -20,10 +20,8 @@ from typing import (
 )
 from uuid import uuid4
 
-import numpy as np
 from pydantic import ConfigDict, Field, ValidationError, model_validator
 
-from sampletones_core.audio.mixing import mix
 from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.compatibility.upgrade import upgrade_binary
 from sampletones_core.configs import Config
@@ -38,7 +36,6 @@ from sampletones_core.exporters import (
     ExporterUnion,
     Features,
 )
-from sampletones_core.generators.render import render_channels
 from sampletones_core.instructions import InstructionUnion, sounds
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
@@ -179,22 +176,6 @@ class Reconstruction(DataModel):
         none at all once the document is detached from its origin.
         """
         return self.stems_data.paths
-
-    @cached_property
-    def approximations(self) -> Dict[ChannelName, np.ndarray]:
-        """The audio each channel in play renders from the instructions it carries.
-
-        A reconstruction records the instructions a channel plays, so its sound is read from
-        those rather than carried beside them. Reading it here keeps one answer for the
-        waveform, playback, an export and the mixed approximation, and keeps a stored document
-        to what it describes.
-        """
-        return render_channels(self.instructions, self.config)
-
-    @cached_property
-    def approximation(self) -> np.ndarray:
-        """The whole reconstruction, summed from the channels that play."""
-        return mix(list(self.approximations.values()))
 
     @cached_property
     def streams(self) -> Dict[ChannelName, InstructionsItem]:
@@ -495,13 +476,13 @@ class Reconstruction(DataModel):
         return detached
 
     def with_nes_frequency(self, nes_frequency: int) -> Reconstruction:
-        """Returns a copy retuned to ``nes_frequency`` by re-rendering its audio.
+        """Returns a copy retuned to ``nes_frequency``, whose instructions sound at the new rate.
 
         A project runs every embedded sample at one change rate, so a reconstruction joining a
-        project adopts that rate. The frozen ``config`` is rebuilt at the new rate and each
-        channel's approximation is re-synthesized from its stored instructions at the matching
-        frame length, re-timing the audio; the instructions and coefficient carry over. The
-        original instance is returned when it already runs at ``nes_frequency``.
+        project adopts that rate. The frozen ``config`` is rebuilt at the new rate, so each
+        channel's instructions sound over the matching frame length, re-timing the audio; the
+        instructions and coefficient carry over. The original instance is returned when it
+        already runs at ``nes_frequency``.
         """
         if self.config.nes_frequency == nes_frequency:
             return self
@@ -522,8 +503,6 @@ class Reconstruction(DataModel):
     @staticmethod
     def _invalidate_derived_caches(reconstruction: Reconstruction) -> None:
         """Drops the memoized per-channel views so they recompute from their backing data."""
-        reconstruction.__dict__.pop("approximation", None)
-        reconstruction.__dict__.pop("approximations", None)
         reconstruction.__dict__.pop("streams", None)
         reconstruction.__dict__.pop("instructions", None)
         reconstruction.__dict__.pop("initial_pitches", None)

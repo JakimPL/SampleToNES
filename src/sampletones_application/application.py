@@ -74,6 +74,7 @@ from sampletones_application.logic.reconstruction.rewrites.queue import (
 )
 from sampletones_application.logic.reconstruction.rewrites.steps import RateChange
 from sampletones_application.logic.render import SongRenderLogic
+from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.parameters import (
     InstructionsTabParameters,
     MainTabParameters,
@@ -270,8 +271,10 @@ class Application:
             self.config_manager,
             language_manager=self.language_manager,
         )
+        self.renders: RenderCache = RenderCache(budget_bytes=self.layout.behavior.rendering.cache_bytes)
         self.reconstruction_manager = ReconstructionManager(
             scheduling=self.layout.behavior.scheduling,
+            renders=self.renders,
         )
 
         _priority = self.layout.behavior.scheduling.priorities.schedule
@@ -581,6 +584,7 @@ class Application:
             browser_manager=self.browser_manager,
             project_controller=self.project_controller,
             history=self.history,
+            renders=self.renders,
             original_audio_locator=self._original_audio_locator,
             instrument_exports=self._instrument_exports,
             tab_active=self._is_sequencer_tab_current,

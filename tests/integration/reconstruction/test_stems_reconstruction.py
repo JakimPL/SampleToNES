@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 
 from sampletones_application.logic.reconstruction.data import ReconstructionData
+from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_core.audio import mix, mix_scale, read_stems, scale_stems, write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import MAX_DRIVE, MIN_DRIVE, RESTING_STEM_ID, UNIT_DRIVE
@@ -17,6 +18,7 @@ from sampletones_core.constants.enums import (
 from sampletones_core.generators import render_channels
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.converter import GroupConversion, reconstruct_job
+from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
 from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
@@ -168,12 +170,12 @@ class TestReconstructStems:
         assert reconstruction is not None
         rendered = render_channels(reconstruction.instructions, config)
         np.testing.assert_allclose(
-            reconstruction.approximations[ChannelName.PULSE1],
+            rendered_channels(reconstruction)[ChannelName.PULSE1],
             rendered[ChannelName.PULSE1],
             atol=_MIX_TOLERANCE,
         )
         np.testing.assert_allclose(
-            reconstruction.approximations[ChannelName.NOISE],
+            rendered_channels(reconstruction)[ChannelName.NOISE],
             rendered[ChannelName.NOISE],
             atol=_MIX_TOLERANCE,
         )
@@ -190,10 +192,12 @@ class TestReconstructStems:
 
         assert standing is not None
         assert driven is not None
-        assert _energy(driven.approximations[ChannelName.PULSE1]) > _energy(standing.approximations[ChannelName.PULSE1])
+        assert _energy(rendered_channels(driven)[ChannelName.PULSE1]) > _energy(
+            rendered_channels(standing)[ChannelName.PULSE1]
+        )
         np.testing.assert_array_equal(
-            driven.approximations[ChannelName.NOISE],
-            standing.approximations[ChannelName.NOISE],
+            rendered_channels(driven)[ChannelName.NOISE],
+            rendered_channels(standing)[ChannelName.NOISE],
         )
 
     def test_requires_one_path_per_entry(self, tmp_path: Path) -> None:
@@ -243,7 +247,7 @@ class TestADriveLeavesTheStemsCompeting:
         for drive in _SWEPT_DRIVES:
             reconstruction = reconstructor.reconstruct(paths, _competing_stems(drive))
             assert reconstruction is not None
-            energies[drive] = _energy(reconstruction.approximations[ChannelName.PULSE1])
+            energies[drive] = _energy(rendered_channels(reconstruction)[ChannelName.PULSE1])
 
         assert energies[MIN_DRIVE] < energies[UNIT_DRIVE] < energies[_LOUD_DRIVE]
         assert energies[MAX_DRIVE] == pytest.approx(energies[_LOUD_DRIVE])
@@ -304,7 +308,7 @@ class TestThreeStemHierarchy:
         for channel, stem_ids in assignments.items():
             assert len(stem_ids) == frame_count
             assert len(reconstruction.instructions[channel]) == frame_count
-            assert len(reconstruction.approximations[channel]) == frame_count * config.library.frame_length
+            assert len(rendered_channels(reconstruction)[channel]) == frame_count * config.library.frame_length
 
         picks_per_frame = [
             sum(stem_ids[frame] != RESTING_STEM_ID for stem_ids in assignments.values()) for frame in range(frame_count)
@@ -330,7 +334,7 @@ class TestThreeStemHierarchy:
         assert loaded.stems_data.config == stems_config
         assert loaded.stems_data.assignments_by_channel == reconstruction.stems_data.assignments_by_channel
 
-    def test_selection_filters_the_waveform_and_partials(self, tmp_path: Path) -> None:
+    def test_selection_filters_the_waveform_and_partials(self, tmp_path: Path, renders: RenderCache) -> None:
         """Selecting stems zeroes the unselected stems' frames end to end.
 
         The loaded document projects the selection: each channel's waveform carries only the
@@ -359,7 +363,7 @@ class TestThreeStemHierarchy:
             """The per-channel ground truth: the frames whose recorded stem id is selected."""
             masked: Dict[ChannelName, np.ndarray] = {}
             for channel, stem_ids in stems_data.assignments_by_channel.items():
-                channel_audio = data.reconstruction.approximations[channel]
+                channel_audio = rendered_channels(data.reconstruction)[channel]
                 frames = np.zeros_like(channel_audio)
                 for frame_index, stem_id in enumerate(stem_ids):
                     if stem_id in selected:
@@ -372,26 +376,26 @@ class TestThreeStemHierarchy:
             """The selection hearing the named stems on every channel."""
             return StemSelection.everywhere(frozenset(selected), channels)
 
-        unfiltered = data.waveform_data()
-        full = data.waveform_data(heard(all_stem_ids))
+        unfiltered = data.waveform_data(renders)
+        full = data.waveform_data(renders, heard(all_stem_ids))
         np.testing.assert_allclose(full.approximation, unfiltered.approximation, atol=_MIX_TOLERANCE)
         np.testing.assert_allclose(full.original_audio, unfiltered.original_audio, atol=_MIX_TOLERANCE)
         np.testing.assert_allclose(
-            data.partials_for(channels, heard(all_stem_ids)),
-            data.get_partials(channels),
+            data.partials_for(renders, channels, heard(all_stem_ids)),
+            data.get_partials(renders, channels),
             atol=_MIX_TOLERANCE,
         )
 
         for selected_id in (STEM_A_ID, STEM_B_ID, STEM_C_ID):
             selected = frozenset({selected_id})
             expected = masked_channels(selected)
-            waveform = data.waveform_data(heard(selected))
+            waveform = data.waveform_data(renders, heard(selected))
 
             for channel, expected_audio in expected.items():
                 np.testing.assert_array_equal(waveform.approximations[channel], expected_audio)
             np.testing.assert_allclose(waveform.approximation, mix(list(expected.values())), atol=_MIX_TOLERANCE)
             np.testing.assert_allclose(
-                data.partials_for(channels, heard(selected)),
+                data.partials_for(renders, channels, heard(selected)),
                 mix(list(expected.values())),
                 atol=_MIX_TOLERANCE,
             )
@@ -400,20 +404,20 @@ class TestThreeStemHierarchy:
             )
 
         selected = frozenset()
-        waveform = data.waveform_data(heard(selected))
+        waveform = data.waveform_data(renders, heard(selected))
         for channel in stems_data.assignments_by_channel:
             np.testing.assert_array_equal(
                 waveform.approximations[channel],
-                np.zeros_like(data.reconstruction.approximations[channel]),
+                np.zeros_like(rendered_channels(data.reconstruction)[channel]),
             )
-        np.testing.assert_allclose(waveform.approximation, np.zeros_like(data.reconstruction.approximation))
+        np.testing.assert_allclose(waveform.approximation, np.zeros_like(rendered_mix(data.reconstruction)))
         np.testing.assert_allclose(
-            data.partials_for(channels, heard(selected)),
-            np.zeros_like(data.reconstruction.approximation),
+            data.partials_for(renders, channels, heard(selected)),
+            np.zeros_like(rendered_mix(data.reconstruction)),
         )
         np.testing.assert_allclose(
             data.original_mix_for(heard(selected)),
-            np.zeros_like(data.reconstruction.approximation),
+            np.zeros_like(rendered_mix(data.reconstruction)),
         )
 
 
@@ -458,7 +462,7 @@ class TestRemovingAStem:
             if channel not in remaining.playing_channels:
                 continue
 
-            audio = remaining.approximations[channel]
+            audio = rendered_channels(remaining)[channel]
             for frame_index, stem_id in enumerate(stem_ids):
                 span = slice(frame_index * frame_length, (frame_index + 1) * frame_length)
                 if stem_id == STEM_C_ID:
@@ -492,7 +496,7 @@ class TestRemovingAStem:
 
         assert set(remaining.playing_channels) == set(assignments) - set(held_alone)
         for channel in held_alone:
-            assert channel not in remaining.approximations
+            assert channel not in rendered_channels(remaining)
             assert channel not in remaining.stems_data.assignments_by_channel
 
     def test_the_reduced_reconstruction_round_trips_through_the_file(self, tmp_path: Path) -> None:
@@ -505,7 +509,7 @@ class TestRemovingAStem:
 
         assert [entry.id for entry in loaded.stems_data.config.entries] == [STEM_A_ID, STEM_C_ID]
         assert loaded.stems_data.config.hierarchy.levels == [[STEM_A_ID], [STEM_C_ID]]
-        np.testing.assert_allclose(loaded.approximation, remaining.approximation, atol=_MIX_TOLERANCE)
+        np.testing.assert_allclose(rendered_mix(loaded), rendered_mix(remaining), atol=_MIX_TOLERANCE)
 
     def test_what_stays_plays_what_it_played_before(self, tmp_path: Path) -> None:
         """A removal leaves every remaining recording playing the frames it played.
@@ -741,7 +745,7 @@ class TestClassicRunCarriesTheSingleEntryRecord:
             for frame in range(len(sounding), frames):
                 assert not reconstruction.instructions[channel][frame].on
                 np.testing.assert_array_equal(
-                    reconstruction.approximations[channel][frame * frame_length : (frame + 1) * frame_length],
+                    rendered_channels(reconstruction)[channel][frame * frame_length : (frame + 1) * frame_length],
                     np.zeros(frame_length, dtype=np.float32),
                 )
 
@@ -847,7 +851,7 @@ class TestStemsCarryTheirOwnSound:
             }
             assert held == set(span)
 
-    def test_soloing_a_stem_sounds_nothing_outside_its_span(self, tmp_path: Path) -> None:
+    def test_soloing_a_stem_sounds_nothing_outside_its_span(self, tmp_path: Path, renders: RenderCache) -> None:
         """A stem heard on its own falls silent beyond the span its recording sounds in.
 
         The energy its channels put out there is the leakage, and it is what this measures.
@@ -858,7 +862,9 @@ class TestStemsCarryTheirOwnSound:
         assignments = reconstruction.stems_data.assignments_by_channel
         for stem_id, span in enumerate(spans):
             selection = StemSelection.everywhere(frozenset({stem_id}), list(assignments))
-            heard = ReconstructionData.from_reconstruction(reconstruction, name="disjoint").waveform_data(selection)
+            heard = ReconstructionData.from_reconstruction(reconstruction, name="disjoint").waveform_data(
+                renders, selection
+            )
             outside = np.array(heard.approximation, copy=True)
             for frame in span:
                 outside[frame * frame_length : (frame + 1) * frame_length] = 0.0

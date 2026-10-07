@@ -26,6 +26,7 @@ from sampletones_application.logic.reconstruction.rewrites.steps import (
     RateChange,
     StemRemovalRequest,
 )
+from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import ServiceSuccess
 from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED
@@ -45,7 +46,7 @@ from sampletones_shared.exceptions import (
 )
 from sampletones_shared.paths.extensions import EXT_FILE_PROJECT
 from sampletones_shared.types.callback import VoidCallback
-from tests.conftest import ReconstructionFactory
+from tests.conftest import RENDER_BUDGET, ReconstructionFactory
 from tests.suite.application import HeldQueue, held_queue, scheduling, synchronous_executor
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -642,7 +643,7 @@ def history(project_controller: ProjectController) -> HistoryManager:
 
 @pytest.fixture
 def reconstruction_manager(scheduling: SchedulingBehavior) -> ReconstructionManager:
-    return ReconstructionManager(scheduling=scheduling)
+    return ReconstructionManager(scheduling=scheduling, renders=RenderCache(budget_bytes=RENDER_BUDGET))
 
 
 @pytest.fixture
@@ -1343,7 +1344,7 @@ class TestLoadingAConversion(BaseTestSuite):
         """A coordinator over the document in ``open.stn``, opened from its file or as a project sample, unsaved or saved as the case says."""
         opened = tmp_path / "open.stn"
         reconstruction_factory().save(opened)
-        manager = ReconstructionManager(scheduling=MagicMock())
+        manager = ReconstructionManager(scheduling=MagicMock(), renders=RenderCache(budget_bytes=RENDER_BUDGET))
         coordinator = ReconstructionCoordinator(
             manager,
             MagicMock(),
