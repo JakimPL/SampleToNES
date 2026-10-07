@@ -5,6 +5,7 @@ import time
 from functools import wraps
 from typing import Any, Callable, ClassVar, Final, List, Optional, Set, cast
 
+from sampletones_application.utils.callbacks.failures import UnhandledFailures
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import CallbackT, VoidCallback
 
@@ -143,7 +144,7 @@ def concurrent(
                 except BackgroundWorkCanceled:
                     return
                 except Exception as exception:  # pylint: disable=broad-exception-caught
-                    logger.error_with_traceback(
+                    UnhandledFailures.report(
                         exception,
                         f"Error in background task {function.__qualname__}",
                     )

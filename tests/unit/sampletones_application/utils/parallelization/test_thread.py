@@ -3,6 +3,7 @@ import threading
 from typing import Dict, List
 from unittest.mock import patch
 
+from sampletones_application.utils.callbacks.failures import UnhandledFailures
 from sampletones_application.utils.parallelization.thread import (
     BackgroundWorkCanceled,
     SingleThreadExecutor,
@@ -11,6 +12,7 @@ from sampletones_application.utils.parallelization.thread import (
 
 JOIN_TIMEOUT: float = 5.0
 DEADLINE_TIMEOUT: float = 0.05
+FAILURES_LOGGER: str = "sampletones_application.utils.callbacks.failures.logger"
 
 
 class TestJoinAll:
@@ -106,11 +108,26 @@ class TestShutdownCancellation:
             def work(self) -> None:
                 raise BackgroundWorkCanceled
 
-        with patch("sampletones_application.utils.parallelization.thread.logger") as logger:
+        with patch(FAILURES_LOGGER) as logger:
             Worker().work()
             SingleThreadExecutor.join_all(timeout=JOIN_TIMEOUT)
 
         logger.error_with_traceback.assert_not_called()
+
+    def test_a_failing_task_is_reported_through_the_failure_channel(self) -> None:
+        reported: List[Exception] = []
+        failure = RuntimeError("the task went wrong")
+
+        class Worker:
+            @concurrent(wait=True)
+            def work(self) -> None:
+                raise failure
+
+        UnhandledFailures.attach(reported.append, post=lambda present, exception: present(exception))
+        Worker().work()
+        SingleThreadExecutor.join_all(timeout=JOIN_TIMEOUT)
+
+        assert reported == [failure]
 
 
 class TestExecute:

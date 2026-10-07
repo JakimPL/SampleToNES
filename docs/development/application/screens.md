@@ -81,8 +81,9 @@ until the scenario lets it go.
 
 ### 6. Every scenario is held to the same promises
 
-Every scenario is held to the same after-checks. A failing gesture is logged and swallowed so the interface
-keeps running, which is why the checks read the log as well as the screen.
+Every scenario is held to the same after-checks. A failing gesture is reported and the interface keeps
+running: the failure is logged, and the error dialog shows it unless a report already stands. The checks
+therefore read the log as well as the screen.
 
 - **Quiet.** The application logged no error and no thread let an exception escape. A scenario that
   provokes a failure claims the error it provokes, and an error nobody claims still fails it.

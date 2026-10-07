@@ -23,6 +23,10 @@ A logic object hearing a worker's report, such as a library generation or the au
 posts its own handler to the queue the same way. The logic layer reaches the queue, and `utils/gui`
 belongs to the visual layers.
 
+A failure crosses the same way. `UnhandledFailures` posts the report of a failure nothing recovered from to
+the queue, so the error dialog is built on the render thread whichever thread failed (see the Error Handling
+Policy in [`architecture.md`](../architecture.md#entry-points--the-last-resort)).
+
 ## Work arriving from a worker crosses through `on_render_thread`
 
 A thread of our own, such as a subtree being rebuilt, reaches the interface while the render thread is

@@ -910,6 +910,7 @@ SUF_TOOLTIP = "tooltip"
 SUF_TWISTY = "twisty"
 SUF_TOOLTIP_DETAIL = compose_tag(SUF_TOOLTIP, "detail")
 SUF_DIALOG_INFO = compose_tag("dialog", "info")
+SUF_REPORT = "report"
 SUF_PANEL_LEFT = compose_tag("panel", "left")
 SUF_PANEL_CENTER = compose_tag("panel", "center")
 SUF_PANEL_RIGHT = compose_tag("panel", "right")

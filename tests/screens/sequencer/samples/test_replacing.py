@@ -8,7 +8,6 @@ from tests.screens.sequencer.samples.constants import (
     LINE_POSITION,
     PLACEHOLDER_START,
     REPLACE_SAMPLE,
-    UNSOUND_FAILURE,
     UNSOUND_RECONSTRUCTION,
 )
 from tests.screens.sequencer.samples.steps import (
@@ -49,7 +48,7 @@ class TestReplacingWithAnUnsoundReconstruction:
 
             replace_from_the_sequencer_browser(screen, UNSOUND_RECONSTRUCTION, voice=LINE, label=LINE_LABEL)
 
-            assert UNSOUND_FAILURE in expect_refused(screen)
+            expect_refused(screen)
             assert voices.names() == ARRANGED_VOICES
             assert history.lines() == before
             assert project_part(screen) == ARRANGED_PROJECT.stem

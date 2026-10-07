@@ -258,9 +258,9 @@ Logic classes and managers catch an exception only when they can take a concrete
 
 When a manager does recover, it records *what happened* as domain data and lets a coordinator present it. For example, `ConfigManager` recovers a malformed configuration by loading defaults and appending a `ConfigLoadOutcome` that carries only domain values. `ConfigCoordinator.present_pending_load_outcomes()` later turns each outcome into the matching dialog with text from `LanguageManager`.
 
-### Services — the only legitimate broad catch
+### Services — a broad catch that delivers
 
-Services run tasks on background threads. If an unhandled exception escapes the worker, the thread dies silently and `CallbackQueue` never delivers the result. `ServiceBase` subclasses therefore catch the exception at the outer boundary of the async task, wrap it in `ServiceError`, and emit it through `CallbackQueue`. This is the **only** place where catching non-specific exception types is permitted, and it belongs in the top-level task wrapper and not in helper methods.
+Services run tasks on background threads. If an unhandled exception escapes the worker, the thread dies silently and `CallbackQueue` never delivers the result. `ServiceBase` subclasses therefore catch the exception at the outer boundary of the async task, wrap it in `ServiceError`, and emit it through `CallbackQueue`, so the coordinator that asked hears the failure as a result. The catch belongs in the top-level task wrapper and not in helper methods.
 
 ### Coordinators — the recovery boundary
 
@@ -271,6 +271,18 @@ Coordinators own the decision of what to do when an operation fails. They:
 - Handle `ServiceError` results from the tagged union returned by async services.
 
 A coordinator catches precisely. Broad catches (`except Exception`, bare `except`) and deferred typing (`# TODO: specify exception type`) are guideline violations.
+
+### Entry points — the last resort
+
+Every failure ends in a recovery or in a report. A failure no layer recovered from is reported where control entered the application:
+
+- `CallbackQueue.run` runs every gesture DearPyGui gathered, every frame callback and every queued delivery.
+- The `concurrent` task wrapper runs a widget's background work.
+- The thread hook hears every other thread.
+
+Each hands the exception to `UnhandledFailures` (`utils/callbacks/failures.py`). It logs the failure with its traceback and posts the report to the render thread through the queue, whichever thread failed. `UnhandledFailurePresenter` shows the error dialog: one plain line saying the last action did not finish, then the error and its traceback. A report standing on the screen or waiting for it absorbs later ones until the reader dismisses it, so a failure repeating every frame is read once. The composition root attaches the presenter and the teardown detaches it, so a failure outside a running interface is logged alone.
+
+These catches and the service task wrapper are the only places a non-specific exception type is caught. They recover nothing: the gesture ends, the interface keeps running, and the reader learns that the action stopped. A failure a coordinator can name and explain is still caught there, with a message of its own. The last resort serves what nobody named, such as a bug or a document breaking its own rules.
 
 ### UI layer — errors arrive as data
 
