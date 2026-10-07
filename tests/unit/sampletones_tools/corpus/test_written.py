@@ -25,7 +25,7 @@ class TestSingleRecordingRecord:
         record = single_recording_record(FRAMES, SCALE)
 
         assert [(assignment.channel_name, assignment.stem_ids) for assignment in record.assignments] == [
-            (ChannelName.PULSE1, [SINGLE_STEM_ID, RESTING_STEM_ID, SINGLE_STEM_ID])
+            (ChannelName.PULSE1, (SINGLE_STEM_ID, RESTING_STEM_ID, SINGLE_STEM_ID))
         ]
         assert record.scale == SCALE
 

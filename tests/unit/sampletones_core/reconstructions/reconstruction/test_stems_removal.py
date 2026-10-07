@@ -141,12 +141,12 @@ class TestTheRecordedSetup:
     def test_the_removed_recording_leaves_its_level(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_C)
 
-        assert remaining.stems_data.config.hierarchy.levels == [[STEM_A], [STEM_B]]
+        assert remaining.stems_data.config.hierarchy.levels == ((STEM_A,), (STEM_B,))
 
     def test_a_level_the_removal_empties_goes_along_with_it(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_A)
 
-        assert remaining.stems_data.config.hierarchy.levels == [[STEM_B, STEM_C]]
+        assert remaining.stems_data.config.hierarchy.levels == ((STEM_B, STEM_C),)
 
     def test_the_picking_order_and_each_stems_count_carry_over(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_C)
@@ -174,12 +174,12 @@ class TestTheReleasedFrames:
     def test_the_frames_it_held_rest_in_the_assignment(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_B)
 
-        assert remaining.stems_data.assignments_by_channel[ChannelName.PULSE1] == [
+        assert remaining.stems_data.assignments_by_channel[ChannelName.PULSE1] == (
             STEM_A,
             RESTING_STEM_ID,
             STEM_C,
             RESTING_STEM_ID,
-        ]
+        )
 
     def test_the_frames_it_held_state_silence(self, reconstruction: Reconstruction) -> None:
         remaining = without_stem(reconstruction, STEM_B)
@@ -273,7 +273,7 @@ class TestTheDocument:
         without_stem(reconstruction, STEM_B)
 
         assert [entry.id for entry in reconstruction.stems_data.config.entries] == [STEM_A, STEM_B, STEM_C]
-        assert reconstruction.stems_data.assignments_by_channel[ChannelName.NOISE] == [STEM_B] * FRAME_COUNT
+        assert reconstruction.stems_data.assignments_by_channel[ChannelName.NOISE] == (STEM_B,) * FRAME_COUNT
         np.testing.assert_array_equal(rendered_channels(reconstruction)[ChannelName.NOISE], before)
 
 

@@ -939,8 +939,8 @@ class TestWhatTheGatheredRecordingsRun(BaseTestSuite):
 
         plan = _started_plan(converter_logic, service)
 
-        assert plan.stems.entries[0].settings.channels == [ChannelName.PULSE1]
-        assert plan.stems.hierarchy.levels == [[0], [1]]
+        assert plan.stems.entries[0].settings.channels == (ChannelName.PULSE1,)
+        assert plan.stems.hierarchy.levels == ((0,), (1,))
 
     def test_a_recording_left_with_no_channel_takes_no_part(
         self,

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, FrozenSet, List, NamedTuple, Optional, Sequence, Set, Tuple
+from typing import Dict, FrozenSet, List, Mapping, NamedTuple, Optional, Sequence, Set, Tuple
 
 import numpy as np
 
@@ -330,7 +330,7 @@ class AssignmentSession:
 
         return None
 
-    def _drives(self, stem_id: int) -> Dict[ChannelName, float]:
+    def _drives(self, stem_id: int) -> Mapping[ChannelName, float]:
         """The level the stem gives each of the channels it occupies."""
         return self.stems_config.entries_by_id[stem_id].settings.drives
 

@@ -60,7 +60,7 @@ class TestWhatSettlingLetsGoOf:
 
         assert [entry.id for entry in settled.config.entries] == [LEAD]
         assert [source.stem_id for source in settled.sources] == [LEAD]
-        assert settled.config.hierarchy.levels == [[LEAD]]
+        assert settled.config.hierarchy.levels == ((LEAD,),)
         assert settled.paths == (RECORDINGS[0],)
 
     def test_a_record_where_no_recording_holds_a_frame_keeps_them_all(self) -> None:
@@ -77,7 +77,7 @@ class TestWhatSettlingLetsGoOf:
     def test_a_record_whose_channels_all_stand_by_keeps_every_recording(self) -> None:
         settled = _record([LEAD, BASS]).settled(frozenset())
 
-        assert settled.assignments == []
+        assert settled.assignments == ()
         assert [entry.id for entry in settled.config.entries] == [LEAD, BASS]
 
     def test_a_record_every_recording_holds_a_frame_in_stands_whole(self) -> None:

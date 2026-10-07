@@ -1,5 +1,5 @@
 from functools import cached_property
-from typing import AbstractSet, Dict, FrozenSet, List, Self
+from typing import AbstractSet, Dict, FrozenSet, Self, Tuple
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -19,8 +19,8 @@ class StemsConfig(DataModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    entries: List[StemEntry] = Field(
-        default_factory=list,
+    entries: Tuple[StemEntry, ...] = Field(
+        default_factory=tuple,
         description="The competing stems, each with what its recording is converted with",
     )
     hierarchy: StemsHierarchy = Field(
@@ -37,8 +37,8 @@ class StemsConfig(DataModel):
         pipeline's simplest case.
         """
         return cls(
-            entries=[StemEntry(id=0, settings=settings)],
-            hierarchy=StemsHierarchy(levels=[[0]]),
+            entries=(StemEntry(id=0, settings=settings),),
+            hierarchy=StemsHierarchy(levels=((0,),)),
         )
 
     def without_entries(self, stem_ids: AbstractSet[int]) -> Self:
@@ -53,11 +53,11 @@ class StemsConfig(DataModel):
         Returns:
             Self: The setup of the entries that stay.
         """
-        levels = [[stem_id for stem_id in level if stem_id not in stem_ids] for level in self.hierarchy.levels]
+        levels = [tuple(stem_id for stem_id in level if stem_id not in stem_ids) for level in self.hierarchy.levels]
         return self.__class__(
-            entries=[entry for entry in self.entries if entry.id not in stem_ids],
+            entries=tuple(entry for entry in self.entries if entry.id not in stem_ids),
             hierarchy=StemsHierarchy(
-                levels=[level for level in levels if level],
+                levels=tuple(level for level in levels if level),
                 mode=self.hierarchy.mode,
             ),
         )

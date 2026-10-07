@@ -207,3 +207,12 @@ class TestAnArchivedFileSoundingNothing:
     def test_the_recording_stays_on_the_record(self, quiet: Reconstruction) -> None:
         assert [entry.id for entry in quiet.stems_data.config.entries] == [SINGLE_STEM_ID]
         assert quiet.audio_filepath == (SOURCE_PATH,)
+
+
+class TestTheStoredPayload:
+    """A document writes back the payload it reads from, so storing it again changes nothing it holds."""
+
+    def test_a_loaded_document_writes_back_the_same_bytes(self, loaded: Reconstruction) -> None:
+        payload = loaded.serialize()
+
+        assert Reconstruction.deserialize(payload).serialize() == payload

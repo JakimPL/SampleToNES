@@ -1,4 +1,4 @@
-from typing import List
+from typing import Tuple
 
 from pydantic import ConfigDict, Field
 
@@ -13,7 +13,7 @@ class ChannelAssignment(DataModel):
         ...,
         description="The channel whose frames are assigned",
     )
-    stem_ids: List[int] = Field(
+    stem_ids: Tuple[int, ...] = Field(
         ...,
         description="The stem holding the channel in each frame",
     )

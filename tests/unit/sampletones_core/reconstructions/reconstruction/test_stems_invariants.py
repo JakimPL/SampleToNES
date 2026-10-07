@@ -350,7 +350,7 @@ class TestWhatCreatingSettles:
         )
 
         assert created.playing_channels == ()
-        assert created.stems_data.assignments == []
+        assert created.stems_data.assignments == ()
 
 
 class TestARecordingHoldingNoFrame:
@@ -363,7 +363,7 @@ class TestARecordingHoldingNoFrame:
         )
 
         assert [entry.id for entry in reconstruction.stems_data.config.entries] == [STEM_A]
-        assert reconstruction.stems_data.config.hierarchy.levels == [[STEM_A]]
+        assert reconstruction.stems_data.config.hierarchy.levels == ((STEM_A,),)
 
     def test_a_recording_an_edit_emptied_leaves(self, reconstruction: Reconstruction) -> None:
         edited = _edited(
@@ -401,7 +401,7 @@ class TestARecordingHoldingNoFrame:
 
         authored = _edited(_edited(reconstruction, []), [_pulse(60)])
 
-        assert authored.stems_data.assignments_by_channel == {ChannelName.PULSE1: [AUTHORED_STEM_ID]}
+        assert authored.stems_data.assignments_by_channel == {ChannelName.PULSE1: (AUTHORED_STEM_ID,)}
         assert [entry.id for entry in authored.stems_data.config.entries] == [STEM_A, STEM_B]
 
     def test_a_stored_record_naming_an_idle_recording_is_refused(self) -> None:

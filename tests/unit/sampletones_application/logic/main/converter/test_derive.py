@@ -36,7 +36,7 @@ class TestWhatEachRecordingBringsToTheSetup(BaseTestSuite):
             hierarchy_mode=HierarchyMode.STRICT,
         )
 
-        assert setup.stems.entries[0].settings.channels == [ChannelName.PULSE1, ChannelName.PULSE2]
+        assert setup.stems.entries[0].settings.channels == (ChannelName.PULSE1, ChannelName.PULSE2)
 
     def test_a_bend_the_recording_carries_reaches_the_entry(self) -> None:
         sources = SourceList().add_recording(
@@ -50,7 +50,7 @@ class TestWhatEachRecordingBringsToTheSetup(BaseTestSuite):
             hierarchy_mode=HierarchyMode.STRICT,
         )
 
-        assert setup.stems.entries[0].settings.bends == [ChannelName.TRIANGLE]
+        assert setup.stems.entries[0].settings.bends == (ChannelName.TRIANGLE,)
 
 
 class TestTheSetupTheLevelsAmountTo(BaseTestSuite):
@@ -74,7 +74,7 @@ class TestTheSetupTheLevelsAmountTo(BaseTestSuite):
             hierarchy_mode=HierarchyMode.STRICT,
         )
 
-        assert setup.stems.hierarchy.levels == [[0, 1], [2]]
+        assert setup.stems.hierarchy.levels == ((0, 1), (2,))
 
     def test_the_mix_lists_the_recordings_in_entry_order(self) -> None:
         sources, levels = _gathered(["a"], ["b"])
@@ -139,7 +139,7 @@ class TestARecordingThatTakesNoPart(BaseTestSuite):
         )
 
         assert setup.sources == (_path("a"), _path("b"))
-        assert setup.stems.hierarchy.levels == [[0], [1]]
+        assert setup.stems.hierarchy.levels == ((0,), (1,))
 
     def test_a_level_left_with_nobody_taking_part_drops_out(self) -> None:
         sources, levels = self._silent_beside(["silent", "b"])
@@ -150,7 +150,7 @@ class TestARecordingThatTakesNoPart(BaseTestSuite):
             hierarchy_mode=HierarchyMode.STRICT,
         )
 
-        assert setup.stems.hierarchy.levels == [[0]]
+        assert setup.stems.hierarchy.levels == ((0,),)
 
     def test_a_path_the_list_never_gathered_takes_no_part(self) -> None:
         sources, levels = _gathered(["a"])

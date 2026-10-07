@@ -440,7 +440,7 @@ class TestRemovingAStem:
         remaining = without_stem(reconstruction, STEM_C_ID)
 
         assert [entry.id for entry in remaining.stems_data.config.entries] == [STEM_A_ID, STEM_B_ID]
-        assert remaining.stems_data.config.hierarchy.levels == [[STEM_A_ID, STEM_B_ID]]
+        assert remaining.stems_data.config.hierarchy.levels == ((STEM_A_ID, STEM_B_ID),)
         assert remaining.audio_filepath == (paths[0], paths[1])
 
     def test_the_frames_it_held_fall_silent_while_the_rest_stand(self, tmp_path: Path) -> None:
@@ -471,7 +471,7 @@ class TestRemovingAStem:
                 else:
                     assert remaining.instructions[channel][frame_index] == before[channel][frame_index]
 
-            assert remaining.stems_data.assignments_by_channel[channel] == [
+            assert list(remaining.stems_data.assignments_by_channel[channel]) == [
                 RESTING_STEM_ID if stem_id == STEM_C_ID else stem_id for stem_id in stem_ids
             ]
 
@@ -508,7 +508,7 @@ class TestRemovingAStem:
         loaded = Reconstruction.load(save_path)
 
         assert [entry.id for entry in loaded.stems_data.config.entries] == [STEM_A_ID, STEM_C_ID]
-        assert loaded.stems_data.config.hierarchy.levels == [[STEM_A_ID], [STEM_C_ID]]
+        assert loaded.stems_data.config.hierarchy.levels == ((STEM_A_ID,), (STEM_C_ID,))
         np.testing.assert_allclose(rendered_mix(loaded), rendered_mix(remaining), atol=_MIX_TOLERANCE)
 
     def test_what_stays_plays_what_it_played_before(self, tmp_path: Path) -> None:
@@ -568,7 +568,7 @@ class TestAConversionLetsGoOfIdleRecordings:
         assert reconstruction is not None
         assert set(reconstruction.stems_data.assignments_by_channel[ChannelName.PULSE1]) == {0}
         assert [entry.id for entry in reconstruction.stems_data.config.entries] == [0]
-        assert reconstruction.stems_data.config.hierarchy.levels == [[0]]
+        assert reconstruction.stems_data.config.hierarchy.levels == ((0,),)
         assert reconstruction.audio_filepath == (paths[0],)
 
     def test_the_document_is_written_where_the_job_names(self, tmp_path: Path) -> None:

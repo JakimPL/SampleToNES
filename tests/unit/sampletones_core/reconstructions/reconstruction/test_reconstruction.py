@@ -84,10 +84,8 @@ def _saved_playing_channels_only(path: Path) -> Path:
     on the way back.
     """
     reconstruction = _reconstruction([_pulse(_BASE_PITCH)])
-    reconstruction.instructions_data = [
-        item for item in reconstruction.instructions_data if item.channel_name == ChannelName.PULSE1
-    ]
-    reconstruction.save(path)
+    playing = tuple(item for item in reconstruction.instructions_data if item.channel_name == ChannelName.PULSE1)
+    reconstruction.model_copy(update={"instructions_data": playing}).save(path)
     return path
 
 

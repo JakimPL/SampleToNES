@@ -357,9 +357,10 @@ class Reconstructor:
         """Assembles the per-channel per-frame stem record into serializable stems data."""
         return StemsData(
             config=stems_config,
-            assignments=[
-                ChannelAssignment(channel_name=channel, stem_ids=stem_ids) for channel, stem_ids in assignments.items()
-            ],
+            assignments=tuple(
+                ChannelAssignment(channel_name=channel, stem_ids=tuple(stem_ids))
+                for channel, stem_ids in assignments.items()
+            ),
             scale=scale,
         )
 

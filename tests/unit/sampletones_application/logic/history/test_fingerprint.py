@@ -209,7 +209,7 @@ class TestStrictManagerFingerprinting:
         with history.transaction(HistoryAction.SET_TEMPO):
             controller.set_tempo(150)
 
-        sample.reconstruction.coefficient = sample.reconstruction.coefficient + 1.0
+        object.__setattr__(sample.reconstruction, "coefficient", sample.reconstruction.coefficient + 1.0)
 
         with pytest.raises(HistoryIntegrityError):
             history.undo()

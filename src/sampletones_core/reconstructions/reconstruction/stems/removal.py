@@ -83,7 +83,9 @@ def _released_assignment(item: ChannelAssignment, released: Sequence[bool]) -> C
 
     return ChannelAssignment(
         channel_name=item.channel_name,
-        stem_ids=[RESTING_STEM_ID if frame_released else held for held, frame_released in zip(item.stem_ids, released)],
+        stem_ids=tuple(
+            RESTING_STEM_ID if frame_released else held for held, frame_released in zip(item.stem_ids, released)
+        ),
     )
 
 

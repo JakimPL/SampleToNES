@@ -287,7 +287,7 @@ class TestAChannelAnEditEmpties:
 
         edited = _edited(_edited(reconstruction, channel_name, []), channel_name, stream)
 
-        assert _owners(edited, channel_name) == [AUTHORED_STEM_ID] * len(stream)
+        assert _owners(edited, channel_name) == (AUTHORED_STEM_ID,) * len(stream)
 
 
 class TestTheRowTheReadersOwnFramesAnswerTo:

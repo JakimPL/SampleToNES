@@ -32,7 +32,7 @@ def single_recording_record(
     assignments = [
         ChannelAssignment(
             channel_name=channel_name,
-            stem_ids=[SINGLE_STEM_ID if instruction.on else RESTING_STEM_ID for instruction in stream],
+            stem_ids=tuple(SINGLE_STEM_ID if instruction.on else RESTING_STEM_ID for instruction in stream),
         )
         for channel_name, stream in instructions.items()
     ]

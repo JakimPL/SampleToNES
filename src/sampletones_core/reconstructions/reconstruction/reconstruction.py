@@ -65,7 +65,7 @@ RECONSTRUCTION_DATA_CONTRACT: Final[MetadataContract] = MetadataContract(
 
 
 class Reconstruction(DataModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
     metadata: Metadata = Field(
         default_factory=Metadata.default,
@@ -80,7 +80,7 @@ class Reconstruction(DataModel):
         description="Configuration used for reconstruction",
         frozen=True,
     )
-    instructions_data: List[InstructionsItem] = Field(
+    instructions_data: Tuple[InstructionsItem, ...] = Field(
         ...,
         description="Instructions per channel",
     )
@@ -286,7 +286,7 @@ class Reconstruction(DataModel):
         instructions_data, settled = cls._settled(streams, stems_data.with_sources(audio_filepath))
         return cls(
             id=uuid4().hex,
-            instructions_data=instructions_data,
+            instructions_data=tuple(instructions_data),
             stems_data=settled,
             config=config,
             coefficient=coefficient,
@@ -353,7 +353,7 @@ class Reconstruction(DataModel):
             metadata=self.metadata,
             id=self.id,
             config=self.config,
-            instructions_data=instructions_data,
+            instructions_data=tuple(instructions_data),
             stems_data=settled,
             coefficient=self.coefficient,
         )
@@ -444,7 +444,7 @@ class Reconstruction(DataModel):
     ) -> List[ChannelAssignment]:
         """The per-channel record with one channel's owners replaced, in channel order."""
         replaced = {item.channel_name: item for item in self.stems_data.assignments}
-        replaced[channel_name] = ChannelAssignment(channel_name=channel_name, stem_ids=stem_ids)
+        replaced[channel_name] = ChannelAssignment(channel_name=channel_name, stem_ids=tuple(stem_ids))
         return [replaced[name] for name in ChannelName.items() if name in replaced]
 
     @property
