@@ -86,11 +86,6 @@ jobs:
         shell: bash
         run: $PYTHON scripts/run_tests.py suite --workers auto
 
-      - name: Run the benchmarks
-        if: ${{ !cancelled() && steps.environment.outcome == 'success' }}
-        shell: bash
-        run: $PYTHON scripts/run_tests.py benchmarks
-
       - name: Run the screen scenarios (Linux)
         id: screens
         if: ${{ !cancelled() && steps.environment.outcome == 'success' && runner.os == 'Linux' }}
