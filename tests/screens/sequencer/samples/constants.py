@@ -21,6 +21,5 @@ SAMPLE_KEY: Final[str] = "sample"
 PROJECT_TITLE_PART: Final[int] = 1
 PLACEHOLDER_START: Final[str] = "{"
 FREQUENCY_MISMATCH: Final[str] = "global.dialog.message.frequency_mismatch"
-HALF_DONE_GESTURE_BUG: Final[str] = "bugs-and-todos § Bugs: A gesture failing midway keeps what landed before it"
 ATTEMPTS: Final[int] = 2
 ARRANGED_VOICES: Final[List[str]] = [LINE, BASS_VOICE, PAD]

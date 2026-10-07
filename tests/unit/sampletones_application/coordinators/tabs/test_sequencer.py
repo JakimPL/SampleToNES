@@ -144,6 +144,12 @@ def coordinator() -> SequencerReconstructions:
     )
 
 
+PICKED_INSTRUMENT: Final[VoiceSelection] = VoiceSelection(
+    voice_id="pad-id",
+    position=2,
+    name="pad",
+    kind=VoiceKind.INSTRUMENT,
+)
 INSTRUMENT_FILE: Final[Path] = Path("/instruments/Lead.fti")
 
 IMPORTED_VOICE: Final[Instrument] = Instrument(
@@ -1029,6 +1035,17 @@ class TestReplaceReconstruction:
         replace_coordinator._browser_logic.load_reconstruction.assert_not_called()
         replace_coordinator._browser_logic.replace_reconstruction.assert_not_called()
 
+    def test_a_picked_instrument_replaces_nothing(
+        self,
+        replace_coordinator: SequencerReconstructions,
+    ) -> None:
+        replace_coordinator._voices_panel.selection = PICKED_INSTRUMENT
+
+        replace_coordinator.replace_from_file(Path("kick_02.stn"))
+
+        replace_coordinator._browser_logic.load_reconstruction.assert_not_called()
+        replace_coordinator._voices_logic.rename_voice.assert_not_called()
+
     def test_failed_load_shows_error_and_replaces_nothing(
         self,
         replace_coordinator: SequencerReconstructions,
@@ -1161,6 +1178,15 @@ class TestReplaceTargetLabel:
 
         assert replace_coordinator.replace_target_label() is None
 
+    def test_label_is_absent_while_an_instrument_is_picked(
+        self,
+        replace_coordinator: SequencerReconstructions,
+    ) -> None:
+        """A reconstruction takes the place of a sample alone, so a picked instrument offers no replacement."""
+        replace_coordinator._voices_panel.selection = PICKED_INSTRUMENT
+
+        assert replace_coordinator.replace_target_label() is None
+
 
 @pytest.fixture
 def history_coordinator(held_gate: HeldGate) -> SequencerTabCoordinator:
@@ -1289,6 +1315,27 @@ class TestChannelMuteLifetime:
         coordinator.undo()
 
         assert channels.active_channels == ALL_CHANNELS - {ChannelName.TRIANGLE}
+
+    def test_a_rolled_back_gesture_keeps_the_mute_set_and_the_stack(
+        self,
+        wired_history_coordinator: SequencerReconstructions,
+    ) -> None:
+        """A failed gesture reinstalls the state it started from the way an undo does."""
+        coordinator = wired_history_coordinator
+        controller = coordinator._project_controller
+        history = coordinator._history
+        channels = coordinator._sequencer_channels_logic
+        with history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(170)
+        channels.toggle(ChannelName.TRIANGLE)
+
+        with pytest.raises(RuntimeError), history.transaction(HistoryAction.SET_SPEED):
+            controller.set_speed(4)
+            raise RuntimeError("the gesture failed")
+
+        assert channels.active_channels == ALL_CHANNELS - {ChannelName.TRIANGLE}
+        assert [entry.action for entry in history.entries] == [HistoryAction.INITIAL, HistoryAction.SET_TEMPO]
+        assert (controller.project.settings.tempo, history.cursor) == (170, 1)
 
     def test_redo_keeps_the_mute_set(
         self,

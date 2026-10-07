@@ -72,7 +72,7 @@ class HistoryManager(CallbackMixin):
 
     @property
     def is_restoring(self) -> bool:
-        """Whether an undo, redo, or jump is reinstalling a snapshot right now.
+        """Whether an undo, redo, jump or rollback is reinstalling a snapshot right now.
 
         Every project transition reaches its handlers through the controller's single
         ``on_project_replaced`` signal, which the composition root fans out to each tab. A
@@ -129,22 +129,26 @@ class HistoryManager(CallbackMixin):
         """Groups every mutation of one user gesture into a single history entry.
 
         Nested scopes coalesce into the outermost transaction, and only a gesture
-        that changes the project records an entry. The commit runs on scope exit even when
-        the gesture raises: the mutations that already landed are part of the live
-        project, so recording them preserves the invariant that the live project
-        equals a restoration of ``entries[cursor]``.
+        that changes the project records an entry. A gesture lands whole or not at
+        all: one whose outermost scope ends by an exception reinstalls
+        ``entries[cursor]``, the state it started from, records nothing, and lets the
+        exception go on. The live project therefore equals a restoration of
+        ``entries[cursor]`` whichever way the gesture ends.
 
         ``coalesce`` names the gesture's target. Consecutive commits that share
         the same action and target replace the previous entry, so a continuous
         interaction — a graph drag, repeated edits of
         one cell — records a single entry whose undo restores the state before
-        the first gesture of the run. Any undo, redo, or jump breaks the run.
+        the first gesture of the run. Any undo, redo, or jump breaks the run, and a
+        rollback leaves it going, since the entry it continues stays as it was.
         """
         self._begin(action, detail, coalesce)
+        completed = False
         try:
             yield
+            completed = True
         finally:
-            self._end()
+            self._end(completed=completed)
 
     def handle_mutation(self) -> None:
         if self._restoring:
@@ -199,7 +203,12 @@ class HistoryManager(CallbackMixin):
 
         self._pending.depth += 1
 
-    def _end(self) -> None:
+    def _end(self, *, completed: bool) -> None:
+        """Closes one scope; the outermost commits a completed gesture and rolls back a failed one.
+
+        A scope a reset ended midway has nothing left to close, since the reset seeded the stack
+        from the project the gesture left.
+        """
         if self._pending is None:
             return
 
@@ -209,12 +218,17 @@ class HistoryManager(CallbackMixin):
 
         pending = self._pending
         self._pending = None
-        if pending.mutations > 0:
+        if pending.mutations == 0:
+            return
+
+        if completed:
             self._commit(
                 pending.action,
                 pending.detail,
                 coalesce=pending.coalesce,
             )
+        else:
+            self._roll_back()
 
     def _commit(
         self,
@@ -300,8 +314,25 @@ class HistoryManager(CallbackMixin):
                 self._saved_cursor = shifted if shifted >= 0 else None
 
     def _restore(self) -> None:
-        entry = self._entries[self._cursor]
         self._last_commit_key = None
+        self._reinstall(self._entries[self._cursor])
+
+    def _roll_back(self) -> None:
+        """Reinstalls the state a failed gesture started from, which the cursor still stands at.
+
+        A closed project holds no state to return to.
+        """
+        if self._cursor < 0:
+            return
+
+        self._reinstall(self._entries[self._cursor])
+
+    def _reinstall(self, entry: HistoryEntry) -> None:
+        """Installs a fresh copy of ``entry`` as the live project and checks it against its fingerprint.
+
+        Every handler of the replacement reads :attr:`is_restoring` while it runs, so a tab keeps
+        what a history step keeps.
+        """
         self._restoring = True
         try:
             self._controller.replace_project(

@@ -113,6 +113,10 @@ currently out of line. An entry leaves when the code meets the contract again.
   `ConverterLogic._rewrite` a state whose recordings are new objects, and the rows and the batch entries
   are read from it cold. Holding the rows against the gathering that produced them, and deriving entries
   for the recordings a gesture moved, closes it.
+* A failed gesture's rollback restores the project and leaves alone what the gesture did outside it. A cut
+  that fails after writing the clipboard leaves the clipboard written, and a removal that fails after
+  closing the voice open on the Reconstructions tab leaves it closed. Undoing those effects belongs to the
+  gesture that made them.
 
 ## Bugs
 
@@ -125,10 +129,6 @@ currently out of line. An entry leaves when the code meets the contract again.
 * The Sample column shows no sample on a frame's first rows, since its reading starts over at each frame. It
   offers no transpose or volume there, while playback applies them to the sample the previous frame left
   sounding.
-* A gesture failing midway keeps what landed before it: Replace renames the sample before the swap fails,
-  and Add sets an empty project's rate before the sample fails to join. Replace is offered with an
-  instrument picked too, where it renames the instrument and then fails. `tests/screens/sequencer/samples/`
-  reproduces it as a known failure.
 * A task that raises in a `LatestWinsExecutor` (`utils/parallelization/coalescing.py`) leaves it marked
   running, so it runs nothing submitted later. A reconstruction file the browser's recordings reader fails
   on in a way nobody named is reported, and the reader then reads no other file.

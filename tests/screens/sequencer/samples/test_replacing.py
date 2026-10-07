@@ -1,10 +1,7 @@
 from typing import Final, List
 
-import pytest
-
 from tests.screens.sequencer.samples.constants import (
     ARRANGED_VOICES,
-    HALF_DONE_GESTURE_BUG,
     LINE_POSITION,
     PLACEHOLDER_START,
     REPLACE_SAMPLE,
@@ -35,7 +32,6 @@ class TestReplacingWithAnUnsoundReconstruction:
     replaces it with a sound one, which takes its place and its name.
     """
 
-    @pytest.mark.xfail(strict=True, raises=AssertionError, reason=HALF_DONE_GESTURE_BUG)
     def test_it_is_refused_and_a_sound_one_takes_its_place(self, screen: Screen) -> None:
         """The notice names the failure, and the sound reconstruction then takes the sample's place as one
         entry.
@@ -80,7 +76,6 @@ class TestReplaceIsOfferedForSamples:
     picks the Line sample, and the same menu offers to replace it.
     """
 
-    @pytest.mark.xfail(strict=True, raises=AssertionError, reason=HALF_DONE_GESTURE_BUG)
     def test_an_instrument_picked_offers_no_replace(self, screen: Screen) -> None:
         """No entry of the menu reads as a replacement while Pad is picked, and the one naming Line stands once
         Line is."""

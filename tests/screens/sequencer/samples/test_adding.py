@@ -9,7 +9,6 @@ from tests.screens.sequencer.samples.constants import (
     ARRANGED_VOICES,
     ATTEMPTS,
     FREQUENCY_MISMATCH,
-    HALF_DONE_GESTURE_BUG,
     OTHER_RATE,
     SOUND_AT_OTHER_RATE,
     UNSOUND_AT_OTHER_RATE,
@@ -171,7 +170,6 @@ class TestAnEmptyProjectRefusingItsFirstSample:
         """The application opens with nothing loaded, so File > New project starts at once."""
         return Startup(reconstruction=None, project=None)
 
-    @pytest.mark.xfail(strict=True, raises=AssertionError, reason=HALF_DONE_GESTURE_BUG)
     def test_a_refused_one_leaves_the_rate(self, screen: Screen) -> None:
         """The rate stays the new project's, and the sound reconstruction then joins and sets its own."""
         voices = screen.sequencer.voices

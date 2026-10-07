@@ -1019,9 +1019,9 @@ class Application:
         """Fans one project replacement out to the two tabs that show the project.
 
         The controller exposes a single ``on_project_replaced`` slot, fired by a new, opened or
-        closed project and by every undo, redo and history jump; the composition root owns it. The
-        sequencer realigns its views first, then the Reconstructions tab follows the voice it
-        shows into the project now in place.
+        closed project and by every undo, redo, history jump and rollback of a failed gesture; the
+        composition root owns it. The sequencer realigns its views first, then the Reconstructions
+        tab follows the voice it shows into the project now in place.
         """
         self._sequencer_tab.realign_with_project()
         self._reconstruction_coordinator.follow_replaced_project()

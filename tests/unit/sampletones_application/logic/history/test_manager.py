@@ -108,7 +108,11 @@ class TestGrouping:
         history.undo()
         assert controller.project.settings.tempo == original
 
-    def test_exception_inside_transaction_commits_partial_gesture(
+
+class TestRollback:
+    """A gesture lands whole or not at all: one that raises leaves the project and the stack as they were."""
+
+    def test_a_failed_gesture_restores_the_project_and_records_nothing(
         self,
         history_factory: HistoryFactory,
     ) -> None:
@@ -116,14 +120,120 @@ class TestGrouping:
         original = controller.project.settings.tempo
 
         with pytest.raises(RuntimeError), history.transaction(HistoryAction.SET_TEMPO):
-            controller.set_tempo(150)
+            controller.set_tempo(170)
             raise RuntimeError("boom")
 
-        assert len(history.entries) == 2
-        assert controller.project.settings.tempo == 150
-
-        history.undo()
         assert controller.project.settings.tempo == original
+        assert len(history.entries) == 1
+        assert history.can_undo is False
+
+    def test_a_failure_in_an_inner_scope_rolls_back_the_whole_gesture(
+        self,
+        history_factory: HistoryFactory,
+    ) -> None:
+        controller, history = history_factory()
+        original = (controller.project.settings.tempo, controller.project.settings.speed)
+
+        with pytest.raises(RuntimeError), history.transaction(HistoryAction.ADD_SAMPLE):
+            controller.set_tempo(170)
+            with history.transaction(HistoryAction.SET_SPEED):
+                controller.set_speed(4)
+                raise RuntimeError("boom")
+
+        assert (controller.project.settings.tempo, controller.project.settings.speed) == original
+        assert len(history.entries) == 1
+
+    def test_an_inner_failure_the_gesture_recovers_from_commits(
+        self,
+        history_factory: HistoryFactory,
+    ) -> None:
+        controller, history = history_factory()
+
+        with history.transaction(HistoryAction.ADD_SAMPLE):
+            controller.set_tempo(170)
+            with pytest.raises(RuntimeError), history.transaction(HistoryAction.SET_SPEED):
+                raise RuntimeError("recovered")
+
+        assert controller.project.settings.tempo == 170
+        assert len(history.entries) == 2
+
+    def test_a_gesture_returning_early_commits(
+        self,
+        history_factory: HistoryFactory,
+    ) -> None:
+        controller, history = history_factory()
+
+        def gesture() -> None:
+            with history.transaction(HistoryAction.SET_TEMPO):
+                controller.set_tempo(170)
+                return
+
+        gesture()
+
+        assert controller.project.settings.tempo == 170
+        assert len(history.entries) == 2
+
+    def test_a_failure_before_any_mutation_reinstalls_nothing(
+        self,
+        history_factory: HistoryFactory,
+    ) -> None:
+        controller, history = history_factory()
+        replaced: List[bool] = []
+        controller.on_project_replaced = lambda: replaced.append(True)
+
+        with pytest.raises(RuntimeError), history.transaction(HistoryAction.SET_TEMPO):
+            raise RuntimeError("boom")
+
+        assert replaced == []
+
+    def test_a_coalescing_run_goes_on_past_a_rollback(
+        self,
+        history_factory: HistoryFactory,
+    ) -> None:
+        controller, history = history_factory()
+        key = ("tempo",)
+        with history.transaction(HistoryAction.SET_TEMPO, coalesce=key):
+            controller.set_tempo(170)
+
+        with pytest.raises(RuntimeError), history.transaction(HistoryAction.SET_TEMPO, coalesce=key):
+            controller.set_tempo(155)
+            raise RuntimeError("boom")
+        with history.transaction(HistoryAction.SET_TEMPO, coalesce=key):
+            controller.set_tempo(160)
+
+        assert len(history.entries) == 2
+        assert controller.project.settings.tempo == 160
+
+    def test_a_rollback_at_the_save_point_reads_clean(
+        self,
+        history_factory: HistoryFactory,
+        tmp_path: Path,
+    ) -> None:
+        controller, history = history_factory()
+        controller.on_saved = history.mark_saved
+        controller.save(tmp_path / "song.zip")
+
+        with pytest.raises(RuntimeError), history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(170)
+            raise RuntimeError("boom")
+
+        assert controller.is_dirty is False
+
+    def test_a_project_replaced_midway_rolls_nothing_back(
+        self,
+        history_factory: HistoryFactory,
+    ) -> None:
+        controller, history = history_factory()
+
+        with pytest.raises(RuntimeError), history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(150)
+            controller.new()
+            history.reset()
+            controller.set_tempo(160)
+            raise RuntimeError("boom")
+
+        assert controller.project.settings.tempo == 160
+        assert len(history.entries) == 1
 
 
 class TestCoalescing:

@@ -504,10 +504,10 @@ class ReconstructionCoordinator:
     def follow_replaced_project(self) -> None:
         """Follows the voice the tab shows into a project put in place of the one it belonged to.
 
-        An undo, a redo or a history jump installs a snapshot that keeps every voice's id, so a
-        voice it keeps is shown as restored and one it took out closes. Any other replacement
-        (a new, opened or closed project) lets the voice go, since a reopened file brings back
-        the same ids.
+        An undo, a redo, a history jump or the rollback of a failed gesture installs a snapshot
+        that keeps every voice's id, so a voice it keeps is shown as restored and one it took out
+        closes. Any other replacement (a new, opened or closed project) lets the voice go, since a
+        reopened file brings back the same ids.
         """
         if self._history.is_restoring:
             self._follow(restored=True)
