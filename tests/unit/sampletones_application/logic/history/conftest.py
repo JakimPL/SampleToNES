@@ -73,6 +73,7 @@ def audit_factory(every_part_file: Path) -> AuditFactory:
             budget=budget,
             doors=history,
             settle=immediately,
+            observers=(),
         )
         return AuditedHistory(controller=controller, history=history, audit=audit)
 

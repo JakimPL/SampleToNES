@@ -247,7 +247,8 @@ class HistoryAudit:
     flag follow the model.
 
     Each step runs through ``settle``, which returns once everything the step started has landed:
-    a worker's report as well as the gesture itself.
+    a worker's report as well as the gesture itself. Each of ``observers`` asserts what the tier
+    under test adds to every check, such as the voice a tab shows.
     """
 
     def __init__(
@@ -258,11 +259,13 @@ class HistoryAudit:
         budget: int,
         doors: HistoryDoors,
         settle: Settle,
+        observers: Sequence[VoidCallback],
     ) -> None:
         self._controller = controller
         self._history = history
         self._doors = doors
         self._settle = settle
+        self._observers = observers
         self.model = StackModel(budget=budget)
         self.observe_reset()
 
@@ -351,6 +354,9 @@ class HistoryAudit:
         assert not derived_faults(projects), derived_faults(projects)
         if self._controller.is_open:
             self._check_live(hashes)
+
+        for observer in self._observers:
+            observer()
 
     def _check_shape(self) -> None:
         recorded = [entry.action for entry in self._history.entries]

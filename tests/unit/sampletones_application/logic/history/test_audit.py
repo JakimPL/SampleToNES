@@ -140,6 +140,7 @@ class TestPlantedFaults:
                 budget=AUDIT_BUDGET,
                 doors=OvershootingDoors(audited.history),
                 settle=immediately,
+                observers=(),
             ),
         )
         _raise_tempo(overshooting)

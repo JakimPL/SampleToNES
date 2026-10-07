@@ -42,7 +42,6 @@ from sampletones_application.ui.panels.sequencer import channels as channels_mod
 from sampletones_application.ui.panels.sequencer.order.panel import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
 from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
-from sampletones_application.utils.gui.clipboard.protocol import ClipboardTextCallback
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, NO_MODIFIERS
 from sampletones_application.view_model.sequencer.region import (
     OrderCell,
@@ -74,6 +73,7 @@ from sampletones_shared.exceptions import (
     NoOutputDeviceError,
     PlaybackError,
 )
+from tests.suite.clipboard import FakeTextClipboard
 from tests.suite.gates import HeldGate, held_gate
 from tests.suite.history.wiring import wired_history
 from tests.suite.language import FakeLanguageManager
@@ -1878,45 +1878,6 @@ PULSE1_FRAME: Final[OrderRegion] = OrderRegion(
     first_position=0,
     last_position=0,
 )
-
-
-class FakeTextClipboard:
-    """The desktop's clipboard, held in memory so a test reads what a copy put there.
-
-    A read is answered at once, the way DearPyGui's own clipboard answers, until a case holds the
-    answers back to stand for an application that hands its text over later, or none at all.
-    """
-
-    def __init__(self) -> None:
-        self.text: str = ""
-        self.unanswered: List[ClipboardTextCallback] = []
-        self._answers_held: bool = False
-
-    def read(self, on_text: ClipboardTextCallback) -> None:
-        if self._answers_held:
-            self.unanswered.append(on_text)
-            return
-
-        on_text(self.text)
-
-    def write(self, text: str) -> None:
-        self.text = text
-
-    def hold_answers(self) -> None:
-        self._answers_held = True
-
-    def answer(self) -> None:
-        """Hands the text standing now to every read still waiting, in the order they asked."""
-        self._hand_over(self.text)
-
-    def silence(self) -> None:
-        """Leaves every read still waiting with no answer, the way an owner that never replies does."""
-        self._hand_over(None)
-
-    def _hand_over(self, text: Optional[str]) -> None:
-        waiting, self.unanswered = self.unanswered, []
-        for on_text in waiting:
-            on_text(text)
 
 
 def _text_clipboard(coordinator: SequencerTabCoordinator) -> FakeTextClipboard:

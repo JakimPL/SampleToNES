@@ -116,6 +116,9 @@ currently out of line. An entry leaves when the code meets the contract again.
 
 ## Bugs
 
+* Two samples carrying one reconstruction id are stored as one. A duplicated sample, a file added twice
+  and a project file whose samples share a document keep that id through an edit, and a project file
+  stores one reconstruction per id, so after a save and a reload both samples play the one written last.
 * A silent triangle renders the middle of its wave, where the console holds the step it stopped on. A
   faithful hold needs a DC-blocking output stage at every mix (the reconstruction's render, the sequencer
   and the song render), since nothing drains a held level today.
