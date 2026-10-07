@@ -60,6 +60,14 @@ class MenuBar:
         """Chooses the entry ``item`` of the menu ``group``."""
         self._bridge.ask(lambda: invoke(self._entry(group, item), CallbackQueue.run))
 
+    def choose_tagged(self, tag: str) -> None:
+        """Chooses the entry carrying ``tag``, which reaches an entry whose words another entry shares."""
+        self._bridge.ask(lambda: invoke(tag, CallbackQueue.run))
+
+    def is_tagged_enabled(self, tag: str) -> bool:
+        """Whether the entry carrying ``tag`` answers a press."""
+        return self._bridge.ask(lambda: read_item(tag).enabled)
+
     def open(self, group: MenuElements) -> None:
         """Clicks the header of the menu ``group``, which opens its popup."""
         corner = self.header(group)

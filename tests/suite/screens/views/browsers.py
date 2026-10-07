@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -56,6 +56,21 @@ class FileTree:
     def label(self, row: Item) -> str:
         """The words ``row`` reads."""
         return self._bridge.ask(lambda: read_label(row))
+
+    def rows_above(self, row: Item) -> List[Item]:
+        """The rows ``row`` stands under, outermost first."""
+
+        def read() -> List[Item]:
+            above: List[Item] = []
+            parent = dpg.get_item_parent(row)
+            while parent is not None and dpg.get_item_alias(parent) != self._tree:
+                if _is_tree_row(parent):
+                    above.append(parent)
+                parent = dpg.get_item_parent(parent)
+
+            return above[::-1]
+
+        return self._bridge.ask(read)
 
     def is_open(self, row: Item) -> bool:
         """Whether ``row`` stands open onto the rows under it."""

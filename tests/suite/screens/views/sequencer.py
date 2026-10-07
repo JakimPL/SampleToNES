@@ -10,6 +10,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
 )
 from sampletones_application.tags.sequencer import (
+    TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
     TAG_SEQUENCER_BROWSER_TREE,
     TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
     TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
@@ -224,7 +225,11 @@ class ModuleOptions:
 
 
 class Sequencer:
-    """The Sequencer tab: the tracker, the voices, the history, and song playback."""
+    """The Sequencer tab: the tracker, the voices, the history, and song playback.
+
+    ``frequency_prompt`` is the question a reconstruction made at a rate other than the project's asks
+    before it joins.
+    """
 
     def __init__(
         self,
@@ -237,6 +242,7 @@ class Sequencer:
         self.tracker = Tracker(bridge, hand)
         self.history = History(bridge, hand)
         self.browser = FileTree(bridge, hand, TAG_SEQUENCER_BROWSER_TREE)
+        self.frequency_prompt = Prompt(bridge, hand, TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY)
         self.order = OrderTable(bridge, hand)
         self.module = ModuleOptions(bridge, hand)
 
