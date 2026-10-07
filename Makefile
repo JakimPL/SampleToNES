@@ -57,7 +57,7 @@ calibration:
 
 tracker-playback:
 	$(if $(BITPHASE)$(FAMITRACKER),,$(error Give BITPHASE=folder, FAMITRACKER=path/to/FamiTracker.exe, or both))
-	$(if $(BITPHASE),uv run sampletones tracker-playback bitphase --checkout $(BITPHASE) $(PROJECT_OPTIONS))
+	$(if $(BITPHASE),uv run sampletones tracker-playback bitphase --directory $(BITPHASE) $(PROJECT_OPTIONS))
 	$(if $(FAMITRACKER),uv run sampletones tracker-playback famitracker --executable $(FAMITRACKER) $(PROJECT_OPTIONS))
 
 clean:
