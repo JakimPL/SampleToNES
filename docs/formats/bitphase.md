@@ -310,6 +310,11 @@ over, and the row writes no effect.
 A transpose row reached while no note sounds moves nothing and writes nothing, and neither does one
 following a note-on that was written as a note cut.
 
+**An instrument placed without a pitch takes the channel's.** In-app playback starts such an instrument
+on the pitch the channel is sounding, whichever voice sounded it, and leaves a silent channel silent. Each
+frame is a pattern of its own, so the cell writes the note the channel was sounding in that frame beside
+the instrument, and a row that starts nothing writes an empty cell.
+
 **A note starts at the full level.** In-app playback starts a note whose row states no volume at the full
 level. Playback carries the level a channel last took into every note after it. Such a note therefore
 writes `15` wherever playback reaches it carrying another level, and keeps an empty cell where the

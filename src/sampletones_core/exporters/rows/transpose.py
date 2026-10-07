@@ -38,6 +38,20 @@ class Repitch:
 
 
 @dataclass(frozen=True)
+class NoteStart:
+    """What a note-on the order reaches started, as the song's walk played it.
+
+    Attributes:
+        voice_id: The voice the note-on names.
+        step: The step the voice started at, measured from its reference, or ``None`` where the
+            row started nothing.
+    """
+
+    voice_id: str
+    step: Optional[int]
+
+
+@dataclass(frozen=True)
 class SoundingNote:
     """A note-on the song sounds, with the pitch rows that move it while it sounds.
 
@@ -79,7 +93,7 @@ class _NoteFollower:
 
     channel_name: ChannelName
     instruments: Container[Tuple[str, ChannelName]]
-    starts: Dict[RowPlace, Optional[int]] = field(default_factory=dict)
+    starts: Dict[RowPlace, NoteStart] = field(default_factory=dict)
     notes: List[SoundingNote] = field(default_factory=list)
     sounding: Optional[_OpenNote] = field(default=None)
 
@@ -98,10 +112,10 @@ class _NoteFollower:
                     return
 
                 if not restarted:
-                    self.starts[place] = None
+                    self.starts[place] = NoteStart(voice_id=note_on.voice_id, step=None)
                     return
 
-                self.starts[place] = performance.transpose
+                self.starts[place] = NoteStart(voice_id=note_on.voice_id, step=performance.transpose)
                 self.sounding = _OpenNote(
                     place=place,
                     voice_id=note_on.voice_id,
@@ -149,12 +163,12 @@ class PitchWalk:
     counted across frames.
 
     Attributes:
-        starts: Per note-on the order reaches and the export has an instrument for, the step it
-            started at, or ``None`` where it started nothing.
+        starts: Per note-on the order reaches and the export has an instrument for, what it
+            started, in the order the song plays them.
         notes: The notes at least one pitch row moves, in the order the song plays them.
     """
 
-    starts: Dict[RowPlace, Optional[int]]
+    starts: Dict[RowPlace, NoteStart]
     notes: Tuple[SoundingNote, ...]
 
     @classmethod
@@ -196,21 +210,13 @@ class PitchWalk:
 
         return cls(starts=dict(follower.starts), notes=follower.finish())
 
-    def pattern_starts(self) -> Dict[PatternCell, Optional[int]]:
-        """The step each pattern cell's note-on starts at, keyed by pattern index and row.
-
-        A format storing a pattern once for every frame that plays it writes one note in the cell,
-        so the first frame reaching the cell decides what it starts at.
-        """
-        starts: Dict[PatternCell, Optional[int]] = {}
-        for place, step in self.starts.items():
-            starts.setdefault((place.pattern_index, place.row_index), step)
-
-        return starts
-
     def frame_starts(self, order_position: int) -> Dict[int, Optional[int]]:
         """The step each note-on of one frame starts at, keyed by row."""
-        return {place.row_index: step for place, step in self.starts.items() if place.order_position == order_position}
+        return {
+            place.row_index: start.step
+            for place, start in self.starts.items()
+            if place.order_position == order_position
+        }
 
 
 def unreached_start(

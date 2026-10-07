@@ -31,8 +31,6 @@ from sampletones_core.formats.famitracker.specification.patterns import (
     EMPTY_EFFECT_PARAM,
     EMPTY_INSTRUMENT,
     EMPTY_VOLUME,
-    NOTE_RANGE,
-    PITCH_OCTAVE_OFFSET,
     NoteValue,
 )
 from sampletones_core.formats.famitracker.specification.sequences import (
@@ -56,7 +54,7 @@ from sampletones_core.structures import IdentifiedCollection
 from sampletones_core.utils.frequencies import transpose_pitch
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
-from tests.suite.famitracker import FAMITRACKER_OPENING_VOLUME, column_volume
+from tests.suite.famitracker import FAMITRACKER_OPENING_VOLUME, cell_pitch, column_volume
 from tests.suite.performance import song_row_volumes
 
 from .conftest import (
@@ -384,11 +382,6 @@ def pattern_cell(module: FamiTrackerModule, channel: ChannelId, index: int, row_
         pattern for pattern in module.track.patterns if pattern.channel == channel and pattern.index == index
     )
     return next(row for row in pattern.rows if row.row_number == row_number)
-
-
-def cell_pitch(cell: RowCell) -> int:
-    """The pitch a pattern cell's note and octave name."""
-    return (cell.octave + PITCH_OCTAVE_OFFSET) * NOTE_RANGE + cell.note - int(NoteValue.C)
 
 
 @pytest.fixture(name="lead")

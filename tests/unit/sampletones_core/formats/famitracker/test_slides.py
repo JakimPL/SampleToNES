@@ -4,15 +4,13 @@ from typing import Final, List, Optional, Tuple
 import pytest
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.constants.general import MAX_PERIOD, MAX_PITCH, MIN_PLAYED_PITCH, NUM_PERIODS
+from sampletones_core.constants.general import MAX_PITCH, MIN_PLAYED_PITCH, NUM_PERIODS
 from sampletones_core.exporters.skipped import BuiltDocument, SkippedRow, SkipReason
 from sampletones_core.formats.famitracker.builder import build_module
 from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
 from sampletones_core.formats.famitracker.model.module import FamiTrackerModule
 from sampletones_core.formats.famitracker.model.pattern import RowCell
-from sampletones_core.formats.famitracker.module import module_to_ftm_bytes
 from sampletones_core.formats.famitracker.slides import slide_effect
-from sampletones_core.formats.famitracker.specification.channels import CHANNEL_TO_ID
 from sampletones_core.formats.famitracker.specification.patterns import (
     EMPTY_EFFECT,
     EMPTY_INSTRUMENT,
@@ -28,11 +26,9 @@ from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.timing.bounds import SONG_TICK_BOUNDS
-from sampletones_core.timing.song import SongTiming
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
-from tests.suite.famitracker import parse_ftm, played_notes
+from tests.suite.famitracker import module_cell, replayed_pitches
 from tests.suite.transposes import (
     contour_sample,
     flat_sample,
@@ -66,7 +62,6 @@ SUBMERGED_TRANSPOSE: Final[int] = -14
 SOARING_TRANSPOSE: Final[int] = 10
 NOISE_PERIOD: Final[int] = 3
 NOISE_TRANSPOSES: Final[Tuple[int, ...]] = (-5, 12, 40)
-PITCH_OFFSET: Final[int] = 24
 SHORT_ORDER: Final[Tuple[Optional[int], ...]] = (0, 1, 2)
 
 
@@ -76,13 +71,7 @@ def cell(
     row_number: int,
     channel: ChannelName = CHANNEL,
 ) -> Optional[RowCell]:
-    """The cell a pattern stores at a row, or ``None`` where the row is empty."""
-    channel_id = CHANNEL_TO_ID[channel]
-    for pattern in document.track.patterns:
-        if pattern.channel == channel_id and pattern.index == pattern_index:
-            return next((row for row in pattern.rows if row.row_number == row_number), None)
-
-    return None
+    return module_cell(document, channel, pattern_index, row_number)
 
 
 def slide_at(
@@ -311,19 +300,6 @@ class TestTheInstrumentsASlideReaches:
         assert arpeggio.loop_point == NO_LOOP_POINT
 
 
-def replayed(document: FamiTrackerModule, project: Project, channel_name: ChannelName) -> List[Optional[int]]:
-    """What FamiTracker sounds on one channel each tick: the pitch, or on noise the period register."""
-    notes = played_notes(
-        parse_ftm(module_to_ftm_bytes(document)),
-        int(CHANNEL_TO_ID[channel_name]),
-        SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS),
-    )
-    if channel_name == ChannelName.NOISE:
-        return [None if value is None else MAX_PERIOD - value for value in notes]
-
-    return [None if value is None else value + PITCH_OFFSET for value in notes]
-
-
 class TestATransposedSongSoundsTheSongsPitch(BaseTestSuite):
     """Played the way FamiTracker reads its rows, a song whose transpose rows move a sounding note, cross
     frames under a groove, and meet a note-on starting over sounds the pitch the song's walk sounds on
@@ -373,7 +349,7 @@ class TestATransposedSongSoundsTheSongsPitch(BaseTestSuite):
         )
 
         sounded = sounded_pitches(project, test_case.channel)
-        played = replayed(build_module(project).document, project, test_case.channel)
+        played = replayed_pitches(build_module(project).document, project, test_case.channel)
 
         assert len(played) == len(sounded)
         assert [tick for tick, pitch in enumerate(sounded) if pitch is not None and played[tick] != pitch] == []

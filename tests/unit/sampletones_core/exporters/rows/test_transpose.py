@@ -4,6 +4,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.exporters.rows.levels import RowPlace
 from sampletones_core.exporters.rows.transpose import (
+    NoteStart,
     PitchWalk,
     Repitch,
     SoundingNote,
@@ -88,6 +89,10 @@ def _walk(song: Song) -> PitchWalk:
     return PitchWalk.walk(song, CHANNEL, INSTRUMENTS, LOOKUP)
 
 
+def _started(step: Optional[int], voice_id: str = VOICE) -> NoteStart:
+    return NoteStart(voice_id=voice_id, step=step)
+
+
 def _step_to(note: int, voice: VoiceUnion = SAMPLE) -> int:
     return note - voice_reference(voice, CHANNEL)
 
@@ -98,48 +103,48 @@ class TestWhatEveryNoteOnStartsAt:
     def test_a_step_starts_at_itself(self) -> None:
         walk = _walk(_song({0: _rows((0, _note(Step(value=NOTE_ON_STEP))))}, [0]))
 
-        assert walk.starts == {_place(0, 0, 0): NOTE_ON_STEP}
+        assert walk.starts == {_place(0, 0, 0): _started(NOTE_ON_STEP)}
 
     def test_a_note_starts_at_the_step_reaching_it(self) -> None:
         walk = _walk(_song({0: _rows((0, _note(Note(value=TYPED_NOTE))))}, [0]))
 
-        assert walk.starts == {_place(0, 0, 0): _step_to(TYPED_NOTE)}
+        assert walk.starts == {_place(0, 0, 0): _started(_step_to(TYPED_NOTE))}
 
     def test_a_sample_stating_no_pitch_starts_as_recorded_whatever_sounded_before(self) -> None:
         walk = _walk(_song({0: _rows((0, _note(Note(value=TYPED_NOTE))), (2, _note()))}, [0]))
 
-        assert walk.starts[_place(0, 0, 2)] == 0
+        assert walk.starts[_place(0, 0, 2)] == _started(0)
 
     def test_an_instrument_stating_no_pitch_starts_at_the_pitch_the_sample_was_sounding(self) -> None:
         walk = _walk(_song({0: _rows((0, _note(Note(value=TYPED_NOTE))), (2, _note(voice_id=LEAD.id)))}, [0]))
 
-        assert walk.starts[_place(0, 0, 2)] == _step_to(TYPED_NOTE, LEAD)
+        assert walk.starts[_place(0, 0, 2)] == _started(_step_to(TYPED_NOTE, LEAD), LEAD.id)
 
     def test_the_pitch_an_instrument_goes_on_from_follows_a_bend(self) -> None:
         song = _song({0: _rows((0, _note()), (1, Row(pitch=Note(value=BENT_NOTE))), (2, _note(voice_id=LEAD.id)))}, [0])
 
         walk = _walk(song)
 
-        assert walk.starts[_place(0, 0, 2)] == _step_to(BENT_NOTE, LEAD)
+        assert walk.starts[_place(0, 0, 2)] == _started(_step_to(BENT_NOTE, LEAD), LEAD.id)
 
     def test_an_instrument_stating_no_pitch_after_a_note_off_starts_nothing(self) -> None:
         song = _song({0: _rows((0, _note()), (1, Row(command=NoteOff())), (2, _note(voice_id=LEAD.id)))}, [0])
 
         walk = _walk(song)
 
-        assert walk.starts[_place(0, 0, 2)] is None
+        assert walk.starts[_place(0, 0, 2)] == _started(None, LEAD.id)
 
     def test_an_instrument_stating_no_pitch_on_a_fresh_channel_starts_nothing(self) -> None:
         walk = _walk(_song({0: _rows((0, _note(voice_id=LEAD.id)))}, [0]))
 
-        assert walk.starts == {_place(0, 0, 0): None}
+        assert walk.starts == {_place(0, 0, 0): _started(None, LEAD.id)}
 
     def test_the_pitch_an_instrument_goes_on_from_crosses_frames(self) -> None:
         song = _song({0: _rows((0, _note(Step(value=NOTE_ON_STEP)))), 1: _rows((0, _note(voice_id=LEAD.id)))}, [0, 1])
 
         walk = _walk(song)
 
-        assert walk.starts[_place(1, 1, 0)] == NOTE_ON_STEP
+        assert walk.starts[_place(1, 1, 0)] == _started(NOTE_ON_STEP, LEAD.id)
 
     def test_a_pattern_two_frames_play_after_different_pitches_starts_differently_in_each(self) -> None:
         song = _song(
@@ -153,9 +158,8 @@ class TestWhatEveryNoteOnStartsAt:
 
         walk = _walk(song)
 
-        assert walk.starts[_place(1, 2, 0)] == RAISED
-        assert walk.starts[_place(3, 2, 0)] == LOWERED
-        assert walk.pattern_starts()[(2, 0)] == RAISED
+        assert walk.starts[_place(1, 2, 0)] == _started(RAISED, LEAD.id)
+        assert walk.starts[_place(3, 2, 0)] == _started(LOWERED, LEAD.id)
 
     def test_a_voice_without_an_instrument_on_the_channel_records_no_start_and_sounds_on(self) -> None:
         """The export writes a note cut for it, while the song goes on sounding it."""
@@ -165,7 +169,7 @@ class TestWhatEveryNoteOnStartsAt:
 
         walk = _walk(song)
 
-        assert walk.starts == {_place(0, 0, 2): _step_to(TYPED_NOTE, LEAD)}
+        assert walk.starts == {_place(0, 0, 2): _started(_step_to(TYPED_NOTE, LEAD), LEAD.id)}
 
     def test_a_voice_the_project_lacks_leaves_a_silent_channel(self) -> None:
         song = _song(
@@ -174,7 +178,10 @@ class TestWhatEveryNoteOnStartsAt:
 
         walk = _walk(song)
 
-        assert walk.starts == {_place(0, 0, 0): _step_to(TYPED_NOTE), _place(0, 0, 2): None}
+        assert walk.starts == {
+            _place(0, 0, 0): _started(_step_to(TYPED_NOTE)),
+            _place(0, 0, 2): _started(None, LEAD.id),
+        }
 
     def test_the_starts_of_one_frame_are_read_by_row(self) -> None:
         song = _song({0: _rows((0, _note(Step(value=RAISED))), (2, _note(Step(value=LOWERED))))}, [0, 0])

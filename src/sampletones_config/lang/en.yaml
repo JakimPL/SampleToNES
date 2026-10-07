@@ -87,6 +87,7 @@ global.dialog.message.nsf_project_exported_successfully: "NSF program exported s
 global.dialog.message.nsf_project_export_failed: "Failed to export NSF program."
 global.dialog.message.export_skipped_rows: "These rows play a voice on a channel it doesn't use. The file silences the channel there instead:"
 global.dialog.message.export_untransposed_rows: "These rows change the pitch of a playing note. The file can't make that change there, so the note keeps its old pitch:"
+global.dialog.message.export_carried_pitch_rows: "These rows start an instrument at the pitch already playing. Their pattern plays in several frames, and the file keeps what the first frame plays there, so these rows sound differently:"
 global.dialog.template.export_skipped_row: "Frame {frame}, {channel}, row {row}: {voice}"
 global.dialog.template.export_skipped_rows_more: "and {count} more"
 global.dialog.template.export_truncated: "Instruments cut short: {instruments}. The file keeps the first {frames} ticks of each one."

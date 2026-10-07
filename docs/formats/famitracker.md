@@ -333,6 +333,13 @@ needing a different slide, is written without its slide there. The first frame r
 note sounding decides its slide. The export reports each such row by its frame, channel and row, beside
 the rows written as note cuts, and the rows after it slide from the note the channel holds.
 
+**An instrument placed without a pitch takes the channel's.** In-app playback starts such an instrument
+on the pitch the channel is sounding, whichever voice sounded it, and leaves a silent channel silent. The
+cell writes that note beside the instrument, so FamiTracker triggers the instrument where the song does,
+and a row that starts nothing writes an empty cell. A module stores a pattern once for every frame that
+plays it, so the first frame reaching the cell decides its note, and a later frame reaching it after
+another pitch, or silent, is reported beside the rows above.
+
 **What a row's volume cell holds.** A row naming a volume writes it. In-app playback starts a note whose
 row states no volume at the full level, while FamiTracker carries the level a channel last took into every
 note after it. Such a note therefore writes `15` wherever FamiTracker reaches it carrying another level,
@@ -402,7 +409,8 @@ that ends its note.
 
 A row that names a voice on a channel the voice has no instrument for plays nothing in the song, so the
 exporter writes a note cut on it and reports the row by its frame, channel and row. The project export
-dialog lists those rows, and the transpose rows written without their slide under a heading of their own.
+dialog lists those rows, the transpose rows written without their slide, and the instrument rows written
+at another frame's pitch, each under a heading of their own.
 
 The exporter also reserves an empty pattern index per channel (`max used index + 1`) for order slots the
 song leaves unset. A channel that already fills indices up to 127 leaves no room for it, and the exporter

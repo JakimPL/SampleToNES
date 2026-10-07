@@ -116,6 +116,7 @@ class TestReportText:
                 _skipped(SkipReason.NO_INSTRUMENT, 0),
                 _skipped(SkipReason.UNREACHED_TRANSPOSE, 1),
                 _skipped(SkipReason.NO_INSTRUMENT, 2),
+                _skipped(SkipReason.CARRIED_PITCH, 3),
             ),
             truncation=EnvelopeTruncation(frames=512, source_frames=601, instruments=1),
         )
@@ -126,6 +127,7 @@ class TestReportText:
         assert TIMING_DIFFERS.format(tick=1, frame=0, row=1, engine_frame=0, engine_row=0) in text
         assert SKIPPED_ROWS[SkipReason.NO_INSTRUMENT].format(count=2) in text
         assert SKIPPED_ROWS[SkipReason.UNREACHED_TRANSPOSE].format(count=1) in text
+        assert SKIPPED_ROWS[SkipReason.CARRIED_PITCH].format(count=1) in text
         assert SHORTENED.format(instruments=1, frames=512, source_frames=601) in text
 
 

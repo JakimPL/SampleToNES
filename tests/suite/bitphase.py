@@ -4,6 +4,19 @@ import math
 from dataclasses import dataclass
 from typing import Any, Dict, Final, List, Optional, Tuple
 
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.general import MIN_PLAYED_PITCH
+from sampletones_core.formats.bitphase.btp import project_to_bytes
+from sampletones_core.formats.bitphase.model.pattern import NoteCell
+from sampletones_core.formats.bitphase.model.project import BitphaseProject
+from sampletones_core.formats.bitphase.specification.channels import CHANNEL_LABELS, CHANNEL_TO_INDEX
+from sampletones_core.formats.bitphase.specification.patterns import (
+    FIRST_OCTAVE,
+    NOTE_INDEX_PITCH_OFFSET,
+    NOTE_RANGE,
+    NoteName,
+)
+
 BITPHASE_DEFAULT_NAME: Final[str] = ""
 BITPHASE_DEFAULT_AUTHOR: Final[str] = ""
 BITPHASE_DEFAULT_LOOP_POINT: Final[int] = 0
@@ -642,3 +655,18 @@ def played_notes(document: LoadedProject, channel_index: int) -> List[Optional[i
             notes.extend(replay.tick(song.tuning_table) for _ in range(speed))
 
     return notes
+
+
+def cell_pitch(note: NoteCell) -> int:
+    """The pitch a pattern cell's note column names."""
+    return (note.name - int(NoteName.C)) + (note.octave - FIRST_OCTAVE) * NOTE_RANGE + NOTE_INDEX_PITCH_OFFSET
+
+
+def replayed_pitches(document: BitphaseProject, channel_name: ChannelName) -> List[Optional[int]]:
+    """What Bitphase sounds on one channel each tick: the pitch, or on noise the period register."""
+    loaded = parse_btp(project_to_bytes(document), list(CHANNEL_LABELS))
+    notes = played_notes(loaded, int(CHANNEL_TO_INDEX[channel_name]))
+    if channel_name == ChannelName.NOISE:
+        return [None if index is None else noise_register(index) for index in notes]
+
+    return [None if index is None else index + MIN_PLAYED_PITCH for index in notes]

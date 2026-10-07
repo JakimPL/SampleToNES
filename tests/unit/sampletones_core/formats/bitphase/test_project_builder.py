@@ -29,7 +29,6 @@ from sampletones_core.formats.bitphase.specification.effects import (
     EffectId,
 )
 from sampletones_core.formats.bitphase.specification.patterns import (
-    FIRST_OCTAVE,
     FULL_VOLUME,
     MAX_NOTE_INDEX,
     MIN_NOTE_INDEX,
@@ -37,7 +36,6 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     NO_TABLE_CHANGE,
     NO_VOLUME_CHANGE,
     NOTE_INDEX_PITCH_OFFSET,
-    NOTE_RANGE,
     SYMBOL_BASE,
     TABLE_COLUMN_OFFSET,
     VOLUME_OFF,
@@ -66,7 +64,7 @@ from sampletones_core.structures import IdentifiedCollection
 from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_core.utils.frequencies import transpose_pitch
 from tests.suite.base import BaseTestSuite
-from tests.suite.bitphase import BITPHASE_OPENING_PATTERN_VOLUME, pattern_volume
+from tests.suite.bitphase import BITPHASE_OPENING_PATTERN_VOLUME, cell_pitch, pattern_volume
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.performance import song_row_volumes
 from tests.suite.stems import single_entry_stems_data
@@ -584,11 +582,6 @@ def played_volumes(document: BitphaseProject, channel: ChannelIndex) -> List[int
                 levels.append(level)
 
     return levels
-
-
-def cell_pitch(note: NoteCell) -> int:
-    """The pitch a pattern cell's note column names."""
-    return (note.name - int(NoteName.C)) + (note.octave - FIRST_OCTAVE) * NOTE_RANGE + NOTE_INDEX_PITCH_OFFSET
 
 
 class TestTheLevelsAPlayedSongCarries:

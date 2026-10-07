@@ -2,7 +2,13 @@ import struct
 from dataclasses import dataclass, field
 from typing import Dict, Final, List, Optional, Tuple
 
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.general import MAX_PERIOD, MIN_PLAYED_PITCH
+from sampletones_core.formats.famitracker.model.module import FamiTrackerModule
+from sampletones_core.formats.famitracker.model.pattern import RowCell
+from sampletones_core.formats.famitracker.module import module_to_ftm_bytes
 from sampletones_core.formats.famitracker.specification.blocks import BLOCK_NAME_LENGTH
+from sampletones_core.formats.famitracker.specification.channels import CHANNEL_TO_ID
 from sampletones_core.formats.famitracker.specification.file import (
     FTM_END_MARKER,
     FTM_MAGIC,
@@ -11,9 +17,12 @@ from sampletones_core.formats.famitracker.specification.instruments import (
     DPCM_KEY_ASSIGNMENTS,
     DPCM_KEY_BYTES,
 )
+from sampletones_core.formats.famitracker.specification.patterns import NOTE_RANGE, PITCH_OCTAVE_OFFSET, NoteValue
 from sampletones_core.formats.famitracker.specification.sequences import (
     SEQUENCE_COUNT_2A03,
 )
+from sampletones_core.project.project import Project
+from sampletones_core.timing.bounds import SONG_TICK_BOUNDS
 from sampletones_core.timing.song import SongTiming
 
 FAMITRACKER_OPENING_VOLUME: Final[int] = 15
@@ -524,3 +533,40 @@ def parse_ftm(data: bytes) -> ParsedModule:
 
 
 EXPECTED_SEQUENCE_COUNT = SEQUENCE_COUNT_2A03
+
+
+def module_cell(
+    document: FamiTrackerModule,
+    channel_name: ChannelName,
+    pattern_index: int,
+    row_number: int,
+) -> Optional[RowCell]:
+    """The cell a module's pattern stores at a row, or ``None`` where the row is empty."""
+    channel_id = CHANNEL_TO_ID[channel_name]
+    for pattern in document.track.patterns:
+        if pattern.channel == channel_id and pattern.index == pattern_index:
+            return next((row for row in pattern.rows if row.row_number == row_number), None)
+
+    return None
+
+
+def cell_pitch(cell: RowCell) -> int:
+    """The pitch a pattern cell's note and octave name."""
+    return (cell.octave + PITCH_OCTAVE_OFFSET) * NOTE_RANGE + cell.note - int(NoteValue.C)
+
+
+def replayed_pitches(
+    document: FamiTrackerModule,
+    project: Project,
+    channel_name: ChannelName,
+) -> List[Optional[int]]:
+    """What FamiTracker sounds on one channel each tick: the pitch, or on noise the period register."""
+    notes = played_notes(
+        parse_ftm(module_to_ftm_bytes(document)),
+        int(CHANNEL_TO_ID[channel_name]),
+        SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS),
+    )
+    if channel_name == ChannelName.NOISE:
+        return [None if value is None else MAX_PERIOD - value for value in notes]
+
+    return [None if value is None else value + MIN_PLAYED_PITCH for value in notes]

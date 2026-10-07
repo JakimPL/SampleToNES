@@ -6,7 +6,7 @@ import pytest
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PLAYED_PITCH, NUM_PERIODS
 from sampletones_core.formats.bitphase.btp import project_to_bytes
-from sampletones_core.formats.bitphase.builder import BITPHASE_TICK_BOUNDS, project_to_bitphase
+from sampletones_core.formats.bitphase.builder import BITPHASE_TICK_BOUNDS, build_bitphase, project_to_bitphase
 from sampletones_core.formats.bitphase.model.pattern import BitphaseRow, EffectCell
 from sampletones_core.formats.bitphase.model.project import BitphaseProject
 from sampletones_core.formats.bitphase.model.table import BitphaseTable
@@ -33,14 +33,17 @@ from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
+from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import voice_reference
 from sampletones_core.timing import SongTiming
 from tests.suite.base import BaseTestSuite
-from tests.suite.bitphase import noise_register, note_value, parse_btp, played_notes
+from tests.suite.bitphase import cell_pitch, noise_register, note_value, parse_btp, played_notes, replayed_pitches
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.transposes import (
     TRANSPOSED_ROWS_PER_PATTERN,
     contour_sample,
+    flat_instrument,
     flat_sample,
     note,
     one_channel_project,
@@ -63,7 +66,6 @@ LOWERED_ROW: Final[int] = 7
 RESET_ROW: Final[int] = 10
 AFTER_RESET_ROW: Final[int] = 13
 LATE_NOTE_ROW: Final[int] = 12
-PITCH_OFFSET: Final[int] = 24
 FLAT_PITCH: Final[int] = 40
 FLAT_FRAMES: Final[int] = 8
 SUBMERGED_TRANSPOSE: Final[int] = -20
@@ -71,6 +73,13 @@ LOW_FLAT_PITCH: Final[int] = 36
 NOISE_PERIOD: Final[int] = 3
 NOISE_TRANSPOSE: Final[int] = -5
 LATE_FRAME: Final[int] = 3
+ORGAN_PITCH: Final[int] = 72
+ORGAN_PERIOD: Final[int] = 6
+BEND_ROW: Final[int] = 2
+INSTRUMENT_ROW: Final[int] = 6
+LATER_BEND_ROW: Final[int] = 9
+LATER_NOTE_OFF_ROW: Final[int] = 11
+SILENT_INSTRUMENT_ROW: Final[int] = 13
 SHORT_ORDER: Final[Tuple[Optional[int], ...]] = (0, 1, 2)
 LONG_ORDER: Final[Tuple[Optional[int], ...]] = (0, None, None, 1, 2)
 
@@ -379,14 +388,112 @@ class TestANoiseTransposeWalksThePeriods:
         assert noise_register(index) == MAX_PERIOD - (NOISE_PERIOD + NOISE_TRANSPOSE) % NUM_PERIODS
 
 
-def replayed(document: BitphaseProject, channel_name: ChannelName) -> List[Optional[int]]:
-    """What Bitphase sounds on one channel each tick: the pitch, or on noise the period register."""
-    loaded = parse_btp(project_to_bytes(document), list(CHANNEL_LABELS))
-    notes = played_notes(loaded, int(CHANNEL_TO_INDEX[channel_name]))
-    if channel_name == ChannelName.NOISE:
-        return [None if index is None else noise_register(index) for index in notes]
+class TestAnInstrumentPlacedWithoutAPitch:
+    """The song starts such an instrument on the pitch the channel is sounding, whichever voice sounded
+    it, and leaves a silent channel silent. Each frame is a pattern of its own, so the cell writes the
+    note the channel was sounding in that frame beside the instrument, and stays empty where the
+    song sounds none.
+    """
 
-    return [None if index is None else index + PITCH_OFFSET for index in notes]
+    def test_the_cell_writes_the_note_the_sample_was_sounding(self, lead: Sample) -> None:
+        organ = flat_instrument(CHANNEL, ORGAN_PITCH)
+        project = one_channel_project(
+            (lead, organ),
+            CHANNEL,
+            {0: rows_with((0, note(lead, NOTE_TRANSPOSE)), (INSTRUMENT_ROW, note(organ)))},
+            [0],
+            settings=UNIFORM_SETTINGS,
+        )
+
+        row = channel_row(project_to_bitphase(project), 0, INSTRUMENT_ROW)
+
+        assert cell_pitch(row.note) == voice_reference(lead, CHANNEL) + NOTE_TRANSPOSE
+        assert row.instrument != NO_INSTRUMENT_CHANGE
+
+    def test_a_silent_channel_leaves_the_cell_empty(self) -> None:
+        organ = flat_instrument(CHANNEL, ORGAN_PITCH)
+        project = one_channel_project(
+            (organ,),
+            CHANNEL,
+            {0: rows_with((INSTRUMENT_ROW, note(organ)))},
+            [0],
+            settings=UNIFORM_SETTINGS,
+        )
+
+        built = build_bitphase(project)
+
+        assert channel_row(built.document, 0, INSTRUMENT_ROW) == BitphaseRow()
+        assert built.skipped_rows == ()
+
+    def test_each_frame_reaching_the_cell_writes_the_pitch_it_sounds_there(self, lead: Sample) -> None:
+        organ = flat_instrument(CHANNEL, ORGAN_PITCH)
+        project = one_channel_project(
+            (lead, organ),
+            CHANNEL,
+            {
+                0: rows_with((0, note(lead, RAISED))),
+                1: rows_with((0, note(lead, LOWERED))),
+                2: rows_with((INSTRUMENT_ROW, note(organ))),
+            },
+            [0, 2, 1, 2],
+            settings=UNIFORM_SETTINGS,
+        )
+
+        built = build_bitphase(project)
+
+        assert (
+            cell_pitch(channel_row(built.document, 1, INSTRUMENT_ROW).note) == voice_reference(lead, CHANNEL) + RAISED
+        )
+        assert (
+            cell_pitch(channel_row(built.document, 3, INSTRUMENT_ROW).note) == voice_reference(lead, CHANNEL) + LOWERED
+        )
+        assert built.skipped_rows == ()
+
+
+class TestAnInstrumentTakingTheChannelsPitchSoundsTheSongsPitch(BaseTestSuite):
+    """Played the way Bitphase reads its rows, an instrument that takes the pitch a sample left, is bent
+    afterwards, and is placed again on a silent channel sounds the pitch the song's walk sounds on every
+    tick the song sounds.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        channel: ChannelName
+
+    test_cases: Tuple["TestAnInstrumentTakingTheChannelsPitchSoundsTheSongsPitch.TestCase", ...] = (
+        TestCase(label="pulse", channel=ChannelName.PULSE1),
+        TestCase(label="triangle", channel=ChannelName.TRIANGLE),
+        TestCase(label="noise", channel=ChannelName.NOISE),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_every_sounding_tick_plays_the_songs_pitch(
+        self,
+        test_case: "TestAnInstrumentTakingTheChannelsPitchSoundsTheSongsPitch.TestCase",
+    ) -> None:
+        lead = contour_sample(test_case.channel, FRAMES)
+        organ = flat_instrument(
+            test_case.channel,
+            ORGAN_PERIOD if test_case.channel == ChannelName.NOISE else ORGAN_PITCH,
+        )
+        patterns = {
+            0: rows_with(
+                (0, note(lead, NOTE_TRANSPOSE)),
+                (BEND_ROW, Row(pitch=Step(value=RAISED))),
+                (INSTRUMENT_ROW, note(organ)),
+                (LATER_BEND_ROW, Row(pitch=Step(value=LOWERED))),
+                (LATER_NOTE_OFF_ROW, Row(command=NoteOff())),
+                (SILENT_INSTRUMENT_ROW, note(organ)),
+            ),
+        }
+        project = one_channel_project((lead, organ), test_case.channel, patterns, [0], settings=UNIFORM_SETTINGS)
+
+        sounded = sounded_pitches(project, test_case.channel)
+        played = replayed_pitches(project_to_bitphase(project), test_case.channel)
+
+        assert len(played) == len(sounded)
+        assert [tick for tick, pitch in enumerate(sounded) if pitch is not None and played[tick] != pitch] == []
+        assert played[-1] is None
 
 
 class TestATransposedSongSoundsTheSongsPitch(BaseTestSuite):
@@ -436,7 +543,7 @@ class TestATransposedSongSoundsTheSongsPitch(BaseTestSuite):
         )
 
         sounded = sounded_pitches(project, test_case.channel)
-        played = replayed(project_to_bitphase(project), test_case.channel)
+        played = replayed_pitches(project_to_bitphase(project), test_case.channel)
 
         assert len(played) == len(sounded)
         assert [tick for tick, pitch in enumerate(sounded) if pitch is not None and played[tick] != pitch] == []

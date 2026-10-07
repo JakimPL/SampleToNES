@@ -2,6 +2,8 @@ from typing import Dict, Final, List, Mapping, Optional, Sequence, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_PERIOD
+from sampletones_core.features import RESTING_REFERENCE_PERIOD, RESTING_REFERENCE_PITCH, speaks_in_periods
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.instructions import (
     InstructionUnion,
     NoiseInstruction,
@@ -16,8 +18,11 @@ from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.song import Song
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import VoiceUnion
 from tests.suite.performance import reconstruction_of
 
 TRANSPOSED_ROWS_PER_PATTERN: Final[int] = 16
@@ -79,6 +84,20 @@ def flat_sample(channel_name: ChannelName, value: int, frames: int) -> Sample:
     return Sample(name=f"Flat ({channel_name})", reconstruction=reconstruction_of(channel_name, instructions))
 
 
+def flat_instrument(channel_name: ChannelName, value: int) -> Instrument:
+    """An instrument resting at one pitch, or one period on noise, holding the contour volume.
+
+    It writes no contour of its own, so every tick sounds the pitch its row started it at, which
+    is what a case about an instrument taking the channel's pitch reads back.
+    """
+    return Instrument(
+        name=f"Flat instrument ({channel_name})",
+        envelopes=InstrumentEnvelopes(volume=Envelope(items=(CONTOUR_VOLUME,))),
+        initial_pitch=RESTING_REFERENCE_PITCH if speaks_in_periods(channel_name) else value,
+        initial_period=value if speaks_in_periods(channel_name) else RESTING_REFERENCE_PERIOD,
+    )
+
+
 def rows_with(*cells: Tuple[int, Row]) -> List[Row]:
     """A pattern's rows, blank apart from the ones given by their index."""
     rows = [Row() for _ in range(TRANSPOSED_ROWS_PER_PATTERN)]
@@ -88,13 +107,13 @@ def rows_with(*cells: Tuple[int, Row]) -> List[Row]:
     return rows
 
 
-def note(voice: Sample, transpose: Optional[int] = None) -> Row:
+def note(voice: VoiceUnion, transpose: Optional[int] = None) -> Row:
     """A row starting ``voice``, at ``transpose`` where one is given."""
     return Row(command=NoteOn(voice_id=voice.id), pitch=Step(value=transpose) if transpose is not None else None)
 
 
 def one_channel_project(
-    voices: Sequence[Sample],
+    voices: Sequence[VoiceUnion],
     channel_name: ChannelName,
     patterns: Mapping[int, List[Row]],
     order: Sequence[Optional[int]],
