@@ -81,6 +81,15 @@ dimension the import starts carrying.
 * A history of its own for a standalone reconstruction document, one loaded from disk and not opened as a
   project sample. An edit to such a document is undoable nowhere ([undo](application/undo.md)), so an edit
   that silences a channel or lets a recording go is reversible only by reloading the file.
+* A channel edit's history entry owns every instruction of the channel, though the edit changes a few
+  frames. A rebuild makes each frame of the channel anew, so on a four-channel conversion an entry has
+  about a quarter of the document. Keeping the old instruction wherever the rebuilt one equals it brings an
+  entry down to the frames the edit changed ([undo](application/undo.md)).
+* Strict history hashes the whole song and the whole new document at every commit. On a four-channel
+  conversion of 13,677 frames, hashing the document costs more than twice the rebuild of the edited
+  channel, and the song's hash grows with the song. Development runs and the test suite pay for it.
+  Memoizing each pattern's and each stream's hash by identity, as each document's is memoized now, brings
+  a commit down to the parts its gesture replaced.
 * Improve performance of the browser's favorite scan of the entire tree per click
 * The `fft` and `logfft` analysis floors. Their window spans two cycles of the pulse's lowest note, so the
   triangle's lowest octave reaches them by its harmonics alone. Covering it doubles their window and
