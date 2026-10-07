@@ -141,6 +141,9 @@ class HistoryManager(CallbackMixin):
         one cell — records a single entry whose undo restores the state before
         the first gesture of the run. Any undo, redo, or jump breaks the run, and a
         rollback leaves it going, since the entry it continues stays as it was.
+
+        What the gesture does outside the project waits on its fate through
+        :meth:`after_landing`.
         """
         self._begin(action, detail, coalesce)
         completed = False
@@ -149,6 +152,22 @@ class HistoryManager(CallbackMixin):
             completed = True
         finally:
             self._end(completed=completed)
+
+    def after_landing(self, effect: VoidCallback) -> None:
+        """Runs ``effect`` once the gesture in progress has landed, and at once between gestures.
+
+        A gesture reaches beyond the project as well: a cut fills the clipboard, and a removal
+        closes the voice the Reconstructions tab shows. A rollback reinstalls the project alone, so
+        an effect outside it waits for the outermost scope. A gesture that completes runs its
+        effects once its entry is recorded, in the order they were handed in, and one that ends by
+        an exception drops them. An undo, a redo, a jump and the reinstall of a rollback run between
+        gestures, so an effect they give rise to runs at once.
+        """
+        if self._pending is None:
+            effect()
+            return
+
+        self._pending.effects.append(effect)
 
     def handle_mutation(self) -> None:
         if self._restoring:
@@ -204,10 +223,10 @@ class HistoryManager(CallbackMixin):
         self._pending.depth += 1
 
     def _end(self, *, completed: bool) -> None:
-        """Closes one scope; the outermost commits a completed gesture and rolls back a failed one.
+        """Closes one scope; the outermost lands a completed gesture and rolls back a failed one.
 
-        A scope a reset ended midway has nothing left to close, since the reset seeded the stack
-        from the project the gesture left.
+        A failed gesture's effects go with it. A scope a reset ended midway has nothing left to
+        close: the reset seeded the stack from the project the gesture left and let its effects go.
         """
         if self._pending is None:
             return
@@ -218,17 +237,22 @@ class HistoryManager(CallbackMixin):
 
         pending = self._pending
         self._pending = None
-        if pending.mutations == 0:
-            return
-
         if completed:
+            self._land(pending)
+        elif pending.mutations > 0:
+            self._roll_back()
+
+    def _land(self, pending: PendingTransaction) -> None:
+        """Records what a completed gesture changed, then runs what it does outside the project."""
+        if pending.mutations > 0:
             self._commit(
                 pending.action,
                 pending.detail,
                 coalesce=pending.coalesce,
             )
-        else:
-            self._roll_back()
+
+        for effect in pending.effects:
+            effect()
 
     def _commit(
         self,

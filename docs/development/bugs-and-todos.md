@@ -113,10 +113,6 @@ currently out of line. An entry leaves when the code meets the contract again.
   `ConverterLogic._rewrite` a state whose recordings are new objects, and the rows and the batch entries
   are read from it cold. Holding the rows against the gathering that produced them, and deriving entries
   for the recordings a gesture moved, closes it.
-* A failed gesture's rollback restores the project and leaves alone what the gesture did outside it. A cut
-  that fails after writing the clipboard leaves the clipboard written, and a removal that fails after
-  closing the voice open on the Reconstructions tab leaves it closed. Undoing those effects belongs to the
-  gesture that made them.
 
 ## Bugs
 

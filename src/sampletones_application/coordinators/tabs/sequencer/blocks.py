@@ -1,6 +1,7 @@
 from functools import partial
 from typing import Callable, Optional, ParamSpec
 
+from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.clipboard import (
     OrderBlockText,
@@ -43,7 +44,8 @@ class SequencerBlocks:
     question about the block in hand reads that answer.
 
     Every gesture here reads and writes the project as it stands; recording what a gesture undoes
-    is the caller's, so the coordinator wraps the writing ones in a history transaction.
+    is the caller's, so the coordinator wraps the writing ones in a history transaction. A cut
+    fills the clipboards once its gesture lands, so a cut that fails leaves them as they stood.
     """
 
     def __init__(
@@ -51,9 +53,11 @@ class SequencerBlocks:
         tracker_logic: SequencerTrackerLogic,
         order_logic: SequencerOrderLogic,
         project_controller: ProjectController,
+        history: HistoryManager,
         *,
         text_clipboard: TextClipboard,
     ) -> None:
+        self._history: HistoryManager = history
         self._clipboard: SequencerClipboard = SequencerClipboard()
         self._text_clipboard: TextClipboard = text_clipboard
         self._clipboard_text: str = ""
@@ -131,12 +135,18 @@ class SequencerBlocks:
         the same copy reaches a paste here and a paste in another instance.
         """
         block = self._tracker_reader.read(region)
-        self._clipboard.store_tracker_block(block)
-        self._text_clipboard.write(self._tracker_text.state(block, region))
+        self._hold_tracker(block, self._tracker_text.state(block, region))
 
     def cut_tracker(self, region: TrackerRegion) -> None:
-        """Takes the block a region covers onto the clipboard, then empties what it covered."""
-        self.copy_tracker(region)
+        """Empties what a region covers, and takes the block it held onto the clipboard once the cut lands.
+
+        The block and its text are read before the region empties, so the clipboards take what the
+        cut covered.
+        """
+        block = self._tracker_reader.read(region)
+        self._history.after_landing(
+            partial(self._hold_tracker, block, self._tracker_text.state(block, region)),
+        )
         self._tracker_writer.clear(region)
 
     def clear_tracker(self, region: TrackerRegion) -> None:
@@ -156,12 +166,18 @@ class SequencerBlocks:
         the same copy reaches a paste here and a paste in another instance.
         """
         block = self._order_reader.read(region)
-        self._clipboard.store_order_block(block)
-        self._text_clipboard.write(self._order_text.state(block, region))
+        self._hold_order(block, self._order_text.state(block, region))
 
     def cut_order(self, region: OrderRegion) -> None:
-        """Takes the block a region covers onto the clipboard, then silences what it covered."""
-        self.copy_order(region)
+        """Silences what a region covers, and takes the block it held onto the clipboard once the cut lands.
+
+        The block and its text are read before the region falls silent, so the clipboards take what
+        the cut covered.
+        """
+        block = self._order_reader.read(region)
+        self._history.after_landing(
+            partial(self._hold_order, block, self._order_text.state(block, region)),
+        )
         self._order_writer.clear(region)
 
     def clear_order(self, region: OrderRegion) -> None:
@@ -173,6 +189,16 @@ class SequencerBlocks:
         block = self.order_in_hand()
         if block is not None:
             self._order_writer.write(block, cell)
+
+    def _hold_tracker(self, block: TrackerBlock, text: str) -> None:
+        """Puts a tracker block in this tab's slot, and the text stating it on the system clipboard."""
+        self._clipboard.store_tracker_block(block)
+        self._text_clipboard.write(text)
+
+    def _hold_order(self, block: OrderBlock, text: str) -> None:
+        """Puts an order block in this tab's slot, and the text stating it on the system clipboard."""
+        self._clipboard.store_order_block(block)
+        self._text_clipboard.write(text)
 
     def _take_clipboard_text(self, then: VoidCallback, text: Optional[str]) -> None:
         if text is not None:

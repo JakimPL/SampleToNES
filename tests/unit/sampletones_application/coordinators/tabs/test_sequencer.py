@@ -2002,6 +2002,7 @@ def block_coordinator() -> SequencerTabCoordinator:
         instance._sequencer_tracker_logic,
         instance._sequencer_order_logic,
         controller,
+        history,
         text_clipboard=FakeTextClipboard(),
     )
     instance._history_detail = SequencerHistoryDetail(
@@ -2024,6 +2025,15 @@ def _place_transpose(
         coordinator._sequencer_tracker_logic.write_cell,
     )
     edit(0, ChannelName.PULSE1, None, Step(value=transpose), None)
+
+
+def _break_song_changes(coordinator: SequencerTabCoordinator) -> None:
+    """Has every song change fail as the views hear of it, the way a view rebuild that breaks would."""
+
+    def broken() -> None:
+        raise RuntimeError("the view broke")
+
+    coordinator._project_controller.on_song_changed = broken
 
 
 class TestBlockCopy:
@@ -2090,6 +2100,21 @@ class TestBlockEdits:
         assert len(coordinator._history.entries) == recorded + 1
         assert coordinator._history.entries[-1].action is HistoryAction.CUT_BLOCK
 
+    def test_a_cut_that_fails_leaves_both_clipboards_and_the_grid_as_they_stood(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+        _break_song_changes(coordinator)
+
+        with pytest.raises(RuntimeError):
+            coordinator._sequencer_tracker_panel.on_cut_block(PULSE1_CELL)
+
+        assert coordinator._blocks._clipboard.tracker_block is None
+        assert _text_clipboard(coordinator).text == ""
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 0).pitch == Step(value=5)
+
     def test_a_delete_empties_the_region_in_one_entry(
         self,
         block_coordinator: SequencerTabCoordinator,
@@ -2149,6 +2174,20 @@ class TestOrderBlockEdits:
         assert coordinator._sequencer_order_logic.entry(ChannelName.PULSE1, 0) is None
         assert len(coordinator._history.entries) == recorded + 1
         assert coordinator._history.entries[-1].action is HistoryAction.CUT_BLOCK
+
+    def test_a_cut_that_fails_leaves_both_clipboards_and_the_order_as_they_stood(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _break_song_changes(coordinator)
+
+        with pytest.raises(RuntimeError):
+            coordinator._sequencer_order_panel.on_cut_block(PULSE1_FRAME)
+
+        assert coordinator._blocks._clipboard.order_block is None
+        assert _text_clipboard(coordinator).text == ""
+        assert coordinator._sequencer_order_logic.entry(ChannelName.PULSE1, 0) == 0
 
     def test_a_delete_silences_the_region_in_one_entry(
         self,

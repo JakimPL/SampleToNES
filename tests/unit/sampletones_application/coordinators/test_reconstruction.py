@@ -873,6 +873,24 @@ class TestTheTabFollowsTheVoiceItShows:
 
         assert reconstruction_manager.current_reconstruction is None
 
+    def test_a_removal_that_fails_keeps_the_sample_open(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        project_controller: ProjectController,
+        history: HistoryManager,
+        open_sample: Sample,
+        tab: MagicMock,
+    ) -> None:
+        """The removal is rolled back after the project was stamped, so the tab still shows the sample it brings back."""
+        with pytest.raises(RuntimeError), history.transaction(HistoryAction.REMOVE_VOICE):
+            project_controller.remove_voice(open_sample.id)
+            raise RuntimeError("the removal broke")
+
+        assert reconstruction_manager.voice_id == open_sample.id
+        assert reconstruction_manager.current_reconstruction is not None
+        tab.close_reconstruction.assert_not_called()
+
     def test_an_edit_writing_the_project_first_leaves_the_document_to_the_edit(
         self,
         following_coordinator: ReconstructionCoordinator,

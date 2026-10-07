@@ -236,6 +236,119 @@ class TestRollback:
         assert len(history.entries) == 1
 
 
+class TestLandingEffects:
+    """What a gesture does outside the project happens once the gesture lands, and goes with one rolled back."""
+
+    def test_an_effect_runs_once_the_gesture_lands_after_its_entry(
+        self,
+        history_factory: HistoryFactory,
+    ) -> None:
+        controller, history = history_factory()
+        entries_seen: List[int] = []
+
+        with history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(170)
+            history.after_landing(lambda: entries_seen.append(len(history.entries)))
+            assert entries_seen == []
+
+        assert entries_seen == [2]
+
+    def test_an_effect_runs_at_once_between_gestures(
+        self,
+        history_factory: HistoryFactory,
+    ) -> None:
+        _, history = history_factory()
+        ran: List[str] = []
+
+        history.after_landing(lambda: ran.append("effect"))
+
+        assert ran == ["effect"]
+
+    def test_a_failed_gesture_drops_its_effects(
+        self,
+        history_factory: HistoryFactory,
+    ) -> None:
+        controller, history = history_factory()
+        ran: List[str] = []
+
+        with pytest.raises(RuntimeError), history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(170)
+            history.after_landing(lambda: ran.append("effect"))
+            raise RuntimeError("boom")
+
+        assert ran == []
+
+    def test_a_gesture_failing_before_any_mutation_drops_its_effects(
+        self,
+        history_factory: HistoryFactory,
+    ) -> None:
+        _, history = history_factory()
+        ran: List[str] = []
+
+        with pytest.raises(RuntimeError), history.transaction(HistoryAction.SET_TEMPO):
+            history.after_landing(lambda: ran.append("effect"))
+            raise RuntimeError("boom")
+
+        assert ran == []
+
+    def test_an_inner_scope_effect_waits_for_the_outermost(
+        self,
+        history_factory: HistoryFactory,
+    ) -> None:
+        controller, history = history_factory()
+        ran: List[str] = []
+
+        with history.transaction(HistoryAction.ADD_SAMPLE):
+            with history.transaction(HistoryAction.SET_TEMPO):
+                controller.set_tempo(170)
+                history.after_landing(lambda: ran.append("effect"))
+            assert ran == []
+
+        assert ran == ["effect"]
+
+    def test_a_gesture_changing_nothing_runs_its_effects(
+        self,
+        history_factory: HistoryFactory,
+    ) -> None:
+        _, history = history_factory()
+        ran: List[str] = []
+
+        with history.transaction(HistoryAction.CUT_BLOCK):
+            history.after_landing(lambda: ran.append("effect"))
+
+        assert ran == ["effect"]
+        assert len(history.entries) == 1
+
+    def test_effects_run_in_the_order_they_were_handed_in(
+        self,
+        history_factory: HistoryFactory,
+    ) -> None:
+        controller, history = history_factory()
+        ran: List[str] = []
+
+        with history.transaction(HistoryAction.SET_TEMPO):
+            history.after_landing(lambda: ran.append("first"))
+            controller.set_tempo(170)
+            history.after_landing(lambda: ran.append("second"))
+
+        assert ran == ["first", "second"]
+
+    def test_an_effect_handed_in_by_a_rollback_runs_at_once(
+        self,
+        history_factory: HistoryFactory,
+    ) -> None:
+        """The reinstall runs between gestures, so what it gives rise to follows the project it puts back."""
+        controller, history = history_factory()
+        ran: List[str] = []
+        controller.on_project_replaced = lambda: history.after_landing(lambda: ran.append("effect"))
+
+        with pytest.raises(RuntimeError), history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(170)
+            raise RuntimeError("boom")
+
+        assert ran == ["effect"]
+
+
 class TestCoalescing:
     def test_same_action_and_target_replaces_top_entry(
         self,

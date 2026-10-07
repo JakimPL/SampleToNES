@@ -184,6 +184,7 @@ class SequencerTabCoordinator:
             self._sequencer_tracker_logic,
             self._sequencer_order_logic,
             project_controller,
+            history,
             text_clipboard=select_text_clipboard(),
         )
         self._tracker_region_adjuster: TrackerRegionAdjuster = TrackerRegionAdjuster(self._sequencer_tracker_logic)
@@ -513,10 +514,10 @@ class SequencerTabCoordinator:
     def _wire_block_callbacks(self) -> None:
         """Connects the grids' block gestures to the clipboard they copy into.
 
-        A copy reads the project and leaves it as it stands, so it is wired straight through
-        instead of through :meth:`_undoable`: a transaction over it would record an entry the
-        history has nothing to restore for. The three gestures that do write are whole ones, each
-        recording the single entry that takes the grid back to where it stood.
+        A copy reads the project and leaves it as it stands, so it is wired straight through. The
+        three gestures that write go through :meth:`SequencerHistoryRecorder.undoable` as whole
+        ones, each recording the single entry that takes the grid back to where it stood, and a cut
+        fills the clipboard once that entry stands.
 
         A paste asks the system clipboard first and records its entry once the answer has landed.
         Each grid also asks whether a block stands ready to paste, which a menu offering Paste

@@ -497,9 +497,10 @@ class ReconstructionCoordinator:
 
         Every change to the project reaches here, the tab's own edits included. An edit writes
         the project before the open document shows it, so a voice the project still holds is
-        left as it stands and the panel keeps what the reader is drawing.
+        left as it stands and the panel keeps what the reader is drawing. The tab follows a
+        gesture once it has landed, so a gesture rolled back leaves the tab showing what it showed.
         """
-        self._follow(restored=False)
+        self._history.after_landing(partial(self._follow, restored=False))
 
     def follow_replaced_project(self) -> None:
         """Follows the voice the tab shows into a project put in place of the one it belonged to.
