@@ -7,7 +7,7 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.constants.general import MAX_PERIOD, MIN_PLAYED_PITCH
+from sampletones_core.constants.general import MAX_PERIOD, MIN_PLAYED_PITCH, NUM_PERIODS
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.patterns.pitch import Note, RowPitch, Step
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
@@ -91,7 +91,7 @@ class TestATypedPitchIsStoredAsWritten(BaseTestSuite):
         instrument = _instrument(controller)
         _write(controller, test_case.channel, 0, NoteOn(voice_id=instrument.id))
 
-        logic.write_pitch(0, test_case.channel, test_case.pitch)
+        logic.write_cell(0, test_case.channel, None, test_case.pitch, None)
 
         assert _pitch(logic, test_case.channel, 0) == test_case.expected
 
@@ -102,7 +102,7 @@ class TestThePitchLandsWhateverTheChannelCarries:
         sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="bass")
         _write(controller, ChannelName.PULSE1, 0, NoteOn(voice_id=sample.id))
 
-        logic.write_pitch(0, ChannelName.PULSE1, Note(value=TYPED_NOTE))
+        logic.write_cell(0, ChannelName.PULSE1, None, Note(value=TYPED_NOTE), None)
 
         assert _pitch(logic, ChannelName.PULSE1, 0) == Note(value=TYPED_NOTE)
 
@@ -111,14 +111,14 @@ class TestThePitchLandsWhateverTheChannelCarries:
         instrument = _instrument(controller)
         _write(controller, ChannelName.PULSE1, 0, NoteOn(voice_id=instrument.id))
 
-        logic.write_pitch(2, ChannelName.PULSE1, Note(value=TYPED_NOTE))
+        logic.write_cell(2, ChannelName.PULSE1, None, Note(value=TYPED_NOTE), None)
 
         assert _pitch(logic, ChannelName.PULSE1, 2) == Note(value=TYPED_NOTE)
 
     def test_a_row_carrying_no_voice_takes_a_note(self) -> None:
         _, logic = _logic()
 
-        logic.write_pitch(0, ChannelName.PULSE1, Note(value=TYPED_NOTE))
+        logic.write_cell(0, ChannelName.PULSE1, None, Note(value=TYPED_NOTE), None)
 
         assert _pitch(logic, ChannelName.PULSE1, 0) == Note(value=TYPED_NOTE)
 
@@ -128,7 +128,7 @@ class TestThePitchLandsWhateverTheChannelCarries:
         _write(controller, ChannelName.PULSE1, 0, NoteOn(voice_id=instrument.id))
         _write(controller, ChannelName.PULSE1, 1, NoteOff())
 
-        logic.write_pitch(2, ChannelName.PULSE1, Note(value=TYPED_NOTE))
+        logic.write_cell(2, ChannelName.PULSE1, None, Note(value=TYPED_NOTE), None)
 
         assert _pitch(logic, ChannelName.PULSE1, 2) == Note(value=TYPED_NOTE)
 
@@ -138,9 +138,39 @@ class TestThePitchLandsWhateverTheChannelCarries:
         _write(controller, ChannelName.PULSE1, 0, NoteOn(voice_id=instrument.id))
         logic.adjust_volume(ChannelName.PULSE1, 0, -1)
 
-        logic.write_pitch(0, ChannelName.PULSE1, Step(value=TYPED_STEP))
+        logic.write_cell(0, ChannelName.PULSE1, None, Step(value=TYPED_STEP), None)
 
         row = logic.row(ChannelName.PULSE1, 0)
         assert row is not None
         assert row.command == NoteOn(voice_id=instrument.id)
         assert row.volume is not None
+
+
+class TestANoteWrittenThroughTheSampleColumn:
+    """The sample column hands a note to the channels playing the sample, each naming it its own way."""
+
+    def test_the_noise_channel_takes_the_period_the_pitch_names(self) -> None:
+        controller, logic = _logic()
+        sample = controller.add_sample(
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.NOISE]),
+            name="kit",
+        )
+        logic.place_note(0, None, sample.id)
+
+        logic.write_cell(0, None, None, Note(value=TYPED_NOTE), None)
+
+        assert _pitch(logic, ChannelName.PULSE1, 0) == Note(value=TYPED_NOTE)
+        assert _pitch(logic, ChannelName.NOISE, 0) == Note(value=TYPED_NOTE % NUM_PERIODS)
+
+    def test_a_step_reaches_every_channel_as_it_stands(self) -> None:
+        controller, logic = _logic()
+        sample = controller.add_sample(
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.NOISE]),
+            name="kit",
+        )
+        logic.place_note(0, None, sample.id)
+
+        logic.write_cell(0, None, None, Step(value=TYPED_STEP), None)
+
+        assert _pitch(logic, ChannelName.PULSE1, 0) == Step(value=TYPED_STEP)
+        assert _pitch(logic, ChannelName.NOISE, 0) == Step(value=TYPED_STEP)

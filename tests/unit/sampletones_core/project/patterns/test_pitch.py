@@ -19,6 +19,8 @@ from sampletones_core.project.patterns.pitch import (
     Step,
     clamped_note,
     clamped_step,
+    note_for_channel,
+    played_note,
     shifted_pitch,
     sounded_pitch,
     step_of,
@@ -139,6 +141,34 @@ class TestClampedPitches(BaseTestSuite):
     @pytest.mark.parametrize(("value", "expected"), [(100, MAX_TRANSPOSE), (-100, MIN_TRANSPOSE), (5, 5)])
     def test_the_step_a_row_keeps(self, value: int, expected: int) -> None:
         assert clamped_step(value) == Step(value=expected)
+
+
+class TestNoteForChannel(BaseTestSuite):
+    """A piano key names a pitch; a tonal channel takes it as its note, and noise as the period it names."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        expected: int
+        channel: ChannelName
+        pitch: int
+
+    test_cases: Tuple["TestNoteForChannel.TestCase", ...] = (
+        TestCase(label="a pitch within the range stands", channel=ChannelName.PULSE1, pitch=60, expected=60),
+        TestCase(label="a pitch past B-7 is held at it", channel=ChannelName.TRIANGLE, pitch=131, expected=MAX_PITCH),
+        TestCase(label="a C names the first period", channel=ChannelName.NOISE, pitch=48, expected=0),
+        TestCase(label="a D an octave up walks the periods round", channel=ChannelName.NOISE, pitch=62, expected=14),
+        TestCase(
+            label="a period lies where its pitch does", channel=ChannelName.NOISE, pitch=MAX_PERIOD, expected=MAX_PERIOD
+        ),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_note_the_channel_takes(self, test_case: TestCase) -> None:
+        assert note_for_channel(test_case.channel, test_case.pitch) == Note(value=test_case.expected)
+
+    @pytest.mark.parametrize(("pitch", "expected"), [(131, MAX_PITCH), (20, MIN_PLAYED_PITCH), (60, 60)])
+    def test_a_played_note_is_held_within_the_notes_a_channel_plays(self, pitch: int, expected: int) -> None:
+        assert played_note(pitch) == Note(value=expected)
 
 
 class TestShiftedPitch(BaseTestSuite):

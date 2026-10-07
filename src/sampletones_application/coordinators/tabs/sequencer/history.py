@@ -98,15 +98,6 @@ class SequencerHistoryRecorder:
         channel_key = channel if channel is not None else ""
         return (self._tracker_logic.frame_index, channel_key, row_index)
 
-    def note_key(
-        self,
-        row_index: int,
-        channel: ChannelName,
-        _pitch: RowPitch,
-    ) -> CoalesceKey:
-        """Identifies the cell a typed pitch landed in, so retyping one coalesces onto it."""
-        return self.cell_key(row_index, channel)
-
     def adjustment_key(
         self,
         region: TrackerRegion,

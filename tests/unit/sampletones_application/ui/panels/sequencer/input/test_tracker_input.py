@@ -1,9 +1,17 @@
-from typing import Optional
+from dataclasses import dataclass
+from typing import Optional, Tuple
 
+import pytest
+
+from sampletones_application.ui.panels.sequencer.input.edit import EditAction
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.view_model.sequencer.slot import SLOT_COUNT, TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.general import MAX_TRANSPOSE, MIN_TRANSPOSE
+from sampletones_core.project.patterns.pitch import Step
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 ROW_COUNT = 64
 
@@ -37,6 +45,51 @@ class TestNoteOffEntry:
         new_state, action = _state(SubColumn.TRANSPOSE).type_char("-")
         assert action is None
         assert new_state.pending.startswith("-")
+
+
+class TestTypingAStep(BaseTestSuite):
+    """Digits type a decimal step, a sign before or among them sets its direction, and two digits commit it."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        keys: str
+        expected: Optional[int]
+        pending: str = ""
+
+    test_cases: Tuple["TestTypingAStep.TestCase", ...] = (
+        TestCase(label="two digits commit a step up", keys="31", expected=31),
+        TestCase(label="a leading minus goes down", keys="-12", expected=-12),
+        TestCase(label="a later sign flips the step in place", keys="1-2", expected=-12),
+        TestCase(label="a plus restates the direction", keys="-1+2", expected=12),
+        TestCase(label="one digit waits for the second", keys="3", expected=None, pending="+3"),
+        TestCase(label="a sign alone waits for digits", keys="-", expected=None, pending="-"),
+        TestCase(label="a hex letter leaves the entry as it stands", keys="3A", expected=None, pending="+3"),
+        TestCase(label="a step past the range is held at its top", keys="99", expected=MAX_TRANSPOSE),
+        TestCase(label="a step below the range is held at its bottom", keys="-99", expected=MIN_TRANSPOSE),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_what_the_keys_commit(self, test_case: TestCase) -> None:
+        state = _state(SubColumn.TRANSPOSE)
+        action: Optional[EditAction] = None
+        for key in test_case.keys:
+            state, typed = state.type_char(key)
+            action = typed if typed is not None else action
+
+        if test_case.expected is None:
+            assert action is None
+            assert state.pending == test_case.pending
+        else:
+            assert action is not None
+            assert action.pitch == Step(value=test_case.expected)
+            assert state.pending == ""
+
+    def test_a_partial_entry_commits_the_digit_it_holds(self) -> None:
+        state, action = _state(SubColumn.TRANSPOSE, pending="+3").commit_partial()
+
+        assert action is not None
+        assert action.pitch == Step(value=3)
+        assert state.pending == ""
 
 
 class TestSelection:

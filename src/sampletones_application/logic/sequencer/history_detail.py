@@ -136,23 +136,6 @@ class SequencerHistoryDetail:
 
         return tuple(segments)
 
-    def note_typed(
-        self,
-        row_index: int,
-        channel: ChannelName,
-        pitch: RowPitch,
-    ) -> Segments:
-        """Names a typed pitch by the cell it landed in and the face the keys gave it."""
-        segments = list(self._location(row_index, channel, [channel]))
-        segments.append(self._subcolumn(SubColumn.TRANSPOSE))
-        segments.append(
-            self._segment(
-                display_pitch(pitch),
-                HistoryDetailRole.TRANSPOSE,
-            ),
-        )
-        return tuple(segments)
-
     def note_off(
         self,
         row_index: int,

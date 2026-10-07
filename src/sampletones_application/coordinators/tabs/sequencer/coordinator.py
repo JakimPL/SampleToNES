@@ -378,12 +378,6 @@ class SequencerTabCoordinator:
             detail=self._history_detail.note_off,
             coalesce=self._recorder.cell_key,
         )
-        self._sequencer_tracker_panel.on_note_typed = self._recorder.undoable(
-            HistoryAction.EDIT_ROW,
-            self._sequencer_tracker_logic.write_pitch,
-            detail=self._history_detail.note_typed,
-            coalesce=self._recorder.note_key,
-        )
         self._sequencer_tracker_panel.on_octave_changed = self._session_manager.set_octave
         self._sequencer_tracker_panel.on_cell_selected = self._on_tracker_cell_focused
         self._sequencer_tracker_panel.on_play_from_row = self._on_tracker_play_from_row

@@ -3,9 +3,9 @@ from typing import Annotated, Literal, Union
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.constants.general import MAX_PITCH, MAX_TRANSPOSE, MIN_TRANSPOSE
-from sampletones_core.features import transposed_reference
-from sampletones_core.utils.pitch_kind import note_value_kind
+from sampletones_core.constants.general import MAX_PITCH, MAX_TRANSPOSE, MIN_TRANSPOSE, NUM_PERIODS
+from sampletones_core.features import speaks_in_periods, transposed_reference
+from sampletones_core.utils.pitch_kind import PLAYED_PITCH_VALUE_KIND, note_value_kind
 from sampletones_shared.utils.arrays import clamp
 
 
@@ -87,6 +87,31 @@ def sounded_pitch(
 def clamped_note(channel_name: ChannelName, value: int) -> Note:
     """A note held inside the range a channel plays: its notes from C-0 up, or its sixteen periods."""
     return Note(value=note_value_kind(channel_name).clamp(value))
+
+
+def played_note(pitch: int) -> Note:
+    """A pitch as a note cell names it, held within the notes a tonal channel plays, C-0 to B-7."""
+    return Note(value=PLAYED_PITCH_VALUE_KIND.clamp(pitch))
+
+
+def note_for_channel(channel_name: ChannelName, pitch: int) -> Note:
+    """The note a pitch names on a channel.
+
+    A tonal channel names the pitch itself, held within the notes it plays. The noise channel names
+    the period ``pitch mod 16``, which is how FamiTracker reads a note on the noise channel, so a
+    piano key picks one of its sixteen periods there.
+
+    Args:
+        channel_name: The channel the note is written on.
+        pitch: The pitch a piano key names.
+
+    Returns:
+        Note: The note the channel takes.
+    """
+    if speaks_in_periods(channel_name):
+        return Note(value=pitch % NUM_PERIODS)
+
+    return played_note(pitch)
 
 
 def clamped_step(value: int) -> Step:

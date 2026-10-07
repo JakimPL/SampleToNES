@@ -71,22 +71,19 @@ A `?` in the **Sample** column means the channels of that row play different voi
 
 ## Typing a pitch
 
-A pitch cell shows a number. What the number means depends on the voice:
+A pitch cell holds a note, such as `C-4`, or a step, such as `+03`. A step counts semitones from the
+voice's own pitch: `+00` plays a sample as recorded, `+12` plays it an octave higher, and the same
+step moves an instrument from its initial pitch. Either kind works with either kind of voice.
 
-- For a sample, the number is a step from the pitch the sample was recorded at. `+00` plays the
-  sample as recorded. `+0C` plays it one octave higher.
-- For an instrument, the number is a note, such as `C-4` or `A#3`.
+Type a note on your keyboard like a piano. The bottom two rows of keys play one octave: `Z` `S` `X`
+`D` `C` and so on. The row above plays the white keys of the next octave: `Q` `W` `E` `R` `T` `Y`
+`U`. **Octave**, above the grid, sets the octave of the bottom row.
 
-Type notes on your keyboard like a piano:
+Type a step with the digit keys, with `-` before them to go down: `0` `3` writes `+03`, and `-` `1`
+`2` writes `-12`.
 
-- The bottom two rows of keys play one octave: `Z` `S` `X` `D` `C` and so on.
-- The two rows above them play the next octave: `Q` `2` `W` `3` `E` and so on.
-
-**Octave**, above the grid, sets the octave of the bottom row. The same keys work in a sample's cell
-and type the step that plays the note you pressed.
-
-The noise channel has sixteen sounds in place of notes. Type a noise cell as a step with a sign, such
-as `+03` or `-02`.
+The noise channel has sixteen sounds in place of notes. A note key picks one of them, and a step
+moves to another.
 
 ## Arranging the song
 

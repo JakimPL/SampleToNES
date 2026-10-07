@@ -88,7 +88,6 @@ from sampletones_application.ui.panels.sequencer.tracker.callbacks import (
     OnChannelSoloedCallback,
     OnClearRowCallback,
     OnClearSubcolumnCallback,
-    OnNoteTypedCallback,
     OnPasteBlockCallback,
     OnPlayFromFrameCallback,
     OnPlayFromRowCallback,
@@ -151,8 +150,7 @@ from sampletones_application.view_model.sequencer.voices import (
     VoiceKind,
 )
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.features import speaks_in_periods
-from sampletones_core.project.patterns.pitch import Note
+from sampletones_core.project.patterns.pitch import Note, note_for_channel, played_note
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.utils.display import NOTE_OFF, display_id, display_pitch
 from sampletones_shared.constants.music import (
@@ -231,7 +229,6 @@ class GUISequencerTrackerPanel(GUIPanel):
         self.on_clear_subcolumn: Optional[OnClearSubcolumnCallback] = None
         self.on_set_row: Optional[OnSetRowCallback] = None
         self.on_set_note_off: Optional[OnSetNoteOffCallback] = None
-        self.on_note_typed: Optional[OnNoteTypedCallback] = None
         self.on_octave_changed: Optional[Callable[[int], None]] = None
         self.on_cell_selected: Optional[OnCellSelectedCallback] = None
         self.on_play_from_row: Optional[OnPlayFromRowCallback] = None
@@ -1796,31 +1793,40 @@ class GUISequencerTrackerPanel(GUIPanel):
         return True
 
     def _type_note(self, event: KeyEvent) -> bool:
-        """Types the note a piano key names into the cell under the cursor.
+        """Types the note a piano key names into the pitch cell under the cursor, reporting whether it did.
 
-        The keys reach the pitch column of a channel that names notes: the sample column speaks
-        for a whole sample, whose channels rest at pitches of their own, and the noise channel
-        selects one of sixteen periods, which its own hex entry already writes.
+        The note goes the way a typed step goes, so it lands in every column alike: a channel takes
+        it as that channel names notes, the noise channel as one of its periods, and the sample
+        column hands it to the channels still playing a sample, each in its own terms.
         """
         cursor = self._input_state.cursor
-        if cursor is None or cursor.subcolumn is not SubColumn.TRANSPOSE or cursor.channel is None:
-            return False
-
-        if speaks_in_periods(cursor.channel):
+        if cursor is None or cursor.subcolumn is not SubColumn.TRANSPOSE:
             return False
 
         semitone = semitone_of(event)
         if semitone is None:
             return False
 
-        self.call(
-            self.on_note_typed,
-            cursor.row,
-            cursor.channel,
-            Note(value=(self._octave + OCTAVE_OFFSET) * OCTAVE_SEMITONES + semitone),
+        pitch = (self._octave + OCTAVE_OFFSET) * OCTAVE_SEMITONES + semitone
+        self._handle_edit_action(
+            EditAction(
+                row=cursor.row,
+                channel=cursor.channel,
+                sample_index=None,
+                pitch=self._typed_note(cursor.channel, pitch),
+                volume=None,
+            )
         )
         self._apply_state(self._input_state.reset_pending().navigate_row(1, self._current_row_count))
         return True
+
+    @staticmethod
+    def _typed_note(channel: Optional[ChannelName], pitch: int) -> Note:
+        """The note a pitch cell takes: the sample column names the pitch, a channel what it makes of it."""
+        if channel is None:
+            return played_note(pitch)
+
+        return note_for_channel(channel, pitch)
 
     def _on_row_number_clicked(
         self,

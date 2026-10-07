@@ -17,7 +17,7 @@ from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.project.patterns.pattern import Pattern
-from sampletones_core.project.patterns.pitch import RowPitch, Step, shifted_pitch
+from sampletones_core.project.patterns.pitch import Note, RowPitch, Step, note_for_channel, shifted_pitch
 from sampletones_core.project.patterns.row import NoteCommand, Row
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
@@ -391,24 +391,6 @@ class SequencerTrackerLogic(CallbackMixin):
             else:
                 self.clear_row(channel, row_index)
 
-    def write_pitch(
-        self,
-        row_index: int,
-        channel: ChannelName,
-        pitch: RowPitch,
-    ) -> None:
-        """Writes a pitch into a channel's cell as it was typed, a note or a step.
-
-        The cell keeps the face the reader chose, whichever voice the channel carries, so a note
-        stays the note it names when the voice changes and a step stays the interval it names.
-
-        Args:
-            row_index: The row within the frame shown.
-            channel: The channel the pitch is typed into.
-            pitch: The note the key names, or the step the digits name.
-        """
-        self.set_cell_subcolumn(row_index, channel, pitch=pitch)
-
     def carried_voice(
         self,
         channel: ChannelName,
@@ -450,15 +432,28 @@ class SequencerTrackerLogic(CallbackMixin):
 
         A row placing a sample reaches that sample's whole span, and a row below it reaches
         the channels the sample is still playing on, as :meth:`relevant_channels` reads them.
-        A row where no sample plays takes nothing, and gains no pattern.
+        A row where no sample plays takes nothing, and gains no pattern. A note reaches each
+        channel as that channel names it, so the noise channel takes the period the pitch names.
         """
         for channel in self._subcolumn_generators(row_index):
             self.set_row(
                 channel,
                 row_index,
-                pitch=pitch,
+                pitch=self._channel_pitch(channel, pitch),
                 volume=volume,
             )
+
+    @staticmethod
+    def _channel_pitch(
+        channel: ChannelName,
+        pitch: Optional[RowPitch],
+    ) -> Optional[RowPitch]:
+        """The pitch one channel takes from the sample column: a note as the channel names it, a step as it stands."""
+        match pitch:
+            case Note():
+                return note_for_channel(channel, pitch.value)
+            case _:
+                return pitch
 
     def clear_sample_subcolumn(
         self,

@@ -5,7 +5,6 @@ from typing import Final, List, Optional, Tuple
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.utils.display import NOTE_BLANK
 from tests.screens.sequencer.tracker.constants import (
     LINE_NUMBER,
     PAD_NUMBER,
@@ -37,13 +36,12 @@ def history_size(screen: Screen) -> int:
 
 
 class TestNotesTypedPianoStyle:
-    """A note key writes the note at the octave in force into a pitch slot whose channel carries a voice.
+    """A note key writes the note at the octave in force into a pitch slot, whatever the channel carries.
 
-    The noise column, a voice slot and a row whose channel carries no voice stay blank, and the history
-    stays as it was for them.
+    A voice slot stays as it was, and the history with it.
     """
 
-    def test_notes_land_where_a_voice_plays_and_nowhere_else(self, screen: Screen) -> None:
+    def test_notes_land_in_the_pitch_slots_and_nowhere_else(self, screen: Screen) -> None:
         tracker = screen.sequencer.tracker
         history = screen.sequencer.history
 
@@ -69,16 +67,6 @@ class TestNotesTypedPianoStyle:
             play_a_note(screen, PAD_ROW, ChannelName.PULSE2, PIANO_C_UP)
             assert tracker.label(PAD_ROW, ChannelName.PULSE2, SubColumn.TRANSPOSE) == NOTE_AT_OCTAVE_FOUR
 
-        def the_noise_column_takes_no_note(screen: Screen) -> None:
-            type_into(screen, NO_VOICE_ROW, ChannelName.NOISE, SubColumn.VOICE, PAD_NUMBER)
-            assert tracker.label(NO_VOICE_ROW, ChannelName.NOISE, SubColumn.VOICE) == PAD_NUMBER
-            before = history_size(screen)
-
-            play_a_note(screen, NO_VOICE_ROW, ChannelName.NOISE, PIANO_C)
-
-            assert tracker.label(NO_VOICE_ROW, ChannelName.NOISE, SubColumn.TRANSPOSE) == NOTE_BLANK
-            assert history_size(screen) == before
-
         def the_voice_slot_takes_no_note(screen: Screen) -> None:
             before = history_size(screen)
             tracker.click(PAD_ROW, ChannelName.PULSE2, SubColumn.VOICE)
@@ -89,14 +77,14 @@ class TestNotesTypedPianoStyle:
             assert tracker.label(PAD_ROW, ChannelName.PULSE2, SubColumn.VOICE) == PAD_NUMBER
             assert history_size(screen) == before
 
-        def a_row_carrying_no_voice_records_nothing(screen: Screen) -> None:
+        def a_row_carrying_no_voice_takes_the_note(screen: Screen) -> None:
             before = history_size(screen)
 
             play_a_note(screen, NO_VOICE_ROW, ChannelName.PULSE2, PIANO_C)
 
-            assert tracker.label(NO_VOICE_ROW, ChannelName.PULSE2, SubColumn.TRANSPOSE) == NOTE_BLANK
+            assert tracker.label(NO_VOICE_ROW, ChannelName.PULSE2, SubColumn.TRANSPOSE) == NOTE_AT_OCTAVE_THREE
             assert tracker.has_caret(NO_VOICE_ROW + 1, ChannelName.PULSE2)
-            assert history_size(screen) == before
+            assert history_size(screen) == before + 1
 
         def a_note_where_the_voice_plays_on_lands(screen: Screen) -> None:
             before = history_size(screen)
@@ -109,9 +97,8 @@ class TestNotesTypedPianoStyle:
         screen.scenario(
             a_note_lands_at_the_octave_in_force,
             a_new_octave_lands_an_octave_up,
-            the_noise_column_takes_no_note,
             the_voice_slot_takes_no_note,
-            a_row_carrying_no_voice_records_nothing,
+            a_row_carrying_no_voice_takes_the_note,
             a_note_where_the_voice_plays_on_lands,
             leave_letting_the_project_go,
         ).run()

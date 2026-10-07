@@ -14,7 +14,6 @@ OnClearRowCallback = Callable[[int, Optional[ChannelName]], None]
 OnClearSubcolumnCallback = Callable[[int, Optional[ChannelName], SubColumn], None]
 OnSetRowCallback = Callable[[int, Optional[ChannelName], Optional[str], Optional[RowPitch], Optional[int]], None]
 OnSetNoteOffCallback = Callable[[int, Optional[ChannelName]], None]
-OnNoteTypedCallback = Callable[[int, ChannelName, RowPitch], None]
 OnCellSelectedCallback = VoidCallback
 OnPlayFromRowCallback = Callable[[int], None]
 OnPlayFromFrameCallback = VoidCallback
