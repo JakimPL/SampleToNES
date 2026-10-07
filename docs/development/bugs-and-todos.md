@@ -124,4 +124,4 @@ currently out of line. An entry leaves when the code meets the contract again.
   under a steady 330 Hz pulse reads about 4 cents off, and within a cent alone.
 * The Sample column shows no sample on a frame's first rows, since its reading starts over at each frame. It
   offers no transpose or volume there, while playback applies them to the sample the previous frame left
-  sounding.
+  sounding. The rows the tracker shows beside a frame read the same way, each from its own frame's start.

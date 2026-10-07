@@ -122,7 +122,7 @@ A shift coalesces, because a nudge is a step of one gesture and not a whole one.
 
 The aggregate is an ordinary member of the axis here: selecting the **Voice** column selects a column the way selecting a channel does, and the **Master** row a row.
 
-A press names its shape from the cell the cursor stands on, which is the cell the context menu's items name too, so a key and an item reach the same rectangle. In the tracker a shape ends at the frame's last row, so standing one carries the grid to where the cursor landed, with the same reveal a `Shift+End` reach makes.
+A press names its shape from the cell the cursor stands on, which is the cell the context menu's items name too, so a key and an item reach the same rectangle. In the tracker a shape ends at the frame's last row, so standing one brings the row the cursor landed on to the band's center, as a `Shift+End` reach does.
 
 ## Dragging a range out
 
@@ -147,4 +147,4 @@ These rules make the travel feel like one gesture:
 - **A rebuilt table starts without a selection.** Both grids reconstruct their input state on rebuild, so following playback and the rebuild after a growing paste leave the cursor and drop the selection. The rows a region named belong to the body that was replaced.
 - **The selection stays put after a paste** and does not become the pasted footprint.
 - **A note crosses a project by whichever route it took.** The in-app slot survives a project close, because it must survive `on_project_replaced`, which fires on every undo, and it names its voice by id. A note whose voice the project in place lacks is left out of the write, and the target keeps what it had. The clipboard's text names a list position instead, so the same note pasted through it plays whichever voice stands at that position. Transpose and volume are exact by either route.
-- **A drag past the edge and the followed playhead both write the scroll.** With **Follow rows** on during playback, the followed playhead carries the sounding row to the head of the band while a held pointer travels the grid, so the two take turns each frame.
+- **A drag past the edge and the followed playhead both write the scroll.** With **Follow rows** on during playback, the followed playhead holds the sounding row at the band's center while a held pointer travels the grid, so the two take turns each frame.

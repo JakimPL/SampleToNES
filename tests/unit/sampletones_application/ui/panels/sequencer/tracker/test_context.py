@@ -194,6 +194,22 @@ class TestTheShadesBesideTheFrame:
 
         assert self._shaded(rows) == {0: False, 1: True, 2: False}
 
+    def test_a_dimmed_shade_is_fainter_than_the_frames_own(
+        self,
+        context_rows: ContextRows,
+        layout_config: LayoutConfig,
+        song: Song,
+    ) -> None:
+        """A group's wash is translucent already, so a row beside the frame takes a fraction of its strength."""
+        bar_row = song.around(1).lead[0]
+        bar = layout_config.tabs.sequencer.colors.rows.bar.rgba
+
+        shade = context_rows._background(bar_row, _settings(), playing=None)
+
+        assert shade is not None
+        assert shade.rgba[:3] == bar[:3]
+        assert 0 < shade.rgba[3] < bar[3]
+
     @pytest.mark.parametrize("playing", [(0, FRAME_ROWS - 1), None])
     def test_the_sounding_row_carries_the_mark(
         self,

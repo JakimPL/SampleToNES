@@ -17,6 +17,7 @@ from sampletones_application.ui.panels.sequencer.tracker.row import (
 )
 from sampletones_application.ui.panels.sequencer.tracker.themes import TrackerThemes
 from sampletones_application.utils.palette.colors.base import BaseColor
+from sampletones_application.utils.palette.colors.blended import BlendedColor
 from sampletones_application.utils.palette.colors.faded import FadedColor
 from sampletones_application.utils.palette.colors.layered import LayeredColor
 from sampletones_application.view_model.sequencer.settings import SequencerSettingsViewModel
@@ -28,6 +29,7 @@ from sampletones_core.utils.display import display_id
 from sampletones_shared.types.application import Sender
 
 BLANK_LABEL: Final[str] = ""
+NO_OPACITY: Final[float] = 0.0
 
 SongRow = Tuple[int, int]
 Entries = Sequence[SequencerContextRowViewModel]
@@ -53,7 +55,8 @@ class ContextRows:
     is edited by showing that frame.
 
     A background follows the beat and bar grouping by the row's own index, dimmed as its text is,
-    and the playhead's mark stands on a row here while playback sounds it.
+    and the playhead's mark stands on a row here while playback sounds it. A group's wash is already
+    translucent, so it is dimmed at a fraction of its own strength.
     """
 
     def __init__(
@@ -185,9 +188,7 @@ class ContextRows:
 
         colors = self._layout.colors
         group = group_color(entry.row.index, settings, colors)
-        dimmed = (
-            FadedColor(color=group, fraction=self._layout.tracker.muted_text_fraction) if group is not None else None
-        )
+        dimmed = self._dimmed(group) if group is not None else None
         if playing != (entry.frame_index, entry.row.index):
             return dimmed
 
@@ -195,6 +196,14 @@ class ContextRows:
             return colors.playback_row
 
         return LayeredColor(base=dimmed, overlay=colors.playback_row)
+
+    def _dimmed(self, wash: BaseColor) -> BaseColor:
+        """A wash at a fraction of its own strength, its hue kept."""
+        return BlendedColor(
+            start=FadedColor(color=wash, fraction=NO_OPACITY),
+            end=wash,
+            fraction=self._layout.tracker.muted_text_fraction,
+        )
 
     @staticmethod
     def _draw(table_row: int, color: Optional[BaseColor]) -> None:

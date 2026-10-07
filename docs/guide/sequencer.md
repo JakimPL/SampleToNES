@@ -63,6 +63,8 @@ Click a cell and type its value. Right-click a cell for the same commands as a m
 Click a voice in the **Voices** list, then type pitches: each pitch you type places that voice in
 the cell too. Click below the list to type pitches on their own again.
 
+To change a dimmed row from the frame before or after, click that frame in the **Order** grid.
+
 The [**Sample** column](../glossary.md#sample-column) places a sample on every channel the sample
 uses, and clears the other channels of the row. It takes samples only. To place an instrument, use
 the column of the channel you want it on.
@@ -123,7 +125,7 @@ choice.
 
 | Mode | Key | What the view does |
 |------|-----|---------------------|
-| **Follow rows** | `Ctrl+F` | Scrolls the tracker to the playing row, and shows the playing frame |
+| **Follow rows** | `Ctrl+F` | Keeps the playing row in the middle of the tracker, and shows the playing frame |
 | **Follow patterns** | `Ctrl+Shift+F` | Shows the playing frame, and keeps your scroll position |
 | **Don't follow** | `Ctrl+Alt+F` | Stays where you put it |
 

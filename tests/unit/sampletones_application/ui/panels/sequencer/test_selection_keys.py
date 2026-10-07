@@ -58,7 +58,7 @@ def _tracker_states(
     """The states a gesture applies, with the scroll a jump asks for left out."""
     states: List[TrackerInputState] = []
     monkeypatch.setattr(panel, "_apply_state", states.append)
-    monkeypatch.setattr(panel, "_scroll_cursor_into_view", lambda: None)
+    monkeypatch.setattr(panel, "_center_followed_row", lambda: None)
     return states
 
 

@@ -256,7 +256,7 @@ def _tracker_selections(
     panel._rows_layout = TrackerRows(reach=NO_REACH, frame_rows=ROW_COUNT)
     states: List[TrackerInputState] = []
     monkeypatch.setattr(panel, "_apply_state", states.append)
-    monkeypatch.setattr(panel, "_scroll_cursor_into_view", lambda: None)
+    monkeypatch.setattr(panel, "_center_followed_row", lambda: None)
     return states
 
 
