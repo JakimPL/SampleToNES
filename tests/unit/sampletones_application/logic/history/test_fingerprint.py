@@ -1,4 +1,5 @@
-from typing import List
+import copy
+from typing import Final, FrozenSet, List
 
 import pytest
 
@@ -13,7 +14,35 @@ from sampletones_application.logic.shared.project_source import snapshot_project
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.utils.hashing import hash_model
 from tests.conftest import ReconstructionFactory
+from tests.suite.history.audit import fresh_fingerprint
+from tests.suite.history.perturbation import perturbed_project, project_leaves
+from tests.suite.history.projects import every_part_project
 from tests.unit.sampletones_application.logic.history.conftest import HistoryFactory
+
+REACHED_LABELS: Final[FrozenSet[str]] = frozenset(
+    {
+        "Metadata.version",
+        "ProjectInfo.title",
+        "ProjectInfo.modified",
+        "ProjectSettings.tempo",
+        "Song.rows_per_pattern",
+        "Song.order[]{}",
+        "Row.volume",
+        "Note.value",
+        "Step.value",
+        "NoteOn.voice_id",
+        "Sample.name",
+        "Reconstruction.coefficient",
+        "PulseInstruction.volume",
+        "NoiseInstruction.period",
+        "InstructionsItem.initial_pitch",
+        "ChannelAssignment.stem_ids[]",
+        "StemsData.scale",
+        "StemSettings.channels[]",
+        "Instrument.name",
+        "Instrument.initial_period",
+    }
+)
 
 
 class CountingHash:
@@ -50,6 +79,41 @@ class TestFingerprint:
         project_controller.set_tempo(project_controller.project.settings.tempo + 7)
 
         assert fingerprint_project(project_controller.project, reconstruction_hash=hash_model) != before
+
+
+class TestFingerprintCompleteness:
+    """A change to any field a project holds reaches the fingerprint, so the history audit is blind nowhere."""
+
+    def test_every_field_reaches_the_fingerprint(self) -> None:
+        project = every_part_project()
+        baseline = fresh_fingerprint(project)
+
+        blind = [
+            leaf.label
+            for leaf in project_leaves(project)
+            if fresh_fingerprint(perturbed_project(project, leaf)) == baseline
+        ]
+
+        assert blind == []
+
+    def test_the_walk_reaches_every_kind_of_part(self) -> None:
+        labels = {leaf.label for leaf in project_leaves(every_part_project())}
+
+        assert REACHED_LABELS <= labels
+
+    def test_an_independent_copy_keeps_the_fingerprint(self) -> None:
+        project = every_part_project()
+
+        assert fresh_fingerprint(copy.deepcopy(project)) == fresh_fingerprint(project)
+
+    def test_mappings_in_another_order_keep_the_fingerprint(self) -> None:
+        project = every_part_project()
+        baseline = fresh_fingerprint(project)
+
+        project.song.order = [dict(reversed(list(frame.items()))) for frame in project.song.order]
+        project.song.channels = dict(reversed(list(project.song.channels.items())))
+
+        assert fresh_fingerprint(project) == baseline
 
 
 class TestHashCache:

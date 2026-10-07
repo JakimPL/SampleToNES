@@ -4,7 +4,6 @@ from unittest.mock import MagicMock
 import pytest
 
 from sampletones_application.logic.history.action import HistoryAction
-from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.reconstruction.editor import InstrumentEditor
@@ -18,6 +17,7 @@ from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.project.voices.instrument import Instrument
+from tests.suite.history.wiring import wired_history
 
 HISTORY_BUDGET: Final[int] = 16
 VOLUME_LETTER: Final[str] = "V"
@@ -28,8 +28,7 @@ class _Harness:
 
     def __init__(self) -> None:
         self.controller = ProjectController(ProjectManager())
-        self.history = HistoryManager(self.controller, budget=HISTORY_BUDGET, strict=True)
-        self.controller.on_mutation = self.history.handle_mutation
+        self.history = wired_history(self.controller, budget=HISTORY_BUDGET, strict=True)
         self.controller.new()
 
         self.details: List[str] = []

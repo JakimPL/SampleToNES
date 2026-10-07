@@ -50,6 +50,7 @@ from tests.suite.application import HeldQueue, held_queue, scheduling, synchrono
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.frames import held_frames
+from tests.suite.history.wiring import wired_history
 from tests.suite.language import FakeLanguageManager
 from tests.suite.questions import (
     StandingWindow,
@@ -636,10 +637,7 @@ def project_controller(project_manager: ProjectManager) -> ProjectController:
 @pytest.fixture
 def history(project_controller: ProjectController) -> HistoryManager:
     """A strict history, so an edit that reaches the project outside a transaction is reported."""
-    history = HistoryManager(project_controller, budget=HISTORY_BUDGET, strict=True)
-    project_controller.on_mutation = history.handle_mutation
-    project_controller.on_saved = history.mark_saved
-    return history
+    return wired_history(project_controller, budget=HISTORY_BUDGET, strict=True)
 
 
 @pytest.fixture

@@ -75,6 +75,7 @@ from sampletones_shared.exceptions import (
     PlaybackError,
 )
 from tests.suite.gates import HeldGate, held_gate
+from tests.suite.history.wiring import wired_history
 from tests.suite.language import FakeLanguageManager
 
 FREQUENCY_MISMATCH_MESSAGE_KEY: Final[str] = "global.dialog.message.frequency_mismatch"
@@ -1205,8 +1206,7 @@ def wired_history_coordinator(
     """
     instance = object.__new__(SequencerTabCoordinator)
     controller = ProjectController(ProjectManager())
-    history = HistoryManager(controller, budget=10, strict=True)
-    controller.on_mutation = history.handle_mutation
+    history = wired_history(controller, budget=10, strict=True)
     controller.on_project_replaced = instance.realign_with_project
     instance._project_controller = controller
     instance._history = history
@@ -1937,8 +1937,7 @@ def block_coordinator() -> SequencerTabCoordinator:
     """
     instance = object.__new__(SequencerTabCoordinator)
     controller = ProjectController(ProjectManager())
-    history = HistoryManager(controller, budget=10, strict=True)
-    controller.on_mutation = history.handle_mutation
+    history = wired_history(controller, budget=10, strict=True)
     controller.new()
     history.reset()
     instance._project_controller = controller

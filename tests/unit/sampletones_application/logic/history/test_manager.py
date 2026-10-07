@@ -364,7 +364,6 @@ class TestSavedCursor:
         tmp_path: Path,
     ) -> None:
         controller, history = history_factory()
-        controller.on_saved = history.mark_saved
 
         with history.transaction(HistoryAction.SET_TEMPO):
             controller.set_tempo(150)

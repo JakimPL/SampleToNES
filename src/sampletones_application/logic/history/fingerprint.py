@@ -1,15 +1,23 @@
 from typing import Callable, Dict, Final, Iterable, List, Tuple
 
+from pydantic import BaseModel
+
 from sampletones_core.project import Project
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.project.voices.voice import samples
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.utils.hashing import identity_digest
+from sampletones_shared.utils.serialization import dump
 
 FINGERPRINT_LENGTH: Final[int] = 64
 
 ReconstructionHash = Callable[[Reconstruction], str]
+
+
+def _canonical(model: BaseModel) -> str:
+    """The model spelled as JSON with its keys sorted, one spelling for one state."""
+    return dump(model.model_dump(mode="json"))
 
 
 def fingerprint_project(
@@ -20,16 +28,17 @@ def fingerprint_project(
     """Returns a content hash used to verify that a restore reproduces a snapshot.
 
     The hash covers the full project state, spelled out part by part so that two projects
-    differing anywhere in it differ here. Each sample's reconstruction content enters through
-    ``reconstruction_hash``, so the caller decides between a memoized digest (capture, where
-    copy-on-write keeps it valid) and a fresh one (verification, where recomputing from scratch
-    catches any divergence).
+    differing anywhere in it differ here. Each part is hashed with its keys sorted, so a mapping
+    holding the same entries in another order reads as the same state. Each sample's
+    reconstruction content enters through ``reconstruction_hash``, so the caller decides between
+    a memoized digest (capture, where copy-on-write keeps it valid) and a fresh one
+    (verification, where recomputing from scratch catches any divergence).
     """
     parts: List[str] = [
-        project.metadata.model_dump_json(),
-        project.info.model_dump_json(),
-        project.settings.model_dump_json(),
-        project.song.model_dump_json(),
+        _canonical(project.metadata),
+        _canonical(project.info),
+        _canonical(project.settings),
+        _canonical(project.song),
     ]
     for voice in project.voices:
         parts.append(voice.id)
@@ -38,7 +47,7 @@ def fingerprint_project(
             case Sample():
                 parts.append(reconstruction_hash(voice.reconstruction))
             case Instrument():
-                parts.append(voice.model_dump_json())
+                parts.append(_canonical(voice))
 
     return identity_digest(*parts, length=FINGERPRINT_LENGTH)
 

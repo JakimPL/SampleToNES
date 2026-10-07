@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from sampletones_application.constants.instruments import INSTRUMENT_CHANNEL
+from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
@@ -32,6 +33,7 @@ from sampletones_core.formats.famitracker.footprint import (
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.application import HeldQueue, held_queue
+from tests.suite.history.wiring import wired_history
 from tests.suite.regeneration import HeldRegeneration
 from tests.suite.stems import SHARED_CHANNEL, SOLE_CHANNEL, everything_heard, regenerated, taking_turns
 
@@ -56,14 +58,21 @@ def _silent_volume(features: Features) -> Envelope[int]:
 def _editor(
     reconstruction_manager: MagicMock,
     controller: ProjectController,
+    history: HistoryManager,
 ) -> InstrumentEditor:
     """The editor over a strict history, which is how the application builds it."""
     return InstrumentEditor(
         reconstruction_manager,
         controller,
-        HistoryManager(controller, budget=HISTORY_BUDGET, strict=True),
+        history,
         lambda _voice_id, _feature_key: (),
     )
+
+
+@pytest.fixture
+def history(project_controller: ProjectController) -> HistoryManager:
+    """A strict history over the case's controller, so an edit outside a transaction is reported."""
+    return wired_history(project_controller, budget=HISTORY_BUDGET, strict=True)
 
 
 @pytest.fixture
@@ -74,7 +83,12 @@ def mock_reconstruction_manager() -> MagicMock:
 @pytest.fixture
 def instrument_editor(mock_reconstruction_manager: MagicMock) -> InstrumentEditor:
     """The real source the panel reads, over a stand-in for the document it opens."""
-    return _editor(mock_reconstruction_manager, ProjectController(ProjectManager()))
+    controller = ProjectController(ProjectManager())
+    return _editor(
+        mock_reconstruction_manager,
+        controller,
+        wired_history(controller, budget=HISTORY_BUDGET, strict=True),
+    )
 
 
 @pytest.fixture
@@ -489,12 +503,15 @@ class TestTheInstrumentsPanelShowsAnInstrument:
         self,
         mock_reconstruction_manager: MagicMock,
         project_controller: ProjectController,
+        history: HistoryManager,
         rewrites: ReconstructionRewrites,
     ) -> ReconstructionInstrumentsLogic:
         mock_reconstruction_manager.current_features = None
-        editor = _editor(mock_reconstruction_manager, project_controller)
-        instrument = project_controller.add_instrument(new_instrument("lead"))
-        project_controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, Envelope(items=(15, 12)))
+        editor = _editor(mock_reconstruction_manager, project_controller, history)
+        with history.transaction(HistoryAction.ADD_INSTRUMENT):
+            instrument = project_controller.add_instrument(new_instrument("lead"))
+        with history.transaction(HistoryAction.EDIT_INSTRUMENT):
+            project_controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, Envelope(items=(15, 12)))
         editor.edit_instrument(instrument.id)
         return _logic(editor, rewrites)
 
@@ -527,10 +544,12 @@ class TestTheInstrumentsPanelShowsAnInstrument:
         self,
         instrument_logic: ReconstructionInstrumentsLogic,
         project_controller: ProjectController,
+        history: HistoryManager,
     ) -> None:
         """An export writes what has frames, so a voice holding none is offered no export."""
         instrument = project_controller.project.voices[0]
-        project_controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, Envelope(items=()))
+        with history.transaction(HistoryAction.EDIT_INSTRUMENT):
+            project_controller.set_instrument_envelope(instrument.id, FeatureKey.VOLUME, Envelope(items=()))
         received: List[ReconstructionInstrumentsViewModel] = []
         instrument_logic.on_view_changed = received.append
 
@@ -597,14 +616,17 @@ class TestAnEditReachingAVoiceThatLeft:
         self,
         mock_reconstruction_manager: MagicMock,
         project_controller: ProjectController,
+        history: HistoryManager,
         rewrites: ReconstructionRewrites,
     ) -> ReconstructionInstrumentsLogic:
         """The panel's logic over an instrument the project has since removed."""
         mock_reconstruction_manager.current_features = None
-        editor = _editor(mock_reconstruction_manager, project_controller)
-        instrument = project_controller.add_instrument(new_instrument("lead"))
+        editor = _editor(mock_reconstruction_manager, project_controller, history)
+        with history.transaction(HistoryAction.ADD_INSTRUMENT):
+            instrument = project_controller.add_instrument(new_instrument("lead"))
         editor.edit_instrument(instrument.id)
-        project_controller.remove_voice(instrument.id)
+        with history.transaction(HistoryAction.REMOVE_VOICE):
+            project_controller.remove_voice(instrument.id)
         return _logic(editor, rewrites)
 
     def test_an_envelope_edit_draws_the_panel_empty(
@@ -667,12 +689,15 @@ class TestAnEditReachingAVoiceThatLeft:
         self,
         mock_reconstruction_manager: MagicMock,
         project_controller: ProjectController,
+        history: HistoryManager,
         rewrites: ReconstructionRewrites,
     ) -> None:
         """The panel offers the pitch on a reconstruction's channels alone."""
         mock_reconstruction_manager.current_features = None
-        editor = _editor(mock_reconstruction_manager, project_controller)
-        editor.edit_instrument(project_controller.add_instrument(new_instrument("lead")).id)
+        editor = _editor(mock_reconstruction_manager, project_controller, history)
+        with history.transaction(HistoryAction.ADD_INSTRUMENT):
+            instrument = project_controller.add_instrument(new_instrument("lead"))
+        editor.edit_instrument(instrument.id)
         logic = _logic(editor, rewrites)
         views: List[ReconstructionInstrumentsViewModel] = []
         logic.on_view_changed = views.append
