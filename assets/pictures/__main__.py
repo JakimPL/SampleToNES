@@ -3,7 +3,7 @@ import sys
 import time
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Dict, Final, List, Sequence
+from typing import Dict, Final, List, Optional, Sequence
 
 import pytest
 
@@ -31,16 +31,31 @@ NAMING: Final[Dict[str, str]] = {
     "python_classes": "*Scenes",
     "python_functions": "picture_*",
 }
+ALONE_MARKER: Final[str] = "alone"
+ALONE_MARKER_WORDS: Final[str] = "a scene drawn with no other scene's home beside its own"
+NOTHING_TO_RUN: Final[int] = int(pytest.ExitCode.NO_TESTS_COLLECTED)
 
 
-def pytest_arguments(scenes: Path, naming: Dict[str, str], workers: str) -> List[str]:
-    """The arguments the scenes run under: their folder, their naming, and a few workers without coverage."""
+def pytest_arguments(
+    scenes: Path,
+    naming: Dict[str, str],
+    *,
+    workers: Optional[str],
+    selection: str,
+) -> List[str]:
+    """The arguments the scenes run under: their folder, their naming, the marker expression ``selection``
+    picks them by, and ``workers`` workers, or one process at a time for ``None``, without coverage.
+    """
     overrides = [argument for key, value in naming.items() for argument in ("-o", f"{key}={value}")]
+    spread = ["-n", workers] if workers is not None else []
     return [
         str(scenes),
         *overrides,
-        "-n",
-        workers,
+        "-o",
+        f"markers={ALONE_MARKER}: {ALONE_MARKER_WORDS}",
+        "-m",
+        selection,
+        *spread,
         "--no-cov",
         "-p",
         "no:cacheprovider",
@@ -65,7 +80,12 @@ def run_environment(base: Dict[str, str], *, kept: Path, homes: Path, repository
 
 
 def main(argv: Sequence[str]) -> int:
-    """Makes the demo tree where it is missing, draws every scene, and reports each picture written."""
+    """Makes the demo tree where it is missing, draws every scene, and reports each picture written.
+
+    The scenes run on a few workers, and the scenes marked as drawn alone run one at a time after
+    them, once every other worker has let its homes go: a picture of the file browser shows the
+    folders beside the scene's home, and a home beside it is named after the run that made it.
+    """
     ArgumentParser(prog=PROGRAM, description=DESCRIPTION).parse_args(list(argv))
     if not DEMO_DIRECTORY.is_dir():
         build_demo(DEMO_DIRECTORY)
@@ -80,7 +100,29 @@ def main(argv: Sequence[str]) -> int:
         )
     )
     started = time.time()
-    status = int(pytest.main(pytest_arguments(SCENES_DIRECTORY, NAMING, WORKERS)))
+    status = int(
+        pytest.main(
+            pytest_arguments(
+                SCENES_DIRECTORY,
+                NAMING,
+                workers=WORKERS,
+                selection=f"not {ALONE_MARKER}",
+            )
+        )
+    )
+    if status == 0:
+        alone = int(
+            pytest.main(
+                pytest_arguments(
+                    SCENES_DIRECTORY,
+                    NAMING,
+                    workers=None,
+                    selection=ALONE_MARKER,
+                )
+            )
+        )
+        status = 0 if alone == NOTHING_TO_RUN else alone
+
     for path in written_since(IMAGES_DIRECTORY, started, PICTURE_SUFFIX):
         print(f"Wrote {path}")
 

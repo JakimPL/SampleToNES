@@ -35,8 +35,9 @@ from automation.dearpygui.items.viewport import (
     read_viewport_title,
 )
 from automation.dearpygui.recording import FrameRecording
-from automation.dearpygui.screenshot import capture, drawn_frame
+from automation.dearpygui.screenshot import capture
 from automation.dearpygui.windows import WindowManager
+from automation.frames import frame_pixels
 from automation.keyboard import (
     first_alias,
     press_combination,
@@ -85,7 +86,6 @@ EXPECT_TIMEOUT_SECONDS: Final[float] = 10.0
 STEP_SEPARATOR: Final[str] = " → "
 SCREENSHOT_SUFFIX: Final[str] = ".png"
 STATUS_BAR: Final[str] = compose_tag(TAG_GLOBAL_STATUS_BAR, SUF_BUTTON)
-PIXEL_CHANNELS: Final[int] = 4
 
 
 class Screen:
@@ -172,8 +172,7 @@ class Screen:
 
     def frame_pixels(self) -> np.ndarray:
         """The next frame drawn, as rows of pixels of red, green, blue and alpha fractions."""
-        frame = drawn_frame(self.bridge)
-        return np.frombuffer(frame.pixels, dtype=np.float32).reshape(frame.height, frame.width, PIXEL_CHANNELS)
+        return frame_pixels(self.bridge)
 
     def channel_words(self, channel: ChannelName) -> str:
         """The name every display gives ``channel``."""

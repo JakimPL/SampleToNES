@@ -17,11 +17,12 @@ from sampletones_application.config.session.application.config import (
 from sampletones_application.config.session.application.display import (
     DisplayConfig,
 )
+from sampletones_application.config.session.state.paths import LastPaths
 from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_application.config.session.state.window import ViewportState
 from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
 
-GUIDE_VIEWPORT: Final[ViewportState] = ViewportState(width=1280, height=800, x=0, y=0)
+GUIDE_VIEWPORT: Final[ViewportState] = ViewportState(width=1280, height=960, x=0, y=0)
 README_VIEWPORT: Final[ViewportState] = ViewportState(width=1520, height=1140, x=0, y=0)
 DOCUMENT_FOLDERS: Final[tuple[str, ...]] = (
     LIBRARY_FOLDER,
@@ -77,9 +78,16 @@ class DemoTree:
 
 
 def demo_world(viewport: ViewportState) -> World:
-    """A home holding the demo tree, opening a window of ``viewport`` with the frame-rate reading off."""
+    """A home holding the demo tree, opening a window of ``viewport`` with the frame-rate reading off.
+
+    The session remembers the documents folder as where audio was last written, so a window proposing
+    a file for a render names a place under the documents.
+    """
     return World(
-        state=ApplicationState(viewport=viewport),
+        state=ApplicationState(
+            viewport=viewport,
+            last_paths=LastPaths(audio=USER_PATH_DOCUMENTS),
+        ),
         application_config=ApplicationConfig(display=DisplayConfig(show_frame_rate=False)),
         config=one_worker_config(),
         files=(

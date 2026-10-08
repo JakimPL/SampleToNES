@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Dict, Optional, Self, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -147,10 +148,19 @@ class InstrumentSpec(BaseModel):
 
 
 class ProjectSpec(BaseModel):
-    """The project the demo arranges: its identity, its instruments and the song that plays them."""
+    """The project the demo arranges: its identity, its instruments and the song that plays them.
+
+    Attributes:
+        created: When the project reads as created and last changed, so a tree made today carries
+            the dates a tree made any other day carries.
+        module: The song's title, author and timing.
+        instruments: The instruments the song plays, by name.
+        song: The patterns and the order.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
+    created: datetime
     module: ModuleConfig
     instruments: Dict[str, InstrumentSpec]
     song: SongSpec

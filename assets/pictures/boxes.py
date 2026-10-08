@@ -1,15 +1,6 @@
-from typing import Final, Sequence, Tuple
-
-import numpy as np
+from typing import Sequence, Tuple
 
 from automation.dearpygui.geometry import Rect
-
-RGB_CHANNELS: Final[int] = 3
-COLOR_TOLERANCE: Final[float] = 1.5 / 255.0
-
-
-class NothingChangedError(AssertionError):
-    """Raised when two frames compared for a popup differ in no pixel, so no popup stands to picture."""
 
 
 def union(rects: Sequence[Rect]) -> Rect:
@@ -28,6 +19,16 @@ def union(rects: Sequence[Rect]) -> Rect:
     return Rect(x=left, y=top, width=right - left, height=bottom - top)
 
 
+def corner_box(rects: Sequence[Rect]) -> Rect:
+    """The box from the frame's top left corner down and across to the farthest edge of ``rects``.
+
+    Raises:
+        ValueError: If ``rects`` is empty.
+    """
+    held = union(rects)
+    return Rect(x=0, y=0, width=held.x + held.width, height=held.y + held.height)
+
+
 def crop_box(
     rect: Rect,
     margin: int,
@@ -44,26 +45,3 @@ def crop_box(
     right = min(width, int(rect.x + rect.width) + margin)
     bottom = min(height, int(rect.y + rect.height) + margin)
     return left, top, right, bottom
-
-
-def changed_box(before: np.ndarray, after: np.ndarray) -> Rect:
-    """The box around every pixel that differs between two frames, which is where a popup opened.
-
-    A popup reports no box of its own, so the frame before it opened and the frame after are
-    compared, and the difference is the popup with the highlight of whatever opened it.
-
-    Raises:
-        NothingChangedError: If no pixel differs.
-    """
-    changed = np.any(
-        np.abs(after[:, :, :RGB_CHANNELS] - before[:, :, :RGB_CHANNELS]) > COLOR_TOLERANCE,
-        axis=2,
-    )
-    rows = np.nonzero(changed.any(axis=1))[0]
-    columns = np.nonzero(changed.any(axis=0))[0]
-    if not rows.size:
-        raise NothingChangedError("The two frames show the same picture, so nothing opened between them")
-
-    left, right = int(columns.min()), int(columns.max())
-    top, bottom = int(rows.min()), int(rows.max())
-    return Rect(x=left, y=top, width=right - left + 1, height=bottom - top + 1)

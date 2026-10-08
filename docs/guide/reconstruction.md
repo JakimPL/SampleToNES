@@ -12,6 +12,10 @@ The **Browser** groups reconstructions in two ways:
 - **By configuration** groups them by the settings they were made with.
 - **By sample** groups every version of the same source audio together.
 
+<div align="center">
+    <img src="../images/guide/reconstruction/browser.webp" alt="The Browser with reconstructions grouped by configuration" width="299">
+</div>
+
 To keep frequently used reconstructions within reach, right-click a reconstruction or a folder and
 choose **Mark as favorite**. Check **Favorites only** to show only those items.
 
@@ -22,6 +26,10 @@ The **Source** card switches playback between **Reconstruction** and **Original 
 compare the two. Type a new rate in **NES frequency** and press `Enter` to change the reconstruction's speed. A
 reconstruction that belongs to a project follows the project's rate, so the field is locked. Save it to
 a file to unlock the field.
+
+<div align="center">
+    <img src="../images/guide/reconstruction/source.webp" alt="The Source card" width="526">
+</div>
 
 Keys `1` to `4` switch the channels of the **Waveform** card. `Ctrl+1` to `Ctrl+4` work while you
 type in a field.
@@ -34,6 +42,10 @@ On the waveform:
 - Scroll to zoom. Hold **Alt** and scroll to move sideways, or **Alt** and **Shift** to move up and
   down.
 
+<div align="center">
+    <img src="../images/guide/reconstruction/waveform.webp" alt="The Waveform card with the bars showing which recording played where" width="526">
+</div>
+
 ## Hearing what each recording contributed
 
 The **Stems** card lists the recordings a reconstruction was built from, grouped by the
@@ -41,6 +53,10 @@ The **Stems** card lists the recordings a reconstruction was built from, grouped
 checkbox for each channel the recording used, and the checkbox at the front switches all of them.
 Double-click a row to show the recording in your file browser. Right-click a row to **Mute** the
 recording, hear it alone with **Solo**, or copy its name or path.
+
+<div align="center">
+    <img src="../images/guide/reconstruction/stems.webp" alt="The Stems card with three recordings on three levels" width="526">
+</div>
 
 Uncheck a box to hear the reconstruction without that recording on that channel. The waveform,
 playback and WAV export follow the checkboxes.
@@ -58,6 +74,10 @@ Notes you write where no recording played go to an **Edits** row.
 
 The **Instruments** panel shows what each channel plays, as one
 [sequence](../glossary.md#sequence-envelope) per dimension. Edit a sequence by dragging its bars or typing values.
+
+<div align="center">
+    <img src="../images/guide/reconstruction/instruments.webp" alt="The Instruments panel showing the sequences of Pulse 1" width="375">
+</div>
 
 Each channel has its own set:
 
@@ -92,6 +112,10 @@ You export a reconstruction from the **Reconstruction** menu:
   `.nsf` file that plays the whole reconstruction on a NES. The window is described [in the
   sequencer guide](sequencer.md#exporting-the-song).
 - **Export to WAV...** renders the audio using the channel and recording checkboxes you have set.
+
+<div align="center">
+    <img src="../images/guide/reconstruction/export-menu.webp" alt="The Reconstruction menu with Export instruments unfolded" width="638">
+</div>
 
 **Export instrument...** in the **Instruments** panel writes the channel you are looking at, in the
 format you choose in the save dialog. See [where your files

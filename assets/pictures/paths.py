@@ -10,7 +10,7 @@ GUIDE_DIRECTORY: Final[Path] = IMAGES_DIRECTORY / "guide"
 README_PICTURE: Final[Path] = IMAGES_DIRECTORY / f"sampletones{PICTURE_SUFFIX}"
 DEMO_DIRECTORY: Final[Path] = REPOSITORY_ROOT / "build" / "demo"
 KEPT_DIRECTORY: Final[Path] = REPOSITORY_ROOT / "build" / "pictures"
-HOMES_DIRECTORY: Final[Path] = KEPT_DIRECTORY / "homes"
+HOMES_DIRECTORY: Final[Path] = REPOSITORY_ROOT / "build" / "worlds" / "homes"
 SCENES_DIRECTORY: Final[Path] = package_directory("assets.pictures.scenes")
 
 

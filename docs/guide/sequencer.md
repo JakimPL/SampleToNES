@@ -16,6 +16,10 @@ A song plays [**voices**](../glossary.md#voice). There are two kinds:
 
 Both kinds are in the **Voices** list, numbered together.
 
+<div align="center">
+    <img src="../images/guide/sequencer/voices.webp" alt="The Voices list with two samples and two instruments" width="375">
+</div>
+
 The **Voice** menu adds a voice in four ways:
 
 | Menu item | What it adds |
@@ -54,6 +58,10 @@ The **Tracker** grid is the [pattern](../glossary.md#pattern) editor. Each row i
 The grid has a **Sample** column and a column for each channel: **Pulse 1**, **Pulse 2**,
 **Triangle** and **Noise**.
 
+<div align="center">
+    <img src="../images/guide/sequencer/tracker.webp" alt="The Tracker grid with the caret in the Pulse 1 column" width="538">
+</div>
+
 Click a cell and type its value. Right-click a cell for the same commands as a menu, including
 **Note off**.
 
@@ -91,6 +99,10 @@ A song plays patterns in a sequence. The [**Order**](../glossary.md#order) grid 
 Each column is one position in the song, called a **frame**. The grid has a row for the **Master**
 and a row for each channel.
 
+<div align="center">
+    <img src="../images/guide/sequencer/order.webp" alt="The Order grid with four frames" width="538">
+</div>
+
 Type a pattern number in the **Order** grid to place a pattern. Right-click a frame to insert, clear
 or remove frames, and to repeat one:
 
@@ -99,7 +111,7 @@ or remove frames, and to repeat one:
 
 ## Playing the song
 
-The play controls under the grid play the song. These keys work anywhere on the tab:
+The play controls beside the menus play the song. These keys work anywhere on the tab:
 
 | Key | Action |
 |-----|--------|
@@ -109,6 +121,10 @@ The play controls under the grid play the song. These keys work anywhere on the 
 | `Ctrl+Shift+Space` | Play from the cursor's row |
 | `Esc` | Stop |
 | `Ctrl+L` | **Loop song**: start the song again when it ends |
+
+<div align="center">
+    <img src="../images/guide/sequencer/playback.webp" alt="The play controls" width="182">
+</div>
 
 `Esc` also stops a sample preview. A grid's right-click menu plays from the row or frame you clicked.
 
@@ -196,17 +212,29 @@ The right-click menu has the same commands.
 You can undo every change. The **History** panel lists your changes, and a click on one goes back to
 that point. Undo also covers voice edits on the **Reconstruction** tab.
 
+<div align="center">
+    <img src="../images/guide/sequencer/history.webp" alt="The History panel listing three changes" width="376">
+</div>
+
 ## Timing and properties
 
 **Module options** sets the song's timing: **Rows** per pattern, **Speed** (the number of [ticks](../glossary.md#tick)
 each row lasts), **Tempo**, and the **NES frequency** the song plays at. Speed and tempo together set how fast
 the rows go by. Changing **NES frequency** changes how existing voices play, so the app asks first.
 
+<div align="center">
+    <img src="../images/guide/sequencer/module-options.webp" alt="The Module options card" width="375">
+</div>
+
 **File ▸ Project properties...** sets the title, the author and the comment. The exported module
 includes them. It also sets the [meter](../glossary.md#metric-highlight):
 
 - **First highlight** is the number of rows in a beat.
 - **Second highlight** is the number of rows in a bar.
+
+<div align="center">
+    <img src="../images/guide/sequencer/project-properties.webp" alt="The Project properties dialog" width="516">
+</div>
 
 The defaults, 4 and 16, give four beats of four rows in a bar. For waltz time, set **Second highlight** to 12, which gives three beats.
 
@@ -239,6 +267,10 @@ export](../formats/nsf.md) and [song compression](../concepts/compression.md).
 **NSF program...** opens the **Export NSF program** window. Click **Export** without changing
 anything to save the whole song, repeating from the start.
 
+<div align="center">
+    <img src="../images/guide/sequencer/nsf-window.webp" alt="The Export NSF program window" width="556">
+</div>
+
 | Setting | What it does |
 |---------|--------------|
 | **Title**, **Artist**, **Copyright** | The text an NSF player shows. Each one holds up to 31 characters |
@@ -250,6 +282,10 @@ anything to save the whole song, repeating from the start.
 
 **File ▸ Render song...** (`Ctrl+Shift+E`) saves the whole song as an audio file that any player
 opens.
+
+<div align="center">
+    <img src="../images/guide/sequencer/render.webp" alt="The Render song window" width="556">
+</div>
 
 | Setting | What it does |
 |---------|--------------|

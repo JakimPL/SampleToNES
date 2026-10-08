@@ -19,8 +19,8 @@ class ScrollReading:
     """How far a region that scrolls stands from its top, how far it can go, in pixels, and what moves it.
 
     Attributes:
-        position: How far the region is scrolled down.
-        maximum: How far the region can scroll down.
+        position: How far the region is scrolled along the axis read.
+        maximum: How far the region can scroll along it.
         by_wheel: Whether the wheel scrolls the region, or its scrollbar alone does.
     """
 
@@ -74,8 +74,21 @@ def read_scroll(region: Item) -> ScrollReading:
     return ScrollReading(
         position=dpg.get_y_scroll(region),
         maximum=dpg.get_y_scroll_max(region),
-        by_wheel=not dpg.get_item_configuration(region).get("no_scroll_with_mouse", False),
+        by_wheel=_takes_the_wheel(region),
     )
+
+
+def read_sideways_scroll(region: Item) -> ScrollReading:
+    """How far ``region`` is scrolled to the right. Runs on the render thread."""
+    return ScrollReading(
+        position=dpg.get_x_scroll(region),
+        maximum=dpg.get_x_scroll_max(region),
+        by_wheel=_takes_the_wheel(region),
+    )
+
+
+def _takes_the_wheel(region: Item) -> bool:
+    return not dpg.get_item_configuration(region).get("no_scroll_with_mouse", False)
 
 
 def enclosing_regions(item: Item) -> Tuple[Item, ...]:

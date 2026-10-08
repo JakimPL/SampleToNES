@@ -18,6 +18,10 @@ a song. First, [install](installation.md) _SampleToNES_.
    `Kick`. The app writes one `.fti` file per channel: `Kick (pulse1).fti`, `Kick (triangle).fti`,
    and so on.
 
+<div align="center">
+    <img src="../images/guide/converting/converter-done.webp" alt="The Converter card after a conversion, asking to load the result" width="910">
+</div>
+
 That is the shortest path from a sound to instruments you can load in FamiTracker.
 [Converting audio](converting.md) and [working with a
 reconstruction](reconstruction.md) cover the **Main** and **Reconstruction** tabs

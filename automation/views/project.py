@@ -12,6 +12,7 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
 )
 from sampletones_application.tags.settings import (
+    TAG_SETTINGS_PROPERTIES_BUTTON_CANCEL,
     TAG_SETTINGS_PROPERTIES_BUTTON_OK,
     TAG_SETTINGS_PROPERTIES_INPUT_FIRST_HIGHLIGHT,
     TAG_SETTINGS_PROPERTIES_INPUT_SECOND_HIGHLIGHT,
@@ -57,6 +58,10 @@ class ProjectProperties:
     def confirm(self) -> None:
         """Presses OK, which keeps the typed values and closes the dialog."""
         self._hand.click(compose_tag(TAG_SETTINGS_PROPERTIES_BUTTON_OK, SUF_BUTTON))
+
+    def cancel(self) -> None:
+        """Presses Cancel, which closes the dialog and leaves the project as it was."""
+        self._hand.click(compose_tag(TAG_SETTINGS_PROPERTIES_BUTTON_CANCEL, SUF_BUTTON))
 
 
 class Project:

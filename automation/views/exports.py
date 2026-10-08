@@ -28,6 +28,8 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_NSF_INPUT_TITLE,
     TAG_SETTINGS_NSF_TEXT_NO_CHANNEL,
     TAG_SETTINGS_NSF_WINDOW,
+    TAG_SETTINGS_RENDER_BUTTON_CLOSE,
+    TAG_SETTINGS_RENDER_WINDOW,
 )
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.constants.enums import ChannelName
@@ -159,6 +161,26 @@ class NSFWindow:
         self._hand.replace_text(TAG_SETTINGS_NSF_INPUT_TITLE, title)
 
 
+class RenderWindow:
+    """The window rendering the song to an audio file: its format, its destination, and Render and Cancel."""
+
+    def __init__(
+        self,
+        bridge: Bridge,
+        hand: Hand,
+    ) -> None:
+        self._bridge = bridge
+        self._hand = hand
+
+    def is_shown(self) -> bool:
+        """Whether the window stands on the screen."""
+        return self._bridge.ask(lambda: read_item(TAG_SETTINGS_RENDER_WINDOW)).shown
+
+    def cancel(self) -> None:
+        """Clicks Cancel on a window whose render has yet to start, which closes the window."""
+        self._hand.click(compose_tag(TAG_SETTINGS_RENDER_BUTTON_CLOSE, SUF_BUTTON))
+
+
 class Exports:
     """The ways a project, a reconstruction or an instrument leaves the application as a file.
 
@@ -177,12 +199,17 @@ class Exports:
         self._menu = menu
         self.progress = ExportProgress(bridge, hand)
         self.nsf = NSFWindow(bridge, hand)
+        self.render = RenderWindow(bridge, hand)
         self.project_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_MODULE_EXPORTED)
         self.file_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_PATH_MESSAGE)
 
     def export_project(self, item: MenuElements) -> None:
         """Chooses File ▸ Export ▸ ``item``."""
         self._menu.choose(MenuElements.GROUP_FILE, item)
+
+    def render_song(self) -> None:
+        """Chooses File ▸ Render song, which opens the window rendering the song."""
+        self._menu.choose(MenuElements.GROUP_FILE, MenuElements.ITEM_FILE_RENDER_SONG)
 
     def export_reconstruction(self, item: MenuElements) -> None:
         """Chooses Reconstruction ▸ Export instruments ▸ ``item``."""

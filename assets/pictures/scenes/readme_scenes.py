@@ -1,10 +1,8 @@
-from pathlib import Path
 from typing import Final
 
 import pytest
 
-from assets.demo.paths import RECONSTRUCTIONS_FOLDER
-from assets.demo.specification import DemoSpecification
+from assets.pictures.demo import piece_document
 from assets.pictures.paths import README_PICTURE
 from assets.pictures.worlds import README_VIEWPORT, demo_world
 from assets.pictures.writer import Pictures
@@ -12,17 +10,9 @@ from automation.screen import Screen
 from automation.steps.reconstructions import expect_open, load_from_the_browser
 from automation.worlds.home import World
 from sampletones_core.constants.enums import ChannelName
-from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
-from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
 
-PIECE: Final[str] = DemoSpecification.load().recordings.piece.name
 WAVEFORM_POINT: Final[float] = 0.6
 SETTLE_FRAMES: Final[int] = 10
-
-
-def piece_document() -> Path:
-    """The piece's reconstruction in the home's documents folder, under its configuration folder."""
-    return next((USER_PATH_DOCUMENTS / RECONSTRUCTIONS_FOLDER).rglob(f"{PIECE}{EXT_FILE_RECONSTRUCTION}"))
 
 
 class ReadmeScenes:

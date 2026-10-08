@@ -7,6 +7,7 @@ AUTOMATION_DIRECTORY: Final[Path] = REPOSITORY_ROOT / "automation"
 DEARPYGUI_LAYER_DIRECTORY: Final[Path] = AUTOMATION_DIRECTORY / "dearpygui"
 KEPT_DIRECTORY: Final[Path] = REPOSITORY_ROOT / "build" / "screens"
 HOME_FOLDER: Final[str] = "home"
+TEMPORARY_FOLDER: Final[str] = ".tmp"
 HOMES_PREFIX: Final[str] = "sampletones-screens-"
 HOME_COPY_NOTE: Final[str] = "home-copy-incomplete.txt"
 PROCESSES_DIRECTORY: Final[Path] = Path("/proc")

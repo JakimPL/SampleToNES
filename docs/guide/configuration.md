@@ -18,6 +18,14 @@ Three cards on the **Main** tab have the everyday settings:
   **View ▸ Show advanced settings** to show this card. [Reconstruction
   algorithms](../concepts/reconstruction.md) explains **Method** and **Feature scaling**.
 
+<div align="center">
+    <img src="../images/guide/configuration/general-settings.webp" alt="The General settings card" width="909">
+</div>
+
+<div align="center">
+    <img src="../images/guide/configuration/advanced-settings.webp" alt="The Advanced settings card" width="451">
+</div>
+
 The app saves your changes to `config.json`. See [Where your files live](files.md).
 
 ## The configuration file

@@ -14,6 +14,7 @@ from automation.paths import (
     KEPT_DIRECTORY,
     NO_BUS_FILE,
     REPORTS_FILE,
+    TEMPORARY_FOLDER,
 )
 from sampletones_shared.application import SAMPLETONES_ENV_PREFIX
 
@@ -72,6 +73,11 @@ class ScenarioFolders:
     home: Path
     reports: Path
 
+    @property
+    def temporary(self) -> Path:
+        """The hidden folder in the home that the application's process makes its temporary files in."""
+        return self.home / TEMPORARY_FOLDER
+
     @classmethod
     def of(
         cls,
@@ -95,11 +101,13 @@ class ScenarioFolders:
         )
 
     def prepare(self) -> None:
-        """Clears what an earlier run of the scenario left, and lays out an empty home and artifacts folder."""
+        """Clears what an earlier run of the scenario left, and lays out an empty home, its temporary folder and
+        the artifacts folder.
+        """
         shutil.rmtree(self.root, ignore_errors=True)
         shutil.rmtree(self.home, ignore_errors=True)
         self.root.mkdir(parents=True)
-        self.home.mkdir(parents=True)
+        self.temporary.mkdir(parents=True)
 
     def finish(self, *, failed: bool) -> None:
         """Lets the scratch home go, keeping a copy among the artifacts where the scenario failed.
@@ -133,16 +141,18 @@ def child_environment(
 ) -> Dict[str, str]:
     """The environment a scenario's process starts under: ``base``, pointed at the scenario's own world.
 
-    The home and every XDG directory lie inside the scenario's home, so settings, session state
-    and the documents folder start empty and stay apart from the user's. The display is the
-    worker's own server, the session bus address leads nowhere, and the input method is off, so
-    everything a scenario does stays on its own display and in its own home.
+    The home, every XDG directory and the temporary folder lie inside the scenario's home, so
+    settings, session state, the documents folder and whatever the process makes on the side start
+    empty and stay apart from the user's, and from the homes beside it. The display is the worker's
+    own server, the session bus address leads nowhere, and the input method is off, so everything a
+    scenario does stays on its own display and in its own home.
     """
     environment = {name: value for name, value in base.items() if not name.startswith(DROPPED_PREFIXES)}
     home = folders.home
     environment.update(
         {
             "HOME": str(home),
+            "TMPDIR": str(folders.temporary),
             "XDG_CONFIG_HOME": str(home / ".config"),
             "XDG_DATA_HOME": str(home / ".local" / "share"),
             "XDG_CACHE_HOME": str(home / ".cache"),

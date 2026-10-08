@@ -11,6 +11,7 @@ from automation.dearpygui.items.texts import find_labelled, read_label
 from automation.dearpygui.items.types import MENU_ITEM_TYPE, MENU_TYPE, Item
 from automation.dearpygui.items.viewport import read_viewport
 from automation.dearpygui.semantic import invoke
+from automation.frames import changed_box, frame_pixels, settled_frame
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
@@ -22,6 +23,8 @@ from sampletones_application.tags.general import (
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 
 HEADER_INSET: Final[Point] = Point(x=12, y=8)
+ENTRY_INSET: Final[Point] = Point(x=12, y=8)
+HOVER_SECONDS: Final[float] = 5.0
 ENABLED: Final[str] = "enabled"
 SHORTCUT: Final[str] = "shortcut"
 GROUP_TYPE: Final[str] = "mvAppItemType::mvGroup"
@@ -86,6 +89,56 @@ class MenuBar:
         corner = self._bridge.ask(lambda: dpg.get_item_state(self._menu(group))["pos"])
         return Point(x=round(corner[0]), y=round(corner[1]))
 
+    def open_submenu(
+        self,
+        group: MenuElements,
+        submenu: MenuElements,
+    ) -> None:
+        """Opens the menu ``group`` and rests the pointer on its entry ``submenu``, which unfolds the submenu.
+
+        DearPyGui reports where an entry stands inside its popup alone, and the popup nowhere, so the
+        popup is found by what it painted over the frame before it opened: its left edge is the painted
+        box's, and its top stands its own height above the box's bottom. Both frames are read once the
+        screen holds still, and the first frame DearPyGui hands over in a process is bare, so one reading
+        is let go first.
+        """
+        frame_pixels(self._bridge)
+        before = settled_frame(self._bridge)
+        self.open(group)
+        self._bridge.expect(
+            lambda: self.is_open(group),
+            bool,
+            description=f"the {self.label(group)} menu open",
+            timeout=HOVER_SECONDS,
+        )
+        painted = changed_box(before, settled_frame(self._bridge))
+        height = self._bridge.ask(lambda: float(dpg.get_item_state(self._menu(group))["rect_size"][1]))
+        offset = self._bridge.ask(lambda: dpg.get_item_state(self._submenu(group, submenu))["pos"])
+        self._hand.move_to(
+            Point(
+                x=round(painted.x + offset[0] + ENTRY_INSET.x),
+                y=round(painted.y + painted.height - height + offset[1] + ENTRY_INSET.y),
+            )
+        )
+        self._bridge.expect(
+            lambda: self.submenu_unfolded(group, submenu),
+            bool,
+            description=f"{self.label(submenu)} unfolded",
+            timeout=HOVER_SECONDS,
+        )
+
+    def is_open(self, group: MenuElements) -> bool:
+        """Whether the menu ``group`` stands open, which gives its popup a size."""
+        return bool(self._bridge.ask(lambda: dpg.get_item_state(self._menu(group))["rect_size"][1] > 0))
+
+    def submenu_unfolded(
+        self,
+        group: MenuElements,
+        submenu: MenuElements,
+    ) -> bool:
+        """Whether the submenu ``submenu`` of the menu ``group`` stands unfolded, which gives its popup a size."""
+        return bool(self._bridge.ask(lambda: dpg.get_item_state(self._submenu(group, submenu))["rect_size"][1] > 0))
+
     def close(self) -> None:
         """Clicks the bare far end of the tab bar, clear of every menu's popup, which puts an open menu away."""
         last_tab = self._bridge.ask(lambda: read_item(TAG_GLOBAL_TAB_INSTRUCTIONS).rect)
@@ -130,6 +183,14 @@ class MenuBar:
     def _menu(self, group: MenuElements) -> Item:
         """The menu ``group`` on the bar. Runs on the render thread."""
         return find_labelled(TAG_GLOBAL_WINDOW_MAIN, self.label(group), item_type=MENU_TYPE)
+
+    def _submenu(
+        self,
+        group: MenuElements,
+        submenu: MenuElements,
+    ) -> Item:
+        """The entry of the menu ``group`` that unfolds the submenu ``submenu``. Runs on the render thread."""
+        return find_labelled(self._menu(group), self.label(submenu), item_type=MENU_TYPE)
 
     def _entry(
         self,

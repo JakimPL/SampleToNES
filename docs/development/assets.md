@@ -65,15 +65,19 @@ tree, put into a state and read off the screen. A picture is a *scene*, written 
 is ([screens](application/screens.md)): a method under `assets/pictures/scenes/` takes the screen and the
 `pictures` writer, drives the application through the automation unit's views and steps, and writes one
 picture, cropped to the card, dialog or popup the page names, with a margin around it. The README's picture
-is the whole window at twice the width the README shows it at; the guide's pictures come from a window at
-the application's own minimum size, so a crop stays compact. Every picture is lossless, so what the page
-shows is what the screen drew.
+is the whole window at twice the width the README shows it at; the guide's pictures come from a window just
+tall enough for the Main tab's cards to stand whole, so a crop stays compact. Every picture is lossless, so
+what the page shows is what the screen drew.
 
 `make pictures` runs the scenes. The runner makes the demo tree under `build/demo` where it is missing,
 starts the scenes under pytest on a few virtual displays of their own, with the scene naming in place of
 the test naming, a screen large enough for the README's window, the records of each scene under
-`build/pictures/`, and the scenario homes there too when the checkout's path holds no hidden folder, so a
-path a picture shows reads as one under `/home`. The frame-rate reading is off in every scene, since it
+`build/pictures/`, and the scenario homes under `build/worlds/homes/` when the checkout's path holds no hidden
+folder, so a path a picture shows reads as one under `/home`. A scene marked `alone` runs by itself after
+the others: the file browser lists the folders beside the scene's home, and every other worker's homes
+folder is named after the run that made it, so the scene waits until those are gone. The homes stand deep
+enough under `build/worlds/`, which nothing under `build/` follows, that the rows of the checkout's own
+folders under the home's rows end before a picture bounded by those rows begins. The frame-rate reading is off in every scene, since it
 would change the picture on every run. A scene's own window size and world come from
 `assets/pictures/worlds.py`.
 

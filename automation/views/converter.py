@@ -16,6 +16,7 @@ from sampletones_application.tags.general import (
     SUF_BUTTON,
     SUF_CHECKBOX,
     SUF_DIALOG_INFO,
+    SUF_TEXT,
     SUF_TOOLTIP,
 )
 from sampletones_application.tags.main import (
@@ -134,6 +135,20 @@ class ConverterList:
     def has_levels(self) -> bool:
         """Whether the list stands in level bands, which a mix of several recordings draws."""
         return bool(self._bridge.ask(lambda: dpg.does_item_exist(self.tags.level(FIRST_LEVEL, LEVEL_STRIP))))
+
+    def level_count(self) -> int:
+        """How many level bands the list stands in, counted by their captions, which a list drawn in one table
+        has none of.
+        """
+
+        def read() -> int:
+            count = 0
+            while dpg.does_item_exist(self.tags.level(count, SUF_TEXT)):
+                count += 1
+
+            return count
+
+        return self._bridge.ask(read)
 
     def hint_shown(self) -> bool:
         """Whether the hint asking for recordings stands on the card."""

@@ -206,6 +206,8 @@ def _write_project(
 
     module = specification.project.module
     project = build_project(catalog, module, specification.project.song)
+    project.info.created = specification.project.created
+    project.info.modified = specification.project.created
     path = root / PROJECTS_FOLDER / f"{module.title}{EXT_FILE_PROJECT}"
     path.parent.mkdir(parents=True, exist_ok=True)
     ProjectContainer.save(project, path)

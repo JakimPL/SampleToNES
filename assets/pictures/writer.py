@@ -4,19 +4,21 @@ from typing import Callable, Final, List, Optional
 import numpy as np
 from PIL import Image
 
-from assets.pictures.boxes import changed_box, crop_box, union
+from assets.pictures.boxes import corner_box, crop_box, union
 from assets.pictures.frames import to_image
 from assets.pictures.jitter import is_jitter
 from automation.dearpygui.geometry import Point, Rect
 from automation.dearpygui.items.reading import read_item
 from automation.dearpygui.items.types import Item
 from automation.dearpygui.items.viewport import read_viewport
+from automation.frames import changed_box, settled_frame
 from automation.screen import Screen
 from sampletones_application.tags.general import TAG_GLOBAL_TAB_INSTRUCTIONS
 
 MARGIN: Final[int] = 8
 OPENING_FRAMES: Final[int] = 5
 FAR_END_INSET: Final[int] = 30
+STATUS_SECONDS: Final[float] = 15.0
 FORMAT: Final[str] = "WEBP"
 LOSSLESS: Final[bool] = True
 QUALITY: Final[int] = 100
@@ -31,8 +33,9 @@ class Pictures:
     """Keeps pictures of what the screen shows, cropped to what a page names and written where it is kept.
 
     The first frame DearPyGui hands over after a readback is asked for is the bare clear color, so
-    the first reading is taken and discarded. Every picture is written lossless, so what the guide
-    shows is what the screen drew.
+    the first reading is taken and discarded. A picture is taken once the screen holds still, since a
+    card fills and a status line clears a frame or two after the gesture that brought them. Every
+    picture is written lossless, so what the guide shows is what the screen drew.
     """
 
     def __init__(self, screen: Screen) -> None:
@@ -52,6 +55,16 @@ class Pictures:
         rects = [self._rect(item) for item in items]
         return write(cropped(to_image(self.pixels()), union(rects)), target)
 
+    def corner(self, target: Path, *items: Item) -> Path:
+        """Writes the window's top left corner, reaching down and across to the farthest of ``items``, to
+        ``target``.
+
+        Raises:
+            BoxlessItemError: If one of the items reports no box.
+        """
+        rects = [self._rect(item) for item in items]
+        return write(cropped(to_image(self.pixels()), corner_box(rects)), target)
+
     def popup(self, target: Path, opening: Callable[[], None]) -> Path:
         """Writes the popup that ``opening`` opens, and the control that opened it, to ``target``.
 
@@ -65,20 +78,26 @@ class Pictures:
         return write(cropped(to_image(after), changed_box(before, after)), target)
 
     def rest(self) -> None:
-        """Parks the pointer on the bare far end of the tab bar, where it lights nothing and the status bar stays
-        empty.
+        """Parks the pointer on the bare far end of the tab bar, where it lights nothing, and waits for the status
+        bar to let go of the hint of whatever the pointer left, which it keeps for a while.
         """
         last_tab = self._rect(TAG_GLOBAL_TAB_INSTRUCTIONS)
         viewport = self._screen.bridge.ask(read_viewport)
         self._screen.hand.move_to(Point(x=round(viewport.width) - FAR_END_INSET, y=last_tab.center.y))
+        self._screen.bridge.expect(
+            self._screen.status,
+            "".__eq__,
+            description="the status bar empty",
+            timeout=STATUS_SECONDS,
+        )
 
     def pixels(self) -> np.ndarray:
-        """The next frame drawn, after the first readback of the process has been discarded."""
+        """The frame drawn once the screen holds still, after the first readback of the process is discarded."""
         if not self._warm:
             self._screen.frame_pixels()
             self._warm = True
 
-        return self._screen.frame_pixels()
+        return settled_frame(self._screen.bridge)
 
     def _rect(self, item: Item) -> Rect:
         rect: Optional[Rect] = self._screen.bridge.ask(lambda: read_item(item).rect)

@@ -96,6 +96,8 @@ class TestTheTree:
         expected = {hit.name for hit in SPECIFICATION.recordings.hits} | set(SPECIFICATION.project.instruments)
 
         assert project.info.title == title
+        assert project.info.created == SPECIFICATION.project.created
+        assert project.info.modified == SPECIFICATION.project.created
         assert names == expected
         assert len(project.song.order) == len(SPECIFICATION.project.song.order)
 

@@ -18,6 +18,10 @@ browser:
   right-click menu) put the chosen files in the list so that each becomes its own reconstruction. If
   the list held a mix, the app asks first.
 
+<div align="center">
+    <img src="../images/guide/converting/filesystem-menu.webp" alt="The Filesystem browser with the right-click menu of a recording" width="387">
+</div>
+
 Turn on **Playback ▸ Autoplay** (`Ctrl+P`) to play a recording with a single click. This lets you
 listen through a folder before adding anything from it. With Autoplay off, right-click a recording and
 choose **Play**.
@@ -44,6 +48,10 @@ recording.
 When a mix has two or more recordings, the rows are grouped into [**levels**](../glossary.md#level-stems).
 Levels decide which recordings get channels first: recordings on level 1 choose before those on
 level 2, so a lead melody can take what it needs before a background part.
+
+<div align="center">
+    <img src="../images/guide/converting/converter-levels.webp" alt="The Converter card with three recordings on three levels" width="910">
+</div>
 
 Drag a row onto another row to put them on the same level. Drag it into the gap between levels to give
 it a level of its own. You can also right-click a row to use the same commands.
@@ -73,6 +81,10 @@ per channel:
   original level. Higher values give louder, more distorted notes, up to `5.00`. Ctrl-click the slider
   to type a value.
 
+<div align="center">
+    <img src="../images/guide/converting/source-settings.webp" alt="The Source settings card for one recording" width="910">
+</div>
+
 **Channels at once**, below the lines, sets how many of its channels the recording may sound in a
 single frame. Set it to 1 to hear the recording on one channel at a time. It never sounds more
 channels than it uses.
@@ -94,6 +106,10 @@ When the conversion finishes, click **Load** to open the result on the **Reconst
 you can [listen to it and export it](reconstruction.md). After several reconstructions, the
 button reads **Open**. It takes you to the **Reconstruction** tab, where you pick one in the **Browser**.
 
+<div align="center">
+    <img src="../images/guide/converting/converter-done.webp" alt="The Converter card after a conversion, asking to load the result" width="910">
+</div>
+
 If the open reconstruction has unsaved changes, **Load** asks what to do with them. If the conversion
 replaced that same file, click **Cancel** and use **Save reconstruction as...** to keep your changes.
 
@@ -106,6 +122,10 @@ The **Instructions** tab (`F4`) builds and browses the [instruction
 library](../concepts/instruction-library.md), the catalog of NES tones that a conversion searches. A
 conversion builds the library it needs by itself, so you rarely need this tab. Use it to build a
 library before a long session, or to explore the sounds your settings can make.
+
+<div align="center">
+    <img src="../images/guide/converting/instructions.webp" alt="The Instructions tab with a library open and one tone drawn" width="875">
+</div>
 
 **Generate library** builds a library for your current settings. A library marked **[!]** comes from
 another version of _SampleToNES_. Click it to rebuild.

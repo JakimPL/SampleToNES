@@ -318,7 +318,8 @@ SAMPLETONES_SCREENS_DISPLAY=xephyr uv run python -m pytest tests/screens --no-co
 A scenario's home is scratch: it is built from the scenario's world in a temporary folder made for each
 worker, whose path holds no hidden folder, so the application's browsers reach it from a worktree under
 `.worktrees/` too, and it goes once the scenario ends. A temporary folder inside a hidden folder is
-refused, and `TMPDIR` points the run at another. The worker's folder is named after its process, and each
+refused, and `TMPDIR` points the run at another. The application's process makes its own temporary files
+in a hidden folder of its home, so they stay out of its browsers and out of the homes beside it. The worker's folder is named after its process, and each
 worker's first scenario removes the folders whose process has gone, such as a crashed worker's, and leaves
 another live run's alone. A folder a scenario left locked opens again before its home is copied and
 removed.

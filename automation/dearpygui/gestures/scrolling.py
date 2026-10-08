@@ -1,9 +1,10 @@
 from functools import partial
-from typing import Final, Optional, Tuple
+from typing import Callable, Final, Optional, Sequence, Tuple
 
 from automation.dearpygui.bridge import ONE_FRAME
 from automation.dearpygui.geometry import Point
 from automation.dearpygui.gestures.constants import (
+    HOLD_FRAMES,
     HOVER_FRAMES,
     REACH_TIMEOUT_SECONDS,
     SETTLE_FRAMES,
@@ -14,14 +15,18 @@ from automation.dearpygui.items.regions import (
     enclosing_regions,
     read_region_view,
     read_scroll,
+    read_sideways_scroll,
     read_visible_box,
 )
 from automation.dearpygui.items.types import Item
 from automation.dearpygui.items.viewport import read_viewport
+from automation.dearpygui.keys import IMGUI_LEFT_SHIFT, keysym_of
 from automation.dearpygui.reach import UnreachableError
 from automation.dearpygui.xtest import MouseButton
 
 WHEEL_FRAMES: Final[int] = 1
+WHEEL_DOWN: Final[int] = 1
+WHEEL_UP: Final[int] = -1
 SCROLL_NOTCH_LIMIT: Final[int] = 100
 EDGE_INSET: Final[int] = 3
 GRIP_MARGIN_PIXELS: Final[float] = 8.0
@@ -103,6 +108,61 @@ class Scrolling(Pointer):
         if after.position < after.maximum:
             raise UnreachableError(f"The region {region!r} stands short of its end at {after}")
 
+    def scroll_to_top(self, item: Item) -> None:
+        """Brings ``item`` into view, then turns the wheel over the nearest region it scrolls in a notch at a
+        time until the item stands at the top of the view, or the region reaches its end, and turns one
+        notch back where the last notch carried the item past the top.
+
+        Raises:
+            UnreachableError: If the item scrolls in no region, or the region stops moving.
+        """
+        self._scroll_to_edge(item, _distance_from_top, WHEEL_DOWN)
+
+    def scroll_to_bottom(self, item: Item) -> None:
+        """Brings ``item`` into view, then turns the wheel over the nearest region it scrolls in a notch at a
+        time until the item stands at the bottom of the view, or the region reaches its start, and turns one
+        notch back where the last notch carried the item past the bottom.
+
+        Raises:
+            UnreachableError: If the item scrolls in no region, or the region stops moving.
+        """
+        self._scroll_to_edge(item, _distance_from_bottom, WHEEL_UP)
+
+    def _scroll_to_edge(
+        self,
+        item: Item,
+        distance_from_edge: Callable[[Item, Item], float],
+        direction: int,
+    ) -> None:
+        self.scroll_into_view(item)
+        regions = self._bridge.ask(lambda: enclosing_regions(item))
+        if not regions:
+            raise UnreachableError(f"{item!r} scrolls in no region")
+
+        region = regions[0]
+        for _ in range(SCROLL_NOTCH_LIMIT):
+            distance = self._bridge.ask(lambda: distance_from_edge(item, region))
+            before = self._bridge.ask(lambda: read_scroll(region))
+            at_the_end = before.position >= before.maximum if direction > 0 else before.position <= 0
+            if distance <= 0 or at_the_end or not before.by_wheel:
+                self._settle(SETTLE_FRAMES)
+                return
+
+            self._device.move(self._bridge.ask(lambda: _wheel_point(region)))
+            self._settle(HOVER_FRAMES)
+            self._turn_wheel(direction)
+            self._settle(ONE_FRAME)
+            after = self._bridge.ask(lambda: read_scroll(region))
+            if after == before:
+                raise UnreachableError(f"{item!r} stays off the edge: the region {region!r} stopped at {before}")
+
+            if self._bridge.ask(lambda: distance_from_edge(item, region)) < 0:
+                self._turn_wheel(-direction)
+                self._settle(SETTLE_FRAMES)
+                return
+
+        raise UnreachableError(f"{item!r} stays off the edge after {SCROLL_NOTCH_LIMIT} turns of the wheel")
+
     def scroll_into_view(self, item: Item) -> None:
         """Turns the wheel over the regions ``item`` scrolls in until the item stands whole in view.
 
@@ -111,7 +171,9 @@ class Scrolling(Pointer):
         the region, and each later turn takes as many notches as the distance left needs, the way a
         person spins the wheel toward a row. A region the wheel leaves alone is moved by dragging its
         scrollbar's grip to where the grip stands for the scroll the item needs, and a few pixels on,
-        since the grip moves in whole pixels and each of them scrolls further than one.
+        since the grip moves in whole pixels and each of them scrolls further than one. A region that
+        scrolls sideways as well, such as a deep tree, is then moved sideways with the wheel turned
+        while Shift is held, which is how Dear ImGui takes a sideways turn.
 
         Raises:
             UnreachableError: If a region stops moving, or the wheel runs out of turns, first.
@@ -120,6 +182,7 @@ class Scrolling(Pointer):
         self._await_layout(item, regions)
         for region in regions:
             self._scroll_within(item, region)
+            self._scroll_sideways_within(item, region)
 
         self._settle(SETTLE_FRAMES)
 
@@ -176,6 +239,31 @@ class Scrolling(Pointer):
 
         raise UnreachableError(f"{item!r} stays out of view after {SCROLL_NOTCH_LIMIT} turns of the wheel")
 
+    def _scroll_sideways_within(self, item: Item, region: Item) -> None:
+        notch = 0.0
+        for _ in range(SCROLL_NOTCH_LIMIT):
+            distance = self._bridge.ask(lambda: _sideways_distance_from_view(item, region))
+            before = self._bridge.ask(lambda: read_sideways_scroll(region))
+            if distance == 0 or before.maximum == 0:
+                return
+            if not before.by_wheel:
+                raise UnreachableError(
+                    f"{item!r} stands beside the view of the region {region!r}, which takes no wheel"
+                )
+
+            self._device.move(self._bridge.ask(lambda: _wheel_point(region)))
+            self._settle(HOVER_FRAMES)
+            notches = max(1, int(abs(distance) // notch)) if notch > 0 else 1
+            self._turn_wheel_holding(notches if distance > 0 else -notches, [IMGUI_LEFT_SHIFT])
+            self._settle(ONE_FRAME)
+            after = self._bridge.ask(lambda: read_sideways_scroll(region))
+            if after == before:
+                raise UnreachableError(f"{item!r} stays beside the view: the region {region!r} stopped at {before}")
+
+            notch = abs(after.position - before.position) / notches
+
+        raise UnreachableError(f"{item!r} stays beside the view after {SCROLL_NOTCH_LIMIT} turns of the wheel")
+
     def _turn_wheel(self, notches: int) -> None:
         button = MouseButton.WHEEL_DOWN if notches > 0 else MouseButton.WHEEL_UP
         for _ in range(abs(notches)):
@@ -183,6 +271,18 @@ class Scrolling(Pointer):
             self._settle(WHEEL_FRAMES)
             self._device.button_up(button)
             self._settle(WHEEL_FRAMES)
+
+    def _turn_wheel_holding(self, notches: int, modifiers: Sequence[int]) -> None:
+        """Turns the wheel while holding the Dear ImGui keys in ``modifiers``, which go down a frame before."""
+        for modifier in modifiers:
+            self._device.key_down(keysym_of(modifier))
+        try:
+            self._settle(HOLD_FRAMES)
+            self._confirm_keys(modifiers)
+            self._turn_wheel(notches)
+        finally:
+            for modifier in reversed(modifiers):
+                self._device.key_up(keysym_of(modifier))
 
 
 def _layout_in(item: Item, regions: Tuple[Item, ...]) -> Optional[Tuple[RegionLayout, ...]]:
@@ -222,6 +322,46 @@ def _distance_from_view(item: Item, region: Item) -> float:
     above = item_box.y - region_box.y
     if above < 0:
         return above
+
+    return 0.0
+
+
+def _distance_from_top(item: Item, region: Item) -> float:
+    """How far ``item`` stands below the top of ``region``'s view. Runs on the render thread."""
+    item_box = read_item(item).rect
+    region_box = read_region_view(region)
+    if item_box is None or region_box is None:
+        raise UnreachableError(f"{item!r} or the region {region!r} it scrolls in reports no box")
+
+    return item_box.y - region_box.y
+
+
+def _distance_from_bottom(item: Item, region: Item) -> float:
+    """How far ``item`` stands above the bottom of ``region``'s view. Runs on the render thread."""
+    item_box = read_item(item).rect
+    region_box = read_region_view(region)
+    if item_box is None or region_box is None:
+        raise UnreachableError(f"{item!r} or the region {region!r} it scrolls in reports no box")
+
+    return region_box.y + region_box.height - (item_box.y + item_box.height)
+
+
+def _sideways_distance_from_view(item: Item, region: Item) -> float:
+    """How far the region must scroll for ``item`` to stand whole in its view: right for a positive distance.
+
+    Runs on the render thread.
+    """
+    item_box = read_item(item).rect
+    region_box = read_region_view(region)
+    if item_box is None or region_box is None:
+        raise UnreachableError(f"{item!r} or the region {region!r} it scrolls in reports no box")
+
+    beyond = item_box.x + item_box.width - (region_box.x + region_box.width)
+    if beyond > 0:
+        return beyond
+    before = item_box.x - region_box.x
+    if before < 0:
+        return before
 
     return 0.0
 

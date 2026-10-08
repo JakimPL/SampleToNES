@@ -1,11 +1,12 @@
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable, Final, List, Optional
 
 import dearpygui.dearpygui as dpg
 
 from automation.dearpygui.bridge import Bridge
+from automation.dearpygui.geometry import Point
 from automation.dearpygui.hand import Hand
-from automation.dearpygui.items.reading import find_item
+from automation.dearpygui.items.reading import find_item, read_item
 from automation.dearpygui.items.texts import read_label
 from automation.dearpygui.items.types import TREE_NODE_TYPE, Item
 from automation.dearpygui.keys import IMGUI_LEFT_CTRL
@@ -18,6 +19,7 @@ from sampletones_core.structures.tree.node import (
 )
 
 NodeTest = Callable[[TreeNode], bool]
+WORDS_END_INSET: Final[int] = 4
 
 
 class FileTree:
@@ -105,6 +107,20 @@ class FileTree:
         """Brings ``row`` into view and clicks it with the right button, which opens its menu."""
         self._hand.scroll_into_view(row)
         self._hand.right_click(row)
+
+    def right_click_beside(self, row: Item) -> None:
+        """Brings ``row`` into view and clicks the far end of its words with the right button, which opens
+        its menu beside them.
+
+        Raises:
+            LookupError: If the row reports no box.
+        """
+        self._hand.scroll_into_view(row)
+        rect = self._bridge.ask(lambda: read_item(row).rect)
+        if rect is None:
+            raise LookupError(f"The row {row!r} reports no box")
+
+        self._hand.right_click_at(Point(x=round(rect.x + rect.width) - WORDS_END_INSET, y=rect.center.y))
 
     def _row(self, matches: NodeTest) -> Optional[Item]:
         return self._bridge.ask(

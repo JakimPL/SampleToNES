@@ -20,8 +20,10 @@ from automation.dearpygui.gestures.errors import (
     GestureLostError,
     SlowFramesError,
 )
+from automation.dearpygui.items.reading import read_item
 from automation.dearpygui.items.types import Item
 from automation.dearpygui.keys import keysym_of
+from automation.dearpygui.reach import UnreachableError
 from automation.dearpygui.xtest import MouseButton
 
 SINGLE_PRESS: Final[int] = 1
@@ -29,6 +31,7 @@ DOUBLE_PRESS: Final[int] = 2
 TRIPLE_PRESS: Final[int] = 3
 HOVER_ARRIVAL_FRAMES: Final[int] = 5
 DRAG_STEPS: Final[int] = 8
+TITLE_BAR_INSET: Final[int] = 10
 
 IMGUI_MOUSE_BUTTONS: Final[Dict[MouseButton, int]] = {
     MouseButton.LEFT: dpg.mvMouseButton_Left,
@@ -74,6 +77,19 @@ class Pointer(Arrival):
                 self._device.key_up(keysym_of(modifier))
 
         self._settle(SETTLE_FRAMES)
+
+    def click_title_bar(self, window: Item) -> None:
+        """Clicks the title bar of ``window``, which takes the focus from a field in it and leaves the fields as
+        they are.
+
+        Raises:
+            UnreachableError: If the window reports no box.
+        """
+        rect = self._bridge.ask(lambda: read_item(window).rect)
+        if rect is None:
+            raise UnreachableError(f"{window!r} reports no box to click the title bar of")
+
+        self.click_at(Point(x=rect.center.x, y=round(rect.y) + TITLE_BAR_INSET))
 
     def double_click(self, item: Item) -> None:
         """Presses ``item`` twice in quick succession with the left button."""

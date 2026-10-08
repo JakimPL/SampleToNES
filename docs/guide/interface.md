@@ -7,6 +7,10 @@ _SampleToNES_ has four tabs. Use `F1` to `F4` to switch between them:
 - [**Sequencer**](sequencer.md) (`F3`) — arrange reconstructions into a song.
 - [**Instructions**](converting.md#building-a-library-yourself) (`F4`) — build and browse the [instruction library](../concepts/instruction-library.md) a conversion uses.
 
+<div align="center">
+    <img src="../images/guide/interface/tabs.webp" alt="The menu bar, the play controls and the four tabs" width="639">
+</div>
+
 You usually work through the tabs in this order. Convert your files on **Main**. When the conversion finishes, click **Load** to open the result on **Reconstruction**. From there, **Add to Sequencer** adds the reconstruction to a song.
 
 The **Instructions** tab is optional. Use it to explore single [instructions](../glossary.md#instruction), the smallest sounds the chip makes.
