@@ -2,12 +2,12 @@ from typing import Self
 
 from pydantic import BaseModel, Field
 
+from assets.icons.mark.paths import MARK_PATH
+from assets.icons.mark.specification.colors import MarkColors
+from assets.icons.mark.specification.frame import MarkFrame
+from assets.icons.mark.specification.render import MarkRender
+from assets.icons.mark.specification.waves import MarkWaves
 from sampletones_shared.utils.serialization import load_yaml_model
-from sampletones_tools.assets.mark.paths import MARK_PATH
-from sampletones_tools.assets.mark.specification.colors import MarkColors
-from sampletones_tools.assets.mark.specification.frame import MarkFrame
-from sampletones_tools.assets.mark.specification.render import MarkRender
-from sampletones_tools.assets.mark.specification.waves import MarkWaves
 
 
 class Mark(BaseModel, extra="forbid", frozen=True):
@@ -30,7 +30,7 @@ class Mark(BaseModel, extra="forbid", frozen=True):
         """Load the packaged mark definition.
 
         Returns:
-            The mark validated from `sampletones_tools/assets/mark/config/mark.yaml`.
+            The mark validated from `assets/icons/mark/config/mark.yaml`.
 
         Raises:
             TypeError: If the definition file holds anything other than a mapping.

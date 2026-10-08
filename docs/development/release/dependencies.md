@@ -38,9 +38,9 @@ Dialogs open through the XDG desktop portal (`org.freedesktop.portal.FileChooser
 
 ## Application icon
 
-The icon suite is generated from a mark declared in `sampletones_tools/assets/mark/config` and committed, so a plain checkout has the icons the application opens its window with. [Tooling](../tooling.md) describes the `icons` command that writes it.
+The icon suite is generated from a mark declared in `assets/icons/mark/config` and committed, so a plain checkout has the icons the application opens its window with. [Assets](../assets.md) describes the maker that writes it.
 
-Pillow rasterizes the suite. It is declared in the `assets` dependency group, which the `dev` group includes. It is a developer tool that the build environment never installs, and the bundle script passes `--exclude-module PIL` as well. `pygments`, which arrives with `rich`, offers an image formatter that imports Pillow where it is installed, and PyInstaller follows that import into the bundle. The application reads its icons as files, so the exclusion keeps Pillow's extension modules and the imaging libraries that come with them out of every bundle. `scripts/verify_bundle.py` holds the release bundles to it.
+Pillow rasterizes the suite. It is declared in the `assets` dependency group, which the `dev` group includes. It serves the assets unit alone, which the build environment never installs, and the bundle script passes `--exclude-module PIL` as well. `pygments`, which arrives with `rich`, offers an image formatter that imports Pillow where it is installed, and PyInstaller follows that import into the bundle. The application reads its icons as files, so the exclusion keeps Pillow's extension modules and the imaging libraries that come with them out of every bundle. `scripts/verify_bundle.py` holds the release bundles to it.
 
 ## Calibration
 

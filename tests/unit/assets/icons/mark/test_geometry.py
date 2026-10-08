@@ -3,8 +3,8 @@ from typing import Final
 
 import pytest
 
-from sampletones_tools.assets.mark.geometry import Rectangle, sine_points, square_rectangles
-from sampletones_tools.assets.mark.specification import Mark
+from assets.icons.mark.geometry import Rectangle, sine_points, square_rectangles
+from assets.icons.mark.specification import Mark
 
 SAMPLES: Final[int] = 5
 

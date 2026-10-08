@@ -24,8 +24,9 @@ name says what it does, in plain words.
 - A *checkout unit* runs only in a checkout with the development environment, through `make`, and ships in
   nothing. It is a top-level directory beside `src/`, `scripts/` and `tests/`, named for what its code does,
   checked like source, and free to import the program and the development dependencies. `automation/`
-  operates the running application ([screens](application/screens.md)). A package of such a unit that a
-  person runs carries its own parser and help, as `python -m <unit>.<package>`, and the Makefile names it.
+  operates the running application ([screens](application/screens.md)); `assets/` makes the repository's
+  own content ([assets](assets.md)). A package of such a unit that a person runs carries its own parser and
+  help, as `python -m <unit>.<package>`, and the Makefile names it.
   Code is placed by what it is for: the engine a unit borrows, such as pytest or the application itself,
   never decides its home.
 
@@ -72,7 +73,8 @@ The Makefile is the developer's index, one line per target. A target names the s
 and passes its flag. The `run` and `calibration` targets name the `sampletones` command they start with no
 options, and the `tracker-playback` target passes the inputs its command takes: the Bitphase source folder
 its `BITPHASE` variable names, the `FamiTracker.exe` its `FAMITRACKER` variable names, and the project
-files in `PROJECT`, if any. It runs each target it is given. `install.sh` and `install.bat` at the root
+files in `PROJECT`, if any. The `icons` target runs a maker of the assets unit. It runs each target it is
+given. `install.sh` and `install.bat` at the root
 exist for the double-click path and call the same bundle script.
 
 **8. A developer command works from what it is given, in every copy of the program.** The wheel and the
@@ -84,8 +86,9 @@ each one reaches files the same way in all of them:
 - *Outputs* go where `--output` (`-o`) names. A measurement given no `-o` writes a timestamped directory
   under the user's Documents. `codec report` and the sample emitters always take `-o`.
 - *The repository* is reached through the checkout guard. A command that reads or writes the repository,
-  or needs a development dependency, runs from a checkout. `driver` and `icons` rewrite the files the
-  package ships from a checkout, and a measurement runs anywhere.
+  or needs a development dependency, runs from a checkout. `driver` rewrites the files the package ships
+  from a checkout, and a measurement runs anywhere. What exists only to make the repository's own content
+  is a checkout unit rather than a command ([assets](assets.md)).
 - *Package data* is read from the package it ships in, which holds in a checkout, in the wheel and in the
   bundle.
 
@@ -116,15 +119,13 @@ Two helpers carry out principle 8:
 
 - `sampletones_tools/checkout.py` holds `require_checkout(command)`. It passes when the repository root has
   `pyproject.toml` beside `src/`, and otherwise the command exits and names `uv run sampletones <command>`
-  in a checkout. `icons` calls it for Pillow, a development dependency, as well as for the repository.
+  in a checkout.
 - `package_directory` in `sampletones_shared/paths/package.py` places a package from the import system's
   own record, where PyInstaller unpacks each package's data beside its modules.
 
 A test guards principle 4. It imports the registry in a subprocess and asserts that only the command,
 registry and package modules of the tools load and no heavy library does. A startup failure in any tool
 module would break every invocation, the GUI included.
-
-The `icons` command writes the icon suite from the mark declared in `sampletones_tools/assets/mark/config`. `mark.yaml` has the geometry, colors and rasterization settings, validated as a `Mark`, and `template.svg` is the vector the rendered geometry fills. The suite is the vector `sampletones.svg` and the rasters the application ships, `sampletones.png` and the multi-resolution `sampletones.ico`. The command points at the directory the icons ship from. The whole suite is committed, so every wheel, bundle and test run finds the icons where they lie. The `icons` pre-push hook writes them again for a push that touches either directory, which holds the committed files to what the mark describes, and CI runs that same hook.
 
 A tool that writes a page ships that page's files as they are read. `calibration/board/static/` holds the
 markup, the stylesheet and the script, copied out byte for byte, and the builder writes the palette, the

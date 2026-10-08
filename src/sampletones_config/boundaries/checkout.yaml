@@ -1,3 +1,6 @@
 - root: automation
   pattern: "**/*.py"
+  forbidden: [assets, tests]
+- root: assets
+  pattern: "**/*.py"
   forbidden: [tests]

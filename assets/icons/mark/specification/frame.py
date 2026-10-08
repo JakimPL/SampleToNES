@@ -1,6 +1,12 @@
 from typing import Self
 
-from pydantic import BaseModel, Field, PositiveFloat, PositiveInt, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    PositiveFloat,
+    PositiveInt,
+    model_validator,
+)
 
 
 class MarkRim(BaseModel, extra="forbid", frozen=True):
@@ -8,7 +14,11 @@ class MarkRim(BaseModel, extra="forbid", frozen=True):
 
     inset: PositiveFloat = Field(description="Distance the hairline keeps from the frame's edge.")
     width: PositiveFloat = Field(description="Stroke width of the hairline.")
-    opacity: float = Field(gt=0.0, le=1.0, description="Share of full opacity the hairline is drawn at.")
+    opacity: float = Field(
+        gt=0.0,
+        le=1.0,
+        description="Share of full opacity the hairline is drawn at.",
+    )
 
 
 class MarkFrame(BaseModel, extra="forbid", frozen=True):

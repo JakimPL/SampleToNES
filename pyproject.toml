@@ -165,6 +165,7 @@ files = [
     "src/sampletones_tools",
     "scripts",
     "automation",
+    "assets",
 ]
 exclude = ["tests"]
 disallow_subclassing_any = true
