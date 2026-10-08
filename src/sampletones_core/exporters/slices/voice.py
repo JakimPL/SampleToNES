@@ -56,7 +56,7 @@ def sample_slices(sample: Sample) -> Iterator[VoiceSlice]:
 
 
 def instrument_slices(instrument: Instrument) -> Iterator[VoiceSlice]:
-    """What each channel of a hand-written voice plays, each reading the one envelope set its way.
+    """What each channel of an instrument plays, each reading the one envelope set its way.
 
     Args:
         instrument: The voice being exported.

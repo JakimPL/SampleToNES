@@ -14,6 +14,7 @@ from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.tags.sequencer import TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY
 from sampletones_application.ui.panels.sequencer.voices.panel import GUISequencerVoicesPanel
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.view_model.sequencer.voices import VoiceKind, VoiceSelection
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
@@ -92,10 +93,10 @@ class SequencerReconstructions:
 
         The sample keeps its id and position, so every pattern row referencing it sounds the
         incoming audio while the tracker shows it where it was, and it takes the file's name the way
-        an import does. The target is whatever the samples panel has selected as the gesture starts,
+        an import does. The target is the sample the voices panel has picked as the gesture starts,
         which is also what named the menu item the user clicked.
         """
-        selection = self._voices_panel.selection
+        selection = self._picked_sample()
         if selection is None:
             return
 
@@ -115,12 +116,20 @@ class SequencerReconstructions:
         )
 
     def replace_target_label(self) -> Optional[str]:
-        """The indexed label of the sample a browser replacement would overwrite, while one is selected."""
-        selection = self._voices_panel.selection
+        """The indexed label of the sample a browser replacement would overwrite, while one is picked."""
+        selection = self._picked_sample()
         if selection is None:
             return None
 
         return selection.label
+
+    def _picked_sample(self) -> Optional[VoiceSelection]:
+        """The voice the panel has picked while it is a sample, the one kind a reconstruction replaces."""
+        match self._voices_panel.selection:
+            case VoiceSelection(kind=VoiceKind.SAMPLE) as selection:
+                return selection
+            case _:
+                return None
 
     def _loaded(self, filepath: Path) -> Optional[Reconstruction]:
         """Reads a reconstruction file, reporting one the reader cannot take.

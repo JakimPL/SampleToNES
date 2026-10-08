@@ -10,9 +10,9 @@ from sampletones_core.project.settings import ProjectSettings
 from sampletones_shared.paths.extensions import EXT_FILE_BITPHASE, EXT_FILE_JSON
 from sampletones_tools.tracker_playback.targets.bitphase import engine
 from sampletones_tools.tracker_playback.targets.bitphase.engine import (
-    CHECKOUT_FILES,
-    BitphaseCheckout,
+    SOURCE_FILES,
     BitphaseEngine,
+    BitphaseSource,
 )
 from sampletones_tools.tracker_playback.targets.bitphase.target import TITLE, BitphaseTarget
 from tests.suite.performance import make_pulse_reconstruction, place_instrument, project_with_sample
@@ -21,15 +21,15 @@ NAME: Final[str] = "tone"
 
 
 def _target(root: Path) -> BitphaseTarget:
-    for relative in CHECKOUT_FILES:
+    for relative in SOURCE_FILES:
         (root / relative).parent.mkdir(parents=True, exist_ok=True)
         (root / relative).touch()
 
-    return BitphaseTarget(engine=BitphaseEngine(node=Path("node"), checkout=BitphaseCheckout.located(root)))
+    return BitphaseTarget(engine=BitphaseEngine(node=Path("node"), source=BitphaseSource.located(root)))
 
 
 class TestBitphaseTarget:
-    def test_the_report_names_bitphase_and_the_checkout_that_plays(self, tmp_path: Path) -> None:
+    def test_the_report_names_bitphase_and_the_source_code_that_plays(self, tmp_path: Path) -> None:
         target = _target(tmp_path)
 
         assert target.title == TITLE
@@ -45,7 +45,7 @@ class TestBitphaseTarget:
 
         located = BitphaseTarget.located(tmp_path)
 
-        assert located.engine.checkout.root == tmp_path
+        assert located.engine.source.root == tmp_path
 
     def test_a_project_is_exported_and_its_document_played_beside_the_trace(
         self,
@@ -69,7 +69,7 @@ class TestBitphaseTarget:
         documents = tmp_path / "documents"
         documents.mkdir()
 
-        playback = _target(tmp_path / "checkout").play(project, documents, NAME)
+        playback = _target(tmp_path / "bitphase").play(project, documents, NAME)
 
         assert playback.document == documents / f"{NAME}{EXT_FILE_BITPHASE}"
         assert json.loads(gzip.decompress(playback.document.read_bytes()))

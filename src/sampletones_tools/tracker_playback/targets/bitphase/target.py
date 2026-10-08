@@ -10,7 +10,7 @@ from sampletones_tools.tracker_playback.targets.bitphase.engine import BitphaseE
 from sampletones_tools.tracker_playback.targets.protocol import TargetPlayback
 
 TITLE: Final[str] = "Bitphase"
-PLAYER: Final[str] = "the engine of the Bitphase checkout at `{root}`"
+PLAYER: Final[str] = "the engine of the Bitphase source code at `{root}`"
 
 
 @dataclass(frozen=True)
@@ -18,23 +18,23 @@ class BitphaseTarget:
     """Bitphase as a playback target: a project exported to a `.btp` document and played by Bitphase's engine.
 
     Attributes:
-        engine: The engine of the checkout that plays the documents.
+        engine: The engine of the source code that plays the documents.
     """
 
     engine: BitphaseEngine
 
     @classmethod
     def located(cls, root: Path) -> Self:
-        """The target playing documents with the engine of the checkout at ``root``.
+        """The target playing documents with the engine of the source code at ``root``.
 
         Args:
-            root: The Bitphase checkout's top directory.
+            root: The top directory of Bitphase's source code.
 
         Returns:
             Self: The target.
 
         Raises:
-            EngineError: If node is absent, or the checkout lacks a file the trace loads.
+            EngineError: If node is absent, or the source code lacks a file the trace loads.
         """
         return cls(engine=BitphaseEngine.located(root))
 
@@ -45,8 +45,8 @@ class BitphaseTarget:
 
     @property
     def player(self) -> str:
-        """The checkout whose engine plays the documents, as the report introduces it."""
-        return PLAYER.format(root=self.engine.checkout.root)
+        """The source code whose engine plays the documents, as the report introduces it."""
+        return PLAYER.format(root=self.engine.source.root)
 
     def play(
         self,

@@ -6,22 +6,27 @@ import pytest
 from sampletones_application.ui.panels.sequencer.columns import (
     HEADER_TABLE_ROW,
     tracker_table_column,
-    tracker_table_row,
 )
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
+from sampletones_application.ui.panels.sequencer.tracker.band import TrackerRows
+from sampletones_application.ui.panels.sequencer.tracker.context import ContextRows
 from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.tracker.themes import TrackerThemes
 from sampletones_application.utils.palette.colors.written import LiteralColor
 from sampletones_application.view_model.sequencer.settings import (
     SequencerSettingsViewModel,
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.tracker import NO_REACH
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.types.application import ColorRGBA
 
 PATTERN_ROWS = 4
 HEADER_AND_PATTERN_ROWS = PATTERN_ROWS + 1
+CONTEXT_REACH = 2
+TABLE_ROWS = TrackerRows(reach=NO_REACH, frame_rows=PATTERN_ROWS)
 
 SHOWN_FRAME = 3
 OTHER_FRAME = 4
@@ -105,7 +110,8 @@ def _panel() -> GUISequencerTrackerPanel:
             ),
         ),
     )
-    panel._current_row_count = PATTERN_ROWS
+    panel._rows_layout = TABLE_ROWS
+    panel._context = ContextRows(layout=panel._layout, themes=TrackerThemes(panel._layout), subcolumn_widths={})
     panel._highlighted_row = None
     panel._displayed_frame = SHOWN_FRAME
     panel._playing_frame = None
@@ -163,6 +169,14 @@ class TestLiveRowCount:
 
         assert panel._live_row_count() == 0
 
+    def test_the_rows_either_side_of_the_frame_are_left_out(self, recorder: _TableRecorder) -> None:
+        """The table holds the song's rows beside the frame as well, which no pattern row index names."""
+        panel = _panel()
+        panel._rows_layout = TrackerRows(reach=CONTEXT_REACH, frame_rows=PATTERN_ROWS)
+        recorder.row_children = list(range(HEADER_AND_PATTERN_ROWS + 2 * CONTEXT_REACH))
+
+        assert panel._live_row_count() == PATTERN_ROWS
+
 
 class TestRowGrouping:
     def test_the_rows_opening_a_bar_and_a_beat_take_their_shades(self, recorder: _TableRecorder) -> None:
@@ -171,8 +185,8 @@ class TestRowGrouping:
         panel._apply_row_backgrounds()
 
         assert recorder.highlighted_rows == {
-            tracker_table_row(0): BAR_ROW,
-            tracker_table_row(2): BEAT_ROW,
+            TABLE_ROWS.table_row(0): BAR_ROW,
+            TABLE_ROWS.table_row(2): BEAT_ROW,
         }
 
     def test_the_rows_between_them_are_left_to_the_stripe(self, recorder: _TableRecorder) -> None:
@@ -180,7 +194,7 @@ class TestRowGrouping:
 
         panel._apply_row_backgrounds()
 
-        assert recorder.unhighlighted_rows == [tracker_table_row(row) for row in PLAIN_ROWS]
+        assert recorder.unhighlighted_rows == [TABLE_ROWS.table_row(row) for row in PLAIN_ROWS]
 
     def test_the_header_row_takes_no_row_background(self, recorder: _TableRecorder) -> None:
         panel = _panel()
@@ -198,10 +212,10 @@ class TestRowGrouping:
         panel.update_settings(_settings(first_highlight=1, second_highlight=PATTERN_ROWS))
 
         assert recorder.highlighted_rows == {
-            tracker_table_row(0): BAR_ROW,
-            tracker_table_row(1): BEAT_ROW,
-            tracker_table_row(2): BEAT_ROW,
-            tracker_table_row(3): BEAT_ROW,
+            TABLE_ROWS.table_row(0): BAR_ROW,
+            TABLE_ROWS.table_row(1): BEAT_ROW,
+            TABLE_ROWS.table_row(2): BEAT_ROW,
+            TABLE_ROWS.table_row(3): BEAT_ROW,
         }
 
     def test_a_row_past_the_live_table_never_reaches_dearpygui(self, recorder: _TableRecorder) -> None:
@@ -225,7 +239,7 @@ class TestCursorHighlight:
 
         panel._apply_cell_highlight(row_index, ChannelName.TRIANGLE)
 
-        assert recorder.highlighted_rows == {tracker_table_row(row_index): CURSOR_ROW}
+        assert recorder.highlighted_rows == {TABLE_ROWS.table_row(row_index): CURSOR_ROW}
 
     @pytest.mark.parametrize("row_index", BAR_ROWS + BEAT_ROWS)
     def test_the_cursor_on_a_group_row_carries_both_shades(
@@ -238,7 +252,7 @@ class TestCursorHighlight:
 
         panel._apply_cell_highlight(row_index, ChannelName.TRIANGLE)
 
-        painted = recorder.highlighted_rows[tracker_table_row(row_index)]
+        painted = recorder.highlighted_rows[TABLE_ROWS.table_row(row_index)]
         assert painted[3] > CURSOR_ROW[3]
 
     def test_the_cursor_cell_lands_on_the_mapped_row_and_column(self, recorder: _TableRecorder) -> None:
@@ -247,7 +261,7 @@ class TestCursorHighlight:
 
         panel._apply_cell_highlight(2, ChannelName.NOISE)
 
-        key = (tracker_table_row(2), tracker_table_column(ChannelName.NOISE))
+        key = (TABLE_ROWS.table_row(2), tracker_table_column(ChannelName.NOISE))
         assert recorder.highlighted_cells == {key: CELL_CURSOR}
 
     def test_no_cursor_ever_paints_the_header_row(self, recorder: _TableRecorder) -> None:
@@ -264,15 +278,15 @@ class TestCursorHighlight:
 
         panel._remove_cell_highlight(1, None)
 
-        assert recorder.unhighlighted_rows == [tracker_table_row(1)]
-        assert recorder.unhighlighted_cells == [(tracker_table_row(1), tracker_table_column(None))]
+        assert recorder.unhighlighted_rows == [TABLE_ROWS.table_row(1)]
+        assert recorder.unhighlighted_cells == [(TABLE_ROWS.table_row(1), tracker_table_column(None))]
 
     def test_a_group_row_keeps_its_shade_once_the_cursor_leaves(self, recorder: _TableRecorder) -> None:
         panel = _panel()
 
         panel._remove_cell_highlight(0, None)
 
-        assert recorder.highlighted_rows == {tracker_table_row(0): BAR_ROW}
+        assert recorder.highlighted_rows == {TABLE_ROWS.table_row(0): BAR_ROW}
 
 
 class TestHoverHighlight:
@@ -281,14 +295,14 @@ class TestHoverHighlight:
 
         panel.highlight_row(3)
 
-        assert recorder.highlighted_rows == {tracker_table_row(3): PATTERN_HIGHLIGHT}
+        assert recorder.highlighted_rows == {TABLE_ROWS.table_row(3): PATTERN_HIGHLIGHT}
 
     def test_hover_on_a_group_row_carries_both_shades(self, recorder: _TableRecorder) -> None:
         panel = _panel()
 
         panel.highlight_row(0)
 
-        painted = recorder.highlighted_rows[tracker_table_row(0)]
+        painted = recorder.highlighted_rows[TABLE_ROWS.table_row(0)]
         assert painted[3] > PATTERN_HIGHLIGHT[3]
 
     def test_moving_the_hover_returns_the_row_it_left(self, recorder: _TableRecorder) -> None:
@@ -297,8 +311,8 @@ class TestHoverHighlight:
         panel.highlight_row(1)
         panel.highlight_row(3)
 
-        assert recorder.unhighlighted_rows == [tracker_table_row(1)]
-        assert recorder.highlighted_rows == {tracker_table_row(3): PATTERN_HIGHLIGHT}
+        assert recorder.unhighlighted_rows == [TABLE_ROWS.table_row(1)]
+        assert recorder.highlighted_rows == {TABLE_ROWS.table_row(3): PATTERN_HIGHLIGHT}
 
     def test_moving_the_hover_off_a_group_row_gives_it_its_shade_back(self, recorder: _TableRecorder) -> None:
         panel = _panel()
@@ -306,7 +320,7 @@ class TestHoverHighlight:
         panel.highlight_row(0)
         panel.highlight_row(3)
 
-        assert recorder.highlighted_rows[tracker_table_row(0)] == BAR_ROW
+        assert recorder.highlighted_rows[TABLE_ROWS.table_row(0)] == BAR_ROW
 
     def test_dropping_the_hover_clears_the_mapped_row(self, recorder: _TableRecorder) -> None:
         panel = _panel()
@@ -314,7 +328,7 @@ class TestHoverHighlight:
 
         panel.highlight_row(None)
 
-        assert recorder.unhighlighted_rows == [tracker_table_row(3)]
+        assert recorder.unhighlighted_rows == [TABLE_ROWS.table_row(3)]
 
 
 class TestPlayingRowHighlight:
@@ -328,7 +342,7 @@ class TestPlayingRowHighlight:
 
         panel.set_playing_position(_playhead(SHOWN_FRAME, row_index))
 
-        assert recorder.highlighted_rows == {tracker_table_row(row_index): PLAYBACK_ROW}
+        assert recorder.highlighted_rows == {TABLE_ROWS.table_row(row_index): PLAYBACK_ROW}
 
     @pytest.mark.parametrize("row_index", BAR_ROWS + BEAT_ROWS)
     def test_the_playhead_over_a_group_row_carries_both_shades(
@@ -340,7 +354,7 @@ class TestPlayingRowHighlight:
 
         panel.set_playing_position(_playhead(SHOWN_FRAME, row_index))
 
-        painted = recorder.highlighted_rows[tracker_table_row(row_index)]
+        painted = recorder.highlighted_rows[TABLE_ROWS.table_row(row_index)]
         assert painted[3] > PLAYBACK_ROW[3]
 
     def test_the_playhead_outranks_the_cursor_on_the_same_row(self, recorder: _TableRecorder) -> None:
@@ -349,7 +363,7 @@ class TestPlayingRowHighlight:
 
         panel.set_playing_position(_playhead(SHOWN_FRAME, 1))
 
-        assert recorder.highlighted_rows == {tracker_table_row(1): PLAYBACK_ROW}
+        assert recorder.highlighted_rows == {TABLE_ROWS.table_row(1): PLAYBACK_ROW}
 
     def test_the_last_pattern_row_is_still_within_the_table(self, recorder: _TableRecorder) -> None:
         panel = _panel()
@@ -371,7 +385,7 @@ class TestPlayingRowHighlight:
         panel.set_playing_position(_playhead(SHOWN_FRAME, 1))
         panel.set_playing_position(_playhead(SHOWN_FRAME, 3))
 
-        assert recorder.unhighlighted_rows == [tracker_table_row(1)]
+        assert recorder.unhighlighted_rows == [TABLE_ROWS.table_row(1)]
 
     def test_advancing_past_a_group_row_gives_it_its_shade_back(self, recorder: _TableRecorder) -> None:
         panel = _panel()
@@ -379,7 +393,7 @@ class TestPlayingRowHighlight:
         panel.set_playing_position(_playhead(SHOWN_FRAME, 0))
         panel.set_playing_position(_playhead(SHOWN_FRAME, 1))
 
-        assert recorder.highlighted_rows[tracker_table_row(0)] == BAR_ROW
+        assert recorder.highlighted_rows[TABLE_ROWS.table_row(0)] == BAR_ROW
 
     def test_stopping_clears_the_mapped_row(self, recorder: _TableRecorder) -> None:
         panel = _panel()
@@ -387,7 +401,7 @@ class TestPlayingRowHighlight:
 
         panel.set_playing_position(None)
 
-        assert recorder.unhighlighted_rows == [tracker_table_row(3)]
+        assert recorder.unhighlighted_rows == [TABLE_ROWS.table_row(3)]
 
 
 class TestPlayheadFrame:
@@ -407,7 +421,7 @@ class TestPlayheadFrame:
 
         panel._show_frame(OTHER_FRAME)
 
-        assert recorder.unhighlighted_rows == [tracker_table_row(3)]
+        assert recorder.unhighlighted_rows == [TABLE_ROWS.table_row(3)]
 
     def test_returning_to_the_sounding_frame_marks_its_row_again(self, recorder: _TableRecorder) -> None:
         panel = _panel()
@@ -416,7 +430,7 @@ class TestPlayheadFrame:
 
         panel._show_frame(SHOWN_FRAME)
 
-        assert recorder.highlighted_rows == {tracker_table_row(3): PLAYBACK_ROW}
+        assert recorder.highlighted_rows == {TABLE_ROWS.table_row(3): PLAYBACK_ROW}
 
     def test_the_cursor_keeps_its_row_on_a_frame_the_playhead_left(self, recorder: _TableRecorder) -> None:
         """A frame the playhead is away from shows the reader's own cursor on the row it sits on."""
@@ -426,7 +440,7 @@ class TestPlayheadFrame:
 
         panel._show_frame(OTHER_FRAME)
 
-        assert recorder.highlighted_rows[tracker_table_row(3)] == CURSOR_ROW
+        assert recorder.highlighted_rows[TABLE_ROWS.table_row(3)] == CURSOR_ROW
 
 
 class TestHeaderRowBackground:

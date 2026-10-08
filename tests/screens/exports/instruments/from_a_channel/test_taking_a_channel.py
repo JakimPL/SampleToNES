@@ -16,15 +16,15 @@ VOICES: Final[List[str]] = [LINE, BASS_VOICE, PAD]
 
 
 class TestTheSubmenuNamesTheChannelsThatPlay:
-    """New instrument from names each channel a sample plays, one channel among them; a hand-written voice
-    greys it.
+    """New instrument from names each channel a sample plays, one channel among them; an instrument greys
+    it.
 
-    The menus of the three-channel sample, the one-channel sample and the hand-written voice are read in
+    The menus of the three-channel sample, the one-channel sample and the instrument are read in
     turn.
     """
 
     def test_each_channel_one_channel_and_none(self, screen: Screen) -> None:
-        """The submenu lists each playing channel, and the hand-written voice shows a greyed entry."""
+        """The submenu lists each playing channel, and the instrument shows a greyed entry."""
         menu = screen.context_menu
 
         def a_sample_of_three_channels_names_each(screen: Screen) -> None:
@@ -42,7 +42,7 @@ class TestTheSubmenuNamesTheChannelsThatPlay:
             assert screen.words(INSTRUMENT_FROM) not in menu.labels()
             menu.dismiss()
 
-        def a_hand_written_voice_greys_it(screen: Screen) -> None:
+        def an_instrument_greys_it(screen: Screen) -> None:
             open_voice_menu(screen, PAD)
 
             assert screen.words(INSTRUMENT_FROM) not in menu.submenus()
@@ -53,7 +53,7 @@ class TestTheSubmenuNamesTheChannelsThatPlay:
         screen.scenario(
             a_sample_of_three_channels_names_each,
             a_sample_of_one_channel_still_names_it,
-            a_hand_written_voice_greys_it,
+            an_instrument_greys_it,
             leaving_asks_nothing,
         ).run()
 

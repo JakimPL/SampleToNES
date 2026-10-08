@@ -2,6 +2,7 @@ from typing import List
 
 import pytest
 
+from sampletones_application.utils.callbacks.failures import UnhandledFailures
 from sampletones_application.utils.callbacks.priority import CallbackPriority
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 
@@ -63,6 +64,20 @@ class TestCallbackQueueDelivery:
         CallbackQueue.process(GENEROUS_BUDGET)
 
         assert good_fired == [True]
+
+    def test_a_failing_callback_is_reported_through_the_failure_channel(self) -> None:
+        reported: List[Exception] = []
+        failure = RuntimeError("intentional error")
+
+        def bad_callback() -> None:
+            raise failure
+
+        UnhandledFailures.attach(reported.append, post=lambda present, exception: present(exception))
+        CallbackQueue.add(bad_callback)
+        CallbackQueue.notify_frame()
+        CallbackQueue.process(GENEROUS_BUDGET)
+
+        assert reported == [failure]
 
     def test_base_exception_propagates_out_of_process(self) -> None:
         """run() catches Exception but not BaseException, so a SystemExit raised in

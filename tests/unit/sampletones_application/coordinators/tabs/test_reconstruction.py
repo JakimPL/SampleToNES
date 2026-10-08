@@ -402,7 +402,7 @@ class TestExportingTheInstrumentInFront:
         instance._reconstruction_panel_logic.exportable_instrument.return_value = exportable
         return instance
 
-    def test_a_hand_written_voice_is_written_by_the_voice_it_is(self) -> None:
+    def test_an_instrument_is_written_by_the_voice_it_is(self) -> None:
         """The sequencer's menu and this button name the same voice, so they write the same file."""
         instrument = MagicMock()
         instrument.id = "lead-id"

@@ -186,6 +186,7 @@ class SequencerTabCoordinator:
             self._sequencer_tracker_logic,
             self._sequencer_order_logic,
             project_controller,
+            history,
             text_clipboard=select_text_clipboard(),
         )
         self._tracker_region_adjuster: TrackerRegionAdjuster = TrackerRegionAdjuster(self._sequencer_tracker_logic)
@@ -417,6 +418,7 @@ class SequencerTabCoordinator:
         )
         self._sequencer_tracker_logic.on_settings_changed = self._on_settings_changed
         self._sequencer_tracker_logic.on_tracker_changed = self._sequencer_tracker_panel.update_tracker
+        self._sequencer_tracker_panel.on_reach_changed = self._sequencer_tracker_logic.set_reach
         self._sequencer_tracker_logic.on_frame_changed = self._sequencer_order_panel.select_position
 
     def _wire_channels_callbacks(self) -> None:
@@ -516,10 +518,10 @@ class SequencerTabCoordinator:
     def _wire_block_callbacks(self) -> None:
         """Connects the grids' block gestures to the clipboard they copy into.
 
-        A copy reads the project and leaves it as it stands, so it is wired straight through
-        instead of through :meth:`_undoable`: a transaction over it would record an entry the
-        history has nothing to restore for. The three gestures that do write are whole ones, each
-        recording the single entry that takes the grid back to where it stood.
+        A copy reads the project and leaves it as it stands, so it is wired straight through. The
+        three gestures that write go through :meth:`SequencerHistoryRecorder.undoable` as whole
+        ones, each recording the single entry that takes the grid back to where it stood, and a cut
+        fills the clipboard once that entry stands.
 
         A paste asks the system clipboard first and records its entry once the answer has landed.
         Each grid also asks whether a block stands ready to paste, which a menu offering Paste
@@ -651,10 +653,10 @@ class SequencerTabCoordinator:
         """Realigns the tab with a replaced project, keeping the mute set across history navigation.
 
         The application's fan-out of the controller's single ``on_project_replaced`` signal calls
-        this. Undo, redo, and history jumps replace the project as well, and the history manager
-        reports itself restoring throughout, so the channels the user is listening through carry
-        across them. A new, opened, or closed document begins a fresh listening session instead,
-        with every channel audible.
+        this. Undo, redo, history jumps and the rollback of a failed gesture replace the project as
+        well, and the history manager reports itself restoring throughout, so the channels the user
+        is listening through carry across them. A new, opened, or closed document begins a fresh
+        listening session instead, with every channel audible.
         """
         if not self._history.is_restoring:
             self._sequencer_channels_logic.reset()
@@ -671,7 +673,7 @@ class SequencerTabCoordinator:
         self._guarded_player.run_guarded(partial(self._frames.play_from, position))
 
     def add_instrument(self) -> None:
-        """Appends a hand-written voice to the pool, the menu bar's entry to the gesture."""
+        """Appends an instrument to the pool, the menu bar's entry to the gesture."""
         self._voices.add_instrument()
 
     def add_instrument_from_channel(
@@ -732,7 +734,7 @@ class SequencerTabCoordinator:
         voice_id: str,
         feature_key: FeatureKey,
     ) -> HistoryDetail:
-        """Describes a hand-written voice's edited dimension for the project history."""
+        """Describes an instrument's edited dimension for the project history."""
         return self._history_detail.edit_instrument(voice_id, feature_key)
 
     def reconstruction_stem_detail(

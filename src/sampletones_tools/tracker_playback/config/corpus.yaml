@@ -303,7 +303,7 @@ projects:
               - { row: 7, voice: hiss, volume: 13 }
 
   - name: instrument-channels
-    purpose: Hand-written instruments on every channel, with looping envelopes, a release, and a volume left to the channel.
+    purpose: Instruments on every channel, with looping envelopes, a release, and a volume left to the channel.
     module: { title: Instruments on every channel, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
     voices: [lead, pluck, swell]
     song:

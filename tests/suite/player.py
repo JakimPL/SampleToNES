@@ -72,7 +72,7 @@ PLAYER_SILENT_VOLUME: Final[int] = 0
 
 
 def nearest_anchor(timer: int) -> int:
-    """The pitch a hand-written timer is counted from, the one lying nearest it."""
+    """The pitch a timer is counted from, the one lying nearest it."""
     return PLAYER_PITCHES.pitch(PLAYER_PITCHES.nearest[timer].pitch)
 
 

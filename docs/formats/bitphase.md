@@ -90,8 +90,8 @@ through writes its last index, and the value it ends on is what the note rests o
 volume envelope ends on a note-off item, the channel's own level where the slice leaves the volume
 alone.
 
-**A hand-written instrument's slices.** Bitphase bakes a channel's registers tick by tick. An
-[instrument](../glossary.md#instrument) written by hand therefore reaches a document as one slice per
+**An instrument's slices.** Bitphase bakes a channel's registers tick by tick. An
+[instrument](../glossary.md#instrument) therefore reaches a document as one slice per
 channel it sounds on. Each slice reads the dimensions that channel offers and moves around the pitch the
 instrument states. The envelopes are one set for every channel, so the slices differ only in what each
 channel reads of them.

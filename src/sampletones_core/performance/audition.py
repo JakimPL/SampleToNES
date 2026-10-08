@@ -76,7 +76,7 @@ def audition_audio(
 ) -> Optional[np.ndarray]:
     """The audio an instrument sounds on one channel at one note.
 
-    This is what an audition plays and what a plot of a hand-written voice draws, so both answer
+    This is what an audition plays and what a plot of an instrument draws, so both answer
     the same generator with the same waveform over the same span.
 
     Args:

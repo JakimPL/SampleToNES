@@ -48,12 +48,13 @@ from sampletones_application.ui.panels.sequencer.columns import (
     SAMPLE_TABLE_COLUMN,
     TRACKER_TABLE_COLUMNS,
     tracker_table_column,
-    tracker_table_row,
 )
 from sampletones_application.ui.panels.sequencer.display import (
     CellKey,
     CellKinds,
     CellValues,
+    row_kinds,
+    row_values,
 )
 from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
 from sampletones_application.ui.panels.sequencer.grid.scroll.axis import VerticalScroll
@@ -80,6 +81,11 @@ from sampletones_application.ui.panels.sequencer.tracker.adjust import (
     TRANSPOSE_STEPS,
     VOLUME_STEPS,
 )
+from sampletones_application.ui.panels.sequencer.tracker.band import (
+    UNMEASURED_BAND,
+    TrackerBand,
+    TrackerRows,
+)
 from sampletones_application.ui.panels.sequencer.tracker.callbacks import (
     CanPasteBlockQuery,
     MarkedVoiceQuery,
@@ -98,7 +104,13 @@ from sampletones_application.ui.panels.sequencer.tracker.callbacks import (
     RefreshPasteBlockRequest,
     TrackerEditSurface,
 )
+from sampletones_application.ui.panels.sequencer.tracker.context import ContextRows
 from sampletones_application.ui.panels.sequencer.tracker.menu import TrackerMenu
+from sampletones_application.ui.panels.sequencer.tracker.row import (
+    add_empty_cell,
+    add_slot_group,
+    slot_font,
+)
 from sampletones_application.ui.panels.sequencer.tracker.status import CellStatusText
 from sampletones_application.ui.panels.sequencer.tracker.themes import TrackerThemes
 from sampletones_application.ui.themes.registry import ThemeRegistry
@@ -144,6 +156,7 @@ from sampletones_application.view_model.sequencer.slot import (
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.tracker import (
+    NO_REACH,
     SequencerRowViewModel,
     SequencerTrackerViewModel,
 )
@@ -203,11 +216,14 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._cell_handler_tag = compose_tag(TAG_SEQUENCER_TRACKER_TABLE, SUF_HANDLER_REGISTRY)
         self._header_handler_tag = compose_tag(TAG_SEQUENCER_TRACKER_TABLE, SUF_HANDLER_HEADER)
         self._drag_handler_tag = compose_tag(TAG_SEQUENCER_TRACKER_TABLE, SUF_HANDLER_DRAG)
+        self._band_handler_tag = compose_tag(TAG_SEQUENCER_TRACKER_WINDOW, SUF_HANDLER_REGISTRY)
 
         self._rows: Dict[Optional[int], Sender] = {}
         self._header_columns: Dict[Sender, Optional[ChannelName]] = {}
+        self._header_label: Optional[Sender] = None
         self._editable_cells: EditableCells[CellKey] = EditableCells()
-        self._current_row_count: int = 0
+        self._rows_layout: TrackerRows = TrackerRows(reach=NO_REACH, frame_rows=0)
+        self._band: TrackerBand = TrackerBand(height=UNMEASURED_BAND, row_height=layout.tracker.row_height)
         self._current_rows: Dict[int, SequencerRowViewModel] = {}
         self._rows_taking_offsets: FrozenSet[int] = frozenset()
         self._highlighted_row: Optional[int] = None
@@ -229,6 +245,11 @@ class GUISequencerTrackerPanel(GUIPanel):
         )
         self._cell_kinds: CellKinds = {}
         self._themes = TrackerThemes(layout)
+        self._context = ContextRows(
+            layout=layout,
+            themes=self._themes,
+            subcolumn_widths=self._subcolumn_widths,
+        )
         self._current_samples: Optional[SequencerVoicesViewModel] = None
         self._current_channels: Optional[SequencerChannelsViewModel] = None
 
@@ -254,6 +275,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self.on_channels_toggled: Optional[VoidCallback] = None
         self.on_channels_muted: Optional[VoidCallback] = None
         self.on_channels_unmuted: Optional[VoidCallback] = None
+        self.on_reach_changed: Optional[Callable[[int], None]] = None
 
         self._blocks: BlockGestures[TrackerRegion, TrackerCell] = BlockGestures(grid=self)
         self._surface: TrackerEditSurface = GridEditSurface.build(
@@ -380,6 +402,9 @@ class GUISequencerTrackerPanel(GUIPanel):
                 callback=self._on_pointer_pressed,
             )
 
+        with dpg.item_handler_registry(tag=self._band_handler_tag):
+            dpg.add_item_resize_handler(callback=self._on_band_resized)
+
         self._router.register(
             self._on_key_pressed,
             priority=PRIORITY_PANEL,
@@ -481,12 +506,47 @@ class GUISequencerTrackerPanel(GUIPanel):
                 dpg.add_table_column(width_stretch=True)
 
         self.pattern_theme.bind_to_item(TAG_SEQUENCER_TRACKER_TABLE)
+        dpg.bind_item_handler_registry(TAG_SEQUENCER_TRACKER_WINDOW, self._band_handler_tag)
+
+    @property
+    def _current_row_count(self) -> int:
+        """How many rows the shown frame holds in the table."""
+        return self._rows_layout.frame_rows
+
+    def _on_band_resized(self, _sender: Sender, _app_data: Sender) -> None:
+        self._measure_band()
+
+    def _measure_band(self) -> None:
+        """Reads how tall the band stands, and asks for the rows either side of the frame it now reaches.
+
+        The band is what the window holds below the header row, so it is read off the window's
+        height, the group it opens in and the header's own cells. A grid awaiting its first layout
+        reports no height, and the reach it asked for stands until one arrives.
+        """
+        header = self._header_label
+        if header is None or not dpg.does_item_exist(header):
+            return
+
+        _, window_height = dpg.get_item_rect_size(TAG_SEQUENCER_TRACKER_WINDOW)
+        _, window_top = dpg.get_item_rect_min(TAG_SEQUENCER_TRACKER_GROUP)
+        _, header_top = dpg.get_item_rect_min(header)
+        _, header_height = dpg.get_item_rect_size(header)
+        if window_height <= 0 or header_height <= 0:
+            return
+
+        reach = self._band.reach
+        self._band = TrackerBand(
+            height=window_top + window_height - (header_top + header_height),
+            row_height=self._layout.tracker.row_height,
+        )
+        if self._band.reach != reach:
+            self.call(self.on_reach_changed, self._band.reach)
 
     def update_tracker(self, view_model: SequencerTrackerViewModel) -> None:
-        """Reconciles the tracker body with the visible order frame.
+        """Reconciles the tracker body with the visible order frame and the song around it.
 
-        The grid is only torn down and rebuilt when the row count changes; for the
-        common in-place edit the changed cell labels are reconfigured one by one.
+        The grid is only torn down and rebuilt when the frame's row count or the band's reach
+        changes; for the common in-place edit the changed cell labels are reconfigured one by one.
         Reusing the existing widgets preserves scroll position, the hover row, and
         the edit cursor that a full rebuild would otherwise discard.
         """
@@ -495,11 +555,14 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._current_rows = {row.index: row for row in view_model.rows}
         self._rows_taking_offsets = frozenset(row.index for row in view_model.rows if row.takes_offsets)
         self._show_frame(view_model.frame_index)
-        if len(view_model.rows) != self._current_row_count:
-            self._rebuild_table(view_model, cell_values, cell_kinds)
+        layout = TrackerRows(reach=self._band.reach, frame_rows=len(view_model.rows))
+        if layout != self._rows_layout:
+            self._rebuild_table(view_model, layout, cell_values, cell_kinds)
         else:
             self._reconcile_cell_kinds(cell_kinds)
             self._editable_cells.reconcile(cell_values, self._render_cell)
+            self._context.fill(view_model.lead, view_model.trail)
+            self._paint_context()
 
     def _show_frame(self, frame_index: int) -> None:
         """Records the order frame the grid stands on, and settles the playhead's mark for it.
@@ -517,13 +580,15 @@ class GUISequencerTrackerPanel(GUIPanel):
     def _rebuild_table(
         self,
         view_model: SequencerTrackerViewModel,
+        layout: TrackerRows,
         cell_values: CellValues,
         cell_kinds: CellKinds,
     ) -> None:
-        """Replaces the table body, and re-reveals the sounding row once the new body has laid out.
+        """Replaces the table body, then measures the band and re-reveals the sounding row once it has laid out.
 
         A table repopulated this frame reports the scroll extent of the body it replaced, so the
-        reveal is repeated a frame later, when DearPyGui has measured the rows now in it.
+        reveal is repeated a frame later, when DearPyGui has measured the rows now in it. The band
+        is read then too, since a header raised in this frame states nothing of where it ends.
 
         The frame the grid stands on has a row count of its own, so a selection is taken down to
         its cursor: the cells it covered belong to the body being replaced.
@@ -534,9 +599,15 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._travel.rest()
         self._editable_cells.reset(cell_values)
         self._cell_kinds = dict(cell_kinds)
+        self._rows_layout = layout
         self._build_table(view_model)
         self.repaint()
-        FrameCallbackManager.set_frame_callback(self._reveal_playing_row)
+        FrameCallbackManager.set_frame_callback(self._settle_rebuilt_table)
+
+    def _settle_rebuilt_table(self) -> None:
+        """Reads the band a rebuilt table stands in, then brings the row it follows back to its center."""
+        self._measure_band()
+        self._center_followed_row()
 
     def repaint(self) -> None:
         """Issues every tint the table holds as its own state.
@@ -579,14 +650,14 @@ class GUISequencerTrackerPanel(GUIPanel):
     ) -> None:
         """Gives one pattern row the background color it resolved to.
 
-        Position updates arrive on the callback-queue worker thread, so the table may be shorter
-        than the row asked for if the main thread shrank it (a rows-per-pattern change) in between;
-        checking the live row count keeps a stale index from reaching DearPyGui.
+        A mark can name a row of a frame taller than the one the table now holds (a rows-per-pattern
+        change in between), so the row is checked against the rows the table holds before its index
+        reaches DearPyGui.
         """
         if not 0 <= row_index < self._live_row_count():
             return
 
-        table_row = tracker_table_row(row_index)
+        table_row = self._rows_layout.table_row(row_index)
         if color is None:
             dpg.unhighlight_table_row(
                 TAG_SEQUENCER_TRACKER_TABLE,
@@ -613,9 +684,20 @@ class GUISequencerTrackerPanel(GUIPanel):
         )
 
     def _apply_row_backgrounds(self) -> None:
-        """Draws every live pattern row, which is how the beat and bar grouping reaches the table."""
+        """Draws every row the table holds, which is how the beat and bar grouping reaches it."""
         for row_index in range(self._live_row_count()):
             self._paint_row(row_index)
+
+        self._paint_context()
+
+    def _paint_context(self) -> None:
+        """Draws the rows standing either side of the frame, the playhead's mark among them."""
+        playing = (
+            (self._playing_frame, self._playing_row)
+            if self._playing_frame is not None and self._playing_row is not None
+            else None
+        )
+        self._context.paint(self._rows_layout, self._settings, playing)
 
     def _render_cell(self, key: CellKey) -> str:
         row, channel, subcolumn = key
@@ -686,47 +768,27 @@ class GUISequencerTrackerPanel(GUIPanel):
             fraction=self._layout.tracker.channel_column_tint,
         ).rgba
 
-    def _compute_cell_values(
-        self,
-        view_model: SequencerTrackerViewModel,
-    ) -> CellValues:
-        cell_values: CellValues = {}
-        for row in view_model.rows:
-            cell_values[(row.index, None, SubColumn.VOICE)] = row.sample
-            cell_values[(row.index, None, SubColumn.TRANSPOSE)] = row.transpose
-            cell_values[(row.index, None, SubColumn.VOLUME)] = row.volume
-            for channel in ChannelName.items():
-                cell = row.cells[channel]
-                for subcolumn in SubColumn:
-                    cell_values[
-                        (
-                            row.index,
-                            channel,
-                            subcolumn,
-                        )
-                    ] = tracker_display.cell_display(
-                        cell,
-                        subcolumn,
-                    )
+    @staticmethod
+    def _compute_cell_values(view_model: SequencerTrackerViewModel) -> CellValues:
+        """What every slot of the frame reads, keyed by its row and slot."""
+        return {
+            (row.index, slot.channel, slot.subcolumn): value
+            for row in view_model.rows
+            for slot, value in row_values(row).items()
+        }
 
-        return cell_values
-
-    def _compute_cell_kinds(
-        self,
-        view_model: SequencerTrackerViewModel,
-    ) -> CellKinds:
+    @staticmethod
+    def _compute_cell_kinds(view_model: SequencerTrackerViewModel) -> CellKinds:
         """Which kind of voice each voice slot names, which is the color that slot wears.
 
         Only the voice slot reports a kind, so the map covers those cells alone and a refresh
         re-themes as many of them as the edit touched.
         """
-        cell_kinds: CellKinds = {}
-        for row in view_model.rows:
-            cell_kinds[(row.index, None, SubColumn.VOICE)] = row.sample_kind
-            for channel in ChannelName.items():
-                cell_kinds[(row.index, channel, SubColumn.VOICE)] = row.cells[channel].kind
-
-        return cell_kinds
+        return {
+            (row.index, slot.channel, slot.subcolumn): kind
+            for row in view_model.rows
+            for slot, kind in row_kinds(row).items()
+        }
 
     def _reconcile_cell_kinds(self, cell_kinds: CellKinds) -> None:
         """Re-themes the voice slots whose kind changed, leaving the rest of the grid bound.
@@ -742,11 +804,14 @@ class GUISequencerTrackerPanel(GUIPanel):
             self._bind_cell_theme(key)
 
     def _build_table(self, view_model: SequencerTrackerViewModel) -> None:
+        """Raises the header, the rows standing before the frame, the frame's own, and those after it."""
         self._rows = {}
-        self._current_row_count = len(view_model.rows)
         self._build_header_row()
+        self._context.build_lead(self._rows_layout.reach, view_model.lead)
         for row in view_model.rows:
             self._build_table_row(row)
+
+        self._context.build_trail(self._rows_layout.reach, view_model.trail)
 
     def _build_header_row(self) -> None:
         """Builds the header as the table's first row, with each channel label a click target.
@@ -757,10 +822,10 @@ class GUISequencerTrackerPanel(GUIPanel):
         """
         self._header_columns = {}
         row_id = dpg.add_table_row(parent=TAG_SEQUENCER_TRACKER_TABLE)
-        self._add_empty_cell(row_id)
+        add_empty_cell(row_id)
         self._add_header_label_cell(row_id)
         self._add_header_selectable(row_id, None)
-        self._add_empty_cell(row_id)
+        add_empty_cell(row_id)
         for channel in ChannelName.items():
             self._add_header_selectable(row_id, channel)
 
@@ -768,7 +833,8 @@ class GUISequencerTrackerPanel(GUIPanel):
         """Places the row-number column's label, which names a column the user reads only.
 
         It is laid out as a selectable like the labels beside it, so it takes the header's
-        height and sits on their line; its own theme leaves it reading as text.
+        height and sits on their line; its own theme leaves it reading as text. The band is
+        measured from where it ends.
         """
         label_cell = dpg.add_table_cell(parent=row_id)
         label = dpg.add_selectable(
@@ -777,6 +843,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             height=self._layout.tracker.header_height,
         )
         dpg.bind_item_theme(label, self._themes.column_label)
+        self._header_label = label
 
     def _add_header_selectable(
         self,
@@ -815,17 +882,12 @@ class GUISequencerTrackerPanel(GUIPanel):
             parent=TAG_SEQUENCER_TRACKER_TABLE,
             user_data=row.index,
         )
-        self._add_empty_cell(row_id)
+        add_empty_cell(row_id)
         self._add_row_number_cell(row_id, row.index)
         self._add_column_cell(row_id, row.index, None)
-        self._add_empty_cell(row_id)
+        add_empty_cell(row_id)
         for channel in ChannelName.items():
             self._add_column_cell(row_id, row.index, channel)
-
-    def _add_empty_cell(self, row_id: Sender) -> None:
-        empty_cell = dpg.add_table_cell(parent=row_id)
-        if dpg.does_item_exist(empty_cell):
-            dpg.add_spacer(parent=empty_cell, width=0)
 
     def _add_row_number_cell(self, row_id: Sender, row_index: int) -> None:
         number_cell = dpg.add_table_cell(parent=row_id)
@@ -847,20 +909,14 @@ class GUISequencerTrackerPanel(GUIPanel):
         row_index: int,
         channel: Optional[ChannelName],
     ) -> None:
-        font = Font.MONO_BOLD_SMALL if channel is None else Font.MONO_SMALL
-        cell = dpg.add_table_cell(parent=row_id)
-        group = dpg.add_group(
-            horizontal=True,
-            horizontal_spacing=0,
-            parent=cell,
-        )
+        group = add_slot_group(row_id)
         for subcolumn in SubColumn:
             self._add_subcolumn_selectable(
                 group,
                 row_index,
                 channel,
                 subcolumn,
-                font,
+                slot_font(channel),
             )
 
     def _add_subcolumn_selectable(
@@ -978,7 +1034,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         """The theme a cell wears: its slot's color, dimmed while its channel is silenced.
 
         A voice slot takes the color of the kind of voice standing in it, so a reader tells a
-        recording from a hand-written one across the whole grid; a slot naming none takes the
+        sample from an instrument across the whole grid; a slot naming none takes the
         neutral shade the other slots' colors are read against.
         """
         _, channel, subcolumn = key
@@ -1017,12 +1073,11 @@ class GUISequencerTrackerPanel(GUIPanel):
             return
 
         key = (cursor.row, cursor.channel, cursor.subcolumn)
-        font = Font.MONO_BOLD_SMALL if cursor.channel is None else Font.MONO_SMALL
         CaretOverlay.set_target(
             owner=TAG_SEQUENCER_TRACKER_TABLE,
             widget=self._editable_cells.widget(key),
             caret_index=len(self._input_state.pending),
-            font=font,
+            font=slot_font(cursor.channel),
             clip_widget=TAG_SEQUENCER_TRACKER_WINDOW,
         )
 
@@ -1195,7 +1250,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._paint_row(row_index)
         dpg.highlight_table_cell(
             TAG_SEQUENCER_TRACKER_TABLE,
-            tracker_table_row(row_index),
+            self._rows_layout.table_row(row_index),
             tracker_table_column(channel),
             color=self._layout.colors.cell_cursor.rgba,
         )
@@ -1232,7 +1287,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         """
         dpg.unhighlight_table_cell(
             TAG_SEQUENCER_TRACKER_TABLE,
-            tracker_table_row(row_index),
+            self._rows_layout.table_row(row_index),
             tracker_table_column(channel),
         )
         self._paint_row(row_index)
@@ -1310,15 +1365,20 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._travel.rest()
 
     def _travel_band(self) -> Optional[TravelBand]:
-        """Where the frame's rows stand, which is the band a drag held below them travels across."""
+        """Where the rows scrolling below the header stand, which a drag held past them travels across.
+
+        The rows either side of the frame scroll with it, so the band runs from the first of those
+        above to the last of those below, while a drag still selects up to the frame's own edge.
+        """
         first = self._row_top(0)
         if first is None or self._current_row_count == 0:
             return None
 
+        row_height = self._layout.tracker.row_height
         return TravelBand(
-            first_edge=first,
-            cell_extent=self._layout.tracker.row_height,
-            cell_count=self._current_row_count,
+            first_edge=first - self._rows_layout.reach * row_height,
+            cell_extent=row_height,
+            cell_count=self._rows_layout.body_rows,
         )
 
     def _cell_at(self) -> Optional[CellKey]:
@@ -1472,12 +1532,23 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         The scheme says which press each tracker action answers to; a press the tracker category
         leaves unnamed goes to cell entry, which keeps the note and hex keys and hands the rest to
-        the application's global shortcuts.
+        the application's global shortcuts. A key carrying the cursor to another row — a step, a
+        page, a jump, a reach, or the row a typed entry moves on to — brings that row to the band's
+        center, so the rows pass under one line while the keys move through them.
         """
         cursor = self._input_state.cursor
         if cursor is None:
             return False
 
+        consumed = self._answer_key(event, cursor)
+        moved = self._input_state.cursor
+        if consumed and moved is not None and moved.row != cursor.row:
+            self._center_followed_row()
+
+        return consumed
+
+    def _answer_key(self, event: KeyEvent, cursor: TrackerCursor) -> bool:
+        """Runs the tracker action a key names, or types it into the cell, reporting whether it was taken."""
         shortcut_id = self._shortcuts.action(ShortcutCategory.TRACKER, event)
         if shortcut_id is None:
             return self._type_character(event)
@@ -1523,9 +1594,9 @@ class GUISequencerTrackerPanel(GUIPanel):
             case ShortcutId.TRACKER_LAST_ROW:
                 self._jump_to_row(self._current_row_count - 1)
             case ShortcutId.TRACKER_PAGE_UP:
-                self._page(-self._layout.tracker.page_size)
+                self._move_row(-self._layout.tracker.page_size)
             case ShortcutId.TRACKER_PAGE_DOWN:
-                self._page(self._layout.tracker.page_size)
+                self._move_row(self._layout.tracker.page_size)
             case _:
                 return False
 
@@ -1587,13 +1658,13 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._select(self._committed_state().select_subcolumn(cell, self._current_row_count))
 
     def _select(self, new_state: TrackerInputState) -> None:
-        """Stands a selected shape, revealing the row its cursor landed on.
+        """Stands a selected shape, bringing the row its cursor landed on to the band's center.
 
-        A shape ends at the frame's last row, so the reveal carries the grid to the end the cursor
-        now holds — the same landing a Shift+End reach makes.
+        A shape ends at the frame's last row, so the band carries the end the cursor now holds —
+        the same landing a Shift+End reach makes, whether a key or a menu item selected it.
         """
         self._apply_state(new_state)
-        self._scroll_cursor_into_view()
+        self._center_followed_row()
 
     def _block_action(self, shortcut_id: ShortcutId) -> bool:
         """Acts on the selected block, reporting whether the action was one of its gestures.
@@ -1683,11 +1754,6 @@ class GUISequencerTrackerPanel(GUIPanel):
             )
         )
 
-    def _page(self, delta: int) -> None:
-        """Moves the cursor a page of rows, then scrolls it back into view."""
-        self._move_row(delta)
-        self._scroll_cursor_into_view()
-
     def _jump_to_row(self, index: int) -> None:
         self._apply_state(
             self._committed_state().navigate_row(
@@ -1696,7 +1762,6 @@ class GUISequencerTrackerPanel(GUIPanel):
                 absolute=True,
             )
         )
-        self._scroll_cursor_into_view()
 
     def _extend_row(self, delta: int) -> None:
         self._apply_state(
@@ -1714,7 +1779,6 @@ class GUISequencerTrackerPanel(GUIPanel):
                 absolute=True,
             )
         )
-        self._scroll_cursor_into_view()
 
     def _extend_slot(self, delta: int) -> None:
         self._apply_state(self._committed_state().extend_slot(delta))
@@ -1725,70 +1789,43 @@ class GUISequencerTrackerPanel(GUIPanel):
     def _move_column(self, delta: int) -> None:
         self._apply_state(self._committed_state().navigate_column_by(delta))
 
-    def _scroll_cursor_into_view(self) -> None:
-        """Scrolls the tracker so the cursor's row stays on screen after a page or Home/End jump."""
+    @property
+    def _followed_row(self) -> Optional[int]:
+        """The row the band keeps at its center: the sounding one while the grid follows playback, else the cursor's.
+
+        The playhead outranks the cursor while the grid follows it on the frame it shows, so the
+        band moves with the song and a key moving the cursor leaves it there.
+        """
+        if self._follows_playing_row and self._playhead_row is not None:
+            return self._playhead_row
+
         cursor = self._input_state.cursor
-        if cursor is not None:
-            self._scroll_row_into_view(cursor.row)
+        return cursor.row if cursor is not None else None
 
-    def _scroll_row_into_view(self, row_index: int) -> None:
-        """Scrolls the tracker so the given row rests within the visible band.
+    def _center_followed_row(self) -> None:
+        """Brings the row the band follows to its center, where it follows one."""
+        row_index = self._followed_row
+        if row_index is not None:
+            self._center_row(row_index)
 
-        The frame's rows all live in one scrolling table, so a row outside the band is reached by
-        setting the scroll from that row's position within the frame: the first row rests at the
-        top of the band, the last at the bottom, and the rows between drift across it. This is how
-        a jump of the edit cursor lands.
+    def _center_row(self, row_index: int) -> None:
+        """Scrolls the grid so a pattern row stands at the band's center.
+
+        The table holds as many rows of the song either side of the frame as stand above the
+        band's center, so every row of the frame has the room to reach it, and the scroll is worked
+        out from the rows' height. A band awaiting its first measurement, or a table holding no
+        frame, stays as it stands.
         """
-        scroll_max = self._scroll_extent()
-        if scroll_max is None:
+        if self._band.height <= UNMEASURED_BAND or self._current_row_count == 0:
             return
-
-        fraction = row_index / (self._current_row_count - 1)
-        dpg.set_y_scroll(TAG_SEQUENCER_TRACKER_TABLE, fraction * scroll_max)
-
-    def _scroll_row_to_band_top(self, row_index: int) -> None:
-        """Scrolls the tracker so the given row heads the visible band.
-
-        A playhead read from one place is a playhead that stays easy to read, so the sounding row
-        is carried to the top of the band by the height of the rows above it, and the rows it is
-        about to reach fill the band beneath it. The rows closing a frame have nothing behind them
-        left to scroll into place: there the grid rests at its end and the playhead walks down the
-        band to meet it.
-        """
-        scroll_max = self._scroll_extent()
-        offset = self._row_offset(row_index)
-        if scroll_max is None or offset is None:
-            return
-
-        dpg.set_y_scroll(TAG_SEQUENCER_TRACKER_TABLE, min(offset, scroll_max))
-
-    def _scroll_extent(self) -> Optional[float]:
-        """How far the grid scrolls, once there is a built table with a frame too tall to fit it."""
-        if self._current_row_count <= 1:
-            return None
 
         if not dpg.does_item_exist(TAG_SEQUENCER_TRACKER_TABLE):
-            return None
+            return
 
-        scroll_max = dpg.get_y_scroll_max(TAG_SEQUENCER_TRACKER_TABLE)
-        return scroll_max if scroll_max > 0 else None
-
-    def _row_offset(self, row_index: int) -> Optional[float]:
-        """How far down the frame a row stands, measured from the first row to it.
-
-        The rows report where they were last drawn, so the distance between two of them is the
-        scroll that brings the lower one to where the upper one stands, and the distance from the
-        first row is the scroll that carries a row to the head of the band. Reading it off the rows
-        holds whatever height they take and however tall the header above them stands. A grid
-        awaiting its first layout measures nothing, and its rows are placed by the report that
-        follows.
-        """
-        first = self._row_top(0)
-        row = self._row_top(row_index)
-        if first is None or row is None:
-            return None
-
-        return row - first
+        dpg.set_y_scroll(
+            TAG_SEQUENCER_TRACKER_TABLE,
+            self._band.centering(self._rows_layout.body_row(row_index)),
+        )
 
     def _row_top(self, row_index: int) -> Optional[float]:
         """Where a pattern row's top edge stands, in the coordinates the viewport is drawn in."""
@@ -1924,7 +1961,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._paint_row(row_index)
 
     def set_row_following(self, following: bool) -> None:
-        """Whether the grid keeps the sounding row within the visible band as playback advances."""
+        """Whether the grid keeps the sounding row at the band's center as playback advances."""
         self._follows_playing_row = following
 
     def set_playing_position(self, position: Optional[SongPosition]) -> None:
@@ -1933,7 +1970,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         The position carries the order frame with the row, which is what tells the grid whether the
         row it would mark belongs to the pattern it shows. A row's mark is drawn on the very next
         frame while the grid answers a scroll on the frame after that, so a mark drawn as the row is
-        reported stands a row clear of the band's head until the grid catches up — a step down and
+        reported stands a row clear of the band's center until the grid catches up — a step and
         back on every row. Holding the mark until the frame its scroll lands on carries the two as
         one.
         """
@@ -1951,7 +1988,11 @@ class GUISequencerTrackerPanel(GUIPanel):
         return None
 
     def _paint_playhead(self) -> None:
-        """Draws the mark on the row the playhead has reached, clearing the row it came from."""
+        """Draws the mark on the row the playhead has reached, clearing the row it came from.
+
+        The rows either side of the frame show other frames, so the mark stands on one of them
+        while playback sounds it there.
+        """
         previous = self._painted_row
         self._painted_row = self._playhead_row
         if previous is not None and previous != self._painted_row:
@@ -1960,22 +2001,25 @@ class GUISequencerTrackerPanel(GUIPanel):
         if self._painted_row is not None:
             self._paint_row(self._painted_row)
 
+        self._paint_context()
+
     def _reveal_playing_row(self) -> None:
-        """Carries the sounding row to the head of the band while the grid follows the playhead."""
+        """Brings the sounding row to the band's center while the grid follows the playhead."""
         row_index = self._playhead_row
         if self._follows_playing_row and row_index is not None:
-            self._scroll_row_to_band_top(row_index)
+            self._center_row(row_index)
 
     def _live_row_count(self) -> int:
-        """The table's current pattern-row count, read live from DearPyGui.
+        """How many pattern rows the table holds, read off the rows DearPyGui holds.
 
-        The cached ``_current_row_count`` reflects the last build on this thread; a concurrent
-        rebuild on another thread can leave it stale, so row-index-bounded DearPyGui calls read the
-        actual children directly. The count covers the pattern rows that follow the header row,
-        so it compares against a pattern row index.
+        The count leaves out the header and the rows standing either side of the frame, so it
+        compares against a pattern row index, and a table not yet built holds none.
         """
         if not dpg.does_item_exist(TAG_SEQUENCER_TRACKER_TABLE):
             return 0
 
         rows = dpg.get_item_children(TAG_SEQUENCER_TRACKER_TABLE, slot=1)
-        return len(rows) - HEADER_TABLE_ROWS if rows else 0
+        if not rows:
+            return 0
+
+        return max(0, len(rows) - HEADER_TABLE_ROWS - 2 * self._rows_layout.reach)

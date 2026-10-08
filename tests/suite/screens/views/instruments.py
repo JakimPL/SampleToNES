@@ -44,9 +44,7 @@ class Instruments:
         return self._bridge.ask(lambda: read_selected_tab(TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR))
 
     def tab_label(self, channel: ChannelName) -> str:
-        """What ``channel``'s tab reads, which names the open hand-written voice on the tab it is edited
-        under.
-        """
+        """What ``channel``'s tab reads, which names the open instrument on the tab it is edited under."""
         return self._bridge.ask(lambda: read_label(tab(channel)))
 
     def tab_shown(self, channel: ChannelName) -> bool:
@@ -119,7 +117,7 @@ class Instruments:
         return self._bridge.ask(lambda: read_item(compose_tag(window, SUF_TABLE))).shown
 
     def offers_audition(self) -> bool:
-        """Whether the Audition switch stands, which it does while a hand-written instrument is open."""
+        """Whether the Audition switch stands, which it does while an instrument is open."""
         return self._bridge.ask(lambda: read_item(AUDITION_GROUP)).shown
 
     def audition(self) -> str:

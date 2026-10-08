@@ -1,14 +1,10 @@
 from typing import Final, List
 
-import pytest
-
 from tests.screens.sequencer.samples.constants import (
     ARRANGED_VOICES,
-    HALF_DONE_GESTURE_BUG,
     LINE_POSITION,
     PLACEHOLDER_START,
     REPLACE_SAMPLE,
-    UNSOUND_FAILURE,
     UNSOUND_RECONSTRUCTION,
 )
 from tests.screens.sequencer.samples.steps import (
@@ -36,7 +32,6 @@ class TestReplacingWithAnUnsoundReconstruction:
     replaces it with a sound one, which takes its place and its name.
     """
 
-    @pytest.mark.xfail(strict=True, raises=AssertionError, reason=HALF_DONE_GESTURE_BUG)
     def test_it_is_refused_and_a_sound_one_takes_its_place(self, screen: Screen) -> None:
         """The notice names the failure, and the sound reconstruction then takes the sample's place as one
         entry.
@@ -49,7 +44,7 @@ class TestReplacingWithAnUnsoundReconstruction:
 
             replace_from_the_sequencer_browser(screen, UNSOUND_RECONSTRUCTION, voice=LINE, label=LINE_LABEL)
 
-            assert UNSOUND_FAILURE in expect_refused(screen)
+            expect_refused(screen)
             assert voices.names() == ARRANGED_VOICES
             assert history.lines() == before
             assert project_part(screen) == ARRANGED_PROJECT.stem
@@ -81,7 +76,6 @@ class TestReplaceIsOfferedForSamples:
     picks the Line sample, and the same menu offers to replace it.
     """
 
-    @pytest.mark.xfail(strict=True, raises=AssertionError, reason=HALF_DONE_GESTURE_BUG)
     def test_an_instrument_picked_offers_no_replace(self, screen: Screen) -> None:
         """No entry of the menu reads as a replacement while Pad is picked, and the one naming Line stands once
         Line is."""

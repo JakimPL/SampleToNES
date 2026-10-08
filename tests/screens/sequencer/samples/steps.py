@@ -15,6 +15,7 @@ from tests.screens.sequencer.samples.constants import (
     PROJECT_TITLE_PART,
     REPLACE_SAMPLE,
     SAMPLE_KEY,
+    UNEXPECTED_FAILURE,
     UNSOUND_FAILURE,
 )
 from tests.suite.screens.boundaries.dialogs import DialogKind
@@ -129,11 +130,9 @@ def replace_from_the_sequencer_browser(
     choose_on_the_row(screen, screen.sequencer.browser, path, replace_entry(screen, label))
 
 
-def expect_refused(screen: Screen) -> str:
-    """Waits for the error notice, reads it, takes the failure behind it as provoked and dismisses it.
-
-    Returns:
-        str: Everything the notice said.
+def expect_refused(screen: Screen) -> None:
+    """Waits for the error notice, checks it says the last action stopped on the unsound record's failure,
+    takes that failure as provoked and dismisses the notice.
     """
     notice = screen.error_notice
     screen.expect(notice.is_shown, bool, description="the error notice")
@@ -143,7 +142,8 @@ def expect_refused(screen: Screen) -> str:
     notice.dismiss()
 
     screen.expect(notice.is_shown, operator.not_, description="the error notice dismissed")
-    return words
+    assert screen.words(UNEXPECTED_FAILURE) in words
+    assert UNSOUND_FAILURE in words
 
 
 def project_part(screen: Screen) -> str:

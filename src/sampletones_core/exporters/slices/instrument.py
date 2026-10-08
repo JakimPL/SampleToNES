@@ -95,7 +95,7 @@ def instrument_entries(
     *,
     start_index: int,
 ) -> Iterator[InstrumentEntry]:
-    """The instrument a hand-written voice contributes, which is its one envelope set.
+    """The tracker instrument an instrument contributes, which is its one envelope set.
 
     Every channel it sounds on reaches that set, each against the root it reads, so the entry
     answers for all of them and states its envelopes for none of them in particular.

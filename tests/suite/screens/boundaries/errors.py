@@ -20,10 +20,11 @@ class _ErrorRecord:
 class ErrorRecords(logging.Handler):
     """Every error the application logs, and every exception one of its threads lets escape.
 
-    A gesture's callback that raises is logged and swallowed so the interface keeps running, which
-    is why a scenario reads this record: a click that failed this way leaves the screen looking calm.
-    The warning that background work outlived the exit's deadline counts as an error too, since the
-    teardown destroys what that work still reaches.
+    A gesture's callback that raises is reported and the interface keeps running. The report is
+    logged, and the error dialog shows it unless a report already stands, so this record holds every
+    failure, the ones the screen shows once among them. The warning that background work outlived
+    the exit's deadline counts as an error too, since the teardown destroys what that work still
+    reaches.
 
     A scenario that provokes a failure claims the error it expects, and every error left unclaimed
     is one the application reported on its own.

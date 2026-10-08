@@ -13,6 +13,7 @@ from sampletones_application.tags.general import (
     SUF_DIALOG_INFO,
     SUF_GROUP,
     SUF_PATH,
+    SUF_REPORT,
     TAG_GLOBAL_DIALOG_ERROR,
     TAG_GLOBAL_DIALOG_FILE_NOT_FOUND,
     TAG_GLOBAL_DIALOG_PATH_MESSAGE,
@@ -45,6 +46,7 @@ from sampletones_shared.types.callback import Callback, StringCallback, VoidCall
 _TEMPLATE_PLACEHOLDER: Pattern[str] = re.compile(r"\{(\w+)\}")
 DIALOG_TEXT_MARGIN: Final[int] = 10
 NOTICE_CLAIMS_THE_SCREEN: Final[bool] = True
+FAILURE_REPORT_TAG: Final[str] = compose_tag(TAG_GLOBAL_DIALOG_ERROR, SUF_REPORT)
 
 
 def get_dialog_tag(base_tag: str) -> str:
@@ -249,8 +251,24 @@ class DialogsRenderer:
         exception: Exception,
         message: Optional[str] = None,
     ) -> None:
-        GUIErrorDialogWindow(
-            tag=get_dialog_tag(TAG_GLOBAL_DIALOG_ERROR),
+        self._error_window(get_dialog_tag(TAG_GLOBAL_DIALOG_ERROR)).show(exception, message)
+
+    def show_failure_report(self, exception: Exception, message: str) -> None:
+        """Reports a failure nothing recovered from, unless a report already stands or waits.
+
+        A report stays until the reader dismisses it, and the failures meanwhile are in the log. A
+        failure repeating every frame is therefore read once, and each new attempt after the
+        dismissal is reported again.
+        """
+        if ModalQueue.snapshot().holds(FAILURE_REPORT_TAG):
+            return
+
+        self._error_window(FAILURE_REPORT_TAG).show(exception, message)
+
+    def _error_window(self, tag: str) -> GUIErrorDialogWindow:
+        """The error dialog under ``tag``, drawn at the error geometry."""
+        return GUIErrorDialogWindow(
+            tag=tag,
             geometry=self._error,
             wrap=self._error_wrap,
             traceback_height=self._traceback_height,
@@ -258,7 +276,7 @@ class DialogsRenderer:
             error_color=self._col_text_error,
             key_router=self._router,
             shortcut_source=self._shortcuts,
-        ).show(exception, message)
+        )
 
     def show_file_not_found(self, filepath: Path, message: str) -> None:
         tag = get_dialog_tag(TAG_GLOBAL_DIALOG_FILE_NOT_FOUND)

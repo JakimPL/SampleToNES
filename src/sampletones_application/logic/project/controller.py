@@ -122,10 +122,10 @@ class ProjectController(CallbackMixin):
     def replace_project(self, project: Project, *, clean: bool) -> None:
         """Installs a project restored from history and rebuilds every dependent view.
 
-        Undo and redo install the whole project at once here: ``on_project_replaced``
-        fires so each tab realigns with the restored project, mirroring how loading a
-        project refreshes them, and a tab showing one voice keeps it by its id. The
-        fine-grained ``on_mutation`` signal fires only for new user edits, so
+        Undo, redo and the rollback of a failed gesture install the whole project at once
+        here: ``on_project_replaced`` fires so each tab realigns with the restored project,
+        mirroring how loading a project refreshes them, and a tab showing one voice keeps it
+        by its id. The fine-grained ``on_mutation`` signal fires only for new user edits, so
         reinstalling a recorded snapshot leaves it quiet. ``clean`` reports whether the
         restored state is the one last saved to disk, letting the session drop the
         unsaved-changes flag when undo returns exactly to the save point.
@@ -206,7 +206,7 @@ class ProjectController(CallbackMixin):
         return sample
 
     def add_instrument(self, instrument: Instrument) -> Instrument:
-        """Appends a hand-written voice, which the voice list holds and the tracker can name.
+        """Appends an instrument, which the voice list holds and the tracker can name.
 
         An instrument is its own record, so whoever made it — a reader asking for a new one, an
         instrument file read from disk, a sample's channel frozen into envelopes — hands the
@@ -548,11 +548,15 @@ class ProjectController(CallbackMixin):
 
         ``on_mutation`` fires for every mutation as it lands, batch or no batch, so the
         history keeps seeing each one inside the transaction that caused it — that
-        immediacy is what its completeness check rests on. It is invoked through a
-        direct ``None`` check so mutations stay silent in history-free contexts (tests,
-        tools), where the hook is intentionally unwired and :meth:`CallbackMixin.call`
-        would log a warning for each one.
+        immediacy is what its completeness check rests on. It fires once the stamp is
+        made, and also when stamping raises, so a gesture failing there is still rolled
+        back over a mutation the history counted. It is invoked through a direct ``None``
+        check so mutations stay silent in history-free contexts (tests, tools), where the
+        hook is intentionally unwired and :meth:`CallbackMixin.call` would log a warning
+        for each one.
         """
-        self._stamp()
-        if self.on_mutation is not None:
-            self.on_mutation()
+        try:
+            self._stamp()
+        finally:
+            if self.on_mutation is not None:
+                self.on_mutation()

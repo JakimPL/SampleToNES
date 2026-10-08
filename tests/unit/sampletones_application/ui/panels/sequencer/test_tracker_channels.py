@@ -10,6 +10,7 @@ from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.panels.sequencer import channels as channels_module
 from sampletones_application.ui.panels.sequencer.columns import tracker_table_column
 from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
+from sampletones_application.ui.panels.sequencer.tracker.band import TrackerRows
 from sampletones_application.ui.panels.sequencer.tracker.callbacks import ThemeKey
 from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.modifiers import (
@@ -22,6 +23,7 @@ from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.tracker import NO_REACH
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.application import ColorRGBA, Sender
 from tests.unit.sampletones_application.ui.panels.sequencer.test_tracker_cell_themes import _themes
@@ -107,7 +109,7 @@ def _panel(muted: FrozenSet[ChannelName]) -> GUISequencerTrackerPanel:
     )
     panel._channel_colors = CHANNEL_COLORS
     panel._current_channels = SequencerChannelsViewModel(muted=muted)
-    panel._current_row_count = ROW_COUNT
+    panel._rows_layout = TrackerRows(reach=NO_REACH, frame_rows=ROW_COUNT)
     panel._cell_kinds = {}
     panel._themes = _themes(
         SUBCOLUMN_THEMES,

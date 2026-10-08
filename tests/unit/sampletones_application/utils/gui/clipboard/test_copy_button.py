@@ -30,7 +30,7 @@ THEME: Final[str] = "probe.theme"
 LABEL: Final[str] = "Copy"
 COPIED: Final[str] = "Copied"
 TEXT: Final[str] = "the text a reader copies"
-QUEUE_LOGGER: Final[str] = "sampletones_application.utils.callbacks.queue.logger"
+FAILURES_LOGGER: Final[str] = "sampletones_application.utils.callbacks.failures.logger"
 
 
 @pytest.fixture
@@ -106,7 +106,7 @@ class TestCopyingWithTheButton(BaseTestSuite):
         copy_to_clipboard(TEXT, LABEL, BUTTON, copied_label=COPIED)
         dpg.delete_item(BUTTON)
         delay_clock.advance(COPIED_LABEL_SECONDS)
-        with patch(QUEUE_LOGGER) as queue_logger:
+        with patch(FAILURES_LOGGER) as failures_logger:
             draw_frame()
 
-        queue_logger.error_with_traceback.assert_not_called()
+        failures_logger.error_with_traceback.assert_not_called()

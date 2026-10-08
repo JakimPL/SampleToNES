@@ -437,7 +437,7 @@ class TestAutoplay:
 
 
 class TestInstrumentsInTheVoiceList:
-    """A hand-written voice sits in the same list as a converted one, marked by its kind."""
+    """An instrument sits in the same list as a sample, marked by its kind."""
 
     def test_an_instrument_is_listed_beside_the_samples_that_were_added(
         self,

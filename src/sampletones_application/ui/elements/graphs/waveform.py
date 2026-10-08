@@ -426,7 +426,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     ) -> None:
         """Draws one voice's own audio as a single series, in the color its generator is named by.
 
-        A hand-written voice stands on no recording, so there is nothing to hold it against: the
+        An instrument stands on no recording, so there is nothing to hold it against: the
         card shows what its envelopes make, labeled with the voice's own name. The series is the
         whole of what is drawn, so the controls that read a recording apply to nothing here.
 

@@ -395,7 +395,7 @@ class TestAClickReportsASampleOfDrawnAudio:
         assert clicked == [421]
 
     def test_a_voice_drawn_in_place_of_the_audio_takes_no_click(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """A hand-written voice's waveform is none of the audio the tab's player sounds."""
+        """An instrument's waveform is none of the audio the tab's player sounds."""
         graph, clicked = self._graph_reporting_clicks(monkeypatch)
 
         graph.load_voice_waveform(

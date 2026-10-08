@@ -138,11 +138,4 @@ currently out of line. An entry leaves when the code meets the contract again.
   under a steady 330 Hz pulse reads about 4 cents off, and within a cent alone.
 * The Sample column shows no sample on a frame's first rows, since its reading starts over at each frame. It
   offers no transpose or volume there, while playback applies them to the sample the previous frame left
-  sounding.
-* A failure no coordinator catches is logged with no message: adding a reconstruction whose record breaks
-  its own rules to the sequencer shows nothing on screen. `tests/screens/sequencer/samples/` reproduces it
-  as a known failure.
-* A gesture failing midway keeps what landed before it: Replace renames the sample before the swap fails,
-  and Add sets an empty project's rate before the sample fails to join. Replace is offered with an
-  instrument picked too, where it renames the instrument and then fails. `tests/screens/sequencer/samples/`
-  reproduces it as a known failure.
+  sounding. The rows the tracker shows beside a frame read the same way, each from its own frame's start.

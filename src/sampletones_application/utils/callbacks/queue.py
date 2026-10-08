@@ -5,6 +5,7 @@ import threading
 import time
 from typing import Any, ClassVar, List
 
+from sampletones_application.utils.callbacks.failures import UnhandledFailures
 from sampletones_application.utils.callbacks.priority import CallbackPriority
 from sampletones_application.utils.callbacks.task import CallbackTask
 from sampletones_shared.exceptions import CallbackQueueStop
@@ -27,8 +28,10 @@ class CallbackQueue(metaclass=NonInstantiableMeta):
 
     A callback becomes due once the frame counter reaches its target frame;
     callbacks posted with a delay wait in the heap until then. Ordering within a
-    frame follows the callback priority and then insertion order. Individual
-    failures are caught and logged so the remaining callbacks still run.
+    frame follows the callback priority and then insertion order. :meth:`run` is
+    where a gesture, a frame callback or a queued delivery enters the application,
+    so a failure there is reported through :class:`UnhandledFailures` and the
+    remaining callbacks still run.
 
     Non-instantiable by design: it is a shared execution channel reached
     through its class methods.
@@ -129,7 +132,7 @@ class CallbackQueue(metaclass=NonInstantiableMeta):
             logger.error(f"Callback queue processing stopped due to the error: {exception}.")
             return True
         except Exception as exception:  # pylint: disable=broad-exception-caught
-            logger.error_with_traceback(
+            UnhandledFailures.report(
                 exception,
                 f"Error executing callback {getattr(callback, '__name__', str(callback))}",
             )

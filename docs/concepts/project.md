@@ -21,9 +21,9 @@ The [sequencer guide](../guide/sequencer.md) covers writing a project and export
 
 ## Self-contained and portable
 
-A project stores the reconstructions it uses inside its own file. It also stores each hand-written
-instrument there. Moving or sharing the file therefore moves the whole composition: the arrangement and
-every sound it needs. The stored reconstructions are
+A project stores the reconstructions it uses inside its own file. It also stores each instrument there.
+Moving or sharing the file therefore moves the whole composition: the arrangement and every sound it
+needs. The stored reconstructions are
 [detached](../formats/reconstructions.md#detached-reconstructions) from their source-audio paths, because
 those paths mean nothing on another machine. The project opens the same wherever it goes.
 

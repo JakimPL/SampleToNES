@@ -145,7 +145,7 @@ def project_with_instrument(
     rows_per_pattern: int,
     settings: Optional[ProjectSettings] = None,
 ) -> Project:
-    """A one-instrument project, so a case can place a hand-written voice on any channel it likes."""
+    """A one-instrument project, so a case can place an instrument on any channel it likes."""
     project = Project.create(rows_per_pattern=rows_per_pattern, settings=settings)
     project.voices.append(instrument)
     return project

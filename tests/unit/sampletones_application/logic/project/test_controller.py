@@ -730,6 +730,23 @@ class TestBatch:
 
         assert mutations == ["mutation", "mutation"]
 
+    def test_a_mutation_whose_stamp_raises_still_signals_the_history(self) -> None:
+        """A gesture failing as its mutation is stamped is rolled back over a mutation the history counted."""
+        project_manager = ProjectManager()
+        controller = ProjectController(project_manager)
+        mutations: List[str] = []
+        controller.on_mutation = lambda: mutations.append("mutation")
+
+        def failing_stamp() -> None:
+            raise RuntimeError("the stamp went wrong")
+
+        project_manager.session.on_state_changed = failing_stamp
+
+        with pytest.raises(RuntimeError):
+            controller.set_tempo(170)
+
+        assert mutations == ["mutation"]
+
     def test_nested_batches_announce_on_the_outermost_exit(self) -> None:
         controller = _controller()
         emitted: List[str] = []

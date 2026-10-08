@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Final, Tuple
+from typing import Final, List, Tuple
 
 import pytest
 
@@ -7,6 +7,7 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.tracker import SequencerTrackerViewModel
 from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME
@@ -15,7 +16,7 @@ from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
-from sampletones_core.utils.display import NOTE_OFF, display_id
+from sampletones_core.utils.display import NOTE_OFF, display_id, display_volume
 from sampletones_shared.constants.symbols import MIXED
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -33,6 +34,9 @@ EMPTY: Final[str] = ".. ... . | .. ... . | .. ... . | .. ... ."
 LEAD: Final[str] = "00"
 BASS: Final[str] = "01"
 PAD: Final[str] = "02"
+CONTEXT_REACH: Final[int] = 2
+VOLUME_BEFORE: Final[int] = 5
+VOLUME_AFTER: Final[int] = 9
 
 
 def _controller() -> ProjectController:
@@ -296,6 +300,96 @@ class TestFrameRowCount:
         controller.remove_frame(0)
 
         assert logic.frame_row_count() == 0
+
+
+@dataclass(frozen=True, kw_only=True)
+class ThreeFrames:
+    """A song of three short frames with the middle one shown."""
+
+    controller: ProjectController
+    logic: SequencerTrackerLogic
+
+
+@pytest.fixture
+def three_frames() -> ThreeFrames:
+    """Three frames of :data:`FRAME_ROWS` rows, a volume on the first frame's last row and on the last
+    frame's first row, so the rows standing either side of the middle frame tell themselves apart.
+    """
+    controller = _controller()
+    controller.set_rows_per_pattern(FRAME_ROWS)
+    controller.append_frame()
+    controller.append_frame()
+    logic = SequencerTrackerLogic(controller)
+    logic.set_cell_subcolumn(FRAME_ROWS - 1, ChannelName.PULSE1, volume=VOLUME_BEFORE)
+    logic.select_frame(2)
+    logic.set_cell_subcolumn(0, ChannelName.PULSE1, volume=VOLUME_AFTER)
+    logic.select_frame(1)
+    return ThreeFrames(controller=controller, logic=logic)
+
+
+class TestTheSongAroundTheFrame:
+    """The grid carries the rows the song plays either side of the shown frame, as far as it reaches."""
+
+    def test_the_grid_carries_the_rows_either_side(self, three_frames: ThreeFrames) -> None:
+        three_frames.logic.set_reach(CONTEXT_REACH)
+
+        grid = three_frames.logic.build_grid()
+
+        assert [(row.frame_index, row.row.index) for row in grid.lead] == [(0, 2), (0, 3)]
+        assert [(row.frame_index, row.row.index) for row in grid.trail] == [(2, 0), (2, 1)]
+
+    def test_a_neighboring_row_reads_as_it_does_in_its_own_frame(self, three_frames: ThreeFrames) -> None:
+        three_frames.logic.set_reach(CONTEXT_REACH)
+
+        grid = three_frames.logic.build_grid()
+
+        assert grid.lead[-1].row == three_frames.logic.frame_rows(0)[FRAME_ROWS - 1]
+        assert grid.trail[0].row == three_frames.logic.frame_rows(2)[0]
+        assert grid.lead[-1].row.cells[ChannelName.PULSE1].volume == display_volume(VOLUME_BEFORE)
+        assert grid.trail[0].row.cells[ChannelName.PULSE1].volume == display_volume(VOLUME_AFTER)
+
+    def test_without_a_reach_the_grid_holds_the_frame_alone(self, three_frames: ThreeFrames) -> None:
+        grid = three_frames.logic.build_grid()
+
+        assert grid.lead == ()
+        assert grid.trail == ()
+        assert len(grid.rows) == FRAME_ROWS
+
+    def test_a_new_reach_builds_the_grid_and_the_same_one_builds_nothing(self, three_frames: ThreeFrames) -> None:
+        pushed: List[SequencerTrackerViewModel] = []
+        three_frames.logic.on_tracker_changed = pushed.append
+
+        three_frames.logic.set_reach(CONTEXT_REACH)
+        three_frames.logic.set_reach(CONTEXT_REACH)
+
+        assert len(pushed) == 1
+        assert len(pushed[0].lead) == CONTEXT_REACH
+
+
+class TestSelectingAFrame:
+    """A frame is built when it is shown, and the frame already shown is only reported again."""
+
+    def test_the_shown_frame_is_reported_and_builds_nothing(self, three_frames: ThreeFrames) -> None:
+        pushed: List[SequencerTrackerViewModel] = []
+        reported: List[int] = []
+        three_frames.logic.on_tracker_changed = pushed.append
+        three_frames.logic.on_frame_changed = reported.append
+
+        three_frames.logic.select_frame(1)
+
+        assert pushed == []
+        assert reported == [1]
+
+    def test_another_frame_is_built_and_reported(self, three_frames: ThreeFrames) -> None:
+        pushed: List[SequencerTrackerViewModel] = []
+        reported: List[int] = []
+        three_frames.logic.on_tracker_changed = pushed.append
+        three_frames.logic.on_frame_changed = reported.append
+
+        three_frames.logic.select_frame(2)
+
+        assert [grid.frame_index for grid in pushed] == [2]
+        assert reported == [2]
 
 
 class TestRowAccess:

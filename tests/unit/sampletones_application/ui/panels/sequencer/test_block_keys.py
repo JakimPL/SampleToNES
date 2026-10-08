@@ -15,6 +15,7 @@ from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCur
 from sampletones_application.ui.panels.sequencer.order.panel import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.tracker import adjust
 from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
+from sampletones_application.ui.panels.sequencer.tracker.band import TrackerRows
 from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
@@ -26,6 +27,7 @@ from sampletones_application.view_model.sequencer.region import (
 )
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.tracker import NO_REACH
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.constants.music import OCTAVE_SEMITONES, SEMITONE_STEP
 from tests.suite.grid import (
@@ -90,7 +92,7 @@ def _panel(
     panel._cell_kinds = {}
     panel._shortcuts = shipped_source()
     panel._input_state = TrackerInputState(cursor=TrackerCursor(CURSOR_ROW, channel, subcolumn))
-    panel._current_row_count = ROW_COUNT
+    panel._rows_layout = TrackerRows(reach=NO_REACH, frame_rows=ROW_COUNT)
     panel._editable_cells = EditableCells()
     panel.on_copy_block = gestures.copied.append
     panel.on_cut_block = gestures.cut.append

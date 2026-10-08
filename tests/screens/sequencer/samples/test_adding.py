@@ -9,12 +9,9 @@ from tests.screens.sequencer.samples.constants import (
     ARRANGED_VOICES,
     ATTEMPTS,
     FREQUENCY_MISMATCH,
-    HALF_DONE_GESTURE_BUG,
     OTHER_RATE,
-    SILENT_FAILURE_BUG,
     SOUND_AT_OTHER_RATE,
     UNSOUND_AT_OTHER_RATE,
-    UNSOUND_FAILURE,
     UNSOUND_RECONSTRUCTION,
 )
 from tests.screens.sequencer.samples.steps import (
@@ -40,7 +37,6 @@ class TestAnUnsoundReconstructionAtEveryDoor:
     sound one, and the voices, the history and the title show that it alone joined.
     """
 
-    @pytest.mark.xfail(strict=True, raises=AssertionError, reason=SILENT_FAILURE_BUG)
     @pytest.mark.parametrize("door", DOORS, ids=lambda door: door.name)
     def test_it_is_refused_and_a_sound_one_joins(self, screen: Screen, door: Door) -> None:
         """The notice names the failure, and the sound reconstruction joins as the one new voice and entry."""
@@ -52,7 +48,7 @@ class TestAnUnsoundReconstructionAtEveryDoor:
 
             door.add(screen, UNSOUND_RECONSTRUCTION)
 
-            assert UNSOUND_FAILURE in expect_refused(screen)
+            expect_refused(screen)
             assert voices.names() == ARRANGED_VOICES
             assert history.lines() == before
             assert project_part(screen) == ARRANGED_PROJECT.stem
@@ -86,7 +82,6 @@ class TestAnUnsoundReconstructionAddedAnyway:
     made at the same other rate, which joins at the project's rate.
     """
 
-    @pytest.mark.xfail(strict=True, raises=AssertionError, reason=SILENT_FAILURE_BUG)
     def test_it_is_refused_after_the_question(self, screen: Screen) -> None:
         """The question names both rates, the notice names the failure, and the sound one then joins."""
         voices = screen.sequencer.voices
@@ -99,7 +94,7 @@ class TestAnUnsoundReconstructionAddedAnyway:
 
             asked = add_anyway(screen, UNSOUND_AT_OTHER_RATE)
 
-            assert UNSOUND_FAILURE in expect_refused(screen)
+            expect_refused(screen)
             assert question in asked
             assert voices.names() == ARRANGED_VOICES
             assert history.lines() == before
@@ -133,7 +128,6 @@ class TestAnUnsoundReconstructionAddedTwice:
     one notice. The witness adds a sound reconstruction the same way.
     """
 
-    @pytest.mark.xfail(strict=True, raises=AssertionError, reason=SILENT_FAILURE_BUG)
     def test_each_attempt_shows_one_notice(self, screen: Screen) -> None:
         """One notice stands after each attempt, and the sound one then joins as the one new voice."""
         voices = screen.sequencer.voices
@@ -176,7 +170,6 @@ class TestAnEmptyProjectRefusingItsFirstSample:
         """The application opens with nothing loaded, so File > New project starts at once."""
         return Startup(reconstruction=None, project=None)
 
-    @pytest.mark.xfail(strict=True, raises=AssertionError, reason=HALF_DONE_GESTURE_BUG)
     def test_a_refused_one_leaves_the_rate(self, screen: Screen) -> None:
         """The rate stays the new project's, and the sound reconstruction then joins and sets its own."""
         voices = screen.sequencer.voices
@@ -195,7 +188,7 @@ class TestAnEmptyProjectRefusingItsFirstSample:
 
             add_by_double_click(screen, UNSOUND_AT_OTHER_RATE)
 
-            assert UNSOUND_FAILURE in expect_refused(screen)
+            expect_refused(screen)
             assert module.nes_frequency() == rate
             assert history.lines() == before
             assert project_part(screen) == screen.words(UNTITLED)

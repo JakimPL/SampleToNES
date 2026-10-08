@@ -174,8 +174,8 @@ class GUISequencerVoicesPanel(GUIPanel):
     def _voice_status_message(self, voice_id: str) -> str:
         """What a voice is, what it plays and what it costs, as one sentence a reader reads.
 
-        A recording plays the channels its conversion found and exports an instrument for each of
-        them; a hand-written voice is one set of envelopes every channel reads, so it names no
+        A sample plays the channels its conversion found and exports an instrument for each of
+        them; an instrument is one set of envelopes every channel reads, so it names no
         channel and carries a single figure.
         """
         entry = self._entry_for(voice_id)
@@ -218,7 +218,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         )
 
     def _create_new_instrument_button(self) -> None:
-        """Offers a hand-written voice, which is the one kind no browser brings in.
+        """Offers an instrument, which is the one kind no browser brings in.
 
         A greyed-out button shows no tooltip of its own, so the group around it says what brings
         the button back while no project is open.

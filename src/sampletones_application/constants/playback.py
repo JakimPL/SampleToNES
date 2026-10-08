@@ -20,7 +20,7 @@ class FollowMode(StrEnum):
 
     @property
     def follows_row(self) -> bool:
-        """Whether the tracker keeps the sounding row within the visible band."""
+        """Whether the tracker keeps the sounding row at the center of its visible band."""
         return self is FollowMode.ROWS
 
 

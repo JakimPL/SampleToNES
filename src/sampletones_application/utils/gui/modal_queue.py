@@ -57,6 +57,10 @@ class ModalQueueSnapshot:
         """Whether the line stands still: nothing waits, nothing stands aside, and no turn is due."""
         return not self.aside and not self.waiting and not self.turns and not self.turning
 
+    def holds(self, tag: str) -> bool:
+        """Whether the window ``tag`` stands on the screen, stands aside or waits for the screen."""
+        return tag == self.shown or tag in self.aside or tag in self.waiting
+
 
 class ModalQueue(metaclass=NonInstantiableMeta):
     """The one modal window DearPyGui shows at a time, and the modal windows waiting for the screen.

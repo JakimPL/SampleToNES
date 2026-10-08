@@ -1,4 +1,4 @@
-from typing import Callable, Dict, FrozenSet, Optional, Set, Tuple
+from typing import Callable, Dict, Final, FrozenSet, Optional, Set, Tuple
 
 from pydantic import BaseModel
 
@@ -13,6 +13,8 @@ from sampletones_core.utils.display import (
     display_volume,
 )
 from sampletones_shared.utils.agreement import Agreement
+
+NO_REACH: Final[int] = 0
 
 
 class SequencerCellViewModel(BaseModel, frozen=True):
@@ -48,7 +50,7 @@ def _sample_reading(cell: SequencerCellViewModel) -> str:
     """A cell's voice reading as the sample column speaks it.
 
     The column places a recording over the channels it covers, so it reads a sample by its number
-    and a cut as a cut. A hand-written instrument is placed in the channel column that names it, so
+    and a cut as a cut. An instrument is placed in the channel column that names it, so
     it reads as empty here and leaves the summary to the channels the column governs.
     """
     if cell.kind is VoiceKind.INSTRUMENT:
@@ -65,7 +67,7 @@ class SequencerRowViewModel(BaseModel, frozen=True):
 
     A sample governs the channels its reconstruction covers, so the sample column reads its
     reference across exactly those and a sample missing from one of them reads as mixed. A row
-    naming only hand-written instruments spans none, since each of those sounds on the one
+    naming only instruments spans none, since each of those sounds on the one
     channel it is named in.
     """
     carried_channels: FrozenSet[ChannelName]
@@ -150,14 +152,30 @@ class SequencerRowViewModel(BaseModel, frozen=True):
         return aggregate_labels(values, default=default)
 
 
+class SequencerContextRowViewModel(BaseModel, frozen=True):
+    """A row of another frame, drawn beside the shown one so the song reads on past the frame's edges.
+
+    ``row`` reads as it does while its own frame is shown, and ``frame_index`` names that frame.
+    """
+
+    frame_index: int
+    row: SequencerRowViewModel
+
+
 class SequencerTrackerViewModel(BaseModel, frozen=True):
-    """The tracker view for a single order frame across the four channels.
+    """The tracker view for a single order frame across the four channels, with the song around it.
 
     Each channel plays its ``order[frame_index]`` pattern; the grid shows those
     patterns aligned row by row. Channels whose order is shorter than
     ``frame_index`` contribute empty cells.
+
+    ``lead`` holds the rows the song plays before the frame and ``trail`` the rows it plays after,
+    each in playing order and as many as the tracker reaches, so a row near the frame's edge stands
+    among its neighbors. Both end where the song does.
     """
 
     frame_index: int
     frame_count: int
     rows: Tuple[SequencerRowViewModel, ...]
+    lead: Tuple[SequencerContextRowViewModel, ...]
+    trail: Tuple[SequencerContextRowViewModel, ...]

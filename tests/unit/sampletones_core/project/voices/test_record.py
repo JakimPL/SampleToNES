@@ -17,7 +17,7 @@ def _sample_record() -> SampleRecord:
 class TestTheKindADocumentNamesAVoiceBy:
     """A ``.stn`` tells its two kinds of voice apart by ``kind``, so the word is the format.
 
-    A document written by any release names a sample ``"sample"`` and a hand-written voice
+    A document written by any release names a sample ``"sample"`` and an instrument
     ``"instrument"``; reading one back turns on those exact words, which is why they are stated
     here rather than read from the models.
     """

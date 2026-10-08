@@ -3,6 +3,8 @@ from typing import Callable, Final, Iterator, TypeAlias
 import pytest
 
 from sampletones_application.logic.shared.renders import RenderCache
+from sampletones_application.utils.callbacks.failures import UnhandledFailures
+from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.modal_queue import ModalQueue
 from sampletones_application.utils.gui.palette.palette import PaletteBindings
 from sampletones_application.utils.gui.render_thread import reset_render_thread
@@ -26,6 +28,30 @@ def modal_queue() -> Iterator[None]:
     ModalQueue.clear()
     yield
     ModalQueue.clear()
+
+
+@pytest.fixture(autouse=True)
+def frame_callbacks() -> Iterator[None]:
+    """Gives each test no callbacks waiting for a frame.
+
+    The callbacks wait in a heap that outlives any one context, and a suite renders no frame to run
+    them, so each test starts with none and leaves none a later frame count would make due.
+    """
+    FrameCallbackManager.clear()
+    yield
+    FrameCallbackManager.clear()
+
+
+@pytest.fixture(autouse=True)
+def unhandled_failures() -> Iterator[None]:
+    """Gives each test a failure channel with no presenter attached.
+
+    An application built by a test attaches its presenter to the process-wide channel, together with
+    the thread hook, so each test starts with failures logged alone and leaves the hook it found.
+    """
+    UnhandledFailures.detach()
+    yield
+    UnhandledFailures.detach()
 
 
 @pytest.fixture(autouse=True)

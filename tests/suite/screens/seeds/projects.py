@@ -39,7 +39,7 @@ RELEASE_POINT: Final[int] = 1
 
 @dataclass(frozen=True)
 class StoredProject:
-    """A project holding the stored reconstruction as the sample ``sample`` and a hand-written
+    """A project holding the stored reconstruction as the sample ``sample`` and the instrument
     ``instrument``.
     """
 
@@ -70,11 +70,11 @@ class EveryPartProject:
 
 @dataclass(frozen=True)
 class ArrangedProject:
-    """A project with two samples and a hand-written voice, each placed once on the song's first pattern.
+    """A project with two samples and an instrument, each placed once on the song's first pattern.
 
     ``line`` is a sample sounding Pulse 1, the triangle and the noise; ``bass`` a sample sounding the
-    triangle alone; ``pad`` a hand-written voice fading on Pulse 2, its arpeggio flat. The line starts
-    the pattern on Pulse 1, the hand-written voice comes in on Pulse 2 at ``pad_row``, and the bass on
+    triangle alone; ``pad`` an instrument fading on Pulse 2, its arpeggio flat. The line starts
+    the pattern on Pulse 1, the instrument comes in on Pulse 2 at ``pad_row``, and the bass on
     the triangle at ``bass_row``. The order plays that pattern ``order_frames`` times.
     """
 
@@ -172,7 +172,7 @@ class TwoTuningsProject:
 
 @dataclass(frozen=True)
 class LongEnvelopeProject:
-    """A project holding two hand-written voices whose volume envelopes run long, both placed on the first
+    """A project holding two instruments whose volume envelopes run long, both placed on the first
     pattern.
 
     ``long`` fades through ``long_items`` items and ``middling`` through ``middling_items``, neither
@@ -219,7 +219,7 @@ class ReleasingInstrumentFile:
 
 
 def _fading_instrument(name: str, items: int) -> Instrument:
-    """A hand-written voice whose volume falls from the loudest level through the quieter ones, over and
+    """An instrument whose volume falls from the loudest level through the quieter ones, over and
     over.
     """
     return Instrument(

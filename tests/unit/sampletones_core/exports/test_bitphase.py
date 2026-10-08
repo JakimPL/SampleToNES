@@ -251,7 +251,7 @@ class TestWriteProject:
         project: Project,
         tmp_path: Path,
     ) -> None:
-        """A hand-written instrument becomes a slice on every channel it sounds on, so each of them
+        """An instrument becomes a slice on every channel it sounds on, so each of them
         counts as a shortened instrument.
         """
         pad = Instrument(

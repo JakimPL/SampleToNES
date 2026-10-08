@@ -106,6 +106,7 @@ global.dialog.message.configuration_recovery_earlier_version: "an earlier versio
 global.dialog.message.configuration_recovery_list_header: "The following settings could not be carried over and were discarded:"
 global.dialog.message.configuration_recovery_path_prefix: "You can edit the configuration file directly:"
 global.dialog.message.audio_playback_error: "Audio playback error"
+global.dialog.message.unexpected_failure: "Something went wrong, and the last action did not finish."
 global.dialog.message.no_project_open: "No project is open. Open or create a project to add voices."
 global.dialog.message.no_audio_output: "Can't play sound: no audio output is available."
 global.dialog.message.remove_voice: "The voice \"{name}\" is used by one or more patterns. Removing it will clear every row that references it. Remove it anyway?"

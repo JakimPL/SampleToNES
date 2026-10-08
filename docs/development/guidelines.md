@@ -23,6 +23,7 @@ These rules govern the Python in this repository. They complement
 1. Move a stored data version once per release. The version a build writes between releases is still being written. A further change to that format therefore extends the upgrade step already pending, and one step carries the whole distance from the version the last release shipped. Libraries are rebuilt from their settings, so a change to what library generation produces moves the library version alone. See [data compatibility](release/compatibility.md).
 1. A risk named while planning lands as a case or a ledger entry. A plan records intent, and a case and the ledger carry a doubt past the moment it was felt. Where the risk is a behavior that might be wrong, write the case that would catch it. Where it is a distance the change accepts, write the entry in [bugs and todos](bugs-and-todos.md) that names it.
 1. Run `pre-commit` on new files after each change.
+1. Run the tests relevant to the code a phase touches after that phase. Run the full suite, screen scenarios included (`make test` and `make screens`), after the final phase. CI runs the same passes on every push, so the `pre-push` stage holds only the `icons` hook.
 
 ## Ownership
 
@@ -91,7 +92,7 @@ These rules govern the Python in this repository. They complement
 1. A test file mirrors the ownership of the code it exercises.
 1. When functionality moves between packages, move its direct unit tests in the same change.
 1. **What only a drawn frame shows is proven by a screen scenario.** A behavior is proven at the lowest tier that sees its outcome, and a scenario in `tests/screens/` covers what a running, rendered application adds: geometry, frame timing, real input and the exit. `make screens` runs the scenarios, and [screen scenarios](application/screens.md) says how they are written.
-1. **A test whose assertion is a measured duration lives in `tests/benchmarks/`.** The gated suite runs across several workers and under coverage, which multiplies the cost of the code being measured. Benchmarks run in a pass of their own, serial and uncovered, where the reading is the code's own cost. `make test` runs the covered suite, and `make benchmarks` runs the measured pass.
+1. **A test whose assertion is a measured duration lives in `tests/benchmarks/`.** The gated suite runs across several workers and under coverage, which multiplies the cost of the code being measured. Benchmarks run in a pass of their own, serial and uncovered, where the reading is the code's own cost. `make test` runs the covered suite, and `make benchmarks` runs the measured pass on a developer machine. CI runs no benchmarks, because shared runners give unreliable timings.
 1. Parametrize tests that share a body, using a test-case dataclass.
 1. Test case classes and cases themselves should be defined inside the testing class, unless these objects are shared between test classes. A suite inherits from `BaseTestSuite` and names its case class `TestCase`, which inherits from `BaseRegularTestCase`, or from `BaseAutolabelTestCase` where the case derives its own label. The parametrized argument carries the case as `test_case`.
 1. For a multi-step scenario, use a test-scenario suite class — a series of functions with assertions.

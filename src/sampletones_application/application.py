@@ -25,6 +25,7 @@ from sampletones_application.coordinators.export import (
 )
 from sampletones_application.coordinators.export.nsf import NSFExportCoordinator
 from sampletones_application.coordinators.export.setup import ExportSetup
+from sampletones_application.coordinators.failures import UnhandledFailurePresenter
 from sampletones_application.coordinators.keybindings import KeybindingsCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
@@ -137,6 +138,7 @@ from sampletones_application.ui.panels.dialogs.render import GUIRenderWindow
 from sampletones_application.ui.panels.dialogs.stem_selection import GUIStemSelectionWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
+from sampletones_application.utils.callbacks.failures import UnhandledFailures
 from sampletones_application.utils.callbacks.gates import (
     FirstRequestFlight,
     Gate,
@@ -260,6 +262,11 @@ class Application:
             dialogs=self.dialogs,
             language_manager=self.language_manager,
         )
+        self._unhandled_failures: UnhandledFailurePresenter = UnhandledFailurePresenter(
+            dialogs=self.dialogs,
+            language_manager=self.language_manager,
+        )
+        UnhandledFailures.attach(self._unhandled_failures.present, post=CallbackQueue.add)
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path)
 
@@ -1016,9 +1023,9 @@ class Application:
         """Fans one project replacement out to the two tabs that show the project.
 
         The controller exposes a single ``on_project_replaced`` slot, fired by a new, opened or
-        closed project and by every undo, redo and history jump; the composition root owns it. The
-        sequencer realigns its views first, then the Reconstructions tab follows the voice it
-        shows into the project now in place.
+        closed project and by every undo, redo, history jump and rollback of a failed gesture; the
+        composition root owns it. The sequencer realigns its views first, then the Reconstructions
+        tab follows the voice it shows into the project now in place.
         """
         self._sequencer_tab.realign_with_project()
         self._reconstruction_coordinator.follow_replaced_project()
@@ -1756,12 +1763,14 @@ class Application:
     def _teardown_steps(self) -> Tuple[VoidCallback, ...]:
         """The steps of the teardown in the order they are taken.
 
-        Background work stops before anything it reaches is let go of. Display settings put back what
-        is left unconfirmed before the session records the window, the session is written while the
-        window it measures still stands, and the DearPyGui context goes last.
+        Background work stops before anything it reaches is let go of. A failure is logged alone once
+        the loop has stopped, since nothing drains what a report would post. Display settings put back
+        what is left unconfirmed before the session records the window, the session is written while
+        the window it measures still stands, and the DearPyGui context goes last.
         """
         return (
             release_render_thread,
+            UnhandledFailures.detach,
             self._render_coordinator.cleanup,
             self._export_coordinator.cleanup,
             stop_background_workers,
