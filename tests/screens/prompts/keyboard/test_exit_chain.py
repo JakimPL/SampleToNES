@@ -3,16 +3,16 @@ from typing import Final, List
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.boundaries.dialogs import DialogKind
+from automation.screen import Screen
+from automation.steps.project import retitle_project, saved_project_title
+from automation.steps.reconstructions import expect_open, marked, raise_the_first_level, titled
+from automation.vocabulary.dialogs import EXIT_PROJECT_MESSAGE, EXIT_RECONSTRUCTION_MESSAGE
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.prompts.keyboard.constants import SETTLING_FRAMES
 from tests.screens.prompts.keyboard.steps import enter, escape, tab
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.project import retitle_project, saved_project_title
-from tests.suite.screens.steps.reconstructions import expect_open, marked, raise_the_first_level, titled
-from tests.suite.screens.vocabulary.dialogs import EXIT_PROJECT_MESSAGE, EXIT_RECONSTRUCTION_MESSAGE
 from tests.suite.screens.worlds.recordings import OPEN_RECONSTRUCTION, SONG, SONG_INSTRUMENT, SONG_SAMPLE
 
 RETITLED: Final[str] = "Retitled from the keyboard"

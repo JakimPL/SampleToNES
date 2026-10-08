@@ -3,16 +3,16 @@ from typing import Final, List
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.dearpygui.keys import IMGUI_DIGIT_ZERO, IMGUI_ESCAPE, IMGUI_LETTER_A
+from automation.screen import Screen
+from automation.steps.project import leave_letting_the_project_go
+from automation.steps.reconstructions import expect_open
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from tests.screens.reconstructions.instruments.constants import NOTE_FRAMES, NOTHING, PIANO_C
 from tests.screens.reconstructions.instruments.steps import give_it_a_volume
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.dearpygui.keys import IMGUI_DIGIT_ZERO, IMGUI_ESCAPE, IMGUI_LETTER_A
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.project import leave_letting_the_project_go
-from tests.suite.screens.steps.reconstructions import expect_open
 from tests.suite.screens.worlds.recordings import OPEN_RECONSTRUCTION, SONG
 
 PIANO_D_UP: Final[int] = IMGUI_LETTER_A + ord("w") - ord("a")

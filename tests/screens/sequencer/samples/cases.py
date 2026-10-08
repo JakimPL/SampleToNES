@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Final, Tuple
 
+from automation.screen import Screen
 from tests.screens.sequencer.samples.steps import (
     add_by_double_click,
     add_from_the_reconstruction_menu,
@@ -10,7 +11,6 @@ from tests.screens.sequencer.samples.steps import (
     add_from_the_voice_menu,
     add_from_the_voices_list,
 )
-from tests.suite.screens.screen import Screen
 
 
 @dataclass(frozen=True)

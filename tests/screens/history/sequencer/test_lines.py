@@ -2,10 +2,10 @@ from typing import Final, List
 
 import pytest
 
+from automation.screen import Screen
+from automation.steps.sequencer import leave_letting_the_project_go
 from sampletones_application.categories.hierarchy import Tab
 from tests.screens.history.steps import expect_lines, history_count
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go
 
 NEWEST_LINE: Final[int] = 0
 TEMPO: Final[int] = 120

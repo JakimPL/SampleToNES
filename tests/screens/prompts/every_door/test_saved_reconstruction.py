@@ -1,13 +1,13 @@
 import pytest
 
+from automation.application.startup import Startup
+from automation.boundaries.dialogs import DialogKind
+from automation.screen import Screen
+from automation.steps.main import home_path
+from automation.steps.reconstructions import converted, expect_open, load_from_the_browser, titled, voice_title
 from tests.screens.prompts.every_door.cases import Door
 from tests.screens.prompts.every_door.constants import SAMPLE_ORDINAL
 from tests.screens.prompts.every_door.steps import expect_title, knock, nothing_asked
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import home_path
-from tests.suite.screens.steps.reconstructions import converted, expect_open, load_from_the_browser, titled, voice_title
 from tests.suite.screens.worlds.recordings import BASS, OPEN_RECONSTRUCTION, OTHER_RECONSTRUCTION, SONG, SONG_SAMPLE
 
 

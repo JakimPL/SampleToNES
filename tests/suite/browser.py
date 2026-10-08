@@ -1,8 +1,21 @@
+from __future__ import annotations
+
 from collections import defaultdict
 from dataclasses import dataclass, replace
 from pathlib import Path
 from textwrap import dedent
-from typing import AbstractSet, Dict, Final, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import (
+    AbstractSet,
+    Dict,
+    Final,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+)
 
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.ui.elements.tree.colors import TreeColors
@@ -134,7 +147,7 @@ class _Row:
     def label(self) -> str:
         return self.text.removesuffix(HIDDEN_MARKER)
 
-    def opened(self) -> "_Row":
+    def opened(self) -> _Row:
         return replace(self, marker=OPEN_MARKER) if self.marker == CLOSED_MARKER else self
 
 

@@ -2,14 +2,14 @@ import operator
 from pathlib import Path
 from typing import List, Tuple
 
+from automation.boundaries.dialogs import DialogKind
+from automation.screen import Screen
+from automation.steps.sequencer import open_voice_menu
+from automation.views.history import HistoryLine, HistorySegment
+from automation.vocabulary.exports import EXPORT_INSTRUMENT
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT
 from tests.screens.exports.instruments.import_files.constants import FOLDER, IMPORT_INSTRUMENT, KEPT
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import open_voice_menu
-from tests.suite.screens.views.history import HistoryLine, HistorySegment
-from tests.suite.screens.vocabulary.exports import EXPORT_INSTRUMENT
 from tests.suite.screens.worlds.songs import PAD
 
 

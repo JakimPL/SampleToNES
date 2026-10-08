@@ -1,13 +1,13 @@
 from pathlib import Path
 from typing import Final, Tuple
 
+from automation.worlds.home import HomeFile, World, one_worker_config, screen_filling_state
 from sampletones_shared.constants.nes import DEFAULT_NES_FREQUENCY
 from sampletones_shared.paths.user import PROJECTS_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 from tests.suite.screens.seeds.libraries import MiniLibrary
 from tests.suite.screens.seeds.projects import StoredProject
 from tests.suite.screens.seeds.reconstructions import PlayableReconstruction, StoredReconstruction
 from tests.suite.screens.seeds.recordings import Recording, stored_recording
-from tests.suite.screens.worlds.home import HomeFile, World, one_worker_config, screen_filling_state
 
 OPEN_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Open.stn"
 OTHER_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Other.stn"
@@ -38,16 +38,6 @@ def converting_world(files: Tuple[HomeFile, ...]) -> World:
         application_config=None,
         config=config,
         files=(MiniLibrary(config), *files),
-    )
-
-
-def lived_in_world() -> World:
-    """The home of a user who ran the application once: a session left behind, and nothing else."""
-    return World(
-        state=screen_filling_state(),
-        application_config=None,
-        config=None,
-        files=(),
     )
 
 

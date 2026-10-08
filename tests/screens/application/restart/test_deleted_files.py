@@ -3,6 +3,10 @@ from typing import Final
 
 import pytest
 
+from automation.boundaries.dialogs import DialogKind
+from automation.screen import Screen
+from automation.worlds.home import World, screen_filling_state
+from automation.written import written_application_config, written_state
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_application.config.session.application.favorites import Favorites
@@ -10,10 +14,6 @@ from sampletones_application.config.session.state.current import Current
 from sampletones_application.config.session.state.paths import LastPaths
 from sampletones_shared.paths.user import RECONSTRUCTIONS_DIRECTORY
 from tests.screens.application.restart.steps import home_folder, leave
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.worlds.home import World, screen_filling_state
-from tests.suite.screens.written import written_application_config, written_state
 
 DELETED_FOLDER: Final[str] = "Deleted"
 DELETED_SUBFOLDER: Final[str] = "Deeper"

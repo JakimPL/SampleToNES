@@ -2,6 +2,9 @@ import operator
 from pathlib import Path
 from typing import Final
 
+from automation.screen import Screen
+from automation.steps.main import explorer_row, home_path
+from automation.vocabulary.converter import CANCEL_RUN, FOLDER_ROW
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.main.gathering.constants import (
     COLLIDING,
@@ -13,10 +16,7 @@ from tests.screens.main.gathering.constants import (
     TAKES_INSIDE,
 )
 from tests.screens.main.gathering.steps import gathered
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import explorer_row, home_path
-from tests.suite.screens.vocabulary.converter import CANCEL_RUN, FOLDER_ROW
-from tests.suite.screens.vocabulary.recordings import KICK
+from tests.suite.screens.seeds.constants import KICK
 
 ADD_FOLDER: Final[str] = "main.explorer.label.context_add_folder_stems"
 NOTHING_BELOW: Final[str] = "main.converter.message.scan_nothing_below"

@@ -1,8 +1,8 @@
 import pytest
 
-from tests.suite.screens.application.startup import Startup
+from automation.application.startup import Startup
+from automation.worlds.home import World
 from tests.suite.screens.worlds.history import HISTORY_PROJECT, history_world
-from tests.suite.screens.worlds.home import World
 
 
 @pytest.fixture

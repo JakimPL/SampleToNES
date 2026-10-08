@@ -5,8 +5,8 @@ from typing import Final
 
 import pytest
 
-from tests.suite.screens import homes
-from tests.suite.screens.paths import HOMES_PREFIX, PROCESSES_DIRECTORY
+from automation import homes
+from automation.paths import HOMES_PREFIX, PROCESSES_DIRECTORY
 
 GONE_PROCESS: Final[int] = 2**22 + 1
 MISSING_FOLDER: Final[str] = "no-processes"

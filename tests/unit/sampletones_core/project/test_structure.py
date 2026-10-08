@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict
 from unittest.mock import Mock
 
+from automation.scenario import BaseTestScenario, ScenarioStep
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
@@ -10,7 +11,6 @@ from sampletones_core.project.project import Project
 from sampletones_core.project.song import Song
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
-from tests.suite.scenario import BaseTestScenario, ScenarioStep
 
 
 def _sample(name: str) -> Sample:

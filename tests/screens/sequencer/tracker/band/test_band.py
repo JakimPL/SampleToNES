@@ -1,6 +1,11 @@
 from dataclasses import dataclass
 from typing import Final, FrozenSet, List, Optional, Tuple
 
+from automation.dearpygui.geometry import Rect
+from automation.dearpygui.items.reading import read_item
+from automation.screen import Screen
+from automation.steps.sequencer import on_the_sequencer
+from automation.views.tracker import tracker_cell
 from sampletones_application.tags.sequencer import TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.screens.sequencer.tracker.band.constants import (
@@ -24,11 +29,6 @@ from tests.screens.sequencer.tracker.band.steps import (
     press,
     show_frame,
 )
-from tests.suite.screens.dearpygui.geometry import Rect
-from tests.suite.screens.dearpygui.items.reading import read_item
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import on_the_sequencer
-from tests.suite.screens.views.tracker import tracker_cell
 
 SETTLING_FRAMES: Final[int] = 8
 ALPHA: Final[int] = 3

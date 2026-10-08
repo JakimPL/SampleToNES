@@ -1,6 +1,6 @@
 import pytest
 
-from tests.suite.screens.worlds.home import World
+from automation.worlds.home import World
 from tests.suite.screens.worlds.recordings import playing_world
 
 

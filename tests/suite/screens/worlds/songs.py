@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Final
 
+from automation.worlds.home import World
 from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT
 from sampletones_shared.paths.user import PROJECTS_DIRECTORY
 from tests.suite.screens.seeds.projects import (
@@ -10,7 +11,6 @@ from tests.suite.screens.seeds.projects import (
     ReleasingInstrumentFile,
     TwoTuningsProject,
 )
-from tests.suite.screens.worlds.home import World
 from tests.suite.screens.worlds.recordings import playing_world
 
 ARRANGED_PROJECT: Final[Path] = PROJECTS_DIRECTORY / "Arranged.stp"

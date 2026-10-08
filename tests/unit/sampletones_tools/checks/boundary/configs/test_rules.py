@@ -114,9 +114,29 @@ class TestNamedGroups:
                         forbidden_groups=("absent",),
                     ),
                 ),
+                checkout=(),
                 tokens=(),
                 standalone=(),
             )
+
+
+class TestCheckoutUnits:
+    """A unit beside the source tree imports the program and never the tests, and the program imports no unit."""
+
+    def test_the_automation_unit_is_declared(self) -> None:
+        assert "automation" in BOUNDARIES.checkout_units
+
+    def test_a_unit_reaching_the_tests_is_reported(self, tmp_path: Path) -> None:
+        write_module(tmp_path / "automation", "driver.py", "from tests.suite.source import write_module\n")
+
+        violations = check_boundaries(tmp_path, BOUNDARIES.checkout_rules(), (), None)
+
+        assert [violation.kind for violation in violations] == ["tests"]
+
+    def test_the_program_reaching_a_unit_is_reported(self, tmp_path: Path) -> None:
+        write_module(tmp_path / APPLICATION / "logic", "direct.py", "from automation.screen import Screen\n")
+
+        assert reported(tmp_path) == ["automation"]
 
 
 class TestDeclaredRules:

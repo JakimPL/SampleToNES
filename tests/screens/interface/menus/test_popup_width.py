@@ -2,11 +2,11 @@ from typing import Final, List, Tuple
 
 import numpy as np
 
+from automation.dearpygui.geometry import Point
+from automation.palettes import Color, shipped_palettes, token_color
+from automation.screen import Screen
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.utils.palette.catalog import DEFAULT_PALETTE_NAME
-from tests.suite.screens.dearpygui.geometry import Point
-from tests.suite.screens.palettes import Color, shipped_palettes, token_color
-from tests.suite.screens.screen import Screen
 
 POPUP_TOKEN: Final[str] = "popup"
 RGB: Final[int] = 3

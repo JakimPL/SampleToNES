@@ -1,14 +1,14 @@
 import operator
 from typing import Dict, List
 
+from automation.holds.conversion import ConversionHold
+from automation.screen import Screen
+from automation.steps.main import RUN_TIMEOUT_SECONDS, gather, home_path
+from automation.vocabulary.converter import CONVERT_ONE
+from automation.vocabulary.settings import LISTENING
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.screens.prompts.modals.constants import SETTLING_FRAMES
-from tests.suite.screens.holds.conversion import ConversionHold
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import RUN_TIMEOUT_SECONDS, gather, home_path
-from tests.suite.screens.vocabulary.converter import CONVERT_ONE
-from tests.suite.screens.vocabulary.settings import LISTENING
 from tests.suite.screens.worlds.recordings import BASS
 
 

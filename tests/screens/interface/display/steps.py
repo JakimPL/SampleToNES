@@ -1,14 +1,14 @@
 import operator
 from typing import Tuple
 
+from automation.dearpygui.items.viewport import read_viewport, read_viewport_decorated
+from automation.screen import Screen
+from automation.worlds.home import World
 from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_application.config.session.state.window import ViewportState
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_shared.display import Resolution
 from tests.screens.interface.display.constants import HAND_SIZE, HAND_X, HAND_Y, SIZE_SEPARATOR
-from tests.suite.screens.dearpygui.items.viewport import read_viewport, read_viewport_decorated
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.worlds.home import World
 
 
 def size_named(label: str) -> Resolution:

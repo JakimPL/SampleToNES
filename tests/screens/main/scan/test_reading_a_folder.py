@@ -4,16 +4,15 @@ from typing import Final, List
 
 import pytest
 
+from automation.holds.base import Holds
+from automation.holds.scan import ScanHold, WindingDownScanHold
+from automation.holds.signal import ReleaseSignal
+from automation.screen import Screen
+from automation.steps.main import explorer_row, home_path
+from automation.vocabulary.converter import FOLDER_ROW, SCAN_PROGRESS
+from automation.worlds.home import HomeFile, World, lived_in_world
 from sampletones_application.categories.hierarchy import Tab
-from tests.suite.screens.holds.base import Holds
-from tests.suite.screens.holds.scan import ScanHold, WindingDownScanHold
-from tests.suite.screens.holds.signal import ReleaseSignal
-from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds.recordings import Recording
-from tests.suite.screens.steps.main import explorer_row, home_path
-from tests.suite.screens.vocabulary.converter import FOLDER_ROW, SCAN_PROGRESS
-from tests.suite.screens.worlds.home import HomeFile, World
-from tests.suite.screens.worlds.recordings import lived_in_world
 
 MANY: Final[str] = "Many"
 FEW: Final[str] = "Few"

@@ -3,15 +3,15 @@ from typing import Final
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.screen import Screen
+from automation.steps.sequencer import leave_letting_the_project_go
+from automation.worlds.home import World
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_application.config.session.application.shortcuts import ShortcutsConfig
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go
-from tests.suite.screens.worlds.home import World
 from tests.suite.screens.worlds.songs import sequencer_world
 
 NEW_INSTRUMENT_KEYS: Final[KeyCombination] = KeyCombination.parse("F12")

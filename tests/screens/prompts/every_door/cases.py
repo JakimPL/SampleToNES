@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Final, Tuple
 
+from automation.vocabulary.dialogs import CLOSE
 from tests.screens.prompts.every_door.constants import EXIT
-from tests.suite.screens.vocabulary.dialogs import CLOSE
 
 
 class Door(StrEnum):

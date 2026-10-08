@@ -1,8 +1,7 @@
 import pytest
 
+from automation.worlds.home import World, lived_in_world
 from tests.screens.main.row_settings.steps import recordings
-from tests.suite.screens.worlds.home import World
-from tests.suite.screens.worlds.recordings import lived_in_world
 
 
 @pytest.fixture

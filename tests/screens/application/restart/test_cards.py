@@ -1,11 +1,11 @@
 import pytest
 
+from automation.screen import Screen
+from automation.worlds.home import World, screen_filling_state
+from automation.written import written_state
 from sampletones_application.tags.main import TAG_MAIN_CONVERTER_PANEL
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.screens.application.restart.steps import leave, state_with_advanced, world_with
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.worlds.home import World, screen_filling_state
-from tests.suite.screens.written import written_state
 
 
 class TestTheAdvancedCardAcrossARestart:

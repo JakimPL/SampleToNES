@@ -4,6 +4,13 @@ from typing import Dict, Final
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.dearpygui.items.reading import read_item
+from automation.dearpygui.keys import IMGUI_ENTER, IMGUI_ESCAPE
+from automation.keyboard import press_combination
+from automation.screen import Screen
+from automation.vocabulary.settings import LISTENING
+from automation.written import written_application_config
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.tags.sequencer import TAG_SEQUENCER_VOICES_INPUT_RENAME
@@ -13,14 +20,7 @@ from sampletones_application.utils.gui.keyboard.combination import (
     parse_combinations,
 )
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.dearpygui.items.reading import read_item
-from tests.suite.screens.dearpygui.keys import IMGUI_ENTER, IMGUI_ESCAPE
-from tests.suite.screens.keyboard import press_combination
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.vocabulary.settings import LISTENING
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT, BASS_VOICE, LINE, PAD
-from tests.suite.screens.written import written_application_config
 
 NEW_UNDO: Final[KeyCombination] = KeyCombination.parse("Ctrl+Alt+U")
 RENAMED: Final[str] = "Renamed"

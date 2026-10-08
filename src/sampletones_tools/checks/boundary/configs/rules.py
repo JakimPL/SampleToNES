@@ -13,19 +13,21 @@ from sampletones_tools.checks.boundary.token import TokenRule
 
 
 class ImportBoundaryRules(BaseModel):
-    """Every boundary the source tree is held to, as the shipped configuration states it.
+    """Every boundary the repository's code is held to, as the shipped configuration states it.
 
-    The declaration comes in four forms, each a fragment of its own. A layer graph names a tree
+    The declaration comes in five forms, each a fragment of its own. A layer graph names a tree
     of modules and what each unit may import, and amounts to one rule per unit. A boundary
-    declaration names one directory and the imports it stays clear of. A token rule names a
-    spelling a tree keeps out. A standalone rule names the scripts that run on the system
-    interpreter and holds them to the standard library. The general vocabulary holds the prefix
-    sets the declarations draw on, so a set several of them reach for is written once.
+    declaration names one directory and the imports it stays clear of. A checkout declaration
+    does the same for a unit standing beside the source tree, named from the repository root. A
+    token rule names a spelling a tree keeps out. A standalone rule names the scripts that run on
+    the system interpreter and holds them to the standard library. The general vocabulary holds
+    the prefix sets the declarations draw on, so a set several of them reach for is written once.
 
     Attributes:
         general: The names the declarations are written in.
         graphs: Each layer graph the source tree divides into, under the name the documents give it.
-        rules: The boundaries written directly.
+        rules: The boundaries of the source tree written directly.
+        checkout: The boundaries of the units beside the source tree, each named from the repository root.
         tokens: The spellings kept out of the trees they name.
         standalone: The scripts held to the standard library and the tree they sit in.
     """
@@ -35,6 +37,7 @@ class ImportBoundaryRules(BaseModel):
     general: GeneralBoundaries
     graphs: Dict[str, LayerGraph]
     rules: Tuple[BoundaryDeclaration, ...]
+    checkout: Tuple[BoundaryDeclaration, ...]
     tokens: Tuple[TokenRule, ...]
     standalone: Tuple[StandaloneRule, ...]
 
@@ -46,7 +49,9 @@ class ImportBoundaryRules(BaseModel):
             ValueError: If a declaration names a group the general configuration leaves out.
         """
         named = {
-            name for declaration in self.rules for name in (*declaration.forbidden_groups, *declaration.contract_groups)
+            name
+            for declaration in (*self.rules, *self.checkout)
+            for name in (*declaration.forbidden_groups, *declaration.contract_groups)
         }
         unknown = sorted(named - set(self.general.groups))
         if unknown:
@@ -76,3 +81,12 @@ class ImportBoundaryRules(BaseModel):
             *(rule for graph in self.graphs.values() for rule in graph.rules()),
             *(declaration.rule(self.general) for declaration in self.rules),
         )
+
+    def checkout_rules(self) -> Tuple[BoundaryRule, ...]:
+        """Every import boundary of the units beside the source tree, in declaration order."""
+        return tuple(declaration.rule(self.general) for declaration in self.checkout)
+
+    @property
+    def checkout_units(self) -> Tuple[str, ...]:
+        """The directories under the repository root the checkout declarations hold, in declaration order."""
+        return tuple(declaration.root for declaration in self.checkout)

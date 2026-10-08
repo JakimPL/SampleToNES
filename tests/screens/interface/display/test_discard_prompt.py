@@ -3,6 +3,8 @@ from typing import Final, List
 
 import pytest
 
+from automation.screen import Screen
+from automation.worlds.home import World
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.screens.interface.display.constants import HAND_SIZE, HAND_X, HAND_Y
 from tests.screens.interface.display.steps import (
@@ -15,8 +17,6 @@ from tests.screens.interface.display.steps import (
     window_position,
     window_size,
 )
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.worlds.home import World
 
 
 class TestDiscardingADisplayChange:

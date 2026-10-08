@@ -2,6 +2,12 @@ import operator
 from functools import partial
 from pathlib import Path
 
+from automation.boundaries.dialogs import DialogKind
+from automation.dearpygui.items.types import Item
+from automation.screen import Screen
+from automation.steps.reconstructions import BY_CONFIGURATION, expect_open
+from automation.steps.sequencer import voice_row
+from automation.views.browsers import FileTree
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_ADD_TO_SEQUENCER,
@@ -18,12 +24,6 @@ from tests.screens.sequencer.samples.constants import (
     UNEXPECTED_FAILURE,
     UNSOUND_FAILURE,
 )
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.dearpygui.items.types import Item
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import BY_CONFIGURATION, expect_open
-from tests.suite.screens.steps.sequencer import voice_row
-from tests.suite.screens.views.browsers import FileTree
 
 
 def listed_row(screen: Screen, browser: FileTree, path: Path) -> Item:

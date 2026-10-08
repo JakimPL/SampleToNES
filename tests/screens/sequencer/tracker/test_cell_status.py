@@ -1,12 +1,12 @@
 from typing import Final
 
+from automation.screen import Screen
+from automation.steps.sequencer import leave_letting_the_project_go, on_the_sequencer
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.utils.display import display_voice_label
 from tests.screens.sequencer.tracker.constants import LINE_NUMBER, PIANO_C, SAMPLE_COLUMN, TYPING_FRAMES
 from tests.screens.sequencer.tracker.steps import play_a_note, type_into
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go, on_the_sequencer
 from tests.suite.screens.worlds.songs import LINE, PAD, PAD_ROW
 
 STATUS_VOICE: Final[str] = "sequencer.tracker.template.status_voice"

@@ -2,6 +2,12 @@ from typing import Final, List, Tuple
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.boundaries.dialogs import DialogKind
+from automation.dearpygui.geometry import Point
+from automation.screen import Screen
+from automation.steps.sequencer import open_voice
+from automation.vocabulary.instruments import TOO_LONG
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_INPUT_WARNING
 from sampletones_core.constants.enums import FeatureKey
@@ -12,12 +18,6 @@ from tests.screens.exports.progress.constants import INSTRUMENT_CHANNEL, MODULE_
 from tests.screens.exports.progress.steps import folder, written_project
 from tests.suite.bitphase import parse_btp
 from tests.suite.famitracker import parse_ftm
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.dearpygui.geometry import Point
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import open_voice
-from tests.suite.screens.vocabulary.instruments import TOO_LONG
 from tests.suite.screens.worlds.songs import (
     LONG_ENVELOPES_PROJECT,
     LONG_ITEMS,

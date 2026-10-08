@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Tuple
 
 from pydantic import BaseModel
@@ -54,7 +56,7 @@ class OwnershipRibbonViewModel(BaseModel, extra="forbid", frozen=True):
     total_frames: int
 
     @classmethod
-    def empty(cls) -> "OwnershipRibbonViewModel":
+    def empty(cls) -> OwnershipRibbonViewModel:
         """The ribbon standing for nothing, which is what a closed document leaves."""
         return cls(lanes=(), frame_length=1, total_frames=0)
 

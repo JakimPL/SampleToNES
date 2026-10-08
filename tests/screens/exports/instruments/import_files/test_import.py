@@ -2,6 +2,11 @@ import operator
 from pathlib import Path
 from typing import Final, List, Tuple
 
+from automation.boundaries.dialogs import DialogKind
+from automation.screen import Screen
+from automation.steps.exports import leaving_asks_nothing
+from automation.steps.sequencer import open_voice
+from automation.views.history import HistorySegment
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName, FeatureKey
@@ -12,11 +17,6 @@ from tests.screens.exports.instruments.import_files.steps import (
     open_the_list_menu,
     segments,
 )
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.exports import leaving_asks_nothing
-from tests.suite.screens.steps.sequencer import open_voice
-from tests.suite.screens.views.history import HistorySegment
 from tests.suite.screens.worlds.songs import PAD, RELEASING_INSTRUMENT, releasing_instrument
 
 IMPORT_TITLE: Final[str] = "sequencer.voices.title.import_instrument_dialog"

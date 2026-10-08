@@ -3,12 +3,9 @@ from typing import Dict, Final, List, Tuple
 
 import pytest
 
-from sampletones_application.categories.hierarchy import Tab
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from sampletones_core.constants.enums import ChannelName, FeatureKey
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import (
+from automation.application.startup import Startup
+from automation.screen import Screen
+from automation.steps.reconstructions import (
     edit_envelope,
     expect_open,
     marked,
@@ -16,8 +13,11 @@ from tests.suite.screens.steps.reconstructions import (
     titled,
     voice_title,
 )
-from tests.suite.screens.steps.sequencer import double_click_voice, open_voice, voice_row
-from tests.suite.screens.vocabulary.dialogs import CANCEL, DISCARD, EDIT_MESSAGE, EDIT_TITLE, SAVE
+from automation.steps.sequencer import double_click_voice, open_voice, voice_row
+from automation.vocabulary.dialogs import CANCEL, DISCARD, EDIT_MESSAGE, EDIT_TITLE, SAVE
+from sampletones_application.categories.hierarchy import Tab
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from tests.suite.screens.worlds.recordings import OPEN_RECONSTRUCTION, SONG, SONG_INSTRUMENT, SONG_SAMPLE
 
 SAMPLE_ORDINAL: Final[int] = 0

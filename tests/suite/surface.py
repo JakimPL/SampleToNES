@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Callable, Final, List, Optional
 
@@ -28,7 +30,7 @@ class Target:
     region: str
 
     @classmethod
-    def at(cls, cell: str) -> "Target":
+    def at(cls, cell: str) -> Target:
         """The target a cell resolves to, which is the pair the fake state states for it."""
         return cls(cell=cell, region=f"{cell} block")
 

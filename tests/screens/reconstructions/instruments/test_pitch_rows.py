@@ -4,13 +4,13 @@ from typing import Final, List, Tuple
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.screen import Screen
+from automation.steps.project import leave_letting_the_project_go
+from automation.steps.reconstructions import edit_envelope, expect_open
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from tests.screens.reconstructions.instruments.constants import FADING, NOTHING, STILL_FRAMES
 from tests.screens.reconstructions.instruments.steps import give_it_a_volume, open_the_instrument, song_title
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.project import leave_letting_the_project_go
-from tests.suite.screens.steps.reconstructions import edit_envelope, expect_open
 from tests.suite.screens.worlds.recordings import OPEN_RECONSTRUCTION, SONG
 
 BENT_ITEM: Final[int] = 2

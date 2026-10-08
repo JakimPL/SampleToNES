@@ -3,12 +3,12 @@ import shutil
 from pathlib import Path
 from typing import Dict, Final, List
 
+from automation.screen import Screen
+from automation.steps.main import explorer_row, gather, home_path
 from sampletones_application.constants.output import OutputKind
 from sampletones_shared.paths.user import RECONSTRUCTIONS_DIRECTORY
 from tests.screens.main.run.constants import ALBUM, BASS, DRUMS, LEAD, RECONSTRUCTION_SUFFIX
 from tests.screens.main.run.steps import modified, run_to_its_end, wait_for_the_end, written
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import explorer_row, gather, home_path
 
 OTHER_RECONSTRUCTION: Final[str] = "other.stn"
 RECONSTRUCT_FILE: Final[str] = "main.explorer.label.context_reconstruct_file"

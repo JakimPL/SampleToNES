@@ -3,12 +3,10 @@ from typing import List
 
 import pytest
 
-from sampletones_core.constants.enums import ChannelName
-from tests.screens.prompts.keyboard.steps import enter, escape, tab
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import convert_alone, home_path
-from tests.suite.screens.steps.reconstructions import (
+from automation.application.startup import Startup
+from automation.screen import Screen
+from automation.steps.main import convert_alone, home_path
+from automation.steps.reconstructions import (
     converted,
     edited_title,
     expect_open,
@@ -17,6 +15,8 @@ from tests.suite.screens.steps.reconstructions import (
     raise_the_first_level,
     stored_levels,
 )
+from sampletones_core.constants.enums import ChannelName
+from tests.screens.prompts.keyboard.steps import enter, escape, tab
 from tests.suite.screens.worlds.recordings import BASS, LEAD, OPEN_RECONSTRUCTION
 
 
@@ -42,7 +42,7 @@ class TestTheLoadChainFromTheKeyboard:
             expect_open(screen, OPEN_RECONSTRUCTION)
             standing.extend(stored_levels(OPEN_RECONSTRUCTION, ChannelName.PULSE1))
 
-            raise_the_first_level(screen, ChannelName.PULSE1, title=edited_title(screen))
+            raise_the_first_level(screen, ChannelName.PULSE1, title=edited_title(screen, OPEN_RECONSTRUCTION))
 
         def load_from_the_keyboard(screen: Screen, recording: str) -> None:
             convert_alone(
@@ -63,7 +63,7 @@ class TestTheLoadChainFromTheKeyboard:
             escape(screen)
 
             screen.expect(prompt.is_shown, operator.not_, description="the question gone")
-            assert screen.title() == edited_title(screen)
+            assert screen.title() == edited_title(screen, OPEN_RECONSTRUCTION)
             assert screen.reconstructions.shows_open(OPEN_RECONSTRUCTION)
 
         def save_and_load_from_the_keyboard(screen: Screen) -> None:

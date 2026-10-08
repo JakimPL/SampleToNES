@@ -3,13 +3,13 @@ from typing import Final, List, Tuple
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.screen import Screen
+from automation.steps.reconstructions import expect_open
+from automation.views.waveform import Waveform
+from automation.vocabulary.playback import PAUSE, PLAY
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.screens.reconstructions.player.steps import advancing, entry, expect_entry
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import expect_open
-from tests.suite.screens.views.waveform import Waveform
-from tests.suite.screens.vocabulary.playback import PAUSE, PLAY
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION
 
 SAMPLE_RATE: Final[int] = 44100

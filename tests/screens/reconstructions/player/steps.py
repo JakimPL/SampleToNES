@@ -1,5 +1,5 @@
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.views.waveform import Waveform
+from automation.screen import Screen
+from automation.views.waveform import Waveform
 
 
 def entry(screen: Screen) -> str:

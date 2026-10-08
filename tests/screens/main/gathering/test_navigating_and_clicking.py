@@ -1,12 +1,12 @@
 from functools import partial
 from typing import Final
 
+from automation.screen import Screen
+from automation.steps.main import explorer_row, home_path
+from automation.vocabulary.converter import CONVERT_NOTHING, CONVERT_ONE
 from tests.screens.main.gathering.constants import INNER, LOOPS, TAKES
 from tests.screens.main.gathering.steps import gathered
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import explorer_row, home_path
-from tests.suite.screens.vocabulary.converter import CONVERT_NOTHING, CONVERT_ONE
-from tests.suite.screens.vocabulary.recordings import KICK, SNARE
+from tests.suite.screens.seeds.constants import KICK, SNARE
 
 ADD_AS_STEM: Final[str] = "main.explorer.label.context_add_stem"
 

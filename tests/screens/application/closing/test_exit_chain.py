@@ -2,19 +2,19 @@ from typing import List
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.holds.conversion import ConversionHold
+from automation.holds.regeneration import RegenerationHold
+from automation.screen import Screen
+from automation.steps.main import gather, home_path
+from automation.steps.project import retitle_project
+from automation.steps.reconstructions import expect_open, raise_the_first_level_while_held
+from automation.worlds.home import World
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.application.closing.constants import NEW_TITLE, RUN_TIMEOUT_SECONDS
 from tests.screens.application.closing.steps import asks_about_the_conversion, conversion_question
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.holds.conversion import ConversionHold
-from tests.suite.screens.holds.regeneration import RegenerationHold
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import gather, home_path
-from tests.suite.screens.steps.project import retitle_project
-from tests.suite.screens.steps.reconstructions import expect_open, raise_the_first_level_while_held
-from tests.suite.screens.worlds.home import World
 from tests.suite.screens.worlds.recordings import BASS, OPEN_RECONSTRUCTION, SONG, documents_world
 
 

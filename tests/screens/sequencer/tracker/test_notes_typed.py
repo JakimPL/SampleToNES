@@ -2,6 +2,12 @@ import operator
 from functools import partial
 from typing import Final, List, Optional, Tuple
 
+from automation.dearpygui.items.texts import read_label
+from automation.dearpygui.keys import IMGUI_LETTER_A
+from automation.screen import Screen
+from automation.steps.sequencer import leave_letting_the_project_go, on_the_sequencer
+from automation.views.tracker import tracker_cell, tracker_cell_theme
+from automation.vocabulary.playback import PAUSE, PLAY
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
@@ -14,12 +20,6 @@ from tests.screens.sequencer.tracker.constants import (
     TYPING_FRAMES,
 )
 from tests.screens.sequencer.tracker.steps import play_a_note, type_into
-from tests.suite.screens.dearpygui.items.texts import read_label
-from tests.suite.screens.dearpygui.keys import IMGUI_LETTER_A
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go, on_the_sequencer
-from tests.suite.screens.views.tracker import tracker_cell, tracker_cell_theme
-from tests.suite.screens.vocabulary.playback import PAUSE, PLAY
 from tests.suite.screens.worlds.songs import PAD_ROW
 
 PIANO_C_UP: Final[int] = IMGUI_LETTER_A + ord("q") - ord("a")

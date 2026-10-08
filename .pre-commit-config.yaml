@@ -33,6 +33,24 @@ repos:
 
   - repo: local
     hooks:
+      - id: mypy
+        name: mypy
+        entry: uv run mypy
+        language: system
+        types: [python]
+        verbose: True
+        require_serial: true
+        exclude: ^(tests/)
+
+      - id: pylint
+        name: pylint
+        entry: uv run pylint
+        language: system
+        types: [python]
+        verbose: True
+        require_serial: true
+        exclude: ^(tests/)
+
       - id: import-boundary
         name: import boundary
         entry: uv run sampletones check import-boundary --all
@@ -88,24 +106,6 @@ repos:
         files: (\.py|^src/sampletones_config/keybindings/.*\.yaml)$
         pass_filenames: false
         verbose: true
-
-      - id: mypy
-        name: mypy
-        entry: uv run mypy
-        language: system
-        types: [python]
-        verbose: True
-        require_serial: true
-        exclude: ^(tests/)
-
-      - id: pylint
-        name: pylint
-        entry: uv run pylint
-        language: system
-        types: [python]
-        verbose: True
-        require_serial: true
-        exclude: ^(tests/)
 
       - id: icons
         name: icons

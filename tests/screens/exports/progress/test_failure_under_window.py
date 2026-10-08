@@ -3,14 +3,14 @@ from typing import Final
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.boundaries.dialogs import DialogKind
+from automation.holds.export import ExportHold
+from automation.screen import Screen
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_shared.paths.extensions import EXT_FILE_MODULE
 from tests.screens.exports.progress.constants import FAILED_EXPORT, MODULE_EXPORTED
 from tests.screens.exports.progress.steps import folder, written_project
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.holds.export import ExportHold
-from tests.suite.screens.screen import Screen
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT
 
 MODULE_FAILED: Final[str] = "global.dialog.message.project_export_failed"

@@ -1,13 +1,13 @@
 import operator
 
+from automation.screen import Screen
+from automation.steps.main import convert_alone, home_path
+from automation.steps.reconstructions import load_from_the_browser
+from automation.steps.sequencer import double_click_voice, open_voice
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.prompts.every_door.cases import Door
 from tests.screens.prompts.every_door.constants import SETTLING_FRAMES
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import convert_alone, home_path
-from tests.suite.screens.steps.reconstructions import load_from_the_browser
-from tests.suite.screens.steps.sequencer import double_click_voice, open_voice
 from tests.suite.screens.worlds.recordings import BASS, LEAD, OTHER_RECONSTRUCTION
 
 

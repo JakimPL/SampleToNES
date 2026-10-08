@@ -5,6 +5,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
+from automation.scenario import BaseTestScenario, ScenarioStep
 from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import ServiceError, ServiceSuccess
@@ -17,7 +18,6 @@ from sampletones_core.exporters import Features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels
-from tests.suite.scenario import BaseTestScenario, ScenarioStep
 from tests.suite.stems import everything_heard
 
 

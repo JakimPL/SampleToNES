@@ -84,6 +84,15 @@ usable pitch range, the noise periods, and the note and period names.
 
 ---
 
+## Outside `src/`
+
+A checkout unit stands beside the source tree and ships in nothing. `automation/` operates the running
+application from outside. Such a unit is named for what its code does, runs only in a checkout through
+`make`, and imports the program freely; [tooling](tooling.md) says what it is. The direction runs one way,
+`src/` ← `automation` ← `tests`: the tests import the unit, nothing imports the tests, and nothing under
+`src/` imports the unit. The same import-boundary check holds this, from
+`sampletones_config/boundaries/checkout.yaml` and the source-side declaration in `rules.yaml`.
+
 ## Inside `sampletones_player`
 
 The player divides into units layered the same way, and for the same reason: a register value, a clock and

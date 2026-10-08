@@ -1,15 +1,15 @@
 import operator
 from typing import Callable, Final, List, Tuple, TypeVar
 
+from automation.screen import Screen
+from automation.steps.project import retitle_project
+from automation.steps.sequencer import leave_letting_the_project_go
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.history.steps import expect_lines, history_count, press_on_the_sequencer
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.project import retitle_project
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go
 
 ReadingT = TypeVar("ReadingT")
 

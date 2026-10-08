@@ -1,5 +1,5 @@
+from automation.screen import Screen
 from sampletones_application.categories.hierarchy import Tab
-from tests.suite.screens.screen import Screen
 
 
 class TestTabs:

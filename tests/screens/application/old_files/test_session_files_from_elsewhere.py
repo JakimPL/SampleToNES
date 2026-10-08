@@ -5,15 +5,15 @@ from typing import Final
 import pytest
 import yaml
 
+from automation.screen import Screen
+from automation.worlds.home import World, screen_filling_state
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.session.state.current import Current
 from sampletones_application.paths import APPLICATION_STATE_PATH
 from sampletones_core.configs import Config
 from sampletones_shared.paths.user import CONFIG_PATH
-from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds.archives import WrittenBytes
 from tests.suite.screens.seeds.recordings import Recording
-from tests.suite.screens.worlds.home import World, screen_filling_state
 
 RECORDING_SECONDS: Final[float] = 0.5
 RECORDING_FREQUENCY: Final[float] = 220.0

@@ -1,5 +1,8 @@
 from typing import Final, List
 
+from automation.screen import Screen
+from automation.steps.reconstructions import marked
+from automation.steps.sequencer import leave_letting_the_project_go, voice_row
 from tests.screens.sequencer.samples.constants import (
     ARRANGED_VOICES,
     LINE_POSITION,
@@ -15,9 +18,6 @@ from tests.screens.sequencer.samples.steps import (
     replace_entry,
     replace_from_the_sequencer_browser,
 )
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import marked
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go, voice_row
 from tests.suite.screens.worlds.recordings import SHORT_RECONSTRUCTION
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT, BASS_VOICE, LINE, PAD
 

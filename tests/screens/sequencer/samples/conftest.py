@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from automation.worlds.home import World
 from sampletones_shared.constants.nes import DEFAULT_NES_FREQUENCY
 from tests.screens.sequencer.samples.constants import (
     OTHER_RATE,
@@ -10,7 +11,6 @@ from tests.screens.sequencer.samples.constants import (
     UNSOUND_RECONSTRUCTION,
 )
 from tests.suite.screens.seeds.reconstructions import PlayableReconstruction, UnsoundReconstruction
-from tests.suite.screens.worlds.home import World
 from tests.suite.screens.worlds.recordings import STEM_FRAMES, STEM_TAKES
 from tests.suite.screens.worlds.songs import sequencer_world
 

@@ -1,7 +1,7 @@
 import operator
 
+from automation.screen import Screen
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from tests.suite.screens.screen import Screen
 
 
 def open_audio_settings(screen: Screen) -> None:

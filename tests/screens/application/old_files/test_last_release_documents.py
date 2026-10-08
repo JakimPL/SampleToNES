@@ -2,6 +2,10 @@ from typing import Tuple
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.boundaries.dialogs import DialogKind
+from automation.screen import Screen
+from automation.worlds.home import World, screen_filling_state
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.config.session.application.config import ApplicationConfig
@@ -9,12 +13,8 @@ from sampletones_application.config.session.application.playback import Playback
 from sampletones_core.compatibility.kind import ObjectKind
 from tests.screens.application.old_files.constants import ARCHIVED_PROJECT, ARCHIVED_RECONSTRUCTION, BY_CONFIGURATION
 from tests.screens.application.old_files.steps import stored_voice_names, world_of
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds.archives import archived_document
 from tests.suite.screens.seeds.recordings import stored_recording
-from tests.suite.screens.worlds.home import World, screen_filling_state
 
 
 class TestTheLastReleasesReconstruction:

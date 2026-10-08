@@ -1,8 +1,8 @@
 from typing import Final, Tuple
 
+from automation.screen import Screen
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from tests.suite.screens.screen import Screen
 
 PRINTED: Final[Tuple[Tuple[MenuElements, MenuElements, ShortcutId], ...]] = (
     (MenuElements.GROUP_FILE, MenuElements.ITEM_FILE_NEW_PROJECT, ShortcutId.NEW_PROJECT),

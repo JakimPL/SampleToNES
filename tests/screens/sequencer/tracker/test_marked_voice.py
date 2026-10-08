@@ -1,6 +1,8 @@
 from functools import partial
 from typing import Dict, Final
 
+from automation.screen import Screen
+from automation.steps.sequencer import leave_letting_the_project_go, on_the_sequencer
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
@@ -13,8 +15,6 @@ from tests.screens.sequencer.tracker.constants import (
     TYPING_FRAMES,
 )
 from tests.screens.sequencer.tracker.steps import play_a_note, type_into
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go, on_the_sequencer
 from tests.suite.screens.worlds.songs import LINE, PAD
 
 LINE_POSITION: Final[int] = 0

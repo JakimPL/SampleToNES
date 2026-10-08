@@ -1,9 +1,9 @@
+from automation.screen import Screen
+from automation.steps.main import explorer_row, gather, home_path
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.main import TAG_MAIN_EXPLORER_BUTTON_REFRESH
 from tests.screens.main.gathering.steps import gathered
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import explorer_row, gather, home_path
-from tests.suite.screens.vocabulary.recordings import KICK
+from tests.suite.screens.seeds.constants import KICK
 
 
 class TestGatheringARowRefreshBuiltAnew:

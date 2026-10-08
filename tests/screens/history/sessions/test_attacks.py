@@ -1,6 +1,9 @@
 import operator
 from typing import Final, List
 
+from automation.holds.regeneration import RegenerationHold
+from automation.screen import Screen
+from automation.steps.sequencer import leave_letting_the_project_go, open_voice
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
@@ -13,9 +16,6 @@ from tests.screens.history.steps import (
     press_on_the_sequencer,
     volume_fields,
 )
-from tests.suite.screens.holds.regeneration import RegenerationHold
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go, open_voice
 
 TEMPO: Final[int] = 111
 LONG_PATTERNS: Final[int] = 64

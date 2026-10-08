@@ -4,14 +4,14 @@ from typing import Final, List
 
 import pytest
 
+from automation.screen import Screen
+from automation.steps.instructions import library_path, library_row
+from automation.vocabulary.libraries import LIBRARY_LOADED
+from automation.worlds.home import World, one_worker_config
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import SpectrumMethod
 from tests.screens.main.library.steps import library_world
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.instructions import library_path, library_row
-from tests.suite.screens.vocabulary.libraries import LIBRARY_LOADED
-from tests.suite.screens.worlds.home import World, one_worker_config
 
 QUICK_SAMPLE_RATE: Final[int] = 11025
 GENERATION_TIMEOUT_SECONDS: Final[float] = 300.0

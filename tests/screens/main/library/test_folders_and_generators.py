@@ -4,19 +4,19 @@ from typing import Final, List
 import dearpygui.dearpygui as dpg
 import pytest
 
+from automation.boundaries.dialogs import DialogKind
+from automation.dearpygui.items.reading import find_item
+from automation.dearpygui.items.types import Item
+from automation.screen import Screen
+from automation.steps.instructions import library_path, library_row, open_library_row
+from automation.steps.main import home_path
+from automation.vocabulary.libraries import LIBRARY_LOADED
+from automation.worlds.home import World, one_worker_config
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_core.structures.tree.node import GeneratorNode
 from sampletones_shared.paths.user import LIBRARY_DIRECTORY
 from tests.screens.main.library.steps import library_world
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.dearpygui.items.reading import find_item
-from tests.suite.screens.dearpygui.items.types import Item
-from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds.archives import archived_library
-from tests.suite.screens.steps.instructions import library_path, library_row, open_library_row
-from tests.suite.screens.steps.main import home_path
-from tests.suite.screens.vocabulary.libraries import LIBRARY_LOADED
-from tests.suite.screens.worlds.home import World, one_worker_config
 
 OTHER_LIBRARIES: Final[str] = "Other libraries"
 

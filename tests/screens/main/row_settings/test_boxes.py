@@ -1,12 +1,12 @@
 import operator
 from functools import partial
 
+from automation.screen import Screen
+from automation.steps.main import gather, home_path
+from automation.vocabulary.converter import FOLDER_ROW
 from sampletones_application.ui.themes.channels import PARTIAL_CHANNEL_THEME_TAGS
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.main.row_settings.constants import PAIR, PAIR_TAKES
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import gather, home_path
-from tests.suite.screens.vocabulary.converter import FOLDER_ROW
 
 
 class TestAFoldersBoxes:

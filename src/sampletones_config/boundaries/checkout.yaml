@@ -1,0 +1,3 @@
+- root: automation
+  pattern: "**/*.py"
+  forbidden: [tests]

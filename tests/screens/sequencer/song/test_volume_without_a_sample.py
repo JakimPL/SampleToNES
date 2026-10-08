@@ -1,12 +1,12 @@
 from typing import Final, List, Optional, Tuple
 
+from automation.screen import Screen
+from automation.steps.sequencer import leave_letting_the_project_go, on_the_sequencer
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.utils.display import BLANK
 from tests.screens.sequencer.song.constants import EMPTY_VOICE, SETTLING_FRAMES
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go, on_the_sequencer
 
 EVERY_CHANNEL: Final[Tuple[ChannelName, ...]] = tuple(ChannelName.items())
 SAMPLE_COLUMN: Final[Optional[ChannelName]] = None

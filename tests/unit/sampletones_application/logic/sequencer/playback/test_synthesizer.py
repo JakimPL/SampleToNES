@@ -4,6 +4,7 @@ from typing import Dict, Final, FrozenSet, List, Optional, Tuple
 import numpy as np
 import pytest
 
+from automation.scenario import BaseTestScenario, ScenarioStep
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_core.configs import Config
@@ -19,7 +20,6 @@ from tests.suite.performance import (
     make_pulse_reconstruction,
     make_triangle_reconstruction,
 )
-from tests.suite.scenario import BaseTestScenario, ScenarioStep
 from tests.unit.sampletones_application.logic.sequencer.playback.conftest import (
     SOUNDING_FRAMES,
     add_instrument,

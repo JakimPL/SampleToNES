@@ -4,14 +4,14 @@ from typing import Final
 
 import dearpygui.dearpygui as dpg
 
+from automation.dearpygui.items.reading import read_item
+from automation.dearpygui.items.regions import read_scroll
+from automation.screen import Screen
+from automation.steps.main import choose_from_the_row_menu, home_path
+from automation.vocabulary.converter import FOLDER_ROW
 from tests.screens.main.list.constants import FORTY, FORTY_COUNT
 from tests.screens.main.list.steps import gather, recording, take
-from tests.suite.screens.dearpygui.items.reading import read_item
-from tests.suite.screens.dearpygui.items.regions import read_scroll
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import choose_from_the_row_menu, home_path
-from tests.suite.screens.vocabulary.converter import FOLDER_ROW
-from tests.suite.screens.vocabulary.recordings import KICK
+from tests.suite.screens.seeds.constants import KICK
 
 STILL_FRAMES: Final[int] = 30
 SHOW_RECORDINGS: Final[str] = "main.converter.label.context_open_folder"

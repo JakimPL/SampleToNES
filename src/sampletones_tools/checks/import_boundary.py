@@ -9,21 +9,30 @@ from sampletones_tools.checks.boundary.standalone import check_standalone
 from sampletones_tools.checks.boundary.violation import Violation
 
 
-def check_imports(source: Path, scripts: Path, selection: Optional[Set[Path]]) -> List[Violation]:
-    """Every import, token and namespace package the shipped boundaries forbid under the two trees.
+def check_imports(
+    source: Path,
+    scripts: Path,
+    checkout: Path,
+    selection: Optional[Set[Path]],
+) -> List[Violation]:
+    """Every import, token and namespace package the shipped boundaries forbid under the three trees.
 
     Args:
         source: Source root the rule roots are named within.
         scripts: Scripts tree the standalone rules are written against.
-        selection: Resolved paths to narrow the check to, or `None` to check both trees whole.
+        checkout: Repository root the units beside the source tree are named within.
+        selection: Resolved paths to narrow the check to, or `None` to check the trees whole.
 
     Returns:
-        List[Violation]: What the rules report, the source tree's before the scripts tree's.
+        List[Violation]: What the rules report: the source tree's, then the checkout units', then
+            the scripts tree's.
     """
     boundaries = ImportBoundaryRules.load()
     return [
         *check_boundaries(source, boundaries.boundary_rules(), boundaries.tokens, selection),
         *check_packages(source, selection),
+        *check_boundaries(checkout, boundaries.checkout_rules(), (), selection),
+        *(violation for unit in boundaries.checkout_units for violation in check_packages(checkout / unit, selection)),
         *check_standalone(scripts, boundaries.standalone, selection),
     ]
 

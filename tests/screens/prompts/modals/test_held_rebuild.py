@@ -3,13 +3,10 @@ from typing import Final, List
 
 import pytest
 
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from sampletones_core.constants.enums import ChannelName, FeatureKey
-from tests.screens.prompts.modals.constants import SETTLING_FRAMES
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.holds.regeneration import RegenerationHold
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import (
+from automation.application.startup import Startup
+from automation.holds.regeneration import RegenerationHold
+from automation.screen import Screen
+from automation.steps.reconstructions import (
     expect_open,
     load_from_the_browser,
     marked,
@@ -17,7 +14,10 @@ from tests.suite.screens.steps.reconstructions import (
     remove_from_the_browser,
     titled,
 )
-from tests.suite.screens.vocabulary.dialogs import CLOSE_TITLE, LOAD_TITLE
+from automation.vocabulary.dialogs import CLOSE_TITLE, LOAD_TITLE
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_core.constants.enums import ChannelName, FeatureKey
+from tests.screens.prompts.modals.constants import SETTLING_FRAMES
 from tests.suite.screens.worlds.recordings import OPEN_RECONSTRUCTION, OTHER_RECONSTRUCTION
 
 REBUILD_FAILURE: Final[str] = "The rebuild broke on its worker"

@@ -53,3 +53,9 @@
     - sampletones_application.application
     - sampletones_application.shell
     - sampletones_application.utils.gui.dialogs
+- root: ""
+  pattern: "**/*.py"
+  forbidden:
+    - automation
+    - assets
+    - tests

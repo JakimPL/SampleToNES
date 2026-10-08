@@ -1,12 +1,12 @@
 from typing import Dict, Final, List, Tuple
 
+from automation.screen import Screen
+from automation.steps.exports import leaving_asks_nothing
+from automation.steps.reconstructions import voice_title
+from automation.steps.sequencer import open_voice, open_voice_menu
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters.naming import instrument_slice_name
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.exports import leaving_asks_nothing
-from tests.suite.screens.steps.reconstructions import voice_title
-from tests.suite.screens.steps.sequencer import open_voice, open_voice_menu
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT, BASS_VOICE, LINE, PAD
 
 INSTRUMENT_FROM: Final[str] = "sequencer.voices.label.context_instrument_from"

@@ -3,6 +3,10 @@ from typing import Final
 
 import pytest
 
+from automation.boundaries.dialogs import DialogKind
+from automation.screen import Screen
+from automation.worlds.home import World, screen_filling_state
+from automation.written import written_application_config, written_config
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_application.config.session.application.converter import ConverterConfig
 from sampletones_application.constants.output import OutputKind
@@ -11,10 +15,6 @@ from sampletones_core.constants.enums import DEFAULT_CHANNELS
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from tests.screens.application.restart.constants import RECORDINGS_FOLDER
 from tests.screens.application.restart.steps import home_folder, leave, recording_in, state_with_advanced
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.worlds.home import World, screen_filling_state
-from tests.suite.screens.written import written_application_config, written_config
 
 LIBRARIES_FOLDER: Final[str] = "Libraries"
 CHOSEN_CHANNELS_AT_ONCE: Final[int] = 2

@@ -1,15 +1,15 @@
 from functools import partial
 from typing import Final, List, Tuple
 
+from automation.screen import Screen
+from automation.steps.reconstructions import expect_open
+from automation.steps.sequencer import channels_sounding, checked
+from automation.vocabulary.playback import PAUSE, PLAY
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.interface.shortcuts.steps import on_a_tab
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import expect_open
-from tests.suite.screens.steps.sequencer import channels_sounding, checked
-from tests.suite.screens.vocabulary.playback import PAUSE, PLAY
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION
 
 TAB_SHORTCUTS: Final[Tuple[Tuple[ShortcutId, Tab], ...]] = (

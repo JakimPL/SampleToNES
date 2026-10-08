@@ -122,6 +122,10 @@ currently out of line. An entry leaves when the code meets the contract again.
 * Every gesture in the converter re-derives the whole setup, so its cost grows faster than linearly with
   the number of recordings. Holding the rows against the gathering that produced them, and deriving entries
   for the recordings a gesture moved, closes it.
+* The automation unit reaches two private members: the regeneration hold stands in for
+  `RegenerationService._run` and reports through `_emit`, and the tracker view reads the caret's box from
+  `CaretOverlay._rectangle`. Each is a seam a scenario needs, which [screens](application/screens.md)
+  says the application offers as a public one.
 
 ## Bugs
 

@@ -3,14 +3,14 @@ from typing import Dict, Final
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.holds.export import FIRST_REPORT, ExportHold
+from automation.screen import Screen
+from automation.steps.reconstructions import expect_open
+from automation.views.notices import Notice
 from sampletones_core.exports.stage import ExportStage
 from tests.screens.exports.progress.cases import INSTRUMENT_DOORS, PROJECT_DOORS, ExportDoor
 from tests.screens.exports.progress.steps import folder
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.holds.export import FIRST_REPORT, ExportHold
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import expect_open
-from tests.suite.screens.views.notices import Notice
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT
 

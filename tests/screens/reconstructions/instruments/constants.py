@@ -1,6 +1,6 @@
 from typing import Final
 
-from tests.suite.screens.dearpygui.keys import IMGUI_LETTER_A
+from automation.dearpygui.keys import IMGUI_LETTER_A
 
 STILL_FRAMES: Final[int] = 20
 NOTE_FRAMES: Final[int] = 30

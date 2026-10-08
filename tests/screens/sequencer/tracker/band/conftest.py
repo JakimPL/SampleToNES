@@ -1,7 +1,7 @@
 import pytest
 
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.worlds.home import World
+from automation.application.startup import Startup
+from automation.worlds.home import World
 from tests.suite.screens.worlds.songs import (
     LOOPING_ORDER_FRAMES,
     LOOPING_PROJECT,

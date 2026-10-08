@@ -1,6 +1,9 @@
 import operator
 from typing import Dict, Final, List
 
+from automation.holds.regeneration import RegenerationHold
+from automation.screen import Screen
+from automation.steps.sequencer import leave_letting_the_project_go, open_voice
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName, FeatureKey
@@ -14,9 +17,6 @@ from tests.screens.history.steps import (
     typed_values,
     volume_fields,
 )
-from tests.suite.screens.holds.regeneration import RegenerationHold
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go, open_voice
 
 TYPED: Final[Dict[ChannelName, str]] = {ChannelName.PULSE1: "4 2"}
 CHANNELS: Final = tuple(TYPED)

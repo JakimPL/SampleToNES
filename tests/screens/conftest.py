@@ -1,21 +1,21 @@
-from tests.suite.screens.plugin.fixtures import (
-    output_device,
-    screen,
-    screen_application,
-    screen_boundaries,
-    screen_bridge,
-    screen_render_thread,
-    startup,
-    world,
+from automation.plugin.fixtures import (
+    output_device_fixture,
+    screen_application_fixture,
+    screen_boundaries_fixture,
+    screen_bridge_fixture,
+    screen_fixture,
+    screen_render_thread_fixture,
+    startup_fixture,
+    world_fixture,
 )
-from tests.suite.screens.plugin.hold_fixtures import (
-    conversion_hold,
-    export_hold,
-    regeneration_hold,
-    scan_hold,
-    screen_holds,
+from automation.plugin.hold_fixtures import (
+    conversion_hold_fixture,
+    export_hold_fixture,
+    regeneration_hold_fixture,
+    scan_hold_fixture,
+    screen_holds_fixture,
 )
-from tests.suite.screens.plugin.hooks import (
+from automation.plugin.hooks import (
     pytest_configure,
     pytest_pyfunc_call,
     pytest_runtest_protocol,
@@ -23,21 +23,21 @@ from tests.suite.screens.plugin.hooks import (
 )
 
 __all__ = [
-    "conversion_hold",
-    "export_hold",
-    "output_device",
+    "conversion_hold_fixture",
+    "export_hold_fixture",
+    "output_device_fixture",
     "pytest_configure",
     "pytest_pyfunc_call",
     "pytest_runtest_protocol",
     "pytest_unconfigure",
-    "regeneration_hold",
-    "scan_hold",
-    "screen",
-    "screen_application",
-    "screen_boundaries",
-    "screen_bridge",
-    "screen_holds",
-    "screen_render_thread",
-    "startup",
-    "world",
+    "regeneration_hold_fixture",
+    "scan_hold_fixture",
+    "screen_fixture",
+    "screen_application_fixture",
+    "screen_boundaries_fixture",
+    "screen_bridge_fixture",
+    "screen_holds_fixture",
+    "screen_render_thread_fixture",
+    "startup_fixture",
+    "world_fixture",
 ]

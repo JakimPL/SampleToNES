@@ -1,7 +1,7 @@
+from automation.screen import Screen
+from automation.vocabulary.playback import PAUSE, RESUME
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.screens.sequencer.tracker.band.constants import CHANNEL, SLOT
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.vocabulary.playback import PAUSE, RESUME
 
 
 def expect_centered(screen: Screen, row: int) -> None:

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from tests.suite.screens.screen import Screen
+from automation.screen import Screen
 
 
 def gathered(screen: Screen, *paths: Path) -> None:

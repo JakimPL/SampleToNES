@@ -1,9 +1,9 @@
 import operator
 from typing import List
 
+from automation.screen import Screen
+from automation.written import written_application_config
 from tests.screens.application.restart.steps import leave
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.written import written_application_config
 
 
 class TestADiscardedDisplayChange:

@@ -3,14 +3,14 @@ from typing import Final
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.screen import Screen
+from automation.steps.reconstructions import expect_open
+from automation.steps.sequencer import on_the_sequencer
+from automation.vocabulary.playback import PLAY
+from automation.worlds.home import World
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import expect_open
-from tests.suite.screens.steps.sequencer import on_the_sequencer
-from tests.suite.screens.vocabulary.playback import PLAY
-from tests.suite.screens.worlds.home import World
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT, sequencer_world
 

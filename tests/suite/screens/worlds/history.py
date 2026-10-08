@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import Final
 
+from automation.worlds.home import World, screen_filling_state
 from sampletones_shared.paths.user import PROJECTS_DIRECTORY
 from tests.suite.screens.seeds.projects import EveryPartProject
-from tests.suite.screens.worlds.home import World, screen_filling_state
 
 HISTORY_PROJECT: Final[Path] = PROJECTS_DIRECTORY / "History.stp"
 

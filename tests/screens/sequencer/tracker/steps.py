@@ -1,9 +1,9 @@
 from typing import Optional
 
+from automation.screen import Screen
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.sequencer.tracker.constants import TYPING_FRAMES
-from tests.suite.screens.screen import Screen
 
 
 def play_a_note(screen: Screen, row: int, channel: ChannelName, key: int) -> None:

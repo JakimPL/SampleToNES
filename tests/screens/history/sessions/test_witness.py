@@ -2,6 +2,9 @@ import operator
 from pathlib import Path
 from typing import Final, List
 
+from automation.screen import Screen
+from automation.steps.project import save_project_as
+from automation.steps.sequencer import open_voice
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
@@ -11,9 +14,6 @@ from sampletones_shared.paths.user import PROJECTS_DIRECTORY
 from tests.screens.history.constants import LEAD
 from tests.screens.history.steps import expect_lines, history_count, press_on_the_sequencer
 from tests.suite.history.audit import fresh_fingerprint
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.project import save_project_as
-from tests.suite.screens.steps.sequencer import open_voice
 
 BEFORE: Final[Path] = PROJECTS_DIRECTORY / "Before.stp"
 AFTER: Final[Path] = PROJECTS_DIRECTORY / "After.stp"

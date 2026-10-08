@@ -3,14 +3,14 @@ from typing import Final, List, Optional
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.dearpygui.geometry import Rect
+from automation.dearpygui.items.reading import is_tag_within
+from automation.dearpygui.items.regions import read_windows
+from automation.dearpygui.items.viewport import read_viewport
+from automation.dearpygui.keys import IMGUI_ESCAPE
+from automation.screen import Screen
 from tests.screens.interface.dialogs.cases import DIALOGS, MenuDialog
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.dearpygui.geometry import Rect
-from tests.suite.screens.dearpygui.items.reading import is_tag_within
-from tests.suite.screens.dearpygui.items.regions import read_windows
-from tests.suite.screens.dearpygui.items.viewport import read_viewport
-from tests.suite.screens.dearpygui.keys import IMGUI_ESCAPE
-from tests.suite.screens.screen import Screen
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT
 
 STILL_FRAMES: Final[int] = 20

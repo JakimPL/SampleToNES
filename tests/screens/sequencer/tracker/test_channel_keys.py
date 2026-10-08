@@ -1,17 +1,17 @@
 from functools import partial
 from typing import Final, List
 
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.enums import ChannelName
-from tests.screens.sequencer.tracker.constants import TYPING_FRAMES
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import (
+from automation.screen import Screen
+from automation.steps.sequencer import (
     channels_sounding,
     leave_letting_the_project_go,
     on_the_sequencer,
     sounding_but,
 )
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_core.constants.enums import ChannelName
+from tests.screens.sequencer.tracker.constants import TYPING_FRAMES
 from tests.suite.screens.worlds.songs import PAD_ROW
 
 CARET_ROW: Final[int] = PAD_ROW + 1

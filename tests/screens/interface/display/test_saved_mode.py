@@ -3,6 +3,9 @@ from typing import Final, List
 
 import pytest
 
+from automation.screen import Screen
+from automation.worlds.home import World, screen_filling_state
+from automation.written import written_application_config, written_state
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_application.config.session.application.display import DisplayConfig
 from sampletones_application.config.session.state.window import ViewportState
@@ -16,9 +19,6 @@ from tests.screens.interface.display.steps import (
     size_named,
     window_size,
 )
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.worlds.home import World, screen_filling_state
-from tests.suite.screens.written import written_application_config, written_state
 
 SEEDED_SIZE: Final[Resolution] = Resolution(width=1280, height=800)
 

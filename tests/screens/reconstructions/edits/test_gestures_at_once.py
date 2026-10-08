@@ -4,15 +4,12 @@ from typing import Final, List, Tuple
 
 import pytest
 
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from sampletones_core.constants.enums import ChannelName, FeatureKey
-from sampletones_shared.paths.user import PROJECTS_DIRECTORY
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.dearpygui.geometry import Point
-from tests.suite.screens.holds.regeneration import RegenerationHold
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.project import save_project_as
-from tests.suite.screens.steps.reconstructions import (
+from automation.application.startup import Startup
+from automation.dearpygui.geometry import Point
+from automation.holds.regeneration import RegenerationHold
+from automation.screen import Screen
+from automation.steps.project import save_project_as
+from automation.steps.reconstructions import (
     expect_open,
     load_from_the_browser,
     marked,
@@ -22,10 +19,13 @@ from tests.suite.screens.steps.reconstructions import (
     titled,
     voice_title,
 )
-from tests.suite.screens.steps.sequencer import open_voice
-from tests.suite.screens.views.bar_graph import BarGraph
-from tests.suite.screens.views.instruments import Instruments
-from tests.suite.screens.vocabulary.dialogs import LOAD_TITLE
+from automation.steps.sequencer import open_voice
+from automation.views.bar_graph import BarGraph
+from automation.views.instruments import Instruments
+from automation.vocabulary.dialogs import LOAD_TITLE
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_shared.paths.user import PROJECTS_DIRECTORY
 from tests.suite.screens.worlds.recordings import (
     OPEN_RECONSTRUCTION,
     PLAYABLE_RECONSTRUCTION,

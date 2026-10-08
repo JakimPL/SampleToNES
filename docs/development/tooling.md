@@ -21,6 +21,13 @@ name says what it does, in plain words.
 - A *bootstrap script* runs on the system interpreter, before or beside the environment. It creates the
   environment, installs system packages, builds the standalone bundle, cleans the tree, and runs the
   tests, the linters and the formatters the environment provides.
+- A *checkout unit* runs only in a checkout with the development environment, through `make`, and ships in
+  nothing. It is a top-level directory beside `src/`, `scripts/` and `tests/`, named for what its code does,
+  checked like source, and free to import the program and the development dependencies. `automation/`
+  operates the running application ([screens](application/screens.md)). A package of such a unit that a
+  person runs carries its own parser and help, as `python -m <unit>.<package>`, and the Makefile names it.
+  Code is placed by what it is for: the engine a unit borrows, such as pytest or the application itself,
+  never decides its home.
 
 A bootstrap script imports the standard library and the other bootstrap modules and nothing else, so it
 runs on a machine that has Python 3.12 or newer and nothing more. Importing `scripts/bootstrap/` checks

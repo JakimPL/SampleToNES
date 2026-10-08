@@ -2,16 +2,16 @@ import operator
 from pathlib import Path
 from typing import Final, List, Optional, Tuple
 
+from automation.boundaries.dialogs import DialogKind
+from automation.dearpygui.items.texts import EntryReading
+from automation.screen import Screen
+from automation.steps.sequencer import leave_letting_the_project_go, open_voice, open_voice_menu
+from automation.vocabulary.exports import EXPORT_INSTRUMENT, NSF_TYPE
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.formats.famitracker.instrument import read_fti
 from sampletones_player.specification.nsf import NSF_MAGIC
 from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_JSON, EXT_FILE_NSF
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.dearpygui.items.texts import EntryReading
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go, open_voice, open_voice_menu
-from tests.suite.screens.vocabulary.exports import EXPORT_INSTRUMENT, NSF_TYPE
 from tests.suite.screens.worlds.songs import BASS_VOICE, LINE, PAD
 
 EXPORT_TITLE: Final[str] = "reconstructions.instruments.title.export_instrument_dialog"

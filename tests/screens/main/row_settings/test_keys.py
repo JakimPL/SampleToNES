@@ -2,15 +2,15 @@ import operator
 from functools import partial
 from typing import Dict, Final, List
 
+from automation.screen import Screen
+from automation.steps.main import gather, home_path
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_INPUT_SEARCH
 from sampletones_application.tags.main import TAG_MAIN_CONVERTER_PANEL, TAG_MAIN_EXPLORER_PANEL
 from sampletones_application.utils.gui.shortcuts.ids import CHANNEL_SHORTCUT_IDS, ShortcutId
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.main.row_settings.steps import ticked
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import gather, home_path
-from tests.suite.screens.vocabulary.recordings import KICK, SNARE
+from tests.suite.screens.seeds.constants import KICK, SNARE
 
 FILTER_TEXT: Final[str] = "zz"
 

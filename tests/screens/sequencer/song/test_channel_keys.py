@@ -1,15 +1,15 @@
 from functools import partial
 from typing import Final, List
 
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from sampletones_core.constants.enums import ChannelName
-from tests.screens.sequencer.song.constants import SETTLING_FRAMES
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import (
+from automation.screen import Screen
+from automation.steps.sequencer import (
     channels_sounding,
     on_the_sequencer,
     sounding_but,
 )
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_core.constants.enums import ChannelName
+from tests.screens.sequencer.song.constants import SETTLING_FRAMES
 
 FIRST_POSITION: Final[int] = 0
 TOGGLE_PULSE_TWO: Final[ShortcutId] = ShortcutId.TOGGLE_CHANNEL_PULSE_2

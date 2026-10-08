@@ -1,11 +1,11 @@
 from pathlib import Path
 
+from automation.screen import Screen
+from automation.worlds.home import HomeFile, World, screen_filling_state
 from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.screens.application.restart.constants import RECORDING_FREQUENCY, RECORDING_NAME, RECORDING_SECONDS
-from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds.recordings import Recording
-from tests.suite.screens.worlds.home import HomeFile, World, screen_filling_state
 
 
 def home_folder(name: str) -> Path:

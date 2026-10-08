@@ -1,11 +1,11 @@
 from typing import Final, List, Tuple
 
+from automation.screen import Screen
+from automation.steps.sequencer import leave_letting_the_project_go, open_voice
+from automation.views.history import HistoryLine
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from tests.screens.sequencer.history.constants import PAD_POSITION, POSITION_MARK
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go, open_voice
-from tests.suite.screens.views.history import HistoryLine
 from tests.suite.screens.worlds.songs import PAD
 
 VOLUME_LETTER: Final[str] = "v"

@@ -1,14 +1,14 @@
 import operator
 from typing import Final
 
+from automation.screen import Screen
+from automation.steps.main import convert_alone, home_path
+from automation.steps.project import retitle_project, save_project_as, saved_project_title
+from automation.vocabulary.dialogs import CLOSE_PROJECT_MESSAGE, EXIT_PROJECT_MESSAGE
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.paths.user import PROJECTS_DIRECTORY
 from tests.screens.prompts.closing.constants import SETTLING_FRAMES
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import convert_alone, home_path
-from tests.suite.screens.steps.project import retitle_project, save_project_as, saved_project_title
-from tests.suite.screens.vocabulary.dialogs import CLOSE_PROJECT_MESSAGE, EXIT_PROJECT_MESSAGE
 from tests.suite.screens.worlds.recordings import BASS, LEAD
 
 PROJECT: Final[str] = "Closing.stp"

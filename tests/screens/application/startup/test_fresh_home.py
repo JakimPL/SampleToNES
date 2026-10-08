@@ -2,12 +2,12 @@ from pathlib import Path
 
 import pytest
 
+from automation.screen import Screen
+from automation.worlds.home import World
+from automation.written import written_application_config, written_config, written_state
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_shared.paths.user import LIBRARY_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.worlds.home import World
-from tests.suite.screens.written import written_application_config, written_config, written_state
 
 
 class TestAFreshHome:

@@ -2,15 +2,15 @@ import operator
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.boundaries.audio import REFUSED_STREAM
+from automation.screen import Screen
+from automation.steps.reconstructions import expect_open
+from automation.vocabulary.playback import PLAY
+from automation.worlds.home import World
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.screens.application.refusing_output.constants import PLAYBACK_ERROR_MESSAGE
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.boundaries.audio import REFUSED_STREAM
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import expect_open
-from tests.suite.screens.vocabulary.playback import PLAY
-from tests.suite.screens.worlds.home import World
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION, playing_world
 
 

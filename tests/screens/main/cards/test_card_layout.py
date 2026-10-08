@@ -3,6 +3,12 @@ from typing import Final, List
 
 import pytest
 
+from automation.dearpygui.geometry import Rect
+from automation.dearpygui.items.reading import read_item
+from automation.dearpygui.items.regions import read_scroll
+from automation.screen import Screen
+from automation.steps.main import gather, home_path
+from automation.worlds.home import World, lived_in_world
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.tags.main import (
     TAG_MAIN_ADVANCED_PANEL,
@@ -11,14 +17,7 @@ from sampletones_application.tags.main import (
     TAG_MAIN_SOURCE_PANEL,
 )
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from tests.suite.screens.dearpygui.geometry import Rect
-from tests.suite.screens.dearpygui.items.reading import read_item
-from tests.suite.screens.dearpygui.items.regions import read_scroll
-from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds.recordings import Recording
-from tests.suite.screens.steps.main import gather, home_path
-from tests.suite.screens.worlds.home import World
-from tests.suite.screens.worlds.recordings import lived_in_world
 
 PAST_THE_DIALOG: Final[int] = 30
 SECONDS: Final[float] = 0.2

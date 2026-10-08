@@ -3,6 +3,10 @@ from typing import Final, List
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.boundaries.dialogs import DialogKind
+from automation.screen import Screen
+from automation.vocabulary.exports import NSF_EXPORTED, NSF_TYPE
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
 from sampletones_core.exports.request import ProjectExport
@@ -16,10 +20,6 @@ from sampletones_shared.application import SAMPLETONES_COPYRIGHT
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
 from tests.screens.exports.nsf_window.constants import LEFT_OUT, SETTLING_FRAMES
 from tests.screens.exports.nsf_window.steps import folder
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.vocabulary.exports import NSF_EXPORTED, NSF_TYPE
 from tests.suite.screens.worlds.songs import LOOPING_PROJECT
 
 NSF_TITLE: Final[str] = "global.dialog.title.export_nsf_project"

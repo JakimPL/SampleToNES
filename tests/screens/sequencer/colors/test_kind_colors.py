@@ -2,6 +2,11 @@ import operator
 from functools import partial
 from typing import Final, List, Optional, Tuple
 
+from automation.dearpygui.items.colors import rounded_color
+from automation.palettes import Color, shipped_palettes, token_color
+from automation.screen import Screen
+from automation.steps.sequencer import leave_letting_the_project_go
+from automation.views.history import HistoryLine
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.utils.palette.catalog import DEFAULT_PALETTE_NAME
@@ -9,11 +14,6 @@ from sampletones_application.utils.palette.palette import Palette
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.utils.display import NOTE_OFF
-from tests.suite.screens.dearpygui.items.colors import rounded_color
-from tests.suite.screens.palettes import Color, shipped_palettes, token_color
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go
-from tests.suite.screens.views.history import HistoryLine
 from tests.suite.screens.worlds.songs import BASS_ROW, BASS_VOICE, LINE, PAD, PAD_ROW
 
 SAMPLE_TOKEN: Final[str] = "voice_sample"

@@ -1,9 +1,9 @@
 from typing import Callable, Dict, List, Tuple
 
+from automation.screen import Screen
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName, FeatureKey
-from tests.suite.screens.screen import Screen
 
 Fields = Dict[ChannelName, str]
 

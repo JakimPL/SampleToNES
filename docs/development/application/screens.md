@@ -1,9 +1,10 @@
 # Screen Scenarios
 
 This document governs the screen tier: tests that run the whole application, draw its frames on a display,
-and press its controls the way a user does. It covers `tests/screens/`, where the scenarios live, and
-`tests/suite/screens/`, which drives them. Consult it before writing a scenario, and when a change to the
-interface needs proving that no lower tier can give.
+and press its controls the way a user does. It covers `tests/screens/`, where the scenarios live,
+`tests/suite/screens/`, which holds the material they seed their homes with, and `automation/`, the unit that
+drives the application for them. Consult it before writing a scenario, and when a change to the interface
+needs proving that no lower tier can give.
 
 ---
 
@@ -99,11 +100,18 @@ mark makes the run fail once the bug is fixed, until the mark goes. A known cras
 the parent reports a marked scenario whose process a signal killed as the failure it expects, naming the
 signal.
 
-### 7. The DearPyGui layer knows nothing of SampleToNES
+### 7. The driver is a unit of its own, and its DearPyGui layer knows nothing of SampleToNES
 
-`tests/suite/screens/dearpygui/` drives any DearPyGui application: the process per scenario, the display,
-the input, the readings and the waiting. The SampleToNES layer around it holds what belongs to this
-application: the views, the stand-ins at its boundaries and the after-checks. A case in
+`automation/` operates the running application from outside, for whoever needs it driven: the scenarios
+here, and any other work that puts the application in a state and reads its screen. It stands beside the
+source tree as a checkout unit ([tooling](../tooling.md)): it imports the program and nothing from
+`tests/`, and the import-boundary check holds it to that. The scenarios' material stays in the test tree: the seeds and
+the worlds built from the archived corpus, the mini library and the history projects are what the
+scenarios prove with, so `tests/suite/screens/` keeps them and the plugin asks for a world by its fixture.
+
+Inside the unit, `automation/dearpygui/` drives any DearPyGui application: the process per scenario, the
+display, the input, the readings and the waiting. The SampleToNES layer around it holds what belongs to
+this application: the views, the stand-ins at its boundaries and the after-checks. A case in
 `tests/integration/tooling/` holds the direction. The DearPyGui layer grows only when a scenario here needs
 something, and it moves to a project of its own the day a second application wants it.
 
@@ -168,7 +176,7 @@ through the queue's own error reporting.
 
 ## Views
 
-A scenario speaks through views, one per tab, card and dialog, under `tests/suite/screens/views/`. A view
+A scenario speaks through views, one per tab, card and dialog, under `automation/views/`. A view
 knows its controls by their tags and its words by their language keys. A tag that moves changes one view,
 and a scenario reads as the gestures a user makes.
 
@@ -267,16 +275,18 @@ What several files of a subject share sits in modules of the package, written on
 | `steps.py` | Steps, readings and the builders of a world |
 | `conftest.py` | Fixtures every file of the package uses, such as `world` and `startup` |
 
-What several areas share lives in `tests/suite/screens/vocabulary/`, one module per area: the keys of
-the dialogs and their messages, of the converter and of playback, and the names of the seeded recordings.
+What several areas share lives in `automation/vocabulary/`, one module per area: the keys of
+the dialogs and their messages, of the converter and of playback. The names of the seeded recordings
+stand with the seeds, in `tests/suite/screens/seeds/`.
 A value that one file alone uses stays in that file. Constants stand directly under the imports in every
 module, so a reader meets the values before the code that uses them; the tables of `cases.py` follow the
 types they are made of. A case in `tests/integration/tooling/` holds that order. Scenario files import from
 `constants.py`, `cases.py`, `steps.py` and the vocabulary, and never from one another.
 
-The driver under `tests/suite/screens/` follows the same rules: a package per concern (`application`, `boundaries`,
-`holds`, `plugin`, `seeds`, `worlds`, `views`, `steps`, and the DearPyGui layer with its `gestures` and `items`),
-and a module per responsibility inside it.
+The driver under `automation/` follows the same rules: a package per concern (`application`, `boundaries`,
+`holds`, `plugin`, `views`, `steps`, `worlds` for the world type and the empty world, and the DearPyGui layer
+with its `gestures` and `items`), and a module per responsibility inside it. So does the scenarios' material
+under `tests/suite/screens/`, with `seeds` and the `worlds` built from them.
 
 ### Docstrings
 
@@ -316,24 +326,26 @@ removed.
 What a run keeps lies under `build/screens/`, in a folder named after the test: the reports, and when the
 scenario failed, a screenshot of the last frame and a copy of the home it left. A copy that lost files
 leaves a note beside it. `screen.capture` keeps a picture as evidence of a look, for a pull request rather
-than an assertion.
+than an assertion. `SAMPLETONES_SCREENS_KEPT` moves that folder, and `SAMPLETONES_SCREENS_SCREEN`, read as
+`WIDTHxHEIGHT`, sizes the virtual screen, so a run made for another purpose keeps apart from the scenarios'.
 
 ## Who governs what
 
 | Concern | Owner |
 |---|---|
-| A scenario per process, its reports | `tests/suite/screens/dearpygui/isolation.py`, `plugin/hooks.py` |
-| The fixtures a scenario asks for | `tests/suite/screens/plugin/fixtures.py`, `plugin/hold_fixtures.py` |
-| The render thread crossing and waiting | `tests/suite/screens/dearpygui/bridge.py` |
-| What a user can reach | `tests/suite/screens/dearpygui/reach.py`, `semantic.py` |
-| The gestures | `tests/suite/screens/dearpygui/hand.py` and `gestures/`: `arrival.py` (waiting and confirming), `witness.py` (what Dear ImGui counted), `pointer.py`, `scrolling.py`, `keyboard.py` |
-| What a reading says of an item | `tests/suite/screens/dearpygui/items/`: `reading.py`, `regions.py`, `texts.py`, `colors.py`, `viewport.py` |
-| The display a worker draws on | `tests/suite/screens/dearpygui/display.py` |
-| The application under test and how it ends | `tests/suite/screens/application/` |
-| The stand-ins at the boundaries | `tests/suite/screens/boundaries/` |
-| Work held in flight | `tests/suite/screens/holds/` |
-| The after-checks | `tests/suite/screens/checks.py` |
-| What a scenario holds and reads | `tests/suite/screens/screen.py`, `views/`, `steps/` |
+| A scenario per process, its reports | `automation/dearpygui/isolation.py`, `plugin/hooks.py` |
+| The fixtures a scenario asks for | `automation/plugin/fixtures.py`, `plugin/hold_fixtures.py` |
+| The render thread crossing and waiting | `automation/dearpygui/bridge.py` |
+| What a user can reach | `automation/dearpygui/reach.py`, `semantic.py` |
+| The gestures | `automation/dearpygui/hand.py` and `gestures/`: `arrival.py` (waiting and confirming), `witness.py` (what Dear ImGui counted), `pointer.py`, `scrolling.py`, `keyboard.py` |
+| What a reading says of an item | `automation/dearpygui/items/`: `reading.py`, `regions.py`, `texts.py`, `colors.py`, `viewport.py` |
+| The display a worker draws on | `automation/dearpygui/display.py` |
+| The application under test and how it ends | `automation/application/` |
+| The stand-ins at the boundaries | `automation/boundaries/` |
+| Work held in flight | `automation/holds/` |
+| The after-checks | `automation/checks.py` |
+| What a scenario holds and reads | `automation/screen.py`, `views/`, `steps/` |
+| The world type and the empty world | `automation/worlds/home.py` |
 | What a scenario's home holds | `tests/suite/screens/worlds/`, and the files it seeds in `seeds/` |
-| The words several areas share | `tests/suite/screens/vocabulary/` |
-| The window manager's requests | `tests/suite/screens/dearpygui/windows.py` |
+| The words several areas share | `automation/vocabulary/` |
+| The window manager's requests | `automation/dearpygui/windows.py` |

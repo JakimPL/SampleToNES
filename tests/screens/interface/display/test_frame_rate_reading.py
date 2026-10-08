@@ -2,12 +2,12 @@ import operator
 
 import pytest
 
+from automation.screen import Screen
+from automation.worlds.home import World, screen_filling_state
+from automation.written import written_application_config
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_application.config.session.application.display import DisplayConfig
 from tests.screens.interface.display.steps import leave, open_display_settings
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.worlds.home import World, screen_filling_state
-from tests.suite.screens.written import written_application_config
 
 
 class TestSwitchingTheFrameRateReadingOff:

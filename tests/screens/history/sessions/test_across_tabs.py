@@ -1,5 +1,7 @@
 from typing import Dict, Final, List
 
+from automation.screen import Screen
+from automation.steps.sequencer import leave_letting_the_project_go, open_voice
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
@@ -14,8 +16,6 @@ from tests.screens.history.steps import (
     typed_values,
     volume_fields,
 )
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go, open_voice
 
 LEAD_TYPED: Final[Dict[ChannelName, str]] = {ChannelName.PULSE1: "8 3"}
 PAD_TYPED: Final[Dict[ChannelName, str]] = {ChannelName.PULSE1: "10 5 1"}

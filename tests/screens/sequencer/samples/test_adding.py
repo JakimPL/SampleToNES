@@ -3,6 +3,10 @@ from typing import Final, List
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.screen import Screen
+from automation.steps.reconstructions import UNTITLED, marked
+from automation.steps.sequencer import leave_letting_the_project_go
 from sampletones_shared.constants.nes import DEFAULT_NES_FREQUENCY
 from tests.screens.sequencer.samples.cases import DOORS, Door
 from tests.screens.sequencer.samples.constants import (
@@ -21,10 +25,6 @@ from tests.screens.sequencer.samples.steps import (
     expect_refused,
     project_part,
 )
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import UNTITLED, marked
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go
 from tests.suite.screens.worlds.recordings import SHORT_RECONSTRUCTION
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT, BASS_VOICE, LINE, PAD
 

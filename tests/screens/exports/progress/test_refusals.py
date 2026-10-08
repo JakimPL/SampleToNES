@@ -4,16 +4,16 @@ from typing import Final
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.boundaries.dialogs import DialogKind
+from automation.screen import Screen
+from automation.steps.sequencer import open_voice_menu
+from automation.vocabulary.exports import EXPORT_INSTRUMENT, NSF_EXPORTED
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_player.specification.nsf import NSF_MAGIC
 from sampletones_shared.paths.extensions import EXT_FILE_BITPHASE, EXT_FILE_MODULE, EXT_FILE_NSF
 from tests.screens.exports.progress.constants import FAILED_EXPORT, INSTRUMENT_CHANNEL, MODULE_EXPORTED
 from tests.screens.exports.progress.steps import folder, written_project
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import open_voice_menu
-from tests.suite.screens.vocabulary.exports import EXPORT_INSTRUMENT, NSF_EXPORTED
 from tests.suite.screens.worlds.songs import LINE, OVERLONG_PROJECT, TWO_TUNINGS_PROJECT
 
 NSF_FAILED: Final[str] = "global.dialog.message.nsf_project_export_failed"

@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import Dict
 
-from tests.suite.screens.boundaries.highlights import HighlightPlace
-from tests.suite.screens.palettes import Color
+from automation.boundaries.highlights import HighlightPlace
+from automation.palettes import Color
 
 
 @dataclass(frozen=True)
