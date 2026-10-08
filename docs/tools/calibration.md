@@ -25,8 +25,7 @@ sampletones calibration
 ```
 
 The run takes a while, because it reconstructs every reference sound once for each variant. A first run
-also builds each instruction library it needs, which adds to the time. A library counts as needed when it
-is missing or another version built it.
+also builds the instruction libraries it needs.
 
 With no options, the run measures the program's default settings under the packaged suite:
 
@@ -34,12 +33,11 @@ With no options, the run measures the program's default settings under the packa
 - The channels pulse 1, triangle and noise.
 - Every other setting at its default value.
 
-A *variant* is one configuration the run measured, named after the settings that set it apart. For
+A *variant* is one configuration the run measured, named after its distinguishing settings. For
 example, `cqt-pe1` is the `cqt` method at perceptual exponent 1. A *render* is one reference sound as a
 variant reconstructed it.
 
-The same run on another machine or another version gives figures that compare directly, because
-the reference sounds are generated from a fixed seed.
+The reference sounds are identical on every run, so figures from different versions compare.
 
 The results go into a new folder inside the `calibration` folder of your
 [SampleToNES folder](../guide/files.md). The folder is named by the date and time the run started, for
@@ -84,7 +82,7 @@ sound's versions, and <kbd>&uarr;</kbd> and <kbd>&darr;</kbd> move to another so
 The page is drawn in the program's own colors. `--palette NAME` draws it in another of the
 program's palettes, and `--no-open` leaves it closed and prints its link alone.
 
-A render plays at the same gain as its recording, so a quieter render really is quieter. You can also
+A render plays at the same level as its recording, so a quieter render sounds quieter. You can also
 play any file in the run folder in an audio player of your own.
 
 Beside each render, a JSON file of the same name has:
@@ -110,7 +108,7 @@ The `mr-loudness-dB` section adds a table for each of its readings:
 - `level`: how much louder the reconstruction plays than the original, in decibels. A negative value
   means quieter.
 
-`missing` and `added` add up to the score. The level is reported apart from it.
+The score is `missing` plus `added`. `level` is reported separately.
 
 ## Custom runs
 
@@ -132,8 +130,6 @@ Lists are comma separated. Several lists multiply: `--methods fft,cqt --perceptu
 
 From a copy of the source code, put `uv run` in front: `uv run sampletones calibration --methods cqt`.
 
-The default suite is the file `sampletones_tools/calibration/config/suite.yaml` in the package.
-
 ## Compare runs
 
 1. Run calibration into a folder of its own, for example `-o before`.
@@ -150,8 +146,6 @@ last column. It carries the audio it plays, so the `comparison` folder moves as 
 `-o` the page lands in a timestamped folder under `calibration/pages`.
 
 `--board` reads finished runs and measures nothing, so it takes none of the options that measure.
-
-Both runs generate the same reference sounds, so every score and every render compares directly.
 
 To compare two versions of the source code, run each version from its own copy of the repository,
 for example a `git worktree`, into its own folder.
@@ -173,32 +167,20 @@ tests one kind of decision:
 | `dynamics` | a crescendo, and a loud burst dropping to a quiet hiss | following the level |
 | `polyphony` | a chord, and a melody over a snare | several voices at once |
 
-The sounds and their parameters are defined in `sampletones_tools/calibration/config/corpus.yaml`.
-
 ### The referees
 
-Referees measure in their own way, apart from the reconstruction's own scoring, so a comparison stays
+Referees score in their own way, separate from the reconstruction's own scoring, so a comparison stays
 fair when that scoring is what changed.
 
 Both built-in referees split each signal into bands spaced the way hearing spaces pitch, at several
-time resolutions, and compare the energy in each band in decibels. Their tuning is in
-`sampletones_tools/calibration/config/referee.yaml`.
+time resolutions, and compare the energy in each band in decibels.
 
 - **`mr-auditory-dB`** averages the difference over every band equally. It reads the balance of
   tone against noise across the whole spectrum. An empty band counts as much as a full one, so a clip
-  that adds noise to a lone tone scores worse than silence. The report lists this referee first for
-  now (see [Which referee leads](#which-referee-leads)).
+  that adds noise to a lone tone scores worse than silence. The report lists this referee first.
 - **`mr-loudness-dB`** weighs each band by how loud it plays, so the parts you hear carry the score
   and silent bands barely count. It first brings the reconstruction to the original's level and
   reports the level difference on its own. Silence scores worst, and a clip with the right tone and
   some added noise scores between.
 - **`zimtohrli`** is a model of human hearing from Google. It joins the other two where it is
   installed. See [dependencies](../development/release/dependencies.md#calibration).
-
-A referee is tested against sounds whose ranking is known, such as "a triangle at the right pitch is
-closer to a sine than silence is". Rankings it is known to get wrong are recorded as expected failures.
-
-### Which referee leads
-
-The report lists `mr-auditory-dB` first. `mr-loudness-dB` takes the lead once by-ear ratings of a sweep
-of renders agree with its scores.
