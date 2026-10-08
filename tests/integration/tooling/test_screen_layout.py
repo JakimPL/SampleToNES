@@ -2,6 +2,7 @@ import ast
 from pathlib import Path
 from typing import Final, Iterator, List
 
+from assets.pictures.paths import SCENES_DIRECTORY
 from automation.paths import AUTOMATION_DIRECTORY
 from sampletones_shared.paths.source import REPOSITORY_ROOT
 
@@ -9,7 +10,12 @@ SCENARIO_FILE_PREFIX: Final[str] = "test_"
 CASES_MODULE: Final[str] = "cases.py"
 SCENARIOS_DIRECTORY: Final[Path] = REPOSITORY_ROOT / "tests" / "screens"
 MATERIAL_DIRECTORY: Final[Path] = REPOSITORY_ROOT / "tests" / "suite" / "screens"
-SCREEN_TIER_DIRECTORIES: Final[List[Path]] = [SCENARIOS_DIRECTORY, MATERIAL_DIRECTORY, AUTOMATION_DIRECTORY]
+SCREEN_TIER_DIRECTORIES: Final[List[Path]] = [
+    SCENARIOS_DIRECTORY,
+    MATERIAL_DIRECTORY,
+    AUTOMATION_DIRECTORY,
+    SCENES_DIRECTORY,
+]
 
 
 def screen_tier_modules() -> Iterator[Path]:

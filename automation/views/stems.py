@@ -17,6 +17,7 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.tags.reconstructions import (
     PRE_RECONSTRUCTION_STEMS,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_CHECKBOX_COLLAPSE_LEVELS,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_REMOVE_STEM_CONFIRMATION,
 )
 from sampletones_application.ui.elements.stems.tags import StemsTags
@@ -43,6 +44,15 @@ class StemsCard:
             hand,
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_REMOVE_STEM_CONFIRMATION,
         )
+
+    def levels_collapsed(self) -> bool:
+        """Whether the Collapse levels box stands ticked, which folds the level headings away."""
+        return bool(self._bridge.ask(lambda: read_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_CHECKBOX_COLLAPSE_LEVELS)))
+
+    def toggle_levels(self) -> None:
+        """Clicks the Collapse levels box, which folds the level headings away or brings them back."""
+        self._hand.scroll_into_view(TAG_RECONSTRUCTIONS_RECONSTRUCTION_CHECKBOX_COLLAPSE_LEVELS)
+        self._hand.click(TAG_RECONSTRUCTIONS_RECONSTRUCTION_CHECKBOX_COLLAPSE_LEVELS)
 
     def has_row(self, key: str) -> bool:
         """Whether a row for the recording ``key`` stands on the screen."""

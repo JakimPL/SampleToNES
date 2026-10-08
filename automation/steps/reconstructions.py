@@ -36,7 +36,8 @@ def reconstruction_row(screen: Screen, path: Path) -> Item:
     """The browser's row of the reconstruction at ``path``, under the heading listing reconstructions by
     configuration.
 
-    The heading is opened where it stands closed, so the row is in reach.
+    The heading and every row above the reconstruction's are opened where they stand closed, so the row
+    is in reach.
     """
     browser = screen.reconstructions.browser
     heading = screen.expect_item(
@@ -51,7 +52,13 @@ def reconstruction_row(screen: Screen, path: Path) -> Item:
             description="the heading open",
         )
 
-    return screen.expect_item(lambda: browser.file_row(path), description=f"the row of {path.name}")
+    row = screen.expect_item(lambda: browser.file_row(path), description=f"the row of {path.name}")
+    for above in browser.rows_above(row):
+        if not browser.is_open(above):
+            browser.open_by_click(above)
+            screen.expect(lambda: browser.is_open(above), bool, description=f"{browser.label(above)} open")
+
+    return row
 
 
 def load_from_the_browser(screen: Screen, path: Path) -> None:

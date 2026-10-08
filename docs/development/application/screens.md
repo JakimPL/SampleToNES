@@ -103,7 +103,7 @@ signal.
 ### 7. The driver is a unit of its own, and its DearPyGui layer knows nothing of SampleToNES
 
 `automation/` operates the running application from outside, for whoever needs it driven: the scenarios
-here, and any other work that puts the application in a state and reads its screen. It stands beside the
+here, and the pictures the guide is illustrated with ([assets](../assets.md)). It stands beside the
 source tree as a checkout unit ([tooling](../tooling.md)): it imports the program and nothing from
 `tests/`, and the import-boundary check holds it to that. The scenarios' material stays in the test tree: the seeds and
 the worlds built from the archived corpus, the mini library and the history projects are what the

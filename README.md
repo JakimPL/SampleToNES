@@ -14,7 +14,7 @@
 _SampleToNES_ (`sampletones`) is a desktop tool for people writing music for the NES 2A03 sound chip, mainly in [_FamiTracker_](http://famitracker.com/).
 
 <div align="center">
-    <img src="https://raw.githubusercontent.com/JakimPL/SampleToNES/main/docs/images/sampletones.png" alt="SampleToNES" width="760">
+    <img src="https://raw.githubusercontent.com/JakimPL/SampleToNES/main/docs/images/sampletones.webp" alt="SampleToNES" width="760">
 </div>
 
 The core idea is to approximate an audio sample using only the chip's basic oscillators — two pulse channels, a triangle, and noise — **without any DPCM samples**.
