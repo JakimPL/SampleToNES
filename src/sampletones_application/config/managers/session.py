@@ -192,6 +192,9 @@ class SessionManager:
     def set_borderless(self, borderless: bool) -> None:
         self._config_manager.set_borderless(borderless)
 
+    def set_show_frame_rate(self, show_frame_rate: bool) -> None:
+        self._config_manager.set_show_frame_rate(show_frame_rate)
+
     def set_shortcut_scheme_name(self, name: str) -> None:
         self._config_manager.set_shortcut_scheme_name(name)
 
@@ -260,6 +263,10 @@ class SessionManager:
     @property
     def borderless(self) -> bool:
         return self._config_manager.borderless
+
+    @property
+    def show_frame_rate(self) -> bool:
+        return self._config_manager.show_frame_rate
 
     @property
     def shortcut_scheme_name(self) -> str:

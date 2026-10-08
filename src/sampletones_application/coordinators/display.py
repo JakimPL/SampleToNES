@@ -1,6 +1,6 @@
 import math
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Protocol
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
@@ -22,6 +22,13 @@ from sampletones_application.view_model.shared.display_settings import (
 )
 from sampletones_application.viewport import ViewportManager, WindowPlacement
 from sampletones_shared.display import Resolution
+
+
+class FrameRateReading(Protocol):
+    """The frame-rate reading the window shows, which a display setting puts on or takes off the screen."""
+
+    def show_frame_rate(self, shown: bool) -> None:
+        """Shows the reading when ``shown`` is true, and takes it off the screen otherwise."""
 
 
 @dataclass(frozen=True)
@@ -61,6 +68,7 @@ class DisplayCoordinator:
         palette_source: PaletteSource,
         palette_catalog: PaletteCatalog,
         *,
+        frame_rate_reading: FrameRateReading,
         window: GUIDisplaySettingsWindow,
         countdown: GUICountdownWindow,
         behavior: DisplayBehavior,
@@ -73,6 +81,7 @@ class DisplayCoordinator:
         self._frame_limiter = frame_limiter
         self._palette_source = palette_source
         self._palette_catalog = palette_catalog
+        self._frame_rate_reading = frame_rate_reading
         self._window = window
         self._countdown = countdown
         self._behavior = behavior
@@ -202,6 +211,7 @@ class DisplayCoordinator:
         self._session_manager.set_palette_name(settings.palette)
         self._session_manager.set_vsync(settings.vsync)
         self._session_manager.set_max_fps(settings.frame_rate)
+        self._session_manager.set_show_frame_rate(settings.show_frame_rate)
         self._session_manager.set_borderless(settings.window.borderless)
         self._close()
 
@@ -256,6 +266,9 @@ class DisplayCoordinator:
         if current.frame_rate != previous.frame_rate:
             self._frame_limiter.set_max_fps(current.frame_rate)
 
+        if current.show_frame_rate != previous.show_frame_rate:
+            self._frame_rate_reading.show_frame_rate(current.show_frame_rate)
+
         self._apply_window(previous.window, current.window)
 
     def _apply_window(self, previous: WindowMode, current: WindowMode) -> None:
@@ -288,6 +301,7 @@ class DisplayCoordinator:
             ),
             vsync=self._session_manager.vsync,
             frame_rate=self._session_manager.max_fps,
+            show_frame_rate=self._session_manager.show_frame_rate,
         )
 
     def _view_model(self, settings: DisplaySettings) -> DisplaySettingsViewModel:

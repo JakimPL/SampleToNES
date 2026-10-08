@@ -6,7 +6,11 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.tags.general import TAG_GLOBAL_TAB_INSTRUCTIONS, TAG_GLOBAL_WINDOW_MAIN
+from sampletones_application.tags.general import (
+    TAG_GLOBAL_TAB_INSTRUCTIONS,
+    TAG_GLOBAL_TEXT_MENU_FPS,
+    TAG_GLOBAL_WINDOW_MAIN,
+)
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from tests.suite.screens.dearpygui.bridge import Bridge
 from tests.suite.screens.dearpygui.geometry import Point
@@ -67,6 +71,10 @@ class MenuBar:
     def is_tagged_enabled(self, tag: str) -> bool:
         """Whether the entry carrying ``tag`` answers a press."""
         return self._bridge.ask(lambda: read_item(tag).enabled)
+
+    def frame_rate_reading_shown(self) -> bool:
+        """Whether the reading of the frame rate stands at the far end of the bar."""
+        return self._bridge.ask(lambda: read_item(TAG_GLOBAL_TEXT_MENU_FPS)).shown
 
     def open(self, group: MenuElements) -> None:
         """Clicks the header of the menu ``group``, which opens its popup."""

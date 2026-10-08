@@ -11,6 +11,7 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_DISPLAY_BUTTON_OK,
     TAG_SETTINGS_DISPLAY_BUTTON_REVERT,
     TAG_SETTINGS_DISPLAY_CHECKBOX_BORDERLESS,
+    TAG_SETTINGS_DISPLAY_CHECKBOX_SHOW_FRAME_RATE,
     TAG_SETTINGS_DISPLAY_CHECKBOX_VSYNC,
     TAG_SETTINGS_DISPLAY_COMBO_PALETTE,
     TAG_SETTINGS_DISPLAY_COMBO_RESOLUTION,
@@ -86,6 +87,14 @@ class DisplaySettings:
     def toggle_vsync(self) -> None:
         """Clicks the vertical sync box, which ticks it or lets it go."""
         self._hand.click(TAG_SETTINGS_DISPLAY_CHECKBOX_VSYNC)
+
+    def frame_rate_shown(self) -> bool:
+        """Whether the Show frame rate box stands ticked."""
+        return bool(self._bridge.ask(lambda: read_value(TAG_SETTINGS_DISPLAY_CHECKBOX_SHOW_FRAME_RATE)))
+
+    def toggle_frame_rate(self) -> None:
+        """Clicks the Show frame rate box, which puts the reading on the menu bar or takes it off at once."""
+        self._hand.click(TAG_SETTINGS_DISPLAY_CHECKBOX_SHOW_FRAME_RATE)
 
     def borderless(self) -> bool:
         """Whether the borderless box stands ticked."""

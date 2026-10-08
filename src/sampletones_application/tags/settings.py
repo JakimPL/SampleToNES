@@ -93,6 +93,12 @@ TAG_SETTINGS_DISPLAY_CHECKBOX_VSYNC = TagName(
     Widget.CHECKBOX,
     "vsync",
 )
+TAG_SETTINGS_DISPLAY_CHECKBOX_SHOW_FRAME_RATE = TagName(
+    Page.SETTINGS,
+    Panel.DISPLAY,
+    Widget.CHECKBOX,
+    "show_frame_rate",
+)
 TAG_SETTINGS_DISPLAY_BUTTON_OK = TagName(
     Page.SETTINGS,
     Panel.DISPLAY,

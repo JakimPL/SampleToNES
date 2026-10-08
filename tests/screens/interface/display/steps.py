@@ -3,6 +3,7 @@ from typing import Tuple
 
 from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_application.config.session.state.window import ViewportState
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_shared.display import Resolution
 from tests.screens.interface.display.constants import HAND_SIZE, HAND_X, HAND_Y, SIZE_SEPARATOR
 from tests.suite.screens.dearpygui.items.viewport import read_viewport, read_viewport_decorated
@@ -31,6 +32,13 @@ def window_position(screen: Screen) -> Tuple[int, int]:
 def framed(screen: Screen) -> bool:
     """Whether the window has its frame."""
     return screen.bridge.ask(read_viewport_decorated)
+
+
+def leave(screen: Screen) -> None:
+    """Leaves the application with the exit shortcut and waits for it to close."""
+    screen.press_shortcut(ShortcutId.EXIT)
+
+    assert screen.wait_for_exit()
 
 
 def open_display_settings(screen: Screen) -> None:

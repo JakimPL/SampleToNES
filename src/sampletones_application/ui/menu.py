@@ -134,6 +134,7 @@ class MenuBar:
         player_glyphs: PlayerGlyphs,
         player_layout: PlayerLayout,
         language_manager: LanguageManager,
+        frame_rate_shown: bool,
         build_edit_actions: Callable[[], bool],
         build_voice_actions: VoidCallback,
         on_play_from_start: VoidCallback,
@@ -148,6 +149,7 @@ class MenuBar:
         self._player_glyphs = player_glyphs
         self._player_layout = player_layout
         self._language_manager = language_manager
+        self._frame_rate_shown = frame_rate_shown
         self._build_edit_actions = build_edit_actions
         self._on_play_from_start = on_play_from_start
         self._on_pause_or_resume = on_pause_or_resume
@@ -633,6 +635,7 @@ class MenuBar:
             tag=TAG_GLOBAL_TEXT_MENU_FPS,
             width=-1,
             enabled=False,
+            show=self._frame_rate_shown,
         )
         self._fps_theme.bind_to_item(TAG_GLOBAL_TEXT_MENU_FPS)
         FontRegistry.bind_to_item(TAG_GLOBAL_TEXT_MENU_FPS, Font.MONO_SMALL)
@@ -770,7 +773,16 @@ class MenuBar:
             )
             dpg_set_value(self._pause_tooltip_tag, self._lbl_pause)
 
+    def show_frame_rate(self, shown: bool) -> None:
+        """Puts the frame-rate reading on the bar when ``shown`` is true, and takes it off otherwise."""
+        self._frame_rate_shown = shown
+        dpg_configure_item(TAG_GLOBAL_TEXT_MENU_FPS, show=shown)
+
     def update_fps(self, fps: float) -> None:
+        """Writes the rate reached into the reading while it stands on the bar."""
+        if not self._frame_rate_shown:
+            return
+
         dpg_configure_item(
             TAG_GLOBAL_TEXT_MENU_FPS,
             label=self._tpl_fps.format(fps=fps),
