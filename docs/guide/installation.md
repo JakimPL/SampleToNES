@@ -6,8 +6,6 @@ You can install _SampleToNES_ in several ways. If you are unsure, download a rel
 - **Install from PyPI.** This works on Windows, macOS and Linux.
 - **Run from source.** Use this to change the code or to build the app yourself.
 
-GPU acceleration is optional. The last section of this page explains it.
-
 ## Download a release
 
 1. Open the [releases page](https://github.com/JakimPL/SampleToNES/releases).
@@ -65,7 +63,7 @@ On Windows and Linux, you can also build a standalone app from the source code:
 ## GPU acceleration
 
 _SampleToNES_ can use an NVIDIA graphics card to build libraries and convert recordings faster. It
-needs an NVIDIA card with a current driver, on Windows or Linux. On macOS, the app uses the CPU.
+needs an NVIDIA card with a current driver, on Windows or Linux. On macOS, the app runs without GPU acceleration.
 
 - **From source**: `make setup` checks your NVIDIA driver and installs the matching GPU support.
   `make setup GPU=0` installs the app for the CPU alone.
