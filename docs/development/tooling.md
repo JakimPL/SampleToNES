@@ -73,7 +73,7 @@ The Makefile is the developer's index, one line per target. A target names the s
 and passes its flag. The `run` and `calibration` targets name the `sampletones` command they start with no
 options, and the `tracker-playback` target passes the inputs its command takes: the Bitphase source folder
 its `BITPHASE` variable names, the `FamiTracker.exe` its `FAMITRACKER` variable names, and the project
-files in `PROJECT`, if any. The `icons` target runs a maker of the assets unit. It runs each target it is
+files in `PROJECT`, if any. The `icons` and `demo` targets run makers of the assets unit. It runs each target it is
 given. `install.sh` and `install.bat` at the root
 exist for the double-click path and call the same bundle script.
 

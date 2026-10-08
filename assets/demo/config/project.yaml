@@ -1,0 +1,91 @@
+module:
+  title: Demo song
+  author: SampleToNES
+  tempo: 150
+  speed: 6
+  nes_frequency: 60
+instruments:
+  Lead:
+    volume: [12, 11, 10, 9, 8, 7, 7, 6, 6, 5]
+    arpeggio: []
+    duty_cycle: [1]
+    initial_pitch: 69
+  Bass:
+    volume: [15, 13, 11, 9, 7, 5, 3, 2]
+    arpeggio: []
+    duty_cycle: []
+    initial_pitch: 45
+song:
+  rows_per_pattern: 16
+  order:
+    - { pulse1: 0, pulse2: 0, triangle: 0, noise: 0 }
+    - { pulse1: 1, pulse2: 0, triangle: 1, noise: 0 }
+    - { pulse1: 0, pulse2: 0, triangle: 0, noise: 1 }
+    - { pulse1: 1, pulse2: 1, triangle: 1, noise: 1 }
+  channels:
+    pulse1:
+      patterns:
+        0:
+          - { row: 0, voice: Lead, transpose: 3, volume: 12 }
+          - { row: 2, voice: Lead, transpose: 7 }
+          - { row: 4, voice: Lead, transpose: 10 }
+          - { row: 7, voice: Lead, transpose: 7 }
+          - { row: 8, voice: Lead, transpose: 7 }
+          - { row: 10, voice: Lead, transpose: 3 }
+          - { row: 12, voice: Lead, transpose: 0 }
+          - { row: 15, "off": true }
+        1:
+          - { row: 0, voice: Lead, transpose: 8, volume: 12 }
+          - { row: 2, voice: Lead, transpose: 12 }
+          - { row: 4, voice: Lead, transpose: 15 }
+          - { row: 7, voice: Lead, transpose: 12 }
+          - { row: 8, voice: Lead, transpose: 10 }
+          - { row: 10, voice: Lead, transpose: 7 }
+          - { row: 12, voice: Lead, transpose: 5 }
+          - { row: 14, voice: Lead, transpose: 3 }
+    pulse2:
+      patterns:
+        0:
+          - { row: 0, voice: Lead, transpose: -5, volume: 8 }
+          - { row: 4, voice: Lead, transpose: -2 }
+          - { row: 8, voice: Lead, transpose: -5 }
+          - { row: 12, voice: Lead, transpose: -9 }
+        1:
+          - { row: 0, voice: Lead, transpose: 0, volume: 8 }
+          - { row: 4, voice: Lead, transpose: 3 }
+          - { row: 8, voice: Lead, transpose: -2 }
+          - { row: 12, voice: Lead, transpose: -5 }
+    triangle:
+      patterns:
+        0:
+          - { row: 0, voice: Bass, transpose: -9 }
+          - { row: 2, voice: Bass, transpose: -9 }
+          - { row: 4, voice: Bass, transpose: -9 }
+          - { row: 6, voice: Bass, transpose: -2 }
+          - { row: 8, voice: Bass, transpose: -12 }
+          - { row: 10, voice: Bass, transpose: -12 }
+          - { row: 12, voice: Bass, transpose: -12 }
+          - { row: 14, voice: Bass, transpose: -5 }
+        1:
+          - { row: 0, voice: Bass, transpose: -4 }
+          - { row: 2, voice: Bass, transpose: -4 }
+          - { row: 4, voice: Bass, transpose: -4 }
+          - { row: 6, voice: Bass, transpose: 3 }
+          - { row: 8, voice: Bass, transpose: -2 }
+          - { row: 10, voice: Bass, transpose: -2 }
+          - { row: 12, voice: Bass, transpose: 2 }
+          - { row: 14, voice: Bass, transpose: 5 }
+    noise:
+      patterns:
+        0:
+          - { row: 0, voice: Kick, volume: 15 }
+          - { row: 4, voice: Snare, volume: 12 }
+          - { row: 8, voice: Kick, volume: 15 }
+          - { row: 12, voice: Snare, volume: 12 }
+        1:
+          - { row: 0, voice: Kick, volume: 15 }
+          - { row: 4, voice: Snare, volume: 12 }
+          - { row: 6, voice: Kick, volume: 10 }
+          - { row: 8, voice: Kick, volume: 15 }
+          - { row: 12, voice: Snare, volume: 12 }
+          - { row: 14, voice: Snare, volume: 9 }

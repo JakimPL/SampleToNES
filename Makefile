@@ -1,4 +1,4 @@
-.PHONY: help setup install system-deps build release run calibration tracker-playback icons clean pre-commit test test-docs benchmarks screens lint format
+.PHONY: help setup install system-deps build release run calibration tracker-playback icons demo clean pre-commit test test-docs benchmarks screens lint format
 
 ifeq ($(OS),Windows_NT)
 PYTHON := python
@@ -13,6 +13,7 @@ Q := "
 endif
 
 GPU ?= auto
+DEMO ?= build/demo
 PROJECT_OPTIONS = $(foreach project,$(PROJECT),--project $(project))
 
 help:
@@ -29,6 +30,7 @@ help:
 	@echo $(Q)  make calibration - Measure reconstruction on the reference sounds; writes the renders and a report$(Q)
 	@echo $(Q)  make tracker-playback BITPHASE=folder FAMITRACKER=FamiTracker.exe [PROJECT=song.stp] - Play exported projects (the corpus by default) in Bitphase, FamiTracker or both; reports every tick that differs from the app$(Q)
 	@echo $(Q)  make icons       - Write the application icon suite from the mark into the package$(Q)
+	@echo $(Q)  make demo        - Make the demo tree (recordings, a library, reconstructions, a project) in DEMO=build/demo$(Q)
 	@echo $(Q)  make clean       - Remove build artifacts and cache files$(Q)
 	@echo $(Q)  make lint        - Run mypy and pylint (ARGS=--mypy or ARGS=--pylint for one of them)$(Q)
 	@echo $(Q)  make format      - Auto-format code (isort, black)$(Q)
@@ -63,6 +65,9 @@ tracker-playback:
 
 icons:
 	uv run python -m assets.icons
+
+demo:
+	uv run python -m assets.demo -o $(DEMO)
 
 clean:
 	$(PYTHON) scripts/clean.py
