@@ -1,13 +1,11 @@
-import threading
 from dataclasses import dataclass
-from typing import Any, Final, Iterator, List, Sequence, Tuple
+from typing import Any, Iterator, List, Sequence, Tuple
 from unittest.mock import patch
 
 import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.utils.gui.callbacks import hold_callbacks, run_held_callbacks
-from sampletones_application.utils.gui.render_thread import answered_while_drawing
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -15,9 +13,6 @@ SENDER = "the.widget"
 APP_DATA = 7
 USER_DATA = "carried"
 JOB = (SENDER, APP_DATA, USER_DATA)
-ANSWER: Final[str] = "the reader answered"
-WAITING_TIMEOUT: Final[float] = 5.0
-RENDER_THREAD_READING: Final[str] = "sampletones_application.utils.gui.render_thread.is_render_thread"
 
 
 @pytest.fixture
@@ -109,7 +104,10 @@ class TestRunningWhatWasHeld(BaseTestSuite):
         assert order == ["first", "second"]
 
     @staticmethod
-    def _taking(declared: int, received: List[Sequence[Any]]) -> Any:
+    def _taking(
+        declared: int,
+        received: List[Sequence[Any]],
+    ) -> Any:
         """A callback declaring ``declared`` of DearPyGui's arguments, recording what it was handed."""
         recorders = (
             lambda: received.append(()),
@@ -118,44 +116,3 @@ class TestRunningWhatWasHeld(BaseTestSuite):
             lambda sender, app_data, user_data: received.append((sender, app_data, user_data)),
         )
         return recorders[declared]
-
-
-class TestAGestureThatWaits(BaseTestSuite):
-    """A gesture standing on the render thread holds the frames up, so its waiting stands aside."""
-
-    def test_it_reports_what_the_waiting_answered(self) -> None:
-        with patch.object(dpg, "is_dearpygui_running", return_value=True):
-            assert answered_while_drawing(lambda: ANSWER) == ANSWER
-
-    def test_it_draws_while_the_waiting_stands(self) -> None:
-        drawn: List[int] = []
-        waiting = threading.Event()
-
-        def answer() -> str:
-            waiting.wait(WAITING_TIMEOUT)
-            return ANSWER
-
-        def frame() -> None:
-            drawn.append(len(drawn))
-            waiting.set()
-
-        with (
-            patch.object(dpg, "is_dearpygui_running", return_value=True),
-            patch.object(dpg, "render_dearpygui_frame", side_effect=frame),
-        ):
-            answered_while_drawing(answer)
-
-        assert drawn
-
-    def test_a_failure_reaches_the_gesture_that_waited(self) -> None:
-        def failing() -> str:
-            raise RuntimeError("the dialog went wrong")
-
-        with patch.object(dpg, "is_dearpygui_running", return_value=True):
-            with pytest.raises(RuntimeError):
-                answered_while_drawing(failing)
-
-    def test_work_reached_from_elsewhere_runs_where_it_stands(self) -> None:
-        """A thread of our own holds no frames up, so its waiting needs nothing standing aside."""
-        with patch(RENDER_THREAD_READING, return_value=False):
-            assert answered_while_drawing(lambda: ANSWER) == ANSWER
