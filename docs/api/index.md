@@ -95,7 +95,7 @@ reconstruction = Reconstruction.load("reconstruction.stn")
 
 ### Export instruments
 
-`Reconstruction.export` returns the [envelopes](../formats/famitracker.md#b-the-2a03-instrument) of each channel. `build_instrument` turns one channel's envelopes into a FamiTracker instrument, and `write_fti` saves it as an `.fti` file:
+`Reconstruction.export` returns the [envelopes](../formats/famitracker.md#b-the-2a03-instrument) of each channel. `build_instrument` turns one channel's envelopes into a FamiTracker instrument, and `write_fti` saves it as an `.fti` file. `repitched` says whether a module's transpose rows reach the instrument, which a standalone file never has:
 
 ```python
 from sampletones import Reconstruction
@@ -106,7 +106,12 @@ from sampletones_core.formats.famitracker.specification.instruments import STAND
 reconstruction = Reconstruction.load("reconstruction.stn")
 
 for channel, features in reconstruction.export().items():
-    instrument = build_instrument(STANDALONE_INSTRUMENT_INDEX, channel.value, features)
+    instrument = build_instrument(
+        STANDALONE_INSTRUMENT_INDEX,
+        channel.value,
+        features,
+        repitched=False
+    )
     write_fti(f"{channel.value}.fti", instrument)
 ```
 

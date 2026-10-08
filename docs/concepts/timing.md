@@ -1,8 +1,8 @@
 # Song timing
 
 This document explains how a song's tempo becomes the whole number of ticks each row lasts. Read it before
-changing the groove, or when you need to know why the rows of a song last unequal ticks. You can read it
-without the source code, which lives in `sampletones_core/timing/`.
+changing the groove, or when you need to know why the rows of a song last unequal ticks. The code lives in
+`sampletones_core/timing/`.
 
 ## 1. The problem
 

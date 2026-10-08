@@ -1,15 +1,13 @@
 # Song compression
 
 This document explains the ideas behind fitting a whole song into the space an NES program has for it.
-Read it before changing the encoder's scheme, or when you need to know what a layer earns. You can read it
-without the source code. The layout the encoder writes is in [NSF export](../formats/nsf.md). The package
-that implements it, with the driver that reads it back, is described in
+Read it before changing the encoder's scheme, or when you need to know what a layer earns. The layout
+the encoder writes is in [NSF export](../formats/nsf.md). The package that implements it, with the driver that reads it back, is described in
 [the console player](../development/player.md).
 
 The other exports _SampleToNES_ writes describe a song to a program that already knows how to play one. An
 `.nsf` carries its own player, so the song and the code that reads it share one 32 KB program area. Every
-byte the song takes is a byte of cartridge space. Compression is therefore part of the format and not a
-convenience on top of it.
+byte the song takes is a byte of cartridge space. Compression is part of the format.
 
 The scheme works in layers, and each layer can be switched off on its own so that what it saves can be
 measured ([section 6](#6-what-it-achieves)). Nothing here is lossy: the values the console writes to its
@@ -68,13 +66,8 @@ its first bent tick to its last. The bend plane holds those ticks' steps alone, 
 its own. A note played straight costs it nothing, and a channel that never bends leaves it out of the
 block. A loop re-enters it at the value its flags have reached, which is a boundary like any other.
 
-Before any phrase, these planes already take less than a plane per register. On the arrangement of
-[section 6](#6-what-it-achieves), the planes and their pitch table take 3.229 bytes a tick against 3.517.
-Both figures are coded in holds and literals ([section 3](#3-the-token-language)), with no plane packing
-its repeats ([section 2.3](#23-a-value-and-the-ticks-it-lasts)). The saving comes from the triangle. Its
-value plane names silence, so its control byte leaves the block. On their own, the index and the bend
-take 2.5 % more than the dividers. The arrangement bends every note its first pulse channel plays, so
-that channel's bend plane has a value on every tick. What the index earns is that **a pitch index can be
+The saving of the planes comes from the triangle, whose value plane names silence, so its control byte
+leaves the block. What the index earns is that **a pitch index can be
 transposed and a divider cannot.** The same figure played at five pitches is five unrelated byte
 sequences in divider space. In index space it is one sequence and five offsets, and its bend is the same
 bytes throughout. That turns a repeated sample into a single dictionary entry
@@ -233,20 +226,6 @@ Dropping them changes which ids are cheap, which changes the parse, which change
 worth. The table is therefore rebuilt with the busiest phrases first and the song is parsed again. The
 process repeats until it settles, for at most `SETTLING_ROUNDS` rounds.
 
-### 5.4 Matching is measured once
-
-The encoder parses the whole song many times: once as a baseline, once per confirmed candidate and once
-per settling round. Every parse asks the same question at every symbol: what does this phrase play here,
-and for how many symbols. The answer depends only on the plane and the phrase, so it is the same in every
-parse.
-
-The encoder therefore measures it once per plane per phrase and keeps it for the whole encoding. A search
-round that adds one phrase measures that one phrase, and everything already in the table answers from the
-reading taken when it arrived. This turns the cost of an encode from *parses × dictionary* into
-*dictionary*, which is the largest reason a long song encodes quickly. Phrases are also offered only at
-the symbols whose first two steps match their own, so a reading covers the handful of places a phrase
-could begin and not every symbol of the song.
-
 ## 6. What it achieves
 
 Measured by `uv run sampletones codec report` over its three-minute arrangement of 10800 ticks, counting
@@ -262,20 +241,14 @@ the dictionary, the streams and the pitch table. Each row builds on the one abov
 | phrases from the search as well | **0.874** | **12.59** | **37660** |
 
 The arrangement bends every note its first pulse channel plays, and that channel's bend plane carries
-every one of them. A song played straight leaves its bend planes out of the block. The song takes 9435
-bytes of the roughly 32000 available, and **37660 ticks is 10.5 minutes at 60 Hz**, against the 48 seconds
-a record per tick reaches. Encoding happens once, where the file is written. Decoding the arrangement
-costs the console around twenty instructions per plane per tick, and fewer on a tick a symbol still
-covers, well inside a video frame.
+every one of them. A song played straight leaves its bend planes out of the block. The full scheme stores **37660 ticks, 10.5
+minutes at 60 Hz**, in the space where a record per tick reaches 48 seconds. Encoding happens once, where
+the file is written.
 
-The format's constants are settled from a corpus of songs. Two results went against expectation.
-Splitting the duty cycle out of the control byte into a plane of its own **costs** bytes. On the
-arrangement above, encoded at every layer, it costs 5 % where no plane packs, because volume and duty
-turn over together, and a split pays two opcodes for what one covers. It costs 19 % where the planes pack
-as the format packs them, because a split plane also gives up the repeat count its register's spare bits
-carry. The pitch index earns its place through the transposition it makes possible, the fourth row of the
-table against the fifth. On its own, before any phrase, it costs a little
-([section 2.2](#22-pitches-instead-of-dividers)).
+The format's constants are settled from a corpus of songs. The duty cycle stays in the control byte
+because volume and duty turn over together, so a plane of its own pays two opcodes for what one covers
+and gives up the repeat count its register's spare bits carry. The pitch index earns its place through
+the transposition it makes possible, the fourth row of the table against the fifth.
 
 An export chooses how far down these layers it goes. Its **Level** names the layers read in order:
 

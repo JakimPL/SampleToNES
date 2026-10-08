@@ -2,7 +2,7 @@
 
 This document is the reference for how _SampleToNES_ writes [Bitphase](https://github.com/paator/bitphase)
 files: the `.btp` document and the `.json` instrument preset. It also lists the Bitphase capacity limits
-the exporter respects. Read it before changing anything under `formats/bitphase/`. The sibling
+the exporter respects. Read it when you write or check a `.btp` document or a `.json` preset. The sibling
 [FamiTracker export](famitracker.md) document covers the other tracker.
 [The tracker playback check](../tools/tracker-playback.md) plays exported documents through Bitphase's
 own engine and lists every tick they sound differently from the app.
@@ -24,9 +24,6 @@ its arpeggio envelope becomes the table, and its reference pitch becomes the not
 A `.btp` is the document's JSON under gzip, with no header and no version field. The exporter writes it
 without separator padding and with a fixed gzip timestamp, so exporting an unchanged document twice yields
 identical bytes.
-
-Bitphase's loader reads each field on its own and falls back to a default for any it misses. A document
-with every field below loads exactly as it was written.
 
 ```
 Project    { name, author, songs[], loopPointId, patternOrder[], tables[],

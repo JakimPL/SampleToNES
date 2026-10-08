@@ -14,7 +14,7 @@ A `.stp` file is a zip archive with two kinds of member:
   sample, stored as its own `.stn` member and referenced from the document by its
   id. The archive deflates its members, so a member has the reconstruction's payload as it stands.
 
-The reconstructions sit in separate members, so `project.json` stays small and the larger audio data
+The reconstructions sit in separate members, so `project.json` stays small and the larger reconstruction data
 travels beside it in the same archive. An [instrument](../glossary.md#instrument) has no audio, so the
 document holds it whole.
 

@@ -11,9 +11,7 @@ An `.nsf` differs from the tracker exports beside it. A [FamiTracker](famitracke
 `.nsf` carries its own player. The file has three parts: a header, the assembled driver, and the song the
 driver plays. The header names where the program loads and which routines the console calls.
 
-Every constant named here has a counterpart under `sampletones_player/specification/`. The assembly reads
-the same figures from `sampletones_tools/player/assembly/include/song.inc`. A test holds the two against
-each other, so a change made in one file and forgotten in the other is reported by name.
+Every constant named here has a counterpart under `sampletones_player/specification/`.
 
 ## A. The file
 
@@ -23,19 +21,36 @@ each other, so a change made in one file and forgotten in the other is reported 
 +128 + driver length    the song block, at the address the header states
 ```
 
-The header is NSF version 1. It has the magic `NESM\x1a`, one song, the load, init and play addresses,
-three 32-byte text fields, and the NTSC play period. The text fields have the title, the artist and the
-copyright an export sets. Each is UTF-8 ending in a NUL, so it holds `STRING_TEXT_SIZE` bytes of text, cut
-on a character boundary. `nsf/information.py` does the cut, and `nsf/header.py` writes the header.
+The header is NSF version 1:
+
+| Offset | Size | Field | Value |
+|---|---|---|---|
+| `0x00` | 5 | magic | `NESM\x1a` |
+| `0x05` | 1 | version | `1` |
+| `0x06` | 1 | song count | `1` |
+| `0x07` | 1 | first song | `1` |
+| `0x08` | 2 | load address | where the driver loads |
+| `0x0A` | 2 | init address | the driver's `init` |
+| `0x0C` | 2 | play address | the driver's `play` |
+| `0x0E` | 32 | title | UTF-8 text ending in a NUL |
+| `0x2E` | 32 | artist | as the title |
+| `0x4E` | 32 | copyright | as the title |
+| `0x6E` | 2 | NTSC play period | microseconds per video frame |
+| `0x70` | 8 | bankswitch | zeros |
+| `0x78` | 2 | PAL play period | `20000` microseconds |
+| `0x7A` | 1 | region | `0`, NTSC |
+| `0x7B` | 1 | expansion chips | `0`, none |
+| `0x7C` | 1 | NSF2 features | `0` |
+| `0x7D` | 3 | NSF2 length | zeros |
+
+Each text field holds `STRING_TEXT_SIZE` bytes of text, cut on a character boundary.
 
 The driver's image starts with two jumps, the entry points. `init` is at the load address and `play` is
 three bytes later, whatever the driver's own length. The header can therefore give both addresses without
-assembling anything. The song follows the code directly. That address is the one thing a build decides,
-and `driver/addresses.py` reads it back from the linker's own labels.
+assembling anything. The song follows the code directly. That address is the one thing a build decides.
 
 The console calls `init` once and then `play` once per video frame. The header asks for the NTSC frame
-period. A player that honors the field and one that drives from the frame itself both run a song at the
-speed it was built at.
+period. The song's speed does not depend on the header's play period.
 
 **The program area is 32 KB**, from `$8000` upward, and the song block gets what the driver leaves of it.
 A song that outgrows that space is reported as an export failure, and no shortened file is written.
