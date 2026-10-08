@@ -63,7 +63,7 @@ The stack follows the project lifecycle. An open project seeds a baseline entry,
 
 ## History detail rendering
 
-Committed entries are language-independent. An entry stores its action as a `HistoryAction` enum member and its detail as data segments. Language-managed words inside a detail, such as a loop's on/off state, are stored as `HistoryDetailWordSegment` keys. Action labels and word segments alike resolve through `LanguageManager` when the history view model is built, so switching the language re-renders past entries correctly.
+Committed entries are language-independent. An entry stores its action as a `HistoryAction` enum member and its detail as data segments. Language-managed words inside a detail, such as a loop's on/off state, are stored as language keys in `HistoryDetailSegment` entries with a `HistoryDetailRole`. Action labels and word segments alike resolve through `LanguageManager` when the history view model is built, so switching the language re-renders past entries correctly.
 
 ## Configuration
 

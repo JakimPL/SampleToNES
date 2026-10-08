@@ -30,18 +30,9 @@ the position between building the tree and the first frame that carries it. Dear
 modal where the pointer last was, and a position set through the API takes precedence over that. A placed
 dialog therefore never appears at the pointer.
 
-A dialog whose height its content settles has nothing to place from until a frame has measured it, so the
-correction centers it. It is drawn once where the modal opened, once centered against the height it had
-reached by then, and it stands where it belongs from the third frame on.
+A dialog whose height its content settles has nothing to place from until a frame has measured it, so the correction centers it. It is drawn once where the modal opened, once centered against the height it had reached by then, and it stands where it belongs from the third frame on. The correction re-reads the drawn size each frame and centers the window against it, so a dialog stays centered all the way to the size it settles at, and it ends once two readings agree. The correction ends on purpose: a dialog has no `no_move`, so a reader can drag it, and a pass that kept measuring would drag it back. The error dialog, whose **Show traceback** unfolds a text box, grows downward from where it stands.
 
-The correction re-reads the drawn size each frame and centers the window against it, so a dialog stays
-centered all the way to the size it settles at. The correction ends once two readings agree. It ends on
-purpose: a dialog has no `no_move`, so a reader can drag it, and a pass that kept measuring would drag it
-back. The one window that changes size while it stands is the error dialog, whose **Show traceback**
-unfolds a text box beneath the message. The correction has ended by then, so the dialog grows downward from
-where it stands.
-
-Each axis is held at zero at the least, so a dialog taller than the viewport keeps its title bar reachable.
+A dialog is never placed above or left of the viewport, so a dialog taller than the viewport keeps its title bar reachable.
 
 ## One modal at a time
 
@@ -130,10 +121,7 @@ exactly where it answers for closing. `GUIDialogWindow` adds the keyboard ring o
 confirmation, a save prompt, an error report and a notice. A dialog that belongs to one tab lives under
 `ui/panels/dialogs/`.
 
-`centered_position` (`utils/placement.py`) is the arithmetic, and `viewport_center` and
-`center_when_settled` (`utils/gui/align.py`) are the readings. `FrameCallbackManager` carries the frame the
-correction waits on. [render-thread.md](render-thread.md) says why it counts frames and does not wait on
-one.
+[render-thread.md](render-thread.md) says why the centering correction counts frames and does not wait on one.
 
 Who *raises* a dialog is a different question, and [architecture.md](../architecture.md) answers it: dialog
 presentation belongs to coordinators.

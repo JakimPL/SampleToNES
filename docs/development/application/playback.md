@@ -24,7 +24,7 @@ An instrument's audition is a preview of that kind. It reads the generator chose
 
 **A preview sounds the frames it renders.** An instrument sounds the envelopes it has, and a sample previews the frames its reconstruction recorded. Both sound exactly what they carry, because a recording's drive matters only while the conversion runs.
 
-**A voice sounded on its own runs to its release, or to the length it is offered.** A row holds a voice for as long as the pattern asks. An audition and the voice list's preview have no row behind them, so each has a span of its own. A volume dimension that ends at silence releases the voice, and the sound stops there. A voice that circles from a loop point never reaches a last item, so it sounds for the ticks `AUDITION_TICKS` offers it. `audition_ticks` (`sampletones_core/performance/audition.py`) counts both spans, so the plot card draws exactly the frames the keyboard sounds.
+**A voice sounded on its own runs to its release, or to the length it is offered.** A row holds a voice for as long as the pattern asks. An audition and the voice list's preview have no row behind them, so each has a span of its own. A volume dimension that ends at silence releases the voice, and the sound stops there. A voice that circles from a loop point never reaches a last item, so it sounds for the ticks `AUDITION_TICKS` offers it. One count serves both spans, so the plot card draws exactly the frames the keyboard sounds.
 
 **A sounding voice is marked where it has reached.** The device reports its position while it plays, and the plot card carries that mark along the voice it drew, as it does for a reconstruction's playback. A preview follows its own sound alone: `play` reports whether the request took the output, and the audition starts following only when it did. A request that yields to playback the reader asked for leaves that playback's mark where it is. The device reports a final zero as it winds down, which takes the mark off the card.
 
@@ -94,11 +94,11 @@ Every surface shows that one set and switches it. A channel's name is the switch
 
 The mask is pulled per rendered row, which is principle 6 for this control: a channel drops in or out as the render-ahead buffer drains, with the immediacy every other live edit has. A silenced channel still takes each row's voice, transpose and volume, so returning it to the mix resumes on the state its pattern has reached.
 
-Muting is monitoring, and principle 5 governs what follows. The project holds every channel, so saving, module export and any rendered output write the full song. The history stack holds project state alone, so undo, redo and history jumps carry the mute set across untouched. That is why the sequencer distinguishes a history restore from a document transition. The mute set belongs to the listening session, so opening, creating or closing a document starts a fresh one with every channel audible.
+Muting is monitoring, and principle 5 governs what follows. The project holds every channel, so saving, module export and any rendered output write the full song. The history stack holds project state alone, so undo, redo and history jumps carry the mute set across untouched. The mute set belongs to the listening session, so opening, creating or closing a document starts a fresh one with every channel audible.
 
 ## What the channel holds
 
-A sample has a value for every dimension of every frame, and its reconstruction names the dimensions the channel governs. The instrument writes the rest itself. Each channel carries a value per dimension (volume, arpeggio, bend, timbre), and an instrument that leaves one empty sounds it at the value the channel holds. That is what clearing an envelope in the instruments panel means once the sample is played in a song. A FamiTracker instrument follows the same rule with a sequence left out.
+A sample has a value for every dimension of every frame, and its reconstruction names the dimensions the channel governs. The instrument writes the rest itself. Each channel carries a value per dimension (volume, arpeggio, bend, timbre), and an instrument that leaves one empty sounds it at the value the channel holds. A FamiTracker instrument follows the same rule with a sequence left out.
 
 Every note starts those values where a song starts them: full volume, no arpeggio offset, no bend, the first timbre (duty 0 on a pulse channel, the long mode on noise). A dimension the instrument leaves empty therefore sounds at that start for the whole note, whatever the note before it wrote. An empty volume plays at the row's level. FamiTracker and Bitphase start a note the same way, so an exported song plays in the tracker as it does here.
 
@@ -148,7 +148,7 @@ The manager's own playback is held to the same rule. A stop waits a while for it
 |---------|-------|
 | The device, its stream, and arbitration between requests | `AudioDeviceManager` (`sampletones_core/audio/`) |
 | The ranking that settles a contest for the device | `PlaybackPriority` (`logic/shared/`) |
-| The verbs, target resolution, and the registry of sources | `coordinators/playback/router.py` |
+| The verbs, target resolution, and the registry of sources | `coordinators/playback/` |
 | A source's engagement reporting | the transport's player protocol, implemented per source |
 | What the reader is told when a sound fails | `PlaybackFailurePresenter` (`coordinators/playback/failures.py`) |
 | The boundary that hands a transport command's failure to the presenter | `GuardedPlayer` (`coordinators/playback/guard.py`) |

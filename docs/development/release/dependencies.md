@@ -48,7 +48,7 @@ The calibration harness scores renders with referees of its own, built on `numpy
 
 ## NES player driver
 
-Assembling the console player needs `ca65` and `ld65` from [cc65](https://cc65.github.io/). On Debian and Ubuntu that is `sudo apt install cc65`, and a build names the equivalent for whichever system it runs on when the programs are absent. cc65 is a build-time tool for the driver alone. The assembled `driver.bin` is committed, so a checkout has the player and exporting an NSF needs no assembler. Editing the assembly means running `uv run sampletones driver` again and committing what it writes.
+Assembling the console player needs `ca65` and `ld65` from [cc65](https://cc65.github.io/). On Debian and Ubuntu that is `sudo apt install cc65`, and a build names the equivalent for whichever system it runs on when the programs are absent. cc65 is a build-time tool for the driver alone. The assembled `driver.bin` is committed, so exporting an NSF needs no assembler ([the console player](../player.md#building-the-driver) says how it is built).
 
 cc65 is distributed under the zlib license. The link line names our own object files and our own `nsf.cfg`, so nothing of cc65's start-up code or libraries reaches the committed image. That keeps the blob entirely ours to ship under the project's MIT license.
 
