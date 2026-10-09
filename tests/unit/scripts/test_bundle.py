@@ -110,6 +110,18 @@ class TestExtras:
         )
 
 
+class TestSelfCheckCommand:
+    def test_a_gpu_bundle_is_held_to_the_gpu_check(self) -> None:
+        launcher = Path("bin", PROJECT_NAME, PROJECT_NAME)
+
+        assert bundle.self_check_command(launcher, CPU_DEVELOPMENT) == (str(launcher), bundle.SELF_CHECK)
+        assert bundle.self_check_command(launcher, GPU_DEVELOPMENT) == (
+            str(launcher),
+            bundle.SELF_CHECK,
+            bundle.GPU_FLAG,
+        )
+
+
 class TestRemovePrevious:
     def test_a_previous_file_and_directory_are_removed(self, tmp_path: Path) -> None:
         (tmp_path / PROJECT_NAME).mkdir()
@@ -166,7 +178,7 @@ class TestBuildBundle:
         assert "import cupy" in runner.lines[4]
         assert "import tkinter" in runner.lines[5]
         assert "PyInstaller" in runner.lines[6]
-        assert runner.lines[7] == f"{launcher} {bundle.SELF_CHECK}"
+        assert runner.lines[7] == f"{launcher} {bundle.SELF_CHECK} {bundle.GPU_FLAG}"
         assert not any((launcher.parent / notice).exists() for notice in NOTICES)
 
     def test_a_bundle_pyinstaller_never_wrote_is_reported(self, tmp_path: Path) -> None:

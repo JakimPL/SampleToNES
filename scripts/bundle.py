@@ -29,6 +29,7 @@ from bootstrap.project import BUILD_EXTRA, Project, read_project
 from bootstrap.venv_build import ensure_build_venv, install
 
 SELF_CHECK: Final[str] = "self-check"
+GPU_FLAG: Final[str] = "--gpu"
 
 
 @dataclass(frozen=True)
@@ -137,6 +138,14 @@ def pyinstaller_command(
     return command
 
 
+def self_check_command(launcher: Path, options: BundleOptions) -> Tuple[str, ...]:
+    """The launcher's self-check, which a GPU bundle runs with the GPU check that proves it computes on the card."""
+    if options.gpu:
+        return (str(launcher), SELF_CHECK, GPU_FLAG)
+
+    return (str(launcher), SELF_CHECK)
+
+
 def remove_previous(distribution: Path, bundling: Bundling, name: str) -> None:
     """Removes what an earlier build left under ``distribution``, a bundle's directory or a single file."""
     for previous in (
@@ -222,7 +231,7 @@ def build_bundle(
         raise SystemExit(f"Build failed: PyInstaller produced no executable at {launcher}.")
 
     print("Verifying the bundle...")
-    status = runner((str(launcher), SELF_CHECK), cwd=root, environment=environment, quiet=False)
+    status = runner(self_check_command(launcher, options), cwd=root, environment=environment, quiet=False)
     if status != 0:
         raise SystemExit(f"Build failed: {launcher} did not pass its self-check.")
 

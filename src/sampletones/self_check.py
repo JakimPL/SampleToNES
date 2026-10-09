@@ -14,6 +14,7 @@ CHECK_FAILURES: Final[Tuple[Type[Exception], ...]] = (
     KeyError,
     TypeError,
     ValueError,
+    RuntimeError,
     SystemError,
     SampleToNESError,
 )
@@ -148,6 +149,20 @@ def _check_file_dialog_backend() -> str:
     return type(select_file_dialog_backend()).__name__
 
 
+def _check_array_backend() -> str:
+    """Names the backend the build computes on, so a GPU build that lost CuPy says so in its inventory."""
+    from sampletones_shared.array import describe_array_backend
+
+    return describe_array_backend()
+
+
+def _check_gpu_backend() -> str:
+    """Computes on the graphics card, which is what a GPU build is held to."""
+    from sampletones_shared.array import exercise_gpu
+
+    return exercise_gpu()
+
+
 CHECKS: Final[Tuple[SelfCheck, ...]] = (
     SelfCheck(name="application import", run=_check_application_import),
     SelfCheck(name="deployment config", run=_check_deployment_config),
@@ -159,17 +174,32 @@ CHECKS: Final[Tuple[SelfCheck, ...]] = (
     SelfCheck(name="resources", run=_check_resources),
     SelfCheck(name="export backends", run=_check_export_backends),
     SelfCheck(name="file dialog backend", run=_check_file_dialog_backend),
+    SelfCheck(name="array backend", run=_check_array_backend),
 )
+GPU_CHECK: Final[SelfCheck] = SelfCheck(name="gpu backend", run=_check_gpu_backend)
 
 
-def run_self_check() -> int:
+def checks_for(*, gpu: bool) -> Tuple[SelfCheck, ...]:
+    """The checks a build runs: every startup check, and the GPU check where the build carries GPU support."""
+    if gpu:
+        return (*CHECKS, GPU_CHECK)
+
+    return CHECKS
+
+
+def run_self_check(*, gpu: bool) -> int:
     """Runs every startup check in order and returns the process exit status.
 
     Prints one line per check so a passing run doubles as an inventory of what the build
     carries, and stops at the first failure with the offending check named on the standard
-    error stream. A packaged build runs this to prove it starts before it is shipped.
+    error stream. A packaged build runs this to prove it starts before it is shipped, and a GPU
+    bundle runs it with ``gpu`` set to prove it computes on the graphics card.
+
+    Args:
+        gpu: Whether the build is held to the GPU backend.
     """
-    for check in CHECKS:
+    checks = checks_for(gpu=gpu)
+    for check in checks:
         try:
             detail = check.run()
         except CHECK_FAILURES as exception:
@@ -181,5 +211,5 @@ def run_self_check() -> int:
 
         print(f"{SUCCESS_PREFIX} {check.name}: {detail}")
 
-    print(f"{SUCCESS_PREFIX} {len(CHECKS)} checks passed")
+    print(f"{SUCCESS_PREFIX} {len(checks)} checks passed")
     return SUCCESS_STATUS

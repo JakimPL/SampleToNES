@@ -6,7 +6,7 @@ from .audio import (
 )
 from .base import SampleToNESError
 from .callback import CallbackQueueStop
-from .cuda import CuPyNotInstalledWarning
+from .cuda import CuPyNotInstalledWarning, GPUBackendError
 from .dialog import FileDialogUnavailableError
 from .instrument import (
     IncompatibleInstrumentVersionError,
@@ -71,6 +71,7 @@ __all__ = [
     "DeserializationError",
     "DriverBuildError",
     "FileDialogUnavailableError",
+    "GPUBackendError",
     "IncompatibleInstrumentVersionError",
     "IncompatibleLibraryDataVersionError",
     "IncompatibleProjectVersionError",
