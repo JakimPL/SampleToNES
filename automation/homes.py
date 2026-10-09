@@ -12,25 +12,24 @@ PROCESS_SEPARATOR: Final[str] = "-"
 
 
 class HiddenHomesError(RuntimeError):
-    """Raised when the temporary folder scenario homes would be made in lies inside a hidden folder."""
+    """Raised when the folder scenario homes would be made in lies inside a hidden folder."""
 
 
-def make_worker_homes() -> Path:
-    """Makes the temporary folder one worker keeps its scenario homes in, named after the worker's process.
+def make_worker_homes(parent: Path) -> Path:
+    """Makes the folder one worker keeps its scenario homes in under ``parent``, named after the worker's process.
 
-    The application's browsers leave hidden folders out, so the homes need a temporary folder outside
-    them. The folders that crashed workers left, whose process has gone, go first.
+    The application's browsers leave hidden folders out, so the homes need a parent outside them. The
+    folders that crashed workers left, whose process has gone, go first.
 
     Raises:
-        HiddenHomesError: If the temporary folder lies inside a hidden folder.
+        HiddenHomesError: If ``parent`` lies inside a hidden folder.
     """
-    parent = Path(tempfile.gettempdir())
     hidden = [part for part in parent.parts if part.startswith(HIDDEN_PREFIX)]
     if hidden:
         raise HiddenHomesError(
             f"Screen scenario homes are made in {parent}, which lies inside the hidden folder '{hidden[0]}', "
-            "and the application's browsers leave hidden folders out. Point TMPDIR at a folder outside hidden "
-            "folders."
+            "and the application's browsers leave hidden folders out. Point SAMPLETONES_SCREENS_HOMES at a "
+            "folder outside hidden folders."
         )
 
     _let_stale_homes_go(parent)

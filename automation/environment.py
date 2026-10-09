@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import shutil
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Final, Mapping, Tuple
@@ -14,13 +15,13 @@ from automation.paths import (
     KEPT_DIRECTORY,
     NO_BUS_FILE,
     REPORTS_FILE,
-    TEMPORARY_FOLDER,
 )
 from sampletones_shared.application import SAMPLETONES_ENV_PREFIX
 
 DISPLAY_BACKEND_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_DISPLAY"
 SCREEN_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_SCREEN"
 KEPT_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_KEPT"
+HOMES_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_HOMES"
 SIZE_SEPARATOR: Final[str] = "x"
 ARTIFACTS_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_ARTIFACTS"
 REPORT_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_REPORT"
@@ -54,12 +55,20 @@ def kept_root(environment: Mapping[str, str]) -> Path:
     return Path(stated) if stated is not None else KEPT_DIRECTORY
 
 
+def homes_root(environment: Mapping[str, str]) -> Path:
+    """The folder the workers make their homes folders in: the system's temporary folder, which
+    ``SAMPLETONES_SCREENS_HOMES`` moves.
+    """
+    stated = environment.get(HOMES_VARIABLE)
+    return Path(stated) if stated is not None else Path(tempfile.gettempdir())
+
+
 @dataclass(frozen=True)
 class ScenarioFolders:
     """Where one scenario's run keeps its files: the home its application lives in, and what the run keeps.
 
-    The home is scratch, built afresh from the scenario's world in a temporary folder whose path holds no
-    hidden folder, so the application's browsers reach it from any checkout. What the run keeps lies under
+    The home is scratch, built afresh from the scenario's world in the worker's homes folder, whose path
+    holds no hidden folder, so the application's browsers reach it from any checkout. What the run keeps lies under
     the run's artifacts in the checkout: the reports, a screenshot of a failure, and a copy of the home a
     failed scenario left, with a note where that copy lost files.
 
@@ -73,11 +82,6 @@ class ScenarioFolders:
     home: Path
     reports: Path
 
-    @property
-    def temporary(self) -> Path:
-        """The hidden folder in the home that the application's process makes its temporary files in."""
-        return self.home / TEMPORARY_FOLDER
-
     @classmethod
     def of(
         cls,
@@ -89,7 +93,7 @@ class ScenarioFolders:
 
         Args:
             nodeid: The scenario's pytest node id.
-            homes: The temporary folder holding the homes of this worker's scenarios.
+            homes: The folder holding the homes of this worker's scenarios.
             kept: The folder the run keeps every scenario's reports and failure records under.
         """
         name = UNSAFE_CHARACTERS.sub("_", nodeid)
@@ -101,13 +105,11 @@ class ScenarioFolders:
         )
 
     def prepare(self) -> None:
-        """Clears what an earlier run of the scenario left, and lays out an empty home, its temporary folder and
-        the artifacts folder.
-        """
+        """Clears what an earlier run of the scenario left, and lays out an empty home and the artifacts folder."""
         shutil.rmtree(self.root, ignore_errors=True)
         shutil.rmtree(self.home, ignore_errors=True)
         self.root.mkdir(parents=True)
-        self.temporary.mkdir(parents=True)
+        self.home.mkdir(parents=True)
 
     def finish(self, *, failed: bool) -> None:
         """Lets the scratch home go, keeping a copy among the artifacts where the scenario failed.
@@ -141,10 +143,11 @@ def child_environment(
 ) -> Dict[str, str]:
     """The environment a scenario's process starts under: ``base``, pointed at the scenario's own world.
 
-    The home, every XDG directory and the temporary folder lie inside the scenario's home, so
-    settings, session state, the documents folder and whatever the process makes on the side start
-    empty and stay apart from the user's, and from the homes beside it. The display is the worker's
-    own server, the session bus address leads nowhere, and the input method is off, so everything a
+    The home and every XDG directory lie inside the scenario's home, so settings, session state and
+    the documents folder start empty and stay apart from the user's, and from the homes beside it.
+    The process makes its temporary files where the machine keeps them, as it does on a user's
+    machine, which keeps the socket paths it opens there short. The display is the worker's own
+    server, the session bus address leads nowhere, and the input method is off, so everything a
     scenario does stays on its own display and in its own home.
     """
     environment = {name: value for name, value in base.items() if not name.startswith(DROPPED_PREFIXES)}
@@ -152,7 +155,6 @@ def child_environment(
     environment.update(
         {
             "HOME": str(home),
-            "TMPDIR": str(folders.temporary),
             "XDG_CONFIG_HOME": str(home / ".config"),
             "XDG_DATA_HOME": str(home / ".local" / "share"),
             "XDG_CACHE_HOME": str(home / ".cache"),

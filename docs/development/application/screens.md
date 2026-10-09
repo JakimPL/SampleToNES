@@ -315,14 +315,15 @@ To follow a scenario as it plays, draw on Xephyr, which opens its screen as a wi
 SAMPLETONES_SCREENS_DISPLAY=xephyr uv run python -m pytest tests/screens --no-cov -k display_settings
 ```
 
-A scenario's home is scratch: it is built from the scenario's world in a temporary folder made for each
-worker, whose path holds no hidden folder, so the application's browsers reach it from a worktree under
-`.worktrees/` too, and it goes once the scenario ends. A temporary folder inside a hidden folder is
-refused, and `TMPDIR` points the run at another. The application's process makes its own temporary files
-in a hidden folder of its home, so they stay out of its browsers and out of the homes beside it. The worker's folder is named after its process, and each
-worker's first scenario removes the folders whose process has gone, such as a crashed worker's, and leaves
-another live run's alone. A folder a scenario left locked opens again before its home is copied and
-removed.
+A scenario's home is scratch: it is built from the scenario's world in a homes folder made for each
+worker under the system's temporary folder, whose path holds no hidden folder, so the application's
+browsers reach it from a worktree under `.worktrees/` too, and it goes once the scenario ends. A homes
+folder inside a hidden folder is refused, and `SAMPLETONES_SCREENS_HOMES` points the run at another
+parent. The application's process keeps the machine's own temporary folder, as it does on a user's
+machine, since the socket files a conversion opens there need a short path. The worker's folder is
+named after its process, and each worker's first scenario removes the folders whose process has gone,
+such as a crashed worker's, and leaves another live run's alone. A folder a scenario left locked opens
+again before its home is copied and removed.
 
 What a run keeps lies under `build/screens/`, in a folder named after the test: the reports, and when the
 scenario failed, a screenshot of the last frame and a copy of the home it left. A copy that lost files

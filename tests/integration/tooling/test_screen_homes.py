@@ -1,5 +1,4 @@
 import os
-import tempfile
 from pathlib import Path
 from typing import Final
 
@@ -19,9 +18,8 @@ requires_the_process_folder = pytest.mark.skipif(
 
 
 @pytest.fixture(name="temporary")
-def temporary_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """The temporary folder the worker's homes are made in, standing apart from the machine's own."""
-    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+def temporary_fixture(tmp_path: Path) -> Path:
+    """The folder the worker's homes are made in, standing apart from the machine's own."""
     return tmp_path
 
 
@@ -42,7 +40,7 @@ class TestTheStaleHomesSweep:
     def test_the_homes_of_a_gone_worker_go(self, temporary: Path) -> None:
         stale = left_homes(temporary, GONE_PROCESS)
 
-        homes.make_worker_homes()
+        homes.make_worker_homes(temporary)
 
         assert not stale.exists()
 
@@ -50,7 +48,7 @@ class TestTheStaleHomesSweep:
     def test_the_homes_of_a_running_worker_stay(self, temporary: Path) -> None:
         running = left_homes(temporary, os.getppid())
 
-        made = homes.make_worker_homes()
+        made = homes.make_worker_homes(temporary)
 
         assert running.exists()
         assert made.exists()
@@ -64,6 +62,6 @@ class TestTheStaleHomesSweep:
         monkeypatch.setattr(homes, "PROCESSES_DIRECTORY", temporary / MISSING_FOLDER)
         left = [left_homes(temporary, GONE_PROCESS), left_homes(temporary, os.getppid())]
 
-        homes.make_worker_homes()
+        homes.make_worker_homes(temporary)
 
         assert all(folder.exists() for folder in left)

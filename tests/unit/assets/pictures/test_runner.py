@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Final
 
 from assets.pictures.__main__ import ALONE_MARKER, NAMING, pytest_arguments, run_environment
-from automation.environment import KEPT_VARIABLE, SCREEN_VARIABLE
+from automation.environment import HOMES_VARIABLE, KEPT_VARIABLE, SCREEN_VARIABLE
 
 SCENES: Final[Path] = Path("/checkout/assets/pictures/scenes")
 KEPT: Final[Path] = Path("/checkout/build/pictures")
@@ -33,15 +33,20 @@ class TestPytestArguments:
 
 
 class TestRunEnvironment:
-    def test_the_screen_and_the_kept_records_are_set(self) -> None:
+    def test_the_screen_the_kept_records_and_the_homes_are_set(self) -> None:
         environment = run_environment({}, kept=KEPT, homes=HOMES, repository=Path("/checkout"))
 
         assert environment[SCREEN_VARIABLE] == "1700x1300"
         assert environment[KEPT_VARIABLE] == str(KEPT)
-        assert environment["TMPDIR"] == str(HOMES)
+        assert environment[HOMES_VARIABLE] == str(HOMES)
 
-    def test_a_checkout_under_a_hidden_folder_keeps_the_system_s_temporary_folder(self) -> None:
-        environment = run_environment({"TMPDIR": "/tmp"}, kept=KEPT, homes=HOMES, repository=Path("/work/.worktrees/x"))
+    def test_a_checkout_under_a_hidden_folder_leaves_the_homes_where_the_plugin_puts_them(self) -> None:
+        environment = run_environment({}, kept=KEPT, homes=HOMES, repository=Path("/work/.worktrees/x"))
+
+        assert HOMES_VARIABLE not in environment
+
+    def test_the_temporary_folder_travels_as_it_is(self) -> None:
+        environment = run_environment({"TMPDIR": "/tmp"}, kept=KEPT, homes=HOMES, repository=Path("/checkout"))
 
         assert environment["TMPDIR"] == "/tmp"
 

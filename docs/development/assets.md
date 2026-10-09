@@ -73,7 +73,8 @@ what the page shows is what the screen drew.
 starts the scenes under pytest on a few virtual displays of their own, with the scene naming in place of
 the test naming, a screen large enough for the README's window, the records of each scene under
 `build/pictures/`, and the scenario homes under `build/worlds/homes/` when the checkout's path holds no hidden
-folder, so a path a picture shows reads as one under `/home`. A scene marked `alone` runs by itself after
+folder, so a path a picture shows reads as one under `/home`. The application's own temporary files stay in
+the system's temporary folder, out of the browsers' view. A scene marked `alone` runs by itself after
 the others: the file browser lists the folders beside the scene's home, and every other worker's homes
 folder is named after the run that made it, so the scene waits until those are gone. The homes stand deep
 enough under `build/worlds/`, which nothing under `build/` follows, that the rows of the checkout's own

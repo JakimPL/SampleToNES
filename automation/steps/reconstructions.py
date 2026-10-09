@@ -56,7 +56,11 @@ def reconstruction_row(screen: Screen, path: Path) -> Item:
     for above in browser.rows_above(row):
         if not browser.is_open(above):
             browser.open_by_click(above)
-            screen.expect(lambda: browser.is_open(above), bool, description=f"{browser.label(above)} open")
+            screen.expect(
+                lambda: browser.is_open(above),
+                bool,
+                description=f"{browser.label(above)} open",
+            )
 
     return row
 

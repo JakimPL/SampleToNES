@@ -17,14 +17,17 @@ from assets.pictures.paths import (
     SCENES_DIRECTORY,
 )
 from assets.pictures.writer import written_since
-from automation.environment import KEPT_VARIABLE, SCREEN_VARIABLE
+from automation.environment import (
+    HOMES_VARIABLE,
+    KEPT_VARIABLE,
+    SCREEN_VARIABLE,
+)
 from sampletones_shared.paths.source import REPOSITORY_ROOT
 
 PROGRAM: Final[str] = "python -m assets.pictures"
 DESCRIPTION: Final[str] = "draw the guide's and the README's pictures of the application from the demo tree"
 SCREEN: Final[str] = "1700x1300"
 WORKERS: Final[str] = "4"
-TEMPORARY_VARIABLE: Final[str] = "TMPDIR"
 HIDDEN_PREFIX: Final[str] = "."
 NAMING: Final[Dict[str, str]] = {
     "python_files": "*_scenes.py",
@@ -67,14 +70,14 @@ def run_environment(base: Dict[str, str], *, kept: Path, homes: Path, repository
     """The environment the scenes run under: a screen large enough for every picture, and records kept apart.
 
     The scenario homes go under the repository when its path holds no hidden folder, so the paths the
-    pictures show read as a home under ``/home``; a checkout under a hidden folder keeps the system's
-    temporary folder, which the application's browsers can reach.
+    pictures show read as a home under ``/home``; a checkout under a hidden folder leaves the homes in
+    the system's temporary folder, which the application's browsers can reach.
     """
     environment = dict(base)
     environment[SCREEN_VARIABLE] = SCREEN
     environment[KEPT_VARIABLE] = str(kept)
     if not any(part.startswith(HIDDEN_PREFIX) for part in repository.parts):
-        environment[TEMPORARY_VARIABLE] = str(homes)
+        environment[HOMES_VARIABLE] = str(homes)
 
     return environment
 

@@ -11,6 +11,7 @@ from automation.environment import (
     REPORT_VARIABLE,
     ScenarioFolders,
     child_environment,
+    homes_root,
     kept_root,
 )
 from automation.homes import let_go, make_worker_homes
@@ -72,7 +73,7 @@ def pytest_runtest_protocol(
 
 
 def _worker_homes(config: pytest.Config) -> Path:
-    """The temporary folder this worker's scenarios keep their homes in, made with the first of them.
+    """The folder this worker's scenarios keep their homes in, made with the first of them.
 
     Each worker makes its own, named after its process, so runs from several checkouts at once keep
     their homes apart, and each worker's first scenario lets go of what crashed workers left.
@@ -81,7 +82,7 @@ def _worker_homes(config: pytest.Config) -> Path:
     if homes is not None:
         return homes
 
-    homes = make_worker_homes()
+    homes = make_worker_homes(homes_root(os.environ))
     config.stash[HOMES_KEY] = homes
     return homes
 
