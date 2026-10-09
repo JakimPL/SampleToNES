@@ -64,7 +64,15 @@ class CallbackQueue(metaclass=NonInstantiableMeta):
         delay: int = 0,
         **kwargs: Any,
     ) -> None:
+        """Posts ``callback`` to run on the render thread, ``delay`` frames from now at the earliest.
+
+        A stopped queue lets the work go: the run it was posted to is being taken down, and the
+        context it would reach goes with it.
+        """
         with cls._lock:
+            if cls._stopped:
+                return
+
             frame = cls._frame_counter + delay
             insertion_order = cls._insertion_counter
             cls._insertion_counter += 1
@@ -122,6 +130,15 @@ class CallbackQueue(metaclass=NonInstantiableMeta):
         with cls._lock:
             cls._stopped = True
             cls._callbacks.clear()
+
+    @classmethod
+    def clear(cls) -> None:
+        """Gives the next run an empty, live queue: what waited is let go, and the counters start over."""
+        with cls._lock:
+            cls._callbacks.clear()
+            cls._frame_counter = 0
+            cls._insertion_counter = 0
+            cls._stopped = False
 
     @classmethod
     def run(cls, callback: Callback, *args: Any, **kwargs: Any) -> bool:

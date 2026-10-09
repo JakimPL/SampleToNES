@@ -52,6 +52,39 @@ class TestCallbackQueueDelivery:
 
         assert fired == []
 
+    def test_work_posted_to_a_stopped_queue_is_let_go(self) -> None:
+        fired: List[bool] = []
+
+        CallbackQueue.stop()
+        CallbackQueue.add(lambda: fired.append(True))
+        CallbackQueue.start()
+        CallbackQueue.notify_frame()
+        CallbackQueue.process(GENEROUS_BUDGET)
+
+        assert fired == []
+
+    def test_clear_lets_go_of_what_waited(self) -> None:
+        fired: List[str] = []
+
+        CallbackQueue.add(lambda: fired.append("before"))
+        CallbackQueue.clear()
+        CallbackQueue.add(lambda: fired.append("after"))
+        CallbackQueue.notify_frame()
+        CallbackQueue.process(GENEROUS_BUDGET)
+
+        assert fired == ["after"]
+
+    def test_clear_makes_a_stopped_queue_live_again(self) -> None:
+        fired: List[bool] = []
+
+        CallbackQueue.stop()
+        CallbackQueue.clear()
+        CallbackQueue.add(lambda: fired.append(True))
+        CallbackQueue.notify_frame()
+        CallbackQueue.process(GENEROUS_BUDGET)
+
+        assert fired == [True]
+
     def test_exception_in_callback_is_isolated(self) -> None:
         good_fired: List[bool] = []
 

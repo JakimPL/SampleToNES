@@ -4,6 +4,7 @@ import pytest
 
 from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.utils.callbacks.failures import UnhandledFailures
+from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.modal_queue import ModalQueue
 from sampletones_application.utils.gui.palette.palette import PaletteBindings
@@ -40,6 +41,19 @@ def frame_callbacks() -> Iterator[None]:
     FrameCallbackManager.clear()
     yield
     FrameCallbackManager.clear()
+
+
+@pytest.fixture(autouse=True)
+def callback_queue() -> Iterator[None]:
+    """Gives each test an empty, live callback queue.
+
+    The queue carries a worker's results to the render thread and outlives any one context, and a
+    worker a test started can post after the test's context is gone, so each test starts with nothing
+    queued and leaves nothing for a later drain to run.
+    """
+    CallbackQueue.clear()
+    yield
+    CallbackQueue.clear()
 
 
 @pytest.fixture(autouse=True)
