@@ -303,7 +303,7 @@ projects:
               - { row: 7, voice: hiss, volume: 13 }
 
   - name: instrument-channels
-    purpose: Hand-written instruments on every channel, with looping envelopes, a release, and a volume left to the channel.
+    purpose: Instruments on every channel, with looping envelopes, a release, and a volume left to the channel.
     module: { title: Instruments on every channel, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
     voices: [lead, pluck, swell]
     song:
@@ -333,6 +333,40 @@ projects:
               - { row: 4, voice: pluck, volume: 15 }
               - { row: 8, voice: swell, transpose: 3, volume: 10 }
               - { row: 12, voice: lead, transpose: -4, volume: 15 }
+
+  - name: carried-pitch
+    purpose: Instruments placed without a pitch, taking the pitch a transposed sample left on the channel and bent afterwards, or starting nothing after a note-off and on a silent channel.
+    module: { title: Carried pitch, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
+    voices: [square, bass, hiss, lead, swell]
+    song:
+      rows_per_pattern: 16
+      order:
+        - { pulse1: 0, pulse2: 0, triangle: 0, noise: 0 }
+      channels:
+        pulse1:
+          patterns:
+            0:
+              - { row: 0, voice: square, transpose: 3 }
+              - { row: 4, voice: lead }
+              - { row: 8, transpose: 2 }
+              - { row: 11, "off": true }
+              - { row: 13, voice: lead }
+        pulse2:
+          patterns:
+            0:
+              - { row: 0, voice: lead }
+              - { row: 6, voice: square, transpose: -2 }
+              - { row: 10, voice: lead }
+        triangle:
+          patterns:
+            0:
+              - { row: 0, voice: bass, transpose: 5 }
+              - { row: 6, voice: swell }
+        noise:
+          patterns:
+            0:
+              - { row: 0, voice: hiss, transpose: 2 }
+              - { row: 6, voice: lead }
 
   - name: sample-contours
     purpose: A sample whose frames carry arpeggio contours, bends, rests and duty changes on every channel, played as written and transposed.

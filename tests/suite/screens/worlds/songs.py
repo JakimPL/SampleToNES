@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Final
 
+from automation.worlds.home import World
 from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT
 from sampletones_shared.paths.user import PROJECTS_DIRECTORY
 from tests.suite.screens.seeds.projects import (
@@ -10,7 +11,6 @@ from tests.suite.screens.seeds.projects import (
     ReleasingInstrumentFile,
     TwoTuningsProject,
 )
-from tests.suite.screens.worlds.home import World
 from tests.suite.screens.worlds.recordings import playing_world
 
 ARRANGED_PROJECT: Final[Path] = PROJECTS_DIRECTORY / "Arranged.stp"
@@ -40,7 +40,7 @@ def sequencer_world() -> World:
     """A home holding :data:`ARRANGED_PROJECT`, its voices placed on its first pattern, and the playing
     world's files.
 
-    The project's sample :data:`LINE` starts the pattern on Pulse 1, its hand-written :data:`PAD`
+    The project's sample :data:`LINE` starts the pattern on Pulse 1, its instrument :data:`PAD`
     comes in on Pulse 2 at :data:`PAD_ROW`, and its sample :data:`BASS_VOICE` on the triangle at
     :data:`BASS_ROW`.
     """

@@ -22,15 +22,21 @@ class Sample:
         self.reconstruction: Reconstruction = reconstruction
 
     def clone(self) -> Self:
-        """Return an independent copy with a fresh id.
+        """Return a copy with a fresh id, holding the same reconstruction and carrying the name.
 
-        The reconstruction is deep-copied so the copy can be edited independently of
-        the original; the name is carried over.
+        A reconstruction never changes once made, and an edit installs a new one in the sample it
+        reaches, so the copy and the original share the document until one of them is edited.
         """
         return type(self)(
             name=self.name,
-            reconstruction=self.reconstruction.model_copy(deep=True),
+            reconstruction=self.reconstruction,
         )
+
+    def snapshot(self) -> Self:
+        """A sample of its own with the same id and name, holding the very same reconstruction."""
+        copied = type(self)(name=self.name, reconstruction=self.reconstruction)
+        copied.id = self.id
+        return copied
 
     def __hash__(self) -> int:
         return hash(self.id)

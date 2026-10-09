@@ -766,7 +766,7 @@ class TestSizeVisibility:
 
 
 class TestTheAuditionSelector:
-    """The generator a hand-written voice is heard on stands where the pitch stepper does."""
+    """The generator an instrument is heard on stands where the pitch stepper does."""
 
     def test_an_open_instrument_offers_the_generator_to_hear_it_on(
         self,

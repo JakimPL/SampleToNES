@@ -11,6 +11,9 @@ scheduling:
     batch_size: 128
   queue_budget_seconds: 0.005
 
+rendering:
+  cache_megabytes: 512
+
 ui:
   status_bar_display_time: 2.0
   fps_update_interval: 2.0

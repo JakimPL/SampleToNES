@@ -504,7 +504,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         is open, so writing a sounding envelope into a channel standing by is what puts it in play; a
         muted tab label and a withheld export say which channels are there. An instrument is one
         set every channel reads, so it shows a single tab under its own name, and the audition
-        takes the pitch stepper's place: a row states the note a hand-written voice sounds at, and
+        takes the pitch stepper's place: a row states the note an instrument sounds at, and
         what the panel offers instead is the generator to hear it on.
         """
         instrument = view_model.instrument
@@ -541,7 +541,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             stepper.set_shown(shown)
 
     def _create_audition_selector(self, window_tag: str) -> None:
-        """Offers the generator a hand-written voice is heard on, in the pitch stepper's column.
+        """Offers the generator an instrument is heard on, in the pitch stepper's column.
 
         An instrument is one set of envelopes every generator reads what it can of, so hearing it
         means choosing which one reads it. The choice belongs to the reader listening rather than
@@ -585,7 +585,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         )
 
     def _show_audition_selector(self, *, shown: bool) -> None:
-        """Offers the audition while a hand-written voice is open, which is the voice it sounds."""
+        """Offers the audition while an instrument is open, which is the voice it sounds."""
         self._audition_open = shown
         dpg_configure_item(self.audition_group_tag, show=shown)
 

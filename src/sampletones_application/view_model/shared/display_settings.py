@@ -125,6 +125,7 @@ class DisplaySettings(BaseModel, frozen=True):
     window: WindowMode
     vsync: bool
     frame_rate: int
+    show_frame_rate: bool
 
     def with_palette(self, palette: str) -> DisplaySettings:
         return self.model_copy(update={"palette": palette})
@@ -137,6 +138,9 @@ class DisplaySettings(BaseModel, frozen=True):
 
     def with_frame_rate(self, frame_rate: int) -> DisplaySettings:
         return self.model_copy(update={"frame_rate": frame_rate})
+
+    def with_show_frame_rate(self, show_frame_rate: bool) -> DisplaySettings:
+        return self.model_copy(update={"show_frame_rate": show_frame_rate})
 
 
 class DisplaySettingsViewModel(BaseModel, frozen=True):
@@ -202,6 +206,7 @@ class DisplaySettingsViewModel(BaseModel, frozen=True):
                 window=selected,
                 vsync=settings.vsync,
                 frame_rate=nearest_frame_rate(settings.frame_rate, frame_rates),
+                show_frame_rate=settings.show_frame_rate,
             ),
             resolutions=offered,
             frame_rates=frame_rates,

@@ -7,26 +7,25 @@ _SampleToNES_ has four tabs. Use `F1` to `F4` to switch between them:
 - [**Sequencer**](sequencer.md) (`F3`) — arrange reconstructions into a song.
 - [**Instructions**](converting.md#building-a-library-yourself) (`F4`) — build and browse the [instruction library](../concepts/instruction-library.md) a conversion uses.
 
+<div align="center">
+    <img src="../images/guide/interface/tabs.webp" alt="The menu bar, the play controls and the four tabs" width="639">
+</div>
+
 You usually work through the tabs in this order. Convert your files on **Main**. When the conversion finishes, click **Load** to open the result on **Reconstruction**. From there, **Add to Sequencer** adds the reconstruction to a song.
 
 The **Instructions** tab is optional. Use it to explore single [instructions](../glossary.md#instruction), the smallest sounds the chip makes.
 
 ## The menus
 
-Each menu covers one kind of work. The lower half of **Edit** acts on what you have selected. **Voice**
-acts on the voice you selected. **Reconstruction** acts on the reconstruction you have open.
+Two menu items are easy to miss:
 
-Two items are easy to miss:
-
-- **View ▸ Show advanced settings** shows the **Advanced settings** card on the **Main** tab. It has options you rarely need: how the audio is analyzed, the number of workers, and the library and output folders. [Configuration](configuration.md) explains each one.
-- **Playback ▸ Audio settings...** chooses the device, sample rate, and buffer size you listen through. These differ from **Sample rate** and **NES frequency** on the **Main** tab, which set how the audio is converted.
+- **View ▸ Show advanced settings** adds the **Advanced settings** card to the **Main** tab. See [Configuration](configuration.md).
+- **Playback ▸ Audio settings...** sets the device you listen through. Its sample rate is separate from **Sample rate** on the **Main** tab, which sets how audio is converted.
 
 Project properties belong to a project and are covered in the [sequencer guide](sequencer.md).
 
 ## Keyboard shortcuts
 
-**View ▸ Keyboard shortcuts...** (`Ctrl+K`) lists everything you can do from the keyboard and lets you change any shortcut. Click an action's shortcut and press the keys you want. They become its main shortcut, and the action keeps its other shortcuts. To set all of an action's shortcuts at once, select the action, type them in the **Shortcut** box separated by commas, and press `Enter`. If another action already uses those keys, the app names that action and asks whether to reassign them.
+**View ▸ Keyboard shortcuts...** (`Ctrl+K`) lists every shortcut and lets you change any of them. Click a shortcut and press the keys you want. If another action already uses those keys, the app asks before reassigning them. **Reset to defaults** restores the original shortcuts.
 
-**Reset to defaults** restores the original shortcuts. Your changes take effect when you click **OK**, and the app keeps them for the next time you start.
-
-`Space` plays and pauses, and `Esc` stops. On macOS, the shortcuts use Command where other platforms use Control.
+On macOS, the shortcuts use Command where other platforms use Control.

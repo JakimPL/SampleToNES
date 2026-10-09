@@ -178,7 +178,7 @@ is the waveform the reconstruction was built as.
 The driver binary is committed as `sampletones_player/driver/binary/driver.bin`, so exporting an
 `.nsf` needs no assembler and the application ships the binary alone. `uv run sampletones driver`
 rebuilds it from the sources under `sampletones_tools/player/assembly/` and prints the layout the
-build produced.
+build produced. Editing the assembly means running that command again and committing what it writes.
 
 The link line names this project's own configuration and object files and states the CPU outright. That
 keeps the shipped image entirely ours: a cc65 target or library would place that project's start-up code

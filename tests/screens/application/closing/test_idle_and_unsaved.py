@@ -1,10 +1,10 @@
 import operator
 from typing import Final
 
+from automation.screen import Screen
+from automation.steps.project import retitle_project, save_project_as, saved_project_title
 from sampletones_shared.paths.user import PROJECTS_DIRECTORY
 from tests.screens.application.closing.constants import NEW_TITLE
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.project import retitle_project, save_project_as, saved_project_title
 
 PROJECT_FILENAME: Final[str] = "Closing.stp"
 SAVED_TITLE: Final[str] = "Before closing"

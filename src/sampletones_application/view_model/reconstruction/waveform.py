@@ -7,7 +7,7 @@ from sampletones_core.constants.enums import ChannelName
 
 @dataclass(frozen=True)
 class InstrumentWaveformViewModel:
-    """What a hand-written voice sounds like, as the plot card draws it.
+    """What an instrument sounds like, as the plot card draws it.
 
     An instrument stands on no recording, so the card shows the audio its envelopes make on the
     generator chosen to hear it: one line under the voice's own name, in that generator's color.

@@ -2,8 +2,8 @@ import math
 import operator
 from typing import Final, List, Tuple
 
+from automation.screen import Screen
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from tests.suite.screens.screen import Screen
 
 UNITY: Final[float] = 1.0
 LOUDEST_GAIN: Final[float] = 2.0

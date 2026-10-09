@@ -24,7 +24,7 @@ An instrument's audition is a preview of that kind. It reads the generator chose
 
 **A preview sounds the frames it renders.** An instrument sounds the envelopes it has, and a sample previews the frames its reconstruction recorded. Both sound exactly what they carry, because a recording's drive matters only while the conversion runs.
 
-**A voice sounded on its own runs to its release, or to the length it is offered.** A row holds a voice for as long as the pattern asks. An audition and the voice list's preview have no row behind them, so each has a span of its own. A volume dimension that ends at silence releases the voice, and the sound stops there. A voice that circles from a loop point never reaches a last item, so it sounds for the ticks `AUDITION_TICKS` offers it. `audition_ticks` (`sampletones_core/performance/audition.py`) counts both spans, so the plot card draws exactly the frames the keyboard sounds.
+**A voice sounded on its own runs to its release, or to the length it is offered.** A row holds a voice for as long as the pattern asks. An audition and the voice list's preview have no row behind them, so each has a span of its own. A volume dimension that ends at silence releases the voice, and the sound stops there. A voice that circles from a loop point never reaches a last item, so it sounds for the ticks `AUDITION_TICKS` offers it. One count serves both spans, so the plot card draws exactly the frames the keyboard sounds.
 
 **A sounding voice is marked where it has reached.** The device reports its position while it plays, and the plot card carries that mark along the voice it drew, as it does for a reconstruction's playback. A preview follows its own sound alone: `play` reports whether the request took the output, and the audition starts following only when it did. A request that yields to playback the reader asked for leaves that playback's mark where it is. The device reports a final zero as it winds down, which takes the mark off the card.
 
@@ -76,9 +76,11 @@ The toolbar's transport strip and the Playback menu describe the target. The Pla
 
 **A source reports its own transitions.** Each source tells the surfaces when it starts, pauses, resumes, stops or ends, whichever gesture moved it: the transport, a context menu, a key a grid owns, or the end of the sound. The surfaces therefore stay in step with a source no caller remembered to mention. A preview belongs to no source, so the surfaces read the device for it.
 
-The sequencer view reports the playhead too, at the reach the **follow mode** chooses: the sounding row, the frame that holds it, or the view the user placed. The mode is one setting with two derived answers: whether the tracker shows the frame being played, and whether it scrolls to keep the sounding row in sight. Those two are its whole contract, and every surface that follows the playhead reads them. The song player holds the mode and emits it with every position, so the menu's check and the grid's scrolling settle in one step when the mode changes mid-playback.
+The sequencer view reports the playhead too, at the reach the **follow mode** chooses: the sounding row, the frame that holds it, or the view the user placed. The mode is one setting with two derived answers: whether the tracker shows the frame being played, and whether it keeps the sounding row at the center of its band. Those two are its whole contract, and every surface that follows the playhead reads them. The song player holds the mode and emits it with every position, so the menu's check and the grid's scrolling settle in one step when the mode changes mid-playback.
 
-A mark belongs to what it names. The playhead's position is a frame and a row within it. The order grid marks the frame under every mode. The row's mark reads as the sounding row of the pattern on screen: the tracker carries it while the frame it shows is the frame that sounds, and the mark travels with the frame across a structural order edit. Every mode paints on this rule, and the mode governs where the view sits.
+A mark belongs to what it names. The playhead's position is a frame and a row within it. The order grid marks the frame under every mode. The row's mark stands wherever the tracker draws the sounding row: on the frame's own rows while the frame it shows is the frame that sounds, and on a row of the song standing beside that frame while one of those sounds. The mark travels with the frame across a structural order edit. Every mode paints on this rule, and the mode governs where the view sits.
+
+**The tracker shows the song around the frame.** Its band keeps the row it follows at its center: the sounding row while Follow rows plays, and otherwise the cursor's row as a key carries it. Above and below the frame stand as many of the song's rows as half the band holds, each read as its own frame reads it and drawn dimmed and read-only, and blank where the song ends. Every row of the frame therefore has the room to reach the center, and one calculation places the cursor and the playhead alike. The band measures its height as the window resizes, and a new reach builds the grid again.
 
 ## Keyboard delivery
 
@@ -92,11 +94,11 @@ Every surface shows that one set and switches it. A channel's name is the switch
 
 The mask is pulled per rendered row, which is principle 6 for this control: a channel drops in or out as the render-ahead buffer drains, with the immediacy every other live edit has. A silenced channel still takes each row's voice, transpose and volume, so returning it to the mix resumes on the state its pattern has reached.
 
-Muting is monitoring, and principle 5 governs what follows. The project holds every channel, so saving, module export and any rendered output write the full song. The history stack holds project state alone, so undo, redo and history jumps carry the mute set across untouched. That is why the sequencer distinguishes a history restore from a document transition. The mute set belongs to the listening session, so opening, creating or closing a document starts a fresh one with every channel audible.
+Muting is monitoring, and principle 5 governs what follows. The project holds every channel, so saving, module export and any rendered output write the full song. The history stack holds project state alone, so undo, redo and history jumps carry the mute set across untouched. The mute set belongs to the listening session, so opening, creating or closing a document starts a fresh one with every channel audible.
 
 ## What the channel holds
 
-A sample has a value for every dimension of every frame, and its reconstruction names the dimensions the channel governs. The instrument writes the rest itself. Each channel carries a value per dimension (volume, arpeggio, bend, timbre), and an instrument that leaves one empty sounds it at the value the channel holds. That is what clearing an envelope in the instruments panel means once the sample is played in a song. A FamiTracker instrument follows the same rule with a sequence left out.
+A sample has a value for every dimension of every frame, and its reconstruction names the dimensions the channel governs. The instrument writes the rest itself. Each channel carries a value per dimension (volume, arpeggio, bend, timbre), and an instrument that leaves one empty sounds it at the value the channel holds. A FamiTracker instrument follows the same rule with a sequence left out.
 
 Every note starts those values where a song starts them: full volume, no arpeggio offset, no bend, the first timbre (duty 0 on a pulse channel, the long mode on noise). A dimension the instrument leaves empty therefore sounds at that start for the whole note, whatever the note before it wrote. An empty volume plays at the row's level. FamiTracker and Bitphase start a note the same way, so an exported song plays in the tracker as it does here.
 
@@ -105,6 +107,14 @@ Within a note, every frame the instrument writes hands its value to the channel.
 The row's level scales the instrument's. A channel sounds their product over the full level. A pulse channel rounds it to the nearest step. The noise channel rounds it down, and sounds the quietest level wherever that comes out silent while both levels sound. FamiTracker and Bitphase set the noise level by that rule, so an exported song's noise plays there at the level it plays here. On the pulse channels the two trackers part: Bitphase rounds to the nearest step as the app does, and FamiTracker rounds down as it does on noise.
 
 A pass through the song begins on the same values, so starting the song and looping back to its first row sound the same. Seeking within a running song keeps the values, since the sounding note has reached them.
+
+## What a row's pitch means
+
+A pitch cell holds what the reader typed: a note the channel sounds, or a step from the voice's own reference, on either kind of voice. The row keeps that face, and the walk resolves it when the row is played: a note sounds where it says, and a step moves the voice from where it rests. A note therefore keeps its pitch when the voice under it changes, and a step keeps its interval, which is what each face is for.
+
+A voice placed with a pitch starts there. A sample placed without one plays as it was recorded. An instrument has no pitch of its own to sound, so one placed without a pitch restarts its envelopes on the pitch the channel is sounding, whichever voice sounded it; that is how a row retriggers a note already standing. On a silent channel it starts nothing. A channel is silent from the song's start, after a note-off, and while its voice has no frames on it; a voice whose frames have run out is still the channel's note, since no row has ended it. A pitch without a note-on moves the note already sounding and leaves a silent channel as it is.
+
+The exports write every note at the step the walk gives it, so an instrument-only row reaches a tracker as the note it sounds here, and one that sounds nothing reaches it as an empty cell. The walk is the song's own, driven row by row through the same rule, so the two cannot drift apart.
 
 ## Rendering the song to a file
 
@@ -138,13 +148,15 @@ The manager's own playback is held to the same rule. A stop waits a while for it
 |---------|-------|
 | The device, its stream, and arbitration between requests | `AudioDeviceManager` (`sampletones_core/audio/`) |
 | The ranking that settles a contest for the device | `PlaybackPriority` (`logic/shared/`) |
-| The verbs, target resolution, and the registry of sources | `coordinators/playback/router.py` |
+| The verbs, target resolution, and the registry of sources | `coordinators/playback/` |
 | A source's engagement reporting | the transport's player protocol, implemented per source |
 | What the reader is told when a sound fails | `PlaybackFailurePresenter` (`coordinators/playback/failures.py`) |
 | The boundary that hands a transport command's failure to the presenter | `GuardedPlayer` (`coordinators/playback/guard.py`) |
 | The sequencer's mute set, its mask, and solo | `SequencerChannelsLogic` (`logic/sequencer/channels.py`) |
 | Row mixing, and the mask it pulls while rendering | `RowSynthesizer` (`logic/sequencer/playback/synthesizer/`) |
 | The values a note starts from and a channel holds between frames | `ChannelPerformance` (`sampletones_core/performance/state.py`) |
+| What a row's voice and pitch start, and what they move | `apply_row` and `note_step` (`sampletones_core/performance/rows.py`) |
+| The face a pitch cell holds and the step it asks for | `Note`, `Step` and `step_of` (`sampletones_core/project/patterns/pitch.py`) |
 | How a row's level and transpose reach what a channel sounds | `apply_modifiers` (`sampletones_core/performance/modifiers.py`) |
 | How long a row lasts, and how many samples its ticks span | `SongTiming` and `TickClock` (`sampletones_core/timing/`) |
 | Rendering the song to a file, its passes and its progress | `SongRenderService` (`services/render/`) |

@@ -49,6 +49,10 @@ SKIPPED_ROWS: Final[Dict[SkipReason, str]] = {
         "Transpose rows the export wrote without their pitch change, "
         "because the format can't make it there: {count}."
     ),
+    SkipReason.CARRIED_PITCH: (
+        "Instrument rows taking the pitch already playing that the export wrote "
+        "with what another frame of their pattern plays: {count}."
+    ),
 }
 SHORTENED: Final[str] = (
     "Instruments the export shortened to {frames} of their {source_frames} frames, "

@@ -16,11 +16,14 @@ class SkipReason(StrEnum):
     ``NO_INSTRUMENT`` is a note-on naming a voice with no instrument on its channel, written as a note
     cut. ``UNREACHED_TRANSPOSE`` is a transpose row moving a sounding note further than the format's
     pitch change reaches, or a row a pattern shared by several frames needs a different change in,
-    written without the change there.
+    written without the change there. ``CARRIED_PITCH`` is an instrument placed without a pitch, which
+    starts on the pitch its channel is sounding, in a pattern another frame reaches after a different
+    pitch, written with the note the first frame sounds there.
     """
 
     NO_INSTRUMENT = "no_instrument"
     UNREACHED_TRANSPOSE = "unreached_transpose"
+    CARRIED_PITCH = "carried_pitch"
 
 
 @dataclass(frozen=True)
@@ -29,7 +32,8 @@ class SkippedRow:
 
     A voice sounds on the channels its instruments cover, so a note-on naming it elsewhere plays
     nothing in the song either, and the export writes a note cut. A transpose row the format has no
-    pitch change for keeps the note at the pitch it had.
+    pitch change for keeps the note at the pitch it had. An instrument taking the channel's pitch in a
+    pattern several frames play keeps the note the first of them sounds.
 
     Attributes:
         voice_id: The voice the row names, or the voice it moves.

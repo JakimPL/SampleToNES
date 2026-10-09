@@ -3,21 +3,16 @@ from typing import Callable, Final
 
 import pytest
 
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from sampletones_core.constants.enums import ChannelName, FeatureKey
-from tests.screens.prompts.every_door.cases import ASKING_DOORS, Door, Question, Standing
-from tests.screens.prompts.every_door.constants import EXIT, SETTLING_FRAMES
-from tests.screens.prompts.every_door.steps import expect_title, knock
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import (
+from automation.application.startup import Startup
+from automation.screen import Screen
+from automation.steps.reconstructions import (
     expect_open,
     marked,
     raise_the_first_level,
     remove_from_the_browser,
     titled,
 )
-from tests.suite.screens.vocabulary.dialogs import (
+from automation.vocabulary.dialogs import (
     CANCEL,
     CLOSE,
     CLOSE_MESSAGE,
@@ -30,6 +25,11 @@ from tests.suite.screens.vocabulary.dialogs import (
     LOAD_TITLE,
     SAVE,
 )
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_core.constants.enums import ChannelName, FeatureKey
+from tests.screens.prompts.every_door.cases import ASKING_DOORS, Door, Question, Standing
+from tests.screens.prompts.every_door.constants import EXIT, SETTLING_FRAMES
+from tests.screens.prompts.every_door.steps import expect_title, knock
 from tests.suite.screens.worlds.recordings import OPEN_RECONSTRUCTION, SONG, SONG_SAMPLE
 
 EXIT_TITLE: Final[str] = "global.dialog.title.exit_confirmation"

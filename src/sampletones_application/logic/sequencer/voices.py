@@ -10,6 +10,7 @@ from sampletones_application.layout.behavior.scheduling.scheduling import (
 )
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
+from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.sequencer.kind import voice_kind
 from sampletones_application.view_model.sequencer.voices import (
@@ -52,7 +53,7 @@ class SequencerVoicesLogic(CallbackMixin):
 
     Every pool edit goes through the controller so the project stays the single source of truth.
     ``on_edit_voice_requested`` hands a voice id to the application, which opens that voice in the
-    Reconstructions tab — a recording as the reconstruction behind it, a hand-written one as its
+    Reconstructions tab — a sample as the reconstruction behind it, an instrument as its
     envelopes.
 
     Previewing mirrors the reconstruction browser: a single click schedules a debounced autoplay
@@ -67,11 +68,13 @@ class SequencerVoicesLogic(CallbackMixin):
         audio_device_manager: AudioDeviceManager,
         *,
         scheduling: SchedulingBehavior,
+        renders: RenderCache,
     ) -> None:
         self._controller = project_controller
         self._session_manager = session_manager
         self._audio_device_manager = audio_device_manager
         self._scheduling = scheduling
+        self._renders = renders
         self._pending_autoplay_voice: Optional[str] = None
 
         self.on_voices_changed: Optional[Callable[[SequencerVoicesViewModel], None]] = None
@@ -295,7 +298,7 @@ class SequencerVoicesLogic(CallbackMixin):
         """
         match self._controller.project.voices.get(voice_id):
             case Sample() as sample:
-                return sample.reconstruction.approximation
+                return self._renders.mix(sample.reconstruction)
             case Instrument() as instrument:
                 return audition_audio(
                     instrument,

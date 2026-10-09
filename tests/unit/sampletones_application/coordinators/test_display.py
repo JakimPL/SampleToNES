@@ -82,6 +82,7 @@ class _SessionRecorder:
         self.vsync = True
         self.max_fps = 60
         self.borderless = False
+        self.show_frame_rate = True
         self.fullscreen = False
         self.writes: List[Tuple[str, Any]] = []
 
@@ -100,6 +101,10 @@ class _SessionRecorder:
     def set_borderless(self, borderless: bool) -> None:
         self.writes.append(("borderless", borderless))
         self.borderless = borderless
+
+    def set_show_frame_rate(self, show_frame_rate: bool) -> None:
+        self.writes.append(("show_frame_rate", show_frame_rate))
+        self.show_frame_rate = show_frame_rate
 
 
 class _ViewportRecorder:
@@ -155,6 +160,14 @@ class _FrameLimiterRecorder:
 
     def set_max_fps(self, max_fps: int) -> None:
         self.rates.append(max_fps)
+
+
+class _FrameRateReadingRecorder:
+    def __init__(self) -> None:
+        self.shown: List[bool] = []
+
+    def show_frame_rate(self, shown: bool) -> None:
+        self.shown.append(shown)
 
 
 class _WindowRecorder:
@@ -236,6 +249,7 @@ class Harness:
         self.session = _SessionRecorder()
         self.viewport = _ViewportRecorder()
         self.frame_limiter = _FrameLimiterRecorder()
+        self.frame_rate_reading = _FrameRateReadingRecorder()
         self.palette_source = _PaletteSourceRecorder()
         self.window = _WindowRecorder()
         self.countdown = _CountdownRecorder()
@@ -246,6 +260,7 @@ class Harness:
             self.frame_limiter,
             self.palette_source,
             _PaletteCatalogRecorder(),
+            frame_rate_reading=self.frame_rate_reading,
             window=self.window,
             countdown=self.countdown,
             behavior=BEHAVIOR,
@@ -297,6 +312,7 @@ class TestOpening:
             window=WindowMode(resolution=DEFAULT_RESOLUTION, borderless=False, fullscreen=False),
             vsync=True,
             frame_rate=60,
+            show_frame_rate=True,
         )
 
     def test_only_the_sizes_the_monitor_leaves_room_for_are_offered(self, harness: Harness) -> None:
@@ -321,6 +337,16 @@ class TestLiveApplication:
         harness.change(harness.settings.with_vsync(False))
 
         assert ("vsync", False) in harness.viewport.calls
+
+    def test_the_frame_rate_reading_leaves_the_bar_the_moment_it_is_switched_off(self, harness: Harness) -> None:
+        harness.change(harness.settings.with_show_frame_rate(False))
+
+        assert harness.frame_rate_reading.shown == [False]
+
+    def test_a_switch_left_as_it_was_reaches_no_reading(self, harness: Harness) -> None:
+        harness.change(harness.settings.with_vsync(False))
+
+        assert harness.frame_rate_reading.shown == []
 
     def test_a_size_reaches_the_viewport_the_moment_it_is_picked(self, harness: Harness) -> None:
         harness.change(harness.settings.with_window(harness.settings.window.with_resolution(WIDESCREEN)))
@@ -359,6 +385,7 @@ class TestCommit:
             "vsync": True,
             "max_fps": 120,
             "borderless": False,
+            "show_frame_rate": True,
         }
 
     def test_confirming_closes_the_dialog(self, harness: Harness) -> None:
@@ -424,6 +451,13 @@ class TestCancel:
             y=OPENING_Y,
             resolution=DEFAULT_RESOLUTION,
         )
+
+    def test_discarding_puts_the_frame_rate_reading_back_on_the_bar(self, harness: Harness) -> None:
+        harness.change(harness.settings.with_show_frame_rate(False))
+        harness.cancel()
+        harness.dialogs.confirm()
+
+        assert harness.frame_rate_reading.shown == [False, True]
 
     def test_discarding_writes_nothing_to_the_session(self, harness: Harness) -> None:
         harness.change(harness.settings.with_vsync(False))

@@ -2,6 +2,7 @@ from typing import Final, Tuple
 
 from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
 from sampletones_core.features.envelope import Envelope
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
@@ -26,8 +27,8 @@ def _project() -> Project:
     )
     project = Project.create(title="Demo", rows_per_pattern=ROWS_PER_PATTERN)
     project.voices.append(instrument)
-    pattern = project.song[ChannelName.PULSE1].ensure_pattern(0, ROWS_PER_PATTERN)
-    pattern.rows[0] = Row(command=NoteOn(voice_id=instrument.id))
+    project.song[ChannelName.PULSE1].ensure_pattern(0, ROWS_PER_PATTERN)
+    project.song[ChannelName.PULSE1].set_row(0, 0, Row(command=NoteOn(voice_id=instrument.id), pitch=Step(value=0)))
     project.song.set_order_entry(0, ChannelName.PULSE1, 0)
     return project
 

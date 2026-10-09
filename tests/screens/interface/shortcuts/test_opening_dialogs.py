@@ -2,6 +2,12 @@ import operator
 from functools import partial
 from typing import Final, Tuple
 
+from automation.boundaries.dialogs import DialogKind
+from automation.dearpygui.items.reading import is_tag_within
+from automation.dearpygui.items.regions import read_windows
+from automation.dearpygui.keys import IMGUI_ESCAPE
+from automation.screen import Screen
+from automation.steps.reconstructions import expect_open
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.tags.settings import (
     TAG_SETTINGS_AUDIO_WINDOW,
@@ -13,12 +19,6 @@ from sampletones_application.tags.settings import (
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.screens.interface.shortcuts.constants import SETTLING_FRAMES
 from tests.screens.interface.shortcuts.steps import on_a_tab
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.dearpygui.items.reading import is_tag_within
-from tests.suite.screens.dearpygui.items.regions import read_windows
-from tests.suite.screens.dearpygui.keys import IMGUI_ESCAPE
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import expect_open
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION
 
 DIALOG_SHORTCUTS: Final[Tuple[Tuple[ShortcutId, str], ...]] = (

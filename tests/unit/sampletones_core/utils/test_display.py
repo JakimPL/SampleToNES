@@ -4,7 +4,9 @@ from unittest.mock import Mock
 import pytest
 
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.general import MAX_PERIOD, MAX_PITCH, MIN_PLAYED_PITCH
 from sampletones_core.project import Project
+from sampletones_core.project.patterns.pitch import Note, RowPitch, Step
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
@@ -13,11 +15,13 @@ from sampletones_core.utils.display import (
     NOTE_OFF,
     display_command,
     display_id,
+    display_pitch,
     display_transpose,
     display_voice,
     display_voice_label,
     display_volume,
 )
+from sampletones_core.utils.frequencies import period_to_name, pitch_to_name
 
 
 def _project_with_samples(count: int) -> Tuple[Project, List[Sample]]:
@@ -125,17 +129,18 @@ class TestDisplayCommand:
         )
 
 
-_TRANSPOSE_CASES = [
+_TRANSPOSE_CASES: List[Tuple[int, str]] = [
+    (0, "+00"),
     (5, "+05"),
     (-5, "-05"),
-    (26, "+1A"),
-    (-26, "-1A"),
+    (26, "+26"),
+    (-26, "-26"),
 ]
 
 
 class TestDisplayTranspose:
     @pytest.mark.parametrize(("value", "expected"), _TRANSPOSE_CASES)
-    def test_signed_offset_is_two_hexadecimal_digits(self, value: int, expected: str) -> None:
+    def test_signed_offset_is_two_decimal_digits(self, value: int, expected: str) -> None:
         assert display_transpose(value) == expected
 
     def test_explicit_zero_reads_as_a_zero_offset(self) -> None:
@@ -161,3 +166,33 @@ class TestDisplayVolume:
 
     def test_absent_volume_is_placeholder(self) -> None:
         assert display_volume(None) == "."
+
+
+_PITCH_CASES: List[Tuple[Optional[RowPitch], str]] = [
+    (None, NOTE_BLANK),
+    (Step(value=0), display_transpose(0)),
+    (Step(value=-10), display_transpose(-10)),
+    (Note(value=60), pitch_to_name(60)),
+    (Note(value=61), pitch_to_name(61)),
+    (Note(value=MIN_PLAYED_PITCH), pitch_to_name(MIN_PLAYED_PITCH)),
+    (Note(value=MAX_PITCH), pitch_to_name(MAX_PITCH)),
+    (Note(value=0), period_to_name(0)),
+    (Note(value=MAX_PERIOD), period_to_name(MAX_PERIOD)),
+    (Note(value=MAX_PERIOD + 1), pitch_to_name(MIN_PLAYED_PITCH)),
+]
+
+
+class TestDisplayPitch:
+    """A pitch prints in the face it was written: a note by its name, a step as a signed offset."""
+
+    @pytest.mark.parametrize(("pitch", "expected"), _PITCH_CASES)
+    def test_the_face_a_pitch_prints(self, pitch: Optional[RowPitch], expected: str) -> None:
+        assert display_pitch(pitch) == expected
+
+    @pytest.mark.parametrize(("pitch", "expected"), _PITCH_CASES)
+    def test_every_face_is_the_same_width(self, pitch: Optional[RowPitch], expected: str) -> None:
+        assert len(display_pitch(pitch)) == len(NOTE_BLANK)
+
+    def test_a_period_and_a_pitch_name_apart(self) -> None:
+        """The two value ranges stand apart, so a note needs no channel to be named."""
+        assert display_pitch(Note(value=MAX_PERIOD)) != display_pitch(Note(value=MIN_PLAYED_PITCH))

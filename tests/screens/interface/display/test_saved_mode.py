@@ -3,31 +3,24 @@ from typing import Final, List
 
 import pytest
 
+from automation.screen import Screen
+from automation.worlds.home import World, screen_filling_state
+from automation.written import written_application_config, written_state
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_application.config.session.application.display import DisplayConfig
 from sampletones_application.config.session.state.window import ViewportState
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_shared.display import Resolution
 from tests.screens.interface.display.steps import (
     another_size,
     framed,
     kept,
+    leave,
     open_display_settings,
     size_named,
     window_size,
 )
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.worlds.home import World, screen_filling_state
-from tests.suite.screens.written import written_application_config, written_state
 
 SEEDED_SIZE: Final[Resolution] = Resolution(width=1280, height=800)
-
-
-def leave(screen: Screen) -> None:
-    """Leaves the application with the exit shortcut and waits for it to close."""
-    screen.press_shortcut(ShortcutId.EXIT)
-
-    assert screen.wait_for_exit()
 
 
 class TestLeavingWritesTheWindowMode:

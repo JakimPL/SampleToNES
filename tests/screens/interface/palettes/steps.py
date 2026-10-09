@@ -1,9 +1,9 @@
+from automation.dearpygui.items.colors import read_held_colors
+from automation.palettes import in_fractions
+from automation.screen import Screen
+from automation.steps.reconstructions import expect_open
 from tests.screens.interface.palettes.cases import Painted
 from tests.screens.interface.palettes.constants import EVERY_TAB, TAB_FRAMES
-from tests.suite.screens.dearpygui.items.colors import read_held_colors
-from tests.suite.screens.palettes import in_fractions
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import expect_open
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION
 
 

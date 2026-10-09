@@ -9,6 +9,7 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_DISPLAY_BUTTON_OK,
     TAG_SETTINGS_DISPLAY_CHECKBOX_BORDERLESS,
     TAG_SETTINGS_DISPLAY_CHECKBOX_FULLSCREEN,
+    TAG_SETTINGS_DISPLAY_CHECKBOX_SHOW_FRAME_RATE,
     TAG_SETTINGS_DISPLAY_CHECKBOX_VSYNC,
     TAG_SETTINGS_DISPLAY_COMBO_FRAME_RATE,
     TAG_SETTINGS_DISPLAY_COMBO_PALETTE,
@@ -95,6 +96,7 @@ class GUIDisplaySettingsWindow(GUISeededDialogWindow[DisplaySettingsViewModel]):
                 FocusStop.field(TAG_SETTINGS_DISPLAY_CHECKBOX_FULLSCREEN),
                 FocusStop.field(TAG_SETTINGS_DISPLAY_CHECKBOX_VSYNC),
                 FocusStop.field(TAG_SETTINGS_DISPLAY_COMBO_FRAME_RATE),
+                FocusStop.field(TAG_SETTINGS_DISPLAY_CHECKBOX_SHOW_FRAME_RATE),
                 FocusStop.field(TAG_SETTINGS_DISPLAY_COMBO_PALETTE),
                 FocusStop.button(TAG_SETTINGS_DISPLAY_BUTTON_CANCEL, self._request_cancel),
                 FocusStop.button(TAG_SETTINGS_DISPLAY_BUTTON_OK, self._request_commit),
@@ -151,6 +153,13 @@ class GUIDisplaySettingsWindow(GUISeededDialogWindow[DisplaySettingsViewModel]):
                 callback=self._on_frame_rate_changed,
             )
 
+        dpg.add_checkbox(
+            tag=TAG_SETTINGS_DISPLAY_CHECKBOX_SHOW_FRAME_RATE,
+            label=self._language_manager["settings.display.label.show_frame_rate"],
+            default_value=view_model.settings.show_frame_rate,
+            callback=self._on_show_frame_rate_changed,
+        )
+
     def _create_appearance_section(self) -> None:
         view_model = self.view_model
         subheader(self._language_manager["settings.display.title.section_appearance"])
@@ -205,6 +214,7 @@ class GUIDisplaySettingsWindow(GUISeededDialogWindow[DisplaySettingsViewModel]):
             TAG_SETTINGS_DISPLAY_COMBO_FRAME_RATE,
             view_model.current_frame_rate_item(self._lbl_unlimited),
         )
+        dpg_set_value(TAG_SETTINGS_DISPLAY_CHECKBOX_SHOW_FRAME_RATE, view_model.settings.show_frame_rate)
         dpg_configure_item(TAG_SETTINGS_DISPLAY_COMBO_PALETTE, items=list(view_model.palettes))
         dpg_set_value(TAG_SETTINGS_DISPLAY_COMBO_PALETTE, view_model.settings.palette)
 
@@ -229,6 +239,10 @@ class GUIDisplaySettingsWindow(GUISeededDialogWindow[DisplaySettingsViewModel]):
         view_model = self.view_model
         frame_rate = view_model.frame_rate_for_item(app_data, self._lbl_unlimited)
         self._emit(view_model.settings.with_frame_rate(frame_rate))
+
+    def _on_show_frame_rate_changed(self, _sender: Sender, app_data: bool) -> None:
+        settings = self.view_model.settings
+        self._emit(settings.with_show_frame_rate(bool(app_data)))
 
     def _on_palette_changed(self, _sender: Sender, app_data: str) -> None:
         settings = self.view_model.settings

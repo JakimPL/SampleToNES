@@ -1,22 +1,27 @@
-from typing import Dict, Final, Optional, Tuple
+from typing import Dict, Final, Literal, Optional, Tuple
 
 from sampletones_application.ui.elements.table.cells import pending_label
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor
+from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_application.view_model.sequencer.tracker import SequencerCellViewModel
+from sampletones_application.view_model.sequencer.tracker import (
+    SequencerCellViewModel,
+    SequencerRowViewModel,
+)
 from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.utils.display import display_id, display_transpose, display_volume
+from sampletones_core.utils.display import display_id, display_pitch, display_volume
 
 CellKey = Tuple[int, Optional[ChannelName], SubColumn]
 CellValues = Dict[CellKey, str]
 CellKinds = Dict[CellKey, Optional[VoiceKind]]
+NumberSubColumn = Literal[SubColumn.VOICE, SubColumn.VOLUME]
 
 CELL_TITLE_SEPARATOR: Final[str] = " | "
 
 _DEFAULT_LABELS: Final[Dict[SubColumn, str]] = {
     SubColumn.VOICE: display_id(None),
-    SubColumn.TRANSPOSE: display_transpose(None),
+    SubColumn.TRANSPOSE: display_pitch(None),
     SubColumn.VOLUME: display_volume(None),
 }
 
@@ -46,13 +51,40 @@ def cell_display(cell_view_model: SequencerCellViewModel, subcolumn: SubColumn) 
             return cell_view_model.volume
 
 
-def format_committed(subcolumn: SubColumn, value: Optional[int]) -> str:
-    """Format an integer value as the display string stored in the optimistic cell cache."""
+def row_values(row: SequencerRowViewModel) -> Dict[TrackerSlot, str]:
+    """What every slot of one tracker row reads, the Sample column's summaries among them."""
+    values: Dict[TrackerSlot, str] = {
+        TrackerSlot(None, SubColumn.VOICE): row.sample,
+        TrackerSlot(None, SubColumn.TRANSPOSE): row.transpose,
+        TrackerSlot(None, SubColumn.VOLUME): row.volume,
+    }
+    for channel in ChannelName.items():
+        for subcolumn in SubColumn:
+            values[TrackerSlot(channel, subcolumn)] = cell_display(row.cells[channel], subcolumn)
+
+    return values
+
+
+def row_kinds(row: SequencerRowViewModel) -> Dict[TrackerSlot, Optional[VoiceKind]]:
+    """The kind of voice each voice slot of one tracker row names, which is the color that slot wears.
+
+    Only the voice slot reports a kind, so the map covers those slots alone.
+    """
+    kinds: Dict[TrackerSlot, Optional[VoiceKind]] = {TrackerSlot(None, SubColumn.VOICE): row.sample_kind}
+    for channel in ChannelName.items():
+        kinds[TrackerSlot(channel, SubColumn.VOICE)] = row.cells[channel].kind
+
+    return kinds
+
+
+def format_committed(subcolumn: NumberSubColumn, value: Optional[int]) -> str:
+    """Format a number as the display string stored in the optimistic cell cache.
+
+    A pitch prints through :func:`display_pitch`, since the cell holds a note or a step.
+    """
     match subcolumn:
         case SubColumn.VOICE:
             return display_id(value)
-        case SubColumn.TRANSPOSE:
-            return display_transpose(value)
         case SubColumn.VOLUME:
             return display_volume(value)
 

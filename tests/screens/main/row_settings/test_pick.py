@@ -2,14 +2,14 @@ import operator
 from functools import partial
 from typing import Final
 
+from automation.screen import Screen
+from automation.steps.main import gather, home_path
+from automation.vocabulary.converter import FOLDER_ROW
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.main.row_settings.constants import PAIR, PAIR_TAKES
 from tests.screens.main.row_settings.steps import ticked
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import gather, home_path
-from tests.suite.screens.vocabulary.converter import FOLDER_ROW
-from tests.suite.screens.vocabulary.recordings import KICK, SNARE
+from tests.suite.screens.seeds.constants import KICK, SNARE
 
 NEW_RECORDINGS: Final[str] = "main.source.label.new_recordings"
 

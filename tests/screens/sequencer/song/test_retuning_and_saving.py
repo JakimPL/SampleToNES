@@ -1,14 +1,14 @@
 import operator
 from typing import Final, List, Tuple
 
+from automation.screen import Screen
+from automation.steps.reconstructions import marked, raise_the_first_level, titled, voice_title
+from automation.steps.sequencer import leave_letting_the_project_go, on_the_sequencer, open_voice
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from tests.screens.sequencer.song.constants import LINE_NUMBER, SETTLING_FRAMES
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import marked, raise_the_first_level, titled, voice_title
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go, on_the_sequencer, open_voice
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT, LINE
 
 LINE_ORDINAL: Final[int] = 0

@@ -2,6 +2,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Final, Tuple
 
+from automation.boundaries.dialogs import DialogKind
+from automation.dearpygui.keys import IMGUI_ESCAPE
+from automation.screen import Screen
+from automation.steps.sequencer import open_voice_menu
+from automation.vocabulary.exports import EXPORT_INSTRUMENT
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_core.exports.stage import ExportStage
 from sampletones_shared.paths.extensions import (
@@ -11,11 +16,6 @@ from sampletones_shared.paths.extensions import (
     EXT_FILE_MODULE,
     EXT_FILE_NSF,
 )
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.dearpygui.keys import IMGUI_ESCAPE
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import open_voice_menu
-from tests.suite.screens.vocabulary.exports import EXPORT_INSTRUMENT
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT, PAD
 

@@ -1,6 +1,6 @@
+from automation.worlds.home import World, screen_filling_state
 from sampletones_core.configs import Config
 from tests.suite.screens.seeds.libraries import MiniLibrary
-from tests.suite.screens.worlds.home import World, screen_filling_state
 
 
 def library_world(config: Config, *, built: bool) -> World:

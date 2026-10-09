@@ -3,6 +3,9 @@ from typing import Dict, Final
 
 import dearpygui.dearpygui as dpg
 
+from automation.dearpygui.items.reading import read_item
+from automation.screen import Screen
+from automation.steps.main import home_path
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_TEXT, TAG_GLOBAL_THEME_STEMS_GROUP_ROW
 from sampletones_application.tags.main import PRE_MAIN_CONVERTER_STEMS
@@ -10,10 +13,7 @@ from sampletones_application.ui.themes.channels import CHANNEL_THEME_TAGS
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.main.list.constants import FORTY
 from tests.screens.main.list.steps import gather
-from tests.suite.screens.dearpygui.items.reading import read_item
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import home_path
-from tests.suite.screens.vocabulary.recordings import KICK
+from tests.suite.screens.seeds.constants import KICK
 
 SAME_LINE_PIXELS: Final[float] = 1.0
 HEADING: Final[str] = "heading"

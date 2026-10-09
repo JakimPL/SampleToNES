@@ -1,3 +1,4 @@
+from automation.screen import Screen
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_COLLAPSE_STRIP,
@@ -5,7 +6,6 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_THEME_COLLAPSE_HEADER_HOVERED,
 )
 from sampletones_application.tags.main import TAG_MAIN_CONVERTER_PANEL, TAG_MAIN_SOURCE_PANEL
-from tests.suite.screens.screen import Screen
 
 
 class TestACardHeaderUnderThePointer:

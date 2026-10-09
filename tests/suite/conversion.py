@@ -1,6 +1,7 @@
 from pathlib import Path
-from typing import AbstractSet, Final, FrozenSet, Sequence
+from typing import AbstractSet, Sequence
 
+from automation.holds.conversion import COUNTED_STAGES, FAKE_FRAMES, HALFWAY
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.progress import (
@@ -13,12 +14,6 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.config import 
 from sampletones_core.reconstructions.stage import ReconstructionStage
 from sampletones_shared.types.path import Pathlike
 from tests.suite.release import wait_for_release
-
-FAKE_FRAMES: Final[int] = 40
-HALFWAY: Final[int] = FAKE_FRAMES // 2
-COUNTED_STAGES: Final[FrozenSet[ReconstructionStage]] = frozenset(
-    {ReconstructionStage.MATCHING, ReconstructionStage.GATHERING}
-)
 
 
 class FakeReconstructor:

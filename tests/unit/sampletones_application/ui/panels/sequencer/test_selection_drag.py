@@ -29,15 +29,18 @@ from sampletones_application.ui.panels.sequencer.input.order import (
 )
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.ui.panels.sequencer.order.panel import GUISequencerOrderPanel, OrderKey
+from sampletones_application.ui.panels.sequencer.tracker.band import TrackerRows
 from sampletones_application.ui.panels.sequencer.tracker.panel import CellKey, GUISequencerTrackerPanel
 from sampletones_application.utils.gui.keyboard.modifiers import Modifier
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_application.view_model.sequencer.region import OrderRegion, TrackerRegion
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.tracker import NO_REACH
 from sampletones_core.constants.enums import ChannelName
 
 ROW_COUNT = 64
+CONTEXT_REACH = 3
 POSITION_COUNT = 8
 ORIGIN_WIDGET = 101
 ORIGIN_CELL: CellKey = (2, ChannelName.PULSE1, SubColumn.TRANSPOSE)
@@ -84,7 +87,7 @@ def _tracker(
 ) -> Tuple[GUISequencerTrackerPanel, List[TrackerInputState]]:
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
     panel._input_state = TrackerInputState()
-    panel._current_row_count = ROW_COUNT
+    panel._rows_layout = TrackerRows(reach=NO_REACH, frame_rows=ROW_COUNT)
     panel._editable_cells = EditableCells()
     panel._editable_cells.register(ORIGIN_CELL, ORIGIN_WIDGET)
     panel._selection = TableSelection(
@@ -262,7 +265,7 @@ class TestTrackerDragHitTest:
     ) -> None:
         panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
         panel._layout = sequencer_layout
-        panel._current_row_count = ROW_COUNT
+        panel._rows_layout = TrackerRows(reach=NO_REACH, frame_rows=ROW_COUNT)
         monkeypatch.setattr(panel, "_row_top", lambda index: 100.0 if index == 0 else None)
 
         height = sequencer_layout.tracker.row_height
@@ -278,7 +281,7 @@ class TestTrackerDragHitTest:
     ) -> None:
         panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
         panel._layout = sequencer_layout
-        panel._current_row_count = ROW_COUNT
+        panel._rows_layout = TrackerRows(reach=NO_REACH, frame_rows=ROW_COUNT)
         monkeypatch.setattr(panel, "_row_top", lambda index: 100.0 if index == 0 else None)
 
         assert panel._row_at(-500.0) == 0
@@ -291,7 +294,7 @@ class TestTrackerDragHitTest:
     ) -> None:
         panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
         panel._layout = sequencer_layout
-        panel._current_row_count = 0
+        panel._rows_layout = TrackerRows(reach=NO_REACH, frame_rows=0)
         monkeypatch.setattr(panel, "_row_top", lambda index: None)
 
         assert panel._row_at(100.0) is None
@@ -307,13 +310,31 @@ class TestTravelBands:
     ) -> None:
         panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
         panel._layout = sequencer_layout
-        panel._current_row_count = ROW_COUNT
+        panel._rows_layout = TrackerRows(reach=NO_REACH, frame_rows=ROW_COUNT)
         monkeypatch.setattr(panel, "_row_top", lambda index: 100.0 if index == 0 else None)
 
         assert panel._travel_band() == TravelBand(
             first_edge=100.0,
             cell_extent=sequencer_layout.tracker.row_height,
             cell_count=ROW_COUNT,
+        )
+
+    def test_the_tracker_band_takes_in_the_rows_either_side_of_the_frame(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sequencer_layout: SequencerLayout,
+    ) -> None:
+        """The rows of the song beside the frame scroll with it, so the band runs from the first of them."""
+        panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
+        panel._layout = sequencer_layout
+        panel._rows_layout = TrackerRows(reach=CONTEXT_REACH, frame_rows=ROW_COUNT)
+        monkeypatch.setattr(panel, "_row_top", lambda index: 100.0 if index == 0 else None)
+        row_height = sequencer_layout.tracker.row_height
+
+        assert panel._travel_band() == TravelBand(
+            first_edge=100.0 - CONTEXT_REACH * row_height,
+            cell_extent=row_height,
+            cell_count=ROW_COUNT + 2 * CONTEXT_REACH,
         )
 
     def test_a_tracker_awaiting_its_rows_states_no_band(
@@ -323,7 +344,7 @@ class TestTravelBands:
     ) -> None:
         panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
         panel._layout = sequencer_layout
-        panel._current_row_count = ROW_COUNT
+        panel._rows_layout = TrackerRows(reach=NO_REACH, frame_rows=ROW_COUNT)
         monkeypatch.setattr(panel, "_row_top", lambda index: None)
 
         assert panel._travel_band() is None
@@ -335,7 +356,7 @@ class TestTravelBands:
     ) -> None:
         panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
         panel._layout = sequencer_layout
-        panel._current_row_count = 0
+        panel._rows_layout = TrackerRows(reach=NO_REACH, frame_rows=0)
         monkeypatch.setattr(panel, "_row_top", lambda index: 100.0)
 
         assert panel._travel_band() is None

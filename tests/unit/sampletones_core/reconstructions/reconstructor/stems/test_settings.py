@@ -66,7 +66,7 @@ class TestTheBendsASettingsHolds(BaseTestSuite):
     def test_settings_are_held_to_their_bends(self, test_case: TestCase) -> None:
         if test_case.expected is None:
             settings = StemSettings(channels=test_case.channels, bends=test_case.bends)
-            assert settings.bends == test_case.bends
+            assert settings.bends == tuple(test_case.bends)
             return
 
         with pytest.raises(test_case.expected):
@@ -154,8 +154,8 @@ class TestTheUsualSettings(BaseTestSuite):
 
         settings = StemSettings.covering(channels)
 
-        assert settings.channels == channels
-        assert settings.bends == bending_channels(channels)
+        assert settings.channels == tuple(channels)
+        assert settings.bends == tuple(bending_channels(channels))
         assert settings.drives == {channel_name: UNIT_DRIVE for channel_name in channels}
         assert settings.channel_cap == ALL_STEMS_CHANNEL_CAP
 
@@ -168,8 +168,8 @@ class TestRewritingTheChannels(BaseTestSuite):
 
         rewritten = settings.with_channels({ChannelName.PULSE1})
 
-        assert rewritten.channels == [ChannelName.PULSE1]
-        assert rewritten.bends == [ChannelName.PULSE1]
+        assert rewritten.channels == (ChannelName.PULSE1,)
+        assert rewritten.bends == (ChannelName.PULSE1,)
         assert rewritten.drives == {ChannelName.PULSE1: PUSHED}
 
     def test_a_channel_newly_held_plays_at_unit_and_bends_nothing(self) -> None:
@@ -177,8 +177,8 @@ class TestRewritingTheChannels(BaseTestSuite):
 
         rewritten = settings.with_channels({ChannelName.PULSE1, ChannelName.TRIANGLE})
 
-        assert rewritten.channels == TWO_CHANNELS
-        assert rewritten.bends == [ChannelName.PULSE1]
+        assert rewritten.channels == tuple(TWO_CHANNELS)
+        assert rewritten.bends == (ChannelName.PULSE1,)
         assert rewritten.drives == {ChannelName.PULSE1: PUSHED, ChannelName.TRIANGLE: UNIT_DRIVE}
 
     def test_the_count_stays_the_readers_choice(self) -> None:
@@ -189,7 +189,7 @@ class TestRewritingTheChannels(BaseTestSuite):
     def test_the_channels_stand_in_the_order_the_application_names_them(self) -> None:
         rewritten = StemSettings.covering([ChannelName.NOISE]).with_channels({ChannelName.NOISE, ChannelName.PULSE1})
 
-        assert rewritten.channels == [ChannelName.PULSE1, ChannelName.NOISE]
+        assert rewritten.channels == (ChannelName.PULSE1, ChannelName.NOISE)
 
 
 class TestRewritingTheOtherChoices(BaseTestSuite):
@@ -198,7 +198,7 @@ class TestRewritingTheOtherChoices(BaseTestSuite):
 
         rewritten = settings.with_bends({ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE})
 
-        assert rewritten.bends == [ChannelName.PULSE1]
+        assert rewritten.bends == (ChannelName.PULSE1,)
         assert rewritten.drives == settings.drives
         assert rewritten.channel_cap == settings.channel_cap
 

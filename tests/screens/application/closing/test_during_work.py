@@ -3,6 +3,18 @@ from typing import Final
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.boundaries.dialogs import DialogKind
+from automation.holds.conversion import ConversionHold
+from automation.holds.export import ExportHold
+from automation.holds.regeneration import RegenerationHold
+from automation.holds.scan import ScanHold
+from automation.screen import Screen
+from automation.steps.main import gather, home_path
+from automation.steps.reconstructions import expect_open, raise_the_first_level_while_held
+from automation.vocabulary.playback import PAUSE
+from automation.worlds.home import World, lived_in_world
+from automation.written import written_state
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
@@ -11,28 +23,15 @@ from sampletones_shared.paths.extensions import EXT_FILE_MODULE
 from sampletones_shared.paths.user import PROJECTS_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 from tests.screens.application.closing.constants import RUN_TIMEOUT_SECONDS
 from tests.screens.application.closing.steps import asks_about_the_conversion, conversion_question
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.holds.conversion import ConversionHold
-from tests.suite.screens.holds.export import ExportHold
-from tests.suite.screens.holds.regeneration import RegenerationHold
-from tests.suite.screens.holds.scan import ScanHold
-from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds.recordings import Recording
-from tests.suite.screens.steps.main import gather, home_path
-from tests.suite.screens.steps.reconstructions import expect_open, raise_the_first_level_while_held
-from tests.suite.screens.vocabulary.playback import PAUSE
-from tests.suite.screens.worlds.home import World
 from tests.suite.screens.worlds.recordings import (
     BASS,
     OPEN_RECONSTRUCTION,
     PLAYABLE_RECONSTRUCTION,
     documents_world,
-    lived_in_world,
     playing_world,
 )
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT, sequencer_world
-from tests.suite.screens.written import written_state
 
 SETTLING_FRAMES: Final[int] = 30
 FOLDER: Final[str] = "Many"

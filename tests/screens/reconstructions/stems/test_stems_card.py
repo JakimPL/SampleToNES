@@ -5,14 +5,14 @@ from typing import Dict, Final, List, Tuple
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.screen import Screen
+from automation.steps.reconstructions import expect_open, load_from_the_browser, marked, titled
+from automation.views.stems import StemsCard
+from automation.vocabulary.playback import PAUSE
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName, FeatureKey
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import expect_open, load_from_the_browser, marked, titled
-from tests.suite.screens.views.stems import StemsCard
-from tests.suite.screens.vocabulary.playback import PAUSE
 from tests.suite.screens.worlds.recordings import SHORT_RECONSTRUCTION, STEM_TAKES, STEMS_RECONSTRUCTION
 
 KEYS: Final[Tuple[str, ...]] = ("0", "1", "2")

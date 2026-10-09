@@ -74,8 +74,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                 exporter_class.from_features(features),
             )
 
-            updated = reconstruction.model_copy(deep=True)
-            updated.update_channel_data(
+            updated = reconstruction.with_channel_data(
                 channel_name,
                 instructions,
                 features.initial_pitch,

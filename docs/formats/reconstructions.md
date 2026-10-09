@@ -31,15 +31,10 @@ One entry per channel:
 | `channel_name` | `pulse1`, `pulse2`, `triangle` or `noise` |
 | `instructions` | the stream the channel plays, one [instruction](../glossary.md#instruction) per frame. A FamiTracker export is built from this |
 | `initial_pitch` | the note the channel's arpeggio offsets are measured against, chosen when the reconstruction is built. An export reads the offsets against this pitch, so editing an arpeggio moves the frames around a fixed base (see [FamiTracker export](famitracker.md)) |
-| `held_features` | the dimensions the channel governs. The instrument writes the others itself. An export leaves the governed dimensions empty, and every note sounds them at the value a song starts on |
+| `held_features` | the dimensions left to the channel. An export writes them as disabled slots, and every note sounds them at the value a song starts on |
 
-A stream of no frames is a channel **standing by**. A channel whose every frame rests stands by, whatever
-silenced it, so such a stream is stored as no frames at all. No export writes it and it costs nothing, and
-it stays open to edit. Writing a sounding envelope into it puts the channel in play, and silencing every
-frame takes it out again. A channel a conversion leaves silent has a reference pitch of its own, so the
-first envelope written into it sounds on a mid-range note, and it leaves every dimension to the player. A
-channel an edit or a removal silences keeps the reference and the dimensions it was shaped with. A file
-that has streams only for the channels it plays reads as all four channels, and the rest come back
+A channel whose every frame rests is **standing by**, and its stream is stored as no frames at all. A
+file that has streams only for the channels it plays reads as all four channels, and the rest come back
 standing by.
 
 ### `stems_data`

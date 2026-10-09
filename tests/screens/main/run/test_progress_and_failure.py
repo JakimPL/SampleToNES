@@ -5,11 +5,11 @@ from typing import Final, List
 
 import pytest
 
+from automation.screen import Screen
+from automation.steps.main import gather, home_path
+from automation.vocabulary.converter import CANCEL_RUN, CONVERT_ONE
 from tests.screens.main.run.constants import BASS, RUN_TIMEOUT_SECONDS
 from tests.screens.main.run.steps import written
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import gather, home_path
-from tests.suite.screens.vocabulary.converter import CANCEL_RUN, CONVERT_ONE
 
 RUN_FAILED: Final[str] = "main.converter.message.status_error"
 

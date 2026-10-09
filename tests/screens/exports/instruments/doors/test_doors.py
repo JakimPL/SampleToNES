@@ -2,16 +2,16 @@ import operator
 from pathlib import Path
 from typing import Final, List, Optional, Tuple
 
+from automation.boundaries.dialogs import DialogKind
+from automation.dearpygui.items.texts import EntryReading
+from automation.screen import Screen
+from automation.steps.sequencer import leave_letting_the_project_go, open_voice, open_voice_menu
+from automation.vocabulary.exports import EXPORT_INSTRUMENT, NSF_TYPE
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.formats.famitracker.instrument import read_fti
 from sampletones_player.specification.nsf import NSF_MAGIC
 from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_JSON, EXT_FILE_NSF
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.dearpygui.items.texts import EntryReading
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go, open_voice, open_voice_menu
-from tests.suite.screens.vocabulary.exports import EXPORT_INSTRUMENT, NSF_TYPE
 from tests.suite.screens.worlds.songs import BASS_VOICE, LINE, PAD
 
 EXPORT_TITLE: Final[str] = "reconstructions.instruments.title.export_instrument_dialog"
@@ -76,8 +76,8 @@ class TestTheExportEntryFollowsWhatAVoiceHolds:
     sample holding several; a voice holding none greys it, and greys the Reconstructions tab's button
     with it.
 
-    The menus of the hand-written voice, the three-channel sample and the one-channel sample are read in
-    turn. Then the envelopes of the hand-written voice are emptied, and the button and the menu entry
+    The menus of the instrument, the three-channel sample and the one-channel sample are read in
+    turn. Then the envelopes of the instrument are emptied, and the button and the menu entry
     end greyed.
     """
 
@@ -86,7 +86,7 @@ class TestTheExportEntryFollowsWhatAVoiceHolds:
         menu = screen.context_menu
         instruments = screen.reconstructions.instruments
 
-        def a_hand_written_voice_offers_one_entry(screen: Screen) -> None:
+        def an_instrument_offers_one_entry(screen: Screen) -> None:
             open_voice_menu(screen, PAD)
 
             entry = export_entry(screen)
@@ -115,7 +115,7 @@ class TestTheExportEntryFollowsWhatAVoiceHolds:
 
         def a_voice_left_without_envelopes_greys_both(screen: Screen) -> None:
             open_voice(screen, PAD)
-            screen.expect(instruments.offers_audition, bool, description="the hand-written voice open")
+            screen.expect(instruments.offers_audition, bool, description="the instrument open")
             assert instruments.can_export(INSTRUMENT_CHANNEL)
 
             for feature in (FeatureKey.VOLUME, FeatureKey.ARPEGGIO):
@@ -133,7 +133,7 @@ class TestTheExportEntryFollowsWhatAVoiceHolds:
             menu.dismiss()
 
         screen.scenario(
-            a_hand_written_voice_offers_one_entry,
+            an_instrument_offers_one_entry,
             a_sample_of_three_channels_names_each,
             a_sample_of_one_channel_offers_one_entry,
             a_voice_left_without_envelopes_greys_both,
@@ -144,7 +144,7 @@ class TestTheExportEntryFollowsWhatAVoiceHolds:
 class TestEveryDoorWritesTheSameBytes:
     """The Reconstructions tab's button and the voice's menu write the same file for the same voice.
 
-    The hand-written voice is exported through the button, then through the menu, into two folders. The
+    The instrument is exported through the button, then through the menu, into two folders. The
     two files hold the same bytes.
     """
 
@@ -156,7 +156,7 @@ class TestEveryDoorWritesTheSameBytes:
 
         def export_through_the_button(screen: Screen) -> None:
             open_voice(screen, PAD)
-            screen.expect(instruments.offers_audition, bool, description="the hand-written voice open")
+            screen.expect(instruments.offers_audition, bool, description="the instrument open")
             screen.answer_next_dialog(DialogKind.SAVE, through_the_button)
 
             instruments.export(INSTRUMENT_CHANNEL)

@@ -9,13 +9,16 @@ import pytest
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.data import Metadata
 from sampletones_core.features.envelope import Envelope
+from sampletones_core.instructions import PulseInstruction
 from sampletones_core.project.container import ProjectContainer
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
+from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.application import SAMPLETONES_PROJECT_DATA_VERSION
 from sampletones_shared.constants.project import (
     PROJECT_DOCUMENT_NAME,
@@ -31,11 +34,16 @@ from sampletones_shared.exceptions import (
 )
 from tests.conftest import ReconstructionFactory
 from tests.suite.errors import DIRECTORY_READ_ERRORS
+from tests.suite.stems import SHARED_CHANNEL, taking_turns_reconstruction
 
 Document = Dict[str, Any]
 DocumentRewrite = Callable[[Document], Document]
 
 UNREACHED_VERSION: Final[str] = "9.0"
+SHARING_SOURCES: Final[Tuple[Path, Path]] = (Path("a.wav"), Path("b.wav"))
+ARCHIVE_NAME: Final[str] = "shared.stp"
+EDITED: Final[PulseInstruction] = PulseInstruction(on=True, pitch=67, volume=11, duty_cycle=1)
+EDITED_PITCH: Final[int] = 67
 
 
 def _rewrite_format_version(source: Path, target: Path, *, format_version: str) -> None:
@@ -83,12 +91,17 @@ def _populated_project(
 
     song = project.song
     channel = song[ChannelName.PULSE1]
-    pattern = channel.patterns[0]
-    pattern.name = "intro"
-    pattern.rows[0] = Row(
-        transpose=0,
-        command=NoteOn(voice_id=first.id),
-        volume=15,
+    channel.patterns[0] = (
+        channel.patterns[0]
+        .model_copy(update={"name": "intro"})
+        .with_row(
+            0,
+            Row(
+                pitch=Step(value=0),
+                command=NoteOn(voice_id=first.id),
+                volume=15,
+            ),
+        )
     )
 
     extra_index = channel.add_pattern(song.rows_per_pattern, name="verse")
@@ -126,7 +139,7 @@ class TestRoundTrip:
         )
         assert first_pattern.name == "intro"
         row = first_pattern.rows[0]
-        assert row.transpose == 0
+        assert row.pitch == Step(value=0)
         assert row.command is not None
         assert row.command.voice_id == loaded.voices[0].id
 
@@ -213,7 +226,7 @@ class TestInstrumentsRoundTrip:
         project = Project.create(title="Demo")
         instrument = Instrument(name="lead", envelopes=InstrumentEnvelopes(volume=Envelope(items=(15,))))
         project.voices.append(instrument)
-        project.song[ChannelName.PULSE1].patterns[0].rows[0] = Row(command=NoteOn(voice_id=instrument.id))
+        project.song[ChannelName.PULSE1].set_row(0, 0, Row(command=NoteOn(voice_id=instrument.id)))
         path = tmp_path / "demo.stp"
 
         ProjectContainer.save(project, path)
@@ -483,3 +496,56 @@ class TestVersionCompatibility:
 
         with pytest.raises(IncorrectReconstructionDataError):
             ProjectContainer.load(path)
+
+
+class TestTheArchiveStoresEveryDocument:
+    """A project file stores every distinct document its samples hold, and one shared document once."""
+
+    @pytest.fixture
+    def document(self) -> Reconstruction:
+        """Two recordings taking turns on Pulse 1, the second holding Pulse 2 alone, their locations let go."""
+        return taking_turns_reconstruction(SHARING_SOURCES).detached()
+
+    @staticmethod
+    def _round_trip(project: Project, tmp_path: Path) -> Project:
+        path = tmp_path / ARCHIVE_NAME
+        ProjectContainer.save(project, path)
+        return ProjectContainer.load(path)
+
+    def test_a_shared_document_is_stored_once_and_shared_again(
+        self,
+        document: Reconstruction,
+        tmp_path: Path,
+    ) -> None:
+        project = Project.create()
+        project.voices.append(Sample(name="Lead", reconstruction=document))
+        project.voices.append(Sample(name="Twin", reconstruction=document))
+
+        reloaded = TestTheArchiveStoresEveryDocument._round_trip(project, tmp_path)
+
+        first, second = list(reloaded.voices)
+        assert isinstance(first, Sample) and isinstance(second, Sample)
+        assert first.reconstruction is second.reconstruction
+
+    def test_two_documents_of_one_id_both_survive(
+        self,
+        document: Reconstruction,
+        tmp_path: Path,
+    ) -> None:
+        edited = document.with_channel_data(
+            SHARED_CHANNEL,
+            [EDITED, EDITED],
+            EDITED_PITCH,
+            (),
+            heard=document.recorded_stem_ids,
+        )
+        project = Project.create()
+        project.voices.append(Sample(name="Lead", reconstruction=document))
+        project.voices.append(Sample(name="Copy", reconstruction=edited))
+
+        reloaded = TestTheArchiveStoresEveryDocument._round_trip(project, tmp_path)
+
+        first, second = list(reloaded.voices)
+        assert isinstance(first, Sample) and isinstance(second, Sample)
+        assert first.reconstruction.instructions[SHARED_CHANNEL] == document.instructions[SHARED_CHANNEL]
+        assert second.reconstruction.instructions[SHARED_CHANNEL] == edited.instructions[SHARED_CHANNEL]

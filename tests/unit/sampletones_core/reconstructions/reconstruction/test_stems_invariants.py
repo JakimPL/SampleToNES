@@ -119,7 +119,7 @@ def _stored(
 
 def _edited(reconstruction: Reconstruction, instructions: List[InstructionUnion]) -> Reconstruction:
     edited = reconstruction.model_copy(deep=True)
-    edited.update_channel_data(
+    edited = edited.with_channel_data(
         ChannelName.PULSE1,
         instructions,
         initial_pitch=reconstruction.initial_pitches[ChannelName.PULSE1],
@@ -264,7 +264,7 @@ class TestTheRecordAfterEveryGesture(BaseTestSuite):
 
 def _detached(reconstruction: Reconstruction) -> Reconstruction:
     detached = reconstruction.model_copy(deep=True)
-    detached.detach_source()
+    detached = detached.detached()
     return detached
 
 
@@ -350,7 +350,7 @@ class TestWhatCreatingSettles:
         )
 
         assert created.playing_channels == ()
-        assert created.stems_data.assignments == []
+        assert created.stems_data.assignments == ()
 
 
 class TestARecordingHoldingNoFrame:
@@ -363,7 +363,7 @@ class TestARecordingHoldingNoFrame:
         )
 
         assert [entry.id for entry in reconstruction.stems_data.config.entries] == [STEM_A]
-        assert reconstruction.stems_data.config.hierarchy.levels == [[STEM_A]]
+        assert reconstruction.stems_data.config.hierarchy.levels == ((STEM_A,),)
 
     def test_a_recording_an_edit_emptied_leaves(self, reconstruction: Reconstruction) -> None:
         edited = _edited(
@@ -401,7 +401,7 @@ class TestARecordingHoldingNoFrame:
 
         authored = _edited(_edited(reconstruction, []), [_pulse(60)])
 
-        assert authored.stems_data.assignments_by_channel == {ChannelName.PULSE1: [AUTHORED_STEM_ID]}
+        assert authored.stems_data.assignments_by_channel == {ChannelName.PULSE1: (AUTHORED_STEM_ID,)}
         assert [entry.id for entry in authored.stems_data.config.entries] == [STEM_A, STEM_B]
 
     def test_a_stored_record_naming_an_idle_recording_is_refused(self) -> None:

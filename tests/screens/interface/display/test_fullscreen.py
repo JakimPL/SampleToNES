@@ -1,14 +1,16 @@
+import os
 from typing import Final, List
 
+from automation.dearpygui.geometry import Rect
+from automation.dearpygui.items.viewport import read_viewport
+from automation.environment import screen_size
+from automation.screen import Screen
+from automation.written import written_state
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from tests.suite.screens.dearpygui.geometry import Rect
-from tests.suite.screens.dearpygui.items.viewport import read_viewport
-from tests.suite.screens.environment import SCREEN_SIZE
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.written import written_state
 
-WHOLE_SCREEN: Final[Rect] = Rect(x=0, y=0, width=SCREEN_SIZE.width, height=SCREEN_SIZE.height)
+SCREEN: Final = screen_size(os.environ)
+WHOLE_SCREEN: Final[Rect] = Rect(x=0, y=0, width=SCREEN.width, height=SCREEN.height)
 
 
 def window(screen: Screen) -> Rect:

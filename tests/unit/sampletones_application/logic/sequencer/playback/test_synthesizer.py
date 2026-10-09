@@ -4,6 +4,7 @@ from typing import Dict, Final, FrozenSet, List, Optional, Tuple
 import numpy as np
 import pytest
 
+from automation.scenario import BaseTestScenario, ScenarioStep
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_core.configs import Config
@@ -19,7 +20,6 @@ from tests.suite.performance import (
     make_pulse_reconstruction,
     make_triangle_reconstruction,
 )
-from tests.suite.scenario import BaseTestScenario, ScenarioStep
 from tests.unit.sampletones_application.logic.sequencer.playback.conftest import (
     SOUNDING_FRAMES,
     add_instrument,
@@ -533,6 +533,7 @@ class TestWhenAVoiceRunsOut:
                 channel=ChannelName.PULSE1,
                 row_index=0,
                 voice_id=instrument.id,
+                transpose=0,
             )
 
         def render_row_0_and_assert_non_silence(context: SynthesizerContext) -> None:
@@ -612,6 +613,7 @@ class TestWhenAVoiceRunsOut:
                 channel=ChannelName.PULSE1,
                 row_index=0,
                 voice_id=instrument.id,
+                transpose=0,
             )
             controller.append_frame()
 

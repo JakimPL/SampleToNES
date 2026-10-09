@@ -38,9 +38,9 @@ Dialogs open through the XDG desktop portal (`org.freedesktop.portal.FileChooser
 
 ## Application icon
 
-The icon suite is generated from a mark declared in `sampletones_tools/assets/mark/config` and committed, so a plain checkout has the icons the application opens its window with. [Tooling](../tooling.md) describes the `icons` command that writes it.
+The icon suite is generated from a mark declared in `assets/icons/mark/config` and committed, so a plain checkout has the icons the application opens its window with. [Assets](../assets.md) describes the maker that writes it.
 
-Pillow rasterizes the suite. It is declared in the `assets` dependency group, which the `dev` group includes. It is a developer tool that the build environment never installs, and the bundle script passes `--exclude-module PIL` as well. `pygments`, which arrives with `rich`, offers an image formatter that imports Pillow where it is installed, and PyInstaller follows that import into the bundle. The application reads its icons as files, so the exclusion keeps Pillow's extension modules and the imaging libraries that come with them out of every bundle. `scripts/verify_bundle.py` holds the release bundles to it.
+Pillow rasterizes the suite. It is declared in the `assets` dependency group, which the `dev` group includes. It serves the assets unit alone, which the build environment never installs, and the bundle script passes `--exclude-module PIL` as well. `pygments`, which arrives with `rich`, offers an image formatter that imports Pillow where it is installed, and PyInstaller follows that import into the bundle. The application reads its icons as files, so the exclusion keeps Pillow's extension modules and the imaging libraries that come with them out of every bundle. `scripts/verify_bundle.py` holds the release bundles to it.
 
 ## Calibration
 
@@ -48,7 +48,7 @@ The calibration harness scores renders with referees of its own, built on `numpy
 
 ## NES player driver
 
-Assembling the console player needs `ca65` and `ld65` from [cc65](https://cc65.github.io/). On Debian and Ubuntu that is `sudo apt install cc65`, and a build names the equivalent for whichever system it runs on when the programs are absent. cc65 is a build-time tool for the driver alone. The assembled `driver.bin` is committed, so a checkout has the player and exporting an NSF needs no assembler. Editing the assembly means running `uv run sampletones driver` again and committing what it writes.
+Assembling the console player needs `ca65` and `ld65` from [cc65](https://cc65.github.io/). On Debian and Ubuntu that is `sudo apt install cc65`, and a build names the equivalent for whichever system it runs on when the programs are absent. cc65 is a build-time tool for the driver alone. The assembled `driver.bin` is committed, so exporting an NSF needs no assembler ([the console player](../player.md#building-the-driver) says how it is built).
 
 cc65 is distributed under the zlib license. The link line names our own object files and our own `nsf.cfg`, so nothing of cc65's start-up code or libraries reaches the committed image. That keeps the blob entirely ours to ship under the project's MIT license.
 

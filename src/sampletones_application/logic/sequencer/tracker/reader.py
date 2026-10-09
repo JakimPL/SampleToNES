@@ -8,6 +8,7 @@ from sampletones_application.view_model.sequencer.slot import (
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.project.patterns.pitch import RowPitch
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
@@ -34,7 +35,7 @@ class TrackerBlockReader:
         base = column_slot_base(slot_from_flat(region.first_slot).channel)
         return TrackerBlock(
             notes=self._read_subcolumn(region, base, SubColumn.VOICE, self._note_of),
-            transposes=self._read_subcolumn(region, base, SubColumn.TRANSPOSE, self._transpose_of),
+            pitches=self._read_subcolumn(region, base, SubColumn.TRANSPOSE, self._pitch_of),
             volumes=self._read_subcolumn(region, base, SubColumn.VOLUME, self._volume_of),
         )
 
@@ -135,8 +136,8 @@ class TrackerBlockReader:
                 return None
 
     @staticmethod
-    def _transpose_of(row: Optional[Row]) -> Optional[int]:
-        return row.transpose if row is not None else None
+    def _pitch_of(row: Optional[Row]) -> Optional[RowPitch]:
+        return row.pitch if row is not None else None
 
     @staticmethod
     def _volume_of(row: Optional[Row]) -> Optional[int]:

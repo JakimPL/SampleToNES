@@ -5,18 +5,21 @@ from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.features.envelope import Envelope
-from sampletones_core.project.voices.creation import new_instrument
+from sampletones_core.project.patterns.pitch import Note, RowPitch, Step
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.utils.display import NOTE_BLANK, display_transpose
 from sampletones_core.utils.frequencies import period_to_name, pitch_to_name
+from sampletones_shared.constants.symbols import MIXED
 from tests.suite.sequencer import sample_reconstruction
 
 ROOT_PITCH: Final[int] = 60
 ROOT_PERIOD: Final[int] = 5
-TRANSPOSE: Final[int] = 4
+STEP: Final[int] = 4
+NOTE: Final[int] = 64
+PERIOD: Final[int] = 9
 BEND: Final[int] = 7
 
 
@@ -42,7 +45,7 @@ def _write(
     row_index: int,
     *,
     command: Optional[object] = None,
-    transpose: Optional[int] = None,
+    pitch: Optional[RowPitch] = None,
 ) -> None:
     pattern_index = controller.project.song.order[0][channel]
     controller.set_row(
@@ -50,7 +53,7 @@ def _write(
         pattern_index,
         row_index,
         command=command,
-        transpose=transpose,
+        pitch=pitch,
     )
 
 
@@ -58,66 +61,79 @@ def _pitch_cell(logic: SequencerTrackerLogic, channel: ChannelName, row_index: i
     return logic.build_grid().rows[row_index].cells[channel].transpose
 
 
-class TestACellReadsInTheTermsOfItsVoice:
-    def test_a_sample_reads_as_a_step_from_its_own_pitch(self) -> None:
+class TestACellReadsTheFaceItWasWrittenIn:
+    def test_a_step_on_a_sample_reads_as_the_step(self) -> None:
         controller, logic = _logic()
         sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="bass")
-        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=sample.id), transpose=TRANSPOSE)
+        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=sample.id), pitch=Step(value=STEP))
 
-        assert _pitch_cell(logic, ChannelName.PULSE1, 0) == display_transpose(TRANSPOSE)
+        assert _pitch_cell(logic, ChannelName.PULSE1, 0) == display_transpose(STEP)
 
-    def test_an_instrument_reads_as_the_note_it_sounds(self) -> None:
+    def test_a_note_on_a_sample_reads_as_the_note(self) -> None:
+        controller, logic = _logic()
+        sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="bass")
+        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=sample.id), pitch=Note(value=NOTE))
+
+        assert _pitch_cell(logic, ChannelName.PULSE1, 0) == pitch_to_name(NOTE)
+
+    def test_a_step_on_an_instrument_reads_as_the_step(self) -> None:
         controller, logic = _logic()
         instrument = _instrument(controller)
-        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=instrument.id), transpose=TRANSPOSE)
+        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=instrument.id), pitch=Step(value=STEP))
 
-        assert _pitch_cell(logic, ChannelName.PULSE1, 0) == pitch_to_name(ROOT_PITCH + TRANSPOSE)
+        assert _pitch_cell(logic, ChannelName.PULSE1, 0) == display_transpose(STEP)
 
-    def test_an_instrument_on_noise_names_its_period(self) -> None:
+    def test_a_note_on_an_instrument_reads_as_the_note(self) -> None:
         controller, logic = _logic()
         instrument = _instrument(controller)
-        _write(controller, ChannelName.NOISE, 0, command=NoteOn(voice_id=instrument.id), transpose=TRANSPOSE)
+        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=instrument.id), pitch=Note(value=NOTE))
 
-        assert _pitch_cell(logic, ChannelName.NOISE, 0) == period_to_name(ROOT_PERIOD + TRANSPOSE)
+        assert _pitch_cell(logic, ChannelName.PULSE1, 0) == pitch_to_name(NOTE)
+
+    def test_a_note_on_noise_names_its_period(self) -> None:
+        controller, logic = _logic()
+        instrument = _instrument(controller)
+        _write(controller, ChannelName.NOISE, 0, command=NoteOn(voice_id=instrument.id), pitch=Note(value=PERIOD))
+
+        assert _pitch_cell(logic, ChannelName.NOISE, 0) == period_to_name(PERIOD)
 
     def test_an_empty_cell_reads_blank_whichever_voice_is_carried(self) -> None:
         controller, logic = _logic()
         instrument = _instrument(controller)
-        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=instrument.id), transpose=TRANSPOSE)
+        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=instrument.id), pitch=Note(value=NOTE))
 
         assert _pitch_cell(logic, ChannelName.PULSE1, 1) == NOTE_BLANK
 
 
-class TestTheFaceFollowsTheVoiceTheChannelCarries:
-    def test_a_bend_below_an_instrument_still_reads_as_a_note(self) -> None:
-        """A row bending a note it did not start reads in the terms of the voice in force."""
+class TestTheFaceStandsWhereverTheRowStands:
+    def test_a_bend_below_an_instrument_reads_what_it_stores(self) -> None:
         controller, logic = _logic()
         instrument = _instrument(controller)
-        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=instrument.id), transpose=0)
-        _write(controller, ChannelName.PULSE1, 1, transpose=BEND)
-
-        assert _pitch_cell(logic, ChannelName.PULSE1, 1) == pitch_to_name(ROOT_PITCH + BEND)
-
-    def test_a_bend_below_a_sample_still_reads_as_a_step(self) -> None:
-        controller, logic = _logic()
-        sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="bass")
-        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=sample.id), transpose=0)
-        _write(controller, ChannelName.PULSE1, 1, transpose=BEND)
+        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=instrument.id), pitch=Note(value=NOTE))
+        _write(controller, ChannelName.PULSE1, 1, pitch=Step(value=BEND))
 
         assert _pitch_cell(logic, ChannelName.PULSE1, 1) == display_transpose(BEND)
 
-    def test_a_note_off_hands_the_column_back_to_the_neutral_face(self) -> None:
+    def test_a_bend_below_a_sample_reads_what_it_stores(self) -> None:
+        controller, logic = _logic()
+        sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="bass")
+        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=sample.id), pitch=Step(value=0))
+        _write(controller, ChannelName.PULSE1, 1, pitch=Note(value=NOTE))
+
+        assert _pitch_cell(logic, ChannelName.PULSE1, 1) == pitch_to_name(NOTE)
+
+    def test_a_row_past_a_note_off_reads_what_it_stores(self) -> None:
         controller, logic = _logic()
         instrument = _instrument(controller)
-        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=instrument.id), transpose=0)
+        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=instrument.id), pitch=Note(value=NOTE))
         _write(controller, ChannelName.PULSE1, 1, command=NoteOff())
-        _write(controller, ChannelName.PULSE1, 2, transpose=BEND)
+        _write(controller, ChannelName.PULSE1, 2, pitch=Note(value=NOTE))
 
-        assert _pitch_cell(logic, ChannelName.PULSE1, 2) == display_transpose(BEND)
+        assert _pitch_cell(logic, ChannelName.PULSE1, 2) == pitch_to_name(NOTE)
 
-    def test_a_frame_naming_no_voice_reads_as_a_step(self) -> None:
+    def test_a_frame_naming_no_voice_reads_what_it_stores(self) -> None:
         controller, logic = _logic()
-        _write(controller, ChannelName.PULSE1, 0, transpose=BEND)
+        _write(controller, ChannelName.PULSE1, 0, pitch=Step(value=BEND))
 
         assert _pitch_cell(logic, ChannelName.PULSE1, 0) == display_transpose(BEND)
 
@@ -133,9 +149,8 @@ class TestTheSampleColumnSpeaksForSamples:
 
     def test_it_reads_mixed_where_the_channels_disagree_on_the_face(self) -> None:
         controller, logic = _logic()
-        instrument = _instrument(controller)
-        sample = controller.add_sample(sample_reconstruction(list(ChannelName.items())), name="bass")
-        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=instrument.id), transpose=0)
-        _write(controller, ChannelName.PULSE2, 0, command=NoteOn(voice_id=sample.id), transpose=0)
+        sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1, ChannelName.PULSE2]), name="bass")
+        _write(controller, ChannelName.PULSE1, 0, command=NoteOn(voice_id=sample.id), pitch=Step(value=0))
+        _write(controller, ChannelName.PULSE2, 0, command=NoteOn(voice_id=sample.id), pitch=Note(value=ROOT_PITCH))
 
-        assert logic.build_grid().rows[0].transpose == "?"
+        assert logic.build_grid().rows[0].transpose == MIXED

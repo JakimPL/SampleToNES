@@ -1,0 +1,41 @@
+seed: 2026
+voices:
+  kick:
+    duration_seconds: 0.45
+    layers:
+      - oscillator: { kind: geometric_sweep, frequency_start: 160.0, frequency_end: 45.0 }
+        envelopes: [{ kind: exponential_decay, time_constant_seconds: 0.12 }]
+        gain: 1.0
+    filters: []
+  snare:
+    duration_seconds: 0.35
+    layers:
+      - oscillator: { kind: white_noise }
+        envelopes: [{ kind: exponential_decay, time_constant_seconds: 0.08 }]
+        gain: 0.7
+      - oscillator: { kind: sine, frequency: 180.0 }
+        envelopes: [{ kind: exponential_decay, time_constant_seconds: 0.05 }]
+        gain: 0.6
+    filters: []
+  hat:
+    duration_seconds: 0.15
+    layers:
+      - oscillator: { kind: white_noise }
+        envelopes: [{ kind: exponential_decay, time_constant_seconds: 0.03 }]
+        gain: 0.5
+    filters:
+      - { kind: butterworth_highpass, cutoff_hz: 6000.0, order: 4 }
+  bass:
+    duration_seconds: 0.5
+    layers:
+      - oscillator: { kind: pulse, frequency: 36, duty_cycle: 0.5 }
+        envelopes: [{ kind: exponential_decay, time_constant_seconds: 0.35 }]
+        gain: 0.8
+    filters: []
+  lead:
+    duration_seconds: 0.5
+    layers:
+      - oscillator: { kind: pulse, frequency: 69, duty_cycle: 0.25 }
+        envelopes: [{ kind: exponential_decay, time_constant_seconds: 0.25 }]
+        gain: 0.8
+    filters: []

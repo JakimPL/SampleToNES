@@ -1,13 +1,16 @@
 import re
 from pathlib import Path
-from typing import Final, List, Set, Tuple
+from typing import Dict, Final, List, Set, Tuple
 
 import pytest
+from PIL import Image
 
 from sampletones_shared.paths.source import REPOSITORY_ROOT
 
 ENCODING: Final[str] = "utf-8"
 LINK: Final[re.Pattern[str]] = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
+IMAGE: Final[re.Pattern[str]] = re.compile(r"<img\s+([^>]*)>")
+ATTRIBUTE: Final[re.Pattern[str]] = re.compile(r'(\w+)="([^"]*)"')
 HEADING: Final[re.Pattern[str]] = re.compile(r"^#{1,6}\s+(.*?)\s*$", re.MULTILINE)
 EXTERNAL: Final[Tuple[str, ...]] = ("http://", "https://", "mailto:")
 DOCUMENTATION: Final[Path] = REPOSITORY_ROOT / "docs"
@@ -28,6 +31,11 @@ def text(page: Path) -> str:
 
 def anchors(page: Path) -> Set[str]:
     return {anchor(heading) for heading in HEADING.findall(text(page))}
+
+
+def images(page: Path) -> List[Dict[str, str]]:
+    """The attributes of every picture the page embeds as an HTML image."""
+    return [dict(ATTRIBUTE.findall(attributes)) for attributes in IMAGE.findall(text(page))]
 
 
 def pages() -> List[Path]:
@@ -53,6 +61,26 @@ class TestEveryInternalLinkResolves:
 
             if fragment and destination.suffix == ".md":
                 assert fragment in anchors(destination), f"{identifier(page)} links to a missing heading: {target}"
+
+
+class TestEveryPictureStandsAtItsOwnWidth:
+    """A picture a page embeds exists and is shown at the width of its file, as the pictures maker drew it."""
+
+    @pytest.mark.parametrize("page", pages(), ids=identifier)
+    def test_the_page_shows_each_picture_it_holds_at_the_width_of_its_file(self, page: Path) -> None:
+        for attributes in images(page):
+            source = attributes["src"]
+            if source.startswith(EXTERNAL):
+                continue
+
+            picture = (page.parent / source).resolve()
+            assert picture.exists(), f"{identifier(page)} shows a missing picture: {source}"
+
+            with Image.open(picture) as image:
+                shown = attributes.get("width")
+                assert shown == str(
+                    image.width
+                ), f"{identifier(page)} shows {source} at {shown} px; it is {image.width} px wide"
 
 
 class TestTheIndexListsEveryDocument:

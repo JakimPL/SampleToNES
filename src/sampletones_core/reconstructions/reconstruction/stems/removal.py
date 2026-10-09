@@ -77,10 +77,15 @@ def _removal_refusal(reconstruction: Reconstruction, stem_id: int) -> Optional[s
 
 
 def _released_assignment(item: ChannelAssignment, released: Sequence[bool]) -> ChannelAssignment:
-    """The channel's per-frame ownership with each released frame resting."""
+    """The channel's per-frame ownership with each released frame resting, the very record where none is."""
+    if not any(released):
+        return item
+
     return ChannelAssignment(
         channel_name=item.channel_name,
-        stem_ids=[RESTING_STEM_ID if frame_released else held for held, frame_released in zip(item.stem_ids, released)],
+        stem_ids=tuple(
+            RESTING_STEM_ID if frame_released else held for held, frame_released in zip(item.stem_ids, released)
+        ),
     )
 
 
@@ -104,10 +109,11 @@ def _released_stream(stream: InstructionsItem, released: Sequence[bool]) -> Inst
 
     The silent instruction takes the type the stream already carries, which is the type the
     channel is read through, so the stream stays one exporter's throughout. The reference and the
-    held dimensions stay the stream's own, so a channel the removal silences keeps them.
+    held dimensions stay the stream's own, so a channel the removal silences keeps them. A stream
+    the removal releases no frame of is returned as it stands.
     """
     instructions = [data.instruction for data in stream.instructions]
-    if not instructions:
+    if not instructions or not any(released):
         return stream
 
     null: InstructionUnion = type(instructions[0]).null_instruction()

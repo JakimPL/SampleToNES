@@ -9,6 +9,7 @@ from sampletones_core.constants.enums import ChannelName, bending_channels
 from sampletones_core.generators.render import render_channels, render_instructions
 from sampletones_core.instructions import InstructionUnion, PulseInstruction
 from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
+from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_length, rendered_mix
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.filter import filter_approximations
@@ -17,6 +18,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.config import 
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from tests.suite.sequencer import sample_reconstruction
 from tests.suite.stems import RECORDED_SCALE
 
 STEM_A: Final[int] = 0
@@ -111,11 +113,13 @@ class TestTheAudioAReconstructionAnswersWith:
         """The document behind this stands at a drive off unit, and sounds its instructions all the same."""
         rendered = render_channels(reconstruction.instructions, reconstruction.config)
 
-        np.testing.assert_array_equal(reconstruction.approximations[ChannelName.PULSE1], rendered[ChannelName.PULSE1])
+        np.testing.assert_array_equal(
+            rendered_channels(reconstruction)[ChannelName.PULSE1], rendered[ChannelName.PULSE1]
+        )
 
     def test_a_resting_frame_sounds_nothing(self, reconstruction: Reconstruction) -> None:
         np.testing.assert_array_equal(
-            _frame(reconstruction.approximations[ChannelName.PULSE1], 2),
+            _frame(rendered_channels(reconstruction)[ChannelName.PULSE1], 2),
             np.zeros(reconstruction.config.library.frame_length, dtype=np.float32),
         )
 
@@ -125,7 +129,7 @@ class TestTheAudioAReconstructionAnswersWith:
             {ChannelName.PULSE1: [STEM_A]},
         )
 
-        assert ChannelName.TRIANGLE not in reconstruction.approximations
+        assert ChannelName.TRIANGLE not in rendered_channels(reconstruction)
 
 
 class TestWhatTheFileCarries:
@@ -142,8 +146,8 @@ class TestWhatTheFileCarries:
         restored = Reconstruction.deserialize(reconstruction.serialize())
 
         np.testing.assert_array_equal(
-            restored.approximations[ChannelName.PULSE1],
-            reconstruction.approximations[ChannelName.PULSE1],
+            rendered_channels(restored)[ChannelName.PULSE1],
+            rendered_channels(reconstruction)[ChannelName.PULSE1],
         )
 
 
@@ -155,7 +159,7 @@ class TestAFilteredReading:
         selection = StemSelection(channels={ChannelName.PULSE1: frozenset(stem_ids)})
         return filter_approximations(
             reconstruction.stems_data,
-            reconstruction.approximations,
+            rendered_channels(reconstruction),
             selection,
             reconstruction.config.library.frame_length,
         )
@@ -168,7 +172,7 @@ class TestAFilteredReading:
 
         np.testing.assert_array_equal(
             _frame(filtered[ChannelName.PULSE1], 1),
-            _frame(reconstruction.approximations[ChannelName.PULSE1], 1),
+            _frame(rendered_channels(reconstruction)[ChannelName.PULSE1], 1),
         )
 
     def test_a_frame_left_out_falls_silent(self, reconstruction: Reconstruction) -> None:
@@ -192,7 +196,7 @@ class TestAFilteredReading:
 
         np.testing.assert_array_equal(
             _frame(filtered[ChannelName.PULSE1], 1),
-            _frame(held.approximations[ChannelName.PULSE1], 1),
+            _frame(rendered_channels(held)[ChannelName.PULSE1], 1),
         )
         assert not np.array_equal(_frame(filtered[ChannelName.PULSE1], 1), alone)
 
@@ -218,6 +222,16 @@ class TestTheChannelsAReconstructionPlays:
         )
 
         np.testing.assert_array_equal(
-            reconstruction.approximation,
-            reconstruction.approximations[ChannelName.PULSE1],
+            rendered_mix(reconstruction),
+            rendered_channels(reconstruction)[ChannelName.PULSE1],
         )
+
+
+class TestTheRenderedLength:
+    """The length a render spans is read from the frames, so a reader learns it with no render made."""
+
+    @pytest.mark.parametrize("channels", [(ChannelName.PULSE1,), (ChannelName.PULSE1, ChannelName.NOISE)], ids=str)
+    def test_the_length_is_the_mix_length(self, channels: Sequence[ChannelName]) -> None:
+        reconstruction = sample_reconstruction(list(channels))
+
+        assert rendered_length(reconstruction) == len(rendered_mix(reconstruction))

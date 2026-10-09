@@ -1,14 +1,14 @@
 from typing import Final
 
+from automation.dearpygui.items.reading import read_item
+from automation.holds.conversion import ConversionHold
+from automation.screen import Screen
+from automation.steps.main import gather, home_path
+from automation.vocabulary.converter import CONVERT_NOTHING, CONVERT_ONE, CONVERT_SEVERAL
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.tags.main import TAG_MAIN_CONVERTER_GROUP_INPUT, TAG_MAIN_CONVERTER_GROUP_ORDER
 from tests.screens.main.run.constants import BASS, LEAD, RUN_TIMEOUT_SECONDS
 from tests.screens.main.run.steps import wait_for_the_end
-from tests.suite.screens.dearpygui.items.reading import read_item
-from tests.suite.screens.holds.conversion import ConversionHold
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import gather, home_path
-from tests.suite.screens.vocabulary.converter import CONVERT_NOTHING, CONVERT_ONE, CONVERT_SEVERAL
 
 MIX_SEVERAL: Final[str] = "main.converter.template.mix_recordings"
 

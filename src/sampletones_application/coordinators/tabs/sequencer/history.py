@@ -14,6 +14,7 @@ from sampletones_application.view_model.sequencer.history import (
 from sampletones_application.view_model.sequencer.region import TrackerRegion
 from sampletones_application.view_model.shared.history import HistoryDetail
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.project.patterns.pitch import RowPitch
 
 _GestureParams = ParamSpec("_GestureParams")
 
@@ -97,15 +98,6 @@ class SequencerHistoryRecorder:
         channel_key = channel if channel is not None else ""
         return (self._tracker_logic.frame_index, channel_key, row_index)
 
-    def note_key(
-        self,
-        row_index: int,
-        channel: ChannelName,
-        _pitch: int,
-    ) -> CoalesceKey:
-        """Identifies the cell a typed note landed in, so retyping one note coalesces onto it."""
-        return self.cell_key(row_index, channel)
-
     def adjustment_key(
         self,
         region: TrackerRegion,
@@ -130,7 +122,7 @@ class SequencerHistoryRecorder:
         row_index: int,
         channel: Optional[ChannelName],
         voice_id: Optional[str],
-        transpose: Optional[int],
+        pitch: Optional[RowPitch],
         volume: Optional[int],
     ) -> CoalesceKey:
         """Extends the cell target with the subcolumns the edit writes.
@@ -142,7 +134,7 @@ class SequencerHistoryRecorder:
         return (
             *self.cell_key(row_index, channel),
             voice_id is not None,
-            transpose is not None,
+            pitch is not None,
             volume is not None,
         )
 

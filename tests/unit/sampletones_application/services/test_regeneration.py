@@ -15,6 +15,7 @@ from sampletones_core.exporters import Features
 from sampletones_core.features import CHANNEL_GENERATOR_KIND, supported_features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
 from tests.conftest import ReconstructionFactory
 
 REFERENCE_PITCH: Final[int] = 60
@@ -131,7 +132,7 @@ class TestRegenerationServiceRun:
         assert len(results) == 1
         assert isinstance(results[0], ServiceSuccess)
         outcome = results[0].value
-        assert outcome.reconstruction is reconstruction.model_copy.return_value
+        assert outcome.reconstruction is reconstruction.with_channel_data.return_value
         assert outcome.reconstruction is not reconstruction
 
     def test_run_regenerates_from_the_envelopes_it_is_handed(
@@ -145,11 +146,11 @@ class TestRegenerationServiceRun:
 
         service._run(reconstruction, synthesis_mocks.channel_name, features, EVERY_STEM)
 
-        _, _, initial_pitch, held = reconstruction.model_copy.return_value.update_channel_data.call_args.args
+        _, _, initial_pitch, held = reconstruction.with_channel_data.call_args.args
         assert initial_pitch == features.initial_pitch
         assert held == features.held_features
 
-    def test_run_updates_reconstruction_copy(
+    def test_run_asks_the_document_for_its_edited_channel(
         self,
         synthesis_mocks: SynthesisMocks,
         reconstruction: MockReconstruction,
@@ -164,10 +165,8 @@ class TestRegenerationServiceRun:
             EVERY_STEM,
         )
 
-        updated = reconstruction.model_copy.return_value
-        updated.update_channel_data.assert_called_once()
-        reconstruction.update_channel_data.assert_not_called()
-        call_args = updated.update_channel_data.call_args
+        reconstruction.with_channel_data.assert_called_once()
+        call_args = reconstruction.with_channel_data.call_args
         assert call_args.args[0] == synthesis_mocks.channel_name
 
     def test_run_carries_the_reference_pitch_through_an_arpeggio_edit(
@@ -190,7 +189,7 @@ class TestRegenerationServiceRun:
             EVERY_STEM,
         )
 
-        call_args = reconstruction.model_copy.return_value.update_channel_data.call_args
+        call_args = reconstruction.with_channel_data.call_args
         assert call_args.args[2] == REFERENCE_PITCH
 
     def test_run_carries_a_moved_reference_pitch(
@@ -205,7 +204,7 @@ class TestRegenerationServiceRun:
 
         service._run(reconstruction, synthesis_mocks.channel_name, moved, EVERY_STEM)
 
-        _, _, initial_pitch, _ = reconstruction.model_copy.return_value.update_channel_data.call_args.args
+        _, _, initial_pitch, _ = reconstruction.with_channel_data.call_args.args
         assert initial_pitch == REFERENCE_PITCH + 12
 
     def test_run_hands_on_every_instruction_the_envelopes_describe(
@@ -226,7 +225,7 @@ class TestRegenerationServiceRun:
             EVERY_STEM,
         )
 
-        call_args = reconstruction.model_copy.return_value.update_channel_data.call_args
+        call_args = reconstruction.with_channel_data.call_args
         assert call_args.args[1] == stream
 
     def test_run_exception_emits_service_error(
@@ -276,7 +275,7 @@ class TestRegenerationServiceRun:
                 EVERY_STEM,
             )
 
-        reconstruction.update_channel_data.assert_not_called()
+        reconstruction.with_channel_data.assert_not_called()
 
 
 class TestClearingEveryEnvelope:
@@ -326,8 +325,8 @@ class TestClearingEveryEnvelope:
 
         regenerated = self._regenerated(reconstruction)
 
-        assert regenerated.approximations == {}
-        assert regenerated.approximation.size == 0
+        assert rendered_channels(regenerated) == {}
+        assert rendered_mix(regenerated).size == 0
 
     def test_the_cleared_channel_records_every_dimension_as_the_channels(
         self,

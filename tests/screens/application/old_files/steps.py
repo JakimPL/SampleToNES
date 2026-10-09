@@ -1,12 +1,12 @@
 from typing import List
 
+from automation.screen import Screen
+from automation.views.notices import Notice
+from automation.worlds.home import HomeFile, World, screen_filling_state
 from sampletones_core.compatibility.kind import ObjectKind
 from tests.screens.application.old_files.constants import NAME_FIELD, SAMPLES_FIELD
 from tests.suite.compatibility import ARCHIVED_VERSIONS, archived, stored_document
-from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds.archives import Damage
-from tests.suite.screens.views.notices import Notice
-from tests.suite.screens.worlds.home import HomeFile, World, screen_filling_state
 
 
 def future_version(current: str) -> str:

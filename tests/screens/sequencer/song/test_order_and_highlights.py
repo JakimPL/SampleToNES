@@ -2,11 +2,11 @@ import operator
 from functools import partial
 from typing import Final
 
+from automation.screen import Screen
+from automation.steps.sequencer import leave_letting_the_project_go, on_the_sequencer
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.sequencer.song.constants import EMPTY_VOICE, LINE_NUMBER
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go, on_the_sequencer
 
 FIRST_PATTERN: Final[str] = "00"
 SECOND_PATTERN: Final[str] = "01"

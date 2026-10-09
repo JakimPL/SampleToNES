@@ -3,9 +3,9 @@ import sys
 from pathlib import Path
 from typing import Final, FrozenSet, Iterator
 
-from tests.suite.screens.paths import DEARPYGUI_LAYER_DIRECTORY
+from automation.paths import DEARPYGUI_LAYER_DIRECTORY
 
-LAYER_PACKAGE: Final[str] = "tests.suite.screens.dearpygui"
+LAYER_PACKAGE: Final[str] = "automation.dearpygui"
 MODULE_SEPARATOR: Final[str] = "."
 THIRD_PARTY: Final[FrozenSet[str]] = frozenset({"dearpygui", "pytest", "pyvirtualdisplay", "Xlib"})
 
@@ -30,7 +30,7 @@ def is_allowed(module: str) -> bool:
 
 
 class TestTheDearPyGuiLayer:
-    """The screen tier's DearPyGui layer knows DearPyGui and pytest, and nothing of SampleToNES.
+    """The automation unit's DearPyGui layer knows DearPyGui and pytest, and nothing of SampleToNES.
 
     The layer drives any DearPyGui application, and SampleToNES builds on it from outside, so the
     layer moves to a project of its own as it stands the day a second application wants it.

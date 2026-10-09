@@ -69,5 +69,24 @@ class Project:
     def voice(self, voice_id: str) -> Optional[VoiceUnion]:
         return self.voices.get(voice_id)
 
+    def snapshot(self) -> Project:
+        """An independent project holding the very values this one holds.
+
+        The project is a tree of shells over values. A shell is changed in place by a gesture: the
+        info, the settings, the voices list and each voice, the song with its order and its
+        channels' pools. A value is never changed once made: the metadata, a sample's
+        reconstruction, an instrument's envelopes, a pattern and its rows. The snapshot copies the
+        shells and holds the values, so an edit of either project replaces a value in its own
+        shell and leaves the other as it was, and a history entry owns only the values its
+        gesture made.
+        """
+        return Project(
+            metadata=self.metadata,
+            info=self.info.model_copy(),
+            settings=self.settings.model_copy(),
+            voices=IdentifiedCollection(voice.snapshot() for voice in self.voices),
+            song=self.song.snapshot(),
+        )
+
     def __repr__(self) -> str:
         return f"Project(title={self.info.title!r}, voices={len(self.voices)})"

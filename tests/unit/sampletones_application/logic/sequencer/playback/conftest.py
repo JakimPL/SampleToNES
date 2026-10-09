@@ -10,6 +10,7 @@ from sampletones_application.logic.sequencer.playback.synthesizer import RowSynt
 from sampletones_core.configs import Config
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.note_off import NoteOff
@@ -59,7 +60,7 @@ def add_instrument(
     *,
     name: str = "test",
 ) -> Instrument:
-    """A hand-written voice sustaining at full volume, sounding for as long as a row holds it."""
+    """An instrument sustaining at full volume, sounding for as long as a row holds it."""
     return controller.add_instrument(new_instrument(name))
 
 
@@ -78,7 +79,7 @@ def place_row(
         pattern_index,
         row_index,
         command=NoteOn(voice_id=voice_id),
-        transpose=transpose,
+        pitch=Step(value=transpose) if transpose is not None else None,
         volume=volume,
     )
 
@@ -108,7 +109,7 @@ def place_modifier_row(
         channel,
         pattern_index,
         row_index,
-        transpose=transpose,
+        pitch=Step(value=transpose) if transpose is not None else None,
         volume=volume,
     )
 

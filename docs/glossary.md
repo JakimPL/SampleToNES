@@ -306,7 +306,8 @@ the pitch contour a FamiTracker arpeggio sequence would.
 ### Voice
 
 Anything a tracker row can name: a **sample** or an **instrument**. A project keeps its voices in one
-list. A row says which voice to start and the step it plays at.
+list. A row says which voice to start and the pitch it plays at: a note, or a step from the voice's own
+pitch.
 
 ### Sample (sequencer)
 
@@ -323,16 +324,16 @@ sample is playing. See [The sequencer](guide/sequencer.md#writing-a-pattern).
 
 ### Instrument
 
-One set of envelopes a channel reads while a note sounds, saved as an `.fti` file. A hand-written voice is
-a single instrument that goes on whichever channel suits it, as in FamiTracker. A sample has one
+One set of envelopes a channel reads while a note sounds, saved as an `.fti` file. As a [voice](#voice),
+an instrument goes on whichever channel suits it, as in FamiTracker. A sample has one
 instrument per channel it plays. Bitphase takes the same envelopes as a `.json` instrument preset. See
 [The sequencer](guide/sequencer.md), [FamiTracker export](formats/famitracker.md) and
 [Bitphase export](formats/bitphase.md).
 
 ### Initial pitch
 
-The value an instrument's frames are built at, and the note an exported preset is tuned to. A
-hand-written instrument has one for the tonal channels and a period for the noise channel, so the same
+The value an instrument's frames are built at, and the note an exported preset is tuned to. As a
+voice, an instrument has one for the tonal channels and a period for the noise channel, so the same
 envelopes sound on any of the four channels. The row that places the instrument sets the note it sounds
 at. A sample's matching value is its per-channel [reference pitch](formats/reconstructions.md#contents).
 

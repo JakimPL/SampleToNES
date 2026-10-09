@@ -3,10 +3,11 @@ from pathlib import Path
 from typing import Iterator, Optional
 
 from sampletones_core.constants.enums import ChannelName, FeatureKey
-from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME, MIN_TRANSPOSE
+from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.exports.request import ProjectExport
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.project import Project
+from sampletones_core.project.patterns.pitch import Note, RowPitch, Step, clamped_note, clamped_step
 from sampletones_core.project.patterns.row import NoteCommand, Row
 from sampletones_core.project.song import Song
 from sampletones_core.project.voices.instrument import Instrument
@@ -121,10 +122,10 @@ class ProjectController(CallbackMixin):
     def replace_project(self, project: Project, *, clean: bool) -> None:
         """Installs a project restored from history and rebuilds every dependent view.
 
-        Undo and redo install the whole project at once here: ``on_project_replaced``
-        fires so each tab realigns with the restored project, mirroring how loading a
-        project refreshes them, and a tab showing one voice keeps it by its id. The
-        fine-grained ``on_mutation`` signal fires only for new user edits, so
+        Undo, redo and the rollback of a failed gesture install the whole project at once
+        here: ``on_project_replaced`` fires so each tab realigns with the restored project,
+        mirroring how loading a project refreshes them, and a tab showing one voice keeps it
+        by its id. The fine-grained ``on_mutation`` signal fires only for new user edits, so
         reinstalling a recorded snapshot leaves it quiet. ``clean`` reports whether the
         restored state is the one last saved to disk, letting the session drop the
         unsaved-changes flag when undo returns exactly to the save point.
@@ -195,17 +196,17 @@ class ProjectController(CallbackMixin):
         """Embeds a reconstruction as a project sample, detaching its local source-audio origin.
 
         A project is a self-contained, shareable artifact, so a sample keeps only the reconstruction
-        itself and the display name given here.
+        itself and the display name given here. The sample holds the detached document, which is
+        the very one handed in where it names no location.
         """
-        reconstruction.detach_source()
-        sample = Sample(name=name, reconstruction=reconstruction)
+        sample = Sample(name=name, reconstruction=reconstruction.detached())
         self.project.voices.append(sample)
         self._touch()
         self._announce(self.on_voices_changed)
         return sample
 
     def add_instrument(self, instrument: Instrument) -> Instrument:
-        """Appends a hand-written voice, which the voice list holds and the tracker can name.
+        """Appends an instrument, which the voice list holds and the tracker can name.
 
         An instrument is its own record, so whoever made it — a reader asking for a new one, an
         instrument file read from disk, a sample's channel frozen into envelopes — hands the
@@ -248,19 +249,23 @@ class ProjectController(CallbackMixin):
 
         return voice
 
-    def replace_sample_reconstruction(self, voice_id: str, reconstruction: Reconstruction) -> None:
+    def replace_sample_reconstruction(self, voice_id: str, reconstruction: Reconstruction) -> Reconstruction:
         """Substitutes a sample's reconstruction, detaching its local source-audio origin.
 
         The sample keeps its id, so every pattern row referencing it stays valid and the tracker
         shows the same position. Detaching matches :meth:`add_sample`: whichever path embeds a
-        reconstruction, the project stays a self-contained, shareable artifact.
+        reconstruction, the project stays a self-contained, shareable artifact, and the sample holds
+        the very document handed in where it names no location.
+
+        Returns:
+            Reconstruction: The document the sample now holds, in the form the project keeps it.
         """
-        reconstruction.detach_source()
         voice = self._sample(voice_id)
-        voice.reconstruction = reconstruction
+        voice.reconstruction = reconstruction.detached()
         self._touch()
         self._announce(self.on_voices_changed)
         self._announce(self.on_song_changed)
+        return voice.reconstruction
 
     def rename_voice(self, voice_id: str, name: str) -> None:
         self.project.voices[voice_id].name = name
@@ -327,11 +332,16 @@ class ProjectController(CallbackMixin):
         self._touch()
         self._announce(self.on_song_changed)
 
-    def _clamp_transpose(self, transpose: Optional[int]) -> Optional[int]:
-        if transpose is None:
-            return None
-
-        return clamp(transpose, MIN_TRANSPOSE, MAX_TRANSPOSE)
+    @staticmethod
+    def _clamp_pitch(channel: ChannelName, pitch: Optional[RowPitch]) -> Optional[RowPitch]:
+        """A pitch held inside what the channel plays: a note within its range, a step within a row's."""
+        match pitch:
+            case None:
+                return None
+            case Note():
+                return clamped_note(channel, pitch.value)
+            case Step():
+                return clamped_step(pitch.value)
 
     def _clamp_volume(self, volume: Optional[int]) -> Optional[int]:
         if volume is None:
@@ -364,7 +374,7 @@ class ProjectController(CallbackMixin):
         row_index: int,
         *,
         command: Optional[NoteCommand] = None,
-        transpose: Optional[int] = None,
+        pitch: Optional[RowPitch] = None,
         volume: Optional[int] = None,
     ) -> None:
         """Replaces the whole row with the given values; omitted fields are cleared.
@@ -374,7 +384,7 @@ class ProjectController(CallbackMixin):
         """
         row = Row(
             command=command,
-            transpose=self._clamp_transpose(transpose),
+            pitch=self._clamp_pitch(channel, pitch),
             volume=self._clamp_volume(volume),
         )
         channel_pool = self.song[channel]
@@ -397,7 +407,7 @@ class ProjectController(CallbackMixin):
         row_index: int,
         *,
         command: Optional[NoteCommand] = None,
-        transpose: Optional[int] = None,
+        pitch: Optional[RowPitch] = None,
         volume: Optional[int] = None,
     ) -> None:
         """Updates only the provided subcolumns, preserving the rest of the row.
@@ -412,7 +422,7 @@ class ProjectController(CallbackMixin):
             pattern_index,
             row_index,
             command=command if command is not None else existing.command,
-            transpose=transpose if transpose is not None else existing.transpose,
+            pitch=pitch if pitch is not None else existing.pitch,
             volume=volume if volume is not None else existing.volume,
         )
 
@@ -423,7 +433,7 @@ class ProjectController(CallbackMixin):
         row_index: int,
         *,
         voice: bool = True,
-        transpose: bool = True,
+        pitch: bool = True,
         volume: bool = True,
     ) -> None:
         """Clears the selected subcolumns of a row, preserving the rest.
@@ -438,7 +448,7 @@ class ProjectController(CallbackMixin):
             pattern_index,
             row_index,
             command=None if voice else existing.command,
-            transpose=None if transpose else existing.transpose,
+            pitch=None if pitch else existing.pitch,
             volume=None if volume else existing.volume,
         )
 
@@ -538,11 +548,15 @@ class ProjectController(CallbackMixin):
 
         ``on_mutation`` fires for every mutation as it lands, batch or no batch, so the
         history keeps seeing each one inside the transaction that caused it — that
-        immediacy is what its completeness check rests on. It is invoked through a
-        direct ``None`` check so mutations stay silent in history-free contexts (tests,
-        tools), where the hook is intentionally unwired and :meth:`CallbackMixin.call`
-        would log a warning for each one.
+        immediacy is what its completeness check rests on. It fires once the stamp is
+        made, and also when stamping raises, so a gesture failing there is still rolled
+        back over a mutation the history counted. It is invoked through a direct ``None``
+        check so mutations stay silent in history-free contexts (tests, tools), where the
+        hook is intentionally unwired and :meth:`CallbackMixin.call` would log a warning
+        for each one.
         """
-        self._stamp()
-        if self.on_mutation is not None:
-            self.on_mutation()
+        try:
+            self._stamp()
+        finally:
+            if self.on_mutation is not None:
+                self.on_mutation()

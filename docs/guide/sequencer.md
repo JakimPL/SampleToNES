@@ -12,9 +12,13 @@ one, or open an existing `.stp` file.
 A song plays [**voices**](../glossary.md#voice). There are two kinds:
 
 - A **sample** is a reconstruction that the song plays.
-- An **instrument** is a sound you write by hand. Use instruments for melodies and bass lines.
+- An **instrument** is a sound you shape yourself. Use instruments for melodies and bass lines.
 
 Both kinds are in the **Voices** list, numbered together.
+
+<div align="center">
+    <img src="../images/guide/sequencer/voices.webp" alt="The Voices list with two samples and two instruments" width="375">
+</div>
 
 The **Voice** menu adds a voice in four ways:
 
@@ -25,15 +29,13 @@ The **Voice** menu adds a voice in four ways:
 | **Import instrument...** | A FamiTracker instrument file (`.fti`), as an instrument |
 | **Add to Sequencer** | The reconstruction open on the **Reconstruction** tab, as a sample |
 
-The first three items are also at the top of the **Voices** list. Right-click below the rows of the
-list to open the same menu. **Add to Sequencer** is on the **Reconstruction** tab as well, and in the
-right-click menu of any reconstruction in the **Browser**.
+Right-click below the rows of the **Voices** list to open the same menu. **Add to Sequencer** is also
+on the **Reconstruction** tab and in the right-click menu of any reconstruction in the **Browser**.
 
-If a reconstruction uses a different [NES frequency](../glossary.md#nes-frequency) than the project,
-the app shows **Different NES frequency**. Click **Add anyway** to add it.
+If a reconstruction's [NES frequency](../glossary.md#nes-frequency) differs from the project's, the
+app asks you to confirm with **Add anyway**.
 
-Right-click a voice to rename, duplicate, move or remove it. Some commands do more than their names
-say:
+Right-click a voice to rename, duplicate, move or remove it. Three commands need a word:
 
 - **Edit** opens the voice on the **Reconstruction** tab, where you change how it sounds. See
   [editing instruments](reconstruction.md#editing-instruments).
@@ -42,57 +44,64 @@ say:
 - **Export instrument...** saves the voice as an `.fti` file. A sample has one instrument per
   channel, so the app asks which channel to export.
 
-The same commands are on the **Edit** menu for the voice you selected. The right-click menu also
-shows how many bytes the voice takes before compression. An NSF export compresses it.
+The same commands are on the **Edit** menu.
 
-Removing a voice that patterns still use asks you first, and clears every row that uses it.
+Removing a voice clears every row that uses it.
 
-An imported `.fti` file keeps its volume, arpeggio and duty cycle sequences. **Instrument imported**
-lists any other settings the file carried, which the instrument leaves out. See [reading an
-instrument file](../formats/famitracker.md#c-reading-an-instrument-file).
+Importing an `.fti` file keeps its volume, arpeggio and duty cycle sequences. A message lists any
+other settings the file carried. See [reading an instrument
+file](../formats/famitracker.md#c-reading-an-instrument-file).
 
 ## Writing a pattern
 
 The **Tracker** grid is the [pattern](../glossary.md#pattern) editor. Each row is one step in time.
 The grid has a **Sample** column and a column for each channel: **Pulse 1**, **Pulse 2**,
-**Triangle** and **Noise**. Each channel column has a voice, a pitch and a volume.
+**Triangle** and **Noise**.
+
+<div align="center">
+    <img src="../images/guide/sequencer/tracker.webp" alt="The Tracker grid with the caret in the Pulse 1 column" width="538">
+</div>
 
 Click a cell and type its value. Right-click a cell for the same commands as a menu, including
-**Note off**, which stops the note.
+**Note off**.
+
+Click a voice in the **Voices** list, then type pitches: each pitch you type places that voice in
+the cell too. Click below the list to stop placing the voice.
+
+Dimmed rows belong to the neighboring frames. To change them, click that frame in the **Order** grid.
 
 The [**Sample** column](../glossary.md#sample-column) places a sample on every channel the sample
 uses, and clears the other channels of the row. It takes samples only. To place an instrument, use
 the column of the channel you want it on.
 
-A pitch or a volume typed in the **Sample** column changes the channels still playing a sample.
-Where no sample is playing, the column takes no pitch or volume.
+A pitch or a volume typed in the **Sample** column applies to the channels playing a sample.
 
 A `?` in the **Sample** column means the channels of that row play different voices.
 
 ## Typing a pitch
 
-A pitch cell shows a number. What the number means depends on the voice:
+A pitch cell holds a note, such as `C-4`, or a step, such as `+03`. A step counts semitones above (`+`) or
+below (`-`) the voice's own pitch: `+00` plays a sample as recorded and `+12` plays it an octave
+higher. Either kind of cell works with either kind of voice.
 
-- For a sample, the number is a step from the pitch the sample was recorded at. `+00` plays the
-  sample as recorded. `+0C` plays it one octave higher.
-- For an instrument, the number is a note, such as `C-4` or `A#3`.
+Type a note on your keyboard like a piano. The bottom two rows of keys play one octave: `Z` `S` `X`
+`D` `C` and so on. The row above plays the white keys of the next octave: `Q` `W` `E` `R` `T` `Y`
+`U`. **Octave**, above the grid, sets the octave of the bottom row.
 
-Type notes on your keyboard like a piano:
+Type a step with the digit keys: `0` `3` writes `+03`, and `-` `1` `2` writes `-12`.
 
-- The bottom two rows of keys play one octave: `Z` `S` `X` `D` `C` and so on.
-- The two rows above them play the next octave: `Q` `2` `W` `3` `E` and so on.
-
-**Octave**, above the grid, sets the octave of the bottom row. The same keys work in a sample's cell
-and type the step that plays the note you pressed.
-
-The noise channel has sixteen sounds in place of notes. Type a noise cell as a step with a sign, such
-as `+03` or `-02`.
+The noise channel has sixteen sounds instead of notes. A note key picks one, and a step moves to
+another.
 
 ## Arranging the song
 
 A song plays patterns in a sequence. The [**Order**](../glossary.md#order) grid sets that sequence.
 Each column is one position in the song, called a **frame**. The grid has a row for the **Master**
 and a row for each channel.
+
+<div align="center">
+    <img src="../images/guide/sequencer/order.webp" alt="The Order grid with four frames" width="538">
+</div>
 
 Type a pattern number in the **Order** grid to place a pattern. Right-click a frame to insert, clear
 or remove frames, and to repeat one:
@@ -102,7 +111,7 @@ or remove frames, and to repeat one:
 
 ## Playing the song
 
-The play controls under the grid play the song. These keys work anywhere on the tab:
+The play controls beside the menus play the song. These keys work anywhere on the tab:
 
 | Key | Action |
 |-----|--------|
@@ -113,8 +122,11 @@ The play controls under the grid play the song. These keys work anywhere on the 
 | `Esc` | Stop |
 | `Ctrl+L` | **Loop song**: start the song again when it ends |
 
-`Esc` also stops a sample preview. The same commands are on the **Playback** menu, and each grid's
-right-click menu plays from the row or frame you clicked.
+<div align="center">
+    <img src="../images/guide/sequencer/playback.webp" alt="The play controls" width="182">
+</div>
+
+`Esc` also stops a sample preview. A grid's right-click menu plays from the row or frame you clicked.
 
 ## Following the playback
 
@@ -123,32 +135,25 @@ choice.
 
 | Mode | Key | What the view does |
 |------|-----|---------------------|
-| **Follow rows** | `Ctrl+F` | Scrolls the tracker to the playing row, and shows the playing frame |
+| **Follow rows** | `Ctrl+F` | Keeps the playing row in the middle of the tracker, and shows the playing frame |
 | **Follow patterns** | `Ctrl+Shift+F` | Shows the playing frame, and keeps your scroll position |
 | **Don't follow** | `Ctrl+Alt+F` | Stays where you put it |
 
-In every mode, the **Order** grid marks the playing frame, and the tracker marks the playing row.
 Use **Follow patterns** or **Don't follow** to type while the song plays.
 
 ## Muting channels
 
-Click a channel's name at the top of the tracker to mute the channel. Click the name again to unmute
-it. The channel names in the **Order** grid work the same way.
-
 | Gesture | Action |
 |---------|--------|
-| Click a channel's name | Mute or unmute the channel |
+| Click a channel's name, in either grid | Mute or unmute the channel |
 | `Ctrl`+click a channel's name | Solo the channel: silence the rest. `Ctrl`+click again to restore the previous mix |
 | Click **Sample** (tracker) or **Master** (order) | Mute or unmute every channel |
 | Right-click a name | The same commands as a menu |
 
-**Playback ▸ Channels** shows which channels play. **Unmute all channels** unmutes all four. Keys
-`1` to `4` mute and unmute a channel when the cursor is outside the grids. Inside the grids, the
-digit keys type values, and `Ctrl+1` to `Ctrl+4` mute and unmute the channels instead. `Ctrl+1` to `Ctrl+4`
-work outside the grids too.
+Keys `1` to `4` mute and unmute a channel when the cursor is outside the grids. Inside the grids the
+digit keys type values, so use `Ctrl+1` to `Ctrl+4`, which work everywhere.
 
-Muting changes only what you hear. Saving, exporting, rendering and undo use every channel. Opening,
-creating or closing a project unmutes all channels.
+Muting changes only what you hear. Exports and renders include every channel.
 
 ## Selecting, copying and pasting
 
@@ -160,8 +165,7 @@ To select cells:
 - Drag across the cells with the mouse.
 - `Shift`+click a cell to extend the selection to it.
 
-Dragging past the edge of a grid scrolls the grid. Any plain arrow key, or `Esc`, clears the
-selection.
+Any plain arrow key, or `Esc`, clears the selection.
 
 | Key | Action |
 |-----|--------|
@@ -175,12 +179,10 @@ selection.
 | `Ctrl+V` | Paste at the cursor |
 | `Del` | Empty the selection |
 
-With nothing selected, copy, cut, paste and delete work on the cell under the cursor. The same
-commands are on each grid's right-click menu. Right-click inside a selection to use them on the
-whole selection.
+With nothing selected, these commands act on the cell under the cursor. Each grid's right-click
+menu has them too.
 
-Each grid has its own copy. A block copied in the tracker pastes into the tracker, and a block
-copied in the order pastes into the order.
+Each grid pastes only what was copied in that grid.
 
 A paste starts at the cursor and fills down and to the right:
 
@@ -189,11 +191,8 @@ A paste starts at the cursor and fills down and to the right:
 - In the **Order**, a paste past the last frame adds frames to the song. A paste stops at the
   **Noise** row.
 
-Emptying cells keeps the rows and frames.
-
-A copy also goes to your clipboard as text. You can paste a block into another open window of
-_SampleToNES_, or into a message. Voices are copied by their number in the **Voices** list, so in
-another project the block plays the voices with those numbers.
+A copy also goes to your clipboard as text, so you can paste a block into another open window of
+_SampleToNES_. Voices are copied by number, so check that the other project has the same voices.
 
 ## Transpose and volume
 
@@ -206,23 +205,26 @@ In the **Tracker**, transpose and volume keys change every cell in the selection
 | `Alt+Up` / `Alt+Down` | Change the volume by one step |
 | `Alt+Shift+Up` / `Alt+Shift+Down` | Change the volume by four steps |
 
-With nothing selected, the keys change the cell under the cursor. The same commands are on the
-right-click menu. In the **Sample** column, they change the channels still playing a sample.
+The right-click menu has the same commands.
 
 ## Undoing a change
 
-You can undo every change, including a copy, a paste or a delete, which each count as one step. The
-**History** panel lists your changes, and you can click one to go back to that point. **Undo** and **Redo** are
-on the **Edit** menu.
+You can undo every change. The **History** panel lists your changes, and a click on one goes back to
+that point. Undo also covers voice edits on the **Reconstruction** tab.
 
-Undo also covers the changes you make to a voice on the **Reconstruction** tab.
+<div align="center">
+    <img src="../images/guide/sequencer/history.webp" alt="The History panel listing three changes" width="376">
+</div>
 
 ## Timing and properties
 
 **Module options** sets the song's timing: **Rows** per pattern, **Speed** (the number of [ticks](../glossary.md#tick)
 each row lasts), **Tempo**, and the **NES frequency** the song plays at. Speed and tempo together set how fast
-the rows go by. If the project has voices, changing **NES frequency** changes how they play, so the
-app asks **Change NES frequency** first. Check **Don't ask again** to skip the question.
+the rows go by. Changing **NES frequency** changes how existing voices play, so the app asks first.
+
+<div align="center">
+    <img src="../images/guide/sequencer/module-options.webp" alt="The Module options card" width="375">
+</div>
 
 **File ▸ Project properties...** sets the title, the author and the comment. The exported module
 includes them. It also sets the [meter](../glossary.md#metric-highlight):
@@ -230,14 +232,16 @@ includes them. It also sets the [meter](../glossary.md#metric-highlight):
 - **First highlight** is the number of rows in a beat.
 - **Second highlight** is the number of rows in a bar.
 
-The tracker marks the first row of each beat and each bar. The defaults, 4 and 16, give four beats
-of four rows in a bar. For waltz time, set **Second highlight** to 12, which gives three beats.
+<div align="center">
+    <img src="../images/guide/sequencer/project-properties.webp" alt="The Project properties dialog" width="516">
+</div>
+
+The defaults, 4 and 16, give four beats of four rows in a bar. For waltz time, set **Second highlight** to 12, which gives three beats.
 
 The tempo counts beats, so the meter also changes how fast the song feels. A row lasts a whole number of
-ticks, so at most tempi some rows last a tick longer than others. The longer rows fall on the strong beats.
-A row can't be shorter than one tick: at a tempo asking for shorter rows, every row lasts one tick and the
-song plays slower, as it does in FamiTracker and Bitphase. [Song timing](../concepts/timing.md) explains
-how the app spreads a tempo over the rows.
+ticks, so the app makes some rows a tick longer than others, on the strong beats. A tempo that asks
+for rows shorter than one tick plays slower than set, as in FamiTracker and Bitphase. [Song
+timing](../concepts/timing.md) has the details.
 
 ## Exporting the song
 
@@ -248,36 +252,40 @@ how the app spreads a tempo over the rows.
 - **Bitphase project...** saves a `.btp` file.
 - **NSF program...** saves an `.nsf` file, which the NES or an NSF player plays directly.
 
-A voice plays on the channels its instruments cover. Where a row names a voice on another channel, the
-FamiTracker and Bitphase files have a note cut on that row, which is how the song plays it. The dialog
-that announces the export lists those rows by frame, channel and row.
+A voice plays only on the channels it covers. If a row places it on another channel, the
+FamiTracker and Bitphase files cut the note there, and the export dialog lists those rows.
 
-A row that changes only the transpose of a playing note moves that note in both files. A FamiTracker
-file moves a note by up to 15 semitones in one row. The dialog lists the rows it could not move, and the
-file plays them at the old pitch.
+A transpose on a playing note is exported too. FamiTracker moves a note by at most 15 semitones in
+one row, and the dialog lists the rows that stay at the old pitch.
 
-FamiTracker and Bitphase files have room for a limited number of values per sequence. A longer sequence
-is cut short, and the dialog says how many instruments were shortened.
+Sequences longer than FamiTracker and Bitphase allow are cut short, and the dialog says how many
+instruments were shortened.
 
-An NSF program has room for 32 KB, so the app tells you when a song is too long. See [NSF
+An NSF program holds 32 KB, and the app warns you when a song is too long. See [NSF
 export](../formats/nsf.md) and [song compression](../concepts/compression.md).
 
 **NSF program...** opens the **Export NSF program** window. Click **Export** without changing
 anything to save the whole song, repeating from the start.
 
+<div align="center">
+    <img src="../images/guide/sequencer/nsf-window.webp" alt="The Export NSF program window" width="556">
+</div>
+
 | Setting | What it does |
 |---------|--------------|
-| **Title**, **Artist**, **Copyright** | The text an NSF player shows. Each one holds 31 bytes |
+| **Title**, **Artist**, **Copyright** | The text an NSF player shows. Each one holds up to 31 characters |
 | **Channels** | The channels the program plays. A channel you clear stays silent. Select at least one |
 | **Repeat** | **Play once** stops at the end. **From the start** plays the song again. **From a frame** goes back to the order frame you type in **Frame** |
 | **Level** | How much the song is compressed. **None** exports fastest and makes the largest file. **Full search** is the slowest and makes the smallest file |
-
-**Export** closes the window and shows the export's progress.
 
 ## Rendering to audio
 
 **File ▸ Render song...** (`Ctrl+Shift+E`) saves the whole song as an audio file that any player
 opens.
+
+<div align="center">
+    <img src="../images/guide/sequencer/render.webp" alt="The Render song window" width="556">
+</div>
 
 | Setting | What it does |
 |---------|--------------|
@@ -287,8 +295,6 @@ opens.
 | **Bitrate** (MP3) | How much data a second of audio takes. A higher bitrate sounds better and makes a larger file. The choices depend on the sample rate |
 | **Normalize peak** | Makes the song louder until its loudest moment reaches full volume, keeping the balance between channels |
 
-**Length** shows how long the file will be. Click **Render** to start. **Cancel** stops the render
-and saves no file. When the render finishes, click the path to open its folder.
+Click **Render** to start. When the render finishes, click the path to open its folder.
 
-A render plays the song once, with every channel, whatever you muted or looped. A render, a conversion
-and a library build run one at a time, and each waits for the one before it.
+A render plays the song once with every channel, ignoring mutes and loops.

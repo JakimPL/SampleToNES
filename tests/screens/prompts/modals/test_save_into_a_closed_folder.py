@@ -4,12 +4,12 @@ from typing import Final
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.boundaries.dialogs import DialogKind
+from automation.screen import Screen
+from automation.steps.reconstructions import expect_open, marked, remove_from_the_browser, titled
 from sampletones_shared.paths.user import RECONSTRUCTIONS_DIRECTORY
 from tests.screens.prompts.modals.constants import SETTLING_FRAMES
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import expect_open, marked, remove_from_the_browser, titled
 from tests.suite.screens.worlds.recordings import OPEN_RECONSTRUCTION
 
 KEPT: Final[str] = "Kept.stn"

@@ -20,30 +20,25 @@ _LOWER_ROW: Final[Tuple[int, ...]] = (
     dpg.mvKey_M,
 )
 
-_UPPER_ROW: Final[Tuple[int, ...]] = (
-    dpg.mvKey_Q,
-    dpg.mvKey_2,
-    dpg.mvKey_W,
-    dpg.mvKey_3,
-    dpg.mvKey_E,
-    dpg.mvKey_R,
-    dpg.mvKey_5,
-    dpg.mvKey_T,
-    dpg.mvKey_6,
-    dpg.mvKey_Y,
-    dpg.mvKey_7,
-    dpg.mvKey_U,
-)
+_UPPER_ROW: Final[Dict[int, int]] = {
+    dpg.mvKey_Q: 0,
+    dpg.mvKey_W: 2,
+    dpg.mvKey_E: 4,
+    dpg.mvKey_R: 5,
+    dpg.mvKey_T: 7,
+    dpg.mvKey_Y: 9,
+    dpg.mvKey_U: 11,
+}
 
 PIANO_KEYS: Final[Dict[int, int]] = {
     **{key: semitone for semitone, key in enumerate(_LOWER_ROW)},
-    **{key: OCTAVE_SEMITONES + semitone for semitone, key in enumerate(_UPPER_ROW)},
+    **{key: OCTAVE_SEMITONES + semitone for key, semitone in _UPPER_ROW.items()},
 }
 """Each note key, as the semitones it stands above the C of the octave being typed at.
 
-Two rows of the keyboard make two octaves of a piano, the way a tracker lays them out: the
-bottom row opens at the octave in force and the top row an octave above it, with the black keys
-on the row over each.
+Two rows of the keyboard make a piano the way a tracker lays them out: the bottom row opens at the
+octave in force, with its black keys on the row over it, and the top row plays the white keys an
+octave above. The digit keys type a step into a pitch cell, so they name no note.
 """
 
 

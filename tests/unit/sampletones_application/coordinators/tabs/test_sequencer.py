@@ -36,13 +36,11 @@ from sampletones_application.logic.sequencer.order import (
 from sampletones_application.logic.sequencer.tracker import (
     SequencerTrackerLogic,
 )
-from sampletones_application.logic.shared.project_source import snapshot_project
 from sampletones_application.paths import LANG_EN
 from sampletones_application.ui.panels.sequencer import channels as channels_module
 from sampletones_application.ui.panels.sequencer.order.panel import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.tracker import panel as tracker_module
 from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
-from sampletones_application.utils.gui.clipboard.protocol import ClipboardTextCallback
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, NO_MODIFIERS
 from sampletones_application.view_model.sequencer.region import (
     OrderCell,
@@ -64,6 +62,7 @@ from sampletones_application.view_model.shared.history import (
 from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.voice import ImportedVoice, InstrumentOmission
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
@@ -73,7 +72,9 @@ from sampletones_shared.exceptions import (
     NoOutputDeviceError,
     PlaybackError,
 )
+from tests.suite.clipboard import FakeTextClipboard
 from tests.suite.gates import HeldGate, held_gate
+from tests.suite.history.wiring import wired_history
 from tests.suite.language import FakeLanguageManager
 
 FREQUENCY_MISMATCH_MESSAGE_KEY: Final[str] = "global.dialog.message.frequency_mismatch"
@@ -143,6 +144,12 @@ def coordinator() -> SequencerReconstructions:
     )
 
 
+PICKED_INSTRUMENT: Final[VoiceSelection] = VoiceSelection(
+    voice_id="pad-id",
+    position=2,
+    name="pad",
+    kind=VoiceKind.INSTRUMENT,
+)
 INSTRUMENT_FILE: Final[Path] = Path("/instruments/Lead.fti")
 
 IMPORTED_VOICE: Final[Instrument] = Instrument(
@@ -1028,6 +1035,17 @@ class TestReplaceReconstruction:
         replace_coordinator._browser_logic.load_reconstruction.assert_not_called()
         replace_coordinator._browser_logic.replace_reconstruction.assert_not_called()
 
+    def test_a_picked_instrument_replaces_nothing(
+        self,
+        replace_coordinator: SequencerReconstructions,
+    ) -> None:
+        replace_coordinator._voices_panel.selection = PICKED_INSTRUMENT
+
+        replace_coordinator.replace_from_file(Path("kick_02.stn"))
+
+        replace_coordinator._browser_logic.load_reconstruction.assert_not_called()
+        replace_coordinator._voices_logic.rename_voice.assert_not_called()
+
     def test_failed_load_shows_error_and_replaces_nothing(
         self,
         replace_coordinator: SequencerReconstructions,
@@ -1107,9 +1125,10 @@ class TestReplaceReconstruction:
         replace_coordinator.replace_from_file(Path("kick_02.stn"))
 
         assert [call[0] for call in order.mock_calls] == ["replace", "announce"]
+        replace_coordinator._browser_logic.replace_reconstruction.assert_called_once_with("bass-id", reconstruction)
         replace_coordinator._on_sample_reconstruction_replaced.assert_called_once_with(
             "bass-id",
-            reconstruction,
+            replace_coordinator._browser_logic.replace_reconstruction.return_value,
         )
 
     def test_sole_sample_adopts_the_reconstruction_frequency_silently(
@@ -1160,6 +1179,15 @@ class TestReplaceTargetLabel:
 
         assert replace_coordinator.replace_target_label() is None
 
+    def test_label_is_absent_while_an_instrument_is_picked(
+        self,
+        replace_coordinator: SequencerReconstructions,
+    ) -> None:
+        """A reconstruction takes the place of a sample alone, so a picked instrument offers no replacement."""
+        replace_coordinator._voices_panel.selection = PICKED_INSTRUMENT
+
+        assert replace_coordinator.replace_target_label() is None
+
 
 @pytest.fixture
 def history_coordinator(held_gate: HeldGate) -> SequencerTabCoordinator:
@@ -1204,8 +1232,7 @@ def wired_history_coordinator(
     """
     instance = object.__new__(SequencerTabCoordinator)
     controller = ProjectController(ProjectManager())
-    history = HistoryManager(controller, budget=10, strict=True)
-    controller.on_mutation = history.handle_mutation
+    history = wired_history(controller, budget=10, strict=True)
     controller.on_project_replaced = instance.realign_with_project
     instance._project_controller = controller
     instance._history = history
@@ -1228,7 +1255,7 @@ class TestHistoryResetWiring:
             controller.set_tempo(150)
 
         controller.replace_project(
-            snapshot_project(controller.project),
+            controller.project.snapshot(),
             clean=False,
         )
 
@@ -1288,6 +1315,27 @@ class TestChannelMuteLifetime:
         coordinator.undo()
 
         assert channels.active_channels == ALL_CHANNELS - {ChannelName.TRIANGLE}
+
+    def test_a_rolled_back_gesture_keeps_the_mute_set_and_the_stack(
+        self,
+        wired_history_coordinator: SequencerReconstructions,
+    ) -> None:
+        """A failed gesture reinstalls the state it started from the way an undo does."""
+        coordinator = wired_history_coordinator
+        controller = coordinator._project_controller
+        history = coordinator._history
+        channels = coordinator._sequencer_channels_logic
+        with history.transaction(HistoryAction.SET_TEMPO):
+            controller.set_tempo(170)
+        channels.toggle(ChannelName.TRIANGLE)
+
+        with pytest.raises(RuntimeError), history.transaction(HistoryAction.SET_SPEED):
+            controller.set_speed(4)
+            raise RuntimeError("the gesture failed")
+
+        assert channels.active_channels == ALL_CHANNELS - {ChannelName.TRIANGLE}
+        assert [entry.action for entry in history.entries] == [HistoryAction.INITIAL, HistoryAction.SET_TEMPO]
+        assert (controller.project.settings.tempo, history.cursor) == (170, 1)
 
     def test_redo_keeps_the_mute_set(
         self,
@@ -1879,45 +1927,6 @@ PULSE1_FRAME: Final[OrderRegion] = OrderRegion(
 )
 
 
-class FakeTextClipboard:
-    """The desktop's clipboard, held in memory so a test reads what a copy put there.
-
-    A read is answered at once, the way DearPyGui's own clipboard answers, until a case holds the
-    answers back to stand for an application that hands its text over later, or none at all.
-    """
-
-    def __init__(self) -> None:
-        self.text: str = ""
-        self.unanswered: List[ClipboardTextCallback] = []
-        self._answers_held: bool = False
-
-    def read(self, on_text: ClipboardTextCallback) -> None:
-        if self._answers_held:
-            self.unanswered.append(on_text)
-            return
-
-        on_text(self.text)
-
-    def write(self, text: str) -> None:
-        self.text = text
-
-    def hold_answers(self) -> None:
-        self._answers_held = True
-
-    def answer(self) -> None:
-        """Hands the text standing now to every read still waiting, in the order they asked."""
-        self._hand_over(self.text)
-
-    def silence(self) -> None:
-        """Leaves every read still waiting with no answer, the way an owner that never replies does."""
-        self._hand_over(None)
-
-    def _hand_over(self, text: Optional[str]) -> None:
-        waiting, self.unanswered = self.unanswered, []
-        for on_text in waiting:
-            on_text(text)
-
-
 def _text_clipboard(coordinator: SequencerTabCoordinator) -> FakeTextClipboard:
     """The desktop clipboard this coordinator's blocks were built over."""
     clipboard = coordinator._blocks._text_clipboard
@@ -1936,8 +1945,7 @@ def block_coordinator() -> SequencerTabCoordinator:
     """
     instance = object.__new__(SequencerTabCoordinator)
     controller = ProjectController(ProjectManager())
-    history = HistoryManager(controller, budget=10, strict=True)
-    controller.on_mutation = history.handle_mutation
+    history = wired_history(controller, budget=10, strict=True)
     controller.new()
     history.reset()
     instance._project_controller = controller
@@ -1954,6 +1962,7 @@ def block_coordinator() -> SequencerTabCoordinator:
         instance._sequencer_tracker_logic,
         instance._sequencer_order_logic,
         controller,
+        history,
         text_clipboard=FakeTextClipboard(),
     )
     instance._history_detail = SequencerHistoryDetail(
@@ -1975,7 +1984,16 @@ def _place_transpose(
         HistoryAction.EDIT_ROW,
         coordinator._sequencer_tracker_logic.write_cell,
     )
-    edit(0, ChannelName.PULSE1, None, transpose, None)
+    edit(0, ChannelName.PULSE1, None, Step(value=transpose), None)
+
+
+def _break_song_changes(coordinator: SequencerTabCoordinator) -> None:
+    """Has every song change fail as the views hear of it, the way a view rebuild that breaks would."""
+
+    def broken() -> None:
+        raise RuntimeError("the view broke")
+
+    coordinator._project_controller.on_song_changed = broken
 
 
 class TestBlockCopy:
@@ -1988,14 +2006,14 @@ class TestBlockCopy:
             coordinator._sequencer_tracker_logic.set_cell_subcolumn(
                 0,
                 ChannelName.PULSE1,
-                transpose=5,
+                pitch=Step(value=5),
             )
 
         coordinator._blocks.copy_tracker(PULSE1_CELL)
 
         block = coordinator._blocks._clipboard.tracker_block
         assert block is not None
-        assert block.transposes[(0, 1)] == 5
+        assert block.pitches[(0, 1)] == Step(value=5)
 
     def test_a_copy_leaves_the_history_stack_as_it_stands(
         self,
@@ -2026,8 +2044,8 @@ class TestBlockEdits:
 
         block = coordinator._blocks._clipboard.tracker_block
         assert block is not None
-        assert block.transposes[(0, 1)] == 5
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 0).transpose is None
+        assert block.pitches[(0, 1)] == Step(value=5)
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 0).pitch is None
 
     def test_a_cut_records_one_entry(
         self,
@@ -2042,6 +2060,21 @@ class TestBlockEdits:
         assert len(coordinator._history.entries) == recorded + 1
         assert coordinator._history.entries[-1].action is HistoryAction.CUT_BLOCK
 
+    def test_a_cut_that_fails_leaves_both_clipboards_and_the_grid_as_they_stood(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _place_transpose(coordinator, 5)
+        _break_song_changes(coordinator)
+
+        with pytest.raises(RuntimeError):
+            coordinator._sequencer_tracker_panel.on_cut_block(PULSE1_CELL)
+
+        assert coordinator._blocks._clipboard.tracker_block is None
+        assert _text_clipboard(coordinator).text == ""
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 0).pitch == Step(value=5)
+
     def test_a_delete_empties_the_region_in_one_entry(
         self,
         block_coordinator: SequencerTabCoordinator,
@@ -2052,7 +2085,7 @@ class TestBlockEdits:
 
         coordinator._sequencer_tracker_panel.on_delete_block(PULSE1_CELL)
 
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 0).transpose is None
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 0).pitch is None
         assert len(coordinator._history.entries) == recorded + 1
         assert coordinator._history.entries[-1].action is HistoryAction.DELETE_BLOCK
 
@@ -2067,7 +2100,7 @@ class TestBlockEdits:
 
         coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE2))
 
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE2, 1).transpose == 5
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE2, 1).pitch == Step(value=5)
         assert len(coordinator._history.entries) == recorded + 1
         assert coordinator._history.entries[-1].action is HistoryAction.PASTE_BLOCK
 
@@ -2101,6 +2134,20 @@ class TestOrderBlockEdits:
         assert coordinator._sequencer_order_logic.entry(ChannelName.PULSE1, 0) is None
         assert len(coordinator._history.entries) == recorded + 1
         assert coordinator._history.entries[-1].action is HistoryAction.CUT_BLOCK
+
+    def test_a_cut_that_fails_leaves_both_clipboards_and_the_order_as_they_stood(
+        self,
+        block_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = block_coordinator
+        _break_song_changes(coordinator)
+
+        with pytest.raises(RuntimeError):
+            coordinator._sequencer_order_panel.on_cut_block(PULSE1_FRAME)
+
+        assert coordinator._blocks._clipboard.order_block is None
+        assert _text_clipboard(coordinator).text == ""
+        assert coordinator._sequencer_order_logic.entry(ChannelName.PULSE1, 0) == 0
 
     def test_a_delete_silences_the_region_in_one_entry(
         self,
@@ -2201,7 +2248,7 @@ class TestSystemClipboardPrecedence:
 
         coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE1))
 
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose == 9
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).pitch == Step(value=9)
 
     def test_unrelated_text_leaves_the_copied_block_in_hand(
         self,
@@ -2214,7 +2261,7 @@ class TestSystemClipboardPrecedence:
 
         coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE1))
 
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose == 5
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).pitch == Step(value=5)
 
     def test_a_truncated_block_leaves_the_copied_block_in_hand(
         self,
@@ -2227,7 +2274,7 @@ class TestSystemClipboardPrecedence:
 
         coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE1))
 
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose == 5
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).pitch == Step(value=5)
 
     def test_the_other_grid_s_text_leaves_the_copied_block_in_hand(
         self,
@@ -2273,12 +2320,12 @@ class TestPasteAwaitsTheClipboard:
 
         coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE1))
 
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose is None
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).pitch is None
         assert len(coordinator._history.entries) == recorded
 
         clipboard.answer()
 
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose == 9
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).pitch == Step(value=9)
         assert len(coordinator._history.entries) == recorded + 1
         assert coordinator._history.entries[-1].action is HistoryAction.PASTE_BLOCK
 
@@ -2333,7 +2380,7 @@ class TestPasteAwaitsTheClipboard:
         coordinator._sequencer_tracker_panel.on_paste_block(TrackerCell(row=1, channel=ChannelName.PULSE1))
         clipboard.silence()
 
-        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).transpose is None
+        assert coordinator._sequencer_tracker_logic.row(ChannelName.PULSE1, 1).pitch is None
         assert len(coordinator._history.entries) == recorded
 
     def test_a_menu_the_clipboard_answers_nothing_to_keeps_its_last_answer(
@@ -2352,3 +2399,32 @@ class TestPasteAwaitsTheClipboard:
 
         assert answered == [True]
         assert coordinator._blocks.can_paste_order()
+
+
+class TestACellTakingFocus:
+    """A cell picked in the grid or the order takes the keyboard and leaves the voices' mark standing."""
+
+    def test_a_tracker_cell_keeps_the_marked_voice(self, history_coordinator: SequencerTabCoordinator) -> None:
+        history_coordinator._sequencer_order_panel = MagicMock()
+        history_coordinator._sequencer_voices_panel = MagicMock()
+
+        history_coordinator._on_tracker_cell_focused()
+
+        history_coordinator._sequencer_order_panel.deselect_cell.assert_called_once_with()
+        history_coordinator._sequencer_voices_panel.blur.assert_called_once_with()
+        history_coordinator._sequencer_voices_panel.deselect.assert_not_called()
+
+    def test_an_order_cell_keeps_the_marked_voice(self, history_coordinator: SequencerTabCoordinator) -> None:
+        history_coordinator._sequencer_tracker_panel = MagicMock()
+        history_coordinator._sequencer_voices_panel = MagicMock()
+
+        history_coordinator._on_order_cell_focused()
+
+        history_coordinator._sequencer_tracker_panel.deselect_cell.assert_called_once_with()
+        history_coordinator._sequencer_voices_panel.blur.assert_called_once_with()
+        history_coordinator._sequencer_voices_panel.deselect.assert_not_called()
+
+    def test_the_grid_reads_the_mark_from_the_voices_list(self, history_coordinator: SequencerTabCoordinator) -> None:
+        history_coordinator._sequencer_voices_panel = MagicMock()
+
+        assert history_coordinator._marked_voice() is history_coordinator._sequencer_voices_panel.selection

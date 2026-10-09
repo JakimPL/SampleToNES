@@ -84,7 +84,7 @@ class TestADetachedDocument:
     def test_it_keeps_the_names_of_the_recordings_behind_it(self) -> None:
         reconstruction = _reconstruction()
 
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
 
         assert reconstruction.stems_data.named(LEAD) == "Lead Vocals"
         assert reconstruction.stems_data.named(BASS) == "Bass"
@@ -92,7 +92,7 @@ class TestADetachedDocument:
     def test_it_states_no_location_at_all(self) -> None:
         reconstruction = _reconstruction()
 
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
 
         assert reconstruction.audio_filepath == ()
         assert all(source.path is None for source in reconstruction.stems_data.sources)
@@ -101,14 +101,14 @@ class TestADetachedDocument:
         reconstruction = _reconstruction()
         before = dict(reconstruction.stems_data.assignments_by_channel)
 
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
 
         assert reconstruction.stems_data.config == _stems_config()
         assert reconstruction.stems_data.assignments_by_channel == before
 
     def test_it_carries_its_names_through_a_round_trip(self, tmp_path: Path) -> None:
         reconstruction = _reconstruction()
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
         path = tmp_path / "detached.stn"
 
         reconstruction.save(path)
@@ -170,7 +170,7 @@ class TestAnEditedDocument:
     def test_it_keeps_the_recordings_it_was_built_from(self) -> None:
         reconstruction = _reconstruction()
 
-        reconstruction.update_channel_data(
+        reconstruction = reconstruction.with_channel_data(
             ChannelName.PULSE1,
             [_pulse(70), _pulse(72)],
             reconstruction.initial_pitches[ChannelName.PULSE1],

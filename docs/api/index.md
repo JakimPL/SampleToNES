@@ -5,7 +5,7 @@ This page is for using _SampleToNES_ as a library in your own Python code. Use i
 Names come from two packages:
 
 - The names in the table below come from `sampletones`: `from sampletones import ...`.
-- The examples also use a few helpers from `sampletones_core` that are not in the table: `write_wave`, `ensure_library`, `DEFAULT_CHANNELS`, and the FamiTracker instrument writers. Import them with the full path each example shows.
+- The examples also use a few helpers from `sampletones_core` that are not in the table: `write_wave`, `rendered_mix`, `ensure_library`, `DEFAULT_CHANNELS`, and the FamiTracker instrument writers. Import them with the full path each example shows.
 
 ## Public surface
 
@@ -15,7 +15,7 @@ Names come from two packages:
 | `Window` | analysis window derived from a config (`Window.from_config(config)`) |
 | `InstructionLibrary` | the library of candidate instructions a reconstruction searches |
 | `Reconstructor` | runs a reconstruction: `Reconstructor(config, channels)("sample.wav")` |
-| `Reconstruction` | the result of a reconstruction — its approximation audio, per-channel instructions, and the config used |
+| `Reconstruction` | the result of a reconstruction — its per-channel instructions and the config used |
 | `ChannelName` | enum naming the four channels: `pulse1`, `pulse2`, `triangle`, `noise` |
 | `Generator` | shared base class of the oscillator generators |
 | `PulseGenerator`, `TriangleGenerator`, `NoiseGenerator` | render one channel's waveform from an instruction |
@@ -71,6 +71,7 @@ With a library in place for the configuration:
 from sampletones import Config, Reconstructor
 from sampletones_core.audio.io import write_wave
 from sampletones_core.constants.enums import DEFAULT_CHANNELS
+from sampletones_core.reconstructions.reconstruction.renders import rendered_mix
 
 config = Config.load("config.json")
 
@@ -79,12 +80,12 @@ reconstructor = Reconstructor(config, frozenset(DEFAULT_CHANNELS))
 
 reconstruction = reconstructor("sample.wav")
 reconstruction.save("reconstruction.stn")
-write_wave("reconstruction.wav", config.sample_rate, reconstruction.approximation)
+write_wave("reconstruction.wav", config.sample_rate, rendered_mix(reconstruction))
 ```
 
 ### Load a reconstruction
 
-`Reconstruction.load` reads a saved `.stn` back into a `Reconstruction`, carrying its approximation, per-channel instructions, and config:
+`Reconstruction.load` reads a saved `.stn` back into a `Reconstruction`, carrying its per-channel instructions and config:
 
 ```python
 from sampletones import Reconstruction
@@ -94,7 +95,7 @@ reconstruction = Reconstruction.load("reconstruction.stn")
 
 ### Export instruments
 
-`Reconstruction.export` returns the [envelopes](../formats/famitracker.md#b-the-2a03-instrument) of each channel. `build_instrument` turns one channel's envelopes into a FamiTracker instrument, and `write_fti` saves it as an `.fti` file:
+`Reconstruction.export` returns the [envelopes](../formats/famitracker.md#b-the-2a03-instrument) of each channel. `build_instrument` turns one channel's envelopes into a FamiTracker instrument, and `write_fti` saves it as an `.fti` file. `repitched` says whether a module's transpose rows reach the instrument, which a standalone file never has:
 
 ```python
 from sampletones import Reconstruction
@@ -105,7 +106,12 @@ from sampletones_core.formats.famitracker.specification.instruments import STAND
 reconstruction = Reconstruction.load("reconstruction.stn")
 
 for channel, features in reconstruction.export().items():
-    instrument = build_instrument(STANDALONE_INSTRUMENT_INDEX, channel.value, features)
+    instrument = build_instrument(
+        STANDALONE_INSTRUMENT_INDEX,
+        channel.value,
+        features,
+        repitched=False
+    )
     write_fti(f"{channel.value}.fti", instrument)
 ```
 

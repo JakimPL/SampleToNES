@@ -88,7 +88,9 @@ The form and its reading live in `logic/sequencer/clipboard/`, which deals in bl
 
 **A note names its voice by list position**, the figure the grid prints. A block carried to another project therefore plays whichever voice stands at that position there. A position the project's list falls short of reads as mixed, as the writer already treats a voice it has nothing to place.
 
-A field the form has no reading for makes the whole text a refusal, so a parse answers with a block or with nothing. Digits are read in either case, and transpose and volume are held to the ranges a row accepts, so text typed by hand lands the values the grid would.
+**A pitch field prints the face its cell holds**: a note by its name, a step as a signed decimal offset. A name ending in the noise channel's suffix reads as a period, and any other name as a note the tonal channels play.
+
+A field the form has no reading for makes the whole text a refusal, so a parse answers with a block or with nothing. Names and digits are read in either case, and steps and volumes are held to the ranges a row accepts, so text typed by hand lands the values the grid would.
 
 ### Which block a paste writes
 
@@ -120,7 +122,7 @@ A shift coalesces, because a nudge is a step of one gesture and not a whole one.
 
 The aggregate is an ordinary member of the axis here: selecting the **Voice** column selects a column the way selecting a channel does, and the **Master** row a row.
 
-A press names its shape from the cell the cursor stands on, which is the cell the context menu's items name too, so a key and an item reach the same rectangle. In the tracker a shape ends at the frame's last row, so standing one carries the grid to where the cursor landed, with the same reveal a `Shift+End` reach makes.
+A press names its shape from the cell the cursor stands on, which is the cell the context menu's items name too, so a key and an item reach the same rectangle. In the tracker a shape ends at the frame's last row, so standing one brings the row the cursor landed on to the band's center, as a `Shift+End` reach does.
 
 ## Dragging a range out
 
@@ -139,10 +141,3 @@ These rules make the travel feel like one gesture:
 - **The pointer report drives it.** A held pointer keeps reporting wherever it is carried to, including past the window, so the travel runs off the same report the drag itself reads.
 - **The frame's own duration paces it**, so the same stretch of grid passes under the pointer however fast the frames arrive. The pace depends on how far past the edge the pointer stands. It rises from a floor to a ceiling over a few cells' overshoot: a nudge creeps, and a reach covers the grid.
 - **Each step is added to the offset last issued.** A table reports the scroll it was drawn with and not the one just set, so a travel that read it back would re-issue an offset it has already reached. The travel rests as soon as the pointer stands within the band again, at the press that opens the next gesture, and on a rebuild. The travel that follows sets out from the offset the grid is drawn with.
-
-## Accepted limitations
-
-- **A rebuilt table starts without a selection.** Both grids reconstruct their input state on rebuild, so following playback and the rebuild after a growing paste leave the cursor and drop the selection. The rows a region named belong to the body that was replaced.
-- **The selection stays put after a paste** and does not become the pasted footprint.
-- **A note crosses a project by whichever route it took.** The in-app slot survives a project close, because it must survive `on_project_replaced`, which fires on every undo, and it names its voice by id. A note whose voice the project in place lacks is left out of the write, and the target keeps what it had. The clipboard's text names a list position instead, so the same note pasted through it plays whichever voice stands at that position. Transpose and volume are exact by either route.
-- **A drag past the edge and the followed playhead both write the scroll.** With **Follow rows** on during playback, the followed playhead carries the sounding row to the head of the band while a held pointer travels the grid, so the two take turns each frame.

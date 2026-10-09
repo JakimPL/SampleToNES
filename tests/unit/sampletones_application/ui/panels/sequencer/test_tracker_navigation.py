@@ -6,12 +6,16 @@ import pytest
 
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
 from sampletones_application.ui.panels.sequencer.tracker import panel as tracker
+from sampletones_application.ui.panels.sequencer.tracker.band import UNMEASURED_BAND, TrackerBand, TrackerRows
+from sampletones_application.ui.panels.sequencer.tracker.context import ContextRows
 from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.tracker.themes import TrackerThemes
 from sampletones_application.utils.gui.keyboard import KeyEvent
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination
 from sampletones_application.utils.gui.keyboard.keys import KEY_PAGE_DOWN, KEY_PAGE_UP
 from sampletones_application.utils.gui.keyboard.modifiers import NO_MODIFIERS
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.tracker import NO_REACH
 from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.types.callback import VoidCallback
 from tests.suite.shortcuts import shipped_source
@@ -19,10 +23,9 @@ from tests.suite.shortcuts import shipped_source
 PAGE_SIZE = 16
 CURSOR_ROW = 5
 ROW_COUNT = 65
-SCROLL_MAX = 640.0
-ROW_PITCH = 20.0
-BAND_TOP = 100.0
-LAST_HEADING_ROW = 32
+ROW_HEIGHT = 20.0
+BAND_ROWS = 9.5
+PLAYING_ROW = 12
 
 SHOWN_FRAME = 3
 OTHER_FRAME = 4
@@ -35,13 +38,16 @@ def _panel() -> GUISequencerTrackerPanel:
         cursor=TrackerCursor(CURSOR_ROW, None, SubColumn.VOICE),
         pending="",
     )
-    panel._layout = SimpleNamespace(tracker=SimpleNamespace(page_size=PAGE_SIZE))
+    panel._layout = SimpleNamespace(tracker=SimpleNamespace(page_size=PAGE_SIZE, row_height=ROW_HEIGHT))
+    panel._band = TrackerBand(height=BAND_ROWS * ROW_HEIGHT, row_height=ROW_HEIGHT)
     panel._displayed_frame = SHOWN_FRAME
     panel._playing_frame = None
     panel._playing_row = None
     panel._painted_row = None
     panel._follows_playing_row = False
-    panel._current_row_count = ROW_COUNT
+    panel._rows_layout = TrackerRows(reach=panel._band.reach, frame_rows=ROW_COUNT)
+    panel._context = ContextRows(layout=panel._layout, themes=TrackerThemes(panel._layout), subcolumn_widths={})
+    panel._settings = SimpleNamespace(first_highlight=4, second_highlight=16)
     panel._rows = {row_index: f"row_{row_index}" for row_index in range(ROW_COUNT)}
     return panel
 
@@ -57,152 +63,168 @@ def _press(text: str) -> KeyEvent:
     return KeyEvent(key=combination.key, modifiers=combination.modifiers)
 
 
-class TestGridPageNavigation:
-    """PageUp and PageDown jump the cursor a page of rows, matching the key codes DearPyGui delivers,
-    and reveal the row they land on."""
-
-    def test_page_up_moves_up_one_page_and_scrolls(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        panel = _panel()
-        moves: List[int] = []
-        scrolls: List[None] = []
-        monkeypatch.setattr(panel, "_move_row", moves.append)
-        monkeypatch.setattr(panel, "_scroll_cursor_into_view", lambda: scrolls.append(None))
-
-        assert panel._on_key_pressed(KeyEvent(key=KEY_PAGE_UP, modifiers=NO_MODIFIERS)) is True
-        assert moves == [-PAGE_SIZE]
-        assert scrolls == [None]
-
-    def test_page_down_moves_down_one_page_and_scrolls(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        panel = _panel()
-        moves: List[int] = []
-        scrolls: List[None] = []
-        monkeypatch.setattr(panel, "_move_row", moves.append)
-        monkeypatch.setattr(panel, "_scroll_cursor_into_view", lambda: scrolls.append(None))
-
-        assert panel._on_key_pressed(KeyEvent(key=KEY_PAGE_DOWN, modifiers=NO_MODIFIERS)) is True
-        assert moves == [PAGE_SIZE]
-        assert scrolls == [None]
-
-
-@dataclass(frozen=True)
-class RowPlacementCase:
-    """A row of the frame, and the scroll that places it."""
-
-    row_index: int
-    scroll: float
-
-
-ROW_PLACEMENTS = [
-    RowPlacementCase(row_index=0, scroll=0.0),
-    RowPlacementCase(row_index=(ROW_COUNT - 1) // 2, scroll=SCROLL_MAX / 2),
-    RowPlacementCase(row_index=ROW_COUNT - 1, scroll=SCROLL_MAX),
-]
-
-BAND_TOP_PLACEMENTS = [
-    RowPlacementCase(row_index=0, scroll=0.0),
-    RowPlacementCase(row_index=10, scroll=10 * ROW_PITCH),
-    RowPlacementCase(row_index=LAST_HEADING_ROW, scroll=SCROLL_MAX),
-    RowPlacementCase(row_index=LAST_HEADING_ROW + 8, scroll=SCROLL_MAX),
-    RowPlacementCase(row_index=ROW_COUNT - 1, scroll=SCROLL_MAX),
-]
-
-
-def _row_top(tag: str) -> List[float]:
-    """Where a laid-out row stands, the rows stacked one pitch apart below the band's top."""
-    return [0.0, BAND_TOP + int(tag.removeprefix("row_")) * ROW_PITCH]
-
-
-def _record_scrolls(monkeypatch: pytest.MonkeyPatch, scroll_max: float) -> List[float]:
-    """The scrolls a placement asks of a laid-out grid, in the order it asks for them."""
+def _record_scrolls(monkeypatch: pytest.MonkeyPatch) -> List[float]:
+    """The scrolls the grid is asked for, in the order it is asked for them."""
     scrolls: List[float] = []
     monkeypatch.setattr(tracker.dpg, "does_item_exist", lambda tag: True)
-    monkeypatch.setattr(tracker.dpg, "get_y_scroll_max", lambda tag: scroll_max)
-    monkeypatch.setattr(tracker.dpg, "get_item_rect_min", _row_top)
     monkeypatch.setattr(tracker.dpg, "set_y_scroll", lambda tag, value: scrolls.append(value))
     return scrolls
 
 
-class TestPlayheadFollowing:
-    """The grid carries the sounding row to the head of the band for as long as it follows the
-    playhead."""
+def _take_states(monkeypatch: pytest.MonkeyPatch, panel: GUISequencerTrackerPanel) -> None:
+    """Has the panel take each input state a key leads to, leaving out the highlights it paints."""
 
-    def test_a_followed_row_is_revealed(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def take(state: TrackerInputState) -> None:
+        panel._input_state = state
+
+    monkeypatch.setattr(panel, "_apply_state", take)
+
+
+def _middle_off_center(panel: GUISequencerTrackerPanel, row_index: int, scroll: float) -> float:
+    """How far a row's middle stands from the band's middle once the grid is scrolled to ``scroll``."""
+    top = panel._rows_layout.body_row(row_index) * ROW_HEIGHT - scroll
+    return top + ROW_HEIGHT / 2 - panel._band.height / 2
+
+
+def _scroll_max(panel: GUISequencerTrackerPanel) -> float:
+    """How far the grid scrolls: every row below the header, less the band showing them."""
+    return panel._rows_layout.body_rows * ROW_HEIGHT - panel._band.height
+
+
+@dataclass(frozen=True)
+class KeyLanding:
+    """A key, and the row it carries the cursor to from :data:`CURSOR_ROW`."""
+
+    press: str
+    row_index: int
+
+
+KEY_LANDINGS = [
+    KeyLanding(press="Down", row_index=CURSOR_ROW + 1),
+    KeyLanding(press="Up", row_index=CURSOR_ROW - 1),
+    KeyLanding(press="PageDown", row_index=CURSOR_ROW + PAGE_SIZE),
+    KeyLanding(press="PageUp", row_index=0),
+    KeyLanding(press="Home", row_index=0),
+    KeyLanding(press="End", row_index=ROW_COUNT - 1),
+    KeyLanding(press="Shift+End", row_index=ROW_COUNT - 1),
+]
+
+
+class TestTheCursorStandsAtTheCenter:
+    """A key carrying the cursor to another row brings that row to the band's center."""
+
+    @pytest.mark.parametrize("landing", KEY_LANDINGS, ids=lambda landing: landing.press)
+    def test_the_row_a_key_lands_on_is_centered(
+        self,
+        landing: KeyLanding,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         panel = _panel()
-        revealed: List[int] = []
+        _take_states(monkeypatch, panel)
+        scrolls = _record_scrolls(monkeypatch)
+
+        assert panel._on_key_pressed(_press(landing.press)) is True
+
+        cursor = panel._input_state.cursor
+        assert cursor is not None
+        assert cursor.row == landing.row_index
+        assert len(scrolls) == 1
+        assert _middle_off_center(panel, landing.row_index, scrolls[0]) == pytest.approx(0.0)
+        assert 0.0 <= scrolls[0] <= _scroll_max(panel)
+
+    def test_a_key_keeping_the_row_scrolls_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        panel = _panel()
+        _take_states(monkeypatch, panel)
+        scrolls = _record_scrolls(monkeypatch)
+
+        panel._on_key_pressed(_press("Right"))
+
+        assert scrolls == []
+
+    def test_a_band_awaiting_its_measurement_scrolls_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        panel = _panel()
+        panel._band = TrackerBand(height=UNMEASURED_BAND, row_height=ROW_HEIGHT)
+        _take_states(monkeypatch, panel)
+        scrolls = _record_scrolls(monkeypatch)
+
+        panel._on_key_pressed(_press("Down"))
+
+        assert scrolls == []
+
+    def test_a_followed_playhead_keeps_the_band_on_the_sounding_row(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """While the grid follows playback, the song holds the center and a key only moves the cursor."""
+        panel = _panel()
+        panel.set_row_following(True)
+        panel._playing_frame = SHOWN_FRAME
+        panel._playing_row = PLAYING_ROW
+        _take_states(monkeypatch, panel)
+        scrolls = _record_scrolls(monkeypatch)
+
+        panel._on_key_pressed(_press("Down"))
+
+        assert len(scrolls) == 1
+        assert _middle_off_center(panel, PLAYING_ROW, scrolls[0]) == pytest.approx(0.0)
+
+
+class TestPlayheadFollowing:
+    """The grid keeps the sounding row at the band's center for as long as it follows the playhead."""
+
+    @pytest.mark.parametrize("row_index", [0, PLAYING_ROW, ROW_COUNT - 1])
+    def test_a_followed_row_is_centered(self, row_index: int, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The first and the last row reach the center too, the rows of the song either side holding the room."""
+        panel = _panel()
         monkeypatch.setattr(panel, "_paint_row", lambda row_index: None)
-        monkeypatch.setattr(panel, "_scroll_row_to_band_top", revealed.append)
+        scrolls = _record_scrolls(monkeypatch)
 
         panel.set_row_following(True)
-        panel.set_playing_position(_playhead(SHOWN_FRAME, 12))
+        panel.set_playing_position(_playhead(SHOWN_FRAME, row_index))
 
-        assert revealed == [12]
+        assert len(scrolls) == 1
+        assert _middle_off_center(panel, row_index, scrolls[0]) == pytest.approx(0.0)
+        assert 0.0 <= scrolls[0] <= _scroll_max(panel)
 
     def test_an_unfollowed_row_stays_where_the_reader_left_it(self, monkeypatch: pytest.MonkeyPatch) -> None:
         panel = _panel()
-        revealed: List[int] = []
         monkeypatch.setattr(panel, "_paint_row", lambda row_index: None)
-        monkeypatch.setattr(panel, "_scroll_row_to_band_top", revealed.append)
+        scrolls = _record_scrolls(monkeypatch)
 
         panel.set_row_following(False)
-        panel.set_playing_position(_playhead(SHOWN_FRAME, 12))
+        panel.set_playing_position(_playhead(SHOWN_FRAME, PLAYING_ROW))
 
-        assert revealed == []
+        assert scrolls == []
 
     def test_a_row_of_another_frame_holds_the_grid_where_it_is(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A row belongs to its own pattern, so the grid travels to it once that frame is shown."""
         panel = _panel()
-        revealed: List[int] = []
         monkeypatch.setattr(panel, "_paint_row", lambda row_index: None)
-        monkeypatch.setattr(panel, "_scroll_row_to_band_top", revealed.append)
+        scrolls = _record_scrolls(monkeypatch)
 
         panel.set_row_following(True)
-        panel.set_playing_position(_playhead(OTHER_FRAME, 12))
+        panel.set_playing_position(_playhead(OTHER_FRAME, PLAYING_ROW))
 
-        assert revealed == []
+        assert scrolls == []
 
     def test_a_cleared_playhead_leaves_the_scroll_alone(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Stopping drops the mark, and the grid keeps the position it was scrolled to."""
         panel = _panel()
-        revealed: List[int] = []
         monkeypatch.setattr(panel, "_paint_row", lambda row_index: None)
-        monkeypatch.setattr(panel, "_scroll_row_to_band_top", revealed.append)
+        scrolls = _record_scrolls(monkeypatch)
 
         panel.set_row_following(True)
-        panel.set_playing_position(_playhead(SHOWN_FRAME, 12))
+        panel.set_playing_position(_playhead(SHOWN_FRAME, PLAYING_ROW))
         panel.set_playing_position(None)
 
-        assert revealed == [12]
+        assert len(scrolls) == 1
 
-    @pytest.mark.parametrize("case", BAND_TOP_PLACEMENTS, ids=lambda case: f"row_{case.row_index}")
-    def test_a_row_is_carried_to_the_head_of_the_band(
-        self,
-        case: RowPlacementCase,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Each row heads the band by the height of the rows above it, as far as the grid scrolls."""
+    def test_a_grid_awaiting_its_band_is_left_alone(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A band is measured once the grid has laid out, and nothing is centered before."""
         panel = _panel()
-        scrolls = _record_scrolls(monkeypatch, SCROLL_MAX)
+        panel._band = TrackerBand(height=UNMEASURED_BAND, row_height=ROW_HEIGHT)
+        monkeypatch.setattr(panel, "_paint_row", lambda row_index: None)
+        scrolls = _record_scrolls(monkeypatch)
 
-        panel._scroll_row_to_band_top(case.row_index)
-
-        assert scrolls == [pytest.approx(case.scroll)]
-
-    def test_a_frame_that_fits_the_band_is_left_alone(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """A frame shorter than the band shows every row already, so the grid holds still."""
-        panel = _panel()
-        scrolls = _record_scrolls(monkeypatch, 0.0)
-
-        panel._scroll_row_to_band_top(4)
-
-        assert scrolls == []
-
-    def test_a_grid_awaiting_its_layout_is_left_alone(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Rows reach the grid a frame before they are placed, and measure nothing until they are."""
-        panel = _panel()
-        panel._rows = {}
-        scrolls = _record_scrolls(monkeypatch, SCROLL_MAX)
-
-        panel._scroll_row_to_band_top(4)
+        panel.set_row_following(True)
+        panel.set_playing_position(_playhead(SHOWN_FRAME, PLAYING_ROW))
 
         assert scrolls == []
 
@@ -281,33 +303,6 @@ def _deferred_painting(
         held.pop()()
 
     return painted, paint
-
-
-class TestCursorPlacement:
-    """A cursor jump places the row across the band, from its top on the first row to its bottom on
-    the last."""
-
-    @pytest.mark.parametrize("case", ROW_PLACEMENTS, ids=lambda case: f"row_{case.row_index}")
-    def test_a_row_is_placed_across_the_band(
-        self,
-        case: RowPlacementCase,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        panel = _panel()
-        scrolls = _record_scrolls(monkeypatch, SCROLL_MAX)
-
-        panel._scroll_row_into_view(case.row_index)
-
-        assert scrolls == [pytest.approx(case.scroll)]
-
-    def test_the_cursor_is_placed_by_that_rule(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        panel = _panel()
-        revealed: List[int] = []
-        monkeypatch.setattr(panel, "_scroll_row_into_view", revealed.append)
-
-        panel._scroll_cursor_into_view()
-
-        assert revealed == [CURSOR_ROW]
 
 
 class TestGridColumnNavigation:

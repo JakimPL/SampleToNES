@@ -68,6 +68,11 @@ def is_render_thread() -> bool:
             return threading.get_ident() == _RENDER_THREAD
 
 
+def is_drawing_thread() -> bool:
+    """Whether the caller is the thread drawing the frames, while the loop draws them."""
+    return _PHASE is RenderThreadPhase.DRAWING and threading.get_ident() == _RENDER_THREAD
+
+
 def on_render_thread(
     work: Callback,
     *args: Any,
@@ -101,9 +106,10 @@ def answered_while_drawing(work: Callable[[], AnswerT]) -> AnswerT:
     gather wait for the drain that follows, so the interface stays painted while it stands inert —
     which is what a dialog standing in front of it means.
 
-    Work reached from any other thread runs where it stands, since nothing there holds the frames.
+    Work reached anywhere else runs where it stands: on any other thread, and on the render thread
+    before the loop draws or after it stops, since nothing there holds frames up.
     """
-    if not is_render_thread():
+    if not is_drawing_thread():
         return work()
 
     with ThreadPoolExecutor(max_workers=1) as pool:

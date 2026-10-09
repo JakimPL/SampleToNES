@@ -4,6 +4,10 @@ from typing import Final, Tuple
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.boundaries.dialogs import DialogKind
+from automation.screen import Screen
+from automation.worlds.home import HomeFile, World
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_shared.application import SAMPLETONES_PROJECT_DATA_VERSION
@@ -18,11 +22,7 @@ from tests.screens.application.old_files.steps import (
     stored_voice_names,
     world_of,
 )
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds.archives import Damage, archived_document, damaged_document
-from tests.suite.screens.worlds.home import HomeFile, World
 
 SECOND_PROJECT: Final[Path] = PROJECTS_DIRECTORY / "Second.stp"
 OLDER_PROJECT_VERSION: Final[str] = "0.9"

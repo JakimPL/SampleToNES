@@ -4,13 +4,13 @@ from typing import Final, List, Tuple
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.screen import Screen
+from automation.steps.project import leave_letting_the_project_go
+from automation.steps.reconstructions import edit_envelope, expect_open
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from tests.screens.reconstructions.instruments.constants import FADING, NOTHING, STILL_FRAMES
 from tests.screens.reconstructions.instruments.steps import give_it_a_volume, open_the_instrument, song_title
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.project import leave_letting_the_project_go
-from tests.suite.screens.steps.reconstructions import edit_envelope, expect_open
 from tests.suite.screens.worlds.recordings import OPEN_RECONSTRUCTION, SONG
 
 BENT_ITEM: Final[int] = 2
@@ -92,8 +92,8 @@ class TestTheRowsEachChannelDraws:
         screen.scenario(each_tab_draws_its_rows, a_bend_field_explains_a_step, the_volume_field_explains_no_bend).run()
 
 
-class TestAHandWrittenVoice:
-    """A hand-written voice offers the Audition switch and only its own tab, and Export follows its
+class TestAnInstrument:
+    """An instrument offers the Audition switch and only its own tab, and Export follows its
     envelopes.
 
     The opened instrument shows the Pulse 1 tab alone, with Export unavailable. A typed volume makes

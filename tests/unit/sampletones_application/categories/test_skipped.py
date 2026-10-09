@@ -126,8 +126,9 @@ class TestTheReportOfRowsLeftSilent:
 
 
 class TestTheReportGivesEachReasonAParagraph:
-    """A note cut and a transpose left out are different things for the reader to fix, so each reason
-    is reported under a heading of its own, the note cuts first.
+    """A note cut, a transpose left out and an instrument written at another frame's pitch are different
+    things for the reader to fix, so each reason is reported under a heading of its own, the note cuts
+    first.
     """
 
     def test_each_reason_opens_a_paragraph_of_its_own(
@@ -136,6 +137,7 @@ class TestTheReportGivesEachReasonAParagraph:
         voices: IdentifiedCollection[Sample],
     ) -> None:
         rows = (
+            _skipped(voices[0].id, reason=SkipReason.CARRIED_PITCH),
             _skipped(voices[0].id, reason=SkipReason.UNREACHED_TRANSPOSE),
             _skipped(voices[1].id),
         )
@@ -147,6 +149,7 @@ class TestTheReportGivesEachReasonAParagraph:
         assert [paragraph.splitlines()[0] for paragraph in paragraphs] == [
             messages.headings[SkipReason.NO_INSTRUMENT],
             messages.headings[SkipReason.UNREACHED_TRANSPOSE],
+            messages.headings[SkipReason.CARRIED_PITCH],
         ]
 
     def test_every_reason_has_a_heading(self, messages: SkippedRowMessages) -> None:

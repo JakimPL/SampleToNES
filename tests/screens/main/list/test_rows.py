@@ -2,13 +2,13 @@ import operator
 from functools import partial
 from typing import Final
 
+from automation.screen import Screen
+from automation.steps.main import home_path
+from automation.vocabulary.converter import CONVERT_ONE, CONVERT_SEVERAL
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_STEMS_ROW, TAG_GLOBAL_THEME_STEMS_ROW_INERT
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.main.list.steps import gather
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import home_path
-from tests.suite.screens.vocabulary.converter import CONVERT_ONE, CONVERT_SEVERAL
-from tests.suite.screens.vocabulary.recordings import KICK, SNARE
+from tests.suite.screens.seeds.constants import KICK, SNARE
 
 PLAY: Final[str] = "global.context.label.play"
 

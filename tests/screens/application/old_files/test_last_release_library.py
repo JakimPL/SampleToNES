@@ -4,6 +4,10 @@ from typing import Final
 
 import pytest
 
+from automation.dearpygui.items.types import Item
+from automation.screen import Screen
+from automation.vocabulary.libraries import LIBRARY_LOADED
+from automation.worlds.home import World
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.configs import Config, InstructionsLibraryConfig
@@ -13,11 +17,7 @@ from sampletones_shared.application import SAMPLETONES_LIBRARY_DATA_VERSION
 from sampletones_shared.paths.user import LIBRARY_DIRECTORY
 from tests.screens.application.old_files.steps import world_of
 from tests.suite.compatibility import ARCHIVED_VERSIONS, archived, stored_document, stored_version
-from tests.suite.screens.dearpygui.items.types import Item
-from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds.archives import archived_document
-from tests.suite.screens.vocabulary.libraries import LIBRARY_LOADED
-from tests.suite.screens.worlds.home import World
 
 CONFIG_FIELD: Final[str] = "config"
 OUTDATED_ROW: Final[str] = "instructions.library.template.library_node_outdated_template"

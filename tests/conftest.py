@@ -1,15 +1,22 @@
-from typing import Callable, Iterator, TypeAlias
+from typing import Callable, Final, Iterator, TypeAlias
 
 import pytest
 
+from sampletones_application.logic.shared.renders import RenderCache
+from sampletones_application.utils.callbacks.failures import UnhandledFailures
+from sampletones_application.utils.callbacks.queue import CallbackQueue
+from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.modal_queue import ModalQueue
 from sampletones_application.utils.gui.palette.palette import PaletteBindings
 from sampletones_application.utils.gui.render_thread import reset_render_thread
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_shared.constants.general import BYTES_PER_MEGABYTE
 from tests.suite.sequencer import sample_reconstruction
 
 ReconstructionFactory: TypeAlias = Callable[[], Reconstruction]
+
+RENDER_BUDGET: Final[int] = 64 * BYTES_PER_MEGABYTE
 
 
 @pytest.fixture(autouse=True)
@@ -22,6 +29,43 @@ def modal_queue() -> Iterator[None]:
     ModalQueue.clear()
     yield
     ModalQueue.clear()
+
+
+@pytest.fixture(autouse=True)
+def frame_callbacks() -> Iterator[None]:
+    """Gives each test no callbacks waiting for a frame.
+
+    The callbacks wait in a heap that outlives any one context, and a suite renders no frame to run
+    them, so each test starts with none and leaves none a later frame count would make due.
+    """
+    FrameCallbackManager.clear()
+    yield
+    FrameCallbackManager.clear()
+
+
+@pytest.fixture(autouse=True)
+def callback_queue() -> Iterator[None]:
+    """Gives each test an empty, live callback queue.
+
+    The queue carries a worker's results to the render thread and outlives any one context, and a
+    worker a test started can post after the test's context is gone, so each test starts with nothing
+    queued and leaves nothing for a later drain to run.
+    """
+    CallbackQueue.clear()
+    yield
+    CallbackQueue.clear()
+
+
+@pytest.fixture(autouse=True)
+def unhandled_failures() -> Iterator[None]:
+    """Gives each test a failure channel with no presenter attached.
+
+    An application built by a test attaches its presenter to the process-wide channel, together with
+    the thread hook, so each test starts with failures logged alone and leaves the hook it found.
+    """
+    UnhandledFailures.detach()
+    yield
+    UnhandledFailures.detach()
 
 
 @pytest.fixture(autouse=True)
@@ -55,3 +99,9 @@ def reconstruction_factory() -> ReconstructionFactory:
         return sample_reconstruction([ChannelName.PULSE1])
 
     return build
+
+
+@pytest.fixture
+def renders() -> RenderCache:
+    """A render cache of the case's own, so every render a case makes leaves with it."""
+    return RenderCache(budget_bytes=RENDER_BUDGET)

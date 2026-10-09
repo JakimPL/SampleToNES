@@ -31,8 +31,8 @@ class TestClassicSetup:
         setup = classic_setup([ChannelName.NOISE, ChannelName.PULSE1])
 
         assert len(setup.entries) == 1
-        assert setup.entries[0].settings.channels == [ChannelName.PULSE1, ChannelName.NOISE]
-        assert setup.entries[0].settings.bends == [ChannelName.PULSE1]
+        assert setup.entries[0].settings.channels == (ChannelName.PULSE1, ChannelName.NOISE)
+        assert setup.entries[0].settings.bends == (ChannelName.PULSE1,)
 
 
 class TestLoadStems:

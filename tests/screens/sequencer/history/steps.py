@@ -1,12 +1,12 @@
 from functools import partial
 
+from automation.dearpygui.items.reading import read_item
+from automation.dearpygui.keys import IMGUI_ENTER
+from automation.screen import Screen
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.tags.sequencer import TAG_SEQUENCER_VOICES_INPUT_RENAME
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.screens.sequencer.history.constants import RENAMED, SETTLING_FRAMES
-from tests.suite.screens.dearpygui.items.reading import read_item
-from tests.suite.screens.dearpygui.keys import IMGUI_ENTER
-from tests.suite.screens.screen import Screen
 
 
 def pick(screen: Screen, name: str) -> None:

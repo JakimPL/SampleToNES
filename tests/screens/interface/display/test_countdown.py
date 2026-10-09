@@ -3,6 +3,8 @@ from typing import Final
 
 import pytest
 
+from automation.screen import Screen
+from automation.worlds.home import World
 from tests.screens.interface.display.steps import (
     another_size,
     at_its_own_size_and_place,
@@ -13,8 +15,6 @@ from tests.screens.interface.display.steps import (
     size_named,
     window_size,
 )
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.worlds.home import World
 
 COUNTDOWN_LIMIT_SECONDS: Final[float] = 20.0
 SETTLING_FRAMES: Final[int] = 10

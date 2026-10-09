@@ -25,8 +25,8 @@ def _stems_config() -> StemsConfig:
 class TestStemsConfig:
     def test_defaults_to_an_empty_assignment(self) -> None:
         stems = StemsConfig()
-        assert stems.entries == []
-        assert stems.hierarchy.levels == []
+        assert stems.entries == ()
+        assert stems.hierarchy.levels == ()
         assert stems.hierarchy.mode == HierarchyMode.ROUND_ROBIN
 
     def test_duplicate_entry_ids_raise(self) -> None:
@@ -52,7 +52,7 @@ class TestStemsConfig:
     def test_fields(self) -> None:
         stems = _stems_config()
         assert [entry.id for entry in stems.entries] == [0, 1]
-        assert stems.hierarchy.levels == [[0], [1]]
+        assert stems.hierarchy.levels == ((0,), (1,))
         assert stems.hierarchy.mode == HierarchyMode.STRICT
 
 
@@ -112,7 +112,7 @@ class TestStemsConfigViews:
     def test_entries_are_keyed_by_their_id(self) -> None:
         stems = _stems_config()
         assert set(stems.entries_by_id) == {0, 1}
-        assert stems.entries_by_id[1].settings.channels == [ChannelName.NOISE]
+        assert stems.entries_by_id[1].settings.channels == (ChannelName.NOISE,)
 
     def test_covered_channels_gather_every_entry(self) -> None:
         stems = _stems_config()
@@ -140,18 +140,18 @@ class TestWithoutEntries:
         remaining = self._shared_level().without_entries(frozenset({1}))
 
         assert [entry.id for entry in remaining.entries] == [0, 2]
-        assert remaining.hierarchy.levels == [[0], [2]]
+        assert remaining.hierarchy.levels == ((0,), (2,))
 
     def test_a_level_they_empty_collapses(self) -> None:
         remaining = self._shared_level().without_entries(frozenset({2}))
 
-        assert remaining.hierarchy.levels == [[0, 1]]
+        assert remaining.hierarchy.levels == ((0, 1),)
 
     def test_the_picking_mode_stays(self) -> None:
         remaining = self._shared_level().without_entries(frozenset({0, 1}))
 
         assert remaining.hierarchy.mode == HierarchyMode.STRICT
-        assert remaining.hierarchy.levels == [[2]]
+        assert remaining.hierarchy.levels == ((2,),)
 
     def test_naming_nothing_leaves_the_setup_as_it_stands(self) -> None:
         setup = self._shared_level()
@@ -165,7 +165,7 @@ class TestSingleEntry:
         stems = StemsConfig.single_entry(settings)
 
         assert [entry.settings for entry in stems.entries] == [settings]
-        assert stems.hierarchy.levels == [[0]]
+        assert stems.hierarchy.levels == ((0,),)
         assert stems.covered_channels == settings.channel_set
 
     def test_carries_the_count_the_settings_state(self) -> None:

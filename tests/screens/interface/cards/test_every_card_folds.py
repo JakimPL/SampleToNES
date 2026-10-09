@@ -4,16 +4,16 @@ from typing import Dict, Final, List, Tuple
 import dearpygui.dearpygui as dpg
 import pytest
 
+from automation.application.startup import Startup
+from automation.dearpygui.geometry import Rect
+from automation.dearpygui.items.reading import read_item
+from automation.screen import Screen
+from automation.steps.reconstructions import expect_open
+from automation.views.main import Card
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.tags.compose import TAG_SEPARATOR
 from sampletones_application.tags.general import SUF_COLLAPSE_STRIP
 from sampletones_application.tags.sequencer import TAG_SEQUENCER_HISTORY_PANEL
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.dearpygui.geometry import Rect
-from tests.suite.screens.dearpygui.items.reading import read_item
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import expect_open
-from tests.suite.screens.views.main import Card
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT
 

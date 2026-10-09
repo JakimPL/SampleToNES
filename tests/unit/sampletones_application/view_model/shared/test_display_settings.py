@@ -143,6 +143,7 @@ def settings(
         ),
         vsync=True,
         frame_rate=frame_rate,
+        show_frame_rate=True,
     )
 
 
@@ -185,6 +186,12 @@ class TestSettingsChanges:
 
         assert snapshot.vsync is True
 
+    def test_taking_the_frame_rate_reading_off_leaves_the_pacing_standing(self) -> None:
+        changed = settings().with_show_frame_rate(False)
+
+        assert changed.show_frame_rate is False
+        assert (changed.vsync, changed.frame_rate) == (True, 60)
+
 
 class TestDisplaySettingsViewModel:
     def test_the_offer_holds_only_what_the_monitor_leaves_room_for(self) -> None:
@@ -199,6 +206,9 @@ class TestDisplaySettingsViewModel:
 
     def test_a_stored_rate_the_build_stopped_offering_selects_the_closest(self) -> None:
         assert view_model(settings(frame_rate=100)).settings.frame_rate == 90
+
+    def test_the_frame_rate_reading_switch_passes_through(self) -> None:
+        assert view_model(settings().with_show_frame_rate(False)).settings.show_frame_rate is False
 
     def test_a_windowed_window_offers_its_size_and_frame(self) -> None:
         assert view_model(settings()).window_controls_enabled

@@ -3,6 +3,7 @@ from typing import Dict
 import pytest
 
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
@@ -53,7 +54,7 @@ class TestBuildSong:
         rows = song.channels[ChannelName.PULSE1].patterns[0].rows
         assert len(rows) == ROWS_PER_PATTERN
         assert rows[0].command == NoteOn(voice_id=catalog["lead"].id)
-        assert (rows[0].transpose, rows[0].volume) == (12, 10)
+        assert (rows[0].pitch, rows[0].volume) == (Step(value=12), 10)
         assert rows[1].command is None
         assert isinstance(rows[2].command, NoteOff)
         assert (rows[3].command, rows[3].volume) == (None, 4)

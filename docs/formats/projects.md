@@ -14,7 +14,7 @@ A `.stp` file is a zip archive with two kinds of member:
   sample, stored as its own `.stn` member and referenced from the document by its
   id. The archive deflates its members, so a member has the reconstruction's payload as it stands.
 
-The reconstructions sit in separate members, so `project.json` stays small and the larger audio data
+The reconstructions sit in separate members, so `project.json` stays small and the larger reconstruction data
 travels beside it in the same archive. An [instrument](../glossary.md#instrument) has no audio, so the
 document holds it whole.
 
@@ -52,8 +52,17 @@ The arrangement across the four channels:
 | `order` | an ordered list of frames, each mapping every channel to the pattern index it plays, or empty for a silent slot |
 | `channels` | per channel, the `name` of the channel it drives and its pool of `patterns`, each pattern a list of rows |
 
-A row has the `command` its note column holds (the `voice_id` to start, or a note-off), its `transpose`
+A row has the `command` its note column holds (the `voice_id` to start, or a note-off), its `pitch`
 and its `volume`. The channel a voice sounds on is the one whose pool has the row.
+
+A pitch states its `kind` and its `value`:
+
+| `kind` | `value` |
+| --- | --- |
+| `note` | the pitch the channel sounds, or the noise period on the noise channel |
+| `step` | the semitones from the voice's own reference, or the periods on the noise channel |
+
+A row stating no pitch leaves the field out.
 
 ## Detached reconstructions
 

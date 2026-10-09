@@ -484,3 +484,22 @@ class TestTheSnapshot:
         assert snapshot.shown == PROMPT
         assert snapshot.aside == (DIALOG,)
         assert not snapshot.is_settled
+
+    def test_a_window_standing_aside_or_waiting_is_held(self, screen: Screen, held_frames: Frames) -> None:
+        screen.open(DIALOG)
+        ModalQueue.step_aside(DIALOG)
+        ModalQueue.hand_off(lambda: screen.open(PROMPT))
+        held_frames.render()
+        screen.open(FIRST)
+
+        snapshot = ModalQueue.snapshot()
+
+        assert [snapshot.holds(tag) for tag in (PROMPT, DIALOG, FIRST)] == [True, True, True]
+
+    @pytest.mark.usefixtures("held_frames")
+    def test_a_window_that_left_is_held_no_more(self, screen: Screen) -> None:
+        screen.open(FIRST)
+
+        ModalQueue.leave(FIRST)
+
+        assert not ModalQueue.snapshot().holds(FIRST)

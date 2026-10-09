@@ -36,6 +36,9 @@ def _cell(
         transpose=transpose,
         volume=volume,
         kind=kind,
+        pitch=None,
+        level=None,
+        command=None,
     )
 
 

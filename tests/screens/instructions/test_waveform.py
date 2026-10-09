@@ -1,13 +1,13 @@
 from functools import partial
 from typing import Final
 
+from automation.dearpygui.items.texts import read_label
+from automation.screen import Screen
+from automation.steps.instructions import load_library
+from automation.vocabulary.playback import PAUSE
+from automation.worlds.home import one_worker_config
 from sampletones_application.tags.general import TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY
 from sampletones_core.constants.enums import GeneratorName
-from tests.suite.screens.dearpygui.items.texts import read_label
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.instructions import load_library
-from tests.suite.screens.vocabulary.playback import PAUSE
-from tests.suite.screens.worlds.home import one_worker_config
 
 LISTENING_FRAMES: Final[int] = 30
 ZOOM_NOTCHES: Final[int] = 3

@@ -3,14 +3,14 @@ from typing import Final, List
 
 import pytest
 
+from automation.dearpygui.items.types import Item
+from automation.screen import Screen
+from automation.worlds.home import World, screen_filling_state
+from automation.written import written_state
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.session.state.current import Current
 from tests.screens.application.restart.constants import RECORDINGS_FOLDER
 from tests.screens.application.restart.steps import home_folder, leave, recording_in, world_with
-from tests.suite.screens.dearpygui.items.types import Item
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.worlds.home import World, screen_filling_state
-from tests.suite.screens.written import written_state
 
 UNTOUCHED_FOLDER: Final[str] = "Untouched"
 

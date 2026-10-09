@@ -2,7 +2,7 @@
 
 This document is the reference for how _SampleToNES_ writes [Bitphase](https://github.com/paator/bitphase)
 files: the `.btp` document and the `.json` instrument preset. It also lists the Bitphase capacity limits
-the exporter respects. Read it before changing anything under `formats/bitphase/`. The sibling
+the exporter respects. Read it when you write or check a `.btp` document or a `.json` preset. The sibling
 [FamiTracker export](famitracker.md) document covers the other tracker.
 [The tracker playback check](../tools/tracker-playback.md) plays exported documents through Bitphase's
 own engine and lists every tick they sound differently from the app.
@@ -24,9 +24,6 @@ its arpeggio envelope becomes the table, and its reference pitch becomes the not
 A `.btp` is the document's JSON under gzip, with no header and no version field. The exporter writes it
 without separator padding and with a fixed gzip timestamp, so exporting an unchanged document twice yields
 identical bytes.
-
-Bitphase's loader reads each field on its own and falls back to a default for any it misses. A document
-with every field below loads exactly as it was written.
 
 ```
 Project    { name, author, songs[], loopPointId, patternOrder[], tables[],
@@ -90,8 +87,8 @@ through writes its last index, and the value it ends on is what the note rests o
 volume envelope ends on a note-off item, the channel's own level where the slice leaves the volume
 alone.
 
-**A hand-written instrument's slices.** Bitphase bakes a channel's registers tick by tick. An
-[instrument](../glossary.md#instrument) written by hand therefore reaches a document as one slice per
+**An instrument's slices.** Bitphase bakes a channel's registers tick by tick. An
+[instrument](../glossary.md#instrument) therefore reaches a document as one slice per
 channel it sounds on. Each slice reads the dimensions that channel offers and moves around the pitch the
 instrument states. The envelopes are one set for every channel, so the slices differ only in what each
 channel reads of them.
@@ -309,6 +306,11 @@ over, and the row writes no effect.
 
 A transpose row reached while no note sounds moves nothing and writes nothing, and neither does one
 following a note-on that was written as a note cut.
+
+**An instrument placed without a pitch takes the channel's.** In-app playback starts such an instrument
+on the pitch the channel is sounding, whichever voice sounded it, and leaves a silent channel silent. Each
+frame is a pattern of its own, so the cell writes the note the channel was sounding in that frame beside
+the instrument, and a row that starts nothing writes an empty cell.
 
 **A note starts at the full level.** In-app playback starts a note whose row states no volume at the full
 level. Playback carries the level a channel last took into every note after it. Such a note therefore

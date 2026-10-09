@@ -2,8 +2,7 @@
 
 This document explains how _SampleToNES_ turns an audio sample into a *reconstruction*: a sequence of NES
 instructions that approximates the original when it plays on the console's sound hardware. Read it to see
-how a frame's sound is described, scored and chosen, and where each setting acts. You can read it without
-reading the source code.
+how a frame's sound is described, scored and chosen, and where each setting acts.
 
 The tunable choices described here are set empirically. [Calibration](../tools/calibration.md) describes
 the experiment that sets them.
@@ -18,12 +17,6 @@ across four usable channels:
 - one [**triangle**](../glossary.md#triangle) channel of fixed shape and amplitude, with pitch only;
 - one [**noise**](../glossary.md#noise) channel: a pseudo-random [LFSR](../glossary.md#lfsr) generator
   with 16 periods, 15 volume levels and a short/long mode.
-
-The noise period setting divides the APU clock into the LFSR's shift rate,
-`APU_CLOCK / NOISE_PERIODS[index]`. That rate runs from 440.0 Hz at index 0 to 447443.2 Hz at index 15. In
-short mode the register repeats every 93 shifts, so index 15 sounds as a tone at about 4811 Hz. Short
-mode's output bit is set 17.2% of the time, against 50% in long mode, and that imbalance gives it a
-metallic timbre.
 
 A program steers these channels by issuing *instructions* at the
 [NES frequency](../glossary.md#nes-frequency), for example *pulse 1: note A-4, volume 12, 50 % duty*.
@@ -72,8 +65,6 @@ A reconstruction runs through a fixed sequence of stages:
 
 Stages 3–7 are where the algorithms described below live. The rest is preparation and playback.
 
-While it runs, a conversion shows four stages: loading, matching, decoding and gathering.
-
 ## 3. Representing a frame
 
 ### 3.1 The candidate catalog (library)
@@ -117,13 +108,9 @@ sharper frequency resolution requires a longer time window, and vice versa):
   triangle's, an octave below the pulse's, since the triangle steps through its wave
   at half the pulse's rate. A bass line on the triangle is therefore read from its
   fundamental, which is where the pitch of a bent note is read from too.
-  This floor is a measured choice. Each bin's wavelet depends on its own frequency alone,
-  so every bin above the pulse's lowest note is the same at either floor, and so is what
-  the conversion makes of the music there. The lower floor adds the triangle's lowest
-  octave. Starting at the pulse's lowest note (54.6 Hz), a pulse took a triangle sliding
-  from 37 Hz at its third harmonic, and a 37 Hz bass under a melody went unplayed (44.1 kHz
-  audio at a 60 Hz frame rate, converted onto pulse 1, the triangle and noise). The lower
-  floor costs about a tenth more conversion time and a larger library.
+  Bins above the pulse's lowest note are identical at either floor. The lower floor adds the
+  triangle's lowest octave, which a triangle bass needs, at the cost of conversion time and a larger
+  library.
   The price is time support: its low-frequency basis functions are long (hundreds of
   milliseconds), so brief events are smeared in time at the low end. _SampleToNES_
   computes the CQT **once over the whole signal** with a hop of one frame, so each
@@ -217,10 +204,8 @@ Two questions settle what a frame plays. Each is answered separately.
 Both work from the same candidate scoring, the same criterion and the same library.
 
 A **source** is one recording in the conversion, a [stem](../glossary.md#stem). A conversion from a single
-file has one source. Three more terms are used below. A [pick](../glossary.md#pick) gives one channel to
-one source in a frame, with the candidate it sounds. A [mix](../glossary.md#mix) is the combined sound of
-a source's picks in a frame. A [column](../glossary.md#column) is the candidates one channel may sound in a
-frame, best first.
+file has one source. A [pick](../glossary.md#pick), a [mix](../glossary.md#mix) and a [column](../glossary.md#column) are
+defined in the glossary.
 
 The assignment leaves every channel in play a column per frame. The decoder reads those columns into one
 candidate per frame. Each decoder says how wide a column it reads, and the assignment builds columns to
@@ -257,17 +242,12 @@ leave room.
 A frame one channel renders whole therefore sounds one channel. Once the triangle covers a sine, adding a
 pulse or the noise raises the cost, and those channels hold their silence.
 
-Where several channels share one generator kind at one drive, the lowest free channel of that group
-represents it during scoring. Successive picks over one kind therefore land on the lowest free channel.
-
 A channel no pick took keeps its column, headed by its silence, so the decoder may still sound it where
 the frames around ask for it. It counts against its source's count, so no decoded frame sounds more
 channels than that count.
 
 A channel no source may hold is [**resting**](../glossary.md#resting). It plays its channel's null
-instruction for that frame, which keeps every channel's stream in step with the frames it describes. A
-source takes a channel in the frames its own audio reaches a level a channel can render, and stands aside
-in the rest. A frame the source is silent in leaves its channels resting.
+instruction for that frame, which keeps every channel's stream in step with the frames it describes.
 
 A classic single-file conversion is one source covering every enabled channel. The one mix answers the
 frame itself, and every channel in each frame the source sounds in is held, sounding or silent. Several
@@ -317,16 +297,10 @@ keeps the grid.
 
 ### 6.1 Reading rather than searching
 
-The refinement reads the pitch out of the recording. Searching for it has two problems.
-
-- The criterion is a poor guide to tuning on real material. Against a **matched** candidate it answers a
-  detune smoothly and monotonically: a 50-cent error costs about four times what a 25-cent error does.
-  Against a **realistic** target, where the candidate cannot match the timbre, the response is a small
-  ripple on a timbre-dominated floor with many local minima. Taking the lowest-cost divider over a sweep
-  then lands 15–30 cents from the truth.
-- Searching costs what the library exists to avoid. Scoring one extra candidate per frame means rendering
-  it and extracting its feature. On the same audio and the same machine, that alone took longer than the
-  whole conversion.
+The refinement reads the pitch out of the recording. Searching for it fails on two counts. Against a
+target whose timbre the candidate cannot match, the criterion answers a detune with a ripple of local
+minima, so the lowest-cost divider lands far from the truth. And scoring an extra candidate per frame
+costs the rendering and feature extraction the library exists to avoid.
 
 The reading comes from the transform instead, from the **phase** the constant-Q transform already computes
 and the spectrum discards. A partial standing between two bin centers still advances its phase at its own
@@ -338,14 +312,13 @@ semitone of where that fundamental puts it, the room a note owns, so a partial a
 away stays out of the reading. The advance across two columns repeats every `sample_rate / hop` hertz
 (60 Hz at the defaults), which from about 1 kHz up is narrower than a note's room. There a second reading,
 of the advance over a sixteenth of a hop, names the repeat the first harmonic stands on, and the advance
-across two columns keeps its precision inside it. This places the note **within a tenth of a cent** across
-the whole range.
+across two columns keeps its precision inside it. This places the note far more finely than a divider step across the whole range.
 
 The reading also says how much of the frame stands behind it: the share of the column's energy its
 harmonics hold, with every bin measured on the scale the features use. On that scale a bass takes the
-share its level gives it in every register, so a melody over a low bass keeps its reading. A pitched frame
-reads around 0.6, a frame sharing the channel with another tone around 0.3, and noise around 0.02. One
-threshold therefore separates the frames worth bending from the frames with no pitch to read.
+share its level gives it in every register, so a melody over a low bass keeps its reading. One
+threshold (`generation.refinement.confidence`) therefore separates the frames worth bending from the
+frames with no pitch to read.
 
 ### 6.2 Landing the note, and holding it
 
@@ -362,21 +335,6 @@ reading, plus a toll on changing at all. The states a frame may take are the ben
 proposed, together with no bend. That keeps the walk to a handful of states even where a note owns tens of
 dividers. A bend counts divider steps from its own note, so each note's frames are settled on their own: a
 frame that reads nothing keeps a bend its own note read, and a new note starts from its own reading.
-
-### 6.3 What it costs, and what it leaves alone
-
-The refinement enumerates no candidate and rescores nothing. It leaves the library, the per-frame matching
-and the decoder's lattice exactly as they were. It adds one transform per recording, two short ones over
-the bins from about 1 kHz up for the second reading, and a small walk per channel.
-
-The transform's cost depends on the machine. On a CUDA build it is too small to measure. On a CPU build it
-is a tenth or more of a short conversion, because the reading needs a handful of bins per frame and the
-transform computes every bin the spectrum covers. Restricting it to the bins the chosen notes name is
-recorded in [bugs and to-dos](../development/bugs-and-todos.md) under **Features**.
-
-The refinement keeps a bend on the reading alone. Scoring each bent candidate would repeat the
-render-and-score cost described in [section 6.1](#61-reading-rather-than-searching), and the criterion
-would only agree with the reading.
 
 A frame makes no proposal where it rests, where the stem holding it leaves that channel out, where its
 channel is not pitched (the noise channel's sixteen periods have no finer grid), or where its reading
@@ -407,13 +365,12 @@ be shown and played on a common scale.
 
 ## 8. Limitations
 
-- **Dynamic range.** A single NES tonal channel spans roughly 25 dB from its quietest to its loudest note,
+- **Dynamic range.** A single NES tonal channel spans a limited range from its quietest to its loudest note,
   and the coefficient is one global scalar. Material whose *useful* content spans a wider range than that
   cannot be fully captured. A long crescendo and a very quiet passage under a loud one are examples.
   Content far below the working level falls under the quietest playable note and is rendered as silence.
-- **The triangle's fixed level.** The triangle plays at one volume. A bass a few decibels quieter than that
-  level is left out, and the calibration referees score the result closer to the recording than the same
-  conversion with the bass played too loud. A bass near that level is played.
+- **The triangle's fixed level.** The triangle plays at one volume. A bass quieter than that level is left
+  out, and a bass near it is played.
 - **CQT time resolution.** Constant-Q analysis needs long windows at low frequencies, so low-pitched
   transients are smeared in time under `cqt`. `fft` and `logfft` localize time better at the cost of
   low-frequency resolution.
@@ -423,9 +380,3 @@ be shown and played on a common scale.
   is unpitched, has no fundamental for its channel and keeps the note the matching chose. The room a bend
   has also closes with pitch: a divider step is a whole semitone from around C-7 up, so notes there sound
   where the grid puts them.
-
-## Appendix — the settings behind all this
-
-Every choice described here is a setting you can change. The
-[configuration file](../formats/configuration.md) lists them with the values each one accepts, and the
-shipped values are in `sampletones_core/configs/generation.yaml`.

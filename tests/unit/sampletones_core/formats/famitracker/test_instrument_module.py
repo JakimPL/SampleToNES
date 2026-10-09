@@ -13,6 +13,7 @@ from sampletones_core.formats.famitracker.specification.sequences import (
     NO_LOOP_POINT,
     SequenceKind,
 )
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
@@ -42,8 +43,8 @@ def _project(instrument: Instrument, *channels: ChannelName, transpose: int = 0)
     project = Project.create(title="Demo", rows_per_pattern=ROWS_PER_PATTERN)
     project.voices.append(instrument)
     for channel in channels:
-        pattern = project.song[channel].ensure_pattern(0, ROWS_PER_PATTERN)
-        pattern.rows[0] = Row(command=NoteOn(voice_id=instrument.id), transpose=transpose)
+        project.song[channel].ensure_pattern(0, ROWS_PER_PATTERN)
+        project.song[channel].set_row(0, 0, Row(command=NoteOn(voice_id=instrument.id), pitch=Step(value=transpose)))
         project.song.set_order_entry(0, channel, 0)
 
     return project

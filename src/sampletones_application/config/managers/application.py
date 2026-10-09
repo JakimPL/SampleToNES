@@ -111,6 +111,13 @@ class ApplicationConfigManager:
         self.config.display.borderless = borderless
 
     @property
+    def show_frame_rate(self) -> bool:
+        return self.config.display.show_frame_rate
+
+    def set_show_frame_rate(self, show_frame_rate: bool) -> None:
+        self.config.display.show_frame_rate = show_frame_rate
+
+    @property
     def shortcut_scheme_name(self) -> str:
         return self.config.shortcuts.scheme
 

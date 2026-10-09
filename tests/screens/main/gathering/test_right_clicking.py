@@ -1,11 +1,11 @@
 import operator
 from typing import Final, List
 
+from automation.dearpygui.geometry import Rect
+from automation.screen import Screen
+from automation.steps.main import explorer_row, home_path
 from tests.screens.main.gathering.steps import gathered
-from tests.suite.screens.dearpygui.geometry import Rect
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import explorer_row, home_path
-from tests.suite.screens.vocabulary.recordings import KICK, SNARE
+from tests.suite.screens.seeds.constants import KICK, SNARE
 
 ROUNDS: Final[int] = 20
 FIRST_COUNTED_ROUND: Final[int] = 2

@@ -10,7 +10,6 @@ from sampletones_application.application import Application
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.application import ApplicationConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.constants.instruments import INSTRUMENT_CHANNEL
 from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
@@ -67,7 +66,6 @@ from sampletones_application.view_model.reconstruction.envelopes import ChannelE
 from sampletones_application.view_model.reconstruction.instruments import ReconstructionInstrumentsViewModel
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.audio import CurrentDevice
-from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import UNIT_DRIVE
 from sampletones_core.constants.audio import BufferSize, SampleRate
 from sampletones_core.constants.enums import ChannelName, FeatureKey
@@ -78,10 +76,17 @@ from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.converter.paths import get_audio_files
 from sampletones_core.structures.tree import FileSystemNode, NodeType
 from sampletones_shared.paths.extensions import EXT_FILE_PROJECT
-from sampletones_shared.paths.user import CONFIG_PATH, LIBRARY_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 from tests.conftest import ReconstructionFactory
 from tests.suite.application import HeldQueue, held_queue, settled
 from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
+from tests.suite.headless import (
+    VIEWPORT_CLIENT_HEIGHT,
+    VIEWPORT_CLIENT_WIDTH,
+    app,
+    display_patches,
+    headless_application,
+    profile_in,
+)
 
 REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
 DRAG_PAYLOAD_SLOT: Final[int] = 3
@@ -105,46 +110,7 @@ CHOSEN_SAMPLE_RATE: Final[SampleRate] = 48000
 CHOSEN_BUFFER_SIZE: Final[BufferSize] = 512
 APPLIED_BUFFER_SIZE: Final[BufferSize] = 2048
 
-_DPG_DISPLAY_FUNCTIONS = [
-    "create_context",
-    "create_viewport",
-    "setup_dearpygui",
-    "show_viewport",
-    "render_dearpygui_frame",
-    "set_viewport_clear_color",
-    "set_viewport_pos",
-    "set_viewport_width",
-    "set_viewport_height",
-    "set_viewport_title",
-    "set_viewport_decorated",
-    "set_viewport_resize_callback",
-    "toggle_viewport_fullscreen",
-    "set_exit_callback",
-    "set_primary_window",
-]
-
-_VIEWPORT_CLIENT_WIDTH: Final[int] = 1280
-_VIEWPORT_CLIENT_HEIGHT: Final[int] = 720
-
-__all__ = ["held_queue"]
-
-
-def _display_patches() -> List[Any]:
-    display_patches = [patch(f"dearpygui.dearpygui.{name}", return_value=None) for name in _DPG_DISPLAY_FUNCTIONS]
-    display_patches.append(
-        patch(
-            "dearpygui.dearpygui.get_viewport_client_width",
-            return_value=_VIEWPORT_CLIENT_WIDTH,
-        )
-    )
-    display_patches.append(
-        patch(
-            "dearpygui.dearpygui.get_viewport_client_height",
-            return_value=_VIEWPORT_CLIENT_HEIGHT,
-        )
-    )
-    display_patches.append(patch("sampletones_application.utils.callbacks.queue.CallbackQueue.start"))
-    return display_patches
+__all__ = ["app", "held_queue"]
 
 
 @contextmanager
@@ -165,8 +131,8 @@ def _viewport_geometry() -> Generator[None, None, None]:
     """The window's place and size as the session reads them when a run leaves."""
     with (
         patch("dearpygui.dearpygui.get_viewport_pos", return_value=[0, 0]),
-        patch("dearpygui.dearpygui.get_viewport_width", return_value=_VIEWPORT_CLIENT_WIDTH),
-        patch("dearpygui.dearpygui.get_viewport_height", return_value=_VIEWPORT_CLIENT_HEIGHT),
+        patch("dearpygui.dearpygui.get_viewport_width", return_value=VIEWPORT_CLIENT_WIDTH),
+        patch("dearpygui.dearpygui.get_viewport_height", return_value=VIEWPORT_CLIENT_HEIGHT),
     ):
         yield
 
@@ -183,42 +149,6 @@ def _one_audio_device() -> Generator[None, None, None]:
         yield
 
 
-def _profile(directory: Path) -> UserProfile:
-    """Starts the application on a profile of its own, in the state a first run finds.
-
-    The settings and the keys an application comes up on are read from its profile, so a suite
-    given the user's own answers for whatever that machine prefers. A directory per test is what
-    holds a run to the shipped defaults.
-    """
-    return UserProfile(
-        config=directory / "config.yaml",
-        state=directory / "state.yaml",
-    )
-
-
-def _settings(directory: Path) -> Path:
-    """Writes the settings a run starts on: the shipped defaults, with the instruction library and
-    the reconstructions held in the test's own directory.
-
-    A startup lists the reconstructions and loads the library from the directories its settings
-    name, so a run reads only the files a test places beside it.
-    """
-    config = Config()
-    general = config.general.model_copy(
-        update={
-            "library_directory": str(directory / LIBRARY_DIRECTORY.name),
-            "reconstructions_directory": str(directory / RECONSTRUCTIONS_DIRECTORY.name),
-        }
-    )
-    path = directory / CONFIG_PATH.name
-    config.model_copy(update={"general": general}).save(path)
-    return path
-
-
-def _application(directory: Path) -> Application:
-    return Application(profile=_profile(directory), config_path=_settings(directory))
-
-
 class TestGUIStartup:
     @pytest.fixture(autouse=True)
     def dpg_context(self) -> Generator[Any, Application, Any]:
@@ -230,10 +160,10 @@ class TestGUIStartup:
 
     def test_initializes_without_error(self, tmp_path: Path) -> None:
         with ExitStack() as stack:
-            for display_patch in _display_patches():
+            for display_patch in display_patches():
                 stack.enter_context(display_patch)
 
-            _application(tmp_path)
+            headless_application(tmp_path)
 
     def test_initializes_where_nothing_can_play(self, tmp_path: Path) -> None:
         """Editing a song, exporting a module and rendering to a file need no output device.
@@ -243,11 +173,11 @@ class TestGUIStartup:
         sounds works on it.
         """
         with ExitStack() as stack:
-            for display_patch in _display_patches():
+            for display_patch in display_patches():
                 stack.enter_context(display_patch)
             stack.enter_context(_no_audio_devices())
 
-            _application(tmp_path)
+            headless_application(tmp_path)
 
 
 class TestLeaving:
@@ -269,7 +199,7 @@ class TestLeaving:
     @staticmethod
     def _remember_device(directory: Path) -> None:
         """Writes a session whose last committed device is one this machine does not offer."""
-        settings = ApplicationConfigManager(_profile(directory).config)
+        settings = ApplicationConfigManager(profile_in(directory).config)
         settings.set_audio_settings(REMEMBERED_DEVICE, CHOSEN_BUFFER_SIZE)
         settings.save()
 
@@ -283,32 +213,32 @@ class TestLeaving:
 
     @staticmethod
     def _remembered_device(directory: Path) -> CurrentDevice:
-        return ApplicationConfigManager(_profile(directory).config).current_audio_device
+        return ApplicationConfigManager(profile_in(directory).config).current_audio_device
 
     def test_a_machine_offering_no_device_leaves_and_keeps_the_remembered_one(self, tmp_path: Path) -> None:
         self._remember_device(tmp_path)
         with ExitStack() as stack:
-            for display_patch in _display_patches():
+            for display_patch in display_patches():
                 stack.enter_context(display_patch)
             stack.enter_context(_viewport_geometry())
             stack.enter_context(_no_audio_devices())
 
-            application = _application(tmp_path)
+            application = headless_application(tmp_path)
             assert application.audio_device_manager.get_current_device() is None
             self._leave(application)
 
         assert self._remembered_device(tmp_path) == REMEMBERED_DEVICE
-        assert _profile(tmp_path).state.exists()
+        assert profile_in(tmp_path).state.exists()
 
     def test_a_committed_device_is_what_the_session_keeps(self, tmp_path: Path) -> None:
         self._remember_device(tmp_path)
         with ExitStack() as stack:
-            for display_patch in _display_patches():
+            for display_patch in display_patches():
                 stack.enter_context(display_patch)
             stack.enter_context(_viewport_geometry())
             stack.enter_context(_one_audio_device())
 
-            application = _application(tmp_path)
+            application = headless_application(tmp_path)
             application._apply_audio_settings(
                 int(SPEAKERS["index"]),
                 CHOSEN_SAMPLE_RATE,
@@ -320,16 +250,16 @@ class TestLeaving:
         assert committed is not None
         assert committed.sample_rate == CHOSEN_SAMPLE_RATE
         assert self._remembered_device(tmp_path) == committed
-        assert ApplicationConfigManager(_profile(tmp_path).config).current_buffer_size == APPLIED_BUFFER_SIZE
+        assert ApplicationConfigManager(profile_in(tmp_path).config).current_buffer_size == APPLIED_BUFFER_SIZE
 
     def test_a_failing_step_leaves_the_later_ones_taken(self, tmp_path: Path) -> None:
         with ExitStack() as stack:
-            for display_patch in _display_patches():
+            for display_patch in display_patches():
                 stack.enter_context(display_patch)
             stack.enter_context(_viewport_geometry())
             stack.enter_context(_no_audio_devices())
 
-            application = _application(tmp_path)
+            application = headless_application(tmp_path)
             with (
                 patch.object(application._main_tab, "cleanup", side_effect=RuntimeError),
                 patch("dearpygui.dearpygui.destroy_context") as destroy_context,
@@ -340,17 +270,17 @@ class TestLeaving:
 
         destroy_context.assert_called_once_with()
         assert application.audio_device_manager._pyaudio is None
-        assert _profile(tmp_path).state.exists()
+        assert profile_in(tmp_path).state.exists()
 
     def test_a_failing_step_keeps_the_failure_that_ended_the_run(self, tmp_path: Path) -> None:
         """The traceback of a step failing on the way out names the failure the run ended on."""
         with ExitStack() as stack:
-            for display_patch in _display_patches():
+            for display_patch in display_patches():
                 stack.enter_context(display_patch)
             stack.enter_context(_viewport_geometry())
             stack.enter_context(_no_audio_devices())
 
-            application = _application(tmp_path)
+            application = headless_application(tmp_path)
             with (
                 patch.object(application._main_tab, "cleanup", side_effect=RuntimeError("cleanup")),
                 patch("dearpygui.dearpygui.destroy_context"),
@@ -360,21 +290,6 @@ class TestLeaving:
                 raise ValueError("the run")
 
         assert isinstance(raised.value.__context__, ValueError)
-
-
-@pytest.fixture
-def app(tmp_path: Path) -> Generator[Any, Application, Any]:
-    dpg.create_context()
-    try:
-        with ExitStack() as stack:
-            for display_patch in _display_patches():
-                stack.enter_context(display_patch)
-
-            yield _application(tmp_path)
-    finally:
-        stop_background_workers()
-        SingleThreadExecutor.reset_shutdown()
-        dpg.destroy_context()
 
 
 class TestKeybindingPreferences:
@@ -389,7 +304,7 @@ class TestKeybindingPreferences:
         dpg.create_context()
         try:
             with ExitStack() as stack:
-                for display_patch in _display_patches():
+                for display_patch in display_patches():
                     stack.enter_context(display_patch)
 
                 stack.enter_context(
@@ -408,7 +323,7 @@ class TestKeybindingPreferences:
                         return_value=REBOUND_UNDO,
                     )
                 )
-                yield _application(tmp_path)
+                yield headless_application(tmp_path)
         finally:
             stop_background_workers()
             SingleThreadExecutor.reset_shutdown()
@@ -586,8 +501,12 @@ class TestTheReconstructionsTabFollowsTheProject:
 
     @staticmethod
     def _edit(app: Application, reconstruction_factory: ReconstructionFactory) -> Reconstruction:
-        """A regenerated instrument landing on the open sample, the way a drag on the panel lands."""
-        edited = reconstruction_factory()
+        """A regenerated instrument landing on the open sample, the way a drag on the panel lands.
+
+        A rebuild starts from the open sample, which names no recording's location, so the edit
+        it lands names none either.
+        """
+        edited = reconstruction_factory().detached()
         app._reconstruction_coordinator.apply_edit(
             ChannelEdit(
                 reconstruction=edited,

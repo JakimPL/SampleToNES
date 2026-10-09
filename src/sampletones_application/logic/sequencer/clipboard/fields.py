@@ -9,6 +9,7 @@ KeyT = TypeVar("KeyT")
 ValueT = TypeVar("ValueT")
 
 HEXADECIMAL_BASE: Final[int] = 16
+DECIMAL_BASE: Final[int] = 10
 
 
 @dataclass(frozen=True)
@@ -64,6 +65,14 @@ def read_hexadecimal(field: str) -> Optional[int]:
         return None
 
     return int(digits, HEXADECIMAL_BASE)
+
+
+def read_decimal(field: str) -> Optional[int]:
+    """The number a field of decimal digits names, present while every character is one."""
+    if not field or not field.isdecimal():
+        return None
+
+    return int(field, DECIMAL_BASE)
 
 
 def store_reading(

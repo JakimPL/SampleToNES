@@ -4,18 +4,17 @@ from typing import Final, List
 
 import pytest
 
+from automation.dearpygui.items.reading import read_item
+from automation.screen import Screen
+from automation.steps.main import home_path
+from automation.vocabulary.converter import FOLDER_ROW, REMOVE_RECORDING
+from automation.worlds.home import World, lived_in_world
 from sampletones_application.layout.general.stems import StemsListLayout
 from sampletones_application.paths import LAYOUT_DIRECTORY
 from sampletones_shared.utils.serialization import load_yaml_model
 from tests.screens.main.list.constants import FREQUENCY
 from tests.screens.main.list.steps import gather
-from tests.suite.screens.dearpygui.items.reading import read_item
-from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds.recordings import Recording
-from tests.suite.screens.steps.main import home_path
-from tests.suite.screens.vocabulary.converter import FOLDER_ROW, REMOVE_RECORDING
-from tests.suite.screens.worlds.home import World
-from tests.suite.screens.worlds.recordings import lived_in_world
 
 THOUSANDS: Final[str] = "Thousands"
 THOUSANDS_COUNT: Final[int] = 1500

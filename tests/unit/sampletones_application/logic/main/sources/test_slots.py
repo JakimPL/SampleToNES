@@ -38,12 +38,12 @@ class TestSettlingTheChannelsARecordingOccupies(BaseTestSuite):
     def test_the_channels_stand_in_the_order_the_application_names_them(self) -> None:
         held = settings([ChannelName.NOISE])
         settled = CHANNEL_SLOT.settled(held, ChannelName.PULSE1, True)
-        assert settled.channels == [ChannelName.PULSE1, ChannelName.NOISE]
+        assert settled.channels == (ChannelName.PULSE1, ChannelName.NOISE)
 
     def test_a_channel_settled_off_takes_the_bend_it_carried(self) -> None:
         held = settings([ChannelName.PULSE1, ChannelName.TRIANGLE], [ChannelName.TRIANGLE])
         settled = CHANNEL_SLOT.settled(held, ChannelName.TRIANGLE, False)
-        assert settled.bends == []
+        assert settled.bends == ()
 
 
 class TestSettlingTheChannelsARecordingBends(BaseTestSuite):
@@ -54,12 +54,12 @@ class TestSettlingTheChannelsARecordingBends(BaseTestSuite):
 
     def test_a_bend_reaches_only_a_channel_the_recording_occupies(self) -> None:
         settled = BEND_SLOT.settled(settings([ChannelName.PULSE1]), ChannelName.TRIANGLE, True)
-        assert settled.bends == []
+        assert settled.bends == ()
 
     def test_a_bend_reaches_only_a_channel_whose_hardware_reads_one(self) -> None:
         held = settings([ChannelName.PULSE1, ChannelName.NOISE])
         settled = BEND_SLOT.settled(held, ChannelName.NOISE, True)
-        assert settled.bends == []
+        assert settled.bends == ()
 
     def test_settling_a_bend_leaves_the_channels_as_they_stand(self) -> None:
         held = settings([ChannelName.PULSE1, ChannelName.TRIANGLE])

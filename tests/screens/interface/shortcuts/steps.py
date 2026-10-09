@@ -1,6 +1,6 @@
+from automation.screen import Screen
 from sampletones_application.categories.hierarchy import Tab
 from tests.screens.interface.shortcuts.constants import SETTLING_FRAMES
-from tests.suite.screens.screen import Screen
 
 
 def on_a_tab(screen: Screen, tab: Tab) -> None:

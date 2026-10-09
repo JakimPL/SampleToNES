@@ -1,9 +1,10 @@
 # Screen Scenarios
 
 This document governs the screen tier: tests that run the whole application, draw its frames on a display,
-and press its controls the way a user does. It covers `tests/screens/`, where the scenarios live, and
-`tests/suite/screens/`, which drives them. Consult it before writing a scenario, and when a change to the
-interface needs proving that no lower tier can give.
+and press its controls the way a user does. It covers `tests/screens/`, where the scenarios live,
+`tests/suite/screens/`, which holds the material they seed their homes with, and `automation/`, the unit that
+drives the application for them. Consult it before writing a scenario, and when a change to the interface
+needs proving that no lower tier can give.
 
 ---
 
@@ -81,8 +82,9 @@ until the scenario lets it go.
 
 ### 6. Every scenario is held to the same promises
 
-Every scenario is held to the same after-checks. A failing gesture is logged and swallowed so the interface
-keeps running, which is why the checks read the log as well as the screen.
+Every scenario is held to the same after-checks. A failing gesture is reported and the interface keeps
+running: the failure is logged, and the error dialog shows it unless a report already stands. The checks
+therefore read the log as well as the screen.
 
 - **Quiet.** The application logged no error and no thread let an exception escape. A scenario that
   provokes a failure claims the error it provokes, and an error nobody claims still fails it.
@@ -98,11 +100,18 @@ mark makes the run fail once the bug is fixed, until the mark goes. A known cras
 the parent reports a marked scenario whose process a signal killed as the failure it expects, naming the
 signal.
 
-### 7. The DearPyGui layer knows nothing of SampleToNES
+### 7. The driver is a unit of its own, and its DearPyGui layer knows nothing of SampleToNES
 
-`tests/suite/screens/dearpygui/` drives any DearPyGui application: the process per scenario, the display,
-the input, the readings and the waiting. The SampleToNES layer around it holds what belongs to this
-application: the views, the stand-ins at its boundaries and the after-checks. A case in
+`automation/` operates the running application from outside, for whoever needs it driven: the scenarios
+here, and the pictures the guide is illustrated with ([assets](../assets.md)). It stands beside the
+source tree as a checkout unit ([tooling](../tooling.md)): it imports the program and nothing from
+`tests/`, and the import-boundary check holds it to that. The scenarios' material stays in the test tree: the seeds and
+the worlds built from the archived corpus, the mini library and the history projects are what the
+scenarios prove with, so `tests/suite/screens/` keeps them and the plugin asks for a world by its fixture.
+
+Inside the unit, `automation/dearpygui/` drives any DearPyGui application: the process per scenario, the
+display, the input, the readings and the waiting. The SampleToNES layer around it holds what belongs to
+this application: the views, the stand-ins at its boundaries and the after-checks. A case in
 `tests/integration/tooling/` holds the direction. The DearPyGui layer grows only when a scenario here needs
 something, and it moves to a project of its own the day a second application wants it.
 
@@ -129,7 +138,8 @@ A control in a region that scrolls is brought into view the way a person brings 
 region that takes the wheel, and the grip of a region's scrollbar is dragged where the region ignores the
 wheel. The hand measures how far to scroll once a frame has laid the control out: a row found in the frame
 that built it has no place yet, and a region learns how far it scrolls a frame after it draws what it
-holds.
+holds. A table that scrolls its own rows, such as the tracker's, is a region for those rows: its view
+begins below the rows it freezes, and those stay in view whatever the scroll.
 
 Keys are pressed on the real keyboard, with modifiers held a frame before the key. A scenario names an
 action by its `ShortcutId`, and the keys come from the scheme in place. The display repeats no held key.
@@ -166,7 +176,7 @@ through the queue's own error reporting.
 
 ## Views
 
-A scenario speaks through views, one per tab, card and dialog, under `tests/suite/screens/views/`. A view
+A scenario speaks through views, one per tab, card and dialog, under `automation/views/`. A view
 knows its controls by their tags and its words by their language keys. A tag that moves changes one view,
 and a scenario reads as the gestures a user makes.
 
@@ -249,8 +259,9 @@ A bug fix's scenario is shown failing on the code before the fix, and the pull r
 
 ## How the scenarios are laid out
 
-`tests/screens/` has a package per area of the application (`application`, `exports`, `instructions`,
-`interface`, `main`, `prompts`, `reconstructions`, `sequencer`), and an area has a package per subject.
+`tests/screens/` has a package per area of the application (`application`, `exports`, `history`,
+`instructions`, `interface`, `main`, `prompts`, `reconstructions`, `sequencer`), and an area has a package
+per subject.
 A subject package holds one file per responsibility: the classes in a file prove one family of rules of
 that subject, and a file that grows past about 300 lines or starts answering a second question is split
 by subject. A file name says its responsibility, such as `test_note_keys.py`.
@@ -264,16 +275,18 @@ What several files of a subject share sits in modules of the package, written on
 | `steps.py` | Steps, readings and the builders of a world |
 | `conftest.py` | Fixtures every file of the package uses, such as `world` and `startup` |
 
-What several areas share lives in `tests/suite/screens/vocabulary/`, one module per area: the keys of
-the dialogs and their messages, of the converter and of playback, and the names of the seeded recordings.
+What several areas share lives in `automation/vocabulary/`, one module per area: the keys of
+the dialogs and their messages, of the converter and of playback. The names of the seeded recordings
+stand with the seeds, in `tests/suite/screens/seeds/`.
 A value that one file alone uses stays in that file. Constants stand directly under the imports in every
 module, so a reader meets the values before the code that uses them; the tables of `cases.py` follow the
 types they are made of. A case in `tests/integration/tooling/` holds that order. Scenario files import from
 `constants.py`, `cases.py`, `steps.py` and the vocabulary, and never from one another.
 
-The driver under `tests/suite/screens/` follows the same rules: a package per concern (`application`, `boundaries`,
-`holds`, `plugin`, `seeds`, `worlds`, `views`, `steps`, and the DearPyGui layer with its `gestures` and `items`),
-and a module per responsibility inside it.
+The driver under `automation/` follows the same rules: a package per concern (`application`, `boundaries`,
+`holds`, `plugin`, `views`, `steps`, `worlds` for the world type and the empty world, and the DearPyGui layer
+with its `gestures` and `items`), and a module per responsibility inside it. So does the scenarios' material
+under `tests/suite/screens/`, with `seeds` and the `worlds` built from them.
 
 ### Docstrings
 
@@ -302,35 +315,42 @@ To follow a scenario as it plays, draw on Xephyr, which opens its screen as a wi
 SAMPLETONES_SCREENS_DISPLAY=xephyr uv run python -m pytest tests/screens --no-cov -k display_settings
 ```
 
-A scenario's home is scratch: it is built from the scenario's world in a temporary folder made for each
-worker, whose path holds no hidden folder, so the application's browsers reach it from a worktree under
-`.worktrees/` too, and it goes once the scenario ends. A temporary folder inside a hidden folder is
-refused, and `TMPDIR` points the run at another. The worker's folder is named after its process, and each
-worker's first scenario removes the folders whose process has gone, such as a crashed worker's, and leaves
-another live run's alone. A folder a scenario left locked opens again before its home is copied and
-removed.
+A scenario's home is scratch: it is built from the scenario's world in a homes folder made for each
+worker under the system's temporary folder, whose path holds no hidden folder, so the application's
+browsers reach it from a worktree under `.worktrees/` too, and it goes once the scenario ends. A homes
+folder inside a hidden folder is refused, and `SAMPLETONES_SCREENS_HOMES` points the run at another
+parent. The application's process keeps the machine's own temporary folder, as it does on a user's
+machine, since the socket files a conversion opens there need a short path. The worker's folder is
+named after its process, and each worker's first scenario removes the folders whose process has gone,
+such as a crashed worker's, and leaves another live run's alone. A folder a scenario left locked opens
+again before its home is copied and removed.
 
 What a run keeps lies under `build/screens/`, in a folder named after the test: the reports, and when the
 scenario failed, a screenshot of the last frame and a copy of the home it left. A copy that lost files
 leaves a note beside it. `screen.capture` keeps a picture as evidence of a look, for a pull request rather
-than an assertion.
+than an assertion. `SAMPLETONES_SCREENS_KEPT` moves that folder, and `SAMPLETONES_SCREENS_SCREEN`, read as
+`WIDTHxHEIGHT`, sizes the virtual screen, so a run made for another purpose keeps apart from the scenarios'.
+`SAMPLETONES_SCREENS_SHARD`, read as `INDEX/COUNT`, keeps every `COUNT`-th scenario of the collection sorted
+by node id from the `INDEX`-th, so CI spreads the scenarios over several machines, each drawing two
+applications at a time, and the scenarios run beside the rest of the suite instead of after it.
 
 ## Who governs what
 
 | Concern | Owner |
 |---|---|
-| A scenario per process, its reports | `tests/suite/screens/dearpygui/isolation.py`, `plugin/hooks.py` |
-| The fixtures a scenario asks for | `tests/suite/screens/plugin/fixtures.py`, `plugin/hold_fixtures.py` |
-| The render thread crossing and waiting | `tests/suite/screens/dearpygui/bridge.py` |
-| What a user can reach | `tests/suite/screens/dearpygui/reach.py`, `semantic.py` |
-| The gestures | `tests/suite/screens/dearpygui/hand.py` and `gestures/`: `arrival.py` (waiting and confirming), `witness.py` (what Dear ImGui counted), `pointer.py`, `scrolling.py`, `keyboard.py` |
-| What a reading says of an item | `tests/suite/screens/dearpygui/items/`: `reading.py`, `regions.py`, `texts.py`, `colors.py`, `viewport.py` |
-| The display a worker draws on | `tests/suite/screens/dearpygui/display.py` |
-| The application under test and how it ends | `tests/suite/screens/application/` |
-| The stand-ins at the boundaries | `tests/suite/screens/boundaries/` |
-| Work held in flight | `tests/suite/screens/holds/` |
-| The after-checks | `tests/suite/screens/checks.py` |
-| What a scenario holds and reads | `tests/suite/screens/screen.py`, `views/`, `steps/` |
+| A scenario per process, its reports | `automation/dearpygui/isolation.py`, `plugin/hooks.py` |
+| The fixtures a scenario asks for | `automation/plugin/fixtures.py`, `plugin/hold_fixtures.py` |
+| The render thread crossing and waiting | `automation/dearpygui/bridge.py` |
+| What a user can reach | `automation/dearpygui/reach.py`, `semantic.py` |
+| The gestures | `automation/dearpygui/hand.py` and `gestures/`: `arrival.py` (waiting and confirming), `witness.py` (what Dear ImGui counted), `pointer.py`, `scrolling.py`, `keyboard.py` |
+| What a reading says of an item | `automation/dearpygui/items/`: `reading.py`, `regions.py`, `texts.py`, `colors.py`, `viewport.py` |
+| The display a worker draws on | `automation/dearpygui/display.py` |
+| The application under test and how it ends | `automation/application/` |
+| The stand-ins at the boundaries | `automation/boundaries/` |
+| Work held in flight | `automation/holds/` |
+| The after-checks | `automation/checks.py` |
+| What a scenario holds and reads | `automation/screen.py`, `views/`, `steps/` |
+| The world type and the empty world | `automation/worlds/home.py` |
 | What a scenario's home holds | `tests/suite/screens/worlds/`, and the files it seeds in `seeds/` |
-| The words several areas share | `tests/suite/screens/vocabulary/` |
-| The window manager's requests | `tests/suite/screens/dearpygui/windows.py` |
+| The words several areas share | `automation/vocabulary/` |
+| The window manager's requests | `automation/dearpygui/windows.py` |

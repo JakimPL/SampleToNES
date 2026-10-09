@@ -94,6 +94,6 @@ class TestLoadingADocumentsRecordings:
 
     def test_a_detached_document_loads_no_recording(self, tmp_path: Path) -> None:
         document = _document(_written(tmp_path, LEVELS), MEASURED_SCALE)
-        document.detach_source()
+        document = document.detached()
 
         assert load_recordings(document) == ()

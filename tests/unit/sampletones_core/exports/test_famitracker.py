@@ -216,7 +216,7 @@ class TestWriteProject:
         backend: FamiTrackerBackend,
         tmp_path: Path,
     ) -> None:
-        """A hand-written instrument is one FamiTracker instrument, whichever channels it sounds on."""
+        """An instrument is one FamiTracker instrument, whichever channels it sounds on."""
         project = self._project()
         project.voices.append(
             Instrument(

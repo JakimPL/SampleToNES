@@ -11,6 +11,7 @@ from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
 )
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
+from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
@@ -21,6 +22,7 @@ from sampletones_application.logic.reconstruction.instruments import (
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.rewrites.queue import ReconstructionRewrites
 from sampletones_application.logic.reconstruction.rewrites.steps import RateChange, StemRemovalRequest
+from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.paths import LANG_EN
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
@@ -48,6 +50,8 @@ from sampletones_shared.exceptions import (
     LoadReconstructionError,
     UnhandledReconstructionError,
 )
+from tests.conftest import RENDER_BUDGET
+from tests.suite.history.wiring import wired_history
 from tests.suite.language import FakeLanguageManager
 from tests.suite.regeneration import HeldRegeneration
 from tests.suite.stems import (
@@ -398,7 +402,7 @@ class TestExportingTheInstrumentInFront:
         instance._reconstruction_panel_logic.exportable_instrument.return_value = exportable
         return instance
 
-    def test_a_hand_written_voice_is_written_by_the_voice_it_is(self) -> None:
+    def test_an_instrument_is_written_by_the_voice_it_is(self) -> None:
         """The sequencer's menu and this button name the same voice, so they write the same file."""
         instrument = MagicMock()
         instrument.id = "lead-id"
@@ -558,7 +562,7 @@ class TestTheInstrumentsPanelDrawsTheDocument:
         reconstruction: Reconstruction,
         scheduling: SchedulingBehavior,
     ) -> ReconstructionManager:
-        manager = ReconstructionManager(scheduling=scheduling)
+        manager = ReconstructionManager(scheduling=scheduling, renders=RenderCache(budget_bytes=RENDER_BUDGET))
         manager.load_reconstruction_object(reconstruction, name="lead", voice_id=OPEN_VOICE_ID)
         return manager
 
@@ -572,7 +576,7 @@ class TestTheInstrumentsPanelDrawsTheDocument:
         editor = InstrumentEditor(
             reconstruction_manager,
             controller,
-            HistoryManager(controller, budget=HISTORY_BUDGET, strict=True),
+            wired_history(controller, budget=HISTORY_BUDGET, strict=True),
             lambda _voice_id, _feature_key: (),
         )
         return ReconstructionInstrumentsLogic(
@@ -669,17 +673,22 @@ class TestTheInstrumentsPanelFollowsTheInstrument:
         return ProjectController(ProjectManager())
 
     @pytest.fixture
-    def instrument_id(self, project_controller: ProjectController) -> str:
-        return project_controller.add_instrument(new_instrument("lead")).id
+    def history(self, project_controller: ProjectController) -> HistoryManager:
+        return wired_history(project_controller, budget=HISTORY_BUDGET, strict=True)
 
     @pytest.fixture
-    def editor(self, project_controller: ProjectController) -> InstrumentEditor:
+    def instrument_id(self, project_controller: ProjectController, history: HistoryManager) -> str:
+        with history.transaction(HistoryAction.ADD_INSTRUMENT):
+            return project_controller.add_instrument(new_instrument("lead")).id
+
+    @pytest.fixture
+    def editor(self, project_controller: ProjectController, history: HistoryManager) -> InstrumentEditor:
         reconstruction_manager = MagicMock(spec=ReconstructionManager)
         reconstruction_manager.current_features = None
         return InstrumentEditor(
             reconstruction_manager,
             project_controller,
-            HistoryManager(project_controller, budget=HISTORY_BUDGET, strict=True),
+            history,
             lambda _voice_id, _feature_key: (),
         )
 
@@ -741,11 +750,13 @@ class TestTheInstrumentsPanelFollowsTheInstrument:
         coordinator: ReconstructionTabCoordinator,
         editor: InstrumentEditor,
         project_controller: ProjectController,
+        history: HistoryManager,
         instrument_id: str,
         views: List[ReconstructionInstrumentsViewModel],
     ) -> None:
         editor.edit_instrument(instrument_id)
-        project_controller.remove_voice(instrument_id)
+        with history.transaction(HistoryAction.REMOVE_VOICE):
+            project_controller.remove_voice(instrument_id)
 
         coordinator.follow_instrument(restored=restored)
 

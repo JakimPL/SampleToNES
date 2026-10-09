@@ -1,7 +1,7 @@
 # Stems reconstruction
 
 This document explains how the four channels are shared out when a reconstruction is built from several
-stems. Read it before changing how stems share channels. You can read it without the source code.
+stems. Read it before changing how stems share channels.
 [Reconstruction](reconstruction.md) describes the single-sample pipeline it builds on.
 [Reconstructions](../formats/reconstructions.md) documents the stored record.
 [Stems in the application](../development/application/stems.md) covers what the application does with a

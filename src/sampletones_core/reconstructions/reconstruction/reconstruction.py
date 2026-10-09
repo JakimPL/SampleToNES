@@ -20,10 +20,8 @@ from typing import (
 )
 from uuid import uuid4
 
-import numpy as np
 from pydantic import ConfigDict, Field, ValidationError, model_validator
 
-from sampletones_core.audio.mixing import mix
 from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.compatibility.upgrade import upgrade_binary
 from sampletones_core.configs import Config
@@ -38,7 +36,6 @@ from sampletones_core.exporters import (
     ExporterUnion,
     Features,
 )
-from sampletones_core.generators.render import render_channels
 from sampletones_core.instructions import InstructionUnion, sounds
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
@@ -68,7 +65,7 @@ RECONSTRUCTION_DATA_CONTRACT: Final[MetadataContract] = MetadataContract(
 
 
 class Reconstruction(DataModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
     metadata: Metadata = Field(
         default_factory=Metadata.default,
@@ -83,7 +80,7 @@ class Reconstruction(DataModel):
         description="Configuration used for reconstruction",
         frozen=True,
     )
-    instructions_data: List[InstructionsItem] = Field(
+    instructions_data: Tuple[InstructionsItem, ...] = Field(
         ...,
         description="Instructions per channel",
     )
@@ -179,22 +176,6 @@ class Reconstruction(DataModel):
         none at all once the document is detached from its origin.
         """
         return self.stems_data.paths
-
-    @cached_property
-    def approximations(self) -> Dict[ChannelName, np.ndarray]:
-        """The audio each channel in play renders from the instructions it carries.
-
-        A reconstruction records the instructions a channel plays, so its sound is read from
-        those rather than carried beside them. Reading it here keeps one answer for the
-        waveform, playback, an export and the mixed approximation, and keeps a stored document
-        to what it describes.
-        """
-        return render_channels(self.instructions, self.config)
-
-    @cached_property
-    def approximation(self) -> np.ndarray:
-        """The whole reconstruction, summed from the channels that play."""
-        return mix(list(self.approximations.values()))
 
     @cached_property
     def streams(self) -> Dict[ChannelName, InstructionsItem]:
@@ -305,7 +286,7 @@ class Reconstruction(DataModel):
         instructions_data, settled = cls._settled(streams, stems_data.with_sources(audio_filepath))
         return cls(
             id=uuid4().hex,
-            instructions_data=instructions_data,
+            instructions_data=tuple(instructions_data),
             stems_data=settled,
             config=config,
             coefficient=coefficient,
@@ -372,7 +353,7 @@ class Reconstruction(DataModel):
             metadata=self.metadata,
             id=self.id,
             config=self.config,
-            instructions_data=instructions_data,
+            instructions_data=tuple(instructions_data),
             stems_data=settled,
             coefficient=self.coefficient,
         )
@@ -399,7 +380,7 @@ class Reconstruction(DataModel):
             stems_data=stems_data,
         )
 
-    def update_channel_data(
+    def with_channel_data(
         self,
         channel_name: ChannelName,
         instructions: List[InstructionUnion],
@@ -407,8 +388,8 @@ class Reconstruction(DataModel):
         held_features: Iterable[FeatureKey],
         *,
         heard: AbstractSet[int],
-    ) -> None:
-        """Replaces one channel's instructions, reference pitch, and held dimensions.
+    ) -> Reconstruction:
+        """The document with one channel's instructions, reference pitch, and held dimensions replaced.
 
         The reference pitch travels with the instructions it produced, so a later export
         measures the arpeggio against the same base the edit was made from. The held
@@ -424,12 +405,18 @@ class Reconstruction(DataModel):
         on any channel leaves the document, together with its source and its place in the
         hierarchy, unless no recording holds a frame at all.
 
+        Every other channel's stream and owners are the very objects this document holds, so the
+        new document owns the one channel the edit wrote and shares the rest.
+
         Args:
             channel_name: The channel the edit writes.
             instructions: The stream the edit offers, one instruction per frame.
             initial_pitch: The reference pitch the channel's arpeggio is measured against.
             held_features: The dimensions the channel governs.
             heard: The recordings the reader hears on this channel, which the edit reaches.
+
+        Returns:
+            Reconstruction: The document the edit leaves.
         """
         carried = carried_edit(
             self.instructions[channel_name],
@@ -445,13 +432,10 @@ class Reconstruction(DataModel):
             initial_pitch=initial_pitch,
             held_features=held_features,
         )
-        instructions_data, settled = self._settled(
+        return self.rewritten(
             streams,
             self.stems_data.with_assignments(self._assignments_with(channel_name, carried.stem_ids)),
         )
-        self.instructions_data = instructions_data
-        self.stems_data = settled
-        self._invalidate_derived_caches(self)
 
     def _assignments_with(
         self,
@@ -460,7 +444,7 @@ class Reconstruction(DataModel):
     ) -> List[ChannelAssignment]:
         """The per-channel record with one channel's owners replaced, in channel order."""
         replaced = {item.channel_name: item for item in self.stems_data.assignments}
-        replaced[channel_name] = ChannelAssignment(channel_name=channel_name, stem_ids=stem_ids)
+        replaced[channel_name] = ChannelAssignment(channel_name=channel_name, stem_ids=tuple(stem_ids))
         return [replaced[name] for name in ChannelName.items() if name in replaced]
 
     @property
@@ -474,25 +458,31 @@ class Reconstruction(DataModel):
     ) -> List[InstructionUnion]:
         return self.instructions[channel_name]
 
-    def detach_source(self) -> None:
-        """Drops the local source-audio location so the reconstruction becomes self-contained.
+    def detached(self) -> Reconstruction:
+        """The document with every recording's location let go of, self-contained.
 
         Embedding a reconstruction in a project makes it part of a shareable artifact, where an
         absolute path to the author's machine carries no meaning. Letting each recording's
         location go keeps everything the document describes — its instructions, its per-frame
         record and the name of every recording behind it — so a saved project stays portable and
-        still says what played where.
+        still says what played where. A document holding no location is returned as it stands,
+        so a project sample keeps the very document the Reconstructions tab edits.
         """
-        self.stems_data = self.stems_data.detached()
+        stems_data = self.stems_data.detached()
+        if stems_data is self.stems_data:
+            return self
+
+        detached: Reconstruction = self.model_copy(update={"stems_data": stems_data})
+        return detached
 
     def with_nes_frequency(self, nes_frequency: int) -> Reconstruction:
-        """Returns a copy retuned to ``nes_frequency`` by re-rendering its audio.
+        """Returns a copy retuned to ``nes_frequency``, whose instructions sound at the new rate.
 
         A project runs every embedded sample at one change rate, so a reconstruction joining a
-        project adopts that rate. The frozen ``config`` is rebuilt at the new rate and each
-        channel's approximation is re-synthesized from its stored instructions at the matching
-        frame length, re-timing the audio; the instructions and coefficient carry over. The
-        original instance is returned when it already runs at ``nes_frequency``.
+        project adopts that rate. The frozen ``config`` is rebuilt at the new rate, so each
+        channel's instructions sound over the matching frame length, re-timing the audio; the
+        instructions and coefficient carry over. The original instance is returned when it
+        already runs at ``nes_frequency``.
         """
         if self.config.nes_frequency == nes_frequency:
             return self
@@ -513,8 +503,6 @@ class Reconstruction(DataModel):
     @staticmethod
     def _invalidate_derived_caches(reconstruction: Reconstruction) -> None:
         """Drops the memoized per-channel views so they recompute from their backing data."""
-        reconstruction.__dict__.pop("approximation", None)
-        reconstruction.__dict__.pop("approximations", None)
         reconstruction.__dict__.pop("streams", None)
         reconstruction.__dict__.pop("instructions", None)
         reconstruction.__dict__.pop("initial_pitches", None)
@@ -522,7 +510,11 @@ class Reconstruction(DataModel):
         reconstruction.__dict__.pop("playing_channels", None)
 
     @classmethod
-    def load(cls, path: Pathlike, fast: bool = True) -> Reconstruction:
+    def load(
+        cls,
+        path: Pathlike,
+        fast: bool = True,
+    ) -> Reconstruction:
         return cls.deserialize_data(
             load_binary(path),
             source=Path(path),

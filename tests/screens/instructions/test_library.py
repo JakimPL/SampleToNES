@@ -1,13 +1,13 @@
 from functools import partial
 from typing import Dict, Final, Tuple
 
+from automation.dearpygui.items.colors import read_theme, read_theme_colors
+from automation.dearpygui.items.types import Item
+from automation.screen import Screen
+from automation.steps.instructions import load_library
+from automation.worlds.home import one_worker_config
 from sampletones_application.ui.themes.channels import CHANNEL_THEME_TAGS
 from sampletones_core.constants.enums import ChannelName, GeneratorName
-from tests.suite.screens.dearpygui.items.colors import read_theme, read_theme_colors
-from tests.suite.screens.dearpygui.items.types import Item
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.instructions import load_library
-from tests.suite.screens.worlds.home import one_worker_config
 
 GENERATOR_CHANNELS: Final[Dict[GeneratorName, ChannelName]] = {
     GeneratorName.PULSE: ChannelName.PULSE1,

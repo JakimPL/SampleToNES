@@ -67,8 +67,8 @@ registry.
 arrangement into the instruction each channel sounds on each engine tick. It walks the order frame by
 frame. A row's note column starts a voice, and the row's transpose and volume bend what that voice carries.
 A voice with a loop point circles, and one without falls silent. One reading answers for both kinds of
-voice: a sample plays the frames its conversion found for the channel, and a hand-written instrument plays
-the frames its envelopes make of it.
+voice: a sample plays the frames its conversion found for the channel, and an instrument plays the
+frames its envelopes make of it.
 
 The sequencer renders those instructions to audio, and the player encodes them into register values. What
 a listener hears and what the console plays are therefore the same walk read two ways, and not two
@@ -83,6 +83,16 @@ up into the engine. `sampletones_core/utils/frequencies.py` keeps what is the en
 usable pitch range, the noise periods, and the note and period names.
 
 ---
+
+## Outside `src/`
+
+Two units stand beside the source tree and ship in nothing: `automation/`, which operates the running
+application from outside, and `assets/`, which makes the repository's own content. Each is named for what
+its code does, runs only in a checkout through `make`, and imports the program freely; [tooling](tooling.md)
+says what such a unit is. The direction runs one way, `src/` ← `automation` ← `assets` ← `tests`: the tests
+import both units, nothing imports the tests, and nothing under `src/` imports either unit. The same
+import-boundary check holds this, from `sampletones_config/boundaries/checkout.yaml` and the source-side
+declaration in `rules.yaml`.
 
 ## Inside `sampletones_player`
 
@@ -101,7 +111,7 @@ a song exist independently of the file they are written into or the driver that 
 ### The toolchain and the oracle live with the tools
 
 The driver's assembler and the register trace live in `sampletones_tools/player/`, because exporting needs
-neither. The assembler builds the committed `driver/binary/driver.bin` from the assembly sources beside it.
+neither. The assembler builds the committed `driver.bin` ([the console player](player.md#building-the-driver)).
 The tests rebuild the sources wherever cc65 is installed and hold the committed image to them.
 `RegisterTrace` says what the driver is expected to write, call by call, and the emulator tests hold the
 assembled driver to it. They run it on the console in `sampletones_tools/console/`, which plays any `.nsf`

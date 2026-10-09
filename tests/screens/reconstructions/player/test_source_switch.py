@@ -4,12 +4,12 @@ from typing import Final
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.screen import Screen
+from automation.steps.reconstructions import expect_open
+from automation.worlds.home import World
 from tests.screens.reconstructions.player.constants import RECONSTRUCTION_LINE
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds.recordings import Recording
-from tests.suite.screens.steps.reconstructions import expect_open
-from tests.suite.screens.worlds.home import World
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION, TAKES, playing_world
 
 ORIGINAL_SWITCH: Final[str] = "reconstructions.reconstruction.label.original_audio_radio"

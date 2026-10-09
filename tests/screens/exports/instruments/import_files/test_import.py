@@ -2,6 +2,11 @@ import operator
 from pathlib import Path
 from typing import Final, List, Tuple
 
+from automation.boundaries.dialogs import DialogKind
+from automation.screen import Screen
+from automation.steps.exports import leaving_asks_nothing
+from automation.steps.sequencer import open_voice
+from automation.views.history import HistorySegment
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName, FeatureKey
@@ -12,11 +17,6 @@ from tests.screens.exports.instruments.import_files.steps import (
     open_the_list_menu,
     segments,
 )
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.exports import leaving_asks_nothing
-from tests.suite.screens.steps.sequencer import open_voice
-from tests.suite.screens.views.history import HistorySegment
 from tests.suite.screens.worlds.songs import PAD, RELEASING_INSTRUMENT, releasing_instrument
 
 IMPORT_TITLE: Final[str] = "sequencer.voices.title.import_instrument_dialog"
@@ -96,7 +96,7 @@ class TestAnExportedVoiceComesBack:
     everything as it was, and the import adds one voice playing the same envelopes, with no notice,
     which one undo takes away.
 
-    The hand-written voice is exported from its menu. Cancel on the open dialog leaves the voices and
+    The instrument is exported from its menu. Cancel on the open dialog leaves the voices and
     the history as they were. Choosing the exported file adds the voice and one history line. The new
     voice shows the envelopes of the original, and one undo removes it.
     """
@@ -110,9 +110,9 @@ class TestAnExportedVoiceComesBack:
         before: List[List[Tuple[HistorySegment, ...]]] = []
         envelopes: List[Tuple[str, str]] = []
 
-        def export_the_hand_written_voice(screen: Screen) -> None:
+        def export_the_instrument(screen: Screen) -> None:
             open_voice(screen, PAD)
-            screen.expect(instruments.offers_audition, bool, description="the hand-written voice open")
+            screen.expect(instruments.offers_audition, bool, description="the instrument open")
             envelopes.append(
                 (
                     instruments.envelope(INSTRUMENT_CHANNEL, FeatureKey.VOLUME),
@@ -166,7 +166,7 @@ class TestAnExportedVoiceComesBack:
             screen.expect(voices.names, VOICES.__eq__, description="the import undone")
 
         screen.scenario(
-            export_the_hand_written_voice,
+            export_the_instrument,
             cancel_changes_nothing,
             the_import_adds_the_voice_quietly,
             it_plays_the_same_envelopes,

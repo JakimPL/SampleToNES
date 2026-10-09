@@ -1,13 +1,13 @@
 from typing import Callable, Final, List, Tuple
 
+from automation.screen import Screen
+from automation.steps.reconstructions import titled
+from automation.views.history import HistoryLine
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.screens.sequencer.history.cases import GESTURES, Gesture
 from tests.screens.sequencer.history.constants import PAD_POSITION, POSITION_MARK
 from tests.screens.sequencer.history.steps import pick, rename
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import titled
-from tests.suite.screens.views.history import HistoryLine
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT, BASS_VOICE, LINE, PAD
 
 LINE_POSITION: Final[str] = "00"

@@ -1,5 +1,7 @@
 from typing import List, Tuple
 
+from automation.screen import Screen
+from automation.written import written_state
 from tests.screens.interface.display.steps import (
     another_size,
     kept,
@@ -8,8 +10,6 @@ from tests.screens.interface.display.steps import (
     window_position,
     window_size,
 )
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.written import written_state
 
 
 class TestClosingWithASizeKeptButNotConfirmed:

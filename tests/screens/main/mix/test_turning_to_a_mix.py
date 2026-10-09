@@ -5,14 +5,13 @@ from typing import Final, List
 
 import pytest
 
+from automation.screen import Screen
+from automation.steps.main import gather, home_path
+from automation.vocabulary.converter import REMOVE_RECORDING
+from automation.worlds.home import World, lived_in_world
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.constants.output import OutputKind
-from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds.recordings import Recording
-from tests.suite.screens.steps.main import gather, home_path
-from tests.suite.screens.vocabulary.converter import REMOVE_RECORDING
-from tests.suite.screens.worlds.home import World
-from tests.suite.screens.worlds.recordings import lived_in_world
 
 GATHERED: Final[int] = MAX_STEM_SOURCES + 2
 SECONDS: Final[float] = 2.0

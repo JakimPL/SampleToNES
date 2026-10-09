@@ -5,6 +5,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
+from automation.scenario import BaseTestScenario, ScenarioStep
 from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import ServiceError, ServiceSuccess
@@ -16,7 +17,7 @@ from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
-from tests.suite.scenario import BaseTestScenario, ScenarioStep
+from sampletones_core.reconstructions.reconstruction.renders import rendered_channels
 from tests.suite.stems import everything_heard
 
 
@@ -40,7 +41,7 @@ OCTAVE = 12
 
 class TestRegenerationServicePipeline:
     """Full synthesis pipeline: real Config, Features (via PulseExporter), real PulseGenerator,
-    and real Reconstruction.update_channel_data. Nothing is mocked.
+    and real Reconstruction.with_channel_data. Nothing is mocked.
 
     Tests call _run() directly to bypass the executor; the synchronous_executor fixture
     from the parent conftest covers start() in the final test.
@@ -75,7 +76,9 @@ class TestRegenerationServicePipeline:
 
         emitted = results[0].value
         assert emitted.reconstruction is not reconstruction_data.reconstruction
-        assert len(emitted.reconstruction.approximations.get(ChannelName.PULSE1, np.array([], dtype=np.float32))) > 0
+        assert (
+            len(rendered_channels(emitted.reconstruction).get(ChannelName.PULSE1, np.array([], dtype=np.float32))) > 0
+        )
 
     def test_run_updates_reconstruction_approximation(self, reconstruction_data, pulse_features) -> None:
         service = RegenerationService()
@@ -87,7 +90,7 @@ class TestRegenerationServicePipeline:
             reconstruction_data.reconstruction.recorded_stem_ids,
         )
 
-        approximation = reconstruction_data.reconstruction.approximations.get(
+        approximation = rendered_channels(reconstruction_data.reconstruction).get(
             ChannelName.PULSE1, np.array([], dtype=np.float32)
         )
         assert len(approximation) > 0

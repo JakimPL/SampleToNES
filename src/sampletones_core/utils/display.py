@@ -1,12 +1,12 @@
 from typing import Final, Optional, Union
 
-from sampletones_core.constants.enums import ChannelName
-from sampletones_core.features import transposed_reference
+from sampletones_core.constants.general import MAX_PERIOD
+from sampletones_core.project.patterns.pitch import Note, RowPitch, Step
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.voice import VoiceUnion
 from sampletones_core.structures import IdentifiedCollection
-from sampletones_core.utils.pitch_kind import channel_pitch_kind
+from sampletones_core.utils.frequencies import period_to_name, pitch_to_name, played_pitch
 from sampletones_shared.constants.symbols import MINUS, PLUS
 
 DEFAULT_DISPLAY_LENGTH: Final[int] = 2
@@ -72,41 +72,43 @@ def display_volume(value: Optional[int]) -> str:
     return display_value(value, length=1, hexadecimal=True)
 
 
-def display_note(
-    value: Optional[int],
-    *,
-    channel_name: ChannelName,
-    reference: int,
-) -> str:
-    """Render a pitch column as the note it sounds, or ``...`` for an empty one.
+def display_pitch(pitch: Optional[RowPitch]) -> str:
+    """Render a pitch column as the face it was written in, or ``...`` for an empty one.
 
-    The note is where the voice's reference lands once the row's transpose has moved it, so the
-    grid prints the note the channel plays. The noise channel names its period the same way
-    FamiTracker does.
+    A note prints as its name and a step as a signed offset, so the grid shows what the reader
+    typed whichever voice the row names. A note's value names a period while it lies among the
+    sixteen the noise channel has, and a pitch above them; the two ranges stand apart, so the name
+    needs no channel. A pitch below the lowest note a channel plays prints as that note, the way
+    the channel sounds it.
 
     Args:
-        value: The semitones the row states, or ``None`` for an empty cell.
-        channel_name: The channel the row sits on.
-        reference: The value the voice is measured against on that channel.
+        pitch: The pitch the row states, or ``None`` for an empty cell.
 
     Returns:
-        str: The note name, three characters wide like every other reading of the column.
+        str: The note name or the signed step, three characters wide like every other reading of
+            the column.
     """
-    if value is None:
-        return NOTE_BLANK
+    match pitch:
+        case None:
+            return NOTE_BLANK
+        case Step():
+            return display_transpose(pitch.value)
+        case Note():
+            if pitch.value <= MAX_PERIOD:
+                return period_to_name(pitch.value)
 
-    return channel_pitch_kind(channel_name).to_name(transposed_reference(channel_name, reference, value))
+            return pitch_to_name(played_pitch(pitch.value))
 
 
 def display_transpose(value: Optional[int]) -> str:
-    """Render a transpose as a signed two-digit offset, or ``...`` for an empty one.
+    """Render a step as a signed two-digit decimal offset, or ``...`` for an empty one.
 
-    An explicit zero reads ``+00``, since a row storing it resets the channel's
-    transpose to the sample's own pitch, while an empty cell keeps whatever
-    transpose is already in force.
+    An explicit zero reads ``+00``, since a row storing it moves the voice back to its own pitch,
+    while an empty cell keeps whatever pitch is already in force. Decimal digits keep every step a
+    reader can type on the digit keys alone, and read as the semitones a musician counts.
     """
     if value is None:
         return NOTE_BLANK
 
     sign = PLUS if value >= 0 else MINUS
-    return f"{sign}{abs(value):02X}"
+    return f"{sign}{abs(value):02d}"

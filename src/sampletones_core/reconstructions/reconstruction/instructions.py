@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable, List, Self
+from typing import Iterable, List, Self, Tuple
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -17,7 +17,7 @@ class InstructionsItem(DataModel):
         ...,
         description="Name of the channel",
     )
-    instructions: List[InstructionData[InstructionUnion]] = Field(
+    instructions: Tuple[InstructionData[InstructionUnion], ...] = Field(
         ...,
         description="List of instruction data for the channel",
     )
@@ -25,7 +25,7 @@ class InstructionsItem(DataModel):
         ...,
         description="Reference pitch the channel's arpeggio envelope is measured against",
     )
-    held_features: List[FeatureKey] = Field(
+    held_features: Tuple[FeatureKey, ...] = Field(
         ...,
         description="Dimensions the channel governs, sounding at the value every note starts on",
     )
@@ -73,15 +73,15 @@ class InstructionsItem(DataModel):
         stored = instructions if sounds(instructions) else []
         return InstructionsItem(
             channel_name=channel_name,
-            instructions=[
+            instructions=tuple(
                 InstructionData(
                     instruction_class=instruction.class_name(),
                     instruction=instruction,
                 )
                 for instruction in stored
-            ],
+            ),
             initial_pitch=initial_pitch,
-            held_features=list(held_features),
+            held_features=tuple(list(held_features)),
         )
 
     @classmethod
@@ -102,7 +102,7 @@ class InstructionsItem(DataModel):
         """
         return cls(
             channel_name=channel_name,
-            instructions=[],
+            instructions=tuple([]),
             initial_pitch=resting_reference(channel_name),
-            held_features=list(resting_held_features(channel_name)),
+            held_features=tuple(list(resting_held_features(channel_name))),
         )

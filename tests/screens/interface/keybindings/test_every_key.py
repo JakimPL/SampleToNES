@@ -4,16 +4,16 @@ from typing import Final, List
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.keyboard import press_combination
+from automation.screen import Screen
+from automation.steps.sequencer import channels_sounding, sounding_but
+from automation.written import written_application_config
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.keyboard.combination import KeyCombination, display_combinations
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.keyboard import press_combination
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.sequencer import channels_sounding, sounding_but
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT
-from tests.suite.screens.written import written_application_config
 
 TOGGLE_PULSE_TWO: Final[ShortcutId] = ShortcutId.TOGGLE_CHANNEL_PULSE_2
 NEW_MAIN_KEY: Final[KeyCombination] = KeyCombination.parse("Ctrl+Shift+2")

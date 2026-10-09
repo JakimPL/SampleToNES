@@ -31,7 +31,7 @@ def _new_instrument_id() -> str:
 
 
 class Instrument(BaseModel):
-    """A hand-written voice: envelopes with no recording behind them, playable on any channel.
+    """A voice made of envelopes alone, playable on any channel.
 
     Where a sample carries the frames a conversion found for each channel, an instrument carries
     one set of envelopes, and every channel reads what it can of them — the dimensions its
@@ -182,6 +182,10 @@ class Instrument(BaseModel):
         what it states the same thing.
         """
         self.__dict__.pop("_instructions", None)
+
+    def snapshot(self) -> Self:
+        """An instrument of its own with the same id, holding the very same envelopes."""
+        return self.model_copy()
 
     def clone(self) -> Self:
         """Return an independent copy with a fresh id, carrying the name, pitch and envelopes."""

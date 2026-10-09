@@ -19,9 +19,8 @@ def _song(rows_per_pattern: int = _ROWS) -> Song:
 
 
 def _place_voice(song: Song, channel: ChannelName, voice_id: str, row_index: int = 0) -> None:
-    pattern = song.pattern(channel, 0)
-    assert pattern is not None
-    pattern.rows[row_index] = Row(command=NoteOn(voice_id=voice_id))
+    assert song.pattern(channel, 0) is not None
+    song.channels[channel].set_row(0, row_index, Row(command=NoteOn(voice_id=voice_id)))
 
 
 class TestSongEmpty:

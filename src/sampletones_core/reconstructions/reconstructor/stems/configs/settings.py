@@ -1,5 +1,5 @@
 from functools import cached_property
-from typing import AbstractSet, Any, Dict, FrozenSet, List, Self
+from typing import AbstractSet, Any, FrozenSet, List, Mapping, Self, Tuple
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -33,15 +33,15 @@ class StemSettings(DataModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    channels: List[ChannelName] = Field(
+    channels: Tuple[ChannelName, ...] = Field(
         ...,
         description="The channels the recording may occupy",
     )
-    bends: List[ChannelName] = Field(
+    bends: Tuple[ChannelName, ...] = Field(
         ...,
         description="The channels whose notes the recording carries to the divider it sounds",
     )
-    drives: Dict[ChannelName, float] = Field(
+    drives: Mapping[ChannelName, float] = Field(
         default_factory=dict,
         description="How hard the recording pushes each channel it may occupy",
     )
@@ -60,8 +60,8 @@ class StemSettings(DataModel):
         single-file conversion runs under.
         """
         return cls(
-            channels=channels,
-            bends=bending_channels(channels),
+            channels=tuple(channels),
+            bends=tuple(bending_channels(channels)),
             drives={channel_name: UNIT_DRIVE for channel_name in channels},
             channel_cap=ALL_STEMS_CHANNEL_CAP,
         )
@@ -85,8 +85,8 @@ class StemSettings(DataModel):
         """
         held = ordered_channels(channels)
         return self.__class__(
-            channels=held,
-            bends=ordered_channels(self.bend_set & frozenset(held)),
+            channels=tuple(held),
+            bends=tuple(ordered_channels(self.bend_set & frozenset(held))),
             drives={channel_name: self.drives.get(channel_name, UNIT_DRIVE) for channel_name in held},
             channel_cap=self.channel_cap,
         )
@@ -96,7 +96,7 @@ class StemSettings(DataModel):
         reached = frozenset(bends) & self.channel_set & TONE_CHANNELS
         return self.__class__(
             channels=self.channels,
-            bends=ordered_channels(reached),
+            bends=tuple(ordered_channels(reached)),
             drives=self.drives,
             channel_cap=self.channel_cap,
         )
@@ -140,7 +140,7 @@ class StemSettings(DataModel):
             return data
 
         channels = data.get(CHANNELS_FIELD)
-        if not isinstance(channels, list):
+        if not isinstance(channels, (list, tuple)):
             return data
 
         drives = dict(data.get(DRIVES_FIELD) or {})

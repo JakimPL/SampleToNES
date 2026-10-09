@@ -2,14 +2,14 @@ import operator
 from pathlib import Path
 from typing import Final, List, Tuple
 
+from automation.boundaries.dialogs import DialogKind
+from automation.screen import Screen
+from automation.steps.exports import leaving_asks_nothing
+from automation.views.history import HistorySegment
 from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT
 from tests.screens.exports.instruments.import_files.cases import BROKEN_FILES, BrokenFile
 from tests.screens.exports.instruments.import_files.constants import VOICES
 from tests.screens.exports.instruments.import_files.steps import choose_import, export_kept, kept_folder, segments
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.exports import leaving_asks_nothing
-from tests.suite.screens.views.history import HistorySegment
 
 NOT_FOUND: Final[str] = "sequencer.voices.message.instrument_not_found"
 

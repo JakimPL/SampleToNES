@@ -115,17 +115,13 @@ def held_queue(monkeypatch: pytest.MonkeyPatch) -> HeldQueue:
 
 @pytest.fixture
 def live_queue() -> Iterator[None]:
-    """The real ``CallbackQueue``, live and empty for the case and stopped once it ends.
+    """The real ``CallbackQueue`` for the case, which every case starts empty and live.
 
-    The queue belongs to the whole process, so a case before this one may leave work pending or the
-    queue stopped. The real ``add`` is pinned over the call-through ``synchronous_queue`` installs,
-    so what a case queues waits for a drain the way it does in the render loop.
+    The real ``add`` is pinned over the call-through ``synchronous_queue`` installs, so what a case
+    queues waits for a drain the way it does in the render loop.
     """
     with patch.object(CallbackQueue, "add", REAL_QUEUE_ADD):
-        CallbackQueue.stop()
-        CallbackQueue.start()
         yield
-        CallbackQueue.stop()
 
 
 def draw_frame() -> None:

@@ -1,51 +1,70 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Container, Final, List, Optional, Tuple
+from typing import Container, Dict, Final, List, Optional, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.rows.levels import RowPlace
+from sampletones_core.performance.rows import apply_row, note_step
+from sampletones_core.performance.state import ChannelPerformance
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.song import Song
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.voice import VoiceLookup
 
-NOTE_TRANSPOSE: Final[int] = 0
 NO_ROWS: Final[int] = 0
+
+PatternCell = Tuple[int, int]
 
 
 @dataclass(frozen=True)
 class Repitch:
-    """A row stating a transpose and no note, which moves the note sounding on its channel.
+    """A row stating a pitch and no note, which moves the note sounding on its channel.
 
     The song keeps the voice where it stands, so the note goes on from the tick it reached, and every
-    tick from this row on sounds at the transpose the row sets.
+    tick from this row on sounds at the step the row reaches.
 
     Attributes:
         place: Where the row stands in the song.
-        transpose: The transpose the row sets, measured from the voice's reference like a note-on's.
+        step: The step the row moves the note to, measured from the voice's reference like a
+            note-on's.
         rows: How many rows the note has sounded for when this row begins, counted across frames.
     """
 
     place: RowPlace
-    transpose: int
+    step: int
     rows: int
 
 
 @dataclass(frozen=True)
+class NoteStart:
+    """What a note-on the order reaches started, as the song's walk played it.
+
+    Attributes:
+        voice_id: The voice the note-on names.
+        step: The step the voice started at, measured from its reference, or ``None`` where the
+            row started nothing.
+    """
+
+    voice_id: str
+    step: Optional[int]
+
+
+@dataclass(frozen=True)
 class SoundingNote:
-    """A note-on the song sounds, with the transpose rows that move its pitch while it sounds.
+    """A note-on the song sounds, with the pitch rows that move it while it sounds.
 
     Attributes:
         place: Where the note-on stands in the song.
         voice_id: The voice the note sounds.
-        transpose: The transpose the note starts at, which is zero where its row states none.
-        repitches: The transpose rows that reach the note, in the order the song plays them.
+        step: The step the note starts at, measured from the voice's reference.
+        repitches: The pitch rows that reach the note, in the order the song plays them.
     """
 
     place: RowPlace
     voice_id: str
-    transpose: int
+    step: int
     repitches: Tuple[Repitch, ...]
 
 
@@ -55,7 +74,7 @@ class _OpenNote:
 
     place: RowPlace
     voice_id: str
-    transpose: int
+    step: int
     rows: int = field(default=NO_ROWS)
     repitches: List[Repitch] = field(default_factory=list)
 
@@ -63,39 +82,53 @@ class _OpenNote:
         return SoundingNote(
             place=self.place,
             voice_id=self.voice_id,
-            transpose=self.transpose,
+            step=self.step,
             repitches=tuple(self.repitches),
         )
 
 
 @dataclass
-class _NoteWalk:
-    """One channel's pass through the song, following the note it sounds from row to row."""
+class _NoteFollower:
+    """One channel's pass through the song, following the note the channel sounds from row to row."""
 
     channel_name: ChannelName
     instruments: Container[Tuple[str, ChannelName]]
+    starts: Dict[RowPlace, NoteStart] = field(default_factory=dict)
     notes: List[SoundingNote] = field(default_factory=list)
     sounding: Optional[_OpenNote] = field(default=None)
 
-    def read(self, row: Row, place: RowPlace) -> None:
-        """Moves the walk onto one row, the way the song's own walk applies it."""
+    def read(
+        self,
+        row: Row,
+        place: RowPlace,
+        performance: ChannelPerformance,
+        restarted: bool,
+    ) -> None:
+        """Reads what the song's walk made of one row, once the channel has been moved onto it."""
         match row.command:
             case NoteOn() as note_on:
                 self._close()
-                if (note_on.voice_id, self.channel_name) in self.instruments:
-                    self.sounding = _OpenNote(
-                        place=place,
-                        voice_id=note_on.voice_id,
-                        transpose=row.transpose if row.transpose is not None else NOTE_TRANSPOSE,
-                    )
+                if (note_on.voice_id, self.channel_name) not in self.instruments:
+                    return
+
+                if not restarted:
+                    self.starts[place] = NoteStart(voice_id=note_on.voice_id, step=None)
+                    return
+
+                self.starts[place] = NoteStart(voice_id=note_on.voice_id, step=performance.transpose)
+                self.sounding = _OpenNote(
+                    place=place,
+                    voice_id=note_on.voice_id,
+                    step=performance.transpose,
+                )
             case NoteOff():
                 self._close()
             case None:
-                if row.transpose is not None and self.sounding is not None:
+                if row.pitch is not None and self.sounding is not None:
                     self.sounding.repitches.append(
                         Repitch(
                             place=place,
-                            transpose=row.transpose,
+                            step=performance.transpose,
                             rows=self.sounding.rows,
                         )
                     )
@@ -106,7 +139,7 @@ class _NoteWalk:
             self.sounding.rows += 1
 
     def finish(self) -> Tuple[SoundingNote, ...]:
-        """The notes the pass found a transpose row reaching."""
+        """The notes the pass found a pitch row reaching."""
         self._close()
         return tuple(self.notes)
 
@@ -117,44 +150,99 @@ class _NoteWalk:
         self.sounding = None
 
 
-def sounding_notes(
-    song: Song,
-    channel_name: ChannelName,
-    instruments: Container[Tuple[str, ChannelName]],
-) -> Tuple[SoundingNote, ...]:
-    """Walks one channel through the order once, gathering the notes that transpose rows move.
+@dataclass(frozen=True)
+class PitchWalk:
+    """One channel's pass through the song as playback makes it, read for what an export writes.
 
-    The song's walk plays the order frame by frame, and a row naming no note leaves the voice
-    playing, so a row stating a transpose moves the note already sounding. A note-on or a note-off
-    ends the note, and so does a note-on naming a voice with no instrument on the channel, which the
-    export writes as a note cut. A frame leaving the channel empty plays on with the
-    note it carries, so a note's rows are counted across frames. A transpose row reached while no
-    note sounds moves nothing.
+    The walk moves a channel through the order the way the song's own walk does, row by row through
+    :func:`apply_row`, so the step every note starts at and the step every pitch row reaches are the
+    ones the song sounds: an instrument placed without a pitch starts on the pitch the channel was
+    sounding, and one placed on a silent channel starts nothing. A note-on naming a voice the export
+    has no instrument for on the channel is written as a note cut, so the walk follows no note from
+    it. A frame leaving the channel empty plays on with the note it carries, so a note's rows are
+    counted across frames.
 
-    Args:
-        song: The arrangement being exported.
-        channel_name: The channel whose rows are walked.
-        instruments: The ``(voice id, channel)`` pairs the export holds an instrument for.
-
-    Returns:
-        Tuple[SoundingNote, ...]: The notes at least one transpose row reaches, in the order the
-            song plays them.
+    Attributes:
+        starts: Per note-on the order reaches and the export has an instrument for, what it
+            started, in the order the song plays them.
+        notes: The notes at least one pitch row moves, in the order the song plays them.
     """
-    walk = _NoteWalk(channel_name=channel_name, instruments=instruments)
-    for order_position, frame in enumerate(song.order):
-        pattern_index = frame.get(channel_name)
-        pattern = song.pattern(channel_name, pattern_index) if pattern_index is not None else None
-        for row_index in range(song.rows_per_pattern):
-            if pattern_index is not None and pattern is not None and row_index < len(pattern.rows):
-                walk.read(
-                    pattern.rows[row_index],
-                    RowPlace(
+
+    starts: Dict[RowPlace, NoteStart]
+    notes: Tuple[SoundingNote, ...]
+
+    @classmethod
+    def walk(
+        cls,
+        song: Song,
+        channel_name: ChannelName,
+        instruments: Container[Tuple[str, ChannelName]],
+        voices: VoiceLookup,
+    ) -> PitchWalk:
+        """Walks one channel through the order once.
+
+        Args:
+            song: The arrangement being exported.
+            channel_name: The channel whose rows are walked.
+            instruments: The ``(voice id, channel)`` pairs the export holds an instrument for.
+            voices: Where a voice id resolves to the voice it names.
+
+        Returns:
+            PitchWalk: What every note-on started at, and the notes pitch rows move.
+        """
+        performance = ChannelPerformance()
+        follower = _NoteFollower(channel_name=channel_name, instruments=instruments)
+        for order_position, frame in enumerate(song.order):
+            pattern_index = frame.get(channel_name)
+            pattern = song.pattern(channel_name, pattern_index) if pattern_index is not None else None
+            for row_index in range(song.rows_per_pattern):
+                if pattern_index is not None and pattern is not None and row_index < len(pattern.rows):
+                    row = pattern.rows[row_index]
+                    place = RowPlace(
                         order_position=order_position,
                         pattern_index=pattern_index,
                         row_index=row_index,
-                    ),
-                )
+                    )
+                    restarted = apply_row(performance, row, channel_name, voices)
+                    follower.read(row, place, performance, restarted)
 
-            walk.pass_row()
+                follower.pass_row()
 
-    return walk.finish()
+        return cls(starts=dict(follower.starts), notes=follower.finish())
+
+    def frame_starts(self, order_position: int) -> Dict[int, Optional[int]]:
+        """The step each note-on of one frame starts at, keyed by row."""
+        return {
+            place.row_index: start.step
+            for place, start in self.starts.items()
+            if place.order_position == order_position
+        }
+
+
+def unreached_start(
+    row: Row,
+    channel_name: ChannelName,
+    voices: VoiceLookup,
+) -> Optional[int]:
+    """The step a note-on the order never reaches would start at, on a channel sounding nothing.
+
+    A format writing every pattern the pool holds reaches rows the song never plays, and writes
+    them as the song would play them from silence.
+
+    Args:
+        row: The row holding the note-on.
+        channel_name: The channel the row stands on.
+        voices: Where a voice id resolves to the voice it names.
+
+    Returns:
+        Optional[int]: The step from the voice's reference, or ``None`` where the row starts
+            nothing or names a voice the project lacks.
+    """
+    if not isinstance(row.command, NoteOn):
+        return None
+
+    voice = voices(row.command.voice_id)
+    if voice is None:
+        return None
+
+    return note_step(row.pitch, voice, channel_name, sounding=None)

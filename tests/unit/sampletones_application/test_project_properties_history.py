@@ -2,9 +2,9 @@ from typing import Final
 
 from sampletones_application.application import Application
 from sampletones_application.logic.history.action import HistoryAction
-from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
+from tests.suite.history.wiring import wired_history
 
 HISTORY_BUDGET: Final[int] = 10
 FIRST_HIGHLIGHT: Final[int] = 3
@@ -17,8 +17,7 @@ def _application() -> Application:
     """
     application = Application.__new__(Application)
     controller = ProjectController(ProjectManager())
-    history = HistoryManager(controller, budget=HISTORY_BUDGET, strict=True)
-    controller.on_mutation = history.handle_mutation
+    history = wired_history(controller, budget=HISTORY_BUDGET, strict=True)
     controller.new()
     history.reset()
     application.project_controller = controller

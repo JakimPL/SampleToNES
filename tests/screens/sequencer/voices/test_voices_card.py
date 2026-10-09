@@ -3,6 +3,15 @@ import re
 from functools import partial
 from typing import Final, List, Tuple
 
+from automation.dearpygui.geometry import Point
+from automation.dearpygui.items.regions import enclosing_regions, read_region_view
+from automation.dearpygui.items.types import Item
+from automation.keyboard import press_combination
+from automation.screen import Screen
+from automation.steps.reconstructions import BY_CONFIGURATION
+from automation.steps.sequencer import leave_letting_the_project_go
+from automation.views.menus import MenuEntry
+from automation.vocabulary.playback import PAUSE
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.tags.sequencer import TAG_SEQUENCER_VOICES_TABLE
@@ -10,15 +19,6 @@ from sampletones_application.utils.gui.keyboard.combination import KeyCombinatio
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
-from tests.suite.screens.dearpygui.geometry import Point
-from tests.suite.screens.dearpygui.items.regions import enclosing_regions, read_region_view
-from tests.suite.screens.dearpygui.items.types import Item
-from tests.suite.screens.keyboard import press_combination
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import BY_CONFIGURATION
-from tests.suite.screens.steps.sequencer import leave_letting_the_project_go
-from tests.suite.screens.views.menus import MenuEntry
-from tests.suite.screens.vocabulary.playback import PAUSE
 from tests.suite.screens.worlds.recordings import SHORT_RECONSTRUCTION
 from tests.suite.screens.worlds.songs import BASS_VOICE, LINE, PAD
 

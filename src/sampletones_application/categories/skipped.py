@@ -22,9 +22,10 @@ class SkippedRowMessages:
 
     A row naming a voice on a channel the voice has no instrument for plays nothing in the song,
     so the tracker formats write a note cut there. A transpose row the format has no pitch change
-    for keeps the note where it was. The report gives each reason a paragraph of its own, names each
-    row where the reader finds it in the tracker, and closes a paragraph on how many more it leaves
-    out.
+    for keeps the note where it was. An instrument taking the channel's pitch in a pattern several
+    frames play keeps the pitch the first of them reaches it at. The report gives each reason a
+    paragraph of its own, names each row where the reader finds it in the tracker, and closes a
+    paragraph on how many more it leaves out.
 
     Attributes:
         headings: The line introducing the rows, per reason.
@@ -52,6 +53,7 @@ class SkippedRowMessages:
             headings={
                 SkipReason.NO_INSTRUMENT: language_manager["global.dialog.message.export_skipped_rows"],
                 SkipReason.UNREACHED_TRANSPOSE: language_manager["global.dialog.message.export_untransposed_rows"],
+                SkipReason.CARRIED_PITCH: language_manager["global.dialog.message.export_carried_pitch_rows"],
             },
             row=language_manager["global.dialog.template.export_skipped_row"],
             more=language_manager["global.dialog.template.export_skipped_rows_more"],

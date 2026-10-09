@@ -54,7 +54,7 @@ def _reconstruction(
             {channel_name: instructions_list},
         ),
     )
-    reconstruction.update_channel_data(
+    reconstruction = reconstruction.with_channel_data(
         channel_name,
         list(instructions),
         reconstruction.initial_pitches[channel_name],

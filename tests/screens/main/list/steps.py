@@ -1,11 +1,11 @@
 from functools import partial
 from pathlib import Path
 
+from automation.screen import Screen
+from automation.steps.main import explorer_row
+from automation.worlds.home import HomeFile
 from tests.screens.main.list.constants import FREQUENCY
-from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds.recordings import Recording
-from tests.suite.screens.steps.main import explorer_row
-from tests.suite.screens.worlds.home import HomeFile
 
 
 def take(index: int) -> str:

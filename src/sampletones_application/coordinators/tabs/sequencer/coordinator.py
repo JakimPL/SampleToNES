@@ -1,6 +1,6 @@
 from functools import partial
 from pathlib import Path
-from typing import Callable, Sequence, Tuple
+from typing import Callable, Optional, Sequence, Tuple
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.categories.instrument import InstrumentImportMessages
@@ -11,16 +11,28 @@ from sampletones_application.constants.playback import FollowMode
 from sampletones_application.coordinators.edit.protocol import EditSurfaceProtocol
 from sampletones_application.coordinators.export import InstrumentExportCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
-from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
+from sampletones_application.coordinators.playback.failures import (
+    PlaybackFailurePresenter,
+)
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.coordinators.tabs.sequencer.blocks import SequencerBlocks
 from sampletones_application.coordinators.tabs.sequencer.frames import SequencerFrames
-from sampletones_application.coordinators.tabs.sequencer.history import SequencerHistoryRecorder
-from sampletones_application.coordinators.tabs.sequencer.layout import SequencerTabLayout
-from sampletones_application.coordinators.tabs.sequencer.playhead import SequencerPlayhead
-from sampletones_application.coordinators.tabs.sequencer.project import OpenProjectRequirement
-from sampletones_application.coordinators.tabs.sequencer.reconstructions import SequencerReconstructions
+from sampletones_application.coordinators.tabs.sequencer.history import (
+    SequencerHistoryRecorder,
+)
+from sampletones_application.coordinators.tabs.sequencer.layout import (
+    SequencerTabLayout,
+)
+from sampletones_application.coordinators.tabs.sequencer.playhead import (
+    SequencerPlayhead,
+)
+from sampletones_application.coordinators.tabs.sequencer.project import (
+    OpenProjectRequirement,
+)
+from sampletones_application.coordinators.tabs.sequencer.reconstructions import (
+    SequencerReconstructions,
+)
 from sampletones_application.coordinators.tabs.sequencer.voices import SequencerVoices
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
@@ -42,6 +54,7 @@ from sampletones_application.logic.sequencer.tracker import (
 )
 from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.logic.shared.file_playback import FilePlayback
+from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.sequencer import SequencerTabParameters
 from sampletones_application.services.song_player.service import SongPlayerService
@@ -58,8 +71,12 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.sequencer.history import GUISequencerHistoryPanel
 from sampletones_application.ui.panels.sequencer.module import GUISequencerModulePanel
-from sampletones_application.ui.panels.sequencer.order.panel import GUISequencerOrderPanel
-from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.order.panel import (
+    GUISequencerOrderPanel,
+)
+from sampletones_application.ui.panels.sequencer.tracker.panel import (
+    GUISequencerTrackerPanel,
+)
 from sampletones_application.ui.panels.sequencer.voices.panel import (
     GUISequencerVoicesPanel,
 )
@@ -78,6 +95,7 @@ from sampletones_application.view_model.sequencer.settings import (
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 from sampletones_application.view_model.sequencer.voices import (
     SequencerVoicesViewModel,
+    VoiceSelection,
 )
 from sampletones_application.view_model.shared.history import (
     HistoryDetail,
@@ -87,7 +105,6 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
-from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import StringCallback, VoidCallback
 
 
@@ -102,6 +119,7 @@ class SequencerTabCoordinator:
         browser_manager: BrowserManager,
         project_controller: ProjectController,
         history: HistoryManager,
+        renders: RenderCache,
         original_audio_locator: OriginalAudioLocator,
         instrument_exports: InstrumentExportCoordinator,
         *,
@@ -168,6 +186,7 @@ class SequencerTabCoordinator:
             self._sequencer_tracker_logic,
             self._sequencer_order_logic,
             project_controller,
+            history,
             text_clipboard=select_text_clipboard(),
         )
         self._tracker_region_adjuster: TrackerRegionAdjuster = TrackerRegionAdjuster(self._sequencer_tracker_logic)
@@ -176,6 +195,7 @@ class SequencerTabCoordinator:
             session_manager,
             audio_device_manager,
             scheduling=layout.scheduling,
+            renders=renders,
         )
         self._sequencer_channels_logic: SequencerChannelsLogic = SequencerChannelsLogic()
         self._song_player_logic: SongPlayerLogic = SongPlayerLogic(
@@ -205,6 +225,7 @@ class SequencerTabCoordinator:
             initial_collapsed=session_manager.is_card_collapsed(TAG_SEQUENCER_TRACKER_PANEL),
             initial_octave=session_manager.octave,
             language_manager=language_manager,
+            status_bar=status_bar,
             key_router=key_router,
             tab_active=tab_active,
             shortcut_source=shortcut_source,
@@ -378,12 +399,7 @@ class SequencerTabCoordinator:
             detail=self._history_detail.note_off,
             coalesce=self._recorder.cell_key,
         )
-        self._sequencer_tracker_panel.on_note_typed = self._recorder.undoable(
-            HistoryAction.EDIT_ROW,
-            self._sequencer_tracker_logic.write_note,
-            detail=self._history_detail.note_typed,
-            coalesce=self._recorder.note_key,
-        )
+        self._sequencer_tracker_panel.marked_voice = self._marked_voice
         self._sequencer_tracker_panel.on_octave_changed = self._session_manager.set_octave
         self._sequencer_tracker_panel.on_cell_selected = self._on_tracker_cell_focused
         self._sequencer_tracker_panel.on_play_from_row = self._on_tracker_play_from_row
@@ -402,6 +418,7 @@ class SequencerTabCoordinator:
         )
         self._sequencer_tracker_logic.on_settings_changed = self._on_settings_changed
         self._sequencer_tracker_logic.on_tracker_changed = self._sequencer_tracker_panel.update_tracker
+        self._sequencer_tracker_panel.on_reach_changed = self._sequencer_tracker_logic.set_reach
         self._sequencer_tracker_logic.on_frame_changed = self._sequencer_order_panel.select_position
 
     def _wire_channels_callbacks(self) -> None:
@@ -501,10 +518,10 @@ class SequencerTabCoordinator:
     def _wire_block_callbacks(self) -> None:
         """Connects the grids' block gestures to the clipboard they copy into.
 
-        A copy reads the project and leaves it as it stands, so it is wired straight through
-        instead of through :meth:`_undoable`: a transaction over it would record an entry the
-        history has nothing to restore for. The three gestures that do write are whole ones, each
-        recording the single entry that takes the grid back to where it stood.
+        A copy reads the project and leaves it as it stands, so it is wired straight through. The
+        three gestures that write go through :meth:`SequencerHistoryRecorder.undoable` as whole
+        ones, each recording the single entry that takes the grid back to where it stood, and a cut
+        fills the clipboard once that entry stands.
 
         A paste asks the system clipboard first and records its entry once the answer has landed.
         Each grid also asks whether a block stands ready to paste, which a menu offering Paste
@@ -636,10 +653,10 @@ class SequencerTabCoordinator:
         """Realigns the tab with a replaced project, keeping the mute set across history navigation.
 
         The application's fan-out of the controller's single ``on_project_replaced`` signal calls
-        this. Undo, redo, and history jumps replace the project as well, and the history manager
-        reports itself restoring throughout, so the channels the user is listening through carry
-        across them. A new, opened, or closed document begins a fresh listening session instead,
-        with every channel audible.
+        this. Undo, redo, history jumps and the rollback of a failed gesture replace the project as
+        well, and the history manager reports itself restoring throughout, so the channels the user
+        is listening through carry across them. A new, opened, or closed document begins a fresh
+        listening session instead, with every channel audible.
         """
         if not self._history.is_restoring:
             self._sequencer_channels_logic.reset()
@@ -656,7 +673,7 @@ class SequencerTabCoordinator:
         self._guarded_player.run_guarded(partial(self._frames.play_from, position))
 
     def add_instrument(self) -> None:
-        """Appends a hand-written voice to the pool, the menu bar's entry to the gesture."""
+        """Appends an instrument to the pool, the menu bar's entry to the gesture."""
         self._voices.add_instrument()
 
     def add_instrument_from_channel(
@@ -717,7 +734,7 @@ class SequencerTabCoordinator:
         voice_id: str,
         feature_key: FeatureKey,
     ) -> HistoryDetail:
-        """Describes a hand-written voice's edited dimension for the project history."""
+        """Describes an instrument's edited dimension for the project history."""
         return self._history_detail.edit_instrument(voice_id, feature_key)
 
     def reconstruction_stem_detail(
@@ -867,7 +884,6 @@ class SequencerTabCoordinator:
         self._sequencer_tracker_panel.deselect_cell()
         self._sequencer_order_panel.deselect_cell()
         self._sequencer_voices_logic.request_autoplay(voice_id)
-        logger.debug(f"Sequencer sample selected: {voice_id}")
 
     def _request_nes_frequency_change(self, nes_frequency: int) -> None:
         """Applies a NES-frequency change, confirming first when it would re-time existing samples.
@@ -919,19 +935,24 @@ class SequencerTabCoordinator:
         self._nes_frequency_change_acknowledged = True
 
     def _on_tracker_cell_focused(self) -> None:
-        """Drops the order cursor and sample selection when the tracker tracker takes focus.
+        """Drops the order cursor and takes the keyboard from the voices when the tracker takes focus.
 
-        The tracker, order, and samples panels each register a key-router scope active only while
-        it holds a selection; keeping a single selection across the three lets only the focused
-        panel consume keystrokes.
+        The tracker, order, and voices panels each register a key-router scope active only while
+        it holds the keyboard; keeping a single holder across the three lets only the focused
+        panel consume keystrokes. The voices panel keeps its mark, which the pitches typed into
+        the grid carry.
         """
         self._sequencer_order_panel.deselect_cell()
-        self._sequencer_voices_panel.deselect()
+        self._sequencer_voices_panel.blur()
 
     def _on_order_cell_focused(self) -> None:
-        """Drops the tracker cursor and sample selection when the order tracker takes focus."""
+        """Drops the tracker cursor and takes the keyboard from the voices when the order takes focus."""
         self._sequencer_tracker_panel.deselect_cell()
-        self._sequencer_voices_panel.deselect()
+        self._sequencer_voices_panel.blur()
+
+    def _marked_voice(self) -> Optional[VoiceSelection]:
+        """The voice the voices list marks, which a pitch typed into the grid places beside itself."""
+        return self._sequencer_voices_panel.selection
 
     def create_tab(self) -> None:
         """Builds this tab, which the layout holds and refits from here on."""

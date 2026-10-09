@@ -123,7 +123,7 @@ class TestAdjustTranspose(BaseTestSuite):
             ),
             delta=12,
             expected=(
-                ".. +0E . | .. ... . | .. ... . | .. ... .",
+                ".. +14 . | .. ... . | .. ... . | .. ... .",
                 EMPTY,
                 EMPTY,
             ),

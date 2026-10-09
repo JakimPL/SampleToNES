@@ -16,6 +16,7 @@ from sampletones_core.instructions.implementation.triangle import TriangleInstru
 from sampletones_core.instructions.instruction import Instruction
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
@@ -110,7 +111,7 @@ def project_fixture() -> ProjectFixture:
     pulse_rows: List[Row] = [Row() for _ in range(8)]
     pulse_rows[0] = Row(
         command=NoteOn(voice_id=lead.id),
-        transpose=0,
+        pitch=Step(value=0),
         volume=10,
     )
     pulse_rows[2] = Row(command=NoteOff())
@@ -119,7 +120,7 @@ def project_fixture() -> ProjectFixture:
     noise_rows: List[Row] = [Row() for _ in range(8)]
     noise_rows[0] = Row(
         command=NoteOn(voice_id=drum.id),
-        transpose=0,
+        pitch=Step(value=0),
         volume=15,
     )
 

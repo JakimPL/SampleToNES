@@ -3,16 +3,16 @@ from typing import Final
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.boundaries.dialogs import DialogKind
+from automation.screen import Screen
+from automation.steps.reconstructions import expect_open
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_core.constants.enums import ChannelName
 from sampletones_player.specification.nsf import NSF_MAGIC
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
 from tests.screens.exports.nsf_window.constants import LEFT_OUT, SETTLING_FRAMES
 from tests.screens.exports.nsf_window.steps import folder
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import expect_open
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION
 
 INSTRUMENTS_EXPORTED: Final[str] = "reconstructions.instruments.message.export_instruments_success"

@@ -1,6 +1,6 @@
 import pytest
 
-from tests.suite.screens.boundaries.audio import OutputDevice
+from automation.boundaries.audio import OutputDevice
 
 
 @pytest.fixture

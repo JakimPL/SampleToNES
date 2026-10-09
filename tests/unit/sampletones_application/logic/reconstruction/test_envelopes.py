@@ -61,7 +61,7 @@ def stems_reconstruction(reconstruction: Reconstruction) -> Reconstruction:
         )
         for channel_name in reconstruction.playing_channels
     ]
-    reconstruction.stems_data = StemsData(
+    stems_data = StemsData(
         config=StemsConfig(entries=entries, hierarchy=StemsHierarchy(levels=[[STEM_A_ID], [STEM_B_ID]])),
         sources=[
             StemSource(stem_id=STEM_A_ID, name="first", path=None),
@@ -70,7 +70,7 @@ def stems_reconstruction(reconstruction: Reconstruction) -> Reconstruction:
         assignments=assignments,
         scale=RECORDED_SCALE,
     )
-    return reconstruction
+    return reconstruction.model_copy(update={"stems_data": stems_data})
 
 
 @pytest.fixture

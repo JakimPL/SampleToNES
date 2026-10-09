@@ -1,8 +1,8 @@
+from automation.screen import Screen
+from automation.steps.reconstructions import edit_envelope, marked, titled
+from automation.steps.sequencer import open_voice
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from tests.screens.reconstructions.instruments.constants import FADING
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import edit_envelope, marked, titled
-from tests.suite.screens.steps.sequencer import open_voice
 from tests.suite.screens.worlds.recordings import SONG, SONG_INSTRUMENT
 
 

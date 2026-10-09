@@ -1,3 +1,5 @@
+from typing import Final
+
 from sampletones_core.constants.general import (
     MAX_PERIOD,
     MAX_PITCH,
@@ -10,6 +12,8 @@ from sampletones_core.constants.general import (
 from sampletones_shared.constants.music import OCTAVE_OFFSET, OCTAVE_SEMITONES
 from sampletones_shared.utils.arrays import clamp
 from sampletones_shared.utils.frequencies import validate_pitch
+
+PERIOD_NAME_SUFFIX: Final[str] = "-#"
 
 
 def played_pitch(pitch: int) -> int:
@@ -133,7 +137,7 @@ def period_to_name(period: int) -> str:
         ValueError: Period must be in the range 0-15
     """
     validate_period(period)
-    return f"{period:X}-#"
+    return f"{period:X}{PERIOD_NAME_SUFFIX}"
 
 
 def clamp_pitch(pitch: int, min_pitch: int = MIN_PITCH, max_pitch: int = MAX_PITCH) -> int:
@@ -226,7 +230,7 @@ def sanitize_pitch(name: str) -> str:
     Sanitizes a pitch name by keeping only valid pitch-related characters.
 
     Removes whitespace, converts to uppercase, and filters to only allow:
-    digits (0-9), hyphen (-), sharp (#), and hexadecimal letters (A-F).
+    digits (0-9), hyphen (-), sharp (#), and the note letters (A-G).
 
     Args:
         name: The pitch name string to sanitize.
@@ -244,7 +248,7 @@ def sanitize_pitch(name: str) -> str:
         >>> sanitize_pitch("F-#")  # invalid as a pitch name though
         'F-#'
     """
-    return "".join([character for character in sanitize(name) if character in "0123456789-#ABCDEF"])
+    return "".join([character for character in sanitize(name) if character in "0123456789-#ABCDEFG"])
 
 
 def sanitize_period(name: str) -> str:
@@ -275,4 +279,7 @@ def sanitize_period(name: str) -> str:
 
 
 SANITIZED_NAME_TO_PITCH = {sanitize_pitch(pitch_to_name(pitch)): pitch for pitch in range(MIN_PITCH, MAX_PITCH + 1)}
+SANITIZED_NAME_TO_PLAYED_PITCH = {
+    sanitize_pitch(pitch_to_name(pitch)): pitch for pitch in range(MIN_PLAYED_PITCH, MAX_PITCH + 1)
+}
 SANITIZED_NAME_TO_PERIOD = {sanitize_period(period_to_name(period)): period for period in range(len(NOISE_PERIODS))}

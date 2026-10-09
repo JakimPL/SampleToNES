@@ -4,6 +4,12 @@ from typing import Final, List, Optional
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.dearpygui.geometry import Point
+from automation.screen import Screen
+from automation.steps.project import save_project_as
+from automation.steps.reconstructions import edit_envelope
+from automation.vocabulary.instruments import TOO_LONG
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_INPUT_INVALID, TAG_GLOBAL_THEME_INPUT_WARNING
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.formats.famitracker.specification.sequences import MAX_SEQUENCE_ITEMS
@@ -12,12 +18,6 @@ from sampletones_core.project.voices.instrument import Instrument
 from sampletones_shared.paths.user import PROJECTS_DIRECTORY
 from tests.screens.reconstructions.instruments.constants import FADING, NOTHING, STILL_FRAMES
 from tests.screens.reconstructions.instruments.steps import open_the_instrument, song_title
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.dearpygui.geometry import Point
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.project import save_project_as
-from tests.suite.screens.steps.reconstructions import edit_envelope
-from tests.suite.screens.vocabulary.instruments import TOO_LONG
 from tests.suite.screens.worlds.recordings import SONG, SONG_INSTRUMENT
 
 SAVED_SONG: Final[Path] = PROJECTS_DIRECTORY / "Saved.stp"

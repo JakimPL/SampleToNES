@@ -5,12 +5,14 @@ from typing import Dict, List, Optional, Self, Tuple
 
 import numpy as np
 
+from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.audio import mix
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.recordings import load_recordings
+from sampletones_core.reconstructions.reconstruction.renders import rendered_length
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.filter import (
     filter_approximations,
@@ -58,12 +60,12 @@ class ReconstructionData:
         """Builds an independent, file-backed copy of this data anchored at ``filepath``.
 
         Save As writes the reconstruction to its own file and adopts this copy as the open
-        document. The copy owns a fresh reconstruction object, so a document that was a project
-        sample becomes a standalone entity: later edits reach only the saved file, leaving the
-        project's sample unchanged. The copy shares the loaded recordings, so the original
-        audio carries over without a reload.
+        document. The copy holds a reconstruction object of its own, which shares every part with
+        the one it was copied from, so a document that was a project sample becomes a standalone
+        entity: later edits reach only the saved file, leaving the project's sample unchanged. The
+        copy shares the loaded recordings, so the original audio carries over without a reload.
         """
-        reconstruction = self.reconstruction.model_copy(deep=True)
+        reconstruction = self.reconstruction.model_copy()
         return replace(
             self,
             reconstruction=reconstruction,
@@ -186,45 +188,48 @@ class ReconstructionData:
         indexes = self._stem_recording_indexes
         recordings = [self.stem_audios[index] for stem_id, index in indexes.items() if stem_id in selected_stem_ids]
         if not recordings:
-            return np.zeros_like(self.reconstruction.approximation)
+            return np.zeros(rendered_length(self.reconstruction), dtype=np.float32)
 
         return mix(recordings)
 
     def waveform_data(
         self,
+        renders: RenderCache,
         selection: Optional[StemSelection] = None,
     ) -> WaveformData:
-        """Projects the slice of this data the waveform display renders.
+        """Projects the slice of this data the waveform display renders, the audio read from ``renders``.
 
         With a stems selection, the projection carries the frames each channel's selected
         stems own and the mix of the recordings heard anywhere, so the waveform answers
         exactly what plays.
         """
         if selection is None:
-            return self._unfiltered_waveform()
+            return self._unfiltered_waveform(renders)
 
         return self._filtered_waveform(
+            renders,
             selection,
             self.reconstruction.stems_data,
         )
 
-    def _unfiltered_waveform(self) -> WaveformData:
-        """The whole document: every channel's stored approximation and the full original."""
+    def _unfiltered_waveform(self, renders: RenderCache) -> WaveformData:
+        """The whole document: every channel's rendered audio and the full original."""
         return self._waveform_data(
             self.original_audio,
-            dict(self.reconstruction.approximations),
-            self.reconstruction.approximation,
+            renders.channels(self.reconstruction),
+            renders.mix(self.reconstruction),
         )
 
     def _filtered_waveform(
         self,
+        renders: RenderCache,
         selection: StemSelection,
         stems_data: StemsData,
     ) -> WaveformData:
         """The selected stems' frames and their original mix, in the unfiltered shape."""
         approximations = filter_approximations(
             stems_data,
-            self.reconstruction.approximations,
+            renders.channels(self.reconstruction),
             selection,
             self.reconstruction.config.frame_length,
         )
@@ -249,13 +254,18 @@ class ReconstructionData:
             sample_rate=self.reconstruction.config.sample_rate,
         )
 
-    def get_partials(self, channel_names: List[ChannelName]) -> np.ndarray:
-        return self.waveform_data().partials(channel_names)
+    def get_partials(
+        self,
+        renders: RenderCache,
+        channel_names: List[ChannelName],
+    ) -> np.ndarray:
+        return self.waveform_data(renders).partials(channel_names)
 
     def partials_for(
         self,
+        renders: RenderCache,
         channel_names: List[ChannelName],
         selection: StemSelection,
     ) -> np.ndarray:
         """Sums the selected channels with the unselected stems' frames silenced."""
-        return self.waveform_data(selection).partials(channel_names)
+        return self.waveform_data(renders, selection).partials(channel_names)

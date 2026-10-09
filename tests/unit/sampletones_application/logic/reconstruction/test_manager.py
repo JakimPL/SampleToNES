@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, HierarchyMode, bending_channels
@@ -18,6 +19,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.entry import S
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import LoadReconstructionError
+from tests.conftest import RENDER_BUDGET
 from tests.suite.errors import DIRECTORY_READ_ERRORS
 from tests.suite.stems import RECORDED_SCALE, single_entry_stems_data
 
@@ -52,7 +54,7 @@ def _two_frames() -> List[PulseInstruction]:
 class TestLoadReconstructionPropagatesErrors:
     @staticmethod
     def _manager() -> ReconstructionManager:
-        return ReconstructionManager(scheduling=MagicMock())
+        return ReconstructionManager(scheduling=MagicMock(), renders=RenderCache(budget_bytes=RENDER_BUDGET))
 
     def test_missing_file_raises_file_not_found(self, tmp_path: Path) -> None:
         with pytest.raises(FileNotFoundError):
@@ -516,7 +518,7 @@ class TestAnEditLettingARecordingGo:
     def _edited(reconstruction: Reconstruction) -> Reconstruction:
         """The document with the second recording's frame written silent, which it held alone."""
         edited = reconstruction.model_copy(deep=True)
-        edited.update_channel_data(
+        edited = edited.with_channel_data(
             ChannelName.PULSE1,
             [_two_frames()[0], PulseInstruction.null_instruction()],
             edited.initial_pitches[ChannelName.PULSE1],

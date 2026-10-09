@@ -1,9 +1,7 @@
 # FamiTracker export format
 
 This document is the reference for how _SampleToNES_ writes and reads FamiTracker files. Read it when you
-write or check an `.fti` instrument file or an `.ftm` module file. It covers the binary layout of both
-formats (A), the instrument model (B), what an imported `.fti` gives a voice (C), FamiTracker's capacity
-limits (D) and the memory an instrument takes in the NSF driver (E).
+write or check an `.fti` instrument file or an `.ftm` module file.
 [The tracker playback check](../tools/tracker-playback.md) has FamiTracker export modules to NSF files and
 lists every tick they sound differently from the app.
 
@@ -15,8 +13,7 @@ are always empty.
 All multi-byte integers are **little-endian**. Field types are `uint8`, `int8`, `uint32` and `int32`.
 Strings are noted per field. Every constant named here has a counterpart under
 `sampletones_core/formats/famitracker/specification/`, grouped by unit (`file`, `blocks`, `channels`,
-`sequences`, `instruments`, `patterns`, `parameters`). Every block has its own writer function, so the
-code reads as this specification.
+`sequences`, `instruments`, `patterns`, `parameters`).
 
 ## A. Binary formats
 
@@ -91,9 +88,9 @@ written. After the last block comes the 3-byte marker `END`.
 | channel count | `int32` | `5` |
 | machine | `int32` | `0` NTSC, `1` PAL |
 | engine speed | `int32` | `0` for the machine's default, otherwise a refresh rate in Hz |
-| vibrato style | `int32` | |
-| highlight first | `int32` | |
-| highlight second | `int32` | |
+| vibrato style | `int32` | `1` |
+| highlight first | `int32` | `4` |
+| highlight second | `int32` | `16` |
 | speed split point | `int32` | the row where the tempo and speed interpretation splits (`speed_split_point`) |
 
 `HEADER` payload:
@@ -239,7 +236,7 @@ writes the release item, so a volume dimension is one item longer than the frame
 written at, and a writer applies its own format's limit at export. A dimension over the limit is written
 as its opening items. A volume dimension keeps its release as the last item, because the note has to end,
 so the release displaces the last sounding item that would not fit. A reconstruction reaches the limit at
-252 frames, since its volume carries the release past them. At the default 30 fps that is 8.4 s. Every
+252 frames, since its volume carries the release past them. At the default 60 Hz that is 4.2 s. Every
 scope reports what it left out: an instrument by the items it kept of the items it had, a reconstruction's
 instruments and a module by how many instruments were shortened. [The Bitphase
 export](bitphase.md#f-bitphase-capacity-limits) shortens a dimension by the same rule, at its own limit.
@@ -264,7 +261,7 @@ instrument at `initial_pitch` replays that contour. Volume, duty (or noise mode)
 sequences carry across directly. A conversion that bent no note records both bend dimensions as ones the
 channel governs, so they reach the file as disabled slots. The DPCM key-assignment table is always empty.
 
-An [instrument](../glossary.md#instrument) written by hand is one set of envelopes that every channel
+An [instrument](../glossary.md#instrument) is one set of envelopes that every channel
 reads, as in FamiTracker itself. It becomes a single instrument, however many channels play it. The noise
 channel reads it the way FamiTracker and Bitphase do: the duty item's lowest bit selects the short mode,
 and each pitch item moves the period one step, as an arpeggio step does. Each
@@ -275,8 +272,8 @@ channels, its period on noise.
 
 **Where a row's note comes from.** A voice has a reference, the place where its zero is, and a row has a
 step from it. A pattern cell therefore holds `reference + transpose`, wrapped into the sixteen periods on
-noise. A sample's reference is the offset origin its conversion chose. A hand-written instrument's
-reference is its initial pitch.
+noise. A sample's reference is the offset origin its conversion chose. An instrument's reference
+is its initial pitch.
 
 The conversion chooses the origin once, when the reconstruction is built, and stores it as that channel's
 reference pitch (see [Reconstructions](reconstructions.md#contents)). For the pitched channels
@@ -333,6 +330,13 @@ needing a different slide, is written without its slide there. The first frame r
 note sounding decides its slide. The export reports each such row by its frame, channel and row, beside
 the rows written as note cuts, and the rows after it slide from the note the channel holds.
 
+**An instrument placed without a pitch takes the channel's.** In-app playback starts such an instrument
+on the pitch the channel is sounding, whichever voice sounded it, and leaves a silent channel silent. The
+cell writes that note beside the instrument, so FamiTracker triggers the instrument where the song does,
+and a row that starts nothing writes an empty cell. A module stores a pattern once for every frame that
+plays it, so the first frame reaching the cell decides its note, and a later frame reaching it after
+another pitch, or silent, is reported beside the rows above.
+
 **What a row's volume cell holds.** A row naming a volume writes it. In-app playback starts a note whose
 row states no volume at the full level, while FamiTracker carries the level a channel last took into every
 note after it. Such a note therefore writes `15` wherever FamiTracker reaches it carrying another level,
@@ -349,14 +353,12 @@ its level.
 
 ## C. Reading an instrument file
 
-An `.fti` is read as well as written. **Import instrument...** in the sequencer brings one into the voice
-pool as a hand-written [instrument](../glossary.md#instrument). `instrument.py::read_fti` parses the
-layout in section A.1, and `voice.py::instrument_to_voice` makes a voice from the 2A03 instrument it
-holds.
+An `.fti` is read as well as written. The file, laid out in section A.1, comes into the voice pool as
+an [instrument](../glossary.md#instrument).
 
 A voice has all five dimensions, each with the item it repeats from, so they come across as they stand.
 The voice takes the name in the file. A file without a name leaves the voice named after the file itself.
-The arpeggio is read as offsets from the pitch a hand-written voice rests at, because a tracker
+The arpeggio is read as offsets from the pitch an instrument rests at, because a tracker
 instrument sounds at whatever note a row names it with.
 
 A sequence that loops from one of its items gives that dimension the point. A sequence that halts at its
@@ -387,7 +389,7 @@ that ends its note.
 
 | Quantity | FamiTracker limit | Project bound | Exporter behavior |
 | --- | --- | --- | --- |
-| Instruments | 64 total | unbounded (1–4 per sample, one per hand-written instrument) | raises when the instruments exceed 64 |
+| Instruments | 64 total | unbounded (1–4 per sample, one per instrument) | raises when the instruments exceed 64 |
 | Sequences per kind | 128 | unbounded | raises when a kind's pool exceeds 128 |
 | Items per sequence | 252 | one item per frame, plus the volume's release; unbounded | keeps the opening items, a volume dimension ending at its release, and reports what it left out in every scope, the module included |
 | Patterns per channel | 128 (indices 0–127) | pool keyed by arbitrary ints | raises when a pattern index exceeds 127 |
@@ -402,17 +404,16 @@ that ends its note.
 
 A row that names a voice on a channel the voice has no instrument for plays nothing in the song, so the
 exporter writes a note cut on it and reports the row by its frame, channel and row. The project export
-dialog lists those rows, and the transpose rows written without their slide under a heading of their own.
+dialog lists those rows, the transpose rows written without their slide, and the instrument rows written
+at another frame's pitch, each under a heading of their own.
 
-The exporter also reserves an empty pattern index per channel (`max used index + 1`) for order slots the
-song leaves unset. A channel that already fills indices up to 127 leaves no room for it, and the exporter
-reports this instead of writing a corrupt order.
+The exporter reserves one empty pattern index per channel (`max used index + 1`) for order slots the
+song leaves unset. A channel that already uses indices up to 127 raises an error.
 
 ## E. Driver memory footprint
 
 Compiling a module into an NSF lays each instrument out across two regions of the driver's data. An
-instrument's sequences size both regions. The application measures every sample and instrument in this
-layout, counting each item its envelopes carry, and shows the result as the size before compression.
+instrument's sequences size both regions.
 
 The **instrument region** holds the instrument list, one pointer per instrument, followed by each
 instrument's body: a sequence-enable bitmask, then one pointer per populated sequence. The **sequence

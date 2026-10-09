@@ -86,15 +86,36 @@ jobs:
         shell: bash
         run: $PYTHON scripts/run_tests.py suite --workers auto
 
-      - name: Run the screen scenarios (Linux)
+  screens:
+    name: Screen scenarios (part ${{ matrix.shard }} of 3, py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+
+      - name: Install system libraries
+        run: python3 scripts/system_dependencies.py
+
+      - name: Install the development environment
+        run: uv sync --group dev
+
+      - name: Run this part of the screen scenarios
         id: screens
-        if: ${{ !cancelled() && steps.environment.outcome == 'success' && runner.os == 'Linux' }}
-        shell: bash
-        run: $PYTHON scripts/run_tests.py screens --screen-workers 2
+        run: python3 scripts/run_tests.py screens --screen-workers 2 --shard ${{ matrix.shard }}/3
 
       - name: Keep what the failed screen scenarios left
         if: ${{ failure() && steps.screens.outcome == 'failure' }}
         uses: actions/upload-artifact@v7
         with:
-          name: screens-${{ matrix.os }}-py${{ matrix.python }}
+          name: screens-py${{ matrix.python }}-part-${{ matrix.shard }}
           path: build/screens/

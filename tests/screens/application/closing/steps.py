@@ -1,6 +1,6 @@
+from automation.screen import Screen
+from automation.views.prompts import Prompt
 from tests.screens.application.closing.constants import CONVERSION_RUNNING
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.views.prompts import Prompt
 
 
 def conversion_question(screen: Screen) -> Prompt:

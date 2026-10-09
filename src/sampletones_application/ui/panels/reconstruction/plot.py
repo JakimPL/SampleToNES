@@ -114,7 +114,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
         self,
         waveform: Optional[InstrumentWaveformViewModel],
     ) -> None:
-        """Draws a hand-written voice's own audio, or hands the card back to the recording it shows.
+        """Draws an instrument's own audio, or hands the card back to the recording it shows.
 
         An instrument writes one line and nothing to hold it against, so the controls that read a
         recording — the autoscale switch and the per-channel boxes — stand down while one is open

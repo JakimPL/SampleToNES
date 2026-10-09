@@ -14,6 +14,7 @@ from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.tags.sequencer import TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY
 from sampletones_application.ui.panels.sequencer.voices.panel import GUISequencerVoicesPanel
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.view_model.sequencer.voices import VoiceKind, VoiceSelection
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
@@ -71,29 +72,31 @@ class SequencerReconstructions:
 
         self._add_with_frequency_check(reconstruction, filepath.stem)
 
-    def import_object(self, reconstruction: Reconstruction, name: str) -> None:
+    def import_object(
+        self,
+        reconstruction: Reconstruction,
+        name: str,
+    ) -> None:
         """Adds an in-memory reconstruction — the one open in the Reconstruction tab — as a sample.
 
-        The sample embeds an independent copy, so the open document keeps its own source-audio
-        location and file backing while the project stores a self-contained, detached sample.
+        The project stores the detached document, so the open document keeps its own source-audio
+        location and file backing while the sample stays self-contained. A reconstruction never
+        changes once made, so the two share every part the detachment leaves alone.
         """
         if not self._open_project.met():
             return
 
-        self._add_with_frequency_check(
-            reconstruction.model_copy(deep=True),
-            name,
-        )
+        self._add_with_frequency_check(reconstruction, name)
 
     def replace_from_file(self, filepath: Path) -> None:
         """Substitutes the selected sample's reconstruction with a browser file's.
 
         The sample keeps its id and position, so every pattern row referencing it sounds the
         incoming audio while the tracker shows it where it was, and it takes the file's name the way
-        an import does. The target is whatever the samples panel has selected as the gesture starts,
+        an import does. The target is the sample the voices panel has picked as the gesture starts,
         which is also what named the menu item the user clicked.
         """
-        selection = self._voices_panel.selection
+        selection = self._picked_sample()
         if selection is None:
             return
 
@@ -113,12 +116,20 @@ class SequencerReconstructions:
         )
 
     def replace_target_label(self) -> Optional[str]:
-        """The indexed label of the sample a browser replacement would overwrite, while one is selected."""
-        selection = self._voices_panel.selection
+        """The indexed label of the sample a browser replacement would overwrite, while one is picked."""
+        selection = self._picked_sample()
         if selection is None:
             return None
 
         return selection.label
+
+    def _picked_sample(self) -> Optional[VoiceSelection]:
+        """The voice the panel has picked while it is a sample, the one kind a reconstruction replaces."""
+        match self._voices_panel.selection:
+            case VoiceSelection(kind=VoiceKind.SAMPLE) as selection:
+                return selection
+            case _:
+                return None
 
     def _loaded(self, filepath: Path) -> Optional[Reconstruction]:
         """Reads a reconstruction file, reporting one the reader cannot take.
@@ -251,5 +262,5 @@ class SequencerReconstructions:
                 self._tracker_logic.set_nes_frequency(adopt_frequency)
 
             self._voices_logic.rename_voice(voice_id, name)
-            self._browser_logic.replace_reconstruction(voice_id, reconstruction)
-            self._on_sample_reconstruction_replaced(voice_id, reconstruction)
+            held = self._browser_logic.replace_reconstruction(voice_id, reconstruction)
+            self._on_sample_reconstruction_replaced(voice_id, held)

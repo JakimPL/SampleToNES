@@ -42,7 +42,7 @@ def derive_conversion_setup(
     return ConversionSetup(
         sources=tuple(recording.path for recording in ordered),
         stems=StemsConfig(
-            entries=entries,
+            entries=tuple(entries),
             hierarchy=_hierarchy(playing, hierarchy_mode),
         ),
     )
@@ -63,13 +63,13 @@ def _hierarchy(
     playing: Sequence[Sequence[Recording]],
     hierarchy_mode: HierarchyMode,
 ) -> StemsHierarchy:
-    levels: List[List[int]] = []
+    levels: List[Tuple[int, ...]] = []
     stem_id = 0
     for level in playing:
         if not level:
             continue
 
-        levels.append([stem_id + offset for offset in range(len(level))])
+        levels.append(tuple(stem_id + offset for offset in range(len(level))))
         stem_id += len(level)
 
-    return StemsHierarchy(levels=levels, mode=hierarchy_mode)
+    return StemsHierarchy(levels=tuple(levels), mode=hierarchy_mode)

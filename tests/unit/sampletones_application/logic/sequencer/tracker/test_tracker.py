@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Final, Tuple
+from typing import Final, List, Tuple
 
 import pytest
 
@@ -7,14 +7,16 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
+from sampletones_application.view_model.sequencer.tracker import SequencerTrackerViewModel
 from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME
+from sampletones_core.project.patterns.pitch import Note, Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
-from sampletones_core.utils.display import NOTE_OFF, display_id
+from sampletones_core.utils.display import NOTE_OFF, display_id, display_volume
 from sampletones_shared.constants.symbols import MIXED
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -32,6 +34,9 @@ EMPTY: Final[str] = ".. ... . | .. ... . | .. ... . | .. ... ."
 LEAD: Final[str] = "00"
 BASS: Final[str] = "01"
 PAD: Final[str] = "02"
+CONTEXT_REACH: Final[int] = 2
+VOLUME_BEFORE: Final[int] = 5
+VOLUME_AFTER: Final[int] = 9
 
 
 def _controller() -> ProjectController:
@@ -102,36 +107,36 @@ class TestClearCell:
     def test_a_channel_cell_clears_only_that_channel(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
-        logic.set_row(ChannelName.PULSE1, 0, transpose=5)
-        logic.set_row(ChannelName.PULSE2, 0, transpose=7)
+        logic.set_row(ChannelName.PULSE1, 0, pitch=Step(value=5))
+        logic.set_row(ChannelName.PULSE2, 0, pitch=Step(value=7))
 
         logic.clear_cell(0, ChannelName.PULSE1)
 
-        assert _row(controller, ChannelName.PULSE1).transpose is None
-        assert _row(controller, ChannelName.PULSE2).transpose == 7
+        assert _row(controller, ChannelName.PULSE1).pitch is None
+        assert _row(controller, ChannelName.PULSE2).pitch == Step(value=7)
 
     def test_the_sample_column_clears_every_channel(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
         for channel in ChannelName.items():
-            logic.set_row(channel, 0, transpose=5)
+            logic.set_row(channel, 0, pitch=Step(value=5))
 
         logic.clear_cell(0, None)
 
         for channel in ChannelName.items():
-            assert _row(controller, channel).transpose is None
+            assert _row(controller, channel).pitch is None
 
 
 class TestClearCellSubcolumn:
     def test_a_channel_cell_clears_one_subcolumn_of_its_own(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
-        logic.set_row(ChannelName.PULSE1, 0, transpose=5, volume=10)
+        logic.set_row(ChannelName.PULSE1, 0, pitch=Step(value=5), volume=10)
 
         logic.clear_cell_subcolumn(0, ChannelName.PULSE1, SubColumn.TRANSPOSE)
 
         row = _row(controller, ChannelName.PULSE1)
-        assert row.transpose is None
+        assert row.pitch is None
         assert row.volume == 10
 
     def test_the_sample_column_clears_the_voice_from_every_channel(self) -> None:
@@ -158,15 +163,15 @@ class TestClearCellSubcolumn:
         )
         logic.set_row_sample(0, sample.id)
         for channel in ChannelName.items():
-            logic.set_row(channel, 0, transpose=5)
+            logic.set_row(channel, 0, pitch=Step(value=5))
 
         logic.clear_cell_subcolumn(0, None, SubColumn.TRANSPOSE)
 
         for channel in (ChannelName.PULSE1, ChannelName.TRIANGLE):
-            assert _row(controller, channel).transpose is None
+            assert _row(controller, channel).pitch is None
 
         for channel in (ChannelName.PULSE2, ChannelName.NOISE):
-            assert _row(controller, channel).transpose == 5
+            assert _row(controller, channel).pitch == Step(value=5)
 
 
 class TestWriteCell:
@@ -202,15 +207,44 @@ class TestWriteCell:
         assert command.voice_id == sample.id
         assert _row(controller, ChannelName.PULSE1).command is None
 
+    def test_a_voice_and_a_pitch_land_together_in_a_channel_cell(self) -> None:
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+        sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="lead")
+
+        logic.write_cell(0, ChannelName.PULSE1, sample.id, Note(value=60), None)
+
+        row = _row(controller, ChannelName.PULSE1)
+        assert row.command == NoteOn(voice_id=sample.id)
+        assert row.pitch == Note(value=60)
+
+    def test_a_sample_and_a_pitch_in_the_sample_column_reach_the_channels_the_sample_spreads_over(self) -> None:
+        """The sample is placed first, so the pitch finds the channels it has just covered."""
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+        sample = controller.add_sample(
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
+            name="lead",
+        )
+
+        logic.write_cell(0, None, sample.id, Note(value=60), None)
+
+        for channel in (ChannelName.PULSE1, ChannelName.TRIANGLE):
+            assert _row(controller, channel).command == NoteOn(voice_id=sample.id)
+            assert _row(controller, channel).pitch == Note(value=60)
+
+        for channel in (ChannelName.PULSE2, ChannelName.NOISE):
+            assert _row(controller, channel).pitch is None
+
     def test_a_volume_in_a_channel_cell_leaves_the_rest_of_the_cell_standing(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
-        logic.set_row(ChannelName.PULSE1, 0, transpose=5)
+        logic.set_row(ChannelName.PULSE1, 0, pitch=Step(value=5))
 
         logic.write_cell(0, ChannelName.PULSE1, None, None, 10)
 
         row = _row(controller, ChannelName.PULSE1)
-        assert row.transpose == 5
+        assert row.pitch == Step(value=5)
         assert row.volume == 10
 
     def test_an_edit_carrying_no_value_leaves_the_frame_alone(self) -> None:
@@ -268,16 +302,106 @@ class TestFrameRowCount:
         assert logic.frame_row_count() == 0
 
 
+@dataclass(frozen=True, kw_only=True)
+class ThreeFrames:
+    """A song of three short frames with the middle one shown."""
+
+    controller: ProjectController
+    logic: SequencerTrackerLogic
+
+
+@pytest.fixture
+def three_frames() -> ThreeFrames:
+    """Three frames of :data:`FRAME_ROWS` rows, a volume on the first frame's last row and on the last
+    frame's first row, so the rows standing either side of the middle frame tell themselves apart.
+    """
+    controller = _controller()
+    controller.set_rows_per_pattern(FRAME_ROWS)
+    controller.append_frame()
+    controller.append_frame()
+    logic = SequencerTrackerLogic(controller)
+    logic.set_cell_subcolumn(FRAME_ROWS - 1, ChannelName.PULSE1, volume=VOLUME_BEFORE)
+    logic.select_frame(2)
+    logic.set_cell_subcolumn(0, ChannelName.PULSE1, volume=VOLUME_AFTER)
+    logic.select_frame(1)
+    return ThreeFrames(controller=controller, logic=logic)
+
+
+class TestTheSongAroundTheFrame:
+    """The grid carries the rows the song plays either side of the shown frame, as far as it reaches."""
+
+    def test_the_grid_carries_the_rows_either_side(self, three_frames: ThreeFrames) -> None:
+        three_frames.logic.set_reach(CONTEXT_REACH)
+
+        grid = three_frames.logic.build_grid()
+
+        assert [(row.frame_index, row.row.index) for row in grid.lead] == [(0, 2), (0, 3)]
+        assert [(row.frame_index, row.row.index) for row in grid.trail] == [(2, 0), (2, 1)]
+
+    def test_a_neighboring_row_reads_as_it_does_in_its_own_frame(self, three_frames: ThreeFrames) -> None:
+        three_frames.logic.set_reach(CONTEXT_REACH)
+
+        grid = three_frames.logic.build_grid()
+
+        assert grid.lead[-1].row == three_frames.logic.frame_rows(0)[FRAME_ROWS - 1]
+        assert grid.trail[0].row == three_frames.logic.frame_rows(2)[0]
+        assert grid.lead[-1].row.cells[ChannelName.PULSE1].volume == display_volume(VOLUME_BEFORE)
+        assert grid.trail[0].row.cells[ChannelName.PULSE1].volume == display_volume(VOLUME_AFTER)
+
+    def test_without_a_reach_the_grid_holds_the_frame_alone(self, three_frames: ThreeFrames) -> None:
+        grid = three_frames.logic.build_grid()
+
+        assert grid.lead == ()
+        assert grid.trail == ()
+        assert len(grid.rows) == FRAME_ROWS
+
+    def test_a_new_reach_builds_the_grid_and_the_same_one_builds_nothing(self, three_frames: ThreeFrames) -> None:
+        pushed: List[SequencerTrackerViewModel] = []
+        three_frames.logic.on_tracker_changed = pushed.append
+
+        three_frames.logic.set_reach(CONTEXT_REACH)
+        three_frames.logic.set_reach(CONTEXT_REACH)
+
+        assert len(pushed) == 1
+        assert len(pushed[0].lead) == CONTEXT_REACH
+
+
+class TestSelectingAFrame:
+    """A frame is built when it is shown, and the frame already shown is only reported again."""
+
+    def test_the_shown_frame_is_reported_and_builds_nothing(self, three_frames: ThreeFrames) -> None:
+        pushed: List[SequencerTrackerViewModel] = []
+        reported: List[int] = []
+        three_frames.logic.on_tracker_changed = pushed.append
+        three_frames.logic.on_frame_changed = reported.append
+
+        three_frames.logic.select_frame(1)
+
+        assert pushed == []
+        assert reported == [1]
+
+    def test_another_frame_is_built_and_reported(self, three_frames: ThreeFrames) -> None:
+        pushed: List[SequencerTrackerViewModel] = []
+        reported: List[int] = []
+        three_frames.logic.on_tracker_changed = pushed.append
+        three_frames.logic.on_frame_changed = reported.append
+
+        three_frames.logic.select_frame(2)
+
+        assert [grid.frame_index for grid in pushed] == [2]
+        assert reported == [2]
+
+
 class TestRowAccess:
     def test_reads_the_stored_row(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
-        logic.set_row(ChannelName.PULSE1, 0, transpose=5)
+        logic.set_row(ChannelName.PULSE1, 0, pitch=Step(value=5))
 
         row = logic.row(ChannelName.PULSE1, 0)
 
         assert row is not None
-        assert row.transpose == 5
+        assert row.pitch == Step(value=5)
 
     def test_a_channel_without_a_pattern_has_no_row(self) -> None:
         controller = _controller()
@@ -412,22 +536,22 @@ class TestSampleSubcolumn:
         )
         _place_voice(controller, ChannelName.PULSE1, sample.id)
 
-        logic.set_sample_subcolumn(0, transpose=5)
+        logic.set_sample_subcolumn(0, pitch=Step(value=5))
         logic.set_sample_subcolumn(0, volume=10)
 
         carrier = _row(controller, ChannelName.PULSE1)
         assert carrier.command is not None
-        assert carrier.transpose == 5
+        assert carrier.pitch == Step(value=5)
         assert carrier.volume == 10
 
         synced = _row(controller, ChannelName.TRIANGLE)
         assert synced.command is None
-        assert synced.transpose == 5
+        assert synced.pitch == Step(value=5)
         assert synced.volume == 10
 
         for channel in (ChannelName.PULSE2, ChannelName.NOISE):
             row = _row(controller, channel)
-            assert row.transpose is None
+            assert row.pitch is None
             assert row.volume is None
 
     def test_clear_removes_one_subcolumn_across_relevant_channels(self) -> None:
@@ -438,14 +562,14 @@ class TestSampleSubcolumn:
             name="lead",
         )
         logic.set_row_sample(0, sample.id)
-        logic.set_sample_subcolumn(0, transpose=5)
+        logic.set_sample_subcolumn(0, pitch=Step(value=5))
         logic.set_sample_subcolumn(0, volume=10)
 
-        logic.clear_sample_subcolumn(0, transpose=True)
+        logic.clear_sample_subcolumn(0, pitch=True)
 
         for channel in (ChannelName.PULSE1, ChannelName.TRIANGLE):
             row = _row(controller, channel)
-            assert row.transpose is None
+            assert row.pitch is None
             assert row.volume == 10
             assert row.command is not None
 
@@ -457,7 +581,7 @@ class TestAdjustTranspose:
 
         logic.adjust_transpose(ChannelName.PULSE1, 0, 1)
 
-        assert _row(controller, ChannelName.PULSE1).transpose == 1
+        assert _row(controller, ChannelName.PULSE1).pitch == Step(value=1)
 
     def test_repeated_nudges_accumulate(self) -> None:
         controller = _controller()
@@ -466,16 +590,16 @@ class TestAdjustTranspose:
         logic.adjust_transpose(ChannelName.PULSE1, 0, 1)
         logic.adjust_transpose(ChannelName.PULSE1, 0, 12)
 
-        assert _row(controller, ChannelName.PULSE1).transpose == 13
+        assert _row(controller, ChannelName.PULSE1).pitch == Step(value=13)
 
     def test_clamps_to_max_transpose(self) -> None:
         controller = _controller()
         logic = SequencerTrackerLogic(controller)
-        logic.set_row(ChannelName.PULSE1, 0, transpose=MAX_TRANSPOSE)
+        logic.set_row(ChannelName.PULSE1, 0, pitch=Step(value=MAX_TRANSPOSE))
 
         logic.adjust_transpose(ChannelName.PULSE1, 0, 12)
 
-        assert _row(controller, ChannelName.PULSE1).transpose == MAX_TRANSPOSE
+        assert _row(controller, ChannelName.PULSE1).pitch == Step(value=MAX_TRANSPOSE)
 
     def test_preserves_the_voice_and_the_volume(self) -> None:
         controller = _controller()
@@ -488,7 +612,7 @@ class TestAdjustTranspose:
 
         row = _row(controller, ChannelName.PULSE1)
         assert row.command is not None
-        assert row.transpose == 2
+        assert row.pitch == Step(value=2)
         assert row.volume == MAX_VOLUME - 1
 
 
@@ -555,7 +679,7 @@ class TestBuildTrackerAggregation:
             name="lead",
         )
         logic.set_row_sample(0, sample.id)
-        logic.set_row(ChannelName.PULSE1, 0, transpose=5)
+        logic.set_row(ChannelName.PULSE1, 0, pitch=Step(value=5))
 
         row = logic.build_grid().rows[0]
 
@@ -569,7 +693,7 @@ class TestBuildTrackerAggregation:
             name="lead",
         )
         logic.set_row_sample(0, sample.id)
-        logic.set_sample_subcolumn(0, transpose=5)
+        logic.set_sample_subcolumn(0, pitch=Step(value=5))
 
         row = logic.build_grid().rows[0]
 
@@ -587,12 +711,12 @@ class TestEmptyFrameAutoCreate:
         self._append_empty_frame(controller)
         logic.select_frame(1)
 
-        logic.set_row(ChannelName.PULSE1, 0, transpose=5)
+        logic.set_row(ChannelName.PULSE1, 0, pitch=Step(value=5))
 
         song = controller.project.song
         new_index = song.order[1][ChannelName.PULSE1]
         assert new_index is not None
-        assert song[ChannelName.PULSE1].get_row(new_index, 0).transpose == 5
+        assert song[ChannelName.PULSE1].get_row(new_index, 0).pitch == Step(value=5)
         assert song.order[1][ChannelName.PULSE2] is None
 
     def test_empty_frame_still_shows_editable_rows(self) -> None:
@@ -751,7 +875,7 @@ class TestTheSampleColumnFollowsTheSampleInForce:
             voice_ids=grid.voice_ids,
         )
 
-        grid.logic.write_cell(2, None, None, 3, None)
+        grid.logic.write_cell(2, None, None, Step(value=3), None)
 
         assert render_frame(grid.logic)[2] == ".. +03 . | .. ... . | .. ... . | .. ... ."
 

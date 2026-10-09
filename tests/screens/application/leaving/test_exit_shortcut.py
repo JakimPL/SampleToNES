@@ -3,12 +3,12 @@ from typing import Final
 
 import pytest
 
+from automation.boundaries.audio import OutputDevice
+from automation.screen import Screen
+from automation.steps.project import retitle_project, save_new_project, saved_project_title
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_shared.paths.user import PROJECTS_DIRECTORY
-from tests.suite.screens.boundaries.audio import OutputDevice
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.project import retitle_project, save_new_project, saved_project_title
 
 PROJECT_FILENAME: Final[str] = "Leaving.stp"
 NEW_TITLE: Final[str] = "Leaving title"

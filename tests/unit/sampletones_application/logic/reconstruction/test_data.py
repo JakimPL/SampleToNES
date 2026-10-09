@@ -4,11 +4,13 @@ from typing import Callable
 import numpy as np
 
 from sampletones_application.logic.reconstruction.data import ReconstructionData
+from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_core.audio import mix, write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, bending_channels
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
@@ -68,7 +70,7 @@ class TestFromReconstruction:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
 
         data = ReconstructionData.from_reconstruction(
             reconstruction,
@@ -225,7 +227,7 @@ class TestDetachedCopy:
         tmp_path: Path,
     ) -> None:
         reconstruction = reconstruction_factory()
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
         data = ReconstructionData.from_reconstruction(
             reconstruction,
             name="Sample",
@@ -336,18 +338,19 @@ class TestStemFilteredProjections:
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
+        renders: RenderCache,
     ) -> None:
         data = self._stems_data(reconstruction_factory, tmp_path)
         frame_length = data.reconstruction.config.frame_length
-        expected = data.reconstruction.approximation.copy()
+        expected = rendered_mix(data.reconstruction).copy()
         expected[frame_length:] = 0
 
-        partials = data.partials_for([ChannelName.PULSE1], _heard(0))
+        partials = data.partials_for(renders, [ChannelName.PULSE1], _heard(0))
 
         np.testing.assert_allclose(partials, expected)
         np.testing.assert_allclose(
-            data.partials_for([ChannelName.PULSE1], _heard(0, 1)),
-            data.reconstruction.approximation,
+            data.partials_for(renders, [ChannelName.PULSE1], _heard(0, 1)),
+            rendered_mix(data.reconstruction),
         )
 
     def test_original_mix_mixes_the_selected_recordings(
@@ -394,13 +397,14 @@ class TestStemFilteredProjections:
         np.testing.assert_allclose(data.original_mix_for(_heard(0, 1)), data.original_audio)
         np.testing.assert_array_equal(
             data.original_mix_for(_heard()),
-            np.zeros_like(data.reconstruction.approximation),
+            np.zeros_like(rendered_mix(data.reconstruction)),
         )
 
     def test_a_single_source_with_no_selection_is_silence(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
+        renders: RenderCache,
     ) -> None:
         source_audio = tmp_path / "source.wav"
         write_wave(source_audio, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
@@ -409,8 +413,8 @@ class TestStemFilteredProjections:
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
         np.testing.assert_array_equal(
-            data.partials_for([ChannelName.PULSE1], _heard()),
-            np.zeros_like(data.reconstruction.approximation),
+            data.partials_for(renders, [ChannelName.PULSE1], _heard()),
+            np.zeros_like(rendered_mix(data.reconstruction)),
         )
         assert data.original_audio is not None
         np.testing.assert_allclose(data.original_mix_for(_heard(0)), data.original_audio)
@@ -444,17 +448,18 @@ class TestTheOriginalAMissingRecordingLeaves:
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
+        renders: RenderCache,
     ) -> None:
         data = self._missing_a_recording(reconstruction_factory, tmp_path)
 
-        assert data.waveform_data(_heard(0, 1)).original_audio is None
+        assert data.waveform_data(renders, _heard(0, 1)).original_audio is None
 
     def test_a_detached_document_mixes_into_no_original(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
 
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
@@ -464,6 +469,7 @@ class TestTheOriginalAMissingRecordingLeaves:
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
+        renders: RenderCache,
     ) -> None:
         """A loaded recording the reader switched off still has an original, which is silence."""
         source_audio = tmp_path / "source.wav"
@@ -473,10 +479,10 @@ class TestTheOriginalAMissingRecordingLeaves:
             name="Sample",
         )
 
-        original = data.waveform_data(_heard()).original_audio
+        original = data.waveform_data(renders, _heard()).original_audio
 
         assert original is not None
-        np.testing.assert_array_equal(original, np.zeros_like(data.reconstruction.approximation))
+        np.testing.assert_array_equal(original, np.zeros_like(rendered_mix(data.reconstruction)))
 
 
 class TestRebindingToAnEditedReconstruction:
@@ -542,7 +548,7 @@ class TestRebindingToAnEditedReconstruction:
         stream = list(data.reconstruction.instructions[ChannelName.PULSE1])
         stream[1] = PulseInstruction.null_instruction()
         edited = data.reconstruction.model_copy(deep=True)
-        edited.update_channel_data(
+        edited = edited.with_channel_data(
             ChannelName.PULSE1,
             stream,
             edited.initial_pitches[ChannelName.PULSE1],
@@ -587,6 +593,7 @@ class TestWaveformData:
     def test_projects_the_render_relevant_fields(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
+        renders: RenderCache,
     ) -> None:
         reconstruction = reconstruction_factory()
         data = ReconstructionData.from_reconstruction(
@@ -594,11 +601,11 @@ class TestWaveformData:
             name="Sample",
         )
 
-        waveform_data = data.waveform_data()
+        waveform_data = data.waveform_data(renders)
 
         assert waveform_data.original_audio is data.original_audio
-        assert waveform_data.approximation is reconstruction.approximation
-        assert waveform_data.approximations == dict(reconstruction.approximations)
+        assert waveform_data.approximation is renders.mix(reconstruction)
+        assert waveform_data.approximations == renders.channels(reconstruction)
         assert waveform_data.coefficient == reconstruction.coefficient
         assert waveform_data.frame_length == reconstruction.config.frame_length
 
@@ -607,6 +614,7 @@ class TestReconstructionDataGetPartials:
     def test_empty_generator_list_returns_zeros(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
+        renders: RenderCache,
     ) -> None:
         reconstruction = reconstruction_factory()
         data = ReconstructionData.from_reconstruction(
@@ -614,13 +622,14 @@ class TestReconstructionDataGetPartials:
             name="Sample",
         )
 
-        result = data.get_partials([])
+        result = data.get_partials(renders, [])
 
         assert np.all(result == 0.0)
 
     def test_unknown_generator_returns_zeros(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
+        renders: RenderCache,
     ) -> None:
         reconstruction = reconstruction_factory()
         data = ReconstructionData.from_reconstruction(
@@ -628,13 +637,14 @@ class TestReconstructionDataGetPartials:
             name="Sample",
         )
 
-        result = data.get_partials([ChannelName.TRIANGLE])
+        result = data.get_partials(renders, [ChannelName.TRIANGLE])
 
         assert np.all(result == 0.0)
 
     def test_known_generator_returns_its_approximation(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
+        renders: RenderCache,
     ) -> None:
         reconstruction = reconstruction_factory()
         data = ReconstructionData.from_reconstruction(
@@ -642,7 +652,7 @@ class TestReconstructionDataGetPartials:
             name="Sample",
         )
 
-        result = data.get_partials([ChannelName.PULSE1])
+        result = data.get_partials(renders, [ChannelName.PULSE1])
 
-        expected = reconstruction.approximations[ChannelName.PULSE1]
+        expected = rendered_channels(reconstruction)[ChannelName.PULSE1]
         assert np.array_equal(result, expected)

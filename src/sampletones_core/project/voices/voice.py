@@ -1,10 +1,11 @@
-from typing import Iterable, Iterator, Tuple, Union
+from typing import Callable, Iterable, Iterator, Optional, Tuple, Union
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
 
 VoiceUnion = Union[Sample, Instrument]
+VoiceLookup = Callable[[str], Optional[VoiceUnion]]
 
 
 def samples(voices: Iterable[VoiceUnion]) -> Iterator[Sample]:

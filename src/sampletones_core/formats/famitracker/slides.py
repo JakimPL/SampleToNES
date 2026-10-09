@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, Final, FrozenSet, List, Set, Tuple
+from typing import Dict, Final, FrozenSet, List, Mapping, Set, Tuple
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.exporters.rows.transpose import Repitch, SoundingNote, sounding_notes
+from sampletones_core.exporters.rows.transpose import PatternCell, PitchWalk, Repitch, SoundingNote
 from sampletones_core.exporters.skipped import SkippedRow, SkipReason
 from sampletones_core.formats.famitracker.specification.patterns import (
     FASTEST_SLIDE_SPEED,
@@ -13,11 +13,9 @@ from sampletones_core.formats.famitracker.specification.patterns import (
     EffectId,
 )
 from sampletones_core.formats.famitracker.targets import RowTargets
-from sampletones_core.project.song import Song
 
 NO_SLIDE: Final[int] = 0
 
-PatternCell = Tuple[int, int]
 SlideEffect = Tuple[int, int]
 
 
@@ -57,9 +55,9 @@ class _ChannelSlides:
         slide leaves the note where it was for the rows after it.
         """
         target = self.targets[(note.voice_id, self.channel_name)]
-        held = target.cell_pitch(note.transpose, self.channel_name)
+        held = target.cell_pitch(note.step, self.channel_name)
         for repitch in note.repitches:
-            needed = target.cell_pitch(repitch.transpose, self.channel_name) - held
+            needed = target.cell_pitch(repitch.step, self.channel_name) - held
             applied = self._decide(repitch, needed)
             if applied != needed:
                 self._report(note, repitch)
@@ -119,14 +117,14 @@ class SlidePlan:
     repitched: FrozenSet[int]
 
     @classmethod
-    def build(cls, song: Song, targets: RowTargets) -> SlidePlan:
+    def build(cls, walks: Mapping[ChannelName, PitchWalk], targets: RowTargets) -> SlidePlan:
         """Plans every transpose row of the song, following the notes the order sounds.
 
         A row moving the note further than a slide reaches, or a cell of a pattern several frames play
         needing another slide than the frame that decided it, is written without it and reported.
 
         Args:
-            song: The arrangement being exported.
+            walks: Each channel's pass through the song, as playback makes it.
             targets: What a row naming a voice on a channel triggers.
 
         Returns:
@@ -137,7 +135,7 @@ class SlidePlan:
         repitched: Set[int] = set()
         for channel_name in ChannelName.items():
             channel = _ChannelSlides(channel_name=channel_name, targets=targets)
-            for note in sounding_notes(song, channel_name, targets):
+            for note in walks[channel_name].notes:
                 channel.follow(note)
 
             slides[channel_name] = channel.slides

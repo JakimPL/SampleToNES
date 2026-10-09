@@ -4,14 +4,13 @@ from typing import Final
 
 import pytest
 
+from automation.screen import Screen
+from automation.steps.main import gather, home_path
+from automation.worlds.home import World, lived_in_world
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.tags.main import TAG_MAIN_CONVERTER_PANEL
 from tests.screens.main.row_settings.constants import FREQUENCY
-from tests.suite.screens.screen import Screen
 from tests.suite.screens.seeds.recordings import Recording
-from tests.suite.screens.steps.main import gather, home_path
-from tests.suite.screens.worlds.home import World
-from tests.suite.screens.worlds.recordings import lived_in_world
 
 HUNDREDS: Final[str] = "Hundreds"
 HUNDREDS_COUNT: Final[int] = 300

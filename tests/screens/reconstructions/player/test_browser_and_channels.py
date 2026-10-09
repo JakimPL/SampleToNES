@@ -3,15 +3,15 @@ from typing import Dict, Final, List
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.screen import Screen
+from automation.steps.reconstructions import expect_open, load_from_the_browser
+from automation.vocabulary.playback import PAUSE, PLAY
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.reconstructions.player.constants import RECONSTRUCTION_LINE
 from tests.screens.reconstructions.player.steps import advancing, entry, expect_entry
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import expect_open, load_from_the_browser
-from tests.suite.screens.vocabulary.playback import PAUSE, PLAY
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION, SECOND_PLAYABLE
 
 BEAT_FRAMES: Final[int] = 15

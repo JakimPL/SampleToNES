@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 from abc import ABC
+from collections.abc import Mapping
 from enum import StrEnum
 from pathlib import Path
 from types import NoneType
 from typing import (
     Any,
     Dict,
+    Final,
     List,
     Optional,
     Self,
+    Tuple,
     Type,
     TypeVar,
     Union,
@@ -39,6 +42,21 @@ from sampletones_shared.utils.serialization import (
     load_binary,
     save_binary,
 )
+
+MAPPING_ORIGINS: Final[Tuple[type, ...]] = (dict, Mapping)
+
+
+def _packs_in_bulk(item_class: Any) -> bool:
+    """Whether a sequence of ``item_class`` packs as one list, the way a list field of it packs.
+
+    A data model, a string, an enumeration or a number packs the same whether the field holding it
+    is a list or a tuple, so a tuple of them takes the list's bulk path and stores the same bytes.
+    """
+    return (
+        isinstance(item_class, type)
+        and get_origin(item_class) is None
+        and issubclass(item_class, (DataModel, str, StrEnum, int, float, bool))
+    )
 
 
 def _optional_inner_annotation(annotation: Any) -> Optional[Any]:
@@ -90,11 +108,19 @@ class DataModel(BaseModel, ABC):
         save_binary(path, compress_document(self.serialize()))
 
     @classmethod
-    def load(cls, path: Pathlike, fast: bool = True) -> Self:
+    def load(
+        cls,
+        path: Pathlike,
+        fast: bool = True,
+    ) -> Self:
         return cls.deserialize(decompress_document(load_binary(path)), fast=fast)
 
     @classmethod
-    def _construct(cls, fast: bool = True, **data: Any) -> Self:
+    def _construct(
+        cls,
+        fast: bool = True,
+        **data: Any,
+    ) -> Self:
         if fast:
             return cls.model_construct(**data)
 
@@ -152,7 +178,12 @@ class DataModel(BaseModel, ABC):
 
         return cls._construct(fast=fast, **field_values)
 
-    def _pack_value(self, value: Any, annotation: Any, field_name: str) -> Any:
+    def _pack_value(
+        self,
+        value: Any,
+        annotation: Any,
+        field_name: str,
+    ) -> Any:
         if annotation is None:
             raise SerializationError(f"Field '{field_name}' has no annotation")
 
@@ -177,6 +208,9 @@ class DataModel(BaseModel, ABC):
 
         if get_origin(annotation) is tuple:
             item_class = get_args(annotation)[0]
+            if _packs_in_bulk(item_class):
+                return self._pack_list(list(value), field_name)
+
             return [
                 self._pack_value(
                     item,
@@ -186,7 +220,7 @@ class DataModel(BaseModel, ABC):
                 for item in value
             ]
 
-        if get_origin(annotation) is dict:
+        if get_origin(annotation) in MAPPING_ORIGINS:
             key_class, item_class = get_args(annotation)
             return {
                 self._pack_value(key, key_class, field_name): self._pack_value(item, item_class, field_name)
@@ -253,9 +287,12 @@ class DataModel(BaseModel, ABC):
 
         if get_origin(annotation) is tuple:
             item_class = get_args(annotation)[0]
+            if _packs_in_bulk(item_class):
+                return tuple(cls._unpack_list(raw, field_name, item_class, validation, fast))
+
             return tuple(cls._unpack_value(item, item_class, field_name, validation, fast) for item in raw)
 
-        if get_origin(annotation) is dict:
+        if get_origin(annotation) in MAPPING_ORIGINS:
             if not isinstance(raw, dict):
                 raise DeserializationError(f"Field '{field_name}' expects a mapping, got {type(raw).__name__}")
 
@@ -352,7 +389,11 @@ class DataModel(BaseModel, ABC):
 
         raise DeserializationError(f"Unsupported vector element type: {element_class} for field '{field_name}'")
 
-    def _pack_array(self, array: Array, field_name: str) -> bytes:
+    def _pack_array(
+        self,
+        array: Array,
+        field_name: str,
+    ) -> bytes:
         array = to_numpy(array)
 
         if array.dtype != np.float32:
@@ -375,7 +416,11 @@ class DataModel(BaseModel, ABC):
         return array.tobytes()
 
     @classmethod
-    def _unpack_array(cls, raw: bytes, field_name: str) -> np.ndarray:
+    def _unpack_array(
+        cls,
+        raw: bytes,
+        field_name: str,
+    ) -> np.ndarray:
         array = np.frombuffer(raw, dtype=np.float32).copy()
 
         if np.isnan(array).any():

@@ -3,19 +3,19 @@ from typing import Final, List, Tuple
 
 import pytest
 
-from sampletones_core.constants.enums import ChannelName
-from sampletones_shared.paths.user import RECONSTRUCTIONS_DIRECTORY
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.boundaries.dialogs import DialogKind
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import (
+from automation.application.startup import Startup
+from automation.boundaries.dialogs import DialogKind
+from automation.screen import Screen
+from automation.steps.reconstructions import (
     edited_title,
     expect_open,
     remove_from_the_browser,
     stored_levels,
     titled,
 )
-from tests.suite.screens.vocabulary.dialogs import CANCEL, CLOSE, CLOSE_MESSAGE, CLOSE_TITLE, SAVE
+from automation.vocabulary.dialogs import CANCEL, CLOSE, CLOSE_MESSAGE, CLOSE_TITLE, SAVE
+from sampletones_core.constants.enums import ChannelName
+from sampletones_shared.paths.user import RECONSTRUCTIONS_DIRECTORY
 from tests.suite.screens.worlds.recordings import OPEN_RECONSTRUCTION
 
 KEPT: Final[str] = "Kept.stn"
@@ -32,7 +32,9 @@ def take_its_file_away(screen: Screen) -> None:
 
     remove_from_the_browser(screen, OPEN_RECONSTRUCTION)
 
-    screen.expect(screen.title, edited_title(screen).__eq__, description="the reconstruction left unsaved")
+    screen.expect(
+        screen.title, edited_title(screen, OPEN_RECONSTRUCTION).__eq__, description="the reconstruction left unsaved"
+    )
 
 
 class TestAReconstructionWhoseFileWasRemoved:
@@ -94,7 +96,7 @@ class TestAReconstructionWhoseFileWasRemoved:
             screen.expect(prompt.is_shown, operator.not_, description="the question gone")
             screen.frames(SETTLING_FRAMES)
             assert screen.shown_windows() == ()
-            assert screen.title() == edited_title(screen)
+            assert screen.title() == edited_title(screen, OPEN_RECONSTRUCTION)
             assert len(screen.dialog_requests()) == 1
 
         def save_where_asked_writes_it_and_closes(screen: Screen) -> None:

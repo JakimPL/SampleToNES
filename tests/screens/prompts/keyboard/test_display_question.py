@@ -1,8 +1,8 @@
 import operator
 from typing import List
 
+from automation.screen import Screen
 from tests.screens.prompts.keyboard.steps import enter, escape, tab
-from tests.suite.screens.screen import Screen
 
 
 class TestTheDisplayQuestionFromTheKeyboard:

@@ -9,6 +9,7 @@ from sampletones_core.exporters.rows.levels import RowPlace, cell_volume, full_l
 from sampletones_core.performance.modifiers import TRIANGLE_LOUDEST_SILENT_VOLUME
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.song import Song
 from sampletones_core.project.voices.note_off import NoteOff
@@ -97,7 +98,7 @@ class TestTheNotesWritingTheFullLevel:
         assert full_level_notes(song, CHANNEL) == {_place(0, 0, 3)}
 
     def test_a_transpose_alone_leaves_the_level_alone(self) -> None:
-        song = _song({0: _rows((0, QUIET_ROW), (1, Row(transpose=TRANSPOSE)), (2, NOTE))}, [0])
+        song = _song({0: _rows((0, QUIET_ROW), (1, Row(pitch=Step(value=TRANSPOSE))), (2, NOTE))}, [0])
 
         assert full_level_notes(song, CHANNEL) == {_place(0, 0, 2)}
 

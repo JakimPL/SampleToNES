@@ -21,11 +21,11 @@ class StemsData(DataModel):
         ...,
         description="The stems setup the assignment was made under",
     )
-    sources: List[StemSource] = Field(
-        default_factory=list,
+    sources: Tuple[StemSource, ...] = Field(
+        default_factory=tuple,
         description="Where each recording came from and what it is called, one per entry",
     )
-    assignments: List[ChannelAssignment] = Field(
+    assignments: Tuple[ChannelAssignment, ...] = Field(
         ...,
         description="Per channel, the stem holding each frame",
     )
@@ -45,7 +45,7 @@ class StemsData(DataModel):
         """The record of one stem converted with ``settings``, holding the frames ``assignments`` name."""
         return cls(
             config=StemsConfig.single_entry(settings),
-            assignments=assignments,
+            assignments=tuple(assignments),
             scale=scale,
         )
 
@@ -85,7 +85,7 @@ class StemsData(DataModel):
         return self
 
     @cached_property
-    def assignments_by_channel(self) -> Dict[ChannelName, List[int]]:
+    def assignments_by_channel(self) -> Dict[ChannelName, Tuple[int, ...]]:
         """The per-frame stem ids each channel carries, keyed by channel."""
         return {item.channel_name: item.stem_ids for item in self.assignments}
 
@@ -144,7 +144,13 @@ class StemsData(DataModel):
         )
 
     def detached(self) -> StemsData:
-        """The record with every recording's location let go of, keeping the names it holds."""
+        """The record with every recording's location let go of, keeping the names it holds.
+
+        A record holding no location is returned as it stands.
+        """
+        if all(source.path is None for source in self.sources):
+            return self
+
         return self._with_sources([source.detached() for source in self.sources])
 
     def with_assignments(self, assignments: List[ChannelAssignment]) -> StemsData:
@@ -207,8 +213,8 @@ class StemsData(DataModel):
         self,
         *,
         config: StemsConfig,
-        sources: List[StemSource],
-        assignments: List[ChannelAssignment],
+        sources: Sequence[StemSource],
+        assignments: Sequence[ChannelAssignment],
     ) -> StemsData:
         """A record built afresh from its parts, so its memoized views follow what it now holds.
 
@@ -217,7 +223,7 @@ class StemsData(DataModel):
         """
         return StemsData(
             config=config,
-            sources=sources,
-            assignments=assignments,
+            sources=tuple(sources),
+            assignments=tuple(assignments),
             scale=self.scale,
         )

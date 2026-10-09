@@ -3,6 +3,9 @@ import time
 from typing import Callable, List
 from unittest.mock import patch
 
+import pytest
+
+from sampletones_application.utils.callbacks.failures import UnhandledFailures
 from sampletones_application.utils.parallelization.coalescing import LatestWinsExecutor
 
 
@@ -13,6 +16,14 @@ def _wait_until(predicate: Callable[[], bool], timeout: float = 1.0) -> bool:
             return True
         time.sleep(0.005)
     return predicate()
+
+
+@pytest.fixture
+def reported() -> List[Exception]:
+    """The failures the channel shows, presented on the thread that reports them."""
+    failures: List[Exception] = []
+    UnhandledFailures.attach(failures.append, post=lambda present, exception: present(exception))
+    return failures
 
 
 class TestLatestWinsExecutor:
@@ -99,3 +110,42 @@ class TestLatestWinsExecutor:
 
         assert accepted is False
         assert executor.is_running is False
+
+
+class TestAFailingTask:
+    """A task that fails is reported, and the worker goes on serving what is submitted."""
+
+    def test_a_failing_task_is_reported_and_a_later_one_runs(self, reported: List[Exception]) -> None:
+        executor = LatestWinsExecutor()
+        failure = RuntimeError("the task went wrong")
+        done = threading.Event()
+
+        def failing() -> None:
+            raise failure
+
+        executor.submit(failing)
+        assert _wait_until(lambda: executor.is_running is False)
+        executor.submit(done.set)
+
+        assert done.wait(1.0)
+        assert reported == [failure]
+        assert _wait_until(lambda: executor.is_running is False)
+
+    def test_a_task_submitted_while_one_fails_runs_after_it(self, reported: List[Exception]) -> None:
+        executor = LatestWinsExecutor()
+        started = threading.Event()
+        release = threading.Event()
+        done = threading.Event()
+
+        def failing() -> None:
+            started.set()
+            release.wait(1.0)
+            raise RuntimeError("the task went wrong")
+
+        executor.submit(failing)
+        assert started.wait(1.0)
+        executor.submit(done.set)
+        release.set()
+
+        assert done.wait(1.0)
+        assert len(reported) == 1

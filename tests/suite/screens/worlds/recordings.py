@@ -1,12 +1,13 @@
 from pathlib import Path
 from typing import Final, Tuple
 
+from automation.worlds.home import HomeFile, World, one_worker_config, screen_filling_state
+from sampletones_shared.constants.nes import DEFAULT_NES_FREQUENCY
 from sampletones_shared.paths.user import PROJECTS_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 from tests.suite.screens.seeds.libraries import MiniLibrary
 from tests.suite.screens.seeds.projects import StoredProject
 from tests.suite.screens.seeds.reconstructions import PlayableReconstruction, StoredReconstruction
 from tests.suite.screens.seeds.recordings import Recording, stored_recording
-from tests.suite.screens.worlds.home import HomeFile, World, one_worker_config, screen_filling_state
 
 OPEN_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Open.stn"
 OTHER_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Other.stn"
@@ -37,16 +38,6 @@ def converting_world(files: Tuple[HomeFile, ...]) -> World:
         application_config=None,
         config=config,
         files=(MiniLibrary(config), *files),
-    )
-
-
-def lived_in_world() -> World:
-    """The home of a user who ran the application once: a session left behind, and nothing else."""
-    return World(
-        state=screen_filling_state(),
-        application_config=None,
-        config=None,
-        files=(),
     )
 
 
@@ -98,10 +89,10 @@ def playing_world() -> World:
         config=None,
         files=(
             *recordings,
-            PlayableReconstruction(PLAYABLE_RECONSTRUCTION, takes[:1], PLAYABLE_FRAMES),
-            PlayableReconstruction(SECOND_PLAYABLE, takes[1:2], PLAYABLE_FRAMES),
-            PlayableReconstruction(STEMS_RECONSTRUCTION, stem_takes, STEM_FRAMES),
-            PlayableReconstruction(SHORT_RECONSTRUCTION, stem_takes[:1], STEM_FRAMES),
+            PlayableReconstruction(PLAYABLE_RECONSTRUCTION, takes[:1], PLAYABLE_FRAMES, DEFAULT_NES_FREQUENCY),
+            PlayableReconstruction(SECOND_PLAYABLE, takes[1:2], PLAYABLE_FRAMES, DEFAULT_NES_FREQUENCY),
+            PlayableReconstruction(STEMS_RECONSTRUCTION, stem_takes, STEM_FRAMES, DEFAULT_NES_FREQUENCY),
+            PlayableReconstruction(SHORT_RECONSTRUCTION, stem_takes[:1], STEM_FRAMES, DEFAULT_NES_FREQUENCY),
             StoredReconstruction(OPEN_RECONSTRUCTION),
             stored_recording(),
             StoredProject(SONG, sample=SONG_SAMPLE, instrument=SONG_INSTRUMENT),

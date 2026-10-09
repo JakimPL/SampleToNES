@@ -4,16 +4,16 @@ from typing import Dict, Final, List
 
 import pytest
 
+from automation.dearpygui.items.reading import read_item
+from automation.holds.conversion import ConversionHold
+from automation.screen import Screen
+from automation.steps.main import choose_from_the_row_menu, gather, home_path
+from automation.vocabulary.converter import CANCEL_RUN, REMOVE_RECORDING
+from automation.worlds.home import World
 from sampletones_application.utils.gui.shortcuts.ids import CHANNEL_SHORTCUT_IDS, ShortcutId
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.main.row_settings.steps import recordings, ticked
-from tests.suite.screens.dearpygui.items.reading import read_item
-from tests.suite.screens.holds.conversion import ConversionHold
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.main import choose_from_the_row_menu, gather, home_path
-from tests.suite.screens.vocabulary.converter import CANCEL_RUN, REMOVE_RECORDING
-from tests.suite.screens.vocabulary.recordings import KICK, SNARE
-from tests.suite.screens.worlds.home import World
+from tests.suite.screens.seeds.constants import KICK, SNARE
 from tests.suite.screens.worlds.recordings import converting_world
 
 HELD_TIMEOUT_SECONDS: Final[float] = 60.0

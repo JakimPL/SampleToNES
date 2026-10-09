@@ -3,6 +3,8 @@ from typing import Final, List
 
 import pytest
 
+from automation.steps.main import home_path
+from automation.worlds.home import HomeFile, World, lived_in_world
 from tests.screens.main.gathering.constants import (
     COLLIDING,
     INNER,
@@ -14,11 +16,8 @@ from tests.screens.main.gathering.constants import (
     TAKES_INSIDE,
 )
 from tests.suite.screens.seeds.archives import WrittenBytes
+from tests.suite.screens.seeds.constants import KICK, SNARE
 from tests.suite.screens.seeds.recordings import Recording
-from tests.suite.screens.steps.main import home_path
-from tests.suite.screens.vocabulary.recordings import KICK, SNARE
-from tests.suite.screens.worlds.home import HomeFile, World
-from tests.suite.screens.worlds.recordings import lived_in_world
 
 PLAYED_SECONDS: Final[float] = 2.0
 SHORT_SECONDS: Final[float] = 0.2

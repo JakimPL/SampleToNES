@@ -10,15 +10,17 @@ a song. First, [install](installation.md) _SampleToNES_.
    OGG, AIFF and AU files work. To reconstruct every audio file in a folder, Ctrl-click the folder
    instead.
 3. Optional: click the recording in the list and check the channels it may use under **Source
-   settings**. Each recording needs at least one channel.
+   settings**.
 4. Optional: change **General settings**, such as the sample rate.
-5. Click the button under **Output** to start the conversion. The first conversion with a new set of
-   settings takes longer, because the [instruction library](../concepts/instruction-library.md) it
-   needs is built first.
+5. Click the button under **Output** to start the conversion. The first conversion takes longer.
 6. When it finishes, click **Load** to open the result on the **Reconstruction** tab.
 7. Choose **Reconstruction ▸ Export instruments ▸ FamiTracker instruments...** and name the export
    `Kick`. The app writes one `.fti` file per channel: `Kick (pulse1).fti`, `Kick (triangle).fti`,
    and so on.
+
+<div align="center">
+    <img src="../images/guide/converting/converter-done.webp" alt="The Converter card after a conversion, asking to load the result" width="910">
+</div>
 
 That is the shortest path from a sound to instruments you can load in FamiTracker.
 [Converting audio](converting.md) and [working with a
@@ -35,9 +37,8 @@ in full.
    from the project's, confirm with **Add anyway**.
 4. In the **Tracker** grid, click a cell and type notes on your keyboard. To
    assign a sample to a channel, right-click a cell and choose **Set voice**.
-5. Arrange the piece in the [**Order**](../glossary.md#order) grid. Under **Module options**, set
-   **Rows** (the length of a pattern), **Speed** (the [ticks](../glossary.md#tick) each row lasts),
-   **Tempo** and **NES frequency**.
+5. Arrange the piece in the [**Order**](../glossary.md#order) grid. Under **Module options**, set the song's length
+   and speed. See [timing](sequencer.md#timing-and-properties).
 6. Choose **File ▸ Export ▸ FamiTracker module...** and pick a path for the `.ftm`
    file. **Bitphase project...** next to it writes the same song as a `.btp`.
 

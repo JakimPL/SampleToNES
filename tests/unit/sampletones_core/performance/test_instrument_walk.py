@@ -36,7 +36,7 @@ def _resting(channel_name: ChannelName) -> object:
 
 
 class TestAnInstrumentSoundsOnEveryChannel(BaseTestSuite):
-    """A hand-written voice is placed on any channel, and the walk sounds the frames it makes there."""
+    """An instrument is placed on any channel, and the walk sounds the frames it makes there."""
 
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
@@ -58,6 +58,7 @@ class TestAnInstrumentSoundsOnEveryChannel(BaseTestSuite):
             channel_name=test_case.channel_name,
             row_index=0,
             sample=instrument,
+            transpose=0,
         )
 
         streams = song_instructions(project)
@@ -73,6 +74,7 @@ class TestAnInstrumentSoundsOnEveryChannel(BaseTestSuite):
             channel_name=test_case.channel_name,
             row_index=0,
             sample=instrument,
+            transpose=0,
         )
 
         streams = song_instructions(project)
@@ -89,7 +91,7 @@ class TestAnInstrumentInASong:
         """Every dimension halts on the value it wrote, which the note goes on sounding."""
         instrument = _instrument()
         project = project_with_instrument(instrument, rows_per_pattern=ROWS_PER_PATTERN)
-        place_instrument(project, channel_name=ChannelName.PULSE1, row_index=0, sample=instrument)
+        place_instrument(project, channel_name=ChannelName.PULSE1, row_index=0, sample=instrument, transpose=0)
 
         stream = song_instructions(project)[ChannelName.PULSE1]
 
@@ -104,7 +106,7 @@ class TestAnInstrumentInASong:
             envelopes=InstrumentEnvelopes(volume=Envelope(items=(15, 10, 0))),
         )
         project = project_with_instrument(instrument, rows_per_pattern=ROWS_PER_PATTERN)
-        place_instrument(project, channel_name=ChannelName.PULSE1, row_index=0, sample=instrument)
+        place_instrument(project, channel_name=ChannelName.PULSE1, row_index=0, sample=instrument, transpose=0)
 
         stream = song_instructions(project)[ChannelName.PULSE1]
 
@@ -113,7 +115,7 @@ class TestAnInstrumentInASong:
     def test_a_looping_instrument_keeps_sounding(self) -> None:
         instrument = _instrument(loop=True)
         project = project_with_instrument(instrument, rows_per_pattern=ROWS_PER_PATTERN)
-        place_instrument(project, channel_name=ChannelName.PULSE1, row_index=0, sample=instrument)
+        place_instrument(project, channel_name=ChannelName.PULSE1, row_index=0, sample=instrument, transpose=0)
 
         stream = song_instructions(project)[ChannelName.PULSE1]
 

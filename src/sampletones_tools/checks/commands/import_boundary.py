@@ -6,11 +6,12 @@ from typing import Final, Optional, Tuple
 from sampletones_shared.command import Command
 
 NAME: Final[str] = "import-boundary"
-HELP: Final[str] = "hold the source and scripts trees to the declared import boundaries"
+HELP: Final[str] = "hold the source, checkout and scripts trees to the declared import boundaries"
 FILES_HELP: Final[str] = "modules to check"
-ALL_HELP: Final[str] = "check every module under the source and scripts trees instead of named files"
+ALL_HELP: Final[str] = "check every module under the source, checkout and scripts trees instead of named files"
 SOURCE_HELP: Final[str] = "source root the rule roots are named within; without it, the repository's src"
 SCRIPTS_HELP: Final[str] = "scripts tree the standalone rules are written against; without it, the repository's scripts"
+CHECKOUT_HELP: Final[str] = "repository root the checkout units are named within; without it, this repository"
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,7 @@ class ImportBoundaryArguments:
     everything: bool
     source: Optional[Path]
     scripts: Optional[Path]
+    checkout: Optional[Path]
 
 
 def configure(parser: ArgumentParser) -> None:
@@ -28,6 +30,7 @@ def configure(parser: ArgumentParser) -> None:
     parser.add_argument("--all", action="store_true", help=ALL_HELP)
     parser.add_argument("--source", type=Path, default=None, help=SOURCE_HELP)
     parser.add_argument("--scripts", type=Path, default=None, help=SCRIPTS_HELP)
+    parser.add_argument("--checkout", type=Path, default=None, help=CHECKOUT_HELP)
 
 
 def run(arguments: Namespace) -> int:
@@ -37,9 +40,10 @@ def run(arguments: Namespace) -> int:
         everything=arguments.all,
         source=arguments.source,
         scripts=arguments.scripts,
+        checkout=arguments.checkout,
     )
 
-    from sampletones_shared.paths.source import SOURCE_ROOT
+    from sampletones_shared.paths.source import REPOSITORY_ROOT, SOURCE_ROOT
     from sampletones_tools.checks.import_boundary import check_imports, report
     from sampletones_tools.checks.paths import SCRIPTS_ROOT
 
@@ -47,6 +51,7 @@ def run(arguments: Namespace) -> int:
     violations = check_imports(
         given.source if given.source is not None else SOURCE_ROOT,
         given.scripts if given.scripts is not None else SCRIPTS_ROOT,
+        given.checkout if given.checkout is not None else REPOSITORY_ROOT,
         selection,
     )
     return report(violations)

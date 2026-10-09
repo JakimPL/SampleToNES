@@ -10,6 +10,7 @@ from sampletones_core.exporters import playing_channels
 from sampletones_core.formats.famitracker.footprint import reconstruction_footprints
 from sampletones_core.instructions import InstructionUnion, TriangleInstruction
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
+from sampletones_core.reconstructions.reconstruction.renders import rendered_channels
 from sampletones_core.reconstructions.reconstruction.stems.filter import filter_approximations
 from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
@@ -106,7 +107,7 @@ def _edited(
     heard: AbstractSet[int] = EVERY_STEM,
 ) -> Reconstruction:
     edited = reconstruction.model_copy(deep=True)
-    edited.update_channel_data(
+    edited = edited.with_channel_data(
         channel_name,
         list(instructions),
         initial_pitch=reconstruction.initial_pitches[channel_name],
@@ -262,7 +263,7 @@ class TestAChannelAnEditEmpties:
 
         assert channel_name not in edited.playing_channels
         assert channel_name not in edited.stems_data.assignments_by_channel
-        assert channel_name not in edited.approximations
+        assert channel_name not in rendered_channels(edited)
 
     def test_the_recordings_holding_frames_elsewhere_stay_on_the_record(self, reconstruction: Reconstruction) -> None:
         """A recording holding no frame leaves, so what stays is what still sounds somewhere."""
@@ -286,7 +287,7 @@ class TestAChannelAnEditEmpties:
 
         edited = _edited(_edited(reconstruction, channel_name, []), channel_name, stream)
 
-        assert _owners(edited, channel_name) == [AUTHORED_STEM_ID] * len(stream)
+        assert _owners(edited, channel_name) == (AUTHORED_STEM_ID,) * len(stream)
 
 
 class TestTheRowTheReadersOwnFramesAnswerTo:
@@ -416,7 +417,7 @@ class TestADetachedDocument:
     def test_it_keeps_every_recording_it_was_built_from(self, reconstruction: Reconstruction) -> None:
         detached = reconstruction.model_copy(deep=True)
 
-        detached.detach_source()
+        detached = detached.detached()
 
         assert detached.audio_filepath == ()
         assert detached.stems_data.assignments_by_channel == reconstruction.stems_data.assignments_by_channel
@@ -427,7 +428,7 @@ class TestADetachedDocument:
     def test_it_edits_the_way_an_attached_one_does(self, reconstruction: Reconstruction) -> None:
         channel_name = _contested_channel(reconstruction)
         detached = reconstruction.model_copy(deep=True)
-        detached.detach_source()
+        detached = detached.detached()
 
         edited = _edited(detached, channel_name, _changed_stream(detached, channel_name))
 
@@ -446,7 +447,7 @@ class TestWhatASelectionLeaves:
 
         filtered = filter_approximations(
             reconstruction.stems_data,
-            reconstruction.approximations,
+            rendered_channels(reconstruction),
             selection,
             frame_length,
         )
@@ -454,7 +455,7 @@ class TestWhatASelectionLeaves:
         for frame, owner in enumerate(_owners(reconstruction, channel_name)):
             window = slice(frame * frame_length, (frame + 1) * frame_length)
             expected = (
-                reconstruction.approximations[channel_name][window]
+                rendered_channels(reconstruction)[channel_name][window]
                 if owner == held
                 else np.zeros(frame_length, dtype=filtered[channel_name].dtype)
             )
@@ -536,7 +537,7 @@ class TestAChannelWrittenDownToRests:
         edited = self._silenced(reconstruction, channel_name)
 
         assert edited.instructions[channel_name] == []
-        assert channel_name not in edited.approximations
+        assert channel_name not in rendered_channels(edited)
 
     def test_the_record_names_it_no_more(self, reconstruction: Reconstruction) -> None:
         channel_name = _contested_channel(reconstruction)
@@ -577,4 +578,4 @@ class TestTheDocumentThroughAFile:
         assert restored.stems_data.assignments_by_channel == edited.stems_data.assignments_by_channel
         assert restored.stems_data.config == edited.stems_data.config
         for name in edited.playing_channels:
-            np.testing.assert_array_equal(restored.approximations[name], edited.approximations[name])
+            np.testing.assert_array_equal(rendered_channels(restored)[name], rendered_channels(edited)[name])

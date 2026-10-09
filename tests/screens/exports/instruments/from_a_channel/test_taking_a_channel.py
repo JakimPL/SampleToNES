@@ -1,12 +1,12 @@
 from typing import Dict, Final, List, Tuple
 
+from automation.screen import Screen
+from automation.steps.exports import leaving_asks_nothing
+from automation.steps.reconstructions import voice_title
+from automation.steps.sequencer import open_voice, open_voice_menu
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters.naming import instrument_slice_name
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.exports import leaving_asks_nothing
-from tests.suite.screens.steps.reconstructions import voice_title
-from tests.suite.screens.steps.sequencer import open_voice, open_voice_menu
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT, BASS_VOICE, LINE, PAD
 
 INSTRUMENT_FROM: Final[str] = "sequencer.voices.label.context_instrument_from"
@@ -16,15 +16,15 @@ VOICES: Final[List[str]] = [LINE, BASS_VOICE, PAD]
 
 
 class TestTheSubmenuNamesTheChannelsThatPlay:
-    """New instrument from names each channel a sample plays, one channel among them; a hand-written voice
-    greys it.
+    """New instrument from names each channel a sample plays, one channel among them; an instrument greys
+    it.
 
-    The menus of the three-channel sample, the one-channel sample and the hand-written voice are read in
+    The menus of the three-channel sample, the one-channel sample and the instrument are read in
     turn.
     """
 
     def test_each_channel_one_channel_and_none(self, screen: Screen) -> None:
-        """The submenu lists each playing channel, and the hand-written voice shows a greyed entry."""
+        """The submenu lists each playing channel, and the instrument shows a greyed entry."""
         menu = screen.context_menu
 
         def a_sample_of_three_channels_names_each(screen: Screen) -> None:
@@ -42,7 +42,7 @@ class TestTheSubmenuNamesTheChannelsThatPlay:
             assert screen.words(INSTRUMENT_FROM) not in menu.labels()
             menu.dismiss()
 
-        def a_hand_written_voice_greys_it(screen: Screen) -> None:
+        def an_instrument_greys_it(screen: Screen) -> None:
             open_voice_menu(screen, PAD)
 
             assert screen.words(INSTRUMENT_FROM) not in menu.submenus()
@@ -53,7 +53,7 @@ class TestTheSubmenuNamesTheChannelsThatPlay:
         screen.scenario(
             a_sample_of_three_channels_names_each,
             a_sample_of_one_channel_still_names_it,
-            a_hand_written_voice_greys_it,
+            an_instrument_greys_it,
             leaving_asks_nothing,
         ).run()
 

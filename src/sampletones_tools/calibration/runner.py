@@ -9,6 +9,7 @@ from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_core.headless.library import ensure_library
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
+from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
 from sampletones_shared.logger import logger
 
 from .corpus.item import CorpusItem
@@ -174,14 +175,14 @@ def _compared_signals(
 ) -> Tuple[np.ndarray, np.ndarray]:
     """The recording and its approximation on the working-level scale, cut to a common length."""
     reference = recording / reconstruction.coefficient
-    estimate = np.asarray(reconstruction.approximation, dtype=np.float64)
+    estimate = np.asarray(rendered_mix(reconstruction), dtype=np.float64)
     length = min(reference.shape[0], estimate.shape[0])
     return reference[:length], estimate[:length]
 
 
 def _channel_audio(reconstruction: Reconstruction, length: int) -> Dict[ChannelName, np.ndarray]:
     """What each sounding channel contributes to the render, on the recording's scale and length."""
-    approximations = reconstruction.approximations
+    approximations = rendered_channels(reconstruction)
     return {
         channel_name: approximations[channel_name][:length] * reconstruction.coefficient
         for channel_name in reconstruction.playing_channels

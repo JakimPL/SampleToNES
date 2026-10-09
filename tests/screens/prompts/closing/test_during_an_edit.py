@@ -3,19 +3,19 @@ from typing import List
 
 import pytest
 
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from sampletones_core.constants.enums import ChannelName, FeatureKey
-from tests.screens.prompts.closing.constants import SETTLING_FRAMES
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.holds.regeneration import RegenerationHold
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import (
+from automation.application.startup import Startup
+from automation.holds.regeneration import RegenerationHold
+from automation.screen import Screen
+from automation.steps.reconstructions import (
     expect_open,
     first_raised,
     marked,
     raise_the_first_level_while_held,
     titled,
 )
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
+from sampletones_core.constants.enums import ChannelName, FeatureKey
+from tests.screens.prompts.closing.constants import SETTLING_FRAMES
 from tests.suite.screens.worlds.recordings import OPEN_RECONSTRUCTION
 
 

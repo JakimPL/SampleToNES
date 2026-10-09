@@ -8,6 +8,7 @@ from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
 from sampletones_application.logic.reconstruction.listening import StemListening
 from sampletones_application.logic.reconstruction.session import ReconstructionSession
+from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.reconstruction.envelopes import (
     ChannelEnvelopesViewModel,
@@ -32,8 +33,14 @@ class ReconstructionManager(CallbackMixin):
     - Dirty and load state are tracked by a separate session object.
     """
 
-    def __init__(self, *, scheduling: SchedulingBehavior) -> None:
+    def __init__(
+        self,
+        *,
+        scheduling: SchedulingBehavior,
+        renders: RenderCache,
+    ) -> None:
         self._scheduling = scheduling
+        self._renders = renders
         self._session: ReconstructionSession = ReconstructionSession()
         self._current_reconstruction: Optional[ReconstructionData] = None
         self._current_features: Optional[ChannelEnvelopesViewModel] = None
@@ -46,6 +53,11 @@ class ReconstructionManager(CallbackMixin):
     @property
     def session(self) -> ReconstructionSession:
         return self._session
+
+    @property
+    def renders(self) -> RenderCache:
+        """Where the audio of the open document is rendered and kept for as long as the screen reads it."""
+        return self._renders
 
     def load_reconstruction(self, path: Path) -> None:
         logger.info(f"Loading reconstruction: {logger.format_path(path)}")

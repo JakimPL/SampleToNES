@@ -33,6 +33,12 @@ class TestWhichThemesAreBuilt:
 
     @staticmethod
     def _built(monkeypatch: pytest.MonkeyPatch) -> Tuple[Dict[ThemeKey, int], Dict[ThemeKey, int], List[BaseColor]]:
+        themes, colors = TestWhichThemesAreBuilt._themes(monkeypatch)
+        return themes._subcolumn, themes._muted_subcolumn, colors
+
+    @staticmethod
+    def _themes(monkeypatch: pytest.MonkeyPatch) -> Tuple[TrackerThemes, List[BaseColor]]:
+        """Builds the cell themes, noting the color each one was built in by the number it answers."""
         colors: List[BaseColor] = []
 
         def _record(color: BaseColor, *_arguments: Any) -> int:
@@ -40,9 +46,10 @@ class TestWhichThemesAreBuilt:
             return len(colors)
 
         monkeypatch.setattr(themes_module, "create_selectable_text_theme", _record)
+        monkeypatch.setattr(themes_module, "create_label_selectable_theme", _record)
         themes = TrackerThemes(LAYOUT)
         themes._create_subcolumn_themes()
-        return themes._subcolumn, themes._muted_subcolumn, colors
+        return themes, colors
 
     def test_the_voice_slot_is_built_in_a_color_for_each_kind(self, monkeypatch: pytest.MonkeyPatch) -> None:
         subcolumn, _, _ = self._built(monkeypatch)
@@ -67,6 +74,14 @@ class TestWhichThemesAreBuilt:
         subcolumn, muted_subcolumn, _ = self._built(monkeypatch)
 
         assert set(muted_subcolumn) == set(subcolumn)
+
+    def test_a_row_of_another_frame_reads_in_the_dimmed_color(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A cell beside the frame wears its slot's color at the silenced channel's alpha, as a label."""
+        themes, colors = self._themes(monkeypatch)
+
+        assert set(themes._context_subcolumn) == set(themes._subcolumn)
+        for theme_key, theme in themes._context_subcolumn.items():
+            assert colors[theme - 1].rgba == colors[themes._muted_subcolumn[theme_key] - 1].rgba
 
 
 class TestWhichThemeACellWears:

@@ -2,8 +2,8 @@ import operator
 from pathlib import Path
 from typing import Dict, List
 
+from automation.screen import Screen
 from tests.screens.main.run.constants import RECONSTRUCTION_SUFFIX, RUN_TIMEOUT_SECONDS
-from tests.suite.screens.screen import Screen
 
 
 def run_to_its_end(screen: Screen) -> None:

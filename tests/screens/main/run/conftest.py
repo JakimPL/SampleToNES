@@ -3,10 +3,10 @@ from typing import Final
 
 import pytest
 
+from automation.steps.main import home_path
+from automation.worlds.home import HomeFile, World
 from tests.screens.main.run.constants import ALBUM, ALBUM_TAKES, BASS, DISC, DISC_TAKES, DRUMS, LEAD
 from tests.suite.screens.seeds.recordings import Recording
-from tests.suite.screens.steps.main import home_path
-from tests.suite.screens.worlds.home import HomeFile, World
 from tests.suite.screens.worlds.recordings import converting_world
 
 SECONDS: Final[float] = 0.3

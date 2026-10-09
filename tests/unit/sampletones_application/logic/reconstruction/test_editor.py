@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
@@ -17,6 +18,7 @@ from sampletones_core.exporters import Features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.voices.creation import SUSTAINING_ENVELOPES, new_instrument
 from sampletones_core.project.voices.instrument import Instrument
+from tests.suite.history.wiring import wired_history
 
 ROOT_PITCH: Final[int] = 55
 VOLUME: Final[Tuple[int, ...]] = (15, 12, 9)
@@ -51,7 +53,7 @@ HISTORY_BUDGET: Final[int] = 16
 @pytest.fixture
 def history(controller: ProjectController) -> HistoryManager:
     """A strict history, so an edit landing outside a transaction is reported rather than healed."""
-    return HistoryManager(controller, budget=HISTORY_BUDGET, strict=True)
+    return wired_history(controller, budget=HISTORY_BUDGET, strict=True)
 
 
 @pytest.fixture
@@ -86,11 +88,13 @@ class TestWhatTheTabHasInFront:
         self,
         editor: InstrumentEditor,
         controller: ProjectController,
+        history: HistoryManager,
     ) -> None:
         """The pitch an export reads travels inside the envelopes the tab has in front of it."""
-        instrument = controller.add_instrument(
-            Instrument(name="lead", envelopes=SUSTAINING_ENVELOPES, initial_pitch=ROOT_PITCH)
-        )
+        with history.transaction(HistoryAction.ADD_INSTRUMENT):
+            instrument = controller.add_instrument(
+                Instrument(name="lead", envelopes=SUSTAINING_ENVELOPES, initial_pitch=ROOT_PITCH)
+            )
 
         editor.edit_instrument(instrument.id)
 
@@ -103,10 +107,12 @@ class TestWhatTheTabHasInFront:
         self,
         editor: InstrumentEditor,
         controller: ProjectController,
+        history: HistoryManager,
         reconstruction_manager: MagicMock,
     ) -> None:
         """The tab describes one voice, so its waveform and stems follow what is in front of it."""
-        instrument = controller.add_instrument(new_instrument("lead"))
+        with history.transaction(HistoryAction.ADD_INSTRUMENT):
+            instrument = controller.add_instrument(new_instrument("lead"))
 
         editor.edit_instrument(instrument.id)
 
@@ -116,9 +122,11 @@ class TestWhatTheTabHasInFront:
         self,
         editor: InstrumentEditor,
         controller: ProjectController,
+        history: HistoryManager,
         reconstruction_manager: MagicMock,
     ) -> None:
-        instrument = controller.add_instrument(new_instrument("lead"))
+        with history.transaction(HistoryAction.ADD_INSTRUMENT):
+            instrument = controller.add_instrument(new_instrument("lead"))
         editor.edit_instrument(instrument.id)
         reconstruction_manager.current_features = ChannelEnvelopesViewModel(
             channels={ChannelName.PULSE1: _features()},
@@ -133,11 +141,14 @@ class TestWhatTheTabHasInFront:
         self,
         editor: InstrumentEditor,
         controller: ProjectController,
+        history: HistoryManager,
     ) -> None:
-        instrument = controller.add_instrument(new_instrument("lead"))
+        with history.transaction(HistoryAction.ADD_INSTRUMENT):
+            instrument = controller.add_instrument(new_instrument("lead"))
         editor.edit_instrument(instrument.id)
 
-        controller.remove_voice(instrument.id)
+        with history.transaction(HistoryAction.REMOVE_VOICE):
+            controller.remove_voice(instrument.id)
 
         assert editor.edited_instrument() is None
 
@@ -152,8 +163,10 @@ class TestWhetherTheTabHoldsAnInstrument:
         self,
         editor: InstrumentEditor,
         controller: ProjectController,
+        history: HistoryManager,
     ) -> None:
-        instrument = controller.add_instrument(new_instrument("lead"))
+        with history.transaction(HistoryAction.ADD_INSTRUMENT):
+            instrument = controller.add_instrument(new_instrument("lead"))
 
         editor.edit_instrument(instrument.id)
 
@@ -163,12 +176,15 @@ class TestWhetherTheTabHoldsAnInstrument:
         self,
         editor: InstrumentEditor,
         controller: ProjectController,
+        history: HistoryManager,
     ) -> None:
         """Whoever follows the project reads this to tell a departed instrument from none at all."""
-        instrument = controller.add_instrument(new_instrument("lead"))
+        with history.transaction(HistoryAction.ADD_INSTRUMENT):
+            instrument = controller.add_instrument(new_instrument("lead"))
         editor.edit_instrument(instrument.id)
 
-        controller.remove_voice(instrument.id)
+        with history.transaction(HistoryAction.REMOVE_VOICE):
+            controller.remove_voice(instrument.id)
 
         assert editor.holds_instrument
         assert editor.instrument is None
@@ -177,8 +193,10 @@ class TestWhetherTheTabHoldsAnInstrument:
         self,
         editor: InstrumentEditor,
         controller: ProjectController,
+        history: HistoryManager,
     ) -> None:
-        instrument = controller.add_instrument(new_instrument("lead"))
+        with history.transaction(HistoryAction.ADD_INSTRUMENT):
+            instrument = controller.add_instrument(new_instrument("lead"))
         editor.edit_instrument(instrument.id)
 
         editor.release_instrument()
@@ -191,8 +209,10 @@ class TestWritingIntoTheInstrument:
         self,
         editor: InstrumentEditor,
         controller: ProjectController,
+        history: HistoryManager,
     ) -> None:
-        instrument = controller.add_instrument(new_instrument("lead"))
+        with history.transaction(HistoryAction.ADD_INSTRUMENT):
+            instrument = controller.add_instrument(new_instrument("lead"))
         editor.edit_instrument(instrument.id)
 
         editor.write_envelope(FeatureKey.VOLUME, Envelope(items=VOLUME))
@@ -203,9 +223,11 @@ class TestWritingIntoTheInstrument:
         self,
         editor: InstrumentEditor,
         controller: ProjectController,
+        history: HistoryManager,
     ) -> None:
         """A dimension carries the item it repeats from, so an edit writes both at once."""
-        instrument = controller.add_instrument(new_instrument("lead"))
+        with history.transaction(HistoryAction.ADD_INSTRUMENT):
+            instrument = controller.add_instrument(new_instrument("lead"))
         editor.edit_instrument(instrument.id)
 
         editor.write_envelope(FeatureKey.VOLUME, Envelope(items=(15, 8), loop_point=0))

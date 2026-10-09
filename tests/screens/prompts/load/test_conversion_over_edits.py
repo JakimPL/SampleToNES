@@ -3,13 +3,10 @@ from typing import Dict, Final, List, Tuple
 
 import pytest
 
-from sampletones_application.categories.hierarchy import Tab
-from sampletones_core.constants.enums import ChannelName, FeatureKey
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.seeds.reconstructions import StoredReconstruction
-from tests.suite.screens.steps.main import RUN_TIMEOUT_SECONDS, convert_alone, home_path
-from tests.suite.screens.steps.reconstructions import (
+from automation.application.startup import Startup
+from automation.screen import Screen
+from automation.steps.main import RUN_TIMEOUT_SECONDS, convert_alone, home_path
+from automation.steps.reconstructions import (
     converted,
     edited_title,
     expect_open,
@@ -21,7 +18,10 @@ from tests.suite.screens.steps.reconstructions import (
     stored_levels,
     titled,
 )
-from tests.suite.screens.vocabulary.dialogs import CANCEL, DISCARD, LOAD_MESSAGE, LOAD_TITLE, SAVE
+from automation.vocabulary.dialogs import CANCEL, DISCARD, LOAD_MESSAGE, LOAD_TITLE, SAVE
+from sampletones_application.categories.hierarchy import Tab
+from sampletones_core.constants.enums import ChannelName, FeatureKey
+from tests.suite.screens.seeds.reconstructions import StoredReconstruction
 from tests.suite.screens.worlds.recordings import BASS, LEAD, OPEN_RECONSTRUCTION
 
 PULSES: Final[Tuple[ChannelName, ...]] = (ChannelName.PULSE1, ChannelName.PULSE2)
@@ -90,7 +90,9 @@ class TestLoadingAConversionOverAnEditedReconstruction:
             stored.append(OPEN_RECONSTRUCTION.read_bytes())
             standing.extend(stored_levels(OPEN_RECONSTRUCTION, ChannelName.PULSE1))
 
-            typed.append(raise_the_first_level(screen, ChannelName.PULSE1, title=edited_title(screen)))
+            typed.append(
+                raise_the_first_level(screen, ChannelName.PULSE1, title=edited_title(screen, OPEN_RECONSTRUCTION))
+            )
 
         def load_asks_about_the_changes(screen: Screen) -> None:
             convert_and_ask_to_load(screen, BASS)
@@ -101,7 +103,7 @@ class TestLoadingAConversionOverAnEditedReconstruction:
             prompt.cancel()
 
             screen.expect(prompt.is_shown, operator.not_, description="the question gone")
-            assert screen.title() == edited_title(screen)
+            assert screen.title() == edited_title(screen, OPEN_RECONSTRUCTION)
             assert reconstructions.shows_open(OPEN_RECONSTRUCTION)
             assert reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME) == typed[0]
             assert OPEN_RECONSTRUCTION.read_bytes() == stored[0]
@@ -140,7 +142,7 @@ class TestLoadingAConversionOverAnEditedReconstruction:
             stored.append(OPEN_RECONSTRUCTION.read_bytes())
             standing.update({channel: stored_levels(OPEN_RECONSTRUCTION, channel) for channel in PULSES})
 
-            raise_the_first_level(screen, ChannelName.PULSE1, title=edited_title(screen))
+            raise_the_first_level(screen, ChannelName.PULSE1, title=edited_title(screen, OPEN_RECONSTRUCTION))
 
         def discard_loads_the_conversion(screen: Screen) -> None:
             convert_and_ask_to_load(screen, BASS)
@@ -155,7 +157,7 @@ class TestLoadingAConversionOverAnEditedReconstruction:
         def the_file_takes_a_save_made_later(screen: Screen) -> None:
             load_from_the_browser(screen, OPEN_RECONSTRUCTION)
             expect_open(screen, OPEN_RECONSTRUCTION)
-            raise_the_first_level(screen, ChannelName.PULSE2, title=edited_title(screen))
+            raise_the_first_level(screen, ChannelName.PULSE2, title=edited_title(screen, OPEN_RECONSTRUCTION))
 
             reconstructions.save_from_menu()
 
@@ -262,7 +264,7 @@ class TestReloadingACleanReconstruction:
         def change_the_file_behind_it(screen: Screen) -> None:
             expect_open(screen, OPEN_RECONSTRUCTION)
             standing.append(reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME))
-            raise_the_first_level(screen, ChannelName.PULSE1, title=edited_title(screen))
+            raise_the_first_level(screen, ChannelName.PULSE1, title=edited_title(screen, OPEN_RECONSTRUCTION))
             reconstructions.save_from_menu()
             screen.expect(screen.title, titled(screen, OPEN_RECONSTRUCTION.name).__eq__, description="the save landed")
 

@@ -7,7 +7,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
-from sampletones_core.project.patterns.row import Row
 from sampletones_shared.constants.project import (
     MAX_ROWS_PER_PATTERN,
     MIN_ROWS_PER_PATTERN,
@@ -23,7 +22,7 @@ class Song(BaseModel):
     automatically.
 
     ``rows_per_pattern`` is the invariant row count for every pattern in this song.
-    Changing it via :meth:`resize_patterns` resizes all existing patterns in place.
+    Changing it via :meth:`resize_patterns` puts every pattern, resized, in place of the old one.
     """
 
     model_config = ConfigDict(validate_assignment=True)
@@ -158,11 +157,8 @@ class Song(BaseModel):
     def clear_voice_references(self, voice_id: str) -> None:
         """Clears the note-column command of every row that points at a removed voice."""
         for channel in self.channels.values():
-            for pattern in channel.patterns.values():
-                pattern.rows = [
-                    row.model_copy(update={"command": None}) if row.references_voice(voice_id) else row
-                    for row in pattern.rows
-                ]
+            for index, pattern in list(channel.patterns.items()):
+                channel.patterns[index] = pattern.without_voice(voice_id)
 
     def resize_patterns(self, rows_per_pattern: int) -> None:
         """Updates the row count for every pattern in the song.
@@ -172,14 +168,23 @@ class Song(BaseModel):
         holds after the call.
         """
         self.rows_per_pattern = rows_per_pattern
-        empty_row = Row()
         for channel in self.channels.values():
-            for pattern in channel.patterns.values():
-                current = len(pattern.rows)
-                if current > rows_per_pattern:
-                    pattern.rows = pattern.rows[:rows_per_pattern]
-                elif current < rows_per_pattern:
-                    pattern.rows.extend([empty_row] * (rows_per_pattern - current))
+            for index, pattern in list(channel.patterns.items()):
+                channel.patterns[index] = pattern.resized(rows_per_pattern)
+
+    def snapshot(self) -> Song:
+        """A song of its own holding the very patterns this one holds.
+
+        The order and each frame in it are copied, since a gesture writes them in place, and each
+        channel's pool is copied around the patterns it holds, which an edit replaces whole.
+        """
+        copied: Song = self.model_copy(
+            update={
+                "order": [dict(frame) for frame in self.order],
+                "channels": {name: channel.snapshot() for name, channel in self.channels.items()},
+            }
+        )
+        return copied
 
     def __repr__(self) -> str:
         return f"Song(order_length={len(self.order)}, rows_per_pattern={self.rows_per_pattern})"

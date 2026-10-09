@@ -16,6 +16,7 @@ from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.constants.algorithm import ALL_STEMS_CHANNEL_CAP, RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.renders import rendered_mix
 from sampletones_shared.application import SAMPLETONES_RECONSTRUCTION_DATA_VERSION
 from tests.suite.compatibility import RECONSTRUCTION_VERSION, archived, stored_document
 
@@ -66,7 +67,7 @@ class TestWhatAnUpgradedFileDescribes:
 
     def test_the_audio_it_describes_renders(self, validated: Reconstruction) -> None:
         """A 2.2 file carries no audio, so the upgraded document must still be able to sound."""
-        assert len(validated.approximation) == FRAMES * validated.config.frame_length
+        assert len(rendered_mix(validated)) == FRAMES * validated.config.frame_length
 
 
 class TestTheRecordAnUpgradedFileGains:
@@ -206,3 +207,12 @@ class TestAnArchivedFileSoundingNothing:
     def test_the_recording_stays_on_the_record(self, quiet: Reconstruction) -> None:
         assert [entry.id for entry in quiet.stems_data.config.entries] == [SINGLE_STEM_ID]
         assert quiet.audio_filepath == (SOURCE_PATH,)
+
+
+class TestTheStoredPayload:
+    """A document writes back the payload it reads from, so storing it again changes nothing it holds."""
+
+    def test_a_loaded_document_writes_back_the_same_bytes(self, loaded: Reconstruction) -> None:
+        payload = loaded.serialize()
+
+        assert Reconstruction.deserialize(payload).serialize() == payload

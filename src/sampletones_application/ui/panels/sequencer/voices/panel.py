@@ -89,6 +89,8 @@ class GUISequencerVoicesPanel(GUIPanel):
         self._rename_handler_tag = compose_tag(TAG_SEQUENCER_VOICES_INPUT_RENAME, SUF_HANDLER_REGISTRY)
         self._list_handler_tag = compose_tag(TAG_SEQUENCER_VOICES_WINDOW, SUF_HANDLER_LIST)
         self._list_menu_pending = False
+        self._mark_clear_pending = False
+        self._focused = False
         self._selected_voice_id: Optional[str] = None
         self._selected_row: Optional[int] = None
         self._editing_voice_id: Optional[str] = None
@@ -172,8 +174,8 @@ class GUISequencerVoicesPanel(GUIPanel):
     def _voice_status_message(self, voice_id: str) -> str:
         """What a voice is, what it plays and what it costs, as one sentence a reader reads.
 
-        A recording plays the channels its conversion found and exports an instrument for each of
-        them; a hand-written voice is one set of envelopes every channel reads, so it names no
+        A sample plays the channels its conversion found and exports an instrument for each of
+        them; an instrument is one set of envelopes every channel reads, so it names no
         channel and carries a single figure.
         """
         entry = self._entry_for(voice_id)
@@ -196,6 +198,10 @@ class GUISequencerVoicesPanel(GUIPanel):
         """Answers a press that lands on the list itself rather than on one of its rows."""
         with dpg.handler_registry(tag=self._list_handler_tag):
             dpg.add_mouse_click_handler(
+                button=dpg.mvMouseButton_Left,
+                callback=self._on_list_left_clicked,
+            )
+            dpg.add_mouse_click_handler(
                 button=dpg.mvMouseButton_Right,
                 callback=self._on_list_right_clicked,
             )
@@ -212,7 +218,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         )
 
     def _create_new_instrument_button(self) -> None:
-        """Offers a hand-written voice, which is the one kind no browser brings in.
+        """Offers an instrument, which is the one kind no browser brings in.
 
         A greyed-out button shows no tooltip of its own, so the group around it says what brings
         the button back while no project is open.
@@ -331,7 +337,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         entry: VoiceEntryViewModel,
     ) -> None:
         row_id = dpg.add_table_row(parent=TAG_SEQUENCER_VOICES_TABLE)
-        self._build_kind_cell(row_id, entry)
+        self._build_kind_cell(row_id, position, entry)
         self._build_id_cell(row_id, position, entry)
         self._build_name_cell(row_id, position, entry)
         if entry.voice_id == self._selected_voice_id:
@@ -359,20 +365,25 @@ class GUISequencerVoicesPanel(GUIPanel):
     def _build_kind_cell(
         self,
         row_id: int | str,
+        position: int,
         entry: VoiceEntryViewModel,
     ) -> None:
         """Marks which kind the row carries, so a converted voice reads apart from a written one.
 
         The glyph names the kind and its color repeats it, which is the same pair the tracker's
         voice slot wears — so a row and the cells naming it read as one thing across the two panels.
+        The glyph answers a hover and a press as the row's other cells do, so the row reads and
+        answers as one thing wherever the pointer rests on it.
         """
         kind_cell = dpg.add_table_cell(parent=row_id)
         mark = dpg.add_text(
             parent=kind_cell,
             default_value=self._kind_glyph(entry.kind),
+            user_data=(position, entry.voice_id),
         )
         FontRegistry.bind_to_item(mark, Font.ICON)
         dpg_set_palette_color(mark, self._kind_color(entry.kind))
+        dpg.bind_item_handler_registry(mark, self._row_handler_tag)
         show_tooltip(mark, self._kind_tooltip(entry.kind))
 
     def _kind_glyph(self, kind: VoiceKind) -> str:
@@ -472,16 +483,18 @@ class GUISequencerVoicesPanel(GUIPanel):
 
         self._selected_row = position
         self._selected_voice_id = voice_id
+        self._focused = True
         self._highlight_selected_row(position)
         self.call(self.on_voice_selected, voice_id)
 
     @property
     def selection(self) -> Optional[VoiceSelection]:
-        """The selected voice, or ``None`` while the panel holds no selection.
+        """The marked voice, or ``None`` while the panel marks none.
 
         Derived from the highlighted row and the cached entries on each read, so it reports
         whatever the table currently shows. Lets an operation hosted by another panel of the tab
-        address the selection without keeping a copy of it.
+        address the mark without keeping a copy of it: the browser replaces it, and the grid
+        places it with every pitch typed there.
         """
         if self._selected_voice_id is None or self._selected_row is None:
             return None
@@ -498,11 +511,10 @@ class GUISequencerVoicesPanel(GUIPanel):
         )
 
     def deselect(self) -> None:
-        """Drops the voice selection so the panel stops consuming keystrokes.
+        """Drops the mark, and the panel's claim on the keyboard with it.
 
-        Mirrors the grid and order panels: each registers a key-router scope that is active only
-        while it holds a selection, so a single selection across the three decides which one acts
-        on a keystroke. Selecting a cell in another panel clears this one's selection via this method.
+        A voice removed from the pool, or a list rebuilt without it, leaves nothing to mark. A cell
+        picked in another panel keeps the mark and takes the keyboard alone — see :meth:`blur`.
         """
         if self._selected_row is not None:
             dpg.unhighlight_table_row(
@@ -512,9 +524,20 @@ class GUISequencerVoicesPanel(GUIPanel):
 
         self._selected_row = None
         self._selected_voice_id = None
+        self._focused = False
+
+    def blur(self) -> None:
+        """Yields the keyboard while keeping the mark on the voice.
+
+        The grid, the order and this panel each register a key-router scope active only while it
+        holds the keyboard, so one holder across the three decides which acts on a keystroke. A
+        cell picked in the grid or the order takes the keyboard here, and the voice stays marked
+        for the pitches typed there to carry.
+        """
+        self._focused = False
 
     def _keys_active(self) -> bool:
-        """Whether the voices panel owns the next key, which the voice it holds selected decides.
+        """Whether the voices panel owns the next key, which the voice it marks and the keyboard it holds decide.
 
         A name being edited claims every press on its own, so Escape reaches the rename it would
         cancel rather than the field that holds the keyboard. The card put away rests ahead of
@@ -526,7 +549,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         return panel_scope_active(
             tab_active=self._tab_active,
             router=self._router,
-            holds=self._selected_voice_id is not None,
+            holds=self._selected_voice_id is not None and self._focused,
             card_open=self.card_open,
         )
 
@@ -639,6 +662,7 @@ class GUISequencerVoicesPanel(GUIPanel):
         app_data: Tuple[int, int],
     ) -> None:
         mouse_button, clicked_item = app_data
+        self._mark_clear_pending = False
         if mouse_button != dpg.mvMouseButton_Right:
             return
 
@@ -649,6 +673,31 @@ class GUISequencerVoicesPanel(GUIPanel):
         position, voice_id = user_data
         self._list_menu_pending = False
         self._show_context_menu(position, voice_id)
+
+    def _on_list_left_clicked(
+        self,
+        _sender: Sender,
+        _app_data: int,
+    ) -> None:
+        """Clears the mark a frame later, leaving a row that answers the press first.
+
+        The list is offered the press before the row, so the clearing waits a frame: a row landed
+        on claims the press in the meantime and marks the voice it holds, and the empty stretch
+        below the rows leaves the claim unmade, which is how the reader stops marking.
+        """
+        if not self._pointer_within_list():
+            return
+
+        self._mark_clear_pending = True
+        FrameCallbackManager.set_frame_callback(self._clear_mark)
+
+    def _clear_mark(self) -> None:
+        """Drops the mark for a press the list answered."""
+        if not self._mark_clear_pending:
+            return
+
+        self._mark_clear_pending = False
+        self.deselect()
 
     def _on_list_right_clicked(
         self,

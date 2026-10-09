@@ -1,12 +1,12 @@
 import operator
 from typing import Dict, Final, List
 
+from automation.palettes import shipped_palettes
+from automation.screen import Screen
 from sampletones_application.utils.palette.catalog import DEFAULT_PALETTE_NAME
 from tests.screens.interface.palettes.cases import Painted
 from tests.screens.interface.palettes.constants import SETTLING_FRAMES
 from tests.screens.interface.palettes.steps import painted, show_every_tab
-from tests.suite.screens.palettes import shipped_palettes
-from tests.suite.screens.screen import Screen
 
 SECOND_ROUND: Final[int] = 2
 ROUNDS: Final[int] = 20

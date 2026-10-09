@@ -9,8 +9,10 @@ from sampletones_application.view_model.sequencer.region import TrackerRegion
 from sampletones_application.view_model.sequencer.slot import TrackerSlot
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.constants.general import MAX_TRANSPOSE, MIN_TRANSPOSE
+from sampletones_core.constants.general import MAX_PERIOD, MAX_PITCH, MAX_TRANSPOSE, MIN_PLAYED_PITCH, MIN_TRANSPOSE
+from sampletones_core.project.patterns.pitch import Note, Step
 from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.utils.frequencies import period_to_name, pitch_to_name
 
 SAMPLE_IDS: List[str] = ["kick", "snare", "hat"]
 
@@ -71,33 +73,43 @@ class TestTheFormAFieldTakes:
     """Every field carries what the grid shows in its cell, each kind in its own width."""
 
     def test_a_cell_of_values_prints_the_three_the_grid_prints(self, text: TrackerBlockText) -> None:
-        block = TrackerBlock(notes={(0, 0): "snare"}, transposes={(0, 1): 0}, volumes={(0, 2): 15})
+        block = TrackerBlock(notes={(0, 0): "snare"}, pitches={(0, 1): Step(value=0)}, volumes={(0, 2): 15})
 
         assert _body(text, block, PULSE1_CELL) == ["01 +00 F"]
 
     def test_an_empty_cell_prints_the_dots_beneath_it(self, text: TrackerBlockText) -> None:
-        block = TrackerBlock(notes={(0, 0): None}, transposes={(0, 1): None}, volumes={(0, 2): None})
+        block = TrackerBlock(notes={(0, 0): None}, pitches={(0, 1): None}, volumes={(0, 2): None})
 
         assert _body(text, block, PULSE1_CELL) == [".. ... ."]
 
     def test_a_mixed_cell_fills_its_fields_with_marks(self, text: TrackerBlockText) -> None:
-        block = TrackerBlock(notes={}, transposes={}, volumes={})
+        block = TrackerBlock(notes={}, pitches={}, volumes={})
 
         assert _body(text, block, PULSE1_CELL) == ["?? ??? ?"]
 
     def test_a_cut_prints_the_mark_the_note_column_shows(self, text: TrackerBlockText) -> None:
-        block = TrackerBlock(notes={(0, 0): NoteOff()}, transposes={}, volumes={})
+        block = TrackerBlock(notes={(0, 0): NoteOff()}, pitches={}, volumes={})
 
         assert _body(text, block, PULSE1_CELL) == ["~~ ??? ?"]
 
-    def test_a_transpose_below_zero_prints_its_sign(self, text: TrackerBlockText) -> None:
-        block = TrackerBlock(notes={}, transposes={(0, 1): -10}, volumes={})
+    def test_a_step_below_zero_prints_its_sign_in_decimal(self, text: TrackerBlockText) -> None:
+        block = TrackerBlock(notes={}, pitches={(0, 1): Step(value=-10)}, volumes={})
 
-        assert _body(text, block, PULSE1_CELL) == ["?? -0A ?"]
+        assert _body(text, block, PULSE1_CELL) == ["?? -10 ?"]
+
+    def test_a_note_prints_its_name(self, text: TrackerBlockText) -> None:
+        block = TrackerBlock(notes={}, pitches={(0, 1): Note(value=61)}, volumes={})
+
+        assert _body(text, block, PULSE1_CELL) == [f"?? {pitch_to_name(61)} ?"]
+
+    def test_a_period_prints_its_name(self, text: TrackerBlockText) -> None:
+        block = TrackerBlock(notes={}, pitches={(0, 1): Note(value=5)}, volumes={})
+
+        assert _body(text, block, PULSE1_CELL) == [f"?? {period_to_name(5)} ?"]
 
     def test_a_note_naming_a_sample_the_list_lacks_prints_as_mixed(self, text: TrackerBlockText) -> None:
         """A paste has nothing to place for it, so the text states nothing about that cell."""
-        block = TrackerBlock(notes={(0, 0): "cowbell"}, transposes={}, volumes={})
+        block = TrackerBlock(notes={(0, 0): "cowbell"}, pitches={}, volumes={})
 
         assert _body(text, block, PULSE1_CELL) == ["?? ??? ?"]
 
@@ -110,7 +122,7 @@ class TestTheShapeAStatementCovers:
             rows=4,
         )
 
-        header = text.state(TrackerBlock(notes={}, transposes={}, volumes={}), region).splitlines()[0]
+        header = text.state(TrackerBlock(notes={}, pitches={}, volumes={}), region).splitlines()[0]
 
         assert header == "SampleToNES/1 tracker rows=4 slots=3..8"
 
@@ -120,10 +132,10 @@ class TestTheShapeAStatementCovers:
             last_slot=_slot(ChannelName.PULSE2, SubColumn.VOLUME),
         )
 
-        assert _body(text, TrackerBlock(notes={}, transposes={}, volumes={}), region) == ["?? ??? ? | ?? ??? ?"]
+        assert _body(text, TrackerBlock(notes={}, pitches={}, volumes={}), region) == ["?? ??? ? | ?? ??? ?"]
 
     def test_a_row_of_the_block_prints_a_line_of_its_own(self, text: TrackerBlockText) -> None:
-        block = TrackerBlock(notes={}, transposes={(0, 1): 1, (2, 1): 3}, volumes={})
+        block = TrackerBlock(notes={}, pitches={(0, 1): Step(value=1), (2, 1): Step(value=3)}, volumes={})
         region = _region(
             first_slot=_slot(ChannelName.PULSE1, SubColumn.VOICE),
             last_slot=_slot(ChannelName.PULSE1, SubColumn.VOLUME),
@@ -143,12 +155,12 @@ class RoundTripCase:
 ROUND_TRIPS: List[RoundTripCase] = [
     RoundTripCase(
         "the three states across one cell",
-        TrackerBlock(notes={(0, 0): "kick"}, transposes={(0, 1): None}, volumes={}),
+        TrackerBlock(notes={(0, 0): "kick"}, pitches={(0, 1): None}, volumes={}),
         PULSE1_CELL,
     ),
     RoundTripCase(
         "a cut and an empty note",
-        TrackerBlock(notes={(0, 0): NoteOff(), (1, 0): None}, transposes={}, volumes={}),
+        TrackerBlock(notes={(0, 0): NoteOff(), (1, 0): None}, pitches={}, volumes={}),
         _region(
             first_slot=_slot(ChannelName.PULSE1, SubColumn.VOICE),
             last_slot=_slot(ChannelName.PULSE1, SubColumn.VOLUME),
@@ -156,8 +168,12 @@ ROUND_TRIPS: List[RoundTripCase] = [
         ),
     ),
     RoundTripCase(
-        "the whole transpose range",
-        TrackerBlock(notes={}, transposes={(0, 1): -24, (1, 1): 36, (2, 1): 0}, volumes={}),
+        "the whole step range",
+        TrackerBlock(
+            notes={},
+            pitches={(0, 1): Step(value=MIN_TRANSPOSE), (1, 1): Step(value=MAX_TRANSPOSE), (2, 1): Step(value=0)},
+            volumes={},
+        ),
         _region(
             first_slot=_slot(ChannelName.PULSE1, SubColumn.VOICE),
             last_slot=_slot(ChannelName.PULSE1, SubColumn.VOLUME),
@@ -165,8 +181,47 @@ ROUND_TRIPS: List[RoundTripCase] = [
         ),
     ),
     RoundTripCase(
+        "the whole note range",
+        TrackerBlock(
+            notes={},
+            pitches={(0, 1): Note(value=MIN_PLAYED_PITCH), (1, 1): Note(value=60), (2, 1): Note(value=MAX_PITCH)},
+            volumes={},
+        ),
+        _region(
+            first_slot=_slot(ChannelName.PULSE1, SubColumn.VOICE),
+            last_slot=_slot(ChannelName.PULSE1, SubColumn.VOLUME),
+            rows=3,
+        ),
+    ),
+    RoundTripCase(
+        "the whole period range",
+        TrackerBlock(notes={}, pitches={(0, 1): Note(value=0), (1, 1): Note(value=MAX_PERIOD)}, volumes={}),
+        _region(
+            first_slot=_slot(ChannelName.NOISE, SubColumn.VOICE),
+            last_slot=_slot(ChannelName.NOISE, SubColumn.VOLUME),
+            rows=2,
+        ),
+    ),
+    RoundTripCase(
+        "both faces down one column",
+        TrackerBlock(notes={}, pitches={(0, 1): Note(value=60), (1, 1): Step(value=-3)}, volumes={}),
+        _region(
+            first_slot=_slot(ChannelName.PULSE1, SubColumn.VOICE),
+            last_slot=_slot(ChannelName.PULSE1, SubColumn.VOLUME),
+            rows=2,
+        ),
+    ),
+    RoundTripCase(
+        "a note in the sample column",
+        TrackerBlock(notes={}, pitches={(0, 1): Note(value=60)}, volumes={}),
+        _region(
+            first_slot=_slot(None, SubColumn.VOICE),
+            last_slot=_slot(None, SubColumn.VOLUME),
+        ),
+    ),
+    RoundTripCase(
         "the whole volume range",
-        TrackerBlock(notes={}, transposes={}, volumes={(0, 2): 0, (1, 2): 15}),
+        TrackerBlock(notes={}, pitches={}, volumes={(0, 2): 0, (1, 2): 15}),
         _region(
             first_slot=_slot(ChannelName.PULSE1, SubColumn.VOICE),
             last_slot=_slot(ChannelName.PULSE1, SubColumn.VOLUME),
@@ -175,7 +230,7 @@ ROUND_TRIPS: List[RoundTripCase] = [
     ),
     RoundTripCase(
         "a block anchored at the sample column",
-        TrackerBlock(notes={(0, 0): "hat"}, transposes={(0, 4): 2}, volumes={(0, 5): 9}),
+        TrackerBlock(notes={(0, 0): "hat"}, pitches={(0, 4): Step(value=2)}, volumes={(0, 5): 9}),
         _region(
             first_slot=_slot(None, SubColumn.VOICE),
             last_slot=_slot(ChannelName.PULSE1, SubColumn.VOLUME),
@@ -183,7 +238,7 @@ ROUND_TRIPS: List[RoundTripCase] = [
     ),
     RoundTripCase(
         "a block starting and ending mid-cell",
-        TrackerBlock(notes={(0, 3): "snare"}, transposes={(0, 1): 5, (0, 4): None}, volumes={(0, 2): 3}),
+        TrackerBlock(notes={(0, 3): "snare"}, pitches={(0, 1): Step(value=5), (0, 4): None}, volumes={(0, 2): 3}),
         _region(
             first_slot=_slot(ChannelName.PULSE1, SubColumn.TRANSPOSE),
             last_slot=_slot(ChannelName.PULSE2, SubColumn.TRANSPOSE),
@@ -191,7 +246,7 @@ ROUND_TRIPS: List[RoundTripCase] = [
     ),
     RoundTripCase(
         "the whole grid",
-        TrackerBlock(notes={(0, 12): "kick"}, transposes={(1, 1): -1}, volumes={(1, 14): 4}),
+        TrackerBlock(notes={(0, 12): "kick"}, pitches={(1, 1): Step(value=-1)}, volumes={(1, 14): 4}),
         _region(
             first_slot=_slot(None, SubColumn.VOICE),
             last_slot=_slot(ChannelName.NOISE, SubColumn.VOLUME),
@@ -214,31 +269,56 @@ class TestRoundTrip:
 
     def test_a_note_reaches_the_sample_standing_at_its_position(self, text: TrackerBlockText) -> None:
         """The position is what crosses, so a block lands on the list the reading project holds."""
-        block = TrackerBlock(notes={(0, 0): "snare"}, transposes={}, volumes={})
+        block = TrackerBlock(notes={(0, 0): "snare"}, pitches={}, volumes={})
         stated = text.state(block, PULSE1_CELL)
 
         elsewhere = TrackerBlockText(samples=FakeSampleDirectory(["bass", "clap"]))
 
-        assert elsewhere.parse(stated) == TrackerBlock(notes={(0, 0): "clap"}, transposes={}, volumes={})
+        assert elsewhere.parse(stated) == TrackerBlock(notes={(0, 0): "clap"}, pitches={}, volumes={})
 
     def test_a_position_the_reading_list_falls_short_of_states_nothing(self, text: TrackerBlockText) -> None:
-        block = TrackerBlock(notes={(0, 0): "hat"}, transposes={}, volumes={})
+        block = TrackerBlock(notes={(0, 0): "hat"}, pitches={}, volumes={})
         stated = text.state(block, PULSE1_CELL)
 
         elsewhere = TrackerBlockText(samples=FakeSampleDirectory(["bass"]))
 
-        assert elsewhere.parse(stated) == TrackerBlock(notes={}, transposes={}, volumes={})
+        assert elsewhere.parse(stated) == TrackerBlock(notes={}, pitches={}, volumes={})
 
 
 class TestTextTypedByHand:
     """The form is readable, so a reader typing it reaches the same block a copy would."""
 
     def test_hexadecimal_reads_in_either_case(self, text: TrackerBlockText) -> None:
-        upper = text.parse("SampleToNES/1 tracker rows=1 slots=3..5\n02 -0a f")
-        lower = text.parse("SampleToNES/1 tracker rows=1 slots=3..5\n02 -0A F")
+        upper = text.parse("SampleToNES/1 tracker rows=1 slots=3..5\n02 -10 f")
+        lower = text.parse("SampleToNES/1 tracker rows=1 slots=3..5\n02 -10 F")
 
         assert upper == lower
-        assert upper == TrackerBlock(notes={(0, 0): "hat"}, transposes={(0, 1): -10}, volumes={(0, 2): 15})
+        assert upper == TrackerBlock(notes={(0, 0): "hat"}, pitches={(0, 1): Step(value=-10)}, volumes={(0, 2): 15})
+
+    @pytest.mark.parametrize(
+        ("field", "expected"),
+        [
+            ("c#3", Note(value=61)),
+            ("C-0", Note(value=MIN_PLAYED_PITCH)),
+            ("B-7", Note(value=MAX_PITCH)),
+            ("a-#", Note(value=10)),
+            ("+7", Step(value=7)),
+            ("-07", Step(value=-7)),
+        ],
+    )
+    def test_a_pitch_typed_by_hand_reads_as_the_grid_prints_it(
+        self,
+        text: TrackerBlockText,
+        field: str,
+        expected: object,
+    ) -> None:
+        block = text.parse(f"SampleToNES/1 tracker rows=1 slots=4..4\n{field}")
+
+        assert block == TrackerBlock(notes={}, pitches={(0, 1): expected}, volumes={})
+
+    @pytest.mark.parametrize("field", ["C-8", "H-3", "G-#", "12", "+87", "-87", "+0A"])
+    def test_a_pitch_the_form_has_no_reading_for_refuses_the_text(self, text: TrackerBlockText, field: str) -> None:
+        assert text.parse(f"SampleToNES/1 tracker rows=1 slots=4..4\n{field}") is None
 
     def test_the_bars_between_columns_are_a_reading_aid(self, text: TrackerBlockText) -> None:
         with_bars = text.parse("SampleToNES/1 tracker rows=1 slots=3..8\n01 +00 F | .. ... .")
@@ -271,8 +351,8 @@ REFUSALS: List[RefusalCase] = [
     RefusalCase("a slot past the grid", "SampleToNES/1 tracker rows=1 slots=13..15\n01 +00 F"),
     RefusalCase("a word in a note field", f"{HEADER}\nxx +00 F\n01 +00 F"),
     RefusalCase("an unsigned transpose", f"{HEADER}\n01 12 F\n01 +00 F"),
-    RefusalCase("a transpose past the range", f"{HEADER}\n01 +{MAX_TRANSPOSE + 1:02X} F\n01 +00 F"),
-    RefusalCase("a transpose below the range", f"{HEADER}\n01 -{abs(MIN_TRANSPOSE) + 1:02X} F\n01 +00 F"),
+    RefusalCase("a step past the range", f"{HEADER}\n01 +{MAX_TRANSPOSE + 1:02d} F\n01 +00 F"),
+    RefusalCase("a step below the range", f"{HEADER}\n01 -{abs(MIN_TRANSPOSE) + 1:02d} F\n01 +00 F"),
     RefusalCase("a volume past the range", f"{HEADER}\n01 +00 FF\n01 +00 F"),
     RefusalCase("dots and marks in one field", f"{HEADER}\n.? +00 F\n01 +00 F"),
 ]

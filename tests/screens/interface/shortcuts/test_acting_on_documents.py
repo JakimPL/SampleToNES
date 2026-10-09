@@ -1,10 +1,10 @@
 import operator
 
+from automation.screen import Screen
+from automation.steps.reconstructions import UNTITLED, expect_open, titled
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.screens.interface.shortcuts.steps import on_a_tab
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.reconstructions import UNTITLED, expect_open, titled
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION
 
 

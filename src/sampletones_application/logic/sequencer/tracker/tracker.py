@@ -1,6 +1,7 @@
-from typing import Callable, Dict, FrozenSet, List, Mapping, Optional, Set
+from typing import Callable, Dict, FrozenSet, List, Mapping, Optional, Set, Tuple
 
 from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.logic.sequencer.tracker.context import rows_after, rows_before
 from sampletones_application.view_model.sequencer.kind import (
     voice_kind,
 )
@@ -9,6 +10,7 @@ from sampletones_application.view_model.sequencer.settings import (
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.tracker import (
+    NO_REACH,
     SequencerCellViewModel,
     SequencerRowViewModel,
     SequencerTrackerViewModel,
@@ -17,34 +19,36 @@ from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.project.patterns.pattern import Pattern
+from sampletones_core.project.patterns.pitch import Note, RowPitch, Step, note_for_channel, shifted_pitch
 from sampletones_core.project.patterns.row import NoteCommand, Row
-from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.project.voices.voice import VoiceUnion, voice_channels, voice_reference
+from sampletones_core.project.voices.voice import VoiceUnion, voice_channels
 from sampletones_core.utils.display import (
     display_command,
     display_id,
-    display_note,
-    display_transpose,
+    display_pitch,
     display_volume,
 )
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 _EMPTY_CELL = SequencerCellViewModel(
     voice=display_id(None),
-    transpose=display_transpose(None),
+    transpose=display_pitch(None),
     volume=display_volume(None),
     kind=None,
+    pitch=None,
+    level=None,
+    command=None,
 )
 
 
 class SequencerTrackerLogic(CallbackMixin):
     """Builds the tracker grid and module-options view models from the project.
 
-    Holds the only piece of grid-local UI state, the visible order frame, and
-    translates raw panel events into :class:`ProjectController` mutations. The
+    Holds the grid-local UI state, the visible order frame and how far the grid reaches past it,
+    and translates raw panel events into :class:`ProjectController` mutations. The
     controller's change events are wired (by the coordinator) back to the push
     methods here, so a single mutation round-trips into a refreshed view.
 
@@ -56,6 +60,7 @@ class SequencerTrackerLogic(CallbackMixin):
     def __init__(self, project_controller: ProjectController) -> None:
         self._controller = project_controller
         self._frame_index: int = 0
+        self._reach: int = NO_REACH
 
         self.on_settings_changed: Optional[Callable[[SequencerSettingsViewModel], None]] = None
         self.on_tracker_changed: Optional[Callable[[SequencerTrackerViewModel], None]] = None
@@ -75,21 +80,46 @@ class SequencerTrackerLogic(CallbackMixin):
         )
 
     def build_grid(self) -> SequencerTrackerViewModel:
+        """The shown frame's rows, with as many rows of the song on each side as the grid reaches."""
         song = self._controller.project.song
         frame_count = song.order_length()
         frame_index = self._clamp_frame(frame_count)
-
-        patterns = self._frame_patterns()
-        carried: Dict[ChannelName, Optional[VoiceUnion]] = {channel: None for channel in ChannelName.items()}
-        rows = tuple(self._build_row(index, patterns, carried) for index in range(self.frame_row_count()))
         return SequencerTrackerViewModel(
             frame_index=frame_index,
             frame_count=frame_count,
-            rows=rows,
+            rows=self.frame_rows(frame_index),
+            lead=rows_before(frame_index, self._reach, self.frame_rows),
+            trail=rows_after(frame_index, frame_count, self._reach, self.frame_rows),
         )
 
+    def frame_rows(self, frame_index: int) -> Tuple[SequencerRowViewModel, ...]:
+        """The rows of one frame, each channel read in the terms of the voice it carries there.
+
+        The reading starts afresh at the frame's first row, so a row reads the same whether its own
+        frame is shown or it stands beside another.
+        """
+        patterns = self._frame_patterns(frame_index)
+        carried: Dict[ChannelName, Optional[VoiceUnion]] = {channel: None for channel in ChannelName.items()}
+        return tuple(self._build_row(index, patterns, carried) for index in range(self._row_count_at(frame_index)))
+
     def frame_row_count(self) -> int:
-        """Rows the current frame holds, the height a whole-frame edit spans.
+        """Rows the shown frame holds, the height a whole-frame edit spans."""
+        return self._row_count_at(self._frame_index)
+
+    def set_reach(self, rows: int) -> None:
+        """Has the grid carry ``rows`` rows of the song on each side of the frame.
+
+        The tracker centers the row it follows, so it asks for the room half its height takes,
+        and the grid is built again once that room changes.
+        """
+        if rows == self._reach:
+            return
+
+        self._reach = rows
+        self.push_tracker()
+
+    def _row_count_at(self, frame_index: int) -> int:
+        """Rows a frame holds.
 
         A frame is as tall as its longest pattern. Empty (None) slots contribute no
         pattern, so a frame whose channels are all empty falls back to
@@ -101,25 +131,25 @@ class SequencerTrackerLogic(CallbackMixin):
         if song.order_length() == 0:
             return 0
 
-        lengths = [pattern.length for pattern in self._frame_patterns().values()]
+        lengths = [pattern.length for pattern in self._frame_patterns(frame_index).values()]
         if lengths:
             return max(lengths)
 
         return song.rows_per_pattern
 
-    def _frame_patterns(self) -> Dict[ChannelName, Pattern]:
-        """The patterns the current frame's channels point at.
+    def _frame_patterns(self, frame_index: int) -> Dict[ChannelName, Pattern]:
+        """The patterns a frame's channels point at.
 
         A channel contributes an entry once its slot names a pattern the song holds,
         so the result covers exactly the channels carrying content at this frame.
         """
         song = self._controller.project.song
-        if self._frame_index >= song.order_length():
+        if frame_index >= song.order_length():
             return {}
 
         patterns: Dict[ChannelName, Pattern] = {}
         for channel in ChannelName.items():
-            index = song.order[self._frame_index].get(channel)
+            index = song.order[frame_index].get(channel)
             pattern = song.pattern(channel, index) if index is not None else None
             if pattern is not None:
                 patterns[channel] = pattern
@@ -173,14 +203,14 @@ class SequencerTrackerLogic(CallbackMixin):
         channels a sample plays on at the row, as :meth:`relevant_channels` reads them.
         """
         voice = subcolumn is SubColumn.VOICE
-        transpose = subcolumn is SubColumn.TRANSPOSE
+        pitch = subcolumn is SubColumn.TRANSPOSE
         volume = subcolumn is SubColumn.VOLUME
         if channel is not None:
             self.clear_subcolumn(
                 channel,
                 row_index,
                 voice=voice,
-                transpose=transpose,
+                pitch=pitch,
                 volume=volume,
             )
         elif voice:
@@ -188,7 +218,7 @@ class SequencerTrackerLogic(CallbackMixin):
         else:
             self.clear_sample_subcolumn(
                 row_index,
-                transpose=transpose,
+                pitch=pitch,
                 volume=volume,
             )
 
@@ -197,21 +227,23 @@ class SequencerTrackerLogic(CallbackMixin):
         row_index: int,
         channel: Optional[ChannelName],
         voice_id: Optional[str],
-        transpose: Optional[int],
+        pitch: Optional[RowPitch],
         volume: Optional[int],
     ) -> None:
-        """Writes the value a cell edit carries, keeping the rest of the cell as it stands.
+        """Writes the values a cell edit carries, keeping the rest of the cell as it stands.
 
-        An edit names one subcolumn, so a sample takes the write whenever one
-        arrives, and an offset lands on its own otherwise.
+        A voice is placed first, and the pitch and the volume reach the cell after it, so a pitch
+        typed with a marked voice lands on the channels the voice was just placed on: in the sample
+        column the sample spreads over its channels, then the pitch reaches them.
         """
         if voice_id is not None:
             self.place_note(row_index, channel, voice_id)
-        elif transpose is not None or volume is not None:
+
+        if pitch is not None or volume is not None:
             self.set_cell_subcolumn(
                 row_index,
                 channel,
-                transpose=transpose,
+                pitch=pitch,
                 volume=volume,
             )
 
@@ -263,20 +295,20 @@ class SequencerTrackerLogic(CallbackMixin):
         row_index: int,
         channel: Optional[ChannelName],
         *,
-        transpose: Optional[int] = None,
+        pitch: Optional[RowPitch] = None,
         volume: Optional[int] = None,
     ) -> None:
         if channel is None:
             self.set_sample_subcolumn(
                 row_index,
-                transpose=transpose,
+                pitch=pitch,
                 volume=volume,
             )
         else:
             self.set_row(
                 channel,
                 row_index,
-                transpose=transpose,
+                pitch=pitch,
                 volume=volume,
             )
 
@@ -286,7 +318,7 @@ class SequencerTrackerLogic(CallbackMixin):
         row_index: int,
         *,
         command: Optional[NoteCommand] = None,
-        transpose: Optional[int] = None,
+        pitch: Optional[RowPitch] = None,
         volume: Optional[int] = None,
     ) -> None:
         pattern_index = self._pattern_index_at_frame(channel)
@@ -301,7 +333,7 @@ class SequencerTrackerLogic(CallbackMixin):
             pattern_index,
             row_index,
             command=command,
-            transpose=transpose,
+            pitch=pitch,
             volume=volume,
         )
 
@@ -318,7 +350,7 @@ class SequencerTrackerLogic(CallbackMixin):
         row_index: int,
         *,
         voice: bool = False,
-        transpose: bool = False,
+        pitch: bool = False,
         volume: bool = False,
     ) -> None:
         pattern_index = self._pattern_index_at_frame(channel)
@@ -330,7 +362,7 @@ class SequencerTrackerLogic(CallbackMixin):
             pattern_index,
             row_index,
             voice=voice,
-            transpose=transpose,
+            pitch=pitch,
             volume=volume,
         )
 
@@ -343,7 +375,7 @@ class SequencerTrackerLogic(CallbackMixin):
         row_index: int,
         *,
         voice: bool = False,
-        transpose: bool = False,
+        pitch: bool = False,
         volume: bool = False,
     ) -> None:
         for channel in ChannelName.items():
@@ -351,7 +383,7 @@ class SequencerTrackerLogic(CallbackMixin):
                 channel,
                 row_index,
                 voice=voice,
-                transpose=transpose,
+                pitch=pitch,
                 volume=volume,
             )
 
@@ -366,7 +398,7 @@ class SequencerTrackerLogic(CallbackMixin):
         the remaining channels on that row are cleared so the row plays exactly that sample.
         An empty voice id wipes the whole row.
 
-        The column speaks for samples, which carry a slice per channel. A hand-written voice sounds
+        The column speaks for samples, which carry a slice per channel. An instrument sounds
         on whichever channel the reader names it in, so it is placed in a channel column and this
         one leaves the row as it stands.
         """
@@ -388,35 +420,6 @@ class SequencerTrackerLogic(CallbackMixin):
                 )
             else:
                 self.clear_row(channel, row_index)
-
-    def write_note(
-        self,
-        row_index: int,
-        channel: ChannelName,
-        pitch: int,
-    ) -> None:
-        """Writes the step that reaches ``pitch`` on the voice this channel is carrying.
-
-        A note key names the note the reader wants to hear; the row states it as the step from the
-        voice's own reference, which is the one number a pitch cell holds. A row carrying no voice
-        has nothing to measure the note against, so the press leaves it as it stands.
-
-        Args:
-            row_index: The row within the frame shown.
-            channel: The channel the note is typed into.
-            pitch: The note the key names, on the scale the channel reads.
-        """
-        voice = self.carried_voice(channel, row_index)
-        if voice is None:
-            return
-
-        self.write_cell(
-            row_index,
-            channel,
-            None,
-            pitch - voice_reference(voice, channel),
-            None,
-        )
 
     def carried_voice(
         self,
@@ -452,35 +455,48 @@ class SequencerTrackerLogic(CallbackMixin):
         self,
         row_index: int,
         *,
-        transpose: Optional[int] = None,
+        pitch: Optional[RowPitch] = None,
         volume: Optional[int] = None,
     ) -> None:
-        """Writes a transpose or a volume to the channels a sample plays on at the row.
+        """Writes a pitch or a volume to the channels a sample plays on at the row.
 
         A row placing a sample reaches that sample's whole span, and a row below it reaches
         the channels the sample is still playing on, as :meth:`relevant_channels` reads them.
-        A row where no sample plays takes nothing, and gains no pattern.
+        A row where no sample plays takes nothing, and gains no pattern. A note reaches each
+        channel as that channel names it, so the noise channel takes the period the pitch names.
         """
         for channel in self._subcolumn_generators(row_index):
             self.set_row(
                 channel,
                 row_index,
-                transpose=transpose,
+                pitch=self._channel_pitch(channel, pitch),
                 volume=volume,
             )
+
+    @staticmethod
+    def _channel_pitch(
+        channel: ChannelName,
+        pitch: Optional[RowPitch],
+    ) -> Optional[RowPitch]:
+        """The pitch one channel takes from the sample column: a note as the channel names it, a step as it stands."""
+        match pitch:
+            case Note():
+                return note_for_channel(channel, pitch.value)
+            case _:
+                return pitch
 
     def clear_sample_subcolumn(
         self,
         row_index: int,
         *,
-        transpose: bool = False,
+        pitch: bool = False,
         volume: bool = False,
     ) -> None:
         for channel in self._subcolumn_generators(row_index):
             self.clear_subcolumn(
                 channel,
                 row_index,
-                transpose=transpose,
+                pitch=pitch,
                 volume=volume,
             )
 
@@ -490,15 +506,15 @@ class SequencerTrackerLogic(CallbackMixin):
         row_index: int,
         delta: int,
     ) -> None:
-        """Shifts a channel cell's transpose by ``delta`` semitones.
+        """Shifts a channel cell's pitch by ``delta`` semitones, on the face the cell holds.
 
-        An unset transpose counts as zero, so the first nudge writes exactly
-        ``delta``; the controller clamps the result to the transpose range.
+        An unset pitch counts as a step of zero, so the first nudge writes exactly ``delta`` as a
+        step; a note moves to another note. The result is held within the range its face allows.
         """
         self.set_row(
             channel,
             row_index,
-            transpose=self._current_transpose(channel, row_index) + delta,
+            pitch=shifted_pitch(self._current_pitch(channel, row_index), delta, channel),
         )
 
     def adjust_volume(
@@ -534,16 +550,16 @@ class SequencerTrackerLogic(CallbackMixin):
 
         return pattern.rows[row_index]
 
-    def _current_transpose(
+    def _current_pitch(
         self,
         channel: ChannelName,
         row_index: int,
-    ) -> int:
+    ) -> RowPitch:
         row = self.row(channel, row_index)
-        if row is None or row.transpose is None:
-            return 0
+        if row is None or row.pitch is None:
+            return Step(value=0)
 
-        return row.transpose
+        return row.pitch
 
     def _current_volume(self, channel: ChannelName, row_index: int) -> int:
         row = self.row(channel, row_index)
@@ -557,6 +573,16 @@ class SequencerTrackerLogic(CallbackMixin):
         return self._frame_index
 
     def select_frame(self, frame_index: int) -> None:
+        """Shows a frame, building the grid only when the frame changes.
+
+        The grid follows every change to the song on its own, so the frame already shown stands as
+        built, and a followed song walking down its rows builds nothing. Whoever follows the frame
+        hears it either way.
+        """
+        if frame_index == self._frame_index:
+            self.call(self.on_frame_changed, frame_index)
+            return
+
         self._frame_index = frame_index
         self.push_tracker()
 
@@ -676,7 +702,7 @@ class SequencerTrackerLogic(CallbackMixin):
         """The channels spanned by the samples a row names.
 
         A sample contributes the channels its reconstruction covers, so the sample column reasons
-        about its whole span including channels whose cells stand empty. A hand-written instrument
+        about its whole span including channels whose cells stand empty. An instrument
         sounds on the one channel it is named in, so it contributes none and leaves the column
         speaking for samples alone. A row naming a voice the project no longer holds contributes
         the channel it sits on, which keeps that cell reachable while the reference stands.
@@ -721,7 +747,7 @@ class SequencerTrackerLogic(CallbackMixin):
                 row = pattern.rows[index]
                 rows[channel] = row
                 carried[channel] = self._carried_voice(row, carried[channel])
-                cells[channel] = self._build_cell(row, channel, carried[channel])
+                cells[channel] = self._build_cell(row)
             else:
                 rows[channel] = None
                 cells[channel] = _EMPTY_CELL
@@ -751,25 +777,23 @@ class SequencerTrackerLogic(CallbackMixin):
             case None:
                 return carried
 
-    def _build_cell(
-        self,
-        row: Row,
-        channel: ChannelName,
-        voice: Optional[VoiceUnion],
-    ) -> SequencerCellViewModel:
-        """One cell's three readings, the pitch stated in the terms its voice is written in.
+    def _build_cell(self, row: Row) -> SequencerCellViewModel:
+        """One cell's three readings, the pitch printed in the face it was written in.
 
-        A sample was converted at a pitch of its own, so its rows read as steps from it; an instrument
-        was written against a root the reader chose, so its rows read as the notes they sound.
+        A note reads as the note it names and a step as the step, whichever voice the row names,
+        so the grid shows what the reader typed.
         """
         return SequencerCellViewModel(
             voice=display_command(
                 self._controller.project.voices,
                 row.command,
             ),
-            transpose=self._display_pitch(row.transpose, channel, voice),
+            transpose=display_pitch(row.pitch),
             volume=display_volume(row.volume),
             kind=self._named_kind(row.command),
+            pitch=row.pitch,
+            level=row.volume,
+            command=row.command,
         )
 
     def _named_kind(self, command: Optional[NoteCommand]) -> Optional[VoiceKind]:
@@ -785,22 +809,6 @@ class SequencerTrackerLogic(CallbackMixin):
                 return voice_kind(voice) if voice is not None else None
             case _:
                 return None
-
-    @staticmethod
-    def _display_pitch(
-        transpose: Optional[int],
-        channel: ChannelName,
-        voice: Optional[VoiceUnion],
-    ) -> str:
-        match voice:
-            case Instrument():
-                return display_note(
-                    transpose,
-                    channel_name=channel,
-                    reference=voice_reference(voice, channel),
-                )
-            case _:
-                return display_transpose(transpose)
 
     def _clamp_frame(self, frame_count: int) -> int:
         if frame_count == 0:

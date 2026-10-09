@@ -35,7 +35,7 @@ class TestAStreamRestingThroughEveryFrame:
     def test_it_stores_no_frame(self) -> None:
         item = _created([_rest(), _rest()])
 
-        assert item.instructions == []
+        assert item.instructions == ()
         assert not item.sounds
 
     def test_it_keeps_the_reference_it_was_given(self) -> None:

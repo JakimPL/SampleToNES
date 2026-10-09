@@ -10,18 +10,31 @@ from sampletones_application.view_model.sequencer.voices import (
     SequencerVoicesViewModel,
     VoiceEntryViewModel,
     VoiceKind,
+    VoiceSelection,
 )
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.utils.display import display_id, display_volume
+from sampletones_core.project.patterns.pitch import Note, RowPitch
+from sampletones_core.utils.display import display_id, display_pitch, display_volume
 
 SAMPLE_INDEX = 0
 INSTRUMENT_INDEX = 1
 STORED_LABEL = display_id(None)
 STORED_VOLUME = display_volume(None)
 TYPED_VOLUME = 10
+TYPED_NOTE = Note(value=60)
+STORED_PITCH = display_pitch(None)
+MARKS = {
+    SAMPLE_INDEX: VoiceSelection(voice_id="lead-id", position=SAMPLE_INDEX, name="lead", kind=VoiceKind.SAMPLE),
+    INSTRUMENT_INDEX: VoiceSelection(
+        voice_id="pad-id",
+        position=INSTRUMENT_INDEX,
+        name="pad",
+        kind=VoiceKind.INSTRUMENT,
+    ),
+}
 
 Write = Tuple[int, Optional[ChannelName], Optional[str]]
-Offset = Tuple[int, Optional[ChannelName], Optional[int], Optional[int]]
+Offset = Tuple[int, Optional[ChannelName], Optional[RowPitch], Optional[int]]
 
 
 class Panel:
@@ -51,6 +64,7 @@ class Panel:
             ),
         )
         self.panel._rows_taking_offsets = frozenset()
+        self.panel.marked_voice = None
         self.writes: List[Write] = []
         self.offsets: List[Offset] = []
         self.panel.on_set_row = self._record
@@ -60,12 +74,27 @@ class Panel:
         row: int,
         channel: Optional[ChannelName],
         voice_id: Optional[str],
-        transpose: Optional[int],
+        pitch: Optional[RowPitch],
         volume: Optional[int],
     ) -> None:
         self.writes.append((row, channel, voice_id))
-        if transpose is not None or volume is not None:
-            self.offsets.append((row, channel, transpose, volume))
+        if pitch is not None or volume is not None:
+            self.offsets.append((row, channel, pitch, volume))
+
+    def mark(self, index: int) -> None:
+        """Marks the voice at ``index`` in the voices list, as a click on its row does."""
+        self.panel.marked_voice = lambda: MARKS[index]
+
+    def type_pitch(self, pitch: RowPitch, channel: Optional[ChannelName]) -> None:
+        self.panel._handle_edit_action(
+            EditAction(
+                row=0,
+                channel=channel,
+                sample_index=None,
+                pitch=pitch,
+                volume=None,
+            )
+        )
 
     def type_voice(self, index: int, channel: Optional[ChannelName]) -> None:
         self.panel._handle_edit_action(
@@ -73,7 +102,7 @@ class Panel:
                 row=0,
                 channel=channel,
                 sample_index=index,
-                transpose=None,
+                pitch=None,
                 volume=None,
             )
         )
@@ -84,7 +113,7 @@ class Panel:
                 row=0,
                 channel=channel,
                 sample_index=None,
-                transpose=None,
+                pitch=None,
                 volume=volume,
             )
         )
@@ -92,6 +121,10 @@ class Panel:
     def shown(self, channel: Optional[ChannelName]) -> str:
         """The label the cell cache holds, which is what the cell shows once the commit settles."""
         return self.panel._editable_cells.values.get((0, channel, SubColumn.VOICE), STORED_LABEL)
+
+    def shown_pitch(self, channel: Optional[ChannelName]) -> str:
+        """The pitch the cell cache holds, which is what the cell shows once the commit settles."""
+        return self.panel._editable_cells.values.get((0, channel, SubColumn.TRANSPOSE), STORED_PITCH)
 
     def shown_volume(self, channel: Optional[ChannelName]) -> str:
         """The volume the cell cache holds, which is what the cell shows once the commit settles."""
@@ -183,7 +216,7 @@ class TestWhatColorATypedVoiceTakes:
                 row=0,
                 channel=ChannelName.TRIANGLE,
                 sample_index=None,
-                transpose=None,
+                pitch=None,
                 volume=None,
                 note_off=True,
             )
@@ -221,3 +254,74 @@ class TestTypingAnOffsetInTheSampleColumn:
 
         assert panel.offsets == [(0, ChannelName.PULSE1, None, TYPED_VOLUME)]
         assert panel.shown_volume(ChannelName.PULSE1) == display_volume(TYPED_VOLUME)
+
+
+class TestTypingAPitchWithAMarkedVoice:
+    """A pitch typed while the voices list marks a voice places that voice too, where the column takes it."""
+
+    def test_a_marked_sample_lands_with_the_pitch_in_a_channel_column(self, panel: Panel) -> None:
+        panel.mark(SAMPLE_INDEX)
+
+        panel.type_pitch(TYPED_NOTE, ChannelName.PULSE1)
+
+        assert panel.writes == [(0, ChannelName.PULSE1, "lead-id")]
+        assert panel.offsets == [(0, ChannelName.PULSE1, TYPED_NOTE, None)]
+        assert panel.shown(ChannelName.PULSE1) == display_id(SAMPLE_INDEX)
+        assert panel.kind(ChannelName.PULSE1) is VoiceKind.SAMPLE
+        assert panel.shown_pitch(ChannelName.PULSE1) == display_pitch(TYPED_NOTE)
+
+    def test_a_marked_instrument_lands_with_the_pitch_in_a_channel_column(self, panel: Panel) -> None:
+        panel.mark(INSTRUMENT_INDEX)
+
+        panel.type_pitch(TYPED_NOTE, ChannelName.NOISE)
+
+        assert panel.writes == [(0, ChannelName.NOISE, "pad-id")]
+        assert panel.kind(ChannelName.NOISE) is VoiceKind.INSTRUMENT
+
+    def test_a_marked_sample_fills_the_sample_column_where_no_sample_plays(self, panel: Panel) -> None:
+        """The sample spreads over its channels first, so the pitch has channels to land on."""
+        panel.mark(SAMPLE_INDEX)
+
+        panel.type_pitch(TYPED_NOTE, None)
+
+        assert panel.writes == [(0, None, "lead-id")]
+        assert panel.offsets == [(0, None, TYPED_NOTE, None)]
+        assert panel.shown(None) == display_id(SAMPLE_INDEX)
+
+    def test_a_marked_instrument_writes_the_pitch_alone_in_the_sample_column(self, panel: Panel) -> None:
+        panel.panel._rows_taking_offsets = frozenset({0})
+        panel.mark(INSTRUMENT_INDEX)
+
+        panel.type_pitch(TYPED_NOTE, None)
+
+        assert panel.writes == [(0, None, None)]
+        assert panel.offsets == [(0, None, TYPED_NOTE, None)]
+        assert panel.shown(None) == STORED_LABEL
+
+    def test_a_marked_instrument_lands_nowhere_in_the_sample_column_without_a_sample(self, panel: Panel) -> None:
+        panel.mark(INSTRUMENT_INDEX)
+
+        panel.type_pitch(TYPED_NOTE, None)
+
+        assert panel.writes == []
+        assert panel.shown_pitch(None) == STORED_PITCH
+
+    def test_without_a_mark_the_pitch_goes_alone(self, panel: Panel) -> None:
+        panel.type_pitch(TYPED_NOTE, ChannelName.PULSE1)
+
+        assert panel.writes == [(0, ChannelName.PULSE1, None)]
+        assert panel.shown(ChannelName.PULSE1) == STORED_LABEL
+
+    def test_a_volume_leaves_the_mark_out(self, panel: Panel) -> None:
+        panel.mark(SAMPLE_INDEX)
+
+        panel.type_volume(TYPED_VOLUME, ChannelName.PULSE1)
+
+        assert panel.writes == [(0, ChannelName.PULSE1, None)]
+
+    def test_a_typed_number_names_its_own_voice_over_the_mark(self, panel: Panel) -> None:
+        panel.mark(SAMPLE_INDEX)
+
+        panel.type_voice(INSTRUMENT_INDEX, ChannelName.PULSE1)
+
+        assert panel.writes == [(0, ChannelName.PULSE1, "pad-id")]

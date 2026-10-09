@@ -28,8 +28,8 @@ def _project(*channels: ChannelName, loop_point: int | None = None) -> Tuple[Pro
     project = Project.create(title="Demo", rows_per_pattern=ROWS_PER_PATTERN)
     project.voices.append(instrument)
     for channel in channels:
-        pattern = project.song[channel].ensure_pattern(0, ROWS_PER_PATTERN)
-        pattern.rows[0] = Row(command=NoteOn(voice_id=instrument.id))
+        project.song[channel].ensure_pattern(0, ROWS_PER_PATTERN)
+        project.song[channel].set_row(0, 0, Row(command=NoteOn(voice_id=instrument.id)))
         project.song.set_order_entry(0, channel, 0)
 
     return project, instrument

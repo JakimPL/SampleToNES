@@ -3,15 +3,15 @@ from typing import Callable, Dict, List
 
 import pytest
 
+from automation.application.startup import Startup
+from automation.screen import Screen
+from automation.steps.project import leave_letting_the_project_go
+from automation.steps.reconstructions import expect_open
+from automation.vocabulary.playback import PLAY
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_core.constants.enums import GeneratorName
 from tests.screens.reconstructions.instruments.constants import NOTE_FRAMES, PIANO_C
 from tests.screens.reconstructions.instruments.steps import give_it_a_volume
-from tests.suite.screens.application.startup import Startup
-from tests.suite.screens.screen import Screen
-from tests.suite.screens.steps.project import leave_letting_the_project_go
-from tests.suite.screens.steps.reconstructions import expect_open
-from tests.suite.screens.vocabulary.playback import PLAY
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION, SONG, SONG_INSTRUMENT
 
 

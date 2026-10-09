@@ -25,13 +25,3 @@ def tracker_table_column(channel: Optional[ChannelName]) -> int:
         return SAMPLE_TABLE_COLUMN
 
     return _FIRST_CHANNEL_TABLE_COLUMN + ChannelName.items().index(channel)
-
-
-def tracker_table_row(row_index: int) -> int:
-    """Maps a pattern row to its DPG table row index.
-
-    The clickable header row occupies the table's first row, so a pattern row sits one
-    slot further down than its index. Every highlight keyed by table row goes through
-    here, keeping the cursor, hover, and playback cues on the row the user sees.
-    """
-    return row_index + HEADER_TABLE_ROWS

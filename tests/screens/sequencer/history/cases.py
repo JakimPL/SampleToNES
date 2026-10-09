@@ -2,10 +2,10 @@ import operator
 from functools import partial
 from typing import Callable, Final, Tuple
 
+from automation.screen import Screen
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.screens.sequencer.history.steps import pick, rename
-from tests.suite.screens.screen import Screen
 
 DUPLICATE: Final[str] = "sequencer.voices.label.context_duplicate"
 Gesture = Callable[[Screen, str], None]

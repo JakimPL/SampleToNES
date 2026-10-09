@@ -4,15 +4,13 @@ from typing import Final, List, Optional, Tuple
 import pytest
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.constants.general import MAX_PERIOD, MAX_PITCH, MIN_PLAYED_PITCH, NUM_PERIODS
+from sampletones_core.constants.general import MAX_PITCH, MIN_PLAYED_PITCH, NUM_PERIODS
 from sampletones_core.exporters.skipped import BuiltDocument, SkippedRow, SkipReason
 from sampletones_core.formats.famitracker.builder import build_module
 from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
 from sampletones_core.formats.famitracker.model.module import FamiTrackerModule
 from sampletones_core.formats.famitracker.model.pattern import RowCell
-from sampletones_core.formats.famitracker.module import module_to_ftm_bytes
 from sampletones_core.formats.famitracker.slides import slide_effect
-from sampletones_core.formats.famitracker.specification.channels import CHANNEL_TO_ID
 from sampletones_core.formats.famitracker.specification.patterns import (
     EMPTY_EFFECT,
     EMPTY_INSTRUMENT,
@@ -23,15 +21,14 @@ from sampletones_core.formats.famitracker.specification.patterns import (
     EffectId,
 )
 from sampletones_core.formats.famitracker.specification.sequences import NO_LOOP_POINT, SequenceKind
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.voices.sample import Sample
-from sampletones_core.timing.bounds import SONG_TICK_BOUNDS
-from sampletones_core.timing.song import SongTiming
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
-from tests.suite.famitracker import parse_ftm, played_notes
+from tests.suite.famitracker import module_cell, replayed_pitches
 from tests.suite.transposes import (
     contour_sample,
     flat_sample,
@@ -65,7 +62,6 @@ SUBMERGED_TRANSPOSE: Final[int] = -14
 SOARING_TRANSPOSE: Final[int] = 10
 NOISE_PERIOD: Final[int] = 3
 NOISE_TRANSPOSES: Final[Tuple[int, ...]] = (-5, 12, 40)
-PITCH_OFFSET: Final[int] = 24
 SHORT_ORDER: Final[Tuple[Optional[int], ...]] = (0, 1, 2)
 
 
@@ -75,13 +71,7 @@ def cell(
     row_number: int,
     channel: ChannelName = CHANNEL,
 ) -> Optional[RowCell]:
-    """The cell a pattern stores at a row, or ``None`` where the row is empty."""
-    channel_id = CHANNEL_TO_ID[channel]
-    for pattern in document.track.patterns:
-        if pattern.channel == channel_id and pattern.index == pattern_index:
-            return next((row for row in pattern.rows if row.row_number == row_number), None)
-
-    return None
+    return module_cell(document, channel, pattern_index, row_number)
 
 
 def slide_at(
@@ -131,13 +121,13 @@ class TestTheSlideATransposeRowWrites:
         assert slide_effect(LOWERED) == (int(EffectId.SLIDE_DOWN), 0xF0 | -LOWERED)
 
     def test_a_rise_slides_the_note_up(self, lead: Sample) -> None:
-        document = slid(lead, (0, note(lead)), (RAISED_ROW, Row(transpose=RAISED))).document
+        document = slid(lead, (0, note(lead)), (RAISED_ROW, Row(pitch=Step(value=RAISED)))).document
 
         assert slide_at(document, 0, RAISED_ROW) == semitones_up(RAISED)
 
     def test_the_row_leaves_the_note_and_the_instrument_alone(self, lead: Sample) -> None:
         """A note or an instrument cell retriggers the instrument, so the row writes neither."""
-        document = slid(lead, (0, note(lead)), (RAISED_ROW, Row(transpose=RAISED))).document
+        document = slid(lead, (0, note(lead)), (RAISED_ROW, Row(pitch=Step(value=RAISED)))).document
         row = cell(document, 0, RAISED_ROW)
 
         assert row is not None
@@ -147,14 +137,14 @@ class TestTheSlideATransposeRowWrites:
         document = slid(
             lead,
             (0, note(lead)),
-            (RAISED_ROW, Row(transpose=RAISED)),
-            (LOWERED_ROW, Row(transpose=LOWERED)),
+            (RAISED_ROW, Row(pitch=Step(value=RAISED))),
+            (LOWERED_ROW, Row(pitch=Step(value=LOWERED))),
         ).document
 
         assert slide_at(document, 0, LOWERED_ROW) == semitones_down(RAISED - LOWERED)
 
     def test_the_slide_counts_from_the_transpose_the_note_started_at(self, lead: Sample) -> None:
-        document = slid(lead, (0, note(lead, NOTE_TRANSPOSE)), (RAISED_ROW, Row(transpose=RAISED))).document
+        document = slid(lead, (0, note(lead, NOTE_TRANSPOSE)), (RAISED_ROW, Row(pitch=Step(value=RAISED)))).document
 
         assert slide_at(document, 0, RAISED_ROW) == semitones_down(NOTE_TRANSPOSE - RAISED)
 
@@ -162,9 +152,9 @@ class TestTheSlideATransposeRowWrites:
         document = slid(
             lead,
             (0, note(lead)),
-            (RAISED_ROW, Row(transpose=RAISED)),
+            (RAISED_ROW, Row(pitch=Step(value=RAISED))),
             (RESET_ROW, note(lead, RESTARTED_TRANSPOSE)),
-            (AFTER_RESET_ROW, Row(transpose=AFTER_RESET_TRANSPOSE)),
+            (AFTER_RESET_ROW, Row(pitch=Step(value=AFTER_RESET_TRANSPOSE))),
         ).document
 
         assert slide_at(document, 0, RESET_ROW) is None
@@ -174,8 +164,8 @@ class TestTheSlideATransposeRowWrites:
         document = slid(
             lead,
             (0, note(lead)),
-            (RAISED_ROW, Row(transpose=RAISED)),
-            (LOWERED_ROW, Row(transpose=RAISED)),
+            (RAISED_ROW, Row(pitch=Step(value=RAISED))),
+            (LOWERED_ROW, Row(pitch=Step(value=RAISED))),
         ).document
 
         assert slide_at(document, 0, LOWERED_ROW) is None
@@ -185,13 +175,13 @@ class TestTheSlideATransposeRowWrites:
         slides to C-0, the lowest pitch the song plays.
         """
         flat = flat_sample(CHANNEL, LOW_FLAT_PITCH, FLAT_FRAMES)
-        document = slid(flat, (0, note(flat)), (RAISED_ROW, Row(transpose=SUBMERGED_TRANSPOSE))).document
+        document = slid(flat, (0, note(flat)), (RAISED_ROW, Row(pitch=Step(value=SUBMERGED_TRANSPOSE)))).document
 
         assert slide_at(document, 0, RAISED_ROW) == semitones_down(LOW_FLAT_PITCH - MIN_PLAYED_PITCH)
 
     def test_a_transpose_above_the_range_slides_to_the_highest_pitch(self) -> None:
         high = flat_sample(CHANNEL, HIGH_PITCH, FLAT_FRAMES)
-        document = slid(high, (0, note(high)), (RAISED_ROW, Row(transpose=SOARING_TRANSPOSE))).document
+        document = slid(high, (0, note(high)), (RAISED_ROW, Row(pitch=Step(value=SOARING_TRANSPOSE)))).document
 
         assert slide_at(document, 0, RAISED_ROW) == semitones_up(MAX_PITCH - HIGH_PITCH)
 
@@ -202,7 +192,7 @@ class TestTheSlideATransposeRowWrites:
         project = one_channel_project(
             (lead,),
             CHANNEL,
-            {0: rows_with((LATE_NOTE_ROW, note(lead))), 1: rows_with((RAISED_ROW, Row(transpose=RAISED)))},
+            {0: rows_with((LATE_NOTE_ROW, note(lead))), 1: rows_with((RAISED_ROW, Row(pitch=Step(value=RAISED))))},
             [0, None, 1],
             settings=GROOVE_SETTINGS,
         )
@@ -217,7 +207,7 @@ class TestTheSlidesAModuleCannotCarry:
     """
 
     def test_a_row_moving_the_note_past_a_slide_is_reported(self, lead: Sample) -> None:
-        built = slid(lead, (0, note(lead)), (RAISED_ROW, Row(transpose=FAR_TRANSPOSE)))
+        built = slid(lead, (0, note(lead)), (RAISED_ROW, Row(pitch=Step(value=FAR_TRANSPOSE))))
 
         assert slide_at(built.document, 0, RAISED_ROW) is None
         assert built.skipped_rows == (
@@ -234,8 +224,8 @@ class TestTheSlidesAModuleCannotCarry:
         built = slid(
             lead,
             (0, note(lead)),
-            (RAISED_ROW, Row(transpose=FAR_TRANSPOSE)),
-            (LOWERED_ROW, Row(transpose=RAISED)),
+            (RAISED_ROW, Row(pitch=Step(value=FAR_TRANSPOSE))),
+            (LOWERED_ROW, Row(pitch=Step(value=RAISED))),
         )
 
         assert slide_at(built.document, 0, LOWERED_ROW) == semitones_up(RAISED)
@@ -249,7 +239,7 @@ class TestTheSlidesAModuleCannotCarry:
             CHANNEL,
             {
                 0: rows_with((0, note(lead))),
-                1: rows_with((RAISED_ROW, Row(transpose=RAISED))),
+                1: rows_with((RAISED_ROW, Row(pitch=Step(value=RAISED)))),
                 2: rows_with((0, note(lead, NOTE_TRANSPOSE))),
             },
             [0, 1, 2, 1],
@@ -277,7 +267,7 @@ class TestTheSlidesAModuleCannotCarry:
         project = one_channel_project(
             (drum,),
             ChannelName.NOISE,
-            {0: rows_with((0, note(drum)), (RAISED_ROW, Row(transpose=transpose)))},
+            {0: rows_with((0, note(drum)), (RAISED_ROW, Row(pitch=Step(value=transpose))))},
             [0],
             settings=UNIFORM_SETTINGS,
         )
@@ -298,29 +288,16 @@ class TestTheInstrumentsASlideReaches:
     """
 
     def test_the_arpeggio_of_an_instrument_a_slide_reaches_keeps_running(self, lead: Sample) -> None:
-        document = slid(lead, (0, note(lead)), (RAISED_ROW, Row(transpose=RAISED))).document
+        document = slid(lead, (0, note(lead)), (RAISED_ROW, Row(pitch=Step(value=RAISED)))).document
         arpeggio = instrument_of(document, 0).sequences[SequenceKind.ARPEGGIO]
 
         assert arpeggio.loop_point == len(arpeggio.items) - 1
 
     def test_an_instrument_no_slide_reaches_is_left_as_it_was(self, lead: Sample) -> None:
-        document = slid(lead, (0, note(lead)), (RAISED_ROW, Row(transpose=0))).document
+        document = slid(lead, (0, note(lead)), (RAISED_ROW, Row(pitch=Step(value=0)))).document
         arpeggio = instrument_of(document, 0).sequences[SequenceKind.ARPEGGIO]
 
         assert arpeggio.loop_point == NO_LOOP_POINT
-
-
-def replayed(document: FamiTrackerModule, project: Project, channel_name: ChannelName) -> List[Optional[int]]:
-    """What FamiTracker sounds on one channel each tick: the pitch, or on noise the period register."""
-    notes = played_notes(
-        parse_ftm(module_to_ftm_bytes(document)),
-        int(CHANNEL_TO_ID[channel_name]),
-        SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS),
-    )
-    if channel_name == ChannelName.NOISE:
-        return [None if value is None else MAX_PERIOD - value for value in notes]
-
-    return [None if value is None else value + PITCH_OFFSET for value in notes]
 
 
 class TestATransposedSongSoundsTheSongsPitch(BaseTestSuite):
@@ -355,13 +332,13 @@ class TestATransposedSongSoundsTheSongsPitch(BaseTestSuite):
             else contour_sample(test_case.channel, FRAMES)
         )
         patterns = {
-            0: rows_with((0, note(voice)), (RAISED_ROW, Row(transpose=RAISED))),
+            0: rows_with((0, note(voice)), (RAISED_ROW, Row(pitch=Step(value=RAISED)))),
             1: rows_with(
-                (2, Row(transpose=LOWERED)),
+                (2, Row(pitch=Step(value=LOWERED))),
                 (RESET_ROW, note(voice)),
-                (AFTER_RESET_ROW, Row(transpose=AFTER_RESET_TRANSPOSE)),
+                (AFTER_RESET_ROW, Row(pitch=Step(value=AFTER_RESET_TRANSPOSE))),
             ),
-            2: rows_with((RAISED_ROW, Row(transpose=LOWERED)), (LOWERED_ROW, Row(transpose=0))),
+            2: rows_with((RAISED_ROW, Row(pitch=Step(value=LOWERED))), (LOWERED_ROW, Row(pitch=Step(value=0)))),
         }
         project = one_channel_project(
             (voice,),
@@ -372,7 +349,7 @@ class TestATransposedSongSoundsTheSongsPitch(BaseTestSuite):
         )
 
         sounded = sounded_pitches(project, test_case.channel)
-        played = replayed(build_module(project).document, project, test_case.channel)
+        played = replayed_pitches(build_module(project).document, project, test_case.channel)
 
         assert len(played) == len(sounded)
         assert [tick for tick, pitch in enumerate(sounded) if pitch is not None and played[tick] != pitch] == []

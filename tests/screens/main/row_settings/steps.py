@@ -1,13 +1,13 @@
 from pathlib import Path
 from typing import Dict, Tuple
 
+from automation.screen import Screen
+from automation.steps.main import home_path
+from automation.worlds.home import HomeFile
 from sampletones_core.constants.enums import ChannelName
 from tests.screens.main.row_settings.constants import FREQUENCY, PAIR, PAIR_TAKES, PLAYED_SECONDS
-from tests.suite.screens.screen import Screen
+from tests.suite.screens.seeds.constants import KICK, SNARE
 from tests.suite.screens.seeds.recordings import Recording
-from tests.suite.screens.steps.main import home_path
-from tests.suite.screens.vocabulary.recordings import KICK, SNARE
-from tests.suite.screens.worlds.home import HomeFile
 
 
 def recordings() -> Tuple[HomeFile, ...]:
