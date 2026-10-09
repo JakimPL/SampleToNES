@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
@@ -44,7 +45,7 @@ from sampletones_shared.constants.project import (
 
 
 class GUIProjectPropertiesWindow(GUIDialogWindow):
-    """Modal form to view and edit the project's title, author, comment, and metre.
+    """Modal form to view and edit the project's title, author, comment, and meter.
 
     Each appearance renders the view model handed to :meth:`open`, and the edited
     values reach the ``on_commit`` hook on confirmation, so the owner applies
@@ -105,8 +106,7 @@ class GUIProjectPropertiesWindow(GUIDialogWindow):
 
         super().__init__(
             tag=TAG_SETTINGS_PROPERTIES_WINDOW,
-            width=layout.window.width,
-            height=layout.window.height,
+            geometry=layout.window,
             key_router=key_router,
             shortcut_source=shortcut_source,
         )
@@ -254,15 +254,18 @@ class GUIProjectPropertiesWindow(GUIDialogWindow):
         )
 
     def _commit(self) -> None:
-        self.call(
-            self.on_commit,
-            dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_TITLE)[:MAX_PROJECT_TITLE_LENGTH],
-            dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_AUTHOR)[:MAX_PROJECT_AUTHOR_LENGTH],
-            dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_COMMENT)[:MAX_PROJECT_COMMENT_LENGTH],
-            int(clamp_widget_value(TAG_SETTINGS_PROPERTIES_INPUT_FIRST_HIGHLIGHT)),
-            int(clamp_widget_value(TAG_SETTINGS_PROPERTIES_INPUT_SECOND_HIGHLIGHT)),
+        """Reports the edited form once the window has left the screen, reading the fields first."""
+        self._leave_then(
+            partial(
+                self.call,
+                self.on_commit,
+                dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_TITLE)[:MAX_PROJECT_TITLE_LENGTH],
+                dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_AUTHOR)[:MAX_PROJECT_AUTHOR_LENGTH],
+                dpg.get_value(TAG_SETTINGS_PROPERTIES_INPUT_COMMENT)[:MAX_PROJECT_COMMENT_LENGTH],
+                int(clamp_widget_value(TAG_SETTINGS_PROPERTIES_INPUT_FIRST_HIGHLIGHT)),
+                int(clamp_widget_value(TAG_SETTINGS_PROPERTIES_INPUT_SECOND_HIGHLIGHT)),
+            )
         )
-        self.hide()
 
     @staticmethod
     def _label(

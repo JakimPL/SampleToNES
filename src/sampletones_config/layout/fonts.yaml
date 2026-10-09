@@ -1,15 +1,18 @@
 scale: 1
 sans:
+  tiny: 14
   small: 22
   medium: 23
   large: 25
   title: 34
 mono:
+  tiny: 12
   small: 19
   medium: 22
   large: 26
   title: 30
 icon:
+  tiny: 13
   small: 20
   medium: 27
   large: 33

@@ -1,0 +1,9 @@
+name: node_library_outdated
+tag: instructions.library.theme.outdated
+
+components:
+  - item_type: TreeNode
+    entries:
+      - type: color
+        key: Text
+        value: .library_outdated

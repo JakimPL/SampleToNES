@@ -1356,6 +1356,15 @@ wheels = [
 ]
 
 [[package]]
+name = "py65"
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/15/de/8ceb654608a24ae247ac44443b369f70183d9a39d94e682ddb3c9767b330/py65-1.2.tar.gz", hash = "sha256:e1cb213823fc6ea8aecb219939943144b09439e5c14b3406cb5ca825d5875b93", size = 83481, upload-time = "2024-04-12T20:10:19.351Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f6/3d/7171f8401bb3cf058d233af314d3e314a348488bd22b2143b3591566a172/py65-1.2.0-py2.py3-none-any.whl", hash = "sha256:8e51f149647f2c2b44e5eb54350057771ccaef97f5f3d593fa3737e44c1ce4b7", size = 60518, upload-time = "2024-04-12T20:10:15.198Z" },
+]
+
+[[package]]
 name = "pyaudio"
 version = "0.2.14"
 source = { registry = "https://pypi.org/simple" }
@@ -1656,6 +1665,18 @@ wheels = [
 ]
 
 [[package]]
+name = "python-xlib"
+version = "0.33"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/86/f5/8c0653e5bb54e0cbdfe27bf32d41f27bc4e12faa8742778c17f2a71be2c0/python-xlib-0.33.tar.gz", hash = "sha256:55af7906a2c75ce6cb280a584776080602444f75815a7aff4d287bb2d7018b32", size = 269068, upload-time = "2022-12-25T18:53:00.824Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fc/b8/ff33610932e0ee81ae7f1269c890f697d56ff74b9f5b2ee5d9b7fa2c5355/python_xlib-0.33-py2.py3-none-any.whl", hash = "sha256:c3534038d42e0df2f1392a1b30a15a4ff5fdc2b86cfa94f072bf11b10a164398", size = 182185, upload-time = "2022-12-25T18:52:58.662Z" },
+]
+
+[[package]]
 name = "pytokens"
 version = "0.4.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1682,6 +1703,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/52/a0/07907b6ff512674d9b201859f7d212298c44933633c946703a20c25e9d81/pytokens-0.4.1-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:967cf6e3fd4adf7de8fc73cd3043754ae79c36475c1c11d514fc72cf5490094a", size = 306698, upload-time = "2026-01-30T01:03:29.653Z" },
     { url = "https://files.pythonhosted.org/packages/39/2a/cbbf9250020a4a8dd53ba83a46c097b69e5eb49dd14e708f496f548c6612/pytokens-0.4.1-cp314-cp314t-win_amd64.whl", hash = "sha256:584c80c24b078eec1e227079d56dc22ff755e0ba8654d8383b2c549107528918", size = 116287, upload-time = "2026-01-30T01:03:30.912Z" },
     { url = "https://files.pythonhosted.org/packages/c6/78/397db326746f0a342855b81216ae1f0a32965deccfd7c830a2dbc66d2483/pytokens-0.4.1-py3-none-any.whl", hash = "sha256:26cef14744a8385f35d0e095dc8b3a7583f6c953c2e3d269c7f82484bf5ad2de", size = 13729, upload-time = "2026-01-30T01:03:45.029Z" },
+]
+
+[[package]]
+name = "pyvirtualdisplay"
+version = "3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/86/9f/23e5a82987c26d225139948a224a93318d7a7c8b166d4dbe4de7426dc4e4/PyVirtualDisplay-3.0.tar.gz", hash = "sha256:09755bc3ceb6eb725fb07eca5425f43f2358d3bf08e00d2a9b792a1aedd16159", size = 18560, upload-time = "2022-02-13T07:57:05.783Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/90/eb/c3b8deb661cb3846db63288c99bbb39f217b7807fc8acb2fd058db41e2e6/PyVirtualDisplay-3.0-py3-none-any.whl", hash = "sha256:40d4b8dfe4b8de8552e28eb367647f311f88a130bf837fe910e7f180d5477f0e", size = 15258, upload-time = "2022-02-13T07:57:04.051Z" },
 ]
 
 [[package]]
@@ -1788,7 +1818,7 @@ wheels = [
 
 [[package]]
 name = "sampletones"
-version = "0.3.1"
+version = "0.3.2"
 source = { editable = "." }
 dependencies = [
     { name = "anytree" },
@@ -1798,6 +1828,7 @@ dependencies = [
     { name = "msgpack" },
     { name = "numpy" },
     { name = "pebble" },
+    { name = "py65" },
     { name = "pyaudio" },
     { name = "pydantic" },
     { name = "pytaskbar", marker = "sys_platform == 'win32' or (extra == 'extra-11-sampletones-gpu' and extra == 'extra-11-sampletones-gpu-cuda11')" },
@@ -1828,6 +1859,9 @@ gpu-cuda11 = [
 assets = [
     { name = "pillow" },
 ]
+calibration = [
+    { name = "zimtohrli" },
+]
 dev = [
     { name = "black" },
     { name = "isort" },
@@ -1839,6 +1873,9 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-xdist" },
+    { name = "python-xlib" },
+    { name = "pyvirtualdisplay" },
+    { name = "types-python-xlib" },
     { name = "types-pyyaml" },
 ]
 
@@ -1856,6 +1893,7 @@ requires-dist = [
     { name = "nvidia-cuda-nvrtc-cu11", marker = "sys_platform == 'linux' and extra == 'gpu-cuda11'" },
     { name = "nvidia-cuda-runtime-cu11", marker = "sys_platform == 'linux' and extra == 'gpu-cuda11'" },
     { name = "pebble", specifier = ">=5.0,<6" },
+    { name = "py65", specifier = ">=1.2,<2" },
     { name = "pyaudio", specifier = ">=0.2.14,<0.3" },
     { name = "pydantic", specifier = ">=2.9,<3" },
     { name = "pyinstaller", marker = "extra == 'build'", specifier = ">=6.21,<7" },
@@ -1872,6 +1910,7 @@ provides-extras = ["build", "gpu", "gpu-cuda11"]
 
 [package.metadata.requires-dev]
 assets = [{ name = "pillow", specifier = ">=11,<13" }]
+calibration = [{ name = "zimtohrli", specifier = ">=0.2.1,<0.3" }]
 dev = [
     { name = "black", specifier = "==26.5.1" },
     { name = "isort", specifier = "==8.0.1" },
@@ -1883,6 +1922,9 @@ dev = [
     { name = "pytest", specifier = "==9.1.1" },
     { name = "pytest-cov", specifier = "==7.1.0" },
     { name = "pytest-xdist", specifier = "==3.8.0" },
+    { name = "python-xlib", specifier = "==0.33" },
+    { name = "pyvirtualdisplay", specifier = "==3.0" },
+    { name = "types-python-xlib", specifier = "==0.33.0.20260724" },
     { name = "types-pyyaml", specifier = "==6.0.12.20260518" },
 ]
 
@@ -2004,6 +2046,15 @@ wheels = [
 ]
 
 [[package]]
+name = "six"
+version = "1.17.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031, upload-time = "2024-12-04T17:35:28.174Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
+]
+
+[[package]]
 name = "soundfile"
 version = "0.13.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2108,6 +2159,15 @@ wheels = [
 ]
 
 [[package]]
+name = "types-python-xlib"
+version = "0.33.0.20260724"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0a/a3/5edce1508c62748b37d103e682abe4933184998a302a45e6e17e4a9510d1/types_python_xlib-0.33.0.20260724.tar.gz", hash = "sha256:81999c1d390f8fde0113286c0c45441c37fd404c03aa67c06997ab929dbab177", size = 54664, upload-time = "2026-07-24T04:59:01.494Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2c/a4/635ae88bae98d313c44adb8c36c970a3c19094541cb8b5c65f5d9d37cd57/types_python_xlib-0.33.0.20260724-py3-none-any.whl", hash = "sha256:1d47c3d7c783c5890ad255054c8a37aa766a6d9b7e3c12f1841ea3b1721375d7", size = 67523, upload-time = "2026-07-24T04:59:00.43Z" },
+]
+
+[[package]]
 name = "types-pyyaml"
 version = "6.0.12.20260518"
 source = { registry = "https://pypi.org/simple" }
@@ -2159,4 +2219,35 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/15/ba/1f6e8c957e4932be060dcdc482d339c12e0216351478add3645cdaa53c05/virtualenv-21.3.3.tar.gz", hash = "sha256:f5bda277e553b1c2b3c1a8debfc30496e1288cc93ce6b7b71b3280047e317328", size = 7613784, upload-time = "2026-05-13T18:01:30.19Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f4/34/a9dbe051de88a63eb7408ea66630bac38e72f7f6077d4be58737106860d9/virtualenv-21.3.3-py3-none-any.whl", hash = "sha256:7d5987d8369e098e41406efb780a3d4ca79280097293899e351a6407ee153ab3", size = 7594554, upload-time = "2026-05-13T18:01:27.815Z" },
+]
+
+[[package]]
+name = "zimtohrli"
+version = "0.2.1.post1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8d/91/da58ac8f4bf82dda1261e9b9f04983bd8cef4327fea67d68c01cf702d76d/zimtohrli-0.2.1.post1.tar.gz", hash = "sha256:0463fa5eb8614f46408b463a7f2a3595a2bd699a8b0ae48c0751ac2b37d6095b", size = 21518, upload-time = "2025-09-30T08:12:26.818Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8b/2d/31c2c6d043873e6a8b14ca546220a1aeda061375e897855410de5aecbe8f/zimtohrli-0.2.1.post1-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:63ed6ce7d49b2215987161df9d512c43d98d9cf2e5edd5ad48994adab0073c65", size = 28273, upload-time = "2025-09-30T08:12:00.718Z" },
+    { url = "https://files.pythonhosted.org/packages/00/4d/7c91c2dedd94f66b415e4487f1b9d1488aaffe1cb3a8252606a492edad42/zimtohrli-0.2.1.post1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a9a384d4d66525082e3fb8471f19501cb954a0fd13dc8dcc629b4f793f7c5ff1", size = 161899, upload-time = "2025-09-30T08:12:01.853Z" },
+    { url = "https://files.pythonhosted.org/packages/22/a6/639f364dcbfdf35f0e9d734f69ae62bb098f0ed4a56ee110b237f126dd3d/zimtohrli-0.2.1.post1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:0d2f4fd76015f254601afaa20d64762ce7c5ca6ee70c07649b97a2fd46165d77", size = 1190952, upload-time = "2025-09-30T08:12:03.251Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/c1/ad8562e9d8171fed7e96d1259f09b17784044d37af2be7fd2de98adc02cd/zimtohrli-0.2.1.post1-cp312-cp312-win32.whl", hash = "sha256:736b889938a561ff7f50f441a199d0181d3c8e56c10b36f17b16c52a6445ee43", size = 28070, upload-time = "2025-09-30T08:12:04.473Z" },
+    { url = "https://files.pythonhosted.org/packages/2f/ae/bf4ed2d43e8fe33fdcaa9debbf98529bc1862d03ee66bcf3bd4a16bab95f/zimtohrli-0.2.1.post1-cp312-cp312-win_amd64.whl", hash = "sha256:9946d3f5ab2c6e57248ae4012d014c31d1812efb7f349b1a218355cf60970be8", size = 32527, upload-time = "2025-09-30T08:12:05.548Z" },
+    { url = "https://files.pythonhosted.org/packages/f2/62/380f40e530bd8112e30d78fab52e19bb47e342c7bfc0fdae08d2024f4389/zimtohrli-0.2.1.post1-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:cac384b9a8268577df0c8f60b35a71e5de7be49f490f83733b52f6eb51941b91", size = 28276, upload-time = "2025-09-30T08:12:06.611Z" },
+    { url = "https://files.pythonhosted.org/packages/1a/64/169441e6be2b1981df321f539684bac2b7d3af1bded312ad4c4bec725a1f/zimtohrli-0.2.1.post1-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:be6fbb52bc5967970a0dd5159b32812c9dbf7e8d6c9ef85b1b05afc0cf1db05b", size = 161846, upload-time = "2025-09-30T08:12:08Z" },
+    { url = "https://files.pythonhosted.org/packages/56/c1/d3424134b7d683d446a1ee65a8d00fb0b9968bbdffddef573ebc70b699f8/zimtohrli-0.2.1.post1-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:ce472c22698aea34f3b16743afb1c02c32d2c6539729861f44f2e82124e45163", size = 1190999, upload-time = "2025-09-30T08:12:09.672Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/fd/2b2ae939c0ff84bff7ccb5fd51ef37b51c1e40e35dd9a708455d6140bc6a/zimtohrli-0.2.1.post1-cp313-cp313-win32.whl", hash = "sha256:9352ce9732e929e0f981301ed457bdbd70668008df949ddf3265785f71ef11fc", size = 28071, upload-time = "2025-09-30T08:12:11.056Z" },
+    { url = "https://files.pythonhosted.org/packages/f0/5f/59751aecd76f171a9bf7f9a6625c6cac39a1973230251149a25705ad2c85/zimtohrli-0.2.1.post1-cp313-cp313-win_amd64.whl", hash = "sha256:8a9d5c64f3176aff909113728cfcd524dc81cb0dbee0c363abec8b1f220b7073", size = 32527, upload-time = "2025-09-30T08:12:12.309Z" },
+    { url = "https://files.pythonhosted.org/packages/06/76/5d6a2940729154c36a55edf6815ac8a416ef6b061754c537b959653c14ee/zimtohrli-0.2.1.post1-cp314-cp314-macosx_10_13_x86_64.whl", hash = "sha256:612440ab80e841788adcf6874404a17a4bed4e59e257a8f4ed5212fb948f946a", size = 28269, upload-time = "2025-09-30T08:12:13.692Z" },
+    { url = "https://files.pythonhosted.org/packages/06/c2/41f683611c3e7c041bfe78d3636024296e2e330437b49bd7c0d63630892f/zimtohrli-0.2.1.post1-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:241c09c20b3c0f76f0503c2dbcb5e489fd7b2c1cc3866e05ae46c2953d93786b", size = 161936, upload-time = "2025-09-30T08:12:14.777Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/12/2dd3bdb4307dd05515e791e4f67bac8349bc91c08cd3e9baab58dcfa7cac/zimtohrli-0.2.1.post1-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:d16924660bcfe6c570ad147fdaa82e5787ce289510e11b5943918b2f447f7caa", size = 1191112, upload-time = "2025-09-30T08:12:16.188Z" },
+    { url = "https://files.pythonhosted.org/packages/13/04/2417c40ab44b77c238fcbc360718da605e1e9e3424a1d2d1bc0c735ef0d5/zimtohrli-0.2.1.post1-cp314-cp314-win32.whl", hash = "sha256:67b654efaf3865639bde41a90819f39da12fd441b79f526196fd78150782aaa7", size = 28735, upload-time = "2025-09-30T08:12:17.864Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/4c/21b8aacde85637d07b3534b31fa9f0584f4dadf364a348d313228570731f/zimtohrli-0.2.1.post1-cp314-cp314-win_amd64.whl", hash = "sha256:08f4bc952cef7681da11e28ab3b01006129082a03393fae2a0fc6de2332dda31", size = 33079, upload-time = "2025-09-30T08:12:18.947Z" },
+    { url = "https://files.pythonhosted.org/packages/57/11/6e8ffe92575511455a652a90c335db567a09702c780651151b68cdc0f859/zimtohrli-0.2.1.post1-cp314-cp314t-macosx_10_13_x86_64.whl", hash = "sha256:5fd4336b70cedc8f8b19b69e6f1331a1258f1dc3d6b1bd14ef138d18c777ce0c", size = 28397, upload-time = "2025-09-30T08:12:20.085Z" },
+    { url = "https://files.pythonhosted.org/packages/66/1c/88e61b9461521a62d9cbcc1bc54feb8a9eacb1f8c7b41d459a69f5a0851b/zimtohrli-0.2.1.post1-cp314-cp314t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:341a6c618f9390877a7b2005b16dff128708315b402ae2df4ad044b04949ad8a", size = 162517, upload-time = "2025-09-30T08:12:21.159Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/16/7329479a9dfbe0452ed285fdfea9c6bd94d5856ade05809b0888c62c2944/zimtohrli-0.2.1.post1-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:0fe5d4974a19a96536e78d3dcd5c0ed506c9ab288d30f85d5bd44466301715be", size = 1191666, upload-time = "2025-09-30T08:12:22.539Z" },
+    { url = "https://files.pythonhosted.org/packages/82/08/874263294b1e2cc72cf3e235597e02af405153119e2d5433ea172c83f745/zimtohrli-0.2.1.post1-cp314-cp314t-win32.whl", hash = "sha256:5ad1790ee4c2a3a9220d43c5b06ee6123feda3b079929b77591c10730713c8b1", size = 28860, upload-time = "2025-09-30T08:12:24.101Z" },
+    { url = "https://files.pythonhosted.org/packages/0d/2f/de75945f3083ddfa66d165bc55b28308799e104e954ee43508bb1043c67a/zimtohrli-0.2.1.post1-cp314-cp314t-win_amd64.whl", hash = "sha256:43ce58509922ccdcbd527e664bc2ddddc85fb239abbda1d0b964e874736c9afc", size = 33211, upload-time = "2025-09-30T08:12:25.417Z" },
 ]

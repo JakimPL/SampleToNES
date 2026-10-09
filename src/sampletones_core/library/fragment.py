@@ -20,7 +20,6 @@ from sampletones_core.instructions import InstructionData, InstructionT
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.exceptions import InstructionTypeMismatchError
 from sampletones_shared.types.data import (
-    Initials,
     ReducedObject,
     SerializedData,
 )
@@ -74,25 +73,28 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
         return instruction
 
     def get_fragment(self, shift: int, config: Config, window: Window) -> Fragment:
-        windowed_audio = self.sample.get_windowed_fragment(shift, window)
-        audio = window.get_frame_from_window(windowed_audio)
         return Fragment(
-            audio=audio,
+            audio=self.sample.get_frame(shift, window),
             feature=self.feature,
-            windowed_audio=windowed_audio,
             config=config,
         )
 
-    def get(
+    def frames_share_shape(
         self,
-        generator: Generator[InstructionT, Any],
-        config: Config,
-        window: Window,
-        initials: Initials = None,
-    ) -> Fragment:
-        generator.set_timer(self.instruction)
-        shift = generator.timer.calculate_offset(initials)
-        return self.get_fragment(shift, config, window)
+        *,
+        frame_length: int,
+        sample_rate: int,
+    ) -> bool:
+        """Whether every frame this entry plays repeats one waveform shape at some phase.
+
+        A note repeats one period of its waveform. Noise repeats one shape while the register's
+        whole cycle, `sample_rate / frequency` samples, fits inside a frame; a longer cycle shows each
+        frame a different stretch of the sequence.
+        """
+        if self.generator_class != GeneratorClassName.NOISE_GENERATOR:
+            return True
+
+        return self.frequency * frame_length >= sample_rate
 
     @property
     def data(self) -> np.ndarray:

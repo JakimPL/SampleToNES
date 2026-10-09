@@ -1,10 +1,15 @@
 common:
   tick: "▍"
+  swatch: "■"
   favorite: "★"
   expanded: "▾"
   collapsed: "▸"
   chevron_left: "◂"
   chevron_right: "▸"
+
+voices:
+  sample: "≈"
+  instrument: "∿"
 
 headers:
   waveform: "∿"
@@ -18,8 +23,9 @@ headers:
   details: "✎"
   parameters: "▦"
   source: "♪"
+  stems: "☰"
   instruments: "♬"
-  samples: "♫"
+  voices: "♫"
   tracker: "▦"
   order: "≣"
   history: "↺"

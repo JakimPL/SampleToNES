@@ -40,6 +40,10 @@ class ShortcutManager:
         """Names the call an action makes when its combination is pressed or its menu item chosen."""
         self._callbacks[shortcut_id] = callback
 
+    def shortcut(self, shortcut_id: ShortcutId) -> Shortcut:
+        """The binding an action answers to under the scheme in place, rebinds included."""
+        return self._source.shortcut(shortcut_id)
+
     def add_menu_item(
         self,
         shortcut_id: ShortcutId,
@@ -115,8 +119,8 @@ class ShortcutManager:
         """Fires the shortcut matching the event, yielding its key to a focused field that acts on
         it unless the shortcut is field-transparent.
 
-        A field keeps only the keys it uses, so a text field holds plain Space and its editing keys
-        while Ctrl+Space and Escape still reach playback and Stop from the same field.
+        A field keeps only the keys it uses, so a text field holds plain Space, Escape and its
+        editing keys while Ctrl+Space still reaches playback from the same field.
         """
         for shortcut, callback in self._bindings_by_key.get(event.key, ()):
             if not shortcut.matches(event):

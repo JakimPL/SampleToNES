@@ -3,6 +3,7 @@ from enum import StrEnum, auto
 
 class TextType(StrEnum):
     LABEL = "label"
+    LETTER = "letter"
     TITLE = "title"
     MESSAGE = "message"
     TEMPLATE = "template"
@@ -62,6 +63,7 @@ class Panel(StrEnum):
     TRACEBACK = auto()
     CONTEXT = auto()
     STATUS = auto()
+    STEMS = auto()
     GRAPH = auto()
     PITCH = auto()
 
@@ -73,7 +75,7 @@ class Panel(StrEnum):
 
     # Main tab
     CONFIG = auto()
-    RECONSTRUCTOR = auto()
+    SOURCE = auto()
     CONVERTER = auto()
     ADVANCED = auto()
 
@@ -84,6 +86,7 @@ class Panel(StrEnum):
     TRACKER = auto()
     ORDER = auto()
     MODULE = auto()
+    VOICES = auto()
     INSTRUMENTS = auto()
     HISTORY = auto()
 
@@ -97,3 +100,5 @@ class Panel(StrEnum):
     KEYBINDINGS = auto()
     PROPERTIES = auto()
     RENDER = auto()
+    EXPORT = auto()
+    NSF = auto()

@@ -1,8 +1,8 @@
 row: 30
 sample: 80
 divider: 4
-generator: 80
-instrument:
+channel: 80
+voice:
+  kind: 44
   id: 40
   name: 1
-  loop: 40

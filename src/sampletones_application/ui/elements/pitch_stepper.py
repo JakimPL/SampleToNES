@@ -23,7 +23,7 @@ from sampletones_application.ui.elements.plus_minus_buttons import GUIPlusMinusB
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.utils.gui.dpg import dpg_delete_item, dpg_set_value
+from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_delete_item, dpg_set_value
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.palette.colors.base import BaseColor
@@ -36,7 +36,7 @@ class PitchStepperStyle:
     """The styling a pitch stepper draws itself with, narrowed from the general layout.
 
     A stepper needs only its own dimensions, the plus/minus button dimensions it embeds, and
-    the colour of its read-only value readout. Assembling this at the composition root lets a
+    the color of its read-only value readout. Assembling this at the composition root lets a
     panel that builds steppers receive just these three fields, mirroring the
     :meth:`TreeColors.create` narrowing.
     """
@@ -116,6 +116,10 @@ class GUIPitchStepper(CallbackMixin):
         """Seeds the displayed value, clamping it into range and rendering it silently."""
         self._value = self._kind.clamp(value)
         self._render()
+
+    def set_shown(self, shown: bool) -> None:
+        """Shows or hides the stepper, label and buttons together, which is the whole of it."""
+        dpg_configure_item(self._table_tag, show=shown)
 
     def _build(self) -> None:
         self._clear_existing_items()

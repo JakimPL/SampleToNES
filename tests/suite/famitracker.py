@@ -1,8 +1,14 @@
 import struct
-from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from dataclasses import dataclass, field
+from typing import Dict, Final, List, Optional, Tuple
 
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.general import MAX_PERIOD, MIN_PLAYED_PITCH
+from sampletones_core.formats.famitracker.model.module import FamiTrackerModule
+from sampletones_core.formats.famitracker.model.pattern import RowCell
+from sampletones_core.formats.famitracker.module import module_to_ftm_bytes
 from sampletones_core.formats.famitracker.specification.blocks import BLOCK_NAME_LENGTH
+from sampletones_core.formats.famitracker.specification.channels import CHANNEL_TO_ID
 from sampletones_core.formats.famitracker.specification.file import (
     FTM_END_MARKER,
     FTM_MAGIC,
@@ -11,9 +17,178 @@ from sampletones_core.formats.famitracker.specification.instruments import (
     DPCM_KEY_ASSIGNMENTS,
     DPCM_KEY_BYTES,
 )
+from sampletones_core.formats.famitracker.specification.patterns import NOTE_RANGE, PITCH_OCTAVE_OFFSET, NoteValue
 from sampletones_core.formats.famitracker.specification.sequences import (
     SEQUENCE_COUNT_2A03,
 )
+from sampletones_core.project.project import Project
+from sampletones_core.timing.bounds import SONG_TICK_BOUNDS
+from sampletones_core.timing.song import SongTiming
+
+FAMITRACKER_OPENING_VOLUME: Final[int] = 15
+FAMITRACKER_EMPTY_VOLUME: Final[int] = 0x10
+FAMITRACKER_EMPTY_INSTRUMENT: Final[int] = 0x40
+FAMITRACKER_FIRST_NOTE: Final[int] = 1
+FAMITRACKER_LAST_NOTE: Final[int] = 12
+FAMITRACKER_HALT: Final[int] = 14
+FAMITRACKER_NOTE_RANGE: Final[int] = 12
+FAMITRACKER_NOTE_COUNT: Final[int] = 96
+FAMITRACKER_NOISE_CHANNEL: Final[int] = 3
+FAMITRACKER_NOISE_MASK: Final[int] = 0x0F
+FAMITRACKER_SLIDE_UP: Final[int] = 20
+FAMITRACKER_SLIDE_DOWN: Final[int] = 21
+FAMITRACKER_SLIDE_SEMITONES_MASK: Final[int] = 0x0F
+FAMITRACKER_ARPEGGIO: Final[int] = 1
+FAMITRACKER_NO_LOOP: Final[int] = -1
+
+
+def column_volume(carried: int, stored: int) -> int:
+    """The level a channel plays at once a row's volume cell is read, as FamiTracker reads it.
+
+    A stored level below the empty value replaces the level the channel carries, and the empty value
+    leaves it alone. A channel opens at the full level. The triangle sounds while this level is above
+    zero and its instrument's volume is too. Read from ``CChannelHandler::ResetChannel`` and
+    ``CChannelHandler::HandleNoteData`` in ``ChannelHandler.cpp`` and ``CTriangleChan::RefreshChannel`` in
+    ``Channels2A03.cpp`` of 0CC-FamiTracker 0.3.15.3.
+
+    Args:
+        carried: The level the channel carries into the row.
+        stored: The row's stored volume cell.
+
+    Returns:
+        int: The level the channel plays the row at.
+    """
+    if stored < FAMITRACKER_EMPTY_VOLUME:
+        return stored
+
+    return carried
+
+
+@dataclass
+class _ArpeggioRun:
+    """An instrument's arpeggio sequence as the channel steps through it, one item per tick."""
+
+    items: List[int]
+    loop_point: int
+    pointer: int = field(default=0)
+    running: bool = field(default=True)
+
+    def step(self) -> int:
+        """The item this tick reads, the sequence moving on after it and halting past its end without a loop."""
+        item = self.items[self.pointer]
+        self.pointer += 1
+        if self.pointer >= len(self.items):
+            if self.loop_point == FAMITRACKER_NO_LOOP:
+                self.running = False
+            else:
+                self.pointer = self.loop_point
+
+        return item
+
+
+@dataclass
+class _ChannelReplay:
+    """What one channel carries from row to row while the module plays."""
+
+    noise: bool
+    note: Optional[int] = None
+    sounded: Optional[int] = None
+    instrument: int = field(default=FAMITRACKER_EMPTY_INSTRUMENT)
+    arpeggio: Optional[_ArpeggioRun] = None
+
+    def read(self, row: "ParsedRow", arpeggios: Dict[int, Optional[_ArpeggioRun]]) -> None:
+        """Moves the channel onto one row: its slides, then its note, which triggers the instrument.
+
+        Read from ``CChannelHandler::HandleNoteData`` and ``CChannelHandler::SetupSlide`` in
+        ``ChannelHandler.cpp`` and ``CNoiseChan::HandleNote`` in ``Channels2A03.cpp`` of 0CC-FamiTracker
+        0.3.15.3. A slide moves the note by its semitones at once, and a halt silences the channel.
+        """
+        for effect, parameter in row.effects:
+            if self.note is None:
+                continue
+            if effect == FAMITRACKER_SLIDE_UP:
+                self.note += parameter & FAMITRACKER_SLIDE_SEMITONES_MASK
+            elif effect == FAMITRACKER_SLIDE_DOWN:
+                self.note -= parameter & FAMITRACKER_SLIDE_SEMITONES_MASK
+
+        if row.note == FAMITRACKER_HALT:
+            self.note = None
+        elif FAMITRACKER_FIRST_NOTE <= row.note <= FAMITRACKER_LAST_NOTE:
+            value = row.octave * FAMITRACKER_NOTE_RANGE + row.note - FAMITRACKER_FIRST_NOTE
+            self.note = value & FAMITRACKER_NOISE_MASK if self.noise else value
+            self.sounded = self._resolved(self.note)
+            if row.instrument != FAMITRACKER_EMPTY_INSTRUMENT:
+                self.instrument = row.instrument
+
+            template = arpeggios.get(self.instrument)
+            self.arpeggio = None if template is None else _ArpeggioRun(template.items, template.loop_point)
+
+    def tick(self) -> Optional[int]:
+        """The note the channel sounds on one tick.
+
+        While the arpeggio runs it reloads the period from the note moved by its item every tick;
+        once it halts, or where the instrument has none, the period stays where it was. Read from
+        ``CSeqInstHandler::ProcessSequence`` and ``CSeqInstHandler::UpdateInstrument`` in
+        ``SeqInstHandler.cpp`` of 0CC-FamiTracker 0.3.15.3.
+        """
+        if self.note is None:
+            return None
+
+        if self.arpeggio is not None and self.arpeggio.running:
+            self.sounded = self._resolved(self.note + self.arpeggio.step())
+
+        return self.sounded
+
+    def _resolved(self, note: int) -> int:
+        """The note a period is read for: the low four bits on noise, the note table's range elsewhere."""
+        if self.noise:
+            return note & FAMITRACKER_NOISE_MASK
+
+        return min(max(note, 0), FAMITRACKER_NOTE_COUNT - 1)
+
+
+def played_notes(
+    module: "ParsedModule",
+    channel_id: int,
+    timing: SongTiming,
+) -> List[Optional[int]]:
+    """The note one channel sounds on each tick, the order played once through as the tracker reads it.
+
+    The song's timing is given, so the replay follows the rows of a song whose timing it compares
+    against. The note counts semitones from C-0 on the tonal channels and is the period on noise.
+
+    Args:
+        module: The module as it was written.
+        channel_id: The channel whose notes are read.
+        timing: How many ticks every row of the song lasts.
+
+    Returns:
+        List[Optional[int]]: One note per tick, and ``None`` where the channel holds no note.
+    """
+    sequences = {(sequence.sequence_type, sequence.index): sequence for sequence in module.sequences}
+    arpeggios: Dict[int, Optional[_ArpeggioRun]] = {}
+    for instrument in module.instruments:
+        enabled, index = instrument.sequence_refs[FAMITRACKER_ARPEGGIO]
+        arpeggio = sequences[(FAMITRACKER_ARPEGGIO, index)] if enabled else None
+        arpeggios[instrument.index] = None if arpeggio is None else _ArpeggioRun(arpeggio.items, arpeggio.loop_point)
+
+    patterns = {
+        pattern.index: {row.row_number: row for row in pattern.rows}
+        for pattern in module.patterns
+        if pattern.channel == channel_id
+    }
+    replay = _ChannelReplay(noise=channel_id == FAMITRACKER_NOISE_CHANNEL)
+    notes: List[Optional[int]] = []
+    for frame_index, frame in enumerate(module.frames.order):
+        rows = patterns.get(frame[channel_id], {})
+        for row_number in range(module.frames.pattern_length):
+            row = rows.get(row_number)
+            if row is not None:
+                replay.read(row, arpeggios)
+
+            notes.extend(replay.tick() for _ in range(timing.row_ticks(frame_index, row_number)))
+
+    return notes
 
 
 class _Cursor:
@@ -294,7 +469,7 @@ def _parse_patterns(
             octave = cursor.read_int8()
             instrument = cursor.read_int8()
             volume = cursor.read_int8()
-            effects = [(cursor.read_int8(), cursor.read_int8()) for _ in range(effect_columns_by_channel[channel])]
+            effects = [(cursor.read_int8(), cursor.read_uint8()) for _ in range(effect_columns_by_channel[channel])]
             rows.append(
                 ParsedRow(
                     row_number=row_number,
@@ -358,3 +533,40 @@ def parse_ftm(data: bytes) -> ParsedModule:
 
 
 EXPECTED_SEQUENCE_COUNT = SEQUENCE_COUNT_2A03
+
+
+def module_cell(
+    document: FamiTrackerModule,
+    channel_name: ChannelName,
+    pattern_index: int,
+    row_number: int,
+) -> Optional[RowCell]:
+    """The cell a module's pattern stores at a row, or ``None`` where the row is empty."""
+    channel_id = CHANNEL_TO_ID[channel_name]
+    for pattern in document.track.patterns:
+        if pattern.channel == channel_id and pattern.index == pattern_index:
+            return next((row for row in pattern.rows if row.row_number == row_number), None)
+
+    return None
+
+
+def cell_pitch(cell: RowCell) -> int:
+    """The pitch a pattern cell's note and octave name."""
+    return (cell.octave + PITCH_OCTAVE_OFFSET) * NOTE_RANGE + cell.note - int(NoteValue.C)
+
+
+def replayed_pitches(
+    document: FamiTrackerModule,
+    project: Project,
+    channel_name: ChannelName,
+) -> List[Optional[int]]:
+    """What FamiTracker sounds on one channel each tick: the pitch, or on noise the period register."""
+    notes = played_notes(
+        parse_ftm(module_to_ftm_bytes(document)),
+        int(CHANNEL_TO_ID[channel_name]),
+        SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS),
+    )
+    if channel_name == ChannelName.NOISE:
+        return [None if value is None else MAX_PERIOD - value for value in notes]
+
+    return [None if value is None else value + MIN_PLAYED_PITCH for value in notes]

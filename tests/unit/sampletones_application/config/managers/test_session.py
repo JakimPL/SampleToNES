@@ -111,10 +111,6 @@ class TestSessionManagerPaths:
         session.set_config_path(tmp_path / "config.json")
         assert isinstance(session.get_config_path(), Path)
 
-    def test_set_and_get_library_path(self, session: SessionManager, tmp_path: Path) -> None:
-        session.set_library_path(tmp_path / "lib.nlib")
-        assert isinstance(session.get_library_path(), Path)
-
     def test_set_and_get_instrument_path(self, session: SessionManager, tmp_path: Path) -> None:
         session.set_instrument_path(tmp_path / "instr.json")
         assert isinstance(session.get_instrument_path(), Path)

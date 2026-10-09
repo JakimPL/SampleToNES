@@ -1,0 +1,116 @@
+from typing import Dict, List
+
+import numpy as np
+import pytest
+
+from sampletones_core.audio.mixing import mix
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.generators.render import render_channels
+from sampletones_core.instructions import InstructionUnion
+from sampletones_core.project.voices.sample import Sample
+from sampletones_player.builder import song_from_reconstruction
+from sampletones_player.compression.scheme import CompressionScheme
+from tests.integration.nsf.console.instructions import (
+    DividerReading,
+    instructions_from_trace,
+    sounded_approximation,
+)
+from tests.integration.nsf.console.session import captured_trace
+from tests.integration.nsf.header import sample_information
+
+ChannelInstructions = Dict[ChannelName, List[InstructionUnion]]
+
+
+def played_by_console(sample: Sample) -> ChannelInstructions:
+    """The per-tick instructions the console sounds, read back out of the registers it wrote."""
+    song = song_from_reconstruction(sample.reconstruction, loop_tick=None, scheme=CompressionScheme.SEARCH)
+    trace = captured_trace(song, sample_information(sample.name))
+    return instructions_from_trace(trace, DividerReading.from_tuning(sample.reconstruction.config.tuning))
+
+
+@pytest.fixture(scope="module")
+def played(instrument_catalog: Dict[str, Sample]) -> Dict[str, ChannelInstructions]:
+    """What the console sounds for every sample in the catalog, together covering all four channels."""
+    return {name: played_by_console(sample) for name, sample in instrument_catalog.items()}
+
+
+@pytest.fixture(scope="module")
+def rendered(
+    played: Dict[str, ChannelInstructions],
+    instrument_catalog: Dict[str, Sample],
+) -> Dict[str, np.ndarray]:
+    """The waveform the console's instructions sound as, rendered on the reconstruction's own engine."""
+    return {
+        name: mix(list(render_channels(played[name], sample.reconstruction.config).values()))
+        for name, sample in instrument_catalog.items()
+    }
+
+
+class TestTheConsoleSoundsTheReconstruction:
+    """What the driver puts on the APU, decoded back into the terms the reconstruction speaks.
+
+    A divider reads back as the pitch lying nearest it and a detune, so both sides are stated by
+    the divider each frame sounds — see :class:`DividerReading`.
+    """
+
+    def test_every_played_channel_sounds_its_own_instructions(
+        self,
+        played: Dict[str, ChannelInstructions],
+        instrument_catalog: Dict[str, Sample],
+    ) -> None:
+        for name, sample in instrument_catalog.items():
+            reading = DividerReading.from_tuning(sample.reconstruction.config.tuning)
+            for channel, instructions in sample.reconstruction.instructions.items():
+                sounded = played[name][channel][: len(instructions)]
+                assert [reading.sounded(instruction) for instruction in sounded] == [
+                    reading.sounded(instruction) for instruction in instructions
+                ]
+
+    def test_a_channel_the_reconstruction_leaves_out_rests_throughout(
+        self,
+        played: Dict[str, ChannelInstructions],
+        instrument_catalog: Dict[str, Sample],
+    ) -> None:
+        for name, sample in instrument_catalog.items():
+            silent = set(ChannelName.items()) - set(sample.reconstruction.instructions)
+            for channel in silent:
+                assert not any(instruction.on for instruction in played[name][channel])
+
+    def test_the_catalog_sounds_all_four_channels(self, played: Dict[str, ChannelInstructions]) -> None:
+        sounded = {
+            channel
+            for instructions in played.values()
+            for channel, stream in instructions.items()
+            if any(instruction.on for instruction in stream)
+        }
+        assert sounded == set(ChannelName.items())
+
+    def test_every_run_ends_with_every_channel_silent(self, played: Dict[str, ChannelInstructions]) -> None:
+        for instructions in played.values():
+            assert not any(stream[-1].on for stream in instructions.values())
+
+
+class TestTheConsoleRendersTheReconstructionsAudio:
+    """The captured trace, sounded through the very generators the reconstruction was built on.
+
+    Both sides render on the reconstruction's own engine, so the console is held against the
+    reconstruction's waveform itself — see :func:`sounded_approximation`.
+    """
+
+    def test_the_console_reproduces_the_reconstructions_waveform(
+        self,
+        rendered: Dict[str, np.ndarray],
+        instrument_catalog: Dict[str, Sample],
+    ) -> None:
+        for name, sample in instrument_catalog.items():
+            approximation = sounded_approximation(sample.reconstruction)
+            assert np.array_equal(rendered[name][: len(approximation)], approximation)
+
+    def test_the_audio_past_the_reconstruction_is_silent(
+        self,
+        rendered: Dict[str, np.ndarray],
+        instrument_catalog: Dict[str, Sample],
+    ) -> None:
+        for name, sample in instrument_catalog.items():
+            approximation = sounded_approximation(sample.reconstruction)
+            assert not np.any(rendered[name][len(approximation) :])

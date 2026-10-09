@@ -4,7 +4,9 @@ from dataclasses import dataclass
 
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.layout.config import LayoutConfig
+from sampletones_application.layout.general.colors.channel import ChannelColors
 from sampletones_application.layout.general.colors.feature import FeatureColors
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.general.inputs import InputsLayout
 from sampletones_application.layout.general.plus_minus_buttons import PlusMinusButtonsLayout
 from sampletones_application.layout.tabs.sequencer import SequencerLayout
@@ -33,6 +35,8 @@ class SequencerTabParameters:
     inputs: InputsLayout
     plus_minus: PlusMinusButtonsLayout
     feature_colors: FeatureColors
+    channel_colors: ChannelColors
+    stem_colors: StemColors
     tree_colors: TreeColors
     muted_color: BaseColor
     scheduling: SchedulingBehavior
@@ -50,6 +54,8 @@ class SequencerTabParameters:
             inputs=general.inputs,
             plus_minus=general.plus_minus_buttons,
             feature_colors=general.colors.features,
+            channel_colors=general.colors.channels,
+            stem_colors=general.colors.stems,
             tree_colors=TreeColors.create(
                 general.colors,
                 accent=general.colors.headers.reconstruction,

@@ -9,6 +9,7 @@ bindings:
   ProjectProperties: {combination: "Alt+P"}
   ExportProjectFamiTracker: {combination: "Ctrl+M"}
   ExportProjectBitphase: {combination: "Ctrl+B"}
+  ExportProjectNSF: {combination: ~}
   RenderSong: {combination: "Ctrl+Shift+E"}
   CloseProject: {combination: "Ctrl+W"}
   Exit: {combination: "Alt+F4"}
@@ -29,9 +30,15 @@ bindings:
   ExportReconstructionWav: {combination: "Ctrl+E"}
   ExportInstrumentsFamiTracker: {combination: "Ctrl+I"}
   ExportInstrumentsBitphasePreset: {combination: ~}
+  ExportInstrumentsNSF: {combination: ~}
   AddReconstructionToSequencer: {combination: ~}
   OpenReconstructionInExplorer: {combination: ~}
   LocateOriginalAudio: {combination: ~}
+
+  # voice
+  NewInstrument: {combination: ~}
+  AddSampleFromFile: {combination: ~}
+  ImportInstrument: {combination: ~}
 
   # playback
   Play: {combination: "Space"}
@@ -43,10 +50,10 @@ bindings:
   FollowPatterns: {combination: "Ctrl+Shift+F"}
   FollowOff: {combination: "Ctrl+Alt+F"}
   ToggleLoopSong: {combination: "Ctrl+L"}
-  ToggleChannelPulse1: {combination: "1"}
-  ToggleChannelPulse2: {combination: "2"}
-  ToggleChannelTriangle: {combination: "3"}
-  ToggleChannelNoise: {combination: "4"}
+  ToggleChannelPulse1: {combination: "1", aliases: ["Ctrl+1"]}
+  ToggleChannelPulse2: {combination: "2", aliases: ["Ctrl+2"]}
+  ToggleChannelTriangle: {combination: "3", aliases: ["Ctrl+3"]}
+  ToggleChannelNoise: {combination: "4", aliases: ["Ctrl+4"]}
   UnmuteAllChannels: {combination: ~}
 
   # view
@@ -64,6 +71,9 @@ bindings:
   SelectTabReconstructions: {combination: "F2", field_transparent: true}
   SelectTabSequencer: {combination: "F3", field_transparent: true}
   SelectTabInstructions: {combination: "F4", field_transparent: true}
+
+  # sources
+  SourcesRemoveSource: {combination: "Del"}
 
   # order table
   OrderPreviousPosition: {combination: "Left"}
@@ -133,14 +143,14 @@ bindings:
   TrackerCancelEntry: {combination: "Esc"}
   TrackerPlayFromRow: {combination: "Ctrl+Shift+Space"}
 
-  # samples
-  SamplesRenameSample: {combination: "F2"}
-  SamplesRemoveSample: {combination: "Del"}
-  SamplesMoveSampleUp: {combination: "Alt+Up"}
-  SamplesMoveSampleDown: {combination: "Alt+Down"}
-  SamplesMoveSampleToTop: {combination: "Alt+Home"}
-  SamplesMoveSampleToBottom: {combination: "Alt+End"}
-  SamplesCancelRename: {combination: "Esc"}
+  # voices
+  VoicesRenameVoice: {combination: "F2"}
+  VoicesRemoveVoice: {combination: "Del"}
+  VoicesMoveVoiceUp: {combination: "Alt+Up"}
+  VoicesMoveVoiceDown: {combination: "Alt+Down"}
+  VoicesMoveVoiceToTop: {combination: "Alt+Home"}
+  VoicesMoveVoiceToBottom: {combination: "Alt+End"}
+  VoicesCancelRename: {combination: "Esc"}
 
   # dialogs
   DialogNextControl: {combination: "Tab"}

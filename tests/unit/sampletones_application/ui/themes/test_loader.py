@@ -5,9 +5,14 @@ import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.paths import PALETTES_DIRECTORY, THEME_DIRECTORY
-from sampletones_application.tags.general import TAG_GLOBAL_THEME_DEFAULT
+from sampletones_application.tags.general import (
+    TAG_GLOBAL_THEME_DANGER_BUTTON,
+    TAG_GLOBAL_THEME_DEFAULT,
+)
+from sampletones_application.ui.themes.dpg_constants import EVERY_ITEM_TYPE
 from sampletones_application.ui.themes.loader import ThemeLoader
 from sampletones_application.ui.themes.spec import ThemeSpec
+from sampletones_application.ui.themes.style import ThemeParameter
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.palette import Palette
@@ -64,7 +69,7 @@ class TestEffectiveParent:
 
 class TestLoadedInheritance:
     """The real theme set: every theme resolves to the base plus its own overrides,
-    so a bound item theme keeps the base's colours instead of dropping to DearPyGui
+    so a bound item theme keeps the base's colors instead of dropping to DearPyGui
     defaults for anything it omits.
     """
 
@@ -108,6 +113,28 @@ class TestLoadedInheritance:
         finally:
             dpg.destroy_context()
 
+    def test_the_danger_button_states_its_own_disabled_look(self, themes: Dict[str, Theme]) -> None:
+        """A button held back reads as held back.
+
+        Every theme is completed for both states, so one stating only the tone it wears while it can
+        be pressed would wear that same tone once it is held back and read as a button that simply
+        does nothing. The danger button states the grayed look itself, which is what the stems list
+        relies on to show that its last row stays.
+        """
+        dpg.create_context()
+        try:
+            danger = themes[TAG_GLOBAL_THEME_DANGER_BUTTON]
+            danger.create()
+
+            pressable = danger.get_color(dpg.mvButton, dpg.mvThemeCol_Button)
+            held_back = danger.get_color(dpg.mvButton, dpg.mvThemeCol_Button, enabled_state=False)
+
+            assert pressable is not None
+            assert held_back is not None
+            assert held_back != pressable
+        finally:
+            dpg.destroy_context()
+
     def test_the_tracker_theme_stands_the_pattern_on_one_even_ground(self, themes: Dict[str, Theme]) -> None:
         """The tracker gives both stripes the same shade, leaving the row background free to
         carry the beat and bar grouping that tells the pattern's rows apart.
@@ -124,6 +151,47 @@ class TestLoadedInheritance:
             assert row == base.get_color(dpg.mvTable, dpg.mvThemeCol_TableRowBg)
         finally:
             dpg.destroy_context()
+
+
+class TestComponentOrder:
+    """A theme lays its ground before it paints on it.
+
+    DearPyGui fills an item from a theme's components in the order they were created, so the last
+    one covering a color is the one the item wears. A component naming every item type is the
+    ground a theme stands on; one naming a single type states what that type is meant to look like,
+    and it only reaches the item if it comes after the ground.
+    """
+
+    @pytest.fixture
+    def themes(self) -> Dict[str, Theme]:
+        source = PaletteSource(PaletteCatalog.load(PALETTES_DIRECTORY).default)
+        return {theme.tag: theme for theme in ThemeLoader(THEME_DIRECTORY, source).load_all()}
+
+    def test_a_component_naming_every_type_comes_before_the_ones_naming_a_type(
+        self,
+        themes: Dict[str, Theme],
+    ) -> None:
+        for theme in themes.values():
+            grounds = [
+                index for index, component in enumerate(theme.components) if component.item_type == EVERY_ITEM_TYPE
+            ]
+            specifics = [
+                index for index, component in enumerate(theme.components) if component.item_type != EVERY_ITEM_TYPE
+            ]
+            assert not grounds or not specifics or max(grounds) < min(specifics), theme.tag
+
+    def test_the_danger_button_paints_its_disabled_look_over_the_ground(
+        self,
+        themes: Dict[str, Theme],
+    ) -> None:
+        """The mirror completes the ground for both states, so the button has to paint after it."""
+        danger = themes[TAG_GLOBAL_THEME_DANGER_BUTTON]
+        held_back = ThemeParameter(item_type=dpg.mvButton, enabled_state=False)
+        ground = ThemeParameter(item_type=EVERY_ITEM_TYPE, enabled_state=False)
+
+        components = list(danger.components)
+
+        assert components.index(ground) < components.index(held_back)
 
 
 class TestDisabledStateMirroring:

@@ -3,11 +3,15 @@ from pathlib import Path
 import pytest
 
 from sampletones_application.logic.sequencer.channels import SequencerChannelsLogic
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.formats.famitracker.export import write_ftm
 from sampletones_core.formats.famitracker.specification.channels import ChannelId
 from sampletones_core.formats.famitracker.specification.file import FTM_VERSION
-from sampletones_core.formats.famitracker.specification.sequences import SequenceKind
+from sampletones_core.formats.famitracker.specification.sequences import (
+    NO_LOOP_POINT,
+    SequenceKind,
+)
 from sampletones_core.project.project import Project
 from tests.suite.famitracker import ParsedModule, parse_ftm
 
@@ -50,6 +54,21 @@ class TestFtmPipeline:
         ]
         assert any(any(item > 0 for item in sequence.items) for sequence in volume_sequences)
 
+    def test_every_written_instrument_releases_its_note(self, parsed_module: ParsedModule) -> None:
+        """A halted volume sequence ends at silence, which is what stops the note it sounds.
+
+        FamiTracker holds a halted sequence's last item for as long as a row keeps the note
+        sounding, so an instrument whose volume ended audible would sound to the end of the song.
+        """
+        halting = [
+            sequence
+            for sequence in parsed_module.sequences
+            if sequence.sequence_type == int(SequenceKind.VOLUME) and sequence.loop_point == NO_LOOP_POINT
+        ]
+
+        assert halting
+        assert all(sequence.items[-1] == SILENT_VOLUME for sequence in halting)
+
 
 class TestSilencedChannelsReachTheModuleWhole:
     """A silenced channel belongs to the listening session, so the module still carries it.
@@ -65,8 +84,8 @@ class TestSilencedChannelsReachTheModuleWhole:
         module_path: Path,
     ) -> None:
         channels = SequencerChannelsLogic()
-        channels.solo(GeneratorName.TRIANGLE)
-        assert channels.active_channels == frozenset({GeneratorName.TRIANGLE})
+        channels.solo(ChannelName.TRIANGLE)
+        assert channels.active_channels == frozenset({ChannelName.TRIANGLE})
 
         write_ftm(module_path, integration_project)
 

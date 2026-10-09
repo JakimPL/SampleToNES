@@ -1,0 +1,51 @@
+from typing import Dict, List, Sequence
+
+from sampletones_core.constants.algorithm import RESTING_STEM_ID
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.reconstructions.reconstructor.decoder.base import ChannelLattice, Lattices, Streams
+from sampletones_core.reconstructions.reconstructor.matching import Column
+from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
+
+
+class TrackAssignment:
+    """
+    Gathers a recording's frame assignments into what the rest of the reconstruction reads.
+
+    Two records grow side by side, both in frame order: the lattice each channel offers the
+    decoder, and the stem that owns each of the channel's frames. Keeping them parallel is
+    what lets a stem selection name the frames it sounds in.
+    """
+
+    def __init__(self, channel_names: Sequence[ChannelName]) -> None:
+        self.lattices: Lattices = {channel_name: [] for channel_name in channel_names}
+        self.stem_ids: Dict[ChannelName, List[int]] = {channel_name: [] for channel_name in channel_names}
+
+    def add(self, frame_assignment: StemFrameAssignment) -> None:
+        """Appends one frame: every channel in play gains its column and the stem that took it."""
+        for choice in frame_assignment.choices:
+            self._append(choice.channel_name, choice.stem_id, choice.column)
+
+        for rest in frame_assignment.rests:
+            self._append(rest.channel_name, RESTING_STEM_ID, rest.column)
+
+    def release_silent(self, streams: Streams) -> None:
+        """Gives every frame a decoded stream plays silent to the resting stem.
+
+        A stem owns a channel's frame to sound its recording there, so a frame the decoder settled
+        on an off instruction holds no stem's sound. Releasing it keeps the resting stem id and
+        the silent instruction naming the same frames, and a channel decoded silent throughout
+        reads as resting.
+
+        Args:
+            streams: The decoded streams of the channels in play.
+        """
+        for channel_name, stream in streams.items():
+            stem_ids = self.stem_ids[channel_name]
+            for frame, candidate in enumerate(stream):
+                if not candidate.instruction.on:
+                    stem_ids[frame] = RESTING_STEM_ID
+
+    def _append(self, channel_name: ChannelName, stem_id: int, column: Column) -> None:
+        lattice: ChannelLattice = self.lattices[channel_name]
+        lattice.append(column)
+        self.stem_ids[channel_name].append(stem_id)

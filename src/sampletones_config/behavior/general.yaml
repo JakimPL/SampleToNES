@@ -1,7 +1,6 @@
 scheduling:
   delays:
     schedule: 12
-    reconstruction_update: 1
     cancel: 30
   priorities:
     update_status: 0
@@ -11,6 +10,9 @@ scheduling:
     priority: 100
     batch_size: 128
   queue_budget_seconds: 0.005
+
+rendering:
+  cache_megabytes: 512
 
 ui:
   status_bar_display_time: 2.0

@@ -1,3 +1,4 @@
+from functools import partial
 from itertools import chain
 from pathlib import Path
 from typing import Optional, Tuple
@@ -7,8 +8,9 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.selection import (
     select_file_dialog_backend,
 )
+from sampletones_application.utils.gui.render_thread import answered_while_drawing
 from sampletones_shared.types.path import Pathlike
-from sampletones_shared.utils.system.paths import ensure_suffix, to_path
+from sampletones_shared.utils.system.paths import ensure_suffix, nearest_directory, to_path
 
 
 def open_file_dialog(
@@ -17,11 +19,19 @@ def open_file_dialog(
     initial_directory: Optional[Pathlike] = None,
     filters: Tuple[FileFilter, ...] = (),
 ) -> Optional[Path]:
+    """Asks for a file to open, yielding ``None`` once the dialog is dismissed.
+
+    The dialog stands in front of the interface until the reader answers it, and the frames keep
+    being drawn behind it meanwhile.
+    """
     backend = select_file_dialog_backend()
-    return backend.open_file(
-        title=title,
-        initial_directory=_optional_path(initial_directory),
-        filters=filters,
+    return answered_while_drawing(
+        partial(
+            backend.open_file,
+            title=title,
+            initial_directory=_standing_directory(initial_directory),
+            filters=filters,
+        )
     )
 
 
@@ -40,11 +50,14 @@ def save_file_dialog(
     finds one. ``filters`` is ordered, and its first type is the one the dialog opens on.
     """
     backend = select_file_dialog_backend()
-    destination = backend.save_file(
-        title=title,
-        initial_directory=_optional_path(initial_directory),
-        suggested_name=default_filename,
-        filters=filters,
+    destination = answered_while_drawing(
+        partial(
+            backend.save_file,
+            title=title,
+            initial_directory=_standing_directory(initial_directory),
+            suggested_name=default_filename,
+            filters=filters,
+        )
     )
 
     if destination is None:
@@ -58,10 +71,18 @@ def select_directory_dialog(
     title: str,
     initial_directory: Optional[Pathlike] = None,
 ) -> Optional[Path]:
+    """Asks for a directory, yielding ``None`` once the dialog is dismissed.
+
+    The dialog stands in front of the interface until the reader answers it, and the frames keep
+    being drawn behind it meanwhile.
+    """
     backend = select_file_dialog_backend()
-    return backend.select_directory(
-        title=title,
-        initial_directory=_optional_path(initial_directory),
+    return answered_while_drawing(
+        partial(
+            backend.select_directory,
+            title=title,
+            initial_directory=_standing_directory(initial_directory),
+        )
     )
 
 
@@ -111,5 +132,14 @@ def _offered_extensions(filters: Tuple[FileFilter, ...]) -> Tuple[str, ...]:
     return tuple(chain.from_iterable(file_filter.extensions for file_filter in filters))
 
 
-def _optional_path(value: Optional[Pathlike]) -> Optional[Path]:
-    return to_path(value) if value is not None else None
+def _standing_directory(value: Optional[Pathlike]) -> Optional[Path]:
+    """The folder a dialog opens in: the one asked for, or the nearest one above it still on the disk.
+
+    A remembered folder may have gone since it was written down — deleted, or on a drive unplugged
+    for now — so a dialog opens as close to it as the disk allows and the remembered path stands for
+    the next time it is there.
+    """
+    if value is None:
+        return None
+
+    return nearest_directory(to_path(value))

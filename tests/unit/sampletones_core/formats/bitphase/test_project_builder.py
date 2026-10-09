@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Final, List, Mapping, Optional, Sequence, Tuple
 
@@ -5,45 +6,68 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.constants.general import SILENT_VOLUME
-from sampletones_core.formats.bitphase.builder import project_to_bitphase
-from sampletones_core.formats.bitphase.model.pattern import BitphaseRow, EffectCell
+from sampletones_core.configs.library import InstructionsLibraryConfig
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+)
+from sampletones_core.constants.general import MIN_PITCH, MIN_PLAYED_PITCH, SILENT_VOLUME
+from sampletones_core.exporters.skipped import SkippedRow, SkipReason
+from sampletones_core.features.envelope import Envelope
+from sampletones_core.formats.bitphase.builder import build_bitphase, project_to_bitphase
+from sampletones_core.formats.bitphase.model.pattern import BitphaseRow, EffectCell, NoteCell
 from sampletones_core.formats.bitphase.model.project import BitphaseProject
 from sampletones_core.formats.bitphase.notes import (
     note_index_to_note_cell,
     pitch_to_note_index,
 )
 from sampletones_core.formats.bitphase.specification.channels import ChannelIndex
+from sampletones_core.formats.bitphase.specification.chip import DEFAULT_A4_TUNING, DEFAULT_CPU_FREQUENCY
 from sampletones_core.formats.bitphase.specification.effects import (
-    NO_EFFECT_PARAMETER,
+    NO_EFFECT_TABLE,
     SPEED_EFFECT_DELAY,
     EffectId,
 )
-from sampletones_core.formats.bitphase.specification.instruments import LOOP_FROM_START
 from sampletones_core.formats.bitphase.specification.patterns import (
+    FULL_VOLUME,
+    MAX_NOTE_INDEX,
+    MIN_NOTE_INDEX,
     NO_INSTRUMENT_CHANGE,
     NO_TABLE_CHANGE,
     NO_VOLUME_CHANGE,
+    NOTE_INDEX_PITCH_OFFSET,
     SYMBOL_BASE,
     TABLE_COLUMN_OFFSET,
     VOLUME_OFF,
     NoteName,
 )
+from sampletones_core.formats.bitphase.tuning import DEFAULT_TUNING_TABLE, generate_tuning_table
 from sampletones_core.instructions.implementation.pulse import PulseInstruction
 from sampletones_core.instructions.implementation.triangle import TriangleInstruction
 from sampletones_core.instructions.instruction import Instruction
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
-from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.performance.modifiers import triangle_sounds_at
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.song import Song
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import VoiceUnion, voice_reference
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures import IdentifiedCollection
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
+from sampletones_core.utils.frequencies import transpose_pitch
+from tests.suite.base import BaseTestSuite
+from tests.suite.bitphase import BITPHASE_OPENING_PATTERN_VOLUME, cell_pitch, pattern_volume
+from tests.suite.case import BaseRegularTestCase
+from tests.suite.performance import song_row_volumes
+from tests.suite.stems import single_entry_stems_data
 
 RECONSTRUCTION_LENGTH: Final[int] = 4
 ROWS_PER_PATTERN: Final[int] = 8
@@ -58,86 +82,134 @@ EMPTY_ROW: Final[int] = 6
 SILENCED_ROW: Final[int] = 7
 GROOVE_TEMPO: Final[int] = 210
 GROOVE_TICKS: Final[Tuple[int, ...]] = (5, 4, 4, 4, 5, 4, 4, 4)
+RETUNED_A4_FREQUENCY: Final[float] = 432.0
+QUIET_VOLUME: Final[int] = 4
+NOTE_OFF_VOLUME: Final[int] = 6
+CLOSING_VOLUME: Final[int] = 9
+FRAME_CLOSING_VOLUME: Final[int] = 2
+QUIET_TRIANGLE_VOLUME: Final[int] = 5
+LOUD_TRIANGLE_VOLUME: Final[int] = 12
+RESTING_TRIANGLE_VOLUME: Final[int] = 7
+NOTE_TRIANGLE_VOLUME: Final[int] = 3
+PLAYED_PASSES: Final[int] = 2
+LOW_PITCH: Final[int] = 36
+LOW_TRANSPOSE: Final[int] = -10
+CONTOUR_PITCHES: Final[Tuple[int, ...]] = (40, 50)
+SUBMERGED_TRANSPOSE: Final[int] = -20
 
 
 def build_reconstruction(
-    instructions: Mapping[GeneratorName, Sequence[Instruction]],
+    instructions: Mapping[ChannelName, Sequence[Instruction]],
+    *,
+    config: Config,
 ) -> Reconstruction:
-    approximations = {generator: np.zeros(RECONSTRUCTION_LENGTH, dtype=np.float32) for generator in instructions}
+    approximations = {channel: np.zeros(RECONSTRUCTION_LENGTH, dtype=np.float32) for channel in instructions}
     return Reconstruction.create(
-        approximation=np.zeros(RECONSTRUCTION_LENGTH, dtype=np.float32),
-        approximations=approximations,
         instructions=instructions,
-        config=Config(),
+        config=config,
         coefficient=1.0,
-        audio_filepath=Path("/dev/null"),
+        audio_filepath=(Path("/dev/null"),),
+        stems_data=single_entry_stems_data(list(DEFAULT_CHANNELS), instructions),
     )
 
 
-def pulse_sample(name: str, pitch: int) -> Sample:
+def pulse_sample(
+    name: str,
+    pitch: int,
+    *,
+    config: Config,
+) -> Sample:
     instructions = [PulseInstruction(on=True, pitch=pitch, volume=15, duty_cycle=0)]
     return Sample(
         name=name,
-        reconstruction=build_reconstruction({GeneratorName.PULSE1: instructions}),
+        reconstruction=build_reconstruction(
+            {ChannelName.PULSE1: instructions},
+            config=config,
+        ),
     )
 
 
-def triangle_sample(name: str, pitch: int) -> Sample:
+def contour_sample(
+    name: str,
+    pitches: Sequence[int],
+    *,
+    config: Config,
+) -> Sample:
+    """A pulse sample sounding each pitch for one frame, so its table moves the note between them."""
+    instructions = [PulseInstruction(on=True, pitch=pitch, volume=15, duty_cycle=0) for pitch in pitches]
+    return Sample(
+        name=name,
+        reconstruction=build_reconstruction(
+            {ChannelName.PULSE1: instructions},
+            config=config,
+        ),
+    )
+
+
+def triangle_sample(
+    name: str,
+    pitch: int,
+    *,
+    config: Config,
+) -> Sample:
     instructions = [TriangleInstruction(on=True, pitch=pitch)]
     return Sample(
         name=name,
-        reconstruction=build_reconstruction({GeneratorName.TRIANGLE: instructions}),
+        reconstruction=build_reconstruction(
+            {ChannelName.TRIANGLE: instructions},
+            config=config,
+        ),
     )
 
 
 @pytest.fixture(name="lead")
 def lead_fixture() -> Sample:
-    return pulse_sample("Lead", LEAD_PITCH)
+    return pulse_sample("Lead", LEAD_PITCH, config=Config())
 
 
 @pytest.fixture(name="bass")
 def bass_fixture() -> Sample:
-    return triangle_sample("Bass", BASS_PITCH)
+    return triangle_sample("Bass", BASS_PITCH, config=Config())
 
 
 @pytest.fixture(name="source")
 def source_fixture(lead: Sample, bass: Sample) -> Project:
-    samples: IdentifiedCollection[Sample] = IdentifiedCollection()
+    voices: IdentifiedCollection[Sample] = IdentifiedCollection()
     for sample in (lead, bass):
-        samples.append(sample)
+        voices.append(sample)
 
     pulse_rows: List[Row] = [Row() for _ in range(ROWS_PER_PATTERN)]
     pulse_rows[TRIGGER_ROW] = Row(
-        command=Instrument(sample_id=lead.id, generator_name=GeneratorName.PULSE1),
-        transpose=0,
+        command=NoteOn(voice_id=lead.id),
+        pitch=Step(value=0),
         volume=ROW_VOLUME,
     )
     pulse_rows[NOTE_OFF_ROW] = Row(command=NoteOff())
     pulse_rows[TRANSPOSED_ROW] = Row(
-        command=Instrument(sample_id=lead.id, generator_name=GeneratorName.PULSE1),
-        transpose=TRANSPOSE,
+        command=NoteOn(voice_id=lead.id),
+        pitch=Step(value=TRANSPOSE),
     )
     pulse_rows[SILENCED_ROW] = Row(volume=SILENT_VOLUME)
 
     triangle_rows: List[Row] = [Row() for _ in range(ROWS_PER_PATTERN)]
     triangle_rows[TRIGGER_ROW] = Row(
-        command=Instrument(sample_id=bass.id, generator_name=GeneratorName.TRIANGLE),
-        transpose=0,
+        command=NoteOn(voice_id=bass.id),
+        pitch=Step(value=0),
     )
 
     channels = {
-        GeneratorName.PULSE1: Channel(generator=GeneratorName.PULSE1, patterns={0: Pattern(rows=pulse_rows)}),
-        GeneratorName.PULSE2: Channel(generator=GeneratorName.PULSE2, patterns={}),
-        GeneratorName.TRIANGLE: Channel(generator=GeneratorName.TRIANGLE, patterns={0: Pattern(rows=triangle_rows)}),
-        GeneratorName.NOISE: Channel(generator=GeneratorName.NOISE, patterns={}),
+        ChannelName.PULSE1: Channel(name=ChannelName.PULSE1, patterns={0: Pattern(rows=pulse_rows)}),
+        ChannelName.PULSE2: Channel(name=ChannelName.PULSE2, patterns={}),
+        ChannelName.TRIANGLE: Channel(name=ChannelName.TRIANGLE, patterns={0: Pattern(rows=triangle_rows)}),
+        ChannelName.NOISE: Channel(name=ChannelName.NOISE, patterns={}),
     }
-    order: List[Dict[GeneratorName, Optional[int]]] = [
-        {GeneratorName.PULSE1: 0, GeneratorName.TRIANGLE: 0},
-        {GeneratorName.PULSE1: None, GeneratorName.TRIANGLE: 0},
+    order: List[Dict[ChannelName, Optional[int]]] = [
+        {ChannelName.PULSE1: 0, ChannelName.TRIANGLE: 0},
+        {ChannelName.PULSE1: None, ChannelName.TRIANGLE: 0},
     ]
 
     project = Project.create(title="Demo", author="Tester", settings=ProjectSettings())
-    project.samples = samples
+    project.voices = voices
     project.song = Song(rows_per_pattern=ROWS_PER_PATTERN, order=order, channels=channels)
     return project
 
@@ -230,8 +302,18 @@ class TestRowCells:
         row = document.songs[0].patterns[0].channels[int(ChannelIndex.SQUARE1)].rows[TRIGGER_ROW]
         assert row.volume == ROW_VOLUME
 
-    def test_a_row_that_sets_no_volume_leaves_the_column_alone(self, document: BitphaseProject) -> None:
+    def test_a_note_after_a_quieter_row_starts_at_the_full_level(self, document: BitphaseProject) -> None:
+        """The song starts a note stating no level at the full level, while Bitphase carries the
+        level the trigger row set into it, so the note writes the full level.
+        """
         row = document.songs[0].patterns[0].channels[int(ChannelIndex.SQUARE1)].rows[TRANSPOSED_ROW]
+        assert row.volume == FULL_VOLUME
+
+    def test_a_note_the_channel_reaches_at_the_full_level_leaves_the_column_alone(
+        self,
+        document: BitphaseProject,
+    ) -> None:
+        row = document.songs[0].patterns[0].channels[int(ChannelIndex.TRIANGLE)].rows[TRIGGER_ROW]
         assert row.volume == NO_VOLUME_CHANGE
 
     def test_a_row_asking_for_silence_silences_the_channel(self, document: BitphaseProject) -> None:
@@ -258,72 +340,399 @@ class TestRowCells:
         )
 
 
-class TestTheTempoBecomesAGroove:
-    """A Bitphase song holds one speed value per row, so the fractional row rate most tempi
-    ask for is carried by a groove: whole tick counts that vary from row to row. The groove
-    reaches the engine as a table a speed effect reads a row at a time, triggered from the
-    channel this exporter leaves silent. A tempo whose rows all last alike is carried by the
-    song's initial speed alone.
+def played_speeds(document: BitphaseProject) -> List[Tuple[int, ...]]:
+    """The ticks each row of every pattern lasts, the order played once through.
+
+    The song starts at its initial speed, and a speed effect sets the speed from its row on.
+    """
+    song = document.songs[0]
+    patterns = {pattern.id: pattern for pattern in song.patterns}
+    speed = song.initial_speed
+    played: List[Tuple[int, ...]] = []
+    for pattern_id in document.pattern_order:
+        pattern = patterns[pattern_id]
+        rows: List[int] = []
+        for row_index in range(pattern.length):
+            for channel in pattern.channels:
+                for effect in channel.rows[row_index].effects:
+                    if effect is not None and effect.effect == int(EffectId.SPEED):
+                        speed = effect.parameter
+
+            rows.append(speed)
+
+        played.append(tuple(rows))
+
+    return played
+
+
+class TestTheTempoBecomesSpeeds:
+    """A Bitphase song holds one speed value per row, so the fractional row rate most tempi ask for
+    is carried by speed effects that change it where the rows' lengths change. They ride the channel
+    this exporter leaves silent. A tempo whose rows all last alike is carried by the song's initial
+    speed alone.
     """
 
-    def test_a_tempo_the_speed_column_states_needs_no_table(self, document: BitphaseProject) -> None:
+    def test_the_document_holds_one_table_per_slice(
+        self,
+        document: BitphaseProject,
+        grooved_document: BitphaseProject,
+    ) -> None:
         assert len(document.tables) == len(document.instruments)
+        assert len(grooved_document.tables) == len(grooved_document.instruments)
 
-    def test_a_tempo_the_speed_column_states_leaves_the_groove_channel_resting(
+    def test_a_tempo_the_speed_column_states_leaves_the_speed_channel_resting(
         self,
         document: BitphaseProject,
     ) -> None:
-        assert all(row == BitphaseRow() for row in groove_channel_rows(document, 0))
-
-    def test_a_groove_takes_the_table_above_the_slices(self, grooved_document: BitphaseProject) -> None:
-        table = grooved_document.tables[-1]
-        assert table.id == len(grooved_document.instruments)
-        assert table.loop == LOOP_FROM_START
-
-    def test_the_table_holds_the_ticks_each_row_lasts(self, grooved_document: BitphaseProject) -> None:
-        assert grooved_document.tables[-1].rows == GROOVE_TICKS
+        for pattern_index in range(len(document.songs[0].patterns)):
+            assert all(row == BitphaseRow() for row in groove_channel_rows(document, pattern_index))
 
     def test_the_song_starts_on_the_ticks_its_first_row_lasts(self, grooved_document: BitphaseProject) -> None:
         assert grooved_document.songs[0].initial_speed == GROOVE_TICKS[TRIGGER_ROW]
 
-    def test_every_pattern_triggers_the_groove_on_its_first_row(self, grooved_document: BitphaseProject) -> None:
-        """The speed table advances one entry per row and returns to the entry the trigger
-        names, so triggering it again at each pattern start holds every row on the entry that
-        describes it however the order jumps.
-        """
-        trigger = EffectCell(
-            effect=int(EffectId.SPEED),
-            delay=SPEED_EFFECT_DELAY,
-            parameter=NO_EFFECT_PARAMETER,
-            table_index=grooved_document.tables[-1].id,
-        )
-        triggers = [
-            groove_channel_rows(grooved_document, index)[TRIGGER_ROW].effects
-            for index in range(len(grooved_document.songs[0].patterns))
-        ]
-        assert triggers == [(trigger,)] * len(triggers)
+    def test_every_row_plays_the_ticks_the_songs_timing_gives_it(
+        self,
+        grooved_document: BitphaseProject,
+        source: Project,
+    ) -> None:
+        """At tempo 210 an 8-row pattern lasts 34 2/7 ticks, so the second frame plays one tick more."""
+        timing = SongTiming.from_project(source, bounds=SONG_TICK_BOUNDS)
+        expected = [timing.groove(frame).ticks for frame in range(source.song.order_length())]
 
-    def test_the_groove_channel_carries_nothing_but_the_trigger(self, grooved_document: BitphaseProject) -> None:
-        rows = groove_channel_rows(grooved_document, 0)
-        assert all(row == BitphaseRow() for row in rows[TRIGGER_ROW + 1 :])
+        assert played_speeds(grooved_document) == expected
+        assert expected[0] == GROOVE_TICKS
+        assert sum(expected[1]) == sum(GROOVE_TICKS) + 1
+
+    def test_a_speed_is_stated_only_where_a_row_lasts_differently_from_the_row_before(
+        self,
+        grooved_document: BitphaseProject,
+    ) -> None:
+        """The song comes round to its first row after the last, so that is the row before the first."""
+        speeds = [speed for pattern in played_speeds(grooved_document) for speed in pattern]
+        changes = sum(1 for index, speed in enumerate(speeds) if speed != speeds[index - 1])
+        stated = sum(
+            1
+            for pattern_index in range(len(grooved_document.songs[0].patterns))
+            for row in groove_channel_rows(grooved_document, pattern_index)
+            if row != BitphaseRow()
+        )
+
+        assert stated == changes
+
+    def test_the_speed_channel_carries_nothing_but_speeds(self, grooved_document: BitphaseProject) -> None:
+        speeds = {GROOVE_TICKS[TRIGGER_ROW], *GROOVE_TICKS}
+        for pattern_index in range(len(grooved_document.songs[0].patterns)):
+            for row in groove_channel_rows(grooved_document, pattern_index):
+                if row == BitphaseRow():
+                    continue
+
+                (effect,) = row.effects
+                assert effect is not None
+                assert (effect.effect, effect.delay, effect.table_index) == (
+                    int(EffectId.SPEED),
+                    SPEED_EFFECT_DELAY,
+                    NO_EFFECT_TABLE,
+                )
+                assert effect.parameter in speeds
 
     def test_the_sounding_channels_keep_their_effect_columns(self, grooved_document: BitphaseProject) -> None:
-        """The groove rides the silent channel, so every channel that plays keeps the one
+        """The speeds ride the silent channel, so every channel that plays keeps the one
         effect column the chip gives it.
         """
         channels = grooved_document.songs[0].patterns[0].channels[: int(ChannelIndex.DPCM)]
         assert all(row.effects == (None,) for channel in channels for row in channel.rows)
 
 
-class TestAnUnbuildableRow:
-    def test_a_row_naming_a_slice_with_no_instrument_is_refused(self, source: Project, lead: Sample) -> None:
+class TestARowWithNoInstrumentOnItsChannel:
+    """A voice sounds on the channels its instruments cover, so a row naming it elsewhere plays
+    nothing in the song. The export writes a note cut there and reports the row."""
+
+    @staticmethod
+    def _with_lead_on_pulse2(source: Project, lead: Sample) -> None:
         rows: List[Row] = [Row() for _ in range(ROWS_PER_PATTERN)]
-        rows[TRIGGER_ROW] = Row(command=Instrument(sample_id=lead.id, generator_name=GeneratorName.PULSE2))
-        source.song.channels[GeneratorName.PULSE2] = Channel(
-            generator=GeneratorName.PULSE2,
+        rows[TRIGGER_ROW] = Row(command=NoteOn(voice_id=lead.id), volume=ROW_VOLUME)
+        source.song.channels[ChannelName.PULSE2] = Channel(
+            name=ChannelName.PULSE2,
             patterns={0: Pattern(rows=rows)},
         )
-        source.song.order[0][GeneratorName.PULSE2] = 0
+        source.song.order[0][ChannelName.PULSE2] = 0
 
-        with pytest.raises(ValueError, match="has no instrument"):
-            project_to_bitphase(source)
+    def test_the_row_is_written_as_a_note_cut(self, source: Project, lead: Sample) -> None:
+        self._with_lead_on_pulse2(source, lead)
+
+        document = project_to_bitphase(source)
+
+        cut = document.songs[0].patterns[0].channels[int(ChannelIndex.SQUARE2)].rows[TRIGGER_ROW]
+        assert cut.note is not None
+        assert cut.note.name == int(NoteName.OFF)
+        assert cut.volume == ROW_VOLUME
+
+    def test_the_row_is_reported_where_the_tracker_shows_it(self, source: Project, lead: Sample) -> None:
+        self._with_lead_on_pulse2(source, lead)
+
+        skipped = build_bitphase(source).skipped_rows
+
+        assert skipped == (
+            SkippedRow(
+                voice_id=lead.id,
+                channel=ChannelName.PULSE2,
+                order_position=0,
+                row_index=TRIGGER_ROW,
+                reason=SkipReason.NO_INSTRUMENT,
+            ),
+        )
+
+    def test_a_pattern_the_order_plays_twice_reports_each_frame(self, source: Project, lead: Sample) -> None:
+        self._with_lead_on_pulse2(source, lead)
+        source.song.order[1][ChannelName.PULSE2] = 0
+
+        skipped = build_bitphase(source).skipped_rows
+
+        assert [row.order_position for row in skipped] == [0, 1]
+
+    def test_a_project_naming_only_voices_with_instruments_reports_nothing(self, source: Project) -> None:
+        assert build_bitphase(source).skipped_rows == ()
+
+
+class TestAProjectSoundsItsSamplesTuning:
+    """A song plays at one tuning, and a project's samples state it by agreeing on it, so the song
+    takes the tuning they were reconstructed at.
+    """
+
+    @pytest.fixture(name="retuned_config")
+    def retuned_config_fixture(self) -> Config:
+        return Config(library=InstructionsLibraryConfig(a4_frequency=RETUNED_A4_FREQUENCY))
+
+    @pytest.fixture(name="lead")
+    def lead_fixture(self, retuned_config: Config) -> Sample:
+        return pulse_sample("Lead", LEAD_PITCH, config=retuned_config)
+
+    @pytest.fixture(name="bass")
+    def bass_fixture(self, retuned_config: Config) -> Sample:
+        return triangle_sample("Bass", BASS_PITCH, config=retuned_config)
+
+    def test_the_song_takes_the_tuning_its_samples_share(self, document: BitphaseProject) -> None:
+        song = document.songs[0]
+        assert song.a4_tuning_hz == RETUNED_A4_FREQUENCY
+        assert song.tuning_table == generate_tuning_table(DEFAULT_CPU_FREQUENCY, a4_tuning=RETUNED_A4_FREQUENCY)
+
+    def test_samples_reconstructed_at_different_tunings_are_refused(self, source: Project) -> None:
+        """One table sounds one tuning, so a project whose samples disagree has no song to write."""
+        source.voices.append(triangle_sample("Concert bass", BASS_PITCH, config=Config()))
+        with pytest.raises(ValueError, match=str(RETUNED_A4_FREQUENCY)):
+            build_bitphase(source)
+
+    def test_a_project_of_instruments_alone_plays_at_concert_pitch(self) -> None:
+        voices: IdentifiedCollection[VoiceUnion] = IdentifiedCollection()
+        voices.append(Instrument(name="Lead", envelopes=InstrumentEnvelopes(volume=Envelope(items=(15, 0)))))
+        project = Project.create(title="Instruments", author="Tester", settings=ProjectSettings())
+        project.voices = voices
+
+        song = project_to_bitphase(project).songs[0]
+
+        assert song.a4_tuning_hz == DEFAULT_A4_TUNING
+        assert song.tuning_table == DEFAULT_TUNING_TABLE
+
+
+def rows_with(*cells: Tuple[int, Row]) -> List[Row]:
+    """A pattern's rows, blank apart from the ones given by their index."""
+    rows = [Row() for _ in range(ROWS_PER_PATTERN)]
+    for row_index, row in cells:
+        rows[row_index] = row
+
+    return rows
+
+
+def arranged_project(
+    voices: Sequence[Sample],
+    patterns: Mapping[ChannelName, Mapping[int, List[Row]]],
+    order: List[Dict[ChannelName, Optional[int]]],
+) -> Project:
+    """A project playing ``voices`` through the channel patterns ``order`` names."""
+    pool: IdentifiedCollection[Sample] = IdentifiedCollection()
+    for voice in voices:
+        pool.append(voice)
+
+    channels = {
+        channel_name: Channel(
+            name=channel_name,
+            patterns={index: Pattern(rows=rows) for index, rows in patterns.get(channel_name, {}).items()},
+        )
+        for channel_name in ChannelName.items()
+    }
+    project = Project.create(title="Rows", author="Tester", settings=ProjectSettings())
+    project.voices = pool
+    project.song = Song(rows_per_pattern=ROWS_PER_PATTERN, order=order, channels=channels)
+    return project
+
+
+def played_volumes(document: BitphaseProject, channel: ChannelIndex) -> List[int]:
+    """The level Bitphase plays one channel at on each row, the order played through and round again.
+
+    The document returns to its loop point, the first order position, keeping every channel's level,
+    so a second pass shows what the level the song ends on does to the notes it opens with.
+    """
+    patterns = {pattern.id: pattern for pattern in document.songs[0].patterns}
+    level = BITPHASE_OPENING_PATTERN_VOLUME
+    levels: List[int] = []
+    for _ in range(PLAYED_PASSES):
+        for pattern_id in document.pattern_order:
+            for row in patterns[pattern_id].channels[int(channel)].rows:
+                level = pattern_volume(level, row.volume)
+                levels.append(level)
+
+    return levels
+
+
+class TestTheLevelsAPlayedSongCarries:
+    """The song starts a note stating no level at the full level and sounds the triangle only above
+    half volume, while Bitphase carries the last level a cell wrote into every note and sounds the
+    triangle at any level above silence. The document therefore writes its volume column so that
+    Bitphase, playing the order through and round again, plays each row the song sounds at the song's
+    own level.
+    """
+
+    @pytest.fixture(name="arranged")
+    def arranged_fixture(self, lead: Sample, bass: Sample) -> Project:
+        lead_note = Row(command=NoteOn(voice_id=lead.id))
+        bass_note = Row(command=NoteOn(voice_id=bass.id))
+        pulse = {
+            0: rows_with(
+                (0, lead_note),
+                (1, Row(volume=QUIET_VOLUME)),
+                (2, Row(pitch=Step(value=TRANSPOSE))),
+                (3, lead_note),
+                (4, Row(command=NoteOff(), volume=NOTE_OFF_VOLUME)),
+                (5, lead_note),
+                (6, Row(volume=CLOSING_VOLUME)),
+            ),
+            1: rows_with(
+                (0, lead_note),
+                (3, Row(volume=FRAME_CLOSING_VOLUME)),
+            ),
+        }
+        triangle = {
+            0: rows_with(
+                (0, bass_note),
+                (2, Row(volume=QUIET_TRIANGLE_VOLUME)),
+                (4, Row(volume=LOUD_TRIANGLE_VOLUME)),
+                (6, bass_note),
+            ),
+            1: rows_with(
+                (0, Row(volume=RESTING_TRIANGLE_VOLUME)),
+                (2, bass_note),
+                (5, Row(command=NoteOn(voice_id=bass.id), volume=NOTE_TRIANGLE_VOLUME)),
+            ),
+        }
+        order: List[Dict[ChannelName, Optional[int]]] = [
+            {ChannelName.PULSE1: 0, ChannelName.TRIANGLE: 0},
+            {ChannelName.PULSE1: 1, ChannelName.TRIANGLE: 1},
+            {ChannelName.PULSE1: None, ChannelName.TRIANGLE: 0},
+            {ChannelName.PULSE1: 0, ChannelName.TRIANGLE: None},
+        ]
+        return arranged_project(
+            (lead, bass),
+            {ChannelName.PULSE1: pulse, ChannelName.TRIANGLE: triangle},
+            order,
+        )
+
+    def test_the_pulse_plays_every_sounding_row_at_the_song_level(self, arranged: Project) -> None:
+        played = played_volumes(project_to_bitphase(arranged), ChannelIndex.SQUARE1)
+        song = song_row_volumes(arranged, ChannelName.PULSE1) * PLAYED_PASSES
+
+        sounding = [(level, volume) for level, volume in zip(played, song) if volume is not None]
+        assert [level for level, _ in sounding] == [volume for _, volume in sounding]
+
+    def test_the_triangle_sounds_on_every_row_the_song_sounds_it(self, arranged: Project) -> None:
+        played = played_volumes(project_to_bitphase(arranged), ChannelIndex.TRIANGLE)
+        song = song_row_volumes(arranged, ChannelName.TRIANGLE) * PLAYED_PASSES
+
+        sounding = [(level, volume) for level, volume in zip(played, song) if volume is not None]
+        assert [level > 0 for level, _ in sounding] == [triangle_sounds_at(volume) for _, volume in sounding]
+
+    def test_a_note_the_song_ends_quieter_than_writes_the_full_level(self, arranged: Project) -> None:
+        """The order returns to its first frame carrying the level its last frame set, so the song's
+        opening note is written at the full level although the first pass reaches it there anyway.
+        """
+        row = project_to_bitphase(arranged).songs[0].patterns[0].channels[int(ChannelIndex.SQUARE1)].rows[0]
+        assert row.volume == FULL_VOLUME
+
+
+class TestTheTriangleSoundsAboveHalfVolume(BaseTestSuite):
+    """The song sounds the triangle while a row asks for more than half volume, while Bitphase sounds
+    it at any pattern level above silence, so a quieter row writes the value that silences it.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        volume: int
+        expected: int
+
+    test_cases: Tuple["TestTheTriangleSoundsAboveHalfVolume.TestCase", ...] = (
+        TestCase(label="a level the triangle rests at", volume=QUIET_TRIANGLE_VOLUME, expected=VOLUME_OFF),
+        TestCase(label="a level the triangle sounds at", volume=LOUD_TRIANGLE_VOLUME, expected=LOUD_TRIANGLE_VOLUME),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_row_writes_the_triangle_gate(
+        self,
+        bass: Sample,
+        test_case: "TestTheTriangleSoundsAboveHalfVolume.TestCase",
+    ) -> None:
+        project = arranged_project(
+            (bass,),
+            {ChannelName.TRIANGLE: {0: rows_with((0, Row(command=NoteOn(voice_id=bass.id), volume=test_case.volume)))}},
+            [{ChannelName.TRIANGLE: 0}],
+        )
+
+        row = project_to_bitphase(project).songs[0].patterns[0].channels[int(ChannelIndex.TRIANGLE)].rows[0]
+
+        assert row.volume == test_case.expected
+
+
+class TestALowTransposeKeepsTheSongsPitch:
+    """The song and Bitphase both hold every tick's transposed pitch within 24-119, the span of the tuning
+    table. Bitphase writes no note below index 0, so a transpose below it writes pitch 24.
+    """
+
+    @staticmethod
+    def _transposed(sample: Sample, transpose: int) -> Tuple[BitphaseProject, BitphaseRow]:
+        project = arranged_project(
+            (sample,),
+            {
+                ChannelName.PULSE1: {
+                    0: rows_with((0, Row(command=NoteOn(voice_id=sample.id), pitch=Step(value=transpose))))
+                }
+            },
+            [{ChannelName.PULSE1: 0}],
+        )
+        document = project_to_bitphase(project)
+        return (
+            document,
+            document.songs[0].patterns[0].channels[int(ChannelIndex.SQUARE1)].rows[0],
+        )
+
+    def test_a_flat_voice_transposed_below_a0_writes_its_own_note(self) -> None:
+        _, row = self._transposed(pulse_sample("Low", LOW_PITCH, config=Config()), LOW_TRANSPOSE)
+
+        assert cell_pitch(row.note) == LOW_PITCH + LOW_TRANSPOSE < MIN_PITCH
+
+    def test_a_flat_voice_transposed_below_the_table_writes_its_lowest_note(self) -> None:
+        _, row = self._transposed(pulse_sample("Low", LOW_PITCH, config=Config()), SUBMERGED_TRANSPOSE)
+
+        assert cell_pitch(row.note) == MIN_PLAYED_PITCH
+
+    def test_a_contour_reaching_below_the_table_plays_every_tick_where_the_song_does(self) -> None:
+        sample = contour_sample("Contour", CONTOUR_PITCHES, config=Config())
+        reference = voice_reference(sample, ChannelName.PULSE1)
+        transpose = MIN_PLAYED_PITCH + 1 - reference
+        document, row = self._transposed(sample, transpose)
+
+        steps = document.tables[0].rows
+        written = cell_pitch(row.note) - NOTE_INDEX_PITCH_OFFSET
+        tracker = [min(max(written + step, MIN_NOTE_INDEX), MAX_NOTE_INDEX) + NOTE_INDEX_PITCH_OFFSET for step in steps]
+        song = [transpose_pitch(reference + step, transpose) for step in steps]
+
+        assert cell_pitch(row.note) == reference + transpose
+        assert min(song) == MIN_PLAYED_PITCH
+        assert tracker == song

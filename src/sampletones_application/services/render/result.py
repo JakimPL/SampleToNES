@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Union
 
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceProgress,
     ServiceStarted,
@@ -27,5 +27,5 @@ RenderResult = Union[
     ServiceProgress[RenderStage],
     ServiceSuccess[Path],
     ServiceError,
-    ServiceCancelled,
+    ServiceCanceled,
 ]

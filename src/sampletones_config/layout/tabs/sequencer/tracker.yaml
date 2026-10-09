@@ -2,9 +2,10 @@ rows: 64
 page_size: 16
 row_height: 29
 header_height: 30
+octave_width: 90
 channel_column_tint: 0.09
 muted_text_fraction: 0.45
 subcolumn_widths:
-  instrument: 26
+  voice: 26
   transpose: 30
   volume: 18

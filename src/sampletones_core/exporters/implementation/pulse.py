@@ -1,9 +1,6 @@
 from typing import ClassVar, Dict, List, Tuple, Union
 
-import numpy as np
-
 from sampletones_core.constants.enums import FeatureKey
-from sampletones_core.constants.general import MIN_PITCH
 from sampletones_core.exporters.implementation.utils import center_pitch
 from sampletones_core.generators import GeneratorTypeUnion, PulseGenerator
 from sampletones_core.instructions import (
@@ -11,51 +8,37 @@ from sampletones_core.instructions import (
     InstructionTypeUnion,
     PulseInstruction,
 )
-from sampletones_core.types.feature import FeatureMap
-from sampletones_core.utils.frequencies import is_pitch_valid
+from sampletones_core.utils.frequencies import played_pitch
 
-from ..exporter import Exporter
+from ..tonal import TonalExporter
 
 
-class PulseExporter(Exporter[PulseInstruction]):
+class PulseExporter(TonalExporter[PulseInstruction]):
     _ATTRIBUTE_MAP: ClassVar[Dict[FeatureKey, InstructionFields]] = {
         FeatureKey.VOLUME: "volume",
         FeatureKey.ARPEGGIO: "pitch",
+        FeatureKey.PITCH: "detune",
+        FeatureKey.HI_PITCH: "coarse_detune",
         FeatureKey.DUTY_CYCLE: "duty_cycle",
     }
 
     @classmethod
     def extract_data(cls, instructions: List[PulseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
-        initial_pitch = None
-
-        pitch = MIN_PITCH
+        initial_pitch, pitches = cls.read_pitches(instructions)
         volume = 0
         duty_cycle = 0
-
-        pitches: List[int] = []
         volumes: List[int] = []
         duty_cycles: List[int] = []
 
         for instruction in instructions:
-            if instruction.on:
-                if initial_pitch is None:
-                    initial_pitch = instruction.pitch
-                    pitches = [initial_pitch for _ in range(len(pitches))]
-
-                pitch = instruction.pitch
-                volume = instruction.volume
-                duty_cycle = instruction.duty_cycle
-            else:
-                volume = 0
-
-            pitches.append(pitch)
+            volume = instruction.volume if instruction.on else 0
+            duty_cycle = instruction.duty_cycle if instruction.on else duty_cycle
             volumes.append(volume)
             duty_cycles.append(duty_cycle)
 
         if volume > 0:
             volumes.append(0)
 
-        initial_pitch = initial_pitch if initial_pitch is not None else MIN_PITCH
         return initial_pitch, pitches, volumes, duty_cycles
 
     @classmethod
@@ -64,19 +47,18 @@ class PulseExporter(Exporter[PulseInstruction]):
         return center_pitch(first_pitch, pitches)
 
     @classmethod
-    def get_feature_map(
+    def read_envelopes(
         cls,
         instructions: List[PulseInstruction],
         initial_pitch: int,
-    ) -> FeatureMap:
+    ) -> Dict[FeatureKey, Tuple[int, ...]]:
         _, pitches, volumes, duty_cycles = cls.extract_data(instructions)
-        arpeggio = np.array(pitches) - initial_pitch
 
         return {
-            FeatureKey.INITIAL_PITCH: initial_pitch,
-            FeatureKey.VOLUME: np.array(volumes).astype(np.int8),
-            FeatureKey.ARPEGGIO: arpeggio.astype(np.int8),
-            FeatureKey.DUTY_CYCLE: np.array(duty_cycles).astype(np.int8),
+            FeatureKey.VOLUME: tuple(volumes),
+            FeatureKey.ARPEGGIO: tuple(pitch - initial_pitch for pitch in pitches),
+            FeatureKey.DUTY_CYCLE: tuple(duty_cycles),
+            **cls.read_bends(instructions),
         }
 
     @classmethod
@@ -85,15 +67,13 @@ class PulseExporter(Exporter[PulseInstruction]):
         dictionary: Dict[str, Union[bool, int]],
         initial_pitch: int,
     ) -> PulseInstruction:
-        pitch = int(initial_pitch + dictionary[cls._ATTRIBUTE_MAP[FeatureKey.ARPEGGIO]])
-        if not is_pitch_valid(pitch):
-            return PulseInstruction.null_instruction()
-
+        pitch = played_pitch(int(initial_pitch + dictionary[cls._ATTRIBUTE_MAP[FeatureKey.ARPEGGIO]]))
         return PulseInstruction(
             on=cls._infer_instruction_on(dictionary),
             pitch=pitch,
             volume=int(dictionary[cls._ATTRIBUTE_MAP[FeatureKey.VOLUME]]),
             duty_cycle=int(dictionary[cls._ATTRIBUTE_MAP[FeatureKey.DUTY_CYCLE]]),
+            **cls.bend_fields(dictionary),
         )
 
     @classmethod

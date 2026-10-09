@@ -2,7 +2,7 @@ from typing import FrozenSet
 
 from pydantic import BaseModel
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 
 class SequencerChannelsViewModel(BaseModel, frozen=True):
@@ -12,18 +12,18 @@ class SequencerChannelsViewModel(BaseModel, frozen=True):
     export, and the history stack all read the full song.
     """
 
-    muted: FrozenSet[GeneratorName]
+    muted: FrozenSet[ChannelName]
 
-    def is_muted(self, generator: GeneratorName) -> bool:
-        return generator in self.muted
+    def is_muted(self, channel: ChannelName) -> bool:
+        return channel in self.muted
 
-    def is_soloed(self, generator: GeneratorName) -> bool:
-        """Whether ``generator`` is the one channel left sounding.
+    def is_soloed(self, channel: ChannelName) -> bool:
+        """Whether ``channel`` is the one channel left sounding.
 
         Solo is read back from the mute set the same way it is applied, so the menu names the
         gesture by what the mix currently sounds like.
         """
-        return self.muted == frozenset(GeneratorName.items()) - {generator}
+        return self.muted == frozenset(ChannelName.items()) - {channel}
 
     @property
     def any_muted(self) -> bool:
@@ -33,4 +33,4 @@ class SequencerChannelsViewModel(BaseModel, frozen=True):
     @property
     def all_muted(self) -> bool:
         """Whether every channel is silenced, the state the master column's click restores from."""
-        return self.muted == frozenset(GeneratorName.items())
+        return self.muted == frozenset(ChannelName.items())

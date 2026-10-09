@@ -4,10 +4,29 @@ from typing import Callable
 import numpy as np
 
 from sampletones_application.logic.reconstruction.data import ReconstructionData
-from sampletones_core.audio import write_wave
+from sampletones_application.logic.shared.renders import RenderCache
+from sampletones_core.audio import mix, write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName, bending_channels
+from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
+from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
+from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
+from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
+from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+
+
+def _heard(*stem_ids: int) -> StemSelection:
+    """The selection hearing every named stem on every channel."""
+    return StemSelection.everywhere(frozenset(stem_ids), ChannelName.items())
+
+
+from tests.suite.stems import RECORDED_SCALE, recorded_from
 
 
 class TestFromReconstruction:
@@ -51,14 +70,14 @@ class TestFromReconstruction:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
 
         data = ReconstructionData.from_reconstruction(
             reconstruction,
             name="Sample",
         )
 
-        assert reconstruction.audio_filepath is None
+        assert reconstruction.audio_filepath == ()
         assert data.original_audio is None
 
     def test_loads_original_audio_when_source_file_is_available(
@@ -72,7 +91,7 @@ class TestFromReconstruction:
             Config().library.sample_rate,
             np.ones(64, dtype=np.float32) * 0.5,
         )
-        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": source_audio})
+        reconstruction = recorded_from(reconstruction_factory(), (source_audio,))
 
         data = ReconstructionData.from_reconstruction(
             reconstruction,
@@ -80,6 +99,45 @@ class TestFromReconstruction:
         )
 
         assert data.original_audio is not None
+
+    def test_mixes_several_recorded_paths_at_the_balance_they_were_captured_in(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        """The recordings are scaled together, so one heard alone sounds at its mix level.
+
+        The louder recording is written at twice the quieter one, and it stays twice as loud
+        once loaded, while their mix stands at the level the scale the document records sets.
+        """
+        config = Config()
+        first = tmp_path / "kick.wav"
+        second = tmp_path / "snare.wav"
+        write_wave(first, config.library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        write_wave(second, config.library.sample_rate, np.ones(64, dtype=np.float32) * 0.25)
+        reconstruction = recorded_from(reconstruction_factory(), (first, second))
+
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        assert data.original_audio is not None
+        louder, quieter = data.stem_audios
+        np.testing.assert_allclose(louder, 2.0 * quieter, rtol=1e-6)
+        np.testing.assert_allclose(data.original_audio, mix([louder, quieter]))
+        np.testing.assert_allclose(np.max(np.abs(data.original_audio)), (0.5 + 0.25) / RECORDED_SCALE, rtol=1e-6)
+
+    def test_one_unreadable_stem_costs_the_whole_original(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        first = tmp_path / "kick.wav"
+        missing = tmp_path / "gone.wav"
+        write_wave(first, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        reconstruction = recorded_from(reconstruction_factory(), (first, missing))
+
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        assert data.original_audio is None
 
 
 class TestReconstructionDataLoad:
@@ -95,6 +153,28 @@ class TestReconstructionDataLoad:
         data = ReconstructionData.load(save_path)
 
         assert data.filepath == save_path
+
+    def test_load_names_the_document_after_its_file(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        reconstruction = recorded_from(reconstruction_factory(), (tmp_path / "kick.wav", tmp_path / "snare.wav"))
+        save_path = tmp_path / "drums.stn"
+        reconstruction.save(save_path)
+
+        data = ReconstructionData.load(save_path)
+
+        assert data.name == "drums"
+
+    def test_an_in_memory_document_keeps_the_name_it_was_given(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        """A project sample carries its own name, whatever recordings it was built from."""
+        data = ReconstructionData.from_reconstruction(reconstruction_factory(), name="Sample")
+
+        assert data.name == "Sample"
 
     def test_load_has_no_original_audio_when_source_file_missing(
         self,
@@ -147,7 +227,7 @@ class TestDetachedCopy:
         tmp_path: Path,
     ) -> None:
         reconstruction = reconstruction_factory()
-        reconstruction.detach_source()
+        reconstruction = reconstruction.detached()
         data = ReconstructionData.from_reconstruction(
             reconstruction,
             name="Sample",
@@ -157,7 +237,7 @@ class TestDetachedCopy:
 
         assert copy.name == "lead"
 
-    def test_names_after_the_source_audio_when_present(
+    def test_names_after_the_file_when_audio_is_present(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
@@ -170,8 +250,24 @@ class TestDetachedCopy:
 
         copy = data.detached_copy(tmp_path / "lead.stn")
 
-        assert reconstruction.audio_filepath is not None
-        assert copy.name == reconstruction.audio_filepath.stem
+        assert reconstruction.audio_filepath
+        assert copy.name == "lead"
+
+    def test_a_stems_document_is_named_after_its_file(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        """The file carries the name the converter gave every recording, which outlasts any of them leaving."""
+        drums = tmp_path / "drums"
+        drums.mkdir()
+        stems = (drums / "kick.wav", drums / "snare.wav")
+        reconstruction = recorded_from(reconstruction_factory(), stems)
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        copy = data.detached_copy(tmp_path / "lead.stn")
+
+        assert copy.name == "lead"
 
     def test_reuses_the_already_loaded_original_audio(
         self,
@@ -184,7 +280,7 @@ class TestDetachedCopy:
             Config().library.sample_rate,
             np.ones(64, dtype=np.float32) * 0.5,
         )
-        reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": source_audio})
+        reconstruction = recorded_from(reconstruction_factory(), (source_audio,))
         data = ReconstructionData.from_reconstruction(
             reconstruction,
             name="Sample",
@@ -192,14 +288,312 @@ class TestDetachedCopy:
 
         copy = data.detached_copy(tmp_path / "lead.stn")
 
+        assert copy.stem_audios is data.stem_audios
         assert data.original_audio is not None
-        assert copy.original_audio is data.original_audio
+        np.testing.assert_allclose(copy.original_audio, data.original_audio)
+
+
+class TestStemFilteredProjections:
+    def _stems_data(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> ReconstructionData:
+        config = Config()
+        frame_length = config.library.frame_length
+        length = 2 * frame_length
+        approximation = np.arange(length, dtype=np.float32)
+        stems_config = StemsConfig(
+            entries=[
+                StemEntry(
+                    id=0,
+                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                ),
+                StemEntry(
+                    id=1,
+                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                ),
+            ],
+            hierarchy=StemsHierarchy(levels=[[0, 1]]),
+        )
+        reconstruction = Reconstruction.create(
+            instructions={ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)] * 2},
+            config=config,
+            coefficient=1.0,
+            audio_filepath=(tmp_path / "a.wav", tmp_path / "b.wav"),
+            stems_data=StemsData(
+                config=stems_config,
+                assignments=[
+                    ChannelAssignment(
+                        channel_name=ChannelName.PULSE1,
+                        stem_ids=[0, 1],
+                    )
+                ],
+                scale=RECORDED_SCALE,
+            ),
+        )
+        return ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+    def test_partials_keep_only_the_selected_stems_frames(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+        renders: RenderCache,
+    ) -> None:
+        data = self._stems_data(reconstruction_factory, tmp_path)
+        frame_length = data.reconstruction.config.frame_length
+        expected = rendered_mix(data.reconstruction).copy()
+        expected[frame_length:] = 0
+
+        partials = data.partials_for(renders, [ChannelName.PULSE1], _heard(0))
+
+        np.testing.assert_allclose(partials, expected)
+        np.testing.assert_allclose(
+            data.partials_for(renders, [ChannelName.PULSE1], _heard(0, 1)),
+            rendered_mix(data.reconstruction),
+        )
+
+    def test_original_mix_mixes_the_selected_recordings(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        first = tmp_path / "kick.wav"
+        second = tmp_path / "snare.wav"
+        write_wave(first, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        write_wave(second, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.25)
+        stems_config = StemsConfig(
+            entries=[
+                StemEntry(
+                    id=0,
+                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                ),
+                StemEntry(
+                    id=1,
+                    settings=StemSettings(channels=[ChannelName.PULSE1], bends=bending_channels([ChannelName.PULSE1])),
+                ),
+            ],
+            hierarchy=StemsHierarchy(levels=[[0, 1]]),
+        )
+        reconstruction = reconstruction_factory().model_copy(
+            update={
+                "stems_data": StemsData(
+                    config=stems_config,
+                    assignments=[
+                        ChannelAssignment(
+                            channel_name=ChannelName.PULSE1,
+                            stem_ids=[0, 1],
+                        )
+                    ],
+                    scale=RECORDED_SCALE,
+                ).with_sources((first, second)),
+            }
+        )
+
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        np.testing.assert_allclose(data.original_mix_for(_heard(0)), data.stem_audios[0])
+        assert data.original_audio is not None
+        np.testing.assert_allclose(data.original_mix_for(_heard(0, 1)), data.original_audio)
+        np.testing.assert_array_equal(
+            data.original_mix_for(_heard()),
+            np.zeros_like(rendered_mix(data.reconstruction)),
+        )
+
+    def test_a_single_source_with_no_selection_is_silence(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+        renders: RenderCache,
+    ) -> None:
+        source_audio = tmp_path / "source.wav"
+        write_wave(source_audio, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        reconstruction = recorded_from(reconstruction_factory(), (source_audio,))
+
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        np.testing.assert_array_equal(
+            data.partials_for(renders, [ChannelName.PULSE1], _heard()),
+            np.zeros_like(rendered_mix(data.reconstruction)),
+        )
+        assert data.original_audio is not None
+        np.testing.assert_allclose(data.original_mix_for(_heard(0)), data.original_audio)
+
+
+class TestTheOriginalAMissingRecordingLeaves:
+    """With no recording loaded there is no original to mix, so the approximation stands alone."""
+
+    @staticmethod
+    def _missing_a_recording(
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> ReconstructionData:
+        """A document recorded from two takes, the second of which is gone, which costs the whole original."""
+        first = tmp_path / "kick.wav"
+        write_wave(first, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        reconstruction = recorded_from(reconstruction_factory(), (first, tmp_path / "gone.wav"))
+        return ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+    def test_no_recording_mixes_into_no_original(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        data = self._missing_a_recording(reconstruction_factory, tmp_path)
+
+        assert data.original_mix_for(_heard(0, 1)) is None
+        assert data.original_mix_for(_heard()) is None
+
+    def test_the_heard_waveform_carries_no_original_line(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+        renders: RenderCache,
+    ) -> None:
+        data = self._missing_a_recording(reconstruction_factory, tmp_path)
+
+        assert data.waveform_data(renders, _heard(0, 1)).original_audio is None
+
+    def test_a_detached_document_mixes_into_no_original(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        reconstruction = reconstruction.detached()
+
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+        assert data.original_mix_for(_heard(0)) is None
+
+    def test_a_loaded_recording_heard_nowhere_is_a_silent_line(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+        renders: RenderCache,
+    ) -> None:
+        """A loaded recording the reader switched off still has an original, which is silence."""
+        source_audio = tmp_path / "source.wav"
+        write_wave(source_audio, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        data = ReconstructionData.from_reconstruction(
+            recorded_from(reconstruction_factory(), (source_audio,)),
+            name="Sample",
+        )
+
+        original = data.waveform_data(renders, _heard()).original_audio
+
+        assert original is not None
+        np.testing.assert_array_equal(original, np.zeros_like(rendered_mix(data.reconstruction)))
+
+
+class TestRebindingToAnEditedReconstruction:
+    def _three_recordings(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> ReconstructionData:
+        """A document over three recordings, each carrying a shape of its own.
+
+        The shapes differ rather than the levels, since loading normalizes each recording and
+        would read three levels of one shape as the same waveform.
+        """
+        sample_rate = Config().library.sample_rate
+        shapes = (
+            np.linspace(-1.0, 1.0, 64, dtype=np.float32),
+            np.linspace(1.0, -1.0, 64, dtype=np.float32),
+            np.concatenate([np.ones(32, dtype=np.float32), -np.ones(32, dtype=np.float32)]),
+        )
+        paths = []
+        for index, shape in enumerate(shapes):
+            path = tmp_path / f"stem_{index}.wav"
+            write_wave(path, sample_rate, shape)
+            paths.append(path)
+
+        reconstruction = recorded_from(reconstruction_factory(), tuple(paths))
+        return ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+
+    def test_a_recording_follows_the_entry_it_was_loaded_for(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        """A recording is read by position, so one entry leaving would slide the rest onto the wrong audio."""
+        data = self._three_recordings(reconstruction_factory, tmp_path)
+        third = data.stem_audios[2]
+
+        remaining = data.with_reconstruction(without_stem(data.reconstruction, 1))
+
+        np.testing.assert_allclose(remaining.original_mix_for(_heard(2)), third)
+
+    def test_the_removed_recording_is_released(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        data = self._three_recordings(reconstruction_factory, tmp_path)
+        second = data.stem_audios[1]
+
+        remaining = data.with_reconstruction(without_stem(data.reconstruction, 1))
+
+        assert len(remaining.stem_audios) == 2
+        assert all(not np.array_equal(audio, second) for audio in remaining.stem_audios)
+
+    def test_an_edit_letting_a_recording_go_releases_its_audio(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        """A recording the edit leaves holding no frame leaves the document, and its audio with it."""
+        data = self._three_recordings(reconstruction_factory, tmp_path)
+        second, third = data.stem_audios[1], data.stem_audios[2]
+        stream = list(data.reconstruction.instructions[ChannelName.PULSE1])
+        stream[1] = PulseInstruction.null_instruction()
+        edited = data.reconstruction.model_copy(deep=True)
+        edited = edited.with_channel_data(
+            ChannelName.PULSE1,
+            stream,
+            edited.initial_pitches[ChannelName.PULSE1],
+            edited.held_features[ChannelName.PULSE1],
+            heard=edited.recorded_stem_ids,
+        )
+
+        remaining = data.with_reconstruction(edited)
+
+        assert [entry.id for entry in edited.stems_data.config.entries] == [0, 2]
+        assert len(remaining.stem_audios) == 2
+        assert all(not np.array_equal(audio, second) for audio in remaining.stem_audios)
+        np.testing.assert_allclose(remaining.original_mix_for(_heard(2)), third)
+
+    def test_an_edit_keeping_every_entry_keeps_every_recording(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        data = self._three_recordings(reconstruction_factory, tmp_path)
+
+        rebound = data.with_reconstruction(data.reconstruction.model_copy())
+
+        assert rebound.stem_audios == data.stem_audios
+
+    def test_a_document_naming_a_recording_the_load_lost_holds_none(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        """A restore can bring back an entry this document let go of, whose audio it no longer holds."""
+        data = self._three_recordings(reconstruction_factory, tmp_path)
+        remaining = data.with_reconstruction(without_stem(data.reconstruction, 1))
+
+        restored = remaining.with_reconstruction(data.reconstruction)
+
+        assert restored.stem_audios == ()
+        assert restored.original_audio is None
 
 
 class TestWaveformData:
     def test_projects_the_render_relevant_fields(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
+        renders: RenderCache,
     ) -> None:
         reconstruction = reconstruction_factory()
         data = ReconstructionData.from_reconstruction(
@@ -207,11 +601,11 @@ class TestWaveformData:
             name="Sample",
         )
 
-        waveform_data = data.waveform_data()
+        waveform_data = data.waveform_data(renders)
 
         assert waveform_data.original_audio is data.original_audio
-        assert waveform_data.approximation is reconstruction.approximation
-        assert waveform_data.approximations == dict(reconstruction.approximations)
+        assert waveform_data.approximation is renders.mix(reconstruction)
+        assert waveform_data.approximations == renders.channels(reconstruction)
         assert waveform_data.coefficient == reconstruction.coefficient
         assert waveform_data.frame_length == reconstruction.config.frame_length
 
@@ -220,6 +614,7 @@ class TestReconstructionDataGetPartials:
     def test_empty_generator_list_returns_zeros(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
+        renders: RenderCache,
     ) -> None:
         reconstruction = reconstruction_factory()
         data = ReconstructionData.from_reconstruction(
@@ -227,13 +622,14 @@ class TestReconstructionDataGetPartials:
             name="Sample",
         )
 
-        result = data.get_partials([])
+        result = data.get_partials(renders, [])
 
         assert np.all(result == 0.0)
 
     def test_unknown_generator_returns_zeros(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
+        renders: RenderCache,
     ) -> None:
         reconstruction = reconstruction_factory()
         data = ReconstructionData.from_reconstruction(
@@ -241,13 +637,14 @@ class TestReconstructionDataGetPartials:
             name="Sample",
         )
 
-        result = data.get_partials([GeneratorName.TRIANGLE])
+        result = data.get_partials(renders, [ChannelName.TRIANGLE])
 
         assert np.all(result == 0.0)
 
     def test_known_generator_returns_its_approximation(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
+        renders: RenderCache,
     ) -> None:
         reconstruction = reconstruction_factory()
         data = ReconstructionData.from_reconstruction(
@@ -255,7 +652,7 @@ class TestReconstructionDataGetPartials:
             name="Sample",
         )
 
-        result = data.get_partials([GeneratorName.PULSE1])
+        result = data.get_partials(renders, [ChannelName.PULSE1])
 
-        expected = reconstruction.approximations[GeneratorName.PULSE1]
+        expected = rendered_channels(reconstruction)[ChannelName.PULSE1]
         assert np.array_equal(result, expected)

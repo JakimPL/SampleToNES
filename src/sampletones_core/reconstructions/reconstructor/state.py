@@ -1,13 +1,10 @@
 from typing import Dict, List, Self
 
-import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import Fragment
 from sampletones_core.instructions import InstructionUnion
-
-from .approximation import ApproximationData
 
 
 class FragmentReconstructionState(BaseModel):
@@ -20,23 +17,20 @@ class FragmentReconstructionState(BaseModel):
 class ReconstructionState(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    generator_names: List[GeneratorName] = []
-    instructions: Dict[GeneratorName, List[InstructionUnion]] = {}
-    approximations: Dict[GeneratorName, List[np.ndarray]] = {}
+    channel_names: List[ChannelName] = []
+    instructions: Dict[ChannelName, List[InstructionUnion]] = {}
 
     @classmethod
-    def create(cls, generator_names: List[GeneratorName]) -> Self:
+    def create(cls, channel_names: List[ChannelName]) -> Self:
         return cls(
-            generator_names=generator_names,
-            instructions={name: [] for name in generator_names},
-            approximations={name: [] for name in generator_names},
+            channel_names=channel_names,
+            instructions={name: [] for name in channel_names},
         )
 
     def append(
         self,
-        fragment_approximation: ApproximationData,
-        approximation: np.ndarray,
+        channel_name: ChannelName,
+        instruction: InstructionUnion,
     ) -> None:
-        name = fragment_approximation.generator_name
-        self.instructions[name].append(fragment_approximation.instruction)
-        self.approximations[name].append(approximation)
+        """Records one frame of one channel: what it plays."""
+        self.instructions[channel_name].append(instruction)

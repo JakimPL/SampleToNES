@@ -4,7 +4,7 @@ from sampletones_core.configs.display import unique_display_names
 from sampletones_core.structures.tree import ConfigNode, NodeType, TreeNode
 
 
-def disambiguate_generator_siblings(node: TreeNode) -> None:
+def disambiguate_channel_siblings(node: TreeNode) -> None:
     """Appends a short config hash to generator directories sharing a name under one method group."""
     if node.node_type == NodeType.GROUP:
         _rename_config_directories(
@@ -12,7 +12,7 @@ def disambiguate_generator_siblings(node: TreeNode) -> None:
         )
 
     for child in node.children:
-        disambiguate_generator_siblings(child)
+        disambiguate_channel_siblings(child)
 
 
 def assign_display_names(node: TreeNode) -> None:

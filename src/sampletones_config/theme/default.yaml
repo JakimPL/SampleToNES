@@ -373,3 +373,30 @@ components:
       - type: style
         key: FrameBorderSize
         x: 1
+  - item_type: SliderFloat
+    enabled: false
+    entries:
+      - type: color
+        key: Text
+        value: .text_muted
+      - type: color
+        key: FrameBg
+        value: .button_disabled
+      - type: color
+        key: FrameBgHovered
+        value: .button_disabled
+      - type: color
+        key: FrameBgActive
+        value: .button_disabled
+      - type: color
+        key: SliderGrab
+        value: .text_disabled
+      - type: color
+        key: SliderGrabActive
+        value: .text_disabled
+      - type: color
+        key: Border
+        value: .border
+      - type: style
+        key: FrameBorderSize
+        x: 1

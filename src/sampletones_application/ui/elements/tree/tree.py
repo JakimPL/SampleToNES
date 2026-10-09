@@ -45,10 +45,12 @@ from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR,
     TAG_INSTRUCTIONS_LIBRARY_THEME_GROUP,
     TAG_INSTRUCTIONS_LIBRARY_THEME_INSTRUCTION,
+    TAG_INSTRUCTIONS_LIBRARY_THEME_OUTDATED,
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import (
     add_detail_items,
+    add_path_menu_items,
     add_play_menu_item,
 )
 from sampletones_application.ui.elements.fonts.font import Font
@@ -68,22 +70,24 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
+    dpg_get_item_user_data,
     dpg_get_value,
     dpg_is_item_hovered,
     dpg_set_value,
 )
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import (
+    DetailSwatch,
     create_detail_tooltip,
     populate_detail_tooltip,
 )
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.parallelization.thread import (
-    BackgroundWorkCancelled,
+    BackgroundWorkCanceled,
     SingleThreadExecutor,
 )
 from sampletones_core.configs.display import (
-    format_generators,
+    format_channels,
     format_nes_frequency,
     format_sample_rate,
     format_spectrum_method,
@@ -92,7 +96,6 @@ from sampletones_core.configs.display import (
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree import (
-    ConfigGroupNode,
     ConfigNode,
     FileSystemNode,
     LibraryNode,
@@ -110,7 +113,6 @@ from sampletones_shared.types.callback import (
     PathCallback,
     VoidCallback,
 )
-from sampletones_shared.utils.system.paths import open_path_in_explorer
 
 NO_EXPANDED_ROWS: Final[FrozenSet[str]] = frozenset()
 
@@ -173,8 +175,9 @@ class GUITreePanel(GUIPanel, ABC):
         self._lbl_detail_spectrum_method = language_manager["global.context.label.detail_spectrum_method"]
         self._lbl_detail_transformation_gamma = language_manager["global.context.label.detail_transformation_gamma"]
         self._lbl_detail_window_size = language_manager["global.context.label.detail_window_size"]
-        self._lbl_detail_generators = language_manager["global.context.label.detail_generators"]
+        self._lbl_detail_channels = language_manager["global.context.label.detail_channels"]
         self._lbl_detail_configuration = language_manager["global.context.label.detail_configuration"]
+        self._lbl_detail_stems = language_manager["global.context.label.detail_stems"]
 
         self.on_favorites_filter_changed: Optional[Callable[[str, bool], None]] = None
         self.on_add_to_sequencer: Optional[PathCallback] = None
@@ -195,13 +198,15 @@ class GUITreePanel(GUIPanel, ABC):
         collect: Callable[[], List[NodeSpec]],
         *,
         root_tag: str,
+        retry: Optional[VoidCallback],
         on_finished: Optional[VoidCallback] = None,
     ) -> None:
         """Rebuild the subtree under ``root_tag``: prepare it off-thread, emit it on the main thread.
 
         Runs on the background traversal worker and walks through five steps:
 
-        1. A rebuild already in flight holds the lock, so return and let it finish.
+        1. A lock already held — a rebuild in flight, a load, a generation — keeps ``retry`` for its
+           release, which asks for this rebuild again once the tree stands free.
         2. Acquire the lock; responsibility for releasing it passes to the emit pipeline.
         3. ``refresh`` updates the model and the filter is resolved against it, then
            ``collect`` resolves it into a flat :class:`NodeSpec` list -- every per-node
@@ -214,10 +219,9 @@ class GUITreePanel(GUIPanel, ABC):
 
         A failure before the handoff releases the lock so the tree stays interactive.
         """
-        if self.locked:
+        if not self._logic.lock_unless_locked(retry):
             return
 
-        self.lock()
         handed_off = False
         try:
             refresh()
@@ -295,8 +299,8 @@ class GUITreePanel(GUIPanel, ABC):
         """Builds the control showing the favorites alone, as a row of its own under the search box.
 
         The checkbox carries the label, so the words are part of what the reader clicks, and the star
-        beside it reads in the colour the mode it stands for is drawn in. The label reads in the pair
-        every checkbox reads — the text colour while the control is live, the muted one while a
+        beside it reads in the color the mode it stands for is drawn in. The label reads in the pair
+        every checkbox reads — the text color while the control is live, the muted one while a
         rebuild holds it — so the shade states whether the control can be acted on.
         """
         self._favorites_checkbox_tag = compose_tag(self.tag, SUF_CHECKBOX_FAVORITES)
@@ -341,14 +345,14 @@ class GUITreePanel(GUIPanel, ABC):
         self.redraw_tree()
 
     def _apply_favorites_glyph_color(self) -> None:
-        """Colours the star by the mode the control reads, wherever the browser offers one."""
+        """Colors the star by the mode the control reads, wherever the browser offers one."""
         if self._favorites_glyph_tag is None:
             return
 
         dpg_set_palette_color(self._favorites_glyph_tag, self._favorites_glyph_color())
 
     def _favorites_glyph_color(self) -> BaseColor:
-        """The colour the star takes: the favorite colour while the mode is on, muted while it is off."""
+        """The color the star takes: the favorite color while the mode is on, muted while it is off."""
         if self._filter.favorites_only:
             return self._colors.favorite
 
@@ -414,7 +418,7 @@ class GUITreePanel(GUIPanel, ABC):
         decision covers the whole subtree and the traversal walks on.
         """
         if SingleThreadExecutor.is_shutting_down():
-            raise BackgroundWorkCancelled
+            raise BackgroundWorkCanceled
 
         if not self._is_node_drawn(node):
             return
@@ -429,7 +433,7 @@ class GUITreePanel(GUIPanel, ABC):
                 node=node,
                 node_tag=node_tag,
                 parent_tag=parent,
-                label=node.name,
+                label=self._node_label(node),
                 name_font=self._resolve_node_name_font(node),
                 leaf=leaf,
                 open_on_arrow=open_on_arrow,
@@ -466,7 +470,7 @@ class GUITreePanel(GUIPanel, ABC):
 
         The emitter runs this once its last batch has attached. A filtered rebuild that drew no
         row fills the cleared tree with the message naming that outcome, so the filter's answer is
-        legible where the rows would be. Applying the filter here lets late-emitted nodes honour
+        legible where the rows would be. Applying the filter here lets late-emitted nodes honor
         an active search, and releasing the lock hands control back to interactive rebuilds.
         """
         if root_tag == self.tree_tag and self._filter.is_active and not drawn_rows:
@@ -497,11 +501,20 @@ class GUITreePanel(GUIPanel, ABC):
         self,
         status_bar_callback: Optional[MessageCallback],
     ) -> Callback:
+        """The hover callback of a row, which names the row in the status bar and its detail tooltip.
+
+        The hover is reported a frame after it happened, by which time a rebuilt tree may have taken
+        the row away, so the callback answers for the rows still standing.
+        """
+
         def hover_callback(
             _sender: Sender,
             app_data: int,
         ) -> None:
-            user_data = dpg.get_item_user_data(app_data)
+            user_data = dpg_get_item_user_data(app_data)
+            if user_data is None:
+                return
+
             if status_bar_callback is not None:
                 self._status_bar.set(status_bar_callback, user_data=user_data)
             self._update_detail_tooltip(user_data)
@@ -523,23 +536,60 @@ class GUITreePanel(GUIPanel, ABC):
     def _update_detail_tooltip(self, user_data: Any) -> None:
         """Reveals the detail tooltip for a hovered node that carries details, hiding it otherwise.
 
-        The reveal is gated on a change of owning node, so the tooltip content is rebuilt once per
-        node.
+        A hover is reported for every frame the pointer rests on a row, and the row it belongs to is
+        read first, so the content is built once per node and a row asked about a document asks for
+        it once.
         """
         if not isinstance(user_data, tuple):
             return
 
         node, node_tag = user_data
-        detail_items = self._node_detail_items(node)
-        if detail_items:
-            if self._detail_tooltip_owner_tag != node_tag:
-                populate_detail_tooltip(self._detail_tooltip_tag, detail_items)
-                self._detail_tooltip_owner_tag = node_tag
-                dpg_configure_item(self._detail_tooltip_tag, show=True)
-
+        if self._detail_tooltip_owner_tag == node_tag:
             return
 
-        self._hide_detail_tooltip()
+        self._show_detail_tooltip(node, node_tag)
+
+    def _show_detail_tooltip(self, node: TreeNode, node_tag: str) -> None:
+        """Fills the tooltip with what the node answers, and hides it where the node answers nothing."""
+        detail_items = self._node_detail_items(node)
+        detail_recordings = self._node_detail_recordings(node)
+        if not detail_items and not detail_recordings:
+            self._hide_detail_tooltip()
+            return
+
+        populate_detail_tooltip(
+            self._detail_tooltip_tag,
+            detail_items,
+            swatch_glyph=self._glyphs.common.swatch,
+            swatch_label=self._lbl_detail_stems,
+            swatches=detail_recordings,
+        )
+        self._detail_tooltip_owner_tag = node_tag
+        dpg_configure_item(self._detail_tooltip_tag, show=True)
+
+    def refresh_detail_tooltip(self) -> None:
+        """Rebuilds the tooltip where it stands, which an answer arriving after it was built asks for.
+
+        The rebuild belongs to the row the tooltip is showing, so it stands still once the pointer
+        has moved on.
+        """
+        owner_tag = self._detail_tooltip_owner_tag
+        if owner_tag is None:
+            return
+
+        node = self._node_at(owner_tag)
+        if node is not None:
+            self._show_detail_tooltip(node, owner_tag)
+
+    @staticmethod
+    def _node_at(node_tag: str) -> Optional[TreeNode]:
+        """The node a row was created for, read back from the widget the row is."""
+        user_data = dpg_get_item_user_data(node_tag)
+        if not isinstance(user_data, tuple):
+            return None
+
+        node, _ = user_data
+        return node if isinstance(node, TreeNode) else None
 
     def _hide_detail_tooltip(self) -> None:
         if self._detail_tooltip_owner_tag is None:
@@ -569,7 +619,10 @@ class GUITreePanel(GUIPanel, ABC):
             sender: Sender,
             app_data: Tuple[int, int],
         ) -> None:
-            user_data = dpg.get_item_user_data(app_data[1])
+            user_data = dpg_get_item_user_data(app_data[1])
+            if user_data is None:
+                return
+
             self._remember_clicked_row(user_data)
             if item_click_callback is not None:
                 item_click_callback(sender, app_data, user_data=user_data)
@@ -587,7 +640,10 @@ class GUITreePanel(GUIPanel, ABC):
             sender: Sender,
             app_data: Tuple[int, int],
         ) -> None:
-            user_data = dpg.get_item_user_data(app_data[1])
+            user_data = dpg_get_item_user_data(app_data[1])
+            if user_data is None:
+                return
+
             if item_double_click_callback is not None:
                 item_double_click_callback(
                     sender,
@@ -750,6 +806,11 @@ class GUITreePanel(GUIPanel, ABC):
 
         return self._colors.node
 
+    def _node_label(self, node: TreeNode) -> str:
+        """The text a node's row reads, which is the node's name; a panel marking some of its rows
+        adds the mark here, which keeps the row's tag and its remembered expansion on the name."""
+        return node.name
+
     def _resolve_node_name_font(self, node: TreeNode) -> Font:
         """Select the label font for a node: monospace for the rows stating a configuration.
 
@@ -757,10 +818,11 @@ class GUITreePanel(GUIPanel, ABC):
         carries: the fields a reconstruction directory encodes, the stretch of them a heading gathers
         several directories under, the name a library goes by. A panel that sets
         ``_MONOSPACE_CONFIG_NODES`` renders every one of those rows in the fixed-width font, so a
-        column of them reads field under field and a heading reads as the row below it does. Every
-        other row keeps the panel's ``_NAME_FONT``.
+        column of them reads field under field and a heading reads as the row below it does. A row
+        whose name has gathered a name somebody chose reads as that plain name, and every other row
+        keeps the panel's ``_NAME_FONT``.
         """
-        if self._MONOSPACE_CONFIG_NODES and isinstance(node, (ConfigNode, ConfigGroupNode, LibraryNode)):
+        if self._MONOSPACE_CONFIG_NODES and node.states_configuration:
             return self._CONFIG_FONT
 
         return self._NAME_FONT
@@ -788,6 +850,10 @@ class GUITreePanel(GUIPanel, ABC):
 
         return []
 
+    def _node_detail_recordings(self, node: TreeNode) -> Tuple[DetailSwatch, ...]:  # pylint: disable=unused-argument
+        """The recordings a row's document is made of, which a browser reading documents answers."""
+        return ()
+
     def _library_detail_items(
         self,
         key: InstructionLibraryKey,
@@ -811,7 +877,7 @@ class GUITreePanel(GUIPanel, ABC):
             (self._lbl_detail_nes_frequency, format_nes_frequency(fields.nf)),
             (self._lbl_detail_spectrum_method, format_spectrum_method(fields.sm)),
             (self._lbl_detail_transformation_gamma, str(fields.tg)),
-            (self._lbl_detail_generators, format_generators(fields.generators)),
+            (self._lbl_detail_channels, format_channels(fields.channels)),
             (self._lbl_detail_configuration, short_hash(fields.ch)),
         ]
 
@@ -832,19 +898,7 @@ class GUITreePanel(GUIPanel, ABC):
         )
 
     def _add_context_menu_path_items(self, path: Path) -> None:
-        dpg.add_separator()
-        dpg.add_menu_item(
-            label=self._language_manager["global.context.label.copy_filename"],
-            callback=lambda: dpg.set_clipboard_text(str(path.name)),
-        )
-        dpg.add_menu_item(
-            label=self._language_manager["global.context.label.copy_path"],
-            callback=lambda: dpg.set_clipboard_text(str(path)),
-        )
-        dpg.add_menu_item(
-            label=self._language_manager["global.context.label.open_in_explorer"],
-            callback=lambda: open_path_in_explorer(path),
-        )
+        add_path_menu_items(self._language_manager, path)
 
     def _add_context_menu_sequencer_items(self, node: FileSystemNode) -> None:
         """Add the send-to-sequencer item, live while its host reports the sequencer accepts one."""
@@ -1193,6 +1247,8 @@ class GUITreePanel(GUIPanel, ABC):
     def _resolve_other_theme_tag(self, node: TreeNode) -> str:
         match node.node_type:
             case NodeType.LIBRARY:
+                if isinstance(node, LibraryNode) and node.outdated:
+                    return TAG_INSTRUCTIONS_LIBRARY_THEME_OUTDATED
                 return TAG_INSTRUCTIONS_LIBRARY_THEME
             case NodeType.GENERATOR:
                 return TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR

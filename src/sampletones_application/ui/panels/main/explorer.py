@@ -24,6 +24,7 @@ from sampletones_application.ui.elements.tree.spec import NodeSpec
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tags import FileBrowserTags
 from sampletones_application.ui.elements.tree.tree import NO_EXPANDED_ROWS
+from sampletones_application.utils.gui.keyboard.modifiers import Modifier, capture_modifiers
 from sampletones_application.utils.parallelization.thread import concurrent
 from sampletones_core.structures.tree import (
     FileSystemNode,
@@ -54,15 +55,15 @@ class ExplorerLogicProtocol(Protocol):
 
     def collapse_all(self) -> None: ...
 
-    def expand_directory(self, node: FileSystemNode) -> None: ...
+    def expand_directory(self, directory_node: FileSystemNode) -> None: ...
 
-    def has_loaded_children(self, filepath: Path) -> bool: ...
+    def has_loaded_children(self, directory_path: Path) -> bool: ...
 
-    def is_directory_open(self, filepath: Path) -> bool: ...
+    def is_directory_open(self, directory_path: Path) -> bool: ...
 
-    def set_directory_open(self, filepath: Path, is_open: bool) -> None: ...
+    def set_directory_open(self, directory_path: Path, is_open: bool) -> None: ...
 
-    def has_relevant_content(self, filepath: Path) -> bool: ...
+    def has_relevant_content(self, directory_path: Path) -> bool: ...
 
 
 class GUIExplorerPanel(GUIFileBrowserPanel):
@@ -91,8 +92,8 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         self._language_manager = language_manager
         self._explorer_logic = explorer_logic
 
-        self.on_wave_file_clicked: Optional[PathCallback] = None
-        self.on_directory_clicked: Optional[PathCallback] = None
+        self.on_directory_add_requested: Optional[PathCallback] = None
+        self.on_file_add_requested: Optional[PathCallback] = None
         self.on_reconstruct_directory: Optional[PathCallback] = None
         self.on_reconstruct_file: Optional[PathCallback] = None
         self.on_load_reconstruction: Optional[PathCallback] = None
@@ -148,7 +149,7 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
     def _on_collapse_all_clicked(self) -> None:
         """Folds every folder away and drops the children it had loaded, so opening one reads it again.
 
-        The rows fold while the model still states them, and the folders the model held go afterwards,
+        The rows fold while the model still states them, and the folders the model held go afterward,
         which is what makes a later open list the folder as it stands on disk.
         """
         super()._on_collapse_all_clicked()
@@ -164,6 +165,7 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
             lambda: None,
             lambda: self._collect_subtree_specs(node, node_tag),
             root_tag=node_tag,
+            retry=None,
         )
 
     def _collect_subtree_specs(
@@ -174,6 +176,7 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         self._pending_specs = []
         if self._explorer_logic.has_loaded_children(node.filepath):
             for child in node.children:
+                assert isinstance(child, FileSystemNode), "Explorer child is not a FileSystemNode"
                 self._build_tree_node(
                     child,
                     TreeNodeState(
@@ -271,13 +274,30 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
                 case extensions.EXT_FILE_RECONSTRUCTION:
                     return self._logic.request_autoplay(node)
                 case suffix if suffix in extensions.EXT_FILES_AUDIO:
-                    self.call(self.on_wave_file_clicked, node.filepath)
-                    return self._logic.request_autoplay(node)
+                    return self._audio_node_clicked(node)
 
         if mouse_button == dpg.mvMouseButton_Right:
             return self._show_file_context_menu(node)
 
         return None
+
+    def _audio_node_clicked(self, node: FileSystemNode) -> None:
+        """Answers a click on a recording: Ctrl gathers it as a stem, and a plain click plays it.
+
+        A plain click previews the recording and leaves the conversion as it stands, so walking the
+        browser to hear what a file holds costs the run nothing. Ctrl is the gathering gesture
+        throughout the browser, so it reaches a recording the same way it reaches a folder and asks
+        what **Add as stem** asks, which the converter answers.
+        """
+        if Modifier.CTRL in capture_modifiers():
+            self._gather_audio_node(node)
+            return
+
+        self._logic.request_autoplay(node)
+
+    def _gather_audio_node(self, node: FileSystemNode) -> None:
+        """Asks the converter to gather a recording, as **Add as stem** does."""
+        self.call(self.on_file_add_requested, node.filepath)
 
     def _on_file_node_double_clicked(
         self,
@@ -292,8 +312,7 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
                 case extensions.EXT_FILE_RECONSTRUCTION:
                     self._load_reconstruction(node)
                 case suffix if suffix in extensions.EXT_FILES_AUDIO:
-                    self._logic.cancel_autoplay()
-                    return self._reconstruct_file(node)
+                    self._gather_audio_node(node)
                 case extensions.EXT_FILE_LIBRARY:
                     return self._load_library(node)
 
@@ -331,12 +350,23 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         node: FileSystemNode,
         node_tag: str,
     ) -> None:
+        """Answers a click on a folder: Ctrl gathers its recordings, and a plain click opens it.
+
+        Gathering a folder reads every recording below it, so it waits for the reader to ask for
+        it. Ctrl asks what **Add folder** asks, so the
+        folder joins the conversion without the reader leaving the row, and the converter answers
+        for whether its list takes it. A plain click opens the folder and leaves the conversion as
+        it stands.
+        """
         has_content = self._explorer_logic.has_relevant_content(node.filepath)
         if not has_content:
             return
 
+        if Modifier.CTRL in capture_modifiers():
+            self.call(self.on_directory_add_requested, node.filepath)
+            return
+
         self._toggle_directory_expansion(node, node_tag)
-        self.call(self.on_directory_clicked, node.filepath)
 
     def _load_reconstruction(self, node: FileSystemNode) -> None:
         filepath = node.filepath
@@ -353,12 +383,6 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
             return self._explorer_logic.has_relevant_content(node.filepath)
 
         return True
-
-    def _reconstruct_file(self, node: FileSystemNode) -> None:
-        if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
-            return
-
-        self.call(self.on_reconstruct_file, node.filepath)
 
     def _toggle_directory_expansion(
         self,
@@ -403,6 +427,10 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
                     label=self._language_manager["main.explorer.label.context_reconstruct_file"],
                     callback=lambda: self._context_reconstruct_file(node),
                 )
+                dpg.add_menu_item(
+                    label=self._language_manager["main.explorer.label.context_add_stem"],
+                    callback=lambda: self.call(self.on_file_add_requested, node.filepath),
+                )
 
     def _show_file_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
@@ -423,6 +451,10 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         dpg.add_menu_item(
             label=self._language_manager["main.explorer.label.context_reconstruct_directory"],
             callback=lambda: self._context_reconstruct_directory(node),
+        )
+        dpg.add_menu_item(
+            label=self._language_manager["main.explorer.label.context_add_folder_stems"],
+            callback=lambda: self.call(self.on_directory_add_requested, node.filepath),
         )
 
     def _add_context_menu_set_directory_items(self, node: FileSystemNode) -> None:

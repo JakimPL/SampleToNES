@@ -1,10 +1,12 @@
 import math
+from dataclasses import dataclass, replace
 from typing import Final, List
 
 import pytest
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import NUM_PERIODS
+from sampletones_core.exports.request import InstrumentExport
 from sampletones_core.formats.bitphase.builder import (
     PREVIEW_REST_PATTERN_ID,
     PREVIEW_SPEED,
@@ -23,7 +25,12 @@ from sampletones_core.formats.bitphase.specification.channels import (
     CHANNEL_COUNT,
     ChannelIndex,
 )
-from sampletones_core.formats.bitphase.specification.chip import CHIP_TYPE_NES
+from sampletones_core.formats.bitphase.specification.chip import (
+    CHIP_TYPE_NES,
+    MAX_A4_TUNING,
+    MIN_A4_TUNING,
+    TUNING_A4_INDEX,
+)
 from sampletones_core.formats.bitphase.specification.instruments import (
     MAX_TABLE_ID,
     MIN_INSTRUMENT_ID,
@@ -36,9 +43,15 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     MIN_PATTERN_LENGTH,
     NO_INSTRUMENT_CHANGE,
     NO_TABLE_CHANGE,
+    NOTE_INDEX_PITCH_OFFSET,
     TABLE_COLUMN_OFFSET,
     NoteName,
 )
+from sampletones_core.formats.bitphase.tuning import concert_frequency, generate_tuning_table
+from sampletones_shared.constants.music import OCTAVE_SEMITONES
+from sampletones_shared.music import Tuning
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 from .conftest import (
     NES_FREQUENCY,
@@ -51,6 +64,18 @@ from .conftest import (
 VOLUME_ENVELOPE: Final[List[int]] = [15, 10, 5, 0]
 NOISE_PERIOD: Final[int] = 4
 LONG_ENVELOPE_FRAMES: Final[int] = 4000
+BEND_ENVELOPE: Final[List[int]] = [0, -3, -7, -12]
+LOWERED_A4_FREQUENCY: Final[float] = 432.0
+C5_PITCH: Final[int] = 72
+A3_PITCH: Final[int] = 57
+A5_PITCH: Final[int] = 81
+SEMITONES_FROM_A4_TO_C5: Final[int] = 3
+FLAT_A5_FREQUENCY: Final[float] = 400.0
+SHARP_A3_FREQUENCY: Final[float] = 500.0
+NAMED_AT_C5: Final[Tuning] = Tuning(
+    a4_frequency=LOWERED_A4_FREQUENCY * 2 ** (SEMITONES_FROM_A4_TO_C5 / OCTAVE_SEMITONES),
+    a4_pitch=C5_PITCH,
+)
 
 
 @pytest.fixture(name="project")
@@ -62,7 +87,7 @@ def project_fixture() -> BitphaseProject:
             build_instrument(
                 "Kick (noise)",
                 build_features(VOLUME_ENVELOPE, initial_pitch=NOISE_PERIOD),
-                generator=GeneratorName.NOISE,
+                channel=ChannelName.NOISE,
             ),
         )
     )
@@ -154,6 +179,17 @@ class TestThePreviewPattern:
         pattern = project.songs[0].patterns[0]
         assert all(len(channel.rows) == pattern.length for channel in pattern.channels)
 
+    def test_the_song_states_the_length_its_patterns_were_built_at(self, project: BitphaseProject) -> None:
+        song = project.songs[0]
+        assert song.default_pattern_length == song.patterns[0].length
+
+    def test_a_channel_lays_out_a_column_for_every_effect_its_lines_carry(
+        self,
+        project: BitphaseProject,
+    ) -> None:
+        channels = project.songs[0].patterns[0].channels
+        assert all(channel.effect_column_count == max(len(row.effects) for row in channel.rows) for channel in channels)
+
 
 class TestTheOrderCoversTheLongestInstrument:
     """Playback returns to the start of the order, so a document whose order runs out
@@ -207,7 +243,7 @@ class TestOneSliceOnItsOwn:
             build_instrument(
                 "Hat",
                 build_features(VOLUME_ENVELOPE, arpeggio=[0, 1, 2, 3], initial_pitch=NOISE_PERIOD),
-                generator=GeneratorName.NOISE,
+                channel=ChannelName.NOISE,
             )
         )
         row = project.songs[0].patterns[0].channels[int(ChannelIndex.NOISE)].rows[PREVIEW_TRIGGER_ROW]
@@ -222,7 +258,7 @@ class TestOneSliceOnItsOwn:
                     arpeggio=[0, -1, -2, -3],
                     initial_pitch=NOISE_PERIOD,
                 ),
-                generator=GeneratorName.NOISE,
+                channel=ChannelName.NOISE,
             )
         )
         assert all(0 <= offset < NUM_PERIODS for offset in project.tables[0].rows)
@@ -249,3 +285,88 @@ class TestCapacityLimits:
         )
         with pytest.raises(ValueError, match="tables"):
             sample_to_bitphase(request)
+
+
+def tuned_slice(tuning: Tuning) -> InstrumentExport:
+    """One bent slice of a reconstruction built against ``tuning``."""
+    return replace(
+        build_instrument("Bent", build_features(VOLUME_ENVELOPE, bend=BEND_ENVELOPE)),
+        tuning=tuning,
+    )
+
+
+def tuned_document(tuning: Tuning) -> BitphaseProject:
+    """The document of a reconstruction built against ``tuning``."""
+    return sample_to_bitphase(replace(build_sample("Bent", tuned_slice(tuning)), tuning=tuning))
+
+
+class TestTheDocumentSoundsTheRequestsTuning(BaseTestSuite):
+    """A song stores its concert pitch beside the table built from it, and Bitphase builds the
+    table again from that pitch when it loads the song, so a document written at the
+    reconstruction's own tuning plays the pitches the reconstruction was built against.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        tuning: Tuning
+
+    test_cases = (
+        TestCase(
+            tuning=Tuning(),
+            label="concert",
+        ),
+        TestCase(
+            tuning=Tuning(a4_frequency=LOWERED_A4_FREQUENCY),
+            label="lowered",
+        ),
+        TestCase(
+            tuning=NAMED_AT_C5,
+            label="named_at_c5",
+        ),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_song_centers_on_the_frequency_of_its_concert_index(self, test_case: TestCase) -> None:
+        song = tuned_document(test_case.tuning).songs[0]
+        assert song.a4_tuning_hz == test_case.tuning.frequency(TUNING_A4_INDEX + NOTE_INDEX_PITCH_OFFSET)
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_table_is_the_one_bitphase_builds_from_the_song(self, test_case: TestCase) -> None:
+        song = tuned_document(test_case.tuning).songs[0]
+        assert generate_tuning_table(song.chip_frequency, a4_tuning=song.a4_tuning_hz) == song.tuning_table
+
+    def test_a_reference_named_at_another_pitch_writes_the_same_song(self) -> None:
+        at_a4 = tuned_document(Tuning(a4_frequency=LOWERED_A4_FREQUENCY))
+        at_c5 = tuned_document(NAMED_AT_C5)
+        assert at_c5.songs[0].tuning_table == at_a4.songs[0].tuning_table
+        assert at_c5.songs[0].a4_tuning_hz == pytest.approx(at_a4.songs[0].a4_tuning_hz)
+        assert at_c5.instruments == at_a4.instruments
+
+    @pytest.mark.parametrize(
+        "tuning",
+        [
+            Tuning(a4_frequency=MIN_A4_TUNING * 2, a4_pitch=A5_PITCH),
+            Tuning(a4_frequency=MAX_A4_TUNING / 2, a4_pitch=A3_PITCH),
+        ],
+        ids=["lowest", "highest"],
+    )
+    def test_a_tuning_at_the_edge_of_the_range_is_written(self, tuning: Tuning) -> None:
+        assert tuned_document(tuning).songs[0].a4_tuning_hz == concert_frequency(tuning)
+
+    @pytest.mark.parametrize(
+        "tuning",
+        [
+            Tuning(a4_frequency=FLAT_A5_FREQUENCY, a4_pitch=A5_PITCH),
+            Tuning(a4_frequency=SHARP_A3_FREQUENCY, a4_pitch=A3_PITCH),
+        ],
+        ids=["below", "above"],
+    )
+    def test_a_tuning_past_the_range_a_song_takes_is_refused(self, tuning: Tuning) -> None:
+        assert not MIN_A4_TUNING <= concert_frequency(tuning) <= MAX_A4_TUNING
+        with pytest.raises(ValueError):
+            tuned_document(tuning)
+
+    def test_an_instrument_document_takes_its_slices_tuning(self) -> None:
+        tuning = Tuning(a4_frequency=LOWERED_A4_FREQUENCY)
+        song = instrument_to_bitphase(tuned_slice(tuning)).songs[0]
+        assert song.a4_tuning_hz == concert_frequency(tuning)

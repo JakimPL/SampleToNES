@@ -19,4 +19,23 @@ features:
   volume: .feature_volume
   arpeggio: .feature_arpeggio
   pitch: .feature_pitch
+  hi_pitch: .feature_hi_pitch
   duty_cycle: .feature_duty_cycle
+channels:
+  pulse1: .channel_pulse1
+  pulse2: .channel_pulse2
+  triangle: .channel_triangle
+  noise: .channel_noise
+stems:
+  recordings:
+    - .stem_1
+    - .stem_2
+    - .stem_3
+    - .stem_4
+    - .stem_5
+    - .stem_6
+    - .stem_7
+    - .stem_8
+  authored: .stem_authored
+  rest: .stem_rest
+  left_out_fraction: 0.45

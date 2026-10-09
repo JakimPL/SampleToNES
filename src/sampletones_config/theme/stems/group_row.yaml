@@ -1,0 +1,12 @@
+name: stems_group_row
+tag: global.theme.stems_group_row
+
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: TableRowBg
+        value: .accent/0.16
+      - type: color
+        key: TableRowBgAlt
+        value: .accent/0.16

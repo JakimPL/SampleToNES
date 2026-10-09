@@ -1,0 +1,374 @@
+import gzip
+import json
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, Final, List, Optional
+
+import numpy as np
+import pytest
+
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.exporters import Features
+from sampletones_core.exporters.truncation import EnvelopeTruncation
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.implementation.bitphase import (
+    BitphaseBackend,
+    BitphasePresetBackend,
+)
+from sampletones_core.exports.request import (
+    InstrumentExport,
+    ProjectExport,
+    SampleExport,
+)
+from sampletones_core.exports.scope import ExportScope
+from sampletones_core.features.envelope import Envelope
+from sampletones_core.formats.bitphase.specification.macros import MAX_MACRO_LENGTH, NesMacroField
+from sampletones_core.project.project import Project
+from sampletones_core.project.settings import ProjectSettings
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.voice import voice_channels
+from sampletones_shared.music import Tuning
+from sampletones_shared.paths.extensions import EXT_FILE_BITPHASE, EXT_FILE_JSON
+from tests.suite.silent_rows import name_a_missing_voice
+
+NES_FREQUENCY: Final[int] = 60
+REFERENCE_PITCH: Final[int] = 60
+ENVELOPE_FRAMES: Final[int] = 16
+LONG_ENVELOPE_FRAMES: Final[int] = 600
+LONGER_ENVELOPE_FRAMES: Final[int] = 700
+PROJECT_TITLE: Final[str] = "Demo"
+
+
+PRESET_SCOPES: List[ExportScope] = [ExportScope.INSTRUMENT, ExportScope.SAMPLE]
+
+
+def build_features(frames: int, *, duty_cycle_frames: Optional[int] = None) -> Features:
+    duty_cycle = None if duty_cycle_frames is None else np.zeros(duty_cycle_frames, dtype=int)
+    return Features(
+        initial_pitch=REFERENCE_PITCH,
+        volume=Envelope(items=(15,) * frames),
+        arpeggio=Envelope(items=(0,) * frames),
+        pitch=None,
+        hi_pitch=None,
+        duty_cycle=duty_cycle,
+    )
+
+
+def build_instrument(name: str, frames: int) -> InstrumentExport:
+    return InstrumentExport(
+        name=name,
+        channel=ChannelName.PULSE1,
+        features=build_features(frames),
+        nes_frequency=NES_FREQUENCY,
+        tuning=Tuning(),
+    )
+
+
+def build_sample(name: str, *instruments: InstrumentExport) -> SampleExport:
+    return SampleExport(
+        name=name,
+        instruments=instruments,
+        nes_frequency=NES_FREQUENCY,
+        tuning=Tuning(),
+    )
+
+
+def read_document(destination: Path) -> Dict[str, Any]:
+    document: Dict[str, Any] = json.loads(gzip.decompress(destination.read_bytes()))
+    return document
+
+
+@pytest.fixture(name="backend")
+def backend_fixture() -> BitphaseBackend:
+    return BitphaseBackend()
+
+
+@pytest.fixture(name="preset_backend")
+def preset_backend_fixture() -> BitphasePresetBackend:
+    return BitphasePresetBackend()
+
+
+@pytest.fixture(name="project")
+def project_fixture() -> Project:
+    return Project.create(title=PROJECT_TITLE, author="Tester", settings=ProjectSettings())
+
+
+class TestFormatDeclaration:
+    def test_the_backend_names_its_format(self, backend: BitphaseBackend) -> None:
+        assert backend.export_format == ExportFormat.BITPHASE
+
+    def test_every_scope_is_supported(self, backend: BitphaseBackend) -> None:
+        assert backend.supported_scopes == frozenset(ExportScope)
+
+    @pytest.mark.parametrize("scope", list(ExportScope))
+    def test_every_scope_carries_the_document_extension(self, backend: BitphaseBackend, scope: ExportScope) -> None:
+        assert backend.extension(scope) == EXT_FILE_BITPHASE
+
+
+class TestWriteInstrument:
+    def test_the_file_is_written_and_reported(self, backend: BitphaseBackend, tmp_path: Path) -> None:
+        destination = tmp_path / f"Short{EXT_FILE_BITPHASE}"
+
+        artifact = backend.write_instrument(destination, build_instrument("Short", ENVELOPE_FRAMES))
+
+        assert destination.exists()
+        assert artifact.paths == (destination,)
+
+    def test_the_document_holds_the_slice(self, backend: BitphaseBackend, tmp_path: Path) -> None:
+        destination = tmp_path / f"Short{EXT_FILE_BITPHASE}"
+        backend.write_instrument(destination, build_instrument("Short", ENVELOPE_FRAMES))
+
+        document = read_document(destination)
+
+        assert [instrument["name"] for instrument in document["instruments"]] == ["Short"]
+
+    def test_a_long_envelope_reaches_the_values_a_macro_stores(
+        self,
+        backend: BitphaseBackend,
+        tmp_path: Path,
+    ) -> None:
+        """A macro holds the values of one dimension, and a longer envelope keeps its opening
+        values, while the contour a table carries crosses over whole.
+        """
+        destination = tmp_path / f"Long{EXT_FILE_BITPHASE}"
+        backend.write_instrument(destination, build_instrument("Long", LONG_ENVELOPE_FRAMES))
+
+        document = read_document(destination)
+
+        macros = document["instruments"][0]["macros"]
+        assert len(macros[NesMacroField.VOLUME_OR_RATE]["values"]) == MAX_MACRO_LENGTH
+        assert len(document["tables"][0]["rows"]) == LONG_ENVELOPE_FRAMES
+
+    def test_an_envelope_within_a_macro_reports_nothing(self, backend: BitphaseBackend, tmp_path: Path) -> None:
+        artifact = backend.write_instrument(
+            tmp_path / f"Short{EXT_FILE_BITPHASE}",
+            build_instrument("Short", MAX_MACRO_LENGTH),
+        )
+        assert artifact.truncation is None
+
+    def test_an_envelope_beyond_a_macro_reports_both_counts(self, backend: BitphaseBackend, tmp_path: Path) -> None:
+        artifact = backend.write_instrument(
+            tmp_path / f"Long{EXT_FILE_BITPHASE}",
+            build_instrument("Long", LONG_ENVELOPE_FRAMES),
+        )
+        assert artifact.truncation == EnvelopeTruncation(
+            frames=MAX_MACRO_LENGTH,
+            source_frames=LONG_ENVELOPE_FRAMES,
+            instruments=1,
+        )
+
+
+class TestWriteSample:
+    def test_every_slice_lands_in_one_document(self, backend: BitphaseBackend, tmp_path: Path) -> None:
+        destination = tmp_path / f"Kick{EXT_FILE_BITPHASE}"
+        request = build_sample(
+            "Kick",
+            build_instrument("Kick (pulse1)", ENVELOPE_FRAMES),
+            build_instrument("Kick (noise)", ENVELOPE_FRAMES),
+        )
+
+        artifact = backend.write_sample(destination, request)
+
+        assert artifact.paths == (destination,)
+        assert len(read_document(destination)["instruments"]) == 2
+
+    def test_the_document_is_named_after_the_reconstruction(self, backend: BitphaseBackend, tmp_path: Path) -> None:
+        destination = tmp_path / f"Kick{EXT_FILE_BITPHASE}"
+        backend.write_sample(destination, build_sample("Kick", build_instrument("Kick", ENVELOPE_FRAMES)))
+
+        assert read_document(destination)["name"] == "Kick"
+
+    def test_the_report_spans_every_shortened_slice(self, backend: BitphaseBackend, tmp_path: Path) -> None:
+        request = build_sample(
+            "Pad",
+            build_instrument("Short", ENVELOPE_FRAMES),
+            build_instrument("Long", LONG_ENVELOPE_FRAMES),
+            build_instrument("Longer", LONGER_ENVELOPE_FRAMES),
+        )
+
+        artifact = backend.write_sample(tmp_path / f"Pad{EXT_FILE_BITPHASE}", request)
+
+        assert artifact.truncation == EnvelopeTruncation(
+            frames=MAX_MACRO_LENGTH,
+            source_frames=LONGER_ENVELOPE_FRAMES,
+            instruments=2,
+        )
+
+
+class TestWriteProject:
+    def test_the_document_is_written_and_reported(
+        self,
+        backend: BitphaseBackend,
+        project: Project,
+        tmp_path: Path,
+    ) -> None:
+        destination = tmp_path / f"Demo{EXT_FILE_BITPHASE}"
+
+        artifact = backend.write_project(destination, ProjectExport(project=project))
+
+        assert artifact.paths == (destination,)
+        assert destination.exists()
+
+    def test_the_document_takes_the_project_title(
+        self,
+        backend: BitphaseBackend,
+        project: Project,
+        tmp_path: Path,
+    ) -> None:
+        destination = tmp_path / f"Demo{EXT_FILE_BITPHASE}"
+        backend.write_project(destination, ProjectExport(project=project))
+
+        assert read_document(destination)["name"] == PROJECT_TITLE
+
+    def test_a_row_with_no_instrument_is_reported_beside_the_written_file(
+        self,
+        backend: BitphaseBackend,
+        project: Project,
+        tmp_path: Path,
+    ) -> None:
+        destination = tmp_path / f"Demo{EXT_FILE_BITPHASE}"
+        silent = name_a_missing_voice(project)
+
+        artifact = backend.write_project(destination, ProjectExport(project=project))
+
+        assert destination.exists()
+        assert artifact.skipped_rows == (silent,)
+
+    def test_a_project_with_an_instrument_for_every_row_reports_none(
+        self,
+        backend: BitphaseBackend,
+        project: Project,
+        tmp_path: Path,
+    ) -> None:
+        artifact = backend.write_project(tmp_path / f"Demo{EXT_FILE_BITPHASE}", ProjectExport(project=project))
+
+        assert artifact.skipped_rows == ()
+
+    def test_a_project_whose_slices_outrun_a_macro_reports_it(
+        self,
+        backend: BitphaseBackend,
+        project: Project,
+        tmp_path: Path,
+    ) -> None:
+        """An instrument becomes a slice on every channel it sounds on, so each of them
+        counts as a shortened instrument.
+        """
+        pad = Instrument(
+            name="Pad",
+            envelopes=InstrumentEnvelopes(volume=Envelope(items=(15,) * LONG_ENVELOPE_FRAMES)),
+        )
+        project.voices.append(pad)
+
+        artifact = backend.write_project(tmp_path / f"Demo{EXT_FILE_BITPHASE}", ProjectExport(project=project))
+
+        assert artifact.truncation == EnvelopeTruncation(
+            frames=MAX_MACRO_LENGTH,
+            source_frames=LONG_ENVELOPE_FRAMES,
+            instruments=len(voice_channels(pad)),
+        )
+
+    def test_a_project_within_a_macro_reports_nothing(
+        self,
+        backend: BitphaseBackend,
+        project: Project,
+        tmp_path: Path,
+    ) -> None:
+        artifact = backend.write_project(tmp_path / f"Demo{EXT_FILE_BITPHASE}", ProjectExport(project=project))
+
+        assert artifact.truncation is None
+
+
+class TestThePresetBackend:
+    def test_the_backend_names_its_format(self, preset_backend: BitphasePresetBackend) -> None:
+        assert preset_backend.export_format == ExportFormat.BITPHASE_PRESET
+
+    def test_a_preset_holds_instruments_rather_than_a_song(self, preset_backend: BitphasePresetBackend) -> None:
+        assert preset_backend.supported_scopes == frozenset({ExportScope.INSTRUMENT, ExportScope.SAMPLE})
+
+    @pytest.mark.parametrize("scope", PRESET_SCOPES, ids=lambda scope: str(scope))
+    def test_every_supported_scope_carries_the_preset_extension(
+        self,
+        preset_backend: BitphasePresetBackend,
+        scope: ExportScope,
+    ) -> None:
+        assert preset_backend.extension(scope) == EXT_FILE_JSON
+
+    def test_one_slice_lands_in_a_file(self, preset_backend: BitphasePresetBackend, tmp_path: Path) -> None:
+        destination = tmp_path / f"Lead{EXT_FILE_JSON}"
+
+        artifact = preset_backend.write_instrument(destination, build_instrument("Lead", ENVELOPE_FRAMES))
+
+        assert artifact.paths == (destination,)
+        assert json.loads(destination.read_text(encoding="utf-8"))["name"] == "Lead"
+
+    def test_each_slice_lands_beside_the_destination_named_after_its_instrument(
+        self,
+        preset_backend: BitphasePresetBackend,
+        tmp_path: Path,
+    ) -> None:
+        destination = tmp_path / f"Kick{EXT_FILE_JSON}"
+        request = build_sample(
+            "Kick",
+            build_instrument("Kick (pulse1)", ENVELOPE_FRAMES),
+            build_instrument("Kick (noise)", ENVELOPE_FRAMES),
+        )
+
+        artifact = preset_backend.write_sample(destination, request)
+
+        assert artifact.paths == (
+            tmp_path / f"Kick (pulse1){EXT_FILE_JSON}",
+            tmp_path / f"Kick (noise){EXT_FILE_JSON}",
+        )
+        assert all(path.exists() for path in artifact.paths)
+
+    def test_a_missing_directory_is_created(self, preset_backend: BitphasePresetBackend, tmp_path: Path) -> None:
+        destination = tmp_path / "nested" / f"Kick{EXT_FILE_JSON}"
+
+        preset_backend.write_sample(destination, build_sample("Kick", build_instrument("Kick", ENVELOPE_FRAMES)))
+
+        assert destination.parent.is_dir()
+
+    def test_a_preset_beyond_a_macro_reports_both_counts(
+        self,
+        preset_backend: BitphasePresetBackend,
+        tmp_path: Path,
+    ) -> None:
+        artifact = preset_backend.write_instrument(
+            tmp_path / f"Long{EXT_FILE_JSON}",
+            build_instrument("Long", LONG_ENVELOPE_FRAMES),
+        )
+        assert artifact.truncation == EnvelopeTruncation(
+            frames=MAX_MACRO_LENGTH,
+            source_frames=LONG_ENVELOPE_FRAMES,
+            instruments=1,
+        )
+
+    def test_a_set_of_presets_reports_every_shortened_slice(
+        self,
+        preset_backend: BitphasePresetBackend,
+        tmp_path: Path,
+    ) -> None:
+        request = build_sample(
+            "Pad",
+            build_instrument("Short", ENVELOPE_FRAMES),
+            build_instrument("Long", LONG_ENVELOPE_FRAMES),
+            build_instrument("Longer", LONGER_ENVELOPE_FRAMES),
+        )
+
+        artifact = preset_backend.write_sample(tmp_path / f"Pad{EXT_FILE_JSON}", request)
+
+        assert artifact.truncation == EnvelopeTruncation(
+            frames=MAX_MACRO_LENGTH,
+            source_frames=LONGER_ENVELOPE_FRAMES,
+            instruments=2,
+        )
+
+    def test_a_project_is_refused(
+        self,
+        preset_backend: BitphasePresetBackend,
+        project: Project,
+        tmp_path: Path,
+    ) -> None:
+        with pytest.raises(ValueError, match="one instrument"):
+            preset_backend.write_project(tmp_path / f"Demo{EXT_FILE_JSON}", ProjectExport(project=project))

@@ -1,6 +1,6 @@
 [project]
 name = "sampletones"
-version = "0.3.1"
+version = "0.3.2"
 description = "Approximate audio samples with the NES 2A03 oscillators and export them as FamiTracker instruments"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -41,6 +41,7 @@ dependencies = [
     "librosa>=0.11,<0.12",
     "numpy>=2.0,<3",
     "pebble>=5.0,<6",
+    "py65>=1.2,<2",
     "pydantic>=2.9,<3",
     "pyaudio>=0.2.14,<0.3",
     "rich>=13.0,<16",
@@ -76,6 +77,7 @@ gpu-cuda11 = [
 
 [dependency-groups]
 assets = ["pillow>=11,<13"]
+calibration = ["zimtohrli>=0.2.1,<0.3"]
 dev = [
     { include-group = "assets" },
     "black==26.5.1",
@@ -87,7 +89,10 @@ dev = [
     "pytest==9.1.1",
     "pytest-cov==7.1.0",
     "pytest-xdist==3.8.0",
+    "python-xlib==0.33",
+    "pyvirtualdisplay==3.0",
     "types-PyYAML==6.0.12.20260518",
+    "types-python-xlib==0.33.0.20260724",
 ]
 
 [build-system]
@@ -104,8 +109,9 @@ packages = [
     "src/sampletones_assets",
     "src/sampletones_config",
     "src/sampletones_core",
+    "src/sampletones_player",
     "src/sampletones_shared",
-    "src/sampletones_synthesis",
+    "src/sampletones_tools",
 ]
 
 [tool.black]
@@ -116,40 +122,50 @@ target-version = ["py312"]
 profile = "black"
 line_length = 120
 known_first_party = [
+    "bootstrap",
     "sampletones",
     "sampletones_application",
     "sampletones_assets",
     "sampletones_config",
     "sampletones_core",
+    "sampletones_player",
     "sampletones_shared",
-    "sampletones_synthesis",
+    "sampletones_tools",
 ]
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
+pythonpath = [".", "scripts"]
 
 [tool.coverage.run]
+core = "sysmon"
 source = [
     "sampletones_application",
     "sampletones_assets",
     "sampletones_core",
+    "sampletones_player",
     "sampletones_shared",
-    "sampletones_synthesis",
+    "sampletones_tools",
 ]
 
 [tool.coverage.report]
 show_missing = true
-fail_under = 80
+fail_under = 90
 
 [tool.mypy]
 python_version = "3.12"
+mypy_path = "$MYPY_CONFIG_FILE_DIR/stubs"
 files = [
     "src/sampletones",
     "src/sampletones_application",
     "src/sampletones_assets",
     "src/sampletones_core",
+    "src/sampletones_player",
     "src/sampletones_shared",
-    "src/sampletones_synthesis",
+    "src/sampletones_tools",
+    "scripts",
+    "automation",
+    "assets",
 ]
 exclude = ["tests"]
 disallow_subclassing_any = true
@@ -160,6 +176,14 @@ strict = true
 fail-under = 9.9
 ignore-paths = "^tests/.*$"
 load-plugins = ["pylint_pydantic"]
+fail-on = [
+    "fatal",
+    # "fixme",
+    "redefined-outer-name",
+    "used-before-assignment",
+    "unused-import",
+    "unused-variable",
+]
 
 [tool.pylint.messages_control]
 disable = [

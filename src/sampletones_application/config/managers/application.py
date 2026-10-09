@@ -2,10 +2,13 @@ from pathlib import Path
 from typing import Dict, Optional, Set
 
 from sampletones_application.config.session.application.config import ApplicationConfig
+from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.playback import FollowMode
-from sampletones_core.audio import AudioDeviceManager, CurrentDevice
+from sampletones_core.audio import CurrentDevice
 from sampletones_core.constants.audio import BufferSize
+from sampletones_core.constants.enums import HierarchyMode
 from sampletones_core.data.metadata import Metadata
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.serialization import load_yaml, save_yaml_atomic
 from sampletones_shared.utils.system.paths import to_path
@@ -57,8 +60,12 @@ class ApplicationConfigManager:
     def toggle_favorite(self, path: Path) -> None:
         self.config.favorites.toggle_favorite(path)
 
-    def set_current_audio_device(self, audio_device_manager: AudioDeviceManager) -> None:
-        self.config.audio.set_audio_settings(audio_device_manager)
+    def set_audio_settings(
+        self,
+        current_device: CurrentDevice,
+        buffer_size: BufferSize,
+    ) -> None:
+        self.config.audio.set_audio_settings(current_device, buffer_size)
 
     @property
     def current_audio_device(self) -> CurrentDevice:
@@ -102,6 +109,13 @@ class ApplicationConfigManager:
 
     def set_borderless(self, borderless: bool) -> None:
         self.config.display.borderless = borderless
+
+    @property
+    def show_frame_rate(self) -> bool:
+        return self.config.display.show_frame_rate
+
+    def set_show_frame_rate(self, show_frame_rate: bool) -> None:
+        self.config.display.show_frame_rate = show_frame_rate
 
     @property
     def shortcut_scheme_name(self) -> str:
@@ -152,6 +166,37 @@ class ApplicationConfigManager:
 
     def set_follow_mode(self, value: FollowMode) -> None:
         self.config.playback.follow_mode = value
+
+    @property
+    def converter_settings(self) -> StemSettings:
+        """The settings a recording is given when it joins the converter's list."""
+        return self.config.converter.settings
+
+    def set_converter_settings(self, settings: StemSettings) -> None:
+        self.config.converter.settings = settings
+
+    @property
+    def converter_output(self) -> OutputKind:
+        """What a run writes, as the reader last left the output switch."""
+        return self.config.converter.output
+
+    def set_converter_output(self, output: OutputKind) -> None:
+        self.config.converter.output = output
+
+    @property
+    def converter_hierarchy_mode(self) -> HierarchyMode:
+        """How the levels of a mix take turns, as the reader last set it."""
+        return self.config.converter.hierarchy_mode
+
+    def set_converter_hierarchy_mode(self, hierarchy_mode: HierarchyMode) -> None:
+        self.config.converter.hierarchy_mode = hierarchy_mode
+
+    @property
+    def octave(self) -> int:
+        return self.config.tracker.octave
+
+    def set_octave(self, value: int) -> None:
+        self.config.tracker.octave = value
 
     @property
     def loop_song(self) -> bool:

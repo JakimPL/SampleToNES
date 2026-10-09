@@ -1,15 +1,25 @@
 from functools import partial
-from typing import Any, Callable, Dict, List, Optional, Tuple, cast
+from typing import Any, Callable, Dict, Final, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones_application.categories.context import channel_label, context_label, context_text
+from sampletones_application.categories.context import (
+    channel_label,
+    context_label,
+    context_text,
+    generator_label,
+)
 from sampletones_application.categories.elements.global_ import ContextElements
 from sampletones_application.categories.hierarchy import TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.pitch import PitchTooltips
+from sampletones_application.constants.instruments import (
+    AUDITION_GENERATOR,
+    INSTRUMENT_CHANNEL,
+)
 from sampletones_application.layout.general.colors.feature import FeatureColors
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
@@ -35,6 +45,7 @@ from sampletones_application.tags.reconstructions import (
     SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
+    TAG_RECONSTRUCTIONS_INSTRUMENTS_RADIO_AUDITION,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_TEXT_SAMPLE_SIZE,
 )
@@ -43,6 +54,7 @@ from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.bar import GUIBarGraph
+from sampletones_application.ui.elements.graphs.ownership import OwnershipRuns
 from sampletones_application.ui.elements.graphs.utils import extend_y_range
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.layout.collapse import CollapseAxis
@@ -57,27 +69,45 @@ from sampletones_application.ui.panels.reconstruction.instruments.config import 
     make_feature_plot_configs,
 )
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.clipboard import copy_to_clipboard
+from sampletones_application.utils.gui.clipboard.copy_button import copy_to_clipboard
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_set_value,
 )
+from sampletones_application.utils.gui.keyboard import (
+    PRIORITY_PANEL,
+    ActivePredicate,
+    KeyEvent,
+    KeyRouter,
+    panel_scope_active,
+)
+from sampletones_application.utils.gui.keyboard.piano import semitone_of
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import show_tooltip
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
 from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
-from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
+from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
+from sampletones_application.view_model.shared.ownership import OwnershipLaneViewModel
 from sampletones_core.constants.enums import (
+    ChannelName,
     FeatureKey,
     GeneratorName,
-    LibraryGeneratorName,
 )
 from sampletones_core.exporters import Features
-from sampletones_core.features import GENERATOR_KIND, resting_reference, supported_features
-from sampletones_core.formats.famitracker.specification.sequences import (
-    MAX_SEQUENCE_ITEMS,
+from sampletones_core.exports.ceilings import FormatShortening, format_shortenings
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.features import (
+    BEND_FEATURES,
+    CHANNEL_GENERATOR_KIND,
+    resting_reference,
+    supported_features,
 )
+from sampletones_core.features.envelope import Envelope
+from sampletones_core.features.text import format_envelope, parse_envelope
 from sampletones_core.utils.pitch_kind import (
     PERIOD_VALUE_KIND,
     PITCH_VALUE_KIND,
@@ -88,8 +118,16 @@ from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
 
-OnInstrumentExportCallback = Callable[[GeneratorName], None]
+ONE_SLOT_PER_FRAME: Final[float] = 1.0
+
+OnInstrumentExportCallback = Callable[[ChannelName], None]
+OnAuditionCallback = Callable[[int], None]
 OnReconstructionInstrumentHoveredCallback = Callable[[Optional[int]], None]
+
+
+def _plotted_items(envelope: Envelope[int]) -> np.ndarray:
+    """The values a dimension writes, as the bar plot draws them."""
+    return np.array(envelope.items, dtype=np.int8)
 
 
 class GUIReconstructionInstrumentsPanel(GUIPanel):
@@ -99,29 +137,38 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         pitch_stepper_style: PitchStepperStyle,
         copy_width: int,
         feature_colors: FeatureColors,
+        stem_colors: StemColors,
         layout_graphs: GraphsLayout,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
+        key_router: KeyRouter,
+        tab_active: ActivePredicate,
         initial_collapsed: bool = False,
     ) -> None:
         self._language_manager = language_manager
         self._status_bar = status_bar
+        self._router = key_router
+        self._tab_active = tab_active
 
-        self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
-        self._pitch_steppers: Dict[GeneratorName, GUIPitchStepper] = {}
-        self._export_buttons: Dict[GeneratorName, GUIButton] = {}
+        self.channel_plots: Dict[ChannelName, Dict[FeatureKey, GUIBarGraph]] = {}
+        self._pitch_steppers: Dict[ChannelName, GUIPitchStepper] = {}
+        self._export_buttons: Dict[ChannelName, GUIButton] = {}
 
         self.tab_bar_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR
         self.no_data_message_tag = compose_tag(self.tab_bar_tag, SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE)
         self.mouse_item_handler_tag = compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL, SUF_HANDLER_REGISTRY)
         self.sample_size_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TEXT_SAMPLE_SIZE
         self.sample_size_group_tag = compose_tag(self.sample_size_tag, SUF_GROUP)
+        self.audition_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_RADIO_AUDITION
+        self.audition_group_tag = compose_tag(self.audition_tag, SUF_GROUP)
 
         self._graphs: Dict[str, GUIBarGraph] = {}
-        self._sequence_lengths: Dict[Tuple[GeneratorName, FeatureKey], int] = {}
+        self._sequences: Dict[Tuple[ChannelName, FeatureKey], Envelope[int]] = {}
+        self._audition_open: bool = False
         self._pitch_stepper_style = pitch_stepper_style
         self._copy_width = copy_width
         self._layout_graphs = layout_graphs
+        self._ownership = OwnershipRuns(stem_colors)
         self._feature_plot_configs = make_feature_plot_configs(
             feature_colors,
             language_manager,
@@ -134,9 +181,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.on_instrument_export: Optional[OnInstrumentExportCallback] = None
         self.on_reconstruction_instrument_hovered: Optional[OnReconstructionInstrumentHoveredCallback] = None
 
-        self.on_pitch_value_changed: Optional[Callable[[GeneratorName, int], None]] = None
-        self.on_bar_data_changed: Optional[Callable[[GeneratorName, FeatureKey, np.ndarray], None]] = None
-        self.on_raw_data_changed: Optional[Callable[[GeneratorName, FeatureKey, np.ndarray], None]] = None
+        self.on_pitch_value_changed: Optional[Callable[[ChannelName, int], None]] = None
+        self.on_audition_requested: Optional[OnAuditionCallback] = None
+        self.on_audition_generator_changed: Optional[Callable[[GeneratorName], None]] = None
+        self.on_envelope_changed: Optional[Callable[[ChannelName, FeatureKey, Envelope[int]], None]] = None
 
         self._lbl_copy = language_manager["reconstructions.instruments.label.copy_button"]
         self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
@@ -147,8 +195,11 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             language_manager,
             language_manager["reconstructions.instruments.template.initial_pitch_tooltip_template"],
         )
+        self._channel_labels: Dict[ChannelName, str] = {
+            channel_name: channel_label(language_manager, channel_name) for channel_name in ChannelName.items()
+        }
         self._generator_labels: Dict[GeneratorName, str] = {
-            generator_name: channel_label(language_manager, generator_name) for generator_name in GeneratorName.items()
+            generator_name: generator_label(language_manager, generator_name) for generator_name in GeneratorName
         }
 
         super().__init__(
@@ -177,6 +228,11 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             self._create_content()
 
         self._setup_mouse_event_handler()
+        self._router.register(
+            self._on_key_pressed,
+            priority=PRIORITY_PANEL,
+            active=self._audition_keys_active,
+        )
 
     def _create_content(self) -> None:
         dpg.add_text(
@@ -212,10 +268,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     ) -> None:
         """Draws a read-only byte figure, styled as the pitch stepper's readout is.
 
-        The figure names how much of the NES data area an export spends, so it reads as
-        information beside the fields that change: the label column aligns with the stepper
-        below it, and the value carries the stepper's own read-only colour and font. A tooltip
-        names the export the figure measures, since the formats spend differently.
+        The figure names the raw size of the sound's data, so it reads as information beside the
+        fields that change: the label column aligns with the stepper below it, and the value
+        carries the stepper's own read-only color and font. A tooltip says the figure is measured
+        before compression, which an NSF export applies.
         """
         with labeled_field(
             label,
@@ -232,13 +288,13 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             tag=compose_tag(value_tag, SUF_TOOLTIP),
         )
 
-    def _get_generator_tab_tag(self, generator_name: GeneratorName) -> str:
-        return compose_tag(self.tab_bar_tag, generator_name)
+    def _get_generator_tab_tag(self, channel_name: ChannelName) -> str:
+        return compose_tag(self.tab_bar_tag, channel_name)
 
-    def _get_instrument_size_tag(self, generator_name: GeneratorName) -> str:
+    def _get_instrument_size_tag(self, channel_name: ChannelName) -> str:
         return compose_tag(
             self.tab_bar_tag,
-            generator_name,
+            channel_name,
             SUF_RECONSTRUCTIONS_INSTRUMENTS_INSTRUMENT_SIZE,
         )
 
@@ -247,80 +303,84 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def _get_feature_group_tag(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
     ) -> str:
-        return compose_tag(self.tab_bar_tag, generator_name, feature_key, SUF_GROUP)
+        return compose_tag(self.tab_bar_tag, channel_name, feature_key, SUF_GROUP)
 
     def _get_feature_text_group_tag(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
     ) -> str:
-        return compose_tag(self.tab_bar_tag, generator_name, feature_key, SUF_GRAPH_RAW_DATA)
+        return compose_tag(self.tab_bar_tag, channel_name, feature_key, SUF_GRAPH_RAW_DATA)
 
-    def _get_feature_text_tag(self, text_group_tag: str) -> str:
-        return compose_tag(text_group_tag, SUF_TEXT)
+    def _get_feature_text_tag(
+        self,
+        channel_name: ChannelName,
+        feature_key: FeatureKey,
+    ) -> str:
+        return compose_tag(self._get_feature_text_group_tag(channel_name, feature_key), SUF_TEXT)
 
     def _get_feature_plot_tag(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
     ) -> str:
-        return compose_tag(self.tab_bar_tag, generator_name, feature_key, SUF_GRAPH)
+        return compose_tag(self.tab_bar_tag, channel_name, feature_key, SUF_GRAPH)
 
     def _setup_mouse_event_handler(self) -> None:
         with dpg.handler_registry(tag=self.mouse_item_handler_tag):
             dpg.add_mouse_move_handler(callback=self._on_mouse_move)
 
-    def _export_callback(self, generator_name: GeneratorName) -> VoidCallback:
-        """The press handler for one generator's export button.
-        the generator is captured in a closure, which carries one.
+    def _export_callback(self, channel_name: ChannelName) -> VoidCallback:
+        """The press handler for one channel's export button.
+        the channel is captured in a closure, which carries one.
         """
-        return lambda: self.call(self.on_instrument_export, generator_name)
+        return lambda: self.call(self.on_instrument_export, channel_name)
 
     def _create_tabs_for_generators(self) -> None:
-        for generator_name in GeneratorName.items():
-            self._create_generator_tab(generator_name)
+        for channel_name in ChannelName.items():
+            self._create_generator_tab(channel_name)
 
     def _generator_kind(
         self,
-        generator_name: GeneratorName,
-    ) -> LibraryGeneratorName:
-        return GENERATOR_KIND[generator_name]
+        channel_name: ChannelName,
+    ) -> GeneratorName:
+        return CHANNEL_GENERATOR_KIND[channel_name]
 
     def _generator_features(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
     ) -> List[FeatureKey]:
-        return supported_features(self._generator_kind(generator_name))
+        return supported_features(self._generator_kind(channel_name))
 
-    def _feature_plot_config(self, generator_name: GeneratorName, feature_key: FeatureKey) -> FeaturePlotConfig:
-        return self._feature_plot_configs[self._generator_kind(generator_name)][feature_key]
+    def _feature_plot_config(self, channel_name: ChannelName, feature_key: FeatureKey) -> FeaturePlotConfig:
+        return self._feature_plot_configs[self._generator_kind(channel_name)][feature_key]
 
-    def _create_generator_tab(self, generator_name: GeneratorName) -> None:
-        tab_tag = self._get_generator_tab_tag(generator_name)
+    def _create_generator_tab(self, channel_name: ChannelName) -> None:
+        tab_tag = self._get_generator_tab_tag(channel_name)
         window_tag = self._get_window_tag(tab_tag)
 
         with dpg.tab(
-            label=self._generator_labels[generator_name],
+            label=self._channel_labels[channel_name],
             tag=tab_tag,
             parent=self.tab_bar_tag,
             show=False,
         ):
-            self.generator_plots[generator_name] = {}
+            self.channel_plots[channel_name] = {}
             button_tag = compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT, tab_tag)
-            self._export_buttons[generator_name] = GUIButton(
+            self._export_buttons[channel_name] = GUIButton(
                 tag=button_tag,
                 parent=tab_tag,
                 label=self._language_manager["reconstructions.instruments.label.export_instrument_button"],
                 width=-1,
-                callback=self._export_callback(generator_name),
+                callback=self._export_callback(channel_name),
             )
             self._status_bar.bind_to_item(
                 button_tag,
                 self._language_manager["reconstructions.instruments.message.status_export_instrument"].format(
-                    generator=self._generator_labels[generator_name]
+                    channel=self._channel_labels[channel_name]
                 ),
             )
 
@@ -329,7 +389,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 parent=tab_tag,
                 height=-1,
             ):
-                self._create_generator_content(generator_name, window_tag)
+                self._create_generator_content(channel_name, window_tag)
 
             ThemeRegistry.get(TAG_GLOBAL_THEME_PANEL_INSTRUMENT).bind_to_item(window_tag)
 
@@ -337,41 +397,44 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def _create_generator_content(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         window_tag: str,
     ) -> None:
-        initial_pitch = self._default_initial_pitch(generator_name)
+        initial_pitch = self._default_initial_pitch(channel_name)
         self._create_size_field(
             self._lbl_instrument_size,
-            self._get_instrument_size_tag(generator_name),
+            self._get_instrument_size_tag(channel_name),
             window_tag,
         )
-        self._create_pitch_stepper(generator_name, initial_pitch, window_tag)
-        self._create_generator_feature_displays(generator_name, window_tag)
+        self._create_pitch_stepper(channel_name, initial_pitch, window_tag)
+        if channel_name is INSTRUMENT_CHANNEL:
+            self._create_audition_selector(window_tag)
 
-    def _default_initial_pitch(self, generator_name: GeneratorName) -> int:
-        return resting_reference(generator_name)
+        self._create_generator_feature_displays(channel_name, window_tag)
+
+    def _default_initial_pitch(self, channel_name: ChannelName) -> int:
+        return resting_reference(channel_name)
 
     def _create_generator_feature_displays(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         window_tag: str,
     ) -> None:
-        for feature_key in self._generator_features(generator_name):
+        for feature_key in self._generator_features(channel_name):
             self._add_generator_feature_display(
-                generator_name,
+                channel_name,
                 feature_key,
                 window_tag,
             )
 
     def _add_generator_feature_display(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         window_tag: str,
     ) -> None:
         feature_group_tag = self._get_feature_group_tag(
-            generator_name,
+            channel_name,
             feature_key,
         )
         with dpg.group(
@@ -379,31 +442,30 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             parent=window_tag,
         ):
             dpg.add_separator(parent=window_tag)
-            feature_data_array = np.empty(0, dtype=np.int8)
             plot = self._create_feature_display(
-                generator_name,
+                channel_name,
                 feature_key,
-                feature_data_array,
+                Envelope[int](),
                 feature_group_tag,
             )
-            self.generator_plots[generator_name][feature_key] = plot
+            self.channel_plots[channel_name][feature_key] = plot
 
     def _apply_pitch_display(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         value: int,
     ) -> None:
-        stepper = self._pitch_steppers.get(generator_name)
+        stepper = self._pitch_steppers.get(channel_name)
         if stepper is not None:
             stepper.set_value(value)
 
     def _update_generator_plot(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         data: np.ndarray,
     ) -> None:
-        plots = self.generator_plots.get(generator_name)
+        plots = self.channel_plots.get(channel_name)
         if plots is None:
             return
 
@@ -411,10 +473,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         if plot is None:
             return
 
-        config = self._feature_plot_config(generator_name, feature_key)
+        config = self._feature_plot_config(channel_name, feature_key)
         self._configure_plot_data(
             plot,
-            generator_name,
+            channel_name,
             feature_key,
             config,
             data,
@@ -422,76 +484,177 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def _update_raw_data_text(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
-        data: np.ndarray,
+        envelope: Envelope[int],
     ) -> None:
-        text_group_tag = self._get_feature_text_group_tag(
-            generator_name,
-            feature_key,
+        dpg_set_value(
+            self._get_feature_text_tag(channel_name, feature_key),
+            format_envelope(envelope),
         )
-        raw_data_tag = self._get_feature_text_tag(text_group_tag)
-        raw_data_text = self._format_data(data)
-        dpg_set_value(raw_data_tag, raw_data_text)
-        self._apply_input_theme(generator_name, feature_key, len(data))
+        self._show_sequence(channel_name, feature_key, envelope)
 
     def update_view(
         self,
         view_model: ReconstructionInstrumentsViewModel,
     ) -> None:
-        """Shows a tab per channel, marking the ones standing by.
+        """Shows what the panel has in front of it, marking the channels standing by.
 
-        Every channel is editable for as long as a reconstruction is open, so writing an
-        envelope into a channel standing by is what puts it in play. A muted tab label and a
-        withheld export say which channels are there.
+        A reconstruction shows a tab per channel, and every channel is editable for as long as it
+        is open, so writing a sounding envelope into a channel standing by is what puts it in play; a
+        muted tab label and a withheld export say which channels are there. An instrument is one
+        set every channel reads, so it shows a single tab under its own name, and the audition
+        takes the pitch stepper's place: a row states the note an instrument sounds at, and
+        what the panel offers instead is the generator to hear it on.
         """
-        is_loaded = view_model.reconstruction_loaded
-        dpg_configure_item(self.no_data_message_tag, show=not is_loaded)
-        dpg_configure_item(self.tab_bar_tag, show=is_loaded)
-        dpg_configure_item(self.sample_size_group_tag, show=is_loaded)
-        self._update_sizes(view_model.footprint)
+        instrument = view_model.instrument
+        is_open = view_model.is_open
+        dpg_configure_item(self.no_data_message_tag, show=not is_open)
+        dpg_configure_item(self.tab_bar_tag, show=is_open)
+        dpg_configure_item(self.sample_size_group_tag, show=is_open)
+        self._update_sizes(view_model.footprint, shows_one_instrument=instrument is not None)
+        self._show_pitch_steppers(shown=instrument is None)
+        self._show_audition_selector(shown=instrument is not None)
 
-        for generator_name in GeneratorName.items():
-            tab_tag = self._get_generator_tab_tag(generator_name)
-            dpg_configure_item(tab_tag, show=is_loaded)
+        for channel_name in ChannelName.items():
+            tab_tag = self._get_generator_tab_tag(channel_name)
+            shown = channel_name is INSTRUMENT_CHANNEL if instrument is not None else view_model.reconstruction_loaded
+            dpg_configure_item(tab_tag, show=shown)
+            if instrument is not None and channel_name is INSTRUMENT_CHANNEL:
+                dpg_configure_item(tab_tag, label=instrument.name)
+            else:
+                dpg_configure_item(tab_tag, label=self._channel_labels[channel_name])
+
             self._apply_playing_state(
-                generator_name,
-                generator_name in view_model.playing_generators,
+                channel_name,
+                channel_name in view_model.playing_channels,
             )
+
+    def _show_pitch_steppers(self, *, shown: bool) -> None:
+        """Offers the pitch a channel measures its arpeggio against, where a reader may move it.
+
+        A conversion states the value it found for each channel and moving it rebuilds that
+        channel's frames. An instrument is placed by a row that states the note itself, so the
+        value it stores for an export stands as it is and the stepper stays out of the way.
+        """
+        for stepper in self._pitch_steppers.values():
+            stepper.set_shown(shown)
+
+    def _create_audition_selector(self, window_tag: str) -> None:
+        """Offers the generator an instrument is heard on, in the pitch stepper's column.
+
+        An instrument is one set of envelopes every generator reads what it can of, so hearing it
+        means choosing which one reads it. The choice belongs to the reader listening rather than
+        to the voice, so it stays on the panel and reaches no document.
+        """
+        with (
+            dpg.group(
+                tag=self.audition_group_tag,
+                parent=window_tag,
+                show=False,
+            ),
+            labeled_field(
+                self._language_manager["reconstructions.instruments.label.audition"],
+                self._pitch_stepper_style.dimensions.label_width,
+                parent=self.audition_group_tag,
+            ),
+        ):
+            dpg.add_radio_button(
+                items=[self._generator_labels[generator_name] for generator_name in GeneratorName],
+                tag=self.audition_tag,
+                default_value=self._generator_labels[AUDITION_GENERATOR],
+                callback=self._on_audition_generator_changed,
+                horizontal=True,
+            )
+            FontRegistry.bind_to_item(self.audition_tag, Font.REGULAR_SMALL)
+
+        self._status_bar.bind_to_item(
+            self.audition_tag,
+            self._language_manager["reconstructions.instruments.message.status_audition"],
+        )
+        show_tooltip(
+            self.audition_tag,
+            self._language_manager["reconstructions.instruments.tooltip.audition"],
+            tag=compose_tag(self.audition_tag, SUF_TOOLTIP),
+        )
+
+    def _on_audition_generator_changed(self, _sender: Sender, app_data: str) -> None:
+        self.call(
+            self.on_audition_generator_changed,
+            next(generator_name for generator_name, label in self._generator_labels.items() if label == app_data),
+        )
+
+    def _show_audition_selector(self, *, shown: bool) -> None:
+        """Offers the audition while an instrument is open, which is the voice it sounds."""
+        self._audition_open = shown
+        dpg_configure_item(self.audition_group_tag, show=shown)
+
+    def _audition_keys_active(self) -> bool:
+        """Whether a note key sounds the instrument the panel has in front of it.
+
+        The keys reach an instrument alone, since a recording plays the audio it was made from,
+        so an open audition is what the panel holds them for.
+        """
+        return panel_scope_active(
+            tab_active=self._tab_active,
+            router=self._router,
+            holds=self._audition_open,
+            card_open=self.card_open,
+        )
+
+    def _on_key_pressed(self, event: KeyEvent) -> bool:
+        """Sounds the open instrument at the note a plain piano key names, reporting whether it did.
+
+        A combination ending in a note key passes on to the shortcuts, so Undo and Save answer
+        while an instrument is open.
+        """
+        semitone = semitone_of(event)
+        if semitone is None:
+            return False
+
+        self.call(self.on_audition_requested, semitone)
+        return True
 
     def _apply_playing_state(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         is_playing: bool,
     ) -> None:
         """Marks one channel's tab as playing or standing by.
 
-        The muted theme reaches the tab label alone; the tab's body carries its own text colour,
+        The muted theme reaches the tab label alone; the tab's body carries its own text color,
         so a channel standing by stays as readable to edit as one that plays.
         """
         theme_tag = TAG_GLOBAL_THEME_INSTRUMENT_TABS if is_playing else TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED
-        ThemeRegistry.get(theme_tag).bind_to_item(self._get_generator_tab_tag(generator_name))
+        ThemeRegistry.get(theme_tag).bind_to_item(self._get_generator_tab_tag(channel_name))
 
-        export_button = self._export_buttons.get(generator_name)
+        export_button = self._export_buttons.get(channel_name)
         if export_button is not None:
             export_button.set_enabled(is_playing)
 
     def _update_sizes(
         self,
-        footprint: Optional[SampleFootprintViewModel],
+        footprint: Optional[VoiceFootprintViewModel],
+        *,
+        shows_one_instrument: bool,
     ) -> None:
-        """Writes the byte figures the loaded reconstruction occupies, the sample's and each channel's.
+        """Writes the byte figures the voice in front of the panel occupies.
 
-        A channel standing by is written by no export, so it reads as the nothing it costs.
+        A reconstruction states its own total and a figure per channel, and a channel standing by
+        is written by no export, so it reads as the nothing it costs. Every channel reaches the same
+        instrument, so the tab it is shown under carries the whole figure.
         """
         if footprint is None:
             return
 
         dpg_set_value(self.sample_size_tag, self._format_size(footprint.total_bytes))
-        for generator_name in GeneratorName.items():
-            instrument_bytes = footprint.bytes_for(generator_name)
+        for channel_name in ChannelName.items():
+            instrument_bytes = footprint.bytes_for(channel_name)
+            if shows_one_instrument and channel_name is INSTRUMENT_CHANNEL:
+                instrument_bytes = footprint.total_bytes
+
             dpg_set_value(
-                self._get_instrument_size_tag(generator_name),
+                self._get_instrument_size_tag(channel_name),
                 self._format_size(instrument_bytes if instrument_bytes is not None else 0),
             )
 
@@ -500,67 +663,97 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def update_feature_data(
         self,
-        generators: Optional[Dict[GeneratorName, Features]],
+        envelopes: Optional[ChannelEnvelopesViewModel],
     ) -> None:
-        if generators is None:
+        if envelopes is None:
             return
 
-        for generator_name in GeneratorName.items():
-            generator_features = generators.get(generator_name)
+        for channel_name in ChannelName.items():
+            generator_features = envelopes.channels.get(channel_name)
             if generator_features is None:
                 continue
 
             self._update_generator_feature_data(
-                generator_name,
+                channel_name,
                 generator_features,
+                envelopes.lane(channel_name),
             )
 
     def _update_generator_feature_data(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         generator_features: Features,
+        lane: OwnershipLaneViewModel,
     ) -> None:
-        initial_pitch = cast(int, generator_features[FeatureKey.INITIAL_PITCH])
-        self._apply_pitch_display(generator_name, initial_pitch)
+        initial_pitch = generator_features.initial_pitch
+        self._apply_pitch_display(channel_name, initial_pitch)
 
-        for feature_key in self._generator_features(generator_name):
+        for feature_key in self._generator_features(channel_name):
             self._update_generator_feature_display(
-                generator_name,
+                channel_name,
                 generator_features,
                 feature_key,
+                lane,
             )
 
     def _update_generator_feature_display(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         generator_features: Features,
         feature_key: FeatureKey,
+        lane: OwnershipLaneViewModel,
     ) -> None:
-        feature = self._feature_array(generator_features, feature_key)
-        self._update_generator_plot(generator_name, feature_key, feature)
-        self._update_raw_data_text(generator_name, feature_key, feature)
+        envelope = self._feature_envelope(generator_features, feature_key)
+        items = _plotted_items(envelope)
+        self._update_generator_plot(channel_name, feature_key, items)
+        self._update_raw_data_text(channel_name, feature_key, envelope)
+        self._paint_ownership(channel_name, feature_key, lane, len(items))
 
-    def _feature_array(
+    def _paint_ownership(
+        self,
+        channel_name: ChannelName,
+        feature_key: FeatureKey,
+        lane: OwnershipLaneViewModel,
+        frame_count: int,
+    ) -> None:
+        """Paints the recording behind each frame in a band beneath that dimension's bars.
+
+        The band stands under the frames the bars draw, so the two read column for column
+        whatever the dimension's own values reach. A dimension writing nothing, and a document
+        answering to one recording, have nothing to tell apart and give the band to the bars.
+        """
+        plot = self.channel_plots.get(channel_name, {}).get(feature_key)
+        if plot is None:
+            return
+
+        runs = lane.up_to(frame_count)
+        share = self._layout_graphs.bar_plot.ownership_band if runs else 0.0
+        self._ownership.paint(
+            plot.y_axis_tag,
+            runs,
+            frame_span=ONE_SLOT_PER_FRAME,
+            band=plot.reserve_band(share),
+        )
+
+    def _feature_envelope(
         self,
         generator_features: Features,
         feature_key: FeatureKey,
-    ) -> np.ndarray:
-        feature = cast(Optional[np.ndarray], generator_features.get(feature_key))
-        if feature is None:
-            return np.array([], dtype=np.int8)
-        return feature
+    ) -> Envelope[int]:
+        envelope = generator_features.envelopes.get(feature_key)
+        return envelope if envelope is not None else Envelope[int]()
 
-    def _pitch_kind(self, generator_name: GeneratorName) -> PitchValueKind:
-        return PERIOD_VALUE_KIND if generator_name == GeneratorName.NOISE else PITCH_VALUE_KIND
+    def _pitch_kind(self, channel_name: ChannelName) -> PitchValueKind:
+        return PERIOD_VALUE_KIND if channel_name == ChannelName.NOISE else PITCH_VALUE_KIND
 
     def _create_pitch_stepper(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         initial_pitch: int,
         parent: str,
     ) -> None:
-        is_noise = generator_name == GeneratorName.NOISE
-        kind = self._pitch_kind(generator_name)
+        is_noise = channel_name == ChannelName.NOISE
+        kind = self._pitch_kind(channel_name)
         stepper = GUIPitchStepper(
             tag=parent,
             parent=parent,
@@ -584,16 +777,16 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         )
         stepper.on_value_changed = partial(
             self._on_pitch_value_changed,
-            generator_name,
+            channel_name,
         )
-        self._pitch_steppers[generator_name] = stepper
+        self._pitch_steppers[channel_name] = stepper
 
     def _on_pitch_value_changed(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         value: int,
     ) -> None:
-        self.call(self.on_pitch_value_changed, generator_name, value)
+        self.call(self.on_pitch_value_changed, channel_name, value)
 
     def _on_mouse_move(self, _sender: Sender, _app_data: Tuple[int, int]) -> None:
         tab = dpg.get_value(self.tab_bar_tag)
@@ -608,26 +801,26 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def _create_feature_display(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
-        data: np.ndarray,
+        envelope: Envelope[int],
         parent: str,
     ) -> GUIBarGraph:
-        config = self._feature_plot_config(generator_name, feature_key)
+        config = self._feature_plot_config(channel_name, feature_key)
         plot = self._add_bar_plot(
             parent,
             config,
-            data,
-            generator_name,
+            _plotted_items(envelope),
+            channel_name,
             feature_key,
         )
         self._add_raw_data_text(
             parent,
-            generator_name,
+            channel_name,
             feature_key,
             config,
             plot,
-            data,
+            envelope,
         )
         return plot
 
@@ -636,11 +829,17 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         config: FeaturePlotConfig,
         data: np.ndarray,
     ) -> Tuple[int, int, Optional[Tuple[int, ...]]]:
+        """The bounds and the ticks one dimension is drawn between.
+
+        A dimension reading around zero takes bounds from the widest value it writes, so an
+        envelope describing no frame stands at the floor the empty reading gives it and the
+        plot keeps a grid to draw on.
+        """
         y_min = config.y_min
         y_max = config.y_max
         y_ticks = config.y_ticks
         if y_min == -1.0 and y_max == -1.0:
-            max_abs_value = float(np.max(np.abs(data)))
+            max_abs_value = float(np.max(np.abs(data))) if data.size else 0.0
             y_min = -max_abs_value
             y_max = max_abs_value
 
@@ -656,10 +855,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         parent: str,
         config: FeaturePlotConfig,
         data: np.ndarray,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
     ) -> GUIBarGraph:
-        plot_tag = self._get_feature_plot_tag(generator_name, feature_key)
+        plot_tag = self._get_feature_plot_tag(channel_name, feature_key)
         y_min, y_max, _ = self._calculate_plot_limits(config, data)
         plot = GUIBarGraph(
             tag=plot_tag,
@@ -677,7 +876,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
         self._configure_plot_data(
             plot,
-            generator_name,
+            channel_name,
             feature_key,
             config,
             data,
@@ -688,32 +887,30 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     def _configure_plot_data(
         self,
         plot: GUIBarGraph,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         config: FeaturePlotConfig,
         data: np.ndarray,
     ) -> None:
-        self._load_plot_data(plot, generator_name, feature_key, config, data)
+        self._load_plot_data(plot, channel_name, feature_key, config, data)
         plot.set_callbacks(
             on_bar_point_clicked=lambda data: self._on_bar_point_clicked(
-                generator_name,
+                channel_name,
                 feature_key,
                 data,
-                plot.plot_tag,
             ),
             on_bar_point_hovered=self._on_bar_point_hovered,
         )
 
     def _on_bar_point_clicked(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         data: np.ndarray,
-        plot_tag: str,
     ) -> None:
-        raw_data_tag = compose_tag(plot_tag, SUF_GRAPH_RAW_DATA)
-        dpg_set_value(raw_data_tag, self._format_data(data))
-        self.call(self.on_bar_data_changed, generator_name, feature_key, data)
+        envelope = self._standing_sequence(channel_name, feature_key).with_items(tuple(int(value) for value in data))
+        self._update_raw_data_text(channel_name, feature_key, envelope)
+        self.call(self.on_envelope_changed, channel_name, feature_key, envelope)
 
     def _on_bar_point_hovered(
         self,
@@ -731,18 +928,18 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
     def _add_raw_data_text(
         self,
         parent: str,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         config: FeaturePlotConfig,
         plot: GUIBarGraph,
-        data: np.ndarray,
+        envelope: Envelope[int],
     ) -> None:
         text_group_tag = self._get_feature_text_group_tag(
-            generator_name,
+            channel_name,
             feature_key,
         )
-        raw_data_text = self._format_data(data)
-        raw_data_tag = self._get_feature_text_tag(text_group_tag)
+        raw_data_text = format_envelope(envelope)
+        raw_data_tag = self._get_feature_text_tag(channel_name, feature_key)
         copy_button_tag = compose_tag(text_group_tag, SUF_BUTTON_COPY)
 
         with dpg.group(tag=text_group_tag, parent=parent, horizontal=True):
@@ -750,8 +947,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 tag=copy_button_tag,
                 label=self._lbl_copy,
                 width=self._copy_width,
-                callback=lambda: self._on_copy_button_clicked(
-                    raw_data_text,
+                callback=self._copy_callback(
+                    channel_name,
+                    feature_key,
                     copy_button_tag,
                 ),
             )
@@ -765,7 +963,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 decimal=False,
                 callback=self._parse_raw_data_input,
                 user_data=(
-                    generator_name,
+                    channel_name,
                     feature_key,
                     config,
                     plot,
@@ -779,91 +977,140 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         )
         self._status_bar.bind_to_item(
             raw_data_tag,
-            partial(self._sequence_status_message, generator_name, feature_key),
+            partial(self._sequence_status_message, channel_name, feature_key),
+        )
+        self._explain_bend(raw_data_tag, feature_key)
+
+    def _explain_bend(self, raw_data_tag: str, feature_key: FeatureKey) -> None:
+        """Says what one item of a bend dimension is worth, since that follows the note it bends.
+
+        A divider step spans well under a cent at the lowest notes and a whole semitone at the
+        highest, so the axis a bend is drawn on states the range a sequence stores rather than the
+        distance a value covers.
+        """
+        if feature_key not in BEND_FEATURES:
+            return
+
+        show_tooltip(
+            raw_data_tag,
+            self._language_manager[
+                (
+                    "reconstructions.instruments.tooltip.hi_pitch_bend"
+                    if feature_key is FeatureKey.HI_PITCH
+                    else "reconstructions.instruments.tooltip.pitch_bend"
+                )
+            ],
         )
 
     def _sequence_status_message(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         *_args: Any,
         **_kwargs: Any,
     ) -> str:
-        """Describes the sequence input, naming the export limit once a sequence passes it."""
-        item_count = self._sequence_lengths.get((generator_name, feature_key), 0)
-        if item_count > MAX_SEQUENCE_ITEMS:
+        """Describes the sequence input, naming what each tracker export keeps of an over-long one."""
+        envelope = self._standing_sequence(channel_name, feature_key)
+        shortenings = format_shortenings(feature_key, envelope)
+        if shortenings:
+            separator = self._language_manager["reconstructions.instruments.template.kept_separator"]
             return self._language_manager["reconstructions.instruments.message.status_sequence_too_long"].format(
                 instrument_feature=feature_key.capitalized,
-                items=item_count,
-                limit=MAX_SEQUENCE_ITEMS,
+                items=len(envelope.items),
+                kept=separator.join(self._kept_by(shortening) for shortening in shortenings),
             )
 
         return self._language_manager["reconstructions.instruments.message.status_sequence"].format(
             instrument_feature=feature_key.capitalized
         )
 
-    def _apply_input_theme(
-        self,
-        generator_name: GeneratorName,
-        feature_key: FeatureKey,
-        item_count: int,
-    ) -> None:
-        """Colours the sequence input by how a FamiTracker export treats its length.
+    def _kept_by(self, shortening: FormatShortening) -> str:
+        """Names one tracker export beside the items it keeps of a dimension."""
+        match shortening.export_format:
+            case ExportFormat.FAMITRACKER:
+                template = self._language_manager["reconstructions.instruments.template.kept_famitracker"]
+            case ExportFormat.BITPHASE:
+                template = self._language_manager["reconstructions.instruments.template.kept_bitphase"]
+            case ExportFormat.BITPHASE_PRESET:
+                template = self._language_manager["reconstructions.instruments.template.kept_bitphase_preset"]
 
-        A sequence longer than ``MAX_SEQUENCE_ITEMS`` exports its opening items, so the
-        input carries the warning colour to show which part of the envelope reaches a
-        FamiTracker file.
+        return template.format(limit=shortening.kept)
+
+    def _standing_sequence(
+        self,
+        channel_name: ChannelName,
+        feature_key: FeatureKey,
+    ) -> Envelope[int]:
+        """The dimension this input shows, which is what an edit of its values starts from."""
+        return self._sequences.get((channel_name, feature_key), Envelope[int]())
+
+    def _show_sequence(
+        self,
+        channel_name: ChannelName,
+        feature_key: FeatureKey,
+        envelope: Envelope[int],
+    ) -> None:
+        """Holds the dimension the input now shows, colored by how the tracker exports treat its length.
+
+        A sequence any tracker export holds only part of carries the warning color, so which
+        dimensions reach every file whole is visible before an export.
         """
-        self._sequence_lengths[(generator_name, feature_key)] = item_count
-        text_group_tag = self._get_feature_text_group_tag(generator_name, feature_key)
-        raw_data_tag = self._get_feature_text_tag(text_group_tag)
-        theme = self.warning_input_theme if item_count > MAX_SEQUENCE_ITEMS else self.theme
+        self._sequences[(channel_name, feature_key)] = envelope
+        raw_data_tag = self._get_feature_text_tag(channel_name, feature_key)
+        theme = self.warning_input_theme if format_shortenings(feature_key, envelope) else self.theme
         theme.bind_to_item(raw_data_tag)
 
     def _parse_raw_data_input(
         self,
         sender: Sender,
         app_data: str,
-        user_data: Tuple[GeneratorName, FeatureKey, FeaturePlotConfig, GUIBarGraph],
+        user_data: Tuple[ChannelName, FeatureKey, FeaturePlotConfig, GUIBarGraph],
     ) -> None:
-        generator_name, feature_key, config, plot = user_data
-        data_range = config.data_range if config.data_range is not None else (-128, 127)
-
+        channel_name, feature_key, config, plot = user_data
         try:
-            raw_data_items = app_data.strip().split()
-            raw_data = np.array(
-                [clamp(int(value), *data_range) for value in raw_data_items],
-                dtype=np.int8,
-            )
+            typed = parse_envelope(app_data)
         except ValueError:
-            logger.error(f"Invalid {generator_name.name} data input for {feature_key.name}: {app_data}")
+            logger.error(f"Invalid {channel_name.name} data input for {feature_key.name}: {app_data}")
             self.invalid_input_theme.bind_to_item(sender)
             return
 
-        self._apply_input_theme(generator_name, feature_key, len(raw_data))
-        dpg.set_value(sender, self._format_data(raw_data))
-        self.call(self.on_raw_data_changed, generator_name, feature_key, raw_data)
-        self._load_plot_data(plot, generator_name, feature_key, config, raw_data)
-
-    def _format_data(self, data: np.ndarray) -> str:
-        string_data = [str(clamp(int(value), -128, 127)) for value in data]
-        return " ".join(string_data)
+        envelope = typed.with_items(tuple(clamp(item, *config.data_range) for item in typed.items))
+        self._show_sequence(channel_name, feature_key, envelope)
+        dpg.set_value(sender, format_envelope(envelope))
+        self.call(self.on_envelope_changed, channel_name, feature_key, envelope)
+        self._load_plot_data(plot, channel_name, feature_key, config, _plotted_items(envelope))
 
     def _load_plot_data(
         self,
         plot: GUIBarGraph,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
         config: FeaturePlotConfig,
         data: np.ndarray,
     ) -> None:
         _, _, y_ticks = self._calculate_plot_limits(config, data)
-        name = f"{generator_name.capitalize()}: {feature_key.capitalized}"
+        name = f"{channel_name.capitalize()}: {feature_key.capitalized}"
         plot.load_data(
             data=data,
             name=name,
             color=config.color,
             y_ticks=y_ticks,
+        )
+
+    def _copy_callback(
+        self,
+        channel_name: ChannelName,
+        feature_key: FeatureKey,
+        button_tag: str,
+    ) -> VoidCallback:
+        """The press handler for one dimension's copy button.
+
+        The button stands beside its input from the moment the tab is built, so the press reads
+        the dimension the input shows then, written out as a reader would type it.
+        """
+        return lambda: self._on_copy_button_clicked(
+            format_envelope(self._standing_sequence(channel_name, feature_key)),
+            button_tag,
         )
 
     def _on_copy_button_clicked(self, text: str, button_tag: str) -> None:

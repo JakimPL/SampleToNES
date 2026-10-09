@@ -53,7 +53,7 @@ def _active_descendant_field_kind(node: ItemNode) -> FieldKind:
 
 
 def _leads_to_focused_widget(node: ItemNode) -> bool:
-    """Whether the search follows ``node`` towards the field being edited.
+    """Whether the search follows ``node`` toward the field being edited.
 
     Through a container that carries its children's state the search follows the one branch that
     reports focus, which keeps a key press to the cost of the path down to its field. Every other

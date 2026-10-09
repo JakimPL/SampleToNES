@@ -11,6 +11,7 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_DISPLAY_BUTTON_OK,
     TAG_SETTINGS_DISPLAY_CHECKBOX_BORDERLESS,
     TAG_SETTINGS_DISPLAY_CHECKBOX_FULLSCREEN,
+    TAG_SETTINGS_DISPLAY_CHECKBOX_SHOW_FRAME_RATE,
     TAG_SETTINGS_DISPLAY_CHECKBOX_VSYNC,
     TAG_SETTINGS_DISPLAY_COMBO_FRAME_RATE,
     TAG_SETTINGS_DISPLAY_COMBO_PALETTE,
@@ -51,6 +52,7 @@ def view_model(*, fullscreen: bool = False) -> DisplaySettingsViewModel:
             ),
             vsync=True,
             frame_rate=60,
+            show_frame_rate=True,
         ),
         resolutions=RESOLUTIONS,
         frame_rates=FRAME_RATES,
@@ -105,6 +107,7 @@ class TestDisplaySettingsWindow:
         assert dpg.get_value(TAG_SETTINGS_DISPLAY_CHECKBOX_VSYNC) is True
         assert dpg.get_value(TAG_SETTINGS_DISPLAY_CHECKBOX_BORDERLESS) is False
         assert dpg.get_value(TAG_SETTINGS_DISPLAY_CHECKBOX_FULLSCREEN) is False
+        assert dpg.get_value(TAG_SETTINGS_DISPLAY_CHECKBOX_SHOW_FRAME_RATE) is True
 
     def test_a_windowed_window_offers_its_size_and_frame(self, window: GUIDisplaySettingsWindow) -> None:
         render(window)
@@ -183,6 +186,18 @@ class TestReportedEdits:
         )
 
         assert reported[-1].vsync is False
+
+    def test_switching_the_frame_rate_reading_off_reports_it(
+        self,
+        window: GUIDisplaySettingsWindow,
+        reported: List[DisplaySettings],
+    ) -> None:
+        dpg.get_item_callback(TAG_SETTINGS_DISPLAY_CHECKBOX_SHOW_FRAME_RATE)(
+            TAG_SETTINGS_DISPLAY_CHECKBOX_SHOW_FRAME_RATE,
+            False,
+        )
+
+        assert reported[-1].show_frame_rate is False
 
     def test_picking_the_unlimited_rate_reports_it(
         self,

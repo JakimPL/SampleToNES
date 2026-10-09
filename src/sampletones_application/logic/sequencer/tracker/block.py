@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple, Union
 
-from sampletones_core.project.instruments.note_off import NoteOff
+from sampletones_core.project.patterns.pitch import RowPitch
+from sampletones_core.project.voices.note_off import NoteOff
 
 BlockNote = Union[str, NoteOff]
 BlockKey = Tuple[int, int]
@@ -21,8 +22,8 @@ class TrackerBlock:
     that the block says nothing about that cell — which is how a sample column its channels
     disagree over stays transparent to whatever it is pasted onto.
 
-    Notes, transposes and volumes are kept in maps of their own so the kind of a value is
-    structural. It also fixes the order a write takes: every note lands before the transposes and
+    Notes, pitches and volumes are kept in maps of their own so the kind of a value is
+    structural. It also fixes the order a write takes: every note lands before the pitches and
     volumes sharing its row, which matters where a sample-column note clears the channels around
     it.
 
@@ -31,5 +32,5 @@ class TrackerBlock:
     """
 
     notes: Dict[BlockKey, Optional[BlockNote]]
-    transposes: Dict[BlockKey, Optional[int]]
+    pitches: Dict[BlockKey, Optional[RowPitch]]
     volumes: Dict[BlockKey, Optional[int]]

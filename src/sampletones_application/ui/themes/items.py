@@ -10,13 +10,13 @@ ThemeDictionary = Dict[Tuple[ThemeParameter, int, int, bool], ThemeValue]
 
 
 class ThemeEntryKey(NamedTuple):
-    """Merge identity of one theme colour or style entry.
+    """Merge identity of one theme color or style entry.
 
     Entries sharing a key target the same slot, so inheritance resolution lets a
     child theme's entry override its parent's, and the disabled mirror can address
     the disabled counterpart of an enabled slot directly. ``is_style`` separates the
-    colour and style enum families, whose integer keys overlap, so a style and a
-    colour sharing an item type and integer occupy distinct slots.
+    color and style enum families, whose integer keys overlap, so a style and a
+    color sharing an item type and integer occupy distinct slots.
     """
 
     item_type: int

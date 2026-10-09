@@ -32,7 +32,7 @@ class TrackerTarget:
         """
         return TrackerCell(
             row=self.cell.row,
-            generator=self.cell.generator,
+            channel=self.cell.channel,
         )
 
 
@@ -52,6 +52,6 @@ class OrderTarget:
         """The cell a pasted block is written from, which is the target's own channel row and
         position."""
         return OrderCell(
-            generator=self.cell.generator,
+            channel=self.cell.channel,
             position=self.cell.position,
         )

@@ -1,0 +1,15 @@
+name: stems_drop_strip
+tag: global.theme.stems_drop_strip
+
+components:
+  - item_type: Button
+    entries:
+      - type: color
+        key: Button
+        value: .transparent
+      - type: color
+        key: ButtonHovered
+        value: .transparent
+      - type: color
+        key: ButtonActive
+        value: .transparent

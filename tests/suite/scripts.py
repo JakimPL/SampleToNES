@@ -1,7 +1,7 @@
 import importlib.util
 from types import ModuleType
 
-from sampletones_shared.paths.source import REPOSITORY_ROOT
+from sampletones_tools.checks.paths import SCRIPTS_ROOT
 
 
 def load_script(relative_path: str) -> ModuleType:
@@ -10,7 +10,7 @@ def load_script(relative_path: str) -> ModuleType:
     The scripts under ``scripts/`` are entry points invoked by path from workflows, hooks and the
     Makefile, so importing them the same way keeps a test exercising the module the tooling runs.
     """
-    path = REPOSITORY_ROOT / "scripts" / relative_path
+    path = SCRIPTS_ROOT / relative_path
     spec = importlib.util.spec_from_file_location(path.stem, path)
     assert spec is not None and spec.loader is not None
 

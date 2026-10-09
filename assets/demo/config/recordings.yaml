@@ -1,0 +1,95 @@
+sample_rate: 44100
+tempo: 120.0
+amplitude: 0.8
+hits:
+  - { name: Kick, voice: kick }
+  - { name: Snare, voice: snare }
+piece:
+  name: Demo song
+  beats: 16.0
+  stems:
+    - name: Bass
+      notes:
+        - { voice: bass, pitch: 36, start: 0.0, length: 0.5 }
+        - { voice: bass, pitch: 36, start: 0.5, length: 0.5 }
+        - { voice: bass, pitch: 36, start: 1.0, length: 0.5 }
+        - { voice: bass, pitch: 43, start: 1.5, length: 0.5 }
+        - { voice: bass, pitch: 36, start: 2.0, length: 0.5 }
+        - { voice: bass, pitch: 36, start: 2.5, length: 0.5 }
+        - { voice: bass, pitch: 48, start: 3.0, length: 0.5 }
+        - { voice: bass, pitch: 46, start: 3.5, length: 0.5 }
+        - { voice: bass, pitch: 33, start: 4.0, length: 0.5 }
+        - { voice: bass, pitch: 33, start: 4.5, length: 0.5 }
+        - { voice: bass, pitch: 33, start: 5.0, length: 0.5 }
+        - { voice: bass, pitch: 40, start: 5.5, length: 0.5 }
+        - { voice: bass, pitch: 33, start: 6.0, length: 0.5 }
+        - { voice: bass, pitch: 33, start: 6.5, length: 0.5 }
+        - { voice: bass, pitch: 45, start: 7.0, length: 0.5 }
+        - { voice: bass, pitch: 43, start: 7.5, length: 0.5 }
+        - { voice: bass, pitch: 41, start: 8.0, length: 0.5 }
+        - { voice: bass, pitch: 41, start: 8.5, length: 0.5 }
+        - { voice: bass, pitch: 41, start: 9.0, length: 0.5 }
+        - { voice: bass, pitch: 48, start: 9.5, length: 0.5 }
+        - { voice: bass, pitch: 41, start: 10.0, length: 0.5 }
+        - { voice: bass, pitch: 41, start: 10.5, length: 0.5 }
+        - { voice: bass, pitch: 53, start: 11.0, length: 0.5 }
+        - { voice: bass, pitch: 51, start: 11.5, length: 0.5 }
+        - { voice: bass, pitch: 43, start: 12.0, length: 0.5 }
+        - { voice: bass, pitch: 43, start: 12.5, length: 0.5 }
+        - { voice: bass, pitch: 43, start: 13.0, length: 0.5 }
+        - { voice: bass, pitch: 50, start: 13.5, length: 0.5 }
+        - { voice: bass, pitch: 43, start: 14.0, length: 0.5 }
+        - { voice: bass, pitch: 43, start: 14.5, length: 0.5 }
+        - { voice: bass, pitch: 47, start: 15.0, length: 0.5 }
+        - { voice: bass, pitch: 50, start: 15.5, length: 0.5 }
+    - name: Lead
+      notes:
+        - { voice: lead, pitch: 72, start: 0.0, length: 1.0 }
+        - { voice: lead, pitch: 76, start: 1.0, length: 1.0 }
+        - { voice: lead, pitch: 79, start: 2.0, length: 1.5 }
+        - { voice: lead, pitch: 76, start: 3.5, length: 0.5 }
+        - { voice: lead, pitch: 76, start: 4.0, length: 1.0 }
+        - { voice: lead, pitch: 72, start: 5.0, length: 1.0 }
+        - { voice: lead, pitch: 69, start: 6.0, length: 2.0 }
+        - { voice: lead, pitch: 77, start: 8.0, length: 1.0 }
+        - { voice: lead, pitch: 81, start: 9.0, length: 1.0 }
+        - { voice: lead, pitch: 84, start: 10.0, length: 1.5 }
+        - { voice: lead, pitch: 81, start: 11.5, length: 0.5 }
+        - { voice: lead, pitch: 79, start: 12.0, length: 1.0 }
+        - { voice: lead, pitch: 76, start: 13.0, length: 1.0 }
+        - { voice: lead, pitch: 74, start: 14.0, length: 1.0 }
+        - { voice: lead, pitch: 72, start: 15.0, length: 1.0 }
+    - name: Drums
+      notes:
+        - { voice: kick, start: 0.0 }
+        - { voice: hat, start: 0.5 }
+        - { voice: snare, start: 1.0 }
+        - { voice: hat, start: 1.5 }
+        - { voice: kick, start: 2.0 }
+        - { voice: hat, start: 2.5 }
+        - { voice: snare, start: 3.0 }
+        - { voice: hat, start: 3.5 }
+        - { voice: kick, start: 4.0 }
+        - { voice: hat, start: 4.5 }
+        - { voice: snare, start: 5.0 }
+        - { voice: hat, start: 5.5 }
+        - { voice: kick, start: 6.0 }
+        - { voice: kick, start: 6.5 }
+        - { voice: snare, start: 7.0 }
+        - { voice: hat, start: 7.5 }
+        - { voice: kick, start: 8.0 }
+        - { voice: hat, start: 8.5 }
+        - { voice: snare, start: 9.0 }
+        - { voice: hat, start: 9.5 }
+        - { voice: kick, start: 10.0 }
+        - { voice: hat, start: 10.5 }
+        - { voice: snare, start: 11.0 }
+        - { voice: hat, start: 11.5 }
+        - { voice: kick, start: 12.0 }
+        - { voice: hat, start: 12.5 }
+        - { voice: snare, start: 13.0 }
+        - { voice: hat, start: 13.5 }
+        - { voice: kick, start: 14.0 }
+        - { voice: kick, start: 14.5 }
+        - { voice: snare, start: 15.0 }
+        - { voice: snare, start: 15.5 }

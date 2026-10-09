@@ -1,221 +1,322 @@
-from typing import Callable, Dict, FrozenSet, Optional
+from typing import Callable, Dict, Optional, Protocol, Set
 
-import numpy as np
-
-from sampletones_application.layout.behavior.scheduling.scheduling import (
-    SchedulingBehavior,
+from sampletones_application.constants.instruments import INSTRUMENT_CHANNEL
+from sampletones_application.logic.reconstruction.editing import (
+    InstrumentEdit,
+    InstrumentEditingProtocol,
 )
-from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.utils.callbacks.queue import CallbackQueue
+from sampletones_application.logic.reconstruction.rewrites.steps import ChannelChange
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
 from sampletones_application.view_model.reconstruction.instruments import (
+    InstrumentViewModel,
     ReconstructionInstrumentsViewModel,
 )
-from sampletones_application.view_model.reconstruction.update import (
-    ReconstructionUpdate,
-)
-from sampletones_application.view_model.shared.footprint import SampleFootprintViewModel
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
-from sampletones_core.exporters import Features
+from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
+from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.exporters import Features, playing_channels, stands_by
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.footprint import features_footprint
-from sampletones_core.types.feature import FeatureValue
+from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
-OnReconstructionInstrumentUpdatedCallback = Callable[
-    [GeneratorName, Features, FeatureKey, FeatureValue],
-    None,
-]
+
+class PendingChangesProtocol(Protocol):
+    """The changes a reader made that are still on their way to the open document.
+
+    The panel shows what the document will hold, so every reading of a reconstruction's envelopes
+    passes through the changes waiting to land.
+    """
+
+    def drawn(self, envelopes: ChannelEnvelopesViewModel) -> ChannelEnvelopesViewModel:
+        """The document's envelopes with every change on its way written over them."""
 
 
 class ReconstructionInstrumentsLogic(CallbackMixin):
+    """What the instruments panel shows of the voice in front of it, and where an edit to it goes.
+
+    A reconstruction's channel moved on the panel travels out as a :class:`ChannelChange`, which
+    the document takes in its turn. Until it lands, the envelopes the panel draws and the figures
+    measuring them read through the changes on their way, so they answer for what the document
+    will hold.
+    """
+
     def __init__(
         self,
-        reconstruction_manager: ReconstructionManager,
-        *,
-        scheduling: SchedulingBehavior,
+        editor: InstrumentEditingProtocol,
+        pending_changes: PendingChangesProtocol,
     ) -> None:
-        self.reconstruction_manager = reconstruction_manager
-        self._scheduling = scheduling
+        self._editor = editor
+        self._pending_changes = pending_changes
 
-        self._pending_reconstruction_update: Optional[ReconstructionUpdate] = None
+        self._silenced: Set[ChannelName] = set()
 
         self.on_view_changed: Optional[Callable[[ReconstructionInstrumentsViewModel], None]] = None
-        self.on_feature_data_changed: Optional[Callable[[Optional[Dict[GeneratorName, Features]]], None]] = None
-        self.on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None
+        self.on_feature_data_changed: Optional[Callable[[Optional[ChannelEnvelopesViewModel]], None]] = None
+        self.on_channel_changed: Optional[Callable[[ChannelChange], None]] = None
+        self.on_display_refreshed: Optional[VoidCallback] = None
 
     def update_display(self) -> None:
-        generators = self._current_generators()
-        self.call(self.on_view_changed, self._build_view_model(generators))
-        self.call(self.on_feature_data_changed, generators)
+        """Renders whatever the panel has in front of it, envelopes and figures together.
+
+        A document opened, a recording removed and a new choice of what is heard each change what
+        the panel shows, so each redraws it from the document. The cards beside the panel describe
+        the same voice, so the render is reported once it has been made and they settle on it: an
+        edit to an instrument redraws its waveform here.
+        """
+        self.call(self.on_view_changed, self._build_view_model(self._measured_channels()))
+        self.call(self.on_feature_data_changed, self._displayed_features())
+        self.call(self.on_display_refreshed)
+
+    def _displayed_features(self) -> Optional[ChannelEnvelopesViewModel]:
+        """The envelopes the panel plots: a reconstruction's channels, or an instrument's own set.
+
+        An instrument is drawn on the tab the panel shows it under, which is the channel offering every
+        dimension an instrument writes, and it answers to no recording, so it carries no stretches.
+        """
+        instrument = self.instrument_edit
+        if instrument is not None:
+            return ChannelEnvelopesViewModel(
+                channels=self._instrument_channels(instrument),
+                ownership={},
+            )
+
+        return self._reconstruction_envelopes()
+
+    @staticmethod
+    def _instrument_channels(
+        instrument: InstrumentEdit,
+    ) -> Dict[ChannelName, Features]:
+        """An instrument's envelopes under the channel the panel shows it on."""
+        return {INSTRUMENT_CHANNEL: instrument.features}
 
     def refresh_view(self) -> None:
-        """Reports which channels play and the sizes they occupy, leaving the displayed envelopes as they are.
+        """Reports which channels play and the sizes they occupy, redrawing only a channel an edit silenced.
 
-        A regeneration replaces what an instrument exports, so the byte figures and the standing-by
-        channels settle on it. The envelopes themselves are left to the edit that started the
-        regeneration, so a field the user is still typing in keeps what they wrote.
+        This answers a document whose envelopes the panel already draws: a regeneration of the
+        panel's own edit, or a retune, which carries every envelope over. The byte figures and the
+        standing-by channels settle on what an instrument now exports, and the envelopes stay as
+        drawn, so a field the user is still typing in keeps what they wrote. A channel the edit
+        silenced stands by in the document once the regeneration lands, holding no frame, so the
+        panel draws it empty and the next edit starts from what the document holds. A document
+        rewritten anywhere else is drawn whole through :meth:`update_display`.
         """
-        self.call(self.on_view_changed, self._build_view_model(self._current_generators()))
+        self.call(
+            self.on_view_changed,
+            self._build_view_model(self._measured_channels()),
+        )
+        self._redraw_silenced()
 
-    def _current_generators(self) -> Optional[Dict[GeneratorName, Features]]:
-        feature_data = self.reconstruction_manager.current_features
-        return None if feature_data is None else feature_data.generators
+    def _redraw_silenced(self) -> None:
+        """Draws the channels an edit silenced as the document now holds them, once they stand by there."""
+        envelopes = self._reconstruction_envelopes()
+        if envelopes is None:
+            return
+
+        standing = {
+            channel_name: envelopes[channel_name]
+            for channel_name in self._silenced
+            if not envelopes[channel_name].has_frames
+        }
+        if not standing:
+            return
+
+        self._silenced.difference_update(standing)
+        self.call(
+            self.on_feature_data_changed,
+            ChannelEnvelopesViewModel(
+                channels=standing,
+                ownership={
+                    channel_name: lane for channel_name, lane in envelopes.ownership.items() if channel_name in standing
+                },
+            ),
+        )
+
+    def _measured_channels(self) -> Optional[Dict[ChannelName, Features]]:
+        """The channels of the reconstruction in front of the panel, as its figures measure them.
+
+        A channel measures as the document will hold it once the changes on their way land. A
+        change silencing every frame of a channel leaves it standing by, so that channel measures
+        standing by from the moment the change is made, with no frame and no figure.
+        """
+        document = self._document_envelopes()
+        if document is None:
+            return None
+
+        return {
+            channel_name: (
+                features if features == document[channel_name] else self._as_regenerated(channel_name, features)
+            )
+            for channel_name, features in self._pending_changes.drawn(document).channels.items()
+        }
+
+    @staticmethod
+    def _as_regenerated(channel_name: ChannelName, features: Features) -> Features:
+        """The envelopes a channel holds once the regeneration has rebuilt it from ``features``.
+
+        A channel the envelopes silence rests through every frame, which the document stands by,
+        describing no frame.
+        """
+        if stands_by(channel_name, features):
+            return features.leave_to_channel(features.envelopes)
+
+        return features
+
+    def _reconstruction_envelopes(self) -> Optional[ChannelEnvelopesViewModel]:
+        """The envelopes of the reconstruction in front of the panel, the changes on their way included."""
+        document = self._document_envelopes()
+        return None if document is None else self._pending_changes.drawn(document)
+
+    def _document_envelopes(self) -> Optional[ChannelEnvelopesViewModel]:
+        """The envelopes the reconstruction in front of the panel holds, where it holds one and no instrument."""
+        match self._editor.edited_instrument():
+            case ChannelEnvelopesViewModel() as envelopes:
+                return envelopes
+            case _:
+                return None
+
+    @property
+    def instrument_edit(self) -> Optional[InstrumentEdit]:
+        """The instrument in front of the panel, where one is."""
+        match self._editor.edited_instrument():
+            case InstrumentEdit() as edit:
+                return edit
+            case _:
+                return None
 
     def _build_view_model(
         self,
-        generators: Optional[Dict[GeneratorName, Features]],
+        channels: Optional[Dict[ChannelName, Features]],
     ) -> ReconstructionInstrumentsViewModel:
-        if generators is None:
+        instrument = self.instrument_edit
+        if instrument is not None:
+            return self._instrument_view_model(instrument)
+
+        if channels is None:
             return ReconstructionInstrumentsViewModel(
                 reconstruction_loaded=False,
-                playing_generators=frozenset(),
+                playing_channels=frozenset(),
                 footprint=None,
             )
 
-        playing_generators: FrozenSet[GeneratorName] = frozenset(
-            generator_name for generator_name, features in generators.items() if features.has_frames
-        )
         return ReconstructionInstrumentsViewModel(
             reconstruction_loaded=True,
-            playing_generators=playing_generators,
-            footprint=self._build_footprint(generators),
+            playing_channels=playing_channels(channels),
+            footprint=self._build_footprint(channels),
+        )
+
+    def _instrument_view_model(
+        self,
+        instrument: InstrumentEdit,
+    ) -> ReconstructionInstrumentsViewModel:
+        """What the panel shows of an instrument: its envelopes, its roots and what it costs.
+
+        An instrument is shown under one channel, and it plays there once its envelopes describe a
+        frame, so it stands by the way a reconstruction's silent channel does until the reader
+        writes one.
+        """
+        return ReconstructionInstrumentsViewModel(
+            reconstruction_loaded=False,
+            playing_channels=playing_channels(self._instrument_channels(instrument)),
+            footprint=VoiceFootprintViewModel.from_instrument(features_footprint(instrument.features)),
+            instrument=InstrumentViewModel(name=instrument.name),
         )
 
     def _build_footprint(
         self,
-        generators: Dict[GeneratorName, Features],
-    ) -> SampleFootprintViewModel:
-        """Measures each playing channel's instrument as the size its own export writes.
+        channels: Dict[ChannelName, Features],
+    ) -> VoiceFootprintViewModel:
+        """Measures the raw size of each playing channel's instrument.
 
-        A reconstruction has no loop flag of its own — that belongs to a sample placed in a
-        project — so each instrument is measured playing its envelopes once, matching what
-        **Export instrument...** produces. A channel standing by is written nowhere, so it is
-        measured nowhere and the sample's total names what the export costs.
+        Each instrument is measured at the whole lengths its own envelopes state. A channel standing
+        by is written nowhere, so it is measured nowhere and the sample's total names the channels
+        that play.
         """
-        return SampleFootprintViewModel.from_footprints(
+        return VoiceFootprintViewModel.from_footprints(
             {
-                generator_name: features_footprint(features, loop=False)
-                for generator_name, features in generators.items()
+                channel_name: features_footprint(features)
+                for channel_name, features in channels.items()
                 if features.has_frames
             }
         )
 
     def handle_pitch_value_changed(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         value: int,
     ) -> None:
-        self._schedule_reconstruction_update(
-            ReconstructionUpdate(
-                generator_name,
-                FeatureKey.INITIAL_PITCH,
-                value,
-            )
-        )
+        """Moves the pitch one channel of a reconstruction has its frames measured against.
 
-    def handle_bar_point_clicked(
-        self,
-        generator_name: GeneratorName,
-        feature_key: FeatureKey,
-        data: np.ndarray,
-    ) -> None:
-        self._report_edited_size(generator_name, feature_key, data)
-        self._schedule_reconstruction_update(
-            ReconstructionUpdate(
-                generator_name,
-                feature_key,
-                data,
-            )
-        )
-
-    def handle_raw_data_changed(
-        self,
-        generator_name: GeneratorName,
-        feature_key: FeatureKey,
-        data: np.ndarray,
-    ) -> None:
-        self._report_edited_size(generator_name, feature_key, data)
-        self._schedule_reconstruction_update(
-            ReconstructionUpdate(
-                generator_name,
-                feature_key,
-                data,
-            )
-        )
-
-    def _report_edited_size(
-        self,
-        generator_name: GeneratorName,
-        feature_key: FeatureKey,
-        data: np.ndarray,
-    ) -> None:
-        """Reports what the edited envelope costs as the edit arrives, ahead of its regeneration.
-
-        Measuring the envelope the user just wrote keeps the figures answering what is on screen
-        while the reconstruction is still being rebuilt. The regenerated instruments report again
-        once they land, so the figures settle on the exported form.
+        A conversion states the value it found, and moving it rebuilds the channel's frames around
+        the new origin, so the edit travels back out as a change of that channel. The panel offers
+        the pitch on a reconstruction's channels alone, so a change reaching it while it shows an
+        instrument, or a voice that has gone, draws the panel as it now stands and goes nowhere.
         """
-        generators = self._current_generators()
-        if generators is None:
-            return
-
-        self.call(
-            self.on_view_changed,
-            self._build_view_model(
-                self._with_edit(
-                    generators,
-                    generator_name,
-                    feature_key,
-                    data,
+        match self._editor.edited_instrument():
+            case ChannelEnvelopesViewModel() as document:
+                self._change(
+                    document,
+                    ChannelChange(
+                        channel_name=channel_name,
+                        feature_key=FeatureKey.INITIAL_PITCH,
+                        envelopes={},
+                        initial_pitch=value,
+                    ),
                 )
-            ),
-        )
+            case _:
+                self.update_display()
 
-    def _with_edit(
+    def handle_envelope_changed(
         self,
-        generators: Dict[GeneratorName, Features],
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature_key: FeatureKey,
-        data: np.ndarray,
-    ) -> Dict[GeneratorName, Features]:
-        """The loaded channels with one envelope replaced, leaving the loaded ones as they are."""
-        edited = generators[generator_name].model_copy(deep=True)
-        edited[feature_key] = data
-        return {**generators, generator_name: edited}
-
-    def _schedule_reconstruction_update(
-        self,
-        update: ReconstructionUpdate,
+        envelope: Envelope[int],
     ) -> None:
-        """Coalesces a burst of edits into the latest pending update, then hands it off promptly.
+        """Takes one dimension as an edit leaves it, values and loop point together.
 
-        The slot keeps only the newest update so events arriving within the short debounce
-        collapse into one. A dedicated, brief delay keeps the hand-off responsive; the
-        regeneration service then applies last-wins across whatever it receives, so the final
-        edit of a continuous drag is always applied.
+        The panel states the whole dimension, so a bar redrawn on the plot and a sequence typed
+        into the text field arrive the same way and are written the same way. An instrument stands
+        on no audio, so an edit reaches it at once, while a reconstruction's dimension travels back
+        out as a change of its channel. An edit reaching a panel whose voice has gone draws the
+        panel as it now stands and goes nowhere.
         """
-        self._pending_reconstruction_update = update
-        CallbackQueue.add(
-            self._on_reconstruction_update_scheduled,
-            priority=self._scheduling.priorities.schedule,
-            delay=self._scheduling.delays.reconstruction_update,
-        )
+        match self._editor.edited_instrument():
+            case InstrumentEdit():
+                self._editor.write_envelope(feature_key, envelope)
+                self.update_display()
+            case ChannelEnvelopesViewModel() as document:
+                self._change(
+                    document,
+                    ChannelChange(
+                        channel_name=channel_name,
+                        feature_key=feature_key,
+                        envelopes={feature_key: envelope},
+                        initial_pitch=None,
+                    ),
+                )
+            case None:
+                self.update_display()
 
-    def _on_reconstruction_update_scheduled(self) -> None:
-        if self._pending_reconstruction_update is None:
-            return
+    def _change(self, document: ChannelEnvelopesViewModel, change: ChannelChange) -> None:
+        """Sends a change on to the document, and reports the figures it leaves at once.
 
-        generator_name, feature_key, data = self._pending_reconstruction_update
-        self._pending_reconstruction_update = None
-        self.call(
-            self.on_reconstruction_instrument_updated,
-            generator_name,
-            self._get_features(generator_name),
-            feature_key,
-            data,
-        )
+        The channel is read as the change leaves it before the change goes, so whether it
+        silences the channel is known by the time the rebuild lands. The figures are reported
+        afterwards, measuring what the edit leaves ahead of its rebuild.
 
-    def _get_features(self, generator_name: GeneratorName) -> Features:
-        current_features = self.reconstruction_manager.current_features
-        assert current_features is not None, "Current features should not be None"
+        Args:
+            document: The envelopes the open document holds.
+            change: What the reader moved.
+        """
+        drawn = self._pending_changes.drawn(document)
+        self._note_silenced(change.channel_name, change.rebased(drawn[change.channel_name]))
+        self.call(self.on_channel_changed, change)
+        self.call(self.on_view_changed, self._build_view_model(self._measured_channels()))
 
-        return current_features[generator_name]
+    def _note_silenced(self, channel_name: ChannelName, features: Features) -> None:
+        """Remembers whether the latest edit of a channel silences it, which its rebuild then shows."""
+        if stands_by(channel_name, features):
+            self._silenced.add(channel_name)
+        else:
+            self._silenced.discard(channel_name)

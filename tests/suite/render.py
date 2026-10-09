@@ -5,7 +5,7 @@ from typing import Callable, List, Optional
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_application.services.render.result import RenderResult
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceSuccess,
 )
@@ -74,7 +74,7 @@ class FakeRenderService:
 
     def emit(self, result: RenderResult) -> None:
         assert self._handler is not None, "The logic subscribes to the service it is given"
-        self.running = not isinstance(result, (ServiceSuccess, ServiceError, ServiceCancelled))
+        self.running = not isinstance(result, (ServiceSuccess, ServiceError, ServiceCanceled))
         self._handler(result)
 
     @property

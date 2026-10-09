@@ -1,0 +1,68 @@
+from __future__ import annotations
+
+from typing import Iterable, NamedTuple, Tuple
+
+from sampletones_player.specification.planes import PLANE_COUNT, PLANE_NAMES
+
+
+class PlaneOrder(NamedTuple):
+    """One byte series per plane, in the order the song block writes them.
+
+    The song block states its planes as a single run, and both readings of a song take that
+    shape: the values each plane plays tick by tick, and the tokens those values are written as.
+    Naming them is what lets either be carried whole and read back by the channel it belongs to.
+
+    The fields spell out what ``specification.planes.PLANES`` states, so that a reader reaches a
+    plane by its own name and a type checker knows which names there are. A test holds the two
+    in step.
+
+    Attributes:
+        pulse1_control: The first pulse channel's timbre and volume.
+        pulse1_value: The first pulse channel's pitch.
+        pulse1_bend: The first pulse channel's divider offset.
+        pulse2_control: The second pulse channel's timbre and volume.
+        pulse2_value: The second pulse channel's pitch.
+        pulse2_bend: The second pulse channel's divider offset.
+        triangle_value: The triangle channel's pitch, the index above the table naming a rest.
+        triangle_bend: The triangle channel's divider offset.
+        noise_control: The noise channel's timbre and volume.
+        noise_value: The noise channel's period.
+    """
+
+    pulse1_control: bytes
+    pulse1_value: bytes
+    pulse1_bend: bytes
+    pulse2_control: bytes
+    pulse2_value: bytes
+    pulse2_bend: bytes
+    triangle_value: bytes
+    triangle_bend: bytes
+    noise_control: bytes
+    noise_value: bytes
+
+    @classmethod
+    def names(cls) -> Tuple[str, ...]:
+        """The planes' names, in the order the song block writes them."""
+        return PLANE_NAMES
+
+    @classmethod
+    def across(
+        cls,
+        planes: Iterable[bytes],
+    ) -> PlaneOrder:
+        """Gathers a song's planes under the names the song block writes them by.
+
+        Args:
+            planes: The planes, in the order the song block writes them.
+
+        Returns:
+            PlaneOrder: The planes, each under its own name.
+
+        Raises:
+            ValueError: If the planes given are other than the ones a song block holds.
+        """
+        gathered = tuple(planes)
+        if len(gathered) != PLANE_COUNT:
+            raise ValueError(f"a song block holds {PLANE_COUNT} planes, and these are {len(gathered)}")
+
+        return cls._make(gathered)

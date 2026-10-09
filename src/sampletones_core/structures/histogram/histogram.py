@@ -6,7 +6,6 @@ from types import ModuleType
 from typing import (
     Dict,
     Iterator,
-    List,
     Optional,
     Tuple,
     Union,
@@ -723,8 +722,8 @@ class Histogram(DataModel):
         Returns:
             Array of densities (values / widths) for each bin.
         """
-        densities: List[Float] = [self.density(i) for i in range(len(self))]
-        return self.xp.array(densities, dtype=self.values.dtype)
+        densities: Array = (self.values / self.widths).astype(self.values.dtype)
+        return densities
 
     @cached_property
     def total(self) -> Float:

@@ -10,7 +10,7 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.render.logic import SongRenderLogic
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceSuccess,
 )
@@ -21,7 +21,6 @@ from sampletones_application.view_model.shared.render import (
 )
 from sampletones_core.audio.writers import AudioFormat
 from sampletones_core.configs import Config
-from sampletones_shared.types.callback import VoidCallback
 from tests.suite.language import FakeLanguageManager
 from tests.suite.render import FakeRenderService
 
@@ -90,11 +89,7 @@ class _SaveDialogRecorder:
 
 
 class RenderFixture:
-    """The coordinator over a real render logic, a recording service, and a recorded screen.
-
-    The frame the report waits for is taken as passing when a test asks for it, so the hand-off
-    from the window to the dialog that reports an outcome is walked one step at a time.
-    """
+    """The coordinator over a real render logic, a recording service, and a recorded screen."""
 
     def __init__(
         self,
@@ -121,14 +116,8 @@ class RenderFixture:
         self.dialogs = _DialogsRecorder()
         self.save_dialog = _SaveDialogRecorder()
         self.activity = 0
-        self.pending: List[VoidCallback] = []
 
         monkeypatch.setattr(render_module, "save_file_dialog", self.save_dialog)
-        monkeypatch.setattr(
-            render_module.FrameCallbackManager,
-            "set_frame_callback",
-            lambda callback, frame_count=1: self.pending.append(callback),
-        )
 
         self.coordinator = SongRenderCoordinator(
             self.logic,
@@ -158,13 +147,6 @@ class RenderFixture:
 
     def close(self) -> None:
         self.window.on_close()
-
-    def advance_frame(self) -> None:
-        """Runs what was waiting for the frame the window left the screen in."""
-        pending = self.pending
-        self.pending = []
-        for callback in pending:
-            callback()
 
 
 @pytest.fixture
@@ -292,7 +274,6 @@ class TestReportingTheOutcome:
         render.start()
 
         render.service.emit(ServiceSuccess(value=CHOSEN))
-        render.advance_frame()
 
         assert render.dialogs.paths == [
             {
@@ -302,22 +283,12 @@ class TestReportingTheOutcome:
             }
         ]
 
-    def test_the_report_waits_for_the_screen_the_window_left(self, render: RenderFixture) -> None:
-        render.open()
-        render.start()
-
-        render.service.emit(ServiceSuccess(value=CHOSEN))
-
-        assert render.window.hides == 1
-        assert not render.dialogs.paths
-
     def test_a_failed_render_reports_what_went_wrong(self, render: RenderFixture) -> None:
         render.open()
         render.start()
         failure = OSError("no room on the device")
 
         render.service.emit(ServiceError(exception=failure))
-        render.advance_frame()
 
         assert render.dialogs.errors == [
             {
@@ -331,8 +302,7 @@ class TestReportingTheOutcome:
         render.start()
         render.stop()
 
-        render.service.emit(ServiceCancelled())
-        render.advance_frame()
+        render.service.emit(ServiceCanceled())
 
         assert render.window.hides == 1
         assert not render.dialogs.paths
@@ -343,9 +313,9 @@ class TestReportingTheOutcome:
         [
             ServiceSuccess(value=CHOSEN),
             ServiceError(exception=OSError("no room on the device")),
-            ServiceCancelled(),
+            ServiceCanceled(),
         ],
-        ids=["completed", "failed", "cancelled"],
+        ids=["completed", "failed", "canceled"],
     )
     def test_every_outcome_hands_the_application_back(
         self,

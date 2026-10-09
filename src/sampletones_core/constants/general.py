@@ -1,19 +1,26 @@
 from typing import Final, Tuple
 
+from sampletones_shared.constants.music import LIMIT_MIN_PITCH
+
 # Pitches and frequencies
 
 APU_CLOCK: Final[float] = 1789773.0
-LIMIT_MIN_PITCH: Final[int] = 24
+TIMER_CYCLE_DIVIDER: Final[int] = 16
+MIN_TIMER: Final[int] = 1
+MIN_SOUNDING_PULSE_TIMER: Final[int] = 8
+MIN_SOUNDING_TRIANGLE_TIMER: Final[int] = 2
+MAX_TIMER: Final[int] = 0x7FF
 MIN_PITCH: Final[int] = 33
 MAX_PITCH: Final[int] = 119
-LIMIT_MAX_PITCH: Final[int] = 127
+MIN_PLAYED_PITCH: Final[int] = LIMIT_MIN_PITCH
 PITCH_RANGE: Final[int] = MAX_PITCH - MIN_PITCH
 
-MIN_FREQUENCY: Final[float] = APU_CLOCK / 0x8000
-MAX_FREQUENCY: Final[float] = APU_CLOCK / 0x10
+TRIANGLE_PHASE_INCREMENT: Final[float] = 0.5
 
-A4_FREQUENCY: Final[float] = 440.0
-A4_PITCH: Final[int] = 69
+MIN_FREQUENCY: Final[float] = APU_CLOCK / (TIMER_CYCLE_DIVIDER * (MAX_TIMER + 1))
+MIN_TRIANGLE_FREQUENCY: Final[float] = MIN_FREQUENCY * TRIANGLE_PHASE_INCREMENT
+MAX_FREQUENCY: Final[float] = APU_CLOCK / TIMER_CYCLE_DIVIDER
+
 NOTE_NAMES: Tuple[str, ...] = (
     "C-",
     "C#",
@@ -29,10 +36,14 @@ NOTE_NAMES: Tuple[str, ...] = (
     "B-",
 )
 
-MIN_TRANSPOSE: Final[int] = -24
-MAX_TRANSPOSE: Final[int] = 36
+MAX_TRANSPOSE: Final[int] = PITCH_RANGE
+MIN_TRANSPOSE: Final[int] = -PITCH_RANGE
 ARPEGGIO_MIN: Final[int] = -128
 ARPEGGIO_MAX: Final[int] = 127
+
+PITCH_BEND_MIN: Final[int] = -128
+PITCH_BEND_MAX: Final[int] = 127
+HI_PITCH_FACTOR: Final[int] = 16
 
 # Instruction parameters ranges
 
@@ -40,6 +51,7 @@ SILENT_VOLUME: Final[int] = 0
 MIN_VOLUME: Final[int] = 1
 MAX_VOLUME: Final[int] = 15
 VOLUME_RANGE: Final[range] = range(MAX_VOLUME + 1)
+QUIETEST_VOLUME_LEVEL: Final[float] = MIN_VOLUME / MAX_VOLUME
 MAX_DUTY_CYCLE: Final[int] = 3
 
 # Channel-specific constants

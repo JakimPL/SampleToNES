@@ -1,0 +1,104 @@
+from pathlib import Path
+from typing import Dict, Final, List, Sequence, Tuple
+
+from sampletones_application.logic.reconstruction.ownership import (
+    named_recordings,
+    ownership_lanes,
+    tells_owners_apart,
+)
+from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
+from sampletones_core.constants.algorithm import RESTING_STEM_ID
+from sampletones_core.constants.enums import ChannelName, bending_channels
+from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
+from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
+from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from tests.suite.stems import RECORDED_SCALE
+
+CHANNEL: Final[ChannelName] = ChannelName.PULSE1
+STEM_A: Final[int] = 0
+STEM_B: Final[int] = 1
+STEM_C: Final[int] = 2
+STEM_CHANNELS: Final[List[ChannelName]] = [ChannelName.PULSE1, ChannelName.TRIANGLE]
+
+
+def _stems_data(stem_ids: Sequence[int], *, owners: Sequence[int] = (STEM_A, STEM_B)) -> StemsData:
+    """A record of the given recordings, the first channel holding ``stem_ids`` frame by frame."""
+    entries = [
+        StemEntry(
+            id=stem_id,
+            settings=StemSettings(channels=STEM_CHANNELS, bends=bending_channels(STEM_CHANNELS)),
+        )
+        for stem_id in owners
+    ]
+    return StemsData(
+        config=StemsConfig(entries=entries, hierarchy=StemsHierarchy(levels=[list(owners)])),
+        assignments=[ChannelAssignment(channel_name=CHANNEL, stem_ids=list(stem_ids))],
+        scale=RECORDED_SCALE,
+    )
+
+
+def _lane_runs(stem_ids: Sequence[int]) -> Tuple[Tuple[int, int, int], ...]:
+    """The stretches the first channel divides into, each as its start, end and owner."""
+    assignments: Dict[ChannelName, List[int]] = {CHANNEL: list(stem_ids)}
+    lanes = ownership_lanes(assignments, lambda _channel: {STEM_A, STEM_B})
+    return tuple((run.start_frame, run.end_frame, run.stem_id) for run in lanes[CHANNEL].runs)
+
+
+class TestWhatALaneDividesInto:
+    """A lane names an owner wherever the record does, and a rest answers to none.
+
+    A resting stretch shows the ground of whatever surface carries the lane, so a stretch painted
+    for it would take the ribbon's own ground onto a plot answering to a different color.
+    """
+
+    def test_each_recording_takes_the_stretch_it_holds(self) -> None:
+        assert _lane_runs([STEM_A, STEM_A, STEM_B]) == ((0, 2, STEM_A), (2, 3, STEM_B))
+
+    def test_a_resting_stretch_takes_none_of_its_own(self) -> None:
+        assert _lane_runs([STEM_A, RESTING_STEM_ID, STEM_B]) == ((0, 1, STEM_A), (2, 3, STEM_B))
+
+    def test_a_channel_resting_throughout_carries_no_stretch(self) -> None:
+        assert _lane_runs([RESTING_STEM_ID, RESTING_STEM_ID]) == ()
+
+    def test_a_trailing_rest_leaves_the_recordings_where_they_stand(self) -> None:
+        assert _lane_runs([STEM_A, STEM_A, RESTING_STEM_ID]) == ((0, 2, STEM_A),)
+
+
+class TestALaneStandsWhateverTheDocumentHoldsToTellApart:
+    """Whether a lane is worth drawing is left to the caller, so a document answering to a single
+    owner still divides into the one stretch that owner holds."""
+
+    def test_a_single_owner_still_takes_a_lane(self) -> None:
+        assignments: Dict[ChannelName, List[int]] = {CHANNEL: [STEM_A, STEM_A]}
+
+        lanes = ownership_lanes(assignments, lambda _channel: {STEM_A})
+
+        assert [(run.start_frame, run.end_frame, run.stem_id) for run in lanes[CHANNEL].runs] == [(0, 2, STEM_A)]
+
+
+class TestWhetherTheDocumentHasOwnersToTellApart:
+    def test_one_owner_has_nothing_to_tell_apart(self) -> None:
+        assert not tells_owners_apart(_stems_data([STEM_A], owners=(STEM_A,)))
+
+    def test_two_owners_tell_apart(self) -> None:
+        assert tells_owners_apart(_stems_data([STEM_A, STEM_B]))
+
+
+class TestTheRecordingsADocumentNames:
+    """A list of recordings carries the id each was converted as, which is what colors its mark."""
+
+    def test_each_recording_is_named_with_the_id_it_was_converted_as(self) -> None:
+        stems_data = _stems_data([STEM_A, STEM_C], owners=(STEM_A, STEM_C)).with_sources(
+            (Path("/music/Drums.wav"), Path("/music/Bass.wav"))
+        )
+
+        assert named_recordings(stems_data) == (
+            NamedRecordingViewModel(stem_id=STEM_A, name="Drums"),
+            NamedRecordingViewModel(stem_id=STEM_C, name="Bass"),
+        )
+
+    def test_a_record_naming_no_recording_lists_nothing(self) -> None:
+        assert named_recordings(_stems_data([STEM_A, STEM_B])) == ()

@@ -1,30 +1,49 @@
+from functools import partial
 from pathlib import Path
-from typing import Callable, Dict, Optional, Sequence, Tuple
+from typing import Callable, Dict, Mapping, Optional, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.export import ExportMessages
+from sampletones_application.categories.exports import EXPORT_INSTRUMENT_FILTERS
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.categories.trackers import (
-    INSTRUMENT_EXPORT_FORMATS,
-    TRACKER_INSTRUMENT_FILTERS,
-)
+from sampletones_application.categories.truncation import TruncationMessages
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.coordinators.export.instrument import (
+    InstrumentExportCoordinator,
+)
+from sampletones_application.coordinators.export.setup import ExportSetup
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
+from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
+from sampletones_application.logic.history.manager import HistoryManager
+from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.logic.reconstruction.audition import (
+    InstrumentAuditionLogic,
+)
 from sampletones_application.logic.reconstruction.browser.logic import BrowserLogic
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
+from sampletones_application.logic.reconstruction.editor import (
+    InstrumentEditDetail,
+    InstrumentEditor,
+)
 from sampletones_application.logic.reconstruction.instruments import (
-    OnReconstructionInstrumentUpdatedCallback,
+    PendingChangesProtocol,
     ReconstructionInstrumentsLogic,
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.reconstruction import (
     ReconstructionPanelLogic,
 )
+from sampletones_application.logic.reconstruction.rewrites.steps import (
+    RateChange,
+    Rewrite,
+    StemRemovalRequest,
+)
+from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.reconstruction import (
@@ -50,8 +69,10 @@ from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_RECONSTRUCTION_CONFIRMATION,
     TAG_RECONSTRUCTIONS_BROWSER_PANEL,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_REMOVE_STEM_CONFIRMATION,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_AUDIO,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_STEMS,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
 from sampletones_application.ui.elements.layout.responsive import expanded_side_width
@@ -68,23 +89,29 @@ from sampletones_application.ui.panels.reconstruction.instruments.instruments im
 from sampletones_application.ui.panels.reconstruction.plot import (
     GUIReconstructionPlotPanel,
 )
+from sampletones_application.ui.panels.reconstruction.stems import (
+    GUIReconstructionStemsPanel,
+)
+from sampletones_application.utils.callbacks.gates import Wait, gated
 from sampletones_application.utils.file_dialogs.api import save_file_dialog
 from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRouter
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
+from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.truncation import EnvelopeTruncation
+from sampletones_core.exports.backend import ExportBackend
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.scope import ExportScope
 from sampletones_core.structures.tree import FileSystemNode
-from sampletones_core.trackers.backend import TrackerBackend
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.scope import ExportScope
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,
@@ -109,26 +136,46 @@ class ReconstructionTabCoordinator:
         session_manager: SessionManager,
         audio_device_manager: AudioDeviceManager,
         reconstruction_manager: ReconstructionManager,
+        project_controller: ProjectController,
         browser_manager: BrowserManager,
         export_service: ExportService,
-        tracker_backends: Dict[TrackerFormat, TrackerBackend],
+        export_backends: Dict[ExportFormat, ExportBackend],
+        format_setups: Mapping[ExportFormat, ExportSetup],
         on_load_reconstruction_with_confirmation: Callable[[Optional[Path]], None],
         on_change_audio_state: VoidCallback,
         on_favorite_changed: Callable[[FileSystemNode], None],
-        on_reconstruction_instrument_updated: OnReconstructionInstrumentUpdatedCallback,
+        on_rewrite_requested: Callable[[Rewrite], None],
+        pending_changes: PendingChangesProtocol,
+        after_edits: Wait,
         original_audio_locator: OriginalAudioLocator,
+        instrument_exports: InstrumentExportCoordinator,
+        history: HistoryManager,
+        instrument_edit_detail: InstrumentEditDetail,
         *,
+        key_router: KeyRouter,
+        tab_active: ActivePredicate,
         layout: ReconstructionTabParameters,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
+        playback_failures: PlaybackFailurePresenter,
         status_bar: GUIStatusBar,
     ) -> None:
         self._language_manager = language_manager
         self._reconstruction_manager = reconstruction_manager
+        self._instrument_editor: InstrumentEditor = InstrumentEditor(
+            reconstruction_manager,
+            project_controller,
+            history,
+            instrument_edit_detail,
+        )
         self._session_manager = session_manager
-        self._tracker_backends = tracker_backends
+        self._export_backends = export_backends
+        self._format_setups = format_setups
+        self._instrument_exports = instrument_exports
         self._dialogs = dialogs
+        self._playback_failures = playback_failures
         self._original_audio_locator = original_audio_locator
+        self._on_rewrite_requested = on_rewrite_requested
 
         self._geometry = layout.geometry
         self._side_panel_count: int
@@ -138,23 +185,24 @@ class ReconstructionTabCoordinator:
 
         self._msg_load_error = language_manager["reconstructions.browser.message.load_error"]
         self._export_messages = ExportMessages.build(language_manager)
-        self._instrument_filter_names: Dict[TrackerFormat, str] = {
-            tracker_format: language_manager[
+        self._instrument_filter_names: Dict[ExportFormat, str] = {
+            export_format: language_manager[
                 Page.GLOBAL,
                 Panel.DIALOG,
                 TextType.FILTER,
                 element,
             ]
-            for tracker_format, element in TRACKER_INSTRUMENT_FILTERS.items()
+            for export_format, element in EXPORT_INSTRUMENT_FILTERS.items()
         }
 
         self._browser_logic: BrowserLogic = BrowserLogic(
             config_manager,
             browser_manager,
         )
+        self._file_playback: FilePlayback = FilePlayback(audio_device_manager)
         self._browser_tree_logic: TreeLogic = TreeLogic(
             session_manager,
-            audio_device_manager,
+            self._file_playback,
             scheduling=layout.scheduling,
         )
         self._browser_panel: GUIReconstructionsBrowserPanel = GUIReconstructionsBrowserPanel(
@@ -164,14 +212,16 @@ class ReconstructionTabCoordinator:
             language_manager=language_manager,
             status_bar=status_bar,
             colors=layout.tree_colors,
+            stem_colors=layout.stem_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
             initial_favorites_only=session_manager.is_favorites_filter_active(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
             initial_expanded_rows=session_manager.expanded_rows(TAG_RECONSTRUCTIONS_BROWSER_PANEL),
         )
+        self._browser_panel.on_recordings_requested = self._on_browser_recordings_requested
         self._browser_tree_logic.on_lock_state_changed = self._browser_panel.set_tree_enabled
         self._browser_tree_logic.on_favorite_changed = on_favorite_changed
         self._browser_tree_logic.on_search_update_needed = self._browser_panel.update_tree_visibility
-        self._browser_tree_logic.on_autoplay_error = self._on_browser_autoplay_error
+        self._file_playback.on_error = self._on_preview_error
         self._browser_panel.set_collapse_handler(self._on_browser_collapse_changed)
         self._browser_panel.on_favorites_filter_changed = self._on_browser_favorites_filter_changed
         self._reconstruction_player_logic = PlayerLogic(
@@ -180,8 +230,7 @@ class ReconstructionTabCoordinator:
         )
         self._guarded_player = GuardedPlayer(
             self._reconstruction_player_logic,
-            dialogs=dialogs,
-            error_message=language_manager["global.player.message.audio_playback_error"],
+            failures=playback_failures,
         )
         self._reconstruction_audio_panel: GUIReconstructionAudioPanel = GUIReconstructionAudioPanel(
             path_colors=layout.path_colors,
@@ -192,32 +241,52 @@ class ReconstructionTabCoordinator:
         )
         self._reconstruction_plot_panel: GUIReconstructionPlotPanel = GUIReconstructionPlotPanel(
             layout_graphs=layout.graphs,
+            channel_colors=layout.channel_colors,
+            stem_colors=layout.stem_colors,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT),
             language_manager=language_manager,
             status_bar=status_bar,
         )
+        self._reconstruction_stems_panel: GUIReconstructionStemsPanel = GUIReconstructionStemsPanel(
+            stems_layout=layout.stems,
+            stem_colors=layout.stem_colors,
+            language_manager=language_manager,
+            status_bar=status_bar,
+            initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_STEMS),
+        )
         self._reconstruction_audio_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._reconstruction_plot_panel.set_collapse_handler(self._on_card_collapse_changed)
+        self._reconstruction_stems_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._reconstruction_player_logic.on_position_changed = self._reconstruction_plot_panel.set_playback_position
+        self._reconstruction_plot_panel.on_position_clicked = self._play_from
         self._reconstruction_panel_logic: ReconstructionPanelLogic = ReconstructionPanelLogic(
             session_manager,
             reconstruction_manager,
             export_service,
-            tracker_backends,
+            export_backends,
         )
         self._reconstruction_instruments_panel: GUIReconstructionInstrumentsPanel = GUIReconstructionInstrumentsPanel(
             pitch_stepper_style=layout.pitch_stepper_style,
             copy_width=layout.copy_width,
             feature_colors=layout.feature_colors,
+            stem_colors=layout.stem_colors,
             layout_graphs=layout.graphs,
             language_manager=language_manager,
             status_bar=status_bar,
+            key_router=key_router,
+            tab_active=tab_active,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL),
         )
         self._reconstruction_instruments_panel.set_collapse_handler(self._on_instruments_collapse_changed)
         self._reconstruction_instruments_logic: ReconstructionInstrumentsLogic = ReconstructionInstrumentsLogic(
-            reconstruction_manager,
-            scheduling=layout.scheduling,
+            self._instrument_editor,
+            pending_changes,
+        )
+        self._instrument_audition_logic: InstrumentAuditionLogic = InstrumentAuditionLogic(
+            self._instrument_editor,
+            project_controller,
+            session_manager,
+            audio_device_manager,
         )
 
         self._browser_panel.on_refresh_tree = self._browser_logic.refresh_tree
@@ -226,10 +295,17 @@ class ReconstructionTabCoordinator:
         self._browser_panel.on_directory_remove_requested = self._request_remove_directory
 
         self._reconstruction_audio_panel.on_audio_source_changed = self._reconstruction_panel_logic.set_audio_source
-        self._reconstruction_plot_panel.on_generators_changed = self._reconstruction_panel_logic.set_selected_generators
+        self._reconstruction_audio_panel.on_nes_frequency_changed = self._request_rate_change
+        self._reconstruction_plot_panel.on_channels_changed = self._reconstruction_panel_logic.set_selected_channels
+        self._reconstruction_stems_panel.on_stem_channels_changed = self._reconstruction_panel_logic.set_stem_channels
+        self._reconstruction_stems_panel.on_stem_solo_requested = self._reconstruction_panel_logic.solo_stem
+        self._reconstruction_stems_panel.on_stem_remove_requested = self._request_remove_stem
         self._browser_panel.on_locate_original_audio = self._original_audio_locator.locate
 
         self._reconstruction_panel_logic.on_view_changed = self._update_reconstruction_view
+        self._reconstruction_panel_logic.on_stems_view_changed = self._reconstruction_stems_panel.update_view
+        self._reconstruction_panel_logic.on_ownership_changed = self._reconstruction_plot_panel.update_ownership
+        self._reconstruction_panel_logic.on_heard_changed = self._reconstruction_instruments_logic.update_display
         self._reconstruction_panel_logic.on_audio_data_changed = self._on_audio_data_changed
         self._reconstruction_panel_logic.on_waveform_load_changed = self._reconstruction_plot_panel.load_waveform_data
         self._reconstruction_panel_logic.on_waveform_update_changed = (
@@ -239,7 +315,6 @@ class ReconstructionTabCoordinator:
         self._reconstruction_panel_logic.on_waveform_source_changed = (
             self._reconstruction_plot_panel.set_waveform_top_source
         )
-        self._reconstruction_panel_logic.on_open_export_instrument_dialog = self._open_export_instrument_dialog
         self._reconstruction_panel_logic.on_open_export_instruments_dialog = self._open_export_instruments_dialog
         self._reconstruction_panel_logic.on_open_export_wav_dialog = self._open_export_wav_dialog
         self._reconstruction_panel_logic.on_locate_audio_not_found = lambda path: dialogs.show_file_not_found(
@@ -253,27 +328,29 @@ class ReconstructionTabCoordinator:
         self._reconstruction_instruments_logic.on_feature_data_changed = (
             self._reconstruction_instruments_panel.update_feature_data
         )
-        self._reconstruction_instruments_logic.on_reconstruction_instrument_updated = (
-            on_reconstruction_instrument_updated
-        )
+        self._reconstruction_instruments_logic.on_channel_changed = on_rewrite_requested
 
-        self._reconstruction_instruments_panel.on_instrument_export = (
-            self._reconstruction_panel_logic.request_export_instrument_dialog
-        )
+        self._reconstruction_instruments_panel.on_instrument_export = gated(after_edits, self._export_instrument)
         self._reconstruction_instruments_panel.on_reconstruction_instrument_hovered = (
             self._reconstruction_plot_panel.set_overlay
         )
         self._reconstruction_instruments_panel.on_pitch_value_changed = (
             self._reconstruction_instruments_logic.handle_pitch_value_changed
         )
-        self._reconstruction_instruments_panel.on_bar_data_changed = (
-            self._reconstruction_instruments_logic.handle_bar_point_clicked
+        self._reconstruction_instruments_panel.on_envelope_changed = (
+            self._reconstruction_instruments_logic.handle_envelope_changed
         )
-        self._reconstruction_instruments_panel.on_raw_data_changed = (
-            self._reconstruction_instruments_logic.handle_raw_data_changed
+        self._reconstruction_instruments_panel.on_audition_requested = self._instrument_audition_logic.sound
+        self._reconstruction_instruments_panel.on_audition_generator_changed = (
+            self._instrument_audition_logic.set_generator
         )
+        self._instrument_audition_logic.on_audition_error = self._on_preview_error
+        self._instrument_audition_logic.on_waveform_changed = self._reconstruction_plot_panel.update_instrument_view
+        self._instrument_audition_logic.on_position_changed = self._reconstruction_plot_panel.set_playback_position
+        self._reconstruction_instruments_logic.on_display_refreshed = self._instrument_audition_logic.refresh
 
     def _on_export_result(self, result: ExportResult) -> None:
+        """Reports a finished export in the words of the artifact it produced."""
         messages = self._export_messages
         match result:
             case ExportSuccess(kind=ExportKind.WAV, filepath=fp):
@@ -316,28 +393,24 @@ class ReconstructionTabCoordinator:
     def _export_message(
         self,
         success: str,
-        shortened: str,
+        shortened: TruncationMessages,
         truncation: Optional[EnvelopeTruncation],
     ) -> str:
-        """Follows the success line with the frames the FamiTracker sequence limit left out.
+        """Follows the success line with the frames the format's value limit left out.
 
         Args:
             success: The message shown for a complete export.
-            shortened: The template describing what a shortened export carries.
+            shortened: The words describing what a shortened export carries.
             truncation: The shortening the export underwent, or ``None`` when it fit whole.
 
         Returns:
             str: The message for the export result dialog.
         """
-        if truncation is None:
+        notice = shortened.notice(truncation)
+        if notice is None:
             return success
 
-        note = shortened.format(
-            frames=truncation.frames,
-            source_frames=truncation.source_frames,
-            instruments=truncation.instruments,
-        )
-        return f"{success}\n\n{note}"
+        return f"{success}\n\n{notice}"
 
     def _update_reconstruction_view(
         self,
@@ -347,52 +420,32 @@ class ReconstructionTabCoordinator:
         self._reconstruction_audio_panel.update_view(view_model)
         self._reconstruction_plot_panel.update_view(view_model)
 
-    def _open_export_instrument_dialog(
-        self,
-        default_filename: str,
-        default_path: str,
-        generator_name: GeneratorName,
-    ) -> None:
-        """Prompts for the file the ``generator_name`` slice is written to.
+    def _export_instrument(self, channel_name: ChannelName) -> None:
+        """Writes the instrument the tab's ``channel_name`` tab holds, wherever it is asked for.
 
-        Every format that writes a single slice is offered at once, so the type picked in the
-        dialog names the tracker the slice is written for.
+        An instrument reaches a file the same way whichever surface asked for it, so the whole
+        gesture from here on belongs to the shared exporter; what the tab contributes is which
+        instrument it has in front of it. A voice written by hand is one the pool holds, so it is
+        written by voice and the sequencer's voice menu writes the same file for it.
         """
-        filepath = save_file_dialog(
-            title=self._language_manager["reconstructions.instruments.title.export_instrument_dialog"],
-            initial_directory=default_path,
-            default_filename=default_filename,
-            filters=self._instrument_filters(),
-        )
-        self._handle_export_instrument(filepath, generator_name)
+        instrument = self._instrument_editor.instrument
+        if instrument is not None:
+            self._instrument_exports.request_voice(instrument.id, None)
+            return
 
-    def _instrument_filters(self) -> Tuple[FileFilter, ...]:
-        """The types a destination for one slice may be given, one per tracker offered.
-
-        Naming each tracker's own type puts the trackers an export can reach in the dialog's
-        type selector, so the one that is picked there names the format.
-        """
-        return tuple(
-            self._tracker_filter(tracker_format, ExportScope.INSTRUMENT) for tracker_format in INSTRUMENT_EXPORT_FORMATS
-        )
-
-    @ignore_none_path
-    def _handle_export_instrument(
-        self,
-        filepath: Path,
-        generator_name: GeneratorName,
-    ) -> None:
-        self._reconstruction_panel_logic.handle_export_instrument_confirmed(filepath, generator_name)
+        exportable = self._reconstruction_panel_logic.exportable_instrument(channel_name)
+        if exportable is not None:
+            self._instrument_exports.request(exportable.source, exportable.name)
 
     def _open_export_instruments_dialog(
         self,
         default_filename: str,
         default_path: str,
-        tracker_format: TrackerFormat,
+        export_format: ExportFormat,
     ) -> None:
         """Prompts for the destination the loaded reconstruction's slices are named after.
 
-        The tracker was chosen with the action, so the dialog offers its file type alone: a
+        The format was chosen with the action, so the dialog offers its file type alone: a
         format that gathers the whole reconstruction into one document writes it at the
         destination, while one that keeps an instrument per file writes its slices beside it.
         """
@@ -400,35 +453,47 @@ class ReconstructionTabCoordinator:
             title=self._language_manager["reconstructions.instruments.title.export_instruments_dialog"],
             initial_directory=default_path,
             default_filename=default_filename,
-            filters=(self._tracker_filter(tracker_format, ExportScope.SAMPLE),),
+            filters=(self._export_filter(export_format, ExportScope.SAMPLE),),
         )
-        self._handle_export_instruments(destination, tracker_format)
+        self._handle_export_instruments(destination, export_format)
 
-    def _tracker_filter(
+    def _export_filter(
         self,
-        tracker_format: TrackerFormat,
+        export_format: ExportFormat,
         scope: ExportScope,
     ) -> FileFilter:
-        """The type ``tracker_format`` writes ``scope`` files as, named after that tracker."""
+        """The type ``export_format`` writes ``scope`` files as, named after that format."""
         return FileFilter.for_extensions(
-            self._instrument_filter_names[tracker_format],
-            [self._tracker_backends[tracker_format].extension(scope)],
+            self._instrument_filter_names[export_format],
+            [self._export_backends[export_format].extension(scope)],
         )
 
     @ignore_none_path
     def _handle_export_instruments(
         self,
         destination: Path,
-        tracker_format: TrackerFormat,
+        export_format: ExportFormat,
     ) -> None:
-        self._reconstruction_panel_logic.handle_export_instruments_confirmed(destination, tracker_format)
+        self._reconstruction_panel_logic.handle_export_instruments_confirmed(
+            destination,
+            export_format,
+        )
 
-    def _open_export_wav_dialog(self, default_filename: str, default_path: str) -> None:
+    def _open_export_wav_dialog(
+        self,
+        default_filename: str,
+        default_path: str,
+    ) -> None:
         filepath = save_file_dialog(
             title=self._export_messages.wav_title,
             initial_directory=default_path,
             default_filename=default_filename,
-            filters=(FileFilter.for_extensions(self._language_manager["global.dialog.filter.wave"], [EXT_FILE_WAVE]),),
+            filters=(
+                FileFilter.for_extensions(
+                    self._language_manager["global.dialog.filter.wave"],
+                    [EXT_FILE_WAVE],
+                ),
+            ),
         )
         self._handle_export_wav(filepath)
 
@@ -475,10 +540,16 @@ class ReconstructionTabCoordinator:
         self._sync_instruments_width()
 
     def _build_reconstruction_column(self, parent: str) -> None:
-        """Stacks the audio and plot cards down the centre column."""
+        """Stacks the audio, plot, and stems cards down the center column."""
         self._reconstruction_audio_panel.create_panel(parent)
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._reconstruction_plot_panel.create_panel(parent)
+        dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
+        self._reconstruction_stems_panel.create_panel(parent)
+
+    def _play_from(self, position: int) -> None:
+        """Sounds the audio from the sample a click on the waveform pointed at."""
+        self._guarded_player.run_guarded(partial(self._reconstruction_player_logic.play_from, position))
 
     def _on_card_collapse_changed(
         self,
@@ -504,6 +575,16 @@ class ReconstructionTabCoordinator:
     ) -> None:
         """Persists the browser's favorites filter so it opens in the same mode on the next launch."""
         self._session_manager.set_favorites_filter_active(panel_tag, favorites_only)
+
+    def _on_browser_recordings_requested(self, path: Path) -> None:
+        """Hands the browser what a document names, where it has already been read."""
+        recordings = self._browser_logic.recordings(path)
+        if recordings is not None:
+            self._browser_panel.update_recordings(path, recordings)
+
+    def show_browser_recordings(self, path: Path, recordings: Tuple[NamedRecordingViewModel, ...]) -> None:
+        """Hands the browser a reading that landed after the row asked for it."""
+        self._browser_panel.update_recordings(path, recordings)
 
     def _on_instruments_collapse_changed(
         self,
@@ -565,12 +646,57 @@ class ReconstructionTabCoordinator:
             self._browser_panel.expanded_rows,
         )
 
-    def repaint_browser_favorites(self, nodes: Sequence[FileSystemNode]) -> None:
+    def repaint_browser_favorites(
+        self,
+        nodes: Sequence[FileSystemNode],
+    ) -> None:
         self._browser_panel.update_favorite_indicators(nodes)
 
     def display_reconstruction(self) -> None:
+        self._instrument_editor.release_instrument()
         self._reconstruction_panel_logic.display_reconstruction()
         self._reconstruction_instruments_logic.update_display()
+
+    def edit_instrument(self, voice_id: str) -> None:
+        """Puts an instrument in front of the tab, closing whatever reconstruction it held.
+
+        The tab describes one voice at a time — an instrument stands on no recording, so the waveform,
+        the plot and the stems beside the instruments panel have nothing of it to draw.
+        """
+        self._instrument_editor.edit_instrument(voice_id)
+        self._reconstruction_instruments_logic.update_display()
+
+    def release_instrument(self) -> None:
+        """Lets go of the instrument the tab held, which is what opening a reconstruction does."""
+        self._instrument_editor.release_instrument()
+
+    def follow_instrument(self, *, restored: bool) -> None:
+        """Brings the instrument the tab holds in line with the project it belongs to.
+
+        An instrument the project no longer holds leaves the tab empty. A restore hands a kept
+        instrument the envelopes it had then, so the panel draws them. Any other change to the
+        project leaves the panel as drawn, so a keystroke in the tracker keeps what the reader
+        is writing here.
+        """
+        if not self._instrument_editor.holds_instrument:
+            return
+
+        if self._instrument_editor.instrument is None:
+            self.close_instrument()
+        elif restored:
+            self._reconstruction_instruments_logic.update_display()
+
+    def close_instrument(self) -> None:
+        """Lets go of the instrument the tab holds and empties the tab, as a closed reconstruction leaves it.
+
+        The waveform card draws the instrument's own audio while it is open, so it empties together
+        with the instruments panel.
+        """
+        if not self._instrument_editor.holds_instrument:
+            return
+
+        self._instrument_editor.release_instrument()
+        self.close_reconstruction()
 
     def close_reconstruction(self) -> None:
         self._reconstruction_panel_logic.close_reconstruction()
@@ -586,6 +712,25 @@ class ReconstructionTabCoordinator:
             path=filepath,
         )
 
+    def _request_remove_stem(self, stem_id: int) -> None:
+        """Asks before a recording leaves the loaded reconstruction, naming the file it stands as."""
+        row = self._reconstruction_stems_panel.stems_list.row(str(stem_id))
+        if row is None:
+            return
+
+        self._dialogs.show_confirmation(
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_REMOVE_STEM_CONFIRMATION,
+            title=self._language_manager["reconstructions.reconstruction.title.remove_stem_dialog"],
+            message=self._language_manager["reconstructions.reconstruction.message.remove_stem_message"],
+            on_confirm=lambda: self._on_rewrite_requested(StemRemovalRequest(stem_id=stem_id, stem_name=row.name)),
+            ok_label=self._lbl_remove,
+            path=row.path,
+        )
+
+    def _request_rate_change(self, nes_frequency: int) -> None:
+        """Asks for the open document to be re-timed to the rate the reader typed."""
+        self._on_rewrite_requested(RateChange(nes_frequency=nes_frequency))
+
     def _request_remove_directory(self, directory: Path) -> None:
         self._dialogs.show_confirmation(
             tag=TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_DIRECTORY_CONFIRMATION,
@@ -597,10 +742,8 @@ class ReconstructionTabCoordinator:
         )
 
     def _remove_reconstruction(self, filepath: Path) -> None:
-        if self._reconstruction_manager.filepath == filepath:
-            self._reconstruction_manager.detach_current_reconstruction()
-            self._reconstruction_manager.mark_updated()
-
+        """Deletes a reconstruction file, keeping the open document once the file it stood on is gone."""
+        stood_on_it = self._reconstruction_manager.is_backed_by(filepath)
         try:
             self._browser_logic.remove_path(filepath)
         except OSError as exception:
@@ -608,14 +751,15 @@ class ReconstructionTabCoordinator:
             self._dialogs.show_error(exception, self._msg_load_error)
             return
 
+        if stood_on_it:
+            self._let_go_of_removed_file()
+
         self._browser_panel.refresh()
 
     def _remove_directory(self, directory: Path) -> None:
+        """Deletes a folder, keeping the open document once the file it stood on inside it is gone."""
         current_filepath = self._reconstruction_manager.filepath
-        if current_filepath is not None and current_filepath.is_relative_to(directory):
-            self._reconstruction_manager.detach_current_reconstruction()
-            self._reconstruction_manager.mark_updated()
-
+        stood_in_it = current_filepath is not None and current_filepath.is_relative_to(directory)
         try:
             self._browser_logic.remove_path(directory)
         except OSError as exception:
@@ -626,18 +770,48 @@ class ReconstructionTabCoordinator:
             self._dialogs.show_error(exception, self._msg_load_error)
             return
 
+        if stood_in_it:
+            self._let_go_of_removed_file()
+
         self._browser_panel.refresh()
 
-    def update_reconstruction(self) -> None:
-        self._reconstruction_panel_logic.update_reconstruction()
+    def _let_go_of_removed_file(self) -> None:
+        """Holds the open document as unsaved changes with no file of its own, and shows it that way.
+
+        The reader still has the document in front of them, so its changes stay open for a save to
+        another file, and the Source card stops naming the file that is gone.
+        """
+        self._reconstruction_manager.detach_current_reconstruction()
+        self._reconstruction_manager.mark_updated()
+        self.update_reconstruction()
+
+    def update_reconstruction(self, *, refit_waveform: bool = False) -> None:
+        """Re-answers every reading of an edited document whose envelopes the instruments panel already draws.
+
+        A regenerated instrument carries the envelopes the panel's own edit wrote, and a retune
+        carries every envelope over, so the panel keeps what it draws and a field the reader is
+        typing in keeps its text.
+        """
+        self._reconstruction_panel_logic.update_reconstruction(refit_waveform=refit_waveform)
         self._reconstruction_instruments_logic.refresh_view()
+
+    def redraw_reconstruction(self, *, refit_waveform: bool) -> None:
+        """Re-answers every reading of a document rewritten outside the instruments panel, envelopes included.
+
+        A removed recording releases the frames it held, and a replaced sample or an undo brings
+        envelopes of its own, so the panel draws the document as it now stands and the next edit
+        starts from it. A document timed at another NES frequency spans another length, so the
+        caller that knows this asks the waveform to re-fit.
+        """
+        self._reconstruction_panel_logic.update_reconstruction(refit_waveform=refit_waveform)
+        self._reconstruction_instruments_logic.update_display()
 
     def set_reconstruction_dimmed(self, dimmed: bool) -> None:
         self._reconstruction_plot_panel.set_reconstruction_dimmed(dimmed)
 
-    def toggle_generator(self, generator: GeneratorName) -> None:
-        """Switches one generator's slice in and out of the waveform and of what plays."""
-        self._reconstruction_plot_panel.toggle_generator(generator)
+    def toggle_channel(self, channel: ChannelName) -> None:
+        """Switches one channel's slice in and out of the waveform and of what plays."""
+        self._reconstruction_plot_panel.toggle_channel(channel)
 
     @property
     def player(self) -> AudioPlayerProtocol:
@@ -646,11 +820,26 @@ class ReconstructionTabCoordinator:
     def request_export_wav_dialog(self) -> None:
         self._reconstruction_panel_logic.request_export_wav_dialog()
 
-    def request_export_instruments_dialog(self, tracker_format: TrackerFormat) -> None:
-        self._reconstruction_panel_logic.request_export_instruments_dialog(tracker_format)
+    def request_export_instruments_dialog(
+        self,
+        export_format: ExportFormat,
+    ) -> None:
+        """Writes the loaded reconstruction's slices in ``export_format``, asking first for what the
+        format leaves open: its own setup where it has one, and the destination alone otherwise."""
+        if export_format in self._format_setups:
+            self._format_setups[export_format].open_sample(self._reconstruction_panel_logic.sample_request())
+            return
 
-    def _on_browser_autoplay_error(self, exception: Exception) -> None:
-        FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
+        self._reconstruction_panel_logic.request_export_instruments_dialog(export_format)
+
+    def _on_preview_error(self, exception: Exception) -> None:
+        """Reports a preview the audio device refused, whichever of the tab's previews asked for it.
+
+        A browser autoplay and an instrument audition both sound on demand, so both report the
+        same way: on the frame after the one that failed, which leaves the gesture that started it
+        finished before a dialog is raised.
+        """
+        FrameCallbackManager.set_frame_callback(lambda: self._playback_failures.present(exception, message=None))
 
     def _on_audio_data_changed(self, audio_data: Optional[AudioData]) -> None:
         if audio_data is None:

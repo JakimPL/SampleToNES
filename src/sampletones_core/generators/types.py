@@ -9,5 +9,6 @@ from .implementation.triangle import TriangleGenerator
 GeneratorT = TypeVar("GeneratorT", PulseGenerator, TriangleGenerator, NoiseGenerator)
 GeneratorClass = Type[GeneratorT]
 GeneratorUnion = Union[PulseGenerator, TriangleGenerator, NoiseGenerator]
+TonalGeneratorUnion = Union[PulseGenerator, TriangleGenerator]
 GeneratorTypeUnion = Union[Type[PulseGenerator], Type[TriangleGenerator], Type[NoiseGenerator]]
 GeneratorClassNames = Union[GeneratorClassName, Tuple[GeneratorClassName, ...]]

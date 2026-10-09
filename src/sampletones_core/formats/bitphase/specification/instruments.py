@@ -47,4 +47,6 @@ KEEP_PHASE: Final[bool] = False
 NO_SWEEP: Final[bool] = False
 
 LOOP_FROM_START: Final[int] = 0
+FIRST_TABLE_STEP: Final[int] = 0
 NO_TABLE_OFFSET: Final[int] = 0
+ABSOLUTE_TABLE: Final[bool] = False

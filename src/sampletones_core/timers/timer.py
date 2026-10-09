@@ -3,7 +3,7 @@ from typing import Any, Optional, Tuple
 
 import numpy as np
 
-from sampletones_core.constants.algorithm import MAX_SAMPLE_LENGTH, MIN_SAMPLE_LENGTH, RESET_PHASE
+from sampletones_core.constants.algorithm import MAX_SAMPLE_LENGTH, MIN_SAMPLE_LENGTH
 from sampletones_core.fft import CyclicArray, Window
 from sampletones_shared.types.data import Initials
 
@@ -13,7 +13,7 @@ class Timer(ABC):
         self,
         sample_rate: int,
         nes_frequency: int,
-        reset_phase: bool = RESET_PHASE,
+        reset_phase: bool,
     ):
         self._real_frequency: float = 0.0
         self.sample_rate: int = sample_rate
@@ -31,9 +31,6 @@ class Timer(ABC):
     @property
     @abstractmethod
     def initials(self) -> Tuple[Any, ...]: ...
-
-    @abstractmethod
-    def calculate_offset(self, initials: Initials = None) -> int: ...
 
     def prepare_frame(self, window: Optional[Window] = None) -> np.ndarray:
         length = self.frame_length if window is None else window.size
@@ -56,6 +53,16 @@ class Timer(ABC):
         return round(cycles * cycle_length)
 
     def generate_sample(self) -> CyclicArray:
+        """The library sample of the waveform the timer runs, a stretch that loops.
+
+        A sample spans whole cycles, at least ``MIN_SAMPLE_LENGTH`` seconds, so it loops without a
+        seam. A cycle longer than ``MAX_SAMPLE_LENGTH``, the slow noise periods in the long mode, keeps
+        its middle ``MAX_SAMPLE_LENGTH`` seconds and loops with a seam there. That length covers the
+        stretch a constant-Q reference feature reads, so the reference stays clear of the seam.
+
+        Returns:
+            CyclicArray: The sample, at the frequency the timer runs.
+        """
         min_sample_length = round(MIN_SAMPLE_LENGTH * self.sample_rate)
         max_sample_length = round(MAX_SAMPLE_LENGTH * self.sample_rate)
         base_length = self.calculate_base_length(min_sample_length)

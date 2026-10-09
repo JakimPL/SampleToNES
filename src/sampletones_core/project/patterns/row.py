@@ -2,37 +2,32 @@ from typing import Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from sampletones_core.constants.general import (
-    MAX_TRANSPOSE,
-    MAX_VOLUME,
-    MIN_TRANSPOSE,
-    SILENT_VOLUME,
-)
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
+from sampletones_core.constants.general import MAX_VOLUME, SILENT_VOLUME
+from sampletones_core.project.patterns.pitch import RowPitch
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
 
-NoteCommand = Union[Instrument, NoteOff]
+NoteCommand = Union[NoteOn, NoteOff]
 
 
 class Row(BaseModel):
     """A single tracker line on one channel.
 
-    The note column holds a :data:`NoteCommand`: an :class:`Instrument` reference, a
-    :class:`NoteOff`, or ``None`` for an empty cell. Transpose and volume are independent optional
-    columns. A fully empty row (no command, no transpose, no volume) is a blank line.
+    The note column holds a :data:`NoteCommand`: a :class:`NoteOn` naming the voice to start, a
+    :class:`NoteOff`, or ``None`` for an empty cell. The pitch column holds a :class:`Note` the
+    channel sounds or a :class:`Step` from the voice's own reference, stored as it was written. A
+    fully empty row (no command, no pitch, no volume) is a blank line.
     """
 
     model_config = ConfigDict(frozen=True)
 
     command: Optional[NoteCommand] = Field(
         default=None,
-        description="Note-column command: a sample reference, a note-off, or None for an empty cell.",
+        description="Note-column command: a voice reference, a note-off, or None for an empty cell.",
     )
-    transpose: Optional[int] = Field(
+    pitch: Optional[RowPitch] = Field(
         default=None,
-        ge=MIN_TRANSPOSE,
-        le=MAX_TRANSPOSE,
-        description="Note pitch, or None for an empty cell.",
+        description="The note the channel sounds or the step from the voice's reference, or None for an empty cell.",
     )
     volume: Optional[int] = Field(
         default=None,
@@ -42,8 +37,8 @@ class Row(BaseModel):
     )
 
     def is_empty(self) -> bool:
-        return self.command is None and self.transpose is None and self.volume is None
+        return self.command is None and self.pitch is None and self.volume is None
 
-    def references_sample(self, sample_id: str) -> bool:
+    def references_voice(self, voice_id: str) -> bool:
         command = self.command
-        return isinstance(command, Instrument) and command.sample_id == sample_id
+        return isinstance(command, NoteOn) and command.voice_id == voice_id

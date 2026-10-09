@@ -1,5 +1,5 @@
 from typing import Final, Optional, Tuple
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
-CHANNEL_AXIS: Final[Tuple[Optional[GeneratorName], ...]] = (None,) + tuple(GeneratorName.items())
+CHANNEL_AXIS: Final[Tuple[Optional[ChannelName], ...]] = (None,) + tuple(ChannelName.items())

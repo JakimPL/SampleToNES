@@ -2,7 +2,7 @@ from typing import Final
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.playback.synthesizer import SongLength
-from sampletones_application.logic.sequencer.playback.synthesizer.timing import SongTiming
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 
 FRACTIONAL_RATE: Final[int] = 22050
 EXACT_RATE: Final[int] = 44100
@@ -13,26 +13,27 @@ def measure(controller: ProjectController, sample_rate: int) -> SongLength:
 
 
 class TestTheOrderStatesTheTicks:
-    def test_the_song_lasts_its_groove_once_for_each_order_position(
+    def test_the_song_lasts_until_the_frame_past_its_last_would_start(
         self,
         controller: ProjectController,
     ) -> None:
-        groove = SongTiming.from_project(controller.project).groove()
+        timing = SongTiming.from_project(controller.project, bounds=SONG_TICK_BOUNDS)
 
         length = measure(controller, EXACT_RATE)
 
-        assert length.ticks == controller.project.song.order_length() * groove.total_ticks
+        assert length.ticks == timing.frame_tick(controller.project.song.order_length())
 
-    def test_appending_a_frame_lengthens_the_song_by_a_pattern(
+    def test_appending_a_frame_lengthens_the_song_by_the_ticks_that_frame_plays(
         self,
         controller: ProjectController,
     ) -> None:
         before = measure(controller, EXACT_RATE)
-        groove = SongTiming.from_project(controller.project).groove()
+        appended = controller.project.song.order_length()
 
         controller.append_frame()
 
-        assert measure(controller, EXACT_RATE).ticks == before.ticks + groove.total_ticks
+        groove = SongTiming.from_project(controller.project, bounds=SONG_TICK_BOUNDS).groove(appended)
+        assert measure(controller, EXACT_RATE).ticks == before.ticks + sum(groove.ticks)
 
 
 class TestTheRateStatesTheSamples:

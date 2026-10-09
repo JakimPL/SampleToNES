@@ -8,6 +8,12 @@ TAG_GLOBAL_WINDOW_MAIN = TagName(
     Widget.WINDOW,
     "main",
 )
+TAG_GLOBAL_CONTEXT_WINDOW = TagName(
+    Page.GLOBAL,
+    Panel.CONTEXT,
+    Widget.WINDOW,
+    "context",
+)
 TAG_GLOBAL_TABS = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -61,6 +67,12 @@ TAG_GLOBAL_FONT_REGULAR = TagName(
     Panel.IMPLICIT,
     Widget.FONT,
     "regular",
+)
+TAG_GLOBAL_FONT_REGULAR_TINY = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.FONT,
+    "regular_tiny",
 )
 TAG_GLOBAL_FONT_REGULAR_SMALL = TagName(
     Page.GLOBAL,
@@ -122,6 +134,30 @@ TAG_GLOBAL_THEME_SECONDARY_BUTTON = TagName(
     Widget.THEME,
     "secondary_button",
 )
+TAG_GLOBAL_THEME_STEP_BUTTON = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "step_button",
+)
+TAG_GLOBAL_THEME_STEP_BUTTON_LIT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "step_button_lit",
+)
+TAG_GLOBAL_THEME_STEP_BUTTON_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "step_button_partial",
+)
+TAG_GLOBAL_THEME_STEP_BUTTON_DIM = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "step_button_dim",
+)
 TAG_GLOBAL_THEME_DANGER_BUTTON = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -133,6 +169,12 @@ TAG_GLOBAL_THEME_FOCUSED_BUTTON = TagName(
     Panel.IMPLICIT,
     Widget.THEME,
     "focused_button",
+)
+TAG_GLOBAL_THEME_DANGER_BUTTON_FOCUSED = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "danger_button_focused",
 )
 TAG_GLOBAL_THEME_SECTION_HEADER = TagName(
     Page.GLOBAL,
@@ -260,6 +302,90 @@ TAG_GLOBAL_THEME_PLUS_MINUS_BUTTONS = TagName(
     Widget.THEME,
     "plus_minus_buttons",
 )
+TAG_GLOBAL_THEME_CHANNEL_MUTED = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_muted",
+)
+TAG_GLOBAL_THEME_CHANNEL_PULSE1_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_pulse1_partial",
+)
+TAG_GLOBAL_THEME_CHANNEL_PULSE2_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_pulse2_partial",
+)
+TAG_GLOBAL_THEME_CHANNEL_TRIANGLE_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_triangle_partial",
+)
+TAG_GLOBAL_THEME_CHANNEL_NOISE_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "channel_noise_partial",
+)
+TAG_GLOBAL_THEME_STEMS_DROP_STRIP = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_drop_strip",
+)
+TAG_GLOBAL_THEME_STEMS_GRID = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_grid",
+)
+TAG_GLOBAL_THEME_STEMS_MARKER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_marker",
+)
+TAG_GLOBAL_THEME_STEMS_GROUP_ROW = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_group_row",
+)
+TAG_GLOBAL_THEME_STEMS_ROW = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_row",
+)
+TAG_GLOBAL_THEME_STEMS_ROW_INERT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_row_inert",
+)
+TAG_GLOBAL_THEME_STEMS_PICK = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_pick",
+)
+TAG_GLOBAL_THEME_STEMS_PICK_PARTIAL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_pick_partial",
+)
+TAG_GLOBAL_THEME_STEMS_SLOT_LABEL = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "stems_slot_label",
+)
 TAG_GLOBAL_THEME_TOOLTIP = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -380,6 +506,12 @@ TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED = TagName(
     Widget.DIALOG,
     "reconstruction_saved",
 )
+TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.DIALOG,
+    "reconstruction_replaced",
+)
 TAG_GLOBAL_DIALOG_ABOUT = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -476,11 +608,23 @@ TAG_GLOBAL_DIALOG_PROJECT_UNSAVED = TagName(
     Widget.DIALOG,
     "project_unsaved",
 )
+TAG_GLOBAL_DIALOG_INSTRUMENT_IMPORTED = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.DIALOG,
+    "instrument_imported",
+)
 TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
     Widget.DIALOG,
     "no_project_open",
+)
+TAG_GLOBAL_DIALOG_NO_AUDIO_OUTPUT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.DIALOG,
+    "no_audio_output",
 )
 TAG_GLOBAL_DIALOG_PROJECT_OPEN = TagName(
     Page.GLOBAL,
@@ -523,6 +667,42 @@ TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS = TagName(
     Panel.IMPLICIT,
     Widget.MENU,
     "item_reconstruction_export_instruments",
+)
+TAG_GLOBAL_MENU_GROUP_VOICE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "group_voice",
+)
+TAG_GLOBAL_MENU_GROUP_VOICE_MARKER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "group_voice_marker",
+)
+TAG_GLOBAL_MENU_ITEM_VOICE_NEW_INSTRUMENT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_voice_new_instrument",
+)
+TAG_GLOBAL_MENU_ITEM_VOICE_ADD_SAMPLE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_voice_add_sample",
+)
+TAG_GLOBAL_MENU_ITEM_VOICE_IMPORT_INSTRUMENT = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_voice_import_instrument",
+)
+TAG_GLOBAL_MENU_ITEM_VOICE_ADD_TO_SEQUENCER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_voice_add_to_sequencer",
 )
 TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_ADD_TO_SEQUENCER = TagName(
     Page.GLOBAL,
@@ -699,7 +879,9 @@ SUF_BUTTON_COLLAPSE_ALL = compose_tag(SUF_BUTTON, "collapse_all")
 SUF_BUTTON_SHOW_TRACEBACK = compose_tag(SUF_BUTTON, "show_traceback")
 SUF_BUTTON_DECREMENT = compose_tag(SUF_BUTTON, "decrement")
 SUF_BUTTON_INCREMENT = compose_tag(SUF_BUTTON, "increment")
+SUF_CHANNELS = "channels"
 SUF_GROUP = "group"
+SUF_HEADING = "heading"
 SUF_GROUP_TRACEBACK = compose_tag(SUF_GROUP, "traceback")
 SUF_HANDLER_REGISTRY = compose_tag("handler", "registry")
 SUF_HANDLER_STATUS = compose_tag("handler", "status")
@@ -707,18 +889,28 @@ SUF_HANDLER_NODE = compose_tag("handler", "node")
 SUF_HANDLER_DETAIL_TOOLTIP = compose_tag("handler", "detail_tooltip")
 SUF_HANDLER_HEADER = compose_tag("handler", "header")
 SUF_HANDLER_DRAG = compose_tag("handler", "drag")
+SUF_HANDLER_DRAWN = compose_tag("handler", "drawn")
+SUF_HANDLER_LIST = compose_tag("handler", "list")
 SUF_LABEL = "label"
+SUF_LEAD = "lead"
 SUF_PATH = "path"
 SUF_TEXT = "text"
 SUF_TEXT_FAVORITES = compose_tag(SUF_TEXT, "favorites")
 SUF_INPUT = "input"
 SUF_INPUT_SEARCH = compose_tag(SUF_INPUT, "search")
 SUF_CHECKBOX = "checkbox"
+SUF_SLIDER = "slider"
 SUF_CHECKBOX_FAVORITES = compose_tag(SUF_CHECKBOX, "favorites")
+SUF_STRIP = "strip"
+SUF_SWATCH = "swatch"
 SUF_TABLE = "table"
+SUF_TABLE_COLUMN = compose_tag(SUF_TABLE, "column")
+SUF_TABLE_GAP = compose_tag(SUF_TABLE, "gap")
 SUF_TOOLTIP = "tooltip"
+SUF_TWISTY = "twisty"
 SUF_TOOLTIP_DETAIL = compose_tag(SUF_TOOLTIP, "detail")
 SUF_DIALOG_INFO = compose_tag("dialog", "info")
+SUF_REPORT = "report"
 SUF_PANEL_LEFT = compose_tag("panel", "left")
 SUF_PANEL_CENTER = compose_tag("panel", "center")
 SUF_PANEL_RIGHT = compose_tag("panel", "right")
@@ -726,3 +918,11 @@ SUF_COLLAPSE_STRIP = compose_tag("collapse", "strip")
 SUF_COLLAPSE_BODY = compose_tag("collapse", "body")
 SUF_COLLAPSE_RAIL = compose_tag("collapse", "rail")
 SUF_COLLAPSE_CHEVRON = compose_tag("collapse", "chevron")
+SUF_FOLDER = "folder"
+SUF_REGION = "region"
+SUF_ROW = "row"
+SUF_SPACER_ABOVE = compose_tag("spacer", "above")
+SUF_SPACER_BELOW = compose_tag("spacer", "below")
+SUF_LEVEL = "level"
+SUF_WELL = "well"
+SUF_PAYLOAD = "payload"

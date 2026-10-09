@@ -1,0 +1,473 @@
+from pathlib import Path
+from typing import Any, Dict, FrozenSet, Iterator, List, Tuple
+
+import dearpygui.dearpygui as dpg
+import pytest
+
+from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.sources import SourceKind
+from sampletones_application.layout.config import LayoutConfig
+from sampletones_application.layout.loader import load_layout_config
+from sampletones_application.paths import (
+    BEHAVIOR_DIRECTORY,
+    LANG_EN,
+    LAYOUT_DIRECTORY,
+    PALETTES_DIRECTORY,
+    THEME_DIRECTORY,
+)
+from sampletones_application.tags.general import SUF_BUTTON, SUF_CHECKBOX, SUF_TEXT
+from sampletones_application.tags.reconstructions import (
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_CHECKBOX_COLLAPSE_LEVELS,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_EMPTY,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_SETUP,
+)
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.panels.reconstruction import stems_menu as menu_module
+from sampletones_application.ui.panels.reconstruction.stems import (
+    GUIReconstructionStemsPanel,
+)
+from sampletones_application.ui.themes.registry import ThemeRegistry
+from sampletones_application.ui.themes.setup import setup_themes
+from sampletones_application.utils.palette.catalog import PaletteCatalog
+from sampletones_application.utils.palette.source import PaletteSource
+from sampletones_application.view_model.reconstruction.stems import (
+    ReconstructionStemsViewModel,
+)
+from sampletones_application.view_model.shared.stems import (
+    StemRowViewModel,
+    StemsListViewModel,
+)
+from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from tests.suite.gestures import CLICKED, click_row_name
+
+ROOT_TAG = "test_root"
+SEPARATOR = "separator"
+LANGUAGE_MANAGER = LanguageManager(LANG_EN)
+CHANNELS: Tuple[ChannelName, ...] = (ChannelName.PULSE1, ChannelName.NOISE)
+
+
+@pytest.fixture
+def layout_config() -> LayoutConfig:
+    source = PaletteSource(PaletteCatalog.load(PALETTES_DIRECTORY).default)
+    return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, source)
+
+
+@pytest.fixture
+def dpg_context(layout_config: LayoutConfig) -> Iterator[None]:
+    """Stands up the context, fonts, themes, and section-header geometry the panel resolves on construction."""
+    dpg.create_context()
+    FontRegistry.setup(layout_config.fonts)
+    FontRegistry.register_fonts(layout_config.fonts.scale)
+    setup_themes(THEME_DIRECTORY, PaletteSource(PaletteCatalog.load(PALETTES_DIRECTORY).default))
+    GUIPanel.configure_section_header(
+        layout_config.glyphs,
+        layout_config.general.section_header,
+        layout_config.general.collapse,
+    )
+    try:
+        yield
+    finally:
+        ThemeRegistry.clear()
+        dpg.destroy_context()
+
+
+@pytest.fixture
+def panel(dpg_context: None, layout_config: LayoutConfig) -> GUIReconstructionStemsPanel:
+    return GUIReconstructionStemsPanel(
+        stems_layout=layout_config.general.stems,
+        stem_colors=layout_config.general.colors.stems,
+        language_manager=LanguageManager(LANG_EN),
+        status_bar=GUIStatusBar(),
+    )
+
+
+def render(panel: GUIReconstructionStemsPanel) -> None:
+    with dpg.window(tag=ROOT_TAG):
+        panel.create_panel(ROOT_TAG)
+
+
+def _row(
+    stem_id: int,
+    *,
+    name: str,
+    channels: FrozenSet[ChannelName] = frozenset(CHANNELS),
+    offered_channels: FrozenSet[ChannelName] = frozenset(CHANNELS),
+    level: int = 0,
+    position: int = 0,
+    level_size: int = 1,
+    level_count: int = 1,
+) -> StemRowViewModel:
+    return StemRowViewModel(
+        kind=SourceKind.RECORDING,
+        held=(),
+        partial_channels=frozenset(),
+        key=str(stem_id),
+        name=name,
+        path=Path(f"/audio/{name}.wav"),
+        channels=channels,
+        offered_channels=offered_channels,
+        available=True,
+        level=level,
+        position=position,
+        stem_id=stem_id,
+        level_size=level_size,
+        level_count=level_count,
+    )
+
+
+def _view_model(
+    *rows: StemRowViewModel,
+    hierarchy_mode: HierarchyMode | None = None,
+    muted_channels: FrozenSet[ChannelName] = frozenset(),
+) -> ReconstructionStemsViewModel:
+    return ReconstructionStemsViewModel(
+        reconstruction_loaded=True,
+        stems=StemsListViewModel(
+            selected_key=None,
+            rows=rows,
+            channels_in_play=CHANNELS if rows else (),
+            muted_channels=muted_channels,
+            picked_keys=frozenset(),
+            picking_room=None,
+            live=True,
+            collapse_levels=False,
+        ),
+        hierarchy_mode=hierarchy_mode,
+    )
+
+
+class TestStemsPanelRows:
+    def test_one_row_per_recording(self, panel: GUIReconstructionStemsPanel) -> None:
+        render(panel)
+
+        panel.update_view(_view_model(_row(0, name="kick"), _row(1, name="snare")))
+
+        stems_list = panel.stems_list
+        assert dpg.get_item_label(stems_list.tags.row("0", SUF_TEXT)) == "kick"
+        assert dpg.get_item_label(stems_list.tags.row("1", SUF_TEXT)) == "snare"
+
+    def test_a_row_offers_a_box_on_every_channel_its_recording_holds(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        render(panel)
+
+        panel.update_view(_view_model(_row(0, name="kick", offered_channels=frozenset({ChannelName.PULSE1}))))
+
+        stems_list = panel.stems_list
+        assert dpg.does_item_exist(stems_list.tags.channel("0", ChannelName.PULSE1))
+        assert not dpg.does_item_exist(stems_list.tags.channel("0", ChannelName.NOISE))
+
+    def test_every_row_carries_a_master_box(self, panel: GUIReconstructionStemsPanel) -> None:
+        render(panel)
+
+        panel.update_view(_view_model(_row(0, name="kick")))
+
+        assert dpg.get_value(panel.stems_list.tags.row("0", SUF_CHECKBOX))
+
+    def test_rows_follow_a_changed_recording_set(self, panel: GUIReconstructionStemsPanel) -> None:
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="kick"), _row(1, name="snare")))
+
+        panel.update_view(_view_model(_row(1, name="snare")))
+
+        stems_list = panel.stems_list
+        assert not dpg.does_item_exist(stems_list.tags.row("0", SUF_TEXT))
+        assert dpg.does_item_exist(stems_list.tags.row("1", SUF_TEXT))
+
+
+class TestStemsPanelSelection:
+    def test_unticking_a_channel_reports_the_recording_and_what_it_keeps(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        reported: List[Tuple[int, FrozenSet[ChannelName]]] = []
+        panel.on_stem_channels_changed = lambda stem_id, channels: reported.append((stem_id, channels))
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="kick")))
+
+        noise_tag = panel.stems_list.tags.channel("0", ChannelName.NOISE)
+        dpg.set_value(noise_tag, False)
+        dpg.get_item_callback(noise_tag)(noise_tag, False, ("0", ChannelName.NOISE))
+
+        assert reported == [(0, frozenset({ChannelName.PULSE1}))]
+
+    def test_unticking_the_master_box_silences_the_recording_everywhere(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        reported: List[Tuple[int, FrozenSet[ChannelName]]] = []
+        panel.on_stem_channels_changed = lambda stem_id, channels: reported.append((stem_id, channels))
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="kick")))
+
+        master_tag = panel.stems_list.tags.row("0", SUF_CHECKBOX)
+        dpg.get_item_callback(master_tag)(master_tag, False, "0")
+
+        assert reported == [(0, frozenset())]
+
+
+class TestStemsPanelRemoval:
+    def test_the_remove_button_reports_the_recording_it_stands_for(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        requested: List[int] = []
+        render(panel)
+        panel.on_stem_remove_requested = requested.append
+        panel.update_view(_view_model(_row(0, name="bass"), _row(1, name="lead")))
+
+        tag = panel.stems_list.tags.row("0", SUF_BUTTON)
+        dpg.get_item_callback(tag)(tag, None, dpg.get_item_user_data(tag))
+
+        assert requested == [0]
+
+    def test_the_last_recording_standing_offers_no_way_out(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        """A reconstruction holds at least one recording, so its row stops answering."""
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="bass")))
+
+        assert not dpg.is_item_enabled(panel.stems_list.tags.row("0", SUF_BUTTON))
+
+
+class TestStemsPanelLevels:
+    def test_the_collapse_toggle_appears_once_there_are_levels_to_collapse(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        render(panel)
+
+        panel.update_view(_view_model(_row(0, name="kick")))
+        assert not dpg.is_item_shown(TAG_RECONSTRUCTIONS_RECONSTRUCTION_CHECKBOX_COLLAPSE_LEVELS)
+
+        panel.update_view(
+            _view_model(
+                _row(0, name="kick", level=0, level_count=2),
+                _row(1, name="snare", level=1, level_count=2),
+            )
+        )
+        assert dpg.is_item_shown(TAG_RECONSTRUCTIONS_RECONSTRUCTION_CHECKBOX_COLLAPSE_LEVELS)
+
+    def test_collapsing_redraws_the_rows_in_one_table(self, panel: GUIReconstructionStemsPanel) -> None:
+        render(panel)
+        panel.update_view(
+            _view_model(
+                _row(0, name="kick", level=0, level_count=2),
+                _row(1, name="snare", level=1, level_count=2),
+            )
+        )
+
+        dpg.set_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_CHECKBOX_COLLAPSE_LEVELS, True)
+        dpg.get_item_callback(TAG_RECONSTRUCTIONS_RECONSTRUCTION_CHECKBOX_COLLAPSE_LEVELS)(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_CHECKBOX_COLLAPSE_LEVELS,
+            True,
+        )
+
+        assert dpg.does_item_exist(panel.stems_list.tags.table)
+        assert dpg.does_item_exist(panel.stems_list.tags.row("1", SUF_TEXT))
+
+    def test_a_reader_who_collapsed_the_levels_keeps_them_collapsed_across_an_edit(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        render(panel)
+        panel.update_view(
+            _view_model(
+                _row(0, name="kick", level=0, level_count=2),
+                _row(1, name="snare", level=1, level_count=2),
+            )
+        )
+        dpg.set_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_CHECKBOX_COLLAPSE_LEVELS, True)
+
+        panel.update_view(
+            _view_model(
+                _row(0, name="kick", level=0, level_count=2),
+                _row(2, name="hat", level=1, level_count=2),
+            )
+        )
+
+        assert dpg.does_item_exist(panel.stems_list.tags.table)
+
+
+class TestStemsPanelHeader:
+    def test_the_card_leads_with_the_glyph_of_stems(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        layout_config: LayoutConfig,
+    ) -> None:
+        render(panel)
+
+        texts = [
+            dpg.get_value(item) for item in dpg.get_all_items() if dpg.get_item_type(item) == "mvAppItemType::mvText"
+        ]
+
+        assert layout_config.glyphs.headers.stems in texts
+        assert layout_config.glyphs.headers.stems != layout_config.glyphs.headers.source
+
+
+class TestStemsPanelStates:
+    def test_the_setup_line_states_the_mode(self, panel: GUIReconstructionStemsPanel) -> None:
+        render(panel)
+
+        panel.update_view(_view_model(_row(0, name="kick"), hierarchy_mode=HierarchyMode.STRICT))
+
+        assert dpg.is_item_shown(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_SETUP)
+        assert "Strict" in dpg.get_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_SETUP)
+
+    def test_the_empty_state_shows_for_a_loaded_reconstruction_without_source(
+        self,
+        panel: GUIReconstructionStemsPanel,
+    ) -> None:
+        render(panel)
+
+        panel.update_view(_view_model())
+
+        assert dpg.is_item_shown(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_EMPTY)
+        assert not dpg.is_item_shown(TAG_RECONSTRUCTIONS_RECONSTRUCTION_TEXT_STEMS_SETUP)
+        assert not dpg.is_item_shown(panel.stems_list.tag)
+
+
+@pytest.fixture
+def registered(monkeypatch: pytest.MonkeyPatch) -> List[Dict[str, Any]]:
+    """The items a menu registers, in the order a reader meets them, the rules between them included."""
+    items: List[Dict[str, Any]] = []
+    monkeypatch.setattr(menu_module.dpg, "add_menu_item", lambda **kwargs: items.append(kwargs) or 0)
+    monkeypatch.setattr(
+        menu_module.dpg,
+        "add_separator",
+        lambda **_kwargs: items.append({"label": SEPARATOR}) or 0,
+    )
+    return items
+
+
+def right_click(panel: GUIReconstructionStemsPanel, stem_id: int) -> None:
+    click_row_name(panel.stems_list.tags, str(stem_id), kind=CLICKED, button=dpg.mvMouseButton_Right)
+
+
+def item(registered: List[Dict[str, Any]], key: str) -> Dict[str, Any]:
+    label = LANGUAGE_MANAGER[key]
+    return next(entry for entry in registered if entry["label"] == label)
+
+
+class TestTheMenuARightClickPutsUp:
+    """A right-click on a recording offers to mute or solo it, beside the file items."""
+
+    def test_a_right_click_offers_what_a_recording_can_be_told(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="kick"), _row(1, name="snare")))
+
+        right_click(panel, 0)
+
+        labels = [entry["label"] for entry in registered]
+        assert LANGUAGE_MANAGER["reconstructions.reconstruction.label.stem_mute"] in labels
+        assert LANGUAGE_MANAGER["reconstructions.reconstruction.label.stem_solo"] in labels
+        assert LANGUAGE_MANAGER["global.context.label.open_in_explorer"] in labels
+
+    def test_a_row_heard_offers_to_mute_and_reports_what_it_keeps(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        reported: List[Tuple[int, FrozenSet[ChannelName]]] = []
+        panel.on_stem_channels_changed = lambda stem_id, channels: reported.append((stem_id, channels))
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="kick"), _row(1, name="snare")))
+
+        right_click(panel, 0)
+        item(registered, "reconstructions.reconstruction.label.stem_mute")["callback"]()
+
+        assert reported == [(0, frozenset())]
+
+    def test_a_row_muted_offers_to_unmute_across_every_channel_it_offers(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        reported: List[Tuple[int, FrozenSet[ChannelName]]] = []
+        panel.on_stem_channels_changed = lambda stem_id, channels: reported.append((stem_id, channels))
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="kick", channels=frozenset()), _row(1, name="snare")))
+
+        right_click(panel, 0)
+        item(registered, "reconstructions.reconstruction.label.stem_unmute")["callback"]()
+
+        assert reported == [(0, frozenset(CHANNELS))]
+
+    def test_solo_reports_the_recording_it_landed_on(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        soloed: List[int] = []
+        panel.on_stem_solo_requested = soloed.append
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="kick"), _row(1, name="snare")))
+
+        right_click(panel, 1)
+        item(registered, "reconstructions.reconstruction.label.stem_solo")["callback"]()
+
+        assert soloed == [1]
+
+    def test_a_recording_heard_alone_offers_to_unsolo(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="kick"), _row(1, name="snare", channels=frozenset())))
+
+        right_click(panel, 0)
+
+        labels = [entry["label"] for entry in registered]
+        assert LANGUAGE_MANAGER["reconstructions.reconstruction.label.stem_unsolo"] in labels
+        assert LANGUAGE_MANAGER["reconstructions.reconstruction.label.stem_solo"] not in labels
+
+    def test_a_lone_recording_has_none_to_solo_against(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="kick")))
+
+        right_click(panel, 0)
+
+        assert item(registered, "reconstructions.reconstruction.label.stem_solo")["enabled"] is False
+
+    def test_a_row_standing_for_the_readers_frames_offers_no_file_items(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        edits = _row(0, name="edits").model_copy(update={"kind": SourceKind.EDITS, "path": None})
+        render(panel)
+        panel.update_view(_view_model(edits, _row(1, name="snare")))
+
+        right_click(panel, 0)
+
+        labels = [entry["label"] for entry in registered]
+        assert LANGUAGE_MANAGER["reconstructions.reconstruction.label.stem_mute"] in labels
+        assert LANGUAGE_MANAGER["global.context.label.open_in_explorer"] not in labels
+
+    def test_a_rule_divides_what_a_recording_is_told_from_its_file(
+        self,
+        panel: GUIReconstructionStemsPanel,
+        registered: List[Dict[str, Any]],
+    ) -> None:
+        render(panel)
+        panel.update_view(_view_model(_row(0, name="kick"), _row(1, name="snare")))
+
+        right_click(panel, 0)
+
+        labels = [entry["label"] for entry in registered]
+        solo = labels.index(LANGUAGE_MANAGER["reconstructions.reconstruction.label.stem_solo"])
+        assert labels[solo + 1] == SEPARATOR

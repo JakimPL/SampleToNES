@@ -16,7 +16,7 @@ class Logger(metaclass=SingletonMeta):
     """The application-wide logger, backed by a Rich console handler.
 
     A single instance serves the whole process (through :class:`SingletonMeta`) and
-    writes formatted, coloured records to the terminal. The severity methods
+    writes formatted, colored records to the terminal. The severity methods
     ``debug``, ``info``, ``warning``, ``error``, and ``critical`` each forward a
     message to the underlying :mod:`logging` logger at that level.
     """

@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple, Type, Union
 from unittest.mock import MagicMock
@@ -178,10 +179,15 @@ class TestCall(BaseTestSuite):
         result = instance.call(test_case.callback, *test_case.args, **test_case.kwargs)
         assert result == test_case.expected
 
-    def test_call_logs_warning_for_none_callback(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_call_notes_an_unset_callback_at_debug(self, caplog: pytest.LogCaptureFixture) -> None:
+        """Partial wiring is expected, so an unset hook is a debug note rather than a warning."""
+        caplog.set_level(logging.DEBUG)
         instance = TestableCallbackClass()
+
         instance.call(None)
+
         assert "No callback for TestableCallbackClass to call" in caplog.text
+        assert caplog.records[-1].levelno == logging.DEBUG
 
     def test_call_with_callback_that_raises_exception(self) -> None:
         instance = TestableCallbackClass()
@@ -214,12 +220,14 @@ class TestQuery:
 
         assert instance.query(instance.on_data, default=False) is False
 
-    def test_unset_hook_logs_a_warning(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_unset_hook_is_noted_at_debug(self, caplog: pytest.LogCaptureFixture) -> None:
+        caplog.set_level(logging.DEBUG)
         instance = TestableCallbackClass()
 
         instance.query(instance.on_data, default=None)
 
         assert "No callback for TestableCallbackClass to query" in caplog.text
+        assert caplog.records[-1].levelno == logging.DEBUG
 
     def test_answer_of_none_is_reported_as_given(self) -> None:
         """A hook answering ``None`` is wired, so its answer stands rather than the default."""

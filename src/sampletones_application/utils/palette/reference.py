@@ -7,12 +7,12 @@ ALPHA_SEPARATOR: Final[str] = "/"
 
 
 class PaletteReference(BaseModel, frozen=True):
-    """A colour entry's reference to a named palette colour.
+    """A color entry's reference to a named palette color.
 
     Written in YAML as ``.token`` or ``.token/alpha`` where ``alpha`` is a fraction
     in ``[0, 1]`` that overrides the token's own alpha. The leading ``.`` marks the
     value as a reference and keeps it distinct from a ``#rrggbb`` literal, so a
-    colour field accepts either form in the same slot.
+    color field accepts either form in the same slot.
     """
 
     token: str

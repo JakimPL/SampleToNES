@@ -23,7 +23,7 @@ def accent(source: PaletteSource) -> BaseColor:
 
 
 class TestComposedColor:
-    """Fading, desaturating and mixing each answer with a colour that still reads the palette."""
+    """Fading, desaturating and mixing each answer with a color that still reads the palette."""
 
     def test_fading_keeps_the_hue_and_sets_the_opacity(self, accent: BaseColor) -> None:
         assert FadedColor(color=accent, fraction=0.5).rgba == (169, 127, 227, 128)
@@ -41,7 +41,7 @@ class TestComposedColor:
             255,
         )
 
-    def test_a_composed_colour_answers_with_the_newly_activated_palette(
+    def test_a_composed_color_answers_with_the_newly_activated_palette(
         self,
         source: PaletteSource,
         light: Palette,
@@ -69,11 +69,11 @@ class TestComposedColor:
         gray = round(0.299 * 107 + 0.587 * 63 + 0.114 * 176)
         assert dimmed.rgba == (gray, gray, gray, 64)
 
-    def test_the_same_composition_of_the_same_colour_is_one_value(
+    def test_the_same_composition_of_the_same_color_is_one_value(
         self,
         accent: BaseColor,
     ) -> None:
-        """A theme cache keyed by colour holds one entry per shade the application draws."""
+        """A theme cache keyed by color holds one entry per shade the application draws."""
         assert {
             FadedColor(color=accent, fraction=0.5),
             FadedColor(color=accent, fraction=0.5),
@@ -83,7 +83,7 @@ class TestComposedColor:
             FadedColor(color=accent, fraction=0.25),
         }
 
-    def test_the_same_composition_of_two_colours_stays_two_values(
+    def test_the_same_composition_of_two_colors_stays_two_values(
         self,
         accent: BaseColor,
     ) -> None:

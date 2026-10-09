@@ -1,12 +1,20 @@
 from dataclasses import dataclass
-from typing import Optional, Sequence
+from typing import AbstractSet, Final, Optional, Sequence
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.tags.general import TAG_GLOBAL_THEME_PANEL_GROUND
+from sampletones_application.tags.compose import compose_tag
+from sampletones_application.tags.general import (
+    SUF_TABLE_COLUMN,
+    SUF_TABLE_GAP,
+    TAG_GLOBAL_THEME_PANEL_GROUND,
+)
 from sampletones_application.ui.themes.registry import ThemeRegistry
+from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import StringCallback
+
+_STRETCH_WEIGHT: Final[float] = 1.0
 
 
 @dataclass(frozen=True)
@@ -33,6 +41,11 @@ class ColumnSpec:
         """Whether the column expands to absorb the space the fixed columns leave."""
         return self.width == 0
 
+    @property
+    def declared_size(self) -> float:
+        """The share a stretching column takes of what is left, or the width a fixed one holds."""
+        return _STRETCH_WEIGHT if self.stretches else float(self.width)
+
 
 class TabColumns:
     """The shared scaffold every tab lays its panels out on.
@@ -55,7 +68,7 @@ class TabColumns:
         """Builds the ground wrapper and the column row from ``columns``, then binds their themes.
 
         Returns the number of fixed-width side columns — the ones that hold their width while the
-        centre stretches — which the responsive width sizing shares the viewport's surplus among.
+        center stretches — which the responsive width sizing shares the viewport's surplus among.
         """
         with dpg.child_window(
             width=-1,
@@ -94,7 +107,7 @@ class TabColumns:
 
         Where :meth:`build` frames a whole tab, ``row`` composes a side-by-side group inside a
         column a coordinator already owns: it drops the ground wrapper and the outer gaps, so the
-        columns sit flush to the container edges with a single gap between each neighbour. Each
+        columns sit flush to the container edges with a single gap between each neighbor. Each
         column's builder fills its cell directly, letting the hosted cards own their own surface.
         A ``height`` of ``0`` sizes the row to its content. A ``tag`` names the row table so a
         coordinator can resize it when its hosted cards collapse.
@@ -117,6 +130,32 @@ class TabColumns:
                         column.build(column.tag)
 
         cls._bind_column_themes(columns)
+
+    @staticmethod
+    def stand_columns(
+        columns: Sequence[ColumnSpec],
+        standing: AbstractSet[str],
+    ) -> None:
+        """Divides a row built by :meth:`row` among the columns in ``standing``.
+
+        A card the reader puts away leaves its column with nothing to hold, so the column is
+        disabled and the ones still standing divide the whole row between them, its padding
+        included. A gap stands where a column stands on each side of it, so what is left sits flush
+        to the row's edges and keeps one gap between neighbors. A column comes back at the size it
+        was declared with.
+
+        Disabling is what lets a column go entirely: DearPyGui reads a weight of zero as the
+        default share, and the smallest positive weight still keeps a few pixels and the cell's
+        padding.
+        """
+        preceded = False
+        for index, column in enumerate(columns):
+            stands = column.tag in standing
+            dpg_configure_item(compose_tag(column.tag, SUF_TABLE_COLUMN), enabled=stands)
+            if index > 0:
+                dpg_configure_item(compose_tag(column.tag, SUF_TABLE_GAP), enabled=stands and preceded)
+
+            preceded = preceded or stands
 
     @staticmethod
     def _bind_column_themes(columns: Sequence[ColumnSpec]) -> None:
@@ -149,20 +188,27 @@ class TabColumns:
         panel_gap: int,
         columns: Sequence[ColumnSpec],
     ) -> None:
-        """Declares each content column with a fixed gap column between neighbours only."""
+        """Declares each content column at the size it states, with a fixed gap between neighbors.
+
+        A stretching column takes an explicit share rather than one read back from the card inside
+        it, so the row keeps the proportions it was declared with whatever its cards draw. Each
+        column and each gap is named after the cell it serves, which is how :meth:`stand_columns`
+        reaches them once the row is standing.
+        """
         for index, column in enumerate(columns):
             if index > 0:
                 dpg.add_table_column(
                     width_fixed=True,
                     init_width_or_weight=panel_gap,
+                    tag=compose_tag(column.tag, SUF_TABLE_GAP),
                 )
-            if column.stretches:
-                dpg.add_table_column()
-            else:
-                dpg.add_table_column(
-                    width_fixed=True,
-                    init_width_or_weight=column.width,
-                )
+
+            dpg.add_table_column(
+                width_stretch=column.stretches,
+                width_fixed=not column.stretches,
+                init_width_or_weight=column.declared_size,
+                tag=compose_tag(column.tag, SUF_TABLE_COLUMN),
+            )
 
     @staticmethod
     def _build_column(column: ColumnSpec) -> None:

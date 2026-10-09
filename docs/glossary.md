@@ -1,201 +1,288 @@
 # Glossary
 
-Recurring terms used across the documentation, grouped by area. Other documents
-link here rather than redefining a term in place.
+Short definitions of the terms used across the documentation, grouped by area. Other pages link here
+instead of explaining a term again.
 
 ## NES sound hardware
 
 ### 2A03 (APU)
 
-The NES's sound chip (Ricoh 2A03). Its audio portion, the APU (Audio Processing
-Unit), generates all of the console's sound. _SampleToNES_ emulates its four
-melodic/percussive channels and no sampled-audio (DPCM) playback.
+The NES's sound chip (Ricoh 2A03). Its audio part, the APU (Audio Processing Unit), makes all of the
+console's sound. _SampleToNES_ emulates its four melodic and percussive channels. DPCM sample playback is
+outside its scope.
 
-### Channel / oscillator
+### Channel
 
-One of the 2A03's sound-producing units. There are four: two pulse, one
-triangle, one noise. The two words are used interchangeably here.
+One of the 2A03's four sound units: `pulse1`, `pulse2`, `triangle` and `noise`. A *generator* is a
+different thing: the kind of oscillator an instruction library covers (`pulse`, `triangle`, `noise`),
+and the classes that implement it.
 
 ### Pulse (square)
 
-A channel that plays a square wave with a selectable duty cycle and 15 volume
-levels. The chip has two of them (`pulse1`, `pulse2`).
+A channel that plays a square wave. Its duty cycle is selectable and it has 15 volume levels. The chip
+has two independent pulse channels: `pulse1` and `pulse2`. The chip silences a pulse whose
+[divider](#divider) is below 8, so a bend that goes higher than that at the top notes goes quiet.
 
 ### Triangle
 
-A channel that plays a triangle wave of fixed shape and fixed volume; only its
-pitch varies. Its timer divides the APU clock by 32 while the pulse channels divide
-by 16, and all three read the same period table, so a triangle note sounds an octave
-below the note it is written as: a triangle instruction of pitch P sounds at pitch
-P−12. FamiTracker uses the same convention, so an exported note cell plays at the
-pitch _SampleToNES_ played it.
+A channel that plays a triangle wave of fixed shape and volume. Only its pitch varies. Its timer divides
+the APU clock by 32 where the pulse timers divide by 16, and all three read the same period table. A
+triangle note therefore sounds an octave below the pulse note with the same period, so a triangle
+instruction of pitch P sounds at pitch P−12. FamiTracker uses the same convention, so an exported note
+plays at the pitch _SampleToNES_ played it. Below [divider](#divider) 2 the chip's triangle steps above
+hearing, and its output rests at the middle of the wave.
 
 ### Noise
 
-A channel that plays pseudo-random noise from an LFSR, with 16 period settings,
-15 volume levels, and a short/long mode. The period setting divides the APU clock
-into the LFSR's shift rate, `APU_CLOCK / NOISE_PERIODS[index]`, spanning 440.0 Hz at
-index 0 to 447443.2 Hz at index 15.
+A channel that plays pseudo-random noise from an [LFSR](#lfsr). It has 16 period settings, 15 volume
+levels and a short and a long mode.
 
 ### Duty cycle
 
-The fraction of each period a pulse wave stays high (one of four settings). It
-sets the pulse channel's timbre.
+The fraction of each period a pulse wave stays high, in one of four settings. It sets the pulse channel's
+timbre.
+
+### Divider
+
+The number a tone channel counts down from. It sets the pitch, and a smaller divider gives a higher note.
 
 ### LFSR
 
-*Linear-feedback shift register* — the circuit that produces the noise channel's
-pseudo-random pattern. Its short/long mode changes the pattern's length, and so its
-character: long mode repeats every 32767 shifts and reads as noise, short mode
-repeats every 93 and turns a high period setting into an audible tone — index 15
-sounds at 447443.2 ÷ 93 ≈ 4811 Hz. Short mode also carries a strong DC asymmetry, its
-output bit set 17.2% of the time against long mode's 50%, and that bias is what gives
-it its metallic timbre.
+*Linear-feedback shift register*: the circuit that makes the noise channel's pseudo-random pattern. Its
+mode sets the pattern's length and so its character. Long mode repeats every 32767 shifts and sounds like
+noise. Short mode repeats every 93 shifts, so a high period setting sounds as a tone of metallic timbre.
 
 ### NES frequency
 
-How many times per second a program updates the channels — for example 60 Hz on
-NTSC or 50 Hz on PAL. _SampleToNES_ supports 15–300 Hz, and this rate sets the
-reconstruction's frame rate.
+How many times per second a program updates the channels, for example 60 Hz on NTSC or 50 Hz on PAL.
+_SampleToNES_ accepts 15–300 Hz, and the rate sets the reconstruction's frame rate.
 
 ### NTSC / PAL
 
-The two console video standards. Their refresh rates (about 60 Hz and 50 Hz) are
-the two most common NES frequencies.
+The two console video standards. Their refresh rates, about 60 Hz and 50 Hz, are the most common NES
+frequencies.
 
 ## Reconstruction
 
 ### Reconstruction
 
-The result of approximating an audio sample with the NES channels: one
-instruction stream per channel plus the rendered audio. Saved as a `.stn` file.
-See [Reconstruction algorithms](concepts/reconstruction.md).
+The result of approximating an audio sample with the NES channels: one instruction stream per channel
+plus the rendered audio. Saved as a `.stn` file. See
+[Reconstruction algorithms](concepts/reconstruction.md).
 
 ### Instruction
 
-A single command to one channel for one frame — on or off, *pitch*, *volume*, *duty
-cycle* or *noise period*. It is the unit the reconstruction chooses per frame.
+A command to one channel for one frame: on or off, *pitch*, *volume*, *duty cycle* or *noise period*.
+The reconstruction picks one per channel for each frame.
 
 ### Frame
 
-A short, fixed-length slice of the input audio. Within a frame, each channel
-holds one instruction. A frame's length is the sample rate divided by the NES
-frequency.
+A short slice of the input audio. All frames have the same length: the sample rate divided by the NES
+frequency. Each channel plays one instruction in a frame. The sequencer also uses the word for one
+position in the [order](#order): the patterns the song plays at that point.
+
+### Tick
+
+One update of the channels, at the NES frequency. A tick lasts as long as a frame. Envelopes advance one
+item per tick, and a tracker row lasts one or more ticks.
+
+### Stem
+
+One recording that goes into a reconstruction. Every conversion is a stems conversion. A single file is
+one stem that takes every channel it is given, and several recordings share the channels between them. A
+reconstruction records which channels each stem was given and which frames it played, so you can hear,
+edit or remove one stem on its own. See [Stems reconstruction](concepts/stems.md) and
+[Converting audio](guide/converting.md).
+
+### Level (stems)
+
+The rank a stem takes when the channels are shared out. A stem on level 1 is offered channels before one
+on level 2, so a lead part can take the channels it needs before a background part does.
+
+### Hierarchy
+
+The precedence order of the levels in a stems setup. The levels pick channels in that order. See
+[Stems reconstruction](concepts/stems.md).
+
+### Drive
+
+How hard a stem pushes a channel while it converts. It is set per channel when a conversion is set up.
+`1.00` is the level the recording was measured at. A higher drive reaches for louder notes, which saturates
+the part and gives it a distortion-like edge.
 
 ### Instruction library
 
-A precomputed catalogue holding, for every possible instruction, the waveform
-its channel produces and that waveform's spectrum. The search draws its
-candidates from the library. Saved as an `.ins` file. See
+A precomputed catalog of every possible instruction, with the waveform its channel produces and that
+waveform's spectrum. The search draws its candidates from the library. Saved as an `.ins` file. See
 [Instruction libraries](formats/instruction-libraries.md).
 
 ### Approximation
 
-The mixed, rendered audio a reconstruction produces — the NES channels' closest
-match to the original sample.
+The mixed, rendered audio a reconstruction produces: the NES channels' closest match to the original
+sample.
 
 ### Working level (coefficient)
 
-A single scale factor applied to the input so its typical loudness lands in the
-amplitude range the NES channels can reproduce.
+A single scale factor applied to the input, so its typical frame plays at the level one NES channel
+renders at full volume.
+
+### Recording scale
+
+The factor a conversion divides every recording it reads by, drawn from the peak of their mix. A
+reconstruction records it, so each recording keeps the level it held in the conversion. See
+[Stems reconstruction](concepts/stems.md#2-a-stem-is-matched-against-its-own-recording).
 
 ## Analysis and scoring
 
 ### Spectrum (feature, histogram)
 
-A frame's frequency content — the representation matching compares, rather than
-the raw waveform (two sounds that sound identical can have very different
-waveforms).
+A frame's frequency content. Matching compares spectra instead of raw waveforms, because two sounds that
+sound alike can have very different waveforms.
 
 ### FFT / log-FFT / CQT
 
-Three ways to compute a frame's spectrum, trading time resolution against
-frequency resolution. CQT (the constant-Q transform) resolves low pitches finely
-and is the default. See [Reconstruction algorithms](concepts/reconstruction.md).
+Three ways to compute a frame's spectrum. They trade time resolution against frequency resolution. CQT
+(the constant-Q transform) resolves low pitches finely and is the default. See
+[Reconstruction algorithms](concepts/reconstruction.md).
 
 ### Gamma
 
-A setting from 0 to 100 that reshapes the spectrum before comparison: 0 keeps
-the raw power spectrum, 100 makes it logarithmic, and values in between
-interpolate. Higher gamma emphasizes quiet detail relative to loud peaks.
+A setting from 0 to 100 that reshapes the spectrum before comparison. 0 keeps the raw power spectrum, 100
+makes it logarithmic, and values between blend the two. Higher gamma emphasizes quiet detail over loud
+peaks.
 
 ### Criterion
 
-The score that rates how well a candidate instruction matches a target frame. It
-blends a spectral term (frequency shape) with a temporal term (waveform shape).
+The score that rates how well a candidate instruction matches a target frame. It blends a spectral term
+(frequency shape) with a temporal term (waveform shape).
 
 ### β-divergence
 
-The default per-bin spectral distance inside the criterion — a
-Kullback–Leibler-style measure of how far one spectrum is from another.
+The default per-bin spectral distance in the criterion. It is a Kullback–Leibler-style measure of how far
+one spectrum is from another.
 
 ### ERB / K-weighting
 
-Perceptual weightings applied so each frequency bin counts in proportion to how
-the ear hears it: ERB spaces bins by auditory critical bands, and K-weighting
-applies a loudness curve.
+Perceptual weightings that make each frequency bin count as much as the ear hears it. ERB spaces bins by
+auditory critical bands. K-weighting applies a loudness curve.
 
-### Selector
+### Column
 
-The strategy that searches the library for each frame's instructions. The
-**greedy** selector treats every frame independently; the **Viterbi** selector
-(the default) favours continuity, changing a channel only when the gain in match
-quality outweighs the cost of the change.
+The candidates one channel may sound in a frame, best first. The decoder reads the columns into one
+candidate per frame.
+
+### Mix
+
+The combined sound of the picks a stem already holds in a frame. A new candidate is scored as it would
+sound beside the mix.
+
+### Pick
+
+The choice of one candidate for one channel in a frame. A frame is assigned pick by pick for as long as a
+pick lowers the frame's cost.
+
+### Resting
+
+The state of a channel that no stem holds in a frame. It plays its null instruction, which keeps every
+channel's stream in step with the frames.
+
+### Standing by
+
+The state of a channel whose stream sounds in no frame, whatever silenced it: a conversion, an edit or a
+removal. Its stream holds no frame. No export writes it and it costs nothing, and it stays open to edit.
+See [Reconstructions](formats/reconstructions.md#instructions_data).
+
+### Decoder
+
+The strategy that reads a channel's per-frame candidates into the stream it plays. The setting is
+`generation.decoder.selector`. The **greedy** decoder plays each frame's best candidate. The **Viterbi**
+decoder, the default, favors continuity: it changes a channel only when the gain in match quality
+outweighs the cost of the change.
 
 ### Calibration
 
-A repeatable experiment that tunes the criterion's settings by reconstructing a
-fixed test set and scoring the results. See [Calibration](concepts/calibration.md).
+A repeatable experiment that tunes the criterion's settings by reconstructing a fixed test set and
+scoring the results. See [Calibration](tools/calibration.md).
 
-### Referee / corpus
+### Referee / corpus / render / variant
 
-Terms from calibration: a *referee* is an independent audio-distance judge that
-scores a reconstruction against its original; the *corpus* is the fixed set of
-synthetic test sounds every configuration is run against.
+Terms from calibration. A *referee* is an independent audio-distance judge that scores a reconstruction
+against its original. The *corpus* is the fixed set of synthetic test sounds every configuration is run
+against. A *render* is one reconstruction of a corpus sound, written as an audio file for listening. A
+*variant* is one configuration a run measured.
+
+## Song compression
+
+### Plane
+
+One register of one channel across the whole song, stored as one byte per tick. Each plane is a series of
+its own, such as a volume envelope or a pitch line. See [Song compression](concepts/compression.md).
+
+### Token
+
+The unit a plane is written in. A token is a hold, a literal or a phrase, and the driver reads tokens
+forward one tick at a time.
+
+### Phrase
+
+A run of values a plane plays, stored once in the song's dictionary and named by tokens wherever it
+occurs. Its position in the dictionary is its id.
 
 ## Tracker and export
 
 ### FamiTracker
 
-A [_tracker application_](http://famitracker.com/) for composing music for the
-NES 2A03. _SampleToNES_ exports instruments and modules that it (and its forks)
-can load.
+A [_tracker application_](http://famitracker.com/) for composing music for the NES 2A03. _SampleToNES_
+exports instruments and modules that it and its forks can load.
 
 ### Bitphase
 
-A [_web tracker_](https://github.com/paator/bitphase) whose chips include the NES
-2A03. _SampleToNES_ exports documents and instrument presets it can load. See
-[Bitphase export](formats/bitphase.md).
+A [_web tracker_](https://bitphase.app/) whose chips include the NES 2A03. _SampleToNES_
+exports documents and instrument presets it can load. See [Bitphase export](formats/bitphase.md).
 
 ### Tracker / sequencer
 
-A pattern-based music editor. _SampleToNES_'s built-in sequencer arranges
-reconstructed samples into a song.
+A pattern-based music editor. _SampleToNES_'s built-in sequencer arranges reconstructed samples into a
+song.
 
-### Sequence
+### Sequence (envelope)
 
-In a FamiTracker instrument, a per-tick envelope for one dimension: volume,
-arpeggio, pitch, hi-pitch, or duty/noise mode.
+A per-tick list of values that one dimension of a sound follows while a note is held. The dimensions are
+volume, arpeggio, pitch, hi-pitch, and duty or noise mode. An **arpeggio** sequence steps the note itself
+up and down. The **pitch** and **hi-pitch** sequences bend it in fine and coarse steps (see
+[Bend](#bend)). A FamiTracker instrument has one sequence per dimension, and _SampleToNES_ edits the same
+shapes.
+
+### Bend
+
+How far a frame sounds from the note it names, counted in steps of the channel's [divider](#divider).
+The **pitch** sequence counts one step per item and the **hi-pitch** sequence sixteen, and the two add
+up. A step is well under a cent at the lowest notes and widens to a whole semitone at the highest, where
+the divider grid is already coarser than the note grid. Only the pulse and triangle channels read a bend.
+The noise channel's 16 periods have no finer grid.
+
+### Row
+
+One line of a pattern. It says what each channel starts at that moment, and lasts one or more ticks.
 
 ### Pattern
 
-A block of tracker rows spanning the channels. A song plays its patterns in an
-order.
+A block of tracker rows spanning the channels. A song plays its patterns in an order.
 
 ### Metric highlight
 
-The row grouping a song is counted in. The **first highlight** is the beat — the
-rows one beat spans — and the **second highlight** is the bar that gathers beats.
-The tracker tints the row that opens each, and the beat is what a tempo counts:
+The row grouping a song is counted in. The **first highlight** is the beat: the number of rows one beat
+spans. The **second highlight** is the bar, which gathers beats. The tracker tints the row that opens
+each. A tempo counts beats:
 `beats_per_minute = 60 × nes_frequency / (ticks_per_row × first_highlight)`.
 
 ### Groove
 
-The engine ticks each row of a pattern lasts. An engine holds a row for a whole
-number of ticks, so a tempo landing between two counts is played by varying the
-count from row to row, and the metre places the longer rows on the bar, then the
-beat, then inside the beat. Playback reads the groove by the row's position in the
-pattern, so the pattern's first row starts it afresh.
+The number of ticks each row of a pattern lasts. A row lasts a whole number of ticks, so a tempo between
+two counts is played by varying the count from row to row. Every bar starts on the tick nearest its exact
+moment, and the meter places the longer rows on the strongest positions of the bar and of each beat.
+A frame plays the groove its place in the song gives it, so two frames of one pattern can differ by a
+tick. [Song timing](concepts/timing.md) explains the rules.
 
 ### Order
 
@@ -203,39 +290,69 @@ The list that arranges patterns into the song's timeline.
 
 ### Module
 
-A complete FamiTracker song, saved as an `.ftm` file — its settings,
-instruments, patterns, and order together.
+A complete FamiTracker song, saved as an `.ftm` file: its settings, instruments, patterns and order
+together.
 
 ### Document
 
-A complete Bitphase project, saved as a `.btp` file — its songs, instruments,
-tables, patterns, and order together.
+A complete Bitphase project, saved as a `.btp` file: its songs, instruments, tables, patterns and order
+together.
 
 ### Table
 
-In Bitphase, a per-tick list of semitone offsets a pattern cell attaches to a
-channel, which carries the pitch contour a FamiTracker arpeggio sequence would.
+In Bitphase, a per-tick list of semitone offsets that a pattern cell attaches to a channel. It carries
+the pitch contour a FamiTracker arpeggio sequence would.
+
+### Voice
+
+Anything a tracker row can name: a **sample** or an **instrument**. A project keeps its voices in one
+list. A row says which voice to start and the pitch it plays at: a note, or a step from the voice's own
+pitch.
 
 ### Sample (sequencer)
 
-A reconstruction added to the sequencer as a playable, placeable voice in the
-song.
+A reconstruction added to the sequencer as a playable voice. It carries the instruction stream its
+conversion found for each channel.
+
+### Sample column
+
+The tracker's leftmost data column. It places a sample across every channel the sample's reconstruction
+covers, and clears the rest of the row. It takes samples only, because an instrument sounds on the one
+channel that names it. Its cell summarizes what those channels hold and reads `?` where they disagree.
+A pitch or a volume typed in it changes the channels still playing a sample, and it takes none where no
+sample is playing. See [The sequencer](guide/sequencer.md#writing-a-pattern).
 
 ### Instrument
 
-A single FamiTracker instrument, saved as an `.fti` file, exported from one
-channel of a reconstruction. See [FamiTracker export](formats/famitracker.md).
-Bitphase takes the same slice as a `.json` instrument preset. See
+One set of envelopes a channel reads while a note sounds, saved as an `.fti` file. As a [voice](#voice),
+an instrument goes on whichever channel suits it, as in FamiTracker. A sample has one
+instrument per channel it plays. Bitphase takes the same envelopes as a `.json` instrument preset. See
+[The sequencer](guide/sequencer.md), [FamiTracker export](formats/famitracker.md) and
 [Bitphase export](formats/bitphase.md).
+
+### Initial pitch
+
+The value an instrument's frames are built at, and the note an exported preset is tuned to. As a
+voice, an instrument has one for the tonal channels and a period for the noise channel, so the same
+envelopes sound on any of the four channels. The row that places the instrument sets the note it sounds
+at. A sample's matching value is its per-channel [reference pitch](formats/reconstructions.md#contents).
+
+### Loop point
+
+The item a single envelope repeats from while a note is held. It lets an attack be followed by a
+sustained tail. Each envelope has its own loop point, so a two-item duty cycle can circle on its own
+period beside a longer volume envelope. An envelope without one holds its last item while the note
+sounds.
 
 ## File types
 
 | Extension | Contents |
 | --- | --- |
-| `.ins` | [Instruction library](formats/instruction-libraries.md) — the candidate catalogue. |
+| `.ins` | [Instruction library](formats/instruction-libraries.md) — the candidate catalog. |
 | `.stn` | [Reconstruction](formats/reconstructions.md) — a converted sample. |
 | `.stp` | [Project](formats/projects.md) — a bundle of reconstructions with a song and settings. |
 | `.fti` | FamiTracker instrument ([export](formats/famitracker.md)). |
 | `.ftm` | FamiTracker module ([export](formats/famitracker.md)). |
 | `.btp` | Bitphase document ([export](formats/bitphase.md)). |
+| `.nsf` | [NSF program](formats/nsf.md) — a song and the driver that plays it. |
 | `.json` | Bitphase instrument preset ([export](formats/bitphase.md)), or the [configuration file](formats/configuration.md). |

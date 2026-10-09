@@ -4,14 +4,17 @@ import numpy as np
 import pytest
 
 from sampletones_application.logic.reconstruction.data import ReconstructionData
-from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+)
 from sampletones_core.constants.general import MIN_PITCH
 from sampletones_core.exporters import Features, PulseExporter
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.application import synchronous_executor, synchronous_queue
+from tests.suite.stems import single_entry_stems_data
 
 __all__ = ["synchronous_executor", "synchronous_queue"]
 
@@ -44,23 +47,23 @@ def pulse_features(pulse_instructions) -> Features:
 def minimal_reconstruction(default_config, pulse_instructions) -> Reconstruction:
     length = 256
     return Reconstruction.create(
-        approximation=np.zeros(length, dtype=np.float32),
-        approximations={GeneratorName.PULSE1: np.zeros(length, dtype=np.float32)},
-        instructions={GeneratorName.PULSE1: pulse_instructions},
+        instructions={ChannelName.PULSE1: pulse_instructions},
         config=default_config,
         coefficient=1.0,
-        audio_filepath=Path("/dev/null"),
+        audio_filepath=(Path("/dev/null"),),
+        stems_data=single_entry_stems_data(
+            list(DEFAULT_CHANNELS),
+            {ChannelName.PULSE1: pulse_instructions},
+        ),
     )
 
 
 @pytest.fixture
 def reconstruction_data(default_config, minimal_reconstruction) -> ReconstructionData:
-    feature_data = FeatureData.load(minimal_reconstruction)
     return ReconstructionData(
         config=default_config,
         reconstruction=minimal_reconstruction,
-        original_audio=np.zeros(256, dtype=np.float32),
-        feature_data=feature_data,
+        stem_audios=(),
         filepath=Path("/dev/null"),
         name="null",
     )

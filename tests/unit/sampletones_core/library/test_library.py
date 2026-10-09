@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Final
 
 import pytest
 
@@ -7,6 +8,8 @@ from sampletones_core.fft import Window
 from sampletones_core.library.data import InstructionLibraryData
 from sampletones_core.library.key import InstructionLibraryKey
 from sampletones_core.library.library import InstructionLibrary
+from sampletones_core.library.state import LibraryState
+from tests.suite.files import requires_symlinks
 
 
 @pytest.fixture(scope="module")
@@ -36,6 +39,10 @@ def library_key(
 @pytest.fixture
 def empty_library_data(config: Config) -> InstructionLibraryData:
     return InstructionLibraryData.create(config, {})
+
+
+LINK_TARGET: Final[str] = "libraries"
+LINK: Final[str] = "linked_libraries"
 
 
 class TestInstructionLibraryFromConfig:
@@ -95,58 +102,22 @@ class TestInstructionLibraryGet:
         assert result is not None
 
 
-class TestInstructionLibraryExists:
-    def test_exists_returns_false_before_save(
+class TestTheStateOfALibraryInTheCatalog:
+    def test_a_library_never_saved_is_missing(
         self,
         library: InstructionLibrary,
         library_key: InstructionLibraryKey,
     ) -> None:
-        assert library.exists(library_key) is False
+        assert library.state(library_key) is LibraryState.MISSING
 
-    def test_exists_returns_true_after_save(
-        self,
-        library: InstructionLibrary,
-        library_key: InstructionLibraryKey,
-        empty_library_data: InstructionLibraryData,
-    ) -> None:
-        library.save_data(library_key, empty_library_data)
-        assert library.exists(library_key) is True
-
-    def test_exists_with_config_resolves_key(
-        self,
-        library: InstructionLibrary,
-        library_key: InstructionLibraryKey,
-        empty_library_data: InstructionLibraryData,
-        config: Config,
-    ) -> None:
-        library.save_data(library_key, empty_library_data)
-        assert library.exists(config) is True
-
-
-class TestInstructionLibraryPurge:
-    def test_purge_clears_in_memory_data(
+    def test_a_library_this_build_saved_is_current(
         self,
         library: InstructionLibrary,
         library_key: InstructionLibraryKey,
         empty_library_data: InstructionLibraryData,
     ) -> None:
         library.save_data(library_key, empty_library_data)
-        assert len(library.data) > 0
-        library.purge()
-        assert len(library.data) == 0
-
-
-class TestInstructionLibraryViews:
-    def test_keys_values_items_after_save(
-        self,
-        library: InstructionLibrary,
-        library_key: InstructionLibraryKey,
-        empty_library_data: InstructionLibraryData,
-    ) -> None:
-        library.save_data(library_key, empty_library_data)
-        assert library_key in library.keys()
-        assert empty_library_data in library.values()
-        assert (library_key, empty_library_data) in library.items()
+        assert library.state(library_key) is LibraryState.CURRENT
 
 
 class TestInstructionLibrarySaveLoad:
@@ -157,20 +128,9 @@ class TestInstructionLibrarySaveLoad:
         empty_library_data: InstructionLibraryData,
     ) -> None:
         library.save_data(library_key, empty_library_data)
-        library.purge()
-        assert library_key not in library.data
-        library.load_data(library_key)
-        assert library_key in library.data
-
-    def test_getitem_after_load(
-        self,
-        library: InstructionLibrary,
-        library_key: InstructionLibraryKey,
-        empty_library_data: InstructionLibraryData,
-    ) -> None:
-        library.save_data(library_key, empty_library_data)
-        loaded = library[library_key]
-        assert isinstance(loaded, InstructionLibraryData)
+        reopened = InstructionLibrary(directory=library.directory)
+        reopened.load_data(library_key)
+        assert reopened.data[library_key].config == empty_library_data.config
 
     def test_get_path_includes_filename(
         self,
@@ -179,3 +139,18 @@ class TestInstructionLibrarySaveLoad:
     ) -> None:
         path = library.get_path(library_key)
         assert path.name == library_key.filename
+
+    @requires_symlinks
+    def test_a_library_written_through_a_link_to_a_folder_yet_to_exist_makes_that_folder(
+        self,
+        library_key: InstructionLibraryKey,
+        empty_library_data: InstructionLibraryData,
+        tmp_path: Path,
+    ) -> None:
+        target = tmp_path / LINK_TARGET
+        link = tmp_path / LINK
+        link.symlink_to(target, target_is_directory=True)
+
+        InstructionLibrary(directory=str(link)).write_data(library_key, empty_library_data)
+
+        assert (target / library_key.filename).is_file()

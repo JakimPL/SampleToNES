@@ -1,8 +1,10 @@
 import threading
-from typing import Optional
+from typing import Final, Optional
 
-from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
+from sampletones_application.utils.parallelization.thread import SingleThreadExecutor, run_background_task
 from sampletones_shared.types.callback import VoidCallback
+
+TASK_FAILURE_ORIGIN: Final[str] = "Error in a task of a latest-wins executor"
 
 
 class LatestWinsExecutor:
@@ -13,7 +15,8 @@ class LatestWinsExecutor:
     submission always runs. The worker drains to the newest pending task before it stops,
     and ``wait=True`` on the next launch joins a worker still tearing down, so a submission
     made during that hand-off carries into the next run. Built on :class:`SingleThreadExecutor`,
-    so its worker joins at teardown like any other background thread.
+    so its worker joins at teardown like any other background thread. A task that fails is
+    reported, and the worker goes on to the next one.
 
     ``is_running`` reports the busy span as a single truth: true from the first submission
     until the worker drains every queued task and stops. Callers read this single span to
@@ -56,9 +59,10 @@ class LatestWinsExecutor:
         """Runs queued tasks to exhaustion, always taking the newest pending one.
 
         Between tasks the worker pops the latest submission under the lock, so a burst
-        collapses to a single trailing run. It clears the running flag and exits only once
-        no task remains, so every submission is picked up by the running worker or launches
-        a fresh one.
+        collapses to a single trailing run. Each task runs through :func:`run_background_task`,
+        which reports a failing one and hands the worker back to the loop. The worker clears the
+        running flag and exits once no task remains, so every submission is picked up by the
+        running worker or launches a fresh one.
         """
         while True:
             with self._lock:
@@ -68,4 +72,4 @@ class LatestWinsExecutor:
                     self._running = False
                     return
 
-            task()
+            run_background_task(task, TASK_FAILURE_ORIGIN)

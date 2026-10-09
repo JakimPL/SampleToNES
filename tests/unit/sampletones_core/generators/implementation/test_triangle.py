@@ -2,8 +2,12 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
-from sampletones_core.constants.general import MIXER_TRIANGLE
+from sampletones_core.constants.enums import ChannelName, GeneratorClassName
+from sampletones_core.constants.general import (
+    MAX_PITCH,
+    MIN_SOUNDING_TRIANGLE_TIMER,
+    MIXER_TRIANGLE,
+)
 from sampletones_core.generators.implementation.triangle import TriangleGenerator
 from sampletones_core.instructions import PulseInstruction, TriangleInstruction
 
@@ -19,7 +23,7 @@ def config() -> Config:
 
 @pytest.fixture
 def generator(config: Config) -> TriangleGenerator:
-    return TriangleGenerator(config, GeneratorName.TRIANGLE)
+    return TriangleGenerator(config, ChannelName.TRIANGLE)
 
 
 class TestTriangleGeneratorCall:
@@ -47,6 +51,32 @@ class TestTriangleGeneratorCall:
         instruction = TriangleInstruction(on=True, pitch=60)
         result = generator(instruction)
         assert result.dtype == np.float32
+
+
+class TestAnUltrasonicTriangleRests:
+    """Below divider 2 the triangle steps above hearing, and the console's output rests at the middle of
+    its wave while the sequencer keeps stepping."""
+
+    def _bent_to(self, generator: TriangleGenerator, timer: int) -> TriangleInstruction:
+        detune = timer - generator.played_timer_table[MAX_PITCH]
+        return TriangleInstruction(on=True, pitch=MAX_PITCH, detune=detune)
+
+    def test_a_timer_below_the_bound_rests(self, generator: TriangleGenerator) -> None:
+        result = generator(self._bent_to(generator, MIN_SOUNDING_TRIANGLE_TIMER - 1))
+
+        assert np.all(result == 0.0)
+
+    def test_a_timer_at_the_bound_sounds(self, generator: TriangleGenerator) -> None:
+        result = generator(self._bent_to(generator, MIN_SOUNDING_TRIANGLE_TIMER))
+
+        assert np.any(result != 0.0)
+
+    def test_the_wave_steps_on_through_a_resting_frame(self, generator: TriangleGenerator) -> None:
+        phase = generator.timer.phase
+
+        generator(self._bent_to(generator, MIN_SOUNDING_TRIANGLE_TIMER - 1), save=True)
+
+        assert generator.timer.phase != phase
 
 
 class TestTriangleApply:

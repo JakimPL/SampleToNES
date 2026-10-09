@@ -1,4 +1,5 @@
 import sys
+from dataclasses import dataclass
 from typing import Tuple
 
 import dearpygui.dearpygui as dpg
@@ -10,7 +11,17 @@ from sampletones_application.ui.resources.resources import get_icon_path
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.monitors import MonitorArea, monitor_area_for_window
 from sampletones_shared.application import SAMPLETONES_NAME
+from sampletones_shared.display import Resolution
 from sampletones_shared.types.callback import VoidCallback
+
+
+@dataclass(frozen=True)
+class WindowPlacement:
+    """Where the window stands on the desktop and the size it shows at."""
+
+    x: int
+    y: int
+    resolution: Resolution
 
 
 class ViewportManager:
@@ -78,6 +89,27 @@ class ViewportManager:
         return dpg.get_viewport_width(), dpg.get_viewport_height()
 
     @property
+    def placement(self) -> WindowPlacement:
+        """Where the window stands and the size it shows at right now."""
+        viewport_x, viewport_y = dpg.get_viewport_pos()
+        width, height = self.resolution
+        return WindowPlacement(
+            x=int(viewport_x),
+            y=int(viewport_y),
+            resolution=Resolution(width=width, height=height),
+        )
+
+    def place(self, placement: WindowPlacement) -> None:
+        """Moves the window to ``placement`` and sizes it there.
+
+        DearPyGui answers a place and a size set this way from its very next read, ahead of a drawn
+        frame, so a record of the window taken right after names them.
+        """
+        dpg.set_viewport_pos([placement.x, placement.y])
+        dpg.set_viewport_width(placement.resolution.width)
+        dpg.set_viewport_height(placement.resolution.height)
+
+    @property
     def monitor_area(self) -> MonitorArea:
         """The area of the monitor the window currently sits on, and the room it leaves a window."""
         viewport_x, viewport_y = dpg.get_viewport_pos()
@@ -85,9 +117,9 @@ class ViewportManager:
         return self._monitor_area(int(viewport_x), int(viewport_y), width, height)
 
     def refresh_clear_color(self) -> None:
-        """Paints the area around the windows in the main theme's background colour.
+        """Paints the area around the windows in the main theme's background color.
 
-        DearPyGui holds the clear colour outside the theme system, so it is issued again
+        DearPyGui holds the clear color outside the theme system, so it is issued again
         whenever the theme's background answers with a new value.
         """
         color = self._theme.get_color(dpg.mvAll, dpg.mvThemeCol_WindowBg)
@@ -115,13 +147,13 @@ class ViewportManager:
         if self._session_manager.fullscreen:
             return
 
-        viewport_x, viewport_y = dpg.get_viewport_pos()
+        placement = self.placement
         self._session_manager.set_window_state(
             fullscreen=False,
-            x=int(viewport_x),
-            y=int(viewport_y),
-            width=dpg.get_viewport_width(),
-            height=dpg.get_viewport_height(),
+            x=placement.x,
+            y=placement.y,
+            width=placement.resolution.width,
+            height=placement.resolution.height,
         )
 
     def _persist_fullscreen(self, fullscreen: bool) -> None:

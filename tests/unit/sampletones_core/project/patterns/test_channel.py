@@ -1,13 +1,14 @@
-from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.patterns.channel import Channel
+from sampletones_core.project.patterns.pitch import Step
 from sampletones_core.project.patterns.row import Row
+from sampletones_core.project.voices.note_on import NoteOn
 
 ROWS_PER_PATTERN = 16
 
 
 def _channel() -> Channel:
-    return Channel.empty(GeneratorName.PULSE1, ROWS_PER_PATTERN)
+    return Channel.empty(ChannelName.PULSE1, ROWS_PER_PATTERN)
 
 
 class TestPatternPool:
@@ -19,11 +20,15 @@ class TestPatternPool:
 
     def test_clone_pattern_copies_rows_with_new_identity(self) -> None:
         channel = _channel()
-        source = channel.patterns[0]
-        source.rows[0] = Row(
-            instrument=Instrument(sample_id="abc", generator_name=GeneratorName.PULSE1),
-            volume=10,
+        channel.set_row(
+            0,
+            0,
+            Row(
+                instrument=NoteOn(voice_id="abc"),
+                volume=10,
+            ),
         )
+        source = channel.patterns[0]
 
         clone_index = channel.clone_pattern(0)
         clone = channel.pattern(clone_index)
@@ -55,7 +60,7 @@ class TestPatternPool:
     def test_set_row_replaces_row(self) -> None:
         channel = _channel()
         pattern_index = 0
-        row = Row(transpose=5, volume=12)
+        row = Row(pitch=Step(value=5), volume=12)
 
         channel.set_row(pattern_index, 3, row)
 

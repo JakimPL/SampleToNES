@@ -18,17 +18,21 @@ from sampletones_core.constants.general import (
     MIN_TRANSPOSE,
     SILENT_VOLUME,
 )
-from sampletones_core.project.instruments.note_off import NoteOff
+from sampletones_core.project.patterns.pitch import Note, RowPitch, Step
+from sampletones_core.project.voices.note_off import NoteOff
 from sampletones_core.utils.display import (
     NOTE_OFF,
     display_id,
-    display_transpose,
+    display_pitch,
     display_volume,
 )
-from sampletones_shared.constants.symbols import PLUS, SIGNS
+from sampletones_core.utils.frequencies import PERIOD_NAME_SUFFIX
+from sampletones_core.utils.pitch_kind import PERIOD_VALUE_KIND, PLAYED_PITCH_VALUE_KIND
+from sampletones_shared.constants.symbols import PIPE, PLUS, SIGNS
 
 from .fields import (
     FieldReading,
+    read_decimal,
     read_hexadecimal,
     read_placeholder,
     state_mixed,
@@ -39,9 +43,9 @@ from .samples import SampleDirectory
 
 TRACKER_GRID: Final[str] = "tracker"
 SLOT_KEY: Final[str] = "slots"
-COLUMN_SEPARATOR: Final[str] = "|"
+COLUMN_SEPARATOR: Final[str] = PIPE
 NOTE_WIDTH: Final[int] = len(display_id(None))
-TRANSPOSE_WIDTH: Final[int] = len(display_transpose(None))
+PITCH_WIDTH: Final[int] = len(display_pitch(None))
 VOLUME_WIDTH: Final[int] = len(display_volume(None))
 
 
@@ -105,10 +109,10 @@ class TrackerBlockText:
         row_offset: int,
     ) -> str:
         """One row of the block, its fields in slot order and its columns held apart by a bar."""
-        base = column_slot_base(slot_from_flat(region.first_slot).generator)
+        base = column_slot_base(slot_from_flat(region.first_slot).channel)
         fields: List[str] = []
         for position, slot in enumerate(region.slots):
-            if position > 0 and slot.generator != region.slots[position - 1].generator:
+            if position > 0 and slot.channel != region.slots[position - 1].channel:
                 fields.append(COLUMN_SEPARATOR)
 
             key = (row_offset, region.first_slot + position - base)
@@ -123,15 +127,10 @@ class TrackerBlockText:
         key: BlockKey,
     ) -> str:
         match subcolumn:
-            case SubColumn.INSTRUMENT:
+            case SubColumn.VOICE:
                 return self._state_note(block.notes, key)
             case SubColumn.TRANSPOSE:
-                return self._state_number(
-                    block.transposes,
-                    key,
-                    display_transpose,
-                    TRANSPOSE_WIDTH,
-                )
+                return self._state_pitch(block.pitches, key)
             case SubColumn.VOLUME:
                 return self._state_number(
                     block.volumes,
@@ -156,11 +155,22 @@ class TrackerBlockText:
         match notes[key]:
             case NoteOff():
                 return NOTE_OFF
-            case str() as sample_id:
-                position = self._samples.position_of(sample_id)
+            case str() as voice_id:
+                position = self._samples.position_of(voice_id)
                 return state_mixed(NOTE_WIDTH) if position is None else display_id(position)
             case _:
                 return display_id(None)
+
+    @staticmethod
+    def _state_pitch(
+        pitches: Dict[BlockKey, Optional[RowPitch]],
+        key: BlockKey,
+    ) -> str:
+        """What the pitch column prints at a cell: the note name or the signed step the grid shows."""
+        if key not in pitches:
+            return state_mixed(PITCH_WIDTH)
+
+        return display_pitch(pitches[key])
 
     @staticmethod
     def _state_number(
@@ -180,9 +190,9 @@ class TrackerBlockText:
         shape: BlockShape,
     ) -> Optional[TrackerBlock]:
         """The block a body states, each kind of subcolumn gathered into a map of its own."""
-        base = column_slot_base(slot_from_flat(shape.first).generator)
+        base = column_slot_base(slot_from_flat(shape.first).channel)
         notes: Dict[BlockKey, Optional[BlockNote]] = {}
-        transposes: Dict[BlockKey, Optional[int]] = {}
+        pitches: Dict[BlockKey, Optional[RowPitch]] = {}
         volumes: Dict[BlockKey, Optional[int]] = {}
         for row_offset, line in enumerate(lines):
             fields = line.replace(COLUMN_SEPARATOR, " ").split()
@@ -193,7 +203,7 @@ class TrackerBlockText:
                 slot = slot_from_flat(shape.first + position)
                 key = (row_offset, shape.first + position - base)
                 match slot.subcolumn:
-                    case SubColumn.INSTRUMENT:
+                    case SubColumn.VOICE:
                         read = store_reading(
                             notes,
                             key,
@@ -201,9 +211,9 @@ class TrackerBlockText:
                         )
                     case SubColumn.TRANSPOSE:
                         read = store_reading(
-                            transposes,
+                            pitches,
                             key,
-                            self._read_transpose(field),
+                            self._read_pitch(field),
                         )
                     case SubColumn.VOLUME:
                         read = store_reading(
@@ -217,7 +227,7 @@ class TrackerBlockText:
 
         return TrackerBlock(
             notes=notes,
-            transposes=transposes,
+            pitches=pitches,
             volumes=volumes,
         )
 
@@ -238,26 +248,40 @@ class TrackerBlockText:
         if position is None:
             return None
 
-        sample_id = self._samples.sample_at(position)
-        return FieldReading.mixed() if sample_id is None else FieldReading.of(sample_id)
+        voice_id = self._samples.sample_at(position)
+        return FieldReading.mixed() if voice_id is None else FieldReading.of(voice_id)
 
     @staticmethod
-    def _read_transpose(field: str) -> Optional[FieldReading[int]]:
-        """The transpose a signed field states, present while it lies in the range a row accepts."""
-        placeholder: Optional[FieldReading[int]] = read_placeholder(field)
+    def _read_pitch(field: str) -> Optional[FieldReading[RowPitch]]:
+        """The pitch a field states: a signed step within the range a row accepts, or a note name.
+
+        A sign opens a step, read in decimal digits. Anything else is a note name: a period name
+        ends in the suffix the grid prints for noise, and every other name is a note the tonal
+        channels play. Names are read in either case, so a name typed by hand lands the note the
+        grid would print.
+        """
+        placeholder: Optional[FieldReading[RowPitch]] = read_placeholder(field)
         if placeholder is not None:
             return placeholder
 
         sign = field[:1]
-        magnitude = read_hexadecimal(field[1:])
-        if sign not in SIGNS or magnitude is None:
+        if sign in SIGNS:
+            magnitude = read_decimal(field[1:])
+            if magnitude is None:
+                return None
+
+            step = magnitude if sign == PLUS else -magnitude
+            if not MIN_TRANSPOSE <= step <= MAX_TRANSPOSE:
+                return None
+
+            return FieldReading.of(Step(value=step))
+
+        kind = PERIOD_VALUE_KIND if field.upper().endswith(PERIOD_NAME_SUFFIX) else PLAYED_PITCH_VALUE_KIND
+        value = kind.sanitized_name_to_value.get(kind.sanitize(field))
+        if value is None:
             return None
 
-        transpose = magnitude if sign == PLUS else -magnitude
-        if not MIN_TRANSPOSE <= transpose <= MAX_TRANSPOSE:
-            return None
-
-        return FieldReading.of(transpose)
+        return FieldReading.of(Note(value=value))
 
     @staticmethod
     def _read_volume(field: str) -> Optional[FieldReading[int]]:

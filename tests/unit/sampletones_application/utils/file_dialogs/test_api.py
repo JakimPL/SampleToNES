@@ -65,6 +65,24 @@ class FakeBackend:
         return self._result
 
 
+class TestTheFolderADialogOpensIn:
+    """A dialog opens where the reader last worked, or as close to it as the disk still allows."""
+
+    def test_a_folder_standing_is_opened_in(self, tmp_path: Path) -> None:
+        backend = FakeBackend(None)
+        with patch(f"{MODULE}.select_file_dialog_backend", return_value=backend):
+            open_file_dialog(title="Open", initial_directory=tmp_path)
+
+        assert backend.calls[0][2] == tmp_path
+
+    def test_a_folder_gone_opens_the_nearest_one_above_it(self, tmp_path: Path) -> None:
+        backend = FakeBackend(None)
+        with patch(f"{MODULE}.select_file_dialog_backend", return_value=backend):
+            select_directory_dialog(title="Choose", initial_directory=tmp_path / "gone" / "deeper")
+
+        assert backend.calls[0][2] == tmp_path
+
+
 class TestSaveFileDialog:
     def test_appends_missing_extension(self) -> None:
         backend = FakeBackend(Path("/home/user/song"))
@@ -153,26 +171,26 @@ class TestSaveFileDialog:
 
 
 class TestOpenFileDialog:
-    def test_builds_filter_and_converts_directory(self) -> None:
+    def test_builds_filter_and_converts_directory(self, tmp_path: Path) -> None:
         backend = FakeBackend(Path("/audio/clip.wav"))
         with patch(f"{MODULE}.select_file_dialog_backend", return_value=backend):
             result = open_file_dialog(
                 title="Open",
-                initial_directory="/audio",
+                initial_directory=str(tmp_path),
                 filters=(FileFilter.for_extensions("Audio files", [".wav", ".mp3"]),),
             )
 
         assert result == Path("/audio/clip.wav")
         _, _, initial_directory, filters = backend.calls[0]
-        assert initial_directory == Path("/audio")
+        assert initial_directory == tmp_path
         assert filters == (FileFilter(name="Audio files", patterns=("*.wav", "*.mp3")),)
 
 
 class TestSelectDirectoryDialog:
-    def test_passes_through(self) -> None:
+    def test_passes_through(self, tmp_path: Path) -> None:
         backend = FakeBackend(Path("/audio/library"))
         with patch(f"{MODULE}.select_file_dialog_backend", return_value=backend):
-            result = select_directory_dialog(title="Choose", initial_directory="/audio")
+            result = select_directory_dialog(title="Choose", initial_directory=str(tmp_path))
 
         assert result == Path("/audio/library")
-        assert backend.calls[0] == ("directory", "Choose", Path("/audio"), ())
+        assert backend.calls[0] == ("directory", "Choose", tmp_path, ())

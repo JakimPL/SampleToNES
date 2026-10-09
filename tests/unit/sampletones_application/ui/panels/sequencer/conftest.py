@@ -2,7 +2,7 @@ from typing import Generator
 
 import pytest
 
-from sampletones_application.ui.panels.sequencer import tracker
+from sampletones_application.ui.panels.sequencer.tracker import panel as tracker
 from sampletones_shared.types.callback import VoidCallback
 
 

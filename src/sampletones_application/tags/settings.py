@@ -93,6 +93,12 @@ TAG_SETTINGS_DISPLAY_CHECKBOX_VSYNC = TagName(
     Widget.CHECKBOX,
     "vsync",
 )
+TAG_SETTINGS_DISPLAY_CHECKBOX_SHOW_FRAME_RATE = TagName(
+    Page.SETTINGS,
+    Panel.DISPLAY,
+    Widget.CHECKBOX,
+    "show_frame_rate",
+)
 TAG_SETTINGS_DISPLAY_BUTTON_OK = TagName(
     Page.SETTINGS,
     Panel.DISPLAY,
@@ -387,6 +393,180 @@ TAG_SETTINGS_PROPERTIES_BUTTON_OK = TagName(
 TAG_SETTINGS_PROPERTIES_BUTTON_CANCEL = TagName(
     Page.SETTINGS,
     Panel.PROPERTIES,
+    Widget.BUTTON,
+    "cancel",
+)
+TAG_SETTINGS_NSF_WINDOW = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.WINDOW,
+    "nsf",
+)
+TAG_SETTINGS_NSF_INPUT_TITLE = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.INPUT,
+    "title",
+)
+TAG_SETTINGS_NSF_INPUT_ARTIST = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.INPUT,
+    "artist",
+)
+TAG_SETTINGS_NSF_INPUT_COPYRIGHT = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.INPUT,
+    "copyright",
+)
+TAG_SETTINGS_NSF_INPUT_LOOP_FRAME = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.INPUT,
+    "loop_frame",
+)
+TAG_SETTINGS_NSF_TEXT_TITLE_SIZE = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.TEXT,
+    "title_size",
+)
+TAG_SETTINGS_NSF_TEXT_ARTIST_SIZE = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.TEXT,
+    "artist_size",
+)
+TAG_SETTINGS_NSF_TEXT_COPYRIGHT_SIZE = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.TEXT,
+    "copyright_size",
+)
+TAG_SETTINGS_NSF_CHECKBOX_CHANNEL = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.CHECKBOX,
+    "channel",
+)
+TAG_SETTINGS_NSF_TEXT_NO_CHANNEL = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.TEXT,
+    "no_channel",
+)
+TAG_SETTINGS_NSF_COMBO_REPEAT = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.COMBO,
+    "repeat",
+)
+TAG_SETTINGS_NSF_GROUP_LOOP_FRAME = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.GROUP,
+    "loop_frame",
+)
+TAG_SETTINGS_NSF_TEXT_FRAME_COUNT = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.TEXT,
+    "frame_count",
+)
+TAG_SETTINGS_NSF_TEXT_LENGTH = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.TEXT,
+    "length",
+)
+TAG_SETTINGS_NSF_COMBO_SCHEME = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.COMBO,
+    "scheme",
+)
+TAG_SETTINGS_NSF_TEXT_SCHEME_DESCRIPTION = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.TEXT,
+    "scheme_description",
+)
+TAG_SETTINGS_NSF_GROUP_DESTINATION = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.GROUP,
+    "destination",
+)
+TAG_SETTINGS_NSF_PATH_DESTINATION = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.PATH,
+    "destination",
+)
+TAG_SETTINGS_NSF_BUTTON_BROWSE = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.BUTTON,
+    "browse",
+)
+TAG_SETTINGS_NSF_BUTTON_CANCEL = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.BUTTON,
+    "cancel",
+)
+TAG_SETTINGS_NSF_BUTTON_EXPORT = TagName(
+    Page.SETTINGS,
+    Panel.NSF,
+    Widget.BUTTON,
+    "export",
+)
+TAG_SETTINGS_EXPORT_WINDOW = TagName(
+    Page.SETTINGS,
+    Panel.EXPORT,
+    Widget.WINDOW,
+    "export",
+)
+TAG_SETTINGS_EXPORT_GROUP_STAGES = TagName(
+    Page.SETTINGS,
+    Panel.EXPORT,
+    Widget.GROUP,
+    "stages",
+)
+TAG_SETTINGS_EXPORT_GROUP_MEASURED = TagName(
+    Page.SETTINGS,
+    Panel.EXPORT,
+    Widget.GROUP,
+    "measured",
+)
+TAG_SETTINGS_EXPORT_GROUP_WORKING = TagName(
+    Page.SETTINGS,
+    Panel.EXPORT,
+    Widget.GROUP,
+    "working",
+)
+TAG_SETTINGS_EXPORT_TEXT_STAGE = TagName(
+    Page.SETTINGS,
+    Panel.EXPORT,
+    Widget.TEXT,
+    "stage",
+)
+TAG_SETTINGS_EXPORT_TEXT_FIGURE = TagName(
+    Page.SETTINGS,
+    Panel.EXPORT,
+    Widget.TEXT,
+    "figure",
+)
+TAG_SETTINGS_EXPORT_PROGRESS = TagName(
+    Page.SETTINGS,
+    Panel.EXPORT,
+    Widget.PROGRESS,
+    "export",
+)
+TAG_SETTINGS_EXPORT_BUTTON_CANCEL = TagName(
+    Page.SETTINGS,
+    Panel.EXPORT,
     Widget.BUTTON,
     "cancel",
 )

@@ -1,69 +1,35 @@
-import numpy as np
+from typing import Final
 
 from sampletones_core.constants.general import (
-    A4_FREQUENCY,
-    A4_PITCH,
-    LIMIT_MAX_PITCH,
-    LIMIT_MIN_PITCH,
     MAX_PERIOD,
     MAX_PITCH,
     MIN_PITCH,
+    MIN_PLAYED_PITCH,
     NOISE_PERIODS,
     NOTE_NAMES,
+    NUM_PERIODS,
 )
+from sampletones_shared.constants.music import OCTAVE_OFFSET, OCTAVE_SEMITONES
 from sampletones_shared.utils.arrays import clamp
+from sampletones_shared.utils.frequencies import validate_pitch
+
+PERIOD_NAME_SUFFIX: Final[str] = "-#"
 
 
-def validate_pitch(pitch: int) -> None:
-    """
-    Validates that a pitch value is an integer within the range 24-127.
+def played_pitch(pitch: int) -> int:
+    """The note a channel plays a pitch at, held within ``MIN_PLAYED_PITCH`` (C-0) and ``MAX_PITCH`` (B-7).
 
-    Args:
-        pitch: The pitch value to validate.
-
-    Raises:
-        TypeError: If pitch is not an integer.
-        ValueError: If pitch is outside the range 24-127.
-    """
-    if not isinstance(pitch, int):
-        raise TypeError("Pitch must be an integer value")
-
-    if not LIMIT_MIN_PITCH <= pitch <= LIMIT_MAX_PITCH:
-        raise ValueError(f"Pitch must be in the range {LIMIT_MIN_PITCH}-{LIMIT_MAX_PITCH}")
-
-
-def is_pitch_valid(pitch: int) -> bool:
-    """
-    Checks if a pitch value is in the defined range.
+    Those are the lowest and highest notes FamiTracker and Bitphase write, and both hold a note
+    moved past them there. A note below A-0 asks for a timer longer than the eleven bits the
+    register holds, so it sounds the longest one, as it does on the console.
 
     Args:
-        pitch: The pitch value to check.
+        pitch: The pitch a note, its transpose and its arpeggio step reach.
 
     Returns:
-        True if the pitch is valid, False otherwise.
+        int: The note the channel plays.
     """
-    return MIN_PITCH <= pitch <= MAX_PITCH
-
-
-def validate_frequency(frequency: float) -> None:
-    """
-    Validates that a frequency value is a positive finite number.
-
-    Args:
-        frequency: The frequency value to validate.
-
-    Raises:
-        TypeError: If frequency is not a numeric type.
-        ValueError: If frequency is not a positive finite number.
-    """
-    if not isinstance(frequency, (int, float)):
-        raise TypeError("Frequency must be a numeric value")
-
-    if np.isinf(frequency) or np.isnan(frequency):
-        raise ValueError("Frequency must be a positive finite number")
-
-    if frequency <= 0:
-        raise ValueError("Frequency must be a positive value")
+    return clamp_pitch(pitch, MIN_PLAYED_PITCH, MAX_PITCH)
 
 
 def validate_period(period: int) -> None:
@@ -84,99 +50,14 @@ def validate_period(period: int) -> None:
         raise ValueError(f"Period must be in the range 0-{MAX_PERIOD}")
 
 
-def pitch_to_frequency(
-    pitch: int,
-    a4_frequency: float = A4_FREQUENCY,
-    a4_pitch: int = A4_PITCH,
-) -> float:
-    """
-    Converts a MIDI-style pitch value to its corresponding frequency in Hz.
-
-    Uses the equal temperament tuning system where each semitone is separated
-    by a factor of 2^(1/12).
-
-    Args:
-        pitch: The MIDI pitch number (24-127, where 69 is typically A4).
-        a4_frequency: The reference frequency for A4 in Hz. Defaults to 440.0 Hz.
-        a4_pitch: The MIDI pitch number for A4. Defaults to 69.
-
-    Returns:
-        The frequency in Hz corresponding to the given pitch.
-
-    Raises:
-        TypeError: If pitch is not an integer.
-        TypeError: If a4_frequency is not a numeric type.
-        TypeError: If a4_pitch is not an integer.
-        ValueError: If pitch is outside the range 24-127.
-        ValueError: If a4_pitch is outside the range 24-127.
-        ValueError: If a4_frequency is not a positive finite number.
-        ValueError: If calculated frequency is not a positive finite number.
-
-    Examples:
-        >>> pitch_to_frequency(69)  # A4
-        440.0
-        >>> pitch_to_frequency(57)  # A3 (one octave below A4)
-        220.0
-        >>> pitch_to_frequency(60)  # Middle C (C4)
-        261.6255653005986
-        >>> pitch_to_frequency(69, a4_frequency=432.0)  # A4 with different tuning
-        432.0
-    """
-    validate_pitch(pitch)
-    validate_pitch(a4_pitch)
-    validate_frequency(a4_frequency)
-
-    frequency: float = a4_frequency * (2 ** ((pitch - a4_pitch) / 12))
-    validate_frequency(frequency)
-    return frequency
+def transpose_pitch(pitch: int, transpose: int) -> int:
+    """The pitch a transpose reaches, held inside the range the channels play (see :func:`played_pitch`)."""
+    return played_pitch(pitch + transpose)
 
 
-def frequency_to_pitch(
-    frequency: float,
-    a4_frequency: float = A4_FREQUENCY,
-    a4_pitch: int = A4_PITCH,
-) -> int:
-    """
-    Converts a frequency in Hz to the nearest MIDI-style pitch value.
-
-    Uses logarithmic conversion based on the equal temperament tuning system.
-    Returns 0 for frequencies at or below 0 Hz.
-
-    Args:
-        frequency: The frequency in Hz to convert.
-        a4_frequency: The reference frequency for A4 in Hz. Defaults to 440.0 Hz.
-        a4_pitch: The MIDI pitch number for A4. Defaults to 69.
-
-    Returns:
-        The nearest integer MIDI pitch number.
-
-    Raises:
-        TypeError: If frequency is not a numeric type.
-        TypeError: If a4_frequency is not a numeric type.
-        TypeError: If a4_pitch is not an integer.
-        ValueError: If frequency is not a positive finite number.
-        ValueError: If a4_frequency is not a positive finite number.
-        ValueError: If calculated pitch is outside the range 24-127.
-
-    Examples:
-        >>> frequency_to_pitch(440.0)  # A4
-        69
-        >>> frequency_to_pitch(880.0)  # A5
-        81
-        >>> frequency_to_pitch(261.63)  # ~middle C
-        60
-        >>> frequency_to_pitch(0.0)  # invalid frequency
-        Traceback (most recent call last):
-            ...
-        ValueError: Frequency must be a positive value
-    """
-    validate_frequency(frequency)
-    validate_frequency(a4_frequency)
-    validate_pitch(a4_pitch)
-
-    pitch: int = round(a4_pitch + 12 * (np.log2(frequency / a4_frequency)))
-    validate_pitch(pitch)
-    return pitch
+def transpose_period(period: int, transpose: int) -> int:
+    """The period a transpose reaches, walked around the sixteen the hardware offers."""
+    return (period + transpose) % NUM_PERIODS
 
 
 def pitch_to_name(pitch: int, transpose: int = 0) -> str:
@@ -223,8 +104,8 @@ def pitch_to_name(pitch: int, transpose: int = 0) -> str:
     pitch += transpose
     validate_pitch(pitch)
 
-    octave = (pitch // 12) - 2
-    note_index = pitch % 12
+    octave = pitch // OCTAVE_SEMITONES - OCTAVE_OFFSET
+    note_index = pitch % OCTAVE_SEMITONES
     return f"{NOTE_NAMES[note_index]}{octave}"
 
 
@@ -256,7 +137,7 @@ def period_to_name(period: int) -> str:
         ValueError: Period must be in the range 0-15
     """
     validate_period(period)
-    return f"{period:X}-#"
+    return f"{period:X}{PERIOD_NAME_SUFFIX}"
 
 
 def clamp_pitch(pitch: int, min_pitch: int = MIN_PITCH, max_pitch: int = MAX_PITCH) -> int:
@@ -349,7 +230,7 @@ def sanitize_pitch(name: str) -> str:
     Sanitizes a pitch name by keeping only valid pitch-related characters.
 
     Removes whitespace, converts to uppercase, and filters to only allow:
-    digits (0-9), hyphen (-), sharp (#), and hexadecimal letters (A-F).
+    digits (0-9), hyphen (-), sharp (#), and the note letters (A-G).
 
     Args:
         name: The pitch name string to sanitize.
@@ -367,7 +248,7 @@ def sanitize_pitch(name: str) -> str:
         >>> sanitize_pitch("F-#")  # invalid as a pitch name though
         'F-#'
     """
-    return "".join([character for character in sanitize(name) if character in "0123456789-#ABCDEF"])
+    return "".join([character for character in sanitize(name) if character in "0123456789-#ABCDEFG"])
 
 
 def sanitize_period(name: str) -> str:
@@ -398,4 +279,7 @@ def sanitize_period(name: str) -> str:
 
 
 SANITIZED_NAME_TO_PITCH = {sanitize_pitch(pitch_to_name(pitch)): pitch for pitch in range(MIN_PITCH, MAX_PITCH + 1)}
+SANITIZED_NAME_TO_PLAYED_PITCH = {
+    sanitize_pitch(pitch_to_name(pitch)): pitch for pitch in range(MIN_PLAYED_PITCH, MAX_PITCH + 1)
+}
 SANITIZED_NAME_TO_PERIOD = {sanitize_period(period_to_name(period)): period for period in range(len(NOISE_PERIODS))}

@@ -1,0 +1,70 @@
+from typing import Final, Tuple
+
+from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
+from sampletones_core.features.envelope import Envelope
+from sampletones_core.project.patterns.pitch import Step
+from sampletones_core.project.patterns.row import Row
+from sampletones_core.project.project import Project
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_player.builder import song_from_project
+from sampletones_player.compression.scheme import CompressionScheme
+
+ROWS_PER_PATTERN: Final[int] = 4
+VOLUME: Final[Tuple[int, ...]] = (15, 12, 9)
+VOLUME_NIBBLE: Final[int] = 0x0F
+
+
+def _project() -> Project:
+    instrument = Instrument(
+        name="Lead",
+        envelopes=InstrumentEnvelopes(
+            volume=Envelope(items=VOLUME),
+            arpeggio=Envelope(items=(0, 4, 7)),
+            duty_cycle=Envelope(items=(1,)),
+        ),
+    )
+    project = Project.create(title="Demo", rows_per_pattern=ROWS_PER_PATTERN)
+    project.voices.append(instrument)
+    project.song[ChannelName.PULSE1].ensure_pattern(0, ROWS_PER_PATTERN)
+    project.song[ChannelName.PULSE1].set_row(0, 0, Row(command=NoteOn(voice_id=instrument.id), pitch=Step(value=0)))
+    project.song.set_order_entry(0, ChannelName.PULSE1, 0)
+    return project
+
+
+class TestAnInstrumentReachesTheConsole:
+    """The player reads the same walk the sequencer plays, so an instrument needs nothing of its own."""
+
+    def test_a_project_holding_an_instrument_compiles(self) -> None:
+        song = song_from_project(
+            _project(),
+            channels=ALL_CHANNELS,
+            loop_tick=None,
+            scheme=CompressionScheme.SEARCH,
+        )
+
+        assert song.planes.ticks > 0
+
+    def test_the_compiled_song_sounds_the_instrument_on_the_channel_it_was_placed_on(
+        self,
+    ) -> None:
+        song = song_from_project(
+            _project(),
+            channels=ALL_CHANNELS,
+            loop_tick=None,
+            scheme=CompressionScheme.SEARCH,
+        )
+
+        levels = [registers.control & VOLUME_NIBBLE for registers in song.streams.pulse1[: len(VOLUME)]]
+        assert levels == list(VOLUME)
+
+    def test_the_channels_it_was_not_placed_on_stay_silent(self) -> None:
+        song = song_from_project(
+            _project(),
+            channels=ALL_CHANNELS,
+            loop_tick=None,
+            scheme=CompressionScheme.SEARCH,
+        )
+
+        assert {registers.control & VOLUME_NIBBLE for registers in song.streams.pulse2} == {0}

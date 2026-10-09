@@ -8,7 +8,7 @@ from sampletones_application.ui.panels.sequencer.channels import (
     ChannelSwitch,
     channel_tooltip,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 LABELS = ChannelMenuLabels(
     mute="Mute",
@@ -43,8 +43,8 @@ def _switch() -> ChannelSwitch:
     """A switch whose hooks are inert, for reading the items it builds."""
     return ChannelSwitch(
         labels=LABELS,
-        on_mute_toggled=lambda generator: None,
-        on_soloed=lambda generator: None,
+        on_mute_toggled=lambda channel: None,
+        on_soloed=lambda channel: None,
         on_toggled=lambda: None,
         on_muted=lambda: None,
         on_unmuted=lambda: None,
@@ -63,7 +63,7 @@ class TestMenuBeforeTheFirstModel:
     """A table whose menu opens before the first mute set arrives reads every channel as audible."""
 
     def test_a_channel_offers_to_mute_and_to_solo(self, menu: _MenuRecorder) -> None:
-        _switch().add_menu_items(GeneratorName.TRIANGLE, None)
+        _switch().add_menu_items(ChannelName.TRIANGLE, None)
 
         assert menu.labels == [
             LABELS.mute,
@@ -91,19 +91,19 @@ class TestClickRouting:
     def test_a_channel_click_carries_its_channel(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(channels_module.dpg, "set_value", lambda item, value: None)
         monkeypatch.setattr(channels_module, "capture_modifiers", frozenset)
-        toggled: List[GeneratorName] = []
+        toggled: List[ChannelName] = []
         switch = ChannelSwitch(
             labels=LABELS,
             on_mute_toggled=toggled.append,
-            on_soloed=lambda generator: pytest.fail("a plain click must not solo"),
+            on_soloed=lambda channel: pytest.fail("a plain click must not solo"),
             on_toggled=lambda: pytest.fail("a channel click addresses one channel"),
             on_muted=lambda: None,
             on_unmuted=lambda: None,
         )
 
-        switch.click(0, GeneratorName.PULSE1)
+        switch.click(0, ChannelName.PULSE1)
 
-        assert toggled == [GeneratorName.PULSE1]
+        assert toggled == [ChannelName.PULSE1]
 
     def test_the_click_releases_the_selectable(self, monkeypatch: pytest.MonkeyPatch) -> None:
         released: Dict[int, bool] = {}

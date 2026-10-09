@@ -4,7 +4,12 @@ from typing import Any, Tuple
 
 import pytest
 
-from sampletones_application.tags.compose import TAG_SEPARATOR, compose_tag
+from sampletones_application.tags.compose import (
+    TAG_DIGEST_LENGTH,
+    TAG_SEPARATOR,
+    compose_tag,
+    identity_part,
+)
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import expect_error
@@ -110,3 +115,27 @@ class TestComposeTagInvariants:
 
     def test_casing_and_spacing_of_a_runtime_name_do_not_change_the_tag(self) -> None:
         assert compose_tag("base", "My Layer") == compose_tag("base", "my_layer")
+
+
+class TestIdentityPart:
+    """A tag built from a name a user gave carries the identity of that name beside it, since the
+    composer reads two names differing only in case or spacing as one segment."""
+
+    def test_names_the_composer_reads_alike_carry_parts_of_their_own(self) -> None:
+        assert identity_part("Kick.wav") != identity_part("kick.wav")
+        assert compose_tag("base", "Kick.wav") == compose_tag("base", "kick.wav")
+
+    def test_one_name_carries_one_part(self) -> None:
+        assert identity_part("/audio/kick.wav") == identity_part("/audio/kick.wav")
+
+    def test_a_part_composes_into_a_tag_as_one_segment(self) -> None:
+        """A name carrying separators of its own contributes them, and the part stands beside it."""
+        part = identity_part("kick.wav")
+
+        composed = compose_tag("base", "kick.wav", part, "text")
+
+        assert composed.split(TAG_SEPARATOR).count(part) == 1
+        assert composed.endswith(f"{TAG_SEPARATOR}text")
+
+    def test_a_part_is_the_length_a_tag_holds(self) -> None:
+        assert len(identity_part("kick.wav")) == TAG_DIGEST_LENGTH

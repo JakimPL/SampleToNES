@@ -1,39 +1,60 @@
 # Command line
 
-You can run _SampleToNES_ from a terminal — to reconstruct without opening the
-interface, to generate a library, or to open a file directly in the app. Run it
-with no arguments to launch the GUI as usual.
+You can run _SampleToNES_ from a terminal. Use it to convert recordings in the terminal, to build
+an instruction library, or to open a file in the app.
 
-The command is `sampletones` when installed from source; a standalone build is the
-executable you made (`./bin/sampletones` on Linux, `bin\sampletones.exe` on Windows).
+## Getting the command
 
-## Common tasks
+How you run the command depends on how you installed _SampleToNES_:
 
-* **Launch the interface** — `sampletones`
-* **Reconstruct a file** — `sampletones input.wav -o output.stn`
-* **Reconstruct a folder** — `sampletones path/to/folder` reconstructs every audio
-  file inside it.
-* **Open a file in the app** — `sampletones song.stp` opens the interface preloaded
-  with it; a `.stn` reconstruction or `.ins` library works the same way.
-* **Use a specific configuration** — add `--config my-config.json`; otherwise your
-  saved configuration is used (`config.json`, or built-in defaults if you have not
-  saved one yet).
-* **Generate a library and exit** — `sampletones --generate --config my-config.json`
-* **Check the version** — `sampletones --version`
-* **Check that a build works** — `sampletones --self-check`
+- **Release download**: run `sampletones` in the extracted folder. On Windows the file is
+  `sampletones.exe`.
+- **PyPI**: `uv tool install sampletones` or `pipx install sampletones` puts `sampletones` on your
+  path.
+- **From source**: `make setup` puts `sampletones` on your path. A standalone build you make
+  yourself is `./bin/sampletones` on Linux and `bin\sampletones.exe` on Windows.
+
+[Installation](installation.md) explains each way.
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `sampletones` or `sampletones run` | Starts the app. |
+| `sampletones open <file>` | Starts the app with a `.stp` project, a `.stn` reconstruction or an `.ins` library open. |
+| `sampletones convert <recording>...` | Converts recordings into one `.stn` reconstruction, or converts every recording in a folder. |
+| `sampletones library` | Builds the instruction library for a configuration, then exits. |
+| `sampletones self-check` | Checks that the app can start: its code, its fonts and icons, and its configuration files. |
+| `sampletones --version` or `sampletones -v` | Prints the version. |
+
+Add `--help` to any command to see its options.
+
+Two more commands measure the app: [`calibration`](../tools/calibration.md) and
+[`tracker-playback`](../tools/tracker-playback.md).
 
 ## Options
 
-| Option | Purpose |
-| --- | --- |
-| `path` | (positional) an audio file or folder to reconstruct, or a `.stn` / `.ins` / `.stp` file to open in the app. Omit it to launch the interface. |
-| `--output`, `-o` | output path for a reconstruction |
-| `--config`, `-c` | path to a configuration `.json` (default: your saved `config.json`) |
-| `--generate`, `-g` | build the instruction library for the configuration, then exit |
-| `--version`, `-v` | print the version and exit |
-| `--self-check` | verify that this build's imports, bundled resources, and configuration files are all usable, then exit |
-| `--help`, `-h` | show the full option list |
+- `--config <file>` or `-c <file>` uses a configuration file. It works with `run`, `open`,
+  `convert` and `library`. Without it, the app uses your saved configuration, or the built-in
+  defaults until you save one.
+- `--output <file>` or `-o <file>` sets where `convert` saves the reconstruction. Without it, the
+  reconstruction goes to the reconstructions folder of your configuration.
+- `--channels <list>` sets the channels `convert` may use, for example `--channels pulse1,pulse2`.
+  Without it, `convert` uses pulse 1, triangle and noise.
+- `--stems <file>` mixes several recordings into one reconstruction. The file lists the
+  [stems](../glossary.md#stem), one per recording, with the channels each may use.
 
-GPU acceleration is selected at setup, not per run: `make setup` detects a supported
-NVIDIA driver and installs the matching build (`make setup GPU=0` forces the CPU
-backend) — see [Installation](installation.md).
+A `convert` command takes either `--channels` or `--stems`.
+
+## Common tasks
+
+- **Convert one file**: `sampletones convert input.wav -o output.stn`
+- **Convert a folder**: `sampletones convert path/to/folder`. Every recording in the folder
+  becomes its own reconstruction, saved in your reconstructions folder.
+- **Mix several recordings into one reconstruction**:
+  `sampletones convert bass.wav lead.wav --stems stems.json`. The stems file lists the recordings in
+  the same order. [Reconstructions](../formats/reconstructions.md) shows it.
+- **Build a library**: `sampletones library --config my-config.json`
+
+GPU support is chosen when you install _SampleToNES_. [Installation](installation.md) explains
+how.

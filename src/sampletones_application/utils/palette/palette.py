@@ -12,9 +12,9 @@ from sampletones_shared.utils.serialization import load_yaml
 
 
 class Palette(BaseModel, frozen=True):
-    """A named set of semantic colour tokens shared across a theme set and the layout.
+    """A named set of semantic color tokens shared across a theme set and the layout.
 
-    Colour fields reference these tokens by name so a colour is defined once and
+    Color fields reference these tokens by name so a color is defined once and
     reused everywhere, and swapping the palette restyles every theme and layout entry
     that resolves against it.
     """
@@ -33,7 +33,7 @@ class Palette(BaseModel, frozen=True):
         """
         if reference.token not in self.colors:
             raise KeyError(
-                f"Palette {self.name!r} has no colour token {REFERENCE_PREFIX}{reference.token!r}. "
+                f"Palette {self.name!r} has no color token {REFERENCE_PREFIX}{reference.token!r}. "
                 f"Known tokens: {sorted(self.colors)}"
             )
 
@@ -45,7 +45,7 @@ class Palette(BaseModel, frozen=True):
 
     @classmethod
     def load(cls, path: Path) -> Palette:
-        """Load the palette that colour references resolve against.
+        """Load the palette that color references resolve against.
 
         Raises:
             TypeError: when the palette file holds a value other than a mapping.

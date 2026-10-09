@@ -1,32 +1,96 @@
 from pathlib import Path
 from time import sleep
-from typing import Any, Callable, Dict, Iterator, List, Tuple, TypeAlias
+from typing import Any, Callable, Dict, Final, Iterator, List, Tuple, TypeAlias
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sampletones_application.services.conversion import ConversionService
+from sampletones_application.services.conversion.result import ConversionItem, ReconstructionStep
+from sampletones_application.services.conversion.service import ConversionService
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceIntermediate,
     ServiceProgress,
     ServiceStarted,
     ServiceSuccess,
 )
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.parallelization import TaskProgress, TaskStatus
+from sampletones_core.parallelization.task import TaskStep
+from sampletones_core.reconstructions.converter import ConversionJob
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from sampletones_core.reconstructions.stage import ReconstructionStage
+from tests.suite.base import BaseTestSuite
 
 MockConverterClass: TypeAlias = Tuple[MagicMock, MagicMock, Dict[str, Callable[..., Any]]]
 Service: TypeAlias = Tuple[ConversionService, MagicMock, Dict[str, Callable[..., Any]], List[Any]]
+Reading: TypeAlias = Callable[[TaskProgress], ServiceProgress[ConversionItem]]
+
+SOURCE: Final[str] = "/audio/kick.wav"
+OUTPUT: Final[str] = "/reconstructions/kick.stn"
+JOB: Final[ConversionJob] = ConversionJob(
+    sources=(Path(SOURCE),),
+    stems=StemsConfig.single_entry(StemSettings.covering([ChannelName.PULSE1])),
+    output_path=Path(OUTPUT),
+)
+FRAMES: Final[int] = 1100
+ONE_RECONSTRUCTION: Final[int] = 1
+SEVERAL_RECONSTRUCTIONS: Final[int] = 5
+NOTHING_WRITTEN: Final[int] = 0
+ONE_WRITTEN: Final[int] = 1
+TWO_WRITTEN: Final[int] = 2
+SAMPLE_GAP: Final[float] = 0.02
+EARLY: Final[float] = 0.2
+HALFWAY: Final[float] = 0.5
+NEARLY_DONE: Final[float] = 0.9
+
+
+def _under_way(*fractions: float) -> Tuple[TaskStep, ...]:
+    """A step per reconstruction a run holds under way, each that far through its own frames."""
+    return tuple(
+        TaskStep(
+            stage=ReconstructionStage.MATCHING.value,
+            completed=round(fraction * FRAMES),
+            total=FRAMES,
+            fraction=fraction,
+        )
+        for fraction in fractions
+    )
+
+
+def _account(
+    total: int,
+    completed: int,
+    steps: Tuple[TaskStep, ...] = (),
+) -> TaskProgress:
+    """The account a run of ``total`` reconstructions gives of itself at one moment."""
+    return TaskProgress(total=total, completed=completed, current_item=SOURCE, steps=steps)
+
+
+def _run_of(service: Service, total: int) -> Reading:
+    """Starts a run writing ``total`` reconstructions and hands back its reading of each account."""
+    _, converter, callbacks, results = service
+    converter.total_tasks = total
+    callbacks["on_start"]()
+
+    def read(task_progress: TaskProgress) -> ServiceProgress[ConversionItem]:
+        results.clear()
+        callbacks["on_progress"](TaskStatus.RUNNING, task_progress)
+        return results[-1]
+
+    return read
 
 
 @pytest.fixture
 def mock_converter_class() -> Iterator[MockConverterClass]:
-    with patch("sampletones_application.services.conversion.ReconstructionConverter") as cls:
+    with patch("sampletones_application.services.conversion.service.ReconstructionConverter") as cls:
         instance = MagicMock()
         instance.is_running.return_value = False
         instance.status = TaskStatus.COMPLETED
         instance.total_tasks = 5
+        instance.job_under_way.return_value = JOB
 
         captured: Dict[str, Callable[..., Any]] = {}
         instance.set_callbacks.side_effect = lambda **kwargs: captured.update(kwargs)
@@ -76,7 +140,7 @@ class TestConversionServiceStart:
             "on_progress",
             "on_completed",
             "on_error",
-            "on_cancelled",
+            "on_canceled",
         }
 
     def test_start_while_running_does_not_create_second_converter(
@@ -114,7 +178,7 @@ class TestConversionServiceEmissions:
         callbacks["on_start"]()
         results.clear()
 
-        progress = TaskProgress(total=5, completed=2, current_item="/some/file.wav")
+        progress = TaskProgress(total=5, completed=2, current_item=SOURCE)
         callbacks["on_progress"](TaskStatus.RUNNING, progress)
 
         assert len(results) == 1
@@ -122,9 +186,21 @@ class TestConversionServiceEmissions:
         assert isinstance(result, ServiceProgress)
         assert result.completed == 2
         assert result.total == 5
-        assert result.current_item == Path("/some/file.wav")
+        assert result.current_item == ConversionItem(source=Path(SOURCE), output_path=Path(OUTPUT))
 
-    def test_on_progress_cancelling_emits_service_progress(
+    def test_the_item_names_the_job_the_progress_counts_up_to(
+        self,
+        service: Service,
+    ) -> None:
+        """The item is read from the job the converter is at once the progress's jobs are counted."""
+        _, converter, callbacks, _ = service
+        callbacks["on_start"]()
+
+        callbacks["on_progress"](TaskStatus.RUNNING, TaskProgress(total=5, completed=3))
+
+        converter.job_under_way.assert_called_with(3)
+
+    def test_on_progress_canceling_emits_service_progress(
         self,
         service: Service,
     ) -> None:
@@ -133,7 +209,7 @@ class TestConversionServiceEmissions:
         results.clear()
 
         progress = TaskProgress(total=5, completed=3)
-        callbacks["on_progress"](TaskStatus.CANCELLING, progress)
+        callbacks["on_progress"](TaskStatus.CANCELING, progress)
 
         assert len(results) == 1
         assert isinstance(results[0], ServiceProgress)
@@ -168,7 +244,8 @@ class TestConversionServiceEmissions:
         self,
         service: Service,
     ) -> None:
-        _, _, callbacks, results = service
+        _, converter, callbacks, results = service
+        converter.job_under_way.return_value = None
         callbacks["on_start"]()
         results.clear()
 
@@ -202,15 +279,15 @@ class TestConversionServiceEmissions:
         assert isinstance(result, ServiceError)
         assert result.exception is exception
 
-    def test_on_cancelled_emits_service_cancelled(
+    def test_on_canceled_emits_service_canceled(
         self,
         service: Service,
     ) -> None:
         _, _, callbacks, results = service
-        callbacks["on_cancelled"]()
+        callbacks["on_canceled"]()
 
         assert len(results) == 1
-        assert isinstance(results[0], ServiceCancelled)
+        assert isinstance(results[0], ServiceCanceled)
 
     def test_forward_library_progress_emits_service_intermediate(
         self,
@@ -285,7 +362,7 @@ class TestConversionServiceETA:
         assert results[-1].eta_seconds is not None
         assert results[-1].eta_seconds > 0
 
-    def test_eta_estimator_reset_on_cleanup(
+    def test_eta_estimator_reset_on_release(
         self,
         service: Service,
     ) -> None:
@@ -293,35 +370,98 @@ class TestConversionServiceETA:
         callbacks["on_start"]()
         assert conversion_service._eta_estimator is not None
 
-        conversion_service.cleanup()
+        conversion_service.release()
 
         assert conversion_service._eta_estimator is None
 
 
+class TestTheUnitARunReadsIn(BaseTestSuite):
+    """A run writing one reconstruction reads as that reconstruction; a batch reads as its files.
+
+    A batch holds as many reconstructions under way at once as it has workers, so what a reader
+    follows is the reconstructions written: the count, the bar and the estimate all answer in
+    files. A run writing one counts to one, so the part of that one reconstruction done is the
+    whole of the reading, and the stage it is at travels with it.
+    """
+
+    def test_a_run_of_one_reports_the_stage_its_reconstruction_is_at(self, service: Service) -> None:
+        read = _run_of(service, ONE_RECONSTRUCTION)
+        step = _under_way(HALFWAY)
+
+        reading = read(_account(ONE_RECONSTRUCTION, NOTHING_WRITTEN, step))
+
+        assert reading.current_item is not None
+        assert reading.current_item.step == ReconstructionStep(
+            stage=ReconstructionStage.MATCHING,
+            completed=step[0].completed,
+            total=step[0].total,
+        )
+
+    def test_a_run_of_one_reads_as_the_part_of_its_reconstruction_done(self, service: Service) -> None:
+        read = _run_of(service, ONE_RECONSTRUCTION)
+
+        reading = read(_account(ONE_RECONSTRUCTION, NOTHING_WRITTEN, _under_way(HALFWAY)))
+
+        assert reading.fraction == pytest.approx(HALFWAY)
+
+    def test_a_run_of_one_estimates_from_the_reconstruction_under_way(self, service: Service) -> None:
+        read = _run_of(service, ONE_RECONSTRUCTION)
+
+        read(_account(ONE_RECONSTRUCTION, NOTHING_WRITTEN, _under_way(EARLY)))
+        sleep(SAMPLE_GAP)
+        read(_account(ONE_RECONSTRUCTION, NOTHING_WRITTEN, _under_way(HALFWAY)))
+        sleep(SAMPLE_GAP)
+        reading = read(_account(ONE_RECONSTRUCTION, NOTHING_WRITTEN, _under_way(NEARLY_DONE)))
+
+        assert reading.eta_seconds is not None
+
+    def test_a_batch_names_the_recording_it_is_at_and_no_stage(self, service: Service) -> None:
+        read = _run_of(service, SEVERAL_RECONSTRUCTIONS)
+
+        reading = read(_account(SEVERAL_RECONSTRUCTIONS, TWO_WRITTEN, _under_way(EARLY, HALFWAY, NEARLY_DONE)))
+
+        assert reading.current_item == ConversionItem(source=Path(SOURCE), output_path=Path(OUTPUT))
+
+    def test_a_batch_reads_as_the_reconstructions_it_has_written(self, service: Service) -> None:
+        read = _run_of(service, SEVERAL_RECONSTRUCTIONS)
+
+        reading = read(_account(SEVERAL_RECONSTRUCTIONS, TWO_WRITTEN, _under_way(NEARLY_DONE, NEARLY_DONE)))
+
+        assert reading.fraction == pytest.approx(TWO_WRITTEN / SEVERAL_RECONSTRUCTIONS)
+
+    def test_a_batch_estimates_from_the_reconstructions_written(self, service: Service) -> None:
+        """Frames matched move a batch no nearer its end; a reconstruction written does."""
+        read = _run_of(service, SEVERAL_RECONSTRUCTIONS)
+
+        read(_account(SEVERAL_RECONSTRUCTIONS, ONE_WRITTEN, _under_way(EARLY, EARLY)))
+        sleep(SAMPLE_GAP)
+        matching = read(_account(SEVERAL_RECONSTRUCTIONS, ONE_WRITTEN, _under_way(NEARLY_DONE, NEARLY_DONE)))
+        sleep(SAMPLE_GAP)
+        written = read(_account(SEVERAL_RECONSTRUCTIONS, TWO_WRITTEN, _under_way(EARLY, EARLY)))
+
+        assert matching.eta_seconds is None
+        assert written.eta_seconds is not None
+
+
 class TestConversionServiceLifecycle:
-    def test_cleanup_resets_converter(self, service: Service) -> None:
-        conversion_service, _, _, _ = service
-        conversion_service.cleanup()
+    def test_a_release_ends_the_converter_run_before_letting_it_go(self, service: Service) -> None:
+        conversion_service, converter, _, _ = service
+
+        conversion_service.release()
+
+        converter.shutdown.assert_called_once_with()
         assert conversion_service._converter is None
 
-    def test_cleanup_disposes_running_converter(
+    def test_a_new_run_releases_the_converter_the_last_one_left(
         self,
+        mock_converter_class: MockConverterClass,
         service: Service,
     ) -> None:
         conversion_service, converter, _, _ = service
-        converter.is_running.return_value = True
-        conversion_service.cleanup()
-        converter.cleanup.assert_called_once()
-        assert conversion_service._converter is None
 
-    def test_shutdown_tears_down_converter_synchronously(
-        self,
-        service: Service,
-    ) -> None:
-        conversion_service, converter, _, _ = service
-        conversion_service.shutdown()
-        converter.shutdown.assert_called_once()
-        assert conversion_service._converter is None
+        conversion_service.start(MagicMock(), MagicMock())
+
+        converter.shutdown.assert_called_once_with()
 
     def test_is_running_true_when_converter_running(
         self,

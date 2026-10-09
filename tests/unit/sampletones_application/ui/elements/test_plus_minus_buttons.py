@@ -1,9 +1,19 @@
-from typing import List
+from dataclasses import dataclass
+from typing import Callable, List, Optional
+from unittest.mock import MagicMock
+
+import dearpygui.dearpygui as dpg
+import pytest
 
 from sampletones_application.layout.general.plus_minus_buttons import (
     PlusMinusButtonsLayout,
 )
-from sampletones_application.ui.elements.plus_minus_buttons import GUIPlusMinusButtons
+from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.plus_minus_buttons import (
+    HOLD_INITIAL_DELAY_FACTOR,
+    GUIPlusMinusButtons,
+)
+from sampletones_application.utils.gui.press import LeftPress
 
 LAYOUT = PlusMinusButtonsLayout(
     button_width=30,
@@ -11,30 +21,66 @@ LAYOUT = PlusMinusButtonsLayout(
     hold_delay=0.075,
 )
 
+FIRST_REPEAT = HOLD_INITIAL_DELAY_FACTOR * LAYOUT.hold_delay
+FRAME = LAYOUT.hold_delay / 10
+DECREMENT_TAG = "decrement"
+INCREMENT_TAG = "increment"
 
-def _buttons() -> GUIPlusMinusButtons:
+
+@dataclass
+class Pointer:
+    """Which of the pair's buttons the pointer stands on, as their hover reads it, and whether the left
+    button is down.
+    """
+
+    on_increment: bool = False
+    on_decrement: bool = False
+    down: bool = True
+
+
+def _button(hovered: Callable[[], bool]) -> GUIButton:
+    button = MagicMock(spec=GUIButton)
+    button.is_item_hovered.side_effect = hovered
+    return button
+
+
+@pytest.fixture
+def pointer() -> Pointer:
+    return Pointer()
+
+
+@pytest.fixture
+def buttons(pointer: Pointer, monkeypatch: pytest.MonkeyPatch) -> GUIPlusMinusButtons:
     """A pair carrying only the state the tested methods touch, bypassing the DearPyGui-dependent
-    constructor."""
-    buttons = GUIPlusMinusButtons.__new__(GUIPlusMinusButtons)
-    buttons.on_increment = None
-    buttons.on_decrement = None
-    buttons._layout = LAYOUT
-    buttons._hold_direction = None
-    buttons._hold_timer = None
-    return buttons
+    constructor, with the left button read from ``pointer``."""
+    monkeypatch.setattr(dpg, "is_mouse_button_down", lambda button: pointer.down)
+    monkeypatch.setattr(dpg, "does_item_exist", lambda tag: True)
+    pair = GUIPlusMinusButtons.__new__(GUIPlusMinusButtons)
+    pair.on_increment = None
+    pair.on_decrement = None
+    pair._layout = LAYOUT
+    pair._decrement_button_tag = DECREMENT_TAG
+    pair._increment_button_tag = INCREMENT_TAG
+    pair._press = LeftPress()
+    pair._increment_button = _button(lambda: pointer.on_increment)
+    pair._decrement_button = _button(lambda: pointer.on_decrement)
+    return pair
+
+
+def _frame(buttons: GUIPlusMinusButtons, seconds: float) -> Optional[int]:
+    """One frame of the left button down, answering the direction it repeats in, if any."""
+    return buttons._advance_hold(buttons._held_button_hovered(), seconds)
 
 
 class TestStep:
-    def test_step_up_calls_increment(self) -> None:
-        buttons = _buttons()
+    def test_step_up_calls_increment(self, buttons: GUIPlusMinusButtons) -> None:
         calls: List[str] = []
         buttons.on_increment = lambda: calls.append("increment")
         buttons.on_decrement = lambda: calls.append("decrement")
         buttons._step(1)
         assert calls == ["increment"]
 
-    def test_step_down_calls_decrement(self) -> None:
-        buttons = _buttons()
+    def test_step_down_calls_decrement(self, buttons: GUIPlusMinusButtons) -> None:
         calls: List[str] = []
         buttons.on_increment = lambda: calls.append("increment")
         buttons.on_decrement = lambda: calls.append("decrement")
@@ -42,25 +88,86 @@ class TestStep:
         assert calls == ["decrement"]
 
 
-class TestHoldTimer:
-    def test_first_press_arms_timer_without_stepping(self) -> None:
-        buttons = _buttons()
-        assert buttons._update_hold_timer(False, True, 0.0) is None
-        assert buttons._hold_timer is not None
+class TestAHoldBelongsToTheButtonItWentDownOn:
+    """A press on a button repeats while held over it, and a press carried in from elsewhere steps nothing."""
 
-    def test_repeats_once_the_delay_elapses(self) -> None:
-        buttons = _buttons()
-        buttons._update_hold_timer(False, True, 0.0)
-        buttons._hold_timer = 0.0
-        assert buttons._update_hold_timer(False, True, 0.01) == 1
+    def test_a_press_waits_the_longer_delay_before_its_first_repeat(
+        self,
+        buttons: GUIPlusMinusButtons,
+        pointer: Pointer,
+    ) -> None:
+        pointer.on_increment = True
+        buttons._on_increment_pressed()
 
-    def test_no_button_pressed_returns_none(self) -> None:
-        buttons = _buttons()
-        assert buttons._update_hold_timer(False, False, 0.05) is None
+        assert _frame(buttons, FIRST_REPEAT - FRAME) is None
+        assert _frame(buttons, 2 * FRAME) == 1
 
-    def test_release_clears_hold_state(self) -> None:
-        buttons = _buttons()
-        buttons._update_hold_timer(True, False, 0.0)
+    def test_each_later_repeat_follows_the_shorter_delay(
+        self,
+        buttons: GUIPlusMinusButtons,
+        pointer: Pointer,
+    ) -> None:
+        pointer.on_decrement = True
+        buttons._on_decrement_pressed()
+        _frame(buttons, FIRST_REPEAT)
+
+        assert _frame(buttons, LAYOUT.hold_delay - FRAME) is None
+        assert _frame(buttons, 2 * FRAME) == -1
+
+    def test_a_press_carried_onto_a_button_steps_nothing(
+        self,
+        buttons: GUIPlusMinusButtons,
+        pointer: Pointer,
+    ) -> None:
+        pointer.on_increment = True
+
+        assert [_frame(buttons, FIRST_REPEAT) for _ in range(3)] == [None, None, None]
+        buttons._on_increment_pressed()
+        assert _frame(buttons, FIRST_REPEAT) == 1
+
+    def test_a_press_slid_onto_the_other_button_steps_nothing(
+        self,
+        buttons: GUIPlusMinusButtons,
+        pointer: Pointer,
+    ) -> None:
+        pointer.on_increment = True
+        buttons._on_increment_pressed()
+        pointer.on_increment = False
+        pointer.on_decrement = True
+
+        assert _frame(buttons, FIRST_REPEAT) is None
+        pointer.on_decrement = False
+        pointer.on_increment = True
+        assert _frame(buttons, FIRST_REPEAT) == 1
+
+    def test_a_release_ends_the_hold(
+        self,
+        buttons: GUIPlusMinusButtons,
+        pointer: Pointer,
+    ) -> None:
+        pointer.on_increment = True
+        buttons._on_increment_pressed()
+
         buttons._on_mouse_release(0, None, None)
-        assert buttons._hold_timer is None
-        assert buttons._hold_direction is None
+
+        assert buttons._press.held() is None
+        assert _frame(buttons, FIRST_REPEAT) is None
+
+    def test_a_release_the_buttons_missed_ends_the_hold(
+        self,
+        buttons: GUIPlusMinusButtons,
+        pointer: Pointer,
+    ) -> None:
+        """A mouse move with the button up ends the hold, so a press later carried onto the button steps
+        nothing.
+        """
+        pointer.on_increment = True
+        buttons._on_increment_pressed()
+
+        pointer.on_increment = False
+        pointer.down = False
+        buttons._on_mouse_move(0, None, None)
+        pointer.down = True
+        pointer.on_increment = True
+
+        assert [_frame(buttons, FIRST_REPEAT) for _ in range(3)] == [None, None, None]

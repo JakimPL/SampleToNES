@@ -35,8 +35,8 @@ class TestWrittenColor:
     def test_a_reference_alpha_override_is_applied(self, source: PaletteSource) -> None:
         assert _swatch(".accent/0.5", source).color.rgba == (169, 127, 227, 128)
 
-    def test_a_colour_built_in_code_stands_as_it_is(self, source: PaletteSource) -> None:
-        """A derived shade reaches a field as the colour it already is."""
+    def test_a_color_built_in_code_stands_as_it_is(self, source: PaletteSource) -> None:
+        """A derived shade reaches a field as the color it already is."""
         color: BaseColor = FadedColor(
             color=LiteralColor((240, 146, 86, 255)),
             fraction=0.5,

@@ -1,0 +1,9 @@
+name: stems_slot_label
+tag: global.theme.stems_slot_label
+
+components:
+  - item_type: Text
+    entries:
+      - type: color
+        key: Text
+        value: .text_muted

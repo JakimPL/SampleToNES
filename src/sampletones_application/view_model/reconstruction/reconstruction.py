@@ -1,56 +1,53 @@
-from enum import StrEnum
-from typing import Final, FrozenSet, Tuple
+from typing import FrozenSet, Optional
 
 from pydantic import BaseModel
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
-
-class ReconstructionPathState(StrEnum):
-    """Whether a path can be shown for a reconstruction location.
-
-    ``AVAILABLE`` carries a resolvable path. ``NOT_FOUND`` marks a recorded path whose
-    file is absent on this machine. ``NOT_APPLICABLE`` marks a location that a
-    reconstruction does not have (a sequencer sample keeps no file locations).
-    ``EMPTY`` is the resting state when no reconstruction is loaded.
-    """
-
-    AVAILABLE = "available"
-    NOT_FOUND = "not_found"
-    NOT_APPLICABLE = "not_applicable"
-    EMPTY = "empty"
-
-
-RECORDED_PATH_STATES: Final[Tuple[ReconstructionPathState, ...]] = (
-    ReconstructionPathState.AVAILABLE,
-    ReconstructionPathState.NOT_FOUND,
+from .paths.path import ReconstructionPathViewModel
+from .paths.state import (
+    PLAYABLE_PATH_STATES,
+    RECORDED_PATH_STATES,
+    ReconstructionPathState,
 )
-
-
-class ReconstructionPathViewModel(BaseModel, frozen=True):
-    state: ReconstructionPathState
-    path: str
+from .rate import RateLock
 
 
 class ReconstructionViewModel(BaseModel, frozen=True):
     """What the reconstruction view renders, including which channels the waveform offers.
 
     A channel plays once its instruction stream describes a frame, which is what makes its
-    generator checkbox reachable; :attr:`selected_generators` is the subset the reader keeps
+    channel checkbox reachable; :attr:`selected_channels` is the subset the reader keeps
     switched on, so a channel switched off by hand stays off across an edit.
+
+    :attr:`nes_frequency` is the engine rate the open reconstruction runs at, and ``None``
+    while the tab holds no document. :attr:`rate_lock` says why the tab may not change that rate,
+    and is ``None`` for a document living on disk, which takes a new rate from the tab.
     """
 
     reconstruction_loaded: bool
-    playing_generators: FrozenSet[GeneratorName]
-    selected_generators: FrozenSet[GeneratorName]
+    playing_channels: FrozenSet[ChannelName]
+    selected_channels: FrozenSet[ChannelName]
     reconstruction_file: ReconstructionPathViewModel
     original_audio: ReconstructionPathViewModel
+    nes_frequency: Optional[int]
+    rate_lock: Optional[RateLock]
 
     @property
     def audio_source_enabled(self) -> bool:
         """The source toggle offers the original audio once its file is present on disk;
         until then playback stays on the reconstruction."""
-        return self.original_audio.state is ReconstructionPathState.AVAILABLE
+        return self.original_audio.state in PLAYABLE_PATH_STATES
+
+    @property
+    def nes_frequency_editable(self) -> bool:
+        """The rate can be changed while a loaded document has no reason to keep it."""
+        return self.reconstruction_loaded and self.rate_lock is None
+
+    @property
+    def show_nes_frequency_hint(self) -> bool:
+        """The hint explains the locked rate, so it appears exactly when a loaded document's rate is locked."""
+        return self.reconstruction_loaded and self.rate_lock is not None
 
     @property
     def locate_audio_enabled(self) -> bool:

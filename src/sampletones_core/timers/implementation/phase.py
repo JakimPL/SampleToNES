@@ -2,10 +2,10 @@ from typing import Any, Optional, Tuple
 
 import numpy as np
 
-from sampletones_core.constants.algorithm import RESET_PHASE
 from sampletones_core.constants.general import APU_CLOCK
 from sampletones_shared.types.data import Initials
 
+from ..arithmetic import frequency_to_timer, get_timer_ticks, timer_to_frequency
 from ..timer import Timer
 
 
@@ -14,7 +14,7 @@ class PhaseTimer(Timer):
         self,
         sample_rate: int,
         nes_frequency: int,
-        reset_phase: bool = RESET_PHASE,
+        reset_phase: bool,
         phase_increment: float = 1.0,
     ) -> None:
         super().__init__(sample_rate, nes_frequency, reset_phase)
@@ -45,10 +45,6 @@ class PhaseTimer(Timer):
 
         return self.generate_frame(save=save)
 
-    def calculate_offset(self, initials: Initials = None) -> int:
-        phase = initials[0] if initials is not None else 0.0
-        return round(self.sample_rate / self._real_frequency * phase)
-
     def generate_frame(self, save: bool = True) -> np.ndarray:
         indices = np.arange(self.frame_length, dtype=np.float32) + 1
         delta = self.phase_increment / self._timer_ticks * self._cycles_per_sample
@@ -64,20 +60,8 @@ class PhaseTimer(Timer):
     def initials(self) -> Tuple[Any, ...]:
         return (self.phase,)
 
-    @staticmethod
-    def frequency_to_timer(frequency: float) -> int:
-        if frequency <= 0:
-            return 0
-
-        timer = round(APU_CLOCK / (16 * frequency)) - 1
-        return max(0, min(timer, 0x7FF))
-
-    @staticmethod
-    def get_timer_ticks(timer: int) -> int:
-        return (timer + 1) * 16 if timer > 0 else 0
-
     def round_frequency_by_timer(self) -> None:
-        self._frequency = APU_CLOCK / (16 * (self._timer + 1))
+        self._frequency = timer_to_frequency(self._timer)
 
     @property
     def frequency(self) -> float:
@@ -86,11 +70,32 @@ class PhaseTimer(Timer):
     @frequency.setter
     def frequency(self, value: float) -> None:
         self._frequency = value
-        self._timer = self.frequency_to_timer(value)
-        self._timer_ticks = self.get_timer_ticks(self._timer)
+        self._load(frequency_to_timer(value))
+
+    @property
+    def timer(self) -> int:
+        """The divider register value the oscillator is running at."""
+        return self._timer
+
+    @timer.setter
+    def timer(self, value: int) -> None:
+        self._load(value)
+
+    def _load(self, timer: int) -> None:
+        """Runs the oscillator at a divider value, and states the frequency that produces.
+
+        Both a frequency and a divider reach the oscillator here, so a caller naming either one
+        leaves the timer in the same state: the divider decides the waveform, and the frequency
+        the timer reports is the one that divider actually produces.
+
+        Args:
+            timer: The divider register value to run at.
+        """
+        self._timer = timer
+        self._timer_ticks = get_timer_ticks(timer)
         self.round_frequency_by_timer()
 
-        self._real_frequency = self.frequency * self.phase_increment
+        self._real_frequency = self._frequency * self.phase_increment
 
         if self.reset_phase:
             self.reset()

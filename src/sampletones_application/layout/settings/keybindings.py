@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from sampletones_application.layout.primitives import Dimensions
+from sampletones_application.layout.primitives import DialogGeometry
 
 
 class KeybindingsSettingsLayout(BaseModel, extra="forbid", frozen=True):
@@ -10,6 +10,6 @@ class KeybindingsSettingsLayout(BaseModel, extra="forbid", frozen=True):
     showing, and the action column takes a stated width so every combination reads down one edge.
     """
 
-    window: Dimensions
+    window: DialogGeometry
     list_height: int
     action_width: int

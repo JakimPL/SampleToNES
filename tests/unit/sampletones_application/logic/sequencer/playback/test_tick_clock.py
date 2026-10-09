@@ -4,18 +4,19 @@ from typing import Final, Optional, Tuple
 import numpy as np
 import pytest
 
-from sampletones_application.constants.playback import MAX_TICKS_PER_ROW, MIN_TICKS_PER_ROW
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.timing import Metre, RowRate, TickClock, calculate_groove
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming, TickClock
+from sampletones_shared.exceptions import NoOutputDeviceError
 from tests.suite.base import BaseTestSuite
+from tests.suite.performance import make_pulse_reconstruction
 from tests.unit.sampletones_application.logic.sequencer.playback.conftest import (
+    SOUNDING_FRAMES,
     add_sample,
     all_channels,
     make_controller,
-    make_pulse_reconstruction,
     make_synthesizer,
     place_row,
 )
@@ -26,13 +27,8 @@ UNEVEN_RATES: Final[Tuple[int, ...]] = (8000, 16000, 22050)
 
 
 def _expected_ticks(controller: ProjectController) -> Tuple[int, ...]:
-    settings = controller.project.settings
-    return calculate_groove(
-        RowRate.from_settings(settings),
-        Metre.from_settings(settings, rows=controller.project.song.rows_per_pattern),
-        minimum_ticks=MIN_TICKS_PER_ROW,
-        maximum_ticks=MAX_TICKS_PER_ROW,
-    ).ticks
+    """The ticks each row of the song's first frame lasts, where the synthesizer starts."""
+    return SongTiming.from_project(controller.project, bounds=SONG_TICK_BOUNDS).groove(0).ticks
 
 
 class TestRowsFollowTheTickClock(BaseTestSuite):
@@ -126,7 +122,7 @@ class TestTheOutputRateIsFollowed(BaseTestSuite):
     """The audio is rendered at the rate its consumer reports, so a rendered second lasts a second.
 
     Live playback opens its device stream at that rate and a render writes its file at it, so a
-    synthesiser fixed to some other rate plays the song at the ratio between the two.
+    synthesizer fixed to some other rate plays the song at the ratio between the two.
     """
 
     @pytest.mark.parametrize("sample_rate", UNEVEN_RATES + (EVEN_SAMPLE_RATE, 48000))
@@ -171,7 +167,7 @@ class _LateRate:
     def __call__(self) -> int:
         self.reads += 1
         if self.rate is None:
-            raise ValueError("No audio device selected")
+            raise NoOutputDeviceError("No audio device selected")
 
         return self.rate
 
@@ -223,9 +219,9 @@ class TestChannelsFillTheRow(BaseTestSuite):
 
     def test_a_sounding_channel_fills_every_tick(self) -> None:
         controller = make_controller()
-        reconstruction = make_pulse_reconstruction(count=1)
-        sample = add_sample(controller, reconstruction, loop=True)
-        place_row(controller, generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+        reconstruction = make_pulse_reconstruction(count=SOUNDING_FRAMES)
+        sample = add_sample(controller, reconstruction)
+        place_row(controller, channel=ChannelName.PULSE1, row_index=0, voice_id=sample.id)
         synthesizer = make_synthesizer(controller, Config(), sample_rate=UNEVEN_SAMPLE_RATE)
 
         chunk, _ = synthesizer.render_row()
@@ -236,9 +232,9 @@ class TestChannelsFillTheRow(BaseTestSuite):
     def test_a_sounding_note_stays_continuous_across_a_tick_length_change(self) -> None:
         """A tick of a different length resumes the oscillator where the last one ended."""
         controller = make_controller()
-        reconstruction = make_pulse_reconstruction(count=1)
-        sample = add_sample(controller, reconstruction, loop=True)
-        place_row(controller, generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+        reconstruction = make_pulse_reconstruction(count=SOUNDING_FRAMES)
+        sample = add_sample(controller, reconstruction)
+        place_row(controller, channel=ChannelName.PULSE1, row_index=0, voice_id=sample.id)
         synthesizer = make_synthesizer(controller, Config(), sample_rate=UNEVEN_SAMPLE_RATE)
 
         chunk, _ = synthesizer.render_row()

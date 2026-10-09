@@ -3,14 +3,37 @@ import threading
 from typing import Dict, List
 from unittest.mock import patch
 
+import pytest
+
+from sampletones_application.utils.callbacks.failures import UnhandledFailures
 from sampletones_application.utils.parallelization.thread import (
-    BackgroundWorkCancelled,
+    BackgroundWorkCanceled,
     SingleThreadExecutor,
     concurrent,
+    run_background_task,
 )
 
 JOIN_TIMEOUT: float = 5.0
 DEADLINE_TIMEOUT: float = 0.05
+FAILURES_LOGGER: str = "sampletones_application.utils.callbacks.failures.logger"
+ORIGIN: str = "Error in the task under test"
+
+
+class HeldTask:
+    """A task that says it has started, then holds its worker until it is released."""
+
+    def __init__(self) -> None:
+        self.started = threading.Event()
+        self.release = threading.Event()
+
+    def __call__(self) -> None:
+        self.started.set()
+        self.release.wait(JOIN_TIMEOUT)
+
+
+@pytest.fixture
+def held_task() -> HeldTask:
+    return HeldTask()
 
 
 class TestJoinAll:
@@ -49,13 +72,10 @@ class TestJoinAll:
         worker_holder["thread"].join(JOIN_TIMEOUT)
         assert not worker_alive_after_join
 
-    def test_returns_at_the_deadline_while_a_worker_still_runs(self) -> None:
-        started = threading.Event()
-        release = threading.Event()
-
+    def test_returns_at_the_deadline_while_a_worker_still_runs(self, held_task: HeldTask) -> None:
         executor = SingleThreadExecutor()
-        assert executor.execute(lambda: (started.set(), release.wait()) and None, wait=False)
-        assert started.wait(JOIN_TIMEOUT)
+        assert executor.execute(held_task, wait=False)
+        assert held_task.started.wait(JOIN_TIMEOUT)
 
         try:
             SingleThreadExecutor.join_all(timeout=DEADLINE_TIMEOUT)
@@ -64,7 +84,7 @@ class TestJoinAll:
             assert worker is not None
             assert worker.is_alive()
         finally:
-            release.set()
+            held_task.release.set()
 
         SingleThreadExecutor.join_all(timeout=JOIN_TIMEOUT)
 
@@ -100,31 +120,70 @@ class TestShutdownCancellation:
 
         assert ran == []
 
-    def test_cancelled_exception_unwinds_without_logging_an_error(self) -> None:
+    def test_canceled_exception_unwinds_without_logging_an_error(self) -> None:
         class Worker:
             @concurrent(wait=True)
             def work(self) -> None:
-                raise BackgroundWorkCancelled
+                raise BackgroundWorkCanceled
 
-        with patch("sampletones_application.utils.parallelization.thread.logger") as logger:
+        with patch(FAILURES_LOGGER) as logger:
             Worker().work()
             SingleThreadExecutor.join_all(timeout=JOIN_TIMEOUT)
 
         logger.error_with_traceback.assert_not_called()
 
+    def test_a_failing_task_is_reported_through_the_failure_channel(self) -> None:
+        reported: List[Exception] = []
+        failure = RuntimeError("the task went wrong")
+
+        class Worker:
+            @concurrent(wait=True)
+            def work(self) -> None:
+                raise failure
+
+        UnhandledFailures.attach(reported.append, post=lambda present, exception: present(exception))
+        Worker().work()
+        SingleThreadExecutor.join_all(timeout=JOIN_TIMEOUT)
+
+        assert reported == [failure]
+
+
+class TestRunBackgroundTask:
+    """A task's failure ends the task alone: it is reported, and a cancellation unwinds quietly."""
+
+    def test_a_failing_task_is_reported_under_its_origin(self) -> None:
+        reported: List[Exception] = []
+        failure = RuntimeError("the task went wrong")
+
+        def failing() -> None:
+            raise failure
+
+        UnhandledFailures.attach(reported.append, post=lambda present, exception: present(exception))
+        with patch(FAILURES_LOGGER) as logger:
+            run_background_task(failing, ORIGIN)
+
+        logger.error_with_traceback.assert_called_once_with(failure, ORIGIN)
+        assert reported == [failure]
+
+    def test_a_canceled_task_ends_quietly(self) -> None:
+        def canceled() -> None:
+            raise BackgroundWorkCanceled
+
+        with patch(FAILURES_LOGGER) as logger:
+            run_background_task(canceled, ORIGIN)
+
+        logger.error_with_traceback.assert_not_called()
+
 
 class TestExecute:
-    def test_skips_a_new_task_while_busy_without_wait(self) -> None:
-        started = threading.Event()
-        release = threading.Event()
-
+    def test_skips_a_new_task_while_busy_without_wait(self, held_task: HeldTask) -> None:
         executor = SingleThreadExecutor()
-        assert executor.execute(lambda: (started.set(), release.wait()) and None, wait=False)
-        assert started.wait(JOIN_TIMEOUT)
+        assert executor.execute(held_task, wait=False)
+        assert held_task.started.wait(JOIN_TIMEOUT)
 
         try:
             assert not executor.execute(lambda: None, wait=False)
         finally:
-            release.set()
+            held_task.release.set()
 
         SingleThreadExecutor.join_all(timeout=JOIN_TIMEOUT)

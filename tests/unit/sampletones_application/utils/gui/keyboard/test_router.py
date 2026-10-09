@@ -104,19 +104,81 @@ class TestModal:
 
     def test_nested_modals_stay_open_until_last_pop(self) -> None:
         router = KeyRouter()
-        router.push_modal(_RecordingModal())
-        router.push_modal(_RecordingModal())
+        lower = _RecordingModal()
+        upper = _RecordingModal()
+        router.push_modal(lower)
+        router.push_modal(upper)
 
-        router.pop_modal()
+        router.pop_modal(upper)
 
         assert router.is_modal_open
 
     def test_pop_without_a_modal_stays_closed(self) -> None:
         router = KeyRouter()
 
-        router.pop_modal()
+        router.pop_modal(_RecordingModal())
 
         assert not router.is_modal_open
+
+    def test_a_claim_released_beneath_the_top_leaves_the_top_answering(self) -> None:
+        """A dialog closing while a later one stands gives up its own claim and none other."""
+        router = KeyRouter()
+        lower = _RecordingModal()
+        upper = _RecordingModal()
+        router.push_modal(lower)
+        router.push_modal(upper)
+
+        router.pop_modal(lower)
+        router.route(_event())
+
+        assert upper.keys == [_event().key]
+        assert lower.keys == []
+
+    def test_a_claim_released_beneath_the_top_is_gone(self) -> None:
+        router = KeyRouter()
+        lower = _RecordingModal()
+        upper = _RecordingModal()
+        router.push_modal(lower)
+        router.push_modal(upper)
+
+        router.pop_modal(lower)
+        router.pop_modal(upper)
+
+        assert not router.is_modal_open
+
+    def test_releasing_a_handler_holding_no_claim_changes_nothing(self) -> None:
+        router = KeyRouter()
+        standing = _RecordingModal()
+        router.push_modal(standing)
+
+        router.pop_modal(_RecordingModal())
+        router.route(_event())
+
+        assert standing.keys == [_event().key]
+
+    def test_a_handler_claiming_twice_gives_up_one_claim_at_a_time(self) -> None:
+        router = KeyRouter()
+        handler = _RecordingModal()
+        router.push_modal(handler)
+        router.push_modal(handler)
+
+        router.pop_modal(handler)
+
+        assert router.is_modal_open
+
+    def test_a_handler_claiming_twice_gives_up_its_latest_claim(self) -> None:
+        """The claim released is the one standing highest, so what it stood above answers again."""
+        router = KeyRouter()
+        handler = _RecordingModal()
+        other = _RecordingModal()
+        router.push_modal(handler)
+        router.push_modal(other)
+        router.push_modal(handler)
+
+        router.pop_modal(handler)
+        router.route(_event())
+
+        assert other.keys == [_event().key]
 
     def test_an_open_modal_claims_the_key_and_suppresses_lower_scopes(self) -> None:
         router = KeyRouter()
@@ -155,8 +217,9 @@ class TestModal:
             priority=PRIORITY_SHORTCUT,
             active=lambda: True,
         )
-        router.push_modal(_RecordingModal())
-        router.pop_modal()
+        modal = _RecordingModal()
+        router.push_modal(modal)
+        router.pop_modal(modal)
 
         claimed = router.route(_event())
 

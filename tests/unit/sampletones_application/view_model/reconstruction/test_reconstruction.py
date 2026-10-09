@@ -1,11 +1,34 @@
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
 
 import pytest
 
-from sampletones_application.view_model.reconstruction.reconstruction import (
-    ReconstructionPathState,
+from sampletones_application.view_model.reconstruction.paths.path import (
     ReconstructionPathViewModel,
+)
+from sampletones_application.view_model.reconstruction.paths.state import (
+    ReconstructionPathState,
+)
+from sampletones_application.view_model.reconstruction.rate import RateLock
+from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
+)
+from sampletones_application.view_model.reconstruction.stems import (
+    ReconstructionStemsViewModel,
+)
+from sampletones_application.view_model.shared.stems import StemsListViewModel
+from sampletones_core.constants.enums import HierarchyMode
+
+EMPTY_STEMS = StemsListViewModel(
+    selected_key=None,
+    rows=(),
+    channels_in_play=(),
+    muted_channels=frozenset(),
+    picked_keys=frozenset(),
+    picking_room=None,
+    live=True,
+    collapse_levels=False,
 )
 
 
@@ -23,6 +46,14 @@ enablement_cases = [
     EnablementCase(
         "audio_file_present",
         original_audio_state=ReconstructionPathState.AVAILABLE,
+        reconstruction_loaded=True,
+        audio_source_enabled=True,
+        locate_audio_enabled=True,
+        show_locate_audio_hint=False,
+    ),
+    EnablementCase(
+        "stems_recorded",
+        original_audio_state=ReconstructionPathState.MULTIPLE,
         reconstruction_loaded=True,
         audio_source_enabled=True,
         locate_audio_enabled=True,
@@ -71,12 +102,111 @@ class TestReconstructionViewModelEnablement:
     ) -> None:
         view_model = ReconstructionViewModel(
             reconstruction_loaded=case.reconstruction_loaded,
-            playing_generators=frozenset(),
-            selected_generators=frozenset(),
-            reconstruction_file=ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, path=""),
-            original_audio=ReconstructionPathViewModel(state=case.original_audio_state, path=""),
+            playing_channels=frozenset(),
+            selected_channels=frozenset(),
+            reconstruction_file=ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, paths=()),
+            original_audio=ReconstructionPathViewModel(state=case.original_audio_state, paths=()),
+            nes_frequency=None,
+            rate_lock=None,
         )
 
         assert view_model.audio_source_enabled is case.audio_source_enabled
         assert view_model.locate_audio_enabled is case.locate_audio_enabled
         assert view_model.show_locate_audio_hint is case.show_locate_audio_hint
+
+
+class TestReconstructionViewModelNesFrequency:
+    """The rate is the tab's to change while nothing locks it, and a lock always comes with its hint."""
+
+    @staticmethod
+    def _view_model(*, loaded: bool, rate_lock: Optional[RateLock]) -> ReconstructionViewModel:
+        file_state = ReconstructionPathState.AVAILABLE if loaded else ReconstructionPathState.EMPTY
+        return ReconstructionViewModel(
+            reconstruction_loaded=loaded,
+            playing_channels=frozenset(),
+            selected_channels=frozenset(),
+            reconstruction_file=ReconstructionPathViewModel(state=file_state, paths=()),
+            original_audio=ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, paths=()),
+            nes_frequency=None,
+            rate_lock=rate_lock,
+        )
+
+    def test_a_document_nothing_locks_takes_a_new_rate(self) -> None:
+        view_model = self._view_model(loaded=True, rate_lock=None)
+
+        assert view_model.nes_frequency_editable
+        assert not view_model.show_nes_frequency_hint
+
+    @pytest.mark.parametrize("rate_lock", list(RateLock), ids=lambda rate_lock: rate_lock.value)
+    def test_a_locked_document_keeps_its_rate_and_explains_it(self, rate_lock: RateLock) -> None:
+        """A project sample and a document with no file are both locked, each for its own reason."""
+        view_model = self._view_model(loaded=True, rate_lock=rate_lock)
+
+        assert not view_model.nes_frequency_editable
+        assert view_model.show_nes_frequency_hint
+        assert view_model.rate_lock is rate_lock
+
+    def test_an_empty_tab_takes_and_explains_nothing(self) -> None:
+        view_model = self._view_model(loaded=False, rate_lock=None)
+
+        assert not view_model.nes_frequency_editable
+        assert not view_model.show_nes_frequency_hint
+
+
+class TestReconstructionPathViewModelPath:
+    def test_single_path_is_the_location(self) -> None:
+        view_model = ReconstructionPathViewModel(
+            state=ReconstructionPathState.AVAILABLE,
+            paths=("/songs/source.wav",),
+        )
+
+        assert view_model.path == "/songs/source.wav"
+
+    def test_several_paths_leave_no_single_location(self) -> None:
+        view_model = ReconstructionPathViewModel(
+            state=ReconstructionPathState.MULTIPLE,
+            paths=("/a/one.wav", "/b/two.wav"),
+        )
+
+        assert view_model.path == ""
+
+
+class TestReconstructionPathStateFromSourcePaths:
+    def test_no_paths_are_not_applicable(self) -> None:
+        assert ReconstructionPathState.from_source_paths(()) is ReconstructionPathState.NOT_APPLICABLE
+
+    def test_one_path_is_available(self) -> None:
+        assert (
+            ReconstructionPathState.from_source_paths((Path("/songs/source.wav"),)) is ReconstructionPathState.AVAILABLE
+        )
+
+    def test_several_paths_are_multiple(self) -> None:
+        paths = (Path("/a/one.wav"), Path("/b/two.wav"))
+
+        assert ReconstructionPathState.from_source_paths(paths) is ReconstructionPathState.MULTIPLE
+
+
+class TestReconstructionStemsViewModel:
+    def test_the_setup_line_follows_the_stems_record(self) -> None:
+        stems = ReconstructionStemsViewModel(
+            reconstruction_loaded=True,
+            stems=EMPTY_STEMS,
+            hierarchy_mode=HierarchyMode.STRICT,
+        )
+
+        assert stems.show_setup_line
+        assert stems.hierarchy_mode is HierarchyMode.STRICT
+
+    def test_the_empty_state_names_a_loaded_reconstruction_with_no_source(self) -> None:
+        loaded = ReconstructionStemsViewModel(
+            reconstruction_loaded=True,
+            stems=EMPTY_STEMS,
+        )
+        closed = ReconstructionStemsViewModel(
+            reconstruction_loaded=False,
+            stems=EMPTY_STEMS,
+        )
+
+        assert loaded.show_empty_state
+        assert not loaded.show_setup_line
+        assert not closed.show_empty_state

@@ -1,0 +1,199 @@
+from pathlib import Path
+from typing import Dict, Iterable, List, Optional, Tuple
+
+import numpy as np
+
+from sampletones_core.configs import Config
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    FeatureKey,
+)
+from sampletones_core.instructions import (
+    InstructionUnion,
+    NoiseInstruction,
+    PulseInstruction,
+    TriangleInstruction,
+)
+from sampletones_core.performance.rows import apply_row, resolve_row
+from sampletones_core.performance.state import ChannelPerformance
+from sampletones_core.project.patterns.pitch import Step
+from sampletones_core.project.patterns.row import Row
+from sampletones_core.project.project import Project
+from sampletones_core.project.settings import ProjectSettings
+from sampletones_core.project.song_position import SongPosition
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
+from sampletones_core.project.voices.voice import VoiceUnion
+from sampletones_core.reconstructions import Reconstruction
+from tests.suite.stems import single_entry_stems_data
+
+APPROXIMATION_LENGTH: int = 64
+
+
+def _reconstruction(
+    channel_name: ChannelName,
+    instructions: List[InstructionUnion],
+) -> Reconstruction:
+    approximation = np.zeros(APPROXIMATION_LENGTH, dtype=np.float32)
+    channel_instructions: Dict[ChannelName, List[InstructionUnion]] = {channel_name: instructions}
+    return Reconstruction.create(
+        instructions=channel_instructions,
+        config=Config(),
+        coefficient=1.0,
+        audio_filepath=(Path("/dev/null"),),
+        stems_data=single_entry_stems_data(
+            list(DEFAULT_CHANNELS),
+            channel_instructions,
+        ),
+    )
+
+
+def reconstruction_of(
+    channel_name: ChannelName,
+    instructions: List[InstructionUnion],
+) -> Reconstruction:
+    """A reconstruction sounding ``instructions`` on one channel, every other channel standing by."""
+    return _reconstruction(channel_name, instructions)
+
+
+def make_pulse_reconstruction(
+    *,
+    pitch: int = 60,
+    volume: int = 15,
+    count: int = 1,
+    held_features: Iterable[FeatureKey] = (),
+) -> Reconstruction:
+    """Single-channel reconstruction with ``count`` identical PulseInstructions.
+
+    ``held_features`` names the dimensions the instrument leaves to the channel, which is what
+    an envelope cleared in the instruments panel produces.
+    """
+    instructions: List[InstructionUnion] = [PulseInstruction(on=True, pitch=pitch, volume=volume, duty_cycle=0)] * count
+    reconstruction = _reconstruction(ChannelName.PULSE1, instructions)
+    if held_features:
+        reconstruction = reconstruction.with_channel_data(
+            ChannelName.PULSE1,
+            list(instructions),
+            reconstruction.initial_pitches[ChannelName.PULSE1],
+            held_features,
+            heard=reconstruction.recorded_stem_ids,
+        )
+
+    return reconstruction
+
+
+def make_triangle_reconstruction(
+    *,
+    pitch: int = 60,
+    count: int = 1,
+) -> Reconstruction:
+    """Single-channel reconstruction with ``count`` identical TriangleInstructions."""
+    instructions: List[InstructionUnion] = [TriangleInstruction(on=True, pitch=pitch)] * count
+    return _reconstruction(ChannelName.TRIANGLE, instructions)
+
+
+def make_noise_reconstruction(
+    *,
+    period: int = 3,
+    volume: int = 15,
+    count: int = 1,
+) -> Reconstruction:
+    """Single-channel reconstruction with ``count`` identical NoiseInstructions."""
+    instructions: List[InstructionUnion] = [
+        NoiseInstruction(on=True, period=period, volume=volume, short=False)
+    ] * count
+    return _reconstruction(ChannelName.NOISE, instructions)
+
+
+def retuned_reconstruction(
+    reconstruction: Reconstruction,
+    a4_frequency: float,
+) -> Reconstruction:
+    """The same reconstruction read as though concert pitch had sat at ``a4_frequency``.
+
+    A tuning reaches a reconstruction through the library settings it was built with, so a case
+    needing two samples that disagree copies one of them onto another reference.
+    """
+    library = reconstruction.config.library.model_copy(update={"a4_frequency": a4_frequency})
+    return reconstruction.model_copy(update={"config": reconstruction.config.model_copy(update={"library": library})})
+
+
+def project_with_sample(
+    reconstruction: Reconstruction,
+    *,
+    rows_per_pattern: int,
+    settings: Optional[ProjectSettings] = None,
+    loop: bool = False,
+    name: str = "test",
+) -> Tuple[Project, Sample]:
+    """A one-sample project, built through the core models a document is made of.
+
+    Answering with the sample beside the project is what lets a case place it on a row without
+    reaching back into the collection for an id it already knows.
+    """
+    project = Project.create(rows_per_pattern=rows_per_pattern, settings=settings)
+    sample = Sample(name=name, reconstruction=reconstruction)
+    project.voices.append(sample)
+    return project, sample
+
+
+def project_with_instrument(
+    instrument: Instrument,
+    *,
+    rows_per_pattern: int,
+    settings: Optional[ProjectSettings] = None,
+) -> Project:
+    """A one-instrument project, so a case can place an instrument on any channel it likes."""
+    project = Project.create(rows_per_pattern=rows_per_pattern, settings=settings)
+    project.voices.append(instrument)
+    return project
+
+
+def place_instrument(
+    project: Project,
+    *,
+    channel_name: ChannelName,
+    row_index: int,
+    sample: VoiceUnion,
+    transpose: Optional[int] = None,
+    volume: Optional[int] = None,
+    pattern_index: int = 0,
+) -> None:
+    """Writes a note column naming ``sample`` onto one row of one channel's pattern."""
+    channel = project.song.channels[channel_name]
+    channel.ensure_pattern(
+        pattern_index,
+        project.song.rows_per_pattern,
+    )
+    channel.set_row(
+        pattern_index,
+        row_index,
+        Row(
+            command=NoteOn(voice_id=sample.id),
+            pitch=Step(value=transpose) if transpose is not None else None,
+            volume=volume,
+        ),
+    )
+
+
+def song_row_volumes(project: Project, channel_name: ChannelName) -> List[Optional[int]]:
+    """The level the song walk plays one channel at on each row of the order, ``None`` where it rests.
+
+    Rows come frame by frame, each frame lasting the song's rows per pattern, so an index into the
+    list names the same row a tracker document laying the order out in turn plays there.
+    """
+    song = project.song
+    performance = ChannelPerformance()
+    volumes: List[Optional[int]] = []
+    position = SongPosition()
+    while position.order_position < song.order_length():
+        row = resolve_row(song, position, channel_name)
+        if row is not None:
+            apply_row(performance, row, channel_name, project.voice)
+
+        volumes.append(performance.volume if performance.voice_id is not None else None)
+        position.advance(song.rows_per_pattern, song.order_length())
+
+    return volumes

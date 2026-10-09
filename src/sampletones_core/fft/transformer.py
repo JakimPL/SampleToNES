@@ -5,8 +5,9 @@ from typing import List, Optional, Self, Sequence, Union, overload
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
-from sampletones_core.constants.algorithm import MAX_TRANSFORMATION_GAMMA, SPECTRUM_FLOOR
+from sampletones_core.constants.algorithm import MAX_TRANSFORMATION_GAMMA
 from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
+from sampletones_core.constants.spectrum import SPECTRUM_FLOOR
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.types.array import (
     Array,
@@ -422,31 +423,3 @@ class FFTTransformer(BaseModel):
         """
         feature1, feature2 = self.to_features((feature_or_scalar1, feature_or_scalar2))
         return self.apply(lambda feature1, feature2: feature1 / feature2, feature1, feature2)
-
-    def mean(
-        self,
-        features: Sequence[Histogram],
-    ) -> Histogram:
-        """
-        Calculate the mean of multiple FFT features with transformations.
-
-            `[ mean(feature₁ ^ (1 / a), feature₂ ^ (1 / a), ..., featureₙ ^ (1 / a)) ] ^ a`
-
-        Requires all edges to be consistent.
-
-        Args:
-            features (Sequence[Histogram]): Input FFT features.
-
-        Returns:
-            Histogram: Mean FFT feature.
-
-        Raises:
-            ValueError: If no features are provided.
-            ValueError: If Histogram features have inconsistent edges.
-            TypeError: If any of the features is not a Histogram.
-        """
-        if not features:
-            raise ValueError("At least one feature is required to compute the mean")
-
-        divisor = self.forward(len(features))
-        return self.reduce(np.add, *features).apply_with(lambda x: np.divide(x, divisor, out=x, casting="unsafe"))

@@ -6,8 +6,9 @@ import pytest
 from sampletones_application.services.export.error import ExportError
 from sampletones_application.services.export.kind import ExportKind
 from sampletones_application.services.export.success import ExportSuccess
+from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS
 from sampletones_core.exporters.truncation import EnvelopeTruncation
-from sampletones_core.trackers.format import TrackerFormat
+from sampletones_core.exports.format import ExportFormat
 
 
 class TestExportSuccess:
@@ -16,22 +17,24 @@ class TestExportSuccess:
         success = ExportSuccess(
             kind=ExportKind.WAV,
             filepath=filepath,
-            tracker_format=None,
+            export_format=None,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         )
         assert success.kind == ExportKind.WAV
         assert success.filepath == filepath
-        assert success.tracker_format is None
+        assert success.export_format is None
         assert success.truncation is None
 
     def test_stores_the_tracker_format(self) -> None:
         success = ExportSuccess(
             kind=ExportKind.INSTRUMENT,
             filepath=Path("/x"),
-            tracker_format=TrackerFormat.BITPHASE,
+            export_format=ExportFormat.BITPHASE,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         )
-        assert success.tracker_format == TrackerFormat.BITPHASE
+        assert success.export_format == ExportFormat.BITPHASE
 
     def test_stores_the_truncation(self) -> None:
         truncation = EnvelopeTruncation(
@@ -42,8 +45,9 @@ class TestExportSuccess:
         success = ExportSuccess(
             kind=ExportKind.INSTRUMENT,
             filepath=Path("/x"),
-            tracker_format=TrackerFormat.FAMITRACKER,
+            export_format=ExportFormat.FAMITRACKER,
             truncation=truncation,
+            skipped_rows=NO_SKIPPED_ROWS,
         )
         assert success.truncation == truncation
 
@@ -51,8 +55,9 @@ class TestExportSuccess:
         success = ExportSuccess(
             kind=ExportKind.WAV,
             filepath=Path("/x"),
-            tracker_format=None,
+            export_format=None,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         )
         with pytest.raises(FrozenInstanceError):
             success.kind = ExportKind.INSTRUMENT  # type: ignore[misc]
@@ -62,24 +67,28 @@ class TestExportSuccess:
         assert ExportSuccess(
             kind=ExportKind.WAV,
             filepath=path,
-            tracker_format=None,
+            export_format=None,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         ) == ExportSuccess(
             kind=ExportKind.WAV,
             filepath=path,
-            tracker_format=None,
+            export_format=None,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         )
         assert ExportSuccess(
             kind=ExportKind.WAV,
             filepath=path,
-            tracker_format=None,
+            export_format=None,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         ) != ExportSuccess(
             kind=ExportKind.INSTRUMENT,
             filepath=path,
-            tracker_format=None,
+            export_format=None,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         )
 
     def test_the_tracker_format_separates_two_otherwise_equal_results(self) -> None:
@@ -87,13 +96,15 @@ class TestExportSuccess:
         assert ExportSuccess(
             kind=ExportKind.INSTRUMENT,
             filepath=path,
-            tracker_format=TrackerFormat.FAMITRACKER,
+            export_format=ExportFormat.FAMITRACKER,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         ) != ExportSuccess(
             kind=ExportKind.INSTRUMENT,
             filepath=path,
-            tracker_format=TrackerFormat.BITPHASE,
+            export_format=ExportFormat.BITPHASE,
             truncation=None,
+            skipped_rows=NO_SKIPPED_ROWS,
         )
 
 
@@ -102,17 +113,17 @@ class TestExportError:
         exception = OSError("disk full")
         error = ExportError(
             kind=ExportKind.INSTRUMENT,
-            tracker_format=TrackerFormat.FAMITRACKER,
+            export_format=ExportFormat.FAMITRACKER,
             exception=exception,
         )
         assert error.kind == ExportKind.INSTRUMENT
-        assert error.tracker_format == TrackerFormat.FAMITRACKER
+        assert error.export_format == ExportFormat.FAMITRACKER
         assert error.exception is exception
 
     def test_frozen(self) -> None:
         error = ExportError(
             kind=ExportKind.WAV,
-            tracker_format=None,
+            export_format=None,
             exception=OSError(),
         )
         with pytest.raises(FrozenInstanceError):
@@ -122,12 +133,12 @@ class TestExportError:
         exception = OSError("same")
         error_a = ExportError(
             kind=ExportKind.WAV,
-            tracker_format=None,
+            export_format=None,
             exception=exception,
         )
         error_b = ExportError(
             kind=ExportKind.WAV,
-            tracker_format=None,
+            export_format=None,
             exception=exception,
         )
         assert error_a != error_b
@@ -135,7 +146,7 @@ class TestExportError:
     def test_same_instance_equals_itself(self) -> None:
         error = ExportError(
             kind=ExportKind.WAV,
-            tracker_format=None,
+            export_format=None,
             exception=OSError(),
         )
         assert error == error  # noqa: PLR0124

@@ -4,17 +4,20 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.layout.general.colors.channel import ChannelColors
+from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.reconstructions import (
-    PRE_RECONSTRUCTION_GENERATOR,
+    PRE_RECONSTRUCTION_CHANNEL,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
-    TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_GENERATORS,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_CHANNELS,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_RECONSTRUCTION_WAVEFORM,
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.graphs.ribbon import GUIOwnershipRibbon
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -25,8 +28,12 @@ from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
+from sampletones_application.view_model.reconstruction.waveform import (
+    InstrumentWaveformViewModel,
+)
+from sampletones_application.view_model.shared.ownership import OwnershipRibbonViewModel
 from sampletones_application.view_model.shared.waveform_data import WaveformData
-from sampletones_core.constants.enums import AudioSourceType, GeneratorName
+from sampletones_core.constants.enums import AudioSourceType, ChannelName
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback
 
@@ -36,18 +43,25 @@ class GUIReconstructionPlotPanel(GUIPanel):
         self,
         *,
         layout_graphs: GraphsLayout,
+        channel_colors: ChannelColors,
+        stem_colors: StemColors,
         language_manager: LanguageManager,
         status_bar: GUIStatusBar,
         initial_collapsed: bool = False,
     ) -> None:
         self._layout_graphs = layout_graphs
+        self._channel_colors = channel_colors
+        self._stem_colors = stem_colors
         self._status_bar = status_bar
         self._language_manager = language_manager
 
         self.waveform_display: GUIWaveformGraph
+        self.ownership_ribbon: GUIOwnershipRibbon
+        self._ownership: OwnershipRibbonViewModel = OwnershipRibbonViewModel.empty()
         self._frame_length: Optional[int] = None
 
-        self.on_generators_changed: Optional[Callable[[List[GeneratorName]], None]] = None
+        self.on_channels_changed: Optional[Callable[[List[ChannelName]], None]] = None
+        self.on_position_clicked: Optional[Callable[[int], None]] = None
 
         self.autoscale_tag = compose_tag(
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLOT, SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE
@@ -71,7 +85,8 @@ class GUIReconstructionPlotPanel(GUIPanel):
         ):
             self._create_autoscale_checkbox()
             self._create_waveform_display()
-            self._create_generator_checkboxes()
+            self._create_ownership_ribbon()
+            self._create_channel_checkboxes()
             self._create_tooltips()
 
     def update_view(self, view_model: ReconstructionViewModel) -> None:
@@ -80,10 +95,10 @@ class GUIReconstructionPlotPanel(GUIPanel):
         The channels an edit puts in play arrive already selected and one switched off by hand
         arrives as it was left, so the boxes report what plays without overruling a choice.
         """
-        for generator_name in GeneratorName:
-            tag = self._get_generator_checkbox_tag(generator_name)
-            is_playing = generator_name in view_model.playing_generators
-            is_selected = generator_name in view_model.selected_generators
+        for channel_name in ChannelName:
+            tag = self._get_generator_checkbox_tag(channel_name)
+            is_playing = channel_name in view_model.playing_channels
+            is_selected = channel_name in view_model.selected_channels
             dpg_configure_item(
                 tag,
                 enabled=is_playing,
@@ -91,14 +106,45 @@ class GUIReconstructionPlotPanel(GUIPanel):
             )
             dpg_set_value(tag, is_selected)
             if is_playing:
-                ThemeRegistry.get(CHANNEL_THEME_TAGS[generator_name]).bind_to_item(tag)
+                ThemeRegistry.get(CHANNEL_THEME_TAGS[channel_name]).bind_to_item(tag)
             else:
                 dpg.bind_item_theme(tag, 0)
+
+    def update_instrument_view(
+        self,
+        waveform: Optional[InstrumentWaveformViewModel],
+    ) -> None:
+        """Draws an instrument's own audio, or hands the card back to the recording it shows.
+
+        An instrument writes one line and nothing to hold it against, so the controls that read a
+        recording — the autoscale switch and the per-channel boxes — stand down while one is open
+        and return with the recording that reads them.
+
+        Args:
+            waveform: The voice to draw, or ``None`` while the tab holds a recording or nothing.
+        """
+        self._show_recording_controls(shown=waveform is None)
+        if waveform is None:
+            self._draw_ownership(self._ownership)
+            return
+
+        self._draw_ownership(OwnershipRibbonViewModel.empty())
+        self._frame_length = waveform.frame_length
+        self.waveform_display.load_voice_waveform(
+            waveform.audio,
+            name=waveform.name,
+            color=self._channel_colors.for_channel(waveform.channel_name),
+        )
+
+    def _show_recording_controls(self, *, shown: bool) -> None:
+        """Offers the switches that read a recording, which is what they have to describe."""
+        dpg_configure_item(self.autoscale_tag, show=shown)
+        dpg_configure_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_CHANNELS, show=shown)
 
     def load_waveform_data(
         self,
         waveform_data: WaveformData,
-        generators: List[GeneratorName],
+        generators: List[ChannelName],
     ) -> None:
         self._frame_length = waveform_data.frame_length
         self.waveform_display.load_waveform_data(waveform_data, generators)
@@ -106,13 +152,16 @@ class GUIReconstructionPlotPanel(GUIPanel):
     def update_waveform_data(
         self,
         waveform_data: WaveformData,
-        generators: List[GeneratorName],
+        generators: List[ChannelName],
+        *,
+        refit: bool = False,
     ) -> None:
-        self.waveform_display.update_waveform_data(waveform_data, generators)
+        self.waveform_display.update_waveform_data(waveform_data, generators, refit=refit)
 
     def clear_waveform(self) -> None:
         self._frame_length = None
         self.waveform_display.clear()
+        self.update_ownership(OwnershipRibbonViewModel.empty())
 
     def set_waveform_top_source(self, audio_source: AudioSourceType) -> None:
         self.waveform_display.set_top_source(audio_source)
@@ -150,23 +199,47 @@ class GUIReconstructionPlotPanel(GUIPanel):
             tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_RECONSTRUCTION_WAVEFORM,
             parent=self._body_container,
             layout=self._layout_graphs,
+            channel_colors=self._channel_colors,
             language_manager=self._language_manager,
             status_bar=self._status_bar,
         )
+        self.waveform_display.on_position_clicked = self._on_position_clicked
 
-    def _create_generator_checkboxes(self) -> None:
+    def _create_ownership_ribbon(self) -> None:
+        """The lanes naming the recording behind each stretch, painted in the waveform's own row."""
+        self.ownership_ribbon = GUIOwnershipRibbon(
+            plot_tags=self.waveform_display.lane_plot_tags,
+            y_axis_tags=self.waveform_display.lane_y_axis_tags,
+            layout=self._layout_graphs,
+            stem_colors=self._stem_colors,
+        )
+        self.ownership_ribbon.bind_theme()
+
+    def update_ownership(self, ribbon: OwnershipRibbonViewModel) -> None:
+        """Takes the lanes the open document answers for and paints them under its waveform."""
+        self._ownership = ribbon
+        self._draw_ownership(ribbon)
+
+    def _draw_ownership(self, ribbon: OwnershipRibbonViewModel) -> None:
+        """Paints the lanes and gives them the room they need under the waveform."""
+        self.ownership_ribbon.update_view(ribbon)
+        self.waveform_display.set_lane_heights(self.ownership_ribbon.lane_heights)
+
+    def _on_position_clicked(self, position: int) -> None:
+        self.call(self.on_position_clicked, position)
+
+    def _create_channel_checkboxes(self) -> None:
         generator_labels = {
-            generator_name: channel_label(self._language_manager, generator_name)
-            for generator_name in GeneratorName.items()
+            channel_name: channel_label(self._language_manager, channel_name) for channel_name in ChannelName.items()
         }
 
         with dpg.group(
-            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_GENERATORS,
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_CHANNELS,
             parent=self._body_container,
             horizontal=True,
         ):
-            for generator_name, label in generator_labels.items():
-                tag = self._get_generator_checkbox_tag(generator_name)
+            for channel_name, label in generator_labels.items():
+                tag = self._get_generator_checkbox_tag(channel_name)
                 dpg.add_checkbox(
                     label=label,
                     tag=tag,
@@ -177,7 +250,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
 
                 self._status_bar.bind_to_item(
                     tag,
-                    self._create_message_function_for_generator_checkbox(generator_name),
+                    self._create_message_function_for_generator_checkbox(channel_name),
                 )
 
     def _create_tooltips(self) -> None:
@@ -188,19 +261,19 @@ class GUIReconstructionPlotPanel(GUIPanel):
 
     def _create_message_function_for_generator_checkbox(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
     ) -> MessageCallback:
-        tag = self._get_generator_checkbox_tag(generator_name)
-        name = generator_name.capitalized
+        tag = self._get_generator_checkbox_tag(channel_name)
+        name = channel_name.capitalized
 
         def message_function(*_args: Any, **_kwargs: Any) -> str:
             if not dpg.is_item_enabled(tag):
                 return self._language_manager[
-                    "reconstructions.instruments.message.status_generator_not_available"
-                ].format(generator_name=name)
+                    "reconstructions.instruments.message.status_channel_not_available"
+                ].format(channel_name=name)
 
-            return self._language_manager["reconstructions.instruments.message.status_generator_toggle"].format(
-                generator_name=name,
+            return self._language_manager["reconstructions.instruments.message.status_channel_toggle"].format(
+                channel_name=name,
                 on_or_off=(
                     self._language_manager["global.dialog.template.off"]
                     if dpg.get_value(tag)
@@ -211,25 +284,25 @@ class GUIReconstructionPlotPanel(GUIPanel):
         return message_function
 
     @staticmethod
-    def _get_generator_checkbox_tag(generator_name: GeneratorName) -> str:
-        return compose_tag(PRE_RECONSTRUCTION_GENERATOR, generator_name.value)
+    def _get_generator_checkbox_tag(channel_name: ChannelName) -> str:
+        return compose_tag(PRE_RECONSTRUCTION_CHANNEL, channel_name.value)
 
-    def _read_selected_generators(self) -> List[GeneratorName]:
-        selected_generators: List[GeneratorName] = []
-        for generator_name in GeneratorName:
-            if dpg.get_value(self._get_generator_checkbox_tag(generator_name)):
-                selected_generators.append(generator_name)
+    def _read_selected_generators(self) -> List[ChannelName]:
+        selected_channels: List[ChannelName] = []
+        for channel_name in ChannelName:
+            if dpg.get_value(self._get_generator_checkbox_tag(channel_name)):
+                selected_channels.append(channel_name)
 
-        return selected_generators
+        return selected_channels
 
-    def toggle_generator(self, generator_name: GeneratorName) -> None:
-        """Switches one generator's slice in and out of the waveform and of what plays.
+    def toggle_channel(self, channel_name: ChannelName) -> None:
+        """Switches one channel's slice in and out of the waveform and of what plays.
 
-        This is the gesture a click on the generator's checkbox makes, reached by the key the
-        channel answers to. A generator the loaded reconstruction holds none of keeps the
+        This is the gesture a click on the channel's checkbox makes, reached by the key the
+        channel answers to. A channel the loaded reconstruction holds none of keeps the
         checkbox its disabled state already shows.
         """
-        tag = self._get_generator_checkbox_tag(generator_name)
+        tag = self._get_generator_checkbox_tag(channel_name)
         if not dpg.is_item_enabled(tag):
             return
 
@@ -237,8 +310,8 @@ class GUIReconstructionPlotPanel(GUIPanel):
         self._on_generator_checkbox_changed()
 
     def _on_generator_checkbox_changed(self) -> None:
-        selected_generators = self._read_selected_generators()
-        self.call(self.on_generators_changed, selected_generators)
+        selected_channels = self._read_selected_generators()
+        self.call(self.on_channels_changed, selected_channels)
 
     def _on_autoscale_changed(self, _sender: Sender, app_data: bool) -> None:
         self.waveform_display.set_autoscale(app_data)

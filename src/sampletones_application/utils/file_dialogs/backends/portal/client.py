@@ -130,7 +130,7 @@ class FileChooserClient:
 
     @staticmethod
     def _response_rule() -> MatchRule:
-        """Subscribes to the outcome of every portal request, each call recognising its own."""
+        """Subscribes to the outcome of every portal request, each call recognizing its own."""
         return MatchRule(
             type="signal",
             interface=REQUEST_INTERFACE,

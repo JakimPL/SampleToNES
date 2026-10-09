@@ -8,12 +8,13 @@ from sampletones_application.tags.general import (
     SUF_GROUP,
     SUF_HANDLER_REGISTRY,
     SUF_LABEL,
+    SUF_TOOLTIP,
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.gui.dpg import dpg_delete_item, dpg_set_value
-from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.hover import HoverWatch
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.palette.colors.base import BaseColor
@@ -22,6 +23,7 @@ from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import (
     DEFAULT_MAX_FILENAME_DISPLAY,
+    nearest_directory,
     open_path_in_explorer,
     shorten_filename,
     shorten_path,
@@ -66,6 +68,8 @@ class GUIPathText(CallbackMixin):
         self.label_tag = compose_tag(tag, SUF_LABEL)
         self.handler_tag = compose_tag(tag, SUF_HANDLER_REGISTRY)
         self.group_tag = compose_tag(tag, SUF_GROUP)
+        self.tooltip_tag = compose_tag(tag, SUF_TOOLTIP)
+        self._hover = HoverWatch(self._paint_hover)
 
         self._create_text()
         self._create_handler()
@@ -87,7 +91,7 @@ class GUIPathText(CallbackMixin):
             FontRegistry.bind_to_item(self.label_tag, self.font)
             FontRegistry.bind_to_item(self.tag, self.font)
 
-        self.tooltip = show_tooltip(self.tag, self.path_text)
+        self.tooltip = show_tooltip(self.tag, self.path_text, tag=self.tooltip_tag)
 
     @property
     def path_text(self) -> str:
@@ -107,21 +111,22 @@ class GUIPathText(CallbackMixin):
 
         with dpg.item_handler_registry(tag=self.handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_clicked)
-            dpg.add_item_hover_handler(callback=self._on_hover)
+            dpg.add_item_hover_handler(callback=self._hover.report)
 
         dpg.bind_item_handler_registry(self.tag, self.handler_tag)
 
-    def _on_hover(self) -> None:
-        if dpg.does_item_exist(self.tag):
-            if dpg.is_item_hovered(self.tag):
-                self._status_bar.set(self._status_message)
-                dpg_set_palette_color(self.tag, self.hover_color)
-                FrameCallbackManager.set_frame_callback(
-                    self._on_hover,
-                    2,
-                )
-            else:
-                dpg_set_palette_color(self.tag, self.color)
+    def _paint_hover(self) -> bool:
+        if not dpg.does_item_exist(self.tag):
+            return False
+
+        hovered = bool(dpg.is_item_hovered(self.tag))
+        if hovered:
+            self._status_bar.set(self._status_message)
+            dpg_set_palette_color(self.tag, self.hover_color)
+        else:
+            dpg_set_palette_color(self.tag, self.color)
+
+        return hovered
 
     def _on_clicked(self) -> None:
         if not self.path.exists():
@@ -144,9 +149,9 @@ class GUIPathText(CallbackMixin):
             dpg.set_value(self.tooltip, self.path_text)
 
     def set_status(self, text: str, color: BaseColor) -> None:
-        """Displays a non-path status (missing or not applicable) in a muted colour.
+        """Displays a non-path status (missing or not applicable) in a muted color.
 
-        The path is cleared so the row is inert: hovering holds the muted colour and a
+        The path is cleared so the row is inert: hovering holds the muted color and a
         click has nothing to open.
         """
         self.path = Path()
@@ -162,8 +167,15 @@ class GUIPathText(CallbackMixin):
         return self.path
 
     def destroy(self) -> None:
+        """Takes the whole widget away, the hover explanation among it.
+
+        DearPyGui keeps a tooltip beside the item it explains rather than inside it, so a
+        tooltip outliving its path would go on triggering off whatever moved into that place.
+        """
         dpg_delete_item(self.handler_tag)
+        dpg_delete_item(self.tooltip_tag)
         dpg_delete_item(self.tag)
+        dpg_delete_item(self.group_tag)
 
 
 class GUIDestinationPathText(GUIPathText):
@@ -186,8 +198,4 @@ class GUIDestinationPathText(GUIPathText):
         if self.path.exists():
             return self.path
 
-        for directory in self.path.parents:
-            if directory.is_dir():
-                return directory
-
-        return None
+        return nearest_directory(self.path)

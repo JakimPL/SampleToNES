@@ -1,0 +1,29 @@
+name: channel_pulse2_partial
+tag: global.theme.channel_pulse2_partial
+
+components:
+  - item_type: Checkbox
+    entries:
+      - type: color
+        key: FrameBg
+        value: .channel_pulse2_partial
+      - type: color
+        key: FrameBgHovered
+        value: .channel_pulse2_partial
+      - type: color
+        key: FrameBgActive
+        value: .channel_pulse2_partial
+      - type: color
+        key: CheckMark
+        value: .channel_pulse2_soft
+      - type: color
+        key: Text
+        value: .channel_pulse2_soft
+  - item_type: SliderFloat
+    entries:
+      - type: color
+        key: SliderGrab
+        value: .channel_pulse2_soft
+      - type: color
+        key: SliderGrabActive
+        value: .channel_pulse2

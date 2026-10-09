@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import re
 from enum import StrEnum
-from typing import Dict, Final, List, Literal
+from typing import AbstractSet, Dict, Final, FrozenSet, List, Literal
 
 
-class LibraryGeneratorName(StrEnum):
+class GeneratorName(StrEnum):
     PULSE = "pulse"
     TRIANGLE = "triangle"
     NOISE = "noise"
 
 
-class GeneratorName(StrEnum):
+class ChannelName(StrEnum):
     PULSE1 = "pulse1"
     PULSE2 = "pulse2"
     TRIANGLE = "triangle"
@@ -23,7 +23,7 @@ class GeneratorName(StrEnum):
         return spaced_value.capitalize()
 
     @classmethod
-    def items(cls) -> List[GeneratorName]:
+    def items(cls) -> List[ChannelName]:
         return [cls.PULSE1, cls.PULSE2, cls.TRIANGLE, cls.NOISE]
 
 
@@ -73,6 +73,11 @@ class SelectorName(StrEnum):
     VITERBI = "viterbi"
 
 
+class HierarchyMode(StrEnum):
+    ROUND_ROBIN = "round_robin"
+    STRICT = "strict"
+
+
 class SpectrumMethod(StrEnum):
     FFT = "fft"
     LOG_SPACED_FFT = "logfft"
@@ -84,28 +89,58 @@ class CQTWindow(StrEnum):
     RECTANGULAR = "rectangular"
 
 
-GENERATOR_ABBREVIATIONS: Final[Dict[GeneratorName, Literal["P", "p", "T", "N"]]] = {
-    GeneratorName.PULSE1: "P",
-    GeneratorName.PULSE2: "p",
-    GeneratorName.TRIANGLE: "T",
-    GeneratorName.NOISE: "N",
+ALL_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(ChannelName.items())
+
+PULSE_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(
+    {
+        ChannelName.PULSE1,
+        ChannelName.PULSE2,
+    }
+)
+
+TONE_CHANNELS: Final[FrozenSet[ChannelName]] = PULSE_CHANNELS | {ChannelName.TRIANGLE}
+
+
+CHANNEL_ABBREVIATIONS: Final[Dict[ChannelName, Literal["P", "p", "T", "N"]]] = {
+    ChannelName.PULSE1: "P",
+    ChannelName.PULSE2: "p",
+    ChannelName.TRIANGLE: "T",
+    ChannelName.NOISE: "N",
 }
 
 
-GENERATOR_ABBREVIATION_TO_NAME: Final[Dict[str, GeneratorName]] = {
-    abbreviation: name for name, abbreviation in GENERATOR_ABBREVIATIONS.items()
+CHANNEL_ABBREVIATION_TO_NAME: Final[Dict[str, ChannelName]] = {
+    abbreviation: name for name, abbreviation in CHANNEL_ABBREVIATIONS.items()
 }
 
 
-GENERATOR_ABBREVIATION_PATTERN: Final[str] = rf"^[{''.join(GENERATOR_ABBREVIATIONS.values())}]+$"
+CHANNEL_ABBREVIATION_PATTERN: Final[str] = rf"^[{''.join(CHANNEL_ABBREVIATIONS.values())}]+$"
 
 
-DEFAULT_GENERATORS: Final[List[GeneratorName]] = [
-    GeneratorName.PULSE1,
-    GeneratorName.TRIANGLE,
-    GeneratorName.NOISE,
+DEFAULT_CHANNELS: Final[List[ChannelName]] = [
+    ChannelName.PULSE1,
+    ChannelName.TRIANGLE,
+    ChannelName.NOISE,
 ]
 
 
-def abbreviate_generator_names(generator_names: List[GeneratorName]) -> str:
-    return "".join(GENERATOR_ABBREVIATIONS[name] for name in generator_names)
+def ordered_channels(channel_names: AbstractSet[ChannelName]) -> List[ChannelName]:
+    """``channel_names`` in the order the application names the channels.
+
+    A set states which channels something reaches; a run hands them out in one settled order, so
+    everything built from a set is put back into that order here.
+    """
+    return [name for name in ChannelName.items() if name in channel_names]
+
+
+def bending_channels(channel_names: List[ChannelName]) -> List[ChannelName]:
+    """Those of ``channel_names`` whose hardware loads a divider a bend can move.
+
+    A stem offered a set of channels carries every one of them that can be carried, which is what
+    a conversion does until a reader says otherwise.
+    """
+    return [name for name in channel_names if name in TONE_CHANNELS]
+
+
+def abbreviate_channel_names(channel_names: List[ChannelName]) -> str:
+    return "".join(CHANNEL_ABBREVIATIONS[name] for name in channel_names)

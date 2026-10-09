@@ -1,9 +1,7 @@
 from typing import ClassVar, Dict, List, Tuple, Union
 
-import numpy as np
-
 from sampletones_core.constants.enums import FeatureKey
-from sampletones_core.constants.general import MAX_VOLUME, MIN_PITCH
+from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.exporters.implementation.utils import center_pitch
 from sampletones_core.generators import GeneratorTypeUnion, TriangleGenerator
 from sampletones_core.instructions import (
@@ -11,46 +9,26 @@ from sampletones_core.instructions import (
     InstructionTypeUnion,
     TriangleInstruction,
 )
-from sampletones_core.types.feature import FeatureMap
-from sampletones_core.utils.frequencies import is_pitch_valid
+from sampletones_core.utils.frequencies import played_pitch
 
-from ..exporter import Exporter
+from ..tonal import TonalExporter
 
 
-class TriangleExporter(Exporter[TriangleInstruction]):
+class TriangleExporter(TonalExporter[TriangleInstruction]):
     _ATTRIBUTE_MAP: ClassVar[Dict[FeatureKey, InstructionFields]] = {
         FeatureKey.VOLUME: "volume",
         FeatureKey.ARPEGGIO: "pitch",
+        FeatureKey.PITCH: "detune",
+        FeatureKey.HI_PITCH: "coarse_detune",
     }
 
     @classmethod
     def extract_data(cls, instructions: List[TriangleInstruction]) -> Tuple[int, List[int], List[int]]:
-        initial_pitch = None
-
-        pitch = MIN_PITCH
-        volume = 0
-
-        pitches: List[int] = []
-        volumes: List[int] = []
-
-        for instruction in instructions:
-            if instruction.on:
-                if initial_pitch is None:
-                    initial_pitch = instruction.pitch
-                    pitches = [initial_pitch for _ in range(len(pitches))]
-
-                pitch = instruction.pitch
-                volume = MAX_VOLUME
-            else:
-                volume = 0
-
-            pitches.append(pitch)
-            volumes.append(volume)
-
-        if volume > 0:
+        initial_pitch, pitches = cls.read_pitches(instructions)
+        volumes = [MAX_VOLUME if instruction.on else 0 for instruction in instructions]
+        if volumes and volumes[-1] > 0:
             volumes.append(0)
 
-        initial_pitch = initial_pitch if initial_pitch is not None else MIN_PITCH
         return initial_pitch, pitches, volumes
 
     @classmethod
@@ -62,18 +40,17 @@ class TriangleExporter(Exporter[TriangleInstruction]):
         return center_pitch(first_pitch, pitches)
 
     @classmethod
-    def get_feature_map(
+    def read_envelopes(
         cls,
         instructions: List[TriangleInstruction],
         initial_pitch: int,
-    ) -> FeatureMap:
+    ) -> Dict[FeatureKey, Tuple[int, ...]]:
         _, pitches, volumes = cls.extract_data(instructions)
-        arpeggio = np.array(pitches) - initial_pitch
 
         return {
-            FeatureKey.INITIAL_PITCH: initial_pitch,
-            FeatureKey.VOLUME: np.array(volumes).astype(np.int8),
-            FeatureKey.ARPEGGIO: arpeggio.astype(np.int8),
+            FeatureKey.VOLUME: tuple(volumes),
+            FeatureKey.ARPEGGIO: tuple(pitch - initial_pitch for pitch in pitches),
+            **cls.read_bends(instructions),
         }
 
     @classmethod
@@ -82,13 +59,11 @@ class TriangleExporter(Exporter[TriangleInstruction]):
         dictionary: Dict[str, Union[bool, int]],
         initial_pitch: int,
     ) -> TriangleInstruction:
-        pitch = int(initial_pitch + dictionary[cls._ATTRIBUTE_MAP[FeatureKey.ARPEGGIO]])
-        if not is_pitch_valid(pitch):
-            return TriangleInstruction.null_instruction()
-
+        pitch = played_pitch(int(initial_pitch + dictionary[cls._ATTRIBUTE_MAP[FeatureKey.ARPEGGIO]]))
         return TriangleInstruction(
             on=cls._infer_instruction_on(dictionary),
             pitch=pitch,
+            **cls.bend_fields(dictionary),
         )
 
     @classmethod

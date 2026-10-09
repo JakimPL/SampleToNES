@@ -1,45 +1,46 @@
 # Getting started
 
-Two quick paths through _SampleToNES_: turning a sound into FamiTracker
-instruments, and building a whole song. Both assume it is already
-[installed](installation.md).
+This page shows two quick ways to start: turning a sound into FamiTracker instruments, and building
+a song. First, [install](installation.md) _SampleToNES_.
 
 ## Reconstruct a sound into FamiTracker instruments
 
 1. Launch the app and open the **Main** tab.
-2. In the **Filesystem** browser on the left, click an audio file (WAV, MP3,
-   FLAC, OGG, AIFF, or AU) — or a folder, to reconstruct every audio file inside it.
-3. Optionally choose which channels to use under **Reconstructor settings** and
-   adjust **General settings**. At least one generator must be enabled.
-4. Click **Convert sample** (or **Convert directory** for a folder). The first
-   time you use a given set of settings, the
-   [instruction library](../concepts/instruction-library.md) is built
-   automatically ("Generating instructions library..."), then the reconstruction
-   runs.
-5. When it finishes, click **Load** to open the result on the **Reconstructions**
-   tab.
-6. Choose **Reconstruction ▸ Export instruments ▸ FamiTracker instruments...** and
-   name the export. One `.fti` file is generated per instrument: `Kick (pulse1).fti`,
-   `Kick (triangle).fti`, and so on.
+2. In the **Filesystem** browser, double-click an audio file, for example `Kick.wav`. WAV, MP3, FLAC,
+   OGG, AIFF and AU files work. To reconstruct every audio file in a folder, Ctrl-click the folder
+   instead.
+3. Optional: click the recording in the list and check the channels it may use under **Source
+   settings**.
+4. Optional: change **General settings**, such as the sample rate.
+5. Click the button under **Output** to start the conversion. The first conversion takes longer.
+6. When it finishes, click **Load** to open the result on the **Reconstruction** tab.
+7. Choose **Reconstruction ▸ Export instruments ▸ FamiTracker instruments...** and name the export
+   `Kick`. The app writes one `.fti` file per channel: `Kick (pulse1).fti`, `Kick (triangle).fti`,
+   and so on.
+
+<div align="center">
+    <img src="../images/guide/converting/converter-done.webp" alt="The Converter card after a conversion, asking to load the result" width="910">
+</div>
 
 That is the shortest path from a sound to instruments you can load in FamiTracker.
-The [interface guide](interface.md) covers the **Main** and **Reconstructions**
-tabs in full.
+[Converting audio](converting.md) and [working with a
+reconstruction](reconstruction.md) cover the **Main** and **Reconstruction** tabs
+in full.
 
 ## Build a song and export a module
 
 1. Choose **File ▸ New project**. The app switches to the **Sequencer** tab.
 2. Have one or more reconstructions ready — make them as above, or open existing
    ones.
-3. Add each as a sample: in the Sequencer's **Reconstructions** browser on the
-   left, right-click a reconstruction and choose **Add to Sequencer**. If its NES
-   frequency differs from the project's, confirm with **Add anyway**.
-4. In the **Tracker** grid, click a cell and type notes on your keyboard; assign a
-   sample to a channel with the cell's right-click **Set instrument**.
-5. Arrange the piece in the **Order** grid, and set **Rows**, **Tempo**, **Speed**,
-   and **NES frequency** under **Module options**.
+3. Add each as a [sample](../glossary.md#sample-sequencer): in the Sequencer's **Browser**, right-click a
+   reconstruction and choose **Add to Sequencer**. If its NES frequency differs
+   from the project's, confirm with **Add anyway**.
+4. In the **Tracker** grid, click a cell and type notes on your keyboard. To
+   assign a sample to a channel, right-click a cell and choose **Set voice**.
+5. Arrange the piece in the [**Order**](../glossary.md#order) grid. Under **Module options**, set the song's length
+   and speed. See [timing](sequencer.md#timing-and-properties).
 6. Choose **File ▸ Export ▸ FamiTracker module...** and pick a path for the `.ftm`
-   file. **Bitphase project...** beside it writes the same song as a `.btp`.
+   file. **Bitphase project...** next to it writes the same song as a `.btp`.
 
-The [sequencer guide](sequencer.md) covers the tracker grid, the order, samples,
+The [sequencer guide](sequencer.md) covers the tracker grid, the order, voices,
 and undo history in full.

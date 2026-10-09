@@ -1,10 +1,9 @@
 # Projects
 
-A project gathers a set of reconstructions and arranges them into a song, saved
-as a single `.stp` file. It is what the sequencer works with, and what you hand
-over when you share a whole piece. See [Project](../concepts/project.md) for what a
-project is; this page documents the file. [Reconstructions](reconstructions.md)
-documents the individual samples it contains.
+A project gathers a set of voices and arranges them into a song, saved as a single `.stp` file. The
+sequencer works with it, and you hand it over to share a whole piece. See
+[Project](../concepts/project.md) for what a project is. This page documents the file.
+[Reconstructions](reconstructions.md) documents the converted audio a sample stands on.
 
 ## Structure
 
@@ -13,10 +12,11 @@ A `.stp` file is a zip archive with two kinds of member:
 * **`project.json`** — the project document (below).
 * **`reconstructions/<id>.stn`** — one [reconstruction](reconstructions.md) per
   sample, stored as its own `.stn` member and referenced from the document by its
-  id.
+  id. The archive deflates its members, so a member has the reconstruction's payload as it stands.
 
-Keeping the reconstructions in separate members lets `project.json` stay small
-while the larger audio data travels alongside it in the same archive.
+The reconstructions sit in separate members, so `project.json` stays small and the larger reconstruction data
+travels beside it in the same archive. An [instrument](../glossary.md#instrument) has no audio, so the
+document holds it whole.
 
 ### `project.json`
 
@@ -26,29 +26,56 @@ while the larger audio data travels alongside it in the same archive.
 | `metadata` | the application name and version (managed automatically) |
 | `info` | `title`, `author`, and `comment`, plus `created` and `modified` timestamps |
 | `settings` | the engine settings: `nes_frequency`, `sample_rate`, `tempo`, `speed`, and the metric highlights `first_highlight` and `second_highlight` |
-| `samples` | the song's samples — each an `id`, a `name`, and the `reconstruction_id` of its audio member |
+| `voices` | the song's voices, each told apart by its `kind` (below) |
 | `song` | the arrangement (below) |
+
+### `voices`
+
+Every voice carries an `id` and a `name`. The `kind` says what else it carries:
+
+| `kind` | Contents |
+| --- | --- |
+| `sample` | the `reconstruction_id` of its audio member |
+| `instrument` | its `envelopes` — `volume`, `arpeggio` and `duty_cycle` — and the `initial_pitch` and `initial_period` those values are measured against |
+
+Each envelope has its `items`, one per tick, and a `loop_point`: the item they repeat from while a note
+is held. It is `null` where the items play once and the last item holds for as long as the note sounds.
+See [loop point](../glossary.md#loop-point).
 
 ### `song`
 
 The arrangement across the four channels:
 
-* `rows_per_pattern` — the row count every pattern in the song shares;
-* `order` — the arrangement itself: an ordered list of frames, each frame mapping
-  every channel to the pattern index it plays, or empty for a silent slot;
-* `channels` — per channel, a pool of patterns, each pattern a list of rows
-  carrying the note, volume, and transpose data.
+| Field | Contents |
+| --- | --- |
+| `rows_per_pattern` | the row count every pattern in the song shares |
+| `order` | an ordered list of frames, each mapping every channel to the pattern index it plays, or empty for a silent slot |
+| `channels` | per channel, the `name` of the channel it drives and its pool of `patterns`, each pattern a list of rows |
+
+A row has the `command` its note column holds (the `voice_id` to start, or a note-off), its `pitch`
+and its `volume`. The channel a voice sounds on is the one whose pool has the row.
+
+A pitch states its `kind` and its `value`:
+
+| `kind` | `value` |
+| --- | --- |
+| `note` | the pitch the channel sounds, or the noise period on the noise channel |
+| `step` | the semitones from the voice's own reference, or the periods on the noise channel |
+
+A row stating no pitch leaves the field out.
 
 ## Detached reconstructions
 
-The reconstructions inside a project are
-[detached](reconstructions.md#detached-reconstructions) from their original
-source-audio paths, so a project stays portable — it carries everything it needs
-and no path that would only mean something on the author's machine.
+The reconstructions inside a project are [detached](reconstructions.md#detached-reconstructions) from
+their original source-audio paths. A project therefore stays portable: it has everything it needs and no
+path that means something only on the author's machine.
 
 ## Versioning
 
-`project.json` records the project format version it was written with. On load,
-_SampleToNES_ requires that version to match the one it supports and declines an
-incompatible file rather than misreading it. Unknown or extra fields within a
-matching version are ignored, which leaves room for the format to grow.
+`project.json` records the project format version it was written with. A file at the supported version
+loads as it stands. A file at an older version the upgrade chain reaches is migrated in memory to the
+current shape first. Any other file is declined for its version, before the rest of it is read. [Data compatibility](../development/release/compatibility.md)
+describes the chain. Unknown or extra fields within a matching version are ignored, which leaves room
+for the format to grow.
+
+The current format version is 1.1.

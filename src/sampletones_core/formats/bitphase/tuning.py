@@ -1,14 +1,17 @@
 import math
-from typing import Tuple
+from typing import Final, Tuple
 
 from sampletones_core.formats.bitphase.specification.chip import (
+    DEFAULT_A4_TUNING,
+    DEFAULT_CPU_FREQUENCY,
     MAX_TUNING_PERIOD,
     MIN_TUNING_PERIOD,
     TUNING_A4_INDEX,
     TUNING_PERIOD_DIVISOR,
     TUNING_TABLE_LENGTH,
 )
-from sampletones_core.formats.bitphase.specification.patterns import NOTE_RANGE
+from sampletones_core.formats.bitphase.specification.patterns import NOTE_INDEX_PITCH_OFFSET, NOTE_RANGE
+from sampletones_shared.music import Tuning
 
 
 def generate_tuning_table(
@@ -39,3 +42,24 @@ def generate_tuning_table(
         periods.append(max(MIN_TUNING_PERIOD, min(max_period, period)))
 
     return tuple(periods)
+
+
+def concert_frequency(tuning: Tuning) -> float:
+    """The frequency a song's concert-pitch index sounds at under a tuning.
+
+    A Bitphase song states its tuning as the frequency of the note at index 45, which is pitch 69,
+    so a tuning whose reference names another pitch is read out at that one.
+
+    Args:
+        tuning: Where concert pitch sits for the work being written.
+
+    Returns:
+        float: The frequency in Hz the song's ``a4TuningHz`` carries.
+    """
+    return tuning.frequency(TUNING_A4_INDEX + NOTE_INDEX_PITCH_OFFSET)
+
+
+DEFAULT_TUNING_TABLE: Final[Tuple[int, ...]] = generate_tuning_table(
+    DEFAULT_CPU_FREQUENCY,
+    a4_tuning=DEFAULT_A4_TUNING,
+)

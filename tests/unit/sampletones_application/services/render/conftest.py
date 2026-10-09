@@ -21,8 +21,8 @@ def wave_spec(sample_rate: int = SAMPLE_RATE) -> AudioOutputSpec:
 class FakeSynthesizer:
     """A kernel that renders a fixed number of identical rows, standing in for a song.
 
-    Each row is a constant level, so a normalising pass has a peak to find and a written file
-    can be checked sample by sample without modelling a generator.
+    Each row is a constant level, so a normalizing pass has a peak to find and a written file
+    can be checked sample by sample without modeling a generator.
     """
 
     def __init__(

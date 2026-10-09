@@ -1,54 +1,52 @@
 # Where your files live
 
-_SampleToNES_ keeps your work in a **SampleToNES** folder inside your documents
-folder:
+_SampleToNES_ saves your work in a **SampleToNES** folder inside your documents folder:
 
 - Windows: `C:\Users\<you>\Documents\SampleToNES`
 - macOS: `/Users/<you>/Documents/SampleToNES`
 - Linux: `/home/<you>/Documents/SampleToNES`
 
-Inside it:
+The folder contains:
 
-- `instructions/` — the generated [instruction libraries](../formats/instruction-libraries.md) (`.ins`)
-- `reconstructions/` — saved [reconstructions](../formats/reconstructions.md) (`.stn`)
-- `projects/` — saved [projects](../formats/projects.md) (`.stp`)
-- `config.json` — your generation [configuration](configuration.md)
+- `instructions/`: your [instruction libraries](../formats/instruction-libraries.md) (`.ins`)
+- `reconstructions/`: your [reconstructions](../formats/reconstructions.md) (`.stn`)
+- `projects/`: your [projects](../formats/projects.md) (`.stp`)
+- `config.json`: your [configuration](configuration.md)
 
-You can point the library and output folders elsewhere from the **Main** tab's
-**Advanced settings**, or from the right-click menu in its **Filesystem** browser.
+To use other folders for libraries and reconstructions, open **Advanced settings** on the **Main**
+tab, or right-click in the **Filesystem** browser.
 
 ## File types
 
-| Type | What it is | Where it lives |
-| --- | --- | --- |
-| `.ins` | [instruction library](../formats/instruction-libraries.md) | `instructions/` |
-| `.stn` | [reconstruction](../formats/reconstructions.md) | `reconstructions/` |
-| `.stp` | [project](../formats/projects.md) | `projects/` |
-| `.fti` | FamiTracker instrument (exported) | wherever you choose |
-| `.ftm` | FamiTracker module (exported) | wherever you choose |
-| `.json` | Bitphase instrument preset (exported) | wherever you choose |
-| `.btp` | Bitphase project (exported) | wherever you choose |
+| Type | What it is |
+| --- | --- |
+| `.ins` | [instruction library](../formats/instruction-libraries.md) |
+| `.stn` | [reconstruction](../formats/reconstructions.md) |
+| `.stp` | [project](../formats/projects.md) |
+| `.fti` | [FamiTracker instrument](../formats/famitracker.md) |
+| `.ftm` | [FamiTracker module](../formats/famitracker.md) |
+| `.json` | [Bitphase instrument preset](../formats/bitphase.md) |
+| `.btp` | [Bitphase project](../formats/bitphase.md) |
+| `.nsf` | [NSF program](../formats/nsf.md) |
 
-The `.fti` and `.ftm` files are what you load into
-[FamiTracker](../formats/famitracker.md), and `.json` and `.btp` are what
-[Bitphase](../formats/bitphase.md) reads; the rest are _SampleToNES_'s own formats.
+The first three are your own work, saved in the folders above. The rest are exports, and the save
+dialog asks where each one goes. [FamiTracker](../formats/famitracker.md) opens `.fti` and `.ftm`,
+[Bitphase](../formats/bitphase.md) opens `.json` and `.btp`, and an `.nsf` plays in an NSF player or
+on a NES.
 
-## Exported files
+## Naming exported files
 
-The extension names the tracker an export is written for: `.fti` and `.ftm` go to
-FamiTracker, `.json` and `.btp` to Bitphase. The save dialog offers the file types
-that fit what you are exporting and fills in the extension of the type it is set to.
-Exporting one channel offers both trackers, so switching the type there switches the
-tracker; typing an extension yourself picks the tracker directly.
+The save dialog lists the file types that fit your export, and adds the extension of the type you
+pick. When you export one channel, the dialog lists all three instrument types, so you can choose the
+program the file is for.
 
-What you name in the dialog also names what a tracker lists:
+The name you type also names the instrument in the tracker. What the app saves depends on the export:
 
-| Export | You name | What is written |
-| --- | --- | --- |
-| **Instruments** panel ▸ **Export instrument...** | the file | that file, its instrument carrying the name you gave |
-| **Reconstruction ▸ Export instruments** | the batch | one file per channel beside that name, each named `<name> (channel)` |
-| **File ▸ Export** | the file | that file, holding the whole song |
+- **Export instrument...** in the **Instruments** panel saves one file. The name you type is the file's
+  name, and the instrument inside it has the same name.
+- **Reconstruction ▸ Export instruments** saves one file per channel, each named `<name> (channel)`.
+- **File ▸ Export** saves one file with the whole song.
 
-So exporting a `Kick` reconstruction to FamiTracker instruments writes
-`Kick (pulse1).fti`, `Kick (triangle).fti`, and one file for every other channel the
-reconstruction uses, all in the folder you chose.
+For example, exporting a reconstruction named `Kick` to FamiTracker instruments saves
+`Kick (pulse1).fti`, `Kick (triangle).fti`, and one file for each other channel the reconstruction
+uses.

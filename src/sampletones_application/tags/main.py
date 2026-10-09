@@ -1,5 +1,6 @@
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key.tag import TagName
+from sampletones_application.tags.compose import compose_tag
 
 TAG_MAIN_CONFIG_PANEL_CONFIG_CELL = TagName(
     Page.MAIN,
@@ -13,11 +14,11 @@ TAG_MAIN_CONFIG_TABLE_CONFIG_ROW = TagName(
     Widget.TABLE,
     "config_row",
 )
-TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL = TagName(
+TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL = TagName(
     Page.MAIN,
-    Panel.RECONSTRUCTOR,
+    Panel.ADVANCED,
     Widget.PANEL,
-    "reconstructor_cell",
+    "advanced_cell",
 )
 TAG_MAIN_EXPLORER_TREE = TagName(
     Page.MAIN,
@@ -49,11 +50,11 @@ TAG_MAIN_EXPLORER_GROUP_CONTROLS = TagName(
     Widget.GROUP,
     "controls",
 )
-TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING = TagName(
+TAG_MAIN_EXPLORER_DIALOG_NOTHING_BELOW = TagName(
     Page.MAIN,
     Panel.EXPLORER,
     Widget.DIALOG,
-    "converter_running",
+    "nothing_below",
 )
 TAG_MAIN_EXPLORER_BUTTON_REFRESH = TagName(
     Page.MAIN,
@@ -91,17 +92,11 @@ TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY = TagName(
     Widget.INPUT,
     "nes_frequency",
 )
-TAG_MAIN_RECONSTRUCTOR_PANEL = TagName(
+TAG_MAIN_SOURCE_PANEL = TagName(
     Page.MAIN,
-    Panel.RECONSTRUCTOR,
+    Panel.SOURCE,
     Widget.PANEL,
-    "reconstructor",
-)
-TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE = TagName(
-    Page.MAIN,
-    Panel.RECONSTRUCTOR,
-    Widget.SLIDER,
-    "drive",
+    "source",
 )
 TAG_MAIN_ADVANCED_PANEL = TagName(
     Page.MAIN,
@@ -229,23 +224,174 @@ TAG_MAIN_CONVERTER_TOOLTIP_CONVERT = TagName(
     Widget.TOOLTIP,
     "convert",
 )
-TAG_MAIN_CONVERTER_WINDOW_SUMMARY = TagName(
-    Page.MAIN,
-    Panel.CONVERTER,
-    Widget.WINDOW,
-    "summary",
-)
 TAG_MAIN_CONVERTER_GROUP_SUMMARY = TagName(
     Page.MAIN,
     Panel.CONVERTER,
     Widget.GROUP,
     "summary",
 )
-TAG_MAIN_CONVERTER_TEXT_SUMMARY_HINT = TagName(
+
+PRE_MAIN_SOURCE_CHANNEL = compose_tag(
+    Page.MAIN,
+    Panel.SOURCE,
+    "channel",
+)
+PRE_MAIN_SOURCE_STEP = compose_tag(
+    Page.MAIN,
+    Panel.SOURCE,
+    "step",
+)
+TAG_MAIN_SOURCE_TEXT_SUBJECT = TagName(
+    Page.MAIN,
+    Panel.SOURCE,
+    Widget.TEXT,
+    "subject",
+)
+TAG_MAIN_SOURCE_TOOLTIP_SUBJECT = TagName(
+    Page.MAIN,
+    Panel.SOURCE,
+    Widget.TOOLTIP,
+    "subject",
+)
+TAG_MAIN_SOURCE_TABLE_CHANNELS = TagName(
+    Page.MAIN,
+    Panel.SOURCE,
+    Widget.TABLE,
+    "channels",
+)
+TAG_MAIN_SOURCE_GROUP_STEPS = TagName(
+    Page.MAIN,
+    Panel.SOURCE,
+    Widget.GROUP,
+    "steps",
+)
+TAG_MAIN_CONVERTER_RADIO_MODE = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.RADIO,
+    "mode",
+)
+TAG_MAIN_CONVERTER_GROUP_ORDER = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.GROUP,
+    "order",
+)
+TAG_MAIN_CONVERTER_GROUP_INPUT = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.GROUP,
+    "input",
+)
+TAG_MAIN_CONVERTER_COMBO_HIERARCHY_MODE = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.COMBO,
+    "hierarchy_mode",
+)
+TAG_MAIN_CONVERTER_TOOLTIP_MODE = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.TOOLTIP,
+    "mode",
+)
+TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.TOOLTIP,
+    "hierarchy_mode",
+)
+TAG_MAIN_CONVERTER_WINDOW_STEMS = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.WINDOW,
+    "stems",
+)
+TAG_MAIN_CONVERTER_TEXT_STEMS_HINT = TagName(
     Page.MAIN,
     Panel.CONVERTER,
     Widget.TEXT,
-    "summary_hint",
+    "stems_hint",
 )
-
-PRE_MAIN_RECONSTRUCTOR_GENERATOR = "gen"
+TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.DIALOG,
+    "discard_stems",
+)
+TAG_MAIN_CONVERTER_DIALOG_CONVERSION_RUNNING = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.DIALOG,
+    "conversion_running",
+)
+TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.DIALOG,
+    "overwrite_target",
+)
+TAG_MAIN_CONVERTER_WINDOW_SCAN = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.WINDOW,
+    "scan",
+)
+TAG_MAIN_CONVERTER_TEXT_SCAN_FOLDER = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.TEXT,
+    "scan_folder",
+)
+TAG_MAIN_CONVERTER_PROGRESS_SCAN = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.PROGRESS,
+    "scan",
+)
+TAG_MAIN_CONVERTER_BUTTON_STOP_SCAN = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.BUTTON,
+    "stop_scan",
+)
+TAG_MAIN_CONVERTER_WINDOW_STEM_SELECTION = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.WINDOW,
+    "stem_selection",
+)
+TAG_MAIN_CONVERTER_TEXT_STEM_SELECTION_LIMIT = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.TEXT,
+    "stem_selection_limit",
+)
+TAG_MAIN_CONVERTER_GROUP_STEM_SELECTION = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.GROUP,
+    "stem_selection",
+)
+TAG_MAIN_CONVERTER_BUTTON_ADD_STEMS = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.BUTTON,
+    "add_stems",
+)
+TAG_MAIN_CONVERTER_BUTTON_CANCEL_STEMS = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.BUTTON,
+    "cancel_stems",
+)
+PRE_MAIN_CONVERTER_STEMS = compose_tag(
+    Page.MAIN,
+    Panel.CONVERTER,
+    "stems",
+)
+PRE_MAIN_CONVERTER_CANDIDATE = compose_tag(
+    Page.MAIN,
+    Panel.CONVERTER,
+    "candidate",
+)

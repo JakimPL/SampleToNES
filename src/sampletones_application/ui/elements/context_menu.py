@@ -1,14 +1,18 @@
 import contextlib
+from pathlib import Path
 from typing import Iterator, Optional, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.tags.general import TAG_GLOBAL_CONTEXT_WINDOW
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.utils.gui.palette.dpg import dpg_set_palette_color
 from sampletones_application.utils.gui.tooltip import show_tooltip
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.utils.system.paths import open_path_in_explorer
 
 
 @contextlib.contextmanager
@@ -17,22 +21,49 @@ def context_menu() -> Iterator[None]:
 
     Every panel's context menu shares this popup style, so routing them through one
     builder keeps them from drifting apart.
+
+    One context menu stands open at a time, so the application holds a single popup and builds
+    each menu into it: the items of the menu before go with the widgets and closures they held, and
+    the popup opens again at the pointer. A menu raised while another stands open takes its place in
+    the popup already shown.
     """
-    with dpg.window(
-        popup=True,
-        no_move=True,
-        no_resize=True,
-        no_title_bar=True,
-        min_size=(0, 0),
-        modal=False,
-    ):
+    if dpg.does_item_exist(TAG_GLOBAL_CONTEXT_WINDOW):
+        dpg.delete_item(TAG_GLOBAL_CONTEXT_WINDOW, children_only=True)
+        dpg.configure_item(TAG_GLOBAL_CONTEXT_WINDOW, show=True)
+    else:
+        dpg.add_window(
+            tag=TAG_GLOBAL_CONTEXT_WINDOW,
+            popup=True,
+            no_move=True,
+            no_resize=True,
+            no_title_bar=True,
+            min_size=(0, 0),
+            modal=False,
+        )
+
+    dpg.push_container_stack(TAG_GLOBAL_CONTEXT_WINDOW)
+    try:
         yield
+    finally:
+        dpg.pop_container_stack()
+
+
+def context_menu_under_pointer() -> bool:
+    """Whether a context menu stands open under the pointer, which a press over the panel below
+    it leaves to the menu."""
+    return bool(
+        dpg.does_item_exist(TAG_GLOBAL_CONTEXT_WINDOW)
+        and dpg.is_item_shown(TAG_GLOBAL_CONTEXT_WINDOW)
+        and dpg.is_item_hovered(TAG_GLOBAL_CONTEXT_WINDOW)
+    )
 
 
 def add_play_menu_item(
     label: str,
     on_play: VoidCallback,
     shortcut: str = "",
+    *,
+    enabled: bool = True,
 ) -> None:
     """Add the shared "Play" context-menu item; the caller supplies the play action.
 
@@ -41,12 +72,14 @@ def add_play_menu_item(
     them all through one builder keeps the item from drifting apart across panels.
 
     ``shortcut`` is shown as the item's accelerator hint when the action has a bound key,
-    and left blank for sources reached only by clicking.
+    and left blank for sources reached only by clicking. ``enabled`` states that the source is
+    there to be heard, which a caller listing files answers from the disk.
     """
     dpg.add_menu_item(
         label=label,
         shortcut=shortcut,
         callback=on_play,
+        enabled=enabled,
     )
 
 
@@ -78,3 +111,28 @@ def add_detail_items(
         FontRegistry.bind_to_item(detail_text, Font.MONO_SMALL)
         if tooltip is not None:
             show_tooltip(detail_text, tooltip)
+
+
+def add_path_menu_items(
+    language_manager: LanguageManager,
+    path: Path,
+) -> None:
+    """Add the shared block of filesystem actions for ``path`` to the context menu being built.
+
+    Every menu naming something on disk offers the same three: the name and the full path to the
+    clipboard, and the file revealed in the file manager. Routing the file browsers and the
+    converter's gathered recordings through one builder keeps them reading alike.
+    """
+    dpg.add_separator()
+    dpg.add_menu_item(
+        label=language_manager["global.context.label.copy_filename"],
+        callback=lambda: dpg.set_clipboard_text(str(path.name)),
+    )
+    dpg.add_menu_item(
+        label=language_manager["global.context.label.copy_path"],
+        callback=lambda: dpg.set_clipboard_text(str(path)),
+    )
+    dpg.add_menu_item(
+        label=language_manager["global.context.label.open_in_explorer"],
+        callback=lambda: open_path_in_explorer(path),
+    )

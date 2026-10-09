@@ -1,8 +1,8 @@
 from typing import Dict
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.generators.maps import GENERATOR_CLASSES
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.generators.maps import CHANNEL_CLASSES
 from sampletones_core.timing import TickClock
 
 from ..protocol import ChannelGeneratorProtocol
@@ -23,9 +23,9 @@ class ChannelBank:
         self._config = config
         self._rates = rates
         self._clock: TickClock = rates.clock()
-        self._states: Dict[GeneratorName, ChannelState] = {
-            generator_name: ChannelState(generator=generator)
-            for generator_name, generator in self._build_generators(rates).items()
+        self._states: Dict[ChannelName, ChannelState] = {
+            channel_name: ChannelState(generator=generator)
+            for channel_name, generator in self._build_generators(rates).items()
         }
 
     @property
@@ -33,9 +33,9 @@ class ChannelBank:
         """The samples each tick spans at the rates in force."""
         return self._clock
 
-    def state(self, generator_name: GeneratorName) -> ChannelState:
-        """What ``generator_name`` carries from row to row."""
-        return self._states[generator_name]
+    def state(self, channel_name: ChannelName) -> ChannelState:
+        """What ``channel_name`` carries from row to row."""
+        return self._states[channel_name]
 
     def reset(self) -> None:
         """Returns every channel to silence at full volume, as a song starts them."""
@@ -63,20 +63,20 @@ class ChannelBank:
 
         self._rates = rates
         self._clock = rates.clock()
-        for generator_name, generator in self._build_generators(rates).items():
-            self._states[generator_name].generator = generator
+        for channel_name, generator in self._build_generators(rates).items():
+            self._states[channel_name].generator = generator
 
     def _build_generators(
         self,
         rates: EngineRates,
-    ) -> Dict[GeneratorName, ChannelGeneratorProtocol]:
+    ) -> Dict[ChannelName, ChannelGeneratorProtocol]:
         config = self._engine_config(rates)
         return {
-            generator_name: GENERATOR_CLASSES[generator_name](
+            channel_name: CHANNEL_CLASSES[channel_name](
                 config,
-                generator_name.value,
+                channel_name.value,
             )
-            for generator_name in GeneratorName.items()
+            for channel_name in ChannelName.items()
         }
 
     def _engine_config(self, rates: EngineRates) -> Config:

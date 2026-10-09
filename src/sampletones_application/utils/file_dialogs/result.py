@@ -43,11 +43,11 @@ def ignore_none_path(
         Callable[Concatenate[T, Optional[Path], P], R],
     ],
 ]:
-    """Wraps a path handler so a cancelled dialog resolves to ``default``.
+    """Wraps a path handler so a canceled dialog resolves to ``default``.
 
     Applied bare (``@ignore_none_path``) the wrapped method runs with the selected ``Path`` and
-    yields ``None`` when the dialog was cancelled. Applied with a ``default``
-    (``@ignore_none_path(default=...)``) the cancelled case yields that value instead, so a handler
+    yields ``None`` when the dialog was canceled. Applied with a ``default``
+    (``@ignore_none_path(default=...)``) the canceled case yields that value instead, so a handler
     that reports an outcome — such as a save returning whether it wrote — carries a truthful result
     through the cancellation. Each handler body runs only with a real path.
     """

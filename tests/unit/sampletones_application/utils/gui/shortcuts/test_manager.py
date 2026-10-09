@@ -95,6 +95,29 @@ class TestShortcutDispatch:
         callback.assert_not_called()
 
 
+class TestShortcutLookup:
+    """A reader outside the dispatch asks the manager which keys an action answers to."""
+
+    def test_the_binding_read_is_the_one_the_scheme_gives(self, source: ShortcutSource) -> None:
+        manager = _manager(source, ShortcutId.SAVE_PROJECT, Mock())
+
+        shortcut = manager.shortcut(ShortcutId.SAVE_PROJECT)
+
+        assert shortcut == source.shortcut(ShortcutId.SAVE_PROJECT)
+
+    def test_the_binding_read_follows_a_rebind(
+        self,
+        source: ShortcutSource,
+        rebound: RebindScheme,
+    ) -> None:
+        manager = _manager(source, ShortcutId.SAVE_PROJECT, Mock())
+
+        source.activate(rebound({ShortcutId.SAVE_PROJECT: WrittenShortcut(combination="Ctrl+Alt+K")}))
+        manager.rebind()
+
+        assert manager.shortcut(ShortcutId.SAVE_PROJECT).matches(_event(dpg.mvKey_K, modifiers=CTRL_ALT))
+
+
 class TestRebind:
     """A registration names the action, so activating another scheme changes the keys that fire it."""
 

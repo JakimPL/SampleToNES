@@ -1,7 +1,7 @@
 import os
 import subprocess
 from pathlib import Path
-from typing import Final, Optional
+from typing import Final, Optional, Sequence, Tuple, Union
 
 from sampletones_shared.types.path import GeneralPathlike, Pathlike
 
@@ -47,6 +47,23 @@ def to_path(path: GeneralPathlike) -> Path:
         raise TypeError(f"Expected path to be str or Path, got {type(path)}")
 
     return Path(path)
+
+
+def is_same_path(first: Path, second: Path) -> bool:
+    """
+    Whether two paths name the same location, however each of them is spelled.
+
+    A file is reached through a relative path, a detour through a parent, or a link, and each
+    spelling resolves to the one absolute location compared here. The file itself may be absent.
+
+    Args:
+        first (Path): One spelling of a location.
+        second (Path): Another spelling to compare it with.
+
+    Returns:
+        bool: Whether both resolve to the same location.
+    """
+    return first.resolve() == second.resolve()
 
 
 def get_filename(name: str, extension: str) -> str:
@@ -196,6 +213,73 @@ def get_directory(path: Pathlike) -> Path:
     """
     path = to_path(path)
     return path if path.is_dir() else path.parent
+
+
+def nearest_directory(path: Path) -> Optional[Path]:
+    """
+    Returns the directory standing closest to a path: the path itself, or the nearest one above it.
+
+    A location remembered from an earlier session may have gone from the disk since, and the
+    closest folder still standing on its way is the one that keeps the reader nearest to it.
+
+    Args:
+        path: The location to begin from.
+
+    Returns:
+        Optional[Path]: The nearest standing directory, or ``None`` when no directory on the path
+            stands, as for a drive that is gone.
+    """
+    for directory in (path, *path.parents):
+        if directory.is_dir():
+            return directory
+
+    return None
+
+
+def to_paths(
+    location: Optional[Union[Pathlike, Tuple[Pathlike, ...]]],
+) -> Tuple[Path, ...]:
+    """
+    Returns the recorded location as a tuple of paths.
+
+    One path becomes a one-tuple, several paths stay as they are, and an absent
+    location becomes an empty tuple — one shape for every form a recorded source
+    takes.
+
+    Args:
+        location: The recorded location, or ``None``.
+
+    Returns:
+        Tuple[Path, ...]: The paths in order, empty for an absent location.
+    """
+    if location is None:
+        return ()
+
+    if isinstance(location, (str, Path, os.PathLike)):
+        return (to_path(location),)
+
+    return tuple(to_path(path) for path in location)
+
+
+def first_missing(paths: Sequence[Pathlike]) -> Optional[Path]:
+    """
+    Returns the first path that names no file on disk, preserving the given order.
+
+    Answers ``None`` when every path stands. The order matters to callers that report
+    one missing location among several.
+
+    Args:
+        paths: The paths to check, in report order.
+
+    Returns:
+        Optional[Path]: The first absent path, or ``None`` when every path stands.
+    """
+    for path in paths:
+        normalized = to_path(path)
+        if not normalized.exists():
+            return normalized
+
+    return None
 
 
 def open_directory_in_explorer_linux(path: Path) -> None:

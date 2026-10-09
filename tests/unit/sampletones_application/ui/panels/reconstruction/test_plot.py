@@ -1,22 +1,46 @@
 from dataclasses import dataclass
-from typing import Dict, FrozenSet, List
+from types import SimpleNamespace
+from typing import Any, Dict, FrozenSet, List
+from unittest.mock import MagicMock
 
+import numpy as np
 import pytest
 
+from sampletones_application.layout.general.colors.channel import ChannelColors
+from sampletones_application.layout.loader import load_layout_config
+from sampletones_application.paths import BEHAVIOR_DIRECTORY, LAYOUT_DIRECTORY, PALETTES_DIRECTORY
+from sampletones_application.tags.reconstructions import (
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_CHANNELS,
+)
 from sampletones_application.ui.panels.reconstruction import plot as plot_module
 from sampletones_application.ui.panels.reconstruction.plot import (
     GUIReconstructionPlotPanel,
 )
-from sampletones_application.view_model.reconstruction.reconstruction import (
-    ReconstructionPathState,
+from sampletones_application.utils.palette.catalog import PaletteCatalog
+from sampletones_application.utils.palette.colors.written import LiteralColor
+from sampletones_application.utils.palette.source import PaletteSource
+from sampletones_application.view_model.reconstruction.paths.path import (
     ReconstructionPathViewModel,
+)
+from sampletones_application.view_model.reconstruction.paths.state import (
+    ReconstructionPathState,
+)
+from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_application.view_model.reconstruction.waveform import (
+    InstrumentWaveformViewModel,
+)
+from sampletones_application.view_model.shared.ownership import (
+    OwnershipLaneViewModel,
+    OwnershipRibbonViewModel,
+    OwnershipRunViewModel,
+)
+from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
-ALL_GENERATORS = frozenset(GeneratorName)
+ALL_CHANNELS = frozenset(ChannelName)
 
 
 class StubTheme:
@@ -31,19 +55,19 @@ class StubTheme:
 
 
 class Harness:
-    """The panel over its generator checkboxes, each shown or disabled as a reconstruction leaves
+    """The panel over its channel checkboxes, each shown or disabled as a reconstruction leaves
     it."""
 
     def __init__(
         self,
         *,
-        selected: FrozenSet[GeneratorName],
-        available: FrozenSet[GeneratorName],
+        selected: FrozenSet[ChannelName],
+        available: FrozenSet[ChannelName],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        self.values: Dict[str, bool] = {self._tag(generator): generator in selected for generator in GeneratorName}
-        self.enabled: Dict[str, bool] = {self._tag(generator): generator in available for generator in GeneratorName}
-        self.reported: List[List[GeneratorName]] = []
+        self.values: Dict[str, bool] = {self._tag(channel): channel in selected for channel in ChannelName}
+        self.enabled: Dict[str, bool] = {self._tag(channel): channel in available for channel in ChannelName}
+        self.reported: List[List[ChannelName]] = []
         self.bound_themes: Dict[str, str] = {}
 
         monkeypatch.setattr(plot_module.dpg, "get_value", self.values.__getitem__)
@@ -58,38 +82,40 @@ class Harness:
         )
 
         self.panel = GUIReconstructionPlotPanel.__new__(GUIReconstructionPlotPanel)
-        self.panel.on_generators_changed = self.reported.append
+        self.panel.on_channels_changed = self.reported.append
 
     def _configure(self, tag: str, *, enabled: bool, default_value: bool) -> None:
         self.enabled[tag] = enabled
         self.values[tag] = default_value
 
     @staticmethod
-    def _tag(generator: GeneratorName) -> str:
-        return GUIReconstructionPlotPanel._get_generator_checkbox_tag(generator)
+    def _tag(channel: ChannelName) -> str:
+        return GUIReconstructionPlotPanel._get_generator_checkbox_tag(channel)
 
-    def offered(self) -> FrozenSet[GeneratorName]:
-        return frozenset(generator for generator in GeneratorName if self.enabled[self._tag(generator)])
+    def offered(self) -> FrozenSet[ChannelName]:
+        return frozenset(channel for channel in ChannelName if self.enabled[self._tag(channel)])
 
-    def selected(self) -> FrozenSet[GeneratorName]:
-        return frozenset(generator for generator in GeneratorName if self.values[self._tag(generator)])
+    def selected(self) -> FrozenSet[ChannelName]:
+        return frozenset(channel for channel in ChannelName if self.values[self._tag(channel)])
 
 
 def _view_model(
-    playing: FrozenSet[GeneratorName],
-    selected: FrozenSet[GeneratorName],
+    playing: FrozenSet[ChannelName],
+    selected: FrozenSet[ChannelName],
 ) -> ReconstructionViewModel:
-    empty_path = ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, path="")
+    empty_path = ReconstructionPathViewModel(state=ReconstructionPathState.EMPTY, paths=())
     return ReconstructionViewModel(
         reconstruction_loaded=True,
-        playing_generators=playing,
-        selected_generators=selected,
+        playing_channels=playing,
+        selected_channels=selected,
         reconstruction_file=empty_path,
         original_audio=empty_path,
+        nes_frequency=None,
+        rate_lock=None,
     )
 
 
-class TestGeneratorCheckboxes:
+class TestChannelCheckboxes:
     """The checkboxes offer the channels that play and tick the ones the reader keeps on."""
 
     def test_a_channel_that_plays_is_offered(
@@ -97,7 +123,7 @@ class TestGeneratorCheckboxes:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         harness = Harness(selected=frozenset(), available=frozenset(), monkeypatch=monkeypatch)
-        playing = frozenset({GeneratorName.PULSE1, GeneratorName.NOISE})
+        playing = frozenset({ChannelName.PULSE1, ChannelName.NOISE})
 
         harness.panel.update_view(_view_model(playing, playing))
 
@@ -109,69 +135,69 @@ class TestGeneratorCheckboxes:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """An edit reports the view again, and the report carries the reader's choice."""
-        harness = Harness(selected=ALL_GENERATORS, available=ALL_GENERATORS, monkeypatch=monkeypatch)
-        playing = frozenset({GeneratorName.PULSE1, GeneratorName.NOISE})
+        harness = Harness(selected=ALL_CHANNELS, available=ALL_CHANNELS, monkeypatch=monkeypatch)
+        playing = frozenset({ChannelName.PULSE1, ChannelName.NOISE})
 
-        harness.panel.update_view(_view_model(playing, frozenset({GeneratorName.NOISE})))
+        harness.panel.update_view(_view_model(playing, frozenset({ChannelName.NOISE})))
 
         assert harness.offered() == playing
-        assert harness.selected() == frozenset({GeneratorName.NOISE})
+        assert harness.selected() == frozenset({ChannelName.NOISE})
 
     def test_a_channel_standing_by_is_left_unticked(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        harness = Harness(selected=ALL_GENERATORS, available=ALL_GENERATORS, monkeypatch=monkeypatch)
-        playing = frozenset({GeneratorName.PULSE1})
+        harness = Harness(selected=ALL_CHANNELS, available=ALL_CHANNELS, monkeypatch=monkeypatch)
+        playing = frozenset({ChannelName.PULSE1})
 
         harness.panel.update_view(_view_model(playing, playing))
 
         assert harness.selected() == playing
-        assert GeneratorName.PULSE2 not in harness.offered()
+        assert ChannelName.PULSE2 not in harness.offered()
 
     def test_a_channel_that_plays_carries_its_own_tint(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         harness = Harness(selected=frozenset(), available=frozenset(), monkeypatch=monkeypatch)
-        playing = frozenset({GeneratorName.TRIANGLE})
+        playing = frozenset({ChannelName.TRIANGLE})
 
         harness.panel.update_view(_view_model(playing, playing))
 
-        assert set(harness.bound_themes) == {Harness._tag(GeneratorName.TRIANGLE)}
+        assert set(harness.bound_themes) == {Harness._tag(ChannelName.TRIANGLE)}
 
 
-class TestToggleGenerator(BaseTestSuite):
+class TestToggleChannel(BaseTestSuite):
     """The key a channel answers to switches its slice in and out of the waveform."""
 
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
-        selected: FrozenSet[GeneratorName]
-        available: FrozenSet[GeneratorName]
-        generator: GeneratorName
-        expected: FrozenSet[GeneratorName]
+        selected: FrozenSet[ChannelName]
+        available: FrozenSet[ChannelName]
+        channel: ChannelName
+        expected: FrozenSet[ChannelName]
 
     test_cases = (
         TestCase(
             label="switching a shown slice out",
-            selected=ALL_GENERATORS,
-            available=ALL_GENERATORS,
-            generator=GeneratorName.PULSE1,
-            expected=ALL_GENERATORS - {GeneratorName.PULSE1},
+            selected=ALL_CHANNELS,
+            available=ALL_CHANNELS,
+            channel=ChannelName.PULSE1,
+            expected=ALL_CHANNELS - {ChannelName.PULSE1},
         ),
         TestCase(
             label="switching a hidden slice back in",
-            selected=frozenset({GeneratorName.NOISE}),
-            available=ALL_GENERATORS,
-            generator=GeneratorName.TRIANGLE,
-            expected=frozenset({GeneratorName.TRIANGLE, GeneratorName.NOISE}),
+            selected=frozenset({ChannelName.NOISE}),
+            available=ALL_CHANNELS,
+            channel=ChannelName.TRIANGLE,
+            expected=frozenset({ChannelName.TRIANGLE, ChannelName.NOISE}),
         ),
         TestCase(
-            label="a generator the reconstruction holds none of stays out",
-            selected=frozenset({GeneratorName.PULSE1}),
-            available=frozenset({GeneratorName.PULSE1}),
-            generator=GeneratorName.NOISE,
-            expected=frozenset({GeneratorName.PULSE1}),
+            label="a channel the reconstruction holds none of stays out",
+            selected=frozenset({ChannelName.PULSE1}),
+            available=frozenset({ChannelName.PULSE1}),
+            channel=ChannelName.NOISE,
+            expected=frozenset({ChannelName.PULSE1}),
         ),
     )
 
@@ -191,13 +217,13 @@ class TestToggleGenerator(BaseTestSuite):
             monkeypatch=monkeypatch,
         )
 
-        harness.panel.toggle_generator(test_case.generator)
+        harness.panel.toggle_channel(test_case.channel)
 
         assert harness.selected() == test_case.expected
 
     @pytest.mark.parametrize(
         "test_case",
-        [test_case for test_case in test_cases if test_case.generator in test_case.available],
+        [test_case for test_case in test_cases if test_case.channel in test_case.available],
         ids=lambda test_case: test_case.label,
     )
     def test_the_selection_the_panel_reports(
@@ -212,10 +238,10 @@ class TestToggleGenerator(BaseTestSuite):
             monkeypatch=monkeypatch,
         )
 
-        harness.panel.toggle_generator(test_case.generator)
+        harness.panel.toggle_channel(test_case.channel)
 
         assert harness.reported == [
-            [generator for generator in GeneratorName if generator in test_case.expected],
+            [channel for channel in ChannelName if channel in test_case.expected],
         ]
 
     def test_a_generator_the_reconstruction_holds_none_of_reports_nothing(
@@ -224,12 +250,12 @@ class TestToggleGenerator(BaseTestSuite):
     ) -> None:
         """Its checkbox already reads as unavailable, so the key leaves the waveform as it stands."""
         harness = Harness(
-            selected=frozenset({GeneratorName.PULSE1}),
-            available=frozenset({GeneratorName.PULSE1}),
+            selected=frozenset({ChannelName.PULSE1}),
+            available=frozenset({ChannelName.PULSE1}),
             monkeypatch=monkeypatch,
         )
 
-        harness.panel.toggle_generator(GeneratorName.NOISE)
+        harness.panel.toggle_channel(ChannelName.NOISE)
 
         assert harness.reported == []
 
@@ -238,12 +264,220 @@ class TestToggleGenerator(BaseTestSuite):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         harness = Harness(
-            selected=ALL_GENERATORS,
-            available=ALL_GENERATORS,
+            selected=ALL_CHANNELS,
+            available=ALL_CHANNELS,
             monkeypatch=monkeypatch,
         )
 
-        harness.panel.toggle_generator(GeneratorName.PULSE2)
-        harness.panel.toggle_generator(GeneratorName.PULSE2)
+        harness.panel.toggle_channel(ChannelName.PULSE2)
+        harness.panel.toggle_channel(ChannelName.PULSE2)
 
-        assert harness.selected() == ALL_GENERATORS
+        assert harness.selected() == ALL_CHANNELS
+
+
+CHANNEL_COLORS = ChannelColors(
+    pulse1=LiteralColor((240, 146, 86, 255)),
+    pulse2=LiteralColor((242, 209, 95, 255)),
+    triangle=LiteralColor((140, 193, 237, 255)),
+    noise=LiteralColor((187, 184, 194, 255)),
+)
+
+AUTOSCALE_TAG = "autoscale"
+FRAME_LENGTH = 735
+
+
+class _WaveformRecorder:
+    """Stands in for the waveform graph, recording the one voice line it is asked to draw."""
+
+    def __init__(self) -> None:
+        self.drawn: List[Dict[str, object]] = []
+        self.lane_heights: List[int] = []
+
+    def load_voice_waveform(self, audio: np.ndarray, *, name: str, color: object) -> None:
+        self.drawn.append({"audio": audio, "name": name, "color": color})
+
+    def set_lane_heights(self, heights: Dict[ChannelName, int]) -> None:
+        self.lane_heights.append(sum(heights.values()))
+
+
+class _RibbonRecorder:
+    """Stands in for the ownership ribbon, giving each drawn channel a row of its own.
+
+    The room a lane takes is read from the layout the application draws under, so the stand-in
+    follows the configured height rather than restating one of its own.
+    """
+
+    def __init__(self, lane_height: int) -> None:
+        self.lane_height = lane_height
+        self.painted: List[OwnershipRibbonViewModel] = []
+
+    def update_view(self, view_model: OwnershipRibbonViewModel) -> None:
+        self.painted.append(view_model)
+
+    @property
+    def lane_heights(self) -> Dict[ChannelName, int]:
+        drawn = [lane.channel_name for lane in self.painted[-1].lanes] if self.painted else []
+        return {channel_name: self.lane_height if channel_name in drawn else 0 for channel_name in ChannelName.items()}
+
+
+def _configured_lane_height() -> int:
+    """The room one lane takes, read from the layout the application draws under."""
+    source = PaletteSource(PaletteCatalog.load(PALETTES_DIRECTORY).default)
+    return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, source).graphs.ribbon.lane_height
+
+
+class InstrumentHarness:
+    """The panel over the card an instrument is drawn on, with the recording controls it hides."""
+
+    def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self.shown: Dict[str, bool] = {}
+        monkeypatch.setattr(plot_module, "dpg_configure_item", self._configure)
+
+        self.waveform = _WaveformRecorder()
+        self.ribbon = _RibbonRecorder(_configured_lane_height())
+        self.panel = GUIReconstructionPlotPanel.__new__(GUIReconstructionPlotPanel)
+        self.panel._channel_colors = CHANNEL_COLORS
+        self.panel.autoscale_tag = AUTOSCALE_TAG
+        self.panel._frame_length = None
+        self.panel.waveform_display = self.waveform
+        self.panel.ownership_ribbon = self.ribbon
+        self.panel._ownership = OwnershipRibbonViewModel.empty()
+
+    def _configure(self, tag: str, **kwargs: object) -> None:
+        show = kwargs.get("show")
+        if isinstance(show, bool):
+            self.shown[tag] = show
+
+
+def _ribbon(*channels: ChannelName) -> OwnershipRibbonViewModel:
+    """A ribbon standing for one lane per named channel, each holding a single stretch."""
+    return OwnershipRibbonViewModel(
+        lanes=tuple(
+            OwnershipLaneViewModel(
+                channel_name=channel_name,
+                runs=(OwnershipRunViewModel(start_frame=0, end_frame=2, stem_id=0, heard=True),),
+            )
+            for channel_name in channels
+        ),
+        frame_length=FRAME_LENGTH,
+        total_frames=2,
+    )
+
+
+def _waveform(channel_name: ChannelName) -> InstrumentWaveformViewModel:
+    return InstrumentWaveformViewModel(
+        name="lead",
+        channel_name=channel_name,
+        audio=np.zeros(2 * FRAME_LENGTH),
+        frame_length=FRAME_LENGTH,
+    )
+
+
+class TestTheLanesUnderWhatTheCardDraws:
+    """The lanes describe a recording, so they stand only while the card shows one."""
+
+    def test_the_lanes_stand_down_for_a_voice(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        harness = InstrumentHarness(monkeypatch)
+        harness.panel.update_ownership(_ribbon(ChannelName.PULSE1, ChannelName.TRIANGLE))
+
+        harness.panel.update_instrument_view(_waveform(ChannelName.PULSE1))
+
+        assert harness.ribbon.painted[-1].lanes == ()
+        assert harness.waveform.lane_heights[-1] == 0
+
+    def test_the_lanes_return_with_the_recording(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        harness = InstrumentHarness(monkeypatch)
+        ribbon = _ribbon(ChannelName.PULSE1, ChannelName.TRIANGLE)
+        harness.panel.update_ownership(ribbon)
+        harness.panel.update_instrument_view(_waveform(ChannelName.PULSE1))
+
+        harness.panel.update_instrument_view(None)
+
+        assert harness.ribbon.painted[-1] == ribbon
+        assert harness.waveform.lane_heights[-1] == harness.waveform.lane_heights[0]
+
+
+class TestTheCardAnInstrumentIsDrawnOn:
+    def test_an_instrument_is_drawn_under_its_own_name(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        harness = InstrumentHarness(monkeypatch)
+
+        harness.panel.update_instrument_view(_waveform(ChannelName.PULSE1))
+
+        assert harness.waveform.drawn[-1]["name"] == "lead"
+
+    def test_an_instrument_is_drawn_in_the_color_of_the_channel_it_sounds_on(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        harness = InstrumentHarness(monkeypatch)
+
+        harness.panel.update_instrument_view(_waveform(ChannelName.NOISE))
+
+        assert harness.waveform.drawn[-1]["color"] == CHANNEL_COLORS.noise
+
+    def test_the_frame_length_reaches_the_overlay_the_bars_move(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        harness = InstrumentHarness(monkeypatch)
+
+        harness.panel.update_instrument_view(_waveform(ChannelName.PULSE1))
+
+        assert harness.panel._frame_length == FRAME_LENGTH
+
+    def test_the_controls_that_read_a_recording_stand_down(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        harness = InstrumentHarness(monkeypatch)
+
+        harness.panel.update_instrument_view(_waveform(ChannelName.PULSE1))
+
+        assert harness.shown == {
+            AUTOSCALE_TAG: False,
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_CHANNELS: False,
+        }
+
+    def test_a_recording_takes_the_card_and_its_controls_back(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        harness = InstrumentHarness(monkeypatch)
+        harness.panel.update_instrument_view(_waveform(ChannelName.PULSE1))
+
+        harness.panel.update_instrument_view(None)
+
+        assert harness.shown == {
+            AUTOSCALE_TAG: True,
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_CHANNELS: True,
+        }
+        assert len(harness.waveform.drawn) == 1
+
+
+class TestWaveformClicks:
+    """A click on the waveform leaves the card as the sample it pointed at."""
+
+    def test_the_sample_a_click_names_reaches_the_panel_hook(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        graphs: List[SimpleNamespace] = []
+
+        def graph(**_kwargs: Any) -> SimpleNamespace:
+            graphs.append(SimpleNamespace(on_position_clicked=None))
+            return graphs[-1]
+
+        monkeypatch.setattr(plot_module, "GUIWaveformGraph", graph)
+        panel = GUIReconstructionPlotPanel.__new__(GUIReconstructionPlotPanel)
+        panel._layout_graphs = MagicMock()
+        panel._channel_colors = CHANNEL_COLORS
+        panel._language_manager = MagicMock()
+        panel._status_bar = MagicMock()
+        monkeypatch.setattr(GUIReconstructionPlotPanel, "_body_container", "body", raising=False)
+        clicked: List[int] = []
+        panel.on_position_clicked = clicked.append
+
+        panel._create_waveform_display()
+        graphs[0].on_position_clicked(420)
+
+        assert clicked == [420]

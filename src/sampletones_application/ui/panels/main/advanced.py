@@ -61,8 +61,6 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self.on_advanced_settings_changed: Optional[Callable[[AdvancedSettingsUpdate], None]] = None
         self.on_select_library_directory: Optional[VoidCallback] = None
         self.on_select_output_directory: Optional[VoidCallback] = None
-        self.on_update_library_directory: Optional[VoidCallback] = None
-        self.on_update_output_directory: Optional[VoidCallback] = None
 
         self._library_directory: Path = initial_view.library_directory
         self._output_directory: Path = initial_view.reconstructions_directory
@@ -270,8 +268,6 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         if self.library_path_text:
             self.library_path_text.set_path(directory_path)
 
-        self.call(self.on_update_library_directory)
-
     def _on_select_output_directory(self) -> None:
         self.call(self.on_select_output_directory)
 
@@ -281,8 +277,6 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
         if self.output_path_text is not None:
             self.output_path_text.set_path(directory_path)
-
-        self.call(self.on_update_output_directory)
 
     @property
     def library_directory(self) -> Path:

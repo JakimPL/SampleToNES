@@ -1,0 +1,170 @@
+from dataclasses import dataclass
+from typing import Final, Self, Tuple
+
+import dearpygui.dearpygui as dpg
+
+from sampletones_application.layout.general.stems import StemsListLayout
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_core.constants.enums import ChannelName
+
+NO_RESERVE: Final[int] = 0
+NO_INDENT: Final[int] = 0
+COLUMN_BORDER: Final[int] = 1
+
+
+@dataclass(frozen=True)
+class StemsColumns:
+    """The columns every table of a stems grid stands in.
+
+    A list draws one table per band, one for each run of rows a folder breaks, one inside each open
+    folder, and one for the heading above them all; the settings card draws one row of the same
+    grid. The reader meets them as a single grid because each declares these columns in the same
+    order at the same widths, which is why this declaration stands in one place and every table
+    asks it.
+
+    The name column is the one that stretches, so a wider card spends its room on the recordings
+    rather than on the boxes beside them. A channel column holds one box.
+
+    ``swatch`` states that a row leads with the color its recording is drawn in, which takes a
+    narrow column of its own between the box beside a row and the name it carries.
+
+    ``folders`` states that the list this grid belongs to holds folders, which settles both ends
+    of the row. At the right, a folder draws its recordings inside a region of their own, and the
+    room that region spends there is held clear out here so the columns around a folder stand where
+    the columns inside it stand. At the left, a folder's own row leads with the marker that opens
+    it, and a row carrying none opens where that marker's glyph does.
+    """
+
+    layout: StemsListLayout
+    channels: Tuple[ChannelName, ...]
+    master: bool
+    removable: bool
+    swatch: bool
+    folders: bool
+
+    @classmethod
+    def empty(cls, layout: StemsListLayout) -> Self:
+        """The grid before a list has drawn anything: no channel, and nothing beside the name."""
+        return cls(
+            layout=layout,
+            channels=(),
+            master=False,
+            removable=False,
+            swatch=False,
+            folders=False,
+        )
+
+    @property
+    def channel_width(self) -> int:
+        """The room one channel's column takes, which the box standing in it decides."""
+        return self.layout.channel_column_width
+
+    @property
+    def reserve(self) -> int:
+        """The room held clear at the right of every table outside a folder, which is the region's.
+
+        A list holding no folder opens no region, so its tables run to the edge.
+        """
+        if not self.folders:
+            return NO_RESERVE
+
+        return self.layout.folder_reserve
+
+    @property
+    def reserve_width(self) -> int:
+        """The width the reserve column is declared at, so the room it holds is the region's.
+
+        A column takes its own width plus the padding on either side of its cell and the rule drawn
+        beside it, so those come off the room the strip is meant to hold clear.
+        """
+        return self.reserve - 2 * self.layout.cell_padding - COLUMN_BORDER
+
+    @property
+    def reserved(self) -> bool:
+        """Whether the strip stands at the right of a row, which is the room a region spends.
+
+        A grid holds the strip clear where there is room left to declare a column at, so a list
+        of folders ends every table on it and every other grid ends on the column before it.
+        """
+        return self.reserve_width > 0
+
+    def declare(self) -> None:
+        """Add this grid's columns to the table currently being built."""
+        if self.master:
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=self.layout.master_column_width)
+
+        if self.swatch:
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=self.layout.swatch_size)
+
+        dpg.add_table_column(width_stretch=True)
+        for _channel_name in self.channels:
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=self.channel_width)
+
+        if self.removable:
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=self.layout.remove_button_width)
+
+        if self.reserved:
+            dpg.add_table_column(width_fixed=True, init_width_or_weight=self.reserve_width)
+
+    @property
+    def master_indent(self) -> int:
+        """How far the box beside a row sits in, so it stands in the middle of its own column."""
+        return self._centered(self.layout.channel_box_width, within=self.layout.master_column_width)
+
+    @property
+    def box_indent(self) -> int:
+        """How far a channel's box sits in, so it stands in the middle of its own column."""
+        return self._centered(self.layout.channel_box_width, within=self.channel_width)
+
+    def marker_indent(self, glyph: str, font: Font) -> int:
+        """How far a row carrying no marker sits in, so its name opens where a marker's glyph does.
+
+        A folder's row leads with a button as wide as the marker column, and the glyph inside it
+        stands in the middle of that button. A recording standing loose in the same list opens at
+        that glyph, so the names read as one column while a row with no marker keeps the room a
+        marker would have spent.
+        """
+        if not self.folders:
+            return NO_INDENT
+
+        measured = dpg.get_text_size(glyph, font=FontRegistry.get_tag(font))
+        if measured is None:
+            return NO_INDENT
+
+        return self._centered(int(measured[0]), within=self.layout.twisty_width)
+
+    def name_indent(self, label: str, font: Font) -> int:
+        """How far a channel's name sits in, so it stands over the middle of its own column.
+
+        The name is measured in the face it is drawn in, so a column reads as one thing however
+        long the channel is called.
+        """
+        measured = dpg.get_text_size(label, font=FontRegistry.get_tag(font))
+        if measured is None:
+            return NO_INDENT
+
+        return self._centered(int(measured[0]), within=self.channel_width)
+
+    def open_leading_cells(self) -> None:
+        """Open the cells standing before the channels, which a heading leaves blank."""
+        if self.master:
+            dpg.add_spacer()
+
+        if self.swatch:
+            dpg.add_spacer()
+
+        dpg.add_spacer()
+
+    def open_trailing_cell(self) -> None:
+        """Open the cell standing after the channels, which a heading leaves blank."""
+        if self.removable:
+            dpg.add_spacer()
+
+    def _centered(self, span: int, *, within: int) -> int:
+        """The indent standing something of this width in the middle of a column of that width.
+
+        A cell opens after its own padding and the column's width is what is left for what stands
+        in it, so the padding is already spent by the time the indent is measured from.
+        """
+        return max(NO_INDENT, (within - span) // 2)

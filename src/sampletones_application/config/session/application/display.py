@@ -8,10 +8,12 @@ from sampletones_shared.display import UNLIMITED_FRAME_RATE
 DEFAULT_VSYNC: Final[bool] = True
 DEFAULT_MAX_FPS: Final[int] = 60
 DEFAULT_BORDERLESS: Final[bool] = False
+DEFAULT_SHOW_FRAME_RATE: Final[bool] = True
 
 
 class DisplayConfig(BaseModel):
-    """How the application presents itself: the palette it wears and the pacing it renders at.
+    """How the application presents itself: the palette it wears, the pacing it renders at, and whether it
+    shows the rate it reaches.
 
     The window's own geometry belongs to the session state, which records where the user left
     the window; these are the preferences a user picks in the display settings and keeps.
@@ -33,4 +35,8 @@ class DisplayConfig(BaseModel):
     borderless: bool = Field(
         default=DEFAULT_BORDERLESS,
         description="Whether the window is drawn without the system's title bar and frame.",
+    )
+    show_frame_rate: bool = Field(
+        default=DEFAULT_SHOW_FRAME_RATE,
+        description="Whether the menu bar shows the frame rate the render loop reaches.",
     )

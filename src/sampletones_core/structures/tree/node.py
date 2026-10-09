@@ -1,18 +1,41 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple, TypeVar
 
 from anytree import Node
 
-from sampletones_core.constants.enums import LibraryGeneratorName
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 
 from .type import NodeType
 
+TreeNodeT = TypeVar("TreeNodeT", bound="TreeNode")
 
-class TreeNode(Node):  # type: ignore[misc]
+
+class TreeNode(Node):
+    """A node of one of the application's trees, and the base every node kind derives from.
+
+    ``anytree`` lets a tree hold nodes of any type, so it states a node's relatives as untyped.
+    Every tree here is built from this class alone, which is what these declarations state: a
+    relative of a node is a node of ours, and the checker holds each reader to the attributes the
+    node kind it reached actually carries.
+
+    ``gathered_plain_name`` says that the node's name has taken in a name somebody chose — a
+    folder's, an audio file's — which a tree hands a row when it folds a heading into it. The
+    classes naming a configuration read it through :attr:`states_configuration`, so a reader of
+    configuration text meets the row as the plain name it has become.
+    """
+
+    name: str
+    parent: Optional[TreeNode]
+    children: Tuple[TreeNode, ...]
+    path: Tuple[TreeNode, ...]
+    root: TreeNode
+    ancestors: Tuple[TreeNode, ...]
+    descendants: Tuple[TreeNode, ...]
+
     def __init__(
         self,
         name: str,
@@ -21,9 +44,20 @@ class TreeNode(Node):  # type: ignore[misc]
     ) -> None:
         super().__init__(name, parent=parent)
         self.node_type = node_type
+        self.gathered_plain_name = False
+
+    @property
+    def states_configuration(self) -> bool:
+        """Whether the node's name is the machine text a reconstruction configuration carries."""
+        return False
 
     def copy(self, parent: Optional[TreeNode] = None) -> TreeNode:
-        return TreeNode(self.name, node_type=self.node_type, parent=parent)
+        return self._carrying(TreeNode(self.name, node_type=self.node_type, parent=parent))
+
+    def _carrying(self, node: TreeNodeT) -> TreeNodeT:
+        """The fresh node, given what its name has come to hold beside the fields it was built with."""
+        node.gathered_plain_name = self.gathered_plain_name
+        return node
 
 
 class FileSystemNode(TreeNode):
@@ -38,11 +72,13 @@ class FileSystemNode(TreeNode):
         self.filepath = filepath
 
     def copy(self, parent: Optional[TreeNode] = None) -> FileSystemNode:
-        return FileSystemNode(
-            self.name,
-            filepath=self.filepath,
-            node_type=self.node_type,
-            parent=parent,
+        return self._carrying(
+            FileSystemNode(
+                self.name,
+                filepath=self.filepath,
+                node_type=self.node_type,
+                parent=parent,
+            )
         )
 
 
@@ -71,13 +107,19 @@ class ConfigNode(FileSystemNode):
         )
         self.config = config
 
+    @property
+    def states_configuration(self) -> bool:
+        return not self.gathered_plain_name
+
     def copy(self, parent: Optional[TreeNode] = None) -> ConfigNode:
-        return ConfigNode(
-            self.name,
-            node_type=self.node_type,
-            filepath=self.filepath,
-            config=self.config,
-            parent=parent,
+        return self._carrying(
+            ConfigNode(
+                self.name,
+                node_type=self.node_type,
+                filepath=self.filepath,
+                config=self.config,
+                parent=parent,
+            )
         )
 
 
@@ -90,27 +132,43 @@ class ConfigGroupNode(TreeNode):
     tooltip, a font — reach it the way it reaches the configuration row below.
     """
 
+    @property
+    def states_configuration(self) -> bool:
+        return not self.gathered_plain_name
+
     def copy(self, parent: Optional[TreeNode] = None) -> ConfigGroupNode:
-        return ConfigGroupNode(self.name, node_type=self.node_type, parent=parent)
+        return self._carrying(ConfigGroupNode(self.name, node_type=self.node_type, parent=parent))
 
 
 class LibraryNode(TreeNode):
+    """A library file of the catalog, marked ``outdated`` where another version built it."""
+
     def __init__(
         self,
         name: str,
         library_key: InstructionLibraryKey,
+        *,
+        outdated: bool,
         node_type: NodeType = NodeType.LIBRARY,
         parent: Optional[TreeNode] = None,
     ) -> None:
         super().__init__(name, node_type=node_type, parent=parent)
         self.library_key = library_key
+        self.outdated = outdated
+
+    @property
+    def states_configuration(self) -> bool:
+        return not self.gathered_plain_name
 
     def copy(self, parent: Optional[TreeNode] = None) -> LibraryNode:
-        return LibraryNode(
-            self.name,
-            node_type=self.node_type,
-            library_key=self.library_key,
-            parent=parent,
+        return self._carrying(
+            LibraryNode(
+                self.name,
+                node_type=self.node_type,
+                library_key=self.library_key,
+                outdated=self.outdated,
+                parent=parent,
+            )
         )
 
 
@@ -118,7 +176,7 @@ class GeneratorNode(TreeNode):
     def __init__(
         self,
         name: str,
-        generator_name: LibraryGeneratorName,
+        generator_name: GeneratorName,
         node_type: NodeType = NodeType.GENERATOR,
         parent: Optional[TreeNode] = None,
     ) -> None:
@@ -126,9 +184,11 @@ class GeneratorNode(TreeNode):
         self.generator_name = generator_name
 
     def copy(self, parent: Optional[TreeNode] = None) -> GeneratorNode:
-        return GeneratorNode(
-            self.name,
-            node_type=self.node_type,
-            generator_name=self.generator_name,
-            parent=parent,
+        return self._carrying(
+            GeneratorNode(
+                self.name,
+                node_type=self.node_type,
+                generator_name=self.generator_name,
+                parent=parent,
+            )
         )

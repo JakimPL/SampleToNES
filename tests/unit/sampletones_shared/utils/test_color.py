@@ -181,7 +181,7 @@ class TestComposite:
     def test_a_transparent_base_leaves_the_overlay(self) -> None:
         assert composite(self.TRANSPARENT, self.GREEN) == self.GREEN
 
-    def test_two_transparent_colours_stay_transparent(self) -> None:
+    def test_two_transparent_colors_stay_transparent(self) -> None:
         assert composite(self.TRANSPARENT, self.TRANSPARENT) == self.TRANSPARENT
 
     def test_stacked_washes_cover_more_than_either_alone(self) -> None:

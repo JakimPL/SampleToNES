@@ -11,7 +11,7 @@ class TreeVisibility:
     A named row stays, and so do the rows leading down to it and the rows it holds: a named file is
     read under the folders it sits in, and a named folder shows what it gathers. Keeping the named
     rows and their ancestors alone holds the memory to the size of what was found, and a row below a
-    match is answered from its own path upwards.
+    match is answered from its own path upward.
     """
 
     matches: FrozenSet[TreeNode]

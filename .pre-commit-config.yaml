@@ -33,46 +33,6 @@ repos:
 
   - repo: local
     hooks:
-      - id: import-boundary
-        name: import boundary
-        entry: uv run scripts/checks/import_boundary.py --all
-        language: system
-        types: [python]
-        pass_filenames: false
-        verbose: true
-
-      - id: unused-tags
-        name: unused tags
-        entry: uv run scripts/checks/unused_tags.py
-        language: system
-        types: [python]
-        pass_filenames: false
-        verbose: true
-
-      - id: tag-names
-        name: tag names
-        entry: uv run scripts/checks/tag_names.py --all
-        language: system
-        types: [python]
-        pass_filenames: false
-        verbose: true
-
-      - id: palette-colors
-        name: palette colors
-        entry: uv run scripts/checks/palette_colors.py
-        language: system
-        files: (^src/sampletones_application/.*\.py|^src/sampletones_config/.*\.yaml)$
-        pass_filenames: false
-        verbose: true
-
-      - id: language-keys
-        name: language keys
-        entry: uv run scripts/checks/language_keys.py
-        language: system
-        files: (\.py|^src/sampletones_config/lang/.*\.yaml)$
-        pass_filenames: false
-        verbose: true
-
       - id: mypy
         name: mypy
         entry: uv run mypy
@@ -91,22 +51,68 @@ repos:
         require_serial: true
         exclude: ^(tests/)
 
+      - id: import-boundary
+        name: import boundary
+        entry: uv run sampletones check import-boundary --all
+        language: system
+        types: [python]
+        pass_filenames: false
+        verbose: true
+
+      - id: unused-tags
+        name: unused tags
+        entry: uv run sampletones check unused-tags
+        language: system
+        types: [python]
+        pass_filenames: false
+        verbose: true
+
+      - id: rendered-literals
+        name: rendered literals
+        entry: uv run sampletones check rendered-literals
+        language: system
+        files: ^tests/.*\.py$
+        pass_filenames: false
+        verbose: true
+
+      - id: tag-names
+        name: tag names
+        entry: uv run sampletones check tag-names --all
+        language: system
+        types: [python]
+        pass_filenames: false
+        verbose: true
+
+      - id: palette-colors
+        name: palette colors
+        entry: uv run sampletones check palette-colors
+        language: system
+        files: (^src/sampletones_application/.*\.py|^src/sampletones_config/.*\.yaml)$
+        pass_filenames: false
+        verbose: true
+
+      - id: language-keys
+        name: language keys
+        entry: uv run sampletones check language-keys
+        language: system
+        files: (\.py|^src/sampletones_config/lang/.*\.yaml)$
+        pass_filenames: false
+        verbose: true
+
+      - id: shortcut-actions
+        name: shortcut actions
+        entry: uv run sampletones check shortcut-actions
+        language: system
+        files: (\.py|^src/sampletones_config/keybindings/.*\.yaml)$
+        pass_filenames: false
+        verbose: true
+
       - id: icons
         name: icons
-        entry: uv run python scripts/assets/icons.py
+        entry: uv run python -m assets.icons
         language: system
-        files: ^src/sampletones_assets/(icons|mark)/
+        files: ^(src/sampletones_assets/icons|assets/icons)/
         pass_filenames: false
         verbose: true
         stages:
           - pre-push
-
-      - id: pytest
-        name: pytest
-        entry: make test
-        language: system
-        types:
-          - python
-        stages:
-          - pre-push
-        pass_filenames: false

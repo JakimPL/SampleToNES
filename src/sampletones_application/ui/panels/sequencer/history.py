@@ -61,7 +61,7 @@ class _EntryRow:
 
 
 class GUISequencerHistoryPanel(GUIPanel):
-    """Shows the undo/redo stack: labelled entries with the current state marked.
+    """Shows the undo/redo stack: labeled entries with the current state marked.
 
     Selecting an entry jumps the project to that state; the Undo and Redo buttons
     step one entry at a time. Entries past the current one are the redo branch and
@@ -173,7 +173,7 @@ class GUISequencerHistoryPanel(GUIPanel):
         Rendering is capped at ``max_rendered_entries`` so a full-budget history
         keeps the panel responsive; the window tracks the cursor, keeping the
         current entry visible and clickable. Entries beyond the window are
-        reached by stepping the cursor towards them.
+        reached by stepping the cursor toward them.
         """
         limit = self._layout.history.max_rendered_entries
         entries = view_model.entries
@@ -270,14 +270,14 @@ class GUISequencerHistoryPanel(GUIPanel):
         *,
         before: int,
     ) -> None:
-        """Renders one entry as a full-width selectable with coloured text on top.
+        """Renders one entry as a full-width selectable with colored text on top.
 
         A ``span_columns`` selectable backs the whole row, so clicking anywhere
         jumps to that entry and the current entry keeps the native selected
         highlight. The label and each detail segment render as separate text items
-        in the second column, letting every segment carry its role's colour while
+        in the second column, letting every segment carry its role's color while
         the non-interactive text passes clicks through to the selectable beneath.
-        A future (redo) entry greys every token.
+        A future (redo) entry grays every token.
         """
         with dpg.table_row(parent=table, before=before) as row:
             selectable = dpg.add_selectable(
@@ -335,16 +335,18 @@ class GUISequencerHistoryPanel(GUIPanel):
                 return roles.channel
             case HistoryDetailRole.ROW:
                 return text.row
-            case HistoryDetailRole.INSTRUMENT:
-                return text.instrument
+            case HistoryDetailRole.VOICE:
+                return text.voice
             case HistoryDetailRole.TRANSPOSE:
                 return text.transpose
             case HistoryDetailRole.VOLUME:
                 return text.volume
             case HistoryDetailRole.VALUE:
                 return roles.value
-            case HistoryDetailRole.SAMPLE | HistoryDetailRole.NAME:
+            case HistoryDetailRole.SAMPLE:
                 return text.sample
+            case HistoryDetailRole.INSTRUMENT:
+                return text.instrument
             case HistoryDetailRole.FEATURE_VOLUME:
                 return self._feature_colors.volume
             case HistoryDetailRole.FEATURE_ARPEGGIO:

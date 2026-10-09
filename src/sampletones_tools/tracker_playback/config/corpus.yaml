@@ -1,0 +1,508 @@
+voices:
+  square:
+    kind: sample
+    channels:
+      pulse1:
+        - { count: 48, frame: { "on": true, pitch: 60, volume: 15, duty_cycle: 2 } }
+      pulse2:
+        - { count: 48, frame: { "on": true, pitch: 67, volume: 12, duty_cycle: 1 } }
+  bass:
+    kind: sample
+    channels:
+      triangle:
+        - { count: 100, frame: { "on": true, pitch: 48 } }
+  hiss:
+    kind: sample
+    channels:
+      noise:
+        - { count: 48, frame: { "on": true, period: 6, volume: 14, short: false } }
+  buzz:
+    kind: sample
+    channels:
+      noise:
+        - { count: 24, frame: { "on": true, period: 11, volume: 12, short: true } }
+  contour:
+    kind: sample
+    channels:
+      pulse1:
+        - { count: 2, frame: { "on": true, pitch: 60, volume: 15, duty_cycle: 2 } }
+        - { count: 2, frame: { "on": true, pitch: 64, volume: 14, duty_cycle: 2, detune: 3 } }
+        - { count: 2, frame: { "on": true, pitch: 67, volume: 13, duty_cycle: 1, detune: -5 } }
+        - { count: 2, frame: { "on": true, pitch: 72, volume: 12, duty_cycle: 0, coarse_detune: 1 } }
+        - { count: 2, frame: { "on": true, pitch: 67, volume: 11, duty_cycle: 3, detune: 7, coarse_detune: -1 } }
+        - { count: 1, frame: { "on": false, pitch: 67, volume: 0, duty_cycle: 3 } }
+        - { count: 3, frame: { "on": true, pitch: 55, volume: 10, duty_cycle: 2, detune: -2 } }
+        - { count: 4, frame: { "on": true, pitch: 62, volume: 9, duty_cycle: 1 } }
+      pulse2:
+        - { count: 2, frame: { "on": true, pitch: 69, volume: 12, duty_cycle: 2, detune: -8 } }
+        - { count: 2, frame: { "on": true, pitch: 69, volume: 12, duty_cycle: 2, detune: -4 } }
+        - { count: 2, frame: { "on": true, pitch: 69, volume: 12, duty_cycle: 2 } }
+        - { count: 2, frame: { "on": true, pitch: 69, volume: 12, duty_cycle: 2, detune: 4 } }
+        - { count: 2, frame: { "on": true, pitch: 69, volume: 12, duty_cycle: 2, detune: 8 } }
+        - { count: 2, frame: { "on": true, pitch: 71, volume: 10, duty_cycle: 1, coarse_detune: 2 } }
+        - { count: 2, frame: { "on": true, pitch: 71, volume: 10, duty_cycle: 1, coarse_detune: -2 } }
+        - { count: 4, frame: { "on": true, pitch: 64, volume: 8, duty_cycle: 0 } }
+      triangle:
+        - { count: 3, frame: { "on": true, pitch: 45 } }
+        - { count: 3, frame: { "on": true, pitch: 45, detune: 6 } }
+        - { count: 3, frame: { "on": true, pitch: 52, detune: -4 } }
+        - { count: 3, frame: { "on": true, pitch: 57, coarse_detune: 1 } }
+        - { count: 2, frame: { "on": false, pitch: 57 } }
+        - { count: 4, frame: { "on": true, pitch: 40 } }
+      noise:
+        - { count: 2, frame: { "on": true, period: 3, volume: 15, short: false } }
+        - { count: 2, frame: { "on": true, period: 5, volume: 13, short: false } }
+        - { count: 2, frame: { "on": true, period: 8, volume: 11, short: true } }
+        - { count: 2, frame: { "on": true, period: 12, volume: 9, short: true } }
+        - { count: 2, frame: { "on": true, period: 15, volume: 7, short: false } }
+        - { count: 2, frame: { "on": true, period: 0, volume: 5, short: false } }
+        - { count: 2, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 4, frame: { "on": true, period: 9, volume: 10, short: true } }
+  low:
+    kind: sample
+    channels:
+      pulse1:
+        - { count: 24, frame: { "on": true, pitch: 36, volume: 15, duty_cycle: 2 } }
+      triangle:
+        - { count: 24, frame: { "on": true, pitch: 36 } }
+  edges:
+    kind: sample
+    channels:
+      pulse1:
+        - { count: 12, frame: { "on": true, pitch: 34, volume: 15, duty_cycle: 2, coarse_detune: 10 } }
+        - { count: 12, frame: { "on": true, pitch: 30, volume: 15, duty_cycle: 2, detune: 5 } }
+      triangle:
+        - { count: 12, frame: { "on": true, pitch: 110, detune: -30 } }
+        - { count: 12, frame: { "on": true, pitch: 119, coarse_detune: -1 } }
+  long:
+    kind: sample
+    channels:
+      pulse1:
+        - { count: 100, frame: { "on": true, pitch: 60, volume: 15, duty_cycle: 2 } }
+        - { count: 100, frame: { "on": true, pitch: 60, volume: 13, duty_cycle: 2 } }
+        - { count: 100, frame: { "on": true, pitch: 60, volume: 11, duty_cycle: 2 } }
+        - { count: 100, frame: { "on": true, pitch: 60, volume: 9, duty_cycle: 2 } }
+        - { count: 100, frame: { "on": true, pitch: 60, volume: 7, duty_cycle: 2 } }
+        - { count: 100, frame: { "on": true, pitch: 60, volume: 5, duty_cycle: 2 } }
+  lead:
+    kind: instrument
+    initial_pitch: 64
+    initial_period: 5
+    envelopes:
+      volume: { items: [15, 14, 13, 12, 11, 10, 9, 8] }
+      arpeggio: { items: [0, 4, 7], loop_point: 0 }
+      duty_cycle: { items: [0, 2], loop_point: 0 }
+      pitch: { items: [0, 3, 6, 3, 0, -3, -6, -3], loop_point: 0 }
+  pluck:
+    kind: instrument
+    initial_pitch: 57
+    initial_period: 4
+    envelopes:
+      volume: { items: [15, 12, 9, 6, 3, 0] }
+      hi_pitch: { items: [0, 1, 2] }
+  swell:
+    kind: instrument
+    initial_pitch: 52
+    initial_period: 7
+    envelopes:
+      arpeggio: { items: [0, 12], loop_point: 0 }
+      duty_cycle: { items: [1] }
+
+projects:
+  - name: every-channel
+    purpose: A note on every channel, each playing its frames out and falling silent once they end.
+    module: { title: Every channel, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
+    voices: [square, bass, hiss]
+    song:
+      rows_per_pattern: 12
+      order:
+        - { pulse1: 0, pulse2: 0, triangle: 0, noise: 0 }
+      channels:
+        pulse1: { patterns: { 0: [{ row: 0, voice: square, volume: 15 }] } }
+        pulse2: { patterns: { 0: [{ row: 0, voice: square, volume: 15 }] } }
+        triangle: { patterns: { 0: [{ row: 0, voice: bass, volume: 15 }] } }
+        noise: { patterns: { 0: [{ row: 0, voice: hiss, volume: 15 }] } }
+
+  - name: note-after-quiet-row
+    purpose: A note whose row states no volume, after a row that lowered the channel's volume.
+    module: { title: Note after a quiet row, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
+    voices: [square, hiss]
+    song:
+      rows_per_pattern: 8
+      order:
+        - { pulse1: 0, pulse2: 0, noise: 0 }
+      channels:
+        pulse1:
+          patterns:
+            0:
+              - { row: 0, voice: square, volume: 5 }
+              - { row: 4, voice: square }
+        pulse2:
+          patterns:
+            0:
+              - { row: 0, voice: square }
+        noise:
+          patterns:
+            0:
+              - { row: 0, voice: hiss, volume: 4 }
+              - { row: 4, voice: hiss }
+
+  - name: volume-rows
+    purpose: Rows stating a volume alone, bending the level of a sounding note, silencing it and bringing it back.
+    module: { title: Volume rows, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
+    voices: [square, hiss]
+    song:
+      rows_per_pattern: 8
+      order:
+        - { pulse1: 0, noise: 0 }
+      channels:
+        pulse1:
+          patterns:
+            0:
+              - { row: 0, voice: square, volume: 15 }
+              - { row: 1, volume: 12 }
+              - { row: 2, volume: 7 }
+              - { row: 3, volume: 0 }
+              - { row: 4, volume: 10 }
+              - { row: 5, volume: 3 }
+              - { row: 6, volume: 1 }
+        noise:
+          patterns:
+            0:
+              - { row: 0, voice: hiss, volume: 15 }
+              - { row: 1, volume: 12 }
+              - { row: 2, volume: 7 }
+              - { row: 3, volume: 0 }
+              - { row: 4, volume: 10 }
+              - { row: 5, volume: 3 }
+              - { row: 6, volume: 1 }
+
+  - name: transpose-rows
+    purpose: Rows stating a transpose and no note, which move the pitch of the note already sounding.
+    module: { title: Transpose rows, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
+    voices: [square, bass, hiss]
+    song:
+      rows_per_pattern: 8
+      order:
+        - { pulse1: 0, triangle: 0, noise: 0 }
+      channels:
+        pulse1:
+          patterns:
+            0:
+              - { row: 0, voice: square, volume: 15 }
+              - { row: 2, transpose: 5 }
+              - { row: 4, transpose: -3 }
+              - { row: 6, transpose: 7, volume: 9 }
+        triangle:
+          patterns:
+            0:
+              - { row: 0, voice: bass, volume: 15 }
+              - { row: 3, transpose: 12 }
+              - { row: 5, transpose: -5 }
+        noise:
+          patterns:
+            0:
+              - { row: 0, voice: hiss, volume: 15 }
+              - { row: 2, transpose: 4 }
+              - { row: 4, transpose: 12 }
+
+  - name: triangle-volumes
+    purpose: A sounding triangle under every row volume from 0 to 15.
+    module: { title: Triangle volumes, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
+    voices: [bass]
+    song:
+      rows_per_pattern: 16
+      order:
+        - { triangle: 0 }
+      channels:
+        triangle:
+          patterns:
+            0:
+              - { row: 0, voice: bass, volume: 0 }
+              - { row: 1, volume: 1 }
+              - { row: 2, volume: 2 }
+              - { row: 3, volume: 3 }
+              - { row: 4, volume: 4 }
+              - { row: 5, volume: 5 }
+              - { row: 6, volume: 6 }
+              - { row: 7, volume: 7 }
+              - { row: 8, volume: 8 }
+              - { row: 9, volume: 9 }
+              - { row: 10, volume: 10 }
+              - { row: 11, volume: 11 }
+              - { row: 12, volume: 12 }
+              - { row: 13, volume: 13 }
+              - { row: 14, volume: 14 }
+              - { row: 15, volume: 15 }
+
+  - name: noise-periods
+    purpose: Noise notes at several periods in both modes, with transposes wrapping past either end of the sixteen periods.
+    module: { title: Noise periods, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
+    voices: [hiss, buzz]
+    song:
+      rows_per_pattern: 12
+      order:
+        - { noise: 0 }
+      channels:
+        noise:
+          patterns:
+            0:
+              - { row: 0, voice: hiss, volume: 15 }
+              - { row: 1, voice: hiss, transpose: 3, volume: 15 }
+              - { row: 2, voice: hiss, transpose: 9, volume: 15 }
+              - { row: 3, voice: hiss, transpose: 10, volume: 15 }
+              - { row: 4, voice: hiss, transpose: -6, volume: 15 }
+              - { row: 5, voice: hiss, transpose: -7, volume: 15 }
+              - { row: 6, voice: hiss, transpose: 25, volume: 15 }
+              - { row: 7, voice: hiss, transpose: -22, volume: 15 }
+              - { row: 8, voice: buzz, volume: 15 }
+              - { row: 9, voice: buzz, transpose: 4, volume: 15 }
+              - { row: 10, voice: buzz, transpose: 5, volume: 15 }
+              - { row: 11, voice: buzz, transpose: -12, volume: 15 }
+
+  - name: note-offs
+    purpose: Note-offs on every channel, a volume row on a released channel, and notes after them.
+    module: { title: Note-offs, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
+    voices: [square, bass, hiss]
+    song:
+      rows_per_pattern: 8
+      order:
+        - { pulse1: 0, pulse2: 0, triangle: 0, noise: 0 }
+      channels:
+        pulse1:
+          patterns:
+            0:
+              - { row: 0, voice: square, volume: 15 }
+              - { row: 2, "off": true }
+              - { row: 3, voice: square, volume: 11 }
+              - { row: 5, "off": true }
+              - { row: 6, volume: 10 }
+              - { row: 7, voice: square, volume: 13 }
+        pulse2:
+          patterns:
+            0:
+              - { row: 1, voice: square, volume: 15 }
+              - { row: 4, "off": true }
+              - { row: 6, voice: square, volume: 9 }
+        triangle:
+          patterns:
+            0:
+              - { row: 0, voice: bass, volume: 15 }
+              - { row: 2, "off": true }
+              - { row: 3, voice: bass, volume: 15 }
+              - { row: 5, "off": true }
+              - { row: 7, voice: bass, volume: 15 }
+        noise:
+          patterns:
+            0:
+              - { row: 0, voice: hiss, volume: 15 }
+              - { row: 2, "off": true }
+              - { row: 3, voice: hiss, volume: 11 }
+              - { row: 5, "off": true }
+              - { row: 6, volume: 10 }
+              - { row: 7, voice: hiss, volume: 13 }
+
+  - name: instrument-channels
+    purpose: Instruments on every channel, with looping envelopes, a release, and a volume left to the channel.
+    module: { title: Instruments on every channel, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
+    voices: [lead, pluck, swell]
+    song:
+      rows_per_pattern: 16
+      order:
+        - { pulse1: 0, pulse2: 0, triangle: 0, noise: 0 }
+      channels:
+        pulse1:
+          patterns:
+            0:
+              - { row: 0, voice: lead, volume: 15 }
+              - { row: 8, voice: pluck, volume: 15 }
+        pulse2:
+          patterns:
+            0:
+              - { row: 0, voice: swell, volume: 12 }
+              - { row: 8, voice: lead, transpose: 5, volume: 15 }
+        triangle:
+          patterns:
+            0:
+              - { row: 0, voice: lead, transpose: -12, volume: 15 }
+              - { row: 8, voice: swell, volume: 15 }
+        noise:
+          patterns:
+            0:
+              - { row: 0, voice: lead, volume: 15 }
+              - { row: 4, voice: pluck, volume: 15 }
+              - { row: 8, voice: swell, transpose: 3, volume: 10 }
+              - { row: 12, voice: lead, transpose: -4, volume: 15 }
+
+  - name: carried-pitch
+    purpose: Instruments placed without a pitch, taking the pitch a transposed sample left on the channel and bent afterwards, or starting nothing after a note-off and on a silent channel.
+    module: { title: Carried pitch, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
+    voices: [square, bass, hiss, lead, swell]
+    song:
+      rows_per_pattern: 16
+      order:
+        - { pulse1: 0, pulse2: 0, triangle: 0, noise: 0 }
+      channels:
+        pulse1:
+          patterns:
+            0:
+              - { row: 0, voice: square, transpose: 3 }
+              - { row: 4, voice: lead }
+              - { row: 8, transpose: 2 }
+              - { row: 11, "off": true }
+              - { row: 13, voice: lead }
+        pulse2:
+          patterns:
+            0:
+              - { row: 0, voice: lead }
+              - { row: 6, voice: square, transpose: -2 }
+              - { row: 10, voice: lead }
+        triangle:
+          patterns:
+            0:
+              - { row: 0, voice: bass, transpose: 5 }
+              - { row: 6, voice: swell }
+        noise:
+          patterns:
+            0:
+              - { row: 0, voice: hiss, transpose: 2 }
+              - { row: 6, voice: lead }
+
+  - name: sample-contours
+    purpose: A sample whose frames carry arpeggio contours, bends, rests and duty changes on every channel, played as written and transposed.
+    module: { title: Sample contours, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
+    voices: [contour]
+    song:
+      rows_per_pattern: 8
+      order:
+        - { pulse1: 0, pulse2: 0, triangle: 0, noise: 0 }
+      channels:
+        pulse1:
+          patterns:
+            0:
+              - { row: 0, voice: contour, volume: 15 }
+              - { row: 4, voice: contour, transpose: 5, volume: 15 }
+        pulse2:
+          patterns:
+            0:
+              - { row: 0, voice: contour, volume: 15 }
+              - { row: 4, voice: contour, transpose: -7, volume: 15 }
+        triangle:
+          patterns:
+            0:
+              - { row: 0, voice: contour, volume: 15 }
+              - { row: 4, voice: contour, transpose: 12, volume: 15 }
+        noise:
+          patterns:
+            0:
+              - { row: 0, voice: contour, volume: 15 }
+              - { row: 4, voice: contour, transpose: 2, volume: 15 }
+
+  - name: groove-order
+    purpose: A tempo whose rows last unequal ticks, under an order that revisits patterns and leaves a channel out of a frame.
+    module: { title: Groove and order, author: Tracker playback check, tempo: 210, speed: 6, nes_frequency: 60 }
+    voices: [square, bass, hiss, buzz]
+    song:
+      rows_per_pattern: 16
+      order:
+        - { pulse1: 0, pulse2: 1, triangle: 0, noise: 0 }
+        - { pulse1: 1, pulse2: 0, triangle: 1, noise: 0 }
+        - { pulse1: 0, triangle: 0, noise: 1 }
+        - { pulse1: 1, pulse2: 1, triangle: 1, noise: 1 }
+      channels:
+        pulse1:
+          patterns:
+            0:
+              - { row: 0, voice: square, volume: 15 }
+              - { row: 8, voice: square, transpose: 7, volume: 12 }
+            1:
+              - { row: 0, voice: square, transpose: -5, volume: 10 }
+              - { row: 12, "off": true }
+        pulse2:
+          patterns:
+            0:
+              - { row: 4, voice: square, volume: 15 }
+            1:
+              - { row: 0, voice: square, transpose: 12, volume: 11 }
+              - { row: 10, "off": true }
+        triangle:
+          patterns:
+            0:
+              - { row: 0, voice: bass, volume: 15 }
+            1:
+              - { row: 0, voice: bass, transpose: 7, volume: 15 }
+              - { row: 8, voice: bass, volume: 15 }
+        noise:
+          patterns:
+            0:
+              - { row: 0, voice: hiss, volume: 15 }
+              - { row: 4, voice: hiss, volume: 12 }
+              - { row: 8, voice: hiss, volume: 15 }
+              - { row: 12, voice: hiss, volume: 12 }
+            1:
+              - { row: 0, voice: buzz, volume: 15 }
+              - { row: 6, voice: buzz, transpose: 3, volume: 15 }
+
+  - name: low-transpose
+    purpose: Transposes pushing a note below A-0, where every note sounds the longest timer the register holds.
+    module: { title: Low transpose, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
+    voices: [low]
+    song:
+      rows_per_pattern: 8
+      order:
+        - { pulse1: 0, triangle: 0 }
+      channels:
+        pulse1:
+          patterns:
+            0:
+              - { row: 0, voice: low, volume: 15 }
+              - { row: 2, voice: low, transpose: -5, volume: 15 }
+              - { row: 4, voice: low, transpose: -12, volume: 15 }
+              - { row: 6, voice: low, transpose: -3, volume: 15 }
+        triangle:
+          patterns:
+            0:
+              - { row: 0, voice: low, transpose: -8, volume: 15 }
+              - { row: 4, voice: low, transpose: -2, volume: 15 }
+
+  - name: bend-limits
+    purpose: Bends pushing a note past the longest and the shortest timer the register holds, where the note sounds that timer.
+    module: { title: Bend limits, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
+    voices: [edges]
+    song:
+      rows_per_pattern: 8
+      order:
+        - { pulse1: 0, triangle: 0 }
+      channels:
+        pulse1:
+          patterns:
+            0:
+              - { row: 0, voice: edges, volume: 15 }
+        triangle:
+          patterns:
+            0:
+              - { row: 0, voice: edges, volume: 15 }
+
+  - name: long-slice
+    purpose: A slice whose volume changes over more values than a tracker instrument holds, which the export shortens and reports.
+    module: { title: Long slice, author: Tracker playback check, tempo: 150, speed: 6, nes_frequency: 60 }
+    voices: [long]
+    song:
+      rows_per_pattern: 64
+      order:
+        - { pulse1: 0 }
+        - { pulse1: 1 }
+      channels:
+        pulse1:
+          patterns:
+            0:
+              - { row: 0, voice: long, volume: 15 }
+            1: []
+
+arrangements:
+  - name: arrangement
+    purpose: The synthetic corpus arrangement, reconstructed from rendered audio, at its own tempo.
+    tempo: 150
+  - name: arrangement-groove
+    purpose: The synthetic corpus arrangement at a tempo whose rows last unequal ticks.
+    tempo: 210

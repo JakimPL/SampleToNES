@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 from abc import ABC
+from collections.abc import Mapping
 from enum import StrEnum
 from pathlib import Path
 from types import NoneType
 from typing import (
     Any,
     Dict,
+    Final,
     List,
     Optional,
     Self,
+    Tuple,
     Type,
     TypeVar,
     Union,
@@ -21,6 +24,7 @@ import msgpack
 import numpy as np
 from pydantic import BaseModel
 
+from sampletones_core.data.document import compress_document, decompress_document
 from sampletones_shared.array import to_numpy
 from sampletones_shared.exceptions import (
     DeserializationError,
@@ -38,6 +42,21 @@ from sampletones_shared.utils.serialization import (
     load_binary,
     save_binary,
 )
+
+MAPPING_ORIGINS: Final[Tuple[type, ...]] = (dict, Mapping)
+
+
+def _packs_in_bulk(item_class: Any) -> bool:
+    """Whether a sequence of ``item_class`` packs as one list, the way a list field of it packs.
+
+    A data model, a string, an enumeration or a number packs the same whether the field holding it
+    is a list or a tuple, so a tuple of them takes the list's bulk path and stores the same bytes.
+    """
+    return (
+        isinstance(item_class, type)
+        and get_origin(item_class) is None
+        and issubclass(item_class, (DataModel, str, StrEnum, int, float, bool))
+    )
 
 
 def _optional_inner_annotation(annotation: Any) -> Optional[Any]:
@@ -73,18 +92,35 @@ class DataModel(BaseModel, ABC):
         validation: Optional[Callback] = None,
         fast: bool = True,
     ) -> Self:
-        data = msgpack.unpackb(buffer, raw=False)
-        return cls.deserialize_inner(data, validation, fast=fast)
+        return cls.deserialize_inner(cls.unpack(buffer), validation, fast=fast)
+
+    @staticmethod
+    def unpack(buffer: bytes) -> SerializedData:
+        """The fields a serialized payload states, before any of them is read into a model.
+
+        A reader after one field of a large document unpacks the payload and reads that field
+        alone, which costs a fraction of building every model the document describes.
+        """
+        unpacked: SerializedData = msgpack.unpackb(buffer, raw=False)
+        return unpacked
 
     def save(self, path: Pathlike) -> None:
-        save_binary(path, self.serialize())
+        save_binary(path, compress_document(self.serialize()))
 
     @classmethod
-    def load(cls, path: Pathlike, fast: bool = True) -> Self:
-        return cls.deserialize(load_binary(path), fast=fast)
+    def load(
+        cls,
+        path: Pathlike,
+        fast: bool = True,
+    ) -> Self:
+        return cls.deserialize(decompress_document(load_binary(path)), fast=fast)
 
     @classmethod
-    def _construct(cls, fast: bool = True, **data: Any) -> Self:
+    def _construct(
+        cls,
+        fast: bool = True,
+        **data: Any,
+    ) -> Self:
         if fast:
             return cls.model_construct(**data)
 
@@ -106,9 +142,27 @@ class DataModel(BaseModel, ABC):
         validation: Optional[Callback] = None,
         fast: bool = True,
     ) -> Self:
+        """The model a serialized payload describes, filling in what the payload leaves out.
+
+        A payload written before a field existed states nothing for it, and a field carrying a
+        default states what it means to say nothing, so the default is what the field takes. This
+        is what lets a model grow a field while every file already written keeps loading.
+
+        Args:
+            data: The serialized fields.
+            validation: A check run over each value as it is read.
+            fast: Whether to construct without re-running validation.
+
+        Returns:
+            Self: The model the payload describes.
+        """
         field_values: SerializedData = {}
         for field_name, field_info in cls.model_fields.items():
             annotation = field_info.annotation
+            if field_name not in data and not field_info.is_required():
+                field_values[field_name] = field_info.get_default(call_default_factory=True)
+                continue
+
             raw = data.get(field_name)
             value = cls._unpack_value(
                 raw,
@@ -124,7 +178,12 @@ class DataModel(BaseModel, ABC):
 
         return cls._construct(fast=fast, **field_values)
 
-    def _pack_value(self, value: Any, annotation: Any, field_name: str) -> Any:
+    def _pack_value(
+        self,
+        value: Any,
+        annotation: Any,
+        field_name: str,
+    ) -> Any:
         if annotation is None:
             raise SerializationError(f"Field '{field_name}' has no annotation")
 
@@ -146,6 +205,27 @@ class DataModel(BaseModel, ABC):
 
         if get_origin(annotation) is list:
             return self._pack_list(value, field_name)
+
+        if get_origin(annotation) is tuple:
+            item_class = get_args(annotation)[0]
+            if _packs_in_bulk(item_class):
+                return self._pack_list(list(value), field_name)
+
+            return [
+                self._pack_value(
+                    item,
+                    item_class,
+                    field_name,
+                )
+                for item in value
+            ]
+
+        if get_origin(annotation) in MAPPING_ORIGINS:
+            key_class, item_class = get_args(annotation)
+            return {
+                self._pack_value(key, key_class, field_name): self._pack_value(item, item_class, field_name)
+                for key, item in value.items()
+            }
 
         if issubclass(annotation, DataModel):
             return value.serialize_inner()
@@ -205,6 +285,25 @@ class DataModel(BaseModel, ABC):
                 fast,
             )
 
+        if get_origin(annotation) is tuple:
+            item_class = get_args(annotation)[0]
+            if _packs_in_bulk(item_class):
+                return tuple(cls._unpack_list(raw, field_name, item_class, validation, fast))
+
+            return tuple(cls._unpack_value(item, item_class, field_name, validation, fast) for item in raw)
+
+        if get_origin(annotation) in MAPPING_ORIGINS:
+            if not isinstance(raw, dict):
+                raise DeserializationError(f"Field '{field_name}' expects a mapping, got {type(raw).__name__}")
+
+            key_class, item_class = get_args(annotation)
+            return {
+                cls._unpack_value(key, key_class, field_name, validation, fast): cls._unpack_value(
+                    item, item_class, field_name, validation, fast
+                )
+                for key, item in raw.items()
+            }
+
         if issubclass(annotation, DataModel):
             return annotation.deserialize_inner(raw, validation, fast=fast)
 
@@ -233,6 +332,12 @@ class DataModel(BaseModel, ABC):
         if all(isinstance(model, DataModel) for model in collection):
             return [model.serialize_inner() for model in collection]
 
+        if all(isinstance(value, (int, float, bool)) for value in collection):
+            return list(collection)
+
+        if all(isinstance(value, list) for value in collection):
+            return [self._pack_list(value, field_name) for value in collection]
+
         raise SerializationError(
             f"Unsupported list element type {type(collection[0])} or mixed types for field '{field_name}'"
         )
@@ -247,6 +352,19 @@ class DataModel(BaseModel, ABC):
         fast: bool = True,
     ) -> List[Any]:
         origin = get_origin(element_class)
+        if origin is list:
+            nested_element_class = get_args(element_class)[0]
+            return [
+                cls._unpack_list(
+                    item,
+                    field_name,
+                    nested_element_class,
+                    validation,
+                    fast,
+                )
+                for item in raw_list
+            ]
+
         if origin is not None:
             raise DeserializationError(f"Generics are not supported for field '{field_name}'")
 
@@ -266,9 +384,16 @@ class DataModel(BaseModel, ABC):
         if issubclass(element_class, (str, StrEnum)):
             return [cls._deserialize_string(item, element_class) for item in raw_list]
 
+        if issubclass(element_class, (int, float, bool)):
+            return [element_class(item) for item in raw_list]
+
         raise DeserializationError(f"Unsupported vector element type: {element_class} for field '{field_name}'")
 
-    def _pack_array(self, array: Array, field_name: str) -> bytes:
+    def _pack_array(
+        self,
+        array: Array,
+        field_name: str,
+    ) -> bytes:
         array = to_numpy(array)
 
         if array.dtype != np.float32:
@@ -291,7 +416,11 @@ class DataModel(BaseModel, ABC):
         return array.tobytes()
 
     @classmethod
-    def _unpack_array(cls, raw: bytes, field_name: str) -> np.ndarray:
+    def _unpack_array(
+        cls,
+        raw: bytes,
+        field_name: str,
+    ) -> np.ndarray:
         array = np.frombuffer(raw, dtype=np.float32).copy()
 
         if np.isnan(array).any():

@@ -1,0 +1,13 @@
+hits:
+  Kick: [pulse1, triangle, noise]
+  Snare: [pulse1, noise]
+piece:
+  mode: round_robin
+  levels:
+    - [Lead]
+    - [Drums]
+    - [Bass]
+  stems:
+    Lead: [pulse1, pulse2]
+    Drums: [triangle, noise]
+    Bass: [triangle]

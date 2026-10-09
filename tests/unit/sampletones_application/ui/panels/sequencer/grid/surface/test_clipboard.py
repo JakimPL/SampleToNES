@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Callable, List
+from typing import Any, Callable, Dict, List, Tuple
 
 import pytest
 
@@ -26,8 +26,11 @@ class RecordedItem:
 
 
 class _MenuRecorder:
+    """The items a menu registered, each named by its place, and every change made to one since."""
+
     def __init__(self) -> None:
         self.items: List[RecordedItem] = []
+        self.changes: List[Tuple[int, Dict[str, Any]]] = []
 
     def add_menu_item(self, **kwargs: Any) -> int:
         self.items.append(
@@ -38,13 +41,17 @@ class _MenuRecorder:
                 callback=kwargs["callback"],
             )
         )
-        return 0
+        return len(self.items) - 1
+
+    def configure_item(self, item: int, **kwargs: Any) -> None:
+        self.changes.append((item, kwargs))
 
 
 @pytest.fixture
 def recorder(monkeypatch: pytest.MonkeyPatch) -> _MenuRecorder:
     recorded = _MenuRecorder()
     monkeypatch.setattr(clipboard_module.dpg, "add_menu_item", recorded.add_menu_item)
+    monkeypatch.setattr(clipboard_module, "dpg_configure_item", recorded.configure_item)
     return recorded
 
 
@@ -96,3 +103,17 @@ class TestClipboardItems:
 
         assert not recorder.items[PASTE_ITEM].enabled
         assert all(item.enabled for index, item in enumerate(recorder.items) if index != PASTE_ITEM)
+
+    def test_paste_follows_the_answer_its_opening_asked_for(self, recorder: _MenuRecorder) -> None:
+        """The clipboard answers in its own time, so the item stands on the last answer until then."""
+        grid = Grid(can_paste=False)
+        grid.clipboard_items().add_items(CLICKED_TARGET)
+
+        assert not recorder.items[PASTE_ITEM].enabled
+        assert recorder.changes == []
+
+        grid.can_paste = True
+        for answered in grid.refreshes:
+            answered()
+
+        assert recorder.changes == [(PASTE_ITEM, {"enabled": True})]

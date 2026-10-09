@@ -3,11 +3,13 @@ from typing import List
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
+from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.constants.general import (
     MIN_PITCH,
+    MIN_SOUNDING_TRIANGLE_TIMER,
     MIXER_TRIANGLE,
     TRIANGLE_OFFSET,
+    TRIANGLE_PHASE_INCREMENT,
 )
 from sampletones_core.instructions import (
     InstructionTypeUnion,
@@ -16,21 +18,27 @@ from sampletones_core.instructions import (
 from sampletones_core.timers import PhaseTimer
 from sampletones_shared.types.data import Initials
 
-from ..generator import Generator
+from ..tonal import TonalGenerator
 
 
-class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
+class TriangleGenerator(TonalGenerator[TriangleInstruction]):
+    """The triangle channel, a fixed-volume wave an octave below a pulse at the same divider.
+
+    A timer below ``MIN_SOUNDING_TRIANGLE_TIMER`` renders the middle of the wave while the timer runs
+    on. The sequencer steps above hearing there, and the console's output settles at its mean level.
+    """
+
     def __init__(
         self,
         config: Config,
-        name: str = GeneratorName.TRIANGLE,
+        name: str = ChannelName.TRIANGLE,
     ) -> None:
         super().__init__(config, name)
         self.timer = PhaseTimer(
             sample_rate=config.library.sample_rate,
             nes_frequency=config.library.nes_frequency,
             reset_phase=config.generation.reset_phase,
-            phase_increment=0.5,
+            phase_increment=TRIANGLE_PHASE_INCREMENT,
         )
 
     def __call__(
@@ -54,13 +62,10 @@ class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
 
         self.save_state(save, triangle_instruction)
 
-        return output
+        if self.timer.timer < MIN_SOUNDING_TRIANGLE_TIMER:
+            return np.zeros(self.frame_length, dtype=np.float32)
 
-    def set_timer(self, instruction: TriangleInstruction) -> None:
-        if instruction.on:
-            self.timer.frequency = self.get_frequency(instruction.pitch)
-        else:
-            self.timer.frequency = 0.0
+        return output
 
     def apply(self, output: np.ndarray, instruction: TriangleInstruction) -> np.ndarray:
         triangle = 1.0 - np.round(np.abs(((output + TRIANGLE_OFFSET) % 1.0) - 0.5) * 30.0) / 7.5

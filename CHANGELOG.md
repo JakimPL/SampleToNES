@@ -1,5 +1,19 @@
 # SampleToNES
 
+## v0.3.2
+
+* Added NSF export.
+* Added support for pitch and hi-pitch envelopes.
+* Added stem conversion: mix several recordings into one reconstruction, with in-reconstruction stem separation.
+* Added voices: samples or pure instruments.
+* Improved reconstruction clarity.
+* Optimized reconstruction size.
+* Optimized algorithm memory usage.
+* Improved FamiTracker/Bitphase compatibility.
+* Bumped the reconstruction data- version to `2.2`, with backward compatibility for `2.1`.
+* Bumped the project data version to `1.1`, with backward compatibility.
+* Bumped the library data version to `2.1`.
+
 ## v0.3.1 [2026-08-18]
 
 * Added support to [Bitphase](https://github.com/paator/bitphase).

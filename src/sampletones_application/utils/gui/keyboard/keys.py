@@ -34,6 +34,39 @@ KEYPAD_DIGIT_NAMES: Final[Dict[int, str]] = {
 
 FUNCTION_KEYS: Final[FrozenSet[int]] = frozenset(FUNCTION_KEY_NAMES)
 
+PUNCTUATION_KEYS: Final[FrozenSet[int]] = frozenset(
+    {
+        dpg.mvKey_Comma,
+        dpg.mvKey_Period,
+        dpg.mvKey_Slash,
+        dpg.mvKey_Backslash,
+        dpg.mvKey_Open_Brace,
+        dpg.mvKey_Close_Brace,
+        KEY_SEMICOLON,
+        KEY_QUOTE,
+        KEY_TILDE,
+        dpg.mvKey_Minus,
+        KEY_PLUS,
+    }
+)
+KEYPAD_CHARACTER_KEYS: Final[FrozenSet[int]] = frozenset(KEYPAD_DIGIT_NAMES) | frozenset(
+    {
+        dpg.mvKey_Decimal,
+        dpg.mvKey_Divide,
+        dpg.mvKey_Multiply,
+        dpg.mvKey_Subtract,
+        dpg.mvKey_Add,
+        dpg.mvKey_NumPadEqual,
+    }
+)
+CHARACTER_KEYS: Final[FrozenSet[int]] = (
+    frozenset(LETTER_NAMES)
+    | frozenset(DIGIT_NAMES)
+    | PUNCTUATION_KEYS
+    | KEYPAD_CHARACTER_KEYS
+    | frozenset({dpg.mvKey_Spacebar})
+)
+
 KEY_DISPLAY_NAMES: Final[Dict[int, str]] = {
     **LETTER_NAMES,
     **DIGIT_NAMES,
@@ -160,7 +193,7 @@ def key_display(key: int) -> str:
 
 
 def key_code(name: str) -> int:
-    """The key a written name stands for, however the name is capitalised.
+    """The key a written name stands for, however the name is capitalized.
 
     Reading a name back into a code is what lets a binding be written down, so a configured
     combination and a declared one arrive at the same key. A key answers to the name it displays

@@ -1,15 +1,18 @@
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
+from functools import partial
 from typing import Any, Iterator, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.layout.primitives import DialogGeometry
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_DIALOG_WINDOW
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.align import center_item
+from sampletones_application.utils.gui.align import center_when_settled, viewport_center
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_delete_item
-from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.modal_queue import ModalQueue
+from sampletones_application.utils.placement import centered_position
 from sampletones_shared.types.callback import VoidCallback
 
 
@@ -23,33 +26,61 @@ class GUIWindow(GUIPanel, ABC):
     down. Each rebuild binds the elevated dialog-window theme so the window
     floats above the app with an accent border and title bar.
 
+    A window claims the screen while it stands, so the reader answers it before going on. One
+    reporting work already under way clears ``_claims_the_screen`` instead, which leaves the rest
+    of the interface live beside it. DearPyGui shows one modal window at a time, so a window
+    claiming the screen opens through :class:`ModalQueue`: at once where the screen is free, and
+    once the conversation holding it has ended otherwise.
+
     A dialog that raises another modal — a prompt, a countdown — hands the screen
-    over with ``yield_to`` and takes it back with ``resume``, which is what keeps
-    the two from competing for the one modal DearPyGui carries at a time.
+    over with ``yield_to`` and takes it back with ``resume``. The position a window was
+    placed at is its own from then on, so the return brings it back where it stood.
+
+    A dialog that closes on its answer leaves with ``_leave_then``: it goes off
+    screen, and the answer runs a frame later. Whatever the answer raises — a
+    question of its own, an error — then opens alone and holds the keyboard.
     """
 
-    def center(self) -> None:
-        center_item(self.tag)
+    _claims_the_screen: bool = True
+
+    def __init__(self, tag: str, geometry: DialogGeometry) -> None:
+        self._geometry = geometry
+        super().__init__(tag, geometry.width, geometry.minimum_size[1])
 
     def yield_to(self, raise_modal: VoidCallback) -> None:
         """Steps off screen and runs ``raise_modal`` a frame later, so what it raises can open.
 
-        DearPyGui carries one modal at a time: a modal built while another one is still on
-        screen opens as a hidden window nobody can reach. This window goes off screen first
-        and the frame it was drawn in finishes, leaving the new modal alone on screen. The
-        widget tree stays where it is, so whatever is being edited here survives the visit
-        and :meth:`resume` brings it back untouched.
+        The window keeps the screen while it stands aside, so the modal it raises opens ahead of
+        any waiting in line. The widget tree stays where it is, so whatever is being edited here
+        survives the visit and :meth:`resume` brings it back untouched.
         """
         dpg_configure_item(self.tag, show=False)
-        FrameCallbackManager.set_frame_callback(raise_modal)
+        ModalQueue.step_aside(self.tag)
+        ModalQueue.hand_off(raise_modal)
 
     def resume(self) -> None:
         """Comes back on screen once the modal this window yielded to is gone.
 
-        The return waits a frame for the same reason the hand-off does: the modal being
-        dismissed still holds the screen for the frame it is dismissed in.
+        The modal being dismissed still holds the screen for the frame it is dismissed in, so the
+        return comes on a later frame.
         """
-        FrameCallbackManager.set_frame_callback(lambda: dpg_configure_item(self.tag, show=True))
+        ModalQueue.come_back(self.tag, lambda: dpg_configure_item(self.tag, show=True))
+
+    def _leave_then(self, answer: VoidCallback) -> None:
+        """Deletes this appearance and runs ``answer`` a frame later, once the screen is clear.
+
+        The tree goes first, and with it the keyboard claim of this appearance, so a prompt the
+        answer raises is the only modal on screen and the one the keyboard reaches. The answer
+        carries on the conversation this window held the screen for, so what it raises opens ahead
+        of any modal waiting in line. What the answer reads from the window, such as a ticked box
+        or a form field, is read before this call. Only the first answer given while the window
+        stands runs: a second click reaches a window that has already left.
+        """
+        if not dpg.does_item_exist(self.tag):
+            return
+
+        self.hide()
+        ModalQueue.hand_off(answer)
 
     @contextmanager
     def dialog_window(
@@ -60,11 +91,11 @@ class GUIWindow(GUIPanel, ABC):
     ) -> Iterator[None]:
         """Open this window's modal frame, with the block's widgets building inside it.
 
-        The window holds the width it states and fits its height to the content it is given, which
-        is what lets a field, a combo or a button stretch across it: a stretched item measures one
-        pixel inside the region it is offered, so a window sized from its own content would take
-        that pixel back on every frame. A stated width settles the geometry in one pass and gives
-        every dialog the same reading width whatever it holds.
+        The window opens at the size its geometry states and grows in height to hold more than
+        that, so a prompt whose text wraps over several lines and a form that unfolds a group
+        after opening both show the whole of what they hold. Its width is the one its geometry
+        states, held as the largest the window may take as well as the smallest, so an item
+        stretching across the window measures against a width that stands.
 
         A dialog offers the title bar's close button when ``on_close`` names what closing means,
         and omits it otherwise, so the only way out of a window is one the window answers for.
@@ -72,27 +103,55 @@ class GUIWindow(GUIPanel, ABC):
         with dpg.window(
             tag=self.tag,
             label=label,
-            width=self.width,
-            height=self.height,
+            width=self._geometry.width,
+            min_size=list(self._geometry.minimum_size),
+            max_size=list(self._geometry.maximum_size),
+            autosize=True,
             no_resize=True,
             no_collapse=True,
             no_close=on_close is None,
             on_close=on_close,
-            modal=True,
+            modal=self._claims_the_screen,
         ):
             yield
 
     def show(self, *args: Any, **kwargs: Any) -> None:
+        """Raises this window: at once, or once the screen is free for it where it claims the screen.
+
+        Showing a window again puts the newer appearance in place of the one standing or waiting.
+        """
         self.hide()
+        appear = partial(self._appear, *args, **kwargs)
+        if self._claims_the_screen:
+            ModalQueue.open(self.tag, appear)
+        else:
+            appear()
+
+    def _appear(self, *args: Any, **kwargs: Any) -> None:
+        """Builds this appearance's tree, places it, and holds it centered as it takes its size.
+
+        A window stating a height is placed before it is ever drawn, so the first frame carrying
+        it already shows it centered — which is what keeps it clear of the spot DearPyGui opens
+        an unplaced modal at. A window whose height its content settles has none to place from
+        and is centered on the frame that settles it. The drawn size is known only after a frame
+        has carried it, so the correction waits for those frames to arrive on their own: waiting
+        for one in place would hold the render thread, and a window is raised from wherever a
+        result reaches the screen — including the callback drain that runs between frames, where
+        the frame being waited for is the one this call stands in the way of.
+        """
         self.prepare(*args, **kwargs)
         self.create_window()
         ThemeRegistry.get(TAG_GLOBAL_THEME_DIALOG_WINDOW).bind_to_item(self.tag)
-        dpg.split_frame()
-        self.center()
+        if self._geometry.height is not None:
+            dpg.set_item_pos(self.tag, list(centered_position(viewport_center(), *self._geometry.minimum_size)))
+
+        center_when_settled(self.tag)
 
     def hide(self) -> None:
+        """Takes this window off the screen, or out of the line where it still waits for the screen."""
         self._teardown()
         dpg_delete_item(self.tag)
+        ModalQueue.leave(self.tag)
 
     def _teardown(self) -> None:
         """Releases resources tied to the current appearance before its tree is deleted.

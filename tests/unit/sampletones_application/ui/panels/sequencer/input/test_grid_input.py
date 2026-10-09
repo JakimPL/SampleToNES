@@ -61,11 +61,11 @@ class TestSelection:
         assert extended.anchor == _Cell(2, 1)
         assert extended.region == _Block(first_row=2, last_row=6, first_column=1, last_column=5)
 
-    def test_extending_backwards_names_the_same_region_as_forwards(self) -> None:
-        backwards = _state(row=4, column=3).extend_to(_Cell(2, 1)).region
-        forwards = _state(row=2, column=1).extend_to(_Cell(4, 3)).region
+    def test_extending_backward_names_the_same_region_as_forward(self) -> None:
+        backward = _state(row=4, column=3).extend_to(_Cell(2, 1)).region
+        forward = _state(row=2, column=1).extend_to(_Cell(4, 3)).region
 
-        assert backwards == forwards
+        assert backward == forward
 
     def test_extending_leaves_nothing_pending(self) -> None:
         assert _state(pending="5").extend_to(_Cell(4, 3)).pending == ""
@@ -83,11 +83,11 @@ class TestSelection:
         assert held.pending == ""
 
     def test_cancel_drops_the_selection_and_the_partial_entry(self) -> None:
-        cancelled = _GridState(cursor=_Cell(2, 1), pending="5", anchor=_Cell(4, 3)).cancel()
+        canceled = _GridState(cursor=_Cell(2, 1), pending="5", anchor=_Cell(4, 3)).cancel()
 
-        assert cancelled.region is None
-        assert cancelled.pending == ""
-        assert cancelled.cursor == _Cell(2, 1)
+        assert canceled.region is None
+        assert canceled.pending == ""
+        assert canceled.cursor == _Cell(2, 1)
 
     def test_a_committed_entry_leaves_the_cursor_alone(self) -> None:
         settled = _GridState(cursor=_Cell(2, 1), pending="5", anchor=_Cell(4, 3))._after_entry()

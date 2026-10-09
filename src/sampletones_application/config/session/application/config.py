@@ -2,11 +2,13 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_application.config.session.application.audio import AudioConfig
 from sampletones_application.config.session.application.browser import BrowserConfig
+from sampletones_application.config.session.application.converter import ConverterConfig
 from sampletones_application.config.session.application.display import DisplayConfig
 from sampletones_application.config.session.application.favorites import Favorites
 from sampletones_application.config.session.application.history import HistoryConfig
 from sampletones_application.config.session.application.playback import PlaybackConfig
 from sampletones_application.config.session.application.shortcuts import ShortcutsConfig
+from sampletones_application.config.session.application.tracker import TrackerConfig
 from sampletones_core.data import Metadata
 
 
@@ -25,6 +27,10 @@ class ApplicationConfig(BaseModel):
         default_factory=BrowserConfig,
         description="How the browsers of reconstructions read what they narrow to.",
     )
+    converter: ConverterConfig = Field(
+        default_factory=ConverterConfig,
+        description="What a recording is converted with when it joins the converter's list.",
+    )
     display: DisplayConfig = Field(
         default_factory=DisplayConfig,
         description="The palette and frame pacing preferences.",
@@ -39,9 +45,13 @@ class ApplicationConfig(BaseModel):
     )
     playback: PlaybackConfig = Field(
         default_factory=PlaybackConfig,
-        description="Playback behaviour preferences.",
+        description="Playback behavior preferences.",
     )
     shortcuts: ShortcutsConfig = Field(
         default_factory=ShortcutsConfig,
         description="The keybinding scheme and the actions rebound on it.",
+    )
+    tracker: TrackerConfig = Field(
+        default_factory=TrackerConfig,
+        description="How the pattern grid is typed into.",
     )

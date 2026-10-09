@@ -1,7 +1,7 @@
 from enum import IntEnum
 from typing import Dict, Final, Tuple
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 
 
 class ChannelIndex(IntEnum):
@@ -23,9 +23,9 @@ CHANNEL_LABELS: Final[Tuple[str, ...]] = (
 )
 CHANNEL_COUNT: Final[int] = len(CHANNEL_LABELS)
 
-GENERATOR_NAME_TO_CHANNEL_INDEX: Final[Dict[GeneratorName, ChannelIndex]] = {
-    GeneratorName.PULSE1: ChannelIndex.SQUARE1,
-    GeneratorName.PULSE2: ChannelIndex.SQUARE2,
-    GeneratorName.TRIANGLE: ChannelIndex.TRIANGLE,
-    GeneratorName.NOISE: ChannelIndex.NOISE,
+CHANNEL_TO_INDEX: Final[Dict[ChannelName, ChannelIndex]] = {
+    ChannelName.PULSE1: ChannelIndex.SQUARE1,
+    ChannelName.PULSE2: ChannelIndex.SQUARE2,
+    ChannelName.TRIANGLE: ChannelIndex.TRIANGLE,
+    ChannelName.NOISE: ChannelIndex.NOISE,
 }

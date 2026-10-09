@@ -1,0 +1,15 @@
+name: stems_pick_partial
+tag: global.theme.stems_pick_partial
+
+components:
+  - item_type: Checkbox
+    entries:
+      - type: color
+        key: FrameBg
+        value: .accent_partial
+      - type: color
+        key: FrameBgHovered
+        value: .accent_partial
+      - type: color
+        key: FrameBgActive
+        value: .accent_partial

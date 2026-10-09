@@ -1,0 +1,243 @@
+from dataclasses import dataclass
+from typing import Final, Optional
+
+import numpy as np
+
+from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
+from sampletones_shared.constants.music import OCTAVE_SEMITONES
+
+from .cqt.frequencies import calculate_cqt_frequencies
+from .cqt.normalization import normalize_cqt_energy
+from .cqt.transform import calculate_cqt_frames
+
+HARMONIC_COUNT: Final[int] = 5
+HARMONIC_ROOM: Final[float] = 2.0 ** (1.0 / (2 * OCTAVE_SEMITONES))
+NEIGHBOR_NOTE: Final[float] = 2.0 ** (1.0 / OCTAVE_SEMITONES)
+MINIMUM_COLUMN_ENERGY: Final[float] = 1e-20
+SHORT_LAG_DIVISOR: Final[int] = 16
+
+
+@dataclass(frozen=True)
+class FundamentalReading:
+    """What a frame's partials place its fundamental at, and how much of the frame stands behind it.
+
+    Attributes:
+        frequency: The fundamental in Hz the frame's harmonics agree on.
+        confidence: The share of the frame's energy those harmonics hold, in ``[0, 1]``.
+    """
+
+    frequency: float
+    confidence: float
+
+
+class InstantaneousPitch:
+    """Where a recording's partials actually sit, read frame by frame from the transform's phase.
+
+    A constant-Q column carries a phase as well as a magnitude, and a partial standing between two
+    bin centers still advances that phase at its own rate. Comparing the phase two columns apart
+    against the rate the bin itself would turn at therefore states the partial's frequency far more
+    finely than the bins are spaced — finely enough to place a note within a fraction of a cent,
+    where the bins alone place it within a semitone.
+
+    Reading around a stated reference is what makes the answer usable: the reference names which
+    bins carry the note's harmonics, and each harmonic's estimate is divided back down and weighted
+    by the energy standing behind it. The harmonics are read in order, each one settled against the
+    fundamental the ones below it agreed on, which is what keeps an upper harmonic on the right side
+    of the whole turn its phase states the reading to within. A later harmonic counts where its partial
+    stands within half a semitone of where that fundamental puts it, the room a note owns, so a
+    partial another voice sounds beside it stays out of the reading.
+
+    The first harmonic read has the note alone to be settled against. From about 1 kHz up a note's
+    room is wider than the whole turn the reading repeats over, so there a second reading, over a lag
+    a fraction of a hop long, names the turn the partial stands on.
+
+    The confidence measures every bin on the scale the features use, its energy divided by the
+    length of its wavelet. A bass then takes the share of a frame its level gives it in every
+    register, and a melody above it keeps the rest.
+    """
+
+    def __init__(
+        self,
+        audio: np.ndarray,
+        sample_rate: int,
+        hop_length: int,
+        *,
+        cutoff: float = CQT_CUTOFF_FREQUENCY,
+        bins_per_octave: int = BINS_PER_OCTAVE,
+    ) -> None:
+        coefficients = calculate_cqt_frames(audio, sample_rate, hop_length, cutoff, None, bins_per_octave)
+        self._magnitudes: np.ndarray = np.abs(coefficients)
+        self._phases: np.ndarray = np.angle(coefficients)
+        self._frequencies: np.ndarray = calculate_cqt_frequencies(
+            coefficients.shape[0],
+            cutoff,
+            bins_per_octave,
+        )
+        self._bin_energies: np.ndarray = normalize_cqt_energy(
+            self._magnitudes**2,
+            self._frequencies,
+            sample_rate,
+            bins_per_octave,
+        )
+        self._column_energies: np.ndarray = np.sum(self._bin_energies, axis=0)
+        self._turn_per_column: np.ndarray = 2.0 * np.pi * self._frequencies * hop_length / sample_rate
+        self._resolution: float = sample_rate / (2.0 * np.pi * hop_length)
+        self._ambiguity: float = sample_rate / hop_length
+        self._short_lag_first_bin: int = int(np.searchsorted(self._frequencies, self._fold_frequency()))
+        self._short_lag_partials: np.ndarray = self._read_short_lag(audio, sample_rate, hop_length, bins_per_octave)
+
+    @property
+    def columns(self) -> int:
+        """How many frames the transform read."""
+        return int(self._magnitudes.shape[1])
+
+    def at(self, frame: int, reference: float) -> Optional[FundamentalReading]:
+        """Where the fundamental sits in one frame, read around a reference it is known to be near.
+
+        Args:
+            frame: The frame to read.
+            reference: The frequency in Hz the note is expected at.
+
+        Returns:
+            Optional[FundamentalReading]: The reading, or ``None`` where the frame lies outside
+                the transform or the reference names no bin the transform covers.
+        """
+        opening, closing = self._pair(frame)
+        if opening is None or closing is None:
+            return None
+
+        weighted = 0.0
+        weight = 0.0
+        share = 0.0
+        running = reference
+        for harmonic in range(1, HARMONIC_COUNT + 1):
+            bin_index = self._bin_for(reference * harmonic)
+            if bin_index is None:
+                continue
+
+            expected = running * harmonic
+            if weight <= 0.0:
+                expected = self._first_guide(bin_index, opening, expected)
+
+            partial = self._partial_frequency(bin_index, opening, closing, expected)
+            if weight > 0.0 and not expected / HARMONIC_ROOM <= partial <= expected * HARMONIC_ROOM:
+                continue
+
+            energy = float(self._magnitudes[bin_index, opening]) ** 2
+            weighted += energy * partial / harmonic
+            weight += energy
+            share += float(self._bin_energies[bin_index, opening])
+            running = weighted / weight
+
+        if weight <= 0.0:
+            return None
+
+        return FundamentalReading(
+            frequency=weighted / weight,
+            confidence=share / max(float(self._column_energies[opening]), MINIMUM_COLUMN_ENERGY),
+        )
+
+    def _pair(self, frame: int) -> tuple[Optional[int], Optional[int]]:
+        """The two columns a phase advance is read across, stepping back at the final frame."""
+        if frame < 0 or frame >= self.columns:
+            return None, None
+
+        if frame + 1 < self.columns:
+            return frame, frame + 1
+
+        if frame > 0:
+            return frame - 1, frame
+
+        return None, None
+
+    def _bin_for(self, frequency: float) -> Optional[int]:
+        """The bin whose center stands nearest a frequency, where the transform reaches it."""
+        if frequency < self._frequencies[0] or frequency > self._frequencies[-1]:
+            return None
+
+        return int(np.argmin(np.abs(self._frequencies - frequency)))
+
+    def _fold_frequency(self) -> float:
+        """The frequency from which half the span a reading repeats over is narrower than a note's room."""
+        return self._ambiguity / 2.0 / (HARMONIC_ROOM - 1.0)
+
+    def _read_short_lag(
+        self,
+        audio: np.ndarray,
+        sample_rate: int,
+        hop_length: int,
+        bins_per_octave: int,
+    ) -> np.ndarray:
+        """Each bin's partial from the fold frequency up, read over a short lag at the middle of every hop.
+
+        The lag is ``hop / SHORT_LAG_DIVISOR`` long, so this reading repeats that many times wider than
+        the one-hop reading and spans a note's room up to the top of the range. It sits at the middle of
+        the hop the one-hop reading spans, so a moving pitch shows in both alike. Both of its columns come
+        from one transform, so the kernel's centering cancels out of the phase they turn.
+
+        Returns:
+            np.ndarray: One frequency in Hz per bin from ``_short_lag_first_bin`` up and per hop.
+        """
+        first = self._short_lag_first_bin
+        if first >= len(self._frequencies):
+            return np.empty((0, 0))
+
+        lag = hop_length // SHORT_LAG_DIVISOR
+        middle = hop_length // 2
+        cutoff = float(self._frequencies[first])
+        n_bins = len(self._frequencies) - first
+        opening = calculate_cqt_frames(audio[middle:], sample_rate, hop_length, cutoff, n_bins, bins_per_octave)
+        lagged = calculate_cqt_frames(audio[middle + lag :], sample_rate, hop_length, cutoff, n_bins, bins_per_octave)
+        count = min(opening.shape[1], lagged.shape[1])
+        frequencies = self._frequencies[first:, None]
+        turned = np.angle(lagged[:, :count]) - np.angle(opening[:, :count])
+        deviation = np.angle(np.exp(1j * (turned - 2.0 * np.pi * frequencies * lag / sample_rate)))
+        partials: np.ndarray = frequencies + deviation * sample_rate / (2.0 * np.pi * lag)
+        return partials
+
+    def _first_guide(self, bin_index: int, column: int, expected: float) -> float:
+        """Where the first harmonic a frame reads is looked for.
+
+        The short-lag reading guides it where the bin has one and that reading stands between the
+        note's neighbors. The decoder chose the note nearest the sound, so the partial lies there, even
+        where the note's own divider stands off equal temperament. The note itself guides it elsewhere.
+        """
+        row = bin_index - self._short_lag_first_bin
+        if row < 0 or column >= self._short_lag_partials.shape[1]:
+            return expected
+
+        guide = float(self._short_lag_partials[row, column])
+        if expected / NEIGHBOR_NOTE < guide < expected * NEIGHBOR_NOTE:
+            return guide
+
+        return expected
+
+    def _partial_frequency(
+        self,
+        bin_index: int,
+        opening: int,
+        closing: int,
+        expected: float,
+    ) -> float:
+        """What the partial in one bin sounds at, from how far its phase turned between two columns.
+
+        A phase states its turn to within a whole turn, so the reading repeats every
+        ``sample_rate / hop`` hertz and the branch to take is the one standing nearest where the
+        partial is expected. That spacing is far wider than any error the reading itself carries,
+        so choosing by the expectation settles the branch without moving the answer inside it —
+        which is what keeps the upper harmonics of a note usable, since a whole turn there spans
+        less than the semitone their bin covers.
+
+        Args:
+            bin_index: The bin the partial stands in.
+            opening: The column the turn is measured from.
+            closing: The column the turn is measured to.
+            expected: The frequency in Hz the partial is expected near.
+
+        Returns:
+            float: The partial's frequency in Hz.
+        """
+        turned = self._phases[bin_index, closing] - self._phases[bin_index, opening]
+        deviation = np.angle(np.exp(1j * (turned - self._turn_per_column[bin_index])))
+        partial = float(self._frequencies[bin_index] + deviation * self._resolution)
+        return partial + self._ambiguity * round((expected - partial) / self._ambiguity)

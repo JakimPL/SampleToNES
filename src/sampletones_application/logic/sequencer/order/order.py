@@ -6,7 +6,7 @@ from sampletones_application.view_model.sequencer.order import (
     SequencerOrderTrackerViewModel,
     SequencerOrderViewModel,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.song import Song
 from sampletones_shared.utils.callbacks import CallbackMixin
 
@@ -26,7 +26,7 @@ class SequencerOrderLogic(CallbackMixin):
 
     def build_order(self) -> SequencerOrderTrackerViewModel:
         song = self._controller.project.song
-        channels = {generator: self._build_channel_view(generator, song) for generator in GeneratorName.items()}
+        channels = {channel: self._build_channel_view(channel, song) for channel in ChannelName.items()}
         return SequencerOrderTrackerViewModel(
             position_count=song.order_length(),
             channels=channels,
@@ -40,19 +40,19 @@ class SequencerOrderLogic(CallbackMixin):
 
     def set_order_entry(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
         position: int,
         pattern_index: Optional[int],
     ) -> None:
-        self._controller.set_order_entry(generator, position, pattern_index)
+        self._controller.set_order_entry(channel, position, pattern_index)
 
     def set_master_entry(self, position: int, pattern_index: Optional[int]) -> None:
-        for generator in GeneratorName.items():
-            self._controller.set_order_entry(generator, position, pattern_index)
+        for channel in ChannelName.items():
+            self._controller.set_order_entry(channel, position, pattern_index)
 
     def write_entry(
         self,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
         position: int,
         pattern_index: Optional[int],
     ) -> None:
@@ -61,18 +61,18 @@ class SequencerOrderLogic(CallbackMixin):
         This is the rule the table's two kinds of row follow, kept in one place so a gesture
         reaching across them writes what the reader typing into each by hand would.
         """
-        if generator is None:
+        if channel is None:
             self.set_master_entry(position, pattern_index)
         else:
-            self.set_order_entry(generator, position, pattern_index)
+            self.set_order_entry(channel, position, pattern_index)
 
-    def entry(self, generator: GeneratorName, position: int) -> Optional[int]:
+    def entry(self, channel: ChannelName, position: int) -> Optional[int]:
         """The pattern index a channel plays at a position, empty past the order's last frame."""
         order = self._controller.song.order
         if position >= len(order):
             return None
 
-        return order[position].get(generator)
+        return order[position].get(channel)
 
     def position_count(self) -> int:
         return self._controller.order_length
@@ -105,17 +105,17 @@ class SequencerOrderLogic(CallbackMixin):
 
     def _build_channel_view(
         self,
-        generator: GeneratorName,
+        channel: ChannelName,
         song: Song,
     ) -> SequencerOrderViewModel:
         entries = tuple(
             OrderEntryViewModel(
                 position=position,
-                pattern_index=frame.get(generator),
+                pattern_index=frame.get(channel),
             )
             for position, frame in enumerate(song.order)
         )
         return SequencerOrderViewModel(
-            generator=generator,
+            channel=channel,
             entries=entries,
         )

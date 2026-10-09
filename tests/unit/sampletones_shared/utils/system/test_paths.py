@@ -9,8 +9,11 @@ import pytest
 from sampletones_shared.utils.system.paths import (
     DEFAULT_MAX_FILENAME_DISPLAY,
     ensure_suffix,
+    first_missing,
     get_directory,
     get_filename,
+    is_same_path,
+    nearest_directory,
     open_directory_in_explorer_linux,
     open_file_in_explorer_linux,
     open_path_in_explorer,
@@ -18,11 +21,88 @@ from sampletones_shared.utils.system.paths import (
     shorten_filename,
     shorten_path,
     to_path,
+    to_paths,
 )
 from sampletones_shared.utils.system.system import System
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import expect_error
+
+
+class TestFirstMissing:
+    def test_answers_the_first_path_that_names_no_file(self, tmp_path: Path) -> None:
+        existing = tmp_path / "here.wav"
+        existing.touch()
+        missing = tmp_path / "gone.wav"
+        later_missing = tmp_path / "also_gone.wav"
+
+        assert first_missing((existing, missing, later_missing)) == missing
+
+    def test_answers_none_when_every_path_stands(self, tmp_path: Path) -> None:
+        first = tmp_path / "one.wav"
+        second = tmp_path / "two.wav"
+        first.touch()
+        second.touch()
+
+        assert first_missing((first, second)) is None
+
+
+class TestIsSamePath:
+    """Two spellings of one location name the same file, which is what tells a document its own."""
+
+    def test_a_path_is_the_same_as_itself(self, tmp_path: Path) -> None:
+        assert is_same_path(tmp_path / "song.stn", tmp_path / "song.stn")
+
+    def test_a_detour_through_a_parent_reaches_the_same_file(self, tmp_path: Path) -> None:
+        (tmp_path / "folder").mkdir()
+
+        assert is_same_path(tmp_path / "folder" / ".." / "song.stn", tmp_path / "song.stn")
+
+    def test_a_relative_spelling_reaches_the_same_file(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.chdir(tmp_path)
+
+        assert is_same_path(Path("song.stn"), tmp_path / "song.stn")
+
+    def test_two_files_are_different(self, tmp_path: Path) -> None:
+        assert not is_same_path(tmp_path / "song.stn", tmp_path / "other.stn")
+
+
+class TestNearestDirectory:
+    def test_a_standing_directory_answers_itself(self, tmp_path: Path) -> None:
+        assert nearest_directory(tmp_path) == tmp_path
+
+    def test_a_missing_path_answers_the_closest_directory_above_it(self, tmp_path: Path) -> None:
+        assert nearest_directory(tmp_path / "gone" / "deeper") == tmp_path
+
+    def test_a_file_answers_the_directory_holding_it(self, tmp_path: Path) -> None:
+        file = tmp_path / "song.wav"
+        file.touch()
+
+        assert nearest_directory(file) == tmp_path
+
+    def test_a_path_with_no_standing_directory_answers_none(self, tmp_path: Path) -> None:
+        with patch.object(Path, "is_dir", return_value=False):
+            assert nearest_directory(tmp_path / "drive" / "audio") is None
+
+
+class TestToPaths:
+    def test_one_path_becomes_a_one_tuple(self) -> None:
+        assert to_paths(Path("/a/one.wav")) == (Path("/a/one.wav"),)
+
+    def test_several_paths_stay_as_they_are(self) -> None:
+        paths = (Path("/a/one.wav"), Path("/b/two.wav"))
+
+        assert to_paths(paths) == paths
+
+    def test_an_absent_location_is_empty(self) -> None:
+        assert to_paths(None) == ()
+
+    def test_strings_become_paths(self) -> None:
+        assert to_paths("/a/one.wav") == (Path("/a/one.wav"),)
 
 
 class TestToPath(BaseTestSuite):
@@ -170,7 +250,7 @@ class TestGetFilename(BaseTestSuite):
             name="Kick (pulse1)",
             extension=".fti",
             expected="Kick (pulse1).fti",
-            label="carries_a_parenthesised_slice_name",
+            label="carries_a_parenthesized_slice_name",
         ),
         TestCase(
             name="Kick v1.2",
@@ -532,7 +612,7 @@ class TestShortenPath(BaseTestSuite):
     )
 
     def _create_resolved_mock(self, resolved_path: Any) -> MagicMock:
-        """Stands in for the resolved path, keeping the path flavour each case declares.
+        """Stands in for the resolved path, keeping the path flavor each case declares.
 
         Every case states its expectation as a ``PurePosixPath`` or a ``PureWindowsPath``, so
         the parts come from that pure path and the case reads the same on either platform.

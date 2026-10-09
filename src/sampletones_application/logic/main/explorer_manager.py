@@ -40,7 +40,7 @@ class ExplorerManager:
         self.config_manager = config_manager
 
         self._loaded_directories: Set[Path] = set()
-        self._open_directories: Set[Path] = {path for path in open_directories if path.is_dir()}
+        self._open_directories: Set[Path] = set(open_directories)
         self.depth = depth
 
     def refresh_tree(self) -> None:

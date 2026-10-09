@@ -1,8 +1,22 @@
-from .audio import AudioWriteError, PlaybackError, UnsupportedAudioFormatError
+from .audio import (
+    AudioWriteError,
+    NoOutputDeviceError,
+    PlaybackError,
+    UnsupportedAudioFormatError,
+)
 from .base import SampleToNESError
 from .callback import CallbackQueueStop
 from .cuda import CuPyNotInstalledWarning
 from .dialog import FileDialogUnavailableError
+from .instrument import (
+    IncompatibleInstrumentVersionError,
+    InstrumentError,
+    InvalidInstrumentValuesError,
+    LoadInstrumentError,
+    MalformedInstrumentError,
+    NotAnInstrumentFileError,
+    UnsupportedInstrumentTypeError,
+)
 from .language import LanguageError, MalformedTextKeyError, MissingTextError
 from .library import (
     IncompatibleLibraryDataVersionError,
@@ -15,6 +29,13 @@ from .library import (
     NoLibraryDataError,
     UnhandledLibraryError,
 )
+from .operation import OperationCanceled
+from .player import (
+    DriverBuildError,
+    PlayerError,
+    SongTooLargeError,
+    ToolchainMissingError,
+)
 from .project import (
     IncompatibleProjectVersionError,
     IncorrectReconstructionDataError,
@@ -22,6 +43,7 @@ from .project import (
     LoadProjectError,
     MissingProjectDataFileError,
     NotAValidArchiveError,
+    ProjectTuningError,
     UnhandledProjectError,
 )
 from .reconstruction import (
@@ -38,6 +60,7 @@ from .validation import (
     DeserializationError,
     InvalidMetadataError,
     SerializationError,
+    TruncatedDataError,
 )
 from .window import WindowError, WindowNotAvailableError
 
@@ -46,13 +69,17 @@ __all__ = [
     "CallbackQueueStop",
     "CuPyNotInstalledWarning",
     "DeserializationError",
+    "DriverBuildError",
     "FileDialogUnavailableError",
+    "IncompatibleInstrumentVersionError",
     "IncompatibleLibraryDataVersionError",
     "IncompatibleProjectVersionError",
     "IncompatibleReconstructionVersionError",
     "IncompleteHistogramRebinningWarning",
     "IncorrectReconstructionDataError",
     "InstructionTypeMismatchError",
+    "InstrumentError",
+    "InvalidInstrumentValuesError",
     "InvalidLibraryDataError",
     "InvalidLibraryDataValuesError",
     "InvalidMetadataError",
@@ -62,23 +89,34 @@ __all__ = [
     "LanguageError",
     "LibraryDisplayError",
     "LibraryError",
+    "LoadInstrumentError",
     "LoadLibraryError",
     "LoadProjectError",
     "LoadReconstructionError",
+    "MalformedInstrumentError",
     "MalformedTextKeyError",
     "MissingProjectDataFileError",
     "MissingTextError",
     "NoFilesToProcessError",
     "NoLibraryDataError",
+    "NoOutputDeviceError",
     "NotAValidArchiveError",
+    "NotAnInstrumentFileError",
+    "OperationCanceled",
     "PlaybackError",
+    "PlayerError",
+    "ProjectTuningError",
     "ReconstructionError",
     "SampleToNESError",
     "SerializationError",
+    "SongTooLargeError",
+    "ToolchainMissingError",
+    "TruncatedDataError",
     "UnhandledLibraryError",
     "UnhandledProjectError",
     "UnhandledReconstructionError",
     "UnsupportedAudioFormatError",
+    "UnsupportedInstrumentTypeError",
     "WindowError",
     "WindowNotAvailableError",
 ]

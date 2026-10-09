@@ -1,48 +1,75 @@
 ﻿from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, Final, List
+from typing import Callable, Dict, Final, List, Optional
 from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
 
+from sampletones_application.exports import ExportBackends
 from sampletones_application.logic.reconstruction.data import ReconstructionData
+from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
+from sampletones_application.logic.reconstruction.listening import StemListening
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.reconstruction import (
     ReconstructionPanelLogic,
 )
-from sampletones_application.view_model.reconstruction.reconstruction import (
+from sampletones_application.logic.shared.renders import RenderCache
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
+from sampletones_application.view_model.reconstruction.paths.state import (
     ReconstructionPathState,
+)
+from sampletones_application.view_model.reconstruction.rate import RateLock
+from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
+from sampletones_application.view_model.shared.audio_data import AudioData
+from sampletones_application.view_model.shared.ownership import OwnershipRibbonViewModel
+from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import AudioSourceType, GeneratorName
-from sampletones_core.instructions import TriangleInstruction
+from sampletones_core.constants.algorithm import AUTHORED_STEM_ID
+from sampletones_core.constants.enums import AudioSourceType, ChannelName, bending_channels
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.instructions import PulseInstruction, TriangleInstruction
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.registry import build_tracker_backends
+from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
+from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
+from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from sampletones_shared.constants.nes import PAL_FREQUENCY
+from sampletones_shared.music import Tuning
 from sampletones_shared.paths.extensions import (
     EXT_FILE_BITPHASE,
     EXT_FILE_INSTRUMENT,
     EXT_FILE_JSON,
     EXT_FILE_MODULE,
+    EXT_FILE_NSF,
 )
+from tests.conftest import RENDER_BUDGET
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.stems import RECORDED_SCALE, recorded_from
 
 NO_EXTENSION: Final[str] = ""
+RETUNED_A4_FREQUENCY: Final[float] = 432.0
 
 
 @dataclass(frozen=True)
 class FormatCase:
     extension: str
-    tracker_format: TrackerFormat
+    export_format: ExportFormat
 
 
 INSTRUMENT_FORMAT_CASES: Final[List[FormatCase]] = [
-    FormatCase(extension=EXT_FILE_INSTRUMENT, tracker_format=TrackerFormat.FAMITRACKER),
-    FormatCase(extension=EXT_FILE_BITPHASE, tracker_format=TrackerFormat.BITPHASE),
-    FormatCase(extension=EXT_FILE_JSON, tracker_format=TrackerFormat.BITPHASE_PRESET),
+    FormatCase(extension=EXT_FILE_INSTRUMENT, export_format=ExportFormat.FAMITRACKER),
+    FormatCase(extension=EXT_FILE_BITPHASE, export_format=ExportFormat.BITPHASE),
+    FormatCase(extension=EXT_FILE_JSON, export_format=ExportFormat.BITPHASE_PRESET),
+    FormatCase(extension=EXT_FILE_NSF, export_format=ExportFormat.NSF),
 ]
 
 UNSUPPORTED_EXTENSIONS: Final[List[str]] = [".xm", EXT_FILE_MODULE, NO_EXTENSION]
@@ -65,8 +92,28 @@ def mock_export_service() -> MagicMock:
 def mock_reconstruction_manager() -> MagicMock:
     mock = MagicMock(spec=ReconstructionManager)
     mock.current_reconstruction = None
+    mock.is_project_sample = False
     mock.audio_filepath = None
+    mock.listening = StemListening()
+    mock.refresh_features.side_effect = lambda: _refresh_features(mock)
+    mock.renders = RenderCache(budget_bytes=RENDER_BUDGET)
     return mock
+
+
+def _open(manager: MagicMock, reconstruction_data: ReconstructionData) -> None:
+    """Puts a document in front of the panel the way the manager's own adoption does."""
+    manager.current_reconstruction = reconstruction_data
+    manager.listening.adopt(reconstruction_data.reconstruction.stems_data)
+    _refresh_features(manager)
+
+
+def _refresh_features(manager: MagicMock) -> None:
+    """Reads the envelopes of what is heard, the way the manager's own refresh does."""
+    if manager.current_reconstruction is not None:
+        manager.current_features = heard_envelopes(
+            manager.current_reconstruction.reconstruction,
+            manager.listening.selection,
+        )
 
 
 @pytest.fixture
@@ -74,29 +121,29 @@ def panel_logic(
     session_manager: MagicMock,
     mock_reconstruction_manager: MagicMock,
     mock_export_service: MagicMock,
-    mock_tracker_backends: Dict[TrackerFormat, MagicMock],
+    mock_export_backends: Dict[ExportFormat, MagicMock],
 ) -> ReconstructionPanelLogic:
     return ReconstructionPanelLogic(
         session_manager,
         mock_reconstruction_manager,
         mock_export_service,
-        mock_tracker_backends,
+        mock_export_backends,
     )
 
 
 @pytest.fixture
-def mock_tracker_backends() -> Dict[TrackerFormat, MagicMock]:
+def mock_export_backends() -> Dict[ExportFormat, MagicMock]:
     """Stands in for the real backends while declaring the scopes and extensions they do.
 
     The logic reads the destination's extension to pick a backend, so each stub mirrors what
     the registry's backend declares and leaves only the writing to the mock.
     """
-    backends: Dict[TrackerFormat, MagicMock] = {}
-    for tracker_format, backend in build_tracker_backends().items():
+    backends: Dict[ExportFormat, MagicMock] = {}
+    for export_format, backend in ExportBackends.build().by_format.items():
         stub = MagicMock()
         stub.supported_scopes = backend.supported_scopes
         stub.extension.side_effect = backend.extension
-        backends[tracker_format] = stub
+        backends[export_format] = stub
 
     return backends
 
@@ -112,6 +159,31 @@ def loaded_data(
 
 
 @pytest.fixture
+def retuned_data(
+    reconstruction_factory: Callable[[], Reconstruction],
+) -> ReconstructionData:
+    """A reconstruction built against a concert pitch other than the standard one."""
+    reconstruction = reconstruction_factory()
+    library = reconstruction.config.library.model_copy(update={"a4_frequency": RETUNED_A4_FREQUENCY})
+    config = reconstruction.config.model_copy(update={"library": library})
+    return ReconstructionData.from_reconstruction(
+        reconstruction.model_copy(update={"config": config}),
+        name="Sample",
+    )
+
+
+@pytest.fixture
+def reclocked_data(
+    reconstruction_factory: Callable[[], Reconstruction],
+) -> ReconstructionData:
+    """A reconstruction running at the PAL rate, which a fresh configuration departs from."""
+    return ReconstructionData.from_reconstruction(
+        reconstruction_factory().with_nes_frequency(PAL_FREQUENCY),
+        name="Sample",
+    )
+
+
+@pytest.fixture
 def data_with_original_audio(
     reconstruction_factory: Callable[[], Reconstruction],
     tmp_path: Path,
@@ -122,7 +194,7 @@ def data_with_original_audio(
         Config().library.sample_rate,
         np.ones(64, dtype=np.float32) * 0.5,
     )
-    reconstruction = reconstruction_factory().model_copy(update={"audio_filepath": source_audio})
+    reconstruction = recorded_from(reconstruction_factory(), (source_audio,))
     return ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
 
@@ -142,7 +214,7 @@ class TestReconstructionPanelLogicDisplay:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         callback = MagicMock()
         panel_logic.on_view_changed = callback
         panel_logic.display_reconstruction()
@@ -154,7 +226,7 @@ class TestReconstructionPanelLogicDisplay:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         callback = MagicMock()
         panel_logic.on_waveform_load_changed = callback
         panel_logic.display_reconstruction()
@@ -166,7 +238,7 @@ class TestReconstructionPanelLogicDisplay:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         callback = MagicMock()
         panel_logic.on_audio_data_changed = callback
         panel_logic.display_reconstruction()
@@ -181,10 +253,10 @@ class TestReconstructionPanelLogicPathRows:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        reconstruction.detach_source()
-        mock_reconstruction_manager.current_reconstruction = ReconstructionData.from_reconstruction(
-            reconstruction,
-            name="Sample",
+        reconstruction = reconstruction.detached()
+        _open(
+            mock_reconstruction_manager,
+            ReconstructionData.from_reconstruction(reconstruction, name="Sample"),
         )
         captured: List[ReconstructionViewModel] = []
         panel_logic.on_view_changed = captured.append
@@ -224,15 +296,31 @@ class TestReconstructionPanelLogicPathRows:
 
     @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
     def test_audio_path_state_follows_loaded_content(self, case: AudioPathCase) -> None:
-        audio_filepath = Path("/songs/source.wav") if case.has_filepath else None
+        source_paths = (Path("/songs/source.wav"),) if case.has_filepath else ()
         original_audio = np.zeros(4, dtype=np.float32) if case.has_content else None
 
         view_model = ReconstructionPanelLogic._build_audio_path_view_model(
-            audio_filepath,
+            source_paths,
             original_audio,
         )
 
         assert view_model.state is case.expected
+
+    def test_stem_paths_report_multiple_state(self) -> None:
+        stem_paths = (
+            Path("/stems/drums/kick.wav"),
+            Path("/stems/drums/snare.wav"),
+        )
+        original_audio = np.zeros(4, dtype=np.float32)
+
+        view_model = ReconstructionPanelLogic._build_audio_path_view_model(
+            stem_paths,
+            original_audio,
+        )
+
+        assert view_model.state is ReconstructionPathState.MULTIPLE
+        assert view_model.paths == tuple(str(path) for path in stem_paths)
+        assert view_model.path == ""
 
 
 class TestReconstructionPanelLogicUpdate:
@@ -251,7 +339,7 @@ class TestReconstructionPanelLogicUpdate:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         callback = MagicMock()
         panel_logic.on_waveform_update_changed = callback
         panel_logic.update_reconstruction()
@@ -263,7 +351,7 @@ class TestReconstructionPanelLogicUpdate:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         callback = MagicMock()
         panel_logic.on_audio_data_changed = callback
         panel_logic.update_reconstruction()
@@ -275,7 +363,7 @@ class TestReconstructionPanelLogicUpdate:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         panel_logic._current_audio_source = AudioSourceType.ORIGINAL
         callback = MagicMock()
         panel_logic.on_audio_data_changed = callback
@@ -298,13 +386,13 @@ class TestReconstructionPanelLogicPlayingChannels:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         received = self._received(panel_logic)
 
         panel_logic.display_reconstruction()
 
-        assert received[0].playing_generators == frozenset({GeneratorName.PULSE1})
-        assert received[0].selected_generators == frozenset({GeneratorName.PULSE1})
+        assert received[0].playing_channels == frozenset({ChannelName.PULSE1})
+        assert received[0].selected_channels == frozenset({ChannelName.PULSE1})
 
     def test_an_edit_reports_the_view_again(
         self,
@@ -312,13 +400,13 @@ class TestReconstructionPanelLogicPlayingChannels:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         panel_logic.display_reconstruction()
         received = self._received(panel_logic)
 
         panel_logic.update_reconstruction()
 
-        assert received[0].playing_generators == frozenset({GeneratorName.PULSE1})
+        assert received[0].playing_channels == frozenset({ChannelName.PULSE1})
 
     def test_a_channel_switched_off_by_hand_survives_an_edit(
         self,
@@ -326,14 +414,14 @@ class TestReconstructionPanelLogicPlayingChannels:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         panel_logic.display_reconstruction()
-        panel_logic.set_selected_generators([])
+        panel_logic.set_selected_channels([])
         received = self._received(panel_logic)
 
         panel_logic.update_reconstruction()
 
-        assert received[0].selected_generators == frozenset()
+        assert received[0].selected_channels == frozenset()
 
     def test_a_channel_gaining_its_first_frame_joins_the_waveform(
         self,
@@ -341,21 +429,23 @@ class TestReconstructionPanelLogicPlayingChannels:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         panel_logic.display_reconstruction()
-        loaded_data.reconstruction.update_generator_data(
-            GeneratorName.TRIANGLE,
-            [TriangleInstruction(on=True, pitch=48)],
-            np.ones(64, dtype=np.float32),
-            48,
-            (),
+        mock_reconstruction_manager.current_reconstruction = loaded_data.with_reconstruction(
+            loaded_data.reconstruction.with_channel_data(
+                ChannelName.TRIANGLE,
+                [TriangleInstruction(on=True, pitch=48)],
+                48,
+                (),
+                heard=loaded_data.reconstruction.recorded_stem_ids,
+            )
         )
         received = self._received(panel_logic)
 
         panel_logic.update_reconstruction()
 
-        assert received[0].playing_generators == frozenset({GeneratorName.PULSE1, GeneratorName.TRIANGLE})
-        assert received[0].selected_generators == frozenset({GeneratorName.PULSE1, GeneratorName.TRIANGLE})
+        assert received[0].playing_channels == frozenset({ChannelName.PULSE1, ChannelName.TRIANGLE})
+        assert received[0].selected_channels == frozenset({ChannelName.PULSE1, ChannelName.TRIANGLE})
 
     def test_a_channel_taken_out_of_play_leaves_the_waveform(
         self,
@@ -363,21 +453,170 @@ class TestReconstructionPanelLogicPlayingChannels:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         panel_logic.display_reconstruction()
-        loaded_data.reconstruction.update_generator_data(
-            GeneratorName.PULSE1,
-            [],
-            np.zeros(0, dtype=np.float32),
-            60,
-            (),
+        mock_reconstruction_manager.current_reconstruction = loaded_data.with_reconstruction(
+            loaded_data.reconstruction.with_channel_data(
+                ChannelName.PULSE1,
+                [],
+                60,
+                (),
+                heard=loaded_data.reconstruction.recorded_stem_ids,
+            )
         )
         received = self._received(panel_logic)
 
         panel_logic.update_reconstruction()
 
-        assert received[0].playing_generators == frozenset()
-        assert received[0].selected_generators == frozenset()
+        assert received[0].playing_channels == frozenset()
+        assert received[0].selected_channels == frozenset()
+
+
+class TestReconstructionPanelLogicEngineRate:
+    """The rate the card states, which follows the open document."""
+
+    @staticmethod
+    def _received(panel_logic: ReconstructionPanelLogic) -> List[ReconstructionViewModel]:
+        received: List[ReconstructionViewModel] = []
+        panel_logic.on_view_changed = received.append
+        return received
+
+    def test_the_view_states_the_rate_the_reconstruction_runs_at(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        reclocked_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, reclocked_data)
+        received = self._received(panel_logic)
+
+        panel_logic.display_reconstruction()
+
+        assert received[0].nes_frequency == reclocked_data.config.nes_frequency
+
+    def test_a_closed_tab_states_no_rate(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+    ) -> None:
+        received = self._received(panel_logic)
+
+        panel_logic.close_reconstruction()
+
+        assert received[0].nes_frequency is None
+
+
+class TestTheRateLock:
+    """The view names why the open document keeps its rate: it is a sample of the project, or it has no file."""
+
+    @staticmethod
+    def _shown(panel_logic: ReconstructionPanelLogic) -> ReconstructionViewModel:
+        received: List[ReconstructionViewModel] = []
+        panel_logic.on_view_changed = received.append
+        panel_logic.display_reconstruction()
+        return received[-1]
+
+    def test_a_document_on_disk_is_free_to_retime(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+        tmp_path: Path,
+    ) -> None:
+        _open(mock_reconstruction_manager, loaded_data.detached_copy(tmp_path / "standing.stn"))
+
+        assert self._shown(panel_logic).rate_lock is None
+
+    def test_a_document_with_no_file_keeps_its_rate_for_that_reason(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        """A document whose file was taken away belongs to no project, so its lock says so."""
+        _open(mock_reconstruction_manager, loaded_data)
+
+        assert self._shown(panel_logic).rate_lock is RateLock.NO_FILE
+
+    def test_a_sample_of_the_project_follows_the_projects_rate(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        mock_reconstruction_manager.is_project_sample = True
+        _open(mock_reconstruction_manager, loaded_data)
+
+        assert self._shown(panel_logic).rate_lock is RateLock.PROJECT_SAMPLE
+
+    def test_a_closed_tab_names_no_lock(self, panel_logic: ReconstructionPanelLogic) -> None:
+        received: List[ReconstructionViewModel] = []
+        panel_logic.on_view_changed = received.append
+
+        panel_logic.close_reconstruction()
+
+        assert received[-1].rate_lock is None
+
+
+class TestAReTimedDocumentIsShown:
+    """A document re-timed to another rate is shown at it, every reading of it re-answered.
+
+    The rate reaches the document as a step of its edits, and the tab then asks for every reading
+    again with the waveform re-fitted, since the audio spans another length.
+    """
+
+    @staticmethod
+    def _retime(manager: MagicMock, loaded_data: ReconstructionData) -> None:
+        """Opens the document, then lets the stand-in manager adopt it re-timed, as a landed retune leaves it."""
+        _open(manager, loaded_data)
+        manager.current_reconstruction = loaded_data.with_reconstruction(
+            loaded_data.reconstruction.with_nes_frequency(PAL_FREQUENCY)
+        )
+
+    def test_the_view_states_the_new_rate(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        self._retime(mock_reconstruction_manager, loaded_data)
+        received: List[ReconstructionViewModel] = []
+        panel_logic.on_view_changed = received.append
+
+        panel_logic.update_reconstruction(refit_waveform=True)
+
+        assert received[-1].nes_frequency == PAL_FREQUENCY
+
+    def test_the_waveform_and_the_audio_follow_the_new_rate(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        self._retime(mock_reconstruction_manager, loaded_data)
+        waveforms: List[WaveformData] = []
+        audio: List[Optional[AudioData]] = []
+        panel_logic.on_waveform_update_changed = lambda waveform, _channels, **_kwargs: waveforms.append(waveform)
+        panel_logic.on_audio_data_changed = audio.append
+
+        panel_logic.update_reconstruction(refit_waveform=True)
+
+        assert len(waveforms) == 1
+        assert len(audio) == 1
+
+    def test_the_waveform_view_re_fits_to_the_retuned_length(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        """A retune moves the audio's own length, so the old view no longer answers to it."""
+        self._retime(mock_reconstruction_manager, loaded_data)
+        refits: List[bool] = []
+        panel_logic.on_waveform_update_changed = lambda _waveform, _channels, *, refit: refits.append(refit)
+
+        panel_logic.update_reconstruction(refit_waveform=True)
+
+        assert refits == [True]
 
 
 class TestReconstructionPanelLogicClose:
@@ -415,7 +654,7 @@ class TestReconstructionPanelLogicClose:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         panel_logic.set_audio_source(AudioSourceType.ORIGINAL)
         panel_logic.close_reconstruction()
         assert panel_logic._current_audio_source == AudioSourceType.RECONSTRUCTION
@@ -429,9 +668,10 @@ class TestReconstructionPanelLogicAudioSource:
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
-        reconstruction.detach_source()
-        mock_reconstruction_manager.current_reconstruction = ReconstructionData.from_reconstruction(
-            reconstruction, name="Sample"
+        reconstruction = reconstruction.detached()
+        _open(
+            mock_reconstruction_manager,
+            ReconstructionData.from_reconstruction(reconstruction, name="Sample"),
         )
         panel_logic.set_audio_source(AudioSourceType.ORIGINAL)
         received: List[AudioSourceType] = []
@@ -447,7 +687,7 @@ class TestReconstructionPanelLogicAudioSource:
         mock_reconstruction_manager: MagicMock,
         data_with_original_audio: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = data_with_original_audio
+        _open(mock_reconstruction_manager, data_with_original_audio)
         panel_logic.set_audio_source(AudioSourceType.ORIGINAL)
         received: List[AudioSourceType] = []
         panel_logic.on_waveform_source_changed = received.append
@@ -462,7 +702,7 @@ class TestReconstructionPanelLogicAudioSource:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         panel_logic.set_audio_source(AudioSourceType.ORIGINAL)
         assert panel_logic._current_audio_source == AudioSourceType.ORIGINAL
 
@@ -472,23 +712,23 @@ class TestReconstructionPanelLogicAudioSource:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         callback = MagicMock()
         panel_logic.on_audio_data_changed = callback
         panel_logic.set_audio_source(AudioSourceType.ORIGINAL)
         callback.assert_called_once()
 
 
-class TestReconstructionPanelLogicSelectedGenerators:
+class TestReconstructionPanelLogicSelectedChannels:
     def test_set_selected_generators_updates_selection(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic.set_selected_generators([GeneratorName.PULSE1])
-        assert panel_logic._selected_generators == [GeneratorName.PULSE1]
+        _open(mock_reconstruction_manager, loaded_data)
+        panel_logic.set_selected_channels([ChannelName.PULSE1])
+        assert panel_logic._selected_channels == [ChannelName.PULSE1]
 
     def test_set_selected_generators_fires_waveform_load(
         self,
@@ -496,10 +736,10 @@ class TestReconstructionPanelLogicSelectedGenerators:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         callback = MagicMock()
         panel_logic.on_waveform_load_changed = callback
-        panel_logic.set_selected_generators([GeneratorName.PULSE1])
+        panel_logic.set_selected_channels([ChannelName.PULSE1])
         callback.assert_called_once()
 
     def test_set_selected_generators_with_no_data_skips_waveform(
@@ -508,150 +748,102 @@ class TestReconstructionPanelLogicSelectedGenerators:
     ) -> None:
         callback = MagicMock()
         panel_logic.on_waveform_load_changed = callback
-        panel_logic.set_selected_generators([GeneratorName.PULSE1])
+        panel_logic.set_selected_channels([ChannelName.PULSE1])
         callback.assert_not_called()
 
 
 class TestReconstructionPanelLogicExportInstrument:
-    def test_request_export_instrument_dialog_with_no_data_raises_assertion_error(
+    """What the tab offers to an export: the slice one channel holds, ready for a destination."""
+
+    def test_with_no_data_raises_assertion_error(
         self,
         panel_logic: ReconstructionPanelLogic,
     ) -> None:
         with pytest.raises(AssertionError):
-            panel_logic.request_export_instrument_dialog(GeneratorName.PULSE1)
+            panel_logic.exportable_instrument(ChannelName.PULSE1)
 
-    def test_request_export_instrument_dialog_fires_dialog_callback(
+    def test_a_playing_channel_offers_its_slice(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
-        callback = MagicMock()
-        panel_logic.on_open_export_instrument_dialog = callback
-        panel_logic.request_export_instrument_dialog(GeneratorName.PULSE1)
-        callback.assert_called_once()
+        _open(mock_reconstruction_manager, loaded_data)
 
-    def test_request_export_instrument_dialog_suggests_the_slice_name(
+        exportable = panel_logic.exportable_instrument(ChannelName.PULSE1)
+
+        assert exportable is not None
+        assert exportable.source.features == mock_reconstruction_manager.current_features[ChannelName.PULSE1]
+
+    def test_the_suggestion_is_the_slice_name(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        """The suggestion is the slice name alone, leaving the tracker to the dialog's own
+        """The suggestion is the slice name alone, leaving the format to the dialog's own
         file-type selector.
         """
-        mock_reconstruction_manager.current_reconstruction = loaded_data
-        callback = MagicMock()
-        panel_logic.on_open_export_instrument_dialog = callback
-        panel_logic.request_export_instrument_dialog(GeneratorName.PULSE1)
-        assert callback.call_args.args[0] == "Sample (pulse1)"
+        _open(mock_reconstruction_manager, loaded_data)
 
-    def test_request_export_instrument_dialog_for_unknown_generator_is_no_op(
+        exportable = panel_logic.exportable_instrument(ChannelName.PULSE1)
+
+        assert exportable is not None
+        assert exportable.name == "Sample (pulse1)"
+
+    def test_a_channel_standing_by_offers_nothing(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
-        callback = MagicMock()
-        panel_logic.on_open_export_instrument_dialog = callback
-        panel_logic.request_export_instrument_dialog(GeneratorName.TRIANGLE)
-        callback.assert_not_called()
+        _open(mock_reconstruction_manager, loaded_data)
 
-    def test_request_export_instrument_dialog_sends_the_generator_to_the_dialog(
+        assert panel_logic.exportable_instrument(ChannelName.TRIANGLE) is None
+
+    def test_the_slice_names_the_channel_it_was_reconstructed_for(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        """The generator travels with the request, so the confirmation names it back."""
-        mock_reconstruction_manager.current_reconstruction = loaded_data
-        callback = MagicMock()
-        panel_logic.on_open_export_instrument_dialog = callback
-        panel_logic.request_export_instrument_dialog(GeneratorName.PULSE1)
-        assert callback.call_args.args[2] == GeneratorName.PULSE1
+        """A backend sounding the slice on its own plays it through the channel it names."""
+        _open(mock_reconstruction_manager, loaded_data)
 
-    def test_handle_export_instrument_confirmed_with_no_data_does_not_export(
-        self,
-        panel_logic: ReconstructionPanelLogic,
-        mock_export_service: MagicMock,
-        tmp_path: Path,
-    ) -> None:
-        panel_logic.handle_export_instrument_confirmed(
-            tmp_path / "instrument.fti",
-            GeneratorName.PULSE1,
-        )
-        mock_export_service.export_instrument.assert_not_called()
+        exportable = panel_logic.exportable_instrument(ChannelName.PULSE1)
 
-    def test_handle_export_instrument_confirmed_calls_export_service(
+        assert exportable is not None
+        assert exportable.source.channel == ChannelName.PULSE1
+
+    def test_a_reconstruction_slice_plays_its_envelopes_once(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
-        mock_export_service: MagicMock,
-        tmp_path: Path,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic.handle_export_instrument_confirmed(
-            tmp_path / "instrument.fti",
-            GeneratorName.PULSE1,
-        )
-        mock_export_service.export_instrument.assert_called_once()
+        """A loop belongs to a sample placed in a project, so a reconstruction states none."""
+        _open(mock_reconstruction_manager, loaded_data)
 
-    def test_handle_export_instrument_confirmed_names_the_instrument_after_the_destination(
+        exportable = panel_logic.exportable_instrument(ChannelName.PULSE1)
+
+        assert exportable is not None
+        assert all(not envelope.loops for envelope in exportable.source.features.envelopes.values())
+
+    def test_the_slice_carries_the_reconstructions_tuning(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
-        loaded_data: ReconstructionData,
-        mock_export_service: MagicMock,
-        tmp_path: Path,
+        retuned_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic.handle_export_instrument_confirmed(
-            tmp_path / "Clap (pulse1).fti",
-            GeneratorName.PULSE1,
-        )
-        request = mock_export_service.export_instrument.call_args.args[2]
-        assert request.name == "Clap (pulse1)"
-
-    @pytest.mark.parametrize("case", INSTRUMENT_FORMAT_CASES, ids=lambda case: case.extension)
-    def test_handle_export_instrument_confirmed_selects_the_backend_the_extension_names(
-        self,
-        panel_logic: ReconstructionPanelLogic,
-        mock_reconstruction_manager: MagicMock,
-        loaded_data: ReconstructionData,
-        mock_export_service: MagicMock,
-        mock_tracker_backends: Dict[TrackerFormat, MagicMock],
-        tmp_path: Path,
-        case: FormatCase,
-    ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic.handle_export_instrument_confirmed(
-            tmp_path / f"instrument{case.extension}",
-            GeneratorName.PULSE1,
-        )
-        backend = mock_export_service.export_instrument.call_args.args[1]
-        assert backend is mock_tracker_backends[case.tracker_format]
-
-    @pytest.mark.parametrize("extension", UNSUPPORTED_EXTENSIONS)
-    def test_handle_export_instrument_confirmed_refuses_an_extension_no_format_writes(
-        self,
-        panel_logic: ReconstructionPanelLogic,
-        mock_reconstruction_manager: MagicMock,
-        loaded_data: ReconstructionData,
-        tmp_path: Path,
-        extension: str,
-    ) -> None:
-        """The dialog answers with one of the types it offered, so an extension naming no
-        format is a broken invariant rather than a choice to report.
+        """A backend sounding the export itself measures its pitches from the tuning the
+        reconstruction was built with, so the slice states that tuning rather than the standard.
         """
-        mock_reconstruction_manager.current_reconstruction = loaded_data
-        with pytest.raises(ValueError):
-            panel_logic.handle_export_instrument_confirmed(
-                tmp_path / f"instrument{extension}",
-                GeneratorName.PULSE1,
-            )
+        _open(mock_reconstruction_manager, retuned_data)
+
+        exportable = panel_logic.exportable_instrument(ChannelName.PULSE1)
+
+        assert exportable is not None
+        assert exportable.source.tuning == Tuning(a4_frequency=RETUNED_A4_FREQUENCY)
 
 
 class TestReconstructionPanelLogicExportInstruments:
@@ -660,7 +852,7 @@ class TestReconstructionPanelLogicExportInstruments:
         panel_logic: ReconstructionPanelLogic,
     ) -> None:
         with pytest.raises(AssertionError):
-            panel_logic.request_export_instruments_dialog(TrackerFormat.FAMITRACKER)
+            panel_logic.request_export_instruments_dialog(ExportFormat.FAMITRACKER)
 
     def test_request_export_instruments_dialog_fires_dialog_callback(
         self,
@@ -668,10 +860,10 @@ class TestReconstructionPanelLogicExportInstruments:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         callback = MagicMock()
         panel_logic.on_open_export_instruments_dialog = callback
-        panel_logic.request_export_instruments_dialog(TrackerFormat.FAMITRACKER)
+        panel_logic.request_export_instruments_dialog(ExportFormat.FAMITRACKER)
         callback.assert_called_once()
 
     def test_request_export_instruments_dialog_suggests_the_reconstruction_name(
@@ -683,10 +875,10 @@ class TestReconstructionPanelLogicExportInstruments:
         """The tracker is settled before the dialog opens, so the suggestion ends in the
         extension that tracker writes.
         """
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         callback = MagicMock()
         panel_logic.on_open_export_instruments_dialog = callback
-        panel_logic.request_export_instruments_dialog(TrackerFormat.FAMITRACKER)
+        panel_logic.request_export_instruments_dialog(ExportFormat.FAMITRACKER)
         assert callback.call_args.args[0] == f"{loaded_data.name}{EXT_FILE_INSTRUMENT}"
 
     def test_request_export_instruments_dialog_carries_the_chosen_tracker(
@@ -696,11 +888,11 @@ class TestReconstructionPanelLogicExportInstruments:
         loaded_data: ReconstructionData,
     ) -> None:
         """The dialog offers one type, so the tracker travels with the request."""
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         callback = MagicMock()
         panel_logic.on_open_export_instruments_dialog = callback
-        panel_logic.request_export_instruments_dialog(TrackerFormat.BITPHASE_PRESET)
-        assert callback.call_args.args[2] == TrackerFormat.BITPHASE_PRESET
+        panel_logic.request_export_instruments_dialog(ExportFormat.BITPHASE_PRESET)
+        assert callback.call_args.args[2] == ExportFormat.BITPHASE_PRESET
 
     def test_handle_export_instruments_confirmed_with_no_data_is_no_op(
         self,
@@ -710,7 +902,7 @@ class TestReconstructionPanelLogicExportInstruments:
     ) -> None:
         panel_logic.handle_export_instruments_confirmed(
             tmp_path / "sample.fti",
-            TrackerFormat.FAMITRACKER,
+            ExportFormat.FAMITRACKER,
         )
         mock_export_service.export_sample.assert_not_called()
 
@@ -722,10 +914,10 @@ class TestReconstructionPanelLogicExportInstruments:
         mock_export_service: MagicMock,
         tmp_path: Path,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         panel_logic.handle_export_instruments_confirmed(
             tmp_path / "sample.fti",
-            TrackerFormat.FAMITRACKER,
+            ExportFormat.FAMITRACKER,
         )
         mock_export_service.export_sample.assert_called_once()
 
@@ -737,14 +929,32 @@ class TestReconstructionPanelLogicExportInstruments:
         mock_export_service: MagicMock,
         tmp_path: Path,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         panel_logic.handle_export_instruments_confirmed(
             tmp_path / "Clap.fti",
-            TrackerFormat.FAMITRACKER,
+            ExportFormat.FAMITRACKER,
         )
         request = mock_export_service.export_sample.call_args.args[2]
         assert request.name == "Clap"
         assert [instrument.name for instrument in request.instruments] == ["Clap (pulse1)"]
+
+    def test_handle_export_instruments_confirmed_carries_the_reconstructions_tuning(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        retuned_data: ReconstructionData,
+        mock_export_service: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        _open(mock_reconstruction_manager, retuned_data)
+        panel_logic.handle_export_instruments_confirmed(
+            tmp_path / "Clap.fti",
+            ExportFormat.FAMITRACKER,
+        )
+        request = mock_export_service.export_sample.call_args.args[2]
+        retuned = Tuning(a4_frequency=RETUNED_A4_FREQUENCY)
+        assert request.tuning == retuned
+        assert [instrument.tuning for instrument in request.instruments] == [retuned]
 
     @pytest.mark.parametrize(
         "case",
@@ -757,20 +967,61 @@ class TestReconstructionPanelLogicExportInstruments:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
         mock_export_service: MagicMock,
-        mock_tracker_backends: Dict[TrackerFormat, MagicMock],
+        mock_export_backends: Dict[ExportFormat, MagicMock],
         tmp_path: Path,
         case: FormatCase,
     ) -> None:
         """The action names the tracker, so the destination's own extension leaves the
         backend it is written through untouched.
         """
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         panel_logic.handle_export_instruments_confirmed(
             tmp_path / f"sample{case.extension}",
-            case.tracker_format,
+            case.export_format,
         )
         backend = mock_export_service.export_sample.call_args.args[1]
-        assert backend is mock_tracker_backends[case.tracker_format]
+        assert backend is mock_export_backends[case.export_format]
+
+
+class TestReconstructionPanelLogicSampleRequest:
+    """A format setting its export up in a dialog of its own names the slices before a destination
+    exists, so the request carries the reconstruction's own name."""
+
+    def test_with_no_data_raises_assertion_error(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+    ) -> None:
+        with pytest.raises(AssertionError):
+            panel_logic.sample_request()
+
+    def test_the_request_is_named_after_the_reconstruction(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, loaded_data)
+
+        request = panel_logic.sample_request()
+
+        assert request.name == loaded_data.name
+        assert [instrument.name for instrument in request.instruments] == [f"{loaded_data.name} (pulse1)"]
+
+    def test_the_request_holds_the_slices_a_confirmed_export_writes(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+        mock_export_service: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        _open(mock_reconstruction_manager, loaded_data)
+        panel_logic.handle_export_instruments_confirmed(
+            tmp_path / f"{loaded_data.name}{EXT_FILE_INSTRUMENT}",
+            ExportFormat.FAMITRACKER,
+        )
+
+        assert panel_logic.sample_request() == mock_export_service.export_sample.call_args.args[2]
 
 
 class TestReconstructionPanelLogicExportWav:
@@ -787,7 +1038,7 @@ class TestReconstructionPanelLogicExportWav:
         mock_reconstruction_manager: MagicMock,
         loaded_data: ReconstructionData,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
+        _open(mock_reconstruction_manager, loaded_data)
         callback = MagicMock()
         panel_logic.on_open_export_wav_dialog = callback
         panel_logic.request_export_wav_dialog()
@@ -810,8 +1061,8 @@ class TestReconstructionPanelLogicExportWav:
         mock_export_service: MagicMock,
         tmp_path: Path,
     ) -> None:
-        mock_reconstruction_manager.current_reconstruction = loaded_data
-        panel_logic._selected_generators = [GeneratorName.PULSE1]
+        _open(mock_reconstruction_manager, loaded_data)
+        panel_logic._selected_channels = [ChannelName.PULSE1]
         panel_logic.handle_export_wav_confirmed(tmp_path / "output.wav")
         mock_export_service.export_wav.assert_called_once()
         call_args = mock_export_service.export_wav.call_args
@@ -830,12 +1081,12 @@ class TestReconstructionPanelLogicComputeAudio:
 
 
 class TestReconstructionPanelLogicLocateAudio:
-    def test_no_audio_filepath_skips_locating(
+    def test_no_source_paths_skips_locating(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
     ) -> None:
-        mock_reconstruction_manager.audio_filepath = None
+        mock_reconstruction_manager.source_paths = ()
         panel_logic.handle_locate_original_audio()
         mock_reconstruction_manager.locate_original_audio.assert_not_called()
 
@@ -846,9 +1097,628 @@ class TestReconstructionPanelLogicLocateAudio:
         tmp_path: Path,
     ) -> None:
         missing = tmp_path / "ghost.wav"
-        mock_reconstruction_manager.audio_filepath = missing
+        mock_reconstruction_manager.source_paths = (missing,)
         mock_reconstruction_manager.locate_original_audio.side_effect = FileNotFoundError
         callback = MagicMock()
         panel_logic.on_locate_audio_not_found = callback
         panel_logic.handle_locate_original_audio()
         callback.assert_called_once_with(missing)
+
+
+class TestReconstructionPanelLogicStemSelection:
+    @pytest.fixture(name="stems_data")
+    def stems_data_fixture(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> ReconstructionData:
+        """Two recordings taking turns on the first pulse, one frame each."""
+        stems_reconstruction = recorded_from(reconstruction_factory(), (tmp_path / "a.wav", tmp_path / "b.wav"))
+        return ReconstructionData.from_reconstruction(stems_reconstruction, name="Sample")
+
+    def test_display_hears_every_recording_on_the_channels_it_holds(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        stems_views = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.display_reconstruction()
+
+        assert mock_reconstruction_manager.listening.heard == {
+            0: frozenset({ChannelName.PULSE1}),
+            1: frozenset({ChannelName.PULSE1}),
+        }
+        assert len(stems_views) == 1
+        rows = stems_views[0].stems.rows
+        assert {row.key for row in rows} == {"0", "1"}
+        assert all(row.channels == row.offered_channels for row in rows)
+        assert stems_views[0].stems.channels_in_play == (ChannelName.PULSE1,)
+
+    def test_a_document_where_no_recording_holds_a_frame_offers_no_box_for_any(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        """Every recording stays on a record whose frames answer to none of them, and none offers a box."""
+        reconstruction = stems_data.reconstruction
+        frames = len(reconstruction.instructions[ChannelName.PULSE1])
+        authored = reconstruction.model_copy(
+            update={
+                "stems_data": reconstruction.stems_data.with_assignments(
+                    [ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[AUTHORED_STEM_ID] * frames)]
+                ),
+            }
+        )
+        _open(mock_reconstruction_manager, stems_data.with_reconstruction(authored))
+        stems_views = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.display_reconstruction()
+
+        rows = {row.key: row for row in stems_views[0].stems.rows}
+        assert rows["0"].offered_channels == frozenset()
+        assert rows["1"].offered_channels == frozenset()
+        assert not rows["1"].offers_channels
+
+    def test_a_row_stands_where_the_hierarchy_put_its_recording(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        stems_views = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.display_reconstruction()
+
+        rows = stems_views[0].stems.rows
+        assert [(row.key, row.level, row.position) for row in rows] == [("0", 0, 0), ("1", 0, 1)]
+        assert all(row.level_size == 2 and row.level_count == 1 for row in rows)
+
+    def test_a_row_carries_the_id_its_recording_was_converted_as(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        """The swatch beside a name and the stretches in the ribbon read one id."""
+        _open(mock_reconstruction_manager, stems_data)
+        stems_views = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.display_reconstruction()
+
+        rows = {row.key: row for row in stems_views[0].stems.rows}
+        assert rows["0"].stem_id == 0
+        assert rows["1"].stem_id == 1
+
+    def test_a_recording_keeps_its_color_once_another_leaves(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        """The recording standing second keeps the id that colored it, standing first afterward."""
+        _open(mock_reconstruction_manager, stems_data.with_reconstruction(without_stem(stems_data.reconstruction, 0)))
+        stems_views = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.display_reconstruction()
+
+        rows = stems_views[0].stems.rows
+        assert [(row.key, row.stem_id) for row in rows] == [("1", 1)]
+
+    def test_silencing_a_recording_filters_waveform_and_playback(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+        renders: RenderCache,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        waveform_updates = []
+        audio_updates = []
+        panel_logic.on_waveform_load_changed = lambda waveform, channels: waveform_updates.append(waveform)
+        panel_logic.on_audio_data_changed = lambda audio: audio_updates.append(audio)
+
+        panel_logic.set_stem_channels(0, frozenset())
+
+        expected = stems_data.partials_for(
+            renders,
+            panel_logic._selected_channels,
+            panel_logic._stem_selection,
+        )
+        assert len(waveform_updates) == 1
+        np.testing.assert_allclose(waveform_updates[0].partials(panel_logic._selected_channels), expected)
+        assert len(audio_updates) == 1
+        assert audio_updates[0] is not None
+        np.testing.assert_allclose(audio_updates[0].sample, expected)
+
+    def test_a_channel_switched_off_for_everything_mutes_its_column(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        stems_views = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.set_selected_channels([])
+
+        assert len(stems_views) == 1
+        rows = {row.key: row for row in stems_views[0].stems.rows}
+        assert stems_views[0].stems.muted_channels == frozenset({ChannelName.PULSE1})
+        assert rows["0"].channels == frozenset({ChannelName.PULSE1})
+
+    def test_export_wav_uses_the_stems_filter(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        mock_export_service: MagicMock,
+        stems_data: ReconstructionData,
+        tmp_path: Path,
+        renders: RenderCache,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        panel_logic.set_stem_channels(0, frozenset())
+
+        panel_logic.handle_export_wav_confirmed(tmp_path / "output.wav")
+
+        mock_export_service.export_wav.assert_called_once()
+        exported_audio = mock_export_service.export_wav.call_args.args[2]
+        expected = stems_data.partials_for(
+            renders,
+            panel_logic._selected_channels,
+            panel_logic._stem_selection,
+        )
+        np.testing.assert_allclose(exported_audio, expected)
+
+
+class TestWhatTheEnvelopesShow:
+    """The envelopes, the figures and an instrument export read the part the reader hears."""
+
+    @pytest.fixture(name="stems_data")
+    def stems_data_fixture(self, tmp_path: Path) -> ReconstructionData:
+        """Two recordings sharing the first pulse, a sounding frame each."""
+        channels = [ChannelName.PULSE1]
+        stems_config = StemsConfig(
+            entries=[
+                StemEntry(id=stem_id, settings=StemSettings(channels=channels, bends=bending_channels(channels)))
+                for stem_id in (0, 1)
+            ],
+            hierarchy=StemsHierarchy(levels=[[0, 1]]),
+        )
+        stems_reconstruction = Reconstruction.create(
+            instructions={
+                ChannelName.PULSE1: [
+                    PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0),
+                    PulseInstruction(on=True, pitch=62, volume=8, duty_cycle=0),
+                ]
+            },
+            config=Config(),
+            coefficient=1.0,
+            audio_filepath=(tmp_path / "a.wav", tmp_path / "b.wav"),
+            stems_data=StemsData(
+                config=stems_config,
+                assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0, 1])],
+                scale=RECORDED_SCALE,
+            ),
+        )
+        return ReconstructionData.from_reconstruction(stems_reconstruction, name="Sample")
+
+    def test_a_recording_switched_off_leaves_the_envelopes_it_held(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        whole = mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count
+
+        panel_logic.set_stem_channels(1, frozenset())
+
+        assert mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count < whole
+
+    def test_a_channel_no_recording_is_heard_on_describes_no_frame(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+
+        panel_logic.set_stem_channels(0, frozenset())
+        panel_logic.set_stem_channels(1, frozenset())
+
+        assert not mock_reconstruction_manager.current_features[ChannelName.PULSE1].has_frames
+
+    def test_a_channel_no_recording_is_heard_on_is_written_nowhere(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+
+        panel_logic.set_stem_channels(0, frozenset())
+        panel_logic.set_stem_channels(1, frozenset())
+
+        assert panel_logic.exportable_instrument(ChannelName.PULSE1) is None
+        assert ChannelName.PULSE1 not in {export.channel for export in panel_logic.sample_request().instruments}
+
+    def test_an_export_writes_what_the_panel_draws(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+
+        panel_logic.set_stem_channels(1, frozenset())
+
+        exportable = panel_logic.exportable_instrument(ChannelName.PULSE1)
+        assert exportable is not None
+        assert exportable.source.features == mock_reconstruction_manager.current_features[ChannelName.PULSE1]
+
+    def test_the_reader_is_told_the_envelopes_moved(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        reported: List[None] = []
+        panel_logic.on_heard_changed = lambda: reported.append(None)
+
+        panel_logic.set_stem_channels(1, frozenset())
+
+        assert len(reported) == 1
+
+    def test_a_solo_leaves_the_envelopes_of_the_recording_alone(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        whole = mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count
+
+        panel_logic.solo_stem(0)
+
+        assert mock_reconstruction_manager.listening.heard[1] == frozenset()
+        assert 0 < mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count < whole
+
+    def test_a_second_solo_returns_to_the_whole_mix(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        whole = mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count
+
+        panel_logic.solo_stem(0)
+        panel_logic.solo_stem(0)
+
+        assert mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count == whole
+
+    def test_a_solo_tells_the_reader_the_envelopes_moved_once(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        reported: List[None] = []
+        panel_logic.on_heard_changed = lambda: reported.append(None)
+
+        panel_logic.solo_stem(0)
+
+        assert len(reported) == 1
+
+
+class TestTheLanesTheRibbonStandsOn:
+    """The lanes answer for the channels the document plays, and what fills them for the listening."""
+
+    @pytest.fixture(name="stems_data")
+    def stems_data_fixture(self, tmp_path: Path) -> ReconstructionData:
+        """Two recordings, one holding the first pulse and one the triangle."""
+        pulse = [ChannelName.PULSE1]
+        triangle = [ChannelName.TRIANGLE]
+        stems_config = StemsConfig(
+            entries=[
+                StemEntry(id=0, settings=StemSettings(channels=pulse, bends=bending_channels(pulse))),
+                StemEntry(id=1, settings=StemSettings(channels=triangle, bends=bending_channels(triangle))),
+            ],
+            hierarchy=StemsHierarchy(levels=[[0, 1]]),
+        )
+        stems_reconstruction = Reconstruction.create(
+            instructions={
+                ChannelName.PULSE1: [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)],
+                ChannelName.TRIANGLE: [TriangleInstruction(on=True, pitch=48)],
+            },
+            config=Config(),
+            coefficient=1.0,
+            audio_filepath=(tmp_path / "a.wav", tmp_path / "b.wav"),
+            stems_data=StemsData(
+                config=stems_config,
+                assignments=[
+                    ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0]),
+                    ChannelAssignment(channel_name=ChannelName.TRIANGLE, stem_ids=[1]),
+                ],
+                scale=RECORDED_SCALE,
+            ),
+        )
+        return ReconstructionData.from_reconstruction(stems_reconstruction, name="Sample")
+
+    @staticmethod
+    def _ribbons(panel_logic: ReconstructionPanelLogic) -> List[OwnershipRibbonViewModel]:
+        received: List[OwnershipRibbonViewModel] = []
+        panel_logic.on_ownership_changed = received.append
+        return received
+
+    def test_a_lane_stands_for_every_channel_the_document_plays(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        received = self._ribbons(panel_logic)
+
+        panel_logic.display_reconstruction()
+
+        assert [lane.channel_name for lane in received[-1].lanes] == [ChannelName.PULSE1, ChannelName.TRIANGLE]
+
+    def test_a_channel_switched_off_keeps_its_lane_and_stands_empty(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        """The rows beneath the waveform hold still while a reader picks their way through it."""
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        received = self._ribbons(panel_logic)
+
+        panel_logic.set_selected_channels([ChannelName.PULSE1])
+
+        lanes = {lane.channel_name: lane for lane in received[-1].lanes}
+        assert list(lanes) == [ChannelName.PULSE1, ChannelName.TRIANGLE]
+        assert lanes[ChannelName.TRIANGLE].runs == ()
+        assert lanes[ChannelName.PULSE1].runs
+
+    def test_the_lanes_stand_where_nothing_is_switched_on(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        """The ribbon measures the record, so its rows hold even with nothing to paint in them."""
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        received = self._ribbons(panel_logic)
+
+        panel_logic.set_selected_channels([])
+
+        ribbon = received[-1]
+        assert [lane.channel_name for lane in ribbon.lanes] == [ChannelName.PULSE1, ChannelName.TRIANGLE]
+        assert all(lane.runs == () for lane in ribbon.lanes)
+        assert ribbon.is_drawn
+
+    def test_a_stretch_the_reader_hears_stands_under_its_recording(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        received = self._ribbons(panel_logic)
+
+        panel_logic.display_reconstruction()
+
+        pulse_lane = next(lane for lane in received[-1].lanes if lane.channel_name == ChannelName.PULSE1)
+        assert [(run.stem_id, run.heard) for run in pulse_lane.runs] == [(0, True)]
+
+    def test_a_recording_switched_off_keeps_its_stretch_under_its_own_name(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        """A stretch names the recording holding it whether or not the reader is listening to it."""
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+        received = self._ribbons(panel_logic)
+
+        panel_logic.set_stem_channels(0, frozenset())
+
+        pulse_lane = next(lane for lane in received[-1].lanes if lane.channel_name == ChannelName.PULSE1)
+        assert [(run.stem_id, run.heard) for run in pulse_lane.runs] == [(0, False)]
+
+    def test_a_document_answering_to_one_recording_still_offers_a_lane(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        """A single recording throughout still answers whether a channel is sounding and by whom,
+        so its lane stands the way every other channel's does."""
+        _open(mock_reconstruction_manager, loaded_data)
+        received = self._ribbons(panel_logic)
+
+        panel_logic.display_reconstruction()
+
+        ribbon = received[-1]
+        assert ribbon.is_drawn
+        assert [lane.channel_name for lane in ribbon.lanes] == [ChannelName.PULSE1]
+        assert ribbon.lanes[0].runs
+
+
+class TestTheScopeAnEditWritesIn:
+    """What the reader hears on a channel is what an edit there reaches."""
+
+    @pytest.fixture(name="stems_data")
+    def stems_data_fixture(self, tmp_path: Path) -> ReconstructionData:
+        """Two recordings sharing the first pulse, a frame each, so both are heard there."""
+        channels = [ChannelName.PULSE1]
+        stems_config = StemsConfig(
+            entries=[
+                StemEntry(id=stem_id, settings=StemSettings(channels=channels, bends=bending_channels(channels)))
+                for stem_id in (0, 1)
+            ],
+            hierarchy=StemsHierarchy(levels=[[0, 1]]),
+        )
+        stems_reconstruction = Reconstruction.create(
+            instructions={
+                ChannelName.PULSE1: [
+                    PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0),
+                    PulseInstruction(on=True, pitch=62, volume=8, duty_cycle=0),
+                ]
+            },
+            config=Config(),
+            coefficient=1.0,
+            audio_filepath=(tmp_path / "a.wav", tmp_path / "b.wav"),
+            stems_data=StemsData(
+                config=stems_config,
+                assignments=[ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[0, 1])],
+                scale=RECORDED_SCALE,
+            ),
+        )
+        return ReconstructionData.from_reconstruction(stems_reconstruction, name="Sample")
+
+    def test_a_freshly_opened_document_lets_an_edit_reach_every_recording(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+
+        panel_logic.display_reconstruction()
+
+        assert panel_logic.heard_on(ChannelName.PULSE1) == frozenset({0, 1})
+
+    def test_a_recording_switched_off_leaves_the_scope(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+
+        panel_logic.set_stem_channels(1, frozenset())
+
+        assert panel_logic.heard_on(ChannelName.PULSE1) == frozenset({0})
+
+    def test_a_channel_no_recording_is_heard_on_takes_no_edit(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        stems_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, stems_data)
+        panel_logic.display_reconstruction()
+
+        assert panel_logic.heard_on(ChannelName.TRIANGLE) == frozenset()
+
+
+class TestTheRowTheReadersOwnFramesStandIn:
+    """Frames the reader wrote answer to no recording, so they gather in a row of their own."""
+
+    @pytest.fixture(name="edited_data")
+    def edited_data_fixture(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> ReconstructionData:
+        reconstruction = reconstruction_factory()
+        channels = [ChannelName.PULSE1]
+        stems_config = StemsConfig(
+            entries=[StemEntry(id=0, settings=StemSettings(channels=channels, bends=bending_channels(channels)))],
+            hierarchy=StemsHierarchy(levels=[[0]]),
+        )
+        frames = len(reconstruction.instructions[ChannelName.PULSE1])
+        authored = reconstruction.model_copy(
+            update={
+                "stems_data": StemsData(
+                    config=stems_config,
+                    assignments=[
+                        ChannelAssignment(
+                            channel_name=ChannelName.PULSE1,
+                            stem_ids=[AUTHORED_STEM_ID] * frames,
+                        )
+                    ],
+                    scale=RECORDED_SCALE,
+                ).with_sources((tmp_path / "a.wav",)),
+            }
+        )
+        return ReconstructionData.from_reconstruction(authored, name="Sample")
+
+    def test_the_row_stands_after_every_recording(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        edited_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, edited_data)
+        stems_views: List[ReconstructionStemsViewModel] = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.display_reconstruction()
+
+        rows = stems_views[0].stems.rows
+        assert [row.key for row in rows] == ["0", str(AUTHORED_STEM_ID)]
+        assert rows[-1].level == rows[0].level + 1
+
+    def test_the_row_offers_the_channels_it_holds_frames_on(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        edited_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, edited_data)
+        stems_views: List[ReconstructionStemsViewModel] = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.display_reconstruction()
+
+        edits = stems_views[0].stems.row(str(AUTHORED_STEM_ID))
+        assert edits is not None
+        assert edits.offered_channels == frozenset({ChannelName.PULSE1})
+        assert edits.stands_for_edits
+
+    def test_a_removal_stands_outside_the_row(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        edited_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, edited_data)
+        stems_views: List[ReconstructionStemsViewModel] = []
+        panel_logic.on_stems_view_changed = stems_views.append
+
+        panel_logic.display_reconstruction()
+
+        edits = stems_views[0].stems.row(str(AUTHORED_STEM_ID))
+        assert edits is not None
+        assert not edits.releasable

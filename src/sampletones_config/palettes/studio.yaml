@@ -32,6 +32,7 @@ colors:
   accent_hover: "#a180ce"
   accent_active: "#7b629e"
   accent_muted: "#685386"
+  accent_partial: "#b98af3aa"
   on_accent: "#17131f"
 
   primary: "#8f6fc0"
@@ -49,6 +50,7 @@ colors:
   danger_hover: "#bd6a6a"
   danger_active: "#8e4747"
   on_danger: "#f1f1f5"
+  danger_disabled: "#4d3d47"
 
   dialog_surface: "#313547"
   dialog_title: "#34405e"
@@ -61,6 +63,21 @@ colors:
   channel_pulse2_soft: "#dfd6a8"
   channel_triangle_soft: "#b9cedf"
   channel_noise_soft: "#cbcace"
+  channel_pulse1_partial: "#f0925688"
+  channel_pulse2_partial: "#f2d15f88"
+  channel_triangle_partial: "#8cc1ed88"
+  channel_noise_partial: "#bbb8c288"
+
+  stem_1: "#de7381"
+  stem_2: "#73dec9"
+  stem_3: "#cc73de"
+  stem_4: "#8cde73"
+  stem_5: "#de73b8"
+  stem_6: "#73de91"
+  stem_7: "#7381de"
+  stem_8: "#c3de73"
+  stem_authored: "#b98af3"
+  stem_rest: "#2a2937"
 
   tab: "#24283a"
   tab_hovered: "#2f3a56"
@@ -114,10 +131,11 @@ colors:
   favorite: "#ffd76e"
   favorite_child: "#e7dbb7"
 
-  library_generator: "#d2e8d2"
+  generator: "#d2e8d2"
   library_group: "#d2e8e8"
   library_instruction: "#d2d2d2"
   library_root: "#dcdcdc"
+  library_outdated: "#c7b575"
 
   text_default: "#dcdcdc"
   text_inactive: "#828282"
@@ -151,6 +169,7 @@ colors:
   feature_volume: "#64ff64"
   feature_arpeggio: "#ff9664"
   feature_pitch: "#64c8ff"
+  feature_hi_pitch: "#9664ff"
   feature_duty_cycle: "#ffc864"
 
   caret_fill: "#8888ff80"
@@ -187,9 +206,11 @@ colors:
   history_value: "#d0d0d0ff"
   history_separator: "#707070ff"
 
-  tracker_reference: "#e0c860ff"
   tracker_transpose: "#c0c0c0ff"
   tracker_volume: "#64dc64ff"
   tracker_frame: "#22ccffff"
   tracker_row: "#a0a0a0ff"
   tracker_order: "#c8d0e0ff"
+
+  voice_sample: "#e0c860ff"
+  voice_instrument: "#ff70dfff"

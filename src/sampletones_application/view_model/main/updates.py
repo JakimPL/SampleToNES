@@ -1,9 +1,8 @@
 from pathlib import Path
-from typing import List
 
 from pydantic import BaseModel
 
-from sampletones_core.constants.enums import GeneratorName, SpectrumMethod
+from sampletones_core.constants.enums import SpectrumMethod
 
 
 class AudioSettingsUpdate(BaseModel, frozen=True):
@@ -14,11 +13,6 @@ class AudioSettingsUpdate(BaseModel, frozen=True):
 class LibrarySettingsUpdate(BaseModel, frozen=True):
     sample_rate: int
     nes_frequency: int
-
-
-class GenerationSettingsUpdate(BaseModel, frozen=True):
-    drive: float
-    generators: List[GeneratorName]
 
 
 class AdvancedSettingsUpdate(BaseModel, frozen=True):

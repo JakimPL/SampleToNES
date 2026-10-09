@@ -1,21 +1,35 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Final, List
 from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.fft import Fragment, FragmentedAudio, Window
-from sampletones_core.generators import MIXER_LEVELS
-from sampletones_core.library import InstructionLibraryData
-from sampletones_core.reconstructions.reconstructor.approximation import (
-    ApproximationData,
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    GeneratorClassName,
 )
+from sampletones_core.fft import Fragment, Window
+from sampletones_core.generators import FULL_SCALE_RMS_LEVELS
+from sampletones_core.generators.render import render_channels
+from sampletones_core.library import InstructionLibraryData
+from sampletones_core.reconstructions.reconstruction.renders import rendered_channels
 from sampletones_core.reconstructions.reconstructor.reconstructor import Reconstructor
-from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import NoLibraryDataError
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
+
+TRIANGLE_LEVEL: Final[float] = FULL_SCALE_RMS_LEVELS[GeneratorClassName.TRIANGLE_GENERATOR]
+SINE_FRAMES: Final[int] = 30
+SINE_AMPLITUDE: Final[float] = 0.8
+SINE_CYCLES_PER_FRAME: Final[int] = 4
 
 
 def _make_reconstructor(config: Config, library_data: InstructionLibraryData) -> Reconstructor:
@@ -23,7 +37,7 @@ def _make_reconstructor(config: Config, library_data: InstructionLibraryData) ->
     mock_library.get.return_value = library_data
     mock_library.create_key.return_value = MagicMock()
     mock_library.get_path.return_value = "test/path"
-    return Reconstructor(config, library=mock_library)
+    return Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=mock_library)
 
 
 class TestReconstructorInit:
@@ -33,8 +47,8 @@ class TestReconstructorInit:
         library_data: InstructionLibraryData,
     ) -> None:
         reconstructor = _make_reconstructor(config, library_data)
-        expected_names = set(config.generation.generators)
-        assert set(reconstructor.generators.keys()) == expected_names
+        expected_names = set(DEFAULT_CHANNELS)
+        assert set(reconstructor.channels.keys()) == expected_names
 
     def test_window_created_from_config(
         self,
@@ -54,7 +68,7 @@ class TestReconstructorLoadLibraryError:
         mock_library.create_key.return_value = MagicMock()
         mock_library.get_path.return_value = "test/path"
         with pytest.raises(NoLibraryDataError):
-            Reconstructor(config, library=mock_library)
+            Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=mock_library)
 
 
 class TestReconstructorGetCoefficient:
@@ -65,9 +79,8 @@ class TestReconstructorGetCoefficient:
     ) -> None:
         reconstructor = _make_reconstructor(config, library_data)
         audio = np.ones(config.library.frame_length, dtype=np.float32) * 0.5
-        coefficient = reconstructor.get_coefficient(audio)
-        total_mixer = sum(MIXER_LEVELS[gen.class_name()] for gen in reconstructor.generators.values())
-        assert coefficient == pytest.approx(0.5 / total_mixer)
+        coefficient = reconstructor.get_coefficient(audio, _full_setup(config))
+        assert coefficient == pytest.approx(0.5 / TRIANGLE_LEVEL)
 
     def test_coefficient_is_robust_to_a_lone_transient(
         self,
@@ -76,12 +89,11 @@ class TestReconstructorGetCoefficient:
     ) -> None:
         reconstructor = _make_reconstructor(config, library_data)
         frame_length = config.library.frame_length
-        total_mixer = sum(MIXER_LEVELS[gen.class_name()] for gen in reconstructor.generators.values())
         audio = np.full(frame_length * 24, 0.05, dtype=np.float32)
         audio[:frame_length] = 1.0
-        coefficient = reconstructor.get_coefficient(audio)
-        assert coefficient == pytest.approx(0.05 / total_mixer, rel=1e-3)
-        assert coefficient < 1.0 / total_mixer
+        coefficient = reconstructor.get_coefficient(audio, _full_setup(config))
+        assert coefficient == pytest.approx(0.05 / TRIANGLE_LEVEL, rel=1e-3)
+        assert coefficient < 1.0 / TRIANGLE_LEVEL
 
     def test_louder_audio_produces_larger_coefficient(
         self,
@@ -89,9 +101,75 @@ class TestReconstructorGetCoefficient:
         library_data: InstructionLibraryData,
     ) -> None:
         reconstructor = _make_reconstructor(config, library_data)
+        setup = _full_setup(config)
         quiet = np.ones(config.library.frame_length, dtype=np.float32) * 0.1
         loud = np.ones(config.library.frame_length, dtype=np.float32) * 0.9
-        assert reconstructor.get_coefficient(loud) > reconstructor.get_coefficient(quiet)
+        assert reconstructor.get_coefficient(loud, setup) > reconstructor.get_coefficient(quiet, setup)
+
+    def test_a_steady_sine_lands_at_the_level_a_full_volume_triangle_plays(
+        self,
+        config: Config,
+        library_data: InstructionLibraryData,
+    ) -> None:
+        reconstructor = _make_reconstructor(config, library_data)
+        frame_length = config.library.frame_length
+        phase = np.arange(frame_length * SINE_FRAMES) * SINE_CYCLES_PER_FRAME / frame_length
+        sine = (SINE_AMPLITUDE * np.sin(2.0 * np.pi * phase)).astype(np.float32)
+
+        scaled = sine / reconstructor.get_coefficient(sine, _full_setup(config))
+
+        level = float(np.sqrt(np.mean(np.square(scaled.astype(np.float64)))))
+        assert level == pytest.approx(TRIANGLE_LEVEL, rel=1e-2)
+
+
+class TestReconstructorWorkingLevel(BaseTestSuite):
+    """The working level is the full-scale RMS level of the quietest tone channel a setup covers."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        channels: List[ChannelName]
+        anchor: GeneratorClassName
+
+    test_cases = (
+        TestCase(
+            label="triangle_among_the_tone_channels",
+            channels=[ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE],
+            anchor=GeneratorClassName.TRIANGLE_GENERATOR,
+        ),
+        TestCase(
+            label="pulse_without_the_triangle",
+            channels=[ChannelName.PULSE1, ChannelName.NOISE],
+            anchor=GeneratorClassName.PULSE_GENERATOR,
+        ),
+        TestCase(
+            label="noise_without_a_tone_channel",
+            channels=[ChannelName.NOISE],
+            anchor=GeneratorClassName.NOISE_GENERATOR,
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_the_level_follows_the_covered_channels(
+        self,
+        config: Config,
+        library_data: InstructionLibraryData,
+        test_case: TestCase,
+    ) -> None:
+        reconstructor = _make_reconstructor(config, library_data)
+        setup = StemsConfig.single_entry(StemSettings.covering(test_case.channels))
+        audio = np.ones(config.library.frame_length, dtype=np.float32) * 0.5
+
+        assert reconstructor.get_coefficient(audio, setup) == pytest.approx(
+            0.5 / FULL_SCALE_RMS_LEVELS[test_case.anchor]
+        )
+
+
+def _full_setup(config: Config) -> StemsConfig:
+    return StemsConfig.single_entry(StemSettings.covering(list(DEFAULT_CHANNELS)))
 
 
 class TestReconstructorGetFragments:
@@ -119,7 +197,7 @@ class TestReconstructorGetFragments:
             assert len(fragment.audio) == config.library.frame_length
 
 
-class TestReconstructorResetGenerators:
+class TestReconstructorResetChannels:
     def test_reset_clears_generator_states(
         self,
         config: Config,
@@ -137,7 +215,7 @@ class TestReconstructorResetGenerators:
         )
 
         reconstructor = _make_reconstructor(config, library_data)
-        for generator in reconstructor.generators.values():
+        for generator in reconstructor.channels.values():
             if isinstance(generator, PulseGenerator):
                 generator.save_state(True, PulseInstruction(on=True, pitch=60, volume=10, duty_cycle=0))
             elif isinstance(generator, TriangleGenerator):
@@ -145,120 +223,9 @@ class TestReconstructorResetGenerators:
             elif isinstance(generator, NoiseGenerator):
                 generator.save_state(True, NoiseInstruction(on=True, period=0, volume=10, short=False))
 
-        assert all(gen.previous_instruction is not None for gen in reconstructor.generators.values())
+        assert all(gen.previous_instruction is not None for gen in reconstructor.channels.values())
         reconstructor.reset_generators()
-        assert all(gen.previous_instruction is None for gen in reconstructor.generators.values())
-
-
-class TestReconstructorUpdateState:
-    def _setup(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-        synthetic_fragment: Fragment,
-        final_regeneration: bool,
-    ) -> tuple:
-        updated_config = config.model_copy(
-            update={
-                "generation": config.generation.model_copy(
-                    update={
-                        "final_regeneration": final_regeneration,
-                    }
-                )
-            }
-        )
-        reconstructor = _make_reconstructor(updated_config, library_data)
-        generator_name = next(iter(reconstructor.generators))
-        instruction = next(
-            instrument
-            for instrument, frag in library_data.data.items()
-            if frag.generator_class == reconstructor.generators[generator_name].class_name() and instrument.on
-        )
-        approximation_data = ApproximationData(
-            generator_name=generator_name,
-            approximation=synthetic_fragment,
-            instruction=instruction,
-        )
-        reconstructor.state = ReconstructionState.create(list(reconstructor.generators.keys()))
-        return reconstructor, generator_name, approximation_data
-
-    def test_without_final_regeneration_stores_precomputed_audio_scaled_by_drive(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-        synthetic_fragment: Fragment,
-    ) -> None:
-        reconstructor, generator_name, approximation_data = self._setup(
-            config,
-            library_data,
-            synthetic_fragment,
-            final_regeneration=False,
-        )
-        reconstructor.update_state(approximation_data)
-        expected = np.asarray(synthetic_fragment.audio) * reconstructor.config.generation.drive
-        np.testing.assert_array_almost_equal(
-            reconstructor.state.approximations[generator_name][0],
-            expected,
-        )
-
-    def test_without_final_regeneration_does_not_run_generator(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-        synthetic_fragment: Fragment,
-    ) -> None:
-        reconstructor, generator_name, approximation_data = self._setup(
-            config,
-            library_data,
-            synthetic_fragment,
-            final_regeneration=False,
-        )
-        reconstructor.update_state(approximation_data)
-        assert reconstructor.generators[generator_name].previous_instruction is None
-
-    def test_with_final_regeneration_reruns_generator(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-        synthetic_fragment: Fragment,
-    ) -> None:
-        reconstructor, generator_name, approximation_data = self._setup(
-            config,
-            library_data,
-            synthetic_fragment,
-            final_regeneration=True,
-        )
-        reconstructor.update_state(approximation_data)
-        assert reconstructor.generators[generator_name].previous_instruction is approximation_data.instruction
-
-
-class TestReconstructorReconstruct:
-    def test_state_is_populated_for_each_fragment(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-        fragmented_audio: FragmentedAudio,
-    ) -> None:
-        reconstructor = _make_reconstructor(config, library_data)
-        reconstructor.state = ReconstructionState.create(list(reconstructor.generators.keys()))
-        reconstructor.reconstruct(fragmented_audio)
-        fragment_count = len(fragmented_audio.fragments_ids)
-        for generator_name in reconstructor.generators:
-            assert len(reconstructor.state.instructions[generator_name]) == fragment_count
-            assert len(reconstructor.state.approximations[generator_name]) == fragment_count
-
-    def test_approximations_have_correct_frame_length(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-        fragmented_audio: FragmentedAudio,
-    ) -> None:
-        reconstructor = _make_reconstructor(config, library_data)
-        reconstructor.state = ReconstructionState.create(list(reconstructor.generators.keys()))
-        reconstructor.reconstruct(fragmented_audio)
-        for generator_name in reconstructor.generators:
-            for approximation in reconstructor.state.approximations[generator_name]:
-                assert len(approximation) == config.library.frame_length
+        assert all(gen.previous_instruction is None for gen in reconstructor.channels.values())
 
 
 class TestReconstructorCall:
@@ -289,3 +256,57 @@ class TestReconstructorCall:
         reconstructor = _make_reconstructor(config, library_data)
         result = reconstructor(audio_path)
         assert isinstance(result, Reconstruction)
+
+
+class TestTheAudioAReconstructionRecords:
+    """A frame records its instruction rendered afresh, which is the audio the channel plays."""
+
+    def _tone_path(self, tmp_path: Path, config: Config, synthetic_fragment: Fragment) -> Path:
+        from sampletones_core.audio import write_wave
+
+        audio_path = tmp_path / "tone.wav"
+        write_wave(audio_path, config.library.sample_rate, np.tile(synthetic_fragment.audio, 3).astype(np.float32))
+        return audio_path
+
+    def test_every_channel_spans_the_frames_its_stream_describes(
+        self,
+        config: Config,
+        library_data: InstructionLibraryData,
+        synthetic_fragment: Fragment,
+        tmp_path: Path,
+    ) -> None:
+        reconstructor = _make_reconstructor(config, library_data)
+
+        reconstruction = reconstructor(self._tone_path(tmp_path, config, synthetic_fragment))
+
+        assert reconstruction is not None
+        for channel_name in reconstruction.playing_channels:
+            frames = len(reconstruction.instructions[channel_name])
+            assert len(rendered_channels(reconstruction)[channel_name]) == frames * config.library.frame_length
+
+    @pytest.mark.parametrize("reset_phase", [False, True], ids=["carried_phase", "reset_phase"])
+    def test_the_recorded_audio_is_what_the_channels_render(
+        self,
+        config: Config,
+        library_data: InstructionLibraryData,
+        synthetic_fragment: Fragment,
+        tmp_path: Path,
+        reset_phase: bool,
+    ) -> None:
+        """The phase a new note starts on follows the configuration in both, so an export plays what
+        the reconstruction shows."""
+        resetting = config.model_copy(
+            update={"generation": config.generation.model_copy(update={"reset_phase": reset_phase})}
+        )
+        reconstructor = _make_reconstructor(resetting, library_data)
+
+        reconstruction = reconstructor(self._tone_path(tmp_path, resetting, synthetic_fragment))
+
+        assert reconstruction is not None
+        rendered = render_channels(reconstruction.instructions, resetting)
+        for channel_name in reconstruction.playing_channels:
+            np.testing.assert_allclose(
+                rendered_channels(reconstruction)[channel_name],
+                rendered[channel_name],
+                atol=1e-6,
+            )

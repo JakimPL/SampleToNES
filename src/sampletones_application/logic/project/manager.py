@@ -1,27 +1,41 @@
 from pathlib import Path
+from typing import Callable, Optional
 
 from sampletones_core.project import Project, ProjectContainer
 from sampletones_shared.logger import logger
+from sampletones_shared.utils.callbacks import CallbackMixin
 
 from .session import ProjectSession
 
+OnPathChangedCallback = Callable[[Optional[Path]], None]
 
-class ProjectManager:
+
+class ProjectManager(CallbackMixin):
     """
-    The single authority on which project is currently open and whether it is clean.
+    The single authority on which project is currently open, which file it stands for, and whether it is clean.
 
-    - It is a passive data holder; lifecycle events are emitted by its ``session``.
-    - Callers that need to react to lifecycle transitions should subscribe to
-      ``session.on_state_changed``.
+    - Lifecycle events are emitted by its ``session``; callers that need to react to lifecycle
+      transitions subscribe to ``session.on_state_changed``.
+    - The project stands for the file it was last loaded from or saved to, its :attr:`path`. A
+      project made here stands for a file once it is first saved. ``on_path_changed`` reports each new
+      path, so the session remembers the project the next run reopens.
     """
 
     def __init__(self) -> None:
         self._session: ProjectSession = ProjectSession()
         self._current: Project = Project.create()
+        self._path: Optional[Path] = None
+
+        self.on_path_changed: Optional[OnPathChangedCallback] = None
 
     @property
     def current(self) -> Project:
         return self._current
+
+    @property
+    def path(self) -> Optional[Path]:
+        """The file the open project was last loaded from or saved to, ``None`` for a project never written."""
+        return self._path
 
     @property
     def session(self) -> ProjectSession:
@@ -41,21 +55,32 @@ class ProjectManager:
 
     def new(self) -> None:
         self._current = Project.create()
+        self._set_path(None)
         self._session.mark_loaded("")
 
     def close(self) -> None:
         self._current = Project.create()
+        self._set_path(None)
         self._session.mark_closed()
 
     def load(self, path: Path) -> None:
         logger.info(f"Loading project: {logger.format_path(path)}")
         self._current = ProjectContainer.load(path)
+        self._set_path(path)
         self._session.mark_loaded(path.stem)
         logger.info(f"Project {logger.format_path(path)} loaded successfully")
 
     def save(self, path: Path) -> None:
         ProjectContainer.save(self._current, path)
+        self._set_path(path)
         self._session.mark_saved(path.stem)
+
+    def _set_path(self, path: Optional[Path]) -> None:
+        if path == self._path:
+            return
+
+        self._path = path
+        self.call(self.on_path_changed, path)
 
     def mark_updated(self) -> None:
         self._session.mark_updated()

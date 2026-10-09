@@ -10,3 +10,16 @@ components:
       - type: color
         key: Text
         value: .channel_noise_soft
+  - item_type: Text
+    entries:
+      - type: color
+        key: Text
+        value: .channel_noise
+  - item_type: SliderFloat
+    entries:
+      - type: color
+        key: SliderGrab
+        value: .channel_noise
+      - type: color
+        key: SliderGrabActive
+        value: .channel_noise_soft

@@ -1,0 +1,1562 @@
+from pathlib import Path
+from typing import Any, Final, FrozenSet, Iterator, List, Optional, Tuple
+from unittest.mock import patch
+
+import dearpygui.dearpygui as dpg
+import pytest
+
+from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.sources import SourceKind
+from sampletones_application.layout.config import LayoutConfig
+from sampletones_application.layout.loader import load_layout_config
+from sampletones_application.paths import (
+    BEHAVIOR_DIRECTORY,
+    LANG_EN,
+    LAYOUT_DIRECTORY,
+    PALETTES_DIRECTORY,
+    THEME_DIRECTORY,
+)
+from sampletones_application.tags.compose import compose_tag
+from sampletones_application.tags.general import (
+    SUF_BUTTON,
+    SUF_CHECKBOX,
+    SUF_HEADING,
+    SUF_LEAD,
+    SUF_STRIP,
+    SUF_SWATCH,
+    SUF_TABLE,
+    SUF_TEXT,
+    TAG_GLOBAL_THEME_CHANNEL_MUTED,
+    TAG_GLOBAL_THEME_CHANNEL_PULSE1_PARTIAL,
+    TAG_GLOBAL_THEME_STEMS_ROW,
+    TAG_GLOBAL_THEME_STEMS_ROW_INERT,
+)
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.layout.geometry import MINIMUM_ROW_PITCH
+from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.elements.stems.columns import StemsColumns
+from sampletones_application.ui.elements.stems.list import GUIStemsList
+from sampletones_application.ui.elements.stems.offer import StemsListOffer
+from sampletones_application.ui.elements.stems.tags import StemsTags
+from sampletones_application.ui.themes.channels import CHANNEL_THEME_TAGS
+from sampletones_application.ui.themes.registry import ThemeRegistry
+from sampletones_application.ui.themes.setup import setup_themes
+from sampletones_application.utils.palette.catalog import PaletteCatalog
+from sampletones_application.utils.palette.colors.base import BaseColor
+from sampletones_application.utils.palette.source import PaletteSource
+from sampletones_application.view_model.shared.stems import (
+    StemRowViewModel,
+    StemsListViewModel,
+)
+from sampletones_core.constants.enums import ChannelName
+from sampletones_shared.types.callback import Callback
+from tests.suite.base import BaseTestSuite
+from tests.suite.frames import DrawnFrames
+from tests.suite.gestures import CLICKED, DOUBLE_CLICKED, HOVERED, click_row_name, handler_of
+
+ROOT_TAG = "test_root"
+PREFIX = "test.stems"
+TAGS: Final[StemsTags] = StemsTags(prefix=PREFIX)
+CHANNELS: Tuple[ChannelName, ...] = (ChannelName.PULSE1, ChannelName.TRIANGLE)
+DRAG_PAYLOAD_SLOT: Final[int] = 3
+LONG_LIST: Final[int] = 200
+FULL_CHANNEL: Final[float] = 255.0
+ROW_PITCH: Final[float] = 20.0
+HEADING_HEIGHT: Final[float] = 24.0
+DEEP_SCROLL: Final[float] = 2000.0
+EARLY_ROW: Final[int] = 0
+REACHED_ROW: Final[int] = 100
+SETTLING_FRAMES: Final[int] = 2
+
+
+@pytest.fixture
+def layout_config() -> LayoutConfig:
+    source = PaletteSource(PaletteCatalog.load(PALETTES_DIRECTORY).default)
+    return load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY, source)
+
+
+@pytest.fixture
+def dpg_context(layout_config: LayoutConfig) -> Iterator[None]:
+    """Stands up the context, fonts and themes the list binds while it draws."""
+    dpg.create_context()
+    FontRegistry.setup(layout_config.fonts)
+    FontRegistry.register_fonts(layout_config.fonts.scale)
+    setup_themes(THEME_DIRECTORY, PaletteSource(PaletteCatalog.load(PALETTES_DIRECTORY).default))
+    try:
+        yield
+    finally:
+        ThemeRegistry.clear()
+        dpg.destroy_context()
+
+
+def build(
+    layout_config: LayoutConfig,
+    *,
+    dragging: bool = True,
+    removal: bool = True,
+    keeps_last_row: bool = False,
+    master_box: bool = False,
+    picking: bool = False,
+    swatch: bool = False,
+) -> GUIStemsList:
+    stems_list = GUIStemsList(
+        prefix=PREFIX,
+        layout=layout_config.general.stems,
+        ceiling=layout_config.general.stems.well_ceiling,
+        glyphs=layout_config.glyphs.common,
+        stem_colors=layout_config.general.colors.stems,
+        language_manager=LanguageManager(LANG_EN),
+        status_bar=GUIStatusBar(),
+        offer=StemsListOffer(
+            master_box=master_box,
+            removal=removal,
+            keeps_last_row=keeps_last_row,
+            dragging=dragging,
+            picking=picking,
+            swatch=swatch,
+        ),
+    )
+    with dpg.window(tag=ROOT_TAG):
+        stems_list.create(ROOT_TAG)
+
+    return stems_list
+
+
+def row(
+    name: str,
+    *,
+    channels: FrozenSet[ChannelName] = frozenset(CHANNELS),
+    offered_channels: FrozenSet[ChannelName] = frozenset(CHANNELS),
+    available: bool = True,
+    level: int = 0,
+    position: int = 0,
+    stem_id: Optional[int] = None,
+    kind: SourceKind = SourceKind.RECORDING,
+    level_size: int = 1,
+    level_count: int = 1,
+) -> StemRowViewModel:
+    path = Path(f"/audio/{name}.wav")
+    return StemRowViewModel(
+        kind=kind,
+        held=(),
+        partial_channels=frozenset(),
+        key=str(path),
+        name=path.stem,
+        path=path,
+        channels=channels,
+        offered_channels=offered_channels,
+        available=available,
+        level=level,
+        position=position,
+        stem_id=stem_id,
+        level_size=level_size,
+        level_count=level_count,
+    )
+
+
+def view(
+    *rows: StemRowViewModel,
+    live: bool = True,
+    muted_channels: FrozenSet[ChannelName] = frozenset(),
+    picked_keys: FrozenSet[str] = frozenset(),
+    collapse_levels: bool = False,
+    selected_key: Optional[str] = None,
+    channels_in_play: Tuple[ChannelName, ...] = CHANNELS,
+) -> StemsListViewModel:
+    return StemsListViewModel(
+        selected_key=selected_key,
+        rows=rows,
+        channels_in_play=channels_in_play,
+        muted_channels=muted_channels,
+        picked_keys=picked_keys,
+        picking_room=None,
+        live=live,
+        collapse_levels=collapse_levels,
+    )
+
+
+def placed(rows: int) -> Any:
+    """Stands in for a frame having placed this many rows of one height under the heading.
+
+    A region reads what a row takes from the block its rows were drawn into, which no suite
+    renders, so the block answers as a frame would have left it.
+    """
+    lead_tag = compose_tag(TAGS.well, SUF_LEAD)
+
+    def sized(item: str, *_args: Any, **_kwargs: Any) -> List[float]:
+        return [0.0, HEADING_HEIGHT if item == lead_tag else rows * ROW_PITCH + HEADING_HEIGHT]
+
+    return patch.object(dpg, "get_item_rect_size", side_effect=sized)
+
+
+def row_tag(entry: StemRowViewModel, suffix: str) -> str:
+    return TAGS.row(entry.key, suffix)
+
+
+def channel_tag(entry: StemRowViewModel, channel_name: ChannelName) -> str:
+    return TAGS.channel(entry.key, channel_name)
+
+
+def hover_handler(suffix: str) -> Callback:
+    """The hover callback a row widget of that kind shares, as DearPyGui would call it."""
+    return dpg.get_item_callback(handler_of(TAGS.handlers(suffix), HOVERED))
+
+
+def click_on(entry: StemRowViewModel, kind: str, button: int) -> None:
+    """Land a mouse gesture on a row's name the way DearPyGui reports one."""
+    click_row_name(TAGS, entry.key, kind=kind, button=button)
+
+
+def select_name(entry: StemRowViewModel, value: bool) -> None:
+    """Click a row's name the way DearPyGui does: the widget moves, then the callback runs."""
+    name_tag = row_tag(entry, SUF_TEXT)
+    dpg.set_value(name_tag, value)
+    dpg.get_item_callback(name_tag)(name_tag, value, entry.key)
+
+
+def folder_row(
+    name: str,
+    *,
+    holds: int = 2,
+    channels: FrozenSet[ChannelName] = frozenset(CHANNELS),
+    partial_channels: FrozenSet[ChannelName] = frozenset(),
+) -> StemRowViewModel:
+    """A row standing for the recordings gathered below a folder."""
+    path = Path(f"/audio/{name}")
+    return StemRowViewModel(
+        key=str(path),
+        kind=SourceKind.FOLDER,
+        name=path.name,
+        path=path,
+        held=tuple(row(f"{name}/held_{index}") for index in range(holds)),
+        channels=channels,
+        partial_channels=partial_channels,
+        offered_channels=frozenset(CHANNELS),
+        available=True,
+        level=0,
+        position=0,
+        stem_id=None,
+        level_size=1,
+        level_count=1,
+    )
+
+
+class TestFolderRows(BaseTestSuite):
+    """A folder is one row answering for the recordings below it."""
+
+    def test_a_folder_names_itself_and_how_many_it_holds(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        sources = folder_row("sources", holds=3)
+        named = LanguageManager(LANG_EN)["global.stems.template.folder_row"].format(name="sources", count=3)
+
+        stems_list.update_view(view(sources))
+
+        assert dpg.get_item_label(row_tag(sources, SUF_TEXT)) == named
+
+    def test_a_channel_every_recording_holds_reads_ticked(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        sources = folder_row("sources")
+
+        stems_list.update_view(view(sources))
+
+        assert dpg.get_value(channel_tag(sources, ChannelName.PULSE1)) is True
+
+    def test_a_channel_they_differ_on_reads_clear_in_the_softer_tone(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A tick would state an answer the folder has yet to give, so a divided reading is clear."""
+        stems_list = build(layout_config)
+        sources = folder_row(
+            "sources",
+            channels=frozenset(),
+            partial_channels=frozenset({ChannelName.PULSE1}),
+        )
+
+        stems_list.update_view(view(sources))
+
+        box = channel_tag(sources, ChannelName.PULSE1)
+        assert dpg.get_value(box) is False
+        assert dpg.get_item_alias(dpg.get_item_theme(box)) == TAG_GLOBAL_THEME_CHANNEL_PULSE1_PARTIAL
+
+    def test_a_channel_none_of_them_holds_reads_clear(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        sources = folder_row("sources", channels=frozenset())
+
+        stems_list.update_view(view(sources))
+
+        assert dpg.get_value(channel_tag(sources, ChannelName.PULSE1)) is False
+
+    def test_a_folders_box_reports_the_channel_it_settles(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        sources = folder_row("sources")
+        toggled: List[Tuple[str, ChannelName]] = []
+        stems_list.on_channel_toggled = lambda key, channel: toggled.append((key, channel))
+
+        stems_list.update_view(view(sources))
+        box = channel_tag(sources, ChannelName.PULSE1)
+        dpg.get_item_callback(box)(box, False, dpg.get_item_user_data(box))
+
+        assert toggled == [(sources.key, ChannelName.PULSE1)]
+
+
+class TestRows(BaseTestSuite):
+    def test_a_row_names_its_recording_and_offers_every_channel_in_play(
+        self, dpg_context: None, layout_config: LayoutConfig
+    ) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass))
+
+        assert dpg.get_item_label(row_tag(bass, SUF_TEXT)) == "bass"
+        for channel_name in CHANNELS:
+            assert dpg.get_value(channel_tag(bass, channel_name))
+
+    def test_a_channel_the_row_lacks_reads_unticked(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass", channels=frozenset({ChannelName.PULSE1}))
+
+        stems_list.update_view(view(bass))
+
+        assert dpg.get_value(channel_tag(bass, ChannelName.PULSE1))
+        assert not dpg.get_value(channel_tag(bass, ChannelName.TRIANGLE))
+
+    def test_a_row_holding_no_channel_grays_out_and_still_answers(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass", channels=frozenset())
+
+        stems_list.update_view(view(bass))
+
+        name_tag = row_tag(bass, SUF_TEXT)
+        assert dpg.get_item_alias(dpg.get_item_theme(name_tag)) == TAG_GLOBAL_THEME_STEMS_ROW_INERT
+        assert dpg.is_item_enabled(name_tag)
+
+    def test_a_row_taking_part_reads_in_full(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass))
+
+        assert dpg.get_item_alias(dpg.get_item_theme(row_tag(bass, SUF_TEXT))) == TAG_GLOBAL_THEME_STEMS_ROW
+
+    def test_rows_follow_a_changed_list(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        bass, lead = row("bass"), row("lead")
+        stems_list.update_view(view(bass, lead, live=True))
+
+        stems_list.update_view(view(lead))
+
+        assert not dpg.does_item_exist(row_tag(bass, SUF_TEXT))
+        assert dpg.does_item_exist(row_tag(lead, SUF_TEXT))
+
+    def test_the_list_reports_the_row_a_gesture_named(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass))
+
+        assert stems_list.row(bass.key) == bass
+        assert stems_list.row("nothing") is None
+
+    def test_the_reading_the_list_already_stands_at_keeps_the_widgets_it_drew(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """The same reading twice asks for a repaint, so the reader keeps the row they are over."""
+        stems_list = build(layout_config)
+        bass = row("bass")
+        reading = view(bass)
+        stems_list.update_view(reading)
+        standing = dpg.get_alias_id(row_tag(bass, SUF_TEXT))
+
+        stems_list.update_view(reading)
+
+        assert dpg.get_alias_id(row_tag(bass, SUF_TEXT)) == standing
+
+
+class TestRowsNamedAlike(BaseTestSuite):
+    """Two recordings a tag part spells the same way stand on widgets of their own.
+
+    A tag part lowercases its name and collapses whitespace, so paths differing only in case or
+    spacing reach one segment. Each row carries the identity of its own key beside the name.
+    """
+
+    def test_two_paths_differing_in_case_carry_their_own_names(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        stems_list = build(layout_config)
+        lower, upper = row("kick"), row("Kick")
+
+        stems_list.update_view(view(lower, upper))
+
+        assert row_tag(lower, SUF_TEXT) != row_tag(upper, SUF_TEXT)
+        assert dpg.get_item_label(row_tag(lower, SUF_TEXT)) == "kick"
+        assert dpg.get_item_label(row_tag(upper, SUF_TEXT)) == "Kick"
+
+    def test_a_channel_ticked_on_one_leaves_the_other_alone(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        stems_list = build(layout_config)
+        spaced, scored = row("my song"), row("my_song")
+
+        stems_list.update_view(
+            view(
+                spaced,
+                scored,
+                selected_key=None,
+            ),
+        )
+        dpg.set_value(channel_tag(spaced, ChannelName.PULSE1), False)
+
+        assert dpg.get_value(channel_tag(scored, ChannelName.PULSE1)) is True
+
+    def test_the_reading_reported_names_the_row_it_was_ticked_on(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """The boxes report through the key their row carries, so one row's tick is its own."""
+        reported: List[Tuple[str, FrozenSet[ChannelName]]] = []
+        stems_list = build(layout_config)
+        stems_list.on_channels_changed = lambda key, channels: reported.append((key, channels))
+        lower, upper = row("kick"), row("Kick")
+        stems_list.update_view(view(lower, upper))
+
+        box = channel_tag(upper, ChannelName.PULSE1)
+        dpg.set_value(box, False)
+        dpg.get_item_callback(box)(box, False, dpg.get_item_user_data(box))
+
+        assert reported == [(upper.key, frozenset({ChannelName.TRIANGLE}))]
+
+
+class TestLevels(BaseTestSuite):
+    def test_each_level_carries_its_own_band(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        rows = (
+            row("bass", level=0, level_count=2),
+            row("drums", level=1, level_count=2),
+        )
+
+        stems_list.update_view(view(*rows))
+
+        caption = LanguageManager(LANG_EN)["global.stems.template.level_caption"]
+        assert dpg.get_value(TAGS.level(0, SUF_TEXT)) == caption.format(1).upper()
+        assert dpg.get_value(TAGS.level(1, SUF_TEXT)) == caption.format(2).upper()
+
+    def test_a_row_moving_to_another_band_is_built_into_it(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A band is a table of its own, so a row picking on another level stands as a widget of
+        that table rather than as the one it was drawn into."""
+        stems_list = build(layout_config)
+        bass = row("bass", level=0, level_count=2)
+        stems_list.update_view(view(bass, row("drums", level=1, level_count=2)))
+        standing = dpg.get_alias_id(row_tag(bass, SUF_TEXT))
+
+        stems_list.update_view(view(row("bass", level=1, level_count=2), row("drums", level=1, level_count=2)))
+
+        assert dpg.get_alias_id(row_tag(bass, SUF_TEXT)) != standing
+
+    def test_a_draggable_list_opens_a_strip_above_each_level_and_below_the_last(
+        self, dpg_context: None, layout_config
+    ) -> None:
+        stems_list = build(layout_config)
+        rows = (
+            row("bass", level=0, level_count=2),
+            row("drums", level=1, level_count=2),
+        )
+
+        stems_list.update_view(view(*rows))
+
+        for position in range(3):
+            assert dpg.does_item_exist(TAGS.level(position, SUF_STRIP))
+
+
+class TestAffordances(BaseTestSuite):
+    def test_a_draggable_list_makes_the_row_itself_the_thing_you_drag(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        stems_list = build(layout_config, dragging=True)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass))
+
+        assert dpg.get_item_children(row_tag(bass, SUF_TEXT), DRAG_PAYLOAD_SLOT)
+
+    def test_a_list_without_dragging_carries_no_payload_and_no_strip(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        stems_list = build(layout_config, dragging=False)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass))
+
+        assert not dpg.get_item_children(row_tag(bass, SUF_TEXT), DRAG_PAYLOAD_SLOT)
+        assert not dpg.does_item_exist(TAGS.level(0, SUF_STRIP))
+
+    def test_a_removable_list_gives_each_row_a_button(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config, removal=True)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass))
+
+        assert dpg.does_item_exist(row_tag(bass, SUF_BUTTON))
+
+    def test_a_list_without_removal_gives_no_button(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config, removal=False)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass))
+
+        assert not dpg.does_item_exist(row_tag(bass, SUF_BUTTON))
+
+
+class TestRetainedLastRow(BaseTestSuite):
+    def test_a_list_holding_on_to_its_last_row_offers_no_way_to_remove_it(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        stems_list = build(layout_config, keeps_last_row=True)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass))
+
+        assert not dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
+
+    def test_a_row_may_leave_once_another_stands_beside_it(
+        self, dpg_context: None, layout_config: LayoutConfig
+    ) -> None:
+        stems_list = build(layout_config, keeps_last_row=True)
+        bass = row("bass")
+        lead = row("lead")
+
+        stems_list.update_view(view(bass, lead))
+
+        assert dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
+
+    def test_the_last_row_left_standing_stops_answering(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config, keeps_last_row=True)
+        bass = row("bass")
+        lead = row("lead")
+        stems_list.update_view(view(bass, lead))
+
+        stems_list.update_view(view(bass))
+
+        assert not dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
+
+    def test_the_rule_the_button_reads_is_the_one_every_way_out_reads(
+        self, dpg_context: None, layout_config: LayoutConfig
+    ) -> None:
+        """A key press and a menu item reach removal past the row's own button, and each asks the
+        list rather than the widget, so the last row a list holds on to stays wherever it is asked
+        from."""
+        stems_list = build(layout_config, keeps_last_row=True)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass))
+        alone = stems_list.lets_a_row_go
+        stems_list.update_view(view(bass, row("lead")))
+
+        assert alone is False
+        assert stems_list.lets_a_row_go is True
+
+    def test_the_reader_s_own_frames_leave_the_last_recording_in_place(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """The frames an edit wrote stand as a row of their own, and no removal takes them out."""
+        stems_list = build(layout_config, keeps_last_row=True)
+        bass = row("bass")
+        edits = row("edits", stem_id=None, kind=SourceKind.EDITS)
+
+        stems_list.update_view(view(bass, edits))
+
+        assert not dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
+        assert stems_list.lets_a_row_go is False
+
+    def test_a_list_that_keeps_no_row_lets_the_last_one_go(
+        self, dpg_context: None, layout_config: LayoutConfig
+    ) -> None:
+        stems_list = build(layout_config, keeps_last_row=False)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass))
+
+        assert dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
+
+
+class TestGestures(BaseTestSuite):
+    def test_unticking_a_channel_reports_the_row_and_what_it_keeps(
+        self, dpg_context: None, layout_config: LayoutConfig
+    ) -> None:
+        reported: List[Tuple[str, FrozenSet[ChannelName]]] = []
+        stems_list = build(layout_config)
+        stems_list.on_channels_changed = lambda key, channels: reported.append((key, channels))
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        tag = channel_tag(bass, ChannelName.TRIANGLE)
+        dpg.set_value(tag, False)
+        dpg.get_item_callback(tag)(tag, False, dpg.get_item_user_data(tag))
+
+        assert reported == [(bass.key, frozenset({ChannelName.PULSE1}))]
+
+    def test_the_remove_button_reports_its_row(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        removed: List[str] = []
+        stems_list = build(layout_config)
+        stems_list.on_remove_requested = removed.append
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        tag = row_tag(bass, SUF_BUTTON)
+        dpg.get_item_callback(tag)(tag, None, dpg.get_item_user_data(tag))
+
+        assert removed == [bass.key]
+
+
+class TestBusyState(BaseTestSuite):
+    def test_a_list_that_is_not_live_disables_every_control_it_drew(
+        self, dpg_context: None, layout_config: LayoutConfig
+    ) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass, live=False))
+
+        assert not dpg.is_item_enabled(row_tag(bass, SUF_TEXT))
+        assert not dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
+        for channel_name in CHANNELS:
+            assert not dpg.is_item_enabled(channel_tag(bass, channel_name))
+
+    def test_a_live_list_answers_again(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass")
+        stems_list.update_view(view(bass, live=False))
+
+        stems_list.update_view(view(bass, live=True))
+
+        assert dpg.is_item_enabled(row_tag(bass, SUF_TEXT))
+        assert dpg.is_item_enabled(row_tag(bass, SUF_BUTTON))
+
+
+class TestVanishedWidgets(BaseTestSuite):
+    """DearPyGui reports a hover a frame after it happened, by which time the row may have gone."""
+
+    def test_a_hover_naming_a_row_that_went_is_let_be(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+        hovered = dpg.get_alias_id(row_tag(bass, SUF_TEXT))
+
+        stems_list.update_view(view())
+
+        hover_handler(SUF_TEXT)(0, hovered)
+
+    def test_a_click_naming_a_row_that_went_is_let_be(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        """A gesture is answered a frame after it landed, by which time a rebuild may have run."""
+        stems_list = build(layout_config)
+        bass = row("bass")
+        reported: List[str] = []
+        stems_list.on_menu_requested = reported.append
+        stems_list.on_row_picked = reported.append
+        stems_list.update_view(view(bass))
+        clicked = dpg.get_alias_id(row_tag(bass, SUF_TEXT))
+        stems_list.update_view(view())
+
+        callback = dpg.get_item_callback(handler_of(TAGS.handlers(SUF_TEXT), CLICKED))
+        callback(row_tag(bass, SUF_TEXT), (dpg.mvMouseButton_Right, clicked))
+
+        assert reported == []
+
+    def test_a_channel_settled_while_a_box_is_gone_keeps_what_the_row_held(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A box that is no longer drawn stands for the reading it last showed, not for an empty one."""
+        stems_list = build(layout_config)
+        bass = row("bass")
+        settled: List[FrozenSet[ChannelName]] = []
+        stems_list.on_channels_changed = lambda _key, channels: settled.append(channels)
+        stems_list.update_view(view(bass))
+        dpg.delete_item(channel_tag(bass, ChannelName.TRIANGLE))
+
+        dpg.get_item_callback(channel_tag(bass, ChannelName.PULSE1))(
+            channel_tag(bass, ChannelName.PULSE1),
+            True,
+            (bass.key, ChannelName.PULSE1),
+        )
+
+        assert settled == [frozenset(CHANNELS)]
+
+    def test_unticking_the_last_channel_keeps_the_widget_the_pointer_is_over(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """Graying a row is drawn onto the widgets it stands as, so the pointer keeps its box."""
+        stems_list = build(layout_config)
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+        standing = dpg.get_alias_id(channel_tag(bass, ChannelName.PULSE1))
+
+        stems_list.update_view(view(row("bass", channels=frozenset())))
+
+        assert dpg.get_alias_id(channel_tag(bass, ChannelName.PULSE1)) == standing
+
+
+class TestOfferedChannels(BaseTestSuite):
+    def test_a_row_draws_a_box_only_on_the_channels_it_offers(
+        self, dpg_context: None, layout_config: LayoutConfig
+    ) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass", channels=frozenset({ChannelName.PULSE1}), offered_channels=frozenset({ChannelName.PULSE1}))
+
+        stems_list.update_view(view(bass))
+
+        assert dpg.does_item_exist(channel_tag(bass, ChannelName.PULSE1))
+        assert not dpg.does_item_exist(channel_tag(bass, ChannelName.TRIANGLE))
+
+    def test_a_recording_missing_from_disk_grays_out(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass", available=False)
+
+        stems_list.update_view(view(bass))
+
+        assert dpg.get_item_theme(row_tag(bass, SUF_TEXT)) == ThemeRegistry.get(TAG_GLOBAL_THEME_STEMS_ROW_INERT).tag
+
+    def test_a_channel_coming_into_play_draws_the_rows_again(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """The columns every table declares are the channels in play, so one arriving is met by
+        the tables themselves rather than by the boxes already drawn."""
+        stems_list = build(layout_config)
+        bass = row("bass")
+        stems_list.update_view(view(bass, channels_in_play=(ChannelName.PULSE1,)))
+
+        stems_list.update_view(view(bass))
+
+        assert dpg.does_item_exist(channel_tag(bass, ChannelName.TRIANGLE))
+
+    def test_a_row_gaining_a_box_is_drawn_again(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        stems_list.update_view(view(row("bass", offered_channels=frozenset({ChannelName.PULSE1}))))
+
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        assert dpg.does_item_exist(channel_tag(bass, ChannelName.TRIANGLE))
+
+
+class TestMasterCheckbox(BaseTestSuite):
+    def test_a_master_box_opens_where_the_grid_puts_it(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        """The box is centered in its column, and the indent the grid works out is what draws it there."""
+        stems_list = build(layout_config, master_box=True)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass))
+
+        indent = int(dpg.get_item_configuration(row_tag(bass, SUF_CHECKBOX))["indent"])
+        assert (
+            indent
+            == StemsColumns(
+                layout=layout_config.general.stems,
+                channels=CHANNELS,
+                master=True,
+                removable=True,
+                swatch=False,
+                folders=False,
+            ).master_indent
+        )
+
+    def test_a_master_box_reads_whether_the_row_holds_a_channel(
+        self, dpg_context: None, layout_config: LayoutConfig
+    ) -> None:
+        stems_list = build(layout_config, master_box=True)
+        playing = row("bass")
+        quiet = row("pad", channels=frozenset())
+
+        stems_list.update_view(view(playing, quiet))
+
+        assert dpg.get_value(row_tag(playing, SUF_CHECKBOX))
+        assert not dpg.get_value(row_tag(quiet, SUF_CHECKBOX))
+
+    def test_ticking_the_master_box_hands_the_row_every_channel_it_offers(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        reported: List[Tuple[str, FrozenSet[ChannelName]]] = []
+        stems_list = build(layout_config, master_box=True)
+        stems_list.on_channels_changed = lambda key, channels: reported.append((key, channels))
+        bass = row("bass", channels=frozenset(), offered_channels=frozenset({ChannelName.PULSE1}))
+        stems_list.update_view(view(bass))
+
+        master_tag = row_tag(bass, SUF_CHECKBOX)
+        dpg.get_item_callback(master_tag)(master_tag, True, bass.key)
+
+        assert reported == [(bass.key, frozenset({ChannelName.PULSE1}))]
+
+    def test_unticking_the_master_box_takes_every_channel_away(
+        self, dpg_context: None, layout_config: LayoutConfig
+    ) -> None:
+        reported: List[Tuple[str, FrozenSet[ChannelName]]] = []
+        stems_list = build(layout_config, master_box=True)
+        stems_list.on_channels_changed = lambda key, channels: reported.append((key, channels))
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        master_tag = row_tag(bass, SUF_CHECKBOX)
+        dpg.get_item_callback(master_tag)(master_tag, False, bass.key)
+
+        assert reported == [(bass.key, frozenset())]
+
+    def test_a_row_offering_no_channel_has_nothing_for_its_master_box_to_do(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        stems_list = build(layout_config, master_box=True)
+        silent = row("pad", channels=frozenset(), offered_channels=frozenset())
+
+        stems_list.update_view(view(silent))
+
+        assert not dpg.is_item_enabled(row_tag(silent, SUF_CHECKBOX))
+
+    def test_a_list_without_a_master_box_draws_none(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass))
+
+        assert not dpg.does_item_exist(row_tag(bass, SUF_CHECKBOX))
+
+
+class TestMutedChannels(BaseTestSuite):
+    def test_a_muted_channel_takes_the_muted_tone(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass, muted_channels=frozenset({ChannelName.TRIANGLE})))
+
+        muted = ThemeRegistry.get(TAG_GLOBAL_THEME_CHANNEL_MUTED).tag
+        assert dpg.get_item_theme(channel_tag(bass, ChannelName.TRIANGLE)) == muted
+        assert dpg.get_item_theme(channel_tag(bass, ChannelName.PULSE1)) != muted
+
+    def test_a_muted_box_keeps_its_value_and_stays_clickable(
+        self, dpg_context: None, layout_config: LayoutConfig
+    ) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass")
+
+        stems_list.update_view(view(bass, muted_channels=frozenset(CHANNELS)))
+
+        for channel_name in CHANNELS:
+            assert dpg.get_value(channel_tag(bass, channel_name))
+            assert dpg.is_item_enabled(channel_tag(bass, channel_name))
+
+    def test_a_channel_switched_back_on_takes_its_own_color_again(
+        self, dpg_context: None, layout_config: LayoutConfig
+    ) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass")
+        stems_list.update_view(view(bass, muted_channels=frozenset({ChannelName.TRIANGLE})))
+
+        stems_list.update_view(view(bass))
+
+        muted = ThemeRegistry.get(TAG_GLOBAL_THEME_CHANNEL_MUTED).tag
+        assert dpg.get_item_theme(channel_tag(bass, ChannelName.TRIANGLE)) != muted
+
+
+class TestTheToneAChannelNameTakes(BaseTestSuite):
+    """The heading tones each channel's name the way its boxes are toned, so the name and the
+    column of boxes under it read as one thing."""
+
+    @staticmethod
+    def _name_tag(channel_name: ChannelName) -> str:
+        return compose_tag(PREFIX, SUF_HEADING, channel_name, SUF_TEXT)
+
+    def test_a_muted_channel_is_named_in_the_muted_tone(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+
+        stems_list.update_view(view(row("bass"), muted_channels=frozenset({ChannelName.TRIANGLE})))
+
+        muted = ThemeRegistry.get(TAG_GLOBAL_THEME_CHANNEL_MUTED).tag
+        assert dpg.get_item_theme(self._name_tag(ChannelName.TRIANGLE)) == muted
+        assert dpg.get_item_theme(self._name_tag(ChannelName.PULSE1)) != muted
+
+    def test_a_channel_in_play_is_named_in_its_own_color(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+
+        stems_list.update_view(view(row("bass")))
+
+        expected = ThemeRegistry.get(CHANNEL_THEME_TAGS[ChannelName.PULSE1]).tag
+        assert dpg.get_item_theme(self._name_tag(ChannelName.PULSE1)) == expected
+
+    def test_a_channel_switched_back_on_is_named_in_its_own_color_again(
+        self, dpg_context: None, layout_config: LayoutConfig
+    ) -> None:
+        stems_list = build(layout_config)
+        stems_list.update_view(view(row("bass"), muted_channels=frozenset({ChannelName.TRIANGLE})))
+
+        stems_list.update_view(view(row("bass")))
+
+        muted = ThemeRegistry.get(TAG_GLOBAL_THEME_CHANNEL_MUTED).tag
+        assert dpg.get_item_theme(self._name_tag(ChannelName.TRIANGLE)) != muted
+
+
+class TestCollapsedLevels(BaseTestSuite):
+    def test_collapsing_draws_every_row_in_one_table(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config, dragging=False)
+        rows = (
+            row("bass", level=0, position=0, level_size=1, level_count=2),
+            row("pad", level=1, position=0, level_size=1, level_count=2),
+        )
+
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        assert dpg.does_item_exist(stems_list.tags.table)
+        assert not dpg.does_item_exist(TAGS.level(0, SUF_TEXT))
+        for entry in rows:
+            assert dpg.does_item_exist(row_tag(entry, SUF_TEXT))
+
+    def test_expanding_brings_the_captions_back(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config, dragging=False)
+        rows = (
+            row("bass", level=0, position=0, level_size=1, level_count=2),
+            row("pad", level=1, position=0, level_size=1, level_count=2),
+        )
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        stems_list.update_view(view(*rows))
+
+        assert not dpg.does_item_exist(stems_list.tags.table)
+        assert dpg.does_item_exist(TAGS.level(0, SUF_TEXT))
+        assert dpg.does_item_exist(TAGS.level(1, SUF_TEXT))
+
+
+class TestActivation(BaseTestSuite):
+    def test_a_clicked_row_reports_itself(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        activated: List[str] = []
+        stems_list = build(layout_config, dragging=False)
+        stems_list.on_row_activated = activated.append
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        select_name(bass, True)
+
+        assert activated == [bass.key]
+
+    def test_a_right_click_picks_the_row_its_menu_stands_over(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """The menu prints the key that takes a row out, so both name the row the menu stands over."""
+        activated: List[str] = []
+        asked: List[str] = []
+        stems_list = build(layout_config, dragging=False)
+        stems_list.on_row_activated = activated.append
+        stems_list.on_menu_requested = asked.append
+        bass = row("bass")
+        lead = row("lead")
+        stems_list.update_view(view(bass, lead, selected_key=bass.key))
+
+        click_on(lead, CLICKED, dpg.mvMouseButton_Right)
+
+        assert activated == [lead.key]
+        assert asked == [lead.key]
+
+    def test_a_row_no_reading_picks_out_reads_plain(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A list whose owner answers a click without recording one stands its rows as the view
+        holds them, so the click leaves the look the last reading wrote."""
+        stems_list = build(layout_config, dragging=False)
+        stems_list.on_row_activated = lambda _key: None
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        select_name(bass, True)
+
+        assert dpg.get_value(row_tag(bass, SUF_TEXT)) is False
+
+    def test_the_second_click_of_a_double_click_names_the_same_row(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """DearPyGui reports a selectable once per click, so a double-click reports its row twice
+        rather than picking it out and letting it go again."""
+        activated: List[str] = []
+        stems_list = build(layout_config, dragging=False)
+        stems_list.on_row_activated = activated.append
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        select_name(bass, True)
+        select_name(bass, False)
+
+        assert activated == [bass.key, bass.key]
+
+    def test_the_list_names_the_row_a_key_press_acts_on(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config, dragging=False)
+        bass = row("bass")
+        lead = row("lead")
+
+        stems_list.update_view(view(bass, lead, selected_key=lead.key))
+
+        assert stems_list.picked_key == lead.key
+
+    def test_a_list_holding_nothing_picked_out_names_no_row(
+        self, dpg_context: None, layout_config: LayoutConfig
+    ) -> None:
+        stems_list = build(layout_config, dragging=False)
+
+        stems_list.update_view(view(row("bass")))
+
+        assert stems_list.picked_key is None
+
+    def test_the_view_says_which_row_reads_as_picked_out(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        """A click is answered by whoever owns the list, so the next view decides what is selected."""
+        stems_list = build(layout_config, dragging=False)
+        bass = row("bass")
+        lead = row("lead")
+
+        stems_list.update_view(view(bass, lead, selected_key=lead.key))
+
+        assert dpg.get_value(row_tag(lead, SUF_TEXT)) is True
+        assert dpg.get_value(row_tag(bass, SUF_TEXT)) is False
+
+
+class TestGesturesTheOwnerLeavesUnanswered(BaseTestSuite):
+    """A list hands a gesture on where it has an owner for it, and lets the rest be.
+
+    A click still moves the widget it lands on, so a list answering no click puts the row back the
+    way its view holds it — a reader picking through such a list would otherwise leave a trail of
+    rows reading as picked that no reading of the list ever wrote.
+    """
+
+    def test_a_click_leaves_the_row_reading_as_the_view_holds_it(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        stems_list = build(layout_config, dragging=False)
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        select_name(bass, True)
+
+        assert dpg.get_value(row_tag(bass, SUF_TEXT)) is False
+
+    def test_the_row_the_view_holds_picked_out_keeps_reading_that_way(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A click that reaches nobody puts the row back where the view stands it, either way."""
+        stems_list = build(layout_config, dragging=False)
+        bass = row("bass")
+        stems_list.update_view(view(bass, selected_key=bass.key))
+
+        select_name(bass, False)
+
+        assert dpg.get_value(row_tag(bass, SUF_TEXT)) is True
+
+    def test_a_right_click_is_let_be_where_the_owner_puts_no_menu_up(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        stems_list = build(layout_config, dragging=False)
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        with patch.object(stems_list, "call") as handed_on:
+            click_on(bass, CLICKED, dpg.mvMouseButton_Right)
+
+        assert stems_list.has_menu is False
+        handed_on.assert_not_called()
+
+    def test_a_right_click_names_its_row_where_the_owner_puts_one_up(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        asked: List[str] = []
+        stems_list = build(layout_config, dragging=False)
+        stems_list.on_menu_requested = asked.append
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        click_on(bass, CLICKED, dpg.mvMouseButton_Right)
+
+        assert asked == [bass.key]
+
+    def test_a_double_click_is_let_be_where_the_owner_sounds_nothing(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        stems_list = build(layout_config, dragging=False)
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        with patch.object(stems_list, "call") as handed_on:
+            click_on(bass, DOUBLE_CLICKED, dpg.mvMouseButton_Left)
+
+        assert stems_list.playable is False
+        handed_on.assert_not_called()
+
+    def test_a_double_click_sounds_its_row_where_the_owner_answers(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        opened: List[str] = []
+        stems_list = build(layout_config, dragging=False)
+        stems_list.on_row_opened = opened.append
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        click_on(bass, DOUBLE_CLICKED, dpg.mvMouseButton_Left)
+
+        assert opened == [bass.key]
+
+
+class TestEachGestureAnswersItsOwnButton(BaseTestSuite):
+    """Both handlers report every button, so each reads the one its own gesture is made with."""
+
+    def test_a_left_click_puts_no_menu_up(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        asked: List[str] = []
+        stems_list = build(layout_config, dragging=False)
+        stems_list.on_menu_requested = asked.append
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        click_on(bass, CLICKED, dpg.mvMouseButton_Left)
+
+        assert asked == []
+
+    def test_a_right_double_click_sounds_nothing(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        opened: List[str] = []
+        stems_list = build(layout_config, dragging=False)
+        stems_list.on_row_opened = opened.append
+        bass = row("bass")
+        stems_list.update_view(view(bass))
+
+        click_on(bass, DOUBLE_CLICKED, dpg.mvMouseButton_Right)
+
+        assert opened == []
+
+
+class TestTheHeading(BaseTestSuite):
+    """The channels are named once above the rows, whatever shape the list takes below it."""
+
+    def test_a_plain_list_names_them(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+
+        stems_list.update_view(view(row("kick"), collapse_levels=True))
+
+        assert dpg.does_item_exist(compose_tag(PREFIX, SUF_HEADING, ChannelName.PULSE1, SUF_TEXT))
+
+    def test_a_banded_list_names_them_too(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+
+        stems_list.update_view(view(row("kick")))
+
+        assert dpg.does_item_exist(compose_tag(PREFIX, SUF_HEADING, ChannelName.PULSE1, SUF_TEXT))
+
+
+class TestThePickALongListHolds(BaseTestSuite):
+    """A long list builds the rows a window reaches, and the pick is the reading's rather than the
+    widgets', so scrolling away from the picked row leaves it the row a key acts on."""
+
+    def test_a_row_scrolled_out_of_the_window_is_still_the_row_a_key_acts_on(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: DrawnFrames,
+    ) -> None:
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+        picked = rows[EARLY_ROW]
+        stems_list.update_view(view(*rows, collapse_levels=True, selected_key=picked.key))
+
+        with placed(LONG_LIST), patch.object(dpg, "get_y_scroll", return_value=DEEP_SCROLL):
+            frames.render(SETTLING_FRAMES)
+
+        assert not dpg.does_item_exist(row_tag(picked, SUF_TEXT))
+        assert stems_list.picked_key == picked.key
+
+
+class TestTheRulesTheGridDraws(BaseTestSuite):
+    """A rule runs around the grid's own edges and between its rows, so the run of rows an open
+    folder breaks reads as one ruled list down its whole length."""
+
+    def test_the_grid_rules_the_rows_off_from_the_heading(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        """The heading draws no rule of its own, so the grid below it is what divides the two."""
+        stems_list = build(layout_config)
+
+        stems_list.update_view(view(row("kick"), collapse_levels=True))
+
+        assert dpg.get_item_configuration(TAGS.table)["borders_outerH"] is True
+
+    def test_the_heading_draws_no_rule_of_its_own(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        """One line divides the names from the rows, so the heading leaves the drawing of it to
+        the grid rather than adding a second beside it."""
+        stems_list = build(layout_config)
+
+        stems_list.update_view(view(row("kick"), collapse_levels=True))
+
+        heading = compose_tag(PREFIX, SUF_HEADING, SUF_TABLE)
+        assert dpg.get_item_configuration(heading)["borders_outerH"] is False
+
+    def test_the_grid_rules_between_the_rows_it_holds(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+
+        stems_list.update_view(view(row("kick"), row("snare"), collapse_levels=True))
+
+        assert dpg.get_item_configuration(TAGS.table)["borders_innerH"] is True
+
+
+class TestTheWell(BaseTestSuite):
+    """The well keeps the card's shape: where its rows are recordings alone it builds the ones it
+    shows and reserves the room for the rest, and it holds every row otherwise."""
+
+    def test_a_long_run_of_recordings_builds_the_rows_it_shows(
+        self, dpg_context: None, layout_config: LayoutConfig
+    ) -> None:
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        built = sum(1 for entry in rows if dpg.does_item_exist(row_tag(entry, SUF_TEXT)))
+        assert 0 < built < LONG_LIST
+
+    def test_the_first_slice_is_sized_by_the_height_the_layout_gives_a_row(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """No frame has measured a row yet, so the well opens at the layout's own figure: it
+        builds about the rows the ceiling holds rather than the several times as many a floor of
+        eight pixels a row would reach."""
+        stems = layout_config.general.stems
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        built = sum(1 for entry in rows if dpg.does_item_exist(row_tag(entry, SUF_TEXT)))
+        assert built < stems.well_ceiling / MINIMUM_ROW_PITCH
+        assert built >= stems.well_ceiling / stems.name_height
+
+    def test_a_short_run_of_recordings_builds_them_all(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        rows = (row("kick"), row("snare"))
+
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        assert all(dpg.does_item_exist(row_tag(entry, SUF_TEXT)) for entry in rows)
+
+    def test_a_list_holding_a_folder_builds_every_row(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        """A folder answers for its own length inside its region, so the well holds the rest whole."""
+        stems_list = build(layout_config)
+        rows = (folder_row("sources"), *(row(f"take_{index}") for index in range(LONG_LIST)))
+
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        assert all(dpg.does_item_exist(row_tag(entry, SUF_TEXT)) for entry in rows)
+
+    def test_a_banded_list_builds_every_row(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        """Captions and strips stand among banded rows, so there is no one row to reserve room by."""
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+
+        stems_list.update_view(view(*rows))
+
+        assert all(dpg.does_item_exist(row_tag(entry, SUF_TEXT)) for entry in rows)
+
+
+class TestTheListSettlingItsWell(BaseTestSuite):
+    """A region reads its rows back a frame after they are placed, and refills itself from there.
+
+    The reading a row is measured by, and the rows a scroll has moved on to, both belong to the
+    frame after a draw, so the list asks for that frame and keeps asking for as long as a region
+    still holds rows it has yet to build.
+    """
+
+    @staticmethod
+    def _built(rows: Tuple[StemRowViewModel, ...]) -> int:
+        """How many of the list's rows stand as widgets, which is the block a frame would place."""
+        return sum(1 for entry in rows if dpg.does_item_exist(row_tag(entry, SUF_TEXT)))
+
+    @classmethod
+    def _drawn(cls, rows: Tuple[StemRowViewModel, ...], index: int) -> bool:
+        return dpg.does_item_exist(row_tag(rows[index], SUF_TEXT))
+
+    def test_a_well_holding_rows_back_asks_for_another_frame(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: DrawnFrames,
+    ) -> None:
+        """The rows outside the window are built as the reader reaches them, so the pass goes on."""
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        with placed(self._built(rows)):
+            frames.render()
+
+        assert frames.pending == 1
+
+    def test_readings_arriving_before_the_frame_ask_for_the_one_frame(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: DrawnFrames,
+    ) -> None:
+        """One pass answers for whatever the list has drawn by the time it runs, so a run of
+        readings between two frames leaves one pass rather than one apiece."""
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+
+        stems_list.update_view(view(*rows, collapse_levels=True))
+        stems_list.update_view(view(*rows[:-1], collapse_levels=True))
+        stems_list.update_view(view(*rows[:-2], collapse_levels=True))
+
+        assert frames.pending == 1
+
+    def test_the_pass_renews_itself_rather_than_piling_up(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: DrawnFrames,
+    ) -> None:
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        for _ in range(SETTLING_FRAMES):
+            with placed(self._built(rows)):
+                frames.render()
+
+        assert frames.pending == 1
+
+    def test_a_well_holding_everything_it_drew_comes_to_rest(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: DrawnFrames,
+    ) -> None:
+        """A list short enough to stand whole has nothing left to build, so it stops watching."""
+        stems_list = build(layout_config)
+        rows = (row("kick"), row("snare"))
+        stems_list.update_view(view(*rows, collapse_levels=True))
+
+        with placed(self._built(rows)):
+            frames.render(SETTLING_FRAMES)
+
+        assert frames.pending == 0
+
+    def test_a_scroll_brings_the_rows_it_reaches_in(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: DrawnFrames,
+    ) -> None:
+        """The window follows the reader, so rows they scrolled to are built and the ones behind go."""
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+        stems_list.update_view(view(*rows, collapse_levels=True))
+        with placed(self._built(rows)):
+            frames.render()
+
+        with placed(self._built(rows)), patch.object(dpg, "get_y_scroll", return_value=DEEP_SCROLL):
+            frames.render()
+
+        assert self._drawn(rows, REACHED_ROW)
+        assert not self._drawn(rows, EARLY_ROW)
+
+    def test_a_list_put_away_keeps_its_watch_and_does_no_work(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: DrawnFrames,
+    ) -> None:
+        """A list holding rows back settles on no frame while its card is collapsed or its tab is in
+        the back, and its watch stands waiting for the frame it comes back in."""
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+        stems_list.update_view(view(*rows, collapse_levels=True))
+        frames.on_screen = False
+
+        with placed(self._built(rows)), patch.object(dpg, "get_y_scroll", return_value=DEEP_SCROLL):
+            frames.render(SETTLING_FRAMES)
+
+        assert frames.pending == 1
+        assert self._drawn(rows, EARLY_ROW)
+        assert not self._drawn(rows, REACHED_ROW)
+
+    def test_a_list_drawn_again_takes_its_pass_up(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+        frames: DrawnFrames,
+    ) -> None:
+        """The first frame the list is drawn in again follows the scroll made while it was away."""
+        stems_list = build(layout_config)
+        rows = tuple(row(f"take_{index}") for index in range(LONG_LIST))
+        stems_list.update_view(view(*rows, collapse_levels=True))
+        with placed(self._built(rows)):
+            frames.render()
+        frames.on_screen = False
+        with placed(self._built(rows)), patch.object(dpg, "get_y_scroll", return_value=DEEP_SCROLL):
+            frames.render()
+
+        frames.on_screen = True
+        with placed(self._built(rows)), patch.object(dpg, "get_y_scroll", return_value=DEEP_SCROLL):
+            frames.render()
+
+        assert self._drawn(rows, REACHED_ROW)
+
+
+class TestTheColorARowIsKnownBy(BaseTestSuite):
+    """A row leads with the color its recording is painted in, so the ribbon answers to a name."""
+
+    @staticmethod
+    def _fill(entry: StemRowViewModel) -> Tuple[float, ...]:
+        """The color the square is filled with, as DearPyGui holds a drawn color."""
+        return tuple(dpg.get_item_configuration(row_tag(entry, SUF_SWATCH))["fill"])
+
+    @staticmethod
+    def _drawn(color: BaseColor) -> Any:
+        """A token as DearPyGui reports it back, which is each channel over its full scale."""
+        return pytest.approx([value / FULL_CHANNEL for value in color.rgba])
+
+    def test_a_row_takes_the_color_its_recordings_id_picks(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        stems_list = build(layout_config, swatch=True)
+        bass = row("bass", stem_id=1)
+
+        stems_list.update_view(view(bass))
+
+        assert self._fill(bass) == self._drawn(layout_config.general.colors.stems.for_recording(1))
+
+    def test_two_recordings_read_apart(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config, swatch=True)
+        bass = row("bass", stem_id=0)
+        lead = row("lead", stem_id=1)
+
+        stems_list.update_view(view(bass, lead))
+
+        assert self._fill(bass) != self._fill(lead)
+
+    def test_the_frames_a_reader_wrote_take_the_color_of_their_own(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        stems_list = build(layout_config, swatch=True)
+        edits = row("edits", stem_id=None, kind=SourceKind.EDITS)
+
+        stems_list.update_view(view(edits))
+
+        assert self._fill(edits) == self._drawn(layout_config.general.colors.stems.authored)
+
+    def test_a_row_answering_to_no_entry_draws_no_square(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        stems_list = build(layout_config, swatch=True)
+        gathered = row("gathered", stem_id=None)
+
+        stems_list.update_view(view(gathered))
+
+        assert not dpg.does_item_exist(row_tag(gathered, SUF_SWATCH))
+
+    def test_a_list_offering_no_swatch_draws_none(self, dpg_context: None, layout_config: LayoutConfig) -> None:
+        stems_list = build(layout_config)
+        bass = row("bass", stem_id=0)
+
+        stems_list.update_view(view(bass))
+
+        assert not dpg.does_item_exist(row_tag(bass, SUF_SWATCH))
+
+    def test_the_square_keeps_its_color_through_a_repaint(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A view redrawn onto the widgets already standing leaves the color the row is known by."""
+        stems_list = build(layout_config, swatch=True)
+        bass = row("bass", stem_id=2)
+
+        stems_list.update_view(view(bass))
+        stems_list.update_view(view(bass, muted_channels=frozenset({ChannelName.PULSE1})))
+
+        assert self._fill(bass) == self._drawn(layout_config.general.colors.stems.for_recording(2))
+
+    def test_the_square_stands_in_the_middle_of_the_row_it_leads(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """A row stands as tall as its name and the padding a cell keeps, and the square centers on it."""
+        stems = layout_config.general.stems
+        stems_list = build(layout_config, swatch=True)
+        bass = row("bass", stem_id=0)
+
+        stems_list.update_view(view(bass))
+
+        configuration = dpg.get_item_configuration(row_tag(bass, SUF_SWATCH))
+        top, bottom = configuration["pmin"][1], configuration["pmax"][1]
+        assert bottom - top == stems.swatch_size
+        assert top + bottom == stems.name_height + 2 * stems.cell_padding
+
+    def test_the_square_fills_the_column_it_stands_in(
+        self,
+        dpg_context: None,
+        layout_config: LayoutConfig,
+    ) -> None:
+        """The column is the square's own width, so the cell's padding is what centers it across."""
+        stems = layout_config.general.stems
+        stems_list = build(layout_config, swatch=True)
+        bass = row("bass", stem_id=0)
+
+        stems_list.update_view(view(bass))
+
+        configuration = dpg.get_item_configuration(row_tag(bass, SUF_SWATCH))
+        assert configuration["pmin"][0] == 0
+        assert configuration["pmax"][0] == stems.swatch_size

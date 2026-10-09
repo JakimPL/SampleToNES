@@ -1,0 +1,131 @@
+from pathlib import Path
+from typing import Final, Tuple
+
+from sampletones_application.categories.estimate import time_estimation
+from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.services.conversion.result import ConversionItem
+from sampletones_application.services.result import ServiceProgress
+from sampletones_application.view_model.main.converter import ACTIVE_PHASES, ConversionPhase
+from sampletones_core.library import LibraryState
+from sampletones_core.reconstructions.stage import ReconstructionStage
+
+SINGLE_SOURCE: Final[int] = 1
+
+
+class ConverterMessages:
+    """What the converter puts to a reader: the line under the bar and the label on its button.
+
+    Every phrase the panel shows is composed here, so the words a run reports and the words a
+    settled setup reports read as one voice and the keys they come from stand in one place.
+    """
+
+    def __init__(self, language_manager: LanguageManager) -> None:
+        self._language_manager = language_manager
+
+    @property
+    def idle(self) -> str:
+        return self._language_manager["main.converter.message.status_idle"]
+
+    @property
+    def waiting(self) -> str:
+        return self._language_manager["main.converter.message.status_waiting"]
+
+    @property
+    def canceling(self) -> str:
+        return self._language_manager["main.converter.message.status_canceling"]
+
+    @property
+    def canceled(self) -> str:
+        return self._language_manager["main.converter.message.status_canceled"]
+
+    @property
+    def completed(self) -> str:
+        return self._language_manager["main.converter.message.status_reconstruction_completed"]
+
+    @property
+    def failed(self) -> str:
+        return self._language_manager["main.converter.message.status_error"]
+
+    def progress_text(self, progress: ServiceProgress[ConversionItem]) -> str:
+        """What the run is doing, how far it has come, and how long it has left.
+
+        A run writing one reconstruction names the file its job writes and the stage that
+        reconstruction is at, which is the whole of what a reader watching one reconstruction has.
+        That holds for a mix, a single recording and a rerun left with one recording to write. A
+        batch writes many at once, so a count of the ones written says where it stands.
+        """
+        return (
+            self._run_text(progress)
+            + self._stage_text(progress)
+            + time_estimation(self._language_manager, progress.eta_seconds)
+        )
+
+    def preparing_library(self, state: LibraryState) -> str:
+        """The line a run shows while its library is prepared: an update of a library another
+        version built, and a generation of a missing one."""
+        if state is LibraryState.OUTDATED:
+            return self._language_manager["main.converter.message.status_updating_library"]
+
+        return self._language_manager["main.converter.message.status_generating_library"]
+
+    def action_label(
+        self,
+        *,
+        phase: ConversionPhase,
+        mixes: bool,
+        converted: Tuple[Path, ...],
+    ) -> str:
+        """The label the single action button shows.
+
+        While a conversion holds resources the button cancels it. Otherwise it says what the run
+        writes, counted from the recordings taking part, so the button and the output switch read
+        as one sentence rather than two.
+        """
+        if phase in ACTIVE_PHASES:
+            return self._language_manager["main.converter.label.cancel_button"]
+
+        if len(converted) > SINGLE_SOURCE:
+            template = (
+                self._language_manager["main.converter.template.mix_recordings"]
+                if mixes
+                else self._language_manager["main.converter.template.convert_recordings"]
+            )
+            return template.format(count=len(converted))
+
+        if converted:
+            return self._language_manager["main.converter.template.convert_recording"].format(name=converted[0].stem)
+
+        return self._language_manager["main.converter.label.convert_button"]
+
+    def _run_text(self, progress: ServiceProgress[ConversionItem]) -> str:
+        item = progress.current_item
+        if progress.is_single and item is not None:
+            return self._language_manager["main.converter.template.single_progress_template"].format(
+                item.output_path.stem
+            )
+
+        return self._language_manager["main.converter.template.progress_template"].format(
+            progress.completed, progress.total
+        )
+
+    def _stage_text(self, progress: ServiceProgress[ConversionItem]) -> str:
+        step = progress.current_item.step if progress.current_item is not None else None
+        if step is None:
+            return ""
+
+        return self._language_manager["main.converter.template.stage_template"].format(
+            stage=self._stage_name(step.stage),
+            completed=step.completed,
+            total=step.total,
+        )
+
+    def _stage_name(self, stage: ReconstructionStage) -> str:
+        match stage:
+            case ReconstructionStage.LOADING:
+                return self._language_manager["main.converter.message.stage_loading"]
+            case ReconstructionStage.MATCHING:
+                return self._language_manager["main.converter.message.stage_matching"]
+            case ReconstructionStage.DECODING:
+                return self._language_manager["main.converter.message.stage_decoding"]
+            case ReconstructionStage.GATHERING:
+                return self._language_manager["main.converter.message.stage_gathering"]

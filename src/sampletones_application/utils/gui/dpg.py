@@ -118,13 +118,18 @@ def dpg_get_item_parent(
 ) -> Optional[Sender]:
     """The item's parent, or None when the item is absent.
 
-    Queued callbacks mutate the item tree on the callback-queue thread, so an item read
-    from another thread can be removed underneath this lookup; DearPyGui reports the
-    absent item by raising, which resolves here to None.
+    Queued callbacks mutate the item tree on the callback-queue thread, so an item read from
+    another thread can be removed underneath this lookup; DearPyGui reports the absent item by
+    raising, which resolves here to None.
+
+    The catch is as broad as what it answers: DearPyGui raises ``Exception`` itself for an absent
+    item rather than a type of its own, so there is nothing narrower to name.
+    A test pins that, and the day the library raises something of its own is the day this
+    narrows to it.
     """
     try:
         parent: Optional[Sender] = dpg.get_item_parent(tag, *args, **kwargs)
-    except Exception:  # TODO: unsafe broad exception
+    except Exception:  # pylint: disable=broad-exception-caught
         return None
 
     return parent
@@ -133,6 +138,17 @@ def dpg_get_item_parent(
 @dpg_wrapper(button_function=GUIButton.configure_item)
 def dpg_configure_item(tag: Sender, /, *args: Any, **kwargs: Any) -> None:
     dpg.configure_item(tag, *args, **kwargs)
+
+
+@dpg_wrapper()
+def dpg_get_item_user_data(tag: Sender, /) -> Any:
+    """The user data an item carries, or ``None`` once the item is gone.
+
+    A widget's callback runs a frame after DearPyGui gathered it, by which time a rebuild may have
+    taken the item it names away. A callback reading what a hover, a click or a drop landed on
+    therefore reads the items still standing, and a gesture on a row that is gone says nothing.
+    """
+    return dpg.get_item_user_data(tag)
 
 
 @dpg_wrapper(button_function=GUIButton.set_item_callback)
@@ -193,3 +209,57 @@ def dpg_is_item_hovered(
 ) -> Optional[bool]:
     is_hovered: Optional[bool] = dpg.is_item_hovered(tag, *args, **kwargs)
     return is_hovered
+
+
+def dpg_window_origin(
+    window: Sender,
+    anchor: Sender,
+) -> Tuple[float, float]:
+    """Where a child window's corner was drawn, in the coordinates a pointer is reported in.
+
+    A child window states where it sits within the container around it, while a widget states
+    where it was drawn on screen. A widget laid out in that same container therefore carries the
+    container's own origin, and the two readings of it together place the window on screen.
+
+    Args:
+        window: The child window whose corner is asked for.
+        anchor: A widget laid out in the same container as the window.
+
+    Returns:
+        Tuple[float, float]: The window's left and top edges on screen.
+    """
+    anchor_left, anchor_top = dpg.get_item_rect_min(anchor)
+    placed_left, placed_top = dpg.get_item_pos(anchor)
+    window_left, window_top = dpg.get_item_pos(window)
+    return (
+        float(anchor_left - placed_left + window_left),
+        float(anchor_top - placed_top + window_top),
+    )
+
+
+def dpg_pointer_within_window(
+    window: Sender,
+    anchor: Sender,
+) -> bool:
+    """Whether the pointer stands within a child window, measured against a widget beside it.
+
+    A scrolling table carries a window of its own, which takes the hover from the child window
+    holding it, so the rectangle answers where a hover state stays silent.
+
+    Args:
+        window: The child window the pointer is measured against.
+        anchor: A widget laid out in the same container as the window.
+
+    Returns:
+        bool: Whether the pointer stands within the window, which is False while either item
+            is yet to be built.
+    """
+    if not dpg.does_item_exist(window) or not dpg.does_item_exist(anchor):
+        return False
+
+    left, top = dpg_window_origin(window, anchor)
+    width, height = dpg.get_item_rect_size(window)
+    pointer_left, pointer_top = dpg.get_mouse_pos(local=False)
+    within_width: bool = left <= pointer_left <= left + width
+    within_height: bool = top <= pointer_top <= top + height
+    return within_width and within_height

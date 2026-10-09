@@ -19,7 +19,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
-from sampletones_application.utils.gui.clipboard import copy_to_clipboard
+from sampletones_application.utils.gui.clipboard.copy_button import copy_to_clipboard
 
 
 class GUITraceback:
@@ -30,6 +30,7 @@ class GUITraceback:
         parent: str,
         exception: Exception,
         language_manager: LanguageManager,
+        height: int,
         theme: Optional[Theme] = None,
         button_theme: Optional[Theme] = None,
     ) -> None:
@@ -43,6 +44,7 @@ class GUITraceback:
             ),
         )
 
+        self._height = height
         self._lbl_copy = language_manager["global.traceback.label.copy"]
 
         self.theme = ThemeRegistry.resolve(theme, TAG_GLOBAL_THEME_TRACEBACK)
@@ -60,7 +62,7 @@ class GUITraceback:
                 default_value=self._text,
                 multiline=True,
                 readonly=True,
-                height=400,
+                height=self._height,
                 width=-1,
             )
 

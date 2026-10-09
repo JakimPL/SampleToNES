@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 from enum import StrEnum
 from functools import partial
-from typing import Optional, Tuple, Type, Union
+from typing import Final, Optional, Tuple, Type, Union
 from unittest.mock import patch
 
 import numpy as np
 import pytest
 
-from sampletones_core.constants.algorithm import SPECTRUM_FLOOR
+from sampletones_core.constants.spectrum import SPECTRUM_FLOOR
 from sampletones_core.fft.transformer import FFTTransformer
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.types.array import (
@@ -1784,128 +1784,4 @@ class TestDivide(BaseTestSuite):
             assert isinstance(result, Histogram)
             assert isinstance(test_case.expected, Histogram)
             assert_array_equal(result.edges, test_case.expected.edges)
-            assert_array_equal(result.values, test_case.expected.values)
-
-
-class TestMean(BaseTestSuite):
-    @dataclass(frozen=True, kw_only=True)
-    class TestCase(BaseRegularTestCase):
-        expected: Union[Histogram, Type[Exception]]
-        transformer: TransformerFixture
-        features: Tuple[Histogram, ...]
-
-    test_cases = (
-        TestCase(
-            transformer=TransformerFixture.SQUARE,
-            features=(
-                Histogram(
-                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
-                    values=np.array([300.0, 400.0], dtype=np.float32),
-                ),
-            ),
-            expected=Histogram(
-                edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
-                values=np.array([300.0, 400.0], dtype=np.float32),
-            ),
-            label="single_histogram",
-        ),
-        TestCase(
-            transformer=TransformerFixture.SQUARE,
-            features=(
-                Histogram(
-                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
-                    values=np.array([7.0, 17.0], dtype=np.float64),
-                ),
-                Histogram(
-                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
-                    values=np.array([1.0, 7.0], dtype=np.float64),
-                ),
-            ),
-            expected=Histogram(
-                edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
-                values=np.array([5.0, 13.0], dtype=np.float64),
-            ),
-            label="two_histograms",
-        ),
-        TestCase(
-            transformer=TransformerFixture.SQUARE,
-            features=(
-                Histogram(
-                    edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
-                    values=np.array([0.0, 1.0, 2.0], dtype=np.float32),
-                ),
-                Histogram(
-                    edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
-                    values=np.array([0.0, 1.0, 2.0], dtype=np.float32),
-                ),
-                Histogram(
-                    edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
-                    values=np.array([0.0, 1.0, 2.0], dtype=np.float32),
-                ),
-            ),
-            expected=Histogram(
-                edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
-                values=np.array([0.0, 1.0, 2.0], dtype=np.float32),
-            ),
-            label="three_histograms",
-        ),
-        TestCase(
-            transformer=TransformerFixture.IDENTITY,
-            features=(
-                Histogram(
-                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
-                    values=np.array([300.0, 500.0], dtype=np.float32),
-                ),
-                Histogram(
-                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
-                    values=np.array([400.0, 300.0], dtype=np.float32),
-                ),
-            ),
-            expected=Histogram(
-                edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
-                values=np.array([350.0, 400.0], dtype=np.float32),
-            ),
-            label="identity_two_histograms",
-        ),
-        TestCase(
-            transformer=TransformerFixture.SQUARE,
-            features=(),
-            expected=ValueError,
-            label="empty_features",
-        ),
-        TestCase(
-            transformer=TransformerFixture.SQUARE,
-            features=(
-                Histogram(
-                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
-                    values=np.array([300.0, 400.0], dtype=np.float32),
-                ),
-                Histogram(
-                    edges=np.array([0.0, 100.0, 300.0], dtype=np.float32),
-                    values=np.array([400.0, 500.0], dtype=np.float32),
-                ),
-            ),
-            expected=ValueError,
-            label="inconsistent_edges",
-        ),
-    )
-
-    @pytest.mark.parametrize(
-        "test_case",
-        test_cases,
-        ids=lambda test_case: test_case.label,
-    )
-    def test_mean(self, test_case: TestCase, request: pytest.FixtureRequest) -> None:
-        transformer = test_case.transformer.get_fixture(request)
-
-        if not expect_error(
-            transformer.mean,
-            test_case.expected,
-            test_case.features,
-        ):
-            result = transformer.mean(test_case.features)
-            assert isinstance(result, Histogram)
-            assert isinstance(test_case.expected, Histogram)
-            assert_array_equal(result.edges, test_case.expected.edges)
-            assert_array_equal(result.values, test_case.expected.values)
             assert_array_equal(result.values, test_case.expected.values)

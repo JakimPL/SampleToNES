@@ -18,12 +18,14 @@ from sampletones_application.view_model.sequencer.slot import (
     slot_from_flat,
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
+from sampletones_core.project.patterns.pitch import clamped_step
+from sampletones_shared.constants.general import DECIMAL_BASE, HEXADECIMAL_BASE
 from sampletones_shared.constants.symbols import MINUS, PLUS, PLUS_MINUS, SIGNS
 
 DIGIT_COUNT: Final[Dict[SubColumn, int]] = {
-    SubColumn.INSTRUMENT: 2,
+    SubColumn.VOICE: 2,
     SubColumn.TRANSPOSE: 2,
     SubColumn.VOLUME: 1,
 }
@@ -32,28 +34,28 @@ DIGIT_COUNT: Final[Dict[SubColumn, int]] = {
 @dataclass(frozen=True)
 class TrackerCursor:
     row: int
-    generator: Optional[GeneratorName]
+    channel: Optional[ChannelName]
     subcolumn: SubColumn
 
 
 def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
     try:
         match cursor.subcolumn:
-            case SubColumn.INSTRUMENT:
+            case SubColumn.VOICE:
                 return EditAction(
                     row=cursor.row,
-                    generator=cursor.generator,
-                    sample_index=int(pending, 16),
-                    transpose=None,
+                    channel=cursor.channel,
+                    sample_index=int(pending, HEXADECIMAL_BASE),
+                    pitch=None,
                     volume=None,
                 )
             case SubColumn.VOLUME:
                 return EditAction(
                     row=cursor.row,
-                    generator=cursor.generator,
+                    channel=cursor.channel,
                     sample_index=None,
-                    transpose=None,
-                    volume=min(int(pending, 16), MAX_VOLUME),
+                    pitch=None,
+                    volume=min(int(pending, HEXADECIMAL_BASE), MAX_VOLUME),
                 )
             case SubColumn.TRANSPOSE:
                 sign = -1 if pending.startswith(MINUS) else 1
@@ -63,9 +65,9 @@ def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
 
                 return EditAction(
                     row=cursor.row,
-                    generator=cursor.generator,
+                    channel=cursor.channel,
                     sample_index=None,
-                    transpose=sign * int(magnitude, 16),
+                    pitch=clamped_step(sign * int(magnitude, DECIMAL_BASE)),
                     volume=None,
                 )
     except ValueError:
@@ -86,8 +88,8 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
         first: TrackerCursor,
         second: TrackerCursor,
     ) -> TrackerRegion:
-        first_slot = TrackerSlot(first.generator, first.subcolumn).flat_index
-        second_slot = TrackerSlot(second.generator, second.subcolumn).flat_index
+        first_slot = TrackerSlot(first.channel, first.subcolumn).flat_index
+        second_slot = TrackerSlot(second.channel, second.subcolumn).flat_index
         return TrackerRegion(
             first_row=min(first.row, second.row),
             last_row=max(first.row, second.row),
@@ -96,7 +98,7 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
         )
 
     def _covers(self, region: TrackerRegion, cell: TrackerCursor) -> bool:
-        return region.covers(cell.row, TrackerSlot(cell.generator, cell.subcolumn))
+        return region.covers(cell.row, TrackerSlot(cell.channel, cell.subcolumn))
 
     def select_all(self, row_count: int) -> TrackerInputState:
         """Selects the whole frame: every row of it, across every slot the axis lays out."""
@@ -112,7 +114,7 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
         The sample column is an ordinary member of the axis here, so selecting it selects a column
         the way selecting a channel does.
         """
-        base = column_slot_base(cell.generator)
+        base = column_slot_base(cell.channel)
         return self._select_slots(base, base + len(SUBCOLUMNS) - 1, row_count)
 
     def select_subcolumn(
@@ -121,7 +123,7 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
         row_count: int,
     ) -> TrackerInputState:
         """Selects the subcolumn ``cell`` stands in: every row of it, at that one slot."""
-        slot = TrackerSlot(cell.generator, cell.subcolumn).flat_index
+        slot = TrackerSlot(cell.channel, cell.subcolumn).flat_index
         return self._select_slots(slot, slot, row_count)
 
     def _select_slots(
@@ -137,8 +139,8 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
         first = slot_from_flat(first_slot)
         last = slot_from_flat(last_slot)
         return self.select_between(
-            TrackerCursor(0, first.generator, first.subcolumn),
-            TrackerCursor(row_count - 1, last.generator, last.subcolumn),
+            TrackerCursor(0, first.channel, first.subcolumn),
+            TrackerCursor(row_count - 1, last.channel, last.subcolumn),
         )
 
     def extend_row(
@@ -156,7 +158,7 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
         return self.extend_to(
             TrackerCursor(
                 new_row,
-                self.cursor.generator,
+                self.cursor.channel,
                 self.cursor.subcolumn,
             )
         )
@@ -171,14 +173,14 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
             return self
 
         current = TrackerSlot(
-            self.cursor.generator,
+            self.cursor.channel,
             self.cursor.subcolumn,
         ).flat_index
         slot = slot_from_flat(max(0, min(current + value, SLOT_COUNT - 1)))
         return self.extend_to(
             TrackerCursor(
                 self.cursor.row,
-                slot.generator,
+                slot.channel,
                 slot.subcolumn,
             )
         )
@@ -197,7 +199,7 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
         return TrackerInputState(
             cursor=TrackerCursor(
                 new_row,
-                self.cursor.generator,
+                self.cursor.channel,
                 self.cursor.subcolumn,
             ),
             pending="",
@@ -211,7 +213,7 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
         """Steps the cursor along the flattened slot axis, wrapping at either end.
 
         Wrapping is a navigation policy the cursor owns: walking right off the last
-        volume slot lands on the sample column's instrument, so a held arrow key
+        volume slot lands on the sample column's voice slot, so a held arrow key
         tours the whole row.
         """
         if self.cursor is None:
@@ -222,21 +224,21 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
             return TrackerInputState(
                 cursor=TrackerCursor(
                     self.cursor.row,
-                    self.cursor.generator,
+                    self.cursor.channel,
                     new_sub,
                 ),
                 pending="",
             )
 
         current = TrackerSlot(
-            self.cursor.generator,
+            self.cursor.channel,
             self.cursor.subcolumn,
         ).flat_index
         slot = slot_from_flat((current + value) % SLOT_COUNT)
         return TrackerInputState(
             cursor=TrackerCursor(
                 self.cursor.row,
-                slot.generator,
+                slot.channel,
                 slot.subcolumn,
             ),
             pending="",
@@ -246,7 +248,7 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
         if self.cursor is None:
             return self
 
-        current_idx = CHANNEL_AXIS.index(self.cursor.generator)
+        current_idx = CHANNEL_AXIS.index(self.cursor.channel)
         next_idx = (current_idx + delta) % len(CHANNEL_AXIS)
         return TrackerInputState(
             cursor=TrackerCursor(
@@ -264,7 +266,7 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
         if self.cursor is None:
             return self, None
 
-        if self.cursor.subcolumn is SubColumn.INSTRUMENT and char == MINUS:
+        if self.cursor.subcolumn is SubColumn.VOICE and char == MINUS:
             return self._after_entry(), self._note_off_action(self.cursor)
 
         if self.cursor.subcolumn is SubColumn.TRANSPOSE:
@@ -284,9 +286,9 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
     def _note_off_action(self, cursor: TrackerCursor) -> EditAction:
         return EditAction(
             row=cursor.row,
-            generator=cursor.generator,
+            channel=cursor.channel,
             sample_index=None,
-            transpose=None,
+            pitch=None,
             volume=None,
             note_off=True,
         )
@@ -295,17 +297,21 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
         self,
         char: str,
     ) -> Tuple[TrackerInputState, Optional[EditAction]]:
-        """Drives the signed transpose field: ``[±][H][H]``.
+        """Drives the signed step field: ``[±][D][D]``, in decimal digits.
 
         The first slot is reserved for the sign. A leading sign sets it; a leading
         digit implies ``+``. A sign key pressed later flips the sign in place,
         keeping any digits already entered. The field commits once both magnitude
-        digits are in.
+        digits are in. A key naming no decimal digit and no sign leaves the field
+        as it stands.
         """
         if self.cursor is None:
             return self, None
 
         is_sign = char in SIGNS
+        if not is_sign and not char.isdecimal():
+            return self, None
+
         if not self.pending:
             pending = char if is_sign else f"{PLUS}{char}"
         elif is_sign:
@@ -340,14 +346,14 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
     def clear(self) -> Tuple[TrackerInputState, ClearAction]:
         action = ClearAction(
             row=self.cursor.row if self.cursor else 0,
-            generator=self.cursor.generator if self.cursor else None,
+            channel=self.cursor.channel if self.cursor else None,
         )
         return self.reset_pending(), action
 
     def clear_subcolumn(self) -> Tuple[TrackerInputState, ClearAction]:
         action = ClearAction(
             row=self.cursor.row if self.cursor else 0,
-            generator=self.cursor.generator if self.cursor else None,
+            channel=self.cursor.channel if self.cursor else None,
             subcolumn=self.cursor.subcolumn if self.cursor else None,
         )
         return self.reset_pending(), action

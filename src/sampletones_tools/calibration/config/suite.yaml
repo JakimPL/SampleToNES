@@ -1,0 +1,4 @@
+methods: [fft, logfft, cqt]
+perceptual_exponents: [1.0]
+temporal_weights: []
+channels: [pulse1, triangle, noise]

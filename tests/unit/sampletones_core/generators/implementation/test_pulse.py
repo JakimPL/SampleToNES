@@ -2,8 +2,14 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
-from sampletones_core.constants.general import DUTY_CYCLES, MAX_VOLUME, MIXER_PULSE
+from sampletones_core.constants.enums import ChannelName, GeneratorClassName
+from sampletones_core.constants.general import (
+    DUTY_CYCLES,
+    MAX_PITCH,
+    MAX_VOLUME,
+    MIN_SOUNDING_PULSE_TIMER,
+    MIXER_PULSE,
+)
 from sampletones_core.generators.implementation.pulse import PulseGenerator
 from sampletones_core.instructions import NoiseInstruction, PulseInstruction
 
@@ -19,7 +25,7 @@ def config() -> Config:
 
 @pytest.fixture
 def generator(config: Config) -> PulseGenerator:
-    return PulseGenerator(config, GeneratorName.PULSE1)
+    return PulseGenerator(config, ChannelName.PULSE1)
 
 
 class TestPulseGeneratorCall:
@@ -47,6 +53,31 @@ class TestPulseGeneratorCall:
         instruction = PulseInstruction(on=True, pitch=60, volume=15, duty_cycle=0)
         result = generator(instruction)
         assert result.dtype == np.float32
+
+
+class TestTheSweepUnitMutesShortTimers:
+    """The sweep unit mutes a pulse whose timer stands below eight, and the waveform keeps stepping."""
+
+    def _bent_to(self, generator: PulseGenerator, timer: int) -> PulseInstruction:
+        detune = timer - generator.played_timer_table[MAX_PITCH]
+        return PulseInstruction(on=True, pitch=MAX_PITCH, volume=MAX_VOLUME, duty_cycle=2, detune=detune)
+
+    def test_a_timer_below_the_bound_is_silent(self, generator: PulseGenerator) -> None:
+        result = generator(self._bent_to(generator, MIN_SOUNDING_PULSE_TIMER - 1))
+
+        assert np.all(result == 0.0)
+
+    def test_a_timer_at_the_bound_sounds(self, generator: PulseGenerator) -> None:
+        result = generator(self._bent_to(generator, MIN_SOUNDING_PULSE_TIMER))
+
+        assert np.any(result != 0.0)
+
+    def test_the_waveform_steps_on_through_a_muted_frame(self, generator: PulseGenerator) -> None:
+        phase = generator.timer.phase
+
+        generator(self._bent_to(generator, MIN_SOUNDING_PULSE_TIMER - 1), save=True)
+
+        assert generator.timer.phase != phase
 
 
 class TestPulseApply:

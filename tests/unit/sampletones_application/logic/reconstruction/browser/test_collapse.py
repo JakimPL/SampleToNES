@@ -5,6 +5,8 @@ from sampletones_core.structures.tree import NodeType
 
 from .conftest import (
     child_names,
+    config_group_node,
+    config_variant_node,
     container_root,
     directory_node,
     file_node,
@@ -66,6 +68,51 @@ class TestLoneHeadings:
 
         assert child_names(branch) == ["44.1 kHz·30 Hz·Amen Breaks"]
         assert child_names(directory) == ["song"]
+
+
+class TestWhatAFoldedNameStates:
+    def test_a_sample_leaves_the_variant_reading_as_a_plain_name(self) -> None:
+        root = container_root()
+        branch = group_node("branch", root)
+        variant = config_variant_node("44.1 kHz·30 Hz·FFT·γ0·PTN", sample_node("cw_amen02_165", branch))
+
+        collapse_single_child_containers(root)
+
+        assert not variant.states_configuration
+
+    def test_a_chain_of_configuration_headings_still_states_a_configuration(self) -> None:
+        root = container_root()
+        branch = group_node("branch", root)
+        frequencies = config_group_node("44.1 kHz·30 Hz", branch)
+        variant = config_variant_node("PTN", config_group_node("FFT·γ0", frequencies))
+
+        collapse_single_child_containers(root)
+
+        assert child_names(branch) == ["44.1 kHz·30 Hz·FFT·γ0·PTN"]
+        assert variant.states_configuration
+
+    def test_a_source_folder_above_a_folded_variant_leaves_it_plain(self) -> None:
+        """Deepest first, the sample folds in and then the folder does, and one plain name is enough."""
+        root = container_root()
+        branch = group_node("branch", root)
+        folder = group_node("Amen Breaks", branch)
+        variant = config_variant_node("44.1 kHz·30 Hz·FFT·γ0·PTN", sample_node("cw_amen02_165", folder))
+
+        collapse_single_child_containers(root)
+
+        assert child_names(branch) == ["Amen Breaks·cw_amen02_165·44.1 kHz·30 Hz·FFT·γ0·PTN"]
+        assert not variant.states_configuration
+
+    def test_a_variant_no_heading_folded_into_states_its_configuration(self) -> None:
+        root = container_root()
+        branch = group_node("branch", root)
+        sample = sample_node("cw_amen02_165", branch)
+        variant = config_variant_node("44.1 kHz·30 Hz·FFT·γ0·PTN", sample)
+        config_variant_node("44.1 kHz·60 Hz·FFT·γ0·PTN", sample)
+
+        collapse_single_child_containers(root)
+
+        assert variant.states_configuration
 
 
 class TestHeadingsThatStay:

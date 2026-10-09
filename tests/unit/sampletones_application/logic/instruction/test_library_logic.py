@@ -1,13 +1,29 @@
 import threading
-from typing import Dict, Final
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Callable, Dict, Final, List, Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.config.managers.config import ConfigManager
+from sampletones_application.logic.instruction import library_manager as library_manager_module
 from sampletones_application.logic.instruction.library import LibraryLogic
+from sampletones_application.logic.instruction.library_manager import (
+    InstructionsLibraryManager,
+)
 from sampletones_application.paths import LANG_EN
+from sampletones_application.utils.callbacks.queue import CallbackQueue
+from sampletones_application.view_model.instruction.library import (
+    LibraryPanelViewModel,
+)
+from sampletones_core.configs import Config, InstructionsLibraryConfig
+from sampletones_core.constants.enums import GeneratorName, SpectrumMethod
+from sampletones_core.fft import Window
+from sampletones_core.library import InstructionLibraryData, InstructionLibraryKey, LibraryState
 from sampletones_core.parallelization import TaskStatus
+from sampletones_shared.application import SAMPLETONES_LIBRARY_DATA_VERSION
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleLibraryDataVersionError,
@@ -17,7 +33,12 @@ from sampletones_shared.exceptions import (
     LoadLibraryError,
     UnhandledLibraryError,
 )
+from tests.suite.application import HeldQueue
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
+from tests.suite.files import requires_symlinks
 from tests.suite.language import FakeLanguageManager
+from tests.suite.library import LINKED_LIBRARIES, OTHER_LIBRARIES, WrittenLibrary, aim_library_directory
 
 LOAD_ERROR_KEY: Final[str] = "instructions.library.message.status_load_error"
 FILE_NOT_FOUND_KEY: Final[str] = "instructions.library.message.status_file_not_found"
@@ -27,17 +48,25 @@ INVALID_DATA_VALUES_KEY: Final[str] = "instructions.library.message.status_inval
 INVALID_DATA_KEY: Final[str] = "instructions.library.message.status_invalid_data"
 DESERIALIZATION_ERROR_KEY: Final[str] = "instructions.library.message.status_deserialization_error"
 INCOMPATIBLE_VERSION_KEY: Final[str] = "instructions.library.template.incompatible_version_template"
-GENERATION_CANCELLED_KEY: Final[str] = "instructions.library.message.status_generation_cancelled"
+GENERATION_CANCELED_KEY: Final[str] = "instructions.library.message.status_generation_canceled"
+GENERATED_INSTRUCTIONS: Final[int] = 8
+EARLIER_VERSION: Final[str] = "2.0"
+OTHER_GAMMA: Final[int] = 50
+OTHER_TUNING: Final[float] = 432.0
+EARLIER_WINDOW_SIZE: Final[int] = 13579
+DERIVED_WINDOW_SIZE: Final[int] = 0
 
 TEXTS: Final[Dict[str, str]] = {
     INCOMPATIBLE_VERSION_KEY: "got {} expected {}",
     "instructions.library.message.status_saving": "saving",
     "instructions.library.message.status_generation_failed": "failed",
-    GENERATION_CANCELLED_KEY: "cancelled",
+    GENERATION_CANCELED_KEY: "canceled",
     "instructions.library.label.generate_library_button": "Generate",
     "instructions.library.label.regenerate_library_button": "Regenerate",
     "instructions.library.template.library_loaded_template": "{} loaded.",
     "instructions.library.template.library_exists_template": "{} exists.",
+    "instructions.library.template.library_outdated_template": "{} was built by another version.",
+    "instructions.library.label.rebuild_library_button": "Rebuild",
     "instructions.library.template.library_not_exists_template": "{} doesn't exist.",
 }
 
@@ -49,6 +78,40 @@ def _logic(*, operation_active: bool) -> LibraryLogic:
     logic._is_operation_active = lambda: operation_active
     logic.generate_library = MagicMock()
     return logic
+
+
+def _preparing_logic(state: LibraryState) -> LibraryLogic:
+    """A library logic whose configuration names a library standing as ``state``, bypassing the
+    heavy constructor."""
+    logic = LibraryLogic.__new__(LibraryLogic)
+    logic._config_manager = MagicMock()
+    logic._library_manager = MagicMock()
+    logic._library_manager.library_state.return_value = state
+    logic.generate_library = MagicMock()
+    return logic
+
+
+class TestPreparingTheLibraryForAConversion(BaseTestSuite):
+    """A conversion uses a library this build reads as it stands; any other is generated."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        state: LibraryState
+        expected: bool
+
+    test_cases = (
+        TestCase(label="a library this build reads", state=LibraryState.CURRENT, expected=False),
+        TestCase(label="a library another version built", state=LibraryState.OUTDATED, expected=True),
+        TestCase(label="no library", state=LibraryState.MISSING, expected=True),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
+    def test_whether_it_is_generated(self, test_case: TestCase) -> None:
+        logic = _preparing_logic(test_case.state)
+
+        logic.prepare_library()
+
+        assert logic.generate_library.called is test_case.expected
 
 
 class TestRequestGeneration:
@@ -177,11 +240,11 @@ def _generation_logic(*, generating: bool = True) -> LibraryLogic:
     """A library logic with only the state the generation emits touch, bypassing the heavy
     constructor."""
     logic = LibraryLogic.__new__(LibraryLogic)
-    logic._status_lock = threading.Lock()
     logic._config_manager = MagicMock()
     logic._library_manager = MagicMock()
     logic._library_manager.is_generating.return_value = generating
     logic._library_manager.is_library_loaded.return_value = False
+    logic._library_manager.library_state.return_value = LibraryState.MISSING
     logic._language_manager = FakeLanguageManager(TEXTS)
     logic.on_view_changed = MagicMock()
     return logic
@@ -191,13 +254,13 @@ class TestGenerationEmits:
     """Every emit passes its status and progress explicitly, so the logic retains no
     presentation state between emissions and each view model is complete on its own."""
 
-    def test_cancelled_emits_the_language_managed_status(self) -> None:
+    def test_canceled_emits_the_language_managed_status(self) -> None:
         logic = _generation_logic()
 
-        logic._on_generation_progress(TaskStatus.CANCELLED, MagicMock())
+        logic._on_generation_progress(TaskStatus.CANCELED, MagicMock())
 
         view_model = logic.on_view_changed.call_args.args[0]
-        assert view_model.status_text == "cancelled"
+        assert view_model.status_text == "canceled"
 
     def test_completed_emits_saving_at_full_progress(self) -> None:
         logic = _generation_logic()
@@ -227,7 +290,6 @@ class TestGenerationEmits:
 
     def test_update_status_repaints_the_idle_state(self) -> None:
         logic = _generation_logic(generating=False)
-        logic._library_manager.library_exists_for_key.return_value = False
 
         with patch(
             "sampletones_application.logic.instruction.library.get_display_name_from_key",
@@ -253,9 +315,22 @@ class TestGenerationEmits:
         assert view_model.status_text == "lib loaded."
         assert view_model.generate_button_label == "Regenerate"
 
+    def test_update_status_reports_a_library_another_version_built(self) -> None:
+        logic = _generation_logic(generating=False)
+        logic._library_manager.library_state.return_value = LibraryState.OUTDATED
+
+        with patch(
+            "sampletones_application.logic.instruction.library.get_display_name_from_key",
+            return_value="lib",
+        ):
+            logic.update_status()
+
+        view_model = logic.on_view_changed.call_args.args[0]
+        assert view_model.status_text == "lib was built by another version."
+
     def test_update_status_reports_an_existing_unloaded_library(self) -> None:
         logic = _generation_logic(generating=False)
-        logic._library_manager.library_exists_for_key.return_value = True
+        logic._library_manager.library_state.return_value = LibraryState.CURRENT
 
         with patch(
             "sampletones_application.logic.instruction.library.get_display_name_from_key",
@@ -268,11 +343,643 @@ class TestGenerationEmits:
         assert view_model.generate_button_label == "Generate"
 
 
-class TestCancelledStatusLanguageKey:
-    """The cancelled status resolves through ``LanguageManager`` at construction, so the language
+class TreeLock:
+    """The lock the catalog's tree shares with a generation, counted the way the tree counts it.
+
+    Its release reaches ``on_released`` through the render loop's queue, as the tree's lock state does.
+    """
+
+    def __init__(self) -> None:
+        self.holders = 0
+        self.on_released: Optional[Callable[[], None]] = None
+
+    def lock(self) -> None:
+        self.holders += 1
+
+    def unlock(self) -> None:
+        was_held = self.holders > 0
+        self.holders = max(0, self.holders - 1)
+        if was_held and self.holders == 0 and self.on_released is not None:
+            CallbackQueue.add(self.on_released)
+
+    def locked(self) -> bool:
+        return self.holders > 0
+
+
+class Creator:
+    """A library creator whose workers have finished, holding the reports it was handed."""
+
+    total_instructions = GENERATED_INSTRUCTIONS
+    completed_instructions = GENERATED_INSTRUCTIONS
+
+    def __init__(self, _config: Any, _window: Any) -> None:
+        self.callbacks: Dict[str, Callable[..., None]] = {}
+
+    def set_callbacks(self, **callbacks: Callable[..., None]) -> None:
+        self.callbacks.update(callbacks)
+
+    def start(self) -> None:
+        pass
+
+    def shutdown(self) -> None:
+        pass
+
+
+@dataclass
+class Catalog:
+    """A library logic over a real catalog, with what it hands the tab written down."""
+
+    logic: LibraryLogic
+    manager: InstructionsLibraryManager
+    config_manager: ConfigManager
+    queue: HeldQueue
+    lock: TreeLock
+    rebuilds_under_lock: List[bool] = field(default_factory=list)
+    views: List[LibraryPanelViewModel] = field(default_factory=list)
+    outdated: List[InstructionLibraryKey] = field(default_factory=list)
+    missing: List[Path] = field(default_factory=list)
+    errors: List[Exception] = field(default_factory=list)
+    shown: List[Any] = field(default_factory=list)
+
+    @property
+    def creator(self) -> Creator:
+        creator = self.manager.creator
+        assert isinstance(creator, Creator)
+        return creator
+
+    def start_generation(self) -> None:
+        """Ask for a generation and take the start report its creator sends."""
+        self.logic.generate_library()
+        self.creator.callbacks["on_start"]()
+        self.queue.drain()
+
+    def write_library(self) -> None:
+        """Report the library complete from a thread of its own, as a creator's monitor does."""
+        worker = threading.Thread(
+            target=self.creator.callbacks["on_completed"],
+            args=((self.config_manager.key, WrittenLibrary()),),
+        )
+        worker.start()
+        worker.join()
+
+
+@pytest.fixture
+def catalog(
+    config_manager: ConfigManager,
+    held_queue: HeldQueue,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Catalog:
+    monkeypatch.setattr(library_manager_module, "InstructionsLibraryCreator", Creator)
+    manager = InstructionsLibraryManager(config_manager, language_manager=MagicMock())
+    logic = LibraryLogic(
+        config_manager,
+        manager,
+        language_manager=FakeLanguageManager(TEXTS),
+        is_operation_active=lambda: False,
+    )
+    lock = TreeLock()
+    logic.configure_lock(lock.lock, lock.unlock, lock.locked)
+    lock.on_released = logic.reload_remembered_library
+    config_manager.add_config_change_callback(logic.follow_config)
+    catalog = Catalog(logic=logic, manager=manager, config_manager=config_manager, queue=held_queue, lock=lock)
+    logic.on_rebuild_tree_needed = lambda: catalog.rebuilds_under_lock.append(lock.locked())
+    logic.on_view_changed = catalog.views.append
+    logic.on_apply_library_config = config_manager.apply_library_config
+    logic.on_library_outdated = catalog.outdated.append
+    logic.on_load_file_not_found = lambda path, message: catalog.missing.append(path)
+    logic.on_load_error = lambda exception, message: catalog.errors.append(exception)
+    logic.on_instruction_loaded = catalog.shown.append
+    return catalog
+
+
+def _other_settings(catalog: Catalog) -> InstructionsLibraryConfig:
+    """Library settings the catalog's configuration differs from, its tuning included."""
+    return catalog.config_manager.config.library.model_copy(
+        update={
+            "spectrum_method": SpectrumMethod.FFT,
+            "transformation_gamma": OTHER_GAMMA,
+            "a4_frequency": OTHER_TUNING,
+        }
+    )
+
+
+def _write_library(
+    directory: Path,
+    library_config: InstructionsLibraryConfig,
+    library_data_version: str,
+    window_size: int = DERIVED_WINDOW_SIZE,
+) -> InstructionLibraryKey:
+    """Writes an empty library built for ``library_config`` under ``directory``, stated at
+    ``library_data_version``, its window ``window_size`` samples long where that is given and the one
+    this build derives otherwise."""
+    key = InstructionLibraryKey.create(library_config, Window.from_config(library_config, custom_size=window_size))
+    library = InstructionLibraryData.create(Config().model_copy(update={"library": library_config}), {})
+    stated = library.metadata.model_copy(update={"library_data_version": library_data_version})
+    directory.mkdir(parents=True, exist_ok=True)
+    library.model_copy(update={"metadata": stated}).save(directory / key.filename)
+    return key
+
+
+def _opened_library(catalog: Catalog) -> InstructionLibraryKey:
+    """Writes the library the configuration names into the catalog's folder and opens it as Load does."""
+    key = _write_library(
+        catalog.manager.library_directory,
+        catalog.config_manager.config.library,
+        SAMPLETONES_LIBRARY_DATA_VERSION,
+    )
+    catalog.logic.load_library_and_set_current(key)
+    return key
+
+
+def _rebuild(catalog: Catalog) -> None:
+    """Takes the start report the generation a rebuild asked for sends."""
+    catalog.creator.callbacks["on_start"]()
+    catalog.queue.drain()
+
+
+def _complete(catalog: Catalog) -> None:
+    catalog.write_library()
+
+
+def _cancel(catalog: Catalog) -> None:
+    catalog.creator.callbacks["on_progress"](TaskStatus.CANCELED, MagicMock())
+    catalog.creator.callbacks["on_canceled"]()
+
+
+def _fail(catalog: Catalog) -> None:
+    catalog.creator.callbacks["on_error"](RuntimeError("generation failed"))
+
+
+ENDINGS: Final = pytest.mark.parametrize(
+    "ending",
+    [_complete, _cancel, _fail],
+    ids=["completed", "canceled", "failed"],
+)
+
+
+class TestAGenerationClosing:
+    """A generation reports from the creator's threads, and the render loop takes each report up:
+    the close lets the tree lock go, then reads the catalog the library was written into."""
+
+    def test_the_lock_is_taken_when_the_generation_is_asked_for(self, catalog: Catalog) -> None:
+        catalog.logic.generate_library()
+
+        assert (catalog.manager.is_generating(), catalog.lock.locked()) == (True, True)
+
+    def test_the_close_waits_for_the_render_loop(self, catalog: Catalog) -> None:
+        catalog.start_generation()
+
+        catalog.write_library()
+
+        assert (catalog.manager.is_generating(), catalog.lock.locked(), catalog.rebuilds_under_lock) == (
+            True,
+            True,
+            [],
+        )
+
+    def test_the_tree_is_rebuilt_once_the_lock_is_let_go(self, catalog: Catalog) -> None:
+        catalog.start_generation()
+        catalog.write_library()
+
+        catalog.queue.drain()
+
+        assert catalog.rebuilds_under_lock == [False]
+
+    def test_the_library_written_reads_as_loaded(self, catalog: Catalog) -> None:
+        catalog.start_generation()
+        catalog.write_library()
+
+        catalog.queue.drain()
+
+        assert catalog.manager.is_library_loaded(catalog.config_manager.key) is True
+        assert catalog.views[-1].generate_button_label == "Regenerate"
+
+    @ENDINGS
+    def test_every_ending_paints_the_idle_controls(self, catalog: Catalog, ending: Any) -> None:
+        catalog.start_generation()
+
+        ending(catalog)
+        catalog.queue.drain()
+
+        assert (catalog.manager.is_generating(), catalog.views[-1].is_generating, catalog.lock.locked()) == (
+            False,
+            False,
+            False,
+        )
+
+
+class TestTheCatalogFollowingTheConfiguration:
+    """A configuration change naming another library directory roots the catalog there, and any
+    other change repaints the status over the libraries already loaded."""
+
+    def test_another_directory_is_read_afresh(self, catalog: Catalog, tmp_path: Path) -> None:
+        other = tmp_path / OTHER_LIBRARIES
+
+        aim_library_directory(catalog.config_manager, other)
+
+        assert (catalog.manager.library_directory, catalog.rebuilds_under_lock) == (other, [False])
+
+    def test_the_same_directory_repaints_over_what_is_loaded(self, catalog: Catalog) -> None:
+        catalog.manager._catalog.library.save_data(catalog.config_manager.key, WrittenLibrary())
+
+        aim_library_directory(catalog.config_manager, catalog.config_manager.get_library_directory())
+
+        assert catalog.rebuilds_under_lock == []
+        assert catalog.views[-1].generate_button_label == "Regenerate"
+
+    def test_a_folder_pointed_away_from_and_back_loads_its_library_again(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        """The folder left lets its library go, and the way back loads the library it had open."""
+        ours = catalog.config_manager.get_library_directory()
+        key = _opened_library(catalog)
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        away = catalog.views[-1].generate_button_label
+
+        aim_library_directory(catalog.config_manager, ours)
+
+        assert (away, catalog.manager.is_library_loaded(key), catalog.views[-1].generate_button_label) == (
+            "Generate",
+            True,
+            "Regenerate",
+        )
+
+    def test_a_library_the_folder_only_took_up_stays_unloaded_on_the_way_back(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        """A start takes up the library the configuration names without loading it, so the reader never
+        opened it and the way back leaves it as it stood."""
+        ours = catalog.config_manager.get_library_directory()
+        key = _write_library(ours, catalog.config_manager.config.library, SAMPLETONES_LIBRARY_DATA_VERSION)
+        catalog.logic.refresh_libraries(load_if_needed=False)
+        taken_up = (catalog.manager.current_library_key, catalog.manager.is_library_loaded(key))
+
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        aim_library_directory(catalog.config_manager, ours)
+
+        assert (taken_up, catalog.manager.is_library_loaded(key), catalog.views[-1].generate_button_label) == (
+            (key, False),
+            False,
+            "Generate",
+        )
+
+    def test_a_library_never_opened_whose_file_left_while_away_goes_unreported(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        ours = catalog.config_manager.get_library_directory()
+        key = _write_library(ours, catalog.config_manager.config.library, SAMPLETONES_LIBRARY_DATA_VERSION)
+        catalog.logic.refresh_libraries(load_if_needed=False)
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        (ours / key.filename).unlink()
+
+        aim_library_directory(catalog.config_manager, ours)
+
+        assert (catalog.missing, catalog.errors) == ([], [])
+
+    @requires_symlinks
+    def test_a_link_to_the_same_folder_repaints_over_what_is_loaded(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        """A link names the folder the catalog stands at, so the catalog keeps what it loaded."""
+        key = _opened_library(catalog)
+        link = tmp_path / LINKED_LIBRARIES
+        link.symlink_to(catalog.config_manager.get_library_directory(), target_is_directory=True)
+        rebuilds = len(catalog.rebuilds_under_lock)
+
+        aim_library_directory(catalog.config_manager, link)
+
+        assert (len(catalog.rebuilds_under_lock), catalog.manager.is_library_loaded(key)) == (rebuilds, True)
+        assert catalog.views[-1].generate_button_label == "Regenerate"
+
+    @requires_symlinks
+    def test_a_notice_names_the_folder_by_the_link_the_reader_chose(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        key = _opened_library(catalog)
+        link = tmp_path / LINKED_LIBRARIES
+        link.symlink_to(catalog.config_manager.get_library_directory(), target_is_directory=True)
+        aim_library_directory(catalog.config_manager, link)
+        (link / key.filename).unlink()
+
+        catalog.logic.load_library_and_set_current(key)
+
+        assert catalog.missing == [link / key.filename]
+
+    @requires_symlinks
+    def test_a_library_generated_across_a_respelling_lands_loaded_under_the_new_spelling(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        """A link names the folder the generation started in, so the generation's library stays in memory,
+        and its path goes through the link."""
+        ours = catalog.config_manager.get_library_directory()
+        ours.mkdir(parents=True)
+        link = tmp_path / LINKED_LIBRARIES
+        link.symlink_to(ours, target_is_directory=True)
+        catalog.start_generation()
+
+        aim_library_directory(catalog.config_manager, link)
+        catalog.write_library()
+        catalog.queue.drain()
+
+        key = catalog.config_manager.key
+        assert (catalog.manager.is_library_loaded(key), catalog.manager.get_path(key)) == (
+            True,
+            link / key.filename,
+        )
+
+    def test_a_library_whose_file_left_while_away_is_reported_on_the_way_back(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        """The way back loads the library as a Load does, so a file gone meanwhile is reported, once, and
+        the folder's choice goes with it."""
+        ours = catalog.config_manager.get_library_directory()
+        key = _opened_library(catalog)
+        path = catalog.manager.get_path(key)
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        path.unlink()
+
+        aim_library_directory(catalog.config_manager, ours)
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        aim_library_directory(catalog.config_manager, ours)
+
+        assert (catalog.missing, catalog.manager.is_library_loaded(key), catalog.manager.current_library_key) == (
+            [path],
+            False,
+            None,
+        )
+
+    def test_a_library_another_build_rewrote_while_away_asks_to_be_rebuilt_on_the_way_back(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        """The way back opens the library as a Load does, so a file another version wrote meanwhile asks
+        for a rebuild, and the folder's choice goes with it."""
+        ours = catalog.config_manager.get_library_directory()
+        key = _opened_library(catalog)
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        _write_library(ours, catalog.config_manager.config.library, EARLIER_VERSION)
+
+        aim_library_directory(catalog.config_manager, ours)
+
+        assert (
+            catalog.outdated,
+            catalog.errors,
+            catalog.manager.is_library_loaded(key),
+            catalog.manager.current_library_key,
+        ) == ([key], [], False, None)
+
+    def test_the_way_back_keeps_the_settings_the_reader_left_with(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        """The way back brings the folder's library back as it stood, and the settings stay as the reader
+        set them while away."""
+        ours = catalog.config_manager.get_library_directory()
+        key = _opened_library(catalog)
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        settings = _other_settings(catalog)
+        catalog.config_manager.apply_library_config(
+            InstructionLibraryKey.create(settings, Window.from_config(settings)),
+            settings,
+        )
+
+        aim_library_directory(catalog.config_manager, ours)
+
+        assert (catalog.manager.is_library_loaded(key), catalog.config_manager.config.library) == (True, settings)
+
+    def test_a_library_generated_while_away_is_written_held_nowhere_and_loaded_on_the_way_back(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        ours = catalog.config_manager.get_library_directory()
+        started_in = catalog.manager._catalog
+        catalog.start_generation()
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+
+        catalog.write_library()
+        catalog.queue.drain()
+        held_while_away = dict(started_in.library.data)
+        aim_library_directory(catalog.config_manager, ours)
+
+        assert (
+            (ours / catalog.config_manager.key.filename).exists(),
+            held_while_away,
+            catalog.manager.is_library_loaded(catalog.config_manager.key),
+        ) == (True, {}, True)
+
+    def test_a_way_back_during_a_generation_loads_once_the_tree_stands_free(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        """A generation holds the tree, so the way back waits for it before loading the folder's library."""
+        ours = catalog.config_manager.get_library_directory()
+        key = _opened_library(catalog)
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        catalog.start_generation()
+
+        aim_library_directory(catalog.config_manager, ours)
+        during = catalog.manager.is_library_loaded(key)
+        catalog.write_library()
+        catalog.queue.drain()
+
+        assert (during, catalog.manager.is_library_loaded(key)) == (False, True)
+
+    @ENDINGS
+    def test_a_change_during_a_generation_stands_whatever_the_generation_came_to(
+        self,
+        catalog: Catalog,
+        ending: Any,
+        tmp_path: Path,
+    ) -> None:
+        other = tmp_path / OTHER_LIBRARIES
+        catalog.start_generation()
+
+        aim_library_directory(catalog.config_manager, other)
+        ending(catalog)
+        catalog.queue.drain()
+
+        assert catalog.manager.library_directory == catalog.config_manager.get_library_directory() == other
+
+    def test_a_library_generated_across_a_change_lands_where_the_generation_started(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        started_in = catalog.config_manager.get_library_directory()
+        catalog.start_generation()
+
+        aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
+        catalog.write_library()
+        catalog.queue.drain()
+
+        assert (started_in / catalog.config_manager.key.filename).exists()
+        assert catalog.manager.library_state(catalog.config_manager.key) is LibraryState.MISSING
+
+
+class TestCanceledStatusLanguageKey:
+    """The canceled status resolves through ``LanguageManager`` at construction, so the language
     file must carry the key."""
 
-    def test_cancelled_status_resolves_from_the_language_file(self) -> None:
+    def test_canceled_status_resolves_from_the_language_file(self) -> None:
         language_manager = LanguageManager(LANG_EN)
 
-        assert language_manager[GENERATION_CANCELLED_KEY]
+        assert language_manager[GENERATION_CANCELED_KEY]
+
+
+class TestOpeningALibrary:
+    """Opening a library loads one this build reads and brings its settings along; a library
+    another version built is put to the reader first."""
+
+    def test_a_library_another_version_built_asks_before_anything_changes(self, catalog: Catalog) -> None:
+        settings = catalog.config_manager.config
+        key = _write_library(catalog.manager.library_directory, _other_settings(catalog), EARLIER_VERSION)
+
+        catalog.logic.load_library_and_set_current(key)
+
+        assert (catalog.outdated, catalog.config_manager.config, catalog.manager.is_library_loaded(key)) == (
+            [key],
+            settings,
+            False,
+        )
+
+    def test_a_library_this_build_reads_brings_its_settings_tuning_included(self, catalog: Catalog) -> None:
+        library_config = _other_settings(catalog)
+        key = _write_library(catalog.manager.library_directory, library_config, SAMPLETONES_LIBRARY_DATA_VERSION)
+
+        catalog.logic.load_library_and_set_current(key)
+
+        assert (catalog.config_manager.config.library, catalog.config_manager.key) == (library_config, key)
+
+    def test_a_file_opened_by_path_standing_as_another_version_built_it_asks(self, catalog: Catalog) -> None:
+        key = _write_library(catalog.manager.library_directory, _other_settings(catalog), EARLIER_VERSION)
+
+        catalog.logic.load_library_file(catalog.manager.get_path(key))
+
+        assert catalog.outdated == [key]
+
+    def test_a_file_outside_the_directory_with_no_copy_inside_is_reported_missing(
+        self,
+        catalog: Catalog,
+        tmp_path: Path,
+    ) -> None:
+        settings = catalog.config_manager.config
+        key = _write_library(tmp_path / OTHER_LIBRARIES, _other_settings(catalog), SAMPLETONES_LIBRARY_DATA_VERSION)
+
+        catalog.logic.load_library_file(tmp_path / OTHER_LIBRARIES / key.filename)
+
+        assert (catalog.missing, catalog.config_manager.config) == ([catalog.manager.get_path(key)], settings)
+
+    def test_a_generator_of_a_library_another_version_built_shows_nothing(self, catalog: Catalog) -> None:
+        key = _write_library(catalog.manager.library_directory, _other_settings(catalog), EARLIER_VERSION)
+
+        catalog.logic.load_library_generator(key, GeneratorName.PULSE)
+
+        assert (catalog.outdated, catalog.shown) == ([key], [])
+
+
+class TestRebuildingALibrary:
+    """A rebuild takes the settings the library was built for and generates it in its place."""
+
+    def test_the_settings_it_was_built_for_are_applied_and_the_generation_starts(self, catalog: Catalog) -> None:
+        library_config = _other_settings(catalog)
+        key = _write_library(catalog.manager.library_directory, library_config, EARLIER_VERSION)
+
+        catalog.logic.rebuild_library(key)
+
+        assert (catalog.config_manager.key, catalog.config_manager.config.library, catalog.manager.is_generating()) == (
+            key,
+            library_config,
+            True,
+        )
+
+    def test_a_library_rebuilt_under_another_name_leaves_only_the_new_file(self, catalog: Catalog) -> None:
+        """A library an earlier build wrote for another window carries that window in its name, and the
+        rebuild writes the library this build derives in its place."""
+        directory = catalog.manager.library_directory
+        key = _write_library(directory, _other_settings(catalog), EARLIER_VERSION, EARLIER_WINDOW_SIZE)
+        replaced = catalog.manager.get_path(key)
+
+        catalog.logic.rebuild_library(key)
+        _rebuild(catalog)
+        catalog.write_library()
+        catalog.queue.drain()
+
+        assert (replaced.exists(), catalog.manager.get_path(catalog.config_manager.key).exists()) == (False, True)
+
+    def test_a_library_rebuilt_under_its_own_name_stays(self, catalog: Catalog) -> None:
+        key = _write_library(catalog.manager.library_directory, _other_settings(catalog), EARLIER_VERSION)
+
+        catalog.logic.rebuild_library(key)
+        _rebuild(catalog)
+        catalog.write_library()
+        catalog.queue.drain()
+
+        assert (catalog.config_manager.key, catalog.manager.library_state(key)) == (key, LibraryState.CURRENT)
+
+    @pytest.mark.parametrize("ending", [_cancel, _fail], ids=["canceled", "failed"])
+    def test_a_rebuild_that_ends_unwritten_keeps_the_file_through_later_generations(
+        self,
+        catalog: Catalog,
+        ending: Any,
+    ) -> None:
+        directory = catalog.manager.library_directory
+        key = _write_library(directory, _other_settings(catalog), EARLIER_VERSION, EARLIER_WINDOW_SIZE)
+        replaced = catalog.manager.get_path(key)
+
+        catalog.logic.rebuild_library(key)
+        _rebuild(catalog)
+        ending(catalog)
+        catalog.queue.drain()
+        catalog.start_generation()
+        catalog.write_library()
+        catalog.queue.drain()
+
+        assert replaced.exists()
+
+    def test_a_rebuild_during_another_operation_changes_nothing(self, catalog: Catalog) -> None:
+        settings = catalog.config_manager.config
+        key = _write_library(catalog.manager.library_directory, _other_settings(catalog), EARLIER_VERSION)
+        catalog.logic._is_operation_active = lambda: True
+
+        catalog.logic.rebuild_library(key)
+
+        assert (catalog.config_manager.config, catalog.manager.is_generating()) == (settings, False)
+
+
+class TestRefreshingOverALibraryAnotherVersionBuilt:
+    def test_it_is_reported_and_left_unloaded(self, catalog: Catalog) -> None:
+        key = _write_library(
+            catalog.manager.library_directory,
+            catalog.config_manager.config.library,
+            EARLIER_VERSION,
+        )
+
+        with patch(
+            "sampletones_application.logic.instruction.library.get_display_name_from_key",
+            return_value="lib",
+        ):
+            catalog.logic.refresh_libraries()
+
+        assert (
+            catalog.manager.is_library_loaded(key),
+            catalog.views[-1].status_text,
+            catalog.views[-1].generate_button_label,
+        ) == (False, "lib was built by another version.", "Rebuild")

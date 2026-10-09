@@ -2,7 +2,7 @@ from typing import List
 
 import pytest
 
-from sampletones_shared.utils.text import natural_sort_key
+from sampletones_shared.utils.text import LIST_SEPARATOR, listed_items, natural_sort_key
 
 
 class TestNumbers:
@@ -51,3 +51,17 @@ class TestKey:
     def test_a_name_the_reader_alone_can_spell(self) -> None:
         """A digit-like glyph outside the decimal digits is text, and the key states it as text."""
         assert sorted(["m²", "m1"], key=natural_sort_key) == ["m1", "m²"]
+
+
+class TestListedItems:
+    def test_items_keep_their_order_with_the_spaces_around_them_stripped(self) -> None:
+        assert listed_items(" fft ,cqt") == ["fft", "cqt"]
+
+    def test_empty_items_are_dropped(self) -> None:
+        assert listed_items(f"pulse1{LIST_SEPARATOR}{LIST_SEPARATOR} {LIST_SEPARATOR}noise{LIST_SEPARATOR}") == [
+            "pulse1",
+            "noise",
+        ]
+
+    def test_an_empty_statement_lists_nothing(self) -> None:
+        assert listed_items("") == []

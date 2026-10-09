@@ -13,7 +13,7 @@ class PlaybackRouter:
     Every command acts on one *target*: the active tab's own source when that tab has something to
     play, and otherwise the intentional source currently engaged (owning the device). Preview
     sounds belong to no source and answer only to Stop. The full contract is documented in
-    ``docs/development/playback.md``.
+    ``docs/development/application/playback.md``.
 
     It is stateless: the target is recomputed from the live sources on each call, so the transport
     stays in step with tab changes and playback transitions automatically.

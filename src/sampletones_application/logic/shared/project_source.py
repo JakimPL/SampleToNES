@@ -1,24 +1,7 @@
-import copy
 from dataclasses import dataclass
-from typing import Dict, Protocol, Self
+from typing import Protocol, Self
 
 from sampletones_core.project import Project
-
-
-def snapshot_project(project: Project) -> Project:
-    """Captures an independent copy of a project that shares reconstruction audio.
-
-    The song, settings, metadata and sample shells are deep-copied so later edits
-    to the live project leave the snapshot untouched. Each sample's reconstruction
-    is shared by reference, so the snapshot reuses those multi-megabyte audio
-    arrays. Reconstruction edits are copy-on-write — each installs a fresh
-    reconstruction — so the shared reconstruction stays valid for the life of the
-    snapshot.
-    """
-    shared_reconstructions: Dict[int, object] = {
-        id(sample.reconstruction): sample.reconstruction for sample in project.samples
-    }
-    return copy.deepcopy(project, shared_reconstructions)
 
 
 class ProjectSource(Protocol):
@@ -51,5 +34,5 @@ class ProjectSnapshot:
 
     @classmethod
     def capture(cls, source: ProjectSource) -> Self:
-        """Takes the document ``source`` currently holds, copied through :func:`snapshot_project`."""
-        return cls(project=snapshot_project(source.project))
+        """Takes the document ``source`` currently holds, through :meth:`Project.snapshot`."""
+        return cls(project=source.project.snapshot())

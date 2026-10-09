@@ -1,4 +1,4 @@
-from typing import Final, Optional, Self, Tuple
+from typing import AbstractSet, Final, Optional, Self, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -9,14 +9,15 @@ from sampletones_core.configs.display import (
     format_transformation,
 )
 from sampletones_core.constants.enums import (
-    GENERATOR_ABBREVIATION_PATTERN,
-    GENERATOR_ABBREVIATION_TO_NAME,
-    GeneratorName,
+    CHANNEL_ABBREVIATION_PATTERN,
+    CHANNEL_ABBREVIATION_TO_NAME,
+    ChannelName,
     SpectrumMethod,
-    abbreviate_generator_names,
+    abbreviate_channel_names,
+    ordered_channels,
 )
 from sampletones_core.constants.field_aliases import ALIASES
-from sampletones_shared.utils.serialization import HASH_PATTERN, hash_models
+from sampletones_shared.utils.hashing import HASH_PATTERN, hash_models
 
 CONFIG_DIRECTORY_SEPARATOR: Final[str] = "_"
 
@@ -37,23 +38,48 @@ class ConfigDirectoryFields(BaseModel):
     nf: int = Field(gt=0, validation_alias=ALIASES["nf"])
     sm: SpectrumMethod = Field(validation_alias=ALIASES["sm"])
     tg: int = Field(ge=0, validation_alias=ALIASES["tg"])
-    gn: str = Field(pattern=GENERATOR_ABBREVIATION_PATTERN, validation_alias=ALIASES["gn"])
+    gn: str = Field(pattern=CHANNEL_ABBREVIATION_PATTERN, validation_alias=ALIASES["gn"])
     ch: str = Field(pattern=HASH_PATTERN, validation_alias=ALIASES["ch"])
 
     @property
-    def generators(self) -> Tuple[GeneratorName, ...]:
-        return tuple(GENERATOR_ABBREVIATION_TO_NAME[character] for character in self.gn)
+    def channels(self) -> Tuple[ChannelName, ...]:
+        return tuple(CHANNEL_ABBREVIATION_TO_NAME[character] for character in self.gn)
 
     @classmethod
-    def from_config(cls, config: Config) -> Self:
+    def from_config(cls, config: Config, channels: AbstractSet[ChannelName]) -> Self:
+        """The fields a reconstruction's directory is named from: the settings, and the channels it was handed.
+
+        The channels come from the setup, so the name is written in the order the application
+        states them however the caller gathered the set.
+        """
+        return cls.from_hashed_config(config, channels, settings_hash=cls.settings_hash(config))
+
+    @classmethod
+    def from_hashed_config(
+        cls,
+        config: Config,
+        channels: AbstractSet[ChannelName],
+        *,
+        settings_hash: str,
+    ) -> Self:
+        """The fields :meth:`from_config` names, with the hash of the settings given.
+
+        A caller naming the directories of several channel sets under one configuration hashes the
+        settings once with :meth:`settings_hash` and names each set from that hash.
+        """
         return cls(
             sr=config.library.sample_rate,
             nf=config.library.nes_frequency,
             sm=config.library.spectrum_method,
             tg=config.library.transformation_gamma,
-            gn=abbreviate_generator_names(config.generation.generators),
-            ch=hash_models(config.library, config.generation),
+            gn=abbreviate_channel_names(ordered_channels(channels)),
+            ch=settings_hash,
         )
+
+    @staticmethod
+    def settings_hash(config: Config) -> str:
+        """The hash a directory's name carries, folding in the library and generation settings."""
+        return hash_models(config.library, config.generation)
 
     @classmethod
     def from_directory_name(cls, name: str) -> Optional[Self]:
@@ -96,7 +122,3 @@ class ConfigDirectoryFields(BaseModel):
                 self.gn,
             ]
         )
-
-    @classmethod
-    def generate_config_directory_name(cls, config: Config) -> str:
-        return cls.from_config(config).directory_name

@@ -1,154 +1,99 @@
-from typing import Tuple
+from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from typing import Dict, Tuple
+
+from pydantic import BaseModel, Field, model_validator
 
 from sampletones_core.formats.bitphase.model.config import BITPHASE_MODEL_CONFIG
 from sampletones_core.formats.bitphase.specification.chip import CHIP_TYPE_NES
-from sampletones_core.formats.bitphase.specification.instruments import (
-    ABSOLUTE_TONE,
-    CONSTANT_VOLUME,
-    KEEP_PHASE,
-    LOOP_FROM_START,
-    MAX_PULSE_WIDTH,
-    MAX_SOUND_LENGTH,
-    MAX_SWEEP_RATE,
-    MAX_SWEEP_SHIFT,
-    MAX_TONE_ADD,
-    MAX_VOLUME_OR_RATE,
-    MIN_PULSE_WIDTH,
-    MIN_SOUND_LENGTH,
-    MIN_SWEEP_RATE,
-    MIN_SWEEP_SHIFT,
-    MIN_TONE_ADD,
-    MIN_VOLUME_OR_RATE,
-    NO_SWEEP,
-    NO_SWEEP_RATE,
-    NO_SWEEP_SHIFT,
-    NO_TONE_OFFSET,
-    SUSTAINED_SOUND_LENGTH,
+from sampletones_core.formats.bitphase.specification.instruments import LOOP_FROM_START
+from sampletones_core.formats.bitphase.specification.macros import (
+    MAX_MACRO_LENGTH,
+    MIN_MACRO_LENGTH,
+    NES_MACRO_FIELDS,
+    NesMacroField,
 )
 
 
-class NesInstrumentRow(BaseModel):
-    """One tick of a Bitphase NES instrument.
+class InstrumentMacro(BaseModel):
+    """One field of an instrument, read a value per engine tick.
 
-    An instrument advances one row per engine tick, so a row carries every register
-    value the channel takes for that tick. ``pulse_width`` selects the duty on a square
-    channel and the LFSR mode on the noise channel; ``volume_or_rate`` is a literal
-    volume while ``envelope`` stays off. The remaining fields hold the settings a
-    reconstruction leaves alone: the note sustains, the pitch comes from the tuning
-    table, and the hardware sweep stays disabled.
+    Every field advances on a counter of its own, so a macro carries the length and the
+    repeat point that field alone asks for. ``loop`` indexes the values, and playback
+    circles from it once the values run out — which makes the whole macro circle where it
+    stands at the first value, and the last value hold where it stands at the last.
     """
 
     model_config = BITPHASE_MODEL_CONFIG
 
-    pulse_width: int = Field(
+    values: Tuple[int, ...] = Field(
         ...,
-        ge=MIN_PULSE_WIDTH,
-        le=MAX_PULSE_WIDTH,
-        description="Square duty cycle, or the noise channel's LFSR mode.",
-    )
-    volume_or_rate: int = Field(
-        ...,
-        ge=MIN_VOLUME_OR_RATE,
-        le=MAX_VOLUME_OR_RATE,
-        description="Channel volume while the hardware envelope stays off.",
-    )
-    retrigger: bool = Field(
-        default=KEEP_PHASE,
-        description="Restarts the waveform phase this tick.",
-    )
-    sound_length: int = Field(
-        default=SUSTAINED_SOUND_LENGTH,
-        ge=MIN_SOUND_LENGTH,
-        le=MAX_SOUND_LENGTH,
-        description="Length counter in ticks; zero holds the note for as long as the envelope runs.",
-    )
-    envelope: bool = Field(
-        default=CONSTANT_VOLUME,
-        description="Reads volume_or_rate as a decay rate.",
-    )
-    tone_add: int = Field(
-        default=NO_TONE_OFFSET,
-        ge=MIN_TONE_ADD,
-        le=MAX_TONE_ADD,
-        description="Offset added to the tuning-table period on a square or triangle channel.",
-    )
-    tone_accumulation: bool = Field(
-        default=ABSOLUTE_TONE,
-        description="Sums tone_add across ticks.",
-    )
-    sweep: bool = Field(
-        default=NO_SWEEP,
-        description="Enables the square channel's sweep unit.",
-    )
-    sweep_rate: int = Field(
-        default=NO_SWEEP_RATE,
-        ge=MIN_SWEEP_RATE,
-        le=MAX_SWEEP_RATE,
-    )
-    sweep_shift: int = Field(
-        default=NO_SWEEP_SHIFT,
-        ge=MIN_SWEEP_SHIFT,
-        le=MAX_SWEEP_SHIFT,
-    )
-
-
-class BitphaseInstrument(BaseModel):
-    """A named row list one pattern cell triggers, held in a project's instrument list.
-
-    ``id`` is the base-36 text a pattern's instrument column matches on, and ``loop``
-    is the row playback returns to once it runs off the end.
-    """
-
-    model_config = BITPHASE_MODEL_CONFIG
-
-    id: str = Field(
-        ...,
-        description="Base-36 identifier a pattern row references.",
-    )
-    chip_type: str = Field(
-        default=CHIP_TYPE_NES,
-        description="Chip whose row layout the instrument uses.",
-    )
-    rows: Tuple[NesInstrumentRow, ...] = Field(
-        ...,
-        description="One row per engine tick.",
+        min_length=MIN_MACRO_LENGTH,
+        max_length=MAX_MACRO_LENGTH,
+        description="Value the field takes on each tick.",
     )
     loop: int = Field(
         default=LOOP_FROM_START,
         ge=0,
-        description="Row playback returns to after the last row.",
+        description="Index among the values playback circles from.",
+    )
+
+    @model_validator(mode="after")
+    def _check_loop(self) -> InstrumentMacro:
+        if self.loop >= len(self.values):
+            raise ValueError(f"loop {self.loop} stands past the {len(self.values)} values written")
+
+        return self
+
+
+class MacroInstrument(BaseModel):
+    """The fields every stored Bitphase instrument carries.
+
+    An instrument states a macro for each field whose values it decides, and Bitphase reads
+    every other field it offers at that field's own default.
+    """
+
+    model_config = BITPHASE_MODEL_CONFIG
+
+    chip_type: str = Field(
+        default=CHIP_TYPE_NES,
+        description="Chip whose fields the macros drive.",
     )
     name: str = Field(
         ...,
         description="Name shown in the instrument list.",
     )
+    macros: Dict[NesMacroField, InstrumentMacro] = Field(
+        ...,
+        description="One macro per field the instrument decides.",
+    )
+
+    @model_validator(mode="after")
+    def _check_values(self) -> MacroInstrument:
+        for field, macro in self.macros.items():
+            spec = NES_MACRO_FIELDS[field]
+            for value in macro.values:
+                if not spec.minimum <= value <= spec.maximum:
+                    raise ValueError(f"{field} holds {value}, outside the {spec.minimum}..{spec.maximum} it takes")
+
+        return self
 
 
-class BitphaseInstrumentPreset(BaseModel):
-    """A single instrument as Bitphase's instruments panel loads and saves it.
+class BitphaseInstrument(MacroInstrument):
+    """A named instrument one pattern cell triggers, held in a project's instrument list.
 
-    The panel writes the loaded rows into the instrument slot the user has selected,
-    which supplies the id and leaves this file carrying the rows alone.
+    ``id`` is the base-36 text a pattern's instrument column matches on.
     """
 
-    model_config = BITPHASE_MODEL_CONFIG
+    id: str = Field(
+        ...,
+        description="Base-36 identifier a pattern row references.",
+    )
 
-    chip_type: str = Field(
-        default=CHIP_TYPE_NES,
-        description="Chip whose row layout the preset uses.",
-    )
-    name: str = Field(
-        ...,
-        description="Name the preset offers for the instrument.",
-    )
-    loop: int = Field(
-        default=LOOP_FROM_START,
-        ge=0,
-        description="Row playback returns to after the last row.",
-    )
-    rows: Tuple[NesInstrumentRow, ...] = Field(
-        ...,
-        description="One row per engine tick.",
-    )
+
+class BitphaseInstrumentPreset(MacroInstrument):
+    """A single instrument as Bitphase's instruments panel loads and saves it.
+
+    The panel writes the loaded macros into the instrument slot the user has selected,
+    which supplies the id and the chip and leaves this file carrying the macros alone.
+    """

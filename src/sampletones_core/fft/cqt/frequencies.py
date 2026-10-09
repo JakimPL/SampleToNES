@@ -15,7 +15,7 @@ def calculate_cqt_frequencies(
     Calculate center frequencies for CQT bins.
 
     Bins are spaced geometrically from ``cutoff``, so bin ``k`` sits at
-    ``cutoff * 2 ** (k / bins_per_octave)`` — a constant ratio between neighbours that keeps the
+    ``cutoff * 2 ** (k / bins_per_octave)`` — a constant ratio between neighbors that keeps the
     quality factor constant across the spectrum.
 
     Args:

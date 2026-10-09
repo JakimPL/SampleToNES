@@ -5,7 +5,10 @@ from pydantic import PlainValidator, ValidationInfo
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.palette.colors.literal import LiteralColor
 from sampletones_application.utils.palette.colors.named import NamedColor
-from sampletones_application.utils.palette.reference import PaletteReference, is_reference
+from sampletones_application.utils.palette.reference import (
+    PaletteReference,
+    is_reference,
+)
 from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_shared.utils.color import parse_hex_color
 
@@ -13,7 +16,7 @@ PALETTE_SOURCE_CONTEXT_KEY: Final[str] = "palette_source"
 
 
 def palette_source_from_context(info: ValidationInfo) -> PaletteSource:
-    """The palette source a colour reference binds to, taken from the validation context.
+    """The palette source a color reference binds to, taken from the validation context.
 
     Raises:
         ValueError: when the context omits the palette source entry.
@@ -33,10 +36,10 @@ def palette_source_from_context(info: ValidationInfo) -> PaletteSource:
 
 
 def _written_color(value: object, info: ValidationInfo) -> BaseColor:
-    """The colour a configuration entry spells out, read once so its token answers at load.
+    """The color a configuration entry spells out, read once so its token answers at load.
 
     An entry is written as a palette reference (``.token``, optionally ``.token/alpha``) or
-    as a ``#rrggbb`` literal, and is kept in the form it was written. A colour built in code
+    as a ``#rrggbb`` literal, and is kept in the form it was written. A color built in code
     passes through as it stands, which is how a derived shade reaches a field.
 
     Raises:
@@ -47,7 +50,9 @@ def _written_color(value: object, info: ValidationInfo) -> BaseColor:
         return value
 
     if not isinstance(value, str):
-        raise ValueError(f"A colour is written as a palette reference or a hex literal, got {type(value)}")
+        raise ValueError(  # noqa: TRY004
+            f"A color is written as a palette reference or a hex literal, got {type(value)}"
+        )
 
     text = value.strip()
     color: BaseColor

@@ -1,30 +1,76 @@
 from pathlib import Path
-from typing import Callable, Dict, FrozenSet, List, Optional, Protocol, Tuple
+from typing import (
+    Callable,
+    Dict,
+    Final,
+    FrozenSet,
+    List,
+    Optional,
+    Protocol,
+    Sequence,
+    Tuple,
+)
 
 import numpy as np
 
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.constants.sources import SourceKind
+from sampletones_application.logic.export.instrument.source import ExportableInstrument
 from sampletones_application.logic.reconstruction.data import ReconstructionData
+from sampletones_application.logic.reconstruction.listening import StemListening
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.view_model.reconstruction.reconstruction import (
-    ReconstructionPathState,
+from sampletones_application.logic.reconstruction.ownership import ownership_lanes
+from sampletones_application.view_model.reconstruction.envelopes import (
+    ChannelEnvelopesViewModel,
+)
+from sampletones_application.view_model.reconstruction.paths.path import (
     ReconstructionPathViewModel,
+)
+from sampletones_application.view_model.reconstruction.paths.state import (
+    ReconstructionPathState,
+)
+from sampletones_application.view_model.reconstruction.rate import RateLock
+from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
+from sampletones_application.view_model.reconstruction.stems import (
+    ReconstructionStemsViewModel,
+)
 from sampletones_application.view_model.shared.audio_data import AudioData
+from sampletones_application.view_model.shared.ownership import OwnershipRibbonViewModel
+from sampletones_application.view_model.shared.stems import (
+    StemRowViewModel,
+    StemsListViewModel,
+)
 from sampletones_application.view_model.shared.waveform_data import WaveformData
-from sampletones_core.constants.enums import AudioSourceType, GeneratorName
+from sampletones_core.configs.library import InstructionsLibraryConfig
+from sampletones_core.constants.algorithm import AUTHORED_STEM_ID
+from sampletones_core.constants.enums import AudioSourceType, ChannelName
 from sampletones_core.exporters.feature import Features
 from sampletones_core.exporters.naming import instrument_slice_name
-from sampletones_core.trackers.backend import TrackerBackend
-from sampletones_core.trackers.extensions import format_for_extension
-from sampletones_core.trackers.format import TrackerFormat
-from sampletones_core.trackers.request import InstrumentExport, SampleExport
-from sampletones_core.trackers.scope import ExportScope
+from sampletones_core.exports.backend import ExportBackend
+from sampletones_core.exports.format import ExportFormat
+from sampletones_core.exports.request import (
+    InstrumentExport,
+    InstrumentSource,
+    SampleExport,
+)
+from sampletones_core.exports.scope import ExportScope
+from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.selection import (
+    StemSelection,
+)
 from sampletones_shared.logger import logger
+from sampletones_shared.music import Tuning
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
-from sampletones_shared.utils.system.paths import get_filename, open_path_in_explorer
+from sampletones_shared.utils.system.paths import (
+    first_missing,
+    get_filename,
+    open_path_in_explorer,
+)
+
+EMPTY_STEMS_LIST: Final[StemsListViewModel] = StemsListViewModel.empty()
 
 
 class ExportServiceProtocol(Protocol):
@@ -44,14 +90,14 @@ class ExportServiceProtocol(Protocol):
     def export_instrument(
         self,
         destination: Path,
-        backend: TrackerBackend,
+        backend: ExportBackend,
         request: InstrumentExport,
     ) -> None: ...
 
     def export_sample(
         self,
         destination: Path,
-        backend: TrackerBackend,
+        backend: ExportBackend,
         request: SampleExport,
     ) -> None: ...
 
@@ -62,70 +108,95 @@ class ReconstructionPanelLogic(CallbackMixin):
         session_manager: SessionManager,
         reconstruction_manager: ReconstructionManager,
         export_service: ExportServiceProtocol,
-        tracker_backends: Dict[TrackerFormat, TrackerBackend],
+        export_backends: Dict[ExportFormat, ExportBackend],
     ) -> None:
         self._session_manager = session_manager
         self._reconstruction_manager = reconstruction_manager
         self._export_service = export_service
-        self._tracker_backends = tracker_backends
+        self._export_backends = export_backends
 
         self._current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
-        self._playing_generators: FrozenSet[GeneratorName] = frozenset()
-        self._selected_generators: List[GeneratorName] = []
+        self._playing_channels: FrozenSet[ChannelName] = frozenset()
+        self._selected_channels: List[ChannelName] = []
 
         self.on_view_changed: Optional[Callable[[ReconstructionViewModel], None]] = None
         self.on_audio_data_changed: Optional[Callable[[Optional[AudioData]], None]] = None
-        self.on_waveform_load_changed: Optional[Callable[[WaveformData, List[GeneratorName]], None]] = None
-        self.on_waveform_update_changed: Optional[Callable[[WaveformData, List[GeneratorName]], None]] = None
+        self.on_waveform_load_changed: Optional[Callable[[WaveformData, List[ChannelName]], None]] = None
+        self.on_waveform_update_changed: Optional[Callable[[WaveformData, List[ChannelName]], None]] = None
         self.on_waveform_cleared: Optional[VoidCallback] = None
         self.on_waveform_source_changed: Optional[Callable[[AudioSourceType], None]] = None
 
-        self.on_open_export_instrument_dialog: Optional[Callable[[str, str, GeneratorName], None]] = None
-        self.on_open_export_instruments_dialog: Optional[Callable[[str, str, TrackerFormat], None]] = None
+        self.on_open_export_instruments_dialog: Optional[Callable[[str, str, ExportFormat], None]] = None
         self.on_open_export_wav_dialog: Optional[Callable[[str, str], None]] = None
 
         self.on_locate_audio_not_found: Optional[PathCallback] = None
+        self.on_stems_view_changed: Optional[Callable[[ReconstructionStemsViewModel], None]] = None
+        self.on_ownership_changed: Optional[Callable[[OwnershipRibbonViewModel], None]] = None
+        self.on_heard_changed: Optional[VoidCallback] = None
 
     def display_reconstruction(self) -> None:
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             return
 
-        self._playing_generators = frozenset(reconstruction_data.reconstruction.playing_generators)
-        self._selected_generators = self._in_channel_order(self._playing_generators)
+        self._playing_channels = frozenset(reconstruction_data.reconstruction.playing_channels)
+        self._selected_channels = self._in_channel_order(self._playing_channels)
 
         view_model = self._build_view_model(reconstruction_data)
         if not view_model.audio_source_enabled:
             self._current_audio_source = AudioSourceType.RECONSTRUCTION
 
         self.call(self.on_view_changed, view_model)
+        self.call(
+            self.on_stems_view_changed,
+            self._build_stems_view_model(reconstruction_data),
+        )
         self.call(self.on_waveform_source_changed, self._current_audio_source)
         self.call(
             self.on_waveform_load_changed,
-            reconstruction_data.waveform_data(),
-            self._selected_generators,
+            reconstruction_data.waveform_data(
+                self._reconstruction_manager.renders,
+                self._stem_selection,
+            ),
+            self._selected_channels,
         )
+        self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
         self._emit_audio_data()
 
-    def update_reconstruction(self) -> None:
+    def update_reconstruction(self, *, refit_waveform: bool = False) -> None:
+        """Re-answers every reading of the document after an edit.
+
+        ``refit_waveform`` names an edit that moved the audio's own length, such as a retune,
+        so the waveform's view is re-fitted to the new span rather than held at a position the
+        old length no longer answers to.
+        """
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             return
 
-        self._adopt_playing_generators(frozenset(reconstruction_data.reconstruction.playing_generators))
+        self._adopt_playing_channels(frozenset(reconstruction_data.reconstruction.playing_channels))
 
         self.call(self.on_view_changed, self._build_view_model(reconstruction_data))
         self.call(
-            self.on_waveform_update_changed,
-            reconstruction_data.waveform_data(),
-            self._selected_generators,
+            self.on_stems_view_changed,
+            self._build_stems_view_model(reconstruction_data),
         )
+        self.call(
+            self.on_waveform_update_changed,
+            reconstruction_data.waveform_data(
+                self._reconstruction_manager.renders,
+                self._stem_selection,
+            ),
+            self._selected_channels,
+            refit=refit_waveform,
+        )
+        self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
         if self._current_audio_source != AudioSourceType.ORIGINAL:
             self._emit_audio_data()
 
-    def _adopt_playing_generators(
+    def _adopt_playing_channels(
         self,
-        playing_generators: FrozenSet[GeneratorName],
+        playing_channels: FrozenSet[ChannelName],
     ) -> None:
         """Carries the reader's choice of channels across an edit.
 
@@ -133,15 +204,13 @@ class ReconstructionPanelLogic(CallbackMixin):
         whatever the reader chose for it, and one gaining its first frame joins the waveform,
         so the checkboxes report what plays while a deliberate choice survives.
         """
-        selected = (set(self._selected_generators) & playing_generators) | (
-            playing_generators - self._playing_generators
-        )
-        self._playing_generators = playing_generators
-        self._selected_generators = self._in_channel_order(frozenset(selected))
+        selected = (set(self._selected_channels) & playing_channels) | (playing_channels - self._playing_channels)
+        self._playing_channels = playing_channels
+        self._selected_channels = self._in_channel_order(frozenset(selected))
 
     @staticmethod
-    def _in_channel_order(generators: FrozenSet[GeneratorName]) -> List[GeneratorName]:
-        return [generator_name for generator_name in GeneratorName.items() if generator_name in generators]
+    def _in_channel_order(channels: FrozenSet[ChannelName]) -> List[ChannelName]:
+        return [channel_name for channel_name in ChannelName.items() if channel_name in channels]
 
     def _build_view_model(
         self,
@@ -150,30 +219,55 @@ class ReconstructionPanelLogic(CallbackMixin):
         reconstruction_file, original_audio = self._build_path_view_models(reconstruction_data)
         return ReconstructionViewModel(
             reconstruction_loaded=True,
-            playing_generators=self._playing_generators,
-            selected_generators=frozenset(self._selected_generators),
+            playing_channels=self._playing_channels,
+            selected_channels=frozenset(self._selected_channels),
             reconstruction_file=reconstruction_file,
             original_audio=original_audio,
+            nes_frequency=reconstruction_data.config.nes_frequency,
+            rate_lock=self._rate_lock(reconstruction_data),
         )
+
+    def _rate_lock(self, reconstruction_data: ReconstructionData) -> Optional[RateLock]:
+        """Why the open document keeps its rate, or ``None`` while the tab may retime it.
+
+        A sample of the project follows the project's rate. A document with no file keeps its
+        rate until it is saved to one.
+        """
+        if self._reconstruction_manager.is_project_sample:
+            return RateLock.PROJECT_SAMPLE
+
+        if reconstruction_data.filepath is None:
+            return RateLock.NO_FILE
+
+        return None
 
     def close_reconstruction(self) -> None:
         self._current_audio_source = AudioSourceType.RECONSTRUCTION
-        self._playing_generators = frozenset()
-        self._selected_generators = []
+        self._playing_channels = frozenset()
+        self._selected_channels = []
         self.call(self.on_audio_data_changed, None)
         self.call(self.on_waveform_cleared)
+        self.call(
+            self.on_stems_view_changed,
+            ReconstructionStemsViewModel(
+                reconstruction_loaded=False,
+                stems=EMPTY_STEMS_LIST,
+            ),
+        )
         empty_path = ReconstructionPathViewModel(
             state=ReconstructionPathState.EMPTY,
-            path="",
+            paths=(),
         )
         self.call(
             self.on_view_changed,
             ReconstructionViewModel(
                 reconstruction_loaded=False,
-                playing_generators=frozenset(),
-                selected_generators=frozenset(),
+                playing_channels=frozenset(),
+                selected_channels=frozenset(),
                 reconstruction_file=empty_path,
                 original_audio=empty_path,
+                nes_frequency=None,
+                rate_lock=None,
             ),
         )
 
@@ -182,74 +276,280 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._emit_audio_data()
         self.call(self.on_waveform_source_changed, audio_source)
 
-    def set_selected_generators(self, generators: List[GeneratorName]) -> None:
-        self._selected_generators = generators
+    def set_selected_channels(self, channels: List[ChannelName]) -> None:
+        """Adopts the reader's channel choice, which the stems list reports as muted columns."""
+        self._selected_channels = channels
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             return
 
+        self.call(
+            self.on_stems_view_changed,
+            self._build_stems_view_model(reconstruction_data),
+        )
         self.call(
             self.on_waveform_load_changed,
-            reconstruction_data.waveform_data(),
-            generators,
+            reconstruction_data.waveform_data(
+                self._reconstruction_manager.renders,
+                self._stem_selection,
+            ),
+            channels,
         )
+        self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
         self._emit_audio_data()
 
-    def request_export_instrument_dialog(
+    def set_stem_channels(
         self,
-        generator_name: GeneratorName,
+        stem_id: int,
+        channels: FrozenSet[ChannelName],
     ) -> None:
-        """Asks for the destination one generator slice is written to.
+        """Adopts the channels one recording is heard on and re-answers playback and the waveform.
 
-        Every tracker able to write a single slice is offered at once, so the generator travels
-        with the request to the dialog and back. The suggestion is the instrument's name on its
-        own, leaving the tracker to the dialog's file-type selector and to any extension typed
-        over it.
-
-        Args:
-            generator_name: The generator whose slice is written.
+        The choice is listening state, so it filters what plays, what the waveform shows and
+        what the instruments panel draws while the document stands as it is.
         """
+        self._listening.set_channels(stem_id, channels)
+        self._refresh_listening()
+
+    def solo_stem(self, stem_id: int) -> None:
+        """Hears one recording alone, or returns to the choice it replaced when it already is.
+
+        Like the boxes on its row, the solo is listening state, so it re-answers what plays and
+        what the waveform and the instruments panel show while the document stands as it is.
+        """
+        self._listening.solo(stem_id)
+        self._refresh_listening()
+
+    def _refresh_listening(self) -> None:
+        """Re-answers every reading of the document after the listening choice changed."""
+        self._reconstruction_manager.refresh_features()
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
-            raise AssertionError("Expected reconstruction data to be loaded before exporting an instrument")
-
-        if generator_name not in reconstruction_data.reconstruction.playing_generators:
             return
 
-        instrument_name = self._get_instrument_name(generator_name)
-        default_path = str(self._session_manager.get_instrument_path())
-
         self.call(
-            self.on_open_export_instrument_dialog,
-            instrument_name,
-            default_path,
-            generator_name,
+            self.on_stems_view_changed,
+            self._build_stems_view_model(reconstruction_data),
         )
+        self.call(
+            self.on_waveform_load_changed,
+            reconstruction_data.waveform_data(
+                self._reconstruction_manager.renders,
+                self._stem_selection,
+            ),
+            self._selected_channels,
+        )
+        self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
+        self._emit_audio_data()
+        self.call(self.on_heard_changed)
+
+    @property
+    def _listening(self) -> StemListening:
+        """Which recordings the reader is listening to, which the open document holds."""
+        return self._reconstruction_manager.listening
+
+    @property
+    def _stem_selection(self) -> StemSelection:
+        return self._listening.selection
+
+    def _build_ownership_ribbon(
+        self,
+        reconstruction_data: ReconstructionData,
+    ) -> OwnershipRibbonViewModel:
+        """The recordings behind each stretch of what the document plays.
+
+        A lane stands for every channel the document plays, and paints the stretches the
+        recordings heard there hold, so the ribbon reads as the waveform above it sounds — one
+        recording throughout paints one unbroken stretch, which still answers whether a channel
+        is sounding and by whom. A channel the reader has switched off keeps its lane and stands
+        empty, since the lanes answer for the document while what fills them answers for the
+        listening: the rows beneath the waveform hold still while a reader picks their way
+        through it.
+        """
+        stems_data = reconstruction_data.reconstruction.stems_data
+        owned = stems_data.assignments_by_channel
+        assignments: Dict[ChannelName, Sequence[int]] = {
+            channel_name: owned[channel_name] if channel_name in self._selected_channels else ()
+            for channel_name in self._in_channel_order(self._playing_channels)
+            if channel_name in owned
+        }
+        lanes = tuple(ownership_lanes(assignments, self.heard_on).values())
+        return OwnershipRibbonViewModel(
+            lanes=lanes,
+            frame_length=reconstruction_data.reconstruction.config.frame_length,
+            total_frames=max((len(owned[lane.channel_name]) for lane in lanes), default=0),
+        )
+
+    def heard_on(self, channel_name: ChannelName) -> FrozenSet[int]:
+        """The recordings the reader hears on one channel, which is the scope an edit writes in.
+
+        What is heard and what is edited are one choice, so an edit reaches exactly the frames
+        the waveform draws, and a recording switched off on this channel reads there as it stands.
+        """
+        return self._listening.heard_on(channel_name)
+
+    def _build_stems_view_model(
+        self,
+        reconstruction_data: ReconstructionData,
+    ) -> ReconstructionStemsViewModel:
+        """The recorded assignment as the stems list draws it, banded by the picking levels.
+
+        Each row reads as the recording the document remembers, so one whose file this machine
+        no longer names — a sample embedded in a project — keeps its name, its boxes and its
+        place among the levels. A document whose record names its recordings nowhere shows the
+        card's empty state.
+        """
+        reconstruction = reconstruction_data.reconstruction
+        stems_data = reconstruction.stems_data
+        if not stems_data.sources:
+            return ReconstructionStemsViewModel(
+                reconstruction_loaded=True,
+                stems=EMPTY_STEMS_LIST,
+            )
+
+        levels = self._levels_with_edits(stems_data)
+        rows = tuple(
+            self._stem_row(
+                stems_data,
+                stem_id,
+                level_index,
+                position,
+                len(level),
+                len(levels),
+            )
+            for level_index, level in enumerate(levels)
+            for position, stem_id in enumerate(level)
+        )
+        channels_in_play = self._in_channel_order(
+            frozenset(channel_name for row in rows for channel_name in row.offered_channels)
+        )
+        return ReconstructionStemsViewModel(
+            reconstruction_loaded=True,
+            stems=StemsListViewModel(
+                rows=rows,
+                channels_in_play=tuple(channels_in_play),
+                muted_channels=frozenset(channels_in_play) - frozenset(self._selected_channels),
+                picked_keys=frozenset(),
+                picking_room=None,
+                live=True,
+                collapse_levels=False,
+                selected_key=None,
+            ),
+            hierarchy_mode=stems_data.config.hierarchy.mode,
+        )
+
+    def _levels_with_edits(self, stems_data: StemsData) -> List[List[int]]:
+        """The picking levels, with the frames the reader wrote standing in a level of their own.
+
+        The hierarchy orders the recordings a conversion picked between; what the reader wrote
+        answers to none of it, so it stands after them all wherever it holds a frame.
+        """
+        levels = [list(level) for level in stems_data.config.hierarchy.levels]
+        if AUTHORED_STEM_ID in self._listening.offered:
+            levels.append([AUTHORED_STEM_ID])
+
+        return levels
+
+    def _stem_row(
+        self,
+        stems_data: StemsData,
+        stem_id: int,
+        level: int,
+        position: int,
+        level_size: int,
+        level_count: int,
+    ) -> StemRowViewModel:
+        """One recording's row: what it is called, where it lives, and the boxes it offers."""
+        source = stems_data.sources_by_id.get(stem_id)
+        return StemRowViewModel(
+            key=str(stem_id),
+            kind=SourceKind.RECORDING if source is not None else SourceKind.EDITS,
+            name=source.name if source is not None else "",
+            path=source.path if source is not None else None,
+            held=(),
+            channels=self._listening.heard.get(stem_id, frozenset()),
+            partial_channels=frozenset(),
+            offered_channels=self._listening.offered.get(stem_id, frozenset()),
+            available=source is not None and source.path is not None and source.path.is_file(),
+            level=level,
+            position=position,
+            stem_id=stem_id if stem_id in stems_data.config.entries_by_id else None,
+            level_size=level_size,
+            level_count=level_count,
+        )
+
+    def exportable_instrument(
+        self,
+        channel_name: ChannelName,
+    ) -> Optional[ExportableInstrument]:
+        """The loaded reconstruction's ``channel_name`` slice, ready to be given a destination.
+
+        A reconstruction has no loop flag of its own — that belongs to a sample placed in a
+        project — so the instrument plays its envelopes once.
+
+        Args:
+            channel_name: The channel whose slice is written.
+
+        The slice holds what the reader is listening to, which is what the panel beside it
+        draws, so an export writes what stands on screen.
+
+        Returns:
+            Optional[ExportableInstrument]: The slice and the name to suggest for it, or ``None``
+            where that channel describes no frame and is written nowhere.
+
+        Raises:
+            AssertionError: If no reconstruction is loaded.
+        """
+        features = self._heard_features()[channel_name]
+        if not features.has_frames:
+            return None
+
+        return ExportableInstrument(
+            name=self._get_instrument_name(channel_name),
+            source=InstrumentSource(
+                channel=channel_name,
+                features=features,
+                nes_frequency=self._nes_frequency(),
+                tuning=self._tuning(),
+            ),
+        )
+
+    def _heard_features(self) -> ChannelEnvelopesViewModel:
+        """The envelopes of the part the reader is listening to, as the open document reads them.
+
+        Raises:
+            AssertionError: If no reconstruction is loaded.
+        """
+        features = self._reconstruction_manager.current_features
+        if features is None:
+            raise AssertionError("Expected reconstruction data to be loaded before reading its envelopes")
+
+        return features
 
     def request_export_instruments_dialog(
         self,
-        tracker_format: TrackerFormat,
+        export_format: ExportFormat,
     ) -> None:
         """Asks for the destination the loaded reconstruction's slices are named after.
 
-        The tracker comes from the action that was chosen, so the dialog offers that
-        tracker's file type alone and the suggestion already ends in its extension.
+        The format comes from the action that was chosen, so the dialog offers that
+        format's file type alone and the suggestion already ends in its extension.
 
         Args:
-            tracker_format: The tracker the slices are written for.
+            export_format: The format the slices are written in.
         """
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting instruments")
 
         default_path = str(self._session_manager.get_instrument_path())
-        extension = self._tracker_backends[tracker_format].extension(ExportScope.SAMPLE)
+        extension = self._export_backends[export_format].extension(ExportScope.SAMPLE)
 
         self.call(
             self.on_open_export_instruments_dialog,
             get_filename(reconstruction_data.name, extension),
             default_path,
-            tracker_format,
+            export_format,
         )
 
     def request_export_wav_dialog(self) -> None:
@@ -260,132 +560,120 @@ class ReconstructionPanelLogic(CallbackMixin):
         default_filename = reconstruction_data.name
         default_path = str(self._session_manager.get_audio_path())
 
-        self.call(self.on_open_export_wav_dialog, default_filename, default_path)
-
-    def handle_export_instrument_confirmed(
-        self,
-        filepath: Path,
-        generator_name: GeneratorName,
-    ) -> None:
-        """Writes the ``generator_name`` slice of the loaded reconstruction to ``filepath``.
-
-        The extension picks the tracker the slice is written for, and the instrument carries
-        the name the destination was saved under, so renaming the file in the dialog renames
-        the instrument the tracker lists.
-
-        Args:
-            filepath: The destination the dialog was confirmed with.
-            generator_name: The generator whose slice is written.
-        """
-        reconstruction_data = self._reconstruction_data
-        if not reconstruction_data:
-            logger.warning("No reconstruction data available for instrument export")
-            return
-
-        tracker_format = self._tracker_format(filepath, ExportScope.INSTRUMENT)
-        feature = reconstruction_data.feature_data[generator_name]
-
-        self._session_manager.set_instrument_path(filepath.parent)
-        self._export_service.export_instrument(
-            filepath,
-            self._tracker_backends[tracker_format],
-            self._instrument_export(generator_name, feature, filepath.stem),
+        self.call(
+            self.on_open_export_wav_dialog,
+            default_filename,
+            default_path,
         )
 
     def handle_export_instruments_confirmed(
         self,
         destination: Path,
-        tracker_format: TrackerFormat,
+        export_format: ExportFormat,
     ) -> None:
         """Writes the slice of every playing channel of the loaded reconstruction to ``destination``.
 
-        The destination names the batch: each slice takes its generator suffix from the stem,
+        The destination names the batch: each slice takes its channel suffix from the stem,
         so a format gathering the whole reconstruction into one document writes it there while
         one keeping an instrument per file writes its slices beside it. A channel standing by
         describes no frame and is written nowhere.
 
         Args:
             destination: The file the export was confirmed with.
-            tracker_format: The tracker the slices are written for.
+            export_format: The format the slices are written in.
         """
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             logger.warning("No reconstruction data available for instruments export")
             return
 
-        base_name = destination.stem
-        request = SampleExport(
-            name=base_name,
-            instruments=tuple(
-                self._instrument_export(
-                    generator_name,
-                    feature,
-                    instrument_slice_name(base_name, generator_name),
-                )
-                for generator_name, feature in reconstruction_data.feature_data.generators.items()
-                if feature.has_frames
-            ),
-            nes_frequency=self._nes_frequency(),
-        )
+        request = self._sample_request(destination.stem)
         self._session_manager.set_instrument_path(destination.parent)
         self._export_service.export_sample(
             destination,
-            self._tracker_backends[tracker_format],
+            self._export_backends[export_format],
             request,
         )
 
-    def _tracker_format(
-        self,
-        destination: Path,
-        scope: ExportScope,
-    ) -> TrackerFormat:
-        """Reads the tracker format out of the destination's extension.
+    def sample_request(self) -> SampleExport:
+        """The loaded reconstruction's slices as one export, under the reconstruction's own name.
 
-        A save dialog answers with one of the extensions it offered, and an export offers the
-        types its own formats write, so every destination reaching here names a format.
-
-        Args:
-            destination: The destination the export was confirmed with.
-            scope: The scope about to be written.
-
-        Returns:
-            TrackerFormat: The format to write in.
+        A format asking for its choices in a setup of its own names the export before a
+        destination exists, so the slices take the name the reconstruction is known by.
 
         Raises:
-            ValueError: If no format able to express ``scope`` claims the extension.
+            AssertionError: If no reconstruction is loaded.
         """
-        tracker_format = format_for_extension(self._tracker_backends, scope, destination.suffix)
-        if tracker_format is None:
-            raise ValueError(f"No tracker format writes '{destination.suffix}' for a {scope} export")
+        reconstruction_data = self._reconstruction_data
+        if not reconstruction_data:
+            raise AssertionError("Expected reconstruction data to be loaded before exporting instruments")
 
-        return tracker_format
+        return self._sample_request(reconstruction_data.name)
+
+    def _sample_request(self, name: str) -> SampleExport:
+        """The slice of every playing channel of the reconstruction as one export named ``name``.
+
+        Each slice takes its channel suffix from the name, and a channel describing no frame of
+        what the reader is listening to is left to rest.
+        """
+        return SampleExport(
+            name=name,
+            instruments=tuple(
+                self._instrument_export(
+                    channel_name,
+                    feature,
+                    instrument_slice_name(name, channel_name),
+                )
+                for channel_name, feature in self._heard_features().channels.items()
+                if feature.has_frames
+            ),
+            nes_frequency=self._nes_frequency(),
+            tuning=self._tuning(),
+        )
 
     def _instrument_export(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         feature: Features,
         name: str,
     ) -> InstrumentExport:
-        """Packages one generator slice under ``name`` for a tracker backend.
+        """Packages one channel slice under ``name`` for an export backend.
 
-        A reconstruction has no loop flag of its own — that belongs to a sample placed in
-        a project — so the instrument plays its envelopes once.
+        A reconstruction's envelopes state no repeat of their own, so each dimension holds its
+        final value once it runs out and the trailing silence releases the note.
         """
         return InstrumentExport(
             name=name,
-            generator=generator_name,
+            channel=channel_name,
             features=feature,
-            loop=False,
             nes_frequency=self._nes_frequency(),
+            tuning=self._tuning(),
         )
 
     def _nes_frequency(self) -> int:
         """The rate the loaded reconstruction's envelopes advance at, in Hz."""
+        return self._library_config().nes_frequency
+
+    def _tuning(self) -> Tuning:
+        """Where concert pitch sat for the loaded reconstruction.
+
+        A backend sounding the export on its own — the console player's driver reaching pitches
+        through timer values — measures them from the tuning the reconstruction was built with,
+        which keeps what it plays in tune with the reconstruction's own approximation.
+        """
+        return self._library_config().tuning
+
+    def _library_config(self) -> InstructionsLibraryConfig:
+        """The instruction settings the loaded reconstruction was built with.
+
+        Raises:
+            AssertionError: If no reconstruction is loaded.
+        """
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be present")
 
-        return reconstruction_data.config.library.nes_frequency
+        return reconstruction_data.config.library
 
     def handle_export_wav_confirmed(self, filepath: Path) -> None:
         reconstruction_data = self._reconstruction_data
@@ -393,21 +681,28 @@ class ReconstructionPanelLogic(CallbackMixin):
             logger.warning("No reconstruction data available for WAV export")
             return
 
-        audio_snapshot = reconstruction_data.get_partials(self._selected_generators)
+        audio_snapshot = reconstruction_data.partials_for(
+            self._reconstruction_manager.renders,
+            self._selected_channels,
+            self._stem_selection,
+        )
         sample_rate = reconstruction_data.reconstruction.config.sample_rate
         self._session_manager.set_audio_path(filepath)
         self._export_service.export_wav(filepath, sample_rate, audio_snapshot)
 
     def handle_locate_original_audio(self) -> None:
-        path = self._reconstruction_manager.audio_filepath
-        if path is None:
+        if not self._reconstruction_manager.source_paths:
             return
 
         try:
             self._reconstruction_manager.locate_original_audio()
         except FileNotFoundError:
-            logger.warning(f"Original audio file could not be found: '{logger.format_path(path)}'")
-            self.call(self.on_locate_audio_not_found, path)
+            missing_path = first_missing(self._reconstruction_manager.source_paths)
+            if missing_path is None:
+                raise
+
+            logger.warning(f"Original audio file could not be found: '{logger.format_path(missing_path)}'")
+            self.call(self.on_locate_audio_not_found, missing_path)
 
     def open_reconstruction_in_explorer(self) -> None:
         """Reveals the loaded reconstruction's own file in the OS file manager."""
@@ -417,13 +712,13 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         open_path_in_explorer(filepath)
 
-    def _get_instrument_name(self, generator_name: GeneratorName) -> str:
-        """Names the loaded reconstruction's slice for one generator."""
+    def _get_instrument_name(self, channel_name: ChannelName) -> str:
+        """Names the loaded reconstruction's slice for one channel."""
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be present")
 
-        return instrument_slice_name(reconstruction_data.name, generator_name)
+        return instrument_slice_name(reconstruction_data.name, channel_name)
 
     def _emit_audio_data(self) -> None:
         audio_data = self._compute_audio_data()
@@ -436,13 +731,17 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         sample_rate = reconstruction_data.reconstruction.config.sample_rate
         if self._current_audio_source == AudioSourceType.ORIGINAL:
-            original_audio = reconstruction_data.original_audio
-            if original_audio is None:
+            selected_original_audio = reconstruction_data.original_mix_for(self._stem_selection)
+            if selected_original_audio is None:
                 return None
 
-            return AudioData.from_array(original_audio, sample_rate)
+            return AudioData.from_array(selected_original_audio, sample_rate)
 
-        partial_approximation = reconstruction_data.get_partials(self._selected_generators)
+        partial_approximation = reconstruction_data.partials_for(
+            self._reconstruction_manager.renders,
+            self._selected_channels,
+            self._stem_selection,
+        )
         return AudioData.from_array(partial_approximation, sample_rate)
 
     def _build_path_view_models(
@@ -452,9 +751,10 @@ class ReconstructionPanelLogic(CallbackMixin):
         """Resolves the reconstruction-file and original-audio locations for display.
 
         Each location is reported independently. A file-backed reconstruction knows its own file;
-        a detached one (a project sample) reports not-applicable. Its source audio is available when
-        the recorded file loaded, not-found when a path is recorded yet its content is unavailable,
-        and not-applicable when the reconstruction has been detached from its origin.
+        one with no file, such as a project sample or a document whose file was removed, reports
+        not-applicable. Its source audio is available when the recorded file loaded, not-found when
+        a path is recorded yet its content is unavailable, and not-applicable when the
+        reconstruction has been detached from its origin.
         """
         reconstruction_file = self._build_file_path_view_model(reconstruction_data.filepath)
         original_audio = self._build_audio_path_view_model(
@@ -470,36 +770,30 @@ class ReconstructionPanelLogic(CallbackMixin):
         if filepath is None:
             return ReconstructionPathViewModel(
                 state=ReconstructionPathState.NOT_APPLICABLE,
-                path="",
+                paths=(),
             )
 
         return ReconstructionPathViewModel(
             state=ReconstructionPathState.AVAILABLE,
-            path=str(filepath),
+            paths=(str(filepath),),
         )
 
     @staticmethod
     def _build_audio_path_view_model(
-        audio_filepath: Optional[Path],
+        source_paths: Tuple[Path, ...],
         original_audio: Optional[np.ndarray],
     ) -> ReconstructionPathViewModel:
         """Reports the original-audio location, treating a recorded path with unusable content
         the same as a missing one, so the source toggle and waveform agree with what actually loaded."""
-        if audio_filepath is None:
-            return ReconstructionPathViewModel(
-                state=ReconstructionPathState.NOT_APPLICABLE,
-                path="",
-            )
-
-        if original_audio is None:
+        if source_paths and original_audio is None:
             return ReconstructionPathViewModel(
                 state=ReconstructionPathState.NOT_FOUND,
-                path="",
+                paths=(),
             )
 
         return ReconstructionPathViewModel(
-            state=ReconstructionPathState.AVAILABLE,
-            path=str(audio_filepath),
+            state=ReconstructionPathState.from_source_paths(source_paths),
+            paths=tuple(str(path) for path in source_paths),
         )
 
     @property

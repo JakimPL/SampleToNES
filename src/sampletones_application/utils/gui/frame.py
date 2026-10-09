@@ -7,6 +7,7 @@ from typing import ClassVar, List
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_shared.meta import NonInstantiableMeta
 from sampletones_shared.types.callback import VoidCallback
 
@@ -21,6 +22,18 @@ class FrameCallback:
 
 
 class FrameCallbackManager(metaclass=NonInstantiableMeta):
+    """Work picked up once a named frame has been drawn.
+
+    Reading a laid-out size or letting a configuration take effect needs a frame drawn with it, and
+    naming the frame is how a callback asks for one. The render thread inside the callback queue's
+    drain stands between frames rather than inside one, which leaves the next frame the drain's own
+    to reach: ``dpg.split_frame`` there waits for what the wait itself prevents and the application
+    stops for good, while a frame count asks for the same thing and lets the loop keep running.
+
+    Each callback due runs through the callback queue's reporting, so one that fails is reported and
+    the others due in that frame still run.
+    """
+
     _callbacks: ClassVar[List[FrameCallback]] = []
     _lock: ClassVar[threading.Lock] = threading.Lock()
 
@@ -38,6 +51,14 @@ class FrameCallbackManager(metaclass=NonInstantiableMeta):
         dpg.set_frame_callback(frame_count, cls.process)
 
     @classmethod
+    def clear(cls) -> None:
+        """Forgets every callback waiting for a frame, which is where a DearPyGui context that was just
+        made starts from.
+        """
+        with cls._lock:
+            cls._callbacks.clear()
+
+    @classmethod
     def process(cls) -> None:
         current_frame = dpg.get_frame_count()
 
@@ -48,4 +69,4 @@ class FrameCallbackManager(metaclass=NonInstantiableMeta):
 
                 frame_callback = heapq.heappop(cls._callbacks)
 
-            frame_callback.callback()
+            CallbackQueue.run(frame_callback.callback)

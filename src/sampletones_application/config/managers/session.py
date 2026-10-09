@@ -7,9 +7,12 @@ from sampletones_application.config.managers.state import ApplicationStateManage
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_application.config.session.state.state import ApplicationState
+from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.playback import FollowMode
-from sampletones_core.audio import AudioDeviceManager, CurrentDevice
+from sampletones_core.audio import CurrentDevice
 from sampletones_core.constants.audio import BufferSize
+from sampletones_core.constants.enums import HierarchyMode
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
 
 class SessionManager:
@@ -84,8 +87,35 @@ class SessionManager:
     def set_follow_mode(self, value: FollowMode) -> None:
         self._config_manager.set_follow_mode(value)
 
+    @property
+    def converter_settings(self) -> StemSettings:
+        """The settings a recording is given when it joins the converter's list."""
+        return self._config_manager.converter_settings
+
+    def set_converter_settings(self, settings: StemSettings) -> None:
+        self._config_manager.set_converter_settings(settings)
+
+    @property
+    def converter_output(self) -> OutputKind:
+        """What a run writes, as the reader last left the output switch."""
+        return self._config_manager.converter_output
+
+    def set_converter_output(self, output: OutputKind) -> None:
+        self._config_manager.set_converter_output(output)
+
+    @property
+    def converter_hierarchy_mode(self) -> HierarchyMode:
+        """How the levels of a mix take turns, as the reader last set it."""
+        return self._config_manager.converter_hierarchy_mode
+
+    def set_converter_hierarchy_mode(self, hierarchy_mode: HierarchyMode) -> None:
+        self._config_manager.set_converter_hierarchy_mode(hierarchy_mode)
+
     def set_loop_song(self, value: bool) -> None:
         self._config_manager.set_loop_song(value)
+
+    def set_octave(self, value: int) -> None:
+        self._config_manager.set_octave(value)
 
     def toggle_favorite(self, path: Path) -> None:
         self._config_manager.toggle_favorite(path)
@@ -98,12 +128,6 @@ class SessionManager:
 
     def get_config_path(self) -> Path:
         return self._state_manager.get_config_path()
-
-    def set_library_path(self, path: Path) -> None:
-        self._state_manager.set_library_path(path)
-
-    def get_library_path(self) -> Path:
-        return self._state_manager.get_library_path()
 
     def set_instrument_path(self, path: Path) -> None:
         self._state_manager.set_instrument_path(path)
@@ -145,11 +169,13 @@ class SessionManager:
     def current_project(self) -> Optional[Path]:
         return self._state_manager.current_project
 
-    def set_current_audio_device(
+    def set_audio_settings(
         self,
-        audio_device_manager: AudioDeviceManager,
+        current_device: CurrentDevice,
+        buffer_size: BufferSize,
     ) -> None:
-        self._config_manager.set_current_audio_device(audio_device_manager)
+        """Records the output device, its rate and the buffer size the user committed."""
+        self._config_manager.set_audio_settings(current_device, buffer_size)
 
     def set_master_gain(self, value: float) -> None:
         self._config_manager.set_master_gain(value)
@@ -165,6 +191,9 @@ class SessionManager:
 
     def set_borderless(self, borderless: bool) -> None:
         self._config_manager.set_borderless(borderless)
+
+    def set_show_frame_rate(self, show_frame_rate: bool) -> None:
+        self._config_manager.set_show_frame_rate(show_frame_rate)
 
     def set_shortcut_scheme_name(self, name: str) -> None:
         self._config_manager.set_shortcut_scheme_name(name)
@@ -236,6 +265,10 @@ class SessionManager:
         return self._config_manager.borderless
 
     @property
+    def show_frame_rate(self) -> bool:
+        return self._config_manager.show_frame_rate
+
+    @property
     def shortcut_scheme_name(self) -> str:
         return self._config_manager.shortcut_scheme_name
 
@@ -262,6 +295,10 @@ class SessionManager:
     @property
     def follow_mode(self) -> FollowMode:
         return self._config_manager.follow_mode
+
+    @property
+    def octave(self) -> int:
+        return self._config_manager.octave
 
     @property
     def loop_song(self) -> bool:

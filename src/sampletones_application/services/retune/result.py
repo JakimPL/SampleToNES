@@ -1,8 +1,8 @@
 from sampletones_application.services.result import (
-    ServiceCancelled,
+    ServiceCanceled,
     ServiceError,
     ServiceSuccess,
 )
 from sampletones_application.services.retune.sample import RetunedSample
 
-RetuneResult = ServiceSuccess[RetunedSample] | ServiceError | ServiceCancelled
+RetuneResult = ServiceSuccess[RetunedSample] | ServiceError | ServiceCanceled

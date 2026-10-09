@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Final, Optional
 
 import numpy as np
 
@@ -13,29 +13,50 @@ from sampletones_shared.types.array import Array
 from ..utils import calculate_n_bins
 from .kernel import CQTKernel, build_cqt_kernel
 
+MAX_GATHERED_SAMPLES: Final[int] = 1 << 24
 
-def _framed_signal(audio: np.ndarray, frame_length: int, hop_length: int) -> Array:
-    """Stack centered frames of ``audio`` on the compute device, one column per hop.
 
-    ``audio`` is zero-padded by half a frame on each side so column ``t`` is centered on sample
-    ``t * hop_length``; the number of columns is ``1 + len(audio) // hop_length``.
-    """
+def _padded_signal(audio: np.ndarray, frame_length: int) -> Array:
+    """``audio`` on the compute device, zero-padded by half a frame on each side, which centers column
+    ``t`` on sample ``t * hop_length``."""
     left = frame_length // 2
     right = frame_length - left
     device_audio: Array = xp.asarray(audio, dtype=xp.complex64)
     padded: Array = xp.concatenate(
         [xp.zeros(left, dtype=xp.complex64), device_audio, xp.zeros(right, dtype=xp.complex64)]
     )
-    frame_count = 1 + len(audio) // hop_length
-    starts = xp.arange(frame_count) * hop_length
+    return padded
+
+
+def _framed_columns(
+    padded: Array,
+    frame_length: int,
+    hop_length: int,
+    first: int,
+    count: int,
+) -> Array:
+    """Stack ``count`` centered frames of the padded signal, one column per hop from column ``first``."""
+    starts = (xp.arange(count) + first) * hop_length
     indices = starts[:, None] + xp.arange(frame_length)[None, :]
     framed: Array = padded[indices].T
     return framed
 
 
 def _transform(audio: np.ndarray, kernel: CQTKernel, hop_length: int) -> np.ndarray:
-    frames = _framed_signal(audio, kernel.frame_length, hop_length)
-    coefficients: Array = kernel.matrix @ frames
+    """Correlates the kernel with every frame of ``audio``, ``1 + len(audio) // hop_length`` columns.
+
+    Every frame spans the lowest bin's whole wavelet, so the frames are gathered a block of columns
+    at a time, each block holding at most ``MAX_GATHERED_SAMPLES`` samples. That keeps the memory a
+    recording takes to one block, however long the recording runs.
+    """
+    padded = _padded_signal(audio, kernel.frame_length)
+    frame_count = 1 + len(audio) // hop_length
+    block = max(1, MAX_GATHERED_SAMPLES // kernel.frame_length)
+    columns = [
+        kernel.matrix @ _framed_columns(padded, kernel.frame_length, hop_length, first, min(block, frame_count - first))
+        for first in range(0, frame_count, block)
+    ]
+    coefficients: Array = xp.concatenate(columns, axis=1)
     return to_numpy(coefficients)
 
 

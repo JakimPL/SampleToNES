@@ -1,12 +1,13 @@
 from pathlib import Path
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import DEFAULT_CHANNELS
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree.factory import create_directory_node
 from sampletones_core.structures.tree.node import ConfigNode, FileSystemNode, TreeNode
 from sampletones_core.structures.tree.type import NodeType
 
-CONFIG_FIELDS = ConfigDirectoryFields.from_config(Config())
+CONFIG_FIELDS = ConfigDirectoryFields.from_config(Config(), frozenset(DEFAULT_CHANNELS))
 RECONSTRUCTIONS_DIRECTORY = Path("/reconstructions")
 
 

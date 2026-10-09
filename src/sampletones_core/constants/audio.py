@@ -10,3 +10,5 @@ DEFAULT_BUFFER_SIZE: Final[BufferSize] = 1024
 DEFAULT_SAMPLE_RATE: Final[SampleRate] = 44100
 MIN_SAMPLE_RATE: Final[SampleRate] = 8000
 MAX_SAMPLE_RATE: Final[SampleRate] = 192000
+
+START_OF_AUDIO: Final[int] = 0

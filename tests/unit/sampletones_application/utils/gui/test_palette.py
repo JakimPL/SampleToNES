@@ -7,7 +7,7 @@ from sampletones_application.utils.gui.palette.dpg import (
     dpg_add_palette_theme_color,
     dpg_set_palette_color,
 )
-from sampletones_application.utils.gui.palette.palette import PaletteBindings
+from sampletones_application.utils.gui.palette.palette import PRUNE_FLOOR, PaletteBindings
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.palette.colors.faded import FadedColor
 from sampletones_application.utils.palette.colors.literal import LiteralColor
@@ -21,6 +21,7 @@ from sampletones_shared.utils.color import MAX_CHANNEL_VALUE
 STUDIO_ACCENT: ColorRGBA = (169, 127, 227, 255)
 LIGHT_ACCENT: ColorRGBA = (107, 63, 176, 255)
 LITERAL: ColorRGBA = (240, 146, 86, 255)
+TRANSIENT_ITEMS: int = 4000
 
 
 @pytest.fixture
@@ -48,7 +49,7 @@ def context() -> Generator[None, None, None]:
 
 
 def _text_color(item: Sender) -> ColorRGBA:
-    """The item's colour as eight-bit channels, which DearPyGui reports as fractions."""
+    """The item's color as eight-bit channels, which DearPyGui reports as fractions."""
     configuration: Dict[str, object] = dpg.get_item_configuration(item)
     color = configuration["color"]
     assert isinstance(color, (list, tuple))
@@ -62,7 +63,7 @@ def _add_text() -> Sender:
 
 
 class TestArgumentBinding:
-    def test_the_colour_reaches_the_item_as_it_is_bound(
+    def test_the_color_reaches_the_item_as_it_is_bound(
         self,
         context: None,
         accent: BaseColor,
@@ -88,7 +89,7 @@ class TestArgumentBinding:
 
         assert _text_color(item) == LIGHT_ACCENT
 
-    def test_a_literal_colour_stays_as_written(
+    def test_a_literal_color_stays_as_written(
         self,
         context: None,
         source: PaletteSource,
@@ -102,12 +103,12 @@ class TestArgumentBinding:
 
         assert _text_color(item) == LITERAL
 
-    def test_recolouring_one_argument_leaves_one_entry(
+    def test_recoloring_one_argument_leaves_one_entry(
         self,
         context: None,
         accent: BaseColor,
     ) -> None:
-        """A hovered item is recoloured on every frame it is under the pointer."""
+        """A hovered item is recolored on every frame it is under the pointer."""
         item = _add_text()
 
         for _ in range(5):
@@ -128,9 +129,22 @@ class TestArgumentBinding:
 
         assert not list(PaletteBindings.bindings())
 
+    def test_items_bound_and_deleted_over_a_session_leave_a_bounded_registry(
+        self,
+        context: None,
+        accent: BaseColor,
+    ) -> None:
+        """Every right-click builds a menu's worth of colored text and takes it down again."""
+        for _ in range(TRANSIENT_ITEMS):
+            item = _add_text()
+            dpg_set_palette_color(item, accent)
+            dpg.delete_item(item)
+
+        assert len(list(PaletteBindings.bindings())) < 2 * PRUNE_FLOOR
+
 
 class TestThemeColorBinding:
-    def test_the_theme_colour_takes_the_newly_activated_palette(
+    def test_the_theme_color_takes_the_newly_activated_palette(
         self,
         context: None,
         source: PaletteSource,
@@ -146,7 +160,7 @@ class TestThemeColorBinding:
 
         assert tuple(int(channel) for channel in dpg.get_value(item)) == LIGHT_ACCENT
 
-    def test_a_derived_colour_follows_the_colour_it_came_from(
+    def test_a_derived_color_follows_the_color_it_came_from(
         self,
         context: None,
         source: PaletteSource,

@@ -1,5 +1,5 @@
 from collections.abc import Hashable
-from typing import Callable, Dict, Optional, TypeVar
+from typing import Callable, Dict, List, Optional, TypeVar
 
 from sampletones_application.view_model.sequencer.region import TrackerRegion
 from sampletones_application.view_model.sequencer.slot import (
@@ -7,10 +7,11 @@ from sampletones_application.view_model.sequencer.slot import (
     slot_from_flat,
 )
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
-from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.project.patterns.pitch import RowPitch
 from sampletones_core.project.patterns.row import Row
+from sampletones_core.project.voices.note_off import NoteOff
+from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_shared.utils.agreement import Agreement
 
 from .block import BlockKey, BlockNote, TrackerBlock
@@ -31,10 +32,10 @@ class TrackerBlockReader:
 
     def read(self, region: TrackerRegion) -> TrackerBlock:
         """Takes the values a region covers, keeping each kind of subcolumn in a map of its own."""
-        base = column_slot_base(slot_from_flat(region.first_slot).generator)
+        base = column_slot_base(slot_from_flat(region.first_slot).channel)
         return TrackerBlock(
-            notes=self._read_subcolumn(region, base, SubColumn.INSTRUMENT, self._note_of),
-            transposes=self._read_subcolumn(region, base, SubColumn.TRANSPOSE, self._transpose_of),
+            notes=self._read_subcolumn(region, base, SubColumn.VOICE, self._note_of),
+            pitches=self._read_subcolumn(region, base, SubColumn.TRANSPOSE, self._pitch_of),
             volumes=self._read_subcolumn(region, base, SubColumn.VOLUME, self._volume_of),
         )
 
@@ -49,7 +50,9 @@ class TrackerBlockReader:
 
         A cell holding a definite value keeps it, an empty one keeps its emptiness, and a cell
         whose channels disagree leaves its key out — which is what carries the sample column's
-        mixed reading over as a value the paste passes by.
+        mixed reading over as a value the paste passes by. A sample column cell answering for no
+        channel, a pitch or a volume where no sample plays, keeps the empty reading its grid
+        shows there.
         """
         values: Dict[BlockKey, ValueT] = {}
         for row_offset, row_index in enumerate(region.rows):
@@ -57,30 +60,65 @@ class TrackerBlockReader:
                 if slot.subcolumn is not subcolumn:
                     continue
 
-                agreement = self._agree(row_index, slot.generator, select)
-                if agreement.is_unanimous:
-                    values[(row_offset, region.first_slot + position - base)] = agreement.value
+                key = (
+                    row_offset,
+                    region.first_slot + position - base,
+                )
+                agreement = self._agree(
+                    row_index,
+                    slot.channel,
+                    subcolumn,
+                    select,
+                )
+                if agreement.is_absent:
+                    values[key] = select(None)
+                elif agreement.is_unanimous:
+                    values[key] = agreement.value
 
         return values
 
     def _agree(
         self,
         row_index: int,
-        generator: Optional[GeneratorName],
+        channel: Optional[ChannelName],
+        subcolumn: SubColumn,
         select: Callable[[Optional[Row]], ValueT],
     ) -> Agreement[ValueT]:
         """What a column holds at a cell: a channel's own value, or the one its channels share.
 
         A channel column answers for itself, so it is a group of one and always agrees. The sample
-        column answers for the channels it governs, which is the group its display summarises too,
-        so a block states about a cell exactly what the grid it came from shows there.
+        column answers for the channels it spans in that subcolumn, which is the group its display
+        summarizes too, so a block states about a cell exactly what the grid it came from shows
+        there.
         """
-        if generator is not None:
-            return Agreement.collapse([select(self._tracker.row(generator, row_index))])
+        if channel is not None:
+            return Agreement.collapse([select(self._tracker.row(channel, row_index))])
 
         return Agreement.collapse(
-            select(self._tracker.row(channel, row_index)) for channel in self._tracker.relevant_generators(row_index)
+            select(
+                self._tracker.row(
+                    spanned,
+                    row_index,
+                )
+            )
+            for spanned in self._sample_column_span(row_index, subcolumn)
         )
+
+    def _sample_column_span(
+        self,
+        row_index: int,
+        subcolumn: SubColumn,
+    ) -> List[ChannelName]:
+        """The channels the sample column answers for in one subcolumn of a row.
+
+        The voice slot speaks for the samples the row names, and the pitch and volume for the
+        channels a value typed there reaches.
+        """
+        match subcolumn:
+            case SubColumn.VOICE:
+                return self._tracker.note_channels(row_index)
+            case SubColumn.TRANSPOSE | SubColumn.VOLUME:
+                return self._tracker.relevant_channels(row_index)
 
     @staticmethod
     def _note_of(row: Optional[Row]) -> Optional[BlockNote]:
@@ -90,16 +128,16 @@ class TrackerBlockReader:
         column it is written into.
         """
         match row.command if row is not None else None:
-            case Instrument() as instrument:
-                return instrument.sample_id
+            case NoteOn() as note_on:
+                return note_on.voice_id
             case NoteOff() as note_off:
                 return note_off
             case None:
                 return None
 
     @staticmethod
-    def _transpose_of(row: Optional[Row]) -> Optional[int]:
-        return row.transpose if row is not None else None
+    def _pitch_of(row: Optional[Row]) -> Optional[RowPitch]:
+        return row.pitch if row is not None else None
 
     @staticmethod
     def _volume_of(row: Optional[Row]) -> Optional[int]:

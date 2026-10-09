@@ -86,7 +86,7 @@ def _check_keybindings() -> str:
 
 
 def _check_layout_config() -> str:
-    """Resolves the layout against every shipped palette, since each answers the colour tokens itself."""
+    """Resolves the layout against every shipped palette, since each answers the color tokens itself."""
     from sampletones_application.layout import LayoutConfig, load_layout_config
     from sampletones_application.paths import BEHAVIOR_DIRECTORY, LAYOUT_DIRECTORY
 
@@ -97,7 +97,7 @@ def _check_layout_config() -> str:
 
 
 def _check_themes() -> str:
-    """Resolves the theme set against every shipped palette, since each answers the colour tokens itself."""
+    """Resolves the theme set against every shipped palette, since each answers the color tokens itself."""
     from sampletones_application.paths import THEME_DIRECTORY
     from sampletones_application.ui.themes.loader import ThemeLoader
 
@@ -115,7 +115,10 @@ def _check_language() -> str:
 
 def _check_resources() -> str:
     from sampletones_application.ui.resources.items import FontResource, IconResource
-    from sampletones_application.ui.resources.resources import get_font_path, get_icon_path
+    from sampletones_application.ui.resources.resources import (
+        get_font_path,
+        get_icon_path,
+    )
 
     for font in FontResource:
         get_font_path(font)
@@ -126,8 +129,21 @@ def _check_resources() -> str:
     return f"{len(FontResource)} fonts, {len(IconResource)} icons"
 
 
+def _check_export_backends() -> str:
+    """Composes every backend the application exports through.
+
+    A backend reads the resources it writes with as it is built, so this is where a build
+    shipping without one — the player's assembled driver among them — names what is missing.
+    """
+    from sampletones_application.exports import ExportBackends
+
+    return ", ".join(sorted(ExportBackends.build().by_format))
+
+
 def _check_file_dialog_backend() -> str:
-    from sampletones_application.utils.file_dialogs.selection import select_file_dialog_backend
+    from sampletones_application.utils.file_dialogs.selection import (
+        select_file_dialog_backend,
+    )
 
     return type(select_file_dialog_backend()).__name__
 
@@ -141,6 +157,7 @@ CHECKS: Final[Tuple[SelfCheck, ...]] = (
     SelfCheck(name="themes", run=_check_themes),
     SelfCheck(name="language", run=_check_language),
     SelfCheck(name="resources", run=_check_resources),
+    SelfCheck(name="export backends", run=_check_export_backends),
     SelfCheck(name="file dialog backend", run=_check_file_dialog_backend),
 )
 
@@ -156,7 +173,10 @@ def run_self_check() -> int:
         try:
             detail = check.run()
         except CHECK_FAILURES as exception:
-            print(f"{FAILURE_PREFIX} {check.name}: {type(exception).__name__}: {exception}", file=sys.stderr)
+            print(
+                f"{FAILURE_PREFIX} {check.name}: {type(exception).__name__}: {exception}",
+                file=sys.stderr,
+            )
             return FAILURE_STATUS
 
         print(f"{SUCCESS_PREFIX} {check.name}: {detail}")

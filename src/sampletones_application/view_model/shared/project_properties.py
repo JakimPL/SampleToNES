@@ -7,7 +7,7 @@ _TIMESTAMP_FORMAT: Final[str] = "%Y-%m-%d %H:%M"
 
 
 class ProjectPropertiesViewModel(BaseModel, frozen=True):
-    """The project info and metre the properties dialog renders and offers for editing."""
+    """The project info and meter the properties dialog renders and offers for editing."""
 
     title: str
     author: str

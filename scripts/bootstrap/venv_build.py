@@ -1,0 +1,86 @@
+import sys
+from pathlib import Path
+from typing import Dict, Final, Mapping, Sequence
+
+from bootstrap.layout import BUILD_ENVIRONMENT
+from bootstrap.platforms.protocol import Platform
+from bootstrap.processes import Runner, expect_success
+
+PIP_REQUIRE_VIRTUALENV: Final[str] = "PIP_REQUIRE_VIRTUALENV"
+
+
+def ensure_build_venv(
+    root: Path,
+    platform: Platform,
+    *,
+    runner: Runner,
+    environment: Mapping[str, str],
+) -> Path:
+    """The interpreter of the virtual environment a bundle is built in, created under ``root`` where it is missing.
+
+    Every package a build installs lands here, so the interpreter running the script stays as
+    it was found. An environment is present once its interpreter is; a directory an interrupted
+    creation left behind is cleared and created again.
+
+    Args:
+        root: The repository.
+        platform: The system, which places the interpreter inside the environment.
+        runner: What runs the command creating the environment.
+        environment: The variables the command sees.
+
+    Returns:
+        Path: The environment's interpreter.
+    """
+    directory = root / BUILD_ENVIRONMENT
+    python = platform.interpreter(directory)
+    if python.is_file():
+        print("Virtual environment already exists.")
+        return python
+
+    print("Creating virtual environment...")
+    expect_success(
+        runner,
+        (sys.executable, "-m", "venv", "--clear", str(directory)),
+        cwd=root,
+        environment=environment,
+    )
+    print("Virtual environment created.")
+    return python
+
+
+def install(
+    root: Path,
+    python: Path,
+    *,
+    extras: Sequence[str],
+    runner: Runner,
+    environment: Mapping[str, str],
+) -> None:
+    """Installs the package with ``extras`` into the environment ``python`` runs.
+
+    Pip is told to refuse any interpreter outside a virtual environment, so an install reaches
+    the build environment alone.
+
+    Args:
+        root: The repository, which is the package installed.
+        python: The build environment's interpreter.
+        extras: The optional-dependency extras installed with the package.
+        runner: What runs the commands.
+        environment: The variables the commands see.
+    """
+    guarded: Dict[str, str] = {**environment, PIP_REQUIRE_VIRTUALENV: "1"}
+    print("Installing dependencies...")
+    expect_success(
+        runner,
+        (str(python), "-m", "pip", "install", "--upgrade", "pip"),
+        cwd=root,
+        environment=guarded,
+    )
+    print(f"Installing with extras: {','.join(extras)}")
+    expect_success(
+        runner,
+        (str(python), "-m", "pip", "install", f".[{','.join(extras)}]"),
+        cwd=root,
+        environment=guarded,
+    )
+    print("sampletones Python package installed successfully.")

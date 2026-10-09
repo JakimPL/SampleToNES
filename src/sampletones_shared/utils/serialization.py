@@ -1,23 +1,21 @@
 import base64
-import hashlib
 import json
-from collections.abc import Hashable
 from contextlib import suppress
+from functools import partial
 from pathlib import Path
-from typing import Any, Dict, Final, List, Mapping, Optional, Type, TypeVar, Union
+from typing import Any, Callable, Dict, Final, List, Mapping, Optional, Type, TypeVar, Union
 
 import numpy as np
 import yaml
 from pydantic import BaseModel
 
 from sampletones_shared.types.array import Array
-from sampletones_shared.types.data import ModelHashable, SerializedData
+from sampletones_shared.types.data import SerializedData
 from sampletones_shared.types.path import Pathlike
 
 JSON_INDENT: Final[int] = 2
 YAML_ROOT_STEM: Final[str] = "root"
-HASH_LENGTH: Final[int] = 32
-HASH_PATTERN: Final[str] = rf"^[0-9a-f]{{{HASH_LENGTH}}}$"
+TEMPORARY_SUFFIX: Final[str] = ".tmp"
 
 ModelTypeT = TypeVar("ModelTypeT", bound=BaseModel)
 
@@ -82,25 +80,36 @@ def save_yaml(filepath: Pathlike, data: Union[List[Any], SerializedData]) -> Non
 
 def save_yaml_atomic(filepath: Pathlike, data: Union[List[Any], SerializedData]) -> None:
     """
-    Saves data to a YAML file atomically via a temporary file.
-
-    The data is written to a sibling ``.tmp`` file and then moved into place with a
-    single ``replace``, so the target file updates only once the whole write
-    succeeds. The temporary file is removed if the write fails.
+    Saves data to a YAML file atomically, through :func:`write_atomically`.
 
     Args:
         filepath (Pathlike): Path to the output YAML file.
         data (Union[List[Any], SerializedData]): The data to save. Must be YAML-serializable.
     """
+    write_atomically(filepath, partial(save_yaml, data=data))
+
+
+def write_atomically(filepath: Pathlike, write: Callable[[Path], None]) -> None:
+    """
+    Writes a file through a temporary sibling moved into place once the whole write succeeded.
+
+    ``write`` fills the sibling, named after the target with ``.tmp`` appended, and a single
+    ``replace`` puts it in the target's place, so a reader of the target meets the previous
+    file or the complete new one, whatever becomes of the writer in between. The sibling is
+    removed whichever way the write ends.
+
+    Args:
+        filepath (Pathlike): Path to the file to write.
+        write (Callable[[Path], None]): Writes the whole content to the path it is given.
+    """
     path = Path(filepath)
-    tmp = path.with_suffix(".tmp")
+    temporary = path.with_name(f"{path.name}{TEMPORARY_SUFFIX}")
     try:
-        save_yaml(tmp, data)
-        tmp.replace(path)
-    except Exception:
+        write(temporary)
+        temporary.replace(path)
+    finally:
         with suppress(FileNotFoundError):
-            tmp.unlink()
-        raise
+            temporary.unlink()
 
 
 def load_yaml(filepath: Pathlike) -> Union[List[Any], SerializedData]:
@@ -132,7 +141,7 @@ def load_yaml_model(
         model_type (Type[ModelTypeT]): Model class validating the mapping.
         context (Optional[Mapping[str, Any]]): Validation context forwarded to
             ``model_validate``, letting field validators resolve against shared state
-            (e.g. a palette for colour references).
+            (e.g. a palette for color references).
 
     Returns:
         ModelTypeT: The validated model instance.
@@ -166,7 +175,7 @@ def load_yaml_model_dir(
         model_type (Type[ModelTypeT]): Model class validating the merged mapping.
         context (Optional[Mapping[str, Any]]): Validation context forwarded to
             ``model_validate``, letting field validators resolve against shared state
-            (e.g. a palette for colour references).
+            (e.g. a palette for color references).
 
     Returns:
         ModelTypeT: The validated model instance.
@@ -189,12 +198,16 @@ def load_yaml_model_dir(
 
 def save_binary(filepath: Pathlike, data: bytes) -> None:
     """
-    Saves binary data to a file.
+    Saves binary data to a file atomically, through :func:`write_atomically`.
 
     Args:
         filepath (Pathlike): Path to the output binary file.
         data (bytes): The binary data to save.
     """
+    write_atomically(filepath, partial(_write_bytes, data=data))
+
+
+def _write_bytes(filepath: Path, data: bytes) -> None:
     with open(filepath, "wb") as file:
         file.write(data)
 
@@ -252,98 +265,6 @@ def deserialize_array(data: SerializedData) -> np.ndarray:
     array_data = base64.b64decode(data["data"].encode("utf-8"))
     array = np.frombuffer(array_data, dtype=data["dtype"])
     return array.reshape(data["shape"])
-
-
-def get_hash_bytes(data: Hashable) -> bytes:
-    """
-    Converts hashable data types to signed bytes.
-
-    Args:
-        data (Hashable): The data to convert. Must be hashable.
-
-    Returns:
-        bytes: Byte representation of the data.
-
-    Raises:
-        TypeError: If the data is not hashable.
-    """
-    if not isinstance(data, Hashable):
-        raise TypeError("Data must be hashable to convert to hash bytes")
-
-    signed = hash(data)
-    unsigned = signed & ((1 << 64) - 1)
-    return unsigned.to_bytes(8, byteorder="big", signed=False)
-
-
-def calculate_hash(data: ModelHashable, *, length: int = HASH_LENGTH) -> str:
-    """
-    Calculates a SHA-256 hash for hashable data types.
-
-    Supports BaseModel instances, primitive types (bool, int, float, bytes, str),
-    and other hashable objects. BaseModel instances are serialized to JSON before hashing.
-
-    Args:
-        data (ModelHashable): The data to hash. Can be BaseModel, bool, int, float,
-            bytes, str, or any hashable object.
-        length (int): The length of the hash string to return. Defaults to 32.
-
-    Returns:
-        str: Hexadecimal hash string truncated to the specified length.
-    """
-    if length <= 0 or length > 64:
-        raise ValueError("Hash length must be between 1 and 64")
-
-    raw: bytes
-    if isinstance(data, BaseModel):
-        raw = dump(data.model_dump()).encode("utf-8")
-    elif isinstance(data, (bool, int, float, bytes, str)):
-        if not data:
-            data = ""
-
-        if isinstance(data, (bool, int, float)):
-            data = str(float(data))
-
-        if isinstance(data, str):
-            data = data.encode("utf-8")
-
-        raw = data
-    else:
-        raw = get_hash_bytes(data)
-
-    return hashlib.sha256(raw).hexdigest()[:length]
-
-
-def hash_models(*models: BaseModel, length: int = HASH_LENGTH) -> str:
-    """
-    Calculates a combined hash for multiple BaseModel instances.
-
-    Models are serialized to JSON as a list and hashed together, ensuring
-    the hash depends on both the models' content and their order.
-
-    Args:
-        *models (BaseModel): One or more BaseModel instances to hash.
-        length (int): The length of the hash string to return. Defaults to 32.
-
-    Returns:
-        str: Hexadecimal hash string representing all models combined.
-    """
-    combined = [model.model_dump() for model in models]
-    json_string = dump(combined)
-    return calculate_hash(json_string, length=length)
-
-
-def hash_model(model: BaseModel, *, length: int = HASH_LENGTH) -> str:
-    """
-    Calculates a hash for a single BaseModel instance.
-
-    Args:
-        model (BaseModel): The BaseModel instance to hash.
-        length (int): The length of the hash string to return. Defaults to 32.
-
-    Returns:
-        str: Hexadecimal hash string representing the model.
-    """
-    return hash_models(model, length=length)
 
 
 def snake_to_camel(snake_str: str) -> str:

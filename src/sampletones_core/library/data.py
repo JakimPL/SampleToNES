@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field, ValidationError
 from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.data import DataModel, Metadata, MetadataContract
+from sampletones_core.data.document import decompress_document
 from sampletones_core.generators import GeneratorClassNames
 from sampletones_core.instructions import InstructionUnion
 from sampletones_shared.application import SAMPLETONES_LIBRARY_DATA_VERSION
@@ -117,7 +118,7 @@ class InstructionLibraryData(DataModel):
 
         try:
             return InstructionLibraryData.deserialize(
-                binary,
+                decompress_document(binary),
                 validation=cls.validate_metadata,
                 fast=fast,
             )

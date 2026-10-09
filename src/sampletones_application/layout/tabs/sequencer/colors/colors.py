@@ -1,6 +1,5 @@
 from pydantic import BaseModel
 
-from sampletones_application.layout.tabs.sequencer.colors.channel import ChannelColors
 from sampletones_application.layout.tabs.sequencer.colors.header import HeaderColors
 from sampletones_application.layout.tabs.sequencer.colors.history import HistoryColors
 from sampletones_application.layout.tabs.sequencer.colors.muted import MutedColors
@@ -24,4 +23,3 @@ class SequencerColors(BaseModel, extra="forbid", frozen=True):
     muted: MutedColors
     history: HistoryColors
     text: TrackerColors
-    channels: ChannelColors

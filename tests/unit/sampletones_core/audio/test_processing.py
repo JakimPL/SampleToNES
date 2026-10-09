@@ -233,7 +233,7 @@ class TestResample:
                 target_sr=target_sample_rate,
             )
 
-    def test_resample_identical(self) -> None:
+    def test_revoice_identical(self) -> None:
         array = np.array([2.0, 3.0], dtype=np.float32)
         sample_rate = 22050
         target_sample_rate = 22050

@@ -2,9 +2,10 @@ from typing import Dict, Final, FrozenSet
 
 from sampletones_application.utils.gui.keyboard.focus.kind import FieldKind
 
-TEXT_ENTRY_ITEM_TYPES: Final[FrozenSet[str]] = frozenset(
+TEXT_ENTRY_ITEM_TYPES: Final[FrozenSet[str]] = frozenset({"mvAppItemType::mvInputText"})
+
+NUMBER_ENTRY_ITEM_TYPES: Final[FrozenSet[str]] = frozenset(
     {
-        "mvAppItemType::mvInputText",
         "mvAppItemType::mvInputInt",
         "mvAppItemType::mvInputFloat",
         "mvAppItemType::mvInputDouble",
@@ -19,6 +20,7 @@ CHOICE_ITEM_TYPES: Final[FrozenSet[str]] = frozenset({"mvAppItemType::mvCombo"})
 
 FIELD_KINDS: Final[Dict[str, FieldKind]] = {
     **{item_type: FieldKind.TEXT_ENTRY for item_type in TEXT_ENTRY_ITEM_TYPES},
+    **{item_type: FieldKind.NUMBER_ENTRY for item_type in NUMBER_ENTRY_ITEM_TYPES},
     **{item_type: FieldKind.CHOICE for item_type in CHOICE_ITEM_TYPES},
 }
 

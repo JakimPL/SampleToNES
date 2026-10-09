@@ -3,7 +3,7 @@ from typing import Final
 
 import pytest
 
-from sampletones_core.constants.general import NUM_PERIODS
+from sampletones_core.constants.general import NOISE_PERIODS, NUM_PERIODS
 from sampletones_core.formats.bitphase.notes import (
     noise_arpeggio_to_table_offset,
     noise_period_to_note_index,
@@ -19,6 +19,7 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     NOTE_RANGE,
     NoteName,
 )
+from tests.suite.bitphase import BITPHASE_NOISE_TIMERS, noise_register
 from tests.suite.case import BaseRegularTestCase
 
 LOWEST_STEP: Final[int] = -NUM_PERIODS
@@ -30,9 +31,9 @@ def bitphase_note_value(name: int, octave: int) -> int:
     return name - int(NoteName.C) + (octave - FIRST_OCTAVE) * NOTE_RANGE
 
 
-def bitphase_noise_period(index: int) -> int:
-    """The noise period Bitphase's playback selects for a note index."""
-    return NUM_PERIODS - 1 - index % NUM_PERIODS
+def sounded_noise_timer(index: int) -> int:
+    """The noise timer Bitphase's playback sounds for a note index."""
+    return BITPHASE_NOISE_TIMERS[noise_register(index)]
 
 
 class TestPitchToNoteIndex:
@@ -95,9 +96,18 @@ class TestNoteIndexToNoteCell:
 
 
 class TestNoisePeriods:
+    """The project counts noise periods from the slowest, while Bitphase's register counts them
+    from the fastest, so the note a period is written at sounds the timer the project gives it.
+    """
+
     @pytest.mark.parametrize("period", range(NUM_PERIODS))
-    def test_a_period_reaches_the_note_index_that_selects_it(self, period: int) -> None:
-        assert bitphase_noise_period(noise_period_to_note_index(period)) == period
+    def test_a_period_reaches_the_note_index_that_sounds_it(self, period: int) -> None:
+        assert sounded_noise_timer(noise_period_to_note_index(period)) == NOISE_PERIODS[period]
+
+    @pytest.mark.parametrize("period", range(NUM_PERIODS))
+    def test_a_period_past_the_cycle_wraps_into_the_sixteen_the_channel_has(self, period: int) -> None:
+        """A transpose walks the period around the sixteen, so a period a cycle up sounds as the one it wraps to."""
+        assert noise_period_to_note_index(period + NUM_PERIODS) == noise_period_to_note_index(period)
 
     @pytest.mark.parametrize("period", range(NUM_PERIODS))
     def test_a_base_note_leaves_a_whole_cycle_of_offsets_playable(self, period: int) -> None:
@@ -111,7 +121,7 @@ class TestNoisePeriods:
         """
         for period in range(NUM_PERIODS):
             index = noise_period_to_note_index(period) + noise_arpeggio_to_table_offset(step)
-            assert bitphase_noise_period(index) == (period + step) % NUM_PERIODS
+            assert sounded_noise_timer(index) == NOISE_PERIODS[(period + step) % NUM_PERIODS]
 
     @pytest.mark.parametrize("step", range(LOWEST_STEP, HIGHEST_STEP + 1))
     def test_every_reached_note_stays_inside_the_tuning_table(self, step: int) -> None:

@@ -1,2 +1,2 @@
-log_level: INFO
-strict_history: false
+log_level: DEBUG
+strict_history: true

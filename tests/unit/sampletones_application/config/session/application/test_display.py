@@ -5,6 +5,7 @@ from sampletones_application.config.session.application.config import Applicatio
 from sampletones_application.config.session.application.display import (
     DEFAULT_BORDERLESS,
     DEFAULT_MAX_FPS,
+    DEFAULT_SHOW_FRAME_RATE,
     DEFAULT_VSYNC,
     DisplayConfig,
 )
@@ -19,10 +20,11 @@ class TestDefaults:
     def test_a_fresh_configuration_paces_as_shipped(self) -> None:
         display = DisplayConfig()
 
-        assert (display.vsync, display.max_fps, display.borderless) == (
+        assert (display.vsync, display.max_fps, display.borderless, display.show_frame_rate) == (
             DEFAULT_VSYNC,
             DEFAULT_MAX_FPS,
             DEFAULT_BORDERLESS,
+            DEFAULT_SHOW_FRAME_RATE,
         )
 
     def test_the_application_configuration_carries_a_display_section(self) -> None:
@@ -45,6 +47,7 @@ class TestRoundTrip:
             vsync=False,
             max_fps=UNLIMITED_FRAME_RATE,
             borderless=True,
+            show_frame_rate=False,
         )
 
         assert DisplayConfig.model_validate(display.model_dump()) == display

@@ -2,6 +2,6 @@ from enum import StrEnum
 
 
 class SubColumn(StrEnum):
-    INSTRUMENT = "instrument"
+    VOICE = "voice"
     TRANSPOSE = "transpose"
     VOLUME = "volume"

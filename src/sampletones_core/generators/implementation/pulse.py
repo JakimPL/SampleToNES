@@ -3,25 +3,32 @@ from typing import List
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
+from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.constants.general import (
     DUTY_CYCLES,
     MAX_VOLUME,
     MIN_PITCH,
+    MIN_SOUNDING_PULSE_TIMER,
     MIXER_PULSE,
 )
 from sampletones_core.instructions import InstructionTypeUnion, PulseInstruction
 from sampletones_core.timers import PhaseTimer
 from sampletones_shared.types.data import Initials
 
-from ..generator import Generator
+from ..tonal import TonalGenerator
 
 
-class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
+class PulseGenerator(TonalGenerator[PulseInstruction]):
+    """The square channel, one of the chip's two pulses.
+
+    A timer below ``MIN_SOUNDING_PULSE_TIMER`` renders silence while the timer runs on. The sweep unit
+    mutes the channel there whatever the sweep's own setting, and the waveform keeps stepping.
+    """
+
     def __init__(
         self,
         config: Config,
-        name: str = GeneratorName.PULSE1,
+        name: str = ChannelName.PULSE1,
     ) -> None:
         super().__init__(config, name)
         self.timer = PhaseTimer(
@@ -52,13 +59,10 @@ class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
 
         self.save_state(save, pulse_instruction)
 
-        return output
+        if self.timer.timer < MIN_SOUNDING_PULSE_TIMER:
+            return np.zeros(self.frame_length, dtype=np.float32)
 
-    def set_timer(self, instruction: PulseInstruction) -> None:
-        if instruction.on:
-            self.timer.frequency = self.get_frequency(instruction.pitch)
-        else:
-            self.timer.frequency = 0.0
+        return output
 
     def apply(self, output: np.ndarray, instruction: PulseInstruction) -> np.ndarray:
         duty_cycle = DUTY_CYCLES[instruction.duty_cycle]

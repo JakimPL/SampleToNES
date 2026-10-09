@@ -1,4 +1,5 @@
 from typing import Iterator
+from unittest.mock import patch
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -16,6 +17,9 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
+from tests.suite.frames import held_frames
+
+__all__ = ["held_frames"]
 
 
 @pytest.fixture
@@ -36,3 +40,14 @@ def dpg_context(layout_config: LayoutConfig) -> Iterator[None]:
     finally:
         ThemeRegistry.clear()
         dpg.destroy_context()
+
+
+@pytest.fixture(autouse=True)
+def viewport(layout_config: LayoutConfig) -> Iterator[None]:
+    """Stands in for the viewport a dialog is centered against, which a suite draws none of."""
+    window = layout_config.general.window
+    with (
+        patch.object(dpg, "get_viewport_client_width", return_value=window.width),
+        patch.object(dpg, "get_viewport_client_height", return_value=window.height),
+    ):
+        yield

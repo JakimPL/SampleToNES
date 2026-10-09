@@ -5,13 +5,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import pytest
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_core.configs import Config
 from sampletones_shared.utils.validation import (
     Location,
+    describe_failure,
     flatten_location,
     validate_with_recovery,
 )
@@ -185,8 +186,8 @@ class TestFlattenLocation(BaseTestSuite):
         TestCase(label="single_key", location=("count",), expected="count"),
         TestCase(
             label="nested_keys",
-            location=("generation", "drive"),
-            expected="generation.drive",
+            location=("generation", "reset_phase"),
+            expected="generation.reset_phase",
         ),
         TestCase(
             label="list_index",
@@ -209,18 +210,52 @@ class TestFlattenLocation(BaseTestSuite):
         assert flatten_location(test_case.location) == test_case.expected
 
 
+class Refusing(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    leaf: Leaf
+    count: int = Field(ge=1)
+
+    @field_validator("count")
+    @classmethod
+    def _count_is_odd(cls, count: int) -> int:
+        if count % 2 == 0:
+            raise ValueError(f"The count {count} is even.")
+
+        return count
+
+
+class TestDescribeFailure:
+    def test_a_plain_value_error_reads_as_its_message(self) -> None:
+        assert describe_failure(ValueError("No file at song.wav.")) == "No file at song.wav."
+
+    def test_a_raised_reason_keeps_its_own_words(self) -> None:
+        with pytest.raises(ValidationError) as failure:
+            Refusing(leaf=Leaf(), count=2)
+
+        assert describe_failure(failure.value) == "The count 2 is even."
+
+    def test_each_broken_constraint_is_one_line_naming_its_field(self) -> None:
+        with pytest.raises(ValidationError) as failure:
+            Refusing.model_validate({"leaf": {"value": 11}, "count": 0})
+
+        lines = describe_failure(failure.value).splitlines()
+
+        assert [line.split(":")[0] for line in lines] == ["leaf.value", "count"]
+
+
 class TestRecoveryOnRealModels:
     def test_config_keeps_valid_settings_and_drops_incompatible(self) -> None:
         raw = {
             "library": {"sample_rate": 22050},
-            "generation": {"drive": -5.0, "reset_phase": False},
+            "generation": {"decoder": {"top_k": 0}, "reset_phase": False},
             "obsolete_field": 123,
         }
         recovered = validate_with_recovery(Config, raw)
         assert recovered.model.library.sample_rate == 22050
         assert recovered.model.generation.reset_phase is False
-        assert recovered.model.generation.drive == Config().generation.drive
-        assert set(recovered.dropped) == {("generation", "drive"), ("obsolete_field",)}
+        assert recovered.model.generation.decoder.top_k == Config().generation.decoder.top_k
+        assert set(recovered.dropped) == {("generation", "decoder", "top_k"), ("obsolete_field",)}
 
     def test_application_config_keeps_favorites_when_master_gain_invalid(self) -> None:
         raw = {"audio": {"master_gain": 5.0}, "favorites": {"paths": ["/x/y"]}}

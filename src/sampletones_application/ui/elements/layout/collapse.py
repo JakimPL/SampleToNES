@@ -21,6 +21,7 @@ from sampletones_application.utils.gui.dpg import (
     dpg_set_value,
 )
 from sampletones_application.utils.gui.frame import FrameCallbackManager
+from sampletones_application.utils.gui.hover import HoverWatch
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
@@ -75,6 +76,7 @@ class CollapseController(CallbackMixin):
 
         self.on_toggle: Optional[Callable[[str, bool], None]] = None
         self._collapsed_height: Optional[int] = None
+        self._hover = HoverWatch(self._paint_bars)
 
     @property
     def collapsed(self) -> bool:
@@ -167,7 +169,7 @@ class CollapseController(CallbackMixin):
         """
         dpg_delete_item(self.strip_handler_tag)
         with dpg.item_handler_registry(tag=self.strip_handler_tag):
-            dpg.add_item_hover_handler(callback=self._on_bar_hover)
+            dpg.add_item_hover_handler(callback=self._hover.report)
 
         dpg.bind_item_handler_registry(self.strip_tag, self.strip_handler_tag)
         self._bind_idle_theme(self.strip_tag)
@@ -251,25 +253,26 @@ class CollapseController(CallbackMixin):
 
         return bool(self.is_horizontal and dpg.does_item_exist(self.rail_tag) and dpg.is_item_hovered(self.rail_tag))
 
-    def _on_bar_hover(self) -> None:
-        """Highlight whichever bar the pointer is over and settle the rest back to idle.
-
-        An item hover handler fires only while its item is hovered, so a frame callback re-checks a
-        couple of frames on to catch the un-hover and restore the idle background.
-        """
-        self._refresh_bar_theme(self.strip_tag)
+    def _paint_bars(self) -> bool:
+        """Highlight whichever bar the pointer is over and settle the rest back to idle, answering
+        whether one is highlighted."""
+        hovered = self._paint_bar(self.strip_tag)
         if self.is_horizontal:
-            self._refresh_bar_theme(self.rail_tag)
+            hovered = self._paint_bar(self.rail_tag) or hovered
 
-    def _refresh_bar_theme(self, bar_tag: str) -> None:
+        return hovered
+
+    def _paint_bar(self, bar_tag: str) -> bool:
         if not dpg.does_item_exist(bar_tag):
-            return
+            return False
 
-        if dpg.is_item_hovered(bar_tag):
+        hovered = bool(dpg.is_item_hovered(bar_tag))
+        if hovered:
             self._bind_hovered_theme(bar_tag)
-            FrameCallbackManager.set_frame_callback(self._on_bar_hover, 2)
         else:
             self._bind_idle_theme(bar_tag)
+
+        return hovered
 
     def _bind_idle_theme(self, bar_tag: str) -> None:
         ThemeRegistry.get(TAG_GLOBAL_THEME_COLLAPSE_HEADER).bind_to_item(bar_tag)

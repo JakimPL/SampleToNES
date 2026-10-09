@@ -1,9 +1,11 @@
 from pathlib import Path
+from typing import Optional, Tuple
 
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
-from sampletones_core.project.instruments.sample import Sample
+from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import Tree
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -28,6 +30,10 @@ class SequencerBrowserLogic(CallbackMixin):
         reconstructions_directory = self._config_manager.get_reconstructions_directory()
         self._browser_manager.set_reconstructions_directory(reconstructions_directory)
 
+    def recordings(self, path: Path) -> Optional[Tuple[NamedRecordingViewModel, ...]]:
+        """The recordings the reconstruction at ``path`` names, and None until it has been read."""
+        return self._browser_manager.recordings(path)
+
     def load_reconstruction(self, path: Path) -> Reconstruction:
         """Loads a reconstruction file for inspection before adding.
 
@@ -44,19 +50,22 @@ class SequencerBrowserLogic(CallbackMixin):
     ) -> Sample:
         """Adds an already-loaded reconstruction as a sample.
 
-        The sample embeds the reconstruction object and can be renamed afterwards
+        The sample embeds the reconstruction object and can be renamed afterward
         from the samples panel.
         """
         return self._controller.add_sample(reconstruction, name=name)
 
     def replace_reconstruction(
         self,
-        sample_id: str,
+        voice_id: str,
         reconstruction: Reconstruction,
-    ) -> None:
+    ) -> Reconstruction:
         """Substitutes an existing sample's reconstruction with an already-loaded one.
 
         The sample keeps its identity, so the patterns referencing it sound the new
         reconstruction while their rows stay as they were.
+
+        Returns:
+            Reconstruction: The document the sample now holds, in the form the project keeps it.
         """
-        self._controller.replace_sample_reconstruction(sample_id, reconstruction)
+        return self._controller.replace_sample_reconstruction(voice_id, reconstruction)

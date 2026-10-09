@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.categories.truncation import TruncationMessages
 
 
 @dataclass(frozen=True)
@@ -17,10 +18,10 @@ class ExportMessages:
         status_title: Title of the instrument export result dialog.
         wav_title: Title of the WAV export dialog and its result.
         instrument_success: Shown when one instrument reaches its file.
-        instrument_truncated: Template describing what a shortened instrument carries.
+        instrument_truncated: The words describing what a shortened instrument carries.
         instrument_failed: Shown when one instrument export fails.
         instruments_success: Shown when a reconstruction's instruments reach their files.
-        instruments_truncated: Template describing how many instruments were shortened.
+        instruments_truncated: The words describing how many instruments were shortened.
         instruments_failed: Shown when a reconstruction's instrument export fails.
         wav_success: Shown when the reconstruction reaches a WAV file.
         wav_failed: Shown when the WAV export fails.
@@ -29,10 +30,10 @@ class ExportMessages:
     status_title: str
     wav_title: str
     instrument_success: str
-    instrument_truncated: str
+    instrument_truncated: TruncationMessages
     instrument_failed: str
     instruments_success: str
-    instruments_truncated: str
+    instruments_truncated: TruncationMessages
     instruments_failed: str
     wav_success: str
     wav_failed: str
@@ -51,10 +52,10 @@ class ExportMessages:
             status_title=language_manager["reconstructions.instruments.title.export_status_dialog"],
             wav_title=language_manager["reconstructions.instruments.title.export_wav_dialog"],
             instrument_success=language_manager["reconstructions.instruments.message.export_instrument_success"],
-            instrument_truncated=language_manager["reconstructions.instruments.message.export_instrument_truncated"],
+            instrument_truncated=TruncationMessages.for_instrument(language_manager),
             instrument_failed=language_manager["reconstructions.instruments.message.export_instrument_failed"],
             instruments_success=language_manager["reconstructions.instruments.message.export_instruments_success"],
-            instruments_truncated=language_manager["reconstructions.instruments.message.export_instruments_truncated"],
+            instruments_truncated=TruncationMessages.for_instruments(language_manager),
             instruments_failed=language_manager["reconstructions.instruments.message.export_instruments_failed"],
             wav_success=language_manager["reconstructions.reconstruction.message.export_wav_success"],
             wav_failed=language_manager["reconstructions.reconstruction.message.export_wav_failed"],

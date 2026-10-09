@@ -1,29 +1,22 @@
 from dataclasses import replace
-from typing import Callable, FrozenSet, List, Optional, Tuple
+from typing import Callable, FrozenSet, Optional, Tuple
 
 import numpy as np
 
 from sampletones_application.logic.shared.project_source import ProjectSource
 from sampletones_core.audio import clip_audio_inplace, silence
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.constants.general import MAX_VOLUME
-from sampletones_core.instructions import InstructionUnion
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.performance import VoiceReading, apply_row, resolve_row, sound_tick
 from sampletones_core.project import Project
-from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.project.instruments.note_off import NoteOff
-from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.song import Song
 from sampletones_core.project.song_position import SongPosition
-from sampletones_core.timing import Groove
+from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 
 from .bank import ChannelBank
 from .frames import RowFrames
-from .modifiers import apply_modifiers
 from .rates import EngineRates
 from .state import ChannelState
-from .timing import SongTiming
-from .voice import SampleVoice
 
 
 class RowSynthesizer:
@@ -64,7 +57,7 @@ class RowSynthesizer:
         project_source: ProjectSource,
         config: Config,
         *,
-        active_channels: Callable[[], FrozenSet[GeneratorName]],
+        active_channels: Callable[[], FrozenSet[ChannelName]],
         sample_rate: Callable[[], int],
     ) -> None:
         self._project_source = project_source
@@ -72,8 +65,7 @@ class RowSynthesizer:
         self._active_channels = active_channels
         self._sample_rate = sample_rate
         self._position = SongPosition()
-        self._timing: SongTiming = SongTiming.from_project(project_source.project)
-        self._groove: Groove = self._timing.groove()
+        self._timing: SongTiming = SongTiming.from_project(project_source.project, bounds=SONG_TICK_BOUNDS)
         self._channels: Optional[ChannelBank] = None
         self._elapsed_ticks: int = 0
 
@@ -104,12 +96,12 @@ class RowSynthesizer:
         song = project.song
         self._position.wrap_overflow(song.rows_per_pattern)
         channels = self._bank()
-        self._ensure_groove(project)
+        self._follow_timing(project)
 
         frames = RowFrames.from_clock(
             channels.clock,
             elapsed_ticks=self._elapsed_ticks,
-            ticks=self._groove.ticks[self._position.row_index],
+            ticks=self._timing.row_ticks(self._position.order_position, self._position.row_index),
         )
 
         position_before = replace(self._position)
@@ -153,20 +145,18 @@ class RowSynthesizer:
             self._sample_rate(),
         )
 
-    def _ensure_groove(self, project: Project) -> None:
-        """Rebuilds the groove when the row rate or the metre it is spread over changes.
+    def _follow_timing(self, project: Project) -> None:
+        """Takes up the project's timing when the row rate or the meter it is spread over changes.
 
-        An engine that holds a row for a whole number of ticks reaches a fractional row rate by
-        varying that number from row to row, and the groove is where those counts are decided.
-        Rebuilding only on a timing edit keeps a tempo change immediate while the distribution
-        itself, which spans a whole pattern, is computed once.
+        The timing answers how long a row lasts from the row's place in the song, and it keeps the
+        bar plans it has computed. Replacing it only on a timing edit keeps a tempo change heard
+        from the next row on, while the plans of an unchanged timing are computed once.
         """
-        timing = SongTiming.from_project(project)
+        timing = SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS)
         if timing == self._timing:
             return
 
         self._timing = timing
-        self._groove = timing.groove()
 
     def _mix_channels(
         self,
@@ -176,9 +166,9 @@ class RowSynthesizer:
         channels: ChannelBank,
     ) -> np.ndarray:
         mixed = silence(frames.total)
-        for generator_name in GeneratorName.items():
+        for channel_name in ChannelName.items():
             channel_audio = self._render_channel(
-                generator_name,
+                channel_name,
                 project,
                 song,
                 frames,
@@ -190,125 +180,70 @@ class RowSynthesizer:
 
     def _render_channel(
         self,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         project: Project,
         song: Song,
         frames: RowFrames,
         channels: ChannelBank,
     ) -> np.ndarray:
-        state = channels.state(generator_name)
+        state = channels.state(channel_name)
 
-        row = self._resolve_row(generator_name, song)
-        if row is not None:
-            self._apply_row_to_state(state, row)
+        row = resolve_row(song, self._position, channel_name)
+        if row is not None and apply_row(state.performance, row, channel_name, project.voice):
+            state.generator.reset()
 
-        sample_id = state.sample_id
-        if sample_id is None or generator_name not in self._active_channels():
+        voice_id = state.performance.voice_id
+        if voice_id is None or channel_name not in self._active_channels():
             return silence(frames.total)
 
         return self._synthesize_ticks(
             state,
-            sample_id,
+            voice_id,
             project,
-            generator_name,
+            channel_name,
             frames,
         )
-
-    def _resolve_row(
-        self,
-        generator_name: GeneratorName,
-        song: Song,
-    ) -> Optional[Row]:
-        if self._position.order_position >= song.order_length():
-            return None
-
-        order_entry = song.order[self._position.order_position].get(generator_name)
-        if order_entry is None:
-            return None
-
-        pattern = song.pattern(generator_name, order_entry)
-        if pattern is None or self._position.row_index >= len(pattern.rows):
-            return None
-
-        return pattern.rows[self._position.row_index]
-
-    def _apply_row_to_state(self, state: ChannelState, row: Row) -> None:
-        match row.command:
-            case Instrument() as instrument:
-                state.generator.reset()
-                state.sample_id = instrument.sample_id
-                state.tick_index = 0
-                state.transpose = row.transpose if row.transpose is not None else 0
-                state.volume = row.volume if row.volume is not None else MAX_VOLUME
-            case NoteOff():
-                state.generator.reset()
-                state.sample_id = None
-                state.tick_index = 0
-            case None:
-                if row.transpose is not None:
-                    state.transpose = row.transpose
-                if row.volume is not None:
-                    state.volume = row.volume
 
     def _synthesize_ticks(
         self,
         state: ChannelState,
-        sample_id: str,
+        voice_id: str,
         project: Project,
-        generator_name: GeneratorName,
+        channel_name: ChannelName,
         frames: RowFrames,
     ) -> np.ndarray:
-        sample = project.sample(sample_id)
-        if sample is None:
+        voice = project.voice(voice_id)
+        reading = VoiceReading.read(voice, channel_name) if voice is not None else None
+        if reading is None:
             return silence(frames.total)
 
-        instructions = sample.reconstruction.instructions[generator_name]
-        if not instructions:
-            return silence(frames.total)
-
-        voice = SampleVoice.read(sample.reconstruction, generator_name)
         output = silence(frames.total)
         silence_frame = silence(frames.longest)
 
         for tick, frame_length in enumerate(frames.lengths):
             frame = self._synthesize_tick(
                 state,
-                instructions,
+                reading,
                 silence_frame[:frame_length],
-                sample.loop,
                 frame_length,
-                voice,
             )
             output[frames.bounds[tick] : frames.bounds[tick + 1]] = frame
-            state.tick_index += 1
 
         return output
 
     def _synthesize_tick(
         self,
         state: ChannelState,
-        instructions: List[InstructionUnion],
+        reading: VoiceReading,
         silence_frame: np.ndarray,
-        loop: bool,
         frame_length: int,
-        voice: SampleVoice,
     ) -> np.ndarray:
-        if loop:
-            instruction = instructions[state.tick_index % len(instructions)]
-        elif state.tick_index < len(instructions):
-            instruction = instructions[state.tick_index]
-        else:
+        instruction = sound_tick(state.performance, reading)
+        if instruction is None:
             return silence_frame
 
         state.generator.frame_length = frame_length
-        return state.generator(
-            apply_modifiers(
-                voice.sound(instruction, state.feature_values),
-                state.transpose,
-                state.volume,
-            ),
-            save=True,
-        )
+        return state.generator(instruction, save=True)
 
     def _advance_position(self, song: Song) -> None:
         self._position.advance(song.rows_per_pattern, song.order_length())

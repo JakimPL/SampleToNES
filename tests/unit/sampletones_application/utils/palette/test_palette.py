@@ -19,7 +19,7 @@ def palette() -> Palette:
 
 
 class TestPaletteResolution:
-    def test_a_reference_resolves_to_its_token_colour(self, palette: Palette) -> None:
+    def test_a_reference_resolves_to_its_token_color(self, palette: Palette) -> None:
         assert palette.resolve(PaletteReference(token="accent")) == (169, 127, 227, 255)
 
     def test_an_alpha_override_replaces_only_the_alpha_channel(self, palette: Palette) -> None:

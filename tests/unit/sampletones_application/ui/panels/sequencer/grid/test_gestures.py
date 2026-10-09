@@ -4,6 +4,7 @@ from typing import Callable, Final, List, Optional, Tuple
 import pytest
 
 from sampletones_application.ui.panels.sequencer.grid.gestures import BlockGestures
+from sampletones_shared.types.callback import VoidCallback
 
 Gestures = BlockGestures[str, str]
 
@@ -29,6 +30,11 @@ class _Grid:
         self.on_delete_block: Optional[Callable[[str], None]] = lambda region: self.events.append(f"delete {region}")
         self.on_paste_block: Optional[Callable[[str], None]] = lambda cell: self.events.append(f"paste {cell}")
         self.can_paste_block: Optional[Callable[[], bool]] = lambda: can_paste
+        self.refresh_paste_block: Optional[Callable[[VoidCallback], None]] = self._answer_at_once
+
+    def _answer_at_once(self, then: VoidCallback) -> None:
+        self.events.append("refresh")
+        then()
 
 
 @dataclass(frozen=True)
@@ -90,3 +96,21 @@ class TestPasteEnablement:
         grid.can_paste_block = None
 
         assert BlockGestures(grid=grid).can_paste() is False
+
+    def test_a_refresh_asks_the_grid_and_follows_its_answer(self) -> None:
+        grid = _Grid()
+        answered: List[str] = []
+
+        BlockGestures(grid=grid).refresh_paste(lambda: answered.append("answered"))
+
+        assert grid.events == ["refresh"]
+        assert answered == ["answered"]
+
+    def test_a_grid_awaiting_its_wiring_leaves_the_offer_as_it_stands(self) -> None:
+        grid = _Grid()
+        grid.refresh_paste_block = None
+        answered: List[str] = []
+
+        BlockGestures(grid=grid).refresh_paste(lambda: answered.append("answered"))
+
+        assert answered == []

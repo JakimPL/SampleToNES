@@ -70,7 +70,7 @@ class TestPlatformScheme(BaseTestSuite):
         test_case: TestCase,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """A reader who has chosen nothing yet starts on the keys their machine is labelled with."""
+        """A reader who has chosen nothing yet starts on the keys their machine is labeled with."""
         monkeypatch.setattr(platform, "system", lambda: test_case.system)
 
         assert ShortcutsConfig().scheme == test_case.expected

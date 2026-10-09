@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 from typing import Callable, List, Optional, Protocol
 
@@ -6,6 +7,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.logic.instruction.details import (
@@ -15,6 +17,7 @@ from sampletones_application.logic.instruction.library import LibraryLogic
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
+from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.instructions import InstructionsTabParameters
@@ -23,6 +26,7 @@ from sampletones_application.tags.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
+    TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
     TAG_GLOBAL_TAB_INSTRUCTIONS,
     TAG_GLOBAL_TABS,
     TAG_GLOBAL_THEME_PANEL_GROUND,
@@ -33,6 +37,7 @@ from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_DETAILS_WINDOW_PARAMETERS_CARD,
     TAG_INSTRUCTIONS_INSTRUCTION_PANEL_SPECTRUM,
     TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM,
+    TAG_INSTRUCTIONS_LIBRARY_DIALOG_REBUILD_CONFIRMATION,
     TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
     TAG_INSTRUCTIONS_LIBRARY_DIALOG_REMOVE_LIBRARY_CONFIRMATION,
     TAG_INSTRUCTIONS_LIBRARY_PANEL,
@@ -58,6 +63,7 @@ from sampletones_application.ui.panels.instruction.spectrum import (
 from sampletones_application.ui.panels.instruction.waveform import (
     GUIInstructionWaveformPanel,
 )
+from sampletones_application.utils.callbacks.gates import asking
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
@@ -67,8 +73,7 @@ from sampletones_application.view_model.instruction.details import (
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.enums import LibraryGeneratorName
-from sampletones_core.library import InstructionLibraryKey
+from sampletones_core.library import InstructionLibraryKey, LibraryState
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.exceptions import LibraryDisplayError, SampleToNESError
 from sampletones_shared.logger import logger
@@ -80,7 +85,7 @@ _RIGHT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_INSTRUCTIONS, SUF_PANEL_RIGHT)
 
 
 class _StackedGraphPanel(Protocol):
-    """A centre-column card whose graph display follows a viewport-driven height."""
+    """A center-column card whose graph display follows a viewport-driven height."""
 
     def set_display_height(self, height: int) -> None: ...
 
@@ -100,13 +105,13 @@ class InstructionsTabCoordinator:
         layout: InstructionsTabParameters,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
+        playback_failures: PlaybackFailurePresenter,
         status_bar: GUIStatusBar,
     ) -> None:
         self._language_manager = language_manager
         self._config_manager = config_manager
         self._session_manager = session_manager
         self._audio_device_manager = audio_device_manager
-        self._library_manager = library_manager
         self._on_audio_state_changed = on_audio_state_changed
         self._is_converter_visible = is_converter_visible
         self._dialogs = dialogs
@@ -126,9 +131,10 @@ class InstructionsTabCoordinator:
             language_manager=language_manager,
             is_operation_active=is_operation_active,
         )
+        self._file_playback: FilePlayback = FilePlayback(audio_device_manager)
         self._library_tree_logic = TreeLogic(
             session_manager,
-            audio_device_manager,
+            self._file_playback,
             scheduling=layout.scheduling,
         )
         self._library_panel = GUIInstructionsLibraryPanel(
@@ -143,7 +149,7 @@ class InstructionsTabCoordinator:
             is_operation_active=is_operation_active,
         )
         self._library_panel.set_collapse_handler(self._on_library_collapse_changed)
-        self._library_tree_logic.on_lock_state_changed = self._library_panel.set_tree_enabled
+        self._library_tree_logic.on_lock_state_changed = self._on_library_tree_lock_changed
         self._library_tree_logic.on_favorite_changed = self._repaint_library_favorites
         self._library_tree_logic.on_search_update_needed = self._library_panel.update_tree_visibility
 
@@ -156,15 +162,16 @@ class InstructionsTabCoordinator:
         self._library_logic.on_view_changed = self._library_panel.update_view
         self._library_logic.on_generation_completed = self._on_generation_completed
         self._library_logic.on_generation_error = self._on_generation_error
-        self._library_logic.on_generation_cancelled = self._on_generation_cancelled
+        self._library_logic.on_generation_canceled = self._on_generation_canceled
         self._library_logic.on_load_file_not_found = self._on_library_file_not_found
         self._library_logic.on_load_error = self._on_library_load_error
+        self._library_logic.on_library_outdated = self._on_library_outdated
 
         self._library_panel.on_refresh_requested = self._library_logic.refresh_libraries
         self._library_panel.on_generate_requested = self._request_generate_library
         self._library_panel.on_cancel_generation = self._library_logic.cancel_generation
         self._library_panel.on_library_selected = self._library_logic.load_library_and_set_current
-        self._library_panel.on_generator_selected = self._on_generator_selected
+        self._library_panel.on_generator_selected = self._library_logic.load_library_generator
         self._library_panel.on_library_remove_requested = self._request_remove_library
         self._instruction_player_logic = PlayerLogic(
             audio_device_manager,
@@ -172,18 +179,19 @@ class InstructionsTabCoordinator:
         )
         self._guarded_player = GuardedPlayer(
             self._instruction_player_logic,
-            dialogs=dialogs,
-            error_message=language_manager["global.player.message.audio_playback_error"],
+            failures=playback_failures,
         )
         self._waveform_panel = GUIInstructionWaveformPanel(
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM),
             layout=layout.graphs,
+            channel_colors=layout.channel_colors,
             language_manager=language_manager,
             status_bar=status_bar,
         )
         self._spectrum_panel = GUIInstructionSpectrumPanel(
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_INSTRUCTION_PANEL_SPECTRUM),
             layout=layout.graphs,
+            channel_colors=layout.channel_colors,
             language_manager=language_manager,
             status_bar=status_bar,
         )
@@ -191,6 +199,7 @@ class InstructionsTabCoordinator:
         self._spectrum_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._graph_panels: List[_StackedGraphPanel] = [self._waveform_panel, self._spectrum_panel]
         self._instruction_player_logic.on_position_changed = self._waveform_panel.set_position
+        self._waveform_panel.on_position_clicked = self._play_from
         self._instruction_details_logic = InstructionDetailsPanelLogic(
             library_manager,
             layout=layout.instructions,
@@ -212,7 +221,7 @@ class InstructionsTabCoordinator:
         self._instruction_choice_panel.set_collapse_handler(self._on_card_collapse_changed)
         self._instruction_parameters_panel.set_collapse_handler(self._on_card_collapse_changed)
 
-        config_manager.add_config_change_callback(self._library_logic.update_status)
+        config_manager.add_config_change_callback(self._library_logic.follow_config)
 
         self._library_logic.set_callbacks(
             on_apply_library_config=config_manager.apply_library_config,
@@ -226,7 +235,7 @@ class InstructionsTabCoordinator:
         )
 
     def _request_generate_library(self) -> None:
-        if self._library_logic.library_available_for_config():
+        if self._library_logic.config_library_state() is LibraryState.CURRENT:
             self._dialogs.show_confirmation(
                 TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
                 self._language_manager["instructions.library.message.regenerate_confirmation_message"],
@@ -237,14 +246,6 @@ class InstructionsTabCoordinator:
             return
 
         self._library_logic.request_generation()
-
-    def _on_generator_selected(
-        self,
-        library_key: InstructionLibraryKey,
-        generator_name: LibraryGeneratorName,
-    ) -> None:
-        self._library_logic.load_library_and_set_current(library_key)
-        self._library_logic.load_generator(generator_name)
 
     def _request_remove_library(self, library_key: InstructionLibraryKey) -> None:
         library_path = self._library_logic.get_path(library_key)
@@ -288,10 +289,10 @@ class InstructionsTabCoordinator:
             self._language_manager["instructions.library.message.status_generation_failed"],
         )
 
-    def _on_generation_cancelled(self) -> None:
+    def _on_generation_canceled(self) -> None:
         self._dialogs.show_info(
             TAG_INSTRUCTIONS_LIBRARY_PANEL,
-            self._language_manager["instructions.library.message.status_generation_cancelled"],
+            self._language_manager["instructions.library.message.status_generation_canceled"],
             self._ttl_generation_status,
             modal=True,
         )
@@ -301,6 +302,21 @@ class InstructionsTabCoordinator:
 
     def _on_library_load_error(self, exception: Exception, message: str) -> None:
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception, message))
+
+    def _on_library_outdated(self, library_key: InstructionLibraryKey) -> None:
+        """Asks whether to rebuild a library another version built, a frame later, which lets an
+        opening at startup ask once the window stands."""
+        FrameCallbackManager.set_frame_callback(lambda: self._confirm_rebuild(library_key))
+
+    def _confirm_rebuild(self, library_key: InstructionLibraryKey) -> None:
+        self._dialogs.show_confirmation(
+            TAG_INSTRUCTIONS_LIBRARY_DIALOG_REBUILD_CONFIRMATION,
+            self._language_manager["instructions.library.message.rebuild_confirmation_message"],
+            self._language_manager["instructions.library.title.rebuild_confirmation_dialog"],
+            lambda: self._library_logic.rebuild_library(library_key),
+            ok_label=self._language_manager["instructions.library.label.rebuild_confirmation_ok"],
+            path=self._library_logic.get_path(library_key),
+        )
 
     def _display_instruction(self, instruction_data: Optional[InstructionPanelData]) -> None:
         """Renders the instruction and reloads the player with its audio.
@@ -350,12 +366,23 @@ class InstructionsTabCoordinator:
         self._instruction_details_logic.clear_display()
         self._instruction_player_logic.clear_audio()
 
+    def _play_from(self, position: int) -> None:
+        """Sounds the audio from the sample a click on the waveform pointed at."""
+        self._guarded_player.run_guarded(partial(self._instruction_player_logic.play_from, position))
+
     def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
-        """Persists a centre-column card's collapsed state so it restores on the next launch."""
+        """Persists a center-column card's collapsed state so it restores on the next launch."""
         self._session_manager.set_card_collapsed(card_tag, collapsed)
 
+    def _on_library_tree_lock_changed(self, is_unlocked: bool) -> None:
+        """Enables the catalog's tree along with its lock, and loads a folder's remembered library once
+        the lock is let go."""
+        self._library_panel.set_tree_enabled(is_unlocked)
+        if is_unlocked:
+            self._library_logic.reload_remembered_library()
+
     def _repaint_library_favorites(self, node: FileSystemNode) -> None:
-        """Repaints the row whose star was toggled: the catalogue lists a library once, so it is one row."""
+        """Repaints the row whose star was toggled: the catalog lists a library once, so it is one row."""
         self._library_panel.update_favorite_indicators((node,))
 
     def _on_library_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
@@ -450,7 +477,7 @@ class InstructionsTabCoordinator:
         self._sync_graph_heights()
 
     def _build_display_column(self, parent: str) -> None:
-        """Stacks the waveform and spectrum cards down the centre column."""
+        """Stacks the waveform and spectrum cards down the center column."""
         self._waveform_panel.create_panel(parent)
         dpg.add_spacer(height=self._geometry.panel_gap, parent=parent)
         self._spectrum_panel.create_panel(parent)
@@ -465,29 +492,16 @@ class InstructionsTabCoordinator:
         """Populates the library tree once the tab's widgets exist."""
         self._library_logic.refresh_libraries(load_if_needed=False)
 
-    def ensure_library_loaded(self) -> None:
-        """Make sure a library matching the current configuration exists before reconstructing.
-
-        The reconstruction pipeline loads the library from disk by the configuration's key, so the
-        only requirement here is that the corresponding file is present; it is generated when missing.
-        The library's stored parameters are deliberately not applied back to the configuration, which
-        would overwrite the user's current settings.
-        """
-        if not self._library_manager.is_library_available_for_config():
-            self._library_logic.generate_library()
+    def prepare_library(self) -> None:
+        """Prepares the library a conversion under the current configuration reads from disk."""
+        self._library_logic.prepare_library()
 
     def load_library_file(self, filepath: Path) -> None:
         self._close_instruction()
         self._library_logic.load_library_file(filepath)
 
-    def load_library_safely(self, filepath: Path) -> None:
-        try:
-            self.load_library_file(filepath)
-        except (SampleToNESError, OSError) as exception:
-            logger.warning(f"Could not load library from {logger.format_path(filepath)}: {exception}")
-
     def save_browser_shape(self) -> None:
-        """Writes down the rows the catalogue stands open, so a later run brings them back."""
+        """Writes down the rows the catalog stands open, so a later run brings them back."""
         self._session_manager.set_expanded_rows(
             self._library_panel.tag,
             self._library_panel.expanded_rows,
@@ -496,7 +510,25 @@ class InstructionsTabCoordinator:
     def is_library_generating(self) -> bool:
         return self._library_logic.is_library_generating()
 
-    def refresh_generate_button(self) -> None:
+    def guard_exit(self, proceed: VoidCallback, decline: VoidCallback) -> None:
+        """Lets the exit go on, asking first while a library is being built, which exiting stops.
+
+        The question reads the library once the screen is free for it, so a build that ended
+        meanwhile is asked about no more. Cancel keeps the library building and turns the exit away.
+        """
+        asking(self.is_library_generating, self._ask_before_exit, self._dialogs.when_free)(proceed, decline)
+
+    def _ask_before_exit(self, proceed: VoidCallback, decline: VoidCallback) -> None:
+        self._dialogs.show_confirmation(
+            TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
+            self._language_manager["global.dialog.message.exit_library_generation_in_progress"],
+            self._language_manager["global.dialog.title.exit_confirmation"],
+            proceed,
+            ok_label=self._language_manager["global.dialog.label.exit"],
+            on_cancel=decline,
+        )
+
+    def follow_busy_state(self) -> None:
         self._library_panel.refresh_action_buttons()
 
     @property

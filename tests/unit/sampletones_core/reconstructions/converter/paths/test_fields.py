@@ -1,3 +1,5 @@
+from typing import FrozenSet
+
 import pytest
 
 from sampletones_core.configs import Config
@@ -8,10 +10,15 @@ from sampletones_core.configs.display import (
     format_spectrum_method,
     format_transformation_gamma,
 )
-from sampletones_core.constants.enums import GeneratorName, abbreviate_generator_names
+from sampletones_core.constants.enums import (
+    DEFAULT_CHANNELS,
+    ChannelName,
+    abbreviate_channel_names,
+)
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 
 HASH = "6edf7c948606917a78b45d153c7ca7e0"
+CHANNELS = frozenset(DEFAULT_CHANNELS)
 
 
 @pytest.fixture(scope="module")
@@ -19,49 +26,63 @@ def config() -> Config:
     return Config()
 
 
-class TestGenerateConfigDirectoryName:
+def _directory_name(config: Config, channels: FrozenSet[ChannelName]) -> str:
+    return ConfigDirectoryFields.from_config(config, channels).directory_name
+
+
+class TestTheDirectoryNameOfAConfiguration:
     def test_result_contains_sample_rate(self, config: Config) -> None:
-        name = ConfigDirectoryFields.generate_config_directory_name(config)
+        name = _directory_name(config, CHANNELS)
         assert str(config.library.sample_rate) in name
 
     def test_result_contains_nes_frequency(self, config: Config) -> None:
-        name = ConfigDirectoryFields.generate_config_directory_name(config)
+        name = _directory_name(config, CHANNELS)
         assert str(config.library.nes_frequency) in name
 
     def test_same_config_produces_same_name(self, config: Config) -> None:
-        assert ConfigDirectoryFields.generate_config_directory_name(
-            config
-        ) == ConfigDirectoryFields.generate_config_directory_name(config)
+        assert _directory_name(config, CHANNELS) == _directory_name(config, CHANNELS)
 
-    def test_different_generator_sets_produce_different_names(self, config: Config) -> None:
-        single_generator_config = config.model_copy(
-            update={"generation": config.generation.model_copy(update={"generators": [GeneratorName.PULSE1]})}
-        )
+    def test_different_channel_sets_produce_different_names(self, config: Config) -> None:
+        """The directory names what a run hands out, so two sets of channels never share one."""
+        assert _directory_name(config, CHANNELS) != _directory_name(config, frozenset({ChannelName.PULSE1}))
 
-        assert ConfigDirectoryFields.generate_config_directory_name(
-            config
-        ) != ConfigDirectoryFields.generate_config_directory_name(single_generator_config)
+    def test_the_name_reads_the_same_however_the_set_was_gathered(self, config: Config) -> None:
+        """A set has no order of its own, so the name states the channels in the app's own order."""
+        reversed_set = frozenset(reversed(list(DEFAULT_CHANNELS)))
+
+        assert _directory_name(config, CHANNELS) == _directory_name(config, reversed_set)
+
+    def test_a_hash_taken_once_names_the_same_directory(self, config: Config) -> None:
+        """A caller naming several channel sets hashes the settings once, and each name reads as the
+        configuration's own."""
+        settings_hash = ConfigDirectoryFields.settings_hash(config)
+
+        assert ConfigDirectoryFields.from_hashed_config(
+            config,
+            CHANNELS,
+            settings_hash=settings_hash,
+        ) == ConfigDirectoryFields.from_config(config, CHANNELS)
 
 
 class TestConfigDirectoryFields:
-    def test_round_trips_with_generate_config_directory_name(self, config: Config) -> None:
-        name = ConfigDirectoryFields.generate_config_directory_name(config)
+    def test_round_trips_with_the_directory_name(self, config: Config) -> None:
+        name = _directory_name(config, CHANNELS)
         fields = ConfigDirectoryFields.from_directory_name(name)
         assert fields is not None
         assert fields.directory_name == name
 
     def test_parses_components(self, config: Config) -> None:
-        name = ConfigDirectoryFields.generate_config_directory_name(config)
+        name = _directory_name(config, CHANNELS)
         fields = ConfigDirectoryFields.from_directory_name(name)
         assert fields is not None
         assert fields.sr == config.library.sample_rate
         assert fields.nf == config.library.nes_frequency
         assert fields.sm == config.library.spectrum_method
         assert fields.tg == config.library.transformation_gamma
-        assert fields.generators == tuple(config.generation.generators)
+        assert fields.channels == tuple(DEFAULT_CHANNELS)
 
     def test_directory_name_embeds_field_keys(self, config: Config) -> None:
-        name = ConfigDirectoryFields.generate_config_directory_name(config)
+        name = _directory_name(config, CHANNELS)
         segments = name.split("_")
         assert {"sr", "nf", "sm", "tg", "gn", "ch"}.issubset(segments)
 
@@ -83,12 +104,12 @@ class TestConfigDirectoryFields:
         assert ConfigDirectoryFields.from_directory_name(name) is None
 
     def test_display_name_combines_formatted_parts(self, config: Config) -> None:
-        fields = ConfigDirectoryFields.from_config(config)
+        fields = ConfigDirectoryFields.from_config(config, CHANNELS)
         display = fields.display_name
 
         assert format_sample_rate(config.library.sample_rate) in display
         assert format_nes_frequency(config.library.nes_frequency) in display
         assert format_spectrum_method(config.library.spectrum_method) in display
         assert format_transformation_gamma(config.library.transformation_gamma) in display
-        assert abbreviate_generator_names(list(config.generation.generators)) in display
+        assert abbreviate_channel_names(list(DEFAULT_CHANNELS)) in display
         assert DISPLAY_SEPARATOR in display

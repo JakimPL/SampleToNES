@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, FrozenSet
+from typing import Dict, FrozenSet, Optional
 
 import pytest
 
@@ -7,7 +7,8 @@ from sampletones_application.view_model.sequencer.tracker import (
     SequencerCellViewModel,
     SequencerRowViewModel,
 )
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_application.view_model.sequencer.voices import VoiceKind
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.utils.display import (
     NOTE_OFF,
     display_id,
@@ -18,21 +19,26 @@ from sampletones_shared.constants.symbols import MIXED
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
-_EMPTY_INSTRUMENT = display_id(None)
+_EMPTY_VOICE = display_id(None)
 _EMPTY_TRANSPOSE = display_transpose(None)
 _EMPTY_VOLUME = display_volume(None)
 
 
 def _cell(
     *,
-    instrument: str = _EMPTY_INSTRUMENT,
+    voice: str = _EMPTY_VOICE,
     transpose: str = _EMPTY_TRANSPOSE,
     volume: str = _EMPTY_VOLUME,
+    kind: Optional[VoiceKind] = None,
 ) -> SequencerCellViewModel:
     return SequencerCellViewModel(
-        instrument=instrument,
+        voice=voice,
         transpose=transpose,
         volume=volume,
+        kind=kind,
+        pitch=None,
+        level=None,
+        command=None,
     )
 
 
@@ -41,18 +47,19 @@ def _empty_cell() -> SequencerCellViewModel:
 
 
 _OCCUPIED = _cell(
-    instrument=display_id(0),
+    voice=display_id(0),
     transpose=display_transpose(5),
     volume=display_volume(8),
+    kind=VoiceKind.SAMPLE,
 )
 
 
 def _row_cells(
     **overrides: SequencerCellViewModel,
-) -> Dict[GeneratorName, SequencerCellViewModel]:
-    cells = {generator: _empty_cell() for generator in GeneratorName.items()}
+) -> Dict[ChannelName, SequencerCellViewModel]:
+    cells = {channel: _empty_cell() for channel in ChannelName.items()}
     for name, cell in overrides.items():
-        cells[GeneratorName[name.upper()]] = cell
+        cells[ChannelName[name.upper()]] = cell
 
     return cells
 
@@ -60,128 +67,331 @@ def _row_cells(
 class TestSampleColumnAggregate(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class AggregateCase(BaseRegularTestCase):
-        cells: Dict[GeneratorName, SequencerCellViewModel]
-        relevant_generators: FrozenSet[GeneratorName]
-        expected_instrument: str
+        cells: Dict[ChannelName, SequencerCellViewModel]
+        sample_channels: FrozenSet[ChannelName]
+        carried_channels: FrozenSet[ChannelName]
+        expected_sample: str
         expected_transpose: str
         expected_volume: str
 
     test_cases = (
         AggregateCase(
-            label="no_relevant_channels_fall_back_to_defaults",
+            label="no_sample_channels_fall_back_to_defaults",
             cells=_row_cells(),
-            relevant_generators=frozenset(),
-            expected_instrument=_EMPTY_INSTRUMENT,
+            sample_channels=frozenset(),
+            carried_channels=frozenset(),
+            expected_sample=_EMPTY_VOICE,
             expected_transpose=_EMPTY_TRANSPOSE,
             expected_volume=_EMPTY_VOLUME,
         ),
         AggregateCase(
-            label="transpose_and_volume_span_all_channels_when_no_sample_is_present",
-            cells={generator: _cell(volume=display_volume(8)) for generator in GeneratorName.items()},
-            relevant_generators=frozenset(),
-            expected_instrument=_EMPTY_INSTRUMENT,
+            label="transpose_and_volume_read_empty_where_no_sample_plays",
+            cells={channel: _cell(volume=display_volume(8)) for channel in ChannelName.items()},
+            sample_channels=frozenset(),
+            carried_channels=frozenset(),
+            expected_sample=_EMPTY_VOICE,
+            expected_transpose=_EMPTY_TRANSPOSE,
+            expected_volume=_EMPTY_VOLUME,
+        ),
+        AggregateCase(
+            label="transpose_and_volume_span_the_channels_a_sample_still_plays_on",
+            cells=_row_cells(
+                pulse1=_cell(volume=display_volume(8)),
+                triangle=_cell(volume=display_volume(8)),
+                noise=_cell(volume=display_volume(3)),
+            ),
+            sample_channels=frozenset(),
+            carried_channels=frozenset(
+                {
+                    ChannelName.PULSE1,
+                    ChannelName.TRIANGLE,
+                }
+            ),
+            expected_sample=_EMPTY_VOICE,
             expected_transpose=_EMPTY_TRANSPOSE,
             expected_volume=display_volume(8),
         ),
         AggregateCase(
-            label="single_relevant_channel_present",
-            cells=_row_cells(pulse1=_OCCUPIED),
-            relevant_generators=frozenset({GeneratorName.PULSE1}),
-            expected_instrument=display_id(0),
+            label="a_placed_sample_spans_its_own_channels_over_the_ones_still_playing",
+            cells=_row_cells(
+                pulse1=_OCCUPIED,
+                pulse2=_cell(volume=display_volume(3)),
+            ),
+            sample_channels=frozenset({ChannelName.PULSE1}),
+            carried_channels=frozenset({ChannelName.PULSE2}),
+            expected_sample=display_id(0),
             expected_transpose=display_transpose(5),
             expected_volume=display_volume(8),
         ),
         AggregateCase(
-            label="sample_present_across_all_its_relevant_channels",
+            label="a_single_sample_channel_present",
+            cells=_row_cells(pulse1=_OCCUPIED),
+            sample_channels=frozenset({ChannelName.PULSE1}),
+            carried_channels=frozenset(),
+            expected_sample=display_id(0),
+            expected_transpose=display_transpose(5),
+            expected_volume=display_volume(8),
+        ),
+        AggregateCase(
+            label="a_sample_present_across_every_channel_it_covers",
             cells=_row_cells(pulse1=_OCCUPIED, triangle=_OCCUPIED),
-            relevant_generators=frozenset(
+            sample_channels=frozenset(
                 {
-                    GeneratorName.PULSE1,
-                    GeneratorName.TRIANGLE,
+                    ChannelName.PULSE1,
+                    ChannelName.TRIANGLE,
                 }
             ),
-            expected_instrument=display_id(0),
+            carried_channels=frozenset(),
+            expected_sample=display_id(0),
             expected_transpose=display_transpose(5),
             expected_volume=display_volume(8),
         ),
         AggregateCase(
-            label="sample_missing_from_one_relevant_channel_is_mixed",
+            label="a_sample_missing_from_one_of_its_channels_is_mixed",
             cells=_row_cells(pulse1=_OCCUPIED),
-            relevant_generators=frozenset(
+            sample_channels=frozenset(
                 {
-                    GeneratorName.PULSE1,
-                    GeneratorName.TRIANGLE,
+                    ChannelName.PULSE1,
+                    ChannelName.TRIANGLE,
                 }
             ),
-            expected_instrument=MIXED,
+            carried_channels=frozenset(),
+            expected_sample=MIXED,
             expected_transpose=MIXED,
             expected_volume=MIXED,
         ),
         AggregateCase(
-            label="diverging_transpose_is_mixed_while_instrument_is_uniform",
+            label="diverging_transpose_is_mixed_while_the_sample_is_uniform",
             cells=_row_cells(
                 pulse1=_OCCUPIED,
                 triangle=_cell(
-                    instrument=display_id(0),
+                    voice=display_id(0),
                     transpose=_EMPTY_TRANSPOSE,
                     volume=display_volume(8),
                 ),
             ),
-            relevant_generators=frozenset(
+            sample_channels=frozenset(
                 {
-                    GeneratorName.PULSE1,
-                    GeneratorName.TRIANGLE,
+                    ChannelName.PULSE1,
+                    ChannelName.TRIANGLE,
                 }
             ),
-            expected_instrument=display_id(0),
+            carried_channels=frozenset(),
+            expected_sample=display_id(0),
             expected_transpose=MIXED,
             expected_volume=display_volume(8),
         ),
         AggregateCase(
+            label="an_instrument_alone_on_a_row_leaves_the_sample_column_empty",
+            cells=_row_cells(
+                pulse1=_cell(
+                    voice=display_id(3),
+                    kind=VoiceKind.INSTRUMENT,
+                ),
+            ),
+            sample_channels=frozenset(),
+            carried_channels=frozenset(),
+            expected_sample=_EMPTY_VOICE,
+            expected_transpose=_EMPTY_TRANSPOSE,
+            expected_volume=_EMPTY_VOLUME,
+        ),
+        AggregateCase(
+            label="an_instrument_beside_a_sample_leaves_the_samples_reading_alone",
+            cells=_row_cells(
+                pulse1=_OCCUPIED,
+                triangle=_OCCUPIED,
+                noise=_cell(
+                    voice=display_id(3),
+                    kind=VoiceKind.INSTRUMENT,
+                ),
+            ),
+            sample_channels=frozenset(
+                {
+                    ChannelName.PULSE1,
+                    ChannelName.TRIANGLE,
+                }
+            ),
+            carried_channels=frozenset(),
+            expected_sample=display_id(0),
+            expected_transpose=display_transpose(5),
+            expected_volume=display_volume(8),
+        ),
+        AggregateCase(
             label="all_channels_note_off_reads_as_note_off",
-            cells={generator: _cell(instrument=NOTE_OFF) for generator in GeneratorName.items()},
-            relevant_generators=frozenset(),
-            expected_instrument=NOTE_OFF,
+            cells={channel: _cell(voice=NOTE_OFF) for channel in ChannelName.items()},
+            sample_channels=frozenset(),
+            carried_channels=frozenset(),
+            expected_sample=NOTE_OFF,
             expected_transpose=_EMPTY_TRANSPOSE,
             expected_volume=_EMPTY_VOLUME,
         ),
         AggregateCase(
             label="half_cut_row_is_mixed",
-            cells=_row_cells(pulse1=_cell(instrument=NOTE_OFF)),
-            relevant_generators=frozenset(),
-            expected_instrument=MIXED,
+            cells=_row_cells(pulse1=_cell(voice=NOTE_OFF)),
+            sample_channels=frozenset(),
+            carried_channels=frozenset(),
+            expected_sample=MIXED,
             expected_transpose=_EMPTY_TRANSPOSE,
             expected_volume=_EMPTY_VOLUME,
         ),
         AggregateCase(
             label="zero_transpose_beside_an_empty_one_is_mixed",
             cells=_row_cells(pulse1=_cell(transpose=display_transpose(0))),
-            relevant_generators=frozenset(),
-            expected_instrument=_EMPTY_INSTRUMENT,
+            sample_channels=frozenset(),
+            carried_channels=frozenset(
+                {
+                    ChannelName.PULSE1,
+                    ChannelName.PULSE2,
+                }
+            ),
+            expected_sample=_EMPTY_VOICE,
             expected_transpose=MIXED,
             expected_volume=_EMPTY_VOLUME,
         ),
         AggregateCase(
-            label="zero_transpose_shared_by_every_channel_reads_as_zero",
-            cells={generator: _cell(transpose=display_transpose(0)) for generator in GeneratorName.items()},
-            relevant_generators=frozenset(),
-            expected_instrument=_EMPTY_INSTRUMENT,
+            label="zero_transpose_shared_by_every_channel_still_playing_reads_as_zero",
+            cells=_row_cells(
+                pulse1=_cell(transpose=display_transpose(0)),
+                pulse2=_cell(transpose=display_transpose(0)),
+            ),
+            sample_channels=frozenset(),
+            carried_channels=frozenset(
+                {
+                    ChannelName.PULSE1,
+                    ChannelName.PULSE2,
+                }
+            ),
+            expected_sample=_EMPTY_VOICE,
             expected_transpose=display_transpose(0),
             expected_volume=_EMPTY_VOLUME,
         ),
     )
 
     @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
-    def test_sample_column_aggregates_over_relevant_channels(
+    def test_sample_column_aggregates_over_the_channels_it_spans(
         self,
         case: AggregateCase,
     ) -> None:
         row = SequencerRowViewModel(
             index=0,
             cells=case.cells,
-            relevant_generators=case.relevant_generators,
+            sample_channels=case.sample_channels,
+            carried_channels=case.carried_channels,
         )
 
-        assert row.sample_instrument == case.expected_instrument
-        assert row.sample_transpose == case.expected_transpose
-        assert row.sample_volume == case.expected_volume
+        assert row.sample == case.expected_sample
+        assert row.transpose == case.expected_transpose
+        assert row.volume == case.expected_volume
+
+
+class TestWhichKindTheSampleColumnNames:
+    """The slot's kind is what colors it, so it states one only where its channels agree."""
+
+    @staticmethod
+    def _row(
+        cells: Dict[ChannelName, SequencerCellViewModel],
+        sample_channels: FrozenSet[ChannelName],
+    ) -> SequencerRowViewModel:
+        return SequencerRowViewModel(
+            index=0,
+            cells=cells,
+            sample_channels=sample_channels,
+            carried_channels=frozenset(),
+        )
+
+    def test_a_row_naming_nothing_states_no_kind(self) -> None:
+        row = self._row(_row_cells(), frozenset())
+
+        assert row.sample_kind is None
+
+    def test_a_sample_across_its_channels_states_the_sample_kind(self) -> None:
+        row = self._row(
+            _row_cells(pulse1=_OCCUPIED, triangle=_OCCUPIED),
+            frozenset({ChannelName.PULSE1, ChannelName.TRIANGLE}),
+        )
+
+        assert row.sample_kind is VoiceKind.SAMPLE
+
+    def test_a_sample_missing_from_one_of_its_channels_states_no_kind(self) -> None:
+        """The reading is mixed there, and a mixed cell speaks for no one voice."""
+        row = self._row(
+            _row_cells(pulse1=_OCCUPIED),
+            frozenset({ChannelName.PULSE1, ChannelName.TRIANGLE}),
+        )
+
+        assert row.sample_kind is None
+
+    def test_an_instrument_alone_on_a_row_states_no_kind(self) -> None:
+        """It is placed in its own channel column, so the sample column speaks for none of it."""
+        row = self._row(
+            _row_cells(pulse1=_cell(voice=display_id(3), kind=VoiceKind.INSTRUMENT)),
+            frozenset(),
+        )
+
+        assert row.sample_kind is None
+
+    def test_an_instrument_beside_a_sample_leaves_the_sample_kind_standing(self) -> None:
+        row = self._row(
+            _row_cells(
+                pulse1=_OCCUPIED,
+                noise=_cell(voice=display_id(3), kind=VoiceKind.INSTRUMENT),
+            ),
+            frozenset({ChannelName.PULSE1}),
+        )
+
+        assert row.sample_kind is VoiceKind.SAMPLE
+
+    def test_a_cut_row_states_no_kind(self) -> None:
+        """A cut names no voice, so the slot reads it in the shade an empty one takes."""
+        row = self._row(
+            {channel: _cell(voice=NOTE_OFF) for channel in ChannelName.items()},
+            frozenset(),
+        )
+
+        assert row.sample_kind is None
+
+
+class TestWhetherTheSampleColumnTakesOffsets(BaseTestSuite):
+    """A pitch or a volume typed in the sample column lands where a sample plays at the row."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        sample_channels: FrozenSet[ChannelName]
+        carried_channels: FrozenSet[ChannelName]
+        expected: bool
+
+    test_cases = (
+        TestCase(
+            label="a row placing a sample takes them",
+            sample_channels=frozenset({ChannelName.PULSE1}),
+            carried_channels=frozenset({ChannelName.PULSE1}),
+            expected=True,
+        ),
+        TestCase(
+            label="a row below a sample still playing takes them",
+            sample_channels=frozenset(),
+            carried_channels=frozenset({ChannelName.TRIANGLE}),
+            expected=True,
+        ),
+        TestCase(
+            label="a row where no sample plays turns them away",
+            sample_channels=frozenset(),
+            carried_channels=frozenset(),
+            expected=False,
+        ),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_row_takes_offsets_where_a_sample_plays(self, test_case: TestCase) -> None:
+        row = SequencerRowViewModel(
+            index=0,
+            cells=_row_cells(),
+            sample_channels=test_case.sample_channels,
+            carried_channels=test_case.carried_channels,
+        )
+
+        assert row.takes_offsets is test_case.expected

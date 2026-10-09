@@ -1,0 +1,58 @@
+from functools import partial
+from typing import Final
+
+from automation.dearpygui.items.texts import read_label
+from automation.screen import Screen
+from automation.steps.instructions import load_library
+from automation.vocabulary.playback import PAUSE
+from automation.worlds.home import one_worker_config
+from sampletones_application.tags.general import TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY
+from sampletones_core.constants.enums import GeneratorName
+
+LISTENING_FRAMES: Final[int] = 30
+ZOOM_NOTCHES: Final[int] = 3
+
+
+def show_the_pulse(screen: Screen) -> None:
+    """Loads the library, clicks the pulse row and waits until its waveform is drawn."""
+    instructions = screen.instructions
+    tree = instructions.library.tree
+    load_library(screen, one_worker_config())
+    row = screen.expect_item(partial(tree.generator_row, GeneratorName.PULSE), description="the pulse row")
+
+    tree.click(row)
+
+    screen.expect(instructions.waveform.series, bool, description="the pulse drawn")
+
+
+class TestTheFragmentWaveform:
+    """A click on the fragment's waveform sounds it, and a drag across a narrowed view sounds nothing.
+
+    A fragment lasts a few frames, so the Playback menu's entry is recorded on every frame the gesture spans.
+    The pulse is shown and zoomed in; the drag leaves the entry away from Pause, and the click brings Pause
+    up.
+    """
+
+    def test_a_click_sounds_it_and_a_drag_does_not(self, screen: Screen) -> None:
+        """The Playback entry reads Pause during the click and stays away from it during the drag."""
+        waveform = screen.instructions.waveform
+        playing = screen.words(PAUSE)
+
+        def a_drag_sounds_nothing(screen: Screen) -> None:
+            show_the_pulse(screen)
+            waveform.zoom_in(0.5, ZOOM_NOTCHES)
+
+            with screen.record(partial(read_label, TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY)) as recording:
+                waveform.drag(0.6, 0.4)
+                screen.frames(LISTENING_FRAMES)
+
+            assert playing not in recording.values()
+
+        def a_click_sounds_it(screen: Screen) -> None:
+            with screen.record(partial(read_label, TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY)) as recording:
+                waveform.click(0.5)
+                screen.frames(LISTENING_FRAMES)
+
+            assert playing in recording.values()
+
+        screen.scenario(a_drag_sounds_nothing, a_click_sounds_it).run()

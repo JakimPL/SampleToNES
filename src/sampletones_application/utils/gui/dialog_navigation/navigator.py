@@ -52,7 +52,7 @@ class DialogKeyboardNavigator:
             return
 
         self._disposed = True
-        self._router.pop_modal()
+        self._router.pop_modal(self)
 
     def _focus_initial(self) -> None:
         if dpg.does_item_exist(self._window_tag):

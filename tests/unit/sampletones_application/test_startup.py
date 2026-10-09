@@ -1,18 +1,57 @@
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
-from typing import Any, Callable, Dict, Final, Generator, List
-from unittest.mock import PropertyMock, patch
+from typing import Any, Callable, Dict, Final, FrozenSet, Generator, List, Optional, Tuple, Union
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.application import Application
 from sampletones_application.categories.hierarchy import Tab
+from sampletones_application.config.managers.application import ApplicationConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.config.profile import UserProfile
+from sampletones_application.constants.conversion import MAX_STEM_SOURCES
+from sampletones_application.constants.instruments import INSTRUMENT_CHANNEL
 from sampletones_application.constants.keybindings import DEFAULT_SCHEME_NAME
+from sampletones_application.constants.output import OutputKind
+from sampletones_application.constants.sources import SettingsField, SourceKind
 from sampletones_application.logic.history.action import HistoryAction
+from sampletones_application.logic.reconstruction.edit import ChannelEdit
+from sampletones_application.logic.reconstruction.rewrites.steps import ChannelChange
+from sampletones_application.tags.compose import compose_tag
+from sampletones_application.tags.general import (
+    SUF_BUTTON,
+    SUF_GROUP,
+    SUF_HANDLER_REGISTRY,
+    SUF_STRIP,
+    SUF_TABLE,
+    SUF_TABLE_COLUMN,
+    SUF_TEXT,
+    TAG_GLOBAL_THEME_STEMS_ROW_INERT,
+)
+from sampletones_application.tags.main import (
+    PRE_MAIN_CONVERTER_CANDIDATE,
+    TAG_MAIN_ADVANCED_PANEL,
+    TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL,
+    TAG_MAIN_CONFIG_PANEL,
+    TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
+    TAG_MAIN_CONFIG_TABLE_CONFIG_ROW,
+    TAG_MAIN_CONVERTER_GROUP_ORDER,
+    TAG_MAIN_CONVERTER_PANEL,
+    TAG_MAIN_CONVERTER_RADIO_MODE,
+    TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE,
+    TAG_MAIN_CONVERTER_WINDOW_STEMS,
+    TAG_MAIN_SOURCE_PANEL,
+    TAG_MAIN_SOURCE_TABLE_CHANNELS,
+    TAG_MAIN_SOURCE_TEXT_SUBJECT,
+)
+from sampletones_application.ui.elements.stems.list import GUIStemsList
+from sampletones_application.ui.elements.stems.tags import StemsTags
+from sampletones_application.ui.panels.main import explorer as explorer_module
+from sampletones_application.ui.panels.main.source.rows import ChannelSettingsRows
+from sampletones_application.ui.panels.main.source.steps import ChannelCapSteps
 from sampletones_application.utils.gui.keyboard.event import KeyEvent
+from sampletones_application.utils.gui.keyboard.modifiers import Modifier
 from sampletones_application.utils.gui.shortcuts.ids import (
     CHANNEL_SHORTCUT_IDS,
     TAB_SHORTCUT_IDS,
@@ -22,49 +61,56 @@ from sampletones_application.utils.parallelization.background import (
     stop_background_workers,
 )
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_application.view_model.main.converter import ConversionPhase, ConverterViewModel
+from sampletones_application.view_model.reconstruction.envelopes import ChannelEnvelopesViewModel
+from sampletones_application.view_model.reconstruction.instruments import ReconstructionInstrumentsViewModel
+from sampletones_application.view_model.shared.stems import StemRowViewModel
+from sampletones_core.audio import CurrentDevice
+from sampletones_core.constants.algorithm import UNIT_DRIVE
+from sampletones_core.constants.audio import BufferSize, SampleRate
+from sampletones_core.constants.enums import ChannelName, FeatureKey
+from sampletones_core.features.envelope import Envelope
+from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.converter.paths import get_audio_files
+from sampletones_core.structures.tree import FileSystemNode, NodeType
+from sampletones_shared.paths.extensions import EXT_FILE_PROJECT
+from tests.conftest import ReconstructionFactory
+from tests.suite.application import HeldQueue, held_queue, settled
+from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
+from tests.suite.headless import (
+    VIEWPORT_CLIENT_HEIGHT,
+    VIEWPORT_CLIENT_WIDTH,
+    app,
+    display_patches,
+    headless_application,
+    profile_in,
+)
 
 REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
+DRAG_PAYLOAD_SLOT: Final[int] = 3
+LOUD_DRIVE: Final[float] = 1.75
+UNBUILT_ROW: Final[str] = "browser.row.unbuilt"
+EDITED_VOLUME: Final[Envelope[int]] = Envelope[int](items=(7, 7))
+REMEMBERED_DEVICE: Final[CurrentDevice] = CurrentDevice(
+    device_index=7,
+    name="Remembered headphones",
+    sample_rate=48000,
+    host_api=0,
+)
+SPEAKERS: Final[Dict[str, Union[int, str]]] = {
+    "index": 0,
+    "name": "Speakers",
+    "maxOutputChannels": 2,
+    "defaultSampleRate": 44100,
+    "hostApi": 0,
+}
+CHOSEN_SAMPLE_RATE: Final[SampleRate] = 48000
+CHOSEN_BUFFER_SIZE: Final[BufferSize] = 512
+APPLIED_BUFFER_SIZE: Final[BufferSize] = 2048
 
-_DPG_DISPLAY_FUNCTIONS = [
-    "create_context",
-    "create_viewport",
-    "setup_dearpygui",
-    "show_viewport",
-    "render_dearpygui_frame",
-    "set_viewport_clear_color",
-    "set_viewport_pos",
-    "set_viewport_width",
-    "set_viewport_height",
-    "set_viewport_title",
-    "set_viewport_decorated",
-    "set_viewport_resize_callback",
-    "toggle_viewport_fullscreen",
-    "set_exit_callback",
-    "set_primary_window",
-]
-
-_VIEWPORT_CLIENT_WIDTH: Final[int] = 1280
-_VIEWPORT_CLIENT_HEIGHT: Final[int] = 720
-
-
-def _display_patches() -> List[Any]:
-    display_patches = [patch(f"dearpygui.dearpygui.{name}", return_value=None) for name in _DPG_DISPLAY_FUNCTIONS]
-    display_patches.append(
-        patch(
-            "dearpygui.dearpygui.get_viewport_client_width",
-            return_value=_VIEWPORT_CLIENT_WIDTH,
-        )
-    )
-    display_patches.append(
-        patch(
-            "dearpygui.dearpygui.get_viewport_client_height",
-            return_value=_VIEWPORT_CLIENT_HEIGHT,
-        )
-    )
-    display_patches.append(patch("sampletones_application.utils.callbacks.queue.CallbackQueue.start"))
-    return display_patches
+__all__ = ["app", "held_queue"]
 
 
 @contextmanager
@@ -80,17 +126,27 @@ def _no_audio_devices() -> Generator[None, None, None]:
         yield
 
 
-def _profile(directory: Path) -> UserProfile:
-    """Starts the application on a profile of its own, in the state a first run finds.
+@contextmanager
+def _viewport_geometry() -> Generator[None, None, None]:
+    """The window's place and size as the session reads them when a run leaves."""
+    with (
+        patch("dearpygui.dearpygui.get_viewport_pos", return_value=[0, 0]),
+        patch("dearpygui.dearpygui.get_viewport_width", return_value=VIEWPORT_CLIENT_WIDTH),
+        patch("dearpygui.dearpygui.get_viewport_height", return_value=VIEWPORT_CLIENT_HEIGHT),
+    ):
+        yield
 
-    The settings and the keys an application comes up on are read from its profile, so a suite
-    given the user's own answers for whatever that machine prefers. A directory per test is what
-    holds a run to the shipped defaults.
-    """
-    return UserProfile(
-        config=directory / "config.yaml",
-        state=directory / "state.yaml",
-    )
+
+@contextmanager
+def _one_audio_device() -> Generator[None, None, None]:
+    """A machine offering one pair of speakers as its default output."""
+    with (
+        patch("pyaudio.PyAudio.get_device_count", return_value=1),
+        patch("pyaudio.PyAudio.get_device_info_by_index", return_value=SPEAKERS),
+        patch("pyaudio.PyAudio.get_default_output_device_info", return_value=SPEAKERS),
+        patch("pyaudio.PyAudio.is_format_supported", return_value=True),
+    ):
+        yield
 
 
 class TestGUIStartup:
@@ -102,14 +158,14 @@ class TestGUIStartup:
         SingleThreadExecutor.reset_shutdown()
         dpg.destroy_context()
 
-    def test_initialises_without_error(self, tmp_path: Path) -> None:
+    def test_initializes_without_error(self, tmp_path: Path) -> None:
         with ExitStack() as stack:
-            for display_patch in _display_patches():
+            for display_patch in display_patches():
                 stack.enter_context(display_patch)
 
-            Application(profile=_profile(tmp_path))
+            headless_application(tmp_path)
 
-    def test_initialises_where_nothing_can_play(self, tmp_path: Path) -> None:
+    def test_initializes_where_nothing_can_play(self, tmp_path: Path) -> None:
         """Editing a song, exporting a module and rendering to a file need no output device.
 
         The rate the audio is rendered at is the consumer's to state, so a machine offering no
@@ -117,26 +173,123 @@ class TestGUIStartup:
         sounds works on it.
         """
         with ExitStack() as stack:
-            for display_patch in _display_patches():
+            for display_patch in display_patches():
                 stack.enter_context(display_patch)
             stack.enter_context(_no_audio_devices())
 
-            Application(profile=_profile(tmp_path))
+            headless_application(tmp_path)
 
 
-@pytest.fixture
-def app(tmp_path: Path) -> Generator[Any, Application, Any]:
-    dpg.create_context()
-    try:
-        with ExitStack() as stack:
-            for display_patch in _display_patches():
-                stack.enter_context(display_patch)
+class TestLeaving:
+    """Leaving lets go of everything the run holds and writes the session, whatever the machine offers.
 
-            yield Application(profile=_profile(tmp_path))
-    finally:
+    The session keeps the output device the user last committed in Audio settings. A machine offering
+    no output device therefore leaves cleanly, and the device the session remembers stays remembered
+    while it is unplugged, as a remembered folder does.
+    """
+
+    @pytest.fixture(autouse=True)
+    def dpg_context(self) -> Generator[Any, Application, Any]:
+        dpg.create_context()
+        yield
         stop_background_workers()
         SingleThreadExecutor.reset_shutdown()
         dpg.destroy_context()
+
+    @staticmethod
+    def _remember_device(directory: Path) -> None:
+        """Writes a session whose last committed device is one this machine does not offer."""
+        settings = ApplicationConfigManager(profile_in(directory).config)
+        settings.set_audio_settings(REMEMBERED_DEVICE, CHOSEN_BUFFER_SIZE)
+        settings.save()
+
+    @staticmethod
+    def _leave(application: Application) -> None:
+        """Takes the teardown a run takes once its loop has ended, leaving the context to the fixture."""
+        with patch("dearpygui.dearpygui.destroy_context") as destroy_context, application._teardown():
+            pass
+
+        destroy_context.assert_called_once_with()
+
+    @staticmethod
+    def _remembered_device(directory: Path) -> CurrentDevice:
+        return ApplicationConfigManager(profile_in(directory).config).current_audio_device
+
+    def test_a_machine_offering_no_device_leaves_and_keeps_the_remembered_one(self, tmp_path: Path) -> None:
+        self._remember_device(tmp_path)
+        with ExitStack() as stack:
+            for display_patch in display_patches():
+                stack.enter_context(display_patch)
+            stack.enter_context(_viewport_geometry())
+            stack.enter_context(_no_audio_devices())
+
+            application = headless_application(tmp_path)
+            assert application.audio_device_manager.get_current_device() is None
+            self._leave(application)
+
+        assert self._remembered_device(tmp_path) == REMEMBERED_DEVICE
+        assert profile_in(tmp_path).state.exists()
+
+    def test_a_committed_device_is_what_the_session_keeps(self, tmp_path: Path) -> None:
+        self._remember_device(tmp_path)
+        with ExitStack() as stack:
+            for display_patch in display_patches():
+                stack.enter_context(display_patch)
+            stack.enter_context(_viewport_geometry())
+            stack.enter_context(_one_audio_device())
+
+            application = headless_application(tmp_path)
+            application._apply_audio_settings(
+                int(SPEAKERS["index"]),
+                CHOSEN_SAMPLE_RATE,
+                APPLIED_BUFFER_SIZE,
+            )
+            committed = application.audio_device_manager.get_current_device()
+            self._leave(application)
+
+        assert committed is not None
+        assert committed.sample_rate == CHOSEN_SAMPLE_RATE
+        assert self._remembered_device(tmp_path) == committed
+        assert ApplicationConfigManager(profile_in(tmp_path).config).current_buffer_size == APPLIED_BUFFER_SIZE
+
+    def test_a_failing_step_leaves_the_later_ones_taken(self, tmp_path: Path) -> None:
+        with ExitStack() as stack:
+            for display_patch in display_patches():
+                stack.enter_context(display_patch)
+            stack.enter_context(_viewport_geometry())
+            stack.enter_context(_no_audio_devices())
+
+            application = headless_application(tmp_path)
+            with (
+                patch.object(application._main_tab, "cleanup", side_effect=RuntimeError),
+                patch("dearpygui.dearpygui.destroy_context") as destroy_context,
+                pytest.raises(RuntimeError),
+                application._teardown(),
+            ):
+                pass
+
+        destroy_context.assert_called_once_with()
+        assert application.audio_device_manager._pyaudio is None
+        assert profile_in(tmp_path).state.exists()
+
+    def test_a_failing_step_keeps_the_failure_that_ended_the_run(self, tmp_path: Path) -> None:
+        """The traceback of a step failing on the way out names the failure the run ended on."""
+        with ExitStack() as stack:
+            for display_patch in display_patches():
+                stack.enter_context(display_patch)
+            stack.enter_context(_viewport_geometry())
+            stack.enter_context(_no_audio_devices())
+
+            application = headless_application(tmp_path)
+            with (
+                patch.object(application._main_tab, "cleanup", side_effect=RuntimeError("cleanup")),
+                patch("dearpygui.dearpygui.destroy_context"),
+                pytest.raises(RuntimeError) as raised,
+                application._teardown(),
+            ):
+                raise ValueError("the run")
+
+        assert isinstance(raised.value.__context__, ValueError)
 
 
 class TestKeybindingPreferences:
@@ -151,7 +304,7 @@ class TestKeybindingPreferences:
         dpg.create_context()
         try:
             with ExitStack() as stack:
-                for display_patch in _display_patches():
+                for display_patch in display_patches():
                     stack.enter_context(display_patch)
 
                 stack.enter_context(
@@ -170,7 +323,7 @@ class TestKeybindingPreferences:
                         return_value=REBOUND_UNDO,
                     )
                 )
-                yield Application(profile=_profile(tmp_path))
+                yield headless_application(tmp_path)
         finally:
             stop_background_workers()
             SingleThreadExecutor.reset_shutdown()
@@ -196,7 +349,7 @@ class TestKeybindingPreferences:
 class TestStartupRestoreDelegation:
     """Application only forwards the startup restore to the domain coordinators, which
     are the recovery boundary (docs/development/architecture.md § Error Handling Policy). The
-    recovery behaviour itself is covered by the coordinator tests.
+    recovery behavior itself is covered by the coordinator tests.
     """
 
     def test_project_restore_delegates_to_coordinator(self, app: Application) -> None:
@@ -212,10 +365,34 @@ class TestStartupRestoreDelegation:
         load_reconstruction_safely.assert_called_once_with(Path("last.stn"))
 
     def test_library_load_delegates_to_coordinator(self, app: Application) -> None:
-        with patch.object(app._instructions_tab, "load_library_safely") as load_library_safely:
+        with patch.object(app._instructions_tab, "load_library_file") as load_library_file:
             app._try_load_library(Path("last.ins"))
 
-        load_library_safely.assert_called_once_with(Path("last.ins"))
+        load_library_file.assert_called_once_with(Path("last.ins"))
+
+
+@pytest.fixture
+def embedded_sample(
+    app: Application,
+    reconstruction_factory: ReconstructionFactory,
+) -> Sample:
+    """A sample added to a new project and opened on the Reconstructions tab, as Edit opens it."""
+    app.project_controller.new()
+    with app.history.transaction(HistoryAction.ADD_SAMPLE):
+        sample = app.project_controller.add_sample(reconstruction_factory(), "Lead")
+    app._reconstruction_coordinator.open_project_voice(sample.id)
+    return sample
+
+
+@pytest.fixture
+def embedded_instrument(app: Application) -> Instrument:
+    """An instrument added to a new project and opened on the Reconstructions tab, as Edit opens it."""
+    app.project_controller.new()
+    app._add_instrument()
+    instrument = app.project_manager.current.voices[0]
+    assert isinstance(instrument, Instrument)
+    app._reconstruction_coordinator.open_project_voice(instrument.id)
+    return instrument
 
 
 class TestReconstructionSaveAsDetachment:
@@ -226,48 +403,32 @@ class TestReconstructionSaveAsDetachment:
     while the project's sample keeps its original reconstruction object.
     """
 
-    def _embed_sample(
-        self,
-        app: Application,
-        reconstruction_factory: Callable[[], Reconstruction],
-    ) -> Any:
-        app.project_controller.new()
-        reconstruction = reconstruction_factory()
-        with app.history.transaction(HistoryAction.ADD_SAMPLE):
-            sample = app.project_controller.add_sample(reconstruction, "Lead")
-        app._edit_project_sample(sample.id)
-        return sample
-
     def test_embedded_reconstruction_is_owned_and_not_saveable(
         self,
         app: Application,
-        reconstruction_factory: Callable[[], Reconstruction],
+        embedded_sample: Sample,
     ) -> None:
-        sample = self._embed_sample(app, reconstruction_factory)
-
-        assert app._owning_project_sample() is sample
+        assert app._owning_project_sample() is embedded_sample
         assert not app._reconstruction_coordinator.is_saveable()
         assert not app._build_menu_bar_viewmodel().reconstruction_saveable
 
     def test_embedded_reconstruction_needs_no_save_prompt_when_edited(
         self,
         app: Application,
-        reconstruction_factory: Callable[[], Reconstruction],
+        embedded_sample: Sample,
     ) -> None:
-        self._embed_sample(app, reconstruction_factory)
         app.reconstruction_manager.mark_updated()
 
         assert app._reconstruction_coordinator.is_unsaved()
-        assert not app._reconstruction_coordinator._requires_save_confirmation()
+        assert not app._reconstruction_coordinator.is_unsaved_standalone()
 
     def test_save_as_detaches_open_document_from_the_project(
         self,
         app: Application,
-        reconstruction_factory: Callable[[], Reconstruction],
+        embedded_sample: Sample,
         tmp_path: Path,
     ) -> None:
-        sample = self._embed_sample(app, reconstruction_factory)
-        original = sample.reconstruction
+        original = embedded_sample.reconstruction
 
         app.reconstruction_manager.save_reconstruction_as(tmp_path / "lead.stn")
 
@@ -275,8 +436,8 @@ class TestReconstructionSaveAsDetachment:
         assert app._reconstruction_coordinator.is_saveable()
         assert app._build_menu_bar_viewmodel().reconstruction_saveable
         assert app.reconstruction_manager.reconstruction is not original
-        assert sample.reconstruction is original
-        assert original in [sample.reconstruction for sample in app.project_manager.current.samples]
+        assert embedded_sample.reconstruction is original
+        assert original in [sample.reconstruction for sample in app.project_manager.current.voices]
 
 
 class TestAddOpenReconstructionToSequencer:
@@ -306,12 +467,12 @@ class TestAddOpenReconstructionToSequencer:
     ) -> None:
         self._open_file_backed_reconstruction(app, reconstruction_factory, tmp_path)
         app.project_controller.new()
-        source_before = app.reconstruction_manager.audio_filepath
+        source_before = app.reconstruction_manager.source_paths
 
         app._add_current_reconstruction_to_sequencer()
 
-        assert source_before is not None
-        assert app.reconstruction_manager.audio_filepath == source_before
+        assert source_before
+        assert app.reconstruction_manager.source_paths == source_before
         assert app._build_menu_bar_viewmodel().locate_audio_enabled
 
     def test_embedded_sample_is_a_detached_copy(
@@ -325,10 +486,357 @@ class TestAddOpenReconstructionToSequencer:
 
         app._add_current_reconstruction_to_sequencer()
 
-        sample = app.project_manager.current.samples[0]
+        sample = app.project_manager.current.voices[0]
         assert sample.reconstruction is not app.reconstruction_manager.reconstruction
-        assert sample.reconstruction.audio_filepath is None
+        assert sample.reconstruction.audio_filepath == ()
         assert not app._editing_project_sample()
+
+
+class TestTheReconstructionsTabFollowsTheProject:
+    """The Reconstructions tab knows the voice it shows by its id, so a restore and a removal reach it.
+
+    An undo or a redo keeping the voice shows it as the project now holds it, and a change that takes
+    the voice out of the project, or puts another project in place, empties the tab.
+    """
+
+    @staticmethod
+    def _edit(app: Application, reconstruction_factory: ReconstructionFactory) -> Reconstruction:
+        """A regenerated instrument landing on the open sample, the way a drag on the panel lands.
+
+        A rebuild starts from the open sample, which names no recording's location, so the edit
+        it lands names none either.
+        """
+        edited = reconstruction_factory().detached()
+        app._reconstruction_coordinator.apply_edit(
+            ChannelEdit(
+                reconstruction=edited,
+                channel_name=ChannelName.PULSE1,
+                feature_key=FeatureKey.VOLUME,
+            )
+        )
+        return edited
+
+    @staticmethod
+    def _shows_nothing(app: Application, held_queue: HeldQueue) -> bool:
+        """Whether the tab stands empty once the close it queued has run."""
+        held_queue.drain()
+        return (
+            app.reconstruction_manager.current_reconstruction is None
+            and not app._reconstruction_coordinator.is_loaded()
+        )
+
+    @staticmethod
+    def _drawn_views(app: Application) -> List[ReconstructionInstrumentsViewModel]:
+        """Every view the instruments panel is handed from here on."""
+        views: List[ReconstructionInstrumentsViewModel] = []
+        app._reconstructions_tab._reconstruction_instruments_logic.on_view_changed = views.append
+        return views
+
+    @staticmethod
+    def _drawn_envelopes(app: Application) -> List[Optional[ChannelEnvelopesViewModel]]:
+        """Every set of envelopes the instruments panel is handed from here on."""
+        drawn: List[Optional[ChannelEnvelopesViewModel]] = []
+        app._reconstructions_tab._reconstruction_instruments_logic.on_feature_data_changed = drawn.append
+        return drawn
+
+    def test_an_undo_shows_the_reconstruction_it_restores(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        original = embedded_sample.reconstruction
+        self._edit(app, reconstruction_factory)
+
+        app.history.undo()
+
+        assert app.reconstruction_manager.reconstruction is original
+
+    def test_the_sample_an_undo_keeps_still_owns_the_tab(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        """The title and the next edit reach the sample, so the tab stays a view of the project."""
+        self._edit(app, reconstruction_factory)
+
+        app.history.undo()
+
+        owner = app._owning_project_sample()
+        title = app._reconstruction_title_part()
+        assert owner is not None
+        assert owner.id == embedded_sample.id
+        assert title is not None
+        assert title.included
+
+    def test_an_undo_redraws_the_instruments_panel(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        self._edit(app, reconstruction_factory)
+        drawn = self._drawn_envelopes(app)
+
+        app.history.undo()
+
+        assert drawn == [app.reconstruction_manager.current_features]
+
+    def test_a_redo_shows_the_edit_again(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        edited = self._edit(app, reconstruction_factory)
+        app.history.undo()
+
+        app.history.redo()
+
+        owner = app._owning_project_sample()
+        assert app.reconstruction_manager.reconstruction is edited
+        assert owner is not None
+        assert owner.id == embedded_sample.id
+
+    def test_an_undo_of_an_instrument_edit_draws_the_envelope_it_restores(
+        self,
+        app: Application,
+        embedded_instrument: Instrument,
+    ) -> None:
+        before = embedded_instrument.instrument_features().volume
+        instruments_logic = app._reconstructions_tab._reconstruction_instruments_logic
+        instruments_logic.handle_envelope_changed(INSTRUMENT_CHANNEL, FeatureKey.VOLUME, EDITED_VOLUME)
+        drawn = self._drawn_envelopes(app)
+
+        app.history.undo()
+
+        assert drawn
+        envelopes = drawn[-1]
+        assert envelopes is not None
+        assert envelopes[INSTRUMENT_CHANNEL].volume == before
+
+    def test_an_undo_taking_the_sample_out_empties_the_tab(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        held_queue: HeldQueue,
+    ) -> None:
+        app.history.undo()
+
+        assert app.project_manager.current.voice(embedded_sample.id) is None
+        assert self._shows_nothing(app, held_queue)
+
+    def test_a_redo_bringing_the_sample_back_leaves_the_tab_empty(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        held_queue: HeldQueue,
+    ) -> None:
+        """A voice that comes back is the reader's to open again."""
+        app.history.undo()
+
+        app.history.redo()
+
+        assert app.project_manager.current.voice(embedded_sample.id) is not None
+        assert self._shows_nothing(app, held_queue)
+
+    def test_removing_the_open_sample_empties_the_tab(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        held_queue: HeldQueue,
+    ) -> None:
+        app._sequencer_tab._voices.remove(embedded_sample.id)
+
+        assert self._shows_nothing(app, held_queue)
+
+    def test_removing_the_open_instrument_empties_the_panel(
+        self,
+        app: Application,
+        embedded_instrument: Instrument,
+    ) -> None:
+        views = self._drawn_views(app)
+
+        app._sequencer_tab._voices.remove(embedded_instrument.id)
+
+        assert views
+        assert views[-1].instrument is None
+        assert not views[-1].reconstruction_loaded
+
+    def test_closing_the_project_empties_the_tab(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        held_queue: HeldQueue,
+    ) -> None:
+        app.project_controller.close()
+
+        assert self._shows_nothing(app, held_queue)
+
+    def test_reopening_the_saved_project_empties_the_tab(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        held_queue: HeldQueue,
+        tmp_path: Path,
+    ) -> None:
+        """The file keeps the voice's id, so the reopened project holds a voice the tab no longer shows."""
+        path = tmp_path / f"song{EXT_FILE_PROJECT}"
+        app.project_controller.save(path)
+
+        app.project_controller.load(path)
+
+        assert isinstance(app.project_manager.current.voice(embedded_sample.id), Sample)
+        assert self._shows_nothing(app, held_queue)
+
+    def test_a_reconstruction_opened_from_a_file_outlasts_a_new_and_a_closed_project(
+        self,
+        app: Application,
+        reconstruction_factory: ReconstructionFactory,
+        held_queue: HeldQueue,
+        tmp_path: Path,
+    ) -> None:
+        path = tmp_path / "lead.stn"
+        reconstruction_factory().save(path)
+        app.reconstruction_manager.load_reconstruction(path)
+
+        app.project_controller.new()
+        app.project_controller.close()
+
+        held_queue.drain()
+        assert app.reconstruction_manager.filepath == path
+
+
+class TestAGestureOnTheWholeDocumentWaitsForTheEdits:
+    """A gesture that reads or puts away the open document runs once the edit on its way has landed.
+
+    The edit's rebuild is held, so each gesture meets an edit still on its way, the way a click
+    right after a drag meets it.
+    """
+
+    @pytest.fixture
+    def edit_on_its_way(
+        self,
+        app: Application,
+        embedded_sample: Sample,
+        held_queue: HeldQueue,
+    ) -> Sample:
+        """The open sample with a volume edit rebuilt and its result held until the case drains the queue."""
+        held_queue.drain()
+        with patch.object(
+            app.regeneration_service._executor,
+            "execute",
+            side_effect=lambda target, wait: target() or True,
+        ):
+            app._reconstruction_coordinator.request_rewrite(
+                ChannelChange(
+                    channel_name=ChannelName.PULSE1,
+                    feature_key=FeatureKey.VOLUME,
+                    envelopes={FeatureKey.VOLUME: EDITED_VOLUME},
+                    initial_pitch=None,
+                )
+            )
+
+        assert app.reconstruction_rewrites.is_busy
+        return embedded_sample
+
+    @staticmethod
+    def _edited(reconstruction: Optional[Reconstruction]) -> bool:
+        assert reconstruction is not None
+        return (
+            reconstruction.export()[ChannelName.PULSE1].volume.items[: len(EDITED_VOLUME.items)] == EDITED_VOLUME.items
+        )
+
+    def test_a_browser_load_waits(
+        self,
+        app: Application,
+        edit_on_its_way: Sample,
+        held_queue: HeldQueue,
+        reconstruction_factory: ReconstructionFactory,
+        tmp_path: Path,
+    ) -> None:
+        path = tmp_path / "other.stn"
+        reconstruction_factory().save(path)
+
+        app._reconstructions_tab._browser_panel.on_load_reconstruction(path)
+        assert app.reconstruction_manager.voice_id == edit_on_its_way.id
+        held_queue.drain()
+
+        assert app.reconstruction_manager.filepath == path
+        sample = app.project_manager.current.voice(edit_on_its_way.id)
+        assert isinstance(sample, Sample)
+        assert self._edited(sample.reconstruction)
+
+    def test_loading_a_conversion_waits(
+        self,
+        app: Application,
+        edit_on_its_way: Sample,
+        held_queue: HeldQueue,
+        reconstruction_factory: ReconstructionFactory,
+        tmp_path: Path,
+    ) -> None:
+        path = tmp_path / "converted.stn"
+        reconstruction_factory().save(path)
+
+        app._main_tab._hooks.on_load_file(path)
+        assert app.reconstruction_manager.voice_id == edit_on_its_way.id
+        held_queue.drain()
+
+        assert app.reconstruction_manager.filepath == path
+
+    def test_opening_another_voice_waits(
+        self,
+        app: Application,
+        edit_on_its_way: Sample,
+        held_queue: HeldQueue,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        with app.history.transaction(HistoryAction.ADD_SAMPLE):
+            other = app.project_controller.add_sample(reconstruction_factory(), "Other")
+
+        app._sequencer_tab._on_edit_voice_requested(other.id)
+        assert app.reconstruction_manager.voice_id == edit_on_its_way.id
+        held_queue.drain()
+
+        sample = app.project_manager.current.voice(edit_on_its_way.id)
+        assert isinstance(sample, Sample)
+        assert app.reconstruction_manager.voice_id == other.id
+        assert self._edited(sample.reconstruction)
+
+    def test_removing_the_open_voice_waits(
+        self,
+        app: Application,
+        edit_on_its_way: Sample,
+        held_queue: HeldQueue,
+    ) -> None:
+        """The edit is recorded before the removal, so an undo brings the sample back as the reader left it."""
+        app._sequencer_tab._sequencer_voices_panel.on_remove_requested(edit_on_its_way.id)
+        assert app.project_manager.current.voice(edit_on_its_way.id) is not None
+        held_queue.drain()
+
+        assert app.project_manager.current.voice(edit_on_its_way.id) is None
+        assert [entry.action for entry in app.history.entries[-2:]] == [
+            HistoryAction.EDIT_RECONSTRUCTION,
+            HistoryAction.REMOVE_VOICE,
+        ]
+
+    def test_exporting_an_instrument_waits(
+        self,
+        app: Application,
+        edit_on_its_way: Sample,
+        held_queue: HeldQueue,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        exports = MagicMock()
+        monkeypatch.setattr(app._reconstructions_tab, "_instrument_exports", exports)
+
+        app._reconstructions_tab._reconstruction_instruments_panel.on_instrument_export(ChannelName.PULSE1)
+        exports.request.assert_not_called()
+        held_queue.drain()
+
+        source = exports.request.call_args.args[0]
+        assert source.features.volume.items[: len(EDITED_VOLUME.items)] == EDITED_VOLUME.items
 
 
 def _press_shortcut(app: Application, shortcut_id: ShortcutId) -> None:
@@ -347,38 +855,120 @@ class TestChannelKeys:
     """
 
     @staticmethod
-    def _press(app: Application, generator: GeneratorName, tab: Tab) -> None:
+    def _press(app: Application, channel: ChannelName, tab: Tab) -> None:
         with patch.object(app._shell, "get_current_tab", return_value=tab):
-            _press_shortcut(app, CHANNEL_SHORTCUT_IDS[generator])
+            _press_shortcut(app, CHANNEL_SHORTCUT_IDS[channel])
 
-    def test_the_main_tab_switches_the_generator_a_reconstruction_is_built_from(self, app: Application) -> None:
-        selected = frozenset(app.config_manager.config.generation.generators)
+    @staticmethod
+    def _gathered(app: Application, tmp_path: Path) -> List[Path]:
+        paths = []
+        for name in ["a.wav", "b.wav"]:
+            path = tmp_path / name
+            path.touch()
+            paths.append(path)
 
-        self._press(app, GeneratorName.TRIANGLE, Tab.MAIN)
+        app._main_tab._converter_logic.gather_recordings(paths)
+        return paths
 
-        assert frozenset(app.config_manager.config.generation.generators) == selected ^ {GeneratorName.TRIANGLE}
+    def test_the_main_tab_settles_the_channel_on_the_row_picked_out(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        """The key answers for the row the settings card is pointed at, which is the box beside it."""
+        paths = self._gathered(app, tmp_path)
+        app._main_tab._converter_logic.select_row(paths[0], SourceKind.RECORDING)
+        held = ChannelName.TRIANGLE in _row_of(app, paths[0]).channels
+
+        self._press(app, ChannelName.TRIANGLE, Tab.MAIN)
+
+        assert (ChannelName.TRIANGLE in _row_of(app, paths[0]).channels) is not held
+
+    def test_the_rows_it_was_not_pointed_at_stand_as_they_were(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        paths = self._gathered(app, tmp_path)
+        app._main_tab._converter_logic.select_row(paths[0], SourceKind.RECORDING)
+        held = ChannelName.TRIANGLE in _row_of(app, paths[1]).channels
+
+        self._press(app, ChannelName.TRIANGLE, Tab.MAIN)
+
+        assert (ChannelName.TRIANGLE in _row_of(app, paths[1]).channels) is held
+
+    def test_the_main_tab_holding_nothing_picked_out_leaves_the_list_alone(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        paths = self._gathered(app, tmp_path)
+        standing = [_row_of(app, path).channels for path in paths]
+
+        self._press(app, ChannelName.TRIANGLE, Tab.MAIN)
+
+        assert [_row_of(app, path).channels for path in paths] == standing
 
     def test_the_sequencer_switches_its_mix(self, app: Application) -> None:
-        self._press(app, GeneratorName.NOISE, Tab.SEQUENCER)
+        self._press(app, ChannelName.NOISE, Tab.SEQUENCER)
 
-        assert app._sequencer_tab.channels.is_muted(GeneratorName.NOISE)
+        assert app._sequencer_tab.channels.is_muted(ChannelName.NOISE)
 
     def test_a_second_press_returns_the_mix_it_started_from(self, app: Application) -> None:
-        self._press(app, GeneratorName.PULSE1, Tab.SEQUENCER)
-        self._press(app, GeneratorName.PULSE1, Tab.SEQUENCER)
+        self._press(app, ChannelName.PULSE1, Tab.SEQUENCER)
+        self._press(app, ChannelName.PULSE1, Tab.SEQUENCER)
 
         assert not app._sequencer_tab.channels.any_muted
 
     def test_the_reconstructions_tab_holding_nothing_leaves_the_mix_alone(self, app: Application) -> None:
         """With no reconstruction loaded every slice reads as unavailable, so the key rests there."""
-        self._press(app, GeneratorName.PULSE2, Tab.RECONSTRUCTIONS)
+        self._press(app, ChannelName.PULSE2, Tab.RECONSTRUCTIONS)
 
         assert not app._sequencer_tab.channels.any_muted
 
     def test_the_main_tab_leaves_the_sequencer_mix_alone(self, app: Application) -> None:
-        self._press(app, GeneratorName.PULSE1, Tab.MAIN)
+        self._press(app, ChannelName.PULSE1, Tab.MAIN)
 
         assert not app._sequencer_tab.channels.any_muted
+
+
+class TestTheRemovalKey:
+    """The key that takes a recording off the list reaches the row the reader picked out.
+
+    The whole application answers here, so a press travels the way it does at runtime: the router
+    hands it to the dispatcher, the scheme names the action, and the tab in front decides whether
+    the converter's list is what the press reaches.
+    """
+
+    @staticmethod
+    def _picked(app: Application, tmp_path: Path) -> Path:
+        """One gathered recording, clicked so the list holds it picked out."""
+        path = tmp_path / "a.wav"
+        path.touch()
+        app._main_tab._converter_logic.gather_recordings([path])
+        _click_row(app, path)
+        return path
+
+    @staticmethod
+    def _press(app: Application, tab: Tab) -> None:
+        with patch.object(app._shell, "get_current_tab", return_value=tab):
+            _press_shortcut(app, ShortcutId.SOURCES_REMOVE_SOURCE)
+
+    def test_the_main_tab_takes_the_picked_row_off_the_list(self, app: Application, tmp_path: Path) -> None:
+        path = self._picked(app, tmp_path)
+
+        self._press(app, Tab.MAIN)
+
+        assert not dpg.does_item_exist(stems_list(app).tags.row(str(path), SUF_GROUP))
+
+    def test_another_tab_in_front_leaves_the_row_where_it_is(self, app: Application, tmp_path: Path) -> None:
+        """A picked row outlives a move to another tab, so which tab stands in front is read at
+        the moment the press lands."""
+        path = self._picked(app, tmp_path)
+
+        self._press(app, Tab.SEQUENCER)
+
+        assert dpg.does_item_exist(stems_list(app).tags.row(str(path), SUF_GROUP))
 
 
 class TestTabKeys:
@@ -399,3 +989,566 @@ class TestTabKeys:
     def test_the_key_answers_while_a_field_is_edited(self, app: Application, tab: Tab) -> None:
         """Naming a tab reaches it the way stepping to the next one does, typing included."""
         assert app._shortcut_source.shortcut(TAB_SHORTCUT_IDS[tab]).field_transparent
+
+
+def stems_list(app: Application) -> GUIStemsList:
+    """The converter card's stems list, which owns the tags its rows carry."""
+    return app._main_tab._converter_panel.stems_list
+
+
+def drop(tag: str, payload: str) -> None:
+    """Deliver ``payload`` to whatever ``tag`` accepts drops with, the way DearPyGui would."""
+    dpg.get_item_configuration(tag)["drop_callback"](dpg.get_alias_id(tag), payload)
+
+
+def _click_row(app: Application, path: Path) -> None:
+    """Clicks a row the way DearPyGui reports a selectable being picked."""
+    name_tag = stems_list(app).tags.row(str(path), SUF_TEXT)
+    dpg.get_item_callback(name_tag)(name_tag, True, str(path))
+
+
+def _click_slot_box(field: SettingsField, channel_name: ChannelName) -> None:
+    """Clicks one of the settings card's boxes, the way DearPyGui reports a checkbox."""
+    box = ChannelSettingsRows.box_tag(channel_name, field)
+    dpg.get_item_callback(box)(box, True, dpg.get_item_user_data(box))
+
+
+def _release_drive(channel_name: ChannelName, drive: float) -> None:
+    """Drags one of the settings card's drives to ``drive`` and lets go, the way DearPyGui reports it."""
+    slider = ChannelSettingsRows.slider_tag(channel_name)
+    dpg.set_value(slider, drive)
+    [handler] = dpg.get_item_children(compose_tag(TAG_MAIN_SOURCE_TABLE_CHANNELS, SUF_HANDLER_REGISTRY), 1)
+    dpg.get_item_callback(handler)(handler, slider)
+
+
+def _click_step(step: int) -> None:
+    """Clicks one of the settings card's counts, the way DearPyGui reports a button."""
+    button = ChannelCapSteps.step_tag(step)
+    dpg.get_item_callback(button)(button, None, dpg.get_item_user_data(button))
+
+
+def _row_of(app: Application, path: Path) -> StemRowViewModel:
+    """The row the converter last drew for ``path``."""
+    row = stems_list(app).row(str(path))
+    assert row is not None
+    return row
+
+
+def _level_of(app: Application, path: Path) -> str:
+    """The level band the row for ``path`` is drawn in."""
+    return str(dpg.get_item_parent(stems_list(app).tags.row(str(path), SUF_GROUP)))
+
+
+def _reports_running(app: Application, status_text: str, progress: float) -> None:
+    """Puts the panel in front of a conversion under way, the way the converter reports one."""
+    converter_logic = app._main_tab._converter_logic
+    emitted: List[ConverterViewModel] = []
+    listener = converter_logic.on_view_changed
+    converter_logic.on_view_changed = emitted.append
+    converter_logic.emit_initial_view()
+    converter_logic.on_view_changed = listener
+
+    running = emitted[0].model_copy(
+        update={"phase": ConversionPhase.RUNNING, "status_text": status_text, "progress": progress}
+    )
+    app._main_tab._on_converter_view_changed(running)
+
+
+def _ctrl_click_folder(app: Application, directory: Path) -> None:
+    """Reports a Ctrl-click on a folder's row, the way the browser does."""
+    panel = app._main_tab._explorer_panel
+    node = FileSystemNode(directory.name, node_type=NodeType.DIRECTORY, filepath=directory)
+    with patch.object(explorer_module, "capture_modifiers", return_value=frozenset({Modifier.CTRL})):
+        panel._directory_node_clicked(node, UNBUILT_ROW)
+
+
+def _double_click_name(prefix: str, key: str) -> None:
+    """Double-click one row's name in a stems list, the way DearPyGui reports the gesture."""
+    click_row_name(StemsTags(prefix=prefix), key, kind=DOUBLE_CLICKED, button=dpg.mvMouseButton_Left)
+
+
+class TestGatheringAFolderIntoAMix:
+    """A folder bringing in more than a mix holds is a question, and the answer reaches the mix.
+
+    The question names the recordings to gather, so what the reader picks is what the setup takes
+    up — the whole chain from the browser gesture to the rows the card ends up drawing.
+    """
+
+    @staticmethod
+    def _folder(tmp_path: Path, count: int) -> Path:
+        directory = tmp_path / "takes"
+        directory.mkdir()
+        for index in range(count):
+            (directory / f"take_{index:02d}.wav").touch()
+
+        return directory
+
+    @staticmethod
+    def _ask(app: Application, directory: Path) -> None:
+        """Ctrl-clicks the folder and waits for the reading, the way a reader does."""
+        settled(lambda: _ctrl_click_folder(app, directory))
+
+    def test_it_asks_rather_than_gathers(self, app: Application, tmp_path: Path) -> None:
+        directory = self._folder(tmp_path, MAX_STEM_SOURCES + 3)
+        app._main_tab._converter_logic.set_output(OutputKind.MIXED)
+
+        with patch.object(app._main_tab._stem_selection_window, "open") as opened:
+            self._ask(app, directory)
+
+        opened.assert_called_once()
+        assert app._main_tab._converter_logic.gathered_paths == ()
+
+    def test_what_the_reader_picks_is_what_the_mix_takes(self, app: Application, tmp_path: Path) -> None:
+        directory = self._folder(tmp_path, MAX_STEM_SOURCES + 3)
+        app._main_tab._converter_logic.set_output(OutputKind.MIXED)
+        with patch.object(app._main_tab._stem_selection_window, "open") as opened:
+            self._ask(app, directory)
+
+        offered, _room, answer = opened.call_args.args
+        picked = [row.path for row in offered[:MAX_STEM_SOURCES]]
+        answer(picked)
+
+        assert set(app._main_tab._converter_logic.gathered_paths) == set(picked)
+
+    def test_the_switch_reads_the_output_the_setup_holds(self, app: Application, tmp_path: Path) -> None:
+        """A question about a mix leaves the run as it is until the reader answers it."""
+        converter_logic = app._main_tab._converter_logic
+        paths = []
+        for index in range(MAX_STEM_SOURCES + 2):
+            path = tmp_path / f"take_{index:02d}.wav"
+            path.touch()
+            paths.append(path)
+
+        converter_logic.gather_recordings(paths)
+        standing = dpg.get_value(TAG_MAIN_CONVERTER_RADIO_MODE)
+
+        with patch.object(app._main_tab._stem_selection_window, "open"):
+            app._main_tab._request_output(OutputKind.MIXED)
+
+        assert dpg.get_value(TAG_MAIN_CONVERTER_RADIO_MODE) == standing
+
+    def test_a_folder_the_mix_still_holds_is_gathered(self, app: Application, tmp_path: Path) -> None:
+        directory = self._folder(tmp_path, MAX_STEM_SOURCES - 1)
+        app._main_tab._converter_logic.set_output(OutputKind.MIXED)
+
+        with patch.object(app._main_tab._stem_selection_window, "open") as opened:
+            self._ask(app, directory)
+
+        opened.assert_not_called()
+        assert len(app._main_tab._converter_logic.gathered_paths) == MAX_STEM_SOURCES - 1
+
+    def test_a_recording_in_the_question_sounds_where_the_reader_asks_for_it(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        """A reader decides by ear, so a double-click in the question reaches the player the
+        converter's list reaches, the whole way from the gesture to the device."""
+        directory = self._folder(tmp_path, MAX_STEM_SOURCES + 3)
+        app._main_tab._converter_logic.set_output(OutputKind.MIXED)
+        with patch.object(app._main_tab._stem_selection_window, "open") as opened:
+            self._ask(app, directory)
+
+        offered, room, answer = opened.call_args.args
+        window = app._main_tab._stem_selection_window
+        window.open(offered, room, answer)
+        recording = offered[0]
+
+        with patch.object(app.audio_device_manager, "play_file") as sounded:
+            _double_click_name(PRE_MAIN_CONVERTER_CANDIDATE, recording.key)
+
+        assert sounded.call_args.args[0] == recording.path
+
+
+class TestMainTabReadingOrder:
+    """The tab reads in one direction: what a run is set up with, what it gathers, what a row takes.
+
+    The reconstruction card names whichever row the converter's list stands on, so it follows the
+    list it reads rather than standing above it.
+    """
+
+    @staticmethod
+    def _identity(item: Union[int, str]) -> int:
+        """One reading of an item, since DearPyGui answers with an alias where a tag names one."""
+        return dpg.get_alias_id(item) if isinstance(item, str) else item
+
+    @classmethod
+    def _place(cls, tag: str) -> Tuple[int, int]:
+        """Where a card stands: the parent holding it, and its place among that parent's children."""
+        item = cls._identity(tag)
+        parent = cls._identity(dpg.get_item_parent(item))
+        children = [cls._identity(child) for child in dpg.get_item_children(parent)[1]]
+        return parent, children.index(item)
+
+    @classmethod
+    def _stands_within(cls, tag: str, ancestor: str) -> bool:
+        item = cls._identity(tag)
+        wanted = cls._identity(ancestor)
+        while item:
+            if item == wanted:
+                return True
+            item = cls._identity(dpg.get_item_parent(item))
+
+        return False
+
+    def test_the_reconstruction_card_follows_the_converter(self, app: Application) -> None:
+        converter_parent, converter_place = self._place(TAG_MAIN_CONVERTER_PANEL)
+        card_parent, card_place = self._place(TAG_MAIN_SOURCE_PANEL)
+
+        assert card_parent == converter_parent
+        assert card_place > converter_place
+
+    def test_the_settings_cards_share_the_row_above(self, app: Application) -> None:
+        assert self._stands_within(TAG_MAIN_CONFIG_PANEL, TAG_MAIN_CONFIG_TABLE_CONFIG_ROW)
+        assert self._stands_within(TAG_MAIN_ADVANCED_PANEL, TAG_MAIN_CONFIG_TABLE_CONFIG_ROW)
+
+    def test_the_row_holds_its_height_until_both_cards_collapse(self, app: Application) -> None:
+        """The row is the two settings cards' own, so it is theirs to give up."""
+        coordinator = app._main_tab
+        with (
+            patch.object(type(coordinator._config_panel), "collapsed", PropertyMock(return_value=True)),
+            patch.object(type(coordinator._advanced_settings_panel), "collapsed", PropertyMock(return_value=True)),
+        ):
+            coordinator._sync_config_row_height()
+
+        assert dpg.get_item_configuration(TAG_MAIN_CONFIG_TABLE_CONFIG_ROW)["height"] == 0
+
+    @staticmethod
+    def _column(cell_tag: str) -> Dict[str, Any]:
+        """The configuration of the settings row's column behind a cell."""
+        configuration: Dict[str, Any] = dpg.get_item_configuration(compose_tag(cell_tag, SUF_TABLE_COLUMN))
+        return configuration
+
+    def test_the_advanced_card_leaves_the_row_and_comes_back_to_its_half(self, app: Application) -> None:
+        """One toggle leaves the row to the general card, the other gives the advanced one its half.
+
+        Which way the first toggle goes is whatever the session was left at, so the pair of readings
+        is what the rule states: the column leaves the row while the card is put away, and stands
+        again at the general card's own share. The general card stands throughout.
+        """
+        coordinator = app._main_tab
+        general = self._column(TAG_MAIN_CONFIG_PANEL_CONFIG_CELL)["init_width_or_weight"]
+
+        coordinator.toggle_advanced_settings()
+        first = self._column(TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL)
+        first_general = self._column(TAG_MAIN_CONFIG_PANEL_CONFIG_CELL)["enabled"]
+        coordinator.toggle_advanced_settings()
+        second = self._column(TAG_MAIN_ADVANCED_PANEL_ADVANCED_CELL)
+        second_general = self._column(TAG_MAIN_CONFIG_PANEL_CONFIG_CELL)["enabled"]
+
+        assert general > 0
+        assert {first["enabled"], second["enabled"]} == {False, True}
+        assert (first["init_width_or_weight"], second["init_width_or_weight"]) == (general, general)
+        assert (first_general, second_general) == (True, True)
+
+
+class TestBrowserGathering:
+    """What a gesture in the browser gathers: a plain click walks it, and gathering is asked for.
+
+    Reading every recording below a folder is work a reader asks for, so it answers the gathering
+    gesture alone. A plain click walks the browser and leaves the conversion as it is — opening a
+    folder, playing a recording — which is what keeps navigating a large tree from gathering it.
+    Ctrl brings in whatever the row names, and a double-click brings in a recording.
+    """
+
+    @staticmethod
+    def _folder(directory: Path) -> FileSystemNode:
+        return FileSystemNode(directory.name, node_type=NodeType.DIRECTORY, filepath=directory)
+
+    @staticmethod
+    def _tree(tmp_path: Path) -> Path:
+        directory = tmp_path / "takes"
+        directory.mkdir()
+        (directory / "one.wav").touch()
+        (directory / "deeper").mkdir()
+        (directory / "deeper" / "two.wav").touch()
+        return directory
+
+    def _click(self, app: Application, directory: Path, *, modifiers: FrozenSet[Modifier]) -> None:
+        """Clicks a folder's row, with whatever the reader was holding down, and lets it settle."""
+        panel = app._main_tab._explorer_panel
+        with patch.object(explorer_module, "capture_modifiers", return_value=modifiers):
+            settled(lambda: panel._directory_node_clicked(self._folder(directory), UNBUILT_ROW))
+
+    def test_a_plain_click_gathers_nothing(self, app: Application, tmp_path: Path) -> None:
+        directory = self._tree(tmp_path)
+
+        self._click(app, directory, modifiers=frozenset())
+
+        assert app._main_tab._converter_logic.gathered_paths == ()
+
+    def test_ctrl_gathers_the_whole_tree_below_it(self, app: Application, tmp_path: Path) -> None:
+        directory = self._tree(tmp_path)
+
+        self._click(app, directory, modifiers=frozenset({Modifier.CTRL}))
+
+        assert set(app._main_tab._converter_logic.gathered_paths) == {
+            directory / "one.wav",
+            directory / "deeper" / "two.wav",
+        }
+
+    def test_a_plain_click_on_a_recording_gathers_nothing(self, app: Application, tmp_path: Path) -> None:
+        """A plain click previews a recording, so listening through a folder leaves the run alone."""
+        recording = self._recording(tmp_path)
+        panel = app._main_tab._explorer_panel
+
+        with patch.object(explorer_module, "capture_modifiers", return_value=frozenset()):
+            panel._audio_node_clicked(self._node(recording))
+
+        assert app._main_tab._converter_logic.gathered_paths == ()
+
+    def test_a_double_click_on_a_recording_gathers_it(self, app: Application, tmp_path: Path) -> None:
+        """A recording is one path, so naming it costs nothing and one gesture brings it in."""
+        recording = self._recording(tmp_path)
+        panel = app._main_tab._explorer_panel
+
+        panel._on_file_node_double_clicked(0, (dpg.mvMouseButton_Left, 0), (self._node(recording), 0))
+
+        assert app._main_tab._converter_logic.gathered_paths == (recording,)
+
+    def _recording(self, tmp_path: Path) -> Path:
+        return self._tree(tmp_path) / "one.wav"
+
+    @staticmethod
+    def _node(recording: Path) -> FileSystemNode:
+        return FileSystemNode(recording.name, node_type=NodeType.FILE, filepath=recording)
+
+
+class TestConverterStemsCard:
+    """Gathering recordings paints the converter card: a row each, carrying what the reader set."""
+
+    def _gather(self, app: Application, tmp_path: Path, names: List[str]) -> List[Path]:
+        paths = []
+        for name in names:
+            path = tmp_path / name
+            path.touch()
+            paths.append(path)
+
+        converter_logic = app._main_tab._converter_logic
+        converter_logic.set_output(OutputKind.MIXED)
+        converter_logic.gather_recordings(paths)
+        return paths
+
+    def test_a_row_is_built_for_every_recording(self, app: Application, tmp_path: Path) -> None:
+        paths = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+
+        for path in paths:
+            assert dpg.does_item_exist(stems_list(app).tags.row(str(path), SUF_GROUP))
+            assert dpg.does_item_exist(stems_list(app).tags.row(str(path), SUF_BUTTON))
+
+    def test_a_rows_channels_show_what_was_set(self, app: Application, tmp_path: Path) -> None:
+        """The row offers a checkbox per channel the configuration enables, ticked as the row holds it."""
+        path = self._gather(app, tmp_path, ["a.wav"])[0]
+        converter_logic = app._main_tab._converter_logic
+        enabled = app.session_manager.converter_settings.channels
+        kept, cleared = enabled[-1], enabled[0]
+
+        converter_logic.set_source_channels(path, frozenset({kept}))
+
+        assert dpg.get_value(stems_list(app).tags.channel(str(path), kept)) is True
+        assert dpg.get_value(stems_list(app).tags.channel(str(path), cleared)) is False
+
+    def test_removing_a_recording_takes_its_row_with_it(self, app: Application, tmp_path: Path) -> None:
+        first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+
+        app._main_tab._converter_logic.remove_source(first)
+
+        assert not dpg.does_item_exist(stems_list(app).tags.row(str(first), SUF_GROUP))
+        assert dpg.does_item_exist(stems_list(app).tags.row(str(second), SUF_GROUP))
+
+    def test_the_list_stands_whichever_run_the_switch_names(self, app: Application, tmp_path: Path) -> None:
+        """The gathered sources are what a run converts either way, so the list is always on screen."""
+        path = self._gather(app, tmp_path, ["a.wav"])[0]
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_WINDOW_STEMS)["show"] is True
+
+        app._main_tab._converter_logic.set_output(OutputKind.PER_RECORDING)
+
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_WINDOW_STEMS)["show"] is True
+        assert dpg.does_item_exist(stems_list(app).tags.row(str(path), SUF_GROUP))
+
+    def test_the_list_stays_on_screen_while_a_conversion_runs(self, app: Application, tmp_path: Path) -> None:
+        """The setup is what a running conversion is making, so it keeps saying what that is."""
+        path = self._gather(app, tmp_path, ["a.wav"])[0]
+
+        _reports_running(app, "running", 0.5)
+
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_WINDOW_STEMS)["show"] is True
+        assert dpg.get_item_configuration(stems_list(app).tags.row(str(path), SUF_BUTTON))["enabled"] is False
+
+    def test_a_level_draws_its_own_band(self, app: Application, tmp_path: Path) -> None:
+        first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+        converter_logic = app._main_tab._converter_logic
+
+        converter_logic.isolate_source(second)
+
+        assert dpg.does_item_exist(stems_list(app).tags.level(0, SUF_TABLE))
+        assert dpg.does_item_exist(stems_list(app).tags.level(1, SUF_TABLE))
+        assert dpg.does_item_exist(stems_list(app).tags.level(2, SUF_STRIP))
+        assert dpg.get_item_parent(stems_list(app).tags.row(str(first), SUF_GROUP)) == stems_list(app).tags.level(
+            0, SUF_TABLE
+        )
+        assert dpg.get_item_parent(stems_list(app).tags.row(str(second), SUF_GROUP)) == stems_list(app).tags.level(
+            1, SUF_TABLE
+        )
+
+    def test_a_row_is_the_thing_you_drag_it_by(self, app: Application, tmp_path: Path) -> None:
+        """A level is a turn to choose, so the drag that rearranges them arrives with the second."""
+        first, _second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+
+        assert dpg.get_item_children(stems_list(app).tags.row(str(first), SUF_TEXT), DRAG_PAYLOAD_SLOT)
+
+    def test_one_recording_in_a_mix_is_its_own_order(self, app: Application, tmp_path: Path) -> None:
+        path = self._gather(app, tmp_path, ["a.wav"])[0]
+
+        assert not dpg.does_item_exist(stems_list(app).tags.level(0, SUF_TEXT))
+        assert not dpg.get_item_children(stems_list(app).tags.row(str(path), SUF_TEXT), DRAG_PAYLOAD_SLOT)
+
+    def test_dropping_a_recording_on_a_row_joins_that_rows_level(self, app: Application, tmp_path: Path) -> None:
+        first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+        converter_logic = app._main_tab._converter_logic
+        converter_logic.isolate_source(second)
+
+        drop(stems_list(app).tags.row(str(second), SUF_TEXT), str(first))
+
+        assert _level_of(app, first) == _level_of(app, second)
+        assert not dpg.does_item_exist(stems_list(app).tags.level(1, SUF_TABLE))
+
+    def test_dropping_a_recording_in_a_gap_opens_a_level(self, app: Application, tmp_path: Path) -> None:
+        first, _second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+
+        drop(stems_list(app).tags.level(1, SUF_STRIP), str(first))
+
+        assert dpg.does_item_exist(stems_list(app).tags.level(1, SUF_TABLE))
+        assert _level_of(app, first) == stems_list(app).tags.level(1, SUF_TABLE)
+
+    def test_a_clicked_row_is_what_the_settings_card_edits(self, app: Application, tmp_path: Path) -> None:
+        """The whole wiring chain: a click on a row, a box on the card, and the row it settles.
+
+        A recording joins holding the channels a run hands out, so the box the case ticks is one
+        of the two it starts without.
+        """
+        first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+        assert ChannelName.PULSE2 not in _row_of(app, second).channels
+
+        _click_row(app, second)
+        _click_slot_box(SettingsField.CHANNELS, ChannelName.PULSE2)
+
+        assert ChannelName.PULSE2 in _row_of(app, second).channels
+        assert ChannelName.PULSE2 not in _row_of(app, first).channels
+
+    def _gather_folder(self, app: Application, tmp_path: Path, names: List[str]) -> List[Path]:
+        """Gathers a folder of recordings as one row, and answers what it holds."""
+        root = tmp_path / "takes"
+        root.mkdir()
+        paths = []
+        for name in names:
+            path = root / name
+            path.touch()
+            paths.append(path)
+
+        converter_logic = app._main_tab._converter_logic
+        converter_logic.set_output(OutputKind.PER_RECORDING)
+        converter_logic.gather_folder(root, get_audio_files(root, sort=True))
+        return paths
+
+    def test_a_folder_arrives_closed_and_opens_onto_what_it_holds(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        held = self._gather_folder(app, tmp_path, ["a.wav", "b.wav"])
+        root = held[0].parent
+        name_tag = stems_list(app).tags.row(str(held[0]), SUF_TEXT)
+        assert not dpg.does_item_exist(name_tag)
+
+        stems_list(app).toggle_folder(str(root))
+
+        assert dpg.does_item_exist(name_tag)
+        assert dpg.does_item_exist(stems_list(app).tags.region(str(root)))
+
+    def test_a_recording_inside_an_open_folder_is_what_the_card_edits(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        """A reader who opens a folder answers for one of its recordings without breaking it up."""
+        first, second = self._gather_folder(app, tmp_path, ["a.wav", "b.wav"])
+        stems_list(app).toggle_folder(str(first.parent))
+        assert ChannelName.PULSE2 not in _row_of(app, second).channels
+
+        _click_row(app, second)
+        _click_slot_box(SettingsField.CHANNELS, ChannelName.PULSE2)
+
+        assert ChannelName.PULSE2 in _row_of(app, second).channels
+        assert ChannelName.PULSE2 not in _row_of(app, first).channels
+
+    def test_with_nothing_picked_the_card_edits_the_recordings_added_next(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        """A count set with no row picked is what the next recording gathered arrives with."""
+        self._gather(app, tmp_path, ["a.wav"])
+        assert dpg.get_value(TAG_MAIN_SOURCE_TEXT_SUBJECT) == app.language_manager["main.source.label.new_recordings"]
+
+        _click_step(1)
+        second = self._gather(app, tmp_path, ["b.wav"])[0]
+        _click_row(app, second)
+
+        assert app._main_tab._converter_logic.source_settings_view.channel_cap == 1
+
+    def test_a_picked_row_names_the_card(self, app: Application, tmp_path: Path) -> None:
+        path = self._gather(app, tmp_path, ["a.wav"])[0]
+
+        _click_row(app, path)
+
+        assert dpg.get_value(TAG_MAIN_SOURCE_TEXT_SUBJECT) == path.stem
+
+    def test_a_released_drive_reaches_the_row_the_card_edits(self, app: Application, tmp_path: Path) -> None:
+        first, second = self._gather(app, tmp_path, ["a.wav", "b.wav"])
+
+        _click_row(app, second)
+        _release_drive(ChannelName.PULSE1, LOUD_DRIVE)
+
+        drives = {
+            channel.channel: channel.drive for channel in app._main_tab._converter_logic.source_settings_view.channels
+        }
+        assert drives[ChannelName.PULSE1] == LOUD_DRIVE
+        _click_row(app, first)
+        assert dpg.get_value(ChannelSettingsRows.slider_tag(ChannelName.PULSE1)) == pytest.approx(UNIT_DRIVE)
+
+    def test_the_order_arrives_with_the_second_recording_in_a_mix(self, app: Application, tmp_path: Path) -> None:
+        """One recording is its own order, so the choice of how levels take turns arrives with the second."""
+        self._gather(app, tmp_path, ["a.wav"])
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_GROUP_ORDER)["show"] is False
+
+        self._gather(app, tmp_path, ["b.wav"])
+
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_GROUP_ORDER)["show"] is True
+
+    def test_the_order_explanation_leaves_with_the_control_it_belongs_to(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        """A tooltip left live over a hidden widget's rectangle explains whatever moved into it."""
+        self._gather(app, tmp_path, ["a.wav", "b.wav"])
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE)["show"] is True
+
+        app._main_tab._converter_logic.set_output(OutputKind.PER_RECORDING)
+
+        assert dpg.get_item_configuration(TAG_MAIN_CONVERTER_TOOLTIP_HIERARCHY_MODE)["show"] is False
+
+    def test_a_recording_holding_no_channel_grays_out_but_stays_listed(
+        self,
+        app: Application,
+        tmp_path: Path,
+    ) -> None:
+        path = self._gather(app, tmp_path, ["a.wav"])[0]
+
+        app._main_tab._converter_logic.set_source_channels(path, frozenset())
+
+        name_tag = stems_list(app).tags.row(str(path), SUF_TEXT)
+        assert dpg.does_item_exist(stems_list(app).tags.row(str(path), SUF_GROUP))
+        assert dpg.get_item_alias(dpg.get_item_theme(name_tag)) == TAG_GLOBAL_THEME_STEMS_ROW_INERT
+        assert dpg.get_item_configuration(name_tag)["enabled"] is True

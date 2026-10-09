@@ -32,7 +32,7 @@ def _settings(
     first_highlight: int = BEAT_ROWS,
     second_highlight: int = BAR_ROWS,
 ) -> SequencerSettingsViewModel:
-    """The module settings the row tinting reads, carrying the metre under test."""
+    """The module settings the row tinting reads, carrying the meter under test."""
     return SequencerSettingsViewModel(
         nes_frequency=60,
         tempo=150,
@@ -100,7 +100,7 @@ class TestGrouping:
         assert settings.second_highlight % settings.first_highlight == 0
         assert group_color(settings.second_highlight, settings, colors) == colors.rows.bar
 
-    def test_a_metre_the_project_states_moves_the_shades(
+    def test_a_meter_the_project_states_moves_the_shades(
         self,
         colors: SequencerColors,
     ) -> None:

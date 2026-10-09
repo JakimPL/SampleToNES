@@ -25,6 +25,8 @@ from sampletones_shared.utils.color import MAX_CHANNEL_VALUE
 
 
 class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
+    pans_with_wheel = False
+
     tag: str
     parent: str
     width: int
@@ -58,6 +60,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             x_range=(layout.graph.min_x, layout.graph.max_x),
             y_range=(MIN_FREQUENCY, DEFAULT_SAMPLE_RATE / 2),
             zoom_factor=layout.waveform.zoom_factor,
+            pan_factor=layout.waveform.pan_factor,
         )
 
     def _create_content(self) -> None:
@@ -69,7 +72,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             height=self.height,
             anti_aliased=True,
             no_mouse_pos=True,
-            fit_button=False,
+            fit_button=dpg.mvMouseButton_Left,
             pan_button=-1,
         ):
             dpg.add_plot_axis(
@@ -97,7 +100,16 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         fragment: InstructionLibraryFragment[Any],
         _sample_rate: int,
         _frame_length: int,
+        color: BaseColor,
     ) -> None:
+        """Draws one library fragment's bands, brightening toward the color of its generator.
+
+        Args:
+            fragment: The fragment to draw.
+            _sample_rate: The rate the fragment was sampled at.
+            _frame_length: The samples one frame spans.
+            color: The bright end of the gradient a band's shade sits on.
+        """
         self.clear_layers()
 
         self.add_layer(
@@ -106,7 +118,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
                 name=self._language_manager["global.graph.label.spectrum_name"],
                 max_display_bins=self._layout.spectrum.max_display_bins,
                 color_dim=self._layout.spectrum.color_dim,
-                color_bright=self._layout.spectrum.color_bright,
+                color_bright=color,
             )
         )
 

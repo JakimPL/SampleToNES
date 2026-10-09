@@ -3,15 +3,29 @@ from typing import Callable, Union
 
 import pytest
 
+from sampletones_application.layout.loader import load_layout_config
+from sampletones_application.paths import (
+    BEHAVIOR_DIRECTORY,
+    LAYOUT_DIRECTORY,
+    PALETTES_DIRECTORY,
+)
+from sampletones_application.tags.sequencer import (
+    TAG_SEQUENCER_ORDER_PANEL,
+    TAG_SEQUENCER_TRACKER_PANEL,
+    TAG_SEQUENCER_VOICES_PANEL,
+)
+from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.panels.sequencer.input.order import (
     OrderCursor,
     OrderInputState,
 )
 from sampletones_application.ui.panels.sequencer.input.tracker import TrackerCursor, TrackerInputState
-from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
-from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
-from sampletones_application.ui.panels.sequencer.tracker import GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.order.panel import GUISequencerOrderPanel
+from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
+from sampletones_application.ui.panels.sequencer.voices.panel import GUISequencerVoicesPanel
 from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRouter, focus
+from sampletones_application.utils.palette.catalog import PaletteCatalog
+from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_application.view_model.sequencer.subcolumn import SubColumn
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -19,7 +33,7 @@ from tests.suite.case import BaseRegularTestCase
 SequencerPanel = Union[
     GUISequencerTrackerPanel,
     GUISequencerOrderPanel,
-    GUISequencerSamplesPanel,
+    GUISequencerVoicesPanel,
 ]
 
 SELECTED_ID = "bass-id"
@@ -34,36 +48,60 @@ def no_focused_field(monkeypatch: pytest.MonkeyPatch) -> None:
 def _tracker(tab_active: ActivePredicate) -> GUISequencerTrackerPanel:
     """A tracker grid holding a cursor, which is what it keeps across a move to another tab."""
     panel = GUISequencerTrackerPanel.__new__(GUISequencerTrackerPanel)
+    GUIPanel.__init__(panel, tag=TAG_SEQUENCER_TRACKER_PANEL)
     panel._router = KeyRouter()
     panel._tab_active = tab_active
-    panel._input_state = TrackerInputState(cursor=TrackerCursor(0, None, SubColumn.INSTRUMENT))
+    panel._input_state = TrackerInputState(cursor=TrackerCursor(0, None, SubColumn.VOICE))
     return panel
 
 
 def _order(tab_active: ActivePredicate) -> GUISequencerOrderPanel:
     """An order table holding a cursor, which is what it keeps across a move to another tab."""
     panel = GUISequencerOrderPanel.__new__(GUISequencerOrderPanel)
+    GUIPanel.__init__(panel, tag=TAG_SEQUENCER_ORDER_PANEL)
     panel._router = KeyRouter()
     panel._tab_active = tab_active
     panel._input_state = OrderInputState(cursor=OrderCursor(None, 0))
     return panel
 
 
-def _samples(tab_active: ActivePredicate) -> GUISequencerSamplesPanel:
+def _samples(tab_active: ActivePredicate) -> GUISequencerVoicesPanel:
     """A samples panel holding a selection, which is what it keeps across a move to another tab."""
-    panel = GUISequencerSamplesPanel.__new__(GUISequencerSamplesPanel)
+    panel = GUISequencerVoicesPanel.__new__(GUISequencerVoicesPanel)
+    GUIPanel.__init__(panel, tag=TAG_SEQUENCER_VOICES_PANEL)
     panel._router = KeyRouter()
     panel._tab_active = tab_active
-    panel._selected_sample_id = SELECTED_ID
-    panel._editing_sample_id = None
+    panel._selected_voice_id = SELECTED_ID
+    panel._focused = True
+    panel._editing_voice_id = None
     return panel
 
 
-def _renaming_samples(tab_active: ActivePredicate) -> GUISequencerSamplesPanel:
+def _renaming_samples(tab_active: ActivePredicate) -> GUISequencerVoicesPanel:
     """A samples panel mid-rename, the one state that keeps the keyboard on its own tab."""
     panel = _samples(tab_active)
-    panel._editing_sample_id = SELECTED_ID
+    panel._editing_voice_id = SELECTED_ID
     return panel
+
+
+def _collapse_card(panel: SequencerPanel) -> None:
+    """Put the panel's card away, the way a reader clicking its header bar does.
+
+    A card's collapse is its controller's to hold, and the controller is built from the header
+    geometry and the glyphs the application ships, so a case standing a card away reads both from
+    the shipped layout rather than naming sizes of its own.
+    """
+    layout = load_layout_config(
+        LAYOUT_DIRECTORY,
+        BEHAVIOR_DIRECTORY,
+        PaletteSource(PaletteCatalog.load(PALETTES_DIRECTORY).default),
+    )
+    GUIPanel.configure_section_header(
+        layout.glyphs,
+        layout.general.section_header,
+        layout.general.collapse,
+    )
+    panel._enable_vertical_collapse(initial_collapsed=True)
 
 
 class TestPanelKeysFollowTheTabInFront(BaseTestSuite):
@@ -103,3 +141,34 @@ class TestPanelKeysFollowTheTabInFront(BaseTestSuite):
         panel = test_case.build(lambda: True)
 
         assert panel._keys_active() is True
+
+
+class TestPanelKeysRestWhileTheCardIsPutAway(BaseTestSuite):
+    """A sequencer panel answers the keyboard while its card stands open.
+
+    Each panel keeps its cursor or selection through a collapse, since expanding the card brings
+    the reader back to where they left off; what rests meanwhile is the panel's claim on the keys,
+    so a press goes on to the application's shortcuts.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        build: Callable[[ActivePredicate], SequencerPanel]
+
+    test_cases = (
+        TestCase(label="the tracker grid holds a cursor", build=_tracker),
+        TestCase(label="the order table holds a cursor", build=_order),
+        TestCase(label="the samples panel holds a selection", build=_samples),
+        TestCase(label="the samples panel is mid-rename", build=_renaming_samples),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_panel_stands_down_while_its_card_is_collapsed(self, test_case: TestCase) -> None:
+        panel = test_case.build(lambda: True)
+        _collapse_card(panel)
+
+        assert panel._keys_active() is False

@@ -15,7 +15,7 @@ class TableSelection(Generic[KeyT]):
 
     A grid states which of its cells the selection covers, in whatever coordinates it selects in;
     which of them stand painted, and how far a held pointer has carried, are held here. A selected
-    cell is drawn by the selectable's own selected state, which the table's theme colours, so a
+    cell is drawn by the selectable's own selected state, which the table's theme colors, so a
     repaint reaches only the cells whose membership changed.
     """
 

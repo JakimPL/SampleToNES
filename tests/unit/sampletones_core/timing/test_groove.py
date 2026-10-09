@@ -6,24 +6,35 @@ from typing import Final, Tuple
 
 import pytest
 
-from sampletones_core.timing.groove import Groove, calculate_groove
-from sampletones_core.timing.metre import Metre
+from sampletones_core.timing.bounds import TickBounds
+from sampletones_core.timing.groove import Groove
+from sampletones_core.timing.meter import Meter
 from sampletones_core.timing.rate import RowRate
+from sampletones_core.timing.song import SongTiming
 from sampletones_shared.constants.project import REFERENCE_NES_FREQUENCY, REFERENCE_TEMPO
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
+from tests.suite.groove import bar_line_drift, bar_rows, is_proportional
 
 MINIMUM_TICKS: Final[int] = 1
 MAXIMUM_TICKS: Final[int] = 255
+ENGINE_BOUNDS: Final[TickBounds] = TickBounds(minimum=MINIMUM_TICKS, maximum=MAXIMUM_TICKS)
+FIRST_FRAME: Final[int] = 0
 
 COMMON_TIME_BEAT: Final[int] = 4
 COMMON_TIME_BAR: Final[int] = 16
 
 REFERENCE_SPEED: Final[int] = 6
+HALF_TICK: Final[Fraction] = Fraction(1, 2)
+
+
+def first_frame_groove(rate: RowRate, meter: Meter) -> Groove:
+    """The groove the song's first frame plays, where every bar line is counted from the pattern's first row."""
+    return SongTiming(rate=rate, meter=meter, bounds=ENGINE_BOUNDS).groove(FIRST_FRAME)
 
 
 class TestGroove(BaseTestSuite):
-    """One case table, read both for the ticks it produces and for the rules they obey."""
+    """One case table of the song's first frame, read both for the ticks it produces and for the rules they obey."""
 
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseAutolabelTestCase):
@@ -43,25 +54,31 @@ class TestGroove(BaseTestSuite):
             )
 
         @property
-        def metre(self) -> Metre:
-            return Metre(
+        def meter(self) -> Meter:
+            return Meter(
                 rows=self.rows,
                 first_highlight=self.first_highlight,
                 second_highlight=self.second_highlight,
             )
 
         @property
-        def groove(self) -> Groove:
-            return calculate_groove(
-                RowRate.from_parameters(
-                    tempo=self.tempo,
-                    speed=self.speed,
-                    nes_frequency=self.nes_frequency,
-                ),
-                self.metre,
+        def rate(self) -> RowRate:
+            return RowRate.from_parameters(
+                tempo=self.tempo,
+                speed=self.speed,
+                nes_frequency=self.nes_frequency,
+            )
+
+        @property
+        def reachable_rate(self) -> Fraction:
+            return self.rate.bounded(
                 minimum_ticks=MINIMUM_TICKS,
                 maximum_ticks=MAXIMUM_TICKS,
-            )
+            ).ticks_per_row
+
+        @property
+        def groove(self) -> Groove:
+            return first_frame_groove(self.rate, self.meter)
 
     test_cases = (
         TestCase(
@@ -116,7 +133,7 @@ class TestGroove(BaseTestSuite):
             rows=12,
             first_highlight=3,
             second_highlight=12,
-            expected=(2, 2, 2, 2, 2, 1, 2, 2, 1, 2, 2, 1),
+            expected=(2, 2, 2, 2, 1, 2, 2, 1, 2, 2, 1, 2),
         ),
         TestCase(
             tempo=210,
@@ -197,7 +214,7 @@ class TestGroove(BaseTestSuite):
             rows=7,
             first_highlight=2,
             second_highlight=3,
-            expected=(5, 5, 4, 5, 5, 4, 4),
+            expected=(5, 4, 5, 5, 4, 5, 4),
         ),
         TestCase(
             tempo=251,
@@ -206,7 +223,7 @@ class TestGroove(BaseTestSuite):
             rows=17,
             first_highlight=5,
             second_highlight=7,
-            expected=(26, 26, 26, 26, 26, 26, 25, 26, 26, 26, 26, 25, 26, 25, 26, 26, 25),
+            expected=(26, 25, 26, 26, 26, 26, 25, 26, 25, 26, 26, 26, 26, 26, 26, 25, 26),
         ),
         TestCase(
             tempo=97,
@@ -215,7 +232,7 @@ class TestGroove(BaseTestSuite):
             rows=9,
             first_highlight=4,
             second_highlight=6,
-            expected=(4, 3, 4, 3, 3, 3, 3, 3, 3),
+            expected=(4, 3, 3, 3, 3, 3, 4, 3, 3),
         ),
         TestCase(
             tempo=128,
@@ -224,7 +241,7 @@ class TestGroove(BaseTestSuite):
             rows=15,
             first_highlight=4,
             second_highlight=16,
-            expected=(10, 9, 10, 9, 10, 9, 10, 9, 10, 9, 9, 9, 10, 9, 9),
+            expected=(10, 9, 10, 9, 10, 9, 9, 9, 10, 9, 10, 9, 10, 9, 9),
         ),
         TestCase(
             tempo=100,
@@ -233,7 +250,7 @@ class TestGroove(BaseTestSuite):
             rows=13,
             first_highlight=7,
             second_highlight=7,
-            expected=(8, 8, 8, 8, 8, 8, 7, 8, 8, 8, 8, 8, 7),
+            expected=(8, 8, 8, 7, 8, 8, 8, 8, 8, 8, 8, 7, 8),
         ),
         TestCase(
             tempo=43,
@@ -242,7 +259,7 @@ class TestGroove(BaseTestSuite):
             rows=11,
             first_highlight=3,
             second_highlight=8,
-            expected=(53, 53, 52, 53, 52, 52, 52, 52, 52, 52, 52),
+            expected=(53, 52, 52, 53, 52, 52, 52, 52, 53, 52, 52),
         ),
         TestCase(
             tempo=199,
@@ -296,7 +313,7 @@ class TestGroove(BaseTestSuite):
             rows=7,
             first_highlight=4,
             second_highlight=16,
-            expected=(5, 4, 5, 4, 4, 4, 4),
+            expected=(5, 4, 4, 4, 5, 4, 4),
         ),
         TestCase(
             tempo=210,
@@ -323,7 +340,7 @@ class TestGroove(BaseTestSuite):
             rows=13,
             first_highlight=4,
             second_highlight=16,
-            expected=(5, 4, 5, 4, 5, 4, 4, 4, 5, 4, 4, 4, 4),
+            expected=(5, 4, 4, 4, 5, 4, 4, 4, 5, 4, 5, 4, 4),
         ),
         TestCase(
             tempo=210,
@@ -341,7 +358,7 @@ class TestGroove(BaseTestSuite):
             rows=23,
             first_highlight=4,
             second_highlight=16,
-            expected=(5, 4, 5, 4, 5, 4, 4, 4, 5, 4, 4, 4, 5, 4, 4, 4, 5, 4, 5, 4, 4, 4, 4),
+            expected=(5, 4, 5, 4, 5, 4, 4, 4, 5, 4, 4, 4, 5, 4, 4, 4, 5, 4, 4, 4, 5, 4, 4),
         ),
         TestCase(
             tempo=210,
@@ -378,10 +395,6 @@ class TestGroove(BaseTestSuite):
                 4,
                 5,
                 4,
-                5,
-                4,
-                5,
-                4,
                 4,
                 4,
                 5,
@@ -395,6 +408,10 @@ class TestGroove(BaseTestSuite):
                 5,
                 4,
                 4,
+                4,
+                5,
+                4,
+                5,
                 4,
                 5,
                 4,
@@ -503,7 +520,7 @@ class TestGroove(BaseTestSuite):
             rows=16,
             first_highlight=1,
             second_highlight=1,
-            expected=(9, 9, 8, 9, 8, 9, 8, 9, 9, 8, 9, 8, 9, 8, 9, 8),
+            expected=(9, 8, 9, 8, 9, 8, 9, 9, 8, 9, 8, 9, 8, 9, 9, 8),
         ),
         TestCase(
             tempo=105,
@@ -512,7 +529,7 @@ class TestGroove(BaseTestSuite):
             rows=16,
             first_highlight=2,
             second_highlight=4,
-            expected=(9, 9, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8),
+            expected=(9, 8, 9, 8, 9, 9, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8),
         ),
         TestCase(
             tempo=105,
@@ -521,7 +538,7 @@ class TestGroove(BaseTestSuite):
             rows=16,
             first_highlight=3,
             second_highlight=4,
-            expected=(9, 9, 9, 8, 9, 9, 8, 8, 9, 9, 8, 8, 9, 9, 8, 8),
+            expected=(9, 8, 9, 8, 9, 8, 9, 9, 9, 8, 9, 8, 9, 8, 9, 8),
         ),
         TestCase(
             tempo=105,
@@ -530,7 +547,7 @@ class TestGroove(BaseTestSuite):
             rows=16,
             first_highlight=5,
             second_highlight=3,
-            expected=(9, 9, 8, 9, 9, 8, 9, 9, 8, 9, 8, 8, 9, 9, 8, 8),
+            expected=(9, 8, 9, 9, 8, 8, 9, 8, 9, 9, 8, 9, 9, 8, 9, 8),
         ),
         TestCase(
             tempo=105,
@@ -539,7 +556,7 @@ class TestGroove(BaseTestSuite):
             rows=16,
             first_highlight=16,
             second_highlight=4,
-            expected=(9, 9, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8),
+            expected=(9, 8, 9, 8, 9, 9, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8),
         ),
         TestCase(
             tempo=105,
@@ -557,7 +574,7 @@ class TestGroove(BaseTestSuite):
             rows=12,
             first_highlight=4,
             second_highlight=6,
-            expected=(9, 9, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8),
+            expected=(9, 8, 9, 8, 9, 8, 9, 9, 9, 8, 9, 8),
         ),
         TestCase(
             tempo=105,
@@ -575,7 +592,7 @@ class TestGroove(BaseTestSuite):
             rows=9,
             first_highlight=2,
             second_highlight=6,
-            expected=(9, 9, 9, 8, 9, 8, 9, 8, 8),
+            expected=(9, 8, 9, 8, 9, 8, 9, 8, 9),
         ),
         TestCase(
             tempo=105,
@@ -584,7 +601,7 @@ class TestGroove(BaseTestSuite):
             rows=15,
             first_highlight=5,
             second_highlight=15,
-            expected=(9, 9, 8, 9, 8, 9, 9, 8, 9, 8, 9, 9, 8, 9, 8),
+            expected=(9, 8, 9, 9, 8, 9, 8, 9, 9, 8, 9, 8, 9, 9, 8),
         ),
         TestCase(
             tempo=150,
@@ -717,24 +734,9 @@ class TestGroove(BaseTestSuite):
         test_cases,
         ids=lambda test_case: test_case.label,
     )
-    def test_the_total_and_the_mean_describe_the_rows(self, test_case: TestCase) -> None:
-        groove = test_case.groove
-        assert groove.total_ticks == sum(groove.ticks)
-        assert groove.mean_ticks_per_row == Fraction(groove.total_ticks, test_case.rows)
-
-    @pytest.mark.parametrize(
-        "test_case",
-        test_cases,
-        ids=lambda test_case: test_case.label,
-    )
     def test_the_rate_is_reached_as_closely_as_the_range_allows(self, test_case: TestCase) -> None:
-        rate = RowRate.from_parameters(
-            tempo=test_case.tempo,
-            speed=test_case.speed,
-            nes_frequency=test_case.nes_frequency,
-        )
-        reachable = min(max(rate.ticks_per_row, MINIMUM_TICKS), MAXIMUM_TICKS)
-        assert abs(test_case.groove.mean_ticks_per_row - reachable) <= Fraction(1, 2 * test_case.rows)
+        exact = test_case.reachable_rate * test_case.rows
+        assert abs(sum(test_case.groove.ticks) - exact) <= HALF_TICK
 
     @pytest.mark.parametrize(
         "test_case",
@@ -749,23 +751,21 @@ class TestGroove(BaseTestSuite):
         test_cases,
         ids=lambda test_case: test_case.label,
     )
-    def test_every_row_neighbours_the_average(self, test_case: TestCase) -> None:
-        groove = test_case.groove
-        shorter, remainder = divmod(groove.total_ticks, test_case.rows)
-        longer = shorter + 1 if remainder else shorter
-        assert set(groove.ticks) <= {shorter, longer}
+    def test_every_row_lasts_the_floor_or_the_ceiling_of_the_rate(self, test_case: TestCase) -> None:
+        assert is_proportional(test_case.groove.ticks, test_case.reachable_rate)
 
     @pytest.mark.parametrize(
         "test_case",
         test_cases,
         ids=lambda test_case: test_case.label,
     )
-    def test_longer_rows_come_first(self, test_case: TestCase) -> None:
-        groove = test_case.groove
-        elapsed = 0
-        for index, ticks in enumerate(groove.ticks, start=1):
-            elapsed += ticks
-            assert elapsed >= groove.total_ticks * index // test_case.rows
+    def test_every_bar_starts_on_the_tick_nearest_its_exact_start(self, test_case: TestCase) -> None:
+        drift = bar_line_drift(
+            test_case.groove.ticks,
+            bar_rows(test_case.meter, frames=1),
+            test_case.reachable_rate,
+        )
+        assert drift <= HALF_TICK
 
     @pytest.mark.parametrize(
         "test_case",
@@ -775,7 +775,7 @@ class TestGroove(BaseTestSuite):
     def test_each_beat_opens_on_its_longest_row(self, test_case: TestCase) -> None:
         ticks = test_case.groove.ticks
         start = 0
-        for beats in test_case.metre.spans:
+        for beats in test_case.meter.spans:
             for beat_rows in beats:
                 beat = ticks[start : start + beat_rows]
                 assert beat[0] == max(beat)
@@ -788,22 +788,19 @@ class TestReferenceCalibration(BaseTestSuite):
     @pytest.mark.parametrize("speed", tuple(range(1, 32)))
     @pytest.mark.parametrize("rows", (1, 2, 7, 16, 60, 64, 256))
     def test_every_row_lasts_speed_ticks(self, speed: int, rows: int) -> None:
-        groove = calculate_groove(
+        groove = first_frame_groove(
             RowRate.from_parameters(
                 tempo=REFERENCE_TEMPO,
                 speed=speed,
                 nes_frequency=REFERENCE_NES_FREQUENCY,
             ),
-            Metre(
+            Meter(
                 rows=rows,
                 first_highlight=COMMON_TIME_BEAT,
                 second_highlight=COMMON_TIME_BAR,
             ),
-            minimum_ticks=MINIMUM_TICKS,
-            maximum_ticks=MAXIMUM_TICKS,
         )
         assert groove.ticks == (speed,) * rows
-        assert groove.is_uniform
 
 
 class TestSecondHighlight(BaseTestSuite):
@@ -811,19 +808,17 @@ class TestSecondHighlight(BaseTestSuite):
 
     @staticmethod
     def _groove(rows: int, first_highlight: int, second_highlight: int, tempo: int) -> Groove:
-        return calculate_groove(
+        return first_frame_groove(
             RowRate.from_parameters(
                 tempo=tempo,
                 speed=REFERENCE_SPEED,
                 nes_frequency=60,
             ),
-            Metre(
+            Meter(
                 rows=rows,
                 first_highlight=first_highlight,
                 second_highlight=second_highlight,
             ),
-            minimum_ticks=MINIMUM_TICKS,
-            maximum_ticks=MAXIMUM_TICKS,
         )
 
     @pytest.mark.parametrize("second_highlight", (1, 2, 3, 4, 7, 8, 12, 16, 20, 32, 64))
@@ -832,52 +827,35 @@ class TestSecondHighlight(BaseTestSuite):
     def test_the_bar_leaves_the_tempo_alone(self, tempo: int, rows: int, second_highlight: int) -> None:
         grouped = self._groove(rows, COMMON_TIME_BEAT, second_highlight, tempo)
         pattern_wide = self._groove(rows, COMMON_TIME_BEAT, rows, tempo)
-        assert grouped.total_ticks == pattern_wide.total_ticks
+        assert sum(grouped.ticks) == sum(pattern_wide.ticks)
 
     def test_a_bar_cutting_across_the_beat_reorganizes_the_groove(self) -> None:
-        across = self._groove(4, 2, 3, 105)
-        pattern_wide = self._groove(4, 2, 4, 105)
-        assert across.ticks == (9, 9, 8, 8)
-        assert pattern_wide.ticks == (9, 8, 9, 8)
-        assert across.total_ticks == pattern_wide.total_ticks
+        across = self._groove(6, 2, 3, 105)
+        pattern_wide = self._groove(6, 2, 6, 105)
+        assert across.ticks == (9, 8, 9, 9, 8, 8)
+        assert pattern_wide.ticks == (9, 8, 9, 8, 9, 8)
+        assert sum(across.ticks) == sum(pattern_wide.ticks)
 
     def test_a_bar_shorter_than_the_beat_reorganizes_the_groove(self) -> None:
         across = self._groove(5, 5, 4, 105)
         aligned = self._groove(5, 5, 8, 105)
-        assert across.ticks == (9, 9, 9, 8, 8)
-        assert aligned.ticks == (9, 9, 8, 9, 8)
-        assert across.total_ticks == aligned.total_ticks
+        assert across.ticks == (9, 8, 9, 8, 9)
+        assert aligned.ticks == (9, 8, 9, 9, 8)
+        assert sum(across.ticks) == sum(aligned.ticks)
 
     def test_a_bar_of_whole_beats_reorganizes_the_groove_too(self) -> None:
         barred = self._groove(64, COMMON_TIME_BEAT, COMMON_TIME_BAR, 105)
         pattern_wide = self._groove(64, COMMON_TIME_BEAT, 64, 105)
         assert barred.ticks == (
+            9, 9, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8,
+            9, 9, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8,
+            9, 9, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8,
+            9, 9, 9, 8, 9, 8, 9, 8, 9, 9, 9, 8, 9, 8, 9, 8,
+        )  # fmt: skip
+        assert pattern_wide.ticks == (
             9, 9, 9, 8, 9, 8, 9, 8, 9, 9, 9, 8, 9, 8, 9, 8,
             9, 9, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8,
             9, 9, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8,
             9, 9, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8,
         )  # fmt: skip
-        assert pattern_wide.ticks == (
-            9, 9, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 9, 9, 8,
-            9, 8, 9, 8, 9, 8, 9, 8, 9, 9, 9, 8, 9, 8, 9, 8,
-            9, 8, 9, 8, 9, 9, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8,
-            9, 9, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8,
-        )  # fmt: skip
-        assert barred.total_ticks == pattern_wide.total_ticks
-
-
-class TestGrooveProperties(BaseTestSuite):
-    def test_total_ticks_sums_the_rows(self) -> None:
-        assert Groove(ticks=(5, 4, 4, 4)).total_ticks == 17
-
-    def test_mean_ticks_per_row_is_exact(self) -> None:
-        assert Groove(ticks=(5, 4, 4, 4)).mean_ticks_per_row == Fraction(17, 4)
-
-    def test_a_varying_groove_is_not_uniform(self) -> None:
-        assert not Groove(ticks=(5, 4, 4, 4)).is_uniform
-
-    def test_a_constant_groove_is_uniform(self) -> None:
-        assert Groove(ticks=(4, 4, 4, 4)).is_uniform
-
-    def test_a_single_row_groove_is_uniform(self) -> None:
-        assert Groove(ticks=(4,)).is_uniform
+        assert sum(barred.ticks) == sum(pattern_wide.ticks)

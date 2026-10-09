@@ -1,15 +1,9 @@
-import sys
-from importlib.resources import files
 from pathlib import Path
-from typing import Final, Optional
+from typing import Final
 
-_BUNDLE_ROOT: Final[Optional[str]] = getattr(sys, "_MEIPASS", None)
+from sampletones_shared.paths.package import package_directory
 
-CONFIG_DIRECTORY: Final[Path] = (
-    Path(_BUNDLE_ROOT) / "config" if _BUNDLE_ROOT is not None else Path(str(files("sampletones_config")))
-)
-
-ASSETS_DIRECTORY: Final[str] = "assets"
+CONFIG_DIRECTORY: Final[Path] = package_directory("sampletones_config")
 
 ICON_DIRECTORY: Final[str] = "icons"
 ICON_WIN_FILENAME: Final[str] = "sampletones.ico"

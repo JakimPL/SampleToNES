@@ -1,0 +1,15 @@
+name: stems_pick
+tag: global.theme.stems_pick
+
+components:
+  - item_type: Checkbox
+    entries:
+      - type: color
+        key: FrameBg
+        value: .control
+      - type: color
+        key: FrameBgHovered
+        value: .control_hovered
+      - type: color
+        key: FrameBgActive
+        value: .control_active

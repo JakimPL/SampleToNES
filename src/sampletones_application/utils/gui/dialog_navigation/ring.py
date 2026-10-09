@@ -2,7 +2,6 @@ from typing import List, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.tags.general import TAG_GLOBAL_THEME_FOCUSED_BUTTON
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.dialog_navigation.stop import FocusStop
 
@@ -14,8 +13,10 @@ class FocusRing:
     user is actively editing, which keeps the cycle correct whether or not a focused button reports
     its focus, and lets the field being typed into keep Enter for itself.
 
-    As focus moves onto a button the ring paints it with the focus outline theme and rebinds the
-    button's own theme once focus leaves, so the button the user is on carries a visible accent
+    As focus moves onto a button the ring paints it with the stop's own focused theme and rebinds
+    it to the stop's base theme once focus leaves, so the button the user is on carries a visible
+    accent border. A bound theme replaces a button's colors outright, so a button styled beyond
+    the default names both themes, and the focused one carries its own colors forward under the
     border. Fields show their own edit caret, so the ring leaves their appearance to DearPyGui.
     """
 
@@ -58,10 +59,10 @@ class FocusRing:
 
     def _apply_focus_outline(self, index: int) -> None:
         stop = self._stops[index]
-        if stop.base_theme_tag is None:
+        if stop.base_theme_tag is None or stop.focused_theme_tag is None:
             return
 
-        ThemeRegistry.get(TAG_GLOBAL_THEME_FOCUSED_BUTTON).bind_to_item(stop.focus_tag)
+        ThemeRegistry.get(stop.focused_theme_tag).bind_to_item(stop.focus_tag)
 
     def _restore_focus_outline(self, index: int) -> None:
         stop = self._stops[index]

@@ -1,8 +1,21 @@
+from __future__ import annotations
+
 from collections import defaultdict
 from dataclasses import dataclass, replace
 from pathlib import Path
 from textwrap import dedent
-from typing import AbstractSet, Dict, Final, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import (
+    AbstractSet,
+    Dict,
+    Final,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+)
 
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.ui.elements.tree.colors import TreeColors
@@ -134,7 +147,7 @@ class _Row:
     def label(self) -> str:
         return self.text.removesuffix(HIDDEN_MARKER)
 
-    def opened(self) -> "_Row":
+    def opened(self) -> _Row:
         return replace(self, marker=OPEN_MARKER) if self.marker == CLOSED_MARKER else self
 
 
@@ -218,7 +231,7 @@ def _rows_nested_under(rows: Sequence[_Row], index: int) -> Set[int]:
 def _assert_rows_named(rows: Sequence[_Row], labels: AbstractSet[str]) -> None:
     """Holds a derived view to the rows the view it varies reads, so a label naming none is stated."""
     missing = labels - {row.label for row in rows}
-    assert not missing, f"the view holds no row labelled {sorted(missing)}"
+    assert not missing, f"the view holds no row labeled {sorted(missing)}"
 
 
 def config_fields(
@@ -227,7 +240,7 @@ def config_fields(
     nes_frequency: int,
     spectrum_method: SpectrumMethod,
     transformation_gamma: int,
-    generators: str,
+    channels: str,
     config_hash: str,
 ) -> ConfigDirectoryFields:
     return ConfigDirectoryFields(
@@ -235,7 +248,7 @@ def config_fields(
         nf=nes_frequency,
         sm=spectrum_method,
         tg=transformation_gamma,
-        gn=generators,
+        gn=channels,
         ch=config_hash,
     )
 
@@ -245,7 +258,7 @@ CONFIG_A: Final[ConfigDirectoryFields] = config_fields(
     nes_frequency=30,
     spectrum_method=SpectrumMethod.FFT,
     transformation_gamma=0,
-    generators="PTN",
+    channels="PTN",
     config_hash=HASH_A,
 )
 CONFIG_B: Final[ConfigDirectoryFields] = config_fields(
@@ -253,7 +266,7 @@ CONFIG_B: Final[ConfigDirectoryFields] = config_fields(
     nes_frequency=30,
     spectrum_method=SpectrumMethod.FFT,
     transformation_gamma=0,
-    generators="PTN",
+    channels="PTN",
     config_hash=HASH_B,
 )
 CONFIG_C: Final[ConfigDirectoryFields] = config_fields(
@@ -261,7 +274,7 @@ CONFIG_C: Final[ConfigDirectoryFields] = config_fields(
     nes_frequency=30,
     spectrum_method=SpectrumMethod.FFT,
     transformation_gamma=0,
-    generators="PT",
+    channels="PT",
     config_hash=HASH_C,
 )
 CONFIG_D: Final[ConfigDirectoryFields] = config_fields(
@@ -269,7 +282,7 @@ CONFIG_D: Final[ConfigDirectoryFields] = config_fields(
     nes_frequency=30,
     spectrum_method=SpectrumMethod.CQT,
     transformation_gamma=0,
-    generators="PTN",
+    channels="PTN",
     config_hash=HASH_D,
 )
 CONFIG_E: Final[ConfigDirectoryFields] = config_fields(
@@ -277,7 +290,7 @@ CONFIG_E: Final[ConfigDirectoryFields] = config_fields(
     nes_frequency=60,
     spectrum_method=SpectrumMethod.CQT,
     transformation_gamma=2,
-    generators="P",
+    channels="P",
     config_hash=HASH_E,
 )
 CONFIG_F: Final[ConfigDirectoryFields] = config_fields(
@@ -285,7 +298,7 @@ CONFIG_F: Final[ConfigDirectoryFields] = config_fields(
     nes_frequency=50,
     spectrum_method=SpectrumMethod.LOG_SPACED_FFT,
     transformation_gamma=1,
-    generators="TN",
+    channels="TN",
     config_hash=HASH_F,
 )
 
@@ -448,7 +461,7 @@ def _state_detail_labels(panel: GUITreePanel) -> None:
     panel._lbl_detail_spectrum_method = "spectrum_method"
     panel._lbl_detail_transformation_gamma = "transformation_gamma"
     panel._lbl_detail_window_size = "window_size"
-    panel._lbl_detail_generators = "generators"
+    panel._lbl_detail_channels = "channels"
     panel._lbl_detail_configuration = "configuration"
 
 
@@ -538,17 +551,6 @@ def set_row_expanded(
 ) -> None:
     """Leaves a row standing the way the reader would leave it, which the browser then remembers."""
     panel._expansion.remember(panel._generate_node_tag(node), expanded=expanded)
-
-
-def set_filter(
-    panel: GUITreePanel,
-    *,
-    favorites_only: bool,
-    query: str = "",
-) -> None:
-    """States what the browser is now asked to show, as a change of the control or the search box."""
-    panel._filter = TreeFilter(query=query, favorites_only=favorites_only)
-    panel._resolve_filter()
 
 
 def select_favorites(panel: GUITreePanel) -> None:

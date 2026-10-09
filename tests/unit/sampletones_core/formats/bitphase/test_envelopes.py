@@ -3,7 +3,7 @@ from typing import Final, List
 
 import pytest
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import NUM_PERIODS
 from sampletones_core.formats.bitphase.envelopes import (
     ChannelEnvelopes,
@@ -18,217 +18,259 @@ from sampletones_core.formats.bitphase.specification.instruments import (
     NOISE_MODE_SHORT,
     SILENT_VOLUME,
 )
+from sampletones_core.formats.bitphase.specification.macros import MAX_MACRO_LENGTH, NesMacroField
+from sampletones_core.formats.bitphase.tuning import DEFAULT_TUNING_TABLE
 
-from .conftest import build_features
+from .conftest import build_features, looping
 
 
 @dataclass
 class PulseWidthCase:
-    generator: GeneratorName
+    channel: ChannelName
     duty_cycle: int
     pulse_width: int
 
 
 PULSE_WIDTH_CASES: List[PulseWidthCase] = [
-    PulseWidthCase(generator=GeneratorName.PULSE1, duty_cycle=2, pulse_width=2),
-    PulseWidthCase(generator=GeneratorName.PULSE2, duty_cycle=3, pulse_width=3),
-    PulseWidthCase(generator=GeneratorName.TRIANGLE, duty_cycle=3, pulse_width=FLAT_PULSE_WIDTH),
-    PulseWidthCase(generator=GeneratorName.NOISE, duty_cycle=0, pulse_width=NOISE_MODE_LONG),
-    PulseWidthCase(generator=GeneratorName.NOISE, duty_cycle=1, pulse_width=NOISE_MODE_SHORT),
+    PulseWidthCase(channel=ChannelName.PULSE1, duty_cycle=2, pulse_width=2),
+    PulseWidthCase(channel=ChannelName.PULSE2, duty_cycle=3, pulse_width=3),
+    PulseWidthCase(channel=ChannelName.NOISE, duty_cycle=0, pulse_width=NOISE_MODE_LONG),
+    PulseWidthCase(channel=ChannelName.NOISE, duty_cycle=1, pulse_width=NOISE_MODE_SHORT),
 ]
 
 VOLUME_ENVELOPE: Final[List[int]] = [15, 12, 8, 4, 0]
 PITCH_CONTOUR: Final[List[int]] = [0, 2, 4, 5, 7]
 
 
-class TestRowsCarryTheEnvelopes:
-    def test_each_volume_item_becomes_one_row(self) -> None:
+def volume_values(envelopes: ChannelEnvelopes) -> List[int]:
+    return list(envelopes.macros[NesMacroField.VOLUME_OR_RATE].values)
+
+
+def waveform_values(envelopes: ChannelEnvelopes) -> List[int]:
+    return list(envelopes.macros[NesMacroField.PULSE_WIDTH].values)
+
+
+class TestEachDimensionBecomesItsOwnMacro:
+    def test_the_volume_envelope_becomes_the_level_a_tick_takes(self) -> None:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR),
-            GeneratorName.PULSE1,
-            loop=False,
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
-        assert [row.volume_or_rate for row in envelopes.rows] == VOLUME_ENVELOPE
+        assert volume_values(envelopes) == VOLUME_ENVELOPE
 
     def test_the_contour_becomes_the_table(self) -> None:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR),
-            GeneratorName.PULSE1,
-            loop=False,
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert list(envelopes.table_rows) == PITCH_CONTOUR
 
     @pytest.mark.parametrize(
         "case",
         PULSE_WIDTH_CASES,
-        ids=lambda case: f"{case.generator}-{case.duty_cycle}",
+        ids=lambda case: f"{case.channel}-{case.duty_cycle}",
     )
     def test_the_duty_item_reaches_the_field_its_channel_reads(self, case: PulseWidthCase) -> None:
         envelopes = features_to_envelopes(
             build_features([15], duty_cycle=[case.duty_cycle]),
-            case.generator,
-            loop=False,
+            case.channel,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
-        assert envelopes.rows[0].pulse_width == case.pulse_width
+        assert waveform_values(envelopes) == [case.pulse_width]
 
-    def test_a_channel_without_a_duty_envelope_plays_one_waveform(self) -> None:
+    def test_the_triangle_channel_leaves_its_one_waveform_alone(self) -> None:
+        """The triangle plays a single waveform, so the field it would name stays at its default."""
+        envelopes = features_to_envelopes(
+            build_features(VOLUME_ENVELOPE, duty_cycle=[3] * len(VOLUME_ENVELOPE)),
+            ChannelName.TRIANGLE,
+            tuning_table=DEFAULT_TUNING_TABLE,
+        )
+        assert set(envelopes.macros) == {NesMacroField.VOLUME_OR_RATE}
+
+    def test_a_channel_without_a_duty_envelope_holds_one_waveform(self) -> None:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE),
-            GeneratorName.TRIANGLE,
-            loop=False,
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
-        assert {row.pulse_width for row in envelopes.rows} == {FLAT_PULSE_WIDTH}
+        assert waveform_values(envelopes) == [FLAT_PULSE_WIDTH]
+
+    def test_a_noise_channel_without_a_duty_envelope_holds_the_long_mode(self) -> None:
+        """Every note starts on the long mode where the slice leaves its mode, as a note does in the app."""
+        envelopes = features_to_envelopes(
+            build_features(VOLUME_ENVELOPE),
+            ChannelName.NOISE,
+            tuning_table=DEFAULT_TUNING_TABLE,
+        )
+        assert waveform_values(envelopes) == [NOISE_MODE_LONG]
 
     def test_a_noise_contour_takes_the_offsets_that_move_its_period(self) -> None:
+        """The note index carries the period itself, so a step moves the index by as much, wrapped
+        into the sixteen periods the channel has.
+        """
         steps = [0, 1, -1, 5]
         envelopes = features_to_envelopes(
             build_features([15] * len(steps), arpeggio=steps),
-            GeneratorName.NOISE,
-            loop=False,
+            ChannelName.NOISE,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
-        assert list(envelopes.table_rows) == [(-step) % NUM_PERIODS for step in steps]
+        assert list(envelopes.table_rows) == [step % NUM_PERIODS for step in steps]
 
 
-class TestTheDimensionsStayInStep:
-    """Instrument rows and table rows advance on their own per-tick counters, so a
-    length they share is what keeps the volume envelope aligned with the pitch contour.
+class TestEachDimensionKeepsItsOwnLength:
+    """Bitphase advances every field on a counter of its own, so a dimension holding one
+    value all through costs that one value however long the others run.
     """
 
-    @pytest.mark.parametrize("loop", [True, False], ids=["looping", "one_shot"])
-    def test_the_rows_and_the_table_share_a_length(self, loop: bool) -> None:
-        envelopes = features_to_envelopes(
-            build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR[:3]),
-            GeneratorName.PULSE1,
-            loop=loop,
-        )
-        assert len(envelopes.rows) == len(envelopes.table_rows)
-
-    def test_a_looping_slice_takes_the_shortest_dimension(self) -> None:
+    def test_a_dimension_holds_the_length_it_was_written_at(self) -> None:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR[:2]),
-            GeneratorName.PULSE1,
-            loop=True,
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
-        assert len(envelopes.rows) == 2
+        assert len(volume_values(envelopes)) == len(VOLUME_ENVELOPE)
+        assert len(envelopes.table_rows) == 2
 
-    def test_a_one_shot_holds_the_shorter_dimension_to_the_end(self) -> None:
-        envelopes = features_to_envelopes(
-            build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR[:2]),
-            GeneratorName.PULSE1,
-            loop=False,
-        )
-        assert list(envelopes.table_rows) == [0, 2, 2, 2, 2]
-
-    def test_a_slice_without_a_contour_holds_its_note(self) -> None:
+    def test_a_slice_without_a_contour_holds_one_step(self) -> None:
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE, arpeggio=[]),
-            GeneratorName.PULSE1,
-            loop=False,
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
-        assert list(envelopes.table_rows) == [NO_TABLE_OFFSET] * len(VOLUME_ENVELOPE)
+        assert list(envelopes.table_rows) == [NO_TABLE_OFFSET]
 
-
-class TestTheLoopPoint:
-    def test_a_looping_slice_returns_to_its_first_row(self) -> None:
+    def test_the_instrument_runs_as_long_as_its_longest_dimension(self) -> None:
         envelopes = features_to_envelopes(
-            build_features(VOLUME_ENVELOPE),
-            GeneratorName.PULSE1,
-            loop=True,
+            build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR[:2]),
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
-        assert envelopes.loop == LOOP_FROM_START
+        assert envelopes.ticks == len(VOLUME_ENVELOPE)
 
-    def test_a_one_shot_rests_on_its_last_row(self) -> None:
+
+class TestThePointADimensionRepeatsFrom:
+    def test_a_looping_dimension_states_the_point_it_circles_from(self) -> None:
         envelopes = features_to_envelopes(
-            build_features(VOLUME_ENVELOPE),
-            GeneratorName.PULSE1,
-            loop=False,
+            looping(build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR), 0),
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
-        assert envelopes.loop == len(envelopes.rows) - 1
+        assert envelopes.macros[NesMacroField.VOLUME_OR_RATE].loop == LOOP_FROM_START
+        assert envelopes.table_loop == LOOP_FROM_START
 
-    def test_a_one_shot_rests_in_silence(self) -> None:
-        """Playback always returns to the loop row, so a slice that has played through
-        rests on the note-off item its volume envelope ends with.
-        """
-        envelopes = features_to_envelopes(
-            build_features(VOLUME_ENVELOPE),
-            GeneratorName.PULSE1,
-            loop=False,
-        )
-        assert envelopes.rows[envelopes.loop].volume_or_rate == SILENT_VOLUME
-
-    @pytest.mark.parametrize("loop", [True, False], ids=["looping", "one_shot"])
-    def test_the_loop_row_exists_in_both_lists(self, loop: bool) -> None:
+    def test_a_one_shot_holds_its_final_value(self) -> None:
+        """Circling from the last value is what holds it, since playback never halts."""
         envelopes = features_to_envelopes(
             build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR),
-            GeneratorName.PULSE1,
-            loop=loop,
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
-        assert envelopes.loop < len(envelopes.rows)
-        assert envelopes.loop < len(envelopes.table_rows)
+        assert envelopes.macros[NesMacroField.VOLUME_OR_RATE].loop == len(VOLUME_ENVELOPE) - 1
+        assert envelopes.table_loop == len(PITCH_CONTOUR) - 1
+
+    def test_a_one_shot_rests_in_silence(self) -> None:
+        """A slice that has played through rests on the note-off item its volume ends with."""
+        envelopes = features_to_envelopes(
+            build_features(VOLUME_ENVELOPE),
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
+        )
+        macro = envelopes.macros[NesMacroField.VOLUME_OR_RATE]
+        assert macro.values[macro.loop] == SILENT_VOLUME
+
+    @pytest.mark.parametrize("loop", [True, False], ids=["looping", "one_shot"])
+    def test_every_point_stands_among_the_values_it_circles(self, loop: bool) -> None:
+        envelopes = features_to_envelopes(
+            looping(build_features(VOLUME_ENVELOPE, arpeggio=PITCH_CONTOUR), 0 if loop else None),
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
+        )
+        assert all(macro.loop < len(macro.values) for macro in envelopes.macros.values())
+        assert envelopes.table_loop < len(envelopes.table_rows)
 
 
 class TestASliceThatLeavesItsVolumeToTheChannel:
     """An instrument with no volume envelope sounds at the level its channel carries, so
-    every frame it describes reaches Bitphase as a full-level row.
+    one full level is what it writes.
     """
 
-    def test_it_holds_a_full_row_per_frame(self) -> None:
+    def test_it_holds_one_full_level(self) -> None:
         envelopes = features_to_envelopes(
             build_features([], arpeggio=PITCH_CONTOUR),
-            GeneratorName.PULSE1,
-            loop=False,
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
-        assert [row.volume_or_rate for row in envelopes.rows] == [MAX_VOLUME_OR_RATE] * len(PITCH_CONTOUR)
+        assert volume_values(envelopes) == [MAX_VOLUME_OR_RATE]
 
     def test_its_contour_still_moves_the_note(self) -> None:
         envelopes = features_to_envelopes(
             build_features([], arpeggio=PITCH_CONTOUR),
-            GeneratorName.PULSE1,
-            loop=False,
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
         assert list(envelopes.table_rows) == PITCH_CONTOUR
 
-    def test_its_duty_envelope_still_reaches_the_rows(self) -> None:
+    def test_its_duty_envelope_still_reaches_the_waveform(self) -> None:
         duty_cycles = [0, 1, 2, 3]
         envelopes = features_to_envelopes(
             build_features([], duty_cycle=duty_cycles),
-            GeneratorName.PULSE1,
-            loop=False,
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
-        assert [row.pulse_width for row in envelopes.rows] == duty_cycles
+        assert waveform_values(envelopes) == duty_cycles
 
-    def test_a_one_shot_rests_at_the_level_the_channel_holds(self) -> None:
-        envelopes = features_to_envelopes(
-            build_features([], arpeggio=PITCH_CONTOUR),
-            GeneratorName.PULSE1,
-            loop=False,
-        )
-        assert envelopes.rows[envelopes.loop].volume_or_rate == MAX_VOLUME_OR_RATE
 
-    def test_a_looping_slice_takes_the_length_its_contour_states(self) -> None:
+class TestADimensionPastWhatAMacroStores:
+    def test_it_keeps_its_opening_values(self) -> None:
+        contour = list(range(MAX_MACRO_LENGTH + 8))
         envelopes = features_to_envelopes(
-            build_features([], arpeggio=PITCH_CONTOUR),
-            GeneratorName.PULSE1,
-            loop=True,
+            build_features([MAX_VOLUME_OR_RATE] * (MAX_MACRO_LENGTH + 8), arpeggio=contour),
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
         )
-        assert len(envelopes.rows) == len(PITCH_CONTOUR)
-        assert envelopes.loop == LOOP_FROM_START
+        assert len(volume_values(envelopes)) == MAX_MACRO_LENGTH
+
+    def test_a_volume_ending_in_silence_keeps_that_silence(self) -> None:
+        """A shortened volume that dropped its note-off would sound on for as long as the note does."""
+        volume = [MAX_VOLUME_OR_RATE] * (MAX_MACRO_LENGTH + 8) + [SILENT_VOLUME]
+        envelopes = features_to_envelopes(
+            build_features(volume),
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
+        )
+        assert volume_values(envelopes)[-1] == SILENT_VOLUME
+
+    def test_the_table_carries_a_contour_of_any_length(self) -> None:
+        contour = list(range(MAX_MACRO_LENGTH + 8))
+        envelopes = features_to_envelopes(
+            build_features([MAX_VOLUME_OR_RATE], arpeggio=contour),
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
+        )
+        assert len(envelopes.table_rows) == len(contour)
 
 
 class TestAnEmptySlice:
-    """An instrument holds at least one row, so a slice with no volume envelope still
+    """An instrument holds at least one value, so a slice with no volume envelope still
     reaches Bitphase as a playable silent instrument.
     """
 
     @pytest.fixture(name="envelopes")
     def envelopes_fixture(self) -> ChannelEnvelopes:
-        return features_to_envelopes(build_features([]), GeneratorName.PULSE1, loop=False)
+        return features_to_envelopes(
+            build_features([]),
+            ChannelName.PULSE1,
+            tuning_table=DEFAULT_TUNING_TABLE,
+        )
 
-    def test_it_holds_one_silent_row(self, envelopes: ChannelEnvelopes) -> None:
-        assert [row.volume_or_rate for row in envelopes.rows] == [SILENT_VOLUME]
+    def test_it_holds_one_silent_level(self, envelopes: ChannelEnvelopes) -> None:
+        assert volume_values(envelopes) == [SILENT_VOLUME]
 
     def test_its_table_holds_one_flat_offset(self, envelopes: ChannelEnvelopes) -> None:
         assert envelopes.table_rows == (NO_TABLE_OFFSET,)
 
-    def test_it_loops_on_that_row(self, envelopes: ChannelEnvelopes) -> None:
-        assert envelopes.loop == LOOP_FROM_START
+    def test_it_circles_that_value(self, envelopes: ChannelEnvelopes) -> None:
+        assert envelopes.macros[NesMacroField.VOLUME_OR_RATE].loop == LOOP_FROM_START
+        assert envelopes.table_loop == LOOP_FROM_START

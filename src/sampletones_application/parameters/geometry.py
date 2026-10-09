@@ -10,7 +10,7 @@ class TabGeometry:
     """The geometry every tab coordinator lays its columns out on.
 
     These six values are identical across all four tabs: the uniform side column's
-    size, the responsive baseline and centre share that drive its width as the
+    size, the responsive baseline and center share that drive its width as the
     viewport grows, the rail it docks to when collapsed, and the gap between panels.
     They are flattened to scalars because each feeds a pure-int sink
     (``expanded_side_width``, ``ColumnSpec``, raw ``dpg.configure_item``) that blends

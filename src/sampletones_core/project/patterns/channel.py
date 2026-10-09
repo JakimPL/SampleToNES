@@ -4,7 +4,7 @@ from typing import AbstractSet, Dict, Optional
 
 from pydantic import BaseModel, Field
 
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
 
@@ -21,12 +21,12 @@ class Channel(BaseModel):
     position and how many positions exist.
     """
 
-    generator: GeneratorName = Field(..., description="The NES channel this pool drives.")
+    name: ChannelName = Field(..., description="The NES channel this pool drives.")
     patterns: Dict[int, Pattern] = Field(..., description="Pattern pool keyed by index.")
 
     @classmethod
-    def empty(cls, generator: GeneratorName, rows_per_pattern: int) -> Channel:
-        return cls(generator=generator, patterns={0: Pattern.empty(rows_per_pattern)})
+    def empty(cls, name: ChannelName, rows_per_pattern: int) -> Channel:
+        return cls(name=name, patterns={0: Pattern.empty(rows_per_pattern)})
 
     def pattern(self, index: int) -> Optional[Pattern]:
         return self.patterns.get(index)
@@ -35,7 +35,7 @@ class Channel(BaseModel):
         """Returns a free index above every pool key and ``reserved_indices``.
 
         The pool alone does not reveal indices an order slot references before its
-        pattern is materialised, so a caller aware of those passes them as
+        pattern is materialized, so a caller aware of those passes them as
         ``reserved_indices`` to keep the new index from taking one of them.
         """
         return max(self.patterns.keys() | reserved_indices, default=-1) + 1
@@ -55,7 +55,7 @@ class Channel(BaseModel):
         """Returns the pattern at ``index``, creating an empty one if absent.
 
         Lets an order position reference an index before its pattern exists; the
-        pattern is materialised on first write (once the slot gains content).
+        pattern is materialized on first write (once the slot gains content).
         """
         if index not in self.patterns:
             self.patterns[index] = Pattern.empty(length)
@@ -67,11 +67,10 @@ class Channel(BaseModel):
 
         ``reserved_indices`` are extra indices the clone must avoid beyond the pool's
         own keys, so a caller that knows of indices referenced elsewhere (order slots
-        whose patterns are not yet materialised) keeps the clone from taking one of them.
+        whose patterns are not yet materialized) keeps the clone from taking one of them.
         """
-        source = self.patterns[index]
         clone_index = self._next_index(reserved_indices)
-        self.patterns[clone_index] = Pattern(name=source.name, rows=list(source.rows))
+        self.patterns[clone_index] = self.patterns[index].model_copy()
         return clone_index
 
     def remove_pattern(self, index: int) -> None:
@@ -81,7 +80,13 @@ class Channel(BaseModel):
         return self.patterns[index].rows[row_index]
 
     def set_row(self, index: int, row_index: int, row: Row) -> None:
-        self.patterns[index].rows[row_index] = row
+        """Puts the pattern holding ``row`` at ``row_index`` in place of the one at ``index``."""
+        self.patterns[index] = self.patterns[index].with_row(row_index, row)
+
+    def snapshot(self) -> Channel:
+        """A pool of its own holding the very patterns this one holds, which an edit of either replaces."""
+        copied: Channel = self.model_copy(update={"patterns": dict(self.patterns)})
+        return copied
 
     def __repr__(self) -> str:
-        return f"Channel(generator={self.generator}, patterns={len(self.patterns)})"
+        return f"Channel(name={self.name}, patterns={len(self.patterns)})"

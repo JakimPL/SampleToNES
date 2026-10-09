@@ -1,4 +1,4 @@
-from typing import Any, Tuple, Union
+from typing import Any, FrozenSet, Tuple, Union
 
 import pytest
 
@@ -561,7 +561,7 @@ class TestTypes:
         assert bidirectional[(1, 2, 3)] == "point"
 
     def test_frozenset_as_value(self) -> None:
-        bidirectional = BidirectionalHashMap[frozenset[str]]()
+        bidirectional = BidirectionalHashMap[FrozenSet[str]]()
         value = frozenset({"a", "b", "c"})
         bidirectional["set1"] = value
         assert bidirectional["set1"] == value
@@ -873,7 +873,7 @@ class TestEquality:
         assert bidi1 != bidi2
 
     def test_eq_with_frozenset(self) -> None:
-        bidirectional = BidirectionalHashMap[frozenset[int]]()
+        bidirectional = BidirectionalHashMap[FrozenSet[int]]()
         set1 = frozenset([1, 2, 3])
         set2 = frozenset([3, 2, 1])
 

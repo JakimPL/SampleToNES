@@ -127,7 +127,7 @@ class TestStackedGraphHeight(BaseTestSuite):
 
 class TestExpandedSideWidth(BaseTestSuite):
     """``expanded_side_width`` holds a fixed side column at its configured width up to the design
-    baseline, then grants it one share of the wider viewport's surplus against the stretching centre
+    baseline, then grants it one share of the wider viewport's surplus against the stretching center
     column's ``center_weight`` shares."""
 
     @dataclass(frozen=True, kw_only=True)
@@ -168,7 +168,7 @@ class TestExpandedSideWidth(BaseTestSuite):
             expected=400,
         ),
         SideWidthCase(
-            label="two_sides_split_after_centre",
+            label="two_sides_split_after_center",
             base_width=300,
             viewport_width=1600,
             baseline_viewport_width=1280,
@@ -177,7 +177,7 @@ class TestExpandedSideWidth(BaseTestSuite):
             expected=380,
         ),
         SideWidthCase(
-            label="heavier_centre_narrows_sides",
+            label="heavier_center_narrows_sides",
             base_width=300,
             viewport_width=1600,
             baseline_viewport_width=1280,

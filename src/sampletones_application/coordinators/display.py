@@ -1,5 +1,6 @@
 import math
-from typing import Optional
+from dataclasses import dataclass
+from typing import Optional, Protocol
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
@@ -19,8 +20,27 @@ from sampletones_application.view_model.shared.display_settings import (
     DisplaySettingsViewModel,
     WindowMode,
 )
-from sampletones_application.viewport import ViewportManager
+from sampletones_application.viewport import ViewportManager, WindowPlacement
 from sampletones_shared.display import Resolution
+
+
+class FrameRateReading(Protocol):
+    """The frame-rate reading the window shows, which a display setting puts on or takes off the screen."""
+
+    def show_frame_rate(self, shown: bool) -> None:
+        """Shows the reading when ``shown`` is true, and takes it off the screen otherwise."""
+
+
+@dataclass(frozen=True)
+class ReadableWindow:
+    """A window mode last seen readable, with the place and size the window stood at under it.
+
+    A window sitting at a size of its own reads as the offered size nearest it, so the placement is
+    what carries the size the window had.
+    """
+
+    mode: WindowMode
+    placement: WindowPlacement
 
 
 class DisplayCoordinator:
@@ -28,13 +48,16 @@ class DisplayCoordinator:
     countdown that returns a window mode nobody confirmed.
 
     A change reaches the screen the moment it is made, so a user judges it by looking at it, while
-    the session keeps the values the dialog opened with until OK commits them. Cancel re-applies
-    that snapshot, asking first when there is something to lose.
+    the session keeps the values the dialog opened with until OK commits them. Cancel puts back the
+    display the dialog opened with, a windowed window at its own place and size, asking first when
+    there is something to lose, and a run that ends while the dialog stands puts it back the same
+    way before the session is written.
 
     Changing the window's size, its frame, or fullscreen can leave the window unreadable, so each
     of those arms a countdown over the dialog: keeping it disarms the clock and leaves the change
-    pending, and letting the clock run out brings the last confirmed window mode back while every
-    other pending edit stays.
+    pending, and letting the clock run out puts the window back as it stood under the last confirmed
+    mode, at its own place and size, while every other pending edit stays. Cancel and the clock put a
+    window back the same way.
     """
 
     def __init__(
@@ -45,6 +68,7 @@ class DisplayCoordinator:
         palette_source: PaletteSource,
         palette_catalog: PaletteCatalog,
         *,
+        frame_rate_reading: FrameRateReading,
         window: GUIDisplaySettingsWindow,
         countdown: GUICountdownWindow,
         behavior: DisplayBehavior,
@@ -57,6 +81,7 @@ class DisplayCoordinator:
         self._frame_limiter = frame_limiter
         self._palette_source = palette_source
         self._palette_catalog = palette_catalog
+        self._frame_rate_reading = frame_rate_reading
         self._window = window
         self._countdown = countdown
         self._behavior = behavior
@@ -66,7 +91,8 @@ class DisplayCoordinator:
 
         self._settings: Optional[DisplaySettings] = None
         self._snapshot: Optional[DisplaySettings] = None
-        self._armed: Optional[WindowMode] = None
+        self._opening_placement: Optional[WindowPlacement] = None
+        self._armed: Optional[ReadableWindow] = None
         self._remaining: float = 0.0
 
         self._window.on_settings_changed = self._change
@@ -84,7 +110,19 @@ class DisplayCoordinator:
         view_model = self._view_model(self._settings_in_force())
         self._snapshot = view_model.settings
         self._settings = view_model.settings
+        self._opening_placement = self._viewport_manager.placement
         self._window.open(view_model)
+
+    def cleanup(self) -> None:
+        """Puts back the display the dialog opened with when the run ends while it stands, as Cancel does.
+
+        The session keeps the opening values until OK, and leaving records the window as it stands, so
+        the window returns to its opening place and size before that record is taken.
+        """
+        if self._snapshot is None:
+            return
+
+        self._discard()
 
     def tick(self, delta_time: float) -> None:
         """Advances an armed countdown, restoring the last confirmed window mode when it runs out."""
@@ -99,17 +137,21 @@ class DisplayCoordinator:
         self._countdown.set_remaining(self._displayed_seconds())
 
     def _change(self, settings: DisplaySettings) -> None:
-        """Puts an edit on screen, arming the countdown when it changed the window mode."""
+        """Puts an edit on screen, arming the countdown when it changed the window mode.
+
+        The window is read before the change reaches it, which is the window the countdown puts back.
+        """
         previous = self._require_settings()
+        readable = ReadableWindow(mode=previous.window, placement=self._viewport_manager.placement)
         self._settings = settings
         self._apply(previous, settings)
         if settings.window != previous.window:
-            self._arm(previous.window)
+            self._arm(readable)
 
         self._window.update_view(self._view_model(settings))
 
-    def _arm(self, restorable: WindowMode) -> None:
-        """Starts the countdown that brings ``restorable`` back unless the change is confirmed.
+    def _arm(self, restorable: ReadableWindow) -> None:
+        """Starts the countdown that puts ``restorable`` back unless the change is confirmed.
 
         A countdown already running keeps the mode it was going to restore and starts its count
         again on the prompt already on screen, so a run of unconfirmed changes still returns to
@@ -139,19 +181,27 @@ class DisplayCoordinator:
         self._disarm()
 
     def _revert(self) -> None:
-        """Brings the last confirmed window mode back, leaving every other pending edit in place."""
+        """Puts the window back as it stood under the last confirmed mode, leaving every other pending edit."""
         restorable = self._armed
         self._disarm()
         if restorable is None:
             return
 
-        self._restore(self._require_settings().with_window(restorable))
+        self._put_back(self._require_settings().with_window(restorable.mode), restorable.placement)
 
-    def _restore(self, settings: DisplaySettings) -> None:
-        """Puts ``settings`` on screen as the state in force, without arming a countdown."""
+    def _put_back(self, settings: DisplaySettings, placement: WindowPlacement) -> None:
+        """Puts ``settings`` on screen as the state in force, and a windowed window back at ``placement``.
+
+        A place and a size set directly reach DearPyGui's reading of the window at once, while a
+        fullscreen change reaches it on a drawn frame alone, so a windowed window is placed after its
+        settings, and a record of the window taken right after names that place and size.
+        """
         previous = self._require_settings()
         self._settings = settings
         self._apply(previous, settings)
+        if not settings.window.fullscreen:
+            self._viewport_manager.place(placement)
+
         self._window.update_view(self._view_model(settings))
 
     def _commit(self) -> None:
@@ -161,6 +211,7 @@ class DisplayCoordinator:
         self._session_manager.set_palette_name(settings.palette)
         self._session_manager.set_vsync(settings.vsync)
         self._session_manager.set_max_fps(settings.frame_rate)
+        self._session_manager.set_show_frame_rate(settings.show_frame_rate)
         self._session_manager.set_borderless(settings.window.borderless)
         self._close()
 
@@ -188,17 +239,20 @@ class DisplayCoordinator:
         )
 
     def _discard(self) -> None:
-        """Puts back the settings the dialog opened with and closes it."""
+        """Puts back the display the dialog opened with, a windowed window at its own place and size, and
+        closes it."""
         self._disarm()
         snapshot = self._snapshot
-        if snapshot is not None:
-            self._apply(self._require_settings(), snapshot)
+        placement = self._opening_placement
+        if snapshot is not None and placement is not None:
+            self._put_back(snapshot, placement)
 
         self._close()
 
     def _close(self) -> None:
         self._settings = None
         self._snapshot = None
+        self._opening_placement = None
         self._window.hide()
 
     def _apply(self, previous: DisplaySettings, current: DisplaySettings) -> None:
@@ -211,6 +265,9 @@ class DisplayCoordinator:
 
         if current.frame_rate != previous.frame_rate:
             self._frame_limiter.set_max_fps(current.frame_rate)
+
+        if current.show_frame_rate != previous.show_frame_rate:
+            self._frame_rate_reading.show_frame_rate(current.show_frame_rate)
 
         self._apply_window(previous.window, current.window)
 
@@ -244,6 +301,7 @@ class DisplayCoordinator:
             ),
             vsync=self._session_manager.vsync,
             frame_rate=self._session_manager.max_fps,
+            show_frame_rate=self._session_manager.show_frame_rate,
         )
 
     def _view_model(self, settings: DisplaySettings) -> DisplaySettingsViewModel:

@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -25,10 +25,10 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_KEYBINDINGS_WINDOW,
 )
 from sampletones_application.ui.elements.button import GUIButton
-from sampletones_application.ui.elements.dialog import GUIDialogWindow
 from sampletones_application.ui.elements.field import labeled_field
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.seeded import GUISeededDialogWindow
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.dialog_navigation import FocusStop
 from sampletones_application.utils.gui.dpg import dpg_configure_item, dpg_set_value
@@ -47,13 +47,15 @@ from sampletones_shared.types.callback import StringCallback, VoidCallback
 CombinationCallback = Callable[[KeyCombination], None]
 
 
-class GUIKeybindingsWindow(GUIDialogWindow):
+class GUIKeybindingsWindow(GUISeededDialogWindow[KeybindingsViewModel]):
     """Modal form over the keys each action answers to, one row per action grouped by its scope.
 
     A row is given keys either way round: clicking its shortcut cell listens for the press to
     assign, and the entry box below writes a combination out for the actions a press cannot reach.
     Both report through their own hook, so the owner decides what an assignment means and this
-    window shows what it decided.
+    window shows what it decided. A row reads as listening exactly while the capture holds the
+    keyboard: the capture ends with the press it reads, and the owner listens again where the
+    reader declines to assign it.
 
     The action set is fixed, so the rows are built once per appearance and every later view re-reads
     their labels; the filter reaches the same rows through their visibility, which keeps a keystroke
@@ -71,7 +73,6 @@ class GUIKeybindingsWindow(GUIDialogWindow):
         self._language_manager = language_manager
         self._layout = layout
         self._capture: Optional[KeyCapture] = None
-        self._view_model: Optional[KeybindingsViewModel] = None
         self._filter = ""
 
         self.on_scheme_selected: Optional[StringCallback] = None
@@ -88,25 +89,16 @@ class GUIKeybindingsWindow(GUIDialogWindow):
 
         super().__init__(
             tag=TAG_SETTINGS_KEYBINDINGS_WINDOW,
-            width=layout.keybindings.window.width,
-            height=layout.keybindings.window.height,
+            geometry=layout.keybindings.window,
+            subject="keybindings",
             key_router=key_router,
             shortcut_source=shortcut_source,
         )
 
     def open(self, view_model: KeybindingsViewModel) -> None:
-        """Shows the window listing the actions of the draft being edited."""
-        self._view_model = view_model
+        """Shows the window listing the actions of the draft being edited, over every scope."""
         self._filter = ""
-        self.show()
-
-    def prepare(self, *_args: Any, **_kwargs: Any) -> None:
-        """The rendered values are seeded by :meth:`open` before the tree rebuilds."""
-
-    def update_view(self, view_model: KeybindingsViewModel) -> None:
-        """Re-reads the rows of the open window from the draft as it now stands."""
-        self._view_model = view_model
-        self._render()
+        super().open(view_model)
 
     def create_window(self) -> None:
         with self.dialog_window(
@@ -144,7 +136,7 @@ class GUIKeybindingsWindow(GUIDialogWindow):
         )
 
     def _create_scheme_field(self) -> None:
-        view_model = self._require_view_model()
+        view_model = self.view_model
         with labeled_field(
             self._label(KeybindingsElements.SCHEME),
             self._layout.label_width,
@@ -189,7 +181,7 @@ class GUIKeybindingsWindow(GUIDialogWindow):
                 init_width_or_weight=self._layout.keybindings.action_width,
             )
             dpg.add_table_column(label=self._label(KeybindingsElements.SHORTCUT))
-            for group in self._require_view_model().groups:
+            for group in self.view_model.groups:
                 self._create_group(group)
 
     def _create_group(self, group: KeybindingGroup) -> None:
@@ -211,7 +203,7 @@ class GUIKeybindingsWindow(GUIDialogWindow):
             )
             dpg.add_selectable(
                 tag=compose_tag(row_tag, SUF_SETTINGS_KEYBINDINGS_SHORTCUT),
-                label=row.combination,
+                label=row.keys,
                 user_data=row.action,
                 callback=self._on_shortcut_clicked,
             )
@@ -255,14 +247,23 @@ class GUIKeybindingsWindow(GUIDialogWindow):
             width=-1,
         )
 
+    def listen_again(self) -> None:
+        """Comes back on screen with the selected row listening for the next press.
+
+        A press the reader declined to assign leaves the row waiting for the one they meant.
+        """
+        self.resume()
+        self._require_capture().start()
+        self._render()
+
     def _install_capture(self) -> None:
-        """Readies the capture that reads a press, cancelled by whatever a dialog is cancelled by."""
+        """Readies the capture that reads a press, canceled by whatever a dialog is canceled by."""
         self._capture = KeyCapture(
             key_router=self._router,
             cancel=self._shortcuts.shortcut(ShortcutId.DIALOG_CANCEL).combinations(),
         )
         self._capture.on_captured = self._report_captured
-        self._capture.on_cancelled = self._render
+        self._capture.on_canceled = self._render
 
     def _teardown(self) -> None:
         """Stops the capture this appearance armed before the keyboard claim is released."""
@@ -274,9 +275,9 @@ class GUIKeybindingsWindow(GUIDialogWindow):
 
     def _render(self) -> None:
         """Shows each action's keys, the standing selection, and what the filter leaves listed."""
-        view_model = self._require_view_model()
+        view_model = self.view_model
         dpg_set_value(TAG_SETTINGS_KEYBINDINGS_COMBO_SCHEME, view_model.scheme)
-        dpg_set_value(TAG_SETTINGS_KEYBINDINGS_INPUT_SHORTCUT, view_model.combination)
+        dpg_set_value(TAG_SETTINGS_KEYBINDINGS_INPUT_SHORTCUT, view_model.keys)
         dpg_set_value(TAG_SETTINGS_KEYBINDINGS_TEXT_MESSAGE, view_model.message)
         for group in view_model.groups:
             self._render_group(group, view_model.selected)
@@ -319,7 +320,7 @@ class GUIKeybindingsWindow(GUIDialogWindow):
         if is_selected and self._capture is not None and self._capture.is_listening:
             return self._msg_capturing
 
-        return row.combination if row.combination else self._lbl_unbound
+        return row.keys if row.keys else self._lbl_unbound
 
     def _on_scheme_changed(self, _sender: Sender, app_data: str) -> None:
         self.call(self.on_scheme_selected, app_data)
@@ -353,11 +354,17 @@ class GUIKeybindingsWindow(GUIDialogWindow):
         self.call(self.on_combination_typed, app_data)
 
     def _report_captured(self, combination: KeyCombination) -> None:
+        """Shows the row done listening, then hands the press to the owner to decide what it means."""
+        self._render()
         self.call(self.on_combination_captured, combination)
 
     def _stop_capture(self) -> None:
-        if self._capture is not None:
-            self._capture.stop()
+        """Ends a capture that listens, and shows the row's keys in place of the prompt."""
+        if self._capture is None or not self._capture.is_listening:
+            return
+
+        self._capture.stop()
+        self._render()
 
     def _request_clear(self) -> None:
         self._stop_capture()
@@ -409,14 +416,3 @@ class GUIKeybindingsWindow(GUIDialogWindow):
             raise SystemError("The keybindings window listens for a press only while it is open")
 
         return self._capture
-
-    def _require_view_model(self) -> KeybindingsViewModel:
-        """The actions on screen.
-
-        Raises:
-            SystemError: when the window is drawn before :meth:`open` seeds it.
-        """
-        if self._view_model is None:
-            raise SystemError("The keybindings window is drawn from a view model it was opened with")
-
-        return self._view_model

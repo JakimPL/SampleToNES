@@ -5,6 +5,7 @@ from sampletones_application.ui.themes.dpg_constants import (
     CATEGORY_MAP,
     CORE_COLOR_MAP,
     CORE_STYLE_MAP,
+    EVERY_ITEM_TYPE,
     ITEM_TYPE_MAP,
     PLOTS_COLOR_MAP,
     PLOTS_STYLE_MAP,
@@ -84,7 +85,7 @@ class ThemeLoader:
         the base theme, so every theme carries the shared base's complete component
         set and states only its own overrides. The base theme itself stands alone.
         This makes inheritance the default: a bound item theme always resolves to
-        the global base plus its overrides, so every colour it omits keeps the
+        the global base plus its overrides, so every color it omits keeps the
         base's value.
         """
         if spec.extends is not None:
@@ -187,7 +188,7 @@ class ThemeLoader:
         item's enabled state, and it classifies many presentation items (menus,
         text labels, tree headers) as disabled; when the matching component is
         missing it re-applies its built-in palette, and the palette of the last
-        themed item drawn bleeds into the global style, recolouring the entire
+        themed item drawn bleeds into the global style, recoloring the entire
         application. Mirroring keeps every theme complete for both states, so items
         render with the theme's own values whichever state DearPyGui assigns them
         and the global style stays intact. Disabled-state entries stated explicitly
@@ -222,11 +223,21 @@ class ThemeLoader:
 
     @staticmethod
     def _entries_to_items(entries: ThemeEntries) -> ThemeItems:
+        """Gathers the entries into the components a theme is built from, broadest first.
+
+        DearPyGui fills an item's colors by walking a theme's components in the order they were
+        created, so the last one covering a color is the one the item wears. A component naming a
+        single item type states what that type is meant to look like, and one naming every type
+        states the ground it stands on, so the ground is laid first and the item type paints over
+        it. Ordering them here keeps that true whichever order a theme and the theme it extends
+        happened to state them in, and whichever entries the disabled-state mirror added.
+        """
         grouped: Dict[ThemeParameter, List[ThemeValue]] = {}
         for parameter, value in entries.values():
             grouped.setdefault(parameter, []).append(value)
 
-        return ThemeItems(items=grouped)
+        ordered = sorted(grouped, key=lambda parameter: parameter.item_type != EVERY_ITEM_TYPE)
+        return ThemeItems(items={parameter: grouped[parameter] for parameter in ordered})
 
     @classmethod
     def _check_for_cycles(cls, name_index: Dict[str, ThemeSpec]) -> None:

@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import List, Set, Tuple
 
+import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.ui.elements.tree import tree as tree_module
@@ -183,7 +184,7 @@ class TestCollapseAll:
         assert music_tag in {tag for tag, _ in folded}
         assert all(not expanded for _, expanded in folded)
 
-    def test_the_folders_the_model_held_are_dropped_afterwards(
+    def test_the_folders_the_model_held_are_dropped_afterward(
         self,
         folded: List[Tuple[str, bool]],
     ) -> None:
@@ -196,3 +197,69 @@ class TestCollapseAll:
         root = tree.get_root()
         assert root is not None
         assert [str(node.name) for node in root.descendants] == [str(ROOT)]
+
+
+class FakeAutoplayLogic:
+    """Answers the panel's request to preview a recording, recording what it was handed."""
+
+    def __init__(self) -> None:
+        self.played: List[FileSystemNode] = []
+
+    def request_autoplay(self, node: FileSystemNode) -> None:
+        self.played.append(node)
+
+
+class RecordingClick:
+    """A panel wired to record where a click on a recording went."""
+
+    def __init__(self) -> None:
+        tree = explorer_tree()
+        self.panel = build_panel(tree)
+        self.node = tree.find_nodes(FileSystemNode, lambda node: node.filepath == MUSIC / "song.wav")[0]
+        self.autoplay = FakeAutoplayLogic()
+        self.gathered: List[Path] = []
+        self.panel._logic = self.autoplay  # type: ignore[assignment]
+        self.panel.on_file_add_requested = self.gathered.append
+
+    def click(self, monkeypatch: pytest.MonkeyPatch, *, holding_ctrl: bool) -> None:
+        held = {explorer_module.Modifier.CTRL} if holding_ctrl else set()
+        monkeypatch.setattr(explorer_module, "capture_modifiers", lambda: frozenset(held))
+        self.panel._audio_node_clicked(self.node)
+
+    def double_click(self) -> None:
+        self.panel._on_file_node_double_clicked(
+            0,
+            (dpg.mvMouseButton_Left, 0),
+            (self.node, 0),
+        )
+
+
+class TestClickingARecording:
+    """A plain click plays a recording; Ctrl and a double-click each ask to gather it as a stem.
+
+    The two gathering gestures always reach the converter, which answers for whether its list takes
+    the recording, so they ask the way Add as stem asks.
+    """
+
+    def test_a_plain_click_plays_the_recording_and_gathers_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        clicked = RecordingClick()
+
+        clicked.click(monkeypatch, holding_ctrl=False)
+
+        assert clicked.autoplay.played == [clicked.node]
+        assert clicked.gathered == []
+
+    def test_holding_ctrl_gathers_the_recording_as_a_stem(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        clicked = RecordingClick()
+
+        clicked.click(monkeypatch, holding_ctrl=True)
+
+        assert clicked.gathered == [MUSIC / "song.wav"]
+        assert clicked.autoplay.played == []
+
+    def test_a_double_click_gathers_the_recording(self) -> None:
+        clicked = RecordingClick()
+
+        clicked.double_click()
+
+        assert clicked.gathered == [MUSIC / "song.wav"]
