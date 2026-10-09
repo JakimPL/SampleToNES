@@ -5,7 +5,7 @@ import shutil
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Final, Mapping, Tuple
+from typing import Dict, Final, Mapping, Optional, Tuple
 
 from automation.dearpygui.display import DisplayBackend, ScreenSize
 from automation.homes import let_go, reopen_folders
@@ -22,6 +22,8 @@ DISPLAY_BACKEND_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_DISPLAY"
 SCREEN_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_SCREEN"
 KEPT_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_KEPT"
 HOMES_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_HOMES"
+SHARD_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_SHARD"
+SHARD_SEPARATOR: Final[str] = "/"
 SIZE_SEPARATOR: Final[str] = "x"
 ARTIFACTS_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_ARTIFACTS"
 REPORT_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_REPORT"
@@ -32,6 +34,52 @@ DROPPED_PREFIXES: Final[Tuple[str, ...]] = ("PYTEST_", "WAYLAND_")
 UNSAFE_CHARACTERS: Final[re.Pattern[str]] = re.compile(r"[^A-Za-z0-9_.-]+")
 DEFAULT_SCREEN_SIZE: Final[ScreenSize] = ScreenSize(width=1600, height=1000)
 DEFAULT_DISPLAY_BACKEND: Final[DisplayBackend] = DisplayBackend.XVFB
+
+
+class ShardError(ValueError):
+    """Raised when ``SAMPLETONES_SCREENS_SHARD`` reads other than ``INDEX/COUNT`` with the index from 1 to the count."""
+
+
+@dataclass(frozen=True)
+class Shard:
+    """One of ``count`` parts of the sorted scenario collection, holding every ``count``-th scenario from its own.
+
+    Attributes:
+        index: The part's number, from 1 to ``count``.
+        count: How many parts the collection is spread over.
+    """
+
+    index: int
+    count: int
+
+    @classmethod
+    def of(cls, stated: str) -> Shard:
+        """The part ``stated`` names as ``INDEX/COUNT``.
+
+        Raises:
+            ShardError: If ``stated`` reads otherwise, or the index lies outside 1 to the count.
+        """
+        index_text, separator, count_text = stated.partition(SHARD_SEPARATOR)
+        if separator != SHARD_SEPARATOR or not index_text.isdecimal() or not count_text.isdecimal():
+            raise ShardError(f"{SHARD_VARIABLE} reads {stated!r}; it names a part as INDEX/COUNT, such as 1/3")
+
+        index, count = int(index_text), int(count_text)
+        if not 1 <= index <= count:
+            raise ShardError(f"{SHARD_VARIABLE} reads {stated!r}; the index runs from 1 to the count")
+
+        return cls(index=index, count=count)
+
+    def keeps(self, position: int) -> bool:
+        """Whether the scenario at ``position`` of the sorted collection belongs to this part."""
+        return position % self.count == self.index - 1
+
+
+def shard(environment: Mapping[str, str]) -> Optional[Shard]:
+    """The part of the scenario collection this run takes, which ``SAMPLETONES_SCREENS_SHARD`` names as
+    ``INDEX/COUNT``; the whole collection where it is unset.
+    """
+    stated = environment.get(SHARD_VARIABLE)
+    return Shard.of(stated) if stated is not None else None
 
 
 def display_backend(environment: Mapping[str, str]) -> DisplayBackend:

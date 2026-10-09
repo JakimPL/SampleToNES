@@ -16,6 +16,7 @@ from automation.plugin.hold_fixtures import (
     screen_holds_fixture,
 )
 from automation.plugin.hooks import (
+    pytest_collection_modifyitems,
     pytest_configure,
     pytest_pyfunc_call,
     pytest_runtest_protocol,
@@ -26,6 +27,7 @@ __all__ = [
     "conversion_hold_fixture",
     "export_hold_fixture",
     "output_device_fixture",
+    "pytest_collection_modifyitems",
     "pytest_configure",
     "pytest_pyfunc_call",
     "pytest_runtest_protocol",

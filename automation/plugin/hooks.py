@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Final, Generator, Optional
+from typing import Final, Generator, List, Optional
 
 import pytest
 
@@ -13,6 +13,7 @@ from automation.environment import (
     child_environment,
     homes_root,
     kept_root,
+    shard,
 )
 from automation.homes import let_go, make_worker_homes
 from automation.plugin.constants import DISPLAY_KEY, HOMES_KEY
@@ -36,6 +37,32 @@ def is_screen_item(item: pytest.Item) -> bool:
 def is_child_process() -> bool:
     """Whether this pytest run is the fresh process one scenario runs in."""
     return REPORT_VARIABLE in os.environ
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config,
+    items: List[pytest.Item],
+) -> None:
+    """Keeps this run's part of the screen scenarios, where ``SAMPLETONES_SCREENS_SHARD`` names one.
+
+    The scenarios are counted in the order of their node ids, so every worker and every machine of a
+    run spread over several splits them the same way. Items other than scenarios stay with every part.
+    """
+    if is_child_process():
+        return
+
+    part = shard(os.environ)
+    if part is None:
+        return
+
+    scenarios = sorted(
+        (item for item in items if is_screen_item(item)),
+        key=lambda item: item.nodeid,
+    )
+    left_out = {item.nodeid for position, item in enumerate(scenarios) if not part.keeps(position)}
+    deselected = [item for item in items if item.nodeid in left_out]
+    items[:] = [item for item in items if item.nodeid not in left_out]
+    config.hook.pytest_deselected(items=deselected)
 
 
 @pytest.hookimpl(tryfirst=True)

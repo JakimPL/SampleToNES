@@ -330,6 +330,9 @@ scenario failed, a screenshot of the last frame and a copy of the home it left. 
 leaves a note beside it. `screen.capture` keeps a picture as evidence of a look, for a pull request rather
 than an assertion. `SAMPLETONES_SCREENS_KEPT` moves that folder, and `SAMPLETONES_SCREENS_SCREEN`, read as
 `WIDTHxHEIGHT`, sizes the virtual screen, so a run made for another purpose keeps apart from the scenarios'.
+`SAMPLETONES_SCREENS_SHARD`, read as `INDEX/COUNT`, keeps every `COUNT`-th scenario of the collection sorted
+by node id from the `INDEX`-th, so CI spreads the scenarios over several machines, each drawing two
+applications at a time, and the scenarios run beside the rest of the suite instead of after it.
 
 ## Who governs what
 

@@ -54,6 +54,17 @@ class TestPlannedPasses:
         assert "-n" not in command
 
 
+class TestRunEnvironment:
+    def test_a_shard_reaches_the_screen_scenarios_plugin(self) -> None:
+        environment = run_tests.run_environment({"DISPLAY": ":1"}, shard="2/3")
+
+        assert environment[run_tests.SHARD_VARIABLE] == "2/3"
+        assert environment["DISPLAY"] == ":1"
+
+    def test_without_a_shard_the_environment_travels_as_it_is(self) -> None:
+        assert run_tests.run_environment({"DISPLAY": ":1"}, shard=None) == {"DISPLAY": ":1"}
+
+
 class TestRefusedPasses(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):

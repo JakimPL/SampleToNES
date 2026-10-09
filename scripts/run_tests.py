@@ -1,7 +1,7 @@
 import argparse
 import os
 import sys
-from typing import Dict, Final, Sequence, Tuple
+from typing import Dict, Final, Optional, Sequence, Tuple
 
 from bootstrap.layout import BENCHMARKS_DIRECTORY, SCREENS_DIRECTORY, SOURCE_DIRECTORY, repository_root
 from bootstrap.passes import Pass, run_pass
@@ -14,6 +14,7 @@ SCREENS: Final[str] = "screens"
 DEFAULT_WORKERS: Final[str] = "6"
 SCREEN_WORKERS: Final[str] = "4"
 PYTEST: Final[Tuple[str, ...]] = ("uv", "run", "python", "-m", "pytest")
+SHARD_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_SHARD"
 
 
 def planned_passes(workers: str, screen_workers: str) -> Dict[str, Pass]:
@@ -67,6 +68,20 @@ def planned_passes(workers: str, screen_workers: str) -> Dict[str, Pass]:
     return {current.name: current for current in passes}
 
 
+def run_environment(base: Dict[str, str], *, shard: Optional[str]) -> Dict[str, str]:
+    """The variables a pass runs under: ``base``, naming the part of the screen scenarios where ``shard`` gives one.
+
+    Args:
+        base: The variables the script itself runs under.
+        shard: The part as ``INDEX/COUNT``, which the screen scenarios' plugin reads.
+    """
+    environment = dict(base)
+    if shard is not None:
+        environment[SHARD_VARIABLE] = shard
+
+    return environment
+
+
 def main(argv: Sequence[str]) -> int:
     """Runs one pass of the tests and exits with the status pytest gave it."""
     parser = argparse.ArgumentParser(description="Run one pass of the SampleToNES tests.")
@@ -85,13 +100,18 @@ def main(argv: Sequence[str]) -> int:
         default=SCREEN_WORKERS,
         help="pytest workers for the screen scenarios, each drawing one application at a time",
     )
+    parser.add_argument(
+        "--shard",
+        default=None,
+        help="the part of the screen scenarios this run takes, as INDEX/COUNT, when a run spreads them over machines",
+    )
     arguments = parser.parse_args(list(argv))
 
     return run_pass(
         planned_passes(arguments.workers, arguments.screen_workers)[arguments.name],
         root=repository_root(),
         runner=run,
-        environment=os.environ,
+        environment=run_environment(dict(os.environ), shard=arguments.shard),
     )
 
 
