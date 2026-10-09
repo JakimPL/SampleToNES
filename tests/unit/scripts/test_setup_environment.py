@@ -2,24 +2,14 @@ from pathlib import Path
 
 import pytest
 
+from bootstrap.cuda import GPU_CHOICES
 from bootstrap.platforms.linux import Linux
 from bootstrap.platforms.macos import ARCHFLAGS, MacOS
-from bootstrap.project import DEVELOPMENT_GROUP, GPU_CUDA11_EXTRA, GPU_EXTRA
+from bootstrap.project import DEVELOPMENT_GROUP, GPU_EXTRA
 from tests.suite.bootstrap import RecordingRunner
 from tests.suite.scripts import load_script
 
 setup_environment = load_script("setup_environment.py")
-
-
-class TestGpuExtra:
-    def test_zero_keeps_the_cpu_backend(self) -> None:
-        assert setup_environment.gpu_extra(setup_environment.GPU_OFF, Linux(), {}) is None
-
-    def test_a_named_extra_is_taken_as_given(self) -> None:
-        assert setup_environment.gpu_extra(GPU_CUDA11_EXTRA, Linux(), {}) == GPU_CUDA11_EXTRA
-
-    def test_auto_on_macos_keeps_the_cpu_backend(self) -> None:
-        assert setup_environment.gpu_extra(setup_environment.GPU_AUTO, MacOS(), {}) is None
 
 
 class TestMain:
@@ -32,7 +22,7 @@ class TestMain:
 
         refusal = capsys.readouterr().err
         assert exit_info.value.code == 2
-        assert all(choice in refusal for choice in setup_environment.GPU_CHOICES)
+        assert all(choice in refusal for choice in GPU_CHOICES)
 
 
 class TestSetupCommands:

@@ -6,6 +6,8 @@ from bootstrap.processes import Runner
 
 PYAUDIO: Final[str] = "pyaudio"
 TKINTER: Final[str] = "tkinter"
+CUPY: Final[str] = "cupy"
+CUPY_ADVICE: Final[str] = "Check the NVIDIA driver and build again, or pass '--gpu 0' to build for the CPU alone."
 
 
 def can_import(
@@ -42,26 +44,29 @@ def check_build_interpreter(
     bundling: Bundling,
     *,
     release: bool,
+    gpu: bool,
     runner: Runner,
     cwd: Path,
     environment: Mapping[str, str],
 ) -> None:
     """Holds the build interpreter to what a bundle has to carry.
 
-    Audio playback is required of every bundle. Tk is required of a release bundle, so the
-    shipped executable opens file dialogs on its own; a development bundle built without it is
-    warned about what it leans on instead.
+    Audio playback is required of every bundle, and CuPy of a GPU bundle. Tk is required of a
+    release bundle, so the shipped executable opens file dialogs on its own; a development bundle
+    built without it is warned about what it leans on instead.
 
     Args:
         python: The build environment's interpreter.
         bundling: What building a bundle takes on the system, whose advice a refusal gives.
         release: Whether the bundle is a release.
+        gpu: Whether the bundle carries GPU support.
         runner: What runs the probes.
         cwd: The directory the probes run in.
         environment: The variables the probes see.
 
     Raises:
-        SystemExit: If the interpreter cannot play audio, or a release lacks Tk.
+        SystemExit: If the interpreter cannot play audio, a GPU bundle's cannot import CuPy, or a
+            release lacks Tk.
     """
     print("Checking the build environment...")
     if not can_import(python, PYAUDIO, runner=runner, cwd=cwd, environment=environment):
@@ -71,6 +76,15 @@ def check_build_interpreter(
         )
 
     print(f"{PYAUDIO}: available")
+    if gpu:
+        if not can_import(python, CUPY, runner=runner, cwd=cwd, environment=environment):
+            raise SystemExit(
+                "ERROR: the build interpreter cannot import cupy, so the bundle would carry no GPU support.\n"
+                f"{CUPY_ADVICE}"
+            )
+
+        print(f"{CUPY}: available")
+
     if can_import(python, TKINTER, runner=runner, cwd=cwd, environment=environment):
         print(f"{TKINTER}: available")
         return

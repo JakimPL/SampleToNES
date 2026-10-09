@@ -3,50 +3,14 @@ import os
 import platform as running
 import sys
 from pathlib import Path
-from typing import Final, List, Mapping, Optional, Sequence, Tuple
+from typing import List, Mapping, Optional, Sequence
 
-from bootstrap.cuda import detect
+from bootstrap.cuda import DEFAULT_GPU, GPU_CHOICES, gpu_extra
 from bootstrap.layout import repository_root
 from bootstrap.platforms.factory import current_platform
 from bootstrap.platforms.protocol import Platform
 from bootstrap.processes import Runner, expect_success, run
-from bootstrap.project import DEVELOPMENT_GROUP, GPU_CUDA11_EXTRA, GPU_EXTRA, read_project
-
-GPU_AUTO: Final[str] = "auto"
-GPU_OFF: Final[str] = "0"
-GPU_CHOICES: Final[Tuple[str, ...]] = (
-    GPU_AUTO,
-    GPU_OFF,
-    GPU_EXTRA,
-    GPU_CUDA11_EXTRA,
-)
-DEFAULT_GPU: Final[str] = GPU_AUTO
-
-
-def gpu_extra(
-    choice: str,
-    platform: Platform,
-    environment: Mapping[str, str],
-) -> Optional[str]:
-    """The optional-dependency extra a GPU choice selects.
-
-    Args:
-        choice: ``auto`` to read the NVIDIA driver, ``0`` for the CPU backend, or an extra's name.
-        platform: The system the setup runs on.
-        environment: The variables the driver's locations are read from.
-
-    Returns:
-        Optional[str]: The extra, or ``None`` for the CPU backend.
-    """
-    if choice == GPU_OFF:
-        return None
-
-    if choice == GPU_AUTO:
-        detection = detect(platform, environment)
-        print(detection.reason, file=sys.stderr)
-        return detection.extra
-
-    return choice
+from bootstrap.project import DEVELOPMENT_GROUP, read_project
 
 
 def setup_commands(extra: Optional[str]) -> List[List[str]]:

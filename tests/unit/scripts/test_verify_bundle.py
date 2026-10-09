@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from bootstrap.layout import BUILD_TOOLS, DISTRIBUTION, NOTICES
+from bootstrap.layout import BUILD_TOOLS, DISTRIBUTION, GPU_PACKAGES, NOTICES
 from bootstrap.platforms.linux import Linux
 from bootstrap.platforms.macos import MacOS
 from tests.suite.bootstrap import PROJECT_NAME, RecordingRunner, write_project
@@ -14,7 +14,7 @@ verify_bundle = load_script("verify_bundle.py")
 @pytest.fixture(name="root")
 def root_fixture(tmp_path: Path) -> Path:
     """A repository holding a release bundle with its notices and its launcher."""
-    launcher = Linux().bundling().launcher(tmp_path / DISTRIBUTION, name=PROJECT_NAME, release=True)
+    launcher = Linux().bundling().launcher(tmp_path / DISTRIBUTION, name=PROJECT_NAME, directory=True)
     launcher.parent.mkdir(parents=True)
     launcher.write_bytes(b"launcher")
     for name in NOTICES:
@@ -59,6 +59,17 @@ class TestCarriedBuildTools:
         assert verify_bundle.carried_build_tools(_bundle(root)) == [BUILD_TOOLS[0]]
 
 
+class TestCarriedGpuPackages:
+    def test_a_cpu_bundle_carries_none(self, root: Path) -> None:
+        assert verify_bundle.carried_gpu_packages(_bundle(root)) == []
+
+    def test_every_gpu_package_among_the_internals_is_reported(self, root: Path) -> None:
+        for name in GPU_PACKAGES:
+            (_bundle(root) / verify_bundle.INTERNAL_DIRECTORY / name).mkdir(parents=True)
+
+        assert verify_bundle.carried_gpu_packages(_bundle(root)) == list(GPU_PACKAGES)
+
+
 class TestBundleFailures:
     def test_a_complete_bundle_passes_once_its_launcher_starts(self, root: Path) -> None:
         runner = RecordingRunner({}, None)
@@ -80,6 +91,13 @@ class TestBundleFailures:
         failures = verify_bundle.bundle_failures(root, Linux(), runner=RecordingRunner({}, None), environment={})
 
         assert [BUILD_TOOLS[0] in failure for failure in failures] == [True]
+
+    def test_a_release_built_with_gpu_support_is_named(self, root: Path) -> None:
+        (_bundle(root) / verify_bundle.INTERNAL_DIRECTORY / GPU_PACKAGES[0]).mkdir(parents=True)
+
+        failures = verify_bundle.bundle_failures(root, Linux(), runner=RecordingRunner({}, None), environment={})
+
+        assert [GPU_PACKAGES[0] in failure for failure in failures] == [True]
 
     def test_a_missing_launcher_is_named_and_nothing_runs(self, root: Path) -> None:
         (_bundle(root) / PROJECT_NAME).unlink()

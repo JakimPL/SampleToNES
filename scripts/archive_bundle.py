@@ -67,7 +67,7 @@ def archive_release(root: Path, platform: Platform, *, label: str) -> int:
         SystemExit: If the system builds no bundle.
     """
     project = read_project(root)
-    source = platform.bundling().launcher(root / DISTRIBUTION, name=project.name, release=True).parent
+    source = platform.bundling().launcher(root / DISTRIBUTION, name=project.name, directory=True).parent
     if not source.is_dir():
         print(f"::error::Bundle directory {source} is missing")
         return 1

@@ -124,7 +124,7 @@ jobs:
 
       - name: Build the bundle
         shell: bash
-        run: python scripts/bundle.py --release
+        run: python scripts/bundle.py --release --gpu 0
 
       - name: Check the bundle runs and carries its notices
         shell: bash

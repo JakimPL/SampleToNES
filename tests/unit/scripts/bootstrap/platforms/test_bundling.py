@@ -24,27 +24,27 @@ class TestLauncher(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
         suffix: str
-        release: bool
+        directory: bool
         expected: Path
 
     test_cases = (
-        TestCase(label="a development bundle is one file", suffix="", release=False, expected=Path("bin", NAME)),
+        TestCase(label="a cpu development bundle is one file", suffix="", directory=False, expected=Path("bin", NAME)),
         TestCase(
-            label="a release is a directory beside its launcher",
+            label="a directory bundle sits beside its launcher",
             suffix="",
-            release=True,
+            directory=True,
             expected=Path("bin", NAME, NAME),
         ),
         TestCase(
             label="the suffix ends the launcher's name",
             suffix=".exe",
-            release=True,
+            directory=True,
             expected=Path("bin", NAME, f"{NAME}.exe"),
         ),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_the_launcher_lies_where_pyinstaller_writes_it(self, test_case: TestCase) -> None:
-        launcher = _bundling(test_case.suffix).launcher(Path("bin"), name=NAME, release=test_case.release)
+        launcher = _bundling(test_case.suffix).launcher(Path("bin"), name=NAME, directory=test_case.directory)
 
         assert launcher == test_case.expected

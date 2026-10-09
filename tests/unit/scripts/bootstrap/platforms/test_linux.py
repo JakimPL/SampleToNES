@@ -8,7 +8,9 @@ class TestLinux:
         assert Linux().interpreter(Path(".venv-build")) == Path(".venv-build", "bin", "python")
 
     def test_a_bundle_launcher_carries_no_extension(self) -> None:
-        assert Linux().bundling().launcher(Path("bin"), name="sampletones", release=False) == Path("bin", "sampletones")
+        assert Linux().bundling().launcher(Path("bin"), name="sampletones", directory=False) == Path(
+            "bin", "sampletones"
+        )
 
     def test_apt_is_updated_before_the_packages_are_installed(self) -> None:
         commands = Linux().system_packages()

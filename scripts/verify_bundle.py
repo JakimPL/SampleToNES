@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from typing import Final, List, Mapping, Sequence
 
-from bootstrap.layout import BUILD_TOOLS, DISTRIBUTION, NOTICES, repository_root
+from bootstrap.layout import BUILD_TOOLS, DISTRIBUTION, GPU_PACKAGES, NOTICES, repository_root
 from bootstrap.platforms.factory import current_platform
 from bootstrap.platforms.protocol import Platform
 from bootstrap.processes import Runner, run
@@ -19,6 +19,12 @@ def missing_notices(bundle: Path) -> List[str]:
     return [name for name in NOTICES if not (bundle / name).is_file()]
 
 
+def carried_packages(bundle: Path, names: Sequence[str]) -> List[str]:
+    """The packages among ``names`` found in a bundle, beside its launcher or among its internals."""
+    directories = (bundle, bundle / INTERNAL_DIRECTORY)
+    return [name for name in names if any((directory / name).is_dir() for directory in directories)]
+
+
 def carried_build_tools(bundle: Path) -> List[str]:
     """The build-time packages found in a bundle, which the notices place on the build machine.
 
@@ -26,8 +32,17 @@ def carried_build_tools(bundle: Path) -> List[str]:
     belongs to the machine that builds it, so finding it here means the notices describe a
     different set of components than the bundle ships.
     """
-    directories = (bundle, bundle / INTERNAL_DIRECTORY)
-    return [name for name in BUILD_TOOLS if any((directory / name).is_dir() for directory in directories)]
+    return carried_packages(bundle, BUILD_TOOLS)
+
+
+def carried_gpu_packages(bundle: Path) -> List[str]:
+    """The GPU packages found in a bundle, which the published bundles leave out.
+
+    A release computes on the CPU: the CUDA libraries weigh gigabytes, and the GitHub release
+    assets they would go into are capped. GPU support is built locally, so finding CuPy or the
+    CUDA wheels here means the release was built with a GPU extra.
+    """
+    return carried_packages(bundle, GPU_PACKAGES)
 
 
 def bundle_failures(
@@ -39,8 +54,8 @@ def bundle_failures(
 ) -> List[str]:
     """What keeps the release bundle under ``root`` from shipping, each as a line of its own.
 
-    The bundle ships its notices, carries the application and its runtime dependencies alone, and
-    offers a launcher that starts.
+    The bundle ships its notices, carries the application and its CPU runtime dependencies alone,
+    and offers a launcher that starts.
 
     Args:
         root: The repository the bundle was built in.
@@ -55,7 +70,7 @@ def bundle_failures(
         SystemExit: If the system builds no bundle.
     """
     name = read_project(root).name
-    launcher = platform.bundling().launcher(root / DISTRIBUTION, name=name, release=True)
+    launcher = platform.bundling().launcher(root / DISTRIBUTION, name=name, directory=True)
     bundle = launcher.parent
     failures: List[str] = []
     absent = missing_notices(bundle)
@@ -65,6 +80,10 @@ def bundle_failures(
     carried = carried_build_tools(bundle)
     if carried:
         failures.append(f"Bundle {bundle} carries build-time tooling its notices leave out: {', '.join(carried)}")
+
+    gpu = carried_gpu_packages(bundle)
+    if gpu:
+        failures.append(f"Bundle {bundle} carries GPU packages the published bundles leave out: {', '.join(gpu)}")
 
     if not launcher.is_file():
         failures.append(f"Bundle {bundle} offers no launcher at {launcher}")

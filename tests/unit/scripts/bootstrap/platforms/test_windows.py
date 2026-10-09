@@ -8,7 +8,7 @@ class TestWindows:
         assert Windows().interpreter(Path(".venv-build")) == Path(".venv-build", "Scripts", "python.exe")
 
     def test_a_bundle_launcher_carries_the_executable_extension(self) -> None:
-        launcher = Windows().bundling().launcher(Path("bin"), name="sampletones", release=True)
+        launcher = Windows().bundling().launcher(Path("bin"), name="sampletones", directory=True)
 
         assert launcher == Path("bin", "sampletones", "sampletones.exe")
 

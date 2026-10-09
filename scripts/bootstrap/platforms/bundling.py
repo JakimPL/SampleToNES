@@ -20,19 +20,20 @@ class Bundling:
     tkinter_advice: str
     tkinter_warning: str
 
-    def launcher(self, distribution: Path, *, name: str, release: bool) -> Path:
+    def launcher(self, distribution: Path, *, name: str, directory: bool) -> Path:
         """The executable PyInstaller writes under ``distribution``.
 
         Args:
             distribution: The directory the bundle is written into.
             name: The bundle's name.
-            release: Whether the bundle is a release, which is a directory beside its launcher.
+            directory: Whether the bundle is a directory beside its launcher, as a release and a
+                GPU bundle are, or one file.
 
         Returns:
             Path: The launcher.
         """
         executable = f"{name}{self.executable_suffix}"
-        if release:
+        if directory:
             return distribution / name / executable
 
         return distribution / executable

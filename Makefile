@@ -21,8 +21,8 @@ help:
 	@echo $(Q)  make setup       - Set up development environment (uv); GPU auto-detected, GPU=0 forces CPU$(Q)
 	@echo $(Q)  make pre-commit  - Install pre-commit hooks$(Q)
 	@echo $(Q)  make system-deps - Install system packages required to build and run (apt on Debian-based Linux, Homebrew on macOS)$(Q)
-	@echo $(Q)  make build       - Compile standalone executable (development deployment config: DEBUG, strict history)$(Q)
-	@echo $(Q)  make release     - Compile standalone executable with the release deployment config (INFO, self-healing history)$(Q)
+	@echo $(Q)  make build       - Compile standalone executable (development deployment config: DEBUG, strict history); GPU auto-detected, GPU=0 forces CPU$(Q)
+	@echo $(Q)  make release     - Compile standalone executable with the release deployment config (INFO, self-healing history); CPU only$(Q)
 	@echo $(Q)  make test        - Run the test suite with coverage$(Q)
 	@echo $(Q)  make test-docs   - Run the doctests$(Q)
 	@echo $(Q)  make benchmarks  - Run the measured-duration suite$(Q)
@@ -45,10 +45,10 @@ install:
 	$(MAKE) build
 
 build:
-	$(PYTHON) scripts/bundle.py
+	$(PYTHON) scripts/bundle.py --gpu $(GPU)
 
 release:
-	$(PYTHON) scripts/bundle.py --release
+	$(PYTHON) scripts/bundle.py --release --gpu 0
 
 system-deps:
 	$(PYTHON) scripts/system_dependencies.py
