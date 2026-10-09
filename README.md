@@ -11,7 +11,7 @@
 
 ## Overview
 
-_SampleToNES_ (`sampletones`) is a desktop tool for people writing music for the NES 2A03 sound chip, mainly in [_FamiTracker_](http://famitracker.com/).
+_SampleToNES_ (`sampletones`) is a desktop tool for people writing music for the NES 2A03 sound chip, mainly in [_FamiTracker_](http://famitracker.com/) or [_Bitphase_](https://bitphase.app/).
 
 <div align="center">
     <img src="https://raw.githubusercontent.com/JakimPL/SampleToNES/main/docs/images/sampletones.webp" alt="SampleToNES" width="760">
