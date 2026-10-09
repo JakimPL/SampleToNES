@@ -10,7 +10,7 @@ The interface is built with [DearPyGui](https://github.com/hoffstadt/DearPyGui),
 
 ## Core
 
-The reconstruction engine stands on the usual numerical stack, with `cupy` as an optional GPU backend. The GPU backend is installed as the extra that matches the machine's NVIDIA driver. See [GPU acceleration](../../guide/installation.md#gpu-acceleration) for enabling it.
+The reconstruction engine stands on the usual numerical stack, with `cupy` as an optional GPU backend. The GPU backend is installed as the extra that matches the machine's NVIDIA driver. See [GPU acceleration](../../guide/installation.md#gpu-acceleration) for enabling it. [GPU bundles](#gpu-bundles) says how a standalone executable carries it.
 
 ## Serialization
 
@@ -59,6 +59,23 @@ cc65 is distributed under the zlib license. The link line names our own object f
 Listening to a real APU needs [ffmpeg](https://ffmpeg.org/) with the `libgme` demuxer, which is a build option and not a given. `uv run sampletones nsf render` asks the installed ffmpeg which demuxers it has, and names this system's install command before it decodes anything.
 
 CI runs the driver on py65, which arrives with the package's own dependencies, and `scripts/system_dependencies.py` has what building and running the application needs. cc65 and ffmpeg stay on the machine of whoever assembles the driver or renders a wave. A workflow that did either would put them in those scripts. The application itself needs neither: an export is written by the package's own code, from the committed `driver.bin`.
+
+## GPU bundles
+
+A standalone executable built on a machine with an NVIDIA driver carries CuPy and the CUDA libraries. The build asks the same driver detector as `make setup`, and `--gpu 0` opts out. The published bundles are built with it off, and `scripts/verify_bundle.py` holds a release to carrying none of them.
+
+A GPU bundle is a directory. The CUDA libraries would otherwise unpack from a single file on every start.
+
+PyInstaller needs four things to carry a CuPy that computes, and the repository supplies each:
+
+- **CuPy whole.** CuPy imports its submodules by name at run time, so the build collects all of `cupy`, `cupy_backends` and `cupyx`.
+- **The hook beside the build** (`scripts/pyinstaller_hooks/hook-cupy.py`). It names the CUDA wheels installed in the build environment as hidden imports, which brings in the hooks that collect their shared libraries. It adds their header directories as data, because CuPy compiles kernels with NVRTC and looks the headers up, and it adds `graphlib`, which a compiled CuPy module imports out of sight of the analysis.
+- **The runtime hook** (`scripts/runtime_hooks/cuda_bundle.py`). The CUDA library search walks site-packages and then re-runs `sys.executable` to probe the system. Frozen, that re-runs the application and hangs. The hook makes the bundle the only site-packages, so every library is found inside it.
+- **A build environment that matches.** A CPU build excludes the GPU packages by name, so a `.venv-build` left over from a GPU build ships none of them.
+
+The self-check is what proves a bundle. `sampletones self-check --gpu` computes a kernel and a matrix product on the card and holds the answer to NumPy's, and a GPU build runs it before it finishes. Importing CuPy alone passes in a bundle that lost its CUDA libraries.
+
+The CUDA license lets an application distribute these libraries inside itself, on its terms ([third-party notices](../../../THIRD-PARTY-NOTICES.md#gpu-acceleration)). A GPU bundle is for its builder's machine.
 
 ## Linux (standalone executable)
 

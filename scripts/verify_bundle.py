@@ -38,9 +38,8 @@ def carried_build_tools(bundle: Path) -> List[str]:
 def carried_gpu_packages(bundle: Path) -> List[str]:
     """The GPU packages found in a bundle, which the published bundles leave out.
 
-    A release computes on the CPU: the CUDA libraries weigh gigabytes, and the GitHub release
-    assets they would go into are capped. GPU support is built locally, so finding CuPy or the
-    CUDA wheels here means the release was built with a GPU extra.
+    A release computes on the CPU, and GPU support is built locally. Finding CuPy or the CUDA
+    wheels here means the release was built with a GPU extra.
     """
     return carried_packages(bundle, GPU_PACKAGES)
 

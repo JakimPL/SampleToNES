@@ -57,18 +57,27 @@ After you pull new changes, run `make setup` again.
 
 On Windows and Linux, you can also build a standalone app from the source code:
 
-- **Windows**: double-click `install.bat`. It builds `bin\sampletones.exe`.
-- **Linux**: run `make system-deps`, then `./install.sh`. It builds `bin/sampletones`.
+- **Windows**: double-click `install.bat`. It builds `bin\sampletones\sampletones.exe`.
+- **Linux**: run `make system-deps`, then `./install.sh`. It builds `bin/sampletones/sampletones`.
+
+The build adds GPU support when it finds an NVIDIA graphics card. See [GPU acceleration](#gpu-acceleration).
 
 ## GPU acceleration
 
 _SampleToNES_ can use an NVIDIA graphics card to build libraries and convert recordings faster. It
 needs an NVIDIA card with a current driver, on Windows or Linux. On macOS, the app runs without GPU acceleration.
 
+- **Standalone app you build**: `install.bat` and `./install.sh` check your NVIDIA driver and bundle the
+  matching GPU support. The app folder then holds the NVIDIA libraries and grows to a few gigabytes.
+  Add `--gpu 0` to build the smaller app for the CPU alone: `./install.sh --gpu 0`, or `install.bat --gpu 0`.
+  The build finishes only once the app has computed on your card.
 - **From source**: `make setup` checks your NVIDIA driver and installs the matching GPU support.
   `make setup GPU=0` installs the app for the CPU alone.
 - **From PyPI**: add the `gpu` extra, `uv tool install "sampletones[gpu]"`. If your driver supports
   CUDA 11 only, use the `gpu-cuda11` extra instead.
+
+The apps on the releases page run on the CPU. To see which one your app uses, run `sampletones self-check`
+and read the "array backend" line.
 
 ---
 
