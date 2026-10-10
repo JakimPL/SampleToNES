@@ -2,7 +2,7 @@ import json
 import os
 import time
 from pathlib import Path
-from typing import Dict, Final, List, Tuple
+from typing import Dict, Final, List, Optional, Tuple
 
 import pytest
 
@@ -13,7 +13,7 @@ from automation.screen import Screen
 from automation.steps.reconstructions import expect_open, leave_letting_it_go
 from automation.views.bar_graph import BarGraph
 from automation.views.instruments import Instruments
-from automation.vocabulary.graphs import WAVEFORM_REGENERATING
+from automation.vocabulary.graphs import WAVEFORM_RECONSTRUCTION
 from automation.worlds.home import World
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from tests.suite.screens.worlds.recordings import LONG_RECONSTRUCTION, long_document_world
@@ -59,13 +59,18 @@ def _zoom_in_on(screen: Screen, instruments: Instruments, graph: BarGraph) -> No
     graph.zoom_in(NEAR_THE_START, ZOOM_NOTCHES)
 
 
-def _wait_for_the_line_to_empty(screen: Screen) -> None:
-    """Waits until the waveform's fade ends, which is when the last edit on its way has landed."""
-    busy = screen.words(WAVEFORM_REGENERATING)
+def _reconstruction_shade(screen: Screen) -> Optional[str]:
+    """The theme the waveform's reconstruction line wears, which the fade swaps while an edit is on its way."""
+    waveform = screen.reconstructions.waveform
+    return screen.theme_of(waveform.series_tag(screen.words(WAVEFORM_RECONSTRUCTION)))
+
+
+def _wait_for_the_fade_to_end(screen: Screen, unfaded: Optional[str]) -> None:
+    """Waits until the reconstruction line wears ``unfaded`` again, which is when the last edit has landed."""
     screen.bridge.expect(
-        screen.status,
-        busy.__ne__,
-        description="the line empty",
+        lambda: _reconstruction_shade(screen),
+        unfaded.__eq__,
+        description="the fade ended",
         timeout=DRAIN_TIMEOUT_SECONDS,
     )
 
@@ -106,21 +111,23 @@ class TestADragOnALongDocument:
         graph = instruments.graph(ChannelName.PULSE1, FeatureKey.VOLUME)
         stamps: List[float] = []
         releases: List[float] = []
+        unfaded: List[Optional[str]] = []
 
         def open_and_zoom_in(screen: Screen) -> None:
             _zoom_in_on(screen, instruments, graph)
+            unfaded.append(_reconstruction_shade(screen))
 
-        def drag_until_the_line_empties(screen: Screen) -> None:
+        def drag_until_the_fade_ends(screen: Screen) -> None:
             with screen.record(time.monotonic) as recording:
                 _drag_the_bars(instruments, graph, releases)
-                _wait_for_the_line_to_empty(screen)
+                _wait_for_the_fade_to_end(screen, unfaded[0])
 
             stamps.extend(recording.values())
 
         def keep_the_readings(screen: Screen) -> None:
             _keep_readings(BURST_READINGS, _frame_readings(stamps, releases[-1]))
 
-        screen.scenario(open_and_zoom_in, drag_until_the_line_empties, keep_the_readings, leave_letting_it_go).run()
+        screen.scenario(open_and_zoom_in, drag_until_the_fade_ends, keep_the_readings, leave_letting_it_go).run()
 
 
 class TestADragWhileTheRebuildIsHeld:
@@ -137,9 +144,11 @@ class TestADragWhileTheRebuildIsHeld:
         graph = instruments.graph(ChannelName.PULSE1, FeatureKey.VOLUME)
         stamps: List[float] = []
         releases: List[float] = []
+        unfaded: List[Optional[str]] = []
 
         def open_and_zoom_in(screen: Screen) -> None:
             _zoom_in_on(screen, instruments, graph)
+            unfaded.append(_reconstruction_shade(screen))
 
         def drag_while_held(screen: Screen) -> None:
             with screen.record(time.monotonic) as recording:
@@ -153,7 +162,7 @@ class TestADragWhileTheRebuildIsHeld:
 
         def release_and_wait(screen: Screen) -> None:
             regeneration_hold.release()
-            _wait_for_the_line_to_empty(screen)
+            _wait_for_the_fade_to_end(screen, unfaded[0])
 
         screen.scenario(
             open_and_zoom_in,
@@ -178,18 +187,21 @@ class TestOneLandingOnALongDocument:
         graph = instruments.graph(ChannelName.PULSE1, FeatureKey.VOLUME)
         stamps: List[float] = []
         released: List[float] = []
+        unfaded: List[Optional[str]] = []
 
         def drag_one_bar_while_held(screen: Screen) -> None:
             _zoom_in_on(screen, instruments, graph)
+            unfaded.append(_reconstruction_shade(screen))
             standing = instruments.envelope_items(ChannelName.PULSE1, FeatureKey.VOLUME)
             graph.drag_item(DRAGGED_ITEMS[0], start=standing[DRAGGED_ITEMS[0]], end=QUIET)
             screen.expect(regeneration_hold.waiting, bool, description="the rebuild held")
+            assert _reconstruction_shade(screen) != unfaded[0]
 
         def release_and_record_the_landing(screen: Screen) -> None:
             with screen.record(time.monotonic) as recording:
                 regeneration_hold.release()
                 released.append(time.monotonic())
-                _wait_for_the_line_to_empty(screen)
+                _wait_for_the_fade_to_end(screen, unfaded[0])
                 screen.frames(FRAMES_AFTER_THE_LANDING)
 
             stamps.extend(recording.values())
