@@ -5,9 +5,11 @@ This document describes how the Reconstructions tab changes the document it has 
 wait on its edits. Consult it when adding a gesture that edits the open document, one that reads or puts
 away the whole document, or one that replaces the document from outside the tab.
 
-A rebuild of an edited channel runs on a worker thread, so the reader can make the next change before the
-last one has landed. Every rule below keeps the document as though each change had landed before the next
-one was made.
+A rebuild of an edited channel, and the render of the audio it sounds, run on a worker thread, so the
+reader can make the next change before the last one has landed and the frames keep coming while the
+rebuild renders. The worker takes the renders the cache holds for the document with it and hands back the
+audio of every channel in play, which the landing keeps in the cache before the tab reads it. Every rule
+below keeps the document as though each change had landed before the next one was made.
 
 ---
 

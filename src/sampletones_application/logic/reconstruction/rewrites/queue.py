@@ -201,7 +201,8 @@ class ReconstructionRewrites(CallbackMixin):
         """Starts the rebuild of a changed channel from the document and the listening as they stand.
 
         The rebuild is marked running before it starts, since a result can arrive before the start
-        returns.
+        returns. The renders the cache holds for the document go with it, so the worker renders the
+        edited channel alone and the landing finds every channel's audio kept.
         """
         reconstruction = self._manager.reconstruction
         envelopes = self._manager.current_features
@@ -215,6 +216,7 @@ class ReconstructionRewrites(CallbackMixin):
             change.channel_name,
             change.rebased(envelopes[change.channel_name]),
             self._manager.listening.heard_on(change.channel_name),
+            kept=self._manager.renders.held(reconstruction),
         )
 
     def _remove(self, removal: StemRemovalRequest) -> None:
@@ -274,11 +276,13 @@ class ReconstructionRewrites(CallbackMixin):
         self._settle()
 
     def _land(self, rebuild: Rebuild, outcome: RegeneratedInstrument) -> None:
+        """Keeps the renders the rebuild made and hands the edit on, where its document is still open."""
         if not rebuild.lands_on(self._manager.reconstruction):
             logger.info(f"A rebuild of {rebuild.change.channel_name} finished for a document put away since")
             self._let_go(rebuild)
             return
 
+        self._manager.renders.adopt(outcome.reconstruction, outcome.channels, outcome.mix)
         self.call(
             self.on_edit,
             ChannelEdit(

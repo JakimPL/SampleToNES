@@ -1,5 +1,7 @@
 from dataclasses import dataclass
-from typing import AbstractSet, Callable, List, Tuple
+from typing import AbstractSet, Callable, List, Mapping, Tuple
+
+import numpy as np
 
 from sampletones_application.services.regeneration.result import (
     RegeneratedInstrument,
@@ -10,6 +12,7 @@ from sampletones_application.services.result import ServiceError, ServiceSuccess
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
 
 
 @dataclass(frozen=True)
@@ -20,6 +23,7 @@ class HeldRebuild:
     channel_name: ChannelName
     features: Features
     heard: AbstractSet[int]
+    kept: Mapping[ChannelName, np.ndarray]
 
 
 class HeldRegeneration:
@@ -43,8 +47,10 @@ class HeldRegeneration:
         channel_name: ChannelName,
         features: Features,
         heard: AbstractSet[int],
+        *,
+        kept: Mapping[ChannelName, np.ndarray],
     ) -> None:
-        self._held.append(HeldRebuild(reconstruction, channel_name, features, heard))
+        self._held.append(HeldRebuild(reconstruction, channel_name, features, heard, kept))
 
     @property
     def held(self) -> Tuple[HeldRebuild, ...]:
@@ -54,12 +60,26 @@ class HeldRegeneration:
     def finish(self) -> None:
         """Runs the earliest held rebuild and delivers what it produced."""
         rebuild = self._held.pop(0)
-        self._service._run(rebuild.reconstruction, rebuild.channel_name, rebuild.features, rebuild.heard)
+        self._service._run(
+            rebuild.reconstruction,
+            rebuild.channel_name,
+            rebuild.features,
+            rebuild.heard,
+            rebuild.kept,
+        )
 
     def finish_with(self, reconstruction: Reconstruction) -> None:
-        """Delivers ``reconstruction`` as what the earliest held rebuild produced."""
+        """Delivers ``reconstruction``, rendered afresh, as what the earliest held rebuild produced."""
         self._held.pop(0)
-        self._service._emit(ServiceSuccess(value=RegeneratedInstrument(reconstruction=reconstruction)))
+        self._service._emit(
+            ServiceSuccess(
+                value=RegeneratedInstrument(
+                    reconstruction=reconstruction,
+                    channels=rendered_channels(reconstruction),
+                    mix=rendered_mix(reconstruction),
+                )
+            )
+        )
 
     def fail(self, exception: Exception) -> None:
         """Delivers ``exception`` as the earliest held rebuild's failure."""

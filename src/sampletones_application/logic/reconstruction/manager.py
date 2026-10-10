@@ -56,7 +56,9 @@ class ReconstructionManager(CallbackMixin):
 
     @property
     def renders(self) -> RenderCache:
-        """Where the audio of the open document is rendered and kept for as long as the screen reads it."""
+        """Where the audio of the open document is kept for as long as the screen reads it, rendered on the
+        first read or handed back by a rebuild.
+        """
         return self._renders
 
     def load_reconstruction(self, path: Path) -> None:

@@ -1,6 +1,7 @@
 import threading
-from typing import AbstractSet, Optional
+from typing import AbstractSet, Mapping, Optional
 
+import numpy as np
 import pytest
 
 from sampletones_application.services.regeneration.service import (
@@ -39,13 +40,14 @@ class RegenerationHold:
             channel_name: ChannelName,
             features: Features,
             heard: AbstractSet[int],
+            kept: Mapping[ChannelName, np.ndarray],
         ) -> None:
             self._wait()
             if self._failure is not None:
                 service._emit(ServiceError(exception=self._failure))  # pylint: disable=protected-access
                 return
 
-            rebuild(service, reconstruction, channel_name, features, heard)
+            rebuild(service, reconstruction, channel_name, features, heard, kept)
 
         monkeypatch.setattr(RegenerationService, "_run", held)
 

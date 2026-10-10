@@ -1,11 +1,17 @@
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 
 from sampletones_core.audio.mixing import mix
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.generators.render import render_channels
+from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
 from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
+
+
+def sounding_streams(reconstruction: Reconstruction) -> List[InstructionsItem]:
+    """The streams that describe a frame, in channel order, which are the channels a render sounds."""
+    return [stream for stream in reconstruction.instructions_data if stream.instructions]
 
 
 def rendered_channels(reconstruction: Reconstruction) -> Dict[ChannelName, np.ndarray]:

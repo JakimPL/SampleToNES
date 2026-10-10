@@ -1,4 +1,6 @@
-from typing import AbstractSet, Callable, Protocol
+from typing import AbstractSet, Callable, Mapping, Protocol
+
+import numpy as np
 
 from sampletones_application.services.regeneration.result import RegenerationResult
 from sampletones_core.constants.enums import ChannelName
@@ -21,4 +23,6 @@ class RegenerationServiceProtocol(Protocol):
         channel_name: ChannelName,
         features: Features,
         heard: AbstractSet[int],
+        *,
+        kept: Mapping[ChannelName, np.ndarray],
     ) -> None: ...

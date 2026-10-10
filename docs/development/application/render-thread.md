@@ -19,6 +19,11 @@ budget (`scheduling.queue_budget_seconds`), so a large backlog spreads across fr
 continues. Every background result reaches UI state this way. Applying one to UI state directly from the
 worker thread is forbidden.
 
+A result carries what the landing installs. The regeneration renders the edited channel's audio on its
+worker and hands it back inside its result; the landing keeps it in the render cache on the render thread.
+What a worker produces for the interface therefore reaches what the interface reads through the queue
+alone, and the render thread keeps drawing while the worker renders.
+
 A logic object hearing a worker's report, such as a library generation or the audio device's position,
 posts its own handler to the queue the same way. The logic layer reaches the queue, and `utils/gui`
 belongs to the visual layers.

@@ -1,13 +1,15 @@
 import gc
 from pathlib import Path
-from typing import Final, Tuple
+from typing import Final, List, Tuple
 
 import numpy as np
 import pytest
 
+from sampletones_application.logic.shared import renders as renders_module
 from sampletones_application.logic.shared.renders import RenderCache
+from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.instructions import PulseInstruction
+from sampletones_core.instructions import InstructionUnion, PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
 from tests.conftest import RENDER_BUDGET
@@ -117,3 +119,61 @@ class TestARenderGoesWithItsStream:
         gc.collect()
 
         assert renders.held_bytes == 0
+
+
+def _never_rendering(
+    instructions: List[InstructionUnion],
+    channel_name: ChannelName,
+    config: Config,
+) -> np.ndarray:
+    raise AssertionError(f"{channel_name} was rendered")
+
+
+class TestAdoptingRendersMadeElsewhere:
+    """Renders a rebuild made on its worker are kept as the document's own and read back without rendering.
+
+    ``held`` says what the cache holds for a document's channels without rendering, which is what
+    a rebuild takes with it. A render already kept stays when the same stream's render is adopted
+    again, and every kept render is read-only, since the readers it is shared with copy what they
+    change.
+    """
+
+    def test_held_names_the_channels_read_so_far(self, renders: RenderCache, document: Reconstruction) -> None:
+        assert renders.held(document) == {}
+
+        kept = renders.channels(document)
+
+        held = renders.held(document)
+        assert held.keys() == kept.keys()
+        assert all(held[name] is kept[name] for name in kept)
+
+    def test_adopted_renders_answer_every_read(
+        self,
+        renders: RenderCache,
+        document: Reconstruction,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        channels = rendered_channels(document)
+        mixed = rendered_mix(document)
+
+        renders.adopt(document, channels, mixed)
+
+        monkeypatch.setattr(renders_module, "render_instructions", _never_rendering)
+        assert all(renders.channels(document)[name] is channels[name] for name in channels)
+        assert renders.mix(document) is mixed
+
+    def test_a_kept_render_is_read_only(self, renders: RenderCache, document: Reconstruction) -> None:
+        assert all(not rendered.flags.writeable for rendered in renders.channels(document).values())
+        assert not renders.mix(document).flags.writeable
+
+    def test_a_render_already_kept_stays_when_adopted_again(
+        self,
+        renders: RenderCache,
+        document: Reconstruction,
+    ) -> None:
+        first = renders.channels(document)
+
+        renders.adopt(document, rendered_channels(document), rendered_mix(document))
+
+        after = renders.channels(document)
+        assert all(after[name] is first[name] for name in first)

@@ -207,7 +207,7 @@ Runs long operations (file conversion, waveform regeneration, export, playback s
 - `_emit` posts the result to `CallbackQueue`, which puts every handler on the render thread (principle 6).
 - Result types are a tagged union, so a subscriber matches exhaustively. A long operation reports through `ServiceStarted`, `ServiceProgress`, `ServiceIntermediate`, `ServiceSuccess`, `ServiceError` and `ServiceCanceled`, and a service whose reports carry more, such as the playhead or the request they answer, declares a union of its own in its `result.py`.
 - A service is one subpackage holding `service.py` and `result.py`, so its implementation and the contract its subscribers type against are reached separately. The generic contracts every service reports through are in `services/result.py`. `ServiceProgress.fraction` is the one reading a bar draws. See [`progress.md`](progress.md).
-- A service knows no panel, view model or logic object.
+- A service imports nothing from `logic/`, `view_model/`, `ui/`, `coordinators/` or `config/`, which the boundary check holds. What a service is handed must be safe on its worker: a value, a kernel it drives alone for the span of a job (`RowSynthesizerProtocol`), or a store built for concurrent use, each named as a Protocol in the service's own subpackage and proven by a case. What a job produces for the interface travels in its result, so the landing installs it on the render thread; `RegeneratedInstrument` carries the audio its worker rendered.
 
 ---
 

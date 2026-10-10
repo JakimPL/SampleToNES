@@ -3,7 +3,7 @@ import weakref
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Mapping, Optional, Set, Tuple
 
 import numpy as np
 
@@ -13,6 +13,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.generators.render import render_instructions
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
+from sampletones_core.reconstructions.reconstruction.renders import sounding_streams
 
 
 class RenderKind(StrEnum):
@@ -41,9 +42,11 @@ class RenderCache:
     A render is keyed by the identity of the streams it sounds, which a lookup reads at once,
     where a stream's value would take every instruction it carries to hash. A render goes with
     the stream it was made from, and beyond ``budget_bytes`` the renders read longest ago go
-    first, so the cache keeps audio alone. The render thread reads the cache, and a stream's
-    collection may drop its renders from any thread, so every change to the cache is made
-    under one lock.
+    first, so the cache keeps audio alone. The render thread reads the cache and keeps what it
+    renders or adopts, and a stream's collection may drop its renders from any thread, so every
+    change to the cache is made under one lock. The lock lets its holder in again, since a stream
+    let go of while a keep runs on the same thread is forgotten from inside that keep. A kept
+    render is read-only, so the readers it is shared with copy what they change.
     """
 
     def __init__(self, *, budget_bytes: int) -> None:
@@ -51,7 +54,7 @@ class RenderCache:
         self._renders: OrderedDict[RenderKey, np.ndarray] = OrderedDict()
         self._watched: Set[int] = set()
         self._held_bytes = 0
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     @property
     def held_bytes(self) -> int:
@@ -62,13 +65,13 @@ class RenderCache:
         """The audio each channel in play renders from the stream it carries."""
         return {
             stream.channel_name: self._channel(stream, reconstruction.config)
-            for stream in self._sounding(reconstruction)
+            for stream in sounding_streams(reconstruction)
         }
 
     def mix(self, reconstruction: Reconstruction) -> np.ndarray:
         """The whole reconstruction, summed from the channels that play."""
-        streams = self._sounding(reconstruction)
-        key = RenderKey(RenderKind.MIX, tuple(id(stream) for stream in streams), reconstruction.config)
+        streams = sounding_streams(reconstruction)
+        key = self._mix_key(streams, reconstruction.config)
         cached = self._read(key)
         if cached is not None:
             return cached
@@ -77,13 +80,52 @@ class RenderCache:
         self._keep(key, mixed, streams)
         return mixed
 
+    def held(self, reconstruction: Reconstruction) -> Dict[ChannelName, np.ndarray]:
+        """The renders the cache holds for the channels in play, by channel, which a lookup answers at once.
+
+        A rebuild takes these with it, so the worker renders the channel the edit rewrote and
+        carries the rest over.
+        """
+        held: Dict[ChannelName, np.ndarray] = {}
+        for stream in sounding_streams(reconstruction):
+            cached = self._read(self._channel_key(stream, reconstruction.config))
+            if cached is not None:
+                held[stream.channel_name] = cached
+
+        return held
+
+    def adopt(
+        self,
+        reconstruction: Reconstruction,
+        channels: Mapping[ChannelName, np.ndarray],
+        mixed: np.ndarray,
+    ) -> None:
+        """Keeps renders made elsewhere, one per channel in play and their mix, as the document's own.
+
+        A render the cache already holds for a stream stays as it is, so a channel rendered twice
+        keeps the one the screen read first.
+
+        Args:
+            reconstruction: The document the renders sound.
+            channels: The audio each channel in play renders to, by channel.
+            mixed: The whole document, summed from ``channels``.
+        """
+        streams = sounding_streams(reconstruction)
+        for stream in streams:
+            self._keep(self._channel_key(stream, reconstruction.config), channels[stream.channel_name], [stream])
+
+        self._keep(self._mix_key(streams, reconstruction.config), mixed, streams)
+
     @staticmethod
-    def _sounding(reconstruction: Reconstruction) -> List[InstructionsItem]:
-        """The streams that describe a frame, in channel order, the channels a render sounds."""
-        return [stream for stream in reconstruction.instructions_data if stream.instructions]
+    def _channel_key(stream: InstructionsItem, config: Config) -> RenderKey:
+        return RenderKey(RenderKind.CHANNEL, (id(stream),), config)
+
+    @staticmethod
+    def _mix_key(streams: List[InstructionsItem], config: Config) -> RenderKey:
+        return RenderKey(RenderKind.MIX, tuple(id(stream) for stream in streams), config)
 
     def _channel(self, stream: InstructionsItem, config: Config) -> np.ndarray:
-        key = RenderKey(RenderKind.CHANNEL, (id(stream),), config)
+        key = self._channel_key(stream, config)
         cached = self._read(key)
         if cached is not None:
             return cached
@@ -114,6 +156,7 @@ class RenderCache:
             if key in self._renders:
                 return
 
+            rendered.setflags(write=False)
             self._renders[key] = rendered
             self._held_bytes += rendered.nbytes
             for stream in streams:

@@ -344,7 +344,7 @@ class TestAResultLandsOnItsOwnDocument:
     ) -> None:
         stray = HeldRegeneration()
         stray.subscribe(rewrites._on_result)
-        stray.start(taking_turns, SHARED_CHANNEL, taking_turns.export()[SHARED_CHANNEL], frozenset())
+        stray.start(taking_turns, SHARED_CHANNEL, taking_turns.export()[SHARED_CHANNEL], frozenset(), kept={})
 
         with pytest.raises(RuntimeError, match="no rebuild was running"):
             stray.finish()
@@ -538,3 +538,50 @@ class TestTheBusySpan:
 
         gesture.assert_called_once_with()
         assert outcome.busy == []
+
+
+class TestTheRendersALandingKeeps:
+    """A landed rebuild leaves the renders it made in the cache, so the panel reads them without rendering,
+    and a rebuild that lands nowhere leaves none.
+    """
+
+    def test_a_landed_rebuild_leaves_its_renders_kept(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+    ) -> None:
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
+
+        regeneration.finish()
+
+        landed = reconstruction_manager.reconstruction
+        assert landed is not None
+        assert reconstruction_manager.renders.held(landed).keys() == {SHARED_CHANNEL, SOLE_CHANNEL}
+
+    def test_the_rebuild_takes_the_kept_renders_with_it(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+        taking_turns: Reconstruction,
+    ) -> None:
+        kept = reconstruction_manager.renders.channels(taking_turns)
+
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
+
+        assert regeneration.held[0].kept.keys() == kept.keys()
+        assert all(regeneration.held[0].kept[name] is kept[name] for name in kept)
+
+    def test_a_rebuild_landing_nowhere_leaves_no_render(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+    ) -> None:
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
+        rewrites.drop()
+
+        regeneration.finish()
+
+        assert reconstruction_manager.renders.held_bytes == 0

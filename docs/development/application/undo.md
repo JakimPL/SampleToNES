@@ -31,11 +31,11 @@ An entry therefore owns the values its gesture made:
 | Project rate | each sample's document with its new setup, which shares the instructions |
 | Settings, properties | the settings and info shells |
 
-A reconstruction edit follows the same rule. `RegenerationService` rebuilds one channel and builds the new document around it. The apply path installs that document through `ProjectController.replace_sample_reconstruction`. An edit is recorded as it lands, in the order the reader made the edits, and an undo waits for the edits made before it ([Editing the open reconstruction](reconstruction-edits.md)).
+A reconstruction edit follows the same rule. `RegenerationService` rebuilds one channel, builds the new document around it and renders the audio the document sounds, all on its worker. The apply path keeps that audio in the render cache and installs the document through `ProjectController.replace_sample_reconstruction`. An edit is recorded as it lands, in the order the reader made the edits, and an undo waits for the edits made before it ([Editing the open reconstruction](reconstruction-edits.md)).
 
 **The types enforce the split.** A value's model is frozen, so a write in place raises where it is made. A core test walks every class a project reaches (`tests/unit/sampletones_core/project/test_values.py`). It requires each class to be a declared shell or a frozen value made of values. The history audit (`tests/suite/history/`) replays gestures against a model of the stack. After every step, it checks each stored entry against the state it recorded.
 
-**Derived data belongs to no entry.** A document's sound is rendered from its instructions. The application keeps every render in one `RenderCache`, which the composition root builds. A render is keyed by the identity of a channel's instructions and by the setup they sound under. It goes when those instructions go, and a byte budget bounds the rest. History therefore keeps instructions only, and documents that share a channel share its render.
+**Derived data belongs to no entry.** A document's sound is rendered from its instructions. The application keeps every render in one `RenderCache`, which the composition root builds and the render thread fills: with what the screen reads cold, and with what a rebuild hands back from its worker. A render is keyed by the identity of a channel's instructions and by the setup they sound under. It goes when those instructions go, and a byte budget bounds the rest. History therefore keeps instructions only, and documents that share a channel share its render.
 
 ## The open voice across a restore
 
