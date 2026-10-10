@@ -59,6 +59,10 @@ class ScreenApplication:
         """The application's language manager, which turns a language key into the words a user reads."""
         return self._application.language_manager
 
+    def sound_settled(self) -> bool:
+        """Whether the open reconstruction's sound stands landed, with no rebuild or listening on its way."""
+        return not self._application.reconstruction_rewrites.is_busy
+
     @property
     def shortcuts(self) -> ShortcutManager:
         """The application's shortcut manager, which says what keys each action has under the scheme in

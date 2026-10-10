@@ -39,6 +39,7 @@ from sampletones_application.logic.reconstruction.reconstruction import (
     ReconstructionPanelLogic,
 )
 from sampletones_application.logic.reconstruction.rewrites.steps import (
+    ListeningChange,
     RateChange,
     Rewrite,
     StemRemovalRequest,
@@ -312,6 +313,7 @@ class ReconstructionTabCoordinator:
             self._reconstruction_plot_panel.update_waveform_data
         )
         self._reconstruction_panel_logic.on_waveform_cleared = self._reconstruction_plot_panel.clear_waveform
+        self._reconstruction_panel_logic.on_renders_wanted = self._request_listening
         self._reconstruction_panel_logic.on_waveform_source_changed = (
             self._reconstruction_plot_panel.set_waveform_top_source
         )
@@ -731,6 +733,10 @@ class ReconstructionTabCoordinator:
         """Asks for the open document to be re-timed to the rate the reader typed."""
         self._on_rewrite_requested(RateChange(nes_frequency=nes_frequency))
 
+    def _request_listening(self) -> None:
+        """Asks for what the reader hears to be rendered, where the screen holds no audio for it yet."""
+        self._on_rewrite_requested(ListeningChange())
+
     def _request_remove_directory(self, directory: Path) -> None:
         self._dialogs.show_confirmation(
             tag=TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_DIRECTORY_CONFIRMATION,
@@ -805,6 +811,10 @@ class ReconstructionTabCoordinator:
         """
         self._reconstruction_panel_logic.update_reconstruction(refit_waveform=refit_waveform)
         self._reconstruction_instruments_logic.update_display()
+
+    def redraw_listening(self) -> None:
+        """Shows what the reader hears once the worker has rendered it, where a showing waited for it."""
+        self._reconstruction_panel_logic.redraw_listening()
 
     def set_reconstruction_dimmed(self, dimmed: bool) -> None:
         self._reconstruction_plot_panel.set_reconstruction_dimmed(dimmed)

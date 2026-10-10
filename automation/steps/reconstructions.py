@@ -1,10 +1,12 @@
 import operator
+from functools import partial
 from pathlib import Path
 from typing import Final, List, Optional
 
 from automation.dearpygui.items.types import Item
 from automation.holds.regeneration import RegenerationHold
 from automation.screen import Screen
+from automation.vocabulary.graphs import WAVEFORM_RECONSTRUCTION
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName, FeatureKey
@@ -12,6 +14,8 @@ from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.constants.symbols import TITLE_SEPARATOR
 from sampletones_shared.paths.user import RECONSTRUCTIONS_DIRECTORY
+
+FADE_TIMEOUT_SECONDS: Final[float] = 120.0
 
 APPLICATION_NAME: Final[str] = "global.dialog.title.main_window"
 UNTITLED: Final[str] = "global.dialog.label.untitled"
@@ -58,7 +62,7 @@ def reconstruction_row(screen: Screen, path: Path) -> Item:
         if not browser.is_open(above):
             browser.open_by_click(above)
             screen.expect(
-                lambda: browser.is_open(above),
+                partial(browser.is_open, above),
                 bool,
                 description=f"{browser.label(above)} open",
             )
@@ -73,11 +77,28 @@ def load_from_the_browser(screen: Screen, path: Path) -> None:
 
 
 def expect_open(screen: Screen, path: Path) -> None:
-    """Waits until the reconstruction stored at ``path`` is the one open."""
+    """Waits until the reconstruction stored at ``path`` is the one open and its sound has landed."""
     screen.expect(
         lambda: screen.reconstructions.shows_open(path),
         bool,
         description=f"{path.name} open",
+    )
+    screen.expect(screen.sound_settled, bool, description=f"the sound of {path.name} landed")
+
+
+def reconstruction_shade(screen: Screen) -> Optional[str]:
+    """The theme the waveform's reconstruction line wears, which the fade swaps while its sound is on its way."""
+    waveform = screen.reconstructions.waveform
+    return screen.theme_of(waveform.series_tag(screen.words(WAVEFORM_RECONSTRUCTION)))
+
+
+def wait_for_the_fade_to_end(screen: Screen, unfaded: Optional[str]) -> None:
+    """Waits until the reconstruction line wears ``unfaded`` again, which is when the last sound has landed."""
+    screen.bridge.expect(
+        lambda: reconstruction_shade(screen),
+        unfaded.__eq__,
+        description="the fade ended",
+        timeout=FADE_TIMEOUT_SECONDS,
     )
 
 

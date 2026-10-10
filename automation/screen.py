@@ -106,6 +106,7 @@ class Screen:
         window_manager: WindowManager,
         language: LanguageManager,
         shortcuts: ShortcutManager,
+        sound_settled: Callable[[], bool],
         dialogs: ScriptedFileDialogs,
         errors: ErrorRecords,
         file_manager: FileManagerStandIn,
@@ -118,6 +119,7 @@ class Screen:
         self._window_manager = window_manager
         self._render_thread = render_thread
         self._shortcuts = shortcuts
+        self._sound_settled = sound_settled
         self._dialogs = dialogs
         self._errors = errors
         self._file_manager = file_manager
@@ -142,6 +144,10 @@ class Screen:
         self.file_not_found_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_FILE_NOT_FOUND)
         self.no_output_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_NO_AUDIO_OUTPUT)
         self.no_project_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN)
+
+    def sound_settled(self) -> bool:
+        """Whether the open reconstruction's sound stands landed, which a box or an edit sends to the worker."""
+        return bool(self.bridge.ask(self._sound_settled))
 
     def expect(
         self,

@@ -6,7 +6,8 @@ import numpy as np
 import pytest
 
 from sampletones_application.services.regeneration import service as service_module
-from sampletones_application.services.regeneration.result import RegeneratedInstrument
+from sampletones_application.services.regeneration.jobs import ListeningJob, RebuildJob
+from sampletones_application.services.regeneration.result import RenderedDocument
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import (
     ServiceError,
@@ -21,8 +22,10 @@ from sampletones_core.features.envelope import Envelope
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
+from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing, heard_renders
+from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from tests.conftest import ReconstructionFactory
-from tests.suite.stems import SHARED_CHANNEL, SOLE_CHANNEL, taking_turns
+from tests.suite.stems import SHARED_CHANNEL, SOLE_CHANNEL, STEM_A_ID, everything_heard, taking_turns
 
 __all__ = ["taking_turns"]
 
@@ -32,6 +35,11 @@ NO_RENDERS: Final[Dict[ChannelName, np.ndarray]] = {}
 MockReconstruction: TypeAlias = MagicMock
 SynthesisMocks: TypeAlias = SimpleNamespace
 EVERY_STEM: Final[FrozenSet[int]] = frozenset({0})
+EVERY_CHANNEL: Final[FrozenSet[ChannelName]] = frozenset(ChannelName.items())
+HEARD_WHOLE: Final[Hearing] = Hearing(
+    selection=StemSelection.everywhere(EVERY_STEM, ChannelName.items()),
+    channels_on=EVERY_CHANNEL,
+)
 ResultCallback: TypeAlias = Callable[[Any], None]
 
 
@@ -97,7 +105,7 @@ class TestRegenerationServiceStart:
             reconstruction,
             synthesis_mocks.channel_name,
             features,
-            EVERY_STEM,
+            hearing=HEARD_WHOLE,
             kept=NO_RENDERS,
         )
 
@@ -117,7 +125,7 @@ class TestRegenerationServiceStart:
         """
         service = RegenerationService()
         with patch.object(service._executor, "execute") as execute:
-            service.start(reconstruction, synthesis_mocks.channel_name, features, EVERY_STEM, kept=NO_RENDERS)
+            service.start(reconstruction, synthesis_mocks.channel_name, features, hearing=HEARD_WHOLE, kept=NO_RENDERS)
 
         assert execute.call_args.kwargs == {"wait": True}
 
@@ -133,13 +141,7 @@ class TestRegenerationServiceRun:
         results: List[Any] = []
         service.subscribe(results.append)
 
-        service._run(
-            reconstruction,
-            synthesis_mocks.channel_name,
-            features,
-            EVERY_STEM,
-            NO_RENDERS,
-        )
+        service._run(RebuildJob(reconstruction, synthesis_mocks.channel_name, features, HEARD_WHOLE, NO_RENDERS))
 
         assert len(results) == 1
         assert isinstance(results[0], ServiceSuccess)
@@ -156,7 +158,7 @@ class TestRegenerationServiceRun:
         """The caller writes the edit into the envelopes, so the service renders what it is given."""
         service = RegenerationService()
 
-        service._run(reconstruction, synthesis_mocks.channel_name, features, EVERY_STEM, NO_RENDERS)
+        service._run(RebuildJob(reconstruction, synthesis_mocks.channel_name, features, HEARD_WHOLE, NO_RENDERS))
 
         _, _, initial_pitch, held = reconstruction.with_channel_data.call_args.args
         assert initial_pitch == features.initial_pitch
@@ -170,13 +172,7 @@ class TestRegenerationServiceRun:
     ) -> None:
         service = RegenerationService()
 
-        service._run(
-            reconstruction,
-            synthesis_mocks.channel_name,
-            features,
-            EVERY_STEM,
-            NO_RENDERS,
-        )
+        service._run(RebuildJob(reconstruction, synthesis_mocks.channel_name, features, HEARD_WHOLE, NO_RENDERS))
 
         reconstruction.with_channel_data.assert_called_once()
         call_args = reconstruction.with_channel_data.call_args
@@ -195,13 +191,7 @@ class TestRegenerationServiceRun:
         """
         service = RegenerationService()
 
-        service._run(
-            reconstruction,
-            synthesis_mocks.channel_name,
-            features,
-            EVERY_STEM,
-            NO_RENDERS,
-        )
+        service._run(RebuildJob(reconstruction, synthesis_mocks.channel_name, features, HEARD_WHOLE, NO_RENDERS))
 
         call_args = reconstruction.with_channel_data.call_args
         assert call_args.args[2] == REFERENCE_PITCH
@@ -216,7 +206,7 @@ class TestRegenerationServiceRun:
         moved = features.model_copy(update={"initial_pitch": REFERENCE_PITCH + 12})
         service = RegenerationService()
 
-        service._run(reconstruction, synthesis_mocks.channel_name, moved, EVERY_STEM, NO_RENDERS)
+        service._run(RebuildJob(reconstruction, synthesis_mocks.channel_name, moved, HEARD_WHOLE, NO_RENDERS))
 
         _, _, initial_pitch, _ = reconstruction.with_channel_data.call_args.args
         assert initial_pitch == REFERENCE_PITCH + 12
@@ -232,13 +222,7 @@ class TestRegenerationServiceRun:
         synthesis_mocks.exporter.from_features.return_value = stream
         service = RegenerationService()
 
-        service._run(
-            reconstruction,
-            synthesis_mocks.channel_name,
-            features,
-            EVERY_STEM,
-            NO_RENDERS,
-        )
+        service._run(RebuildJob(reconstruction, synthesis_mocks.channel_name, features, HEARD_WHOLE, NO_RENDERS))
 
         call_args = reconstruction.with_channel_data.call_args
         assert call_args.args[1] == stream
@@ -259,13 +243,7 @@ class TestRegenerationServiceRun:
             "sampletones_application.services.regeneration.service.CHANNEL_TO_EXPORTER_MAP",
             {ChannelName.PULSE1: mock_exporter},
         ):
-            service._run(
-                reconstruction,
-                ChannelName.PULSE1,
-                cast(Features, {}),
-                EVERY_STEM,
-                NO_RENDERS,
-            )
+            service._run(RebuildJob(reconstruction, ChannelName.PULSE1, cast(Features, {}), HEARD_WHOLE, NO_RENDERS))
 
         assert len(results) == 1
         result = results[0]
@@ -284,13 +262,7 @@ class TestRegenerationServiceRun:
             "sampletones_application.services.regeneration.service.CHANNEL_TO_EXPORTER_MAP",
             {ChannelName.PULSE1: mock_exporter},
         ):
-            service._run(
-                reconstruction,
-                ChannelName.PULSE1,
-                cast(Features, {}),
-                EVERY_STEM,
-                NO_RENDERS,
-            )
+            service._run(RebuildJob(reconstruction, ChannelName.PULSE1, cast(Features, {}), HEARD_WHOLE, NO_RENDERS))
 
         reconstruction.with_channel_data.assert_not_called()
 
@@ -312,13 +284,7 @@ class TestClearingEveryEnvelope:
         results: List[Any] = []
         service.subscribe(results.append)
 
-        service._run(
-            reconstruction,
-            ChannelName.PULSE1,
-            features,
-            EVERY_STEM,
-            NO_RENDERS,
-        )
+        service._run(RebuildJob(reconstruction, ChannelName.PULSE1, features, HEARD_WHOLE, NO_RENDERS))
 
         assert isinstance(results[0], ServiceSuccess)
         regenerated: Reconstruction = results[0].value.reconstruction
@@ -378,23 +344,40 @@ def _never_rendering(
     raise AssertionError(f"{channel_name} was rendered")
 
 
-def _rebuilt(reconstruction: Reconstruction, kept: Dict[ChannelName, np.ndarray]) -> RegeneratedInstrument:
-    """What the service reports once it rebuilds the shared channel of ``reconstruction`` from its own envelopes."""
-    service = RegenerationService()
+def _heard_whole(reconstruction: Reconstruction) -> Hearing:
+    """Every recording heard on every channel, and every channel kept on."""
+    return Hearing(selection=everything_heard(reconstruction), channels_on=EVERY_CHANNEL)
+
+
+def _reported(service: RegenerationService, job: Any) -> RenderedDocument:
     results: List[Any] = []
     service.subscribe(results.append)
-
-    service._run(
-        reconstruction,
-        SHARED_CHANNEL,
-        reconstruction.export()[SHARED_CHANNEL],
-        reconstruction.recorded_stem_ids,
-        kept,
-    )
+    service._run(job)
 
     assert isinstance(results[0], ServiceSuccess)
-    outcome: RegeneratedInstrument = results[0].value
+    outcome: RenderedDocument = results[0].value
     return outcome
+
+
+def _rebuilt(reconstruction: Reconstruction, kept: Dict[ChannelName, np.ndarray]) -> RenderedDocument:
+    """What the service reports once it rebuilds the shared channel of ``reconstruction`` from its own envelopes."""
+    return _reported(
+        RegenerationService(),
+        RebuildJob(
+            reconstruction,
+            SHARED_CHANNEL,
+            reconstruction.export()[SHARED_CHANNEL],
+            _heard_whole(reconstruction),
+            kept,
+        ),
+    )
+
+
+def _listened(
+    reconstruction: Reconstruction, hearing: Hearing, kept: Dict[ChannelName, np.ndarray]
+) -> RenderedDocument:
+    """What the service reports once it renders ``hearing`` of ``reconstruction`` as it stands."""
+    return _reported(RegenerationService(), ListeningJob(reconstruction, hearing, kept))
 
 
 class TestWhatTheRebuildSounds:
@@ -446,6 +429,50 @@ class TestWhatTheRebuildSounds:
 
         assert outcome.channels[SHARED_CHANNEL] is not stale
 
+    def test_the_result_sounds_the_hearing_it_was_asked_with(self, taking_turns: Reconstruction) -> None:
+        """The landing reads what the reader hears from the result, so the result carries that reading."""
+        outcome = _rebuilt(taking_turns, NO_RENDERS)
+
+        assert outcome.hearing == _heard_whole(taking_turns)
+        assert outcome.heard.mix is outcome.mix
+        assert outcome.heard.playing is outcome.mix
+
+
+class TestWhatAListeningSounds:
+    """A listening renders what the reader hears of the document as it stands: the document comes back as
+    it was, a handed render carries over, and the heard reading is the core's own.
+    """
+
+    def test_the_document_comes_back_as_it_was(self, taking_turns: Reconstruction) -> None:
+        outcome = _listened(taking_turns, _heard_whole(taking_turns), NO_RENDERS)
+
+        assert outcome.reconstruction is taking_turns
+        assert np.array_equal(outcome.mix, rendered_mix(taking_turns))
+
+    def test_every_render_handed_carries_over(
+        self, taking_turns: Reconstruction, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        handed = rendered_channels(taking_turns)
+        monkeypatch.setattr(service_module, "render_instructions", _never_rendering)
+
+        outcome = _listened(taking_turns, _heard_whole(taking_turns), handed)
+
+        assert all(outcome.channels[name] is handed[name] for name in handed)
+
+    def test_a_recording_left_out_is_heard_as_the_core_hears_it(self, taking_turns: Reconstruction) -> None:
+        hearing = Hearing(
+            selection=StemSelection.everywhere(frozenset({STEM_A_ID}), ChannelName.items()),
+            channels_on=frozenset({SHARED_CHANNEL}),
+        )
+
+        outcome = _listened(taking_turns, hearing, NO_RENDERS)
+
+        channels = rendered_channels(taking_turns)
+        expected = heard_renders(taking_turns, hearing, channels, rendered_mix(taking_turns))
+        assert outcome.hearing == hearing
+        np.testing.assert_array_equal(outcome.heard.mix, expected.mix)
+        np.testing.assert_array_equal(outcome.heard.playing, expected.playing)
+
 
 class TestAShutdownMidRebuild:
     """A shutdown asked for while a rebuild runs ends the job with no render and no report.
@@ -471,11 +498,13 @@ class TestAShutdownMidRebuild:
         SingleThreadExecutor.request_shutdown()
 
         service._run(
-            taking_turns,
-            SHARED_CHANNEL,
-            taking_turns.export()[SHARED_CHANNEL],
-            taking_turns.recorded_stem_ids,
-            NO_RENDERS,
+            RebuildJob(
+                taking_turns,
+                SHARED_CHANNEL,
+                taking_turns.export()[SHARED_CHANNEL],
+                _heard_whole(taking_turns),
+                NO_RENDERS,
+            )
         )
 
         assert results == []

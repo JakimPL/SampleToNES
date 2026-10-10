@@ -1,10 +1,11 @@
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Final, FrozenSet
 
 import numpy as np
 
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.shared.renders import RenderCache
+from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.audio import mix, write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, bending_channels
@@ -13,6 +14,7 @@ from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing
 from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
@@ -20,12 +22,28 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.entry import S
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
+EVERY_CHANNEL: Final[FrozenSet[ChannelName]] = frozenset(ChannelName.items())
+
 
 def _heard(*stem_ids: int) -> StemSelection:
     """The selection hearing every named stem on every channel."""
     return StemSelection.everywhere(frozenset(stem_ids), ChannelName.items())
 
 
+def _hearing(*stem_ids: int, channels_on: FrozenSet[ChannelName] = EVERY_CHANNEL) -> Hearing:
+    """Hearing every named stem on every channel, with ``channels_on`` kept on."""
+    return Hearing(selection=_heard(*stem_ids), channels_on=channels_on)
+
+
+def _kept(renders: RenderCache, data: ReconstructionData, hearing: Hearing) -> WaveformData:
+    """The waveform data read once the sound of ``hearing`` is kept, the way a landing keeps it."""
+    warmed(renders, data.reconstruction, hearing)
+    waveform_data = data.waveform_data(renders, hearing)
+    assert waveform_data is not None
+    return waveform_data
+
+
+from tests.suite.renders import warmed
 from tests.suite.stems import RECORDED_SCALE, recorded_from
 
 
@@ -345,11 +363,11 @@ class TestStemFilteredProjections:
         expected = rendered_mix(data.reconstruction).copy()
         expected[frame_length:] = 0
 
-        partials = data.partials_for(renders, [ChannelName.PULSE1], _heard(0))
+        partials = data.audio_for(renders, _hearing(0))
 
         np.testing.assert_allclose(partials, expected)
         np.testing.assert_allclose(
-            data.partials_for(renders, [ChannelName.PULSE1], _heard(0, 1)),
+            data.audio_for(renders, _hearing(0, 1)),
             rendered_mix(data.reconstruction),
         )
 
@@ -413,7 +431,7 @@ class TestStemFilteredProjections:
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
         np.testing.assert_array_equal(
-            data.partials_for(renders, [ChannelName.PULSE1], _heard()),
+            data.audio_for(renders, _hearing()),
             np.zeros_like(rendered_mix(data.reconstruction)),
         )
         assert data.original_audio is not None
@@ -452,7 +470,7 @@ class TestTheOriginalAMissingRecordingLeaves:
     ) -> None:
         data = self._missing_a_recording(reconstruction_factory, tmp_path)
 
-        assert data.waveform_data(renders, _heard(0, 1)).original_audio is None
+        assert _kept(renders, data, _hearing(0, 1)).original_audio is None
 
     def test_a_detached_document_mixes_into_no_original(
         self,
@@ -479,7 +497,7 @@ class TestTheOriginalAMissingRecordingLeaves:
             name="Sample",
         )
 
-        original = data.waveform_data(renders, _heard()).original_audio
+        original = _kept(renders, data, _hearing()).original_audio
 
         assert original is not None
         np.testing.assert_array_equal(original, np.zeros_like(rendered_mix(data.reconstruction)))
@@ -626,33 +644,25 @@ class TestWaveformData:
             name="Sample",
         )
 
-        waveform_data = data.waveform_data(renders, _heard(0))
+        waveform_data = _kept(renders, data, _hearing(0))
 
         assert waveform_data.original_audio is data.original_audio
         assert waveform_data.approximation is renders.mix(reconstruction)
-        assert waveform_data.approximations.keys() == renders.channels(reconstruction).keys()
-        assert all(
-            waveform_data.approximations[channel_name] is kept
-            for channel_name, kept in renders.channels(reconstruction).items()
-        )
+        assert waveform_data.playing is renders.mix(reconstruction)
         assert waveform_data.coefficient == reconstruction.coefficient
         assert waveform_data.frame_length == reconstruction.config.frame_length
 
-    def test_a_document_heard_whole_reads_what_is_kept(
+    def test_a_hearing_the_cache_keeps_no_sound_for_reads_nothing(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         renders: RenderCache,
     ) -> None:
-        """A reading that filters nothing reads the kept renders, which is what makes it cost nothing."""
-        reconstruction = reconstruction_factory()
-        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
-        kept_mix = renders.mix(reconstruction)
+        """The reading computes no sample, so one the cache cannot answer is left to the worker."""
+        data = ReconstructionData.from_reconstruction(reconstruction_factory(), name="Sample")
 
-        twice = [data.waveform_data(renders, _heard(0)) for _ in range(2)]
+        assert data.waveform_data(renders, _hearing(0)) is None
 
-        assert all(waveform_data.approximation is kept_mix for waveform_data in twice)
-
-    def test_a_recording_left_out_mixes_the_heard_frames_afresh(
+    def test_a_recording_left_out_reads_what_the_worker_kept(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         renders: RenderCache,
@@ -660,7 +670,35 @@ class TestWaveformData:
         reconstruction = reconstruction_factory()
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
-        waveform_data = data.waveform_data(renders, _heard())
+        waveform_data = _kept(renders, data, _hearing())
 
         assert waveform_data.approximation is not renders.mix(reconstruction)
         np.testing.assert_array_equal(waveform_data.approximation, np.zeros_like(renders.mix(reconstruction)))
+        np.testing.assert_array_equal(waveform_data.playing, waveform_data.approximation)
+
+
+class TestTheAudioAnExportWrites:
+    """An export writes what plays, read from what is kept and rendered on the spot where nothing is."""
+
+    def test_what_is_kept_is_handed_back(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        renders: RenderCache,
+    ) -> None:
+        data = ReconstructionData.from_reconstruction(reconstruction_factory(), name="Sample")
+        kept = _kept(renders, data, _hearing(0))
+
+        assert data.audio_for(renders, _hearing(0)) is kept.playing
+
+    def test_what_is_not_kept_is_rendered(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        renders: RenderCache,
+    ) -> None:
+        data = ReconstructionData.from_reconstruction(reconstruction_factory(), name="Sample")
+
+        np.testing.assert_array_equal(data.audio_for(renders, _hearing(0)), rendered_mix(data.reconstruction))
+        np.testing.assert_array_equal(
+            data.audio_for(renders, _hearing(0, channels_on=frozenset())),
+            np.zeros_like(rendered_mix(data.reconstruction)),
+        )

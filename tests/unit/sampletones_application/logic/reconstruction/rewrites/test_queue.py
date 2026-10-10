@@ -15,12 +15,15 @@ from sampletones_application.logic.reconstruction.rewrites.queue import Reconstr
 from sampletones_application.logic.reconstruction.rewrites.steps import (
     AfterEdits,
     ChannelChange,
+    ListeningChange,
     RateChange,
     StemRemovalRequest,
 )
+from sampletones_application.services.regeneration.jobs import ListeningJob, RebuildJob
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing
 from tests.conftest import ReconstructionFactory
 from tests.suite.regeneration import HeldRegeneration
 from tests.suite.stems import (
@@ -28,6 +31,7 @@ from tests.suite.stems import (
     SOLE_CHANNEL,
     STEM_A_ID,
     STEM_B_ID,
+    everything_heard,
     taking_turns,
 )
 
@@ -61,6 +65,7 @@ class Outcome:
     """Everything the rewrites reported, in the order they reported it."""
 
     edits: List[ReconstructionEdit] = field(default_factory=list)
+    heard: int = 0
     dropped: int = 0
     failures: List[Exception] = field(default_factory=list)
     busy: List[bool] = field(default_factory=list)
@@ -93,8 +98,12 @@ def rewrites(
     def drop() -> None:
         outcome.dropped += 1
 
+    def heard() -> None:
+        outcome.heard += 1
+
     rewrites = ReconstructionRewrites(reconstruction_manager, regeneration)
     rewrites.on_edit = adopt
+    rewrites.on_heard_rendered = heard
     rewrites.on_dropped = drop
     rewrites.on_failed = outcome.failures.append
     rewrites.on_busy_changed = outcome.busy.append
@@ -216,7 +225,7 @@ class TestEachStepReadsTheDocumentAtItsTurn:
         regeneration.finish()
 
         (shared,) = regeneration.held
-        assert shared.heard == frozenset({STEM_A_ID})
+        assert shared.hearing.selection.stems_for(SHARED_CHANNEL) == frozenset({STEM_A_ID})
 
 
 class TestAStepThatNoLongerApplies:
@@ -344,9 +353,15 @@ class TestAResultLandsOnItsOwnDocument:
     ) -> None:
         stray = HeldRegeneration()
         stray.subscribe(rewrites._on_result)
-        stray.start(taking_turns, SHARED_CHANNEL, taking_turns.export()[SHARED_CHANNEL], frozenset(), kept={})
+        stray.start(
+            taking_turns,
+            SHARED_CHANNEL,
+            taking_turns.export()[SHARED_CHANNEL],
+            hearing=Hearing(selection=everything_heard(taking_turns), channels_on=frozenset()),
+            kept={},
+        )
 
-        with pytest.raises(RuntimeError, match="no rebuild was running"):
+        with pytest.raises(RuntimeError, match="no job was running"):
             stray.finish()
 
 
@@ -585,3 +600,145 @@ class TestTheRendersALandingKeeps:
         regeneration.finish()
 
         assert reconstruction_manager.renders.held_bytes == 0
+
+
+class TestAListening:
+    """A change to what is heard is a step of the line: it reads the document at its turn, one waiting stands
+    for every one asked for after it, and its sound lands only on the document it was read from.
+    """
+
+    def test_the_sound_lands_and_is_reported(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+        outcome: Outcome,
+    ) -> None:
+        reconstruction_manager.listening.set_channels(STEM_A_ID, frozenset())
+        rewrites.request(ListeningChange())
+
+        regeneration.finish()
+
+        hearing = reconstruction_manager.listening.hearing
+        document = reconstruction_manager.reconstruction
+        assert document is not None
+        assert outcome.heard == 1
+        assert outcome.edits == []
+        assert reconstruction_manager.renders.reading(document, hearing) is not None
+
+    def test_the_hearing_is_read_at_the_steps_turn(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+    ) -> None:
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
+        rewrites.request(ListeningChange())
+        reconstruction_manager.listening.set_channels(STEM_A_ID, frozenset())
+
+        regeneration.finish()
+
+        job = regeneration.held[0]
+        assert isinstance(job, ListeningJob)
+        assert job.hearing == reconstruction_manager.listening.hearing
+        assert job.reconstruction is reconstruction_manager.reconstruction
+
+    def test_one_listening_waiting_stands_for_every_one_asked(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+    ) -> None:
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
+
+        rewrites.request(ListeningChange())
+        rewrites.request(ListeningChange())
+        regeneration.finish()
+
+        assert [type(job) for job in regeneration.held] == [ListeningJob]
+
+    def test_a_listening_asked_while_one_runs_waits_its_turn(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+    ) -> None:
+        rewrites.request(ListeningChange())
+
+        rewrites.request(ListeningChange())
+
+        assert [type(job) for job in regeneration.held] == [ListeningJob]
+        regeneration.finish()
+        assert [type(job) for job in regeneration.held] == [ListeningJob]
+
+    def test_a_rebuild_carries_the_hearing_it_was_started_with(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+    ) -> None:
+        reconstruction_manager.listening.set_channels(STEM_B_ID, frozenset())
+
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
+
+        job = regeneration.held[0]
+        assert isinstance(job, RebuildJob)
+        assert job.hearing == reconstruction_manager.listening.hearing
+
+    def test_a_landed_rebuild_leaves_its_hearing_kept(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+    ) -> None:
+        reconstruction_manager.listening.set_channels(STEM_B_ID, frozenset())
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
+
+        regeneration.finish()
+
+        landed = reconstruction_manager.reconstruction
+        assert landed is not None
+        assert reconstruction_manager.renders.reading(landed, reconstruction_manager.listening.hearing) is not None
+
+    def test_a_listening_for_a_document_put_away_lands_nowhere(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+        outcome: Outcome,
+    ) -> None:
+        rewrites.request(ListeningChange())
+        rewrites.drop()
+
+        regeneration.finish()
+
+        assert outcome.heard == 0
+        assert outcome.dropped == 0
+        assert reconstruction_manager.renders.held_bytes == 0
+
+    def test_a_failed_listening_is_reported_and_the_next_step_runs(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        outcome: Outcome,
+    ) -> None:
+        failure = RuntimeError("the worker fell over")
+        rewrites.request(ListeningChange())
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
+
+        regeneration.fail(failure)
+
+        assert outcome.failures == [failure]
+        assert outcome.dropped == 0
+        assert [type(job) for job in regeneration.held] == [RebuildJob]
+
+    def test_a_listening_fills_the_line(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        outcome: Outcome,
+    ) -> None:
+        rewrites.request(ListeningChange())
+        assert outcome.busy == [True]
+
+        regeneration.finish()
+
+        assert outcome.busy == [True, False]

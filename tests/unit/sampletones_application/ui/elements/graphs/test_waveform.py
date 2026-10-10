@@ -162,7 +162,7 @@ class TestWaveformDataUpdateRefit:
         return WaveformData(
             original_audio=None,
             approximation=approximation,
-            approximations={},
+            playing=approximation,
             coefficient=1.0,
             frame_length=1,
             sample_rate=44100,
@@ -359,7 +359,7 @@ class TestWaveformReconstructionDim:
         waveform_data = WaveformData(
             original_audio=None,
             approximation=np.zeros(4),
-            approximations={},
+            playing=np.zeros(4),
             coefficient=1.0,
             frame_length=1,
             sample_rate=4,

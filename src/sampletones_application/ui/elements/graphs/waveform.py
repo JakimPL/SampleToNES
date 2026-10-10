@@ -450,13 +450,9 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     def _extract_reconstruction_layer_data(
         self,
         waveform_data: WaveformData,
-        selected_channels: Optional[List[ChannelName]] = None,
     ) -> Tuple[Optional[np.ndarray], np.ndarray, float]:
-        if selected_channels is None:
-            selected_channels = list(waveform_data.approximations.keys())
-
         original_audio = waveform_data.original_audio
-        approximation = waveform_data.partials(selected_channels)
+        approximation = waveform_data.playing
         full_approximation = waveform_data.approximation
 
         if not self.reconstruction_autoscale or original_audio is None:
@@ -474,7 +470,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     def _display_layers(
         self,
         waveform_data: WaveformData,
-        selected_channels: Optional[List[ChannelName]] = None,
     ) -> List[Union[ArrayLayer, InstructionLayer]]:
         """Builds the ordered waveform layers for the current data.
 
@@ -482,10 +477,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         so a reconstruction whose recordings are missing or unreadable shows the approximation on
         its own.
         """
-        original_audio, approximation_data, _ = self._extract_reconstruction_layer_data(
-            waveform_data,
-            selected_channels,
-        )
+        original_audio, approximation_data, _ = self._extract_reconstruction_layer_data(waveform_data)
         reconstruction_layer = self.reconstruction_layer(approximation_data)
         if original_audio is None:
             return [reconstruction_layer]
@@ -496,7 +488,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     def update_waveform_data(
         self,
         waveform_data: WaveformData,
-        selected_channels: Optional[List[ChannelName]] = None,
         *,
         refit: bool = False,
     ) -> None:
@@ -510,7 +501,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             return
 
         self.current_data = waveform_data
-        displayed = self._display_layers(waveform_data, selected_channels)
+        displayed = self._display_layers(waveform_data)
         if any(layer.name not in self.layers for layer in displayed):
             self._delete_series()
 
@@ -521,16 +512,12 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
         self._update_display()
 
-    def load_waveform_data(
-        self,
-        waveform_data: WaveformData,
-        selected_channels: Optional[List[ChannelName]] = None,
-    ) -> None:
+    def load_waveform_data(self, waveform_data: WaveformData) -> None:
         self.clear_layers()
         self.current_data = waveform_data
         self._sample_rate = waveform_data.sample_rate
         self._plays_what_it_draws = True
-        for layer in self._display_layers(waveform_data, selected_channels):
+        for layer in self._display_layers(waveform_data):
             self.add_layer(layer)
 
         self._restate_clock_ticks(*self.x_range)

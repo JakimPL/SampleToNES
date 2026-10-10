@@ -1,23 +1,27 @@
 import gc
 from pathlib import Path
-from typing import Final, List, Tuple
+from typing import Final, FrozenSet, List, Tuple
 
 import numpy as np
 import pytest
 
 from sampletones_application.logic.shared import renders as renders_module
 from sampletones_application.logic.shared.renders import RenderCache
+from sampletones_core.audio.mixing import align
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import InstructionUnion, PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
+from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing, heard_renders
+from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from tests.conftest import RENDER_BUDGET
-from tests.suite.stems import SHARED_CHANNEL, SOLE_CHANNEL, taking_turns_reconstruction
+from tests.suite.stems import SHARED_CHANNEL, SOLE_CHANNEL, STEM_A_ID, STEM_B_ID, taking_turns_reconstruction
 
 SOURCES: Final[Tuple[Path, Path]] = (Path("a.wav"), Path("b.wav"))
 EDITED: Final[PulseInstruction] = PulseInstruction(on=True, pitch=67, volume=11, duty_cycle=1)
 EDITED_PITCH: Final[int] = 67
+EVERY_CHANNEL: Final[FrozenSet[ChannelName]] = frozenset(ChannelName.items())
 
 
 def _document() -> Reconstruction:
@@ -177,3 +181,92 @@ class TestAdoptingRendersMadeElsewhere:
 
         after = renders.channels(document)
         assert all(after[name] is first[name] for name in first)
+
+
+def _hearing(stem_ids: FrozenSet[int], channels_on: FrozenSet[ChannelName] = EVERY_CHANNEL) -> Hearing:
+    return Hearing(selection=StemSelection.everywhere(stem_ids, ChannelName.items()), channels_on=channels_on)
+
+
+def _heard(document: Reconstruction, hearing: Hearing):  # type: ignore[no-untyped-def]
+    return heard_renders(document, hearing, rendered_channels(document), rendered_mix(document))
+
+
+class TestReadingAHearing:
+    """A hearing's reading is a lookup alone: the heard mix and what plays, or nothing where either is missing.
+
+    A hearing leaving nothing out and keeping every channel on reads the document's own mix, so the
+    renders a landing adopts answer it. One leaving a recording out reads a mix keyed by the owners
+    heard on each channel, which the worker renders and the landing adopts under the same key.
+    """
+
+    def test_a_document_heard_whole_reads_its_own_mix(self, renders: RenderCache, document: Reconstruction) -> None:
+        renders.adopt(document, rendered_channels(document), rendered_mix(document))
+
+        reading = renders.reading(document, _hearing(document.recorded_stem_ids))
+
+        assert reading is not None
+        assert reading.mix is renders.mix(document)
+        assert reading.playing is renders.mix(document)
+
+    def test_a_recording_left_out_reads_nothing_until_its_sound_is_kept(
+        self,
+        renders: RenderCache,
+        document: Reconstruction,
+    ) -> None:
+        renders.adopt(document, rendered_channels(document), rendered_mix(document))
+        hearing = _hearing(frozenset({STEM_A_ID}))
+
+        assert renders.reading(document, hearing) is None
+
+        renders.adopt_heard(document, hearing, _heard(document, hearing))
+
+        reading = renders.reading(document, hearing)
+        assert reading is not None
+        np.testing.assert_array_equal(reading.mix, _heard(document, hearing).mix)
+
+    def test_a_narrower_channel_choice_reads_nothing_until_its_sound_is_kept(
+        self,
+        renders: RenderCache,
+        document: Reconstruction,
+    ) -> None:
+        renders.adopt(document, rendered_channels(document), rendered_mix(document))
+        hearing = _hearing(document.recorded_stem_ids, frozenset({SOLE_CHANNEL}))
+
+        assert renders.reading(document, hearing) is None
+
+        renders.adopt_heard(document, hearing, _heard(document, hearing))
+
+        reading = renders.reading(document, hearing)
+        assert reading is not None
+        assert reading.mix is renders.mix(document)
+        np.testing.assert_array_equal(
+            reading.playing,
+            align([rendered_channels(document)[SOLE_CHANNEL]], len(reading.mix))[0],
+        )
+
+    def test_recordings_heard_beyond_a_channel_read_as_the_channel_heard_whole(
+        self,
+        renders: RenderCache,
+        document: Reconstruction,
+    ) -> None:
+        """A heard set is keyed by the owners it reaches, so a stem absent from a channel changes its key nowhere."""
+        renders.adopt(document, rendered_channels(document), rendered_mix(document))
+        beyond = _hearing(document.recorded_stem_ids | frozenset({STEM_B_ID + 10}))
+
+        reading = renders.reading(document, beyond)
+
+        assert reading is not None
+        assert reading.mix is renders.mix(document)
+
+    def test_a_heard_mix_goes_with_the_record_it_was_keyed_by(self, renders: RenderCache) -> None:
+        document = _document()
+        hearing = _hearing(frozenset({STEM_A_ID}))
+        renders.adopt(document, rendered_channels(document), rendered_mix(document))
+        renders.adopt_heard(document, hearing, _heard(document, hearing))
+        before = renders.held_bytes
+
+        del document
+        gc.collect()
+
+        assert renders.held_bytes < before
+        assert renders.held_bytes == 0

@@ -20,9 +20,11 @@ continues. Every background result reaches UI state this way. Applying one to UI
 worker thread is forbidden.
 
 A result carries what the landing installs. The regeneration renders the edited channel's audio on its
-worker and hands it back inside its result; the landing keeps it in the render cache on the render thread.
-What a worker produces for the interface therefore reaches what the interface reads through the queue
-alone, and the render thread keeps drawing while the worker renders.
+worker, and the mix of what the reader hears, and hands them back inside its result; the landing keeps
+them in the render cache on the render thread. A reading the cache cannot answer, such as a recording
+left out for the first time or a freshly opened document, is asked of the same worker and lands the same
+way. What a worker produces for the interface therefore reaches what the interface reads through the
+queue alone, and the render thread computes no sample while the worker renders.
 
 A logic object hearing a worker's report, such as a library generation or the audio device's position,
 posts its own handler to the queue the same way. The logic layer reaches the queue, and `utils/gui`

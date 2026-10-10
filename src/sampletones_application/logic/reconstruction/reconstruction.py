@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import (
     Callable,
@@ -17,7 +18,7 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.sources import SourceKind
 from sampletones_application.logic.export.instrument.source import ExportableInstrument
 from sampletones_application.logic.reconstruction.data import ReconstructionData
-from sampletones_application.logic.reconstruction.listening import StemListening
+from sampletones_application.logic.reconstruction.listening import Listening
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.ownership import ownership_lanes
 from sampletones_application.view_model.reconstruction.envelopes import (
@@ -73,6 +74,21 @@ from sampletones_shared.utils.system.paths import (
 EMPTY_STEMS_LIST: Final[StemsListViewModel] = StemsListViewModel.empty()
 
 
+@dataclass(frozen=True)
+class OwedShowing:
+    """A showing of the waveform and the audio that waits for the worker to render what the reader hears.
+
+    Attributes:
+        load: Whether the waveform is loaded afresh, as after a listening change, or updated in place.
+        refit: Whether the waveform's view is re-fitted to the audio's length.
+        play: Whether the audio is handed to the player too.
+    """
+
+    load: bool
+    refit: bool
+    play: bool
+
+
 class ExportServiceProtocol(Protocol):
     """The slice of the export service the reconstruction panel logic drives.
 
@@ -116,13 +132,13 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._export_backends = export_backends
 
         self._current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
-        self._playing_channels: FrozenSet[ChannelName] = frozenset()
-        self._selected_channels: List[ChannelName] = []
+        self._owed: Optional[OwedShowing] = None
 
         self.on_view_changed: Optional[Callable[[ReconstructionViewModel], None]] = None
         self.on_audio_data_changed: Optional[Callable[[Optional[AudioData]], None]] = None
-        self.on_waveform_load_changed: Optional[Callable[[WaveformData, List[ChannelName]], None]] = None
-        self.on_waveform_update_changed: Optional[Callable[[WaveformData, List[ChannelName]], None]] = None
+        self.on_waveform_load_changed: Optional[Callable[[WaveformData], None]] = None
+        self.on_waveform_update_changed: Optional[Callable[..., None]] = None
+        self.on_renders_wanted: Optional[VoidCallback] = None
         self.on_waveform_cleared: Optional[VoidCallback] = None
         self.on_waveform_source_changed: Optional[Callable[[AudioSourceType], None]] = None
 
@@ -139,9 +155,6 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             return
 
-        self._playing_channels = frozenset(reconstruction_data.reconstruction.playing_channels)
-        self._selected_channels = self._in_channel_order(self._playing_channels)
-
         view_model = self._build_view_model(reconstruction_data)
         if not view_model.audio_source_enabled:
             self._current_audio_source = AudioSourceType.RECONSTRUCTION
@@ -152,10 +165,8 @@ class ReconstructionPanelLogic(CallbackMixin):
             self._build_stems_view_model(reconstruction_data),
         )
         self.call(self.on_waveform_source_changed, self._current_audio_source)
-        waveform = self._waveform(reconstruction_data)
-        self.call(self.on_waveform_load_changed, waveform, self._selected_channels)
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
-        self._emit_audio_data(reconstruction_data, waveform)
+        self._show(reconstruction_data, OwedShowing(load=True, refit=False, play=True))
 
     def update_reconstruction(self, *, refit_waveform: bool = False) -> None:
         """Re-answers every reading of the document after an edit.
@@ -168,32 +179,51 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             return
 
-        self._adopt_playing_channels(frozenset(reconstruction_data.reconstruction.playing_channels))
-
         self.call(self.on_view_changed, self._build_view_model(reconstruction_data))
         self.call(
             self.on_stems_view_changed,
             self._build_stems_view_model(reconstruction_data),
         )
-        waveform = self._waveform(reconstruction_data)
-        self.call(self.on_waveform_update_changed, waveform, self._selected_channels, refit=refit_waveform)
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
-        if self._current_audio_source != AudioSourceType.ORIGINAL:
-            self._emit_audio_data(reconstruction_data, waveform)
+        self._show(
+            reconstruction_data,
+            OwedShowing(
+                load=False,
+                refit=refit_waveform,
+                play=self._current_audio_source != AudioSourceType.ORIGINAL,
+            ),
+        )
 
-    def _adopt_playing_channels(
-        self,
-        playing_channels: FrozenSet[ChannelName],
-    ) -> None:
-        """Carries the reader's choice of channels across an edit.
+    def redraw_listening(self) -> None:
+        """Shows what the reader hears once its sound is kept, where a showing waited for it."""
+        owed = self._owed
+        reconstruction_data = self._reconstruction_data
+        if owed is None or not reconstruction_data:
+            return
 
-        An edit puts a channel in play or takes it out. A channel that keeps playing keeps
-        whatever the reader chose for it, and one gaining its first frame joins the waveform,
-        so the checkboxes report what plays while a deliberate choice survives.
+        self._show(reconstruction_data, owed)
+
+    def _show(self, reconstruction_data: ReconstructionData, showing: OwedShowing) -> None:
+        """Draws and plays what the reader hears, or asks for its sound where the screen holds none yet.
+
+        The audio is read from what is kept, so a showing computes no sample on the render thread.
+        One the cache cannot answer is owed: the worker is asked to render it, and the showing
+        happens once the sound lands.
         """
-        selected = (set(self._selected_channels) & playing_channels) | (playing_channels - self._playing_channels)
-        self._playing_channels = playing_channels
-        self._selected_channels = self._in_channel_order(frozenset(selected))
+        waveform = reconstruction_data.waveform_data(self._reconstruction_manager.renders, self._listening.hearing)
+        if waveform is None:
+            self._owed = showing
+            self.call(self.on_renders_wanted)
+            return
+
+        self._owed = None
+        if showing.load:
+            self.call(self.on_waveform_load_changed, waveform)
+        else:
+            self.call(self.on_waveform_update_changed, waveform, refit=showing.refit)
+
+        if showing.play:
+            self._emit_audio_data(reconstruction_data, waveform)
 
     @staticmethod
     def _in_channel_order(channels: FrozenSet[ChannelName]) -> List[ChannelName]:
@@ -206,8 +236,8 @@ class ReconstructionPanelLogic(CallbackMixin):
         reconstruction_file, original_audio = self._build_path_view_models(reconstruction_data)
         return ReconstructionViewModel(
             reconstruction_loaded=True,
-            playing_channels=self._playing_channels,
-            selected_channels=frozenset(self._selected_channels),
+            playing_channels=self._listening.playing,
+            selected_channels=self._listening.channels_on,
             reconstruction_file=reconstruction_file,
             original_audio=original_audio,
             nes_frequency=reconstruction_data.config.nes_frequency,
@@ -230,8 +260,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
     def close_reconstruction(self) -> None:
         self._current_audio_source = AudioSourceType.RECONSTRUCTION
-        self._playing_channels = frozenset()
-        self._selected_channels = []
+        self._owed = None
         self.call(self.on_audio_data_changed, None)
         self.call(self.on_waveform_cleared)
         self.call(
@@ -264,17 +293,23 @@ class ReconstructionPanelLogic(CallbackMixin):
         if reconstruction_data is None:
             self.call(self.on_audio_data_changed, None)
         else:
-            self._emit_audio_data(reconstruction_data, self._waveform(reconstruction_data))
+            self._play(reconstruction_data)
 
         self.call(self.on_waveform_source_changed, audio_source)
 
-    def _waveform(self, reconstruction_data: ReconstructionData) -> WaveformData:
-        """One reading of what the document plays for the reader's listening, which the waveform and the audio share."""
-        return reconstruction_data.waveform_data(self._reconstruction_manager.renders, self._stem_selection)
+    def _play(self, reconstruction_data: ReconstructionData) -> None:
+        """Hands the player what the source chosen plays, or asks for its sound where the screen holds none yet."""
+        waveform = reconstruction_data.waveform_data(self._reconstruction_manager.renders, self._listening.hearing)
+        if waveform is None:
+            self._owed = OwedShowing(load=False, refit=False, play=True)
+            self.call(self.on_renders_wanted)
+            return
+
+        self._emit_audio_data(reconstruction_data, waveform)
 
     def set_selected_channels(self, channels: List[ChannelName]) -> None:
         """Adopts the reader's channel choice, which the stems list reports as muted columns."""
-        self._selected_channels = channels
+        self._listening.set_channels_on(frozenset(channels))
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             return
@@ -283,10 +318,8 @@ class ReconstructionPanelLogic(CallbackMixin):
             self.on_stems_view_changed,
             self._build_stems_view_model(reconstruction_data),
         )
-        waveform = self._waveform(reconstruction_data)
-        self.call(self.on_waveform_load_changed, waveform, channels)
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
-        self._emit_audio_data(reconstruction_data, waveform)
+        self._show(reconstruction_data, OwedShowing(load=True, refit=False, play=True))
 
     def set_stem_channels(
         self,
@@ -321,15 +354,13 @@ class ReconstructionPanelLogic(CallbackMixin):
             self.on_stems_view_changed,
             self._build_stems_view_model(reconstruction_data),
         )
-        waveform = self._waveform(reconstruction_data)
-        self.call(self.on_waveform_load_changed, waveform, self._selected_channels)
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
-        self._emit_audio_data(reconstruction_data, waveform)
+        self._show(reconstruction_data, OwedShowing(load=True, refit=False, play=True))
         self.call(self.on_heard_changed)
 
     @property
-    def _listening(self) -> StemListening:
-        """Which recordings the reader is listening to, which the open document holds."""
+    def _listening(self) -> Listening:
+        """What the reader is listening to, which the open document holds."""
         return self._reconstruction_manager.listening
 
     @property
@@ -353,8 +384,8 @@ class ReconstructionPanelLogic(CallbackMixin):
         stems_data = reconstruction_data.reconstruction.stems_data
         owned = stems_data.assignments_by_channel
         assignments: Dict[ChannelName, Sequence[int]] = {
-            channel_name: owned[channel_name] if channel_name in self._selected_channels else ()
-            for channel_name in self._in_channel_order(self._playing_channels)
+            channel_name: owned[channel_name] if channel_name in self._listening.channels_on else ()
+            for channel_name in self._in_channel_order(self._listening.playing)
             if channel_name in owned
         }
         lanes = tuple(ownership_lanes(assignments, self.heard_on).values())
@@ -412,7 +443,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             stems=StemsListViewModel(
                 rows=rows,
                 channels_in_play=tuple(channels_in_play),
-                muted_channels=frozenset(channels_in_play) - frozenset(self._selected_channels),
+                muted_channels=frozenset(channels_in_play) - self._listening.channels_on,
                 picked_keys=frozenset(),
                 picking_room=None,
                 live=True,
@@ -665,10 +696,9 @@ class ReconstructionPanelLogic(CallbackMixin):
             logger.warning("No reconstruction data available for WAV export")
             return
 
-        audio_snapshot = reconstruction_data.partials_for(
+        audio_snapshot = reconstruction_data.audio_for(
             self._reconstruction_manager.renders,
-            self._selected_channels,
-            self._stem_selection,
+            self._listening.hearing,
         )
         sample_rate = reconstruction_data.reconstruction.config.sample_rate
         self._session_manager.set_audio_path(filepath)
@@ -724,7 +754,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
             return AudioData.from_array(waveform.original_audio, sample_rate)
 
-        return AudioData.from_array(waveform.partials(self._selected_channels), sample_rate)
+        return AudioData.from_array(waveform.playing, sample_rate)
 
     def _build_path_view_models(
         self,

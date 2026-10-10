@@ -1,4 +1,4 @@
-from typing import AbstractSet, Callable, Mapping, Protocol
+from typing import Callable, Mapping, Protocol
 
 import numpy as np
 
@@ -6,6 +6,7 @@ from sampletones_application.services.regeneration.result import RegenerationRes
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing
 
 
 class RegenerationServiceProtocol(Protocol):
@@ -22,7 +23,15 @@ class RegenerationServiceProtocol(Protocol):
         reconstruction: Reconstruction,
         channel_name: ChannelName,
         features: Features,
-        heard: AbstractSet[int],
         *,
+        hearing: Hearing,
+        kept: Mapping[ChannelName, np.ndarray],
+    ) -> None: ...
+
+    def start_listening(
+        self,
+        reconstruction: Reconstruction,
+        *,
+        hearing: Hearing,
         kept: Mapping[ChannelName, np.ndarray],
     ) -> None: ...

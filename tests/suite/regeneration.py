@@ -1,11 +1,11 @@
-from dataclasses import dataclass
-from typing import AbstractSet, Callable, List, Mapping, Tuple
+from typing import Callable, List, Mapping, Tuple
 
 import numpy as np
 
+from sampletones_application.services.regeneration.jobs import ListeningJob, RebuildJob, RenderJob
 from sampletones_application.services.regeneration.result import (
-    RegeneratedInstrument,
     RegenerationResult,
+    RenderedDocument,
 )
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import ServiceError, ServiceSuccess
@@ -13,30 +13,20 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
-
-
-@dataclass(frozen=True)
-class HeldRebuild:
-    """One rebuild the regeneration was asked for, as it was asked."""
-
-    reconstruction: Reconstruction
-    channel_name: ChannelName
-    features: Features
-    heard: AbstractSet[int]
-    kept: Mapping[ChannelName, np.ndarray]
+from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing, heard_renders
 
 
 class HeldRegeneration:
-    """The regeneration service holding each rebuild it is asked for until a case lets it finish.
+    """The regeneration service holding each job it is asked for until a case lets it finish.
 
-    A rebuild runs on a worker thread in the application, so its result arrives some time after it
+    A job runs on a worker thread in the application, so its result arrives some time after it
     was asked for. Holding it lets a case put gestures in between, and finishing it runs the real
-    rebuild.
+    job.
     """
 
     def __init__(self) -> None:
         self._service = RegenerationService()
-        self._held: List[HeldRebuild] = []
+        self._held: List[RenderJob] = []
 
     def subscribe(self, handler: Callable[[RegenerationResult], None]) -> None:
         self._service.subscribe(handler)
@@ -46,42 +36,50 @@ class HeldRegeneration:
         reconstruction: Reconstruction,
         channel_name: ChannelName,
         features: Features,
-        heard: AbstractSet[int],
         *,
+        hearing: Hearing,
         kept: Mapping[ChannelName, np.ndarray],
     ) -> None:
-        self._held.append(HeldRebuild(reconstruction, channel_name, features, heard, kept))
+        self._held.append(RebuildJob(reconstruction, channel_name, features, hearing, kept))
+
+    def start_listening(
+        self,
+        reconstruction: Reconstruction,
+        *,
+        hearing: Hearing,
+        kept: Mapping[ChannelName, np.ndarray],
+    ) -> None:
+        self._held.append(ListeningJob(reconstruction, hearing, kept))
 
     @property
-    def held(self) -> Tuple[HeldRebuild, ...]:
-        """The rebuilds asked for and not yet finished, the earliest first."""
+    def held(self) -> Tuple[RenderJob, ...]:
+        """The jobs asked for and not yet finished, the earliest first."""
         return tuple(self._held)
 
     def finish(self) -> None:
-        """Runs the earliest held rebuild and delivers what it produced."""
-        rebuild = self._held.pop(0)
-        self._service._run(
-            rebuild.reconstruction,
-            rebuild.channel_name,
-            rebuild.features,
-            rebuild.heard,
-            rebuild.kept,
-        )
+        """Runs the earliest held job and delivers what it produced."""
+        self._service._run(self._held.pop(0))
 
     def finish_with(self, reconstruction: Reconstruction) -> None:
-        """Delivers ``reconstruction``, rendered afresh, as what the earliest held rebuild produced."""
-        self._held.pop(0)
+        """Delivers ``reconstruction``, rendered afresh for the hearing the earliest held job was asked with, as
+        what that job produced.
+        """
+        job = self._held.pop(0)
+        channels = rendered_channels(reconstruction)
+        mixed = rendered_mix(reconstruction)
         self._service._emit(
             ServiceSuccess(
-                value=RegeneratedInstrument(
+                value=RenderedDocument(
                     reconstruction=reconstruction,
-                    channels=rendered_channels(reconstruction),
-                    mix=rendered_mix(reconstruction),
+                    channels=channels,
+                    mix=mixed,
+                    hearing=job.hearing,
+                    heard=heard_renders(reconstruction, job.hearing, channels, mixed),
                 )
             )
         )
 
     def fail(self, exception: Exception) -> None:
-        """Delivers ``exception`` as the earliest held rebuild's failure."""
+        """Delivers ``exception`` as the earliest held job's failure."""
         self._held.pop(0)
         self._service._emit(ServiceError(exception=exception))

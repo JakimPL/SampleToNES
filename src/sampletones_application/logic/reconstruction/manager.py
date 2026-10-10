@@ -6,7 +6,7 @@ from typing import Optional, Tuple
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
-from sampletones_application.logic.reconstruction.listening import StemListening
+from sampletones_application.logic.reconstruction.listening import Listening
 from sampletones_application.logic.reconstruction.session import ReconstructionSession
 from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.utils.callbacks.queue import CallbackQueue
@@ -45,7 +45,7 @@ class ReconstructionManager(CallbackMixin):
         self._current_reconstruction: Optional[ReconstructionData] = None
         self._current_features: Optional[ChannelEnvelopesViewModel] = None
         self._voice_id: Optional[str] = None
-        self._listening: StemListening = StemListening()
+        self._listening: Listening = Listening()
 
         self.on_reconstruction_loaded: Optional[VoidCallback] = None
         self.on_reconstruction_closed: Optional[VoidCallback] = None
@@ -56,8 +56,8 @@ class ReconstructionManager(CallbackMixin):
 
     @property
     def renders(self) -> RenderCache:
-        """Where the audio of the open document is kept for as long as the screen reads it, rendered on the
-        first read or handed back by a rebuild.
+        """Where the audio of the open document is kept for as long as the screen reads it, handed back by the
+        regeneration worker's jobs.
         """
         return self._renders
 
@@ -123,7 +123,8 @@ class ReconstructionManager(CallbackMixin):
         """
         self._current_reconstruction = reconstruction_data
         self._voice_id = voice_id
-        self._listening.adopt(reconstruction_data.reconstruction.stems_data)
+        reconstruction = reconstruction_data.reconstruction
+        self._listening.adopt(reconstruction.stems_data, frozenset(reconstruction.playing_channels))
         self._load_reconstruction_features()
 
     def _load_reconstruction_features(self) -> None:
@@ -272,8 +273,8 @@ class ReconstructionManager(CallbackMixin):
         return self._voice_id is not None
 
     @property
-    def listening(self) -> StemListening:
-        """Which recordings of the open document the reader is listening to."""
+    def listening(self) -> Listening:
+        """What the reader is listening to of the open document: its recordings per channel, and its channels."""
         return self._listening
 
     @property

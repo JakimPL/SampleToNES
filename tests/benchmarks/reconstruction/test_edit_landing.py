@@ -26,7 +26,7 @@ from sampletones_application.logic.reconstruction.reconstruction import (
 from sampletones_application.logic.reconstruction.rewrites.queue import (
     ReconstructionRewrites,
 )
-from sampletones_application.logic.reconstruction.rewrites.steps import ChannelChange
+from sampletones_application.logic.reconstruction.rewrites.steps import ChannelChange, ListeningChange
 from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.utils.callbacks.queue import CallbackQueue
@@ -110,6 +110,7 @@ class LandingMeter:
         self.panel.on_stems_view_changed = _discard
         self.panel.on_ownership_changed = _discard
         self.panel.on_heard_changed = _discard
+        self.panel.on_renders_wanted = lambda: self.rewrites.request(ListeningChange())
         self.coordinator = ReconstructionCoordinator(
             self.manager,
             MagicMock(),
@@ -127,16 +128,17 @@ class LandingMeter:
         self.controller.on_project_replaced = self.history.reset
         self.controller.new()
 
-    def open_as_sample(self, document: Reconstruction) -> float:
-        """Adds ``document`` to the project and opens it on the tab, which renders every channel cold.
+    def open_as_sample(self, document: Reconstruction) -> Landing:
+        """Adds ``document`` to the project and opens it on the tab, which renders every channel on the worker.
 
         Returns:
-            float: The seconds the opening took.
+            Landing: The worker's seconds rendering the document cold, and the render thread's seconds
+            opening it and landing its sound.
         """
         with self.history.transaction(HistoryAction.ADD_SAMPLE):
             sample = self.controller.add_sample(document, DOCUMENT_NAME)
 
-        return _timed(
+        return self._landed(
             lambda: self.manager.load_reconstruction_object(
                 sample.reconstruction,
                 name=DOCUMENT_NAME,
@@ -144,13 +146,15 @@ class LandingMeter:
             )
         )
 
-    def open_standalone(self, document: Reconstruction) -> float:
-        """Opens ``document`` on the tab as a file would be, its recordings read, which renders every channel cold.
+    def open_standalone(self, document: Reconstruction) -> Landing:
+        """Opens ``document`` on the tab as a file would be, its recordings read, which renders every channel on
+        the worker.
 
         Returns:
-            float: The seconds the opening took.
+            Landing: The worker's seconds rendering the document cold, and the render thread's seconds
+            opening it and landing its sound.
         """
-        return _timed(
+        return self._landed(
             lambda: self.manager.load_reconstruction_object(
                 document,
                 name=DOCUMENT_NAME,
@@ -158,9 +162,11 @@ class LandingMeter:
             )
         )
 
-    def mute(self, stem_id: int) -> None:
-        """Leaves one recording out of what the reader hears, the way a box on the stems card does."""
-        self.panel.set_stem_channels(stem_id, NO_CHANNELS)
+    def mute(self, stem_id: int) -> Landing:
+        """Leaves one recording out of what the reader hears, the way a box on the stems card does, and lands
+        the sound of what is heard.
+        """
+        return self._landed(lambda: self.panel.set_stem_channels(stem_id, NO_CHANNELS))
 
     def edit(self, step: int) -> Landing:
         """Moves the edited channel's volume by ``step`` and lands the rebuild, reading what each side cost."""
@@ -176,13 +182,19 @@ class LandingMeter:
             envelopes={FeatureKey.VOLUME: moved},
             initial_pitch=None,
         )
+        return self._landed(lambda: self.rewrites.request(change))
+
+    def _landed(self, gesture: Callable[[], None]) -> Landing:
+        """Makes ``gesture``, waits for the worker it started, and drains what it reported, reading what each side
+        cost: the render thread's seconds cover the gesture and the landing.
+        """
         queue = HeldQueue()
         with patch.object(CallbackQueue, "add", queue.add):
-            self.rewrites.request(change)
+            gesture_seconds = _timed(gesture)
             worker_seconds = _timed(SingleThreadExecutor.join_all)
             landing_seconds = _timed(queue.drain)
 
-        return Landing(worker_seconds=worker_seconds, landing_seconds=landing_seconds)
+        return Landing(worker_seconds=worker_seconds, landing_seconds=gesture_seconds + landing_seconds)
 
     def _tab(self) -> MagicMock:
         tab = MagicMock(spec=ReconstructionTabCoordinator)
@@ -202,7 +214,7 @@ class LandingMeter:
 
 def _report(
     label: str,
-    opening: float,
+    opening: Landing,
     landings: List[Landing],
     cache_bytes: int,
 ) -> None:
@@ -210,7 +222,8 @@ def _report(
     landed = [landing.landing_seconds for landing in landings]
     print(
         f"\n{label}\n"
-        f"  opening, every channel rendered cold: {opening:.3f} s\n"
+        f"  opening, every channel rendered cold: worker {opening.worker_seconds:.3f} s, "
+        f"render thread {opening.landing_seconds:.3f} s\n"
         f"  per edit, median of {len(landings)} (least): worker {median(workers):.3f} s ({min(workers):.3f} s), "
         f"landing on the render thread {median(landed):.3f} s ({min(landed):.3f} s)\n"
         f"  renders kept: {cache_bytes / BYTES_PER_MEGABYTE:.0f} MB"

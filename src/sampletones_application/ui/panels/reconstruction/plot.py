@@ -141,22 +141,17 @@ class GUIReconstructionPlotPanel(GUIPanel):
         dpg_configure_item(self.autoscale_tag, show=shown)
         dpg_configure_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_CHANNELS, show=shown)
 
-    def load_waveform_data(
-        self,
-        waveform_data: WaveformData,
-        generators: List[ChannelName],
-    ) -> None:
+    def load_waveform_data(self, waveform_data: WaveformData) -> None:
         self._frame_length = waveform_data.frame_length
-        self.waveform_display.load_waveform_data(waveform_data, generators)
+        self.waveform_display.load_waveform_data(waveform_data)
 
     def update_waveform_data(
         self,
         waveform_data: WaveformData,
-        generators: List[ChannelName],
         *,
         refit: bool = False,
     ) -> None:
-        self.waveform_display.update_waveform_data(waveform_data, generators, refit=refit)
+        self.waveform_display.update_waveform_data(waveform_data, refit=refit)
 
     def clear_waveform(self) -> None:
         self._frame_length = None

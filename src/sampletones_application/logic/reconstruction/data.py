@@ -1,7 +1,7 @@
 from dataclasses import dataclass, replace
 from functools import cached_property
 from pathlib import Path
-from typing import Dict, List, Optional, Self, Tuple
+from typing import Dict, Optional, Self, Tuple
 
 import numpy as np
 
@@ -9,12 +9,13 @@ from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.audio import mix
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.recordings import load_recordings
 from sampletones_core.reconstructions.reconstruction.renders import rendered_length
-from sampletones_core.reconstructions.reconstruction.stems.filter import (
-    filter_approximations,
+from sampletones_core.reconstructions.reconstruction.stems.hearing import (
+    HeardRenders,
+    Hearing,
+    heard_renders,
 )
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_shared.logger import logger
@@ -221,49 +222,51 @@ class ReconstructionData:
     def waveform_data(
         self,
         renders: RenderCache,
-        selection: StemSelection,
-    ) -> WaveformData:
+        hearing: Hearing,
+    ) -> Optional[WaveformData]:
         """Projects the slice of this data the waveform display renders, the audio read from ``renders``.
 
-        The projection carries the frames each channel's heard stems own and the mix of the
-        recordings heard anywhere, so the waveform answers exactly what plays. A channel heard
-        whole carries the render the cache keeps, and a document heard whole carries the kept
-        mix, so a reading that filters nothing reads what is kept and computes nothing.
+        The projection carries what ``hearing`` sounds of the document and the mix of the
+        recordings heard anywhere, so the waveform answers exactly what plays. The audio is read
+        from what the cache keeps, so the reading computes no sample.
+
+        Returns:
+            Optional[WaveformData]: The projection, or ``None`` where the cache keeps no audio for
+            ``hearing`` yet, which is what a worker is then asked to render.
         """
+        heard = renders.reading(self.reconstruction, hearing)
+        if heard is None:
+            return None
+
+        return self._waveform_data(self.original_mix_for(hearing.selection), heard)
+
+    def audio_for(
+        self,
+        renders: RenderCache,
+        hearing: Hearing,
+    ) -> np.ndarray:
+        """What ``hearing`` plays of the document, rendered here where the cache keeps none of it.
+
+        An export writes what plays and runs where the reader waits for it, so it reads what is
+        kept and renders the rest on the spot.
+        """
+        heard = renders.reading(self.reconstruction, hearing)
+        if heard is not None:
+            return heard.playing
+
         channels = renders.channels(self.reconstruction)
-        approximations = filter_approximations(
-            self.reconstruction.stems_data,
-            channels,
-            selection,
-            self.reconstruction.config.frame_length,
-        )
-        heard_whole = all(filtered is channels[channel_name] for channel_name, filtered in approximations.items())
-        return self._waveform_data(
-            self.original_mix_for(selection),
-            approximations,
-            renders.mix(self.reconstruction) if heard_whole else mix(list(approximations.values())),
-        )
+        return heard_renders(self.reconstruction, hearing, channels, renders.mix(self.reconstruction)).playing
 
     def _waveform_data(
         self,
         original_audio: Optional[np.ndarray],
-        approximations: Dict[ChannelName, np.ndarray],
-        approximation: np.ndarray,
+        heard: HeardRenders,
     ) -> WaveformData:
         return WaveformData(
             original_audio=original_audio,
-            approximation=approximation,
-            approximations=approximations,
+            approximation=heard.mix,
+            playing=heard.playing,
             coefficient=self.reconstruction.coefficient,
             frame_length=self.reconstruction.config.frame_length,
             sample_rate=self.reconstruction.config.sample_rate,
         )
-
-    def partials_for(
-        self,
-        renders: RenderCache,
-        channel_names: List[ChannelName],
-        selection: StemSelection,
-    ) -> np.ndarray:
-        """Sums the selected channels with the unselected stems' frames silenced."""
-        return self.waveform_data(renders, selection).partials(channel_names)

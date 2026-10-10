@@ -91,6 +91,11 @@ class StemsData(DataModel):
         return {item.channel_name: item.stem_ids for item in self.assignments}
 
     @cached_property
+    def assignment_records(self) -> Dict[ChannelName, ChannelAssignment]:
+        """The record naming the owner of each frame, keyed by channel."""
+        return {item.channel_name: item for item in self.assignments}
+
+    @cached_property
     def owners_by_channel(self) -> Dict[ChannelName, FrozenSet[int]]:
         """Who holds a frame on each channel: the recordings and the reader's own row, keyed by channel.
 

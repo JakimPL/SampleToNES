@@ -99,6 +99,7 @@ class ReconstructionCoordinator:
 
         self._reconstruction_manager.session.on_state_changed = self._on_state_changed
         self._rewrites.on_edit = self.apply_edit
+        self._rewrites.on_heard_rendered = self._show_listening
         self._rewrites.on_dropped = self._redraw_open_document
         self._rewrites.on_failed = self._report_rebuild_failure
         self._rewrites.on_busy_changed = self._set_reconstruction_dimmed
@@ -559,6 +560,10 @@ class ReconstructionCoordinator:
         """Draws the open document as it stands, where the panel drew a change that will never land."""
         if self.is_loaded():
             self._tab.redraw_reconstruction(refit_waveform=False)
+
+    def _show_listening(self) -> None:
+        """Shows what the reader hears once the worker has rendered it for the open document."""
+        self._tab.redraw_listening()
 
     def _report_rebuild_failure(self, exception: Exception) -> None:
         logger.error_with_traceback(exception, "Regeneration failed")

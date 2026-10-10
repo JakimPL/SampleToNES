@@ -11,8 +11,8 @@ from sampletones_application.services.export.result import ExportResult
 from sampletones_application.services.export.service import ExportService
 from sampletones_application.services.export.success import ExportSuccess
 from sampletones_application.services.regeneration.result import (
-    RegeneratedInstrument,
     RegenerationResult,
+    RenderedDocument,
 )
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.render import (
@@ -41,7 +41,7 @@ __all__ = [
     "ExportService",
     "ExportSuccess",
     "ReconstructionStep",
-    "RegeneratedInstrument",
+    "RenderedDocument",
     "RegenerationResult",
     "RegenerationService",
     "RenderResult",

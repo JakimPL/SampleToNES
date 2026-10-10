@@ -1,12 +1,13 @@
 from functools import partial
-from typing import AbstractSet, Dict, List, Mapping, cast
+from typing import Dict, List, Mapping, Optional, cast
 
 import numpy as np
 
 from sampletones_application.services.base import ServiceBase
+from sampletones_application.services.regeneration.jobs import ListeningJob, RebuildJob, RenderJob
 from sampletones_application.services.regeneration.result import (
-    RegeneratedInstrument,
     RegenerationResult,
+    RenderedDocument,
 )
 from sampletones_application.services.result import ServiceError, ServiceSuccess
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
@@ -17,20 +18,23 @@ from sampletones_core.generators.render import render_instructions
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.renders import sounding_streams
+from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing, heard_renders
 
 
 class RegenerationService(ServiceBase[RegenerationResult]):
-    """Recomputes one generator's instructions for a reconstruction and renders what the document then sounds.
+    """Recomputes one generator's instructions for a reconstruction and renders what the reader hears of it.
 
-    An edit reaches the frames the reader hears on the channel, so ``heard`` travels with it:
+    An edit reaches the frames the reader hears on the channel, so the hearing travels with it:
     a frame of a recording the reader left out stands as it is, which is what lets one
     recording's part be shaped while the recordings beside it carry on.
 
-    The result is a fresh reconstruction carrying the updated generator data, with the audio of
-    every sounding channel and their mix; the source reconstruction is left intact. Producing a
-    new object lets callers swap the edited reconstruction in while any history snapshot that
-    shares the prior object stays valid. Carrying the audio lets the landing install it where the
-    screen reads it, so the render thread keeps drawing while the worker renders.
+    A rebuild's result is a fresh reconstruction carrying the updated generator data, with the
+    audio of every sounding channel, their mix, and what the hearing sounds of it; the source
+    reconstruction is left intact. Producing a new object lets callers swap the edited
+    reconstruction in while any history snapshot that shares the prior object stays valid. A
+    listening renders the same reading of the document as it stands, for a hearing the screen
+    holds no audio for yet. Carrying the audio lets the landing install it where the screen reads
+    it, so the render thread keeps drawing while the worker renders.
 
     One job runs at a time on a single worker thread. Its caller starts the next job once the
     previous result has arrived, so each rebuild starts from the document the one before it left.
@@ -45,8 +49,8 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         reconstruction: Reconstruction,
         channel_name: ChannelName,
         features: Features,
-        heard: AbstractSet[int],
         *,
+        hearing: Hearing,
         kept: Mapping[ChannelName, np.ndarray],
     ) -> None:
         """Rebuilds ``channel_name`` of ``reconstruction`` from ``features`` on the worker thread.
@@ -55,56 +59,58 @@ class RegenerationService(ServiceBase[RegenerationResult]):
             reconstruction: The document the rebuild starts from, which stays as it is.
             channel_name: The channel rebuilt.
             features: The envelopes the channel is rebuilt from.
-            heard: The recordings whose frames the rebuild writes.
+            hearing: What the reader hears, which names the recordings the rebuild writes on the
+                channel and the reading the result sounds.
             kept: The renders the caller holds for ``reconstruction``'s channels, by channel. Every
                 channel but ``channel_name`` keeps its stream through the rebuild, so a render
                 handed for it carries over into the result, and the worker renders the rest. A
                 render handed for ``channel_name`` is passed over, since the edit rebuilds it.
         """
-        self._executor.execute(
-            partial(
-                self._run,
-                reconstruction,
-                channel_name,
-                features,
-                heard,
-                kept,
-            ),
-            wait=True,
-        )
+        self._execute(RebuildJob(reconstruction, channel_name, features, hearing, kept))
 
-    def _run(
+    def start_listening(
         self,
         reconstruction: Reconstruction,
-        channel_name: ChannelName,
-        features: Features,
-        heard: AbstractSet[int],
+        *,
+        hearing: Hearing,
         kept: Mapping[ChannelName, np.ndarray],
     ) -> None:
-        try:
-            exporter_class = CHANNEL_TO_EXPORTER_MAP[channel_name]
-            instructions = cast(
-                List[InstructionUnion],
-                exporter_class.from_features(features),
-            )
+        """Renders what ``hearing`` sounds of ``reconstruction`` as it stands, on the worker thread.
 
-            updated = reconstruction.with_channel_data(
-                channel_name,
-                instructions,
-                features.initial_pitch,
-                features.held_features,
-                heard=heard,
-            )
+        Args:
+            reconstruction: The document read.
+            hearing: What the reader hears of it.
+            kept: The renders the caller holds for ``reconstruction``'s channels, by channel, each of
+                which carries over; the worker renders the rest.
+        """
+        self._execute(ListeningJob(reconstruction, hearing, kept))
+
+    def _execute(self, job: RenderJob) -> None:
+        self._executor.execute(partial(self._run, job), wait=True)
+
+    def _run(self, job: RenderJob) -> None:
+        try:
+            match job:
+                case RebuildJob():
+                    document = self._rebuilt(job)
+                    edited: Optional[ChannelName] = job.channel_name
+                case ListeningJob():
+                    document = job.reconstruction
+                    edited = None
+
             if SingleThreadExecutor.is_shutting_down():
                 return
 
-            channels = self._rendered(updated, channel_name, kept)
+            channels = self._rendered(document, edited, job.kept)
+            mixed = mix(list(channels.values()))
             self._emit(
                 ServiceSuccess(
-                    value=RegeneratedInstrument(
-                        reconstruction=updated,
+                    value=RenderedDocument(
+                        reconstruction=document,
                         channels=channels,
-                        mix=mix(list(channels.values())),
+                        mix=mixed,
+                        hearing=job.hearing,
+                        heard=heard_renders(document, job.hearing, channels, mixed),
                     )
                 )
             )
@@ -112,16 +118,32 @@ class RegenerationService(ServiceBase[RegenerationResult]):
             self._emit(ServiceError(exception=exception))
 
     @staticmethod
+    def _rebuilt(job: RebuildJob) -> Reconstruction:
+        """The document with the job's channel rebuilt from its envelopes, on the recordings the reader hears."""
+        exporter_class = CHANNEL_TO_EXPORTER_MAP[job.channel_name]
+        instructions = cast(
+            List[InstructionUnion],
+            exporter_class.from_features(job.features),
+        )
+        return job.reconstruction.with_channel_data(
+            job.channel_name,
+            instructions,
+            job.features.initial_pitch,
+            job.features.held_features,
+            heard=job.hearing.selection.stems_for(job.channel_name),
+        )
+
+    @staticmethod
     def _rendered(
-        updated: Reconstruction,
-        edited: ChannelName,
+        document: Reconstruction,
+        edited: Optional[ChannelName],
         kept: Mapping[ChannelName, np.ndarray],
     ) -> Dict[ChannelName, np.ndarray]:
-        """The audio each sounding channel of ``updated`` renders to, a handed render carried over where the
-        edit left the channel alone.
+        """The audio each sounding channel of ``document`` renders to, a handed render carried over where the
+        job left the channel alone.
         """
         rendered: Dict[ChannelName, np.ndarray] = {}
-        for stream in sounding_streams(updated):
+        for stream in sounding_streams(document):
             handed = kept.get(stream.channel_name)
             if handed is not None and stream.channel_name != edited:
                 rendered[stream.channel_name] = handed
@@ -130,7 +152,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
             rendered[stream.channel_name] = render_instructions(
                 [data.instruction for data in stream.instructions],
                 stream.channel_name,
-                updated.config,
+                document.config,
             )
 
         return rendered

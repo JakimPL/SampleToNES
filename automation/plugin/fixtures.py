@@ -155,6 +155,7 @@ def screen_fixture(
         window_manager=window_manager,
         language=screen_application.language,
         shortcuts=screen_application.shortcuts,
+        sound_settled=screen_application.sound_settled,
         dialogs=screen_boundaries.dialogs,
         errors=screen_boundaries.errors,
         file_manager=screen_boundaries.file_manager,

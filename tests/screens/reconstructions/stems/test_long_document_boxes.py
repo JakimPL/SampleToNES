@@ -1,12 +1,12 @@
 import time
-from typing import Dict, Final, List
+from typing import Dict, Final, List, Optional
 
 import pytest
 
 from automation.application.startup import Startup
 from automation.screen import Screen
 from automation.steps.exports import leaving_asks_nothing
-from automation.steps.reconstructions import expect_open
+from automation.steps.reconstructions import expect_open, reconstruction_shade, wait_for_the_fade_to_end
 from automation.worlds.home import World
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.screens.readings import frame_readings, keep_readings, longest_gap_after_each
@@ -36,10 +36,11 @@ class TestTheBoxesOnALongDocument:
     stems card are ticked off and on again on a two-minute document.
 
     A box changes what is heard, so the waveform, the audio and the figures are read again from the
-    document. The scenario records the clock after every frame through the ticks and keeps the
-    longest gap after each tick beside the readings the drag scenarios keep, holding the application
-    to nothing: the readings are what a change to the listening path is judged by, taken before and
-    after the change.
+    document, and a sound the screen holds none of yet is rendered on the worker while the frames
+    keep coming. The scenario records the clock after every frame through the ticks, each followed
+    by the fade's end, and keeps the longest gap after each tick beside the readings the drag
+    scenarios keep, holding the application to nothing: the readings are what a change to the
+    listening path is judged by, taken before and after the change.
     """
 
     def test_the_frames_through_the_ticks(self, screen: Screen) -> None:
@@ -47,20 +48,24 @@ class TestTheBoxesOnALongDocument:
         reconstructions = screen.reconstructions
         stamps: List[float] = []
         ticks: List[float] = []
+        unfaded: List[Optional[str]] = []
 
         def open_it(screen: Screen) -> None:
             expect_open(screen, LONG_RECONSTRUCTION)
+            unfaded.append(reconstruction_shade(screen))
 
         def tick_the_boxes(screen: Screen) -> None:
             with screen.record(time.monotonic) as recording:
                 for _ in range(TICKS_PER_BOX):
                     ticks.append(time.monotonic())
                     reconstructions.tick_channel(TOGGLED_CHANNEL)
+                    wait_for_the_fade_to_end(screen, unfaded[0])
                     screen.frames(FRAMES_AFTER_A_TICK)
 
                 for _ in range(TICKS_PER_BOX):
                     ticks.append(time.monotonic())
                     reconstructions.stems.tick(RECORDING_KEY)
+                    wait_for_the_fade_to_end(screen, unfaded[0])
                     screen.frames(FRAMES_AFTER_A_TICK)
 
             stamps.extend(recording.values())

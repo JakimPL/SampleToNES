@@ -719,10 +719,15 @@ class TestAGestureOnTheWholeDocumentWaitsForTheEdits:
     def edit_on_its_way(
         self,
         app: Application,
-        embedded_sample: Sample,
         held_queue: HeldQueue,
+        embedded_sample: Sample,
     ) -> Sample:
-        """The open sample with a volume edit rebuilt and its result held until the case drains the queue."""
+        """The open sample with a volume edit rebuilt and its result held until the case drains the queue.
+
+        The opening's own sound is rendered on a worker and reported through the held queue, so the
+        worker is joined and its report drained first, which leaves the line empty for the edit.
+        """
+        SingleThreadExecutor.join_all()
         held_queue.drain()
         with patch.object(
             app.regeneration_service._executor,

@@ -1,8 +1,8 @@
-from typing import Final, List
+from typing import Final, FrozenSet, List
 
 import pytest
 
-from sampletones_application.logic.reconstruction.listening import StemListening, offered_channels
+from sampletones_application.logic.reconstruction.listening import Listening, offered_channels
 from sampletones_core.constants.algorithm import AUTHORED_STEM_ID, RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, bending_channels
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
@@ -16,6 +16,8 @@ from tests.suite.stems import RECORDED_SCALE
 STEM_A: Final[int] = 0
 STEM_B: Final[int] = 1
 STEM_CHANNELS: Final[List[ChannelName]] = [ChannelName.PULSE1, ChannelName.TRIANGLE]
+EVERY_CHANNEL: Final[FrozenSet[ChannelName]] = frozenset(ChannelName.items())
+PULSES: Final[FrozenSet[ChannelName]] = frozenset({ChannelName.PULSE1, ChannelName.PULSE2})
 
 
 def _stems_data(*assignments: ChannelAssignment) -> StemsData:
@@ -37,8 +39,8 @@ def _stems_data(*assignments: ChannelAssignment) -> StemsData:
 
 
 @pytest.fixture
-def listening() -> StemListening:
-    return StemListening()
+def listening() -> Listening:
+    return Listening()
 
 
 class TestWhatARecordingOffers:
@@ -67,23 +69,23 @@ class TestWhatARecordingOffers:
 
 
 class TestWhatAFreshDocumentIsHeardAs:
-    def test_every_recording_is_heard_everywhere_it_holds_frames(self, listening: StemListening) -> None:
+    def test_every_recording_is_heard_everywhere_it_holds_frames(self, listening: Listening) -> None:
         stems_data = _stems_data(
             ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A, STEM_B]),
             ChannelAssignment(channel_name=ChannelName.TRIANGLE, stem_ids=[STEM_A, RESTING_STEM_ID]),
         )
 
-        listening.adopt(stems_data)
+        listening.adopt(stems_data, EVERY_CHANNEL)
 
         assert listening.heard == listening.offered
 
-    def test_the_selection_answers_each_channel_with_the_recordings_on_it(self, listening: StemListening) -> None:
+    def test_the_selection_answers_each_channel_with_the_recordings_on_it(self, listening: Listening) -> None:
         stems_data = _stems_data(
             ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A, STEM_B]),
             ChannelAssignment(channel_name=ChannelName.TRIANGLE, stem_ids=[STEM_A, RESTING_STEM_ID]),
         )
 
-        listening.adopt(stems_data)
+        listening.adopt(stems_data, EVERY_CHANNEL)
 
         assert listening.heard_on(ChannelName.PULSE1) == frozenset({STEM_A, STEM_B})
         assert listening.heard_on(ChannelName.TRIANGLE) == frozenset({STEM_A})
@@ -99,50 +101,51 @@ class TestWhatTheChoiceCarriesAcrossAnEdit:
             *(ChannelAssignment(channel_name=channel_name, stem_ids=[STEM_A, STEM_B]) for channel_name in channels)
         )
 
-    def test_a_channel_a_recording_keeps_holding_keeps_the_readers_choice(self, listening: StemListening) -> None:
-        listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE))
+    def test_a_channel_a_recording_keeps_holding_keeps_the_readers_choice(self, listening: Listening) -> None:
+        listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE), EVERY_CHANNEL)
         listening.set_channels(STEM_A, frozenset({ChannelName.PULSE1}))
 
-        listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE))
+        listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE), EVERY_CHANNEL)
 
         assert listening.heard[STEM_A] == frozenset({ChannelName.PULSE1})
 
-    def test_a_channel_a_recording_newly_reaches_joins_what_is_heard(self, listening: StemListening) -> None:
-        listening.adopt(self._held_on(ChannelName.PULSE1))
+    def test_a_channel_a_recording_newly_reaches_joins_what_is_heard(self, listening: Listening) -> None:
+        listening.adopt(self._held_on(ChannelName.PULSE1), EVERY_CHANNEL)
         listening.set_channels(STEM_A, frozenset({ChannelName.PULSE1}))
 
-        listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE))
+        listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE), EVERY_CHANNEL)
 
         assert listening.heard[STEM_A] == frozenset({ChannelName.PULSE1, ChannelName.TRIANGLE})
 
-    def test_a_channel_a_recording_stops_holding_leaves_what_is_heard(self, listening: StemListening) -> None:
-        listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE))
+    def test_a_channel_a_recording_stops_holding_leaves_what_is_heard(self, listening: Listening) -> None:
+        listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE), EVERY_CHANNEL)
 
-        listening.adopt(self._held_on(ChannelName.PULSE1))
+        listening.adopt(self._held_on(ChannelName.PULSE1), EVERY_CHANNEL)
 
         assert listening.heard[STEM_A] == frozenset({ChannelName.PULSE1})
 
-    def test_a_recording_leaving_the_record_leaves_the_choice(self, listening: StemListening) -> None:
+    def test_a_recording_leaving_the_record_leaves_the_choice(self, listening: Listening) -> None:
         """An edit letting a recording go takes its row away, and the rest keep what the reader chose."""
-        listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE))
+        listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE), EVERY_CHANNEL)
         listening.set_channels(STEM_A, frozenset({ChannelName.PULSE1}))
 
         listening.adopt(
             _stems_data(ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A, STEM_A])).without_entries(
                 frozenset({STEM_B})
-            )
+            ),
+            EVERY_CHANNEL,
         )
 
         assert listening.offered == {STEM_A: frozenset({ChannelName.PULSE1})}
         assert listening.heard == {STEM_A: frozenset({ChannelName.PULSE1})}
         assert STEM_B not in listening.selection.stems_for(ChannelName.PULSE1)
 
-    def test_a_released_choice_hears_the_next_document_whole(self, listening: StemListening) -> None:
-        listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE))
+    def test_a_released_choice_hears_the_next_document_whole(self, listening: Listening) -> None:
+        listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE), EVERY_CHANNEL)
         listening.set_channels(STEM_A, frozenset())
 
         listening.release()
-        listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE))
+        listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE), EVERY_CHANNEL)
 
         assert listening.heard == listening.offered
 
@@ -159,9 +162,9 @@ class TestSoloingARecording:
 
     def test_the_recording_is_heard_on_every_channel_it_offers_and_no_other_is_heard(
         self,
-        listening: StemListening,
+        listening: Listening,
     ) -> None:
-        listening.adopt(self._held())
+        listening.adopt(self._held(), EVERY_CHANNEL)
         listening.set_channels(STEM_A, frozenset({ChannelName.PULSE1}))
 
         listening.solo(STEM_A)
@@ -169,8 +172,8 @@ class TestSoloingARecording:
         assert listening.heard[STEM_A] == frozenset({ChannelName.PULSE1, ChannelName.TRIANGLE})
         assert listening.heard[STEM_B] == frozenset()
 
-    def test_a_second_solo_returns_to_the_choice_it_replaced(self, listening: StemListening) -> None:
-        listening.adopt(self._held())
+    def test_a_second_solo_returns_to_the_choice_it_replaced(self, listening: Listening) -> None:
+        listening.adopt(self._held(), EVERY_CHANNEL)
         listening.set_channels(STEM_B, frozenset({ChannelName.TRIANGLE}))
         before = listening.heard
 
@@ -181,9 +184,9 @@ class TestSoloingARecording:
 
     def test_soloing_another_recording_keeps_the_choice_the_first_solo_replaced(
         self,
-        listening: StemListening,
+        listening: Listening,
     ) -> None:
-        listening.adopt(self._held())
+        listening.adopt(self._held(), EVERY_CHANNEL)
         listening.set_channels(STEM_B, frozenset({ChannelName.TRIANGLE}))
         before = listening.heard
 
@@ -193,17 +196,17 @@ class TestSoloingARecording:
 
         assert listening.heard == before
 
-    def test_a_solo_with_nothing_remembered_hears_every_recording_whole(self, listening: StemListening) -> None:
-        listening.adopt(self._held())
+    def test_a_solo_with_nothing_remembered_hears_every_recording_whole(self, listening: Listening) -> None:
+        listening.adopt(self._held(), EVERY_CHANNEL)
         listening.solo(STEM_A)
-        listening.adopt(self._held())
+        listening.adopt(self._held(), EVERY_CHANNEL)
 
         listening.solo(STEM_A)
 
         assert listening.heard == listening.offered
 
-    def test_a_choice_made_by_hand_stands_as_the_new_state(self, listening: StemListening) -> None:
-        listening.adopt(self._held())
+    def test_a_choice_made_by_hand_stands_as_the_new_state(self, listening: Listening) -> None:
+        listening.adopt(self._held(), EVERY_CHANNEL)
         listening.solo(STEM_A)
 
         listening.set_channels(STEM_B, frozenset({ChannelName.PULSE1}))
@@ -214,11 +217,75 @@ class TestSoloingARecording:
 
     def test_a_recording_offering_nothing_leaves_the_others_heard(
         self,
-        listening: StemListening,
+        listening: Listening,
     ) -> None:
-        listening.adopt(_stems_data(ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A])))
+        listening.adopt(
+            _stems_data(ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A])), EVERY_CHANNEL
+        )
 
         listening.solo(STEM_B)
         listening.solo(STEM_B)
 
         assert listening.heard == listening.offered
+
+
+class TestTheChannelsKeptOn:
+    """The boxes above the waveform are listening state: a fresh document plays every channel, a channel
+    switched off stays off across an edit, and one coming into play joins the channels on.
+    """
+
+    def test_a_fresh_document_keeps_every_playing_channel_on(self, listening: Listening) -> None:
+        listening.adopt(_stems_data(), PULSES)
+
+        assert listening.playing == PULSES
+        assert listening.channels_on == PULSES
+
+    def test_a_channel_switched_off_stays_off_across_an_edit(self, listening: Listening) -> None:
+        listening.adopt(_stems_data(), PULSES)
+        listening.set_channels_on(frozenset({ChannelName.PULSE1}))
+
+        listening.adopt(_stems_data(), PULSES)
+
+        assert listening.channels_on == frozenset({ChannelName.PULSE1})
+
+    def test_a_channel_coming_into_play_joins_the_channels_on(self, listening: Listening) -> None:
+        listening.adopt(_stems_data(), frozenset({ChannelName.PULSE1}))
+        listening.set_channels_on(frozenset())
+
+        listening.adopt(_stems_data(), PULSES)
+
+        assert listening.channels_on == frozenset({ChannelName.PULSE2})
+
+    def test_a_channel_leaving_play_leaves_the_channels_on(self, listening: Listening) -> None:
+        listening.adopt(_stems_data(), PULSES)
+
+        listening.adopt(_stems_data(), frozenset({ChannelName.PULSE1}))
+
+        assert listening.channels_on == frozenset({ChannelName.PULSE1})
+
+    def test_a_choice_names_playing_channels_alone(self, listening: Listening) -> None:
+        listening.adopt(_stems_data(), PULSES)
+
+        listening.set_channels_on(EVERY_CHANNEL)
+
+        assert listening.channels_on == PULSES
+
+    def test_the_hearing_carries_both_choices(self, listening: Listening) -> None:
+        listening.adopt(
+            _stems_data(ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A, STEM_B])), PULSES
+        )
+        listening.set_channels(STEM_B, frozenset())
+        listening.set_channels_on(frozenset({ChannelName.PULSE1}))
+
+        hearing = listening.hearing
+
+        assert hearing.selection.stems_for(ChannelName.PULSE1) == frozenset({STEM_A})
+        assert hearing.channels_on == frozenset({ChannelName.PULSE1})
+
+    def test_a_released_choice_leaves_nothing_on(self, listening: Listening) -> None:
+        listening.adopt(_stems_data(), PULSES)
+
+        listening.release()
+
+        assert listening.playing == frozenset()
+        assert listening.channels_on == frozenset()
