@@ -3,7 +3,14 @@ from typing import Tuple, Type, Union
 
 import pytest
 
-from sampletones_shared.utils.color import blend, composite, parse_hex_color, to_grayscale
+from sampletones_shared.utils.color import (
+    blend,
+    composite,
+    contrast_ratio,
+    parse_hex_color,
+    relative_luminance,
+    to_grayscale,
+)
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import expect_error
@@ -209,3 +216,53 @@ class TestBlend:
 
     def test_clamps_above_one(self) -> None:
         assert blend(self.START, self.END, 2.0) == self.END
+
+
+class TestRelativeLuminance(BaseTestSuite):
+    """Black reads as no light, white as all of it, and a mid gray as the sRGB curve places it, whatever its alpha."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        color: Tuple[int, int, int, int]
+        expected: float
+
+    test_cases = (
+        TestCase(label="black", color=(0, 0, 0, 255), expected=0.0),
+        TestCase(label="white", color=(255, 255, 255, 255), expected=1.0),
+        TestCase(label="mid_gray_sits_below_the_middle", color=(128, 128, 128, 255), expected=0.2158),
+        TestCase(label="alpha_is_left_out", color=(128, 128, 128, 0), expected=0.2158),
+        TestCase(label="green_weighs_most", color=(0, 255, 0, 255), expected=0.7152),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_luminance(self, test_case: TestCase) -> None:
+        assert relative_luminance(test_case.color) == pytest.approx(test_case.expected, abs=1e-4)
+
+
+class TestContrastRatio(BaseTestSuite):
+    """Black on white reaches the full 21:1, alike colors 1:1, and swapping the two colors changes nothing."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        first: Tuple[int, int, int, int]
+        second: Tuple[int, int, int, int]
+        expected: float
+
+    test_cases = (
+        TestCase(label="black_on_white", first=(0, 0, 0, 255), second=(255, 255, 255, 255), expected=21.0),
+        TestCase(label="white_on_black", first=(255, 255, 255, 255), second=(0, 0, 0, 255), expected=21.0),
+        TestCase(label="alike", first=(100, 120, 140, 255), second=(100, 120, 140, 255), expected=1.0),
+        TestCase(label="gray_on_white", first=(118, 118, 118, 255), second=(255, 255, 255, 255), expected=4.54),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_contrast(self, test_case: TestCase) -> None:
+        assert contrast_ratio(test_case.first, test_case.second) == pytest.approx(test_case.expected, abs=0.01)

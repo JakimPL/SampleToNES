@@ -184,6 +184,7 @@ CURSOR_PAINT_FRAMES: Final[int] = 1
 
 
 class GUISequencerTrackerPanel(GUIPanel):
+    _input_state: TrackerInputState = TrackerInputState()
     _paint_held: bool = False
     _held_move: Optional[CursorMove] = None
 
@@ -1102,13 +1103,26 @@ class GUISequencerTrackerPanel(GUIPanel):
 
         A voice slot takes the color of the kind of voice standing in it, so a reader tells a
         sample from an instrument across the whole grid; a slot naming none takes the
-        neutral shade the other slots' colors are read against.
+        neutral shade the other slots' colors are read against. The slot an entry is being
+        typed into wears the pending color instead, so the digits being written read first.
         """
+        if self._is_pending_cell(key):
+            return self._themes.pending
+
         _, channel, subcolumn = key
         return self._themes.cell(
             subcolumn,
             self._cell_kinds.get(key),
             muted=self._is_muted_cell(channel),
+        )
+
+    def _is_pending_cell(self, key: CellKey) -> bool:
+        """Whether an entry is being typed into the slot ``key`` names."""
+        cursor = self._input_state.cursor
+        return (
+            bool(self._input_state.pending)
+            and cursor is not None
+            and (cursor.row, cursor.channel, cursor.subcolumn) == key
         )
 
     def _is_muted_cell(self, channel: Optional[ChannelName]) -> bool:
@@ -1126,11 +1140,17 @@ class GUISequencerTrackerPanel(GUIPanel):
         row: int,
         channel: Optional[ChannelName],
     ) -> None:
+        """Redraws a cell's three slots, label and theme, as the input state now has them.
+
+        The theme comes with the label because a slot changes color as an entry starts being typed
+        into it and again as the entry commits or is let go.
+        """
         for subcolumn in SubColumn:
             key = (row, channel, subcolumn)
             cell_id = self._editable_cells.widget(key)
             if cell_id is not None:
                 dpg.configure_item(cell_id, label=self._render_cell(key))
+                dpg.bind_item_theme(cell_id, self._cell_theme(key))
 
     def _update_caret(self, scroll_shift: float) -> None:
         """Arms (or clears) the shared caret on the active subcolumn cell, ``scroll_shift`` ahead of a landing

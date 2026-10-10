@@ -8,6 +8,13 @@ from sampletones_shared.types.application import ColorRGBA
 from sampletones_shared.utils.arrays import clamp
 
 MAX_CHANNEL_VALUE: Final[int] = 255
+RGB_CHANNELS: Final[int] = 3
+SRGB_LINEAR_LIMIT: Final[float] = 0.03928
+SRGB_LINEAR_SLOPE: Final[float] = 12.92
+SRGB_OFFSET: Final[float] = 0.055
+SRGB_GAMMA: Final[float] = 2.4
+LUMINANCE_WEIGHTS: Final[np.ndarray] = np.array([0.2126, 0.7152, 0.0722])
+CONTRAST_OFFSET: Final[float] = 0.05
 
 
 def with_alpha_fraction(color: ColorRGBA, fraction: float) -> ColorRGBA:
@@ -51,6 +58,35 @@ def composite(base: ColorRGBA, overlay: ColorRGBA) -> ColorRGBA:
     colors = (overlay_channels[:3] * overlay_channels[3] + base_channels[:3] * base_alpha) / alpha
     channels = np.rint(np.append(colors, alpha) * MAX_CHANNEL_VALUE).astype(int)
     return (int(channels[0]), int(channels[1]), int(channels[2]), int(channels[3]))
+
+
+def relative_luminance(color: ColorRGBA) -> float:
+    """Return how bright ``color`` reads, from ``0.0`` for black to ``1.0`` for white, as the WCAG defines it.
+
+    Each channel is linearized out of the sRGB curve before the channels are weighted, so two
+    colors with the same figure read equally bright whatever their hue. The alpha is left out:
+    the figure describes the color as drawn.
+    """
+    channels = np.array(color[:RGB_CHANNELS], dtype=np.float64) / MAX_CHANNEL_VALUE
+    linear = np.where(
+        channels <= SRGB_LINEAR_LIMIT,
+        channels / SRGB_LINEAR_SLOPE,
+        ((channels + SRGB_OFFSET) / (1.0 + SRGB_OFFSET)) ** SRGB_GAMMA,
+    )
+    return float(np.dot(LUMINANCE_WEIGHTS, linear))
+
+
+def contrast_ratio(first: ColorRGBA, second: ColorRGBA) -> float:
+    """Return the WCAG contrast between two colors as drawn, from ``1.0`` for alike to ``21.0`` for black on white.
+
+    The ratio reads the same whichever color is the text and whichever the background, so a
+    floor a palette is held to can be stated once for every pairing.
+    """
+    first_luminance = relative_luminance(first)
+    second_luminance = relative_luminance(second)
+    lighter = max(first_luminance, second_luminance)
+    darker = min(first_luminance, second_luminance)
+    return (lighter + CONTRAST_OFFSET) / (darker + CONTRAST_OFFSET)
 
 
 def to_grayscale(color: ColorRGBA) -> ColorRGBA:

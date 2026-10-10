@@ -30,6 +30,7 @@ history:
     separator: .history_separator
 text:
   voice: .text_disabled
+  pending: .text
   transpose: .tracker_transpose
   volume: .tracker_volume
   sample: .voice_sample

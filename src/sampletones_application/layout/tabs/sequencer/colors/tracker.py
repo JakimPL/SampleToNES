@@ -11,11 +11,14 @@ class TrackerColors(BaseModel, extra="forbid", frozen=True):
     is what the slot wears while it names nothing, and ``sample`` and ``instrument`` are
     the two kinds a named voice can be, so the slot's color reports what it holds.
     ``transpose`` and ``volume`` carry the other two slots, and the ``frame`` and ``row``
-    indices and the ``order`` entries carry the grids around them. Defining them once
+    indices and the ``order`` entries carry the grids around them. ``pending`` is what a slot
+    wears while an entry is being typed into it, whatever kind the entry will turn out to be,
+    so the digits being written stand out from everything around them. Defining them once
     keeps every panel in step.
     """
 
     voice: WrittenColor
+    pending: WrittenColor
     transpose: WrittenColor
     volume: WrittenColor
     sample: WrittenColor
