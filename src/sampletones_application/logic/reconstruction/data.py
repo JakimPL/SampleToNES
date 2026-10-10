@@ -13,7 +13,6 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.recordings import load_recordings
 from sampletones_core.reconstructions.reconstruction.renders import rendered_length
-from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.filter import (
     filter_approximations,
 )
@@ -23,11 +22,23 @@ from sampletones_shared.logger import logger
 
 @dataclass(frozen=True)
 class ReconstructionData:
+    """The open document beside what was read for it: its recordings and their mix.
+
+    Attributes:
+        name: The name the document is shown under.
+        config: The configuration the document was converted at.
+        reconstruction: The document itself.
+        stem_audios: The loaded recordings, one per entry in entry order, or none at all.
+        filepath: The file the document lives in, ``None`` for one held in memory.
+        original_audio: The recorded source mixed into one waveform, ``None`` while no source loads.
+    """
+
     name: str
     config: Config
     reconstruction: Reconstruction
     stem_audios: Tuple[np.ndarray, ...]
     filepath: Optional[Path]
+    original_audio: Optional[np.ndarray]
 
     @classmethod
     def load(cls, path: Path) -> Self:
@@ -79,13 +90,23 @@ class ReconstructionData:
 
         An edit produces a fresh reconstruction object; the display name and file location
         stand, so the reconstruction and the recordings its entries hold are what the rebind
-        refreshes.
+        refreshes. The original mix carries over while the recordings stay the same, and is
+        mixed again once an entry leaves or returns.
         """
+        stem_audios = self._recordings_for(reconstruction)
+        original_audio = self.original_audio if self._same_recordings(stem_audios) else self._mixed(stem_audios)
         return replace(
             self,
             reconstruction=reconstruction,
             config=reconstruction.config,
-            stem_audios=self._recordings_for(reconstruction),
+            stem_audios=stem_audios,
+            original_audio=original_audio,
+        )
+
+    def _same_recordings(self, stem_audios: Tuple[np.ndarray, ...]) -> bool:
+        """Whether ``stem_audios`` holds the very recordings this data holds, in the same order."""
+        return len(stem_audios) == len(self.stem_audios) and all(
+            incoming is held for incoming, held in zip(stem_audios, self.stem_audios)
         )
 
     def _recordings_for(self, reconstruction: Reconstruction) -> Tuple[np.ndarray, ...]:
@@ -115,12 +136,14 @@ class ReconstructionData:
         filepath: Optional[Path],
         name: str,
     ) -> Self:
+        stem_audios = cls._load_stem_audios(reconstruction)
         return cls(
             config=reconstruction.config,
             reconstruction=reconstruction,
-            stem_audios=cls._load_stem_audios(reconstruction),
+            stem_audios=stem_audios,
             filepath=filepath,
             name=name,
+            original_audio=cls._mixed(stem_audios),
         )
 
     @staticmethod
@@ -155,10 +178,10 @@ class ReconstructionData:
             logger.warning(f"Could not load the original audio: {error}. The original is unavailable")
             return ()
 
-    @cached_property
-    def original_audio(self) -> Optional[np.ndarray]:
-        """The recorded source mixed into one waveform, ``None`` while no source loads."""
-        return mix(list(self.stem_audios)) if self.stem_audios else None
+    @staticmethod
+    def _mixed(stem_audios: Tuple[np.ndarray, ...]) -> Optional[np.ndarray]:
+        """The recordings mixed into one waveform, ``None`` where none loaded."""
+        return mix(list(stem_audios)) if stem_audios else None
 
     @cached_property
     def _stem_recording_indexes(self) -> Dict[int, int]:
@@ -186,6 +209,9 @@ class ReconstructionData:
 
         selected_stem_ids = selection.any_channel()
         indexes = self._stem_recording_indexes
+        if selected_stem_ids >= indexes.keys():
+            return self.original_audio
+
         recordings = [self.stem_audios[index] for stem_id, index in indexes.items() if stem_id in selected_stem_ids]
         if not recordings:
             return np.zeros(rendered_length(self.reconstruction), dtype=np.float32)
@@ -195,48 +221,27 @@ class ReconstructionData:
     def waveform_data(
         self,
         renders: RenderCache,
-        selection: Optional[StemSelection] = None,
+        selection: StemSelection,
     ) -> WaveformData:
         """Projects the slice of this data the waveform display renders, the audio read from ``renders``.
 
-        With a stems selection, the projection carries the frames each channel's selected
-        stems own and the mix of the recordings heard anywhere, so the waveform answers
-        exactly what plays.
+        The projection carries the frames each channel's heard stems own and the mix of the
+        recordings heard anywhere, so the waveform answers exactly what plays. A channel heard
+        whole carries the render the cache keeps, and a document heard whole carries the kept
+        mix, so a reading that filters nothing reads what is kept and computes nothing.
         """
-        if selection is None:
-            return self._unfiltered_waveform(renders)
-
-        return self._filtered_waveform(
-            renders,
-            selection,
-            self.reconstruction.stems_data,
-        )
-
-    def _unfiltered_waveform(self, renders: RenderCache) -> WaveformData:
-        """The whole document: every channel's rendered audio and the full original."""
-        return self._waveform_data(
-            self.original_audio,
-            renders.channels(self.reconstruction),
-            renders.mix(self.reconstruction),
-        )
-
-    def _filtered_waveform(
-        self,
-        renders: RenderCache,
-        selection: StemSelection,
-        stems_data: StemsData,
-    ) -> WaveformData:
-        """The selected stems' frames and their original mix, in the unfiltered shape."""
+        channels = renders.channels(self.reconstruction)
         approximations = filter_approximations(
-            stems_data,
-            renders.channels(self.reconstruction),
+            self.reconstruction.stems_data,
+            channels,
             selection,
             self.reconstruction.config.frame_length,
         )
+        heard_whole = all(filtered is channels[channel_name] for channel_name, filtered in approximations.items())
         return self._waveform_data(
             self.original_mix_for(selection),
             approximations,
-            mix(list(approximations.values())),
+            renders.mix(self.reconstruction) if heard_whole else mix(list(approximations.values())),
         )
 
     def _waveform_data(
@@ -253,13 +258,6 @@ class ReconstructionData:
             frame_length=self.reconstruction.config.frame_length,
             sample_rate=self.reconstruction.config.sample_rate,
         )
-
-    def get_partials(
-        self,
-        renders: RenderCache,
-        channel_names: List[ChannelName],
-    ) -> np.ndarray:
-        return self.waveform_data(renders).partials(channel_names)
 
     def partials_for(
         self,

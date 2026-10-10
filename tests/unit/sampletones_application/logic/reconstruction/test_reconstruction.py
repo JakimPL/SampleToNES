@@ -1,7 +1,7 @@
 ﻿from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, Final, List, Optional
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -750,6 +750,63 @@ class TestReconstructionPanelLogicSelectedChannels:
         panel_logic.on_waveform_load_changed = callback
         panel_logic.set_selected_channels([ChannelName.PULSE1])
         callback.assert_not_called()
+
+
+class TestOneReadingPerGesture:
+    """A gesture reads the waveform once, and what plays is read from the same reading.
+
+    The reading is the costly part of what a gesture does on the render thread, so the waveform
+    the display draws and the audio that plays come from one reading of the document.
+    """
+
+    @dataclass(frozen=True)
+    class Gesture(BaseRegularTestCase):
+        act: Callable[[ReconstructionPanelLogic], None]
+
+    gestures = (
+        Gesture(label="display", act=lambda panel_logic: panel_logic.display_reconstruction()),
+        Gesture(label="update", act=lambda panel_logic: panel_logic.update_reconstruction()),
+        Gesture(label="channels", act=lambda panel_logic: panel_logic.set_selected_channels([ChannelName.PULSE1])),
+        Gesture(label="stem", act=lambda panel_logic: panel_logic.set_stem_channels(0, frozenset())),
+        Gesture(label="solo", act=lambda panel_logic: panel_logic.solo_stem(0)),
+        Gesture(label="source", act=lambda panel_logic: panel_logic.set_audio_source(AudioSourceType.RECONSTRUCTION)),
+    )
+
+    @pytest.mark.parametrize("gesture", gestures, ids=lambda gesture: gesture.label)
+    def test_the_waveform_is_read_once(
+        self,
+        gesture: Gesture,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, loaded_data)
+        with patch.object(
+            ReconstructionData,
+            "waveform_data",
+            autospec=True,
+            side_effect=ReconstructionData.waveform_data,
+        ) as reading:
+            gesture.act(panel_logic)
+
+        assert reading.call_count == 1
+
+    def test_what_plays_is_the_reading_the_waveform_draws(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, loaded_data)
+        drawn: List[WaveformData] = []
+        played: List[Optional[AudioData]] = []
+        panel_logic.on_waveform_load_changed = lambda waveform, channels: drawn.append(waveform)
+        panel_logic.on_audio_data_changed = played.append
+
+        panel_logic.display_reconstruction()
+
+        assert played[0] is not None
+        np.testing.assert_array_equal(played[0].sample, drawn[0].partials(panel_logic._selected_channels))
 
 
 class TestReconstructionPanelLogicExportInstrument:

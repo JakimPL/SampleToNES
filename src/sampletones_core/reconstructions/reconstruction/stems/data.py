@@ -6,6 +6,7 @@ from typing import AbstractSet, Dict, FrozenSet, List, Optional, Self, Sequence,
 
 from pydantic import ConfigDict, Field, model_validator
 
+from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.data import DataModel
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
@@ -88,6 +89,15 @@ class StemsData(DataModel):
     def assignments_by_channel(self) -> Dict[ChannelName, Tuple[int, ...]]:
         """The per-frame stem ids each channel carries, keyed by channel."""
         return {item.channel_name: item.stem_ids for item in self.assignments}
+
+    @cached_property
+    def owners_by_channel(self) -> Dict[ChannelName, FrozenSet[int]]:
+        """Who holds a frame on each channel: the recordings and the reader's own row, keyed by channel.
+
+        A resting frame belongs to nobody, so it counts toward no owner; a channel whose owners a
+        reader all hears is heard whole.
+        """
+        return {item.channel_name: frozenset(item.stem_ids) - {RESTING_STEM_ID} for item in self.assignments}
 
     @cached_property
     def holding_stem_ids(self) -> FrozenSet[int]:

@@ -376,13 +376,12 @@ class TestThreeStemHierarchy:
             """The selection hearing the named stems on every channel."""
             return StemSelection.everywhere(frozenset(selected), channels)
 
-        unfiltered = data.waveform_data(renders)
         full = data.waveform_data(renders, heard(all_stem_ids))
-        np.testing.assert_allclose(full.approximation, unfiltered.approximation, atol=_MIX_TOLERANCE)
-        np.testing.assert_allclose(full.original_audio, unfiltered.original_audio, atol=_MIX_TOLERANCE)
+        assert full.approximation is renders.mix(data.reconstruction)
+        assert full.original_audio is data.original_audio
         np.testing.assert_allclose(
             data.partials_for(renders, channels, heard(all_stem_ids)),
-            data.get_partials(renders, channels),
+            rendered_mix(data.reconstruction),
             atol=_MIX_TOLERANCE,
         )
 

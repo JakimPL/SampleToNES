@@ -152,16 +152,10 @@ class ReconstructionPanelLogic(CallbackMixin):
             self._build_stems_view_model(reconstruction_data),
         )
         self.call(self.on_waveform_source_changed, self._current_audio_source)
-        self.call(
-            self.on_waveform_load_changed,
-            reconstruction_data.waveform_data(
-                self._reconstruction_manager.renders,
-                self._stem_selection,
-            ),
-            self._selected_channels,
-        )
+        waveform = self._waveform(reconstruction_data)
+        self.call(self.on_waveform_load_changed, waveform, self._selected_channels)
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
-        self._emit_audio_data()
+        self._emit_audio_data(reconstruction_data, waveform)
 
     def update_reconstruction(self, *, refit_waveform: bool = False) -> None:
         """Re-answers every reading of the document after an edit.
@@ -181,18 +175,11 @@ class ReconstructionPanelLogic(CallbackMixin):
             self.on_stems_view_changed,
             self._build_stems_view_model(reconstruction_data),
         )
-        self.call(
-            self.on_waveform_update_changed,
-            reconstruction_data.waveform_data(
-                self._reconstruction_manager.renders,
-                self._stem_selection,
-            ),
-            self._selected_channels,
-            refit=refit_waveform,
-        )
+        waveform = self._waveform(reconstruction_data)
+        self.call(self.on_waveform_update_changed, waveform, self._selected_channels, refit=refit_waveform)
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
         if self._current_audio_source != AudioSourceType.ORIGINAL:
-            self._emit_audio_data()
+            self._emit_audio_data(reconstruction_data, waveform)
 
     def _adopt_playing_channels(
         self,
@@ -273,8 +260,17 @@ class ReconstructionPanelLogic(CallbackMixin):
 
     def set_audio_source(self, audio_source: AudioSourceType) -> None:
         self._current_audio_source = audio_source
-        self._emit_audio_data()
+        reconstruction_data = self._reconstruction_data
+        if reconstruction_data is None:
+            self.call(self.on_audio_data_changed, None)
+        else:
+            self._emit_audio_data(reconstruction_data, self._waveform(reconstruction_data))
+
         self.call(self.on_waveform_source_changed, audio_source)
+
+    def _waveform(self, reconstruction_data: ReconstructionData) -> WaveformData:
+        """One reading of what the document plays for the reader's listening, which the waveform and the audio share."""
+        return reconstruction_data.waveform_data(self._reconstruction_manager.renders, self._stem_selection)
 
     def set_selected_channels(self, channels: List[ChannelName]) -> None:
         """Adopts the reader's channel choice, which the stems list reports as muted columns."""
@@ -287,16 +283,10 @@ class ReconstructionPanelLogic(CallbackMixin):
             self.on_stems_view_changed,
             self._build_stems_view_model(reconstruction_data),
         )
-        self.call(
-            self.on_waveform_load_changed,
-            reconstruction_data.waveform_data(
-                self._reconstruction_manager.renders,
-                self._stem_selection,
-            ),
-            channels,
-        )
+        waveform = self._waveform(reconstruction_data)
+        self.call(self.on_waveform_load_changed, waveform, channels)
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
-        self._emit_audio_data()
+        self._emit_audio_data(reconstruction_data, waveform)
 
     def set_stem_channels(
         self,
@@ -331,16 +321,10 @@ class ReconstructionPanelLogic(CallbackMixin):
             self.on_stems_view_changed,
             self._build_stems_view_model(reconstruction_data),
         )
-        self.call(
-            self.on_waveform_load_changed,
-            reconstruction_data.waveform_data(
-                self._reconstruction_manager.renders,
-                self._stem_selection,
-            ),
-            self._selected_channels,
-        )
+        waveform = self._waveform(reconstruction_data)
+        self.call(self.on_waveform_load_changed, waveform, self._selected_channels)
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
-        self._emit_audio_data()
+        self._emit_audio_data(reconstruction_data, waveform)
         self.call(self.on_heard_changed)
 
     @property
@@ -720,29 +704,27 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         return instrument_slice_name(reconstruction_data.name, channel_name)
 
-    def _emit_audio_data(self) -> None:
-        audio_data = self._compute_audio_data()
-        self.call(self.on_audio_data_changed, audio_data)
+    def _emit_audio_data(
+        self,
+        reconstruction_data: ReconstructionData,
+        waveform: WaveformData,
+    ) -> None:
+        self.call(self.on_audio_data_changed, self._audio_data(reconstruction_data, waveform))
 
-    def _compute_audio_data(self) -> Optional[AudioData]:
-        reconstruction_data = self._reconstruction_data
-        if not reconstruction_data:
-            return None
-
+    def _audio_data(
+        self,
+        reconstruction_data: ReconstructionData,
+        waveform: WaveformData,
+    ) -> Optional[AudioData]:
+        """What plays for the source chosen: the recordings heard, or the channels ticked of ``waveform``."""
         sample_rate = reconstruction_data.reconstruction.config.sample_rate
         if self._current_audio_source == AudioSourceType.ORIGINAL:
-            selected_original_audio = reconstruction_data.original_mix_for(self._stem_selection)
-            if selected_original_audio is None:
+            if waveform.original_audio is None:
                 return None
 
-            return AudioData.from_array(selected_original_audio, sample_rate)
+            return AudioData.from_array(waveform.original_audio, sample_rate)
 
-        partial_approximation = reconstruction_data.partials_for(
-            self._reconstruction_manager.renders,
-            self._selected_channels,
-            self._stem_selection,
-        )
-        return AudioData.from_array(partial_approximation, sample_rate)
+        return AudioData.from_array(waveform.partials(self._selected_channels), sample_rate)
 
     def _build_path_view_models(
         self,

@@ -394,7 +394,7 @@ class TestStemFilteredProjections:
 
         np.testing.assert_allclose(data.original_mix_for(_heard(0)), data.stem_audios[0])
         assert data.original_audio is not None
-        np.testing.assert_allclose(data.original_mix_for(_heard(0, 1)), data.original_audio)
+        assert data.original_mix_for(_heard(0, 1)) is data.original_audio
         np.testing.assert_array_equal(
             data.original_mix_for(_heard()),
             np.zeros_like(rendered_mix(data.reconstruction)),
@@ -574,6 +574,31 @@ class TestRebindingToAnEditedReconstruction:
 
         assert rebound.stem_audios == data.stem_audios
 
+    def test_an_edit_keeping_every_entry_keeps_the_original_mix(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        """The recordings stand as they were, so the mix of them stands too, which spares a landing the mixing."""
+        data = self._three_recordings(reconstruction_factory, tmp_path)
+
+        rebound = data.with_reconstruction(data.reconstruction.model_copy())
+
+        assert rebound.original_audio is data.original_audio
+
+    def test_a_removal_mixes_the_original_again(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        data = self._three_recordings(reconstruction_factory, tmp_path)
+        first, third = data.stem_audios[0], data.stem_audios[2]
+
+        remaining = data.with_reconstruction(without_stem(data.reconstruction, 1))
+
+        assert remaining.original_audio is not data.original_audio
+        np.testing.assert_allclose(remaining.original_audio, mix([first, third]))
+
     def test_a_document_naming_a_recording_the_load_lost_holds_none(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
@@ -601,58 +626,41 @@ class TestWaveformData:
             name="Sample",
         )
 
-        waveform_data = data.waveform_data(renders)
+        waveform_data = data.waveform_data(renders, _heard(0))
 
         assert waveform_data.original_audio is data.original_audio
         assert waveform_data.approximation is renders.mix(reconstruction)
-        assert waveform_data.approximations == renders.channels(reconstruction)
+        assert waveform_data.approximations.keys() == renders.channels(reconstruction).keys()
+        assert all(
+            waveform_data.approximations[channel_name] is kept
+            for channel_name, kept in renders.channels(reconstruction).items()
+        )
         assert waveform_data.coefficient == reconstruction.coefficient
         assert waveform_data.frame_length == reconstruction.config.frame_length
 
+    def test_a_document_heard_whole_reads_what_is_kept(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        renders: RenderCache,
+    ) -> None:
+        """A reading that filters nothing reads the kept renders, which is what makes it cost nothing."""
+        reconstruction = reconstruction_factory()
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
+        kept_mix = renders.mix(reconstruction)
 
-class TestReconstructionDataGetPartials:
-    def test_empty_generator_list_returns_zeros(
+        twice = [data.waveform_data(renders, _heard(0)) for _ in range(2)]
+
+        assert all(waveform_data.approximation is kept_mix for waveform_data in twice)
+
+    def test_a_recording_left_out_mixes_the_heard_frames_afresh(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         renders: RenderCache,
     ) -> None:
         reconstruction = reconstruction_factory()
-        data = ReconstructionData.from_reconstruction(
-            reconstruction,
-            name="Sample",
-        )
+        data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
-        result = data.get_partials(renders, [])
+        waveform_data = data.waveform_data(renders, _heard())
 
-        assert np.all(result == 0.0)
-
-    def test_unknown_generator_returns_zeros(
-        self,
-        reconstruction_factory: Callable[[], Reconstruction],
-        renders: RenderCache,
-    ) -> None:
-        reconstruction = reconstruction_factory()
-        data = ReconstructionData.from_reconstruction(
-            reconstruction,
-            name="Sample",
-        )
-
-        result = data.get_partials(renders, [ChannelName.TRIANGLE])
-
-        assert np.all(result == 0.0)
-
-    def test_known_generator_returns_its_approximation(
-        self,
-        reconstruction_factory: Callable[[], Reconstruction],
-        renders: RenderCache,
-    ) -> None:
-        reconstruction = reconstruction_factory()
-        data = ReconstructionData.from_reconstruction(
-            reconstruction,
-            name="Sample",
-        )
-
-        result = data.get_partials(renders, [ChannelName.PULSE1])
-
-        expected = rendered_channels(reconstruction)[ChannelName.PULSE1]
-        assert np.array_equal(result, expected)
+        assert waveform_data.approximation is not renders.mix(reconstruction)
+        np.testing.assert_array_equal(waveform_data.approximation, np.zeros_like(renders.mix(reconstruction)))

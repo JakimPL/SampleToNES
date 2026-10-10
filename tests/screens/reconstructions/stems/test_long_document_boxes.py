@@ -1,0 +1,73 @@
+import time
+from typing import Dict, Final, List
+
+import pytest
+
+from automation.application.startup import Startup
+from automation.screen import Screen
+from automation.steps.exports import leaving_asks_nothing
+from automation.steps.reconstructions import expect_open
+from automation.worlds.home import World
+from sampletones_core.constants.enums import ChannelName
+from tests.suite.screens.readings import frame_readings, keep_readings, longest_gap_after_each
+from tests.suite.screens.worlds.recordings import LONG_RECONSTRUCTION, long_document_world
+
+TOGGLED_CHANNEL: Final[ChannelName] = ChannelName.NOISE
+RECORDING_KEY: Final[str] = "0"
+TICKS_PER_BOX: Final[int] = 2
+FRAMES_AFTER_A_TICK: Final[int] = 5
+BOX_READINGS: Final[str] = "frame_gaps_boxes.json"
+
+
+@pytest.fixture(name="world")
+def world_fixture() -> World:
+    """The home holds the two-minute reconstruction with its recording."""
+    return long_document_world()
+
+
+@pytest.fixture(name="startup")
+def startup_fixture() -> Startup:
+    """The two-minute reconstruction is open at start, with no project."""
+    return Startup(reconstruction=LONG_RECONSTRUCTION, project=None)
+
+
+class TestTheBoxesOnALongDocument:
+    """How the frames keep coming while a channel's box above the waveform and a recording's box on the
+    stems card are ticked off and on again on a two-minute document.
+
+    A box changes what is heard, so the waveform, the audio and the figures are read again from the
+    document. The scenario records the clock after every frame through the ticks and keeps the
+    longest gap after each tick beside the readings the drag scenarios keep, holding the application
+    to nothing: the readings are what a change to the listening path is judged by, taken before and
+    after the change.
+    """
+
+    def test_the_frames_through_the_ticks(self, screen: Screen) -> None:
+        """The readings are kept; the application is only asked to keep drawing and to leave cleanly."""
+        reconstructions = screen.reconstructions
+        stamps: List[float] = []
+        ticks: List[float] = []
+
+        def open_it(screen: Screen) -> None:
+            expect_open(screen, LONG_RECONSTRUCTION)
+
+        def tick_the_boxes(screen: Screen) -> None:
+            with screen.record(time.monotonic) as recording:
+                for _ in range(TICKS_PER_BOX):
+                    ticks.append(time.monotonic())
+                    reconstructions.tick_channel(TOGGLED_CHANNEL)
+                    screen.frames(FRAMES_AFTER_A_TICK)
+
+                for _ in range(TICKS_PER_BOX):
+                    ticks.append(time.monotonic())
+                    reconstructions.stems.tick(RECORDING_KEY)
+                    screen.frames(FRAMES_AFTER_A_TICK)
+
+            stamps.extend(recording.values())
+
+        def keep_the_readings(screen: Screen) -> None:
+            readings: Dict[str, object] = dict(frame_readings(stamps, ticks[-1]))
+            readings["longest_gap_after_each_tick_seconds"] = longest_gap_after_each(stamps, ticks)
+            keep_readings(BOX_READINGS, readings)
+
+        screen.scenario(open_it, tick_the_boxes, keep_the_readings, leaving_asks_nothing).run()
