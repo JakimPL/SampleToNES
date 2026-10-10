@@ -10,6 +10,7 @@
 * Optimized reconstruction size.
 * Optimized algorithm memory usage.
 * Improved FamiTracker/Bitphase compatibility.
+* Supported CUDA for local installation if available.
 * Bumped the reconstruction data- version to `2.2`, with backward compatibility for `2.1`.
 * Bumped the project data version to `1.1`, with backward compatibility.
 * Bumped the library data version to `2.1`.
