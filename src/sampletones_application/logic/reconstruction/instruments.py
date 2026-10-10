@@ -145,20 +145,18 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
             return None
 
         return {
-            channel_name: (
-                features if features == document[channel_name] else self._as_regenerated(channel_name, features)
-            )
+            channel_name: (features if features == document[channel_name] else self._as_regenerated(features))
             for channel_name, features in self._pending_changes.drawn(document).channels.items()
         }
 
     @staticmethod
-    def _as_regenerated(channel_name: ChannelName, features: Features) -> Features:
+    def _as_regenerated(features: Features) -> Features:
         """The envelopes a channel holds once the regeneration has rebuilt it from ``features``.
 
         A channel the envelopes silence rests through every frame, which the document stands by,
         describing no frame.
         """
-        if stands_by(channel_name, features):
+        if stands_by(features):
             return features.leave_to_channel(features.envelopes)
 
         return features
@@ -316,7 +314,7 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
 
     def _note_silenced(self, channel_name: ChannelName, features: Features) -> None:
         """Remembers whether the latest edit of a channel silences it, which its rebuild then shows."""
-        if stands_by(channel_name, features):
+        if stands_by(features):
             self._silenced.add(channel_name)
         else:
             self._silenced.discard(channel_name)
