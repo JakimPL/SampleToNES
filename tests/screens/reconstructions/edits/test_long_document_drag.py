@@ -25,6 +25,7 @@ NEAR_THE_START: Final[float] = 0.05
 ZOOM_NOTCHES: Final[int] = 5
 LONG_GAP_SECONDS: Final[float] = 0.1
 DRAIN_TIMEOUT_SECONDS: Final[float] = 120.0
+FRAMES_AFTER_THE_LANDING: Final[int] = 3
 BURST_READINGS: Final[str] = "frame_gaps.json"
 HELD_BURST_READINGS: Final[str] = "frame_gaps_held.json"
 LANDING_READINGS: Final[str] = "frame_gaps_landing.json"
@@ -189,6 +190,7 @@ class TestOneLandingOnALongDocument:
                 regeneration_hold.release()
                 released.append(time.monotonic())
                 _wait_for_the_line_to_empty(screen)
+                screen.frames(FRAMES_AFTER_THE_LANDING)
 
             stamps.extend(recording.values())
 
