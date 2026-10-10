@@ -107,7 +107,8 @@ class TestNotesTypedPianoStyle:
 class TestAVoiceTyped:
     """A voice number typed into a slot arrives with its kind's color in the same frame.
 
-    An instrument typed into the Sample column keeps the number and the color as they were.
+    An instrument typed into the Sample column is refused: the digits being typed wear the typing
+    color while they stand, and the cell ends with the number and the color it had.
     """
 
     def test_the_color_comes_with_the_number(self, screen: Screen) -> None:
@@ -154,8 +155,10 @@ class TestAVoiceTyped:
 
             frames = frames_while_typing(typed_row, SAMPLE_COLUMN, PAD_NUMBER)
 
-            assert all(frame[1] == standing[1] for frame in frames)
+            assert all(theme == standing[1] for label, theme in frames if label == standing[0])
+            assert all(theme != standing[1] for label, theme in frames if label != standing[0])
             assert all(frame[0] != PAD_NUMBER for frame in frames)
+            assert frames[-1] == standing
             assert tracker.label(typed_row, SAMPLE_COLUMN, SubColumn.VOICE) == standing[0]
             assert history_size(screen) == before
 
