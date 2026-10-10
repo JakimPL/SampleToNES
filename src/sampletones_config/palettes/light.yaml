@@ -103,7 +103,7 @@ colors:
 
   text: "#0a0c10"
   text_muted: "#414852"
-  text_disabled: "#767d88"
+  text_disabled: "#6b7380"
   text_trace: "#2c323b"
 
   contrast: "#000000"
@@ -172,8 +172,8 @@ colors:
   feature_hi_pitch: "#4a3fa8"
   feature_duty_cycle: "#7a5c00"
 
-  caret_fill: "#0b4c8c58"
-  caret_border: "#073a6cff"
+  caret: "#073a6cff"
+  caret_frame: "#073a6cff"
 
   graph_bar: "#0a5aa8"
   waveform_sample: "#0a5aa8"
@@ -182,12 +182,12 @@ colors:
   spectrum_dim: "#dfe4ec"
 
   tracker_beat_row: "#00000016"
-  tracker_bar_row: "#0000002c"
+  tracker_bar_row: "#00000024"
 
-  block_selection: "#6b4ea840"
+  block_selection: "#6b4ea82a"
   pattern_highlight: "#00000018"
-  cell_cursor: "#0b4c8c60"
-  cursor_row: "#0b4c8c24"
+  cell_cursor: "#0b4c8c1e"
+  cursor_row: "#0b4c8c1c"
   playback_row: "#16702e48"
 
   order_label: "#c6cbd5"
@@ -207,10 +207,10 @@ colors:
   history_separator: "#8f97a4ff"
 
   tracker_transpose: "#3d434dff"
-  tracker_volume: "#16702eff"
+  tracker_volume: "#0f5a24ff"
   tracker_frame: "#0a5aa8ff"
-  tracker_row: "#5f6773ff"
+  tracker_row: "#4a515cff"
   tracker_order: "#28303dff"
 
-  voice_sample: "#7a5200ff"
+  voice_sample: "#704b00ff"
   voice_instrument: "#9a137cff"

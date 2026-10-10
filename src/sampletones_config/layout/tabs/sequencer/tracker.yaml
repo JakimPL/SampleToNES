@@ -4,7 +4,7 @@ row_height: 29
 header_height: 30
 octave_width: 90
 channel_column_tint: 0.09
-muted_text_fraction: 0.45
+muted_text_fraction: 0.7
 subcolumn_widths:
   voice: 26
   transpose: 30
