@@ -1,4 +1,4 @@
-from typing import Final, Optional, Tuple
+from typing import Final, List, Optional, Tuple
 
 from automation.dearpygui.bridge import Bridge
 from automation.dearpygui.hand import Hand
@@ -98,6 +98,10 @@ class Instruments:
     def envelope(self, channel: ChannelName, feature: FeatureKey) -> str:
         """The sequence the field under ``channel``'s ``feature`` graph holds, as the reader would edit it."""
         return str(self._bridge.ask(lambda: read_value(self.field(channel, feature))))
+
+    def envelope_items(self, channel: ChannelName, feature: FeatureKey) -> List[int]:
+        """The items of the envelope ``channel`` draws for ``feature``, read from the field under its graph."""
+        return [int(item) for item in self.envelope(channel, feature).split()]
 
     def field_theme(self, channel: ChannelName, feature: FeatureKey) -> Optional[str]:
         """The theme the field wears, which marks a sequence refused or one an export shortens."""

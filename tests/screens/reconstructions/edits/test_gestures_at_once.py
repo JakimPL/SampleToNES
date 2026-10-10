@@ -11,6 +11,7 @@ from automation.screen import Screen
 from automation.steps.project import save_project_as
 from automation.steps.reconstructions import (
     expect_open,
+    leave_letting_it_go,
     load_from_the_browser,
     marked,
     raise_the_first_level,
@@ -51,11 +52,6 @@ ZOOM_NOTCHES: Final[int] = 5
 SAVED_SONG: Final[Path] = PROJECTS_DIRECTORY / "Saved.stp"
 
 
-def items(instruments: Instruments, channel: ChannelName, feature: FeatureKey) -> List[int]:
-    """The items of the envelope that ``channel`` draws for ``feature``, read from the instruments panel."""
-    return [int(item) for item in instruments.envelope(channel, feature).split()]
-
-
 def dragged(
     graph: BarGraph,
     standing: List[int],
@@ -82,21 +78,10 @@ def expect_items(
 ) -> None:
     """Waits until the envelope of ``channel`` and ``feature`` reads ``expected``."""
     screen.expect(
-        lambda: items(instruments, channel, feature),
+        lambda: instruments.envelope_items(channel, feature),
         expected.__eq__,
         description=f"{channel} {feature} as the edits left it",
     )
-
-
-def leave_letting_it_go(screen: Screen) -> None:
-    """Presses Exit, confirms the question about unsaved changes and waits for the application to close."""
-    prompt = screen.reconstructions.unsaved_prompt
-    screen.press_shortcut(ShortcutId.EXIT)
-    screen.expect(prompt.is_shown, bool, description="the question about leaving")
-
-    prompt.confirm()
-
-    assert screen.wait_for_exit()
 
 
 class TestADragAndARemovalAtOnce:
@@ -124,7 +109,7 @@ class TestADragAndARemovalAtOnce:
             instruments.bring_forward(ChannelName.PULSE1)
             screen.hand.scroll_into_view(graph.plot)
             graph.zoom_in(NEAR_THE_START, ZOOM_NOTCHES)
-            standing = items(instruments, ChannelName.PULSE1, FeatureKey.VOLUME)
+            standing = instruments.envelope_items(ChannelName.PULSE1, FeatureKey.VOLUME)
 
             moved.append(dragged(graph, standing, end=QUIET, bounds=(0, LOUDEST)))
 
@@ -145,7 +130,7 @@ class TestADragAndARemovalAtOnce:
             screen.expect(lambda: stems.has_row(LAST_RECORDING), operator.not_, description="the recording gone")
             index, expected = moved[0]
             screen.expect(
-                lambda: items(instruments, ChannelName.PULSE1, FeatureKey.VOLUME)[: index + 1],
+                lambda: instruments.envelope_items(ChannelName.PULSE1, FeatureKey.VOLUME)[: index + 1],
                 expected[: index + 1].__eq__,
                 description="the drag landed",
             )
@@ -189,7 +174,7 @@ class TestADragAndAnUndoAtOnce:
                 ChannelName.PULSE1,
                 title=voice_title(screen, SONG.stem, SAMPLE_ORDINAL, SONG_SAMPLE, unsaved=True),
             )
-            edited.append(items(instruments, ChannelName.PULSE1, FeatureKey.VOLUME))
+            edited.append(instruments.envelope_items(ChannelName.PULSE1, FeatureKey.VOLUME))
 
             save_project_as(screen, SAVED_SONG)
 
@@ -199,7 +184,7 @@ class TestADragAndAnUndoAtOnce:
             release = graph.drag_item(FIRST_ITEM, start=edited[0][FIRST_ITEM], end=QUIET)
             index, _ = graph.item_under(release)
             screen.expect(regeneration_hold.waiting, bool, description="the rebuild held")
-            assert items(instruments, ChannelName.PULSE1, FeatureKey.VOLUME)[index] != edited[0][index]
+            assert instruments.envelope_items(ChannelName.PULSE1, FeatureKey.VOLUME)[index] != edited[0][index]
 
             screen.press_shortcut(ShortcutId.UNDO)
 
@@ -208,7 +193,7 @@ class TestADragAndAnUndoAtOnce:
 
             expect_items(screen, instruments, ChannelName.PULSE1, FeatureKey.VOLUME, edited[0])
             screen.frames(SETTLE_FRAMES)
-            assert items(instruments, ChannelName.PULSE1, FeatureKey.VOLUME) == edited[0]
+            assert instruments.envelope_items(ChannelName.PULSE1, FeatureKey.VOLUME) == edited[0]
 
         screen.scenario(
             edit_the_sample_and_save, drag_and_undo_while_the_rebuild_is_held, the_drag_alone_is_undone
@@ -240,7 +225,7 @@ class TestADragAndASaveAtOnce:
             stored.append(SHORT_RECONSTRUCTION.read_bytes())
             instruments.bring_forward(ChannelName.PULSE1)
             screen.hand.scroll_into_view(graph.plot)
-            standing = items(instruments, ChannelName.PULSE1, FeatureKey.VOLUME)
+            standing = instruments.envelope_items(ChannelName.PULSE1, FeatureKey.VOLUME)
             moved.append(dragged(graph, standing, end=QUIET, bounds=(0, LOUDEST)))
             screen.expect(regeneration_hold.waiting, bool, description="the rebuild held")
 
@@ -287,7 +272,7 @@ class TestTwoDimensionsBeforeTheFadeEnds:
             expect_open(screen, SHORT_RECONSTRUCTION)
             instruments.bring_forward(ChannelName.PULSE1)
             screen.hand.scroll_into_view(volume.plot)
-            standing = items(instruments, ChannelName.PULSE1, FeatureKey.VOLUME)
+            standing = instruments.envelope_items(ChannelName.PULSE1, FeatureKey.VOLUME)
 
             moved.append(dragged(volume, standing, end=QUIET, bounds=(0, LOUDEST)))
 
@@ -295,7 +280,7 @@ class TestTwoDimensionsBeforeTheFadeEnds:
 
         def drag_the_arpeggio_meanwhile(screen: Screen) -> None:
             screen.hand.scroll_into_view(arpeggio.plot)
-            standing = items(instruments, ChannelName.PULSE1, FeatureKey.ARPEGGIO)
+            standing = instruments.envelope_items(ChannelName.PULSE1, FeatureKey.ARPEGGIO)
 
             moved.append(dragged(arpeggio, standing, end=ARPEGGIO_STEP, bounds=(ARPEGGIO_FLOOR, ARPEGGIO_CEILING)))
 

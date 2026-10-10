@@ -22,10 +22,13 @@ PLAYABLE_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Playable.stn
 SECOND_PLAYABLE: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Second.stn"
 STEMS_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Stems.stn"
 SHORT_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Short.stn"
+LONG_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Long.stn"
 TAKES: Final[Tuple[str, ...]] = ("take1.wav", "take2.wav", "take3.wav")
 STEM_TAKES: Final[Tuple[str, ...]] = ("stem1.wav", "stem2.wav", "stem3.wav")
+LONG_TAKE: Final[str] = "long.wav"
 STEM_FRAMES: Final[int] = 60
 PLAYABLE_FRAMES: Final[int] = 600
+LONG_FRAMES: Final[int] = 7200
 FRAMES_PER_SECOND: Final[int] = 60
 TAKE_FREQUENCY: Final[float] = 220.0
 
@@ -96,5 +99,21 @@ def playing_world() -> World:
             StoredReconstruction(OPEN_RECONSTRUCTION),
             stored_recording(),
             StoredProject(SONG, sample=SONG_SAMPLE, instrument=SONG_INSTRUMENT),
+        ),
+    )
+
+
+def long_document_world() -> World:
+    """A home holding :data:`LONG_RECONSTRUCTION`, two minutes of one recording, which an edit takes long enough
+    to rebuild and render for the frames to be read while it does.
+    """
+    take = Path.cwd() / LONG_TAKE
+    return World(
+        state=screen_filling_state(),
+        application_config=None,
+        config=None,
+        files=(
+            Recording(destination=take, seconds=LONG_FRAMES / FRAMES_PER_SECOND, frequency=TAKE_FREQUENCY),
+            PlayableReconstruction(LONG_RECONSTRUCTION, (take,), LONG_FRAMES, DEFAULT_NES_FREQUENCY),
         ),
     )

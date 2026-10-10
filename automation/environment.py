@@ -27,6 +27,8 @@ SHARD_SEPARATOR: Final[str] = "/"
 SIZE_SEPARATOR: Final[str] = "x"
 ARTIFACTS_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_ARTIFACTS"
 REPORT_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_REPORT"
+REPEATS_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_REPEATS"
+SINGLE_RUN: Final[int] = 1
 STRICT_HISTORY_VARIABLE: Final[str] = f"{SAMPLETONES_ENV_PREFIX}STRICT_HISTORY"
 STRICT_HISTORY: Final[str] = "true"
 NO_INPUT_METHOD: Final[str] = "@im=none"
@@ -109,6 +111,16 @@ def homes_root(environment: Mapping[str, str]) -> Path:
     """
     stated = environment.get(HOMES_VARIABLE)
     return Path(stated) if stated is not None else Path(tempfile.gettempdir())
+
+
+def repeats(environment: Mapping[str, str]) -> int:
+    """How many times a scenario written to be tried over runs: once, which ``SAMPLETONES_SCREENS_REPEATS`` raises.
+
+    A scenario that holds the application to a clean exit under a race is run many times in one
+    pass to be believed, and once in every other pass.
+    """
+    stated = environment.get(REPEATS_VARIABLE)
+    return int(stated) if stated is not None else SINGLE_RUN
 
 
 @dataclass(frozen=True)

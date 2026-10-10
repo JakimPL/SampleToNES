@@ -1,6 +1,6 @@
 import copy
 from pathlib import Path
-from typing import Dict, Final, List
+from typing import Final, List
 
 import pytest
 
@@ -9,15 +9,11 @@ from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.instructions import (
-    InstructionUnion,
-    NoiseInstruction,
-    PulseInstruction,
-    TriangleInstruction,
-)
+from sampletones_core.instructions import InstructionUnion
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.constants.general import BYTES_PER_MEGABYTE
+from tests.suite.long_documents import turning_instructions
 from tests.suite.memory import retained_bytes
 from tests.suite.stems import single_entry_stems_data
 from tests.suite.timing import seconds
@@ -25,40 +21,14 @@ from tests.suite.timing import seconds
 DOCUMENT_FRAMES: Final[int] = 4_000
 EDITS: Final[int] = 8
 SHARE_MARGIN: Final[float] = 1.5
-LOWEST_PITCH: Final[int] = 36
-PITCH_SPAN: Final[int] = 48
-VOLUMES: Final[int] = 16
-DUTY_CYCLES: Final[int] = 4
-NOISE_PERIODS: Final[int] = 16
 SAMPLE_NAME: Final[str] = "Long conversion"
 EDITED_CHANNEL: Final[ChannelName] = ChannelName.PULSE1
-
-
-def _instruction(
-    channel_name: ChannelName,
-    frame: int,
-) -> InstructionUnion:
-    match channel_name:
-        case ChannelName.PULSE1 | ChannelName.PULSE2:
-            return PulseInstruction(
-                on=True,
-                pitch=LOWEST_PITCH + frame % PITCH_SPAN,
-                volume=frame % VOLUMES,
-                duty_cycle=frame % DUTY_CYCLES,
-            )
-        case ChannelName.TRIANGLE:
-            return TriangleInstruction(on=True, pitch=LOWEST_PITCH + frame % PITCH_SPAN)
-        case ChannelName.NOISE:
-            return NoiseInstruction(on=True, period=frame % NOISE_PERIODS, volume=frame % VOLUMES, short=False)
 
 
 @pytest.fixture(scope="module", name="document")
 def document_fixture() -> Reconstruction:
     """A document shaped like a long conversion: every channel sounding, each frame an instruction of its own."""
-    instructions: Dict[ChannelName, List[InstructionUnion]] = {
-        channel_name: [_instruction(channel_name, frame) for frame in range(DOCUMENT_FRAMES)]
-        for channel_name in ChannelName.items()
-    }
+    instructions = turning_instructions(DOCUMENT_FRAMES)
     return Reconstruction.create(
         instructions=instructions,
         config=Config(),

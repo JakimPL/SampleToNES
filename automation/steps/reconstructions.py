@@ -6,6 +6,7 @@ from automation.dearpygui.items.types import Item
 from automation.holds.regeneration import RegenerationHold
 from automation.screen import Screen
 from sampletones_application.categories.hierarchy import Tab
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
@@ -223,3 +224,14 @@ def raise_the_first_level_while_held(screen: Screen, hold: RegenerationHold, cha
 def edited_title(screen: Screen, document: Path) -> str:
     """The window title while the open reconstruction ``document`` carries unsaved changes."""
     return titled(screen, marked(document.name, unsaved=True))
+
+
+def leave_letting_it_go(screen: Screen) -> None:
+    """Presses Exit, confirms the question about unsaved changes and waits for the application to close."""
+    prompt = screen.reconstructions.unsaved_prompt
+    screen.press_shortcut(ShortcutId.EXIT)
+    screen.expect(prompt.is_shown, bool, description="the question about leaving")
+
+    prompt.confirm()
+
+    assert screen.wait_for_exit()
