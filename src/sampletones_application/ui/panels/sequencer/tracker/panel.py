@@ -1,4 +1,6 @@
-from typing import Callable, Dict, Final, FrozenSet, Optional, Set, Tuple
+from contextlib import contextmanager
+from functools import partial
+from typing import Callable, Dict, Final, FrozenSet, Iterator, Optional, Set, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -32,7 +34,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.elements.table.caret import CaretOverlay
+from sampletones_application.ui.elements.table.caret import STILL, CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.elements.table.selection import TableSelection
 from sampletones_application.ui.panels.sequencer import display as tracker_display
@@ -106,6 +108,7 @@ from sampletones_application.ui.panels.sequencer.tracker.callbacks import (
 )
 from sampletones_application.ui.panels.sequencer.tracker.context import ContextRows
 from sampletones_application.ui.panels.sequencer.tracker.menu import TrackerMenu
+from sampletones_application.ui.panels.sequencer.tracker.move import CursorMove, cell_place
 from sampletones_application.ui.panels.sequencer.tracker.row import (
     add_empty_cell,
     add_slot_group,
@@ -177,9 +180,13 @@ from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import VoidCallback
 
 PLAYHEAD_PAINT_FRAMES: Final[int] = 1
+CURSOR_PAINT_FRAMES: Final[int] = 1
 
 
 class GUISequencerTrackerPanel(GUIPanel):
+    _paint_held: bool = False
+    _held_move: Optional[CursorMove] = None
+
     def __init__(
         self,
         initial_settings: SequencerSettingsViewModel,
@@ -950,7 +957,7 @@ class GUISequencerTrackerPanel(GUIPanel):
                 self._input_state = TrackerInputState()
 
         self._selection.repaint()
-        self._update_caret()
+        self._update_caret(STILL)
 
     def deselect_cell(self) -> None:
         cursor = self._input_state.cursor
@@ -959,33 +966,93 @@ class GUISequencerTrackerPanel(GUIPanel):
             self._remove_cell_highlight(cursor.row, cursor.channel)
             self._selection.repaint()
 
-        self._update_caret()
+        self._update_caret(STILL)
 
     def _apply_state(self, new_state: TrackerInputState) -> None:
-        old_cursor = self._input_state.cursor
-        new_cursor = new_state.cursor
+        """Takes the new input state and paints the cursor's move, at once or when the held painting is released.
 
-        old_pos = (old_cursor.row, old_cursor.channel) if old_cursor is not None else None
-        new_pos = (new_cursor.row, new_cursor.channel) if new_cursor is not None else None
-
+        The cells the cursor leaves and reaches are reported as soon as the state changes; their
+        painting waits while a gesture holds it (see :meth:`_holding_paint`), so a move that also
+        re-centers the grid lands on screen together with the scroll it asked for.
+        """
+        move = CursorMove(left=cell_place(self._input_state.cursor), reached=cell_place(new_state.cursor))
         self._input_state = new_state
 
-        if old_pos != new_pos and old_cursor is not None:
-            self._remove_cell_highlight(old_cursor.row, old_cursor.channel)
-
-        if old_cursor is not None:
-            self._update_cell_display(old_cursor.row, old_cursor.channel)
-
-        if new_cursor is not None:
-            if old_pos != new_pos:
-                self._apply_cell_highlight(new_cursor.row, new_cursor.channel)
-            self._update_cell_display(new_cursor.row, new_cursor.channel)
-
-        if new_pos != old_pos and new_cursor is not None:
+        if move.reached != move.left and move.reached is not None:
             self.call(self.on_cell_selected)
 
+        if self._paint_held:
+            self._held_move = move if self._held_move is None else self._held_move.then(move)
+        else:
+            self._paint_move(move, STILL)
+
+    @contextmanager
+    def _holding_paint(self) -> Iterator[None]:
+        """Holds the painting of every cursor change made inside, for :meth:`_release_paint` to paint as one.
+
+        A hold belongs to the gesture that opens it, so between gestures the panel stands at its
+        class's rest: nothing held and nothing owed.
+        """
+        self._paint_held = True
+        try:
+            yield
+        finally:
+            self._paint_held = False
+
+    def _release_paint(self, *, recentering: bool) -> None:
+        """Paints the held cursor move: now, or on the frame the scroll of a re-centering grid lands on.
+
+        A cell's mark is drawn on the very next frame while the grid answers a scroll on the frame
+        after that, so a move painted as it is made stands a row clear of the band's center for a
+        frame. The painting of a re-centering move is held until its scroll lands and carries the
+        distance that scroll moves the row, which the caret takes off the rectangle the cell
+        reported a frame earlier.
+        """
+        landing = self._center_followed_row() if recentering else None
+        if landing is None:
+            self._paint_held_move(STILL)
+            return
+
+        FrameCallbackManager.set_frame_callback(partial(self._paint_landing_move, landing), CURSOR_PAINT_FRAMES)
+
+    def _paint_landing_move(self, landing: float) -> None:
+        """Paints the held move for the frame on which the grid's scroll reaches ``landing``."""
+        if not dpg.does_item_exist(TAG_SEQUENCER_TRACKER_TABLE):
+            return
+
+        self._paint_held_move(landing - dpg.get_y_scroll(TAG_SEQUENCER_TRACKER_TABLE))
+
+    def _paint_held_move(self, scroll_shift: float) -> None:
+        move = self._held_move
+        self._held_move = None
+        if move is not None:
+            self._paint_move(move, scroll_shift)
+
+    def _paint_move(self, move: CursorMove, scroll_shift: float) -> None:
+        """Marks the cell the cursor reached, clears the one it left, and redraws both cells' labels.
+
+        A cell of a row the table no longer holds is left alone: the grid was rebuilt under the
+        move, and the rebuild painted the cursor where it stands.
+        """
+        left = move.left if move.left is not None and self._holds_row(move.left[0]) else None
+        reached = move.reached if move.reached is not None and self._holds_row(move.reached[0]) else None
+
+        if left is not None and left != reached:
+            self._remove_cell_highlight(*left)
+
+        if left is not None:
+            self._update_cell_display(*left)
+
+        if reached is not None:
+            if reached != left:
+                self._apply_cell_highlight(*reached)
+            self._update_cell_display(*reached)
+
         self._selection.repaint()
-        self._update_caret()
+        self._update_caret(scroll_shift)
+
+    def _holds_row(self, row_index: int) -> bool:
+        return row_index < self._current_row_count
 
     def update_samples(self, view_model: SequencerVoicesViewModel) -> None:
         self._current_samples = view_model
@@ -1065,8 +1132,10 @@ class GUISequencerTrackerPanel(GUIPanel):
             if cell_id is not None:
                 dpg.configure_item(cell_id, label=self._render_cell(key))
 
-    def _update_caret(self) -> None:
-        """Arms (or clears) the shared caret box on the active subcolumn cell."""
+    def _update_caret(self, scroll_shift: float) -> None:
+        """Arms (or clears) the shared caret on the active subcolumn cell, ``scroll_shift`` ahead of a landing
+        scroll.
+        """
         cursor = self._input_state.cursor
         if cursor is None:
             CaretOverlay.clear(TAG_SEQUENCER_TRACKER_TABLE)
@@ -1079,6 +1148,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             caret_index=len(self._input_state.pending),
             font=slot_font(cursor.channel),
             clip_widget=TAG_SEQUENCER_TRACKER_WINDOW,
+            scroll_shift=scroll_shift,
         )
 
     def _resolve_voice(
@@ -1540,11 +1610,11 @@ class GUISequencerTrackerPanel(GUIPanel):
         if cursor is None:
             return False
 
-        consumed = self._answer_key(event, cursor)
-        moved = self._input_state.cursor
-        if consumed and moved is not None and moved.row != cursor.row:
-            self._center_followed_row()
+        with self._holding_paint():
+            consumed = self._answer_key(event, cursor)
 
+        moved = self._input_state.cursor
+        self._release_paint(recentering=consumed and moved is not None and moved.row != cursor.row)
         return consumed
 
     def _answer_key(self, event: KeyEvent, cursor: TrackerCursor) -> bool:
@@ -1663,8 +1733,10 @@ class GUISequencerTrackerPanel(GUIPanel):
         A shape ends at the frame's last row, so the band carries the end the cursor now holds —
         the same landing a Shift+End reach makes, whether a key or a menu item selected it.
         """
-        self._apply_state(new_state)
-        self._center_followed_row()
+        with self._holding_paint():
+            self._apply_state(new_state)
+
+        self._release_paint(recentering=True)
 
     def _block_action(self, shortcut_id: ShortcutId) -> bool:
         """Acts on the selected block, reporting whether the action was one of its gestures.
@@ -1802,30 +1874,31 @@ class GUISequencerTrackerPanel(GUIPanel):
         cursor = self._input_state.cursor
         return cursor.row if cursor is not None else None
 
-    def _center_followed_row(self) -> None:
-        """Brings the row the band follows to its center, where it follows one."""
+    def _center_followed_row(self) -> Optional[float]:
+        """Brings the row the band follows to its center, where it follows one, and answers the scroll asked for."""
         row_index = self._followed_row
-        if row_index is not None:
-            self._center_row(row_index)
+        if row_index is None:
+            return None
 
-    def _center_row(self, row_index: int) -> None:
-        """Scrolls the grid so a pattern row stands at the band's center.
+        return self._center_row(row_index)
+
+    def _center_row(self, row_index: int) -> Optional[float]:
+        """Scrolls the grid so a pattern row stands at the band's center, and answers the scroll asked for.
 
         The table holds as many rows of the song either side of the frame as stand above the
         band's center, so every row of the frame has the room to reach it, and the scroll is worked
         out from the rows' height. A band awaiting its first measurement, or a table holding no
-        frame, stays as it stands.
+        frame, stays as it stands, which answers None.
         """
         if self._band.height <= UNMEASURED_BAND or self._current_row_count == 0:
-            return
+            return None
 
         if not dpg.does_item_exist(TAG_SEQUENCER_TRACKER_TABLE):
-            return
+            return None
 
-        dpg.set_y_scroll(
-            TAG_SEQUENCER_TRACKER_TABLE,
-            self._band.centering(self._rows_layout.body_row(row_index)),
-        )
+        landing = self._band.centering(self._rows_layout.body_row(row_index))
+        dpg.set_y_scroll(TAG_SEQUENCER_TRACKER_TABLE, landing)
+        return landing
 
     def _row_top(self, row_index: int) -> Optional[float]:
         """Where a pattern row's top edge stands, in the coordinates the viewport is drawn in."""

@@ -12,6 +12,14 @@ components:
         value: .transparent
   - item_type: Selectable
     entries:
+      - type: style
+        key: ItemSpacing
+        x: 0
+        y: 0
+      - type: style
+        key: SelectableTextAlign
+        x: 0
+        y: 0.5
       - type: color
         key: Header
         value: .block_selection

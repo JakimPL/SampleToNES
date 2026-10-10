@@ -4,7 +4,10 @@ from sampletones_application.utils.palette.colors.written import WrittenColor
 
 
 class CaretLayout(BaseModel, extra="forbid", frozen=True):
-    offset: int
-    width_padding: int
-    fill: WrittenColor
-    border: WrittenColor
+    """How the tracker's caret is drawn: the underline's height and color, and the color of the frame around the
+    cell.
+    """
+
+    height: int
+    color: WrittenColor
+    frame: WrittenColor

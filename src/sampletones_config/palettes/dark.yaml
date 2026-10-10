@@ -172,8 +172,8 @@ colors:
   feature_hi_pitch: "#a99cff"
   feature_duty_cycle: "#e6c26a"
 
-  caret_fill: "#4fa6ff55"
-  caret_border: "#7cc4ffff"
+  caret: "#7cc4ffff"
+  caret_frame: "#7cc4ffff"
 
   graph_bar: "#4fa6ff"
   waveform_sample: "#4fa6ff"
