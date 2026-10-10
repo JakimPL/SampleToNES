@@ -51,6 +51,18 @@ def _two_frames() -> List[PulseInstruction]:
     return [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)] * 2
 
 
+@pytest.fixture(name="two_recordings")
+def two_recordings_fixture(tmp_path: Path) -> Reconstruction:
+    """A document of two recordings sharing the first pulse channel, a frame each."""
+    return Reconstruction.create(
+        instructions={ChannelName.PULSE1: _two_frames()},
+        config=Config(),
+        coefficient=1.0,
+        audio_filepath=(tmp_path / "kick.wav", tmp_path / "snare.wav"),
+        stems_data=_two_entry_stems_data(),
+    )
+
+
 class TestLoadReconstructionPropagatesErrors:
     @staticmethod
     def _manager() -> ReconstructionManager:
@@ -530,24 +542,88 @@ class TestAnEditLettingARecordingGo:
     def test_the_recording_leaves_what_the_reader_hears(
         self,
         reconstruction_manager: ReconstructionManager,
+        two_recordings: Reconstruction,
         tmp_path: Path,
     ) -> None:
-        reconstruction = Reconstruction.create(
-            instructions={ChannelName.PULSE1: _two_frames()},
-            config=Config(),
-            coefficient=1.0,
-            audio_filepath=(tmp_path / "kick.wav", tmp_path / "snare.wav"),
-            stems_data=_two_entry_stems_data(),
-        )
-        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        reconstruction_manager.load_reconstruction_object(two_recordings, name="Sample", voice_id=SAMPLE_VOICE_ID)
 
-        reconstruction_manager.apply_edited(self._edited(reconstruction))
+        reconstruction_manager.apply_edited(self._edited(two_recordings))
 
         assert reconstruction_manager.listening.offered == {0: frozenset({ChannelName.PULSE1})}
         assert reconstruction_manager.source_paths == (tmp_path / "kick.wav",)
         features = reconstruction_manager.current_features
         assert features is not None
         assert features[ChannelName.PULSE1].volume.items[-1] == 0
+
+
+class TestAnOpenedDocumentIsHeardWhole:
+    """The reader's choice of recordings belongs to the document it was made on.
+
+    Every document numbers its recordings from the same ids, so a document opened in place of
+    another starts heard whole, while an edit and a save of the open one keep what was chosen.
+    """
+
+    MUTED_STEM_ID: Final[int] = 1
+
+    @pytest.fixture(name="muted")
+    def muted_fixture(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        two_recordings: Reconstruction,
+    ) -> ReconstructionManager:
+        reconstruction_manager.load_reconstruction_object(two_recordings, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        reconstruction_manager.listening.set_channels(self.MUTED_STEM_ID, frozenset())
+        return reconstruction_manager
+
+    def test_a_file_opened_in_its_place(
+        self,
+        muted: ReconstructionManager,
+        two_recordings: Reconstruction,
+        tmp_path: Path,
+    ) -> None:
+        path = tmp_path / "other.stn"
+        two_recordings.save(path)
+
+        muted.load_reconstruction(path)
+
+        assert muted.listening.heard == muted.listening.offered
+
+    def test_a_sample_opened_in_its_place(
+        self,
+        muted: ReconstructionManager,
+        two_recordings: Reconstruction,
+    ) -> None:
+        muted.load_reconstruction_object(two_recordings.model_copy(deep=True), name="Other", voice_id="other-id")
+
+        assert muted.listening.heard == muted.listening.offered
+
+    def test_a_file_failing_to_open_keeps_the_choice(
+        self,
+        muted: ReconstructionManager,
+        tmp_path: Path,
+    ) -> None:
+        with pytest.raises(FileNotFoundError):
+            muted.load_reconstruction(tmp_path / "missing.stn")
+
+        assert muted.listening.heard[self.MUTED_STEM_ID] == frozenset()
+
+    def test_an_edit_keeps_the_choice(
+        self,
+        muted: ReconstructionManager,
+        two_recordings: Reconstruction,
+    ) -> None:
+        muted.apply_edited(two_recordings.model_copy(deep=True))
+
+        assert muted.listening.heard[self.MUTED_STEM_ID] == frozenset()
+
+    def test_save_as_keeps_the_choice(
+        self,
+        muted: ReconstructionManager,
+        tmp_path: Path,
+    ) -> None:
+        muted.save_reconstruction_as(tmp_path / "detached.stn")
+
+        assert muted.listening.heard[self.MUTED_STEM_ID] == frozenset()
 
 
 class TestTheVoiceTheDocumentIs:

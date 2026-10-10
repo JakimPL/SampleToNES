@@ -61,9 +61,11 @@ class ReconstructionManager(CallbackMixin):
 
     def load_reconstruction(self, path: Path) -> None:
         logger.info(f"Loading reconstruction: {logger.format_path(path)}")
-        self._adopt_reconstruction(ReconstructionData.load(path), voice_id=None)
-        self._session.mark_loaded(path.name)
-        self.call(self.on_reconstruction_loaded)
+        self._open_reconstruction(
+            ReconstructionData.load(path),
+            name=path.name,
+            voice_id=None,
+        )
         logger.info(f"Reconstruction {logger.format_path(path)} loaded successfully")
 
     def load_reconstruction_object(
@@ -80,10 +82,26 @@ class ReconstructionManager(CallbackMixin):
         from. The document remembers the sample's voice id, which is how an edit finds the sample
         to write back into and how a project change finds the voice the tab shows.
         """
-        self._adopt_reconstruction(
+        self._open_reconstruction(
             ReconstructionData.from_reconstruction(reconstruction, name=name),
+            name=name,
             voice_id=voice_id,
         )
+
+    def _open_reconstruction(
+        self,
+        reconstruction_data: ReconstructionData,
+        *,
+        name: str,
+        voice_id: Optional[str],
+    ) -> None:
+        """Puts a document in place of the open one, heard whole, under ``name``.
+
+        Every document numbers its recordings from the same ids, so the reader's listening choice
+        belongs to the document it was made on, and an opened document starts a choice of its own.
+        """
+        self._listening.release()
+        self._adopt_reconstruction(reconstruction_data, voice_id=voice_id)
         self._session.mark_loaded(name)
         self.call(self.on_reconstruction_loaded)
 

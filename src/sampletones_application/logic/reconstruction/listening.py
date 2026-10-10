@@ -104,7 +104,7 @@ class StemListening:
         }
 
     def release(self) -> None:
-        """Lets go of the choice, which is what closing the reconstruction it describes does."""
+        """Lets go of the choice, which is what closing the reconstruction it describes, or opening another, does."""
         self._offered = {}
         self._heard = {}
         self._heard_before_solo = None
