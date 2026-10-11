@@ -9,7 +9,7 @@ from sampletones_application.view_model.shared.recording import NamedRecordingVi
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
-from sampletones_core.reconstructions.reconstruction.stems.ownership import heard_frame, owner_runs
+from sampletones_core.reconstructions.reconstruction.stems.ownership import OwnerRun, heard_frame
 
 DISTINGUISHABLE_OWNERS: Final[int] = 2
 
@@ -55,40 +55,41 @@ def tells_owners_apart(stems_data: StemsData) -> bool:
 
 
 def ownership_lanes(
-    assignments: Mapping[ChannelName, Sequence[int]],
+    runs: Mapping[ChannelName, Sequence[OwnerRun]],
     heard_on: HeardOn,
 ) -> Dict[ChannelName, OwnershipLaneViewModel]:
-    """A lane per channel of ``assignments``, each divided into the stretches its owners hold.
+    """A lane per channel of ``runs``, each divided into the stretches its owners hold.
 
-    Each surface states its own reading as the assignments it passes — which channels stand, and
-    how far each lane runs — so the rule dividing a channel into stretches is written once and
-    the ribbon under the waveform and the band under an instrument's bars agree by construction.
-    Whether a lane is worth drawing at all is the caller's own question: a surface with room for
-    only one reading, such as an instrument's bars, asks ``tells_owners_apart`` first and skips
-    this call where a document answering to a single owner has nothing to tell apart; a surface
-    reading every channel of a document at once, such as the waveform's ribbon, has a plainer
-    question to answer instead — whether a channel plays — and takes a lane for every one that
-    does.
+    Each surface states its own reading as the stretches it passes — which channels stand, and
+    how far each lane runs — so the rule painting a stretch is written once and the ribbon under
+    the waveform and the band under an instrument's bars agree by construction. The stretches
+    themselves are the record's own (``StemsData.owner_runs_by_channel``), read from its frames
+    once and shared by every surface. Whether a lane is worth drawing at all is the caller's own
+    question: a surface with room for only one reading, such as an instrument's bars, asks
+    ``tells_owners_apart`` first and skips this call where a document answering to a single owner
+    has nothing to tell apart; a surface reading every channel of a document at once, such as the
+    waveform's ribbon, has a plainer question to answer instead — whether a channel plays — and
+    takes a lane for every one that does.
 
     Args:
-        assignments: The stem holding each frame, per channel the surface draws.
+        runs: The stretches each channel divides into, per channel the surface draws.
         heard_on: The recordings the reader hears on a channel.
 
     Returns:
         Dict[ChannelName, OwnershipLaneViewModel]: One lane per channel given, in that order.
     """
     return {
-        channel_name: _ownership_lane(channel_name, stem_ids, heard_on(channel_name))
-        for channel_name, stem_ids in assignments.items()
+        channel_name: _ownership_lane(channel_name, channel_runs, heard_on(channel_name))
+        for channel_name, channel_runs in runs.items()
     }
 
 
 def _ownership_lane(
     channel_name: ChannelName,
-    stem_ids: Sequence[int],
+    runs: Sequence[OwnerRun],
     heard: AbstractSet[int],
 ) -> OwnershipLaneViewModel:
-    """One channel's lane: the stretches it divides into, each under the recording holding it.
+    """One channel's lane: its stretches, each under the recording holding it.
 
     A stretch keeps the recording holding it and says whether the reader hears it there, so
     the lane names an owner wherever the record does and shows the reader's choice on top of it.
@@ -104,7 +105,7 @@ def _ownership_lane(
                 stem_id=run.stem_id,
                 heard=heard_frame(run.stem_id, heard),
             )
-            for run in owner_runs(stem_ids)
+            for run in runs
             if run.stem_id != RESTING_STEM_ID
         ),
     )

@@ -58,6 +58,7 @@ from sampletones_core.exports.request import (
 )
 from sampletones_core.exports.scope import ExportScope
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.ownership import OwnerRun
 from sampletones_core.reconstructions.reconstruction.stems.selection import (
     StemSelection,
 )
@@ -382,17 +383,18 @@ class ReconstructionPanelLogic(CallbackMixin):
         through it.
         """
         stems_data = reconstruction_data.reconstruction.stems_data
-        owned = stems_data.assignments_by_channel
-        assignments: Dict[ChannelName, Sequence[int]] = {
+        owned = stems_data.owner_runs_by_channel
+        runs: Dict[ChannelName, Sequence[OwnerRun]] = {
             channel_name: owned[channel_name] if channel_name in self._listening.channels_on else ()
             for channel_name in self._in_channel_order(self._listening.playing)
             if channel_name in owned
         }
-        lanes = tuple(ownership_lanes(assignments, self.heard_on).values())
+        lanes = tuple(ownership_lanes(runs, self.heard_on).values())
+        frames = stems_data.assignments_by_channel
         return OwnershipRibbonViewModel(
             lanes=lanes,
             frame_length=reconstruction_data.reconstruction.config.frame_length,
-            total_frames=max((len(owned[lane.channel_name]) for lane in lanes), default=0),
+            total_frames=max((len(frames[lane.channel_name]) for lane in lanes), default=0),
         )
 
     def heard_on(self, channel_name: ChannelName) -> FrozenSet[int]:

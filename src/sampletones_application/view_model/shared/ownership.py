@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Dict, List, Sequence, Tuple
 
 from pydantic import BaseModel
 
@@ -23,8 +23,51 @@ class OwnershipRunViewModel(BaseModel, extra="forbid", frozen=True):
     heard: bool
 
 
+class OwnerStretchesViewModel(BaseModel, extra="forbid", frozen=True):
+    """One recording's stretches along a lane, as a surface paints them in one piece.
+
+    Attributes:
+        stem_id: The stem holding the stretches, which picks the color.
+        stretches: The first frame and the frame one past the last of each stretch, in frame order.
+        heard: Whether the reader hears the recording on this lane, which settles how solidly it paints.
+    """
+
+    stem_id: int
+    stretches: Tuple[Tuple[int, int], ...]
+    heard: bool
+
+
+def runs_by_owner(runs: Sequence[OwnershipRunViewModel]) -> Dict[int, OwnerStretchesViewModel]:
+    """The runs of a lane gathered by the recording holding them, in the order the recordings first appear.
+
+    A surface paints a recording's stretches as one piece however many times the lane divides, so
+    what it draws costs as many pieces as the lane has owners. Hearing is chosen per channel, so a
+    lane hears a recording on every stretch it holds or on none, and the recording's stretches share
+    one reading of it.
+
+    Args:
+        runs: The lane's runs, in frame order.
+
+    Returns:
+        Dict[int, OwnerStretchesViewModel]: Each owner's stretches, keyed by stem id.
+    """
+    stretches: Dict[int, List[Tuple[int, int]]] = {}
+    heard: Dict[int, bool] = {}
+    for run in runs:
+        stretches.setdefault(run.stem_id, []).append((run.start_frame, run.end_frame))
+        heard[run.stem_id] = run.heard
+
+    return {
+        stem_id: OwnerStretchesViewModel(stem_id=stem_id, stretches=tuple(owned), heard=heard[stem_id])
+        for stem_id, owned in stretches.items()
+    }
+
+
 class OwnershipLaneViewModel(BaseModel, extra="forbid", frozen=True):
-    """One channel's stretch of ribbon: the channel it stands for and the runs along it."""
+    """One channel's stretch of ribbon: the channel it stands for and the runs along it.
+
+    Hearing is chosen per channel, so the lane hears a recording on every stretch it holds or on none.
+    """
 
     channel_name: ChannelName
     runs: Tuple[OwnershipRunViewModel, ...]

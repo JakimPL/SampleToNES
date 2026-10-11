@@ -10,7 +10,7 @@ from automation.steps.reconstructions import expect_open, reconstruction_shade, 
 from automation.worlds.home import World
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.screens.readings import frame_readings, keep_readings, longest_gap_after_each
-from tests.suite.screens.worlds.recordings import LONG_RECONSTRUCTION, long_document_world
+from tests.suite.screens.worlds.recordings import LONG_RECONSTRUCTION, alternating_document_world
 
 TOGGLED_CHANNEL: Final[ChannelName] = ChannelName.NOISE
 RECORDING_KEY: Final[str] = "0"
@@ -21,8 +21,8 @@ BOX_READINGS: Final[str] = "frame_gaps_boxes.json"
 
 @pytest.fixture(name="world")
 def world_fixture() -> World:
-    """The home holds the two-minute reconstruction with its recording."""
-    return long_document_world()
+    """The home holds the two-minute reconstruction over three recordings taking turns."""
+    return alternating_document_world()
 
 
 @pytest.fixture(name="startup")
@@ -33,11 +33,12 @@ def startup_fixture() -> Startup:
 
 class TestTheBoxesOnALongDocument:
     """How the frames keep coming while a channel's box above the waveform and a recording's box on the
-    stems card are ticked off and on again on a two-minute document.
+    stems card are ticked off and on again on a two-minute document over three recordings taking turns.
 
-    A box changes what is heard, so the waveform, the audio and the figures are read again from the
-    document, and a sound the screen holds none of yet is rendered on the worker while the frames
-    keep coming. The scenario records the clock after every frame through the ticks, each followed
+    A box changes what is heard, so the waveform, the audio, the figures and the stretches every
+    surface paints are read again from the document, and a sound the screen holds none of yet is
+    rendered on the worker while the frames keep coming. The recordings take four-frame turns, so
+    every lane divides into as many stretches as a long conversion over competing recordings does. The scenario records the clock after every frame through the ticks, each followed
     by the fade's end, and keeps the longest gap after each tick beside the readings the drag
     scenarios keep, holding the application to nothing: the readings are what a change to the
     listening path is judged by, taken before and after the change.

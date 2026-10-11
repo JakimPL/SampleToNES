@@ -10,6 +10,7 @@ from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.data import DataModel
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
+from sampletones_core.reconstructions.reconstruction.stems.ownership import OwnerRun, owner_runs
 from sampletones_core.reconstructions.reconstruction.stems.source import StemSource
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
@@ -89,6 +90,15 @@ class StemsData(DataModel):
     def assignments_by_channel(self) -> Dict[ChannelName, Tuple[int, ...]]:
         """The per-frame stem ids each channel carries, keyed by channel."""
         return {item.channel_name: item.stem_ids for item in self.assignments}
+
+    @cached_property
+    def owner_runs_by_channel(self) -> Dict[ChannelName, Tuple[OwnerRun, ...]]:
+        """The stretches each channel divides into, each held by one owner throughout, keyed by channel.
+
+        A record is read by its stretches wherever a surface paints who holds what, and a record
+        is a value, so the stretches are read from its frames once and every surface shares them.
+        """
+        return {item.channel_name: tuple(owner_runs(item.stem_ids)) for item in self.assignments}
 
     @cached_property
     def assignment_records(self) -> Dict[ChannelName, ChannelAssignment]:

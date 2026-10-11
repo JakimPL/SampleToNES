@@ -11,6 +11,7 @@ from sampletones_application.view_model.shared.ownership import OwnershipLaneVie
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.stems.ownership import runs_up_to
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 
 
@@ -60,10 +61,10 @@ def _lanes(
     if not tells_owners_apart(stems_data):
         return {}
 
-    owned = stems_data.assignments_by_channel
-    assignments = {
-        channel_name: owned[channel_name][: features.frame_count]
+    owned = stems_data.owner_runs_by_channel
+    runs = {
+        channel_name: runs_up_to(owned[channel_name], features.frame_count)
         for channel_name, features in channels.items()
         if features.has_frames and channel_name in owned
     }
-    return ownership_lanes(assignments, selection.stems_for)
+    return ownership_lanes(runs, selection.stems_for)
