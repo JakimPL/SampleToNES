@@ -1498,6 +1498,7 @@ class TestWhatTheEnvelopesShow:
         whole = mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count
 
         panel_logic.set_stem_channels(1, frozenset())
+        _hear(mock_reconstruction_manager)
 
         assert mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count < whole
 
@@ -1512,6 +1513,7 @@ class TestWhatTheEnvelopesShow:
 
         panel_logic.set_stem_channels(0, frozenset())
         panel_logic.set_stem_channels(1, frozenset())
+        _hear(mock_reconstruction_manager)
 
         assert not mock_reconstruction_manager.current_features[ChannelName.PULSE1].has_frames
 
@@ -1526,6 +1528,7 @@ class TestWhatTheEnvelopesShow:
 
         panel_logic.set_stem_channels(0, frozenset())
         panel_logic.set_stem_channels(1, frozenset())
+        _hear(mock_reconstruction_manager)
 
         assert panel_logic.exportable_instrument(ChannelName.PULSE1) is None
         assert ChannelName.PULSE1 not in {export.channel for export in panel_logic.sample_request().instruments}

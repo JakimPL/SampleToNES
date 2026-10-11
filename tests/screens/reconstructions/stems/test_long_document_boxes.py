@@ -9,7 +9,7 @@ from automation.steps.exports import leaving_asks_nothing
 from automation.steps.reconstructions import expect_open, reconstruction_shade, wait_for_the_fade_to_end
 from automation.worlds.home import World
 from sampletones_core.constants.enums import ChannelName
-from tests.suite.screens.readings import frame_readings, keep_readings, longest_gap_after_each
+from tests.suite.screens.readings import expect_no_long_hold, frame_readings, keep_readings, longest_gap_after_each
 from tests.suite.screens.worlds.recordings import LONG_RECONSTRUCTION, alternating_document_world
 
 TOGGLED_CHANNEL: Final[ChannelName] = ChannelName.NOISE
@@ -38,14 +38,16 @@ class TestTheBoxesOnALongDocument:
     A box changes what is heard, so the waveform, the audio, the figures and the stretches every
     surface paints are read again from the document, and a sound the screen holds none of yet is
     rendered on the worker while the frames keep coming. The recordings take four-frame turns, so
-    every lane divides into as many stretches as a long conversion over competing recordings does. The scenario records the clock after every frame through the ticks, each followed
-    by the fade's end, and keeps the longest gap after each tick beside the readings the drag
-    scenarios keep, holding the application to nothing: the readings are what a change to the
-    listening path is judged by, taken before and after the change.
+    every lane divides into as many stretches as a long conversion over competing recordings does.
+    The scenario records the clock after every frame through the ticks, each followed by the fade's
+    end, and keeps the longest gap after each tick beside the readings the drag scenarios keep. The
+    readings are what a change to the listening path is judged by, taken before and after the
+    change; the one promise is relative: a tick holds a frame for a few of the machine's own
+    frames at most.
     """
 
     def test_the_frames_through_the_ticks(self, screen: Screen) -> None:
-        """The readings are kept; the application is only asked to keep drawing and to leave cleanly."""
+        """The readings are kept and held to the machine's frame cadence; the application leaves cleanly."""
         reconstructions = screen.reconstructions
         stamps: List[float] = []
         ticks: List[float] = []
@@ -72,8 +74,10 @@ class TestTheBoxesOnALongDocument:
             stamps.extend(recording.values())
 
         def keep_the_readings(screen: Screen) -> None:
-            readings: Dict[str, object] = dict(frame_readings(stamps, ticks[-1]))
+            frames = frame_readings(stamps, ticks[-1])
+            readings: Dict[str, object] = dict(frames)
             readings["longest_gap_after_each_tick_seconds"] = longest_gap_after_each(stamps, ticks)
             keep_readings(BOX_READINGS, readings)
+            expect_no_long_hold(frames)
 
         screen.scenario(open_it, tick_the_boxes, keep_the_readings, leaving_asks_nothing).run()

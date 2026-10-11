@@ -16,7 +16,7 @@ from automation.views.bar_graph import BarGraph
 from automation.views.instruments import Instruments
 from automation.worlds.home import World
 from sampletones_core.constants.enums import ChannelName, FeatureKey
-from tests.suite.screens.readings import frame_readings, keep_readings
+from tests.suite.screens.readings import expect_no_long_hold, frame_readings, keep_readings
 from tests.suite.screens.worlds.recordings import LONG_RECONSTRUCTION, long_document_world
 
 DRAGGED_ITEMS: Final[Tuple[int, ...]] = (2, 4, 6, 8)
@@ -66,6 +66,7 @@ class TestADragOnALongDocument:
     tenth of a second, the frames drawn a second, and how long the line took to empty after the
     last release, beside the scenario's other files. It holds the application to nothing: the
     readings are what a change to the edit path is judged by, taken before and after the change.
+    The one promise is relative: a landing holds a frame for a few of the machine's own frames at most.
     """
 
     def test_the_frames_through_a_burst_of_drags(self, screen: Screen) -> None:
@@ -88,7 +89,9 @@ class TestADragOnALongDocument:
             stamps.extend(recording.values())
 
         def keep_the_readings(screen: Screen) -> None:
-            keep_readings(BURST_READINGS, frame_readings(stamps, releases[-1]))
+            readings = frame_readings(stamps, releases[-1])
+            keep_readings(BURST_READINGS, readings)
+            expect_no_long_hold(readings)
 
         screen.scenario(open_and_zoom_in, drag_until_the_fade_ends, keep_the_readings, leave_letting_it_go).run()
 

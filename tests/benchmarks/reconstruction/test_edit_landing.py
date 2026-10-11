@@ -55,6 +55,7 @@ RECORDINGS: Final[int] = 2
 RECORDING_FREQUENCY: Final[float] = 220.0
 RECORDING_AMPLITUDE: Final[float] = 0.5
 LOWEST_LEVEL: Final[int] = 1
+LANDING_SHARE_OF_A_COLD_RENDER: Final[float] = 0.25
 NO_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset()
 DOCUMENT_NAME: Final[str] = "Long conversion"
 
@@ -246,15 +247,28 @@ def recordings_fixture(tmp_path_factory: pytest.TempPathFactory) -> Tuple[Path, 
     return tuple(paths)
 
 
+def _lands_within_a_share_of_a_cold_render(opening: Landing, landings: List[Landing]) -> None:
+    """A landing on the render thread costs a share of what rendering the document cold costs the worker.
+
+    The worker renders every channel of the document once at the opening, so the opening's worker
+    seconds measure the document on this machine, and the landing is held to a share of them: the
+    landing installs what the worker made and draws it, so its cost stays a fraction of the render
+    whatever the machine's speed.
+    """
+    landing = median(landing.landing_seconds for landing in landings)
+    bound = opening.worker_seconds * LANDING_SHARE_OF_A_COLD_RENDER
+    assert landing < bound, f"landing {landing:.3f} s, a share of the cold render {bound:.3f} s"
+
+
 class TestWhatAnEditCosts:
     """Readings of what one edit costs the worker and the render thread, beside what a cold opening costs.
 
-    The readings hold the edit path to nothing; they are what a change to it is judged by, taken on
-    this meter before and after the change. Each case lands a burst of edits of one channel the way
-    a drag lands them, one after the other, and reports the median and the least of each side's
-    seconds. A project sample carries the strict history's fingerprint on each landing; a standalone
-    document with its recordings read carries the original mix and, with a recording muted, the
-    filtered reading.
+    The readings are what a change to the edit path is judged by, taken on this meter before and
+    after the change, and each case holds the landing to a share of the document's cold render on
+    the same machine. Each case lands a burst of edits of one channel the way a drag lands them,
+    one after the other, and reports the median and the least of each side's seconds. A project
+    sample carries the strict history's fingerprint on each landing; a standalone document with its
+    recordings read carries the original mix and, with a recording muted, the filtered reading.
     """
 
     @pytest.mark.parametrize("seconds", [SHORT_SECONDS, LONG_SECONDS], ids=["30s", "120s"])
@@ -271,6 +285,7 @@ class TestWhatAnEditCosts:
 
         _report(f"project sample, {seconds:.0f} s, every recording heard", opening, landings, meter.renders.held_bytes)
         assert meter.manager.reconstruction is not before
+        _lands_within_a_share_of_a_cold_render(opening, landings)
 
     def test_a_standalone_document_with_a_recording_muted(
         self,
@@ -291,3 +306,4 @@ class TestWhatAnEditCosts:
             meter.renders.held_bytes,
         )
         assert meter.manager.reconstruction is not before
+        _lands_within_a_share_of_a_cold_render(opening, landings)

@@ -92,6 +92,13 @@ dimension the import starts carrying.
   channel, and the song's hash grows with the song. Development runs and the test suite pay for it.
   Memoizing each pattern's and each stream's hash by identity, as each document's is memoized now, brings
   a commit down to the parts its gesture replaced.
+* What the Reconstructions tab still computes on the render thread. The regeneration worker renders,
+  mixes and exports what the reader hears, and the landing installs it ([Editing the open
+  reconstruction](application/reconstruction-edits.md)); three readings stay on the render thread. The
+  sequencer's preview of a sample mixes the sample cold on its first read, since it reads the render
+  cache directly. The original mix of the recordings heard is mixed again on the render thread whenever a
+  recording is left out, which is a few milliseconds per recording on a two-minute document. A WAV export
+  of a hearing the cache keeps no sound for renders it on the spot, where the reader waits for the file.
 * Improve performance of the browser's favorite scan of the entire tree per click
 * The `fft` and `logfft` analysis floors. Their window spans two cycles of the pulse's lowest note, so the
   triangle's lowest octave reaches them by its harmonics alone. Covering it doubles their window and
