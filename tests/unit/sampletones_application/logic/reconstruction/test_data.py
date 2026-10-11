@@ -363,11 +363,11 @@ class TestStemFilteredProjections:
         expected = rendered_mix(data.reconstruction).copy()
         expected[frame_length:] = 0
 
-        partials = data.audio_for(renders, _hearing(0))
+        partials = _kept(renders, data, _hearing(0)).playing
 
         np.testing.assert_allclose(partials, expected)
         np.testing.assert_allclose(
-            data.audio_for(renders, _hearing(0, 1)),
+            _kept(renders, data, _hearing(0, 1)).playing,
             rendered_mix(data.reconstruction),
         )
 
@@ -431,7 +431,7 @@ class TestStemFilteredProjections:
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
         np.testing.assert_array_equal(
-            data.audio_for(renders, _hearing()),
+            _kept(renders, data, _hearing()).playing,
             np.zeros_like(rendered_mix(data.reconstruction)),
         )
         assert data.original_audio is not None
@@ -675,30 +675,3 @@ class TestWaveformData:
         assert waveform_data.approximation is not renders.mix(reconstruction)
         np.testing.assert_array_equal(waveform_data.approximation, np.zeros_like(renders.mix(reconstruction)))
         np.testing.assert_array_equal(waveform_data.playing, waveform_data.approximation)
-
-
-class TestTheAudioAnExportWrites:
-    """An export writes what plays, read from what is kept and rendered on the spot where nothing is."""
-
-    def test_what_is_kept_is_handed_back(
-        self,
-        reconstruction_factory: Callable[[], Reconstruction],
-        renders: RenderCache,
-    ) -> None:
-        data = ReconstructionData.from_reconstruction(reconstruction_factory(), name="Sample")
-        kept = _kept(renders, data, _hearing(0))
-
-        assert data.audio_for(renders, _hearing(0)) is kept.playing
-
-    def test_what_is_not_kept_is_rendered(
-        self,
-        reconstruction_factory: Callable[[], Reconstruction],
-        renders: RenderCache,
-    ) -> None:
-        data = ReconstructionData.from_reconstruction(reconstruction_factory(), name="Sample")
-
-        np.testing.assert_array_equal(data.audio_for(renders, _hearing(0)), rendered_mix(data.reconstruction))
-        np.testing.assert_array_equal(
-            data.audio_for(renders, _hearing(0, channels_on=frozenset())),
-            np.zeros_like(rendered_mix(data.reconstruction)),
-        )

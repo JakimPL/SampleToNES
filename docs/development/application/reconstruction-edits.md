@@ -86,7 +86,9 @@ moves the choice the listening makes on the new record, so its landing reads the
 listening waiting answers every choice made before it is taken, and a listening asked for during a
 rebuild reads the rebuilt document. A freshly opened document is shown the same way, so its channels
 render on the worker too. The showing the panel owes happens once the sound lands, and a hearing the
-cache already answers is shown at once.
+cache already answers is shown at once. A WAV export is a reading of what plays like a showing: it
+writes the kept sound at once, and where the cache keeps none it is owed beside the showing and written
+once the worker's reading lands, for what the reader hears then.
 
 ## The waveform fades while the line is busy
 

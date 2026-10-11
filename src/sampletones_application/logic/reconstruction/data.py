@@ -15,7 +15,6 @@ from sampletones_core.reconstructions.reconstruction.renders import rendered_len
 from sampletones_core.reconstructions.reconstruction.stems.hearing import (
     HeardRenders,
     Hearing,
-    heard_renders,
 )
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_shared.logger import logger
@@ -239,23 +238,6 @@ class ReconstructionData:
             return None
 
         return self._waveform_data(self.original_mix_for(hearing.selection), heard)
-
-    def audio_for(
-        self,
-        renders: RenderCache,
-        hearing: Hearing,
-    ) -> np.ndarray:
-        """What ``hearing`` plays of the document, rendered here where the cache keeps none of it.
-
-        An export writes what plays and runs where the reader waits for it, so it reads what is
-        kept and renders the rest on the spot.
-        """
-        heard = renders.reading(self.reconstruction, hearing)
-        if heard is not None:
-            return heard.playing
-
-        channels = renders.channels(self.reconstruction)
-        return heard_renders(self.reconstruction, hearing, channels, renders.mix(self.reconstruction)).playing
 
     def _waveform_data(
         self,
