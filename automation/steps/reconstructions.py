@@ -1,11 +1,13 @@
 import operator
 from functools import partial
 from pathlib import Path
-from typing import Final, List, Optional
+from typing import Callable, Final, List, Optional, Tuple
 
+from automation.dearpygui.items.colors import read_theme
 from automation.dearpygui.items.types import Item
 from automation.holds.regeneration import RegenerationHold
 from automation.screen import Screen
+from automation.views.bar_graph import BarGraph
 from automation.vocabulary.graphs import WAVEFORM_RECONSTRUCTION
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
@@ -86,13 +88,28 @@ def expect_open(screen: Screen, path: Path) -> None:
     screen.expect(screen.sound_settled, bool, description=f"the sound of {path.name} landed")
 
 
-def reconstruction_shade(screen: Screen) -> Optional[str]:
-    """The theme the waveform's reconstruction line wears, which the fade swaps while its sound is on its way."""
+def reconstruction_shade(screen: Screen) -> str:
+    """The theme the waveform's reconstruction line wears, which the fade swaps while its sound is on its way.
+
+    Raises:
+        AssertionError: If the line wears no theme, which would leave a fade nothing to swap.
+    """
     waveform = screen.reconstructions.waveform
-    return screen.theme_of(waveform.series_tag(screen.words(WAVEFORM_RECONSTRUCTION)))
+    shade = screen.theme_of(waveform.series_tag(screen.words(WAVEFORM_RECONSTRUCTION)))
+    assert shade is not None, "the reconstruction line wears no theme"
+    return shade
 
 
-def wait_for_the_fade_to_end(screen: Screen, unfaded: Optional[str]) -> None:
+def shade_reading(screen: Screen) -> Callable[[], Optional[str]]:
+    """A reading of the shade the reconstruction line wears, for a frame recording to take after every frame.
+
+    The reading runs on the render thread, so it reads the theme directly.
+    """
+    tag = screen.reconstructions.waveform.series_tag(screen.words(WAVEFORM_RECONSTRUCTION))
+    return partial(read_theme, tag)
+
+
+def wait_for_the_fade_to_end(screen: Screen, unfaded: str) -> None:
     """Waits until the reconstruction line wears ``unfaded`` again, which is when the last sound has landed."""
     screen.bridge.expect(
         lambda: reconstruction_shade(screen),
@@ -100,6 +117,27 @@ def wait_for_the_fade_to_end(screen: Screen, unfaded: Optional[str]) -> None:
         description="the fade ended",
         timeout=FADE_TIMEOUT_SECONDS,
     )
+
+
+def drag_item_to(
+    graph: BarGraph,
+    standing: List[int],
+    item: int,
+    *,
+    end: float,
+    bounds: Tuple[int, int],
+) -> Tuple[int, List[int]]:
+    """Drags the bar of ``item`` to ``end`` and returns the item the plot moved and the items expected after.
+
+    The item the plot puts under the release takes the value there, brought within ``bounds``, and
+    every other item stands as it did.
+    """
+    release = graph.drag_item(item, start=standing[item], end=end)
+    index, value = graph.item_under(release)
+    low, high = bounds
+    expected = [*standing]
+    expected[index] = min(max(round(value), low), high)
+    return index, expected
 
 
 def edit_envelope(

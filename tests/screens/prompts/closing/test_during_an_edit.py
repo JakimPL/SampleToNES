@@ -9,11 +9,11 @@ from automation.screen import Screen
 from automation.steps.reconstructions import (
     expect_open,
     first_raised,
+    leave_letting_it_go,
     marked,
     raise_the_first_level_while_held,
     titled,
 )
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from tests.screens.prompts.closing.constants import SETTLING_FRAMES
 from tests.suite.screens.worlds.recordings import OPEN_RECONSTRUCTION
@@ -109,14 +109,6 @@ class TestClosingTheWindowWhileAnEditIsOnItsWay:
                 description="the field drawing the edit that landed",
             )
             assert screen.title() == titled(screen, marked(OPEN_RECONSTRUCTION.name, unsaved=True))
-
-        def leave_letting_it_go(screen: Screen) -> None:
-            screen.press_shortcut(ShortcutId.EXIT)
-            screen.expect(prompt.is_shown, bool, description="the question about leaving again")
-
-            prompt.confirm()
-
-            assert screen.wait_for_exit()
 
         screen.scenario(
             edit_and_close_while_the_rebuild_is_held,

@@ -2,7 +2,7 @@ from typing import Dict, Final, FrozenSet, List, Tuple
 
 import numpy as np
 
-from sampletones_core.audio.mixing import align
+from sampletones_core.audio.mixing import align, mix
 from sampletones_core.constants.algorithm import AUTHORED_STEM_ID, RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, bending_channels
 from sampletones_core.instructions import PulseInstruction
@@ -27,6 +27,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.config import 
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from tests.suite.sequencer import sample_reconstruction
 from tests.suite.stems import (
     RECORDED_SCALE,
     SHARED_CHANNEL,
@@ -298,6 +299,24 @@ class TestWhatAHearingSounds:
         assert heard.mix is mixed
         np.testing.assert_array_equal(heard.playing, align([channels[SOLE_CHANNEL]], len(mixed))[0])
         assert len(heard.playing) == len(mixed)
+
+    def test_two_of_three_channels_on_are_summed_in_channel_order(self) -> None:
+        document = sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE])
+        channels = rendered_channels(document)
+        mixed = rendered_mix(document)
+
+        heard = heard_renders(
+            document,
+            _hearing(document.recorded_stem_ids, frozenset({ChannelName.TRIANGLE, ChannelName.PULSE1})),
+            channels,
+            mixed,
+        )
+
+        assert heard.mix is mixed
+        np.testing.assert_array_equal(
+            heard.playing,
+            mix(align([channels[ChannelName.PULSE1], channels[ChannelName.TRIANGLE]], len(mixed))),
+        )
 
     def test_every_channel_switched_off_plays_silence(self, taking_turns) -> None:
         channels = rendered_channels(taking_turns)

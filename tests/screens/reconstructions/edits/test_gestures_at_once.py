@@ -5,11 +5,11 @@ from typing import Final, List, Tuple
 import pytest
 
 from automation.application.startup import Startup
-from automation.dearpygui.geometry import Point
 from automation.holds.regeneration import RegenerationHold
 from automation.screen import Screen
 from automation.steps.project import save_project_as
 from automation.steps.reconstructions import (
+    drag_item_to,
     expect_open,
     leave_letting_it_go,
     load_from_the_browser,
@@ -65,12 +65,7 @@ def dragged(
     The item the plot puts under the release takes the value there, brought within ``bounds``, and every other
     item stands as it did.
     """
-    release: Point = graph.drag_item(DRAGGED_ITEM, start=standing[DRAGGED_ITEM], end=end)
-    index, value = graph.item_under(release)
-    low, high = bounds
-    expected = [*standing]
-    expected[index] = min(max(round(value), low), high)
-    return index, expected
+    return drag_item_to(graph, standing, DRAGGED_ITEM, end=end, bounds=bounds)
 
 
 def expect_items(

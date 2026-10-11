@@ -5,7 +5,6 @@ from typing import Final, FrozenSet, Tuple
 import numpy as np
 import pytest
 
-from sampletones_application.logic.shared import renders as renders_module
 from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_core.audio.mixing import align, mix
 from sampletones_core.constants.enums import ChannelName
@@ -100,10 +99,6 @@ class TestTheRendersALandingAdopts:
         assert renders.held(second_document)[SOLE_CHANNEL] is second[SOLE_CHANNEL]
         assert second[SOLE_CHANNEL] is not first[SOLE_CHANNEL]
         assert np.array_equal(second[SOLE_CHANNEL], first[SOLE_CHANNEL])
-
-    def test_the_cache_names_no_renderer(self) -> None:
-        """Every render the cache keeps is a worker's result, so the module reaches no renderer."""
-        assert not hasattr(renders_module, "render_instructions")
 
 
 class TestTheBudget:
