@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Final, List, Optional, Tuple
+from typing import Dict, Final, List, Optional, Tuple
 from unittest.mock import MagicMock
 
+import numpy as np
 import pytest
 
 from sampletones_application.logic.reconstruction.edit import (
@@ -579,6 +580,34 @@ class TestTheBusySpan:
         gesture.assert_called_once_with()
         assert outcome.work == []
         assert not rewrites.is_busy
+
+
+class TestAJobThatFailsToStart:
+    """A job whose start raises leaves the line idle, so the fade lifts and the next request runs."""
+
+    def test_the_line_stands_idle_after_the_raise(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        def refusing(reconstruction: Reconstruction) -> Dict[ChannelName, np.ndarray]:
+            raise RuntimeError("the kept renders could not be read")
+
+        monkeypatch.setattr(reconstruction_manager.renders, "held", refusing)
+        with pytest.raises(RuntimeError):
+            rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
+
+        assert not rewrites.is_busy
+        assert rewrites.work is None
+        assert regeneration.held == ()
+
+        monkeypatch.undo()
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
+
+        assert len(regeneration.held) == 1
+        assert rewrites.work is Work.REBUILDING
 
 
 class TestTheRendersALandingKeeps:

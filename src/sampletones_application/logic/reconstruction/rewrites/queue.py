@@ -1,5 +1,5 @@
 from dataclasses import dataclass, replace
-from typing import Callable, List, Optional, Union
+from typing import Callable, List, Optional
 
 from sampletones_application.logic.reconstruction.edit import (
     ChannelEdit,
@@ -40,16 +40,14 @@ from sampletones_shared.utils.callbacks import CallbackMixin
 
 
 @dataclass(frozen=True)
-class Rebuild:
-    """A channel change the regeneration is rebuilding, beside the document it started from.
+class Running:
+    """A job the worker runs, beside the document it started from.
 
     Attributes:
-        change: What the reader moved.
-        base: The document the rebuild started from, or ``None`` once an outside replacement put
-            that document away.
+        base: The document the job started from, or ``None`` once an outside replacement put that
+            document away.
     """
 
-    change: ChannelChange
     base: Optional[Reconstruction]
 
     def lands_on(self, reconstruction: Optional[Reconstruction]) -> bool:
@@ -58,21 +56,19 @@ class Rebuild:
 
 
 @dataclass(frozen=True)
-class Listening:
-    """A reading of what the reader hears the worker is rendering, beside the document it reads.
+class Rebuild(Running):
+    """A channel change the worker is rebuilding.
 
     Attributes:
-        base: The document read, or ``None`` once an outside replacement put that document away.
+        change: What the reader moved.
     """
 
-    base: Optional[Reconstruction]
-
-    def lands_on(self, reconstruction: Optional[Reconstruction]) -> bool:
-        """Whether the result belongs to ``reconstruction``, the document it was computed from."""
-        return self.base is not None and self.base is reconstruction
+    change: ChannelChange
 
 
-Running = Union[Rebuild, Listening]
+@dataclass(frozen=True)
+class Reading(Running):
+    """A reading of what the reader hears, which the worker is rendering."""
 
 
 class ReconstructionRewrites(CallbackMixin):
@@ -123,30 +119,19 @@ class ReconstructionRewrites(CallbackMixin):
 
     @property
     def work(self) -> Optional[Work]:
-        """What the line is busy with, which the waveform's fade names, or ``None`` while it stands empty.
-
-        The running job says what it does. While steps wait with none running, the first of them
-        says what comes: a change to what is heard has the sound read, and every other step
-        rewrites the document.
-        """
+        """What the running job does, which the waveform's fade names, or ``None`` while none runs."""
         match self._running:
             case Rebuild():
                 return Work.REBUILDING
-            case Listening():
+            case Reading():
                 return Work.READING
 
-        match self._waiting[0] if self._waiting else None:
-            case None:
-                return None
-            case ListeningChange():
-                return Work.READING
-            case _:
-                return Work.REBUILDING
+        return None
 
     @property
     def is_busy(self) -> bool:
         """Whether a job runs or a step waits, which is the span the open document's sound is on its way."""
-        return self.work is not None
+        return self._running is not None or bool(self._waiting)
 
     def request(self, rewrite: Rewrite) -> None:
         """Puts a step at the end of the line, and takes it at once where nothing runs before it.
@@ -260,9 +245,11 @@ class ReconstructionRewrites(CallbackMixin):
     def _rebuild(self, change: ChannelChange) -> None:
         """Starts the rebuild of a changed channel from the document and the listening as they stand.
 
-        The rebuild is marked running before it starts, since a result can arrive before the start
-        returns. The renders the cache holds for the document go with it, so the worker renders the
-        edited channel alone and the landing finds every channel's audio kept.
+        Everything the job takes is read first, so a reading that raises leaves the line idle;
+        the rebuild is then marked running before it starts, since a case's synchronous seam can
+        deliver the result inside the start. The renders the cache holds for the document go with
+        it, so the worker renders the edited channel alone and the landing finds every channel's
+        audio kept.
         """
         reconstruction = self._manager.reconstruction
         envelopes = self._manager.current_features
@@ -270,33 +257,29 @@ class ReconstructionRewrites(CallbackMixin):
             logger.info(f"A change of {change.channel_name} found no document open")
             return
 
+        rebased = change.rebased(envelopes[change.channel_name])
+        hearing = self._manager.listening.hearing
+        kept = self._manager.renders.held(reconstruction)
         self._running = Rebuild(change=change, base=reconstruction)
-        self._regeneration.start(
-            reconstruction,
-            change.channel_name,
-            change.rebased(envelopes[change.channel_name]),
-            hearing=self._manager.listening.hearing,
-            kept=self._manager.renders.held(reconstruction),
-        )
+        self._regeneration.start(reconstruction, change.channel_name, rebased, hearing=hearing, kept=kept)
 
     def _listen(self) -> None:
         """Starts rendering what the reader hears of the document as it stands.
 
-        The listening is marked running before it starts, since a result can arrive before the
-        start returns. The renders the cache holds go with it, so the worker renders what is missing
-        alone.
+        Everything the job takes is read first, so a reading that raises leaves the line idle; the
+        reading is then marked running before it starts, since a case's synchronous seam can
+        deliver the result inside the start. The renders the cache holds go with it, so the worker
+        renders what is missing alone.
         """
         reconstruction = self._manager.reconstruction
         if reconstruction is None:
             logger.info("A change to what is heard found no document open")
             return
 
-        self._running = Listening(base=reconstruction)
-        self._regeneration.start_listening(
-            reconstruction,
-            hearing=self._manager.listening.hearing,
-            kept=self._manager.renders.held(reconstruction),
-        )
+        hearing = self._manager.listening.hearing
+        kept = self._manager.renders.held(reconstruction)
+        self._running = Reading(base=reconstruction)
+        self._regeneration.start_listening(reconstruction, hearing=hearing, kept=kept)
 
     def _remove(self, removal: StemRemovalRequest) -> None:
         """Takes a recording out, where a step before it left the recording and another beside it."""
@@ -361,8 +344,7 @@ class ReconstructionRewrites(CallbackMixin):
             self._let_go(running)
             return
 
-        self._manager.renders.adopt(outcome.reconstruction, outcome.channels, outcome.mix)
-        self._manager.renders.adopt_heard(outcome.reconstruction, outcome.hearing, outcome.heard)
+        self._manager.renders.adopt_rendered(outcome)
         envelopes = HeardEnvelopes(selection=outcome.hearing.selection, channels=outcome.envelopes)
         match running:
             case Rebuild(change=change):
@@ -375,7 +357,7 @@ class ReconstructionRewrites(CallbackMixin):
                         envelopes=envelopes,
                     ),
                 )
-            case Listening():
+            case Reading():
                 changed = self._manager.adopt_envelopes(outcome.reconstruction, envelopes)
                 self.call(self.on_heard_rendered, changed)
 

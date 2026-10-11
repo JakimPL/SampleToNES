@@ -109,10 +109,10 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                     edited = None
                     hearing = job.hearing
 
-            if SingleThreadExecutor.is_shutting_down():
+            channels = self._rendered(document, edited, job.kept)
+            if channels is None or SingleThreadExecutor.is_shutting_down():
                 return
 
-            channels = self._rendered(document, edited, job.kept)
             mixed = mix(list(channels.values()))
             self._emit(
                 ServiceSuccess(
@@ -150,12 +150,18 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         document: Reconstruction,
         edited: Optional[ChannelName],
         kept: Mapping[ChannelName, np.ndarray],
-    ) -> Dict[ChannelName, np.ndarray]:
+    ) -> Optional[Dict[ChannelName, np.ndarray]]:
         """The audio each sounding channel of ``document`` renders to, a handed render carried over where the
-        job left the channel alone.
+        job left the channel alone, or ``None`` where a shutdown asked for meanwhile ends the job.
+
+        The shutdown is read before each channel, so a worker joined at the teardown gives up at
+        its next step.
         """
         rendered: Dict[ChannelName, np.ndarray] = {}
         for stream in sounding_streams(document):
+            if SingleThreadExecutor.is_shutting_down():
+                return None
+
             handed = kept.get(stream.channel_name)
             if handed is not None and stream.channel_name != edited:
                 rendered[stream.channel_name] = handed

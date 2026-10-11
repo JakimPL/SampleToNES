@@ -114,6 +114,31 @@ class TestReadersAndWritersSharingOneCache:
         assert renders.held_bytes == 0
 
 
+class TestTheLockLetsItsHolderInAgain:
+    """A watched stream let go of while the cache's lock is held on the same thread is forgotten from inside.
+
+    A collector pass can run a stream's finalizer on the thread holding the lock, from inside a
+    keep; the lock lets that thread in again, so the forgetting completes and the keep goes on.
+    """
+
+    def test_a_stream_collected_under_the_lock_is_forgotten_at_once(
+        self,
+        renders: RenderCache,
+        thread_failures: List[BaseException],
+    ) -> None:
+        def keep_and_let_go() -> None:
+            document = _document(0)
+            renders.adopt(document, rendered_channels(document), rendered_mix(document))
+            with renders._lock:
+                del document
+                gc.collect()
+                assert renders.held_bytes == 0
+
+        _run_together([keep_and_let_go])
+
+        assert thread_failures == []
+
+
 class TestADocumentLetGoWhileItsRenderIsMade:
     """A document let go of everywhere else stays with the thread making and adopting its render, and its
     render leaves once that thread lets go.

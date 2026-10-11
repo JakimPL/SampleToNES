@@ -20,6 +20,7 @@ from tests.suite.stems import SHARED_CHANNEL, SOLE_CHANNEL, STEM_A_ID, STEM_B_ID
 SOURCES: Final[Tuple[Path, Path]] = (Path("a.wav"), Path("b.wav"))
 EDITED: Final[PulseInstruction] = PulseInstruction(on=True, pitch=67, volume=11, duty_cycle=1)
 EDITED_PITCH: Final[int] = 67
+LONGER_FRAMES: Final[int] = 4
 EVERY_CHANNEL: Final[FrozenSet[ChannelName]] = frozenset(ChannelName.items())
 
 
@@ -135,6 +136,28 @@ class TestTheBudget:
         held = renders.held(document)
         assert held.keys() == channels.keys()
         assert all(held[name] is channels[name] for name in channels)
+
+    def test_a_landing_is_kept_whole_within_a_budget_below_it(self, document: Reconstruction) -> None:
+        """A document larger than the budget is kept whole as it lands, and the previous renders go."""
+        renders = RenderCache(budget_bytes=_whole_bytes(document) - 1)
+        _adopted(renders, _document())
+        channels, mixed = _adopted(renders, document)
+
+        held = renders.held(document)
+        assert held.keys() == channels.keys()
+        assert all(held[name] is channels[name] for name in channels)
+        reading = renders.reading(document, _hearing(document.recorded_stem_ids))
+        assert reading is not None
+        assert reading.mix is mixed
+
+    def test_the_next_landing_evicts_a_document_larger_than_the_budget(self, document: Reconstruction) -> None:
+        renders = RenderCache(budget_bytes=_whole_bytes(document) - 1)
+        _adopted(renders, document)
+
+        _adopted(renders, _document())
+
+        assert renders.held(document) == {}
+        assert renders.held_bytes <= _whole_bytes(document)
 
     def test_a_budget_leaves_room_for_what_fits(self, document: Reconstruction) -> None:
         renders = RenderCache(budget_bytes=RENDER_BUDGET)
@@ -269,6 +292,40 @@ class TestReadingAHearing:
 
         assert reading is not None
         assert reading.mix is mixed
+
+    def test_no_channel_on_reads_silence_of_the_documents_own_length(self, renders: RenderCache) -> None:
+        """Two documents at equal settings, every channel off, each read a silence as long as their own mix."""
+        shorter = _document()
+        longer = _document().with_channel_data(
+            SHARED_CHANNEL,
+            [EDITED] * LONGER_FRAMES,
+            EDITED_PITCH,
+            (),
+            heard=shorter.recorded_stem_ids,
+        )
+        assert len(rendered_mix(longer)) > len(rendered_mix(shorter))
+        nothing_on = _hearing(shorter.recorded_stem_ids, frozenset())
+        for document in (shorter, longer):
+            _adopted(renders, document)
+            renders.adopt_heard(document, nothing_on, _heard(document, nothing_on))
+
+        readings = [renders.reading(document, nothing_on) for document in (shorter, longer)]
+
+        assert all(reading is not None for reading in readings)
+        assert [len(reading.playing) for reading in readings if reading is not None] == [
+            len(rendered_mix(shorter)),
+            len(rendered_mix(longer)),
+        ]
+        assert all(not reading.playing.any() for reading in readings if reading is not None)
+
+    def test_silence_is_kept_nowhere(self, renders: RenderCache, document: Reconstruction) -> None:
+        nothing_on = _hearing(document.recorded_stem_ids, frozenset())
+        _adopted(renders, document)
+        before = renders.held_bytes
+
+        renders.adopt_heard(document, nothing_on, _heard(document, nothing_on))
+
+        assert renders.held_bytes == before
 
     def test_a_heard_mix_goes_with_the_record_it_was_keyed_by(self, renders: RenderCache) -> None:
         document = _document()

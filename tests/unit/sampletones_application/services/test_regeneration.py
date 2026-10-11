@@ -515,6 +515,32 @@ class TestAShutdownMidRebuild:
         yield
         SingleThreadExecutor.reset_shutdown()
 
+    def test_a_shutdown_during_the_render_ends_the_job_before_the_next_channel(
+        self,
+        taking_turns: Reconstruction,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        rendered: List[ChannelName] = []
+
+        def rendering_then_shutting_down(
+            instructions: List[InstructionUnion],
+            channel_name: ChannelName,
+            config: Config,
+        ) -> np.ndarray:
+            rendered.append(channel_name)
+            SingleThreadExecutor.request_shutdown()
+            return np.zeros(1, dtype=np.float32)
+
+        monkeypatch.setattr(service_module, "render_instructions", rendering_then_shutting_down)
+        service = RegenerationService()
+        results: List[Any] = []
+        service.subscribe(results.append)
+
+        service._run(ListeningJob(taking_turns, _heard_whole(taking_turns), NO_RENDERS))
+
+        assert len(rendered) == 1
+        assert results == []
+
     def test_the_job_renders_nothing_and_reports_nothing(
         self,
         taking_turns: Reconstruction,

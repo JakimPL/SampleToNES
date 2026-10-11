@@ -136,8 +136,7 @@ class DocumentPreviews(CallbackMixin):
         self._pursue()
 
     def _land(self, outcome: RenderedDocument) -> None:
-        self._renders.adopt(outcome.reconstruction, outcome.channels, outcome.mix)
-        self._renders.adopt_heard(outcome.reconstruction, outcome.hearing, outcome.heard)
+        self._renders.adopt_rendered(outcome)
         wanted = self._wanted
         if wanted is not None and wanted.reconstruction is outcome.reconstruction:
             self._wanted = None

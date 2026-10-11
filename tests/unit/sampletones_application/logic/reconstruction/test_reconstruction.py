@@ -857,15 +857,28 @@ class TestOneReadingPerGesture:
 class TestAShowingTheScreenHoldsNoSoundFor:
     """A gesture whose sound the cache keeps none of asks the worker for it, draws nothing yet, and shows
     what it owes once the sound lands.
+
+    The document carries two recordings, so leaving one out is a hearing the cache keeps no sound
+    for; every channel off is silence, which the cache answers at once.
     """
+
+    @pytest.fixture(name="recorded_data")
+    def recorded_data_fixture(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> ReconstructionData:
+        """Two recordings taking turns on the first pulse, one frame each."""
+        recorded = recorded_from(reconstruction_factory(), (tmp_path / "a.wav", tmp_path / "b.wav"))
+        return ReconstructionData.from_reconstruction(recorded, name="Sample")
 
     def test_a_gesture_asks_once_and_draws_nothing_yet(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
-        loaded_data: ReconstructionData,
+        recorded_data: ReconstructionData,
     ) -> None:
-        _open(mock_reconstruction_manager, loaded_data)
+        _open(mock_reconstruction_manager, recorded_data)
         asked = MagicMock()
         drawn = MagicMock()
         played = MagicMock()
@@ -873,7 +886,7 @@ class TestAShowingTheScreenHoldsNoSoundFor:
         panel_logic.on_waveform_load_changed = drawn
         panel_logic.on_audio_data_changed = played
 
-        panel_logic.set_selected_channels([])
+        panel_logic.set_stem_channels(1, frozenset())
 
         asked.assert_called_once()
         drawn.assert_not_called()
@@ -883,19 +896,43 @@ class TestAShowingTheScreenHoldsNoSoundFor:
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
-        loaded_data: ReconstructionData,
+        recorded_data: ReconstructionData,
     ) -> None:
-        _open(mock_reconstruction_manager, loaded_data)
+        _open(mock_reconstruction_manager, recorded_data)
         panel_logic.on_renders_wanted = MagicMock()
         drawn: List[WaveformData] = []
         played: List[Optional[AudioData]] = []
         panel_logic.on_waveform_load_changed = drawn.append
         panel_logic.on_audio_data_changed = played.append
-        panel_logic.set_selected_channels([])
+        panel_logic.set_stem_channels(1, frozenset())
         _hear(mock_reconstruction_manager)
 
         panel_logic.redraw_listening()
 
+        assert len(drawn) == 1
+        assert played[0] is not None
+        np.testing.assert_array_equal(
+            drawn[0].playing, _playing(recorded_data, mock_reconstruction_manager.listening.hearing)
+        )
+        np.testing.assert_array_equal(played[0].sample, drawn[0].playing)
+
+    def test_every_channel_off_shows_silence_at_once(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, loaded_data)
+        asked = MagicMock()
+        panel_logic.on_renders_wanted = asked
+        drawn: List[WaveformData] = []
+        played: List[Optional[AudioData]] = []
+        panel_logic.on_waveform_load_changed = drawn.append
+        panel_logic.on_audio_data_changed = played.append
+
+        panel_logic.set_selected_channels([])
+
+        asked.assert_not_called()
         assert len(drawn) == 1
         assert played[0] is not None
         np.testing.assert_array_equal(drawn[0].playing, np.zeros_like(drawn[0].approximation))
@@ -921,13 +958,13 @@ class TestAShowingTheScreenHoldsNoSoundFor:
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         mock_export_service: MagicMock,
-        loaded_data: ReconstructionData,
+        recorded_data: ReconstructionData,
         tmp_path: Path,
     ) -> None:
-        _open(mock_reconstruction_manager, loaded_data)
+        _open(mock_reconstruction_manager, recorded_data)
         asked = MagicMock()
         panel_logic.on_renders_wanted = asked
-        mock_reconstruction_manager.listening.set_channels_on(frozenset())
+        mock_reconstruction_manager.listening.set_channels(1, frozenset())
         panel_logic.handle_export_wav_confirmed(tmp_path / "output.wav")
         asked.assert_called_once()
         mock_export_service.export_wav.assert_not_called()
@@ -936,7 +973,7 @@ class TestAShowingTheScreenHoldsNoSoundFor:
         panel_logic.redraw_listening()
 
         mock_export_service.export_wav.assert_called_once()
-        kept = loaded_data.waveform_data(
+        kept = recorded_data.waveform_data(
             mock_reconstruction_manager.renders, mock_reconstruction_manager.listening.hearing
         )
         assert kept is not None
@@ -947,17 +984,17 @@ class TestAShowingTheScreenHoldsNoSoundFor:
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         mock_export_service: MagicMock,
-        loaded_data: ReconstructionData,
+        recorded_data: ReconstructionData,
         tmp_path: Path,
     ) -> None:
-        _open(mock_reconstruction_manager, loaded_data)
+        _open(mock_reconstruction_manager, recorded_data)
         panel_logic.on_renders_wanted = MagicMock()
-        mock_reconstruction_manager.listening.set_channels_on(frozenset())
+        mock_reconstruction_manager.listening.set_channels(1, frozenset())
         panel_logic.handle_export_wav_confirmed(tmp_path / "output.wav")
 
         panel_logic.close_reconstruction()
 
-        _open(mock_reconstruction_manager, loaded_data)
+        _open(mock_reconstruction_manager, recorded_data)
         panel_logic.redraw_listening()
         mock_export_service.export_wav.assert_not_called()
 
@@ -965,12 +1002,12 @@ class TestAShowingTheScreenHoldsNoSoundFor:
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
-        loaded_data: ReconstructionData,
+        recorded_data: ReconstructionData,
     ) -> None:
         """What was owed is what is shown: an edit's update keeps the view, a listening change loads afresh."""
-        _open(mock_reconstruction_manager, loaded_data)
+        _open(mock_reconstruction_manager, recorded_data)
         panel_logic.on_renders_wanted = MagicMock()
-        mock_reconstruction_manager.listening.set_channels_on(frozenset())
+        mock_reconstruction_manager.listening.set_channels(1, frozenset())
         updated = MagicMock()
         loaded = MagicMock()
         panel_logic.on_waveform_update_changed = updated
