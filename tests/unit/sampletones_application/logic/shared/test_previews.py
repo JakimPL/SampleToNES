@@ -53,7 +53,7 @@ class TestAPreviewOfAKeptDocument:
         played: Played,
     ) -> None:
         document = _document()
-        warmed(renders, document, whole_hearing(document))
+        warmed(renders, document, whole_hearing(document), {})
 
         previews.play(document, played.append)
 
@@ -136,7 +136,7 @@ class TestAPreviewOfAnUnkeptDocument:
         first = _document()
         second = _document()
         previews.play(first, played.append)
-        warmed(renders, second, whole_hearing(second))
+        warmed(renders, second, whole_hearing(second), {})
         previews.play(second, played.append)
         assert played == []
 
@@ -189,7 +189,7 @@ class TestAPreviewOfAnUnkeptDocument:
         document = _document()
         stray = HeldRegeneration()
         stray.subscribe(previews._on_result)
-        stray.start_listening(document, hearing=whole_hearing(document), kept={})
+        stray.start_listening(document, hearing=whole_hearing(document), kept={}, recordings={})
 
         with pytest.raises(RuntimeError, match="no preview was on its way"):
             stray.finish()

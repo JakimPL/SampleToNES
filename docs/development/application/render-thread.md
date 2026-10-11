@@ -20,9 +20,9 @@ continues. Every background result reaches UI state this way. Applying one to UI
 worker thread is forbidden.
 
 A result carries what the landing installs. The regeneration renders the edited channel's audio on its
-worker, the mix of what the reader hears and the envelopes each channel exports for the recordings heard,
-and hands them back inside its result; the landing keeps the audio in the render cache and installs the
-envelopes on the render thread. A reading the cache cannot answer, such as a recording
+worker, the mix of what the reader hears, the envelopes each channel exports for the recordings heard and
+the mix of those recordings, which the waveform draws as the original, and hands them back inside its
+result; the landing keeps the audio in the render cache and installs the envelopes on the render thread. A reading the cache cannot answer, such as a recording
 left out for the first time or a freshly opened document, is asked of the same worker and lands the same
 way. What a worker produces for the interface therefore reaches what the interface reads through the
 queue alone, and the render thread computes no sample while the worker renders. A document previewed

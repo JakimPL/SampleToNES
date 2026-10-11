@@ -270,7 +270,14 @@ class ReconstructionRewrites(CallbackMixin):
         hearing = self._manager.listening.hearing
         kept = self._manager.renders.held(reconstruction)
         self._running = Rebuild(change=change, base=reconstruction)
-        self._regeneration.start(reconstruction, change.channel_name, rebased, hearing=hearing, kept=kept)
+        self._regeneration.start(
+            reconstruction,
+            change.channel_name,
+            rebased,
+            hearing=hearing,
+            kept=kept,
+            recordings=self._manager.recordings,
+        )
 
     def _await_envelopes(self, change: ChannelChange) -> None:
         """Puts ``change`` back at the head of the line behind a listening of the choice its envelopes are owed for.
@@ -302,7 +309,12 @@ class ReconstructionRewrites(CallbackMixin):
         hearing = self._manager.listening.hearing
         kept = self._manager.renders.held(reconstruction)
         self._running = Reading(base=reconstruction)
-        self._regeneration.start_listening(reconstruction, hearing=hearing, kept=kept)
+        self._regeneration.start_listening(
+            reconstruction,
+            hearing=hearing,
+            kept=kept,
+            recordings=self._manager.recordings,
+        )
 
     def _remove(self, removal: StemRemovalRequest) -> None:
         """Takes a recording out, where a step before it left the recording and another beside it."""

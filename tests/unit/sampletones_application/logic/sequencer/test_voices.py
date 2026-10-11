@@ -62,7 +62,7 @@ class VoicesHarness:
         """Adds a sample to the pool, its sound kept in the cache where ``kept`` says so."""
         sample = self.controller.add_sample(reconstruction, name="lead")
         if kept:
-            warmed(self.renders, sample.reconstruction, whole_hearing(sample.reconstruction))
+            warmed(self.renders, sample.reconstruction, whole_hearing(sample.reconstruction), {})
 
         return sample
 

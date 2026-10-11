@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Callable, Dict, Final, Optional
 
 import numpy as np
 
@@ -15,6 +15,7 @@ from sampletones_core.reconstructions.reconstruction.stems.hearing import whole_
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 Play = Callable[[np.ndarray], None]
+NO_RECORDINGS: Final[Dict[int, np.ndarray]] = {}
 
 
 @dataclass(frozen=True)
@@ -93,7 +94,10 @@ class DocumentPreviews(CallbackMixin):
         self._wanted = None
 
     def _pursue(self) -> None:
-        """Sounds the wanted preview from the cache, or asks the worker for it while no job runs."""
+        """Sounds the wanted preview from the cache, or asks the worker for it while no job runs.
+
+        A preview sounds the document alone, so the job is handed no recording and mixes no original.
+        """
         wanted = self._wanted
         if wanted is None or self._running is not None:
             return
@@ -110,6 +114,7 @@ class DocumentPreviews(CallbackMixin):
             wanted.reconstruction,
             hearing=hearing,
             kept=self._renders.held(wanted.reconstruction),
+            recordings=NO_RECORDINGS,
         )
 
     def _on_result(self, result: RegenerationResult) -> None:

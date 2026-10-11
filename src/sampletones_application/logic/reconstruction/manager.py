@@ -2,7 +2,9 @@ import errno
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Mapping, Optional, Tuple
+
+import numpy as np
 
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.reconstruction.data import ReconstructionData
@@ -299,6 +301,14 @@ class ReconstructionManager(CallbackMixin):
     @property
     def current_reconstruction(self) -> Optional[ReconstructionData]:
         return self._current_reconstruction
+
+    @property
+    def recordings(self) -> Mapping[int, np.ndarray]:
+        """The recordings loaded for the open document, by stem id, which a worker mixes the original from."""
+        if self._current_reconstruction is None:
+            return {}
+
+        return self._current_reconstruction.recordings_by_stem
 
     @property
     def current_features(self) -> Optional[ChannelEnvelopesViewModel]:

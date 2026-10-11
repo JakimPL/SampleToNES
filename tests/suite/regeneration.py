@@ -39,8 +39,9 @@ class HeldRegeneration:
         *,
         hearing: Hearing,
         kept: Mapping[ChannelName, np.ndarray],
+        recordings: Mapping[int, np.ndarray],
     ) -> None:
-        self._held.append(RebuildJob(reconstruction, channel_name, features, hearing, kept))
+        self._held.append(RebuildJob(reconstruction, channel_name, features, hearing, kept, recordings))
 
     def start_listening(
         self,
@@ -48,8 +49,9 @@ class HeldRegeneration:
         *,
         hearing: Hearing,
         kept: Mapping[ChannelName, np.ndarray],
+        recordings: Mapping[int, np.ndarray],
     ) -> None:
-        self._held.append(ListeningJob(reconstruction, hearing, kept))
+        self._held.append(ListeningJob(reconstruction, hearing, kept, recordings))
 
     @property
     def held(self) -> Tuple[RenderJob, ...]:
@@ -76,6 +78,7 @@ class HeldRegeneration:
                     hearing=job.hearing,
                     heard=heard_renders(reconstruction, job.hearing, channels, mixed),
                     envelopes=reconstruction.export_heard(job.hearing.selection),
+                    original=None,
                 )
             )
         )

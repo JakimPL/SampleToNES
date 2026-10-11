@@ -21,20 +21,22 @@ from sampletones_core.reconstructions.reconstruction.stems.hearing import HeardR
 class RenderKind(StrEnum):
     CHANNEL = "channel"
     MIX = "mix"
+    ORIGINAL = "original"
 
 
 @dataclass(frozen=True)
 class RenderPart:
-    """One channel as a render sounds it: its stream, and the owners heard where the reader leaves one out.
+    """One part as a render sounds it: a channel's stream and the owners heard where the reader leaves one
+    out, or a recording.
 
     Attributes:
-        stream: The identity of the stream the channel plays.
+        source: The identity of the object the part sounds: a channel's stream, or a recording.
         assignment: The identity of the record naming the owner of each frame, where an owner is
             left out.
-        heard: The owners heard, where an owner is left out; ``None`` where the channel is heard whole.
+        heard: The owners heard, where an owner is left out; ``None`` where the part is heard whole.
     """
 
-    stream: int
+    source: int
     assignment: Optional[int]
     heard: Optional[FrozenSet[int]]
 
@@ -50,12 +52,12 @@ class RenderKey:
     @property
     def identities(self) -> FrozenSet[int]:
         """The identities of every object the render was made from."""
-        named = {part.stream for part in self.parts}
+        named = {part.source for part in self.parts}
         named.update(part.assignment for part in self.parts if part.assignment is not None)
         return frozenset(named)
 
 
-Watched = Union[InstructionsItem, ChannelAssignment]
+Watched = Union[InstructionsItem, ChannelAssignment, np.ndarray]
 
 
 @dataclass(frozen=True)
@@ -79,7 +81,9 @@ class RenderCache:
     A render is keyed by the identity of the parts it sounds, which a lookup reads at once, where
     a stream's value would take every instruction it carries to hash. A mix as a reader hears it
     names, for each channel the reader leaves an owner out on, the record and the owners heard, so
-    two hearings leaving nothing out read one mix. A render goes with the objects it was made
+    two hearings leaving nothing out read one mix. The mix of the recordings heard, which the
+    waveform draws as the original, is kept under the recordings it was mixed from, so every
+    document holding those recordings reads one mix. A render goes with the objects it was made
     from, and beyond ``budget_bytes`` the renders read longest ago go first, so the cache keeps
     audio alone. A landing is kept whole: the renders one landing keeps are spared by its own
     eviction, so a document larger than the budget stands until the next landing, and a reading
@@ -148,8 +152,32 @@ class RenderCache:
 
         return HeardRenders(mix=mixed, playing=playing)
 
+    def original(self, recordings: Sequence[np.ndarray], config: Config) -> Optional[np.ndarray]:
+        """The mix of ``recordings``, heard in record order, which a lookup answers at once.
+
+        Returns:
+            Optional[np.ndarray]: The mix, or ``None`` where the cache keeps none, which is what a
+            worker is then asked for.
+        """
+        return self._read(self._original_key(recordings, config))
+
+    def adopt_original(
+        self,
+        recordings: Sequence[np.ndarray],
+        config: Config,
+        mixed: np.ndarray,
+    ) -> None:
+        """Keeps the mix of ``recordings`` made elsewhere, under the recordings it was mixed from.
+
+        A recording is shared by every document holding it, so its mix serves each of them, and
+        the mix goes with the recordings once the last document lets them go.
+        """
+        with self._landing():
+            self._keep(self._original_key(recordings, config), mixed, list(recordings))
+
     def adopt_rendered(self, outcome: RenderedDocument) -> None:
-        """Keeps everything a job rendered as one landing: the channels, the mix, and the hearing's reading.
+        """Keeps everything a job rendered as one landing: the channels, the mix, the hearing's reading, and the
+        original of the recordings heard.
 
         Args:
             outcome: What the worker handed back.
@@ -157,6 +185,8 @@ class RenderCache:
         with self._landing():
             self.adopt(outcome.reconstruction, outcome.channels, outcome.mix)
             self.adopt_heard(outcome.reconstruction, outcome.hearing, outcome.heard)
+            if outcome.original is not None:
+                self.adopt_original(outcome.original.recordings, outcome.reconstruction.config, outcome.original.audio)
 
     def adopt(
         self,
@@ -227,7 +257,7 @@ class RenderCache:
 
     @staticmethod
     def _plain_part(stream: InstructionsItem) -> _Part:
-        return _Part(part=RenderPart(stream=id(stream), assignment=None, heard=None), watched=(stream,))
+        return _Part(part=RenderPart(source=id(stream), assignment=None, heard=None), watched=(stream,))
 
     @staticmethod
     def _heard_parts(reconstruction: Reconstruction, hearing: Hearing) -> Dict[ChannelName, _Part]:
@@ -242,7 +272,7 @@ class RenderCache:
 
             record = stems_data.assignment_records[stream.channel_name]
             parts[stream.channel_name] = _Part(
-                part=RenderPart(stream=id(stream), assignment=id(record), heard=heard),
+                part=RenderPart(source=id(stream), assignment=id(record), heard=heard),
                 watched=(stream, record),
             )
 
@@ -254,7 +284,12 @@ class RenderCache:
 
     @staticmethod
     def _channel_key(stream: InstructionsItem, config: Config) -> RenderKey:
-        return RenderKey(RenderKind.CHANNEL, (RenderPart(stream=id(stream), assignment=None, heard=None),), config)
+        return RenderKey(RenderKind.CHANNEL, (RenderPart(source=id(stream), assignment=None, heard=None),), config)
+
+    @staticmethod
+    def _original_key(recordings: Sequence[np.ndarray], config: Config) -> RenderKey:
+        parts = tuple(RenderPart(source=id(recording), assignment=None, heard=None) for recording in recordings)
+        return RenderKey(RenderKind.ORIGINAL, parts, config)
 
     @staticmethod
     def _mix_key(parts: Sequence[_Part], config: Config) -> RenderKey:

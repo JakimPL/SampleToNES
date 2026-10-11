@@ -7,7 +7,7 @@ import pytest
 
 from sampletones_application.logic.shared import renders as renders_module
 from sampletones_application.logic.shared.renders import RenderCache
-from sampletones_core.audio.mixing import align
+from sampletones_core.audio.mixing import align, mix
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
@@ -181,6 +181,56 @@ class TestARenderGoesWithItsStream:
         gc.collect()
 
         assert renders.held_bytes == 0
+
+
+class TestTheOriginalOfTheRecordingsHeard:
+    """The mix of the recordings heard is kept under the recordings it was mixed from, in record order, so every
+    document holding those recordings reads one mix, and the mix goes with the recordings.
+    """
+
+    @staticmethod
+    def _recordings() -> Tuple[np.ndarray, np.ndarray]:
+        return np.ones(8, dtype=np.float32), np.full(8, 0.5, dtype=np.float32)
+
+    def test_it_is_read_back_by_the_recordings_in_order(self, renders: RenderCache, document: Reconstruction) -> None:
+        first, second = self._recordings()
+        mixed = mix([first, second])
+
+        renders.adopt_original((first, second), document.config, mixed)
+
+        assert renders.original((first, second), document.config) is mixed
+        assert renders.original((first,), document.config) is None
+        assert renders.original((second, first), document.config) is None
+
+    def test_two_documents_holding_the_recordings_read_one_mix(
+        self, renders: RenderCache, document: Reconstruction
+    ) -> None:
+        first, second = self._recordings()
+        mixed = mix([first, second])
+        other = document.model_copy()
+        renders.adopt_original((first, second), document.config, mixed)
+
+        assert renders.original((first, second), other.config) is mixed
+
+    def test_the_kept_mix_is_read_only(self, renders: RenderCache, document: Reconstruction) -> None:
+        first, second = self._recordings()
+        renders.adopt_original((first, second), document.config, mix([first, second]))
+
+        kept = renders.original((first, second), document.config)
+
+        assert kept is not None
+        assert not kept.flags.writeable
+
+    def test_a_recording_let_go_of_takes_the_mix_with_it(self, renders: RenderCache, document: Reconstruction) -> None:
+        first, second = self._recordings()
+        renders.adopt_original((first, second), document.config, mix([first, second]))
+        assert renders.held_bytes > 0
+
+        del first
+        gc.collect()
+
+        assert renders.held_bytes == 0
+        assert renders.original((second,), document.config) is None
 
 
 class TestAdoptingRendersMadeElsewhere:

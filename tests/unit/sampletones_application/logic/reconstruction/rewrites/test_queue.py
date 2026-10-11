@@ -377,6 +377,7 @@ class TestAResultLandsOnItsOwnDocument:
             taking_turns.export()[SHARED_CHANNEL],
             hearing=Hearing(selection=everything_heard(taking_turns), channels_on=frozenset()),
             kept={},
+            recordings={},
         )
 
         with pytest.raises(RuntimeError, match="no job was running"):
@@ -599,6 +600,36 @@ class TestTheBusySpan:
         assert not rewrites.is_busy
 
 
+class TestTheRecordingsAJobCarries:
+    """A rebuild and a listening take the open document's recordings with them, so the worker mixes the original
+    of the recordings heard.
+    """
+
+    def test_a_rebuild_carries_them(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+    ) -> None:
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
+
+        job = regeneration.held[0]
+        assert isinstance(job, RebuildJob)
+        assert job.recordings is reconstruction_manager.recordings
+
+    def test_a_listening_carries_them(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+    ) -> None:
+        rewrites.request(ListeningChange())
+
+        job = regeneration.held[0]
+        assert isinstance(job, ListeningJob)
+        assert job.recordings is reconstruction_manager.recordings
+
+
 class TestAChangeWhoseEnvelopesAreOwed:
     """A change reaching its turn while the envelopes of what is heard are on their way waits behind a listening
     of that choice, once: it rebuilds from the envelopes the listening lands, and is let go where it lands none.
@@ -704,6 +735,7 @@ class TestTheRendersALandingKeeps:
             reconstruction_manager.renders,
             taking_turns,
             Hearing(selection=everything_heard(taking_turns), channels_on=frozenset(ChannelName.items())),
+            {},
         )
         kept = reconstruction_manager.renders.held(taking_turns)
 

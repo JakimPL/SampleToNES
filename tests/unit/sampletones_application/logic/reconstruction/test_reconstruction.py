@@ -143,7 +143,12 @@ def _hear(manager: MagicMock) -> None:
     """Keeps the sound and the envelopes of what the reader hears now, the way a listening's landing does."""
     reconstruction_data = manager.current_reconstruction
     _refresh_features(manager)
-    warmed(manager.renders, reconstruction_data.reconstruction, manager.listening.hearing)
+    warmed(
+        manager.renders,
+        reconstruction_data.reconstruction,
+        manager.listening.hearing,
+        reconstruction_data.recordings_by_stem,
+    )
 
 
 def _refresh_features(manager: MagicMock) -> None:
@@ -337,11 +342,10 @@ class TestReconstructionPanelLogicPathRows:
     @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
     def test_audio_path_state_follows_loaded_content(self, case: AudioPathCase) -> None:
         source_paths = (Path("/songs/source.wav"),) if case.has_filepath else ()
-        original_audio = np.zeros(4, dtype=np.float32) if case.has_content else None
 
         view_model = ReconstructionPanelLogic._build_audio_path_view_model(
             source_paths,
-            original_audio,
+            loaded=case.has_content,
         )
 
         assert view_model.state is case.expected
@@ -351,11 +355,9 @@ class TestReconstructionPanelLogicPathRows:
             Path("/stems/drums/kick.wav"),
             Path("/stems/drums/snare.wav"),
         )
-        original_audio = np.zeros(4, dtype=np.float32)
-
         view_model = ReconstructionPanelLogic._build_audio_path_view_model(
             stem_paths,
-            original_audio,
+            loaded=True,
         )
 
         assert view_model.state is ReconstructionPathState.MULTIPLE

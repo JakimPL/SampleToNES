@@ -826,6 +826,29 @@ def _mute(reconstruction_manager: ReconstructionManager) -> None:
         reconstruction_manager.listening.set_channels(stem_id, frozenset())
 
 
+class TestTheRecordingsTheWorkerMixes:
+    """The manager hands on the open document's recordings by stem id, and none while no document is open."""
+
+    def test_none_while_nothing_is_open(self, reconstruction_manager: ReconstructionManager) -> None:
+        assert reconstruction_manager.recordings == {}
+
+    def test_the_open_documents_recordings_by_stem(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        two_recordings: Reconstruction,
+    ) -> None:
+        for path in two_recordings.audio_filepath:
+            write_wave(path, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        reconstruction_manager.load_reconstruction_object(two_recordings, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        data = reconstruction_manager.current_reconstruction
+        assert data is not None
+
+        recordings = reconstruction_manager.recordings
+
+        assert list(recordings) == [entry.id for entry in two_recordings.stems_data.config.entries]
+        assert all(recordings[stem_id] is data.recordings_by_stem[stem_id] for stem_id in recordings)
+
+
 class TestEnvelopesTheWorkerExported:
     """The envelopes a landing installs are the worker's, read for the recordings heard, and a reading made for
     another document or for the choice already drawn is passed over; a document arriving without them leaves

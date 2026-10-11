@@ -66,5 +66,4 @@ def reconstruction_data(default_config, minimal_reconstruction) -> Reconstructio
         stem_audios=(),
         filepath=Path("/dev/null"),
         name="null",
-        original_audio=None,
     )

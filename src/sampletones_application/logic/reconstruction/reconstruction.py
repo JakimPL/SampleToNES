@@ -873,7 +873,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         reconstruction_file = self._build_file_path_view_model(reconstruction_data.filepath)
         original_audio = self._build_audio_path_view_model(
             reconstruction_data.reconstruction.audio_filepath,
-            reconstruction_data.original_audio,
+            loaded=bool(reconstruction_data.stem_audios),
         )
         return reconstruction_file, original_audio
 
@@ -895,11 +895,12 @@ class ReconstructionPanelLogic(CallbackMixin):
     @staticmethod
     def _build_audio_path_view_model(
         source_paths: Tuple[Path, ...],
-        original_audio: Optional[np.ndarray],
+        *,
+        loaded: bool,
     ) -> ReconstructionPathViewModel:
         """Reports the original-audio location, treating a recorded path with unusable content
         the same as a missing one, so the source toggle and waveform agree with what actually loaded."""
-        if source_paths and original_audio is None:
+        if source_paths and not loaded:
             return ReconstructionPathViewModel(
                 state=ReconstructionPathState.NOT_FOUND,
                 paths=(),
