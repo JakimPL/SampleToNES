@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from sampletones_application.ui.elements.graphs import waveform as waveform_module
+from sampletones_application.ui.elements.graphs.layers.decimation import Decimations
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.utils.palette.colors.written import LiteralColor
 from sampletones_application.view_model.shared.waveform_data import WaveformData
@@ -381,6 +382,7 @@ class TestAClickReportsASampleOfDrawnAudio:
         graph._default_x_range = (0.0, 1.0)
         graph._default_y_range = (-1.0, 1.0)
         graph._layout = SimpleNamespace(waveform=SimpleNamespace(max_display_points=VOICE_SAMPLES))
+        graph._decimations = Decimations(VOICE_SAMPLES)
         monkeypatch.setattr(graph, "add_layer", lambda _layer: None)
         monkeypatch.setattr(graph, "_update_display", lambda: None)
         clicked: List[int] = []

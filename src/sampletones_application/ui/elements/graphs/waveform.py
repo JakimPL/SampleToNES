@@ -29,6 +29,7 @@ from sampletones_application.ui.elements.graphs.clock import ClockTick, clock_ti
 from sampletones_application.ui.elements.graphs.gesture import PlotClickGesture
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.array import ArrayLayer
+from sampletones_application.ui.elements.graphs.layers.decimation import Decimations
 from sampletones_application.ui.elements.graphs.layers.instruction import (
     InstructionLayer,
 )
@@ -86,6 +87,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     ):
         self._language_manager = language_manager
         self._layout = layout
+        self._decimations = Decimations(layout.waveform.max_display_points)
         self._channel_colors = channel_colors
         self._status_bar = status_bar
 
@@ -438,34 +440,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self._reconstruction_dimmed = False
         self._sample_rate = 0
         self.clear_layers()
-        self.add_layer(
-            ArrayLayer(
-                data=audio,
-                name=name,
-                color=color,
-                max_display_points=self._layout.waveform.max_display_points,
-            )
-        )
-
-    def _extract_reconstruction_layer_data(
-        self,
-        waveform_data: WaveformData,
-    ) -> Tuple[Optional[np.ndarray], np.ndarray, float]:
-        original_audio = waveform_data.original_audio
-        approximation = waveform_data.playing
-        full_approximation = waveform_data.approximation
-
-        if not self.reconstruction_autoscale or original_audio is None:
-            return original_audio, approximation, 1.0
-
-        original_audio = original_audio / waveform_data.coefficient
-
-        coefficient = max(
-            np.max(np.abs(full_approximation)),
-            np.max(np.abs(original_audio)),
-        )
-
-        return original_audio, approximation, coefficient
+        self.add_layer(self._array_layer(audio, name=name, color=color))
 
     def _display_layers(
         self,
@@ -475,14 +450,16 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
         The original-audio layer joins the reconstruction layer while the source audio is loaded,
         so a reconstruction whose recordings are missing or unreadable shows the approximation on
-        its own.
+        its own. With the autoscale on, the original is drawn at the level the reconstruction was
+        scaled to, so the two lines compare.
         """
-        original_audio, approximation_data, _ = self._extract_reconstruction_layer_data(waveform_data)
-        reconstruction_layer = self.reconstruction_layer(approximation_data)
+        reconstruction_layer = self.reconstruction_layer(waveform_data.playing)
+        original_audio = waveform_data.original_audio
         if original_audio is None:
             return [reconstruction_layer]
 
-        sample_layer = self.sample_layer(original_audio)
+        divisor = waveform_data.coefficient if self.reconstruction_autoscale else 1.0
+        sample_layer = self.sample_layer(original_audio, divisor=divisor)
         return self._ordered_layers(sample_layer, reconstruction_layer)
 
     def update_waveform_data(
@@ -545,19 +522,45 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             self._bind_series_theme(series_tag, layer)
 
     def reconstruction_layer(self, data: np.ndarray) -> ArrayLayer:
-        return ArrayLayer(
-            data=data,
+        return self._array_layer(
+            data,
             name=self._lbl_waveform_reconstruction,
             color=self._layout.colors.waveform_reconstruction,
-            max_display_points=self._layout.waveform.max_display_points,
         )
 
-    def sample_layer(self, data: np.ndarray) -> ArrayLayer:
-        return ArrayLayer(
-            data=data,
+    def sample_layer(self, data: np.ndarray, *, divisor: float = 1.0) -> ArrayLayer:
+        """The original's line, its values divided by ``divisor``, which an autoscale sets to the document's level."""
+        return self._array_layer(
+            data,
             name=self._lbl_waveform_original,
             color=self._layout.colors.waveform_sample,
+            divisor=divisor,
+        )
+
+    def _array_layer(
+        self,
+        data: np.ndarray,
+        *,
+        name: str,
+        color: BaseColor,
+        divisor: float = 1.0,
+    ) -> ArrayLayer:
+        """A line over ``data`` drawn from the points the display keeps for it.
+
+        The reduction to the display's points is kept by the array's identity, so a render the
+        cache hands back again is drawn without reducing it again. A division scales the kept
+        points alone, since the extremes of a scaled waveform are its scaled extremes.
+        """
+        positions, values = self._decimations.points(data)
+        if divisor != 1.0:
+            values = values / divisor
+
+        return ArrayLayer(
+            data=data,
+            name=name,
+            color=color,
             max_display_points=self._layout.waveform.max_display_points,
+            points=(positions, values),
         )
 
     def _ordered_layers(
