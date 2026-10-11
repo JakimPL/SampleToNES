@@ -7,6 +7,7 @@ from sampletones_application.logic.reconstruction.edit import (
     Retune,
     StemRemoval,
 )
+from sampletones_application.logic.reconstruction.envelopes import HeardEnvelopes
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.rewrites.regeneration import (
     RegenerationServiceProtocol,
@@ -92,9 +93,10 @@ class ReconstructionRewrites(CallbackMixin):
     redrawn once the line empties.
 
     The hooks carry the outcome to whoever shows the document: ``on_edit`` with each edit that
-    lands, ``on_heard_rendered`` once a listening's sound is kept for the open document,
-    ``on_dropped`` when the panel draws a change that will never land, ``on_failed`` with a job's
-    failure, and ``on_busy_changed`` as the line fills and empties.
+    lands, ``on_heard_rendered`` once a listening's sound is kept for the open document (with
+    whether its envelopes changed what the instruments panel draws), ``on_dropped`` when the panel
+    draws a change that will never land, ``on_failed`` with a job's failure, and
+    ``on_busy_changed`` as the line fills and empties.
     """
 
     def __init__(
@@ -110,7 +112,7 @@ class ReconstructionRewrites(CallbackMixin):
         self._reported_busy: bool = False
 
         self.on_edit: Optional[Callable[[ReconstructionEdit], None]] = None
-        self.on_heard_rendered: Optional[VoidCallback] = None
+        self.on_heard_rendered: Optional[Callable[[bool], None]] = None
         self.on_dropped: Optional[VoidCallback] = None
         self.on_failed: Optional[Callable[[Exception], None]] = None
         self.on_busy_changed: Optional[Callable[[bool], None]] = None
@@ -337,6 +339,7 @@ class ReconstructionRewrites(CallbackMixin):
 
         self._manager.renders.adopt(outcome.reconstruction, outcome.channels, outcome.mix)
         self._manager.renders.adopt_heard(outcome.reconstruction, outcome.hearing, outcome.heard)
+        envelopes = HeardEnvelopes(selection=outcome.hearing.selection, channels=outcome.envelopes)
         match running:
             case Rebuild(change=change):
                 self.call(
@@ -345,10 +348,12 @@ class ReconstructionRewrites(CallbackMixin):
                         reconstruction=outcome.reconstruction,
                         channel_name=change.channel_name,
                         feature_key=change.feature_key,
+                        envelopes=envelopes,
                     ),
                 )
             case Listening():
-                self.call(self.on_heard_rendered)
+                changed = self._manager.adopt_envelopes(outcome.reconstruction, envelopes)
+                self.call(self.on_heard_rendered, changed)
 
     def _let_go(self, running: Running) -> None:
         """Redraws the panel where it still draws a change that will never land.

@@ -8,9 +8,10 @@ away the whole document, or one that replaces the document from outside the tab.
 A rebuild of an edited channel, and the render of the audio it sounds, run on a worker thread, so the
 reader can make the next change before the last one has landed and the frames keep coming while the
 rebuild renders. The worker takes the renders the cache holds for the document with it and hands back the
-audio of every channel in play and the mix of what the reader hears, which the landing keeps in the cache
-before the tab reads it. A change to what is heard whose sound the cache keeps none of is a step of the
-same line, rendered by the same worker. Every rule below keeps the document as though each change had
+audio of every channel in play, the mix of what the reader hears, and the envelopes each channel exports
+for the recordings heard; the landing keeps the audio in the cache and installs the envelopes where the
+instruments panel reads them before the tab reads either. A change to what is heard whose sound the
+cache keeps none of is a step of the same line, rendered by the same worker. Every rule below keeps the document as though each change had
 landed before the next one was made.
 
 ---
@@ -75,10 +76,13 @@ batch started is retuned again from what the sample now holds.
 
 ## A change to what is heard is a step
 
-A box on the stems card or above the waveform changes the reader's listening, which the stems card, the
-ribbon and the instruments panel answer at once. The waveform and the audio are read from the render
-cache under the hearing they sound; where the cache keeps no sound for the hearing, the panel asks for a
-listening step, which renders the hearing of the document as it then stands and lands like a rebuild. One
+A box on the stems card or above the waveform changes the reader's listening, which the stems card and
+the ribbon answer at once. The waveform and the audio are read from the render cache under the hearing
+they sound, and the envelopes the instruments panel draws are the ones the worker exported for the
+recordings heard; where the cache keeps no sound for the hearing, or the envelopes drawn were exported
+for another choice of recordings, the panel asks for a listening step, which renders the hearing of the
+document as it then stands and lands like a rebuild. An edit whose new frames offer a row of their own
+moves the choice the listening makes on the new record, so its landing reads the envelopes on the spot. One
 listening waiting answers every choice made before it is taken, and a listening asked for during a
 rebuild reads the rebuilt document. A freshly opened document is shown the same way, so its channels
 render on the worker too. The showing the panel owes happens once the sound lands, and a hearing the

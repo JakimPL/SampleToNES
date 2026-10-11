@@ -19,6 +19,7 @@ from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.reconstruction.edit import ChannelEdit, ReconstructionEdit, Retune, StemRemoval
+from sampletones_application.logic.reconstruction.envelopes import HeardEnvelopes
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.rewrites.queue import ReconstructionRewrites
 from sampletones_application.logic.reconstruction.rewrites.steps import (
@@ -67,9 +68,22 @@ from tests.suite.stems import (
     STEM_B_ID,
     TAKING_TURNS_PITCH,
     TAKING_TURNS_VOLUME,
+    everything_heard,
     taking_turns,
     taking_turns_file,
 )
+
+
+def _channel_edit(reconstruction: Reconstruction) -> ChannelEdit:
+    """A regenerated first pulse of ``reconstruction``, with the envelopes its worker would export heard whole."""
+    selection = everything_heard(reconstruction)
+    return ChannelEdit(
+        reconstruction=reconstruction,
+        channel_name=ChannelName.PULSE1,
+        feature_key=FeatureKey.VOLUME,
+        envelopes=HeardEnvelopes(selection=selection, channels=reconstruction.export_heard(selection)),
+    )
+
 
 __all__ = [
     "held_frames",
@@ -364,13 +378,7 @@ class TestAnEditRedrawsWhatItRewrote:
         reconstruction_factory: ReconstructionFactory,
     ) -> None:
         """The regeneration carries what the reader typed, so a field being typed in keeps its text."""
-        reconstruction_coordinator.apply_edit(
-            ChannelEdit(
-                reconstruction=reconstruction_factory(),
-                channel_name=ChannelName.PULSE1,
-                feature_key=FeatureKey.VOLUME,
-            )
-        )
+        reconstruction_coordinator.apply_edit(_channel_edit(reconstruction_factory()))
 
         tab.update_reconstruction.assert_called_once_with()
         tab.redraw_reconstruction.assert_not_called()
@@ -418,11 +426,7 @@ class TestAnEditRedrawsWhatItRewrote:
         reconstruction_factory: ReconstructionFactory,
     ) -> None:
         edits = {
-            "channel": ChannelEdit(
-                reconstruction=reconstruction_factory(),
-                channel_name=ChannelName.PULSE1,
-                feature_key=FeatureKey.VOLUME,
-            ),
+            "channel": _channel_edit(reconstruction_factory()),
             "retune": Retune(reconstruction=reconstruction_factory(), nes_frequency=RETUNED_FREQUENCY),
             "removal": StemRemoval(reconstruction=reconstruction_factory(), stem_name="kick"),
         }
@@ -763,13 +767,7 @@ class TestTheTabFollowsTheVoiceItShows:
         reconstruction_factory: ReconstructionFactory,
     ) -> None:
         original = open_sample.reconstruction
-        following_coordinator.apply_edit(
-            ChannelEdit(
-                reconstruction=reconstruction_factory(),
-                channel_name=ChannelName.PULSE1,
-                feature_key=FeatureKey.VOLUME,
-            )
-        )
+        following_coordinator.apply_edit(_channel_edit(reconstruction_factory()))
         tab.reset_mock()
 
         history.undo()
@@ -901,13 +899,7 @@ class TestTheTabFollowsTheVoiceItShows:
         """The write-back stamps the project while the document still holds what the edit started from."""
         edited = reconstruction_factory()
 
-        following_coordinator.apply_edit(
-            ChannelEdit(
-                reconstruction=edited,
-                channel_name=ChannelName.PULSE1,
-                feature_key=FeatureKey.VOLUME,
-            )
-        )
+        following_coordinator.apply_edit(_channel_edit(edited))
 
         assert reconstruction_manager.reconstruction is edited
         tab.redraw_reconstruction.assert_not_called()

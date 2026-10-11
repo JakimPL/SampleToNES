@@ -17,6 +17,7 @@ from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.sources import SettingsField, SourceKind
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.reconstruction.edit import ChannelEdit
+from sampletones_application.logic.reconstruction.envelopes import HeardEnvelopes
 from sampletones_application.logic.reconstruction.rewrites.steps import ChannelChange
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
@@ -87,6 +88,7 @@ from tests.suite.headless import (
     headless_application,
     profile_in,
 )
+from tests.suite.stems import everything_heard
 
 REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
 DRAG_PAYLOAD_SLOT: Final[int] = 3
@@ -507,11 +509,13 @@ class TestTheReconstructionsTabFollowsTheProject:
         it lands names none either.
         """
         edited = reconstruction_factory().detached()
+        selection = everything_heard(edited)
         app._reconstruction_coordinator.apply_edit(
             ChannelEdit(
                 reconstruction=edited,
                 channel_name=ChannelName.PULSE1,
                 feature_key=FeatureKey.VOLUME,
+                envelopes=HeardEnvelopes(selection=selection, channels=edited.export_heard(selection)),
             )
         )
         return edited

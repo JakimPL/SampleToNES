@@ -75,6 +75,7 @@ class HeldRegeneration:
                     mix=mixed,
                     hearing=job.hearing,
                     heard=heard_renders(reconstruction, job.hearing, channels, mixed),
+                    envelopes=reconstruction.export_heard(job.hearing.selection),
                 )
             )
         )

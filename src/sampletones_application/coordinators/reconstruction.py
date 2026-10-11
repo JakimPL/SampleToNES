@@ -420,7 +420,12 @@ class ReconstructionCoordinator:
         the tab shows it.
         """
         self._on_reconstruction_updated_callback(edit)
-        self._reconstruction_manager.apply_edited(edit.reconstruction)
+        match edit:
+            case ChannelEdit():
+                self._reconstruction_manager.apply_edited(edit.reconstruction, edit.envelopes)
+            case Retune() | StemRemoval():
+                self._reconstruction_manager.apply_edited(edit.reconstruction)
+
         self._show_edit(edit)
         self._reconstruction_manager.mark_updated()
 
@@ -561,9 +566,14 @@ class ReconstructionCoordinator:
         if self.is_loaded():
             self._tab.redraw_reconstruction(refit_waveform=False)
 
-    def _show_listening(self) -> None:
-        """Shows what the reader hears once the worker has rendered it for the open document."""
-        self._tab.redraw_listening()
+    def _show_listening(self, envelopes_changed: bool) -> None:
+        """Shows what the reader hears once the worker has rendered it for the open document.
+
+        Args:
+            envelopes_changed: Whether the rendering brought envelopes the instruments panel has
+                yet to draw.
+        """
+        self._tab.redraw_listening(envelopes_changed=envelopes_changed)
 
     def _report_rebuild_failure(self, exception: Exception) -> None:
         logger.error_with_traceback(exception, "Regeneration failed")

@@ -8,6 +8,7 @@ from sampletones_application.services.result import (
     ServiceSuccess,
 )
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.exporters import Features
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.hearing import HeardRenders, Hearing
 
@@ -26,6 +27,7 @@ class RenderedDocument:
         mix: The whole document, summed from ``channels``.
         hearing: What the reader heard when the renders were made.
         heard: What ``hearing`` sounds of the document.
+        envelopes: The envelopes each channel exports for the recordings ``hearing`` hears.
     """
 
     reconstruction: Reconstruction
@@ -33,6 +35,7 @@ class RenderedDocument:
     mix: np.ndarray
     hearing: Hearing
     heard: HeardRenders
+    envelopes: Mapping[ChannelName, Features]
 
 
 RegenerationResult = Union[

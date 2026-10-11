@@ -429,6 +429,12 @@ class TestWhatTheRebuildSounds:
 
         assert outcome.channels[SHARED_CHANNEL] is not stale
 
+    def test_the_result_carries_the_envelopes_exported_for_the_hearing(self, taking_turns: Reconstruction) -> None:
+        """The instruments panel reads the worker's export, so a landing installs envelopes made for the hearing."""
+        outcome = _rebuilt(taking_turns, NO_RENDERS)
+
+        assert outcome.envelopes == outcome.reconstruction.export_heard(outcome.hearing.selection)
+
     def test_the_result_sounds_the_hearing_it_was_asked_with(self, taking_turns: Reconstruction) -> None:
         """The landing reads what the reader hears from the result, so the result carries that reading."""
         outcome = _rebuilt(taking_turns, NO_RENDERS)

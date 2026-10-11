@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.reconstruction.data import ReconstructionData
-from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
+from sampletones_application.logic.reconstruction.envelopes import HeardEnvelopes, envelopes_view, heard_envelopes
 from sampletones_application.logic.reconstruction.listening import Listening
 from sampletones_application.logic.reconstruction.session import ReconstructionSession
 from sampletones_application.logic.shared.renders import RenderCache
@@ -14,6 +14,7 @@ from sampletones_application.view_model.reconstruction.envelopes import (
     ChannelEnvelopesViewModel,
 )
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -44,6 +45,7 @@ class ReconstructionManager(CallbackMixin):
         self._session: ReconstructionSession = ReconstructionSession()
         self._current_reconstruction: Optional[ReconstructionData] = None
         self._current_features: Optional[ChannelEnvelopesViewModel] = None
+        self._features_selection: Optional[StemSelection] = None
         self._voice_id: Optional[str] = None
         self._listening: Listening = Listening()
 
@@ -112,6 +114,7 @@ class ReconstructionManager(CallbackMixin):
         reconstruction_data: ReconstructionData,
         *,
         voice_id: Optional[str],
+        envelopes: Optional[HeardEnvelopes] = None,
     ) -> None:
         """Makes ``reconstruction_data`` the open document and refreshes its derived state.
 
@@ -119,13 +122,19 @@ class ReconstructionManager(CallbackMixin):
         open, so every rebinding funnels through here to recompute them in one place. The
         listening is carried onto the new record before the features are read, so the envelopes
         answer for the part the reader is listening to as it now stands. ``voice_id`` names the
-        project sample the document is, and ``None`` a standalone document.
+        project sample the document is, and ``None`` a standalone document. ``envelopes`` are the
+        ones a worker exported for the document, which spare the reading here where they were
+        exported for the choice the listening makes on the new record; a document arriving with
+        none, or with envelopes for a choice an edit's new frames moved, is read on the spot.
         """
         self._current_reconstruction = reconstruction_data
         self._voice_id = voice_id
         reconstruction = reconstruction_data.reconstruction
         self._listening.adopt(reconstruction.stems_data, frozenset(reconstruction.playing_channels))
-        self._load_reconstruction_features()
+        if envelopes is not None and envelopes.selection == self._listening.selection:
+            self._install_envelopes(envelopes)
+        else:
+            self._load_reconstruction_features()
 
     def _load_reconstruction_features(self) -> None:
         """Reads the envelopes of the part the reader is listening to.
@@ -137,16 +146,37 @@ class ReconstructionManager(CallbackMixin):
             raise RuntimeError("No reconstruction is loaded when trying to load features")
 
         reconstruction = self._current_reconstruction.reconstruction
-        self._current_features = heard_envelopes(reconstruction, self._listening.selection)
+        selection = self._listening.selection
+        self._current_features = heard_envelopes(reconstruction, selection)
+        self._features_selection = selection
 
-    def refresh_features(self) -> None:
-        """Reads the envelopes again after a change to what the reader is listening to.
+    def _install_envelopes(self, envelopes: HeardEnvelopes) -> None:
+        if self._current_reconstruction is None:
+            raise RuntimeError("No reconstruction is loaded when trying to install envelopes")
 
-        A box on the stems card moves which recordings a channel is heard on, and the plot,
-        the figures and an export all read from the same envelopes, so they follow it together.
+        self._current_features = envelopes_view(self._current_reconstruction.reconstruction, envelopes)
+        self._features_selection = envelopes.selection
+
+    def adopt_envelopes(self, reconstruction: Reconstruction, envelopes: HeardEnvelopes) -> bool:
+        """Takes the envelopes the worker exported for ``reconstruction``, where it is the open document.
+
+        A box on the stems card moves which recordings a channel is heard on, and the plot, the
+        figures and an export all read from the same envelopes, so they follow it together once
+        the worker's reading lands. Envelopes exported for the choice the open ones already answer
+        change nothing.
+
+        Returns:
+            bool: True where the open document's envelopes changed.
         """
-        if self._current_reconstruction is not None:
-            self._load_reconstruction_features()
+        if self.reconstruction is not reconstruction or envelopes.selection == self._features_selection:
+            return False
+
+        self._install_envelopes(envelopes)
+        return True
+
+    def has_envelopes_for(self, selection: StemSelection) -> bool:
+        """Whether the open document's envelopes were exported for ``selection``."""
+        return self._current_features is not None and self._features_selection == selection
 
     def save_reconstruction(self, filepath: Optional[Path] = None) -> bool:
         """Writes the open reconstruction to disk, reporting whether the write happened.
@@ -210,8 +240,12 @@ class ReconstructionManager(CallbackMixin):
             name=name,
         )
 
-    def apply_edited(self, reconstruction: Reconstruction) -> None:
-        """Adopts a reconstruction an edit produced.
+    def apply_edited(
+        self,
+        reconstruction: Reconstruction,
+        envelopes: Optional[HeardEnvelopes] = None,
+    ) -> None:
+        """Adopts a reconstruction an edit produced, with the envelopes its worker exported where it had one.
 
         The open document rebinds to the fresh reconstruction object and stays the voice it was,
         while the previous object is left untouched for the history to retain.
@@ -222,6 +256,7 @@ class ReconstructionManager(CallbackMixin):
         self._adopt_reconstruction(
             self._current_reconstruction.with_reconstruction(reconstruction),
             voice_id=self._voice_id,
+            envelopes=envelopes,
         )
 
     def mark_updated(self) -> None:
@@ -230,6 +265,7 @@ class ReconstructionManager(CallbackMixin):
     def close_reconstruction(self) -> None:
         self._current_reconstruction = None
         self._current_features = None
+        self._features_selection = None
         self._voice_id = None
         self._listening.release()
         self._session.mark_closed()

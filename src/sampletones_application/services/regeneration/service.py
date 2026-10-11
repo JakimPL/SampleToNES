@@ -29,11 +29,12 @@ class RegenerationService(ServiceBase[RegenerationResult]):
     recording's part be shaped while the recordings beside it carry on.
 
     A rebuild's result is a fresh reconstruction carrying the updated generator data, with the
-    audio of every sounding channel, their mix, and what the hearing sounds of it; the source
-    reconstruction is left intact. Producing a new object lets callers swap the edited
-    reconstruction in while any history snapshot that shares the prior object stays valid. A
-    listening renders the same reading of the document as it stands, for a hearing the screen
-    holds no audio for yet. Carrying the audio lets the landing install it where the screen reads
+    audio of every sounding channel, their mix, what the hearing sounds of it, and the envelopes
+    each channel exports for the recordings heard; the source reconstruction is left intact.
+    Producing a new object lets callers swap the edited reconstruction in while any history
+    snapshot that shares the prior object stays valid. A listening renders the same reading of the
+    document as it stands, for a hearing the screen holds no audio for yet. Carrying the audio
+    lets the landing install it where the screen reads
     it, so the render thread keeps drawing while the worker renders.
 
     One job runs at a time on a single worker thread. Its caller starts the next job once the
@@ -111,6 +112,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                         mix=mixed,
                         hearing=job.hearing,
                         heard=heard_renders(document, job.hearing, channels, mixed),
+                        envelopes=document.export_heard(job.hearing.selection),
                     )
                 )
             )

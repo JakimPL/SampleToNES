@@ -65,7 +65,7 @@ class Outcome:
     """Everything the rewrites reported, in the order they reported it."""
 
     edits: List[ReconstructionEdit] = field(default_factory=list)
-    heard: int = 0
+    heard: List[bool] = field(default_factory=list)
     dropped: int = 0
     failures: List[Exception] = field(default_factory=list)
     busy: List[bool] = field(default_factory=list)
@@ -98,8 +98,8 @@ def rewrites(
     def drop() -> None:
         outcome.dropped += 1
 
-    def heard() -> None:
-        outcome.heard += 1
+    def heard(envelopes_changed: bool) -> None:
+        outcome.heard.append(envelopes_changed)
 
     rewrites = ReconstructionRewrites(reconstruction_manager, regeneration)
     rewrites.on_edit = adopt
@@ -622,9 +622,40 @@ class TestAListening:
         hearing = reconstruction_manager.listening.hearing
         document = reconstruction_manager.reconstruction
         assert document is not None
-        assert outcome.heard == 1
+        assert outcome.heard == [True]
         assert outcome.edits == []
         assert reconstruction_manager.renders.reading(document, hearing) is not None
+        assert reconstruction_manager.has_envelopes_for(hearing.selection)
+
+    def test_a_listening_for_the_choice_already_drawn_reports_no_new_envelopes(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+        outcome: Outcome,
+    ) -> None:
+        reconstruction_manager.listening.set_channels_on(frozenset({SHARED_CHANNEL}))
+        rewrites.request(ListeningChange())
+
+        regeneration.finish()
+
+        assert outcome.heard == [False]
+
+    def test_a_landed_rebuild_carries_the_envelopes_its_worker_exported(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+        outcome: Outcome,
+    ) -> None:
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
+
+        regeneration.finish()
+
+        (edit,) = outcome.edits
+        assert isinstance(edit, ChannelEdit)
+        assert edit.envelopes.selection == reconstruction_manager.listening.selection
+        assert edit.envelopes.channels == edit.reconstruction.export_heard(edit.envelopes.selection)
 
     def test_the_hearing_is_read_at_the_steps_turn(
         self,
@@ -710,7 +741,7 @@ class TestAListening:
 
         regeneration.finish()
 
-        assert outcome.heard == 0
+        assert outcome.heard == []
         assert outcome.dropped == 0
         assert reconstruction_manager.renders.held_bytes == 0
 

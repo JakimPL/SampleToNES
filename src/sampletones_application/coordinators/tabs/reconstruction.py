@@ -306,7 +306,6 @@ class ReconstructionTabCoordinator:
         self._reconstruction_panel_logic.on_view_changed = self._update_reconstruction_view
         self._reconstruction_panel_logic.on_stems_view_changed = self._reconstruction_stems_panel.update_view
         self._reconstruction_panel_logic.on_ownership_changed = self._reconstruction_plot_panel.update_ownership
-        self._reconstruction_panel_logic.on_heard_changed = self._reconstruction_instruments_logic.update_display
         self._reconstruction_panel_logic.on_audio_data_changed = self._on_audio_data_changed
         self._reconstruction_panel_logic.on_waveform_load_changed = self._reconstruction_plot_panel.load_waveform_data
         self._reconstruction_panel_logic.on_waveform_update_changed = (
@@ -812,9 +811,16 @@ class ReconstructionTabCoordinator:
         self._reconstruction_panel_logic.update_reconstruction(refit_waveform=refit_waveform)
         self._reconstruction_instruments_logic.update_display()
 
-    def redraw_listening(self) -> None:
-        """Shows what the reader hears once the worker has rendered it, where a showing waited for it."""
+    def redraw_listening(self, *, envelopes_changed: bool) -> None:
+        """Shows what the reader hears once the worker has rendered it, where a showing waited for it.
+
+        A box on the stems card changes the part the instruments panel draws, so the panel is
+        redrawn when the rendering brought envelopes for a new choice; a box above the waveform
+        leaves them as they were.
+        """
         self._reconstruction_panel_logic.redraw_listening()
+        if envelopes_changed:
+            self._reconstruction_instruments_logic.update_display()
 
     def set_reconstruction_dimmed(self, dimmed: bool) -> None:
         self._reconstruction_plot_panel.set_reconstruction_dimmed(dimmed)

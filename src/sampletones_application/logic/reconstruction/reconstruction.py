@@ -149,7 +149,6 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.on_locate_audio_not_found: Optional[PathCallback] = None
         self.on_stems_view_changed: Optional[Callable[[ReconstructionStemsViewModel], None]] = None
         self.on_ownership_changed: Optional[Callable[[OwnershipRibbonViewModel], None]] = None
-        self.on_heard_changed: Optional[VoidCallback] = None
 
     def display_reconstruction(self) -> None:
         reconstruction_data = self._reconstruction_data
@@ -207,12 +206,15 @@ class ReconstructionPanelLogic(CallbackMixin):
     def _show(self, reconstruction_data: ReconstructionData, showing: OwedShowing) -> None:
         """Draws and plays what the reader hears, or asks for its sound where the screen holds none yet.
 
-        The audio is read from what is kept, so a showing computes no sample on the render thread.
-        One the cache cannot answer is owed: the worker is asked to render it, and the showing
-        happens once the sound lands.
+        The audio is read from what is kept, so a showing computes no sample on the render thread,
+        and the envelopes the instruments panel draws are read as the worker exported them for the
+        recordings heard. A showing the cache cannot answer in full, for want of the sound or of
+        envelopes for the recordings heard, is owed: the worker is asked to render it, and the
+        showing happens once the sound lands.
         """
-        waveform = reconstruction_data.waveform_data(self._reconstruction_manager.renders, self._listening.hearing)
-        if waveform is None:
+        hearing = self._listening.hearing
+        waveform = reconstruction_data.waveform_data(self._reconstruction_manager.renders, hearing)
+        if waveform is None or not self._reconstruction_manager.has_envelopes_for(hearing.selection):
             self._owed = showing
             self.call(self.on_renders_wanted)
             return
@@ -345,8 +347,11 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._refresh_listening()
 
     def _refresh_listening(self) -> None:
-        """Re-answers every reading of the document after the listening choice changed."""
-        self._reconstruction_manager.refresh_features()
+        """Re-answers every reading of the document after the listening choice changed.
+
+        The stems card and the ribbon answer at once; the waveform, the audio and the envelopes
+        the instruments panel draws answer once the worker has rendered the new choice.
+        """
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             return
@@ -357,7 +362,6 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
         self._show(reconstruction_data, OwedShowing(load=True, refit=False, play=True))
-        self.call(self.on_heard_changed)
 
     @property
     def _listening(self) -> Listening:

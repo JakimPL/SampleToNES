@@ -109,7 +109,6 @@ class LandingMeter:
         self.panel.on_waveform_source_changed = _discard
         self.panel.on_stems_view_changed = _discard
         self.panel.on_ownership_changed = _discard
-        self.panel.on_heard_changed = _discard
         self.panel.on_renders_wanted = lambda: self.rewrites.request(ListeningChange())
         self.coordinator = ReconstructionCoordinator(
             self.manager,

@@ -1,4 +1,5 @@
-from typing import Dict
+from dataclasses import dataclass
+from typing import Dict, Mapping
 
 from sampletones_application.logic.reconstruction.ownership import (
     ownership_lanes,
@@ -15,11 +16,27 @@ from sampletones_core.reconstructions.reconstruction.stems.ownership import runs
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 
 
+@dataclass(frozen=True)
+class HeardEnvelopes:
+    """The envelopes a document exports for one choice of recordings, beside that choice.
+
+    The worker exports them with the sound it renders, so a landing installs envelopes made for
+    the selection it names and tells a stale reading from a fresh one by that selection.
+
+    Attributes:
+        selection: The recordings the reader heard when the envelopes were exported.
+        channels: The envelopes each channel exports for them.
+    """
+
+    selection: StemSelection
+    channels: Mapping[ChannelName, Features]
+
+
 def heard_envelopes(
     reconstruction: Reconstruction,
     selection: StemSelection,
 ) -> ChannelEnvelopesViewModel:
-    """The envelopes of the part each channel plays for the recordings a reader hears.
+    """The envelopes of the part each channel plays for the recordings a reader hears, exported here.
 
     A reconstruction exports one entry per channel whatever it sounds, so a subscript answers
     for any of them and :attr:`Features.has_frames` says which ones play. What is drawn, what is
@@ -34,13 +51,27 @@ def heard_envelopes(
     Returns:
         ChannelEnvelopesViewModel: One entry per channel the reconstruction exports.
     """
-    channels = {
-        ChannelName(generator_name): features
-        for generator_name, features in reconstruction.export_heard(selection).items()
-    }
+    return envelopes_view(reconstruction, HeardEnvelopes(selection, reconstruction.export_heard(selection)))
+
+
+def envelopes_view(
+    reconstruction: Reconstruction,
+    heard: HeardEnvelopes,
+) -> ChannelEnvelopesViewModel:
+    """The envelopes the instruments panel draws, built from what the document exported for the reader.
+
+    Args:
+        reconstruction: The reconstruction the envelopes were exported from.
+        heard: The envelopes each channel exports for the recordings heard, beside that choice.
+
+    Returns:
+        ChannelEnvelopesViewModel: One entry per channel the reconstruction exports, with the
+        stretches under each channel's bars.
+    """
+    channels = {ChannelName(generator_name): features for generator_name, features in heard.channels.items()}
     return ChannelEnvelopesViewModel(
         channels=channels,
-        ownership=_lanes(reconstruction, selection, channels),
+        ownership=_lanes(reconstruction, heard.selection, channels),
     )
 
 

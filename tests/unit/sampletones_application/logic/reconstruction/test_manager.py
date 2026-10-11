@@ -5,6 +5,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+from sampletones_application.logic.reconstruction import manager as manager_module
+from sampletones_application.logic.reconstruction.envelopes import HeardEnvelopes
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_core.audio import write_wave
@@ -14,6 +16,7 @@ from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
@@ -823,3 +826,124 @@ class TestReconstructionManagerLocateOriginalAudio:
             reconstruction_manager.locate_original_audio()
 
         assert raised.value.filename == str(missing)
+
+
+def _exported(
+    reconstruction: Reconstruction,
+    selection: StemSelection,
+    *,
+    muted: bool = False,
+) -> HeardEnvelopes:
+    """What the worker exports for ``reconstruction`` heard as ``selection``, or with every recording left out."""
+    if muted:
+        selection = selection.model_copy(update={"channels": {name: frozenset() for name in selection.channels}})
+
+    return HeardEnvelopes(selection=selection, channels=reconstruction.export_heard(selection))
+
+
+class TestEnvelopesTheWorkerExported:
+    """The envelopes a landing installs are the worker's, read for the recordings heard, and a reading made for
+    another document or for the choice already drawn is passed over.
+    """
+
+    def test_a_landing_installs_them_for_the_open_document(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        muted = _exported(reconstruction, reconstruction_manager.listening.selection, muted=True)
+
+        changed = reconstruction_manager.adopt_envelopes(reconstruction, muted)
+
+        assert changed
+        assert reconstruction_manager.has_envelopes_for(muted.selection)
+        features = reconstruction_manager.current_features
+        assert features is not None
+        assert not features[ChannelName.PULSE1].has_frames
+
+    def test_a_reading_for_the_choice_already_drawn_changes_nothing(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        before = reconstruction_manager.current_features
+
+        changed = reconstruction_manager.adopt_envelopes(
+            reconstruction,
+            _exported(reconstruction, reconstruction_manager.listening.selection),
+        )
+
+        assert not changed
+        assert reconstruction_manager.current_features is before
+
+    def test_a_reading_for_another_document_is_passed_over(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        other = reconstruction_factory()
+        selection = reconstruction_manager.listening.selection
+
+        changed = reconstruction_manager.adopt_envelopes(other, _exported(other, selection, muted=True))
+
+        assert not changed
+        assert reconstruction_manager.has_envelopes_for(selection)
+
+    def test_an_edit_arriving_with_envelopes_spares_the_reading(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        edited = reconstruction_factory()
+        selection = reconstruction_manager.listening.selection
+        monkeypatch.setattr(manager_module, "heard_envelopes", MagicMock(side_effect=AssertionError("read here")))
+
+        reconstruction_manager.apply_edited(edited, _exported(edited, selection))
+
+        assert reconstruction_manager.reconstruction is edited
+        assert reconstruction_manager.has_envelopes_for(selection)
+
+    def test_an_edit_whose_new_frames_moved_the_choice_is_read_on_the_spot(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        """An edit writing frames of the reader's own offers a new row, so the worker's export is stale."""
+        reconstruction = reconstruction_factory()
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        before = reconstruction_manager.listening.selection
+        edited = reconstruction.with_channel_data(
+            ChannelName.PULSE1,
+            [PulseInstruction(on=True, pitch=60, volume=7, duty_cycle=0)] * 2,
+            60,
+            (),
+            heard=reconstruction.recorded_stem_ids,
+        )
+
+        reconstruction_manager.apply_edited(edited, _exported(edited, before))
+
+        after = reconstruction_manager.listening.selection
+        assert after != before
+        assert reconstruction_manager.has_envelopes_for(after)
+
+    def test_an_edit_arriving_bare_is_read_on_the_spot(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        edited = reconstruction_factory()
+
+        reconstruction_manager.apply_edited(edited)
+
+        assert reconstruction_manager.has_envelopes_for(reconstruction_manager.listening.selection)

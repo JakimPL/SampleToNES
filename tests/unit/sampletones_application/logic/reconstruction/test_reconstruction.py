@@ -97,7 +97,8 @@ def mock_reconstruction_manager() -> MagicMock:
     mock.is_project_sample = False
     mock.audio_filepath = None
     mock.listening = Listening()
-    mock.refresh_features.side_effect = lambda: _refresh_features(mock)
+    mock.features_selection = None
+    mock.has_envelopes_for.side_effect = lambda selection: mock.features_selection == selection
     mock.renders = RenderCache(budget_bytes=RENDER_BUDGET)
     return mock
 
@@ -130,18 +131,20 @@ def _rebind(manager: MagicMock, reconstruction_data: ReconstructionData) -> None
 
 
 def _hear(manager: MagicMock) -> None:
-    """Keeps the sound of what the reader hears now, the way a listening's landing does."""
+    """Keeps the sound and the envelopes of what the reader hears now, the way a listening's landing does."""
     reconstruction_data = manager.current_reconstruction
+    _refresh_features(manager)
     warmed(manager.renders, reconstruction_data.reconstruction, manager.listening.hearing)
 
 
 def _refresh_features(manager: MagicMock) -> None:
-    """Reads the envelopes of what is heard, the way the manager's own refresh does."""
+    """Installs the envelopes of what is heard, the way a landing installs what the worker exported."""
     if manager.current_reconstruction is not None:
         manager.current_features = heard_envelopes(
             manager.current_reconstruction.reconstruction,
             manager.listening.selection,
         )
+        manager.features_selection = manager.listening.selection
 
 
 @pytest.fixture
@@ -1537,25 +1540,27 @@ class TestWhatTheEnvelopesShow:
         panel_logic.display_reconstruction()
 
         panel_logic.set_stem_channels(1, frozenset())
+        _hear(mock_reconstruction_manager)
 
         exportable = panel_logic.exportable_instrument(ChannelName.PULSE1)
         assert exportable is not None
         assert exportable.source.features == mock_reconstruction_manager.current_features[ChannelName.PULSE1]
 
-    def test_the_reader_is_told_the_envelopes_moved(
+    def test_a_box_asks_the_worker_for_the_envelopes_it_moves(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         stems_data: ReconstructionData,
     ) -> None:
+        """The envelopes follow the choice once the worker exports them, so the box asks for a rendering."""
         _open(mock_reconstruction_manager, stems_data)
         panel_logic.display_reconstruction()
-        reported: List[None] = []
-        panel_logic.on_heard_changed = lambda: reported.append(None)
+        asked = MagicMock()
+        panel_logic.on_renders_wanted = asked
 
         panel_logic.set_stem_channels(1, frozenset())
 
-        assert len(reported) == 1
+        asked.assert_called_once()
 
     def test_a_solo_leaves_the_envelopes_of_the_recording_alone(
         self,
@@ -1568,6 +1573,7 @@ class TestWhatTheEnvelopesShow:
         whole = mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count
 
         panel_logic.solo_stem(0)
+        _hear(mock_reconstruction_manager)
 
         assert mock_reconstruction_manager.listening.heard[1] == frozenset()
         assert 0 < mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count < whole
@@ -1583,11 +1589,13 @@ class TestWhatTheEnvelopesShow:
         whole = mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count
 
         panel_logic.solo_stem(0)
+        _hear(mock_reconstruction_manager)
         panel_logic.solo_stem(0)
+        _hear(mock_reconstruction_manager)
 
         assert mock_reconstruction_manager.current_features[ChannelName.PULSE1].frame_count == whole
 
-    def test_a_solo_tells_the_reader_the_envelopes_moved_once(
+    def test_a_solo_asks_the_worker_once(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
@@ -1595,12 +1603,12 @@ class TestWhatTheEnvelopesShow:
     ) -> None:
         _open(mock_reconstruction_manager, stems_data)
         panel_logic.display_reconstruction()
-        reported: List[None] = []
-        panel_logic.on_heard_changed = lambda: reported.append(None)
+        asked = MagicMock()
+        panel_logic.on_renders_wanted = asked
 
         panel_logic.solo_stem(0)
 
-        assert len(reported) == 1
+        asked.assert_called_once()
 
 
 class TestTheLanesTheRibbonStandsOn:
