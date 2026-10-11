@@ -16,6 +16,7 @@ from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.hearing import hearing_carried_onto
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
@@ -912,12 +913,38 @@ class TestEnvelopesTheWorkerExported:
         assert reconstruction_manager.reconstruction is edited
         assert reconstruction_manager.has_envelopes_for(selection)
 
-    def test_an_edit_whose_new_frames_moved_the_choice_is_read_on_the_spot(
+    def test_an_edit_whose_new_frames_moved_the_choice_is_installed_as_the_worker_carried_it(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """An edit writing frames of the reader's own offers a new row; the worker carried the choice onto it."""
+        reconstruction = reconstruction_factory()
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        before = reconstruction_manager.listening.hearing
+        edited = reconstruction.with_channel_data(
+            ChannelName.PULSE1,
+            [PulseInstruction(on=True, pitch=60, volume=7, duty_cycle=0)] * 2,
+            60,
+            (),
+            heard=reconstruction.recorded_stem_ids,
+        )
+        carried = hearing_carried_onto(before, reconstruction, edited).selection
+        monkeypatch.setattr(manager_module, "heard_envelopes", MagicMock(side_effect=AssertionError("read here")))
+
+        reconstruction_manager.apply_edited(edited, _exported(edited, carried))
+
+        after = reconstruction_manager.listening.selection
+        assert after != before.selection
+        assert after == carried
+        assert reconstruction_manager.has_envelopes_for(after)
+
+    def test_envelopes_exported_for_another_choice_are_read_on_the_spot(
         self,
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
-        """An edit writing frames of the reader's own offers a new row, so the worker's export is stale."""
         reconstruction = reconstruction_factory()
         reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
         before = reconstruction_manager.listening.selection

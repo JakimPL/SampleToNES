@@ -1,9 +1,14 @@
-from typing import Dict, FrozenSet, Optional, Set
+from typing import Dict, FrozenSet, Optional
 
-from sampletones_core.constants.algorithm import AUTHORED_STEM_ID
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
-from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing
+from sampletones_core.reconstructions.reconstruction.stems.hearing import (
+    Hearing,
+    carried_channels_on,
+    carried_heard,
+    offered_channels,
+    selection_of,
+)
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 
 
@@ -18,10 +23,12 @@ class Listening:
     channels kept on are the boxes above the waveform: a channel switched off keeps every choice
     made for its recordings, so switching it back on restores them intact.
 
-    The choice is the reader's, so it travels across an edit rather than being remade: a channel
-    a recording keeps holding frames on keeps whatever was chosen for it, one the recording
-    reaches for the first time joins heard, and a channel coming into play joins the channels on
-    while one kept playing keeps the reader's choice for it.
+    The choice is the reader's, so it travels across an edit by the core's one rule
+    (``carried_hearing``): a channel a recording keeps holding frames on keeps whatever was chosen
+    for it, one the recording reaches for the first time joins heard, and a channel coming into
+    play joins the channels on while one kept playing keeps the reader's choice for it. The
+    regeneration worker carries the choice onto the document it rebuilds by the same rule, so the
+    sound and the envelopes a landing installs are read for the choice this state then makes.
 
     Soloing a recording silences every other one and remembers the choice it replaced, so soloing
     it again returns to that choice. A choice made by hand afterwards stands as the new state.
@@ -46,19 +53,8 @@ class Listening:
 
     @property
     def selection(self) -> StemSelection:
-        """What the reader hears, read the way the filters ask for it.
-
-        The card keeps the channels each recording is heard on; a filter asks each channel which
-        recordings it keeps, so the selection is that map turned around.
-        """
-        channels: Dict[ChannelName, Set[int]] = {channel_name: set() for channel_name in ChannelName.items()}
-        for stem_id, stem_channels in self._heard.items():
-            for channel_name in stem_channels:
-                channels[channel_name].add(stem_id)
-
-        return StemSelection(
-            channels={channel_name: frozenset(stem_ids) for channel_name, stem_ids in channels.items()}
-        )
+        """What the reader hears, read the way the filters ask for it: the heard map turned around."""
+        return selection_of(self._heard)
 
     def heard_on(self, channel_name: ChannelName) -> FrozenSet[int]:
         """The recordings heard on one channel, which is the scope an edit writes in."""
@@ -80,7 +76,7 @@ class Listening:
         return Hearing(selection=self.selection, channels_on=self._channels_on)
 
     def adopt(self, stems_data: StemsData, playing: FrozenSet[ChannelName]) -> None:
-        """Carries the reader's choice onto the record as it now stands.
+        """Carries the reader's choice onto the record as it now stands, by the core's rule.
 
         A recording appearing for the first time offers everything it holds and is heard on all
         of it, which is the same rule read against the nothing it offered before, so a freshly
@@ -92,14 +88,10 @@ class Listening:
             playing: The channels the document plays.
         """
         offered = offered_channels(stems_data)
-        self._heard = {
-            stem_id: (self._heard.get(stem_id, frozenset()) & channels)
-            | (channels - self._offered.get(stem_id, frozenset()))
-            for stem_id, channels in offered.items()
-        }
+        self._heard = carried_heard(self._heard, self._offered, offered)
         self._offered = offered
         self._heard_before_solo = None
-        self._channels_on = (self._channels_on & playing) | (playing - self._playing)
+        self._channels_on = carried_channels_on(self._channels_on, self._playing, playing)
         self._playing = playing
 
     def set_channels_on(self, channels: FrozenSet[ChannelName]) -> None:
@@ -151,23 +143,3 @@ class Listening:
             return False
 
         return all(not channels for other_id, channels in self._heard.items() if other_id != stem_id)
-
-
-def offered_channels(stems_data: StemsData) -> Dict[int, FrozenSet[ChannelName]]:
-    """The channels each recording holds frames on, which is what its row offers a box for.
-
-    A recording the picker never chose on a channel contributes nothing there whatever the
-    reader ticks, so the row draws a box exactly where the choice reaches something. A recording
-    holding no frame anywhere has left the document, so every recording offers a box somewhere
-    once any of them holds a frame. The frames the reader wrote gather under the authored stem,
-    which offers its boxes the same way and appears exactly where it holds a frame.
-    """
-    offered: Dict[int, Set[ChannelName]] = {entry.id: set() for entry in stems_data.config.entries}
-    for channel_name, stem_ids in stems_data.assignments_by_channel.items():
-        for stem_id in set(stem_ids):
-            if stem_id == AUTHORED_STEM_ID:
-                offered.setdefault(AUTHORED_STEM_ID, set()).add(channel_name)
-            elif stem_id in offered:
-                offered[stem_id].add(channel_name)
-
-    return {stem_id: frozenset(channels) for stem_id, channels in offered.items()}

@@ -1,6 +1,6 @@
 import time
 from pathlib import Path
-from typing import Final, Iterator, Tuple
+from typing import Any, Final, Iterator, List, Tuple
 from unittest.mock import MagicMock
 
 import pytest
@@ -18,6 +18,7 @@ from sampletones_application.logic.reconstruction.rewrites.steps import (
 from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.view_model.reconstruction.work import Work
+from sampletones_core.constants.algorithm import AUTHORED_STEM_ID
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
@@ -38,6 +39,7 @@ __all__ = ["live_queue", "scheduling", "taking_turns_file"]
 DRAG: Final[Tuple[Tuple[int, int], ...]] = ((1, 1), (2, 2), (3, 3), (4, 4), (6, 6))
 ARPEGGIO: Final[Tuple[int, int]] = (4, 3)
 RETUNED_FREQUENCY: Final[int] = 50
+LONGER_VOLUME: Final[Tuple[int, ...]] = (5, 5, 5)
 SETTLE_SECONDS: Final[float] = 10.0
 POLL_SECONDS: Final[float] = 0.005
 
@@ -139,3 +141,43 @@ class TestEditingAFileBackedDocumentAtSpeed:
         work = [entry.args[0] for entry in settled._tab.show_work.call_args_list]
 
         assert work == [Work.REBUILDING, None]
+
+
+class TestTheFirstFramesOfTheReadersOwn:
+    """An edit first writing frames of the reader's own on a channel, beside a recording left out, lands in one
+    job: the worker carries the choice onto the rebuilt record, so the sound kept and the envelopes installed are
+    the ones the listening asks for, and the panel has nothing left to ask a listening step for.
+    """
+
+    def test_the_landing_answers_the_listening_in_one_job(
+        self,
+        coordinator: ReconstructionCoordinator,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        manager = coordinator._reconstruction_manager
+        manager.listening.set_channels(STEM_B_ID, frozenset())
+        listenings: List[Reconstruction] = []
+        service = coordinator._rewrites._regeneration
+
+        def counted(reconstruction: Reconstruction, **kwargs: Any) -> None:
+            listenings.append(reconstruction)
+            RegenerationService.start_listening(service, reconstruction, **kwargs)
+
+        monkeypatch.setattr(service, "start_listening", counted)
+
+        coordinator.request_rewrite(
+            ChannelChange(
+                channel_name=SHARED_CHANNEL,
+                feature_key=FeatureKey.VOLUME,
+                envelopes={FeatureKey.VOLUME: Envelope[int](items=LONGER_VOLUME)},
+                initial_pitch=None,
+            )
+        )
+        _settle(coordinator)
+
+        document = _open_document(coordinator)
+        hearing = manager.listening.hearing
+        assert AUTHORED_STEM_ID in hearing.selection.stems_for(SHARED_CHANNEL)
+        assert manager.renders.reading(document, hearing) is not None
+        assert manager.has_envelopes_for(hearing.selection)
+        assert listenings == []

@@ -15,14 +15,19 @@ from sampletones_application.services.result import (
 )
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.algorithm import AUTHORED_STEM_ID
+from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import Features
 from sampletones_core.features import CHANNEL_GENERATOR_KIND, supported_features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
-from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing, heard_renders
+from sampletones_core.reconstructions.reconstruction.stems.hearing import (
+    Hearing,
+    heard_renders,
+    hearing_carried_onto,
+)
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from tests.conftest import ReconstructionFactory
 from tests.suite.stems import SHARED_CHANNEL, SOLE_CHANNEL, STEM_A_ID, everything_heard, taking_turns
@@ -439,9 +444,27 @@ class TestWhatTheRebuildSounds:
         """The landing reads what the reader hears from the result, so the result carries that reading."""
         outcome = _rebuilt(taking_turns, NO_RENDERS)
 
-        assert outcome.hearing == _heard_whole(taking_turns)
+        assert outcome.hearing == hearing_carried_onto(_heard_whole(taking_turns), taking_turns, outcome.reconstruction)
         assert outcome.heard.mix is outcome.mix
         assert outcome.heard.playing is outcome.mix
+
+    def test_an_edit_writing_frames_of_the_readers_own_hears_them(self, taking_turns: Reconstruction) -> None:
+        """The worker carries the choice onto the rebuilt record, so the sound and the envelopes it hands back are
+        the ones the listening asks for once the document lands: the reader's own row is heard where it appears.
+        """
+        features = taking_turns.export()[SHARED_CHANNEL]
+        longer = features.with_envelope(FeatureKey.VOLUME, Envelope[int](items=features.volume.items + (7,)))
+
+        outcome = _reported(
+            RegenerationService(),
+            RebuildJob(taking_turns, SHARED_CHANNEL, longer, _heard_whole(taking_turns), NO_RENDERS),
+        )
+
+        assert AUTHORED_STEM_ID in outcome.hearing.selection.stems_for(SHARED_CHANNEL)
+        assert outcome.hearing == hearing_carried_onto(_heard_whole(taking_turns), taking_turns, outcome.reconstruction)
+        assert outcome.envelopes == outcome.reconstruction.export_heard(outcome.hearing.selection)
+        assert outcome.envelopes[SHARED_CHANNEL].volume.items[len(features.volume.items)] == 7
+        assert outcome.heard.mix is outcome.mix
 
 
 class TestWhatAListeningSounds:

@@ -81,10 +81,14 @@ the ribbon answer at once. The waveform and the audio are read from the render c
 they sound, and the envelopes the instruments panel draws are the ones the worker exported for the
 recordings heard; where the cache keeps no sound for the hearing, or the envelopes drawn were exported
 for another choice of recordings, the panel asks for a listening step, which renders the hearing of the
-document as it then stands and lands like a rebuild. An edit whose new frames offer a row of their own
-moves the choice the listening makes on the new record, so its landing reads the envelopes on the spot. One
-listening waiting answers every choice made before it is taken, and a listening asked for during a
-rebuild reads the rebuilt document. A freshly opened document is shown the same way, so its channels
+document as it then stands and lands like a rebuild. The reader's choice travels onto a new record by one
+rule, written in core and read by the worker and the listening state alike: a recording keeps what was
+chosen for it where it keeps holding frames, is heard wherever it reaches for the first time, and the row
+an edit's new frames offer joins what is heard where it appears, as a channel coming into play joins the
+channels on. The worker carries the hearing onto the document it rebuilt before rendering and exporting,
+so the landing installs sound and envelopes for the choice the listening then makes. One listening
+waiting answers every choice made before it is taken, and a listening asked for during a rebuild reads
+the rebuilt document. A freshly opened document is shown the same way, so its channels
 render on the worker too. The showing the panel owes happens once the sound lands, and a hearing the
 cache already answers is shown at once. A WAV export is a reading of what plays like a showing: it
 writes the kept sound at once, and where the cache keeps none it is owed beside the showing and written
