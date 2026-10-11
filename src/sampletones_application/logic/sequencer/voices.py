@@ -331,9 +331,17 @@ class SequencerVoicesLogic(CallbackMixin):
         self._previews.cancel()
         match self._controller.project.voices.get(voice_id):
             case Sample() as sample:
-                self._previews.play(sample.reconstruction, partial(self._sound, priority=priority))
+                self._previews.play(
+                    sample.reconstruction,
+                    partial(self._sound, priority=priority),
+                    self._report_failed_render,
+                )
             case Instrument() as instrument:
                 self._sound(self._audition_audio(instrument), priority=priority)
+
+    def _report_failed_render(self, exception: Exception) -> None:
+        """Reports a sample's preview whose render failed the way a refused one is reported."""
+        self.call(self.on_autoplay_error, exception)
 
     def _sound(
         self,

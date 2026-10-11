@@ -35,6 +35,7 @@ class GuardedPlayer:
         self.run_guarded(self._player.pause_or_resume)
 
     def stop(self) -> None:
+        self._previews.cancel()
         self._player.stop()
 
     def is_playing(self) -> bool:

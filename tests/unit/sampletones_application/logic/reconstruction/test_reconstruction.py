@@ -1027,7 +1027,7 @@ class TestAShowingTheScreenHoldsNoSoundFor:
         panel_logic.redraw_listening()
         mock_export_service.export_wav.assert_not_called()
 
-    def test_a_source_flip_while_a_showing_is_owed_still_loads_the_waveform(
+    def test_a_box_then_a_source_flip_loads_the_new_hearing(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,

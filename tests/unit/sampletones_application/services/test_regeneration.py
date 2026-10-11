@@ -560,6 +560,23 @@ class TestWhatTheOriginalSounds:
         assert len(outcome.original.recordings) == len(recordings)
         np.testing.assert_allclose(outcome.original.audio, mix(list(recordings.values())))
 
+    def test_the_recordings_handed_are_read_as_the_values_they_are(self, taking_turns: Reconstruction) -> None:
+        """The worker reads the recordings the render thread holds, so it names them as they are and writes none."""
+        recordings = self._recordings(taking_turns)
+        for recording in recordings.values():
+            recording.setflags(write=False)
+        before = {stem_id: recording.copy() for stem_id, recording in recordings.items()}
+
+        outcome = _reported(
+            RegenerationService(),
+            ListeningJob(taking_turns, _heard_whole(taking_turns), NO_RENDERS, recordings),
+        )
+
+        assert outcome.original is not None
+        assert all(mixed is held for mixed, held in zip(outcome.original.recordings, recordings.values()))
+        assert all(not recording.flags.writeable for recording in recordings.values())
+        assert all(np.array_equal(recordings[stem_id], kept) for stem_id, kept in before.items())
+
     def test_a_recording_left_out_everywhere_stays_out_of_the_mix(self, taking_turns: Reconstruction) -> None:
         recordings = self._recordings(taking_turns)
         hearing = Hearing(

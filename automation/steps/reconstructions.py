@@ -109,7 +109,10 @@ def shade_reading(screen: Screen) -> Callable[[], Optional[str]]:
     return partial(read_theme, tag)
 
 
-def wait_for_the_fade_to_end(screen: Screen, unfaded: str) -> None:
+def wait_for_the_fade_to_end(
+    screen: Screen,
+    unfaded: str,
+) -> None:
     """Waits until the reconstruction line wears ``unfaded`` again, which is when the last sound has landed."""
     screen.bridge.expect(
         lambda: reconstruction_shade(screen),

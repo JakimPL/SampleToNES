@@ -22,7 +22,8 @@ class FilePlayback(CallbackMixin):
     from disk. The browser's tree, a row in the converter's list and a menu item all name a file
     the same way, so what a suffix means and what a failure to read one reports stand in one
     place. A device that refuses the sound reports through ``on_error`` whenever the refusal
-    comes, at once for a file or at the landing for a document.
+    comes, at once for a file or at the landing for a document, and so does a document's render
+    that fails.
     """
 
     def __init__(
@@ -75,10 +76,18 @@ class FilePlayback(CallbackMixin):
             self.call(self.on_error, exception)
             return
 
-        self._previews.play(reconstruction, partial(self._sound, priority=priority))
+        self._previews.play(reconstruction, partial(self._sound, priority=priority), self._report)
 
-    def _sound(self, audio: np.ndarray, *, priority: PlaybackPriority) -> None:
+    def _sound(
+        self,
+        audio: np.ndarray,
+        *,
+        priority: PlaybackPriority,
+    ) -> None:
         try:
             self._audio_device_manager.play(audio, update=False, priority=priority)
         except PlaybackError as exception:
             self.call(self.on_error, exception)
+
+    def _report(self, exception: Exception) -> None:
+        self.call(self.on_error, exception)

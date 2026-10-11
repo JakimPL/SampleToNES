@@ -7,7 +7,7 @@ import pytest
 
 from automation.application.startup import Startup
 from automation.screen import Screen
-from automation.steps.reconstructions import expect_open, load_from_the_browser, marked, titled
+from automation.steps.reconstructions import expect_open, leave_letting_it_go, load_from_the_browser, marked, titled
 from automation.views.stems import StemsCard
 from automation.vocabulary.playback import PAUSE
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED
@@ -247,15 +247,6 @@ class TestSilencingARecording:
 
             assert swatches(stems, (FIRST, LAST)) == {key: colors[0][key] for key in (FIRST, LAST)}
 
-        def leave_letting_it_go(screen: Screen) -> None:
-            prompt = reconstructions.unsaved_prompt
-            screen.press_shortcut(ShortcutId.EXIT)
-            screen.expect(prompt.is_shown, bool, description="the question about leaving")
-
-            prompt.confirm()
-
-            assert screen.wait_for_exit()
-
         screen.scenario(hear_the_middle_alone, silence_every_channel_of_it, its_row_leaves, leave_letting_it_go).run()
 
 
@@ -293,14 +284,5 @@ class TestLettingAChannelGo:
             )
             assert instruments.size(ChannelName.PULSE1) == screen.words(NOTHING_EXPORTED).format(bytes=0)
             assert not instruments.can_export(ChannelName.PULSE1)
-
-        def leave_letting_it_go(screen: Screen) -> None:
-            prompt = reconstructions.unsaved_prompt
-            screen.press_shortcut(ShortcutId.EXIT)
-            screen.expect(prompt.is_shown, bool, description="the question about leaving")
-
-            prompt.confirm()
-
-            assert screen.wait_for_exit()
 
         screen.scenario(drag_pulse_one_to_silence, leave_letting_it_go).run()

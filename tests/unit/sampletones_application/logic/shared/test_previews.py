@@ -39,6 +39,10 @@ def _document() -> Reconstruction:
     return sample_reconstruction(PREVIEWED_CHANNELS)
 
 
+def _unexpected(exception: Exception) -> None:
+    raise AssertionError(f"a preview's render failed: {exception}")
+
+
 def _sounded(played: Played, document: Reconstruction) -> bool:
     """Whether exactly the whole document was played, once."""
     return len(played) == 1 and bool(np.array_equal(played[0], rendered_mix(document)))
@@ -55,7 +59,7 @@ class TestAPreviewOfAKeptDocument:
         document = _document()
         warmed(renders, document, whole_hearing(document), {})
 
-        previews.play(document, played.append)
+        previews.play(document, played.append, _unexpected)
 
         assert _sounded(played, document)
         assert regeneration.held == ()
@@ -74,7 +78,7 @@ class TestAPreviewOfAnUnkeptDocument:
     ) -> None:
         document = _document()
 
-        previews.play(document, played.append)
+        previews.play(document, played.append, _unexpected)
 
         assert played == []
         assert previews.is_busy
@@ -97,9 +101,9 @@ class TestAPreviewOfAnUnkeptDocument:
     ) -> None:
         first = _document()
         second = _document()
-        previews.play(first, played.append)
+        previews.play(first, played.append, _unexpected)
 
-        previews.play(second, played.append)
+        previews.play(second, played.append, _unexpected)
         regeneration.finish()
 
         assert played == []
@@ -116,7 +120,7 @@ class TestAPreviewOfAnUnkeptDocument:
         played: Played,
     ) -> None:
         document = _document()
-        previews.play(document, played.append)
+        previews.play(document, played.append, _unexpected)
 
         previews.cancel()
         assert previews.is_busy
@@ -135,9 +139,9 @@ class TestAPreviewOfAnUnkeptDocument:
     ) -> None:
         first = _document()
         second = _document()
-        previews.play(first, played.append)
+        previews.play(first, played.append, _unexpected)
         warmed(renders, second, whole_hearing(second), {})
-        previews.play(second, played.append)
+        previews.play(second, played.append, _unexpected)
         assert played == []
 
         regeneration.finish()
@@ -155,10 +159,9 @@ class TestAPreviewOfAnUnkeptDocument:
         first = _document()
         second = _document()
         failures: List[Exception] = []
-        previews.on_failed = failures.append
         failure = RuntimeError("the worker fell over")
-        previews.play(first, played.append)
-        previews.play(second, played.append)
+        previews.play(first, played.append, failures.append)
+        previews.play(second, played.append, failures.append)
 
         regeneration.fail(failure)
 
@@ -174,14 +177,14 @@ class TestAPreviewOfAnUnkeptDocument:
         played: Played,
     ) -> None:
         document = _document()
-        previews.on_failed = lambda exception: None
-        previews.play(document, played.append)
+        failures: List[Exception] = []
+        previews.play(document, played.append, failures.append)
 
         regeneration.fail(RuntimeError("the worker fell over"))
 
         assert regeneration.held == ()
         assert not previews.is_busy
-        previews.play(document, played.append)
+        previews.play(document, played.append, failures.append)
         assert len(regeneration.held) == 1
 
     def test_a_result_arriving_with_nothing_on_its_way_raises(self, previews: DocumentPreviews) -> None:
@@ -211,7 +214,7 @@ class TestAShutdownMidPreview:
         played: Played,
     ) -> None:
         document = _document()
-        previews.play(document, played.append)
+        previews.play(document, played.append, _unexpected)
 
         SingleThreadExecutor.request_shutdown()
         regeneration.finish()

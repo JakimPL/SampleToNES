@@ -199,7 +199,11 @@ class _Memo:
     def __init__(self) -> None:
         self._entries: Dict[int, Tuple[object, str]] = {}
 
-    def digest(self, value: Value, compute: Callable[[Value], str]) -> str:
+    def digest(
+        self,
+        value: Value,
+        compute: Callable[[Value], str],
+    ) -> str:
         """The digest kept for ``value``, computed by ``compute`` the first time the object is met."""
         cached = self._entries.get(id(value))
         if cached is None:

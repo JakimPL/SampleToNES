@@ -545,8 +545,8 @@ class TestAStepThatReshapesTheDocument:
 
 
 class TestTheBusySpan:
-    """The line reports what it is busy with as the first step waits or runs, at a hand-over from one kind of
-    work to the other, and once the last step lands."""
+    """The line reports what it is busy with as a job starts, at a hand-over from one kind of work to the other,
+    and once the last step lands."""
 
     def test_a_rebuild_fills_the_line_until_it_lands(
         self,
@@ -632,8 +632,51 @@ class TestTheRecordingsAJobCarries:
 
 class TestAChangeWhoseEnvelopesAreOwed:
     """A change reaching its turn while the envelopes of what is heard are on their way waits behind a listening
-    of that choice, once: it rebuilds from the envelopes the listening lands, and is let go where it lands none.
+    of that choice: one already in line, or one the line asks for once per channel. It rebuilds from the
+    envelopes the listening lands, and is let go where none lands them.
     """
+
+    def test_a_box_ticked_meanwhile_puts_the_change_behind_the_ticks_listening(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+        outcome: Outcome,
+    ) -> None:
+        """The first listening lands envelopes for the choice before the tick, so the change waits for the tick's."""
+        reconstruction_manager.listening.set_channels(STEM_B_ID, frozenset())
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
+        reconstruction_manager.listening.set_channels(STEM_B_ID, frozenset({SHARED_CHANNEL}))
+        rewrites.request(ListeningChange())
+
+        regeneration.finish()
+
+        assert [type(job) for job in regeneration.held] == [ListeningJob]
+        regeneration.finish()
+        assert [type(job) for job in regeneration.held] == [RebuildJob]
+        regeneration.finish()
+        assert len(outcome.edits) == 1
+        assert not rewrites.is_busy
+
+    def test_a_change_joining_the_one_waiting_waits_as_it_did(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+        outcome: Outcome,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A later move of the same channel joins the change waiting, and the one wait covers the joined change."""
+        reconstruction_manager.listening.set_channels(STEM_B_ID, frozenset())
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, LATER_VOLUME))
+        monkeypatch.setattr(service_module, "heard_renders", MagicMock(side_effect=RuntimeError("rendering failed")))
+
+        regeneration.finish()
+
+        assert regeneration.held == ()
+        assert outcome.edits == []
+        assert not rewrites.is_busy
 
     def test_the_change_waits_behind_a_listening_and_rebuilds_from_what_it_lands(
         self,

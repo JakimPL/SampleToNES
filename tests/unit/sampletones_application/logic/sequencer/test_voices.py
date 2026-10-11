@@ -548,6 +548,19 @@ class TestInstrumentsInTheVoiceList:
         assert footprint.total_bytes == features_footprint(instrument.instrument_features()).total_bytes
         assert [instrument.channel for instrument in footprint.instruments] == [None]
 
+    def test_a_samples_render_that_fails_is_reported_as_a_refusal_is(self) -> None:
+        harness = _harness()
+        sample = harness.add_sample(sample_reconstruction([ChannelName.PULSE1]), kept=False)
+        reported: List[Exception] = []
+        harness.logic.on_autoplay_error = reported.append
+        failure = RuntimeError("the worker fell over")
+        harness.logic.play_voice(sample.id)
+
+        harness.regeneration.fail(failure)
+
+        assert reported == [failure]
+        assert harness.played() == []
+
     def test_an_instrument_previews_through_the_pulse_channel(self) -> None:
         controller, logic, session_manager, audio_device_manager = _logic_with_mocks()
         instrument = logic.add_new_instrument("lead")

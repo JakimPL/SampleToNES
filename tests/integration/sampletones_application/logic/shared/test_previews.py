@@ -35,16 +35,20 @@ def _settle(previews: DocumentPreviews) -> None:
         time.sleep(POLL_SECONDS)
 
 
+def _unexpected(exception: Exception) -> None:
+    raise AssertionError(f"a preview's render failed: {exception}")
+
+
 class TestAPreviewOnTheRealWorker:
     def test_the_sound_lands_and_a_second_ask_answers_from_the_cache(self, previews: DocumentPreviews) -> None:
         document = sample_reconstruction(PREVIEWED_CHANNELS)
         played: List[np.ndarray] = []
 
-        previews.play(document, played.append)
+        previews.play(document, played.append, _unexpected)
         _settle(previews)
 
         assert len(played) == 1
         np.testing.assert_array_equal(played[0], rendered_mix(document))
-        previews.play(document, played.append)
+        previews.play(document, played.append, _unexpected)
         assert len(played) == 2
         assert played[1] is played[0]

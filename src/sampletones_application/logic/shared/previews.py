@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Callable, Dict, Final, Optional
+from types import MappingProxyType
+from typing import Callable, Final, Mapping, Optional
 
 import numpy as np
 
@@ -12,27 +13,31 @@ from sampletones_application.services.regeneration.result import (
 from sampletones_application.services.result import ServiceError, ServiceSuccess
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.hearing import whole_hearing
-from sampletones_shared.utils.callbacks import CallbackMixin
+from sampletones_shared.logger import logger
 
 Play = Callable[[np.ndarray], None]
-NO_RECORDINGS: Final[Dict[int, np.ndarray]] = {}
+Failed = Callable[[Exception], None]
+NO_RECORDINGS: Final[Mapping[int, np.ndarray]] = MappingProxyType({})
 
 
 @dataclass(frozen=True)
 class WantedPreview:
-    """A document a reader asked to hear whole, and how it sounds once its audio is in hand.
+    """A document a reader asked to hear whole, how it sounds once its audio is in hand, and who hears of a
+    render that failed.
 
     Attributes:
         reconstruction: The document to sound.
         play: What sounds the audio, which owns the device, the priority and the refusal a device
             answers with.
+        failed: What reports a render that failed, which owns the way the reader is told.
     """
 
     reconstruction: Reconstruction
     play: Play
+    failed: Failed
 
 
-class DocumentPreviews(CallbackMixin):
+class DocumentPreviews:
     """Sounds whole documents from the render cache, and asks a worker of its own for what the cache lacks.
 
     A preview of a document is a reading like any other on the Reconstructions tab: sound the
@@ -45,10 +50,9 @@ class DocumentPreviews(CallbackMixin):
     way, whose landing then fills the cache alone, and ``cancel`` forgets the wanted preview the
     same way. One job runs at a time and the next wanted document is pursued once it lands,
     reading the cache first, since the tab may have landed it meanwhile. A landing sounds the
-    result's own audio and pursues the next wanted document from there. A render that fails
-    reports through ``on_failed`` and forgets the preview that
-    asked for it, so the next wanted document is pursued and the failed one is asked for again
-    only by a new gesture.
+    result's own audio and pursues the next wanted document from there. A render that fails is
+    reported to the reader that asked for it, which forgets the preview, so the next wanted
+    document is pursued and the failed one is asked for again by a new gesture alone.
 
     The service is this reader's own instance: a result reaches every subscriber of the instance
     that made it and names no sender, so a line of previews and the tab's line of rewrites each
@@ -64,9 +68,7 @@ class DocumentPreviews(CallbackMixin):
         self._renders = renders
         self._listening = listening
         self._wanted: Optional[WantedPreview] = None
-        self._running: Optional[Reconstruction] = None
-
-        self.on_failed: Optional[Callable[[Exception], None]] = None
+        self._running: Optional[WantedPreview] = None
 
         listening.subscribe(self._on_result)
 
@@ -79,14 +81,16 @@ class DocumentPreviews(CallbackMixin):
         self,
         reconstruction: Reconstruction,
         play: Play,
+        failed: Failed,
     ) -> None:
         """Sounds ``reconstruction`` whole through ``play``, at once or once its render lands.
 
         Args:
             reconstruction: The document to sound.
             play: What sounds the audio once it is in hand.
+            failed: What reports a render that failed.
         """
-        self._wanted = WantedPreview(reconstruction, play)
+        self._wanted = WantedPreview(reconstruction, play, failed)
         self._pursue()
 
     def cancel(self) -> None:
@@ -96,7 +100,7 @@ class DocumentPreviews(CallbackMixin):
     def _pursue(self) -> None:
         """Sounds the wanted preview from the cache, or asks the worker for it while no job runs.
 
-        A preview sounds the document alone, so the job is handed no recording and mixes no original.
+        A preview sounds the document itself, so its job carries the document alone.
         """
         wanted = self._wanted
         if wanted is None or self._running is not None:
@@ -109,7 +113,7 @@ class DocumentPreviews(CallbackMixin):
             wanted.play(heard.playing)
             return
 
-        self._running = wanted.reconstruction
+        self._running = wanted
         self._listening.start_listening(
             wanted.reconstruction,
             hearing=hearing,
@@ -133,10 +137,11 @@ class DocumentPreviews(CallbackMixin):
             case ServiceSuccess(value=outcome):
                 self._land(outcome)
             case ServiceError(exception=exception):
-                if self._wanted is not None and self._wanted.reconstruction is running:
+                if self._wanted is not None and self._wanted.reconstruction is running.reconstruction:
                     self._wanted = None
 
-                self.call(self.on_failed, exception)
+                logger.error_with_traceback(exception, "A preview's render failed")
+                running.failed(exception)
 
         self._pursue()
 

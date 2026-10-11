@@ -629,6 +629,7 @@ class Application:
             active_source_resolver=self._get_active_source,
             audio_device_manager=self.audio_device_manager,
             language_manager=self.language_manager,
+            previews=self.document_previews,
         )
 
         self._config_coordinator = ConfigCoordinator(

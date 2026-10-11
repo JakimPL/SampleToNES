@@ -105,7 +105,6 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
-from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import StringCallback, VoidCallback
 
 
@@ -220,7 +219,6 @@ class SequencerTabCoordinator:
             failures=playback_failures,
             previews=previews,
         )
-        previews.on_failed = self._report_preview_failure
         self._sequencer_tracker_panel: GUISequencerTrackerPanel = GUISequencerTrackerPanel(
             self._sequencer_tracker_logic.settings,
             layout=layout.sequencer,
@@ -833,11 +831,6 @@ class SequencerTabCoordinator:
 
     def _on_preview_error(self, exception: Exception) -> None:
         FrameCallbackManager.set_frame_callback(lambda: self._playback_failures.present(exception, message=None))
-
-    def _report_preview_failure(self, exception: Exception) -> None:
-        """Tells the reader a document's preview failed to render, the way a rebuild's failure is told."""
-        logger.error_with_traceback(exception, "A preview's render failed")
-        self._dialogs.show_error(exception)
 
     def _on_browser_recordings_requested(self, path: Path) -> None:
         """Hands the browser what a document names, where it has already been read."""

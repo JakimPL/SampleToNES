@@ -152,6 +152,22 @@ class TestAReconstructionSoundsThroughThePreviews:
         (played,) = audio_device_manager.play.call_args.args
         assert np.array_equal(played, rendered_mix(second))
 
+    def test_a_render_that_fails_reports(
+        self,
+        playback: FilePlayback,
+        audio_device_manager: MagicMock,
+        regeneration: HeldRegeneration,
+        tmp_path: Path,
+    ) -> None:
+        failure = RuntimeError("the worker fell over")
+        with patch(RECONSTRUCTION_LOAD, return_value=_document()):
+            playback.play(_reconstruction_file(tmp_path, "sample"))
+
+        regeneration.fail(failure)
+
+        playback.on_error.assert_called_once_with(failure)
+        audio_device_manager.play.assert_not_called()
+
     def test_a_device_refusing_at_the_landing_reports(
         self,
         playback: FilePlayback,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import (
     Callable,
@@ -77,6 +78,13 @@ from sampletones_shared.utils.system.paths import (
 EMPTY_STEMS_LIST: Final[StemsListViewModel] = StemsListViewModel.empty()
 
 
+class Drawing(Enum):
+    """How a showing draws the waveform: loaded afresh after a listening change, or updated in place after an edit."""
+
+    LOAD = "load"
+    UPDATE = "update"
+
+
 @dataclass(frozen=True)
 class OwedShowing:
     """What the screen owes the reader of the document's sound, settled once the worker has rendered what
@@ -86,15 +94,13 @@ class OwedShowing:
     opening still loads the waveform, and a retune followed by a flip still re-fits it.
 
     Attributes:
-        load: Whether the waveform is loaded afresh, as after a listening change.
-        update: Whether the waveform is updated in place, as after an edit.
+        drawing: How the waveform is drawn, or ``None`` where the showing plays or writes alone.
         refit: Whether the waveform's view is re-fitted to the audio's length.
         play: Whether the audio is handed to the player.
         export_to: The file what plays is written to, where an export waits for the sound.
     """
 
-    load: bool
-    update: bool
+    drawing: Optional[Drawing]
     refit: bool
     play: bool
     export_to: Optional[Path]
@@ -102,18 +108,37 @@ class OwedShowing:
     def joined(self, later: OwedShowing) -> OwedShowing:
         """What is owed once ``later`` is asked for on top of this: every showing kept, the newest export's file."""
         return OwedShowing(
-            load=self.load or later.load,
-            update=self.update or later.update,
+            drawing=self._drawn_either(self.drawing, later.drawing),
             refit=self.refit or later.refit,
             play=self.play or later.play,
             export_to=later.export_to if later.export_to is not None else self.export_to,
         )
 
+    @staticmethod
+    def _drawn_either(
+        first: Optional[Drawing],
+        second: Optional[Drawing],
+    ) -> Optional[Drawing]:
+        """The drawing covering both: a load draws everything an update would, so it outranks one."""
+        drawings = {first, second}
+        if Drawing.LOAD in drawings:
+            return Drawing.LOAD
+
+        if Drawing.UPDATE in drawings:
+            return Drawing.UPDATE
+
+        return None
+
 
 class WaveformUpdate(Protocol):
     """What draws an updated waveform in place, re-fitting its view to the audio's length where asked."""
 
-    def __call__(self, waveform: WaveformData, *, refit: bool) -> None: ...
+    def __call__(
+        self,
+        waveform: WaveformData,
+        *,
+        refit: bool,
+    ) -> None: ...
 
 
 class ExportServiceProtocol(Protocol):
@@ -216,8 +241,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._show(
             reconstruction_data,
             OwedShowing(
-                load=False,
-                update=True,
+                drawing=Drawing.UPDATE,
                 refit=refit_waveform,
                 play=self._current_audio_source != AudioSourceType.ORIGINAL,
                 export_to=None,
@@ -235,8 +259,8 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._show(reconstruction_data, owed)
 
     def abandon_showing(self) -> None:
-        """Lets go of what the reader is owed where no render is on its way for it, keeping the waveform as it
-        stands; an export that waited is reported dropped.
+        """Lets go of what the reader is owed once the worker has given up the render it waited for, keeping the
+        waveform as it stands; an export that waited is reported dropped.
         """
         self._forget_owed()
 
@@ -250,7 +274,7 @@ class ReconstructionPanelLogic(CallbackMixin):
     @staticmethod
     def _loading() -> OwedShowing:
         """A showing loading the waveform afresh and playing it, which a change to what is heard asks for."""
-        return OwedShowing(load=True, update=False, refit=False, play=True, export_to=None)
+        return OwedShowing(drawing=Drawing.LOAD, refit=False, play=True, export_to=None)
 
     def _show(
         self,
@@ -290,10 +314,11 @@ class ReconstructionPanelLogic(CallbackMixin):
         owed: OwedShowing,
     ) -> None:
         """Draws, plays and writes what ``owed`` names from one reading of the sound."""
-        if owed.load:
-            self.call(self.on_waveform_load_changed, waveform)
-        elif owed.update:
-            self.call(self.on_waveform_update_changed, waveform, refit=owed.refit)
+        match owed.drawing:
+            case Drawing.LOAD:
+                self.call(self.on_waveform_load_changed, waveform)
+            case Drawing.UPDATE:
+                self.call(self.on_waveform_update_changed, waveform, refit=owed.refit)
 
         if owed.play:
             self._emit_audio_data(reconstruction_data, waveform)
@@ -375,7 +400,10 @@ class ReconstructionPanelLogic(CallbackMixin):
 
     def _play(self, reconstruction_data: ReconstructionData) -> None:
         """Hands the player what the source chosen plays, or owes it where the screen holds no sound yet."""
-        self._show(reconstruction_data, OwedShowing(load=False, update=False, refit=False, play=True, export_to=None))
+        self._show(
+            reconstruction_data,
+            OwedShowing(drawing=None, refit=False, play=True, export_to=None),
+        )
 
     def set_selected_channels(self, channels: List[ChannelName]) -> None:
         """Adopts the reader's channel choice, which the stems list reports as muted columns."""
@@ -619,7 +647,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         features = self._reconstruction_manager.current_features
         if features is None:
-            logger.warning("The envelopes of what is heard are still on their way from the worker")
+            logger.info("The envelopes of what is heard are still on their way from the worker")
 
         return features
 
@@ -802,7 +830,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         """
         self._show(
             reconstruction_data,
-            OwedShowing(load=False, update=False, refit=False, play=False, export_to=filepath),
+            OwedShowing(drawing=None, refit=False, play=False, export_to=filepath),
         )
 
     def _write_wav(

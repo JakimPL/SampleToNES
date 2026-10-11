@@ -2431,16 +2431,3 @@ class TestACellTakingFocus:
         history_coordinator._sequencer_voices_panel = MagicMock()
 
         assert history_coordinator._marked_voice() is history_coordinator._sequencer_voices_panel.selection
-
-
-class TestAPreviewThatFailsToRender:
-    """A document's preview whose render fails is told to the reader by the tab that owns the previews."""
-
-    def test_the_failure_is_shown(self) -> None:
-        instance = object.__new__(SequencerTabCoordinator)
-        instance._dialogs = MagicMock()
-        failure = RuntimeError("rendering failed")
-
-        instance._report_preview_failure(failure)
-
-        instance._dialogs.show_error.assert_called_once_with(failure)

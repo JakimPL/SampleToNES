@@ -91,6 +91,17 @@ class TestAStartForgetsThePreviewOnItsWay:
 
         previews.cancel.assert_called_once_with()
 
+    def test_stop_forgets_it_too(
+        self,
+        guarded_player: GuardedPlayer,
+        player_logic: MagicMock,
+        previews: MagicMock,
+    ) -> None:
+        guarded_player.stop()
+
+        previews.cancel.assert_called_once_with()
+        player_logic.stop.assert_called_once_with()
+
     def test_a_guarded_run_forgets_it_first(self, guarded_player: GuardedPlayer, previews: MagicMock) -> None:
         ran: List[int] = []
 

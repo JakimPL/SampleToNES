@@ -20,8 +20,8 @@ class RebuildJob:
         hearing: What the reader hears, which names the recordings the edit writes and the reading
             rendered.
         kept: The renders the caller holds for the document's channels, by channel.
-        recordings: The recordings loaded for the document, by stem id, which the original of the
-            recordings heard is mixed from.
+        recordings: The recordings loaded for the document, by stem id, read-only values the
+            worker mixes the original of the recordings heard from.
     """
 
     reconstruction: Reconstruction
@@ -40,8 +40,8 @@ class ListeningJob:
         reconstruction: The document read.
         hearing: What the reader hears of it.
         kept: The renders the caller holds for the document's channels, by channel.
-        recordings: The recordings loaded for the document, by stem id, which the original of the
-            recordings heard is mixed from.
+        recordings: The recordings loaded for the document, by stem id, read-only values the
+            worker mixes the original of the recordings heard from.
     """
 
     reconstruction: Reconstruction

@@ -296,7 +296,10 @@ class RenderCache:
         return RenderKey(RenderKind.CHANNEL, (RenderPart(source=id(stream), assignment=None, heard=None),), config)
 
     @staticmethod
-    def _original_key(recordings: Sequence[np.ndarray], config: Config) -> RenderKey:
+    def _original_key(
+        recordings: Sequence[np.ndarray],
+        config: Config,
+    ) -> RenderKey:
         parts = tuple(RenderPart(source=id(recording), assignment=None, heard=None) for recording in recordings)
         return RenderKey(RenderKind.ORIGINAL, parts, config)
 

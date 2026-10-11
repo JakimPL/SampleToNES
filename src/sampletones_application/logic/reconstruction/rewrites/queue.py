@@ -29,6 +29,7 @@ from sampletones_application.view_model.reconstruction.envelopes import (
     ChannelEnvelopesViewModel,
 )
 from sampletones_application.view_model.reconstruction.work import Work
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.removal import (
     can_remove_stem,
@@ -108,7 +109,7 @@ class ReconstructionRewrites(CallbackMixin):
         self._regeneration = regeneration
         self._waiting: List[Rewrite] = []
         self._running: Optional[Running] = None
-        self._awaiting_envelopes: Optional[ChannelChange] = None
+        self._awaiting_envelopes: Optional[ChannelName] = None
         self._redraw_owed: bool = False
         self._reported_work: Optional[Work] = None
 
@@ -280,17 +281,24 @@ class ReconstructionRewrites(CallbackMixin):
         )
 
     def _await_envelopes(self, change: ChannelChange) -> None:
-        """Puts ``change`` back at the head of the line behind a listening of the choice its envelopes are owed for.
+        """Puts ``change`` back in line behind a listening of the choice its envelopes are owed for.
 
-        The change waits once: where the listening lands no envelopes for it, as a failed one
-        does, the change is let go and the line moves on.
+        A listening already waiting, as a box ticked meanwhile asks for, lands them, so the change
+        takes its place behind it. With none waiting, the line asks for one, once per channel: a
+        change whose listening landed no envelopes for it, as a failed one does, is let go and the
+        line moves on.
         """
-        if self._awaiting_envelopes is change:
+        for index, step in enumerate(self._waiting):
+            if isinstance(step, ListeningChange):
+                self._waiting.insert(index + 1, change)
+                return
+
+        if self._awaiting_envelopes == change.channel_name:
             logger.info(f"A change of {change.channel_name} found no envelopes to rebuild from and was let go")
             self._awaiting_envelopes = None
             return
 
-        self._awaiting_envelopes = change
+        self._awaiting_envelopes = change.channel_name
         self._waiting[:0] = [ListeningChange(), change]
 
     def _listen(self) -> None:
