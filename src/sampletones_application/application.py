@@ -294,7 +294,6 @@ class Application:
         )
         self.preview_service: RegenerationService = RegenerationService(priority=_priority)
         self.document_previews: DocumentPreviews = DocumentPreviews(self.renders, self.preview_service)
-        self.document_previews.on_failed = self._report_preview_failure
         self.export_service: ExportService = ExportService(priority=_priority)
         self.export_service.subscribe(self._on_export_activity)
         self.render_service: SongRenderService = SongRenderService(priority=_priority)
@@ -532,6 +531,7 @@ class Application:
             instrument_exports=self._instrument_exports,
             history=self.history,
             instrument_edit_detail=self._instrument_edit_detail,
+            previews=self.document_previews,
             key_router=self.key_router,
             tab_active=self._is_reconstructions_tab_current,
             layout=ReconstructionTabParameters.from_config(self.layout),
@@ -552,6 +552,7 @@ class Application:
             on_generation_state_changed=self._on_library_operation_changed,
             is_operation_active=self._is_operation_active,
             is_converter_visible=self._is_converter_panel_visible,
+            previews=self.document_previews,
             layout=InstructionsTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -577,6 +578,7 @@ class Application:
                 on_refresh_trees=self._refresh_browsers,
                 on_prepare_library=self._instructions_tab.prepare_library,
             ),
+            previews=self.document_previews,
             layout=MainTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -1112,11 +1114,6 @@ class Application:
             or self._nsf_exports.is_active
             or self.export_service.is_running()
         )
-
-    def _report_preview_failure(self, exception: Exception) -> None:
-        """Tells the reader a voice's preview failed to render, the way a rebuild's failure is told."""
-        logger.error_with_traceback(exception, "A preview's render failed")
-        self.dialogs.show_error(exception)
 
     def _on_export_activity(self, result: ExportResult) -> None:
         """Follows an export claiming the application and handing it back.

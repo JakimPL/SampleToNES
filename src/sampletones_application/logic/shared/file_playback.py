@@ -1,10 +1,13 @@
+from functools import partial
 from pathlib import Path
 from typing import Callable, Optional
 
+import numpy as np
+
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_core.reconstructions.reconstruction.renders import rendered_mix
 from sampletones_shared.exceptions import PlaybackError, SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.paths import extensions
@@ -14,13 +17,21 @@ from sampletones_shared.utils.callbacks import CallbackMixin
 class FilePlayback(CallbackMixin):
     """Wherever a file is named and asked to sound, this is what answers.
 
-    A reconstruction is read and its approximation played; an audio file is played from disk. The
-    browser's tree, a row in the converter's list and a menu item all name a file the same way, so
-    what a suffix means and what a failure to read one reports stand in one place.
+    A reconstruction is read and previewed whole through the document previews, so its sound is
+    the render the cache keeps or the one a worker lands a moment later; an audio file is played
+    from disk. The browser's tree, a row in the converter's list and a menu item all name a file
+    the same way, so what a suffix means and what a failure to read one reports stand in one
+    place. A device that refuses the sound reports through ``on_error`` whenever the refusal
+    comes, at once for a file or at the landing for a document.
     """
 
-    def __init__(self, audio_device_manager: AudioDeviceManager) -> None:
+    def __init__(
+        self,
+        audio_device_manager: AudioDeviceManager,
+        previews: DocumentPreviews,
+    ) -> None:
         self._audio_device_manager = audio_device_manager
+        self._previews = previews
 
         self.on_error: Optional[Callable[[Exception], None]] = None
 
@@ -64,4 +75,10 @@ class FilePlayback(CallbackMixin):
             self.call(self.on_error, exception)
             return
 
-        self._audio_device_manager.play(rendered_mix(reconstruction), update=False, priority=priority)
+        self._previews.play(reconstruction, partial(self._sound, priority=priority))
+
+    def _sound(self, audio: np.ndarray, *, priority: PlaybackPriority) -> None:
+        try:
+            self._audio_device_manager.play(audio, update=False, priority=priority)
+        except PlaybackError as exception:
+            self.call(self.on_error, exception)

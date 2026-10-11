@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_shared.exceptions import NoOutputDeviceError, PlaybackError
 
 GUARDED_COMMANDS = ("play", "pause_or_resume")
@@ -20,8 +21,13 @@ def failures() -> MagicMock:
 
 
 @pytest.fixture
-def guarded_player(player_logic: MagicMock, failures: MagicMock) -> GuardedPlayer:
-    return GuardedPlayer(player_logic, failures=failures)
+def previews() -> MagicMock:
+    return MagicMock(spec=DocumentPreviews)
+
+
+@pytest.fixture
+def guarded_player(player_logic: MagicMock, failures: MagicMock, previews: MagicMock) -> GuardedPlayer:
+    return GuardedPlayer(player_logic, failures=failures, previews=previews)
 
 
 class TestGuardedCommands:
@@ -64,6 +70,33 @@ class TestGuardedCommands:
         getattr(guarded_player, command)()
 
         failures.present_playing_failure.assert_called_once_with(exception)
+
+
+class TestAStartForgetsThePreviewOnItsWay:
+    """Playback the reader asks for forgets a preview still on its way before it starts, so a late render
+    sounds nothing over it.
+    """
+
+    @pytest.mark.parametrize("command", GUARDED_COMMANDS)
+    def test_a_transport_command_forgets_it_first(
+        self,
+        guarded_player: GuardedPlayer,
+        player_logic: MagicMock,
+        previews: MagicMock,
+        command: str,
+    ) -> None:
+        getattr(player_logic, command).side_effect = lambda: previews.cancel.assert_called_once_with()
+
+        getattr(guarded_player, command)()
+
+        previews.cancel.assert_called_once_with()
+
+    def test_a_guarded_run_forgets_it_first(self, guarded_player: GuardedPlayer, previews: MagicMock) -> None:
+        ran: List[int] = []
+
+        guarded_player.run_guarded(lambda: ran.append(previews.cancel.call_count))
+
+        assert ran == [1]
 
 
 class TestAGuardedRun:

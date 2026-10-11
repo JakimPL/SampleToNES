@@ -46,6 +46,7 @@ from sampletones_application.logic.reconstruction.rewrites.steps import (
 )
 from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.player import PlayerLogic
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.reconstruction import (
     ReconstructionTabParameters,
@@ -153,6 +154,7 @@ class ReconstructionTabCoordinator:
         instrument_exports: InstrumentExportCoordinator,
         history: HistoryManager,
         instrument_edit_detail: InstrumentEditDetail,
+        previews: DocumentPreviews,
         *,
         key_router: KeyRouter,
         tab_active: ActivePredicate,
@@ -201,7 +203,7 @@ class ReconstructionTabCoordinator:
             config_manager,
             browser_manager,
         )
-        self._file_playback: FilePlayback = FilePlayback(audio_device_manager)
+        self._file_playback: FilePlayback = FilePlayback(audio_device_manager, previews)
         self._browser_tree_logic: TreeLogic = TreeLogic(
             session_manager,
             self._file_playback,
@@ -233,6 +235,7 @@ class ReconstructionTabCoordinator:
         self._guarded_player = GuardedPlayer(
             self._reconstruction_player_logic,
             failures=playback_failures,
+            previews=previews,
         )
         self._reconstruction_audio_panel: GUIReconstructionAudioPanel = GUIReconstructionAudioPanel(
             path_colors=layout.path_colors,

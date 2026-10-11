@@ -36,6 +36,7 @@ from sampletones_application.logic.sequencer.order import (
 from sampletones_application.logic.sequencer.tracker import (
     SequencerTrackerLogic,
 )
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.paths import LANG_EN
 from sampletones_application.ui.panels.sequencer import channels as channels_module
 from sampletones_application.ui.panels.sequencer.order.panel import GUISequencerOrderPanel
@@ -1840,6 +1841,7 @@ def exposure_coordinator() -> SequencerTabCoordinator:
     instance._guarded_player = GuardedPlayer(
         instance._song_player_logic,
         failures=MagicMock(),
+        previews=MagicMock(spec=DocumentPreviews),
     )
     return instance
 
@@ -1875,6 +1877,7 @@ def refusing_coordinator_fixture(failures: MagicMock) -> SequencerTabCoordinator
     instance._guarded_player = GuardedPlayer(
         instance._song_player_logic,
         failures=failures,
+        previews=MagicMock(spec=DocumentPreviews),
     )
     return instance
 
@@ -2428,3 +2431,16 @@ class TestACellTakingFocus:
         history_coordinator._sequencer_voices_panel = MagicMock()
 
         assert history_coordinator._marked_voice() is history_coordinator._sequencer_voices_panel.selection
+
+
+class TestAPreviewThatFailsToRender:
+    """A document's preview whose render fails is told to the reader by the tab that owns the previews."""
+
+    def test_the_failure_is_shown(self) -> None:
+        instance = object.__new__(SequencerTabCoordinator)
+        instance._dialogs = MagicMock()
+        failure = RuntimeError("rendering failed")
+
+        instance._report_preview_failure(failure)
+
+        instance._dialogs.show_error.assert_called_once_with(failure)
