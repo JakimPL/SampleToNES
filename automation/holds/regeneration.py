@@ -17,7 +17,8 @@ class RegenerationHold:
     The rebuild waits where the real one runs, so the application draws and answers while the edit
     is on its way, and once released the real rebuild computes the edit's result. A rendering of
     what the reader hears, which the same worker runs on opening a document and on a box ticked,
-    goes through at once, so the document stands drawn while the rebuilds wait. The hold lets
+    goes through at once, so the document stands drawn while the rebuilds wait; a voice's preview
+    in the sequencer is a listening on a worker of its own and passes through the same way. The hold lets
     every rebuild through from its release on, until the scenario holds again. A scenario standing
     for a rebuild that breaks lets the held rebuilds go as that failure instead, which the service
     reports the way it reports a rebuild that raised.

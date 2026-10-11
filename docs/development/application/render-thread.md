@@ -25,7 +25,10 @@ and hands them back inside its result; the landing keeps the audio in the render
 envelopes on the render thread. A reading the cache cannot answer, such as a recording
 left out for the first time or a freshly opened document, is asked of the same worker and lands the same
 way. What a worker produces for the interface therefore reaches what the interface reads through the
-queue alone, and the render thread computes no sample while the worker renders.
+queue alone, and the render thread computes no sample while the worker renders. A document previewed
+elsewhere, such as a voice clicked in the sequencer, reads the same cache and asks a worker of its own
+for what the cache lacks (`DocumentPreviews` in `logic/shared/previews.py`), and sounds at the landing;
+the cache's writers are the landings, every one of them on the render thread.
 
 A logic object hearing a worker's report, such as a library generation or the audio device's position,
 posts its own handler to the queue the same way. The logic layer reaches the queue, and `utils/gui`

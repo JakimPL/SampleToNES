@@ -60,8 +60,10 @@ class ScreenApplication:
         return self._application.language_manager
 
     def sound_settled(self) -> bool:
-        """Whether the open reconstruction's sound stands landed, with no rebuild or listening on its way."""
-        return not self._application.reconstruction_rewrites.is_busy
+        """Whether every sound asked for stands landed: the open reconstruction's rebuilds and listenings, and a
+        voice's preview on its way to the sequencer.
+        """
+        return not (self._application.reconstruction_rewrites.is_busy or self._application.document_previews.is_busy)
 
     @property
     def shortcuts(self) -> ShortcutManager:
