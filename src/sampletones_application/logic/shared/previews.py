@@ -42,11 +42,11 @@ class DocumentPreviews(CallbackMixin):
     document previewed here opens on the tab rendered.
 
     The latest preview asked for is the one wanted: a newer request replaces one still on its
-    way, whose landing then fills the cache and sounds nothing, and ``cancel`` forgets the wanted
-    preview the same way. One job runs at a time and the next wanted document is pursued once it
-    lands, reading the cache first, since the tab may have landed it meanwhile. The result a
-    landing sounds is the result's own audio, so a landing never asks for the document it just
-    delivered. A render that fails reports through ``on_failed`` and forgets the preview that
+    way, whose landing then fills the cache alone, and ``cancel`` forgets the wanted preview the
+    same way. One job runs at a time and the next wanted document is pursued once it lands,
+    reading the cache first, since the tab may have landed it meanwhile. A landing sounds the
+    result's own audio and pursues the next wanted document from there. A render that fails
+    reports through ``on_failed`` and forgets the preview that
     asked for it, so the next wanted document is pursued and the failed one is asked for again
     only by a new gesture.
 

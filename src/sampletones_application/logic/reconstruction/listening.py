@@ -4,8 +4,8 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.hearing import (
     Hearing,
-    carried_channels_on,
-    carried_heard,
+    carried_hearing,
+    heard_by_stem,
     offered_channels,
     selection_of,
 )
@@ -88,11 +88,18 @@ class Listening:
             playing: The channels the document plays.
         """
         offered = offered_channels(stems_data)
-        self._heard = carried_heard(self._heard, self._offered, offered)
+        hearing = carried_hearing(
+            self.hearing,
+            offered_before=self._offered,
+            playing_before=self._playing,
+            offered_after=offered,
+            playing_after=playing,
+        )
         self._offered = offered
-        self._heard_before_solo = None
-        self._channels_on = carried_channels_on(self._channels_on, self._playing, playing)
         self._playing = playing
+        self._heard = heard_by_stem(hearing.selection, offered)
+        self._channels_on = hearing.channels_on
+        self._heard_before_solo = None
 
     def set_channels_on(self, channels: FrozenSet[ChannelName]) -> None:
         """Takes the channels the reader keeps on, as the boxes above the waveform leave them."""

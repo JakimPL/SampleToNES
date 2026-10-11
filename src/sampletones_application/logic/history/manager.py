@@ -6,6 +6,7 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.view_model.shared.history import HistoryDetail
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
+from sampletones_shared.utils.hashing import hash_model
 
 from .action import HistoryAction
 from .errors import HistoryIntegrityError, UntrackedMutationError
@@ -40,7 +41,9 @@ class HistoryManager(CallbackMixin):
         self._controller = controller
         self._budget = budget
         self._strict = strict
-        self._hash_cache: Optional[HashCache] = HashCache() if strict else None
+        self._hash_cache: Optional[HashCache] = (
+            HashCache(stream_hash=hash_model, assignment_hash=hash_model, pattern_hash=hash_model) if strict else None
+        )
         self._entries: List[HistoryEntry] = []
         self._cursor: int = -1
         self._saved_cursor: Optional[int] = None

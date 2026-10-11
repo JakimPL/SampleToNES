@@ -39,7 +39,11 @@ class InstalledEnvelopes:
     selection: StemSelection
     view: ChannelEnvelopesViewModel
 
-    def answers_for(self, reconstruction: Optional[Reconstruction], selection: StemSelection) -> bool:
+    def answers_for(
+        self,
+        reconstruction: Optional[Reconstruction],
+        selection: StemSelection,
+    ) -> bool:
         """Whether the envelopes were exported for ``reconstruction`` heard as ``selection``."""
         return self.reconstruction is reconstruction and self.selection == selection
 
@@ -154,14 +158,22 @@ class ReconstructionManager(CallbackMixin):
         if envelopes is not None:
             self._install_envelopes(reconstruction, envelopes)
 
-    def _install_envelopes(self, reconstruction: Reconstruction, envelopes: HeardEnvelopes) -> None:
+    def _install_envelopes(
+        self,
+        reconstruction: Reconstruction,
+        envelopes: HeardEnvelopes,
+    ) -> None:
         self._envelopes = InstalledEnvelopes(
             reconstruction=reconstruction,
             selection=envelopes.selection,
             view=envelopes_view(reconstruction, envelopes),
         )
 
-    def adopt_envelopes(self, reconstruction: Reconstruction, envelopes: HeardEnvelopes) -> bool:
+    def adopt_envelopes(
+        self,
+        reconstruction: Reconstruction,
+        envelopes: HeardEnvelopes,
+    ) -> bool:
         """Takes the envelopes the worker exported for ``reconstruction``, where it is the open document.
 
         A box on the stems card moves which recordings a channel is heard on, and the plot, the

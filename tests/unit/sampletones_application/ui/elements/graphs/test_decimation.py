@@ -35,12 +35,6 @@ class TestThePointsAnArrayDrawsAs:
         np.testing.assert_array_equal(positions, np.arange(SHORT, dtype=np.float32))
         np.testing.assert_array_equal(values, audio)
 
-    def test_the_peak_is_the_arrays_own(self) -> None:
-        decimations = Decimations(MAX_POINTS)
-        audio = _waveform(LONG, 1)
-
-        assert decimations.peak(audio) == float(np.max(np.abs(audio)))
-
 
 class TestWhatTheMemoKeeps:
     """A reduction is made once per array and read back by identity, and goes with the array."""

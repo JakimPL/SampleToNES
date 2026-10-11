@@ -1,5 +1,6 @@
 import copy
-from typing import Final, FrozenSet, Generic, List, Sequence, TypeVar
+from pathlib import Path
+from typing import Callable, Final, FrozenSet, Generic, List, TypeVar
 
 import pytest
 
@@ -26,6 +27,7 @@ from tests.conftest import ReconstructionFactory
 from tests.suite.history.audit import fresh_fingerprint
 from tests.suite.history.perturbation import perturbed_project, project_leaves
 from tests.suite.history.projects import FIRST_PATTERN, SECOND_PATTERN, every_part_project
+from tests.suite.stems import recorded_from
 from tests.unit.sampletones_application.logic.history.conftest import HistoryFactory
 
 REACHED_LABELS: Final[FrozenSet[str]] = frozenset(
@@ -83,13 +85,13 @@ def _patterns(song: Song) -> List[Pattern]:
     ]
 
 
-def _every_pattern(projects: Sequence[Project]) -> FrozenSet[int]:
-    return frozenset(
-        id(pattern)
-        for project in projects
-        for channel in project.song.channels.values()
-        for pattern in channel.patterns.values()
-    )
+def _cache(
+    *,
+    stream_hash: Callable[[InstructionsItem], str] = hash_model,
+    pattern_hash: Callable[[Pattern], str] = hash_model,
+) -> HashCache:
+    """A cache hashing afresh wherever the case hands no hash of its own."""
+    return HashCache(stream_hash=stream_hash, assignment_hash=hash_model, pattern_hash=pattern_hash)
 
 
 def _edited(reconstruction: Reconstruction) -> Reconstruction:
@@ -153,6 +155,19 @@ class TestFingerprintCompleteness:
 
         assert REACHED_LABELS <= labels
 
+    def test_a_recordings_location_reaches_a_documents_digest(
+        self,
+        reconstruction_factory: ReconstructionFactory,
+        tmp_path: Path,
+    ) -> None:
+        """A project's sample records no location, so the walk over a project meets none; a document of its
+        own spells each recording's location, which its digest tells apart.
+        """
+        recorded = recorded_from(reconstruction_factory(), (tmp_path / "a.wav", tmp_path / "b.wav"))
+        moved = recorded_from(reconstruction_factory(), (tmp_path / "a.wav", tmp_path / "c.wav"))
+
+        assert hash_reconstruction(recorded) != hash_reconstruction(moved)
+
     def test_an_independent_copy_keeps_the_fingerprint(self) -> None:
         project = every_part_project()
 
@@ -187,7 +202,7 @@ class TestHashCache:
         reconstruction_factory: ReconstructionFactory,
     ) -> None:
         counting: CountingHash[InstructionsItem] = CountingHash()
-        cache = HashCache(stream_hash=counting)
+        cache = _cache(stream_hash=counting)
         reconstruction = reconstruction_factory()
 
         first = cache.reconstruction(reconstruction)
@@ -199,14 +214,14 @@ class TestHashCache:
     def test_the_memoized_digest_is_the_fresh_one(self, reconstruction_factory: ReconstructionFactory) -> None:
         reconstruction = reconstruction_factory()
 
-        assert HashCache().reconstruction(reconstruction) == hash_reconstruction(reconstruction)
+        assert _cache().reconstruction(reconstruction) == hash_reconstruction(reconstruction)
 
     def test_distinct_reconstructions_hash_independently(
         self,
         reconstruction_factory: ReconstructionFactory,
     ) -> None:
         counting: CountingHash[InstructionsItem] = CountingHash()
-        cache = HashCache(stream_hash=counting)
+        cache = _cache(stream_hash=counting)
         first = reconstruction_factory()
         second = reconstruction_factory()
 
@@ -217,7 +232,7 @@ class TestHashCache:
 
     def test_an_edit_hashes_the_one_stream_it_replaced(self, reconstruction_factory: ReconstructionFactory) -> None:
         counting: CountingHash[InstructionsItem] = CountingHash()
-        cache = HashCache(stream_hash=counting)
+        cache = _cache(stream_hash=counting)
         reconstruction = reconstruction_factory()
         edited = _edited(reconstruction)
         cache.reconstruction(reconstruction)
@@ -233,7 +248,7 @@ class TestHashCache:
         reconstruction_factory: ReconstructionFactory,
     ) -> None:
         counting: CountingHash[InstructionsItem] = CountingHash()
-        cache = HashCache(stream_hash=counting)
+        cache = _cache(stream_hash=counting)
         kept = project_controller.add_sample(reconstruction_factory(), name="kept").reconstruction
         discarded = reconstruction_factory()
         cache.reconstruction(kept)
@@ -247,7 +262,7 @@ class TestHashCache:
 
     def test_patterns_hashed_once_per_pattern_object(self) -> None:
         counting: CountingHash[Pattern] = CountingHash()
-        cache = HashCache(pattern_hash=counting)
+        cache = _cache(pattern_hash=counting)
         song = every_part_project().song
 
         first = cache.song(song)
@@ -259,11 +274,11 @@ class TestHashCache:
     def test_the_memoized_song_digest_is_the_fresh_one(self) -> None:
         song = every_part_project().song
 
-        assert HashCache().song(song) == hash_song(song)
+        assert _cache().song(song) == hash_song(song)
 
     def test_a_row_edit_hashes_the_one_pattern_it_replaced(self) -> None:
         counting: CountingHash[Pattern] = CountingHash()
-        cache = HashCache(pattern_hash=counting)
+        cache = _cache(pattern_hash=counting)
         song = every_part_project().song
         original = _patterns(song)
         cache.song(song)
@@ -276,7 +291,7 @@ class TestHashCache:
 
     def test_a_snapshot_shares_its_patterns_with_the_song_it_copies(self) -> None:
         counting: CountingHash[Pattern] = CountingHash()
-        cache = HashCache(pattern_hash=counting)
+        cache = _cache(pattern_hash=counting)
         project = every_part_project()
         cache.song(project.song)
 
@@ -285,7 +300,7 @@ class TestHashCache:
 
     def test_prune_drops_hashes_for_discarded_patterns(self) -> None:
         counting: CountingHash[Pattern] = CountingHash()
-        cache = HashCache(pattern_hash=counting)
+        cache = _cache(pattern_hash=counting)
         project = every_part_project()
         before = project.snapshot()
         replaced = project.song.channels[ChannelName.PULSE1].patterns[FIRST_PATTERN]
@@ -392,7 +407,11 @@ class TestStrictManagerFingerprinting:
         history_factory: HistoryFactory,
         reconstruction_factory: ReconstructionFactory,
     ) -> None:
+        """A document the history let go of is hashed afresh when met again, since the eviction pruned it."""
         controller, history = history_factory(budget=2)
+        counting: CountingHash[InstructionsItem] = CountingHash()
+        cache = _cache(stream_hash=counting)
+        history._hash_cache = cache
         with history.transaction(HistoryAction.ADD_SAMPLE):
             sample = controller.add_sample(reconstruction_factory(), name="lead")
 
@@ -402,17 +421,29 @@ class TestStrictManagerFingerprinting:
         with history.transaction(HistoryAction.SET_TEMPO):
             controller.set_tempo(150)
 
-        assert history._hash_cache is not None
-        assert len(history._hash_cache._reconstructions) == 0
-        assert len(history._hash_cache._streams) == 0
-        assert len(history._hash_cache._assignments) == 0
+        hashed = list(counting.calls)
+        cache.reconstruction(sample.reconstruction)
+
+        assert counting.calls == hashed + _streams(sample.reconstruction)
 
     def test_eviction_prunes_cache_to_retained_patterns(self, history_factory: HistoryFactory) -> None:
+        """The patterns the retained entries hold stay memoized, and one the eviction let go of is hashed afresh."""
         controller, history = history_factory(budget=2)
+        counting: CountingHash[Pattern] = CountingHash()
+        cache = _cache(pattern_hash=counting)
+        history._hash_cache = cache
+        baseline = history.entries[0].project
         for row_index in range(3):
             with history.transaction(HistoryAction.EDIT_ROW):
                 controller.set_row(ChannelName.PULSE1, FIRST_PATTERN, row_index, volume=EDITED_ROW.volume)
 
         retained = [entry.project for entry in history.entries] + [controller.project]
-        assert history._hash_cache is not None
-        assert len(history._hash_cache._patterns) == len(_every_pattern(retained))
+        assert baseline not in retained
+        hashed = list(counting.calls)
+        for project in retained:
+            cache.song(project.song)
+        assert counting.calls == hashed
+
+        cache.song(baseline.song)
+
+        assert counting.calls == hashed + [baseline.song.channels[ChannelName.PULSE1].patterns[FIRST_PATTERN]]

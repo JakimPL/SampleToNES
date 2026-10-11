@@ -79,7 +79,7 @@ class ReconstructionRewrites(CallbackMixin):
     moved, a recording taken out, a new NES frequency, and a gesture that reads or puts away the
     whole document. So does a change to what the reader hears whose sound the screen holds no
     audio for yet, which the worker renders from the document as it then stands. Each step reads
-    the document the step before it left, so one edit never overwrites another, a rebuild always
+    the document the step before it left, so each edit stands on the one before it, a rebuild
     starts from what stands, and a listening sounds the document the edits before it made.
 
     Channel changes wait while a job runs, and a change joins the one waiting at the end of the
@@ -138,7 +138,7 @@ class ReconstructionRewrites(CallbackMixin):
         return self._running is not None or bool(self._waiting)
 
     def request(self, rewrite: Rewrite) -> None:
-        """Puts a step at the end of the line, and takes it at once where nothing runs before it.
+        """Puts a step at the end of the line, and takes it at once where the line stands idle.
 
         A channel change joins a waiting change of the same channel, a new rate replaces a
         waiting one, and one listening waiting stands for every one asked for after it, so what
@@ -161,7 +161,7 @@ class ReconstructionRewrites(CallbackMixin):
         """Lets go of the edits meant for a document an outside replacement puts away.
 
         The channel changes, removals, rates and listenings waiting leave the line, and the running
-        job's result no longer lands. A whole-document gesture the reader asked for keeps its place, so a
+        job's result is let go. A whole-document gesture the reader asked for keeps its place, so a
         save, a load or an undo still happens, in order, on the document now open. The replacement
         draws the document it puts in place, which answers a redraw still owed.
         """
@@ -176,7 +176,7 @@ class ReconstructionRewrites(CallbackMixin):
         """The document's envelopes with every change still on its way written over them, in order.
 
         The instruments panel draws these, so what the reader sees is what the document will hold
-        once the line empties. A rebuild whose document was put away writes nothing.
+        once the line empties. A rebuild whose document was put away leaves the envelopes as drawn.
 
         Args:
             envelopes: The envelopes the open document holds.
@@ -372,7 +372,11 @@ class ReconstructionRewrites(CallbackMixin):
         self._advance()
         self._settle()
 
-    def _land(self, running: Running, outcome: RenderedDocument) -> None:
+    def _land(
+        self,
+        running: Running,
+        outcome: RenderedDocument,
+    ) -> None:
         """Keeps the renders the job made and reports it, where its document is still open."""
         if not running.lands_on(self._manager.reconstruction):
             logger.info("A job finished for a document put away since")
@@ -399,8 +403,8 @@ class ReconstructionRewrites(CallbackMixin):
     def _let_go(self, running: Running) -> None:
         """Redraws the panel where it still draws a change that will never land.
 
-        A rebuild an outside replacement dropped needs nothing, since the replacement drew the
-        document it put in place, and a listening drew nothing ahead of its sound.
+        A rebuild an outside replacement dropped is answered by the replacement, which drew the
+        document it put in place, and a listening draws only once its sound lands.
         """
         if isinstance(running, Rebuild) and running.base is not None:
             self.call(self.on_dropped)

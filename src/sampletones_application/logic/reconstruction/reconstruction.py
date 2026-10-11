@@ -110,6 +110,12 @@ class OwedShowing:
         )
 
 
+class WaveformUpdate(Protocol):
+    """What draws an updated waveform in place, re-fitting its view to the audio's length where asked."""
+
+    def __call__(self, waveform: WaveformData, *, refit: bool) -> None: ...
+
+
 class ExportServiceProtocol(Protocol):
     """The slice of the export service the reconstruction panel logic drives.
 
@@ -158,7 +164,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.on_view_changed: Optional[Callable[[ReconstructionViewModel], None]] = None
         self.on_audio_data_changed: Optional[Callable[[Optional[AudioData]], None]] = None
         self.on_waveform_load_changed: Optional[Callable[[WaveformData], None]] = None
-        self.on_waveform_update_changed: Optional[Callable[..., None]] = None
+        self.on_waveform_update_changed: Optional[WaveformUpdate] = None
         self.on_renders_wanted: Optional[VoidCallback] = None
         self.on_waveform_cleared: Optional[VoidCallback] = None
         self.on_waveform_source_changed: Optional[Callable[[AudioSourceType], None]] = None
@@ -195,8 +201,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         """Re-answers every reading of the document after an edit.
 
         ``refit_waveform`` names an edit that moved the audio's own length, such as a retune,
-        so the waveform's view is re-fitted to the new span rather than held at a position the
-        old length no longer answers to.
+        so the waveform's view is re-fitted to the new span.
         """
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
@@ -230,7 +235,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self._show(reconstruction_data, owed)
 
     def abandon_showing(self) -> None:
-        """Lets go of what the reader is owed where the worker will never render it, keeping the waveform as it
+        """Lets go of what the reader is owed where no render is on its way for it, keeping the waveform as it
         stands; an export that waited is reported dropped.
         """
         self._forget_owed()
@@ -247,7 +252,11 @@ class ReconstructionPanelLogic(CallbackMixin):
         """A showing loading the waveform afresh and playing it, which a change to what is heard asks for."""
         return OwedShowing(load=True, update=False, refit=False, play=True, export_to=None)
 
-    def _show(self, reconstruction_data: ReconstructionData, showing: OwedShowing) -> None:
+    def _show(
+        self,
+        reconstruction_data: ReconstructionData,
+        showing: OwedShowing,
+    ) -> None:
         """Settles ``showing`` with what is owed already, or owes the whole where the screen holds no sound for
         it yet and asks the worker for it.
 
@@ -474,7 +483,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         """The recorded assignment as the stems list draws it, banded by the picking levels.
 
         Each row reads as the recording the document remembers, so one whose file this machine
-        no longer names — a sample embedded in a project — keeps its name, its boxes and its
+        names nowhere — a sample embedded in a project — keeps its name, its boxes and its
         place among the levels. A document whose record names its recordings nowhere shows the
         card's empty state.
         """

@@ -50,13 +50,12 @@ def lead_reconstruction() -> Reconstruction:
 
 
 def bass_reconstruction() -> Reconstruction:
-    """Two recordings each playing the triangle and the noise in turn."""
+    """Two recordings each playing the triangle and the noise in turn, detached as a project sample is."""
     reconstruction = recorded_from(
         sample_reconstruction([ChannelName.TRIANGLE, ChannelName.NOISE]),
         BASS_RECORDINGS,
     )
-    reconstruction = reconstruction.detached()
-    return reconstruction
+    return reconstruction.detached()
 
 
 def pad_instrument() -> Instrument:

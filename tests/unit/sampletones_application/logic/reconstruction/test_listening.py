@@ -278,6 +278,17 @@ class TestSoloingARecording:
 
         assert listening.heard == before
 
+    def test_a_record_adopted_forgets_the_choice_a_solo_replaced(self, listening: Listening) -> None:
+        """An edit landing between two solos ends the first solo's memory, so the second hears the whole record."""
+        listening.adopt(self._held(), EVERY_CHANNEL)
+        listening.set_channels(STEM_B, frozenset({ChannelName.TRIANGLE}))
+        listening.solo(STEM_A)
+
+        listening.adopt(self._held(), EVERY_CHANNEL)
+        listening.solo(STEM_A)
+
+        assert listening.heard == listening.offered
+
     def test_a_solo_with_nothing_remembered_hears_every_recording_whole(self, listening: Listening) -> None:
         listening.adopt(self._held(), EVERY_CHANNEL)
         listening.solo(STEM_A)

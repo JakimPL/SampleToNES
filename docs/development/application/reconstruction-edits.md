@@ -11,8 +11,8 @@ rebuild renders. The worker takes the renders the cache holds for the document w
 audio of every channel in play, the mix of what the reader hears, and the envelopes each channel exports
 for the recordings heard; the landing keeps the audio in the cache and installs the envelopes where the
 instruments panel reads them before the tab reads either. A change to what is heard whose sound the
-cache keeps none of is a step of the same line, rendered by the same worker. Every rule below keeps the document as though each change had
-landed before the next one was made.
+cache keeps none of is a step of the same line, rendered by the same worker. Every rule below keeps the
+document as though each change had landed before the next one was made.
 
 ---
 
@@ -76,29 +76,26 @@ batch started is retuned again from what the sample now holds.
 
 ## A change to what is heard is a step
 
-A box on the stems card or above the waveform changes the reader's listening, which the stems card and
-the ribbon answer at once. The waveform and the audio are read from the render cache under the hearing
-they sound, and the envelopes the instruments panel draws are the ones the worker exported for the
-recordings heard; where the cache keeps no sound for the hearing, or the envelopes drawn were exported
-for another choice of recordings, the panel asks for a listening step, which renders the hearing of the
-document as it then stands and lands like a rebuild. The reader's choice travels onto a new record by one
-rule, written in core and read by the worker and the listening state alike: a recording keeps what was
-chosen for it where it keeps holding frames, is heard wherever it reaches for the first time, and the row
-an edit's new frames offer joins what is heard where it appears, as a channel coming into play joins the
-channels on. The worker carries the hearing onto the document it rebuilt before rendering and exporting,
-so the landing installs sound and envelopes for the choice the listening then makes. One listening
-waiting answers every choice made before it is taken, and a listening asked for during a rebuild reads
-the rebuilt document. A freshly opened document is shown the same way, so its channels
-render on the worker too. The showing the panel owes happens once the sound lands, and a hearing the
-cache already answers is shown at once. A WAV export is a reading of what plays like a showing: it
-writes the kept sound at once, and where the cache keeps none it is owed beside the showing and written
-once the worker's reading lands, for what the reader hears then.
+A box on the stems card or above the waveform changes the reader's listening. The stems card and the
+ribbon answer at once. The waveform, the audio and the envelopes the instruments panel draws are read
+from what the worker landed for the hearing. Where the screen holds none of it, the panel owes the showing
+and asks for a listening step, which renders the hearing of the document as it then stands and lands like
+a rebuild. The reader's choice travels onto a new record by one rule, written in core and read by the
+worker and the listening state alike (`carried_hearing`), so the sound and envelopes a landing installs
+are the ones the listening then reads. One listening waiting answers every choice made before it is
+taken. A freshly opened document, a removal, a retune, an undo and a save-as are shown the same way,
+their sound and envelopes landed by a listening. Every gesture that reads the sound joins what the panel
+owes, so a flip of the source or a retune during a showing on its way settles with it. A WAV export is a
+reading of what plays like a showing: it writes the kept sound at once, or waits beside the showing and
+is written for what the reader hears once the sound lands. A document put away before that, or a reading
+that fails, drops the export and tells the reader so. A channel change reaching its turn while the
+envelopes of what is heard are on their way waits behind a listening of that choice.
 
 ## The waveform fades while the line is busy
 
-The waveform is faded from the moment a step waits or runs until the last one lands. A reader sees the
+The waveform is faded from the moment a step waits or runs until the last one lands, so a reader sees the
 document is being rewritten for the whole span, however many steps it takes. The status bar names what
-the fade waits for: an edit on its way reads "Regenerating reconstruction...", and a change to what is
-heard, or a document just opened, reads "Preparing the sound...". The line reports the kind of work it
-is busy with, so a hand-over from an edit to a reading of the sound changes the words under the same
-fade.
+the fade waits for: `global.graph.message.waveform_regenerating` for an edit on its way, and
+`global.graph.message.waveform_reading` for a change to what is heard or a document just opened. The line
+reports the kind of work it is busy with, so a hand-over from an edit to a reading of the sound changes
+the words under the same fade.

@@ -88,10 +88,10 @@ class RenderCache:
     audio alone. A landing is kept whole: the renders one landing keeps are spared by its own
     eviction, so a document larger than the budget stands until the next landing, and a reading
     taken right after a landing answers. A hearing with no channel on plays silence as long as
-    the document's mix, answered at the read and kept nowhere, since it names no part. The cache
-    renders nothing: every render it keeps is a worker's result, adopted at its landing on the
-    render thread, and a reading the cache leaves unanswered is what a worker is asked for, so the
-    render thread computes no sample. The render thread reads the cache and keeps what it adopts,
+    the document's mix, answered at the read and kept nowhere, since it names no part. Every
+    render the cache keeps is a worker's result, adopted at its landing on the render thread, and
+    a reading the cache leaves unanswered is what a worker is asked for, so the render thread
+    computes no sample. The render thread reads the cache and keeps what it adopts,
     and an object's collection may drop its renders from any thread, so every change to the cache
     is made under one lock. The lock lets its holder in again, since a stream let go of while a
     keep runs on the same thread is forgotten from inside that keep. A kept render is read-only,
@@ -152,7 +152,11 @@ class RenderCache:
 
         return HeardRenders(mix=mixed, playing=playing)
 
-    def original(self, recordings: Sequence[np.ndarray], config: Config) -> Optional[np.ndarray]:
+    def original(
+        self,
+        recordings: Sequence[np.ndarray],
+        config: Config,
+    ) -> Optional[np.ndarray]:
         """The mix of ``recordings``, heard in record order, which a lookup answers at once.
 
         Returns:
@@ -248,7 +252,12 @@ class RenderCache:
                 if self._landing_depth == 0:
                     self._landed.clear()
 
-    def _keep_mix(self, parts: List[_Part], config: Config, mixed: np.ndarray) -> None:
+    def _keep_mix(
+        self,
+        parts: List[_Part],
+        config: Config,
+        mixed: np.ndarray,
+    ) -> None:
         self._keep(
             self._mix_key(parts, config),
             mixed,
