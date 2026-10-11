@@ -104,6 +104,7 @@ from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRoute
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
+from sampletones_application.view_model.reconstruction.work import Work
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_core.audio import AudioDeviceManager
@@ -822,8 +823,8 @@ class ReconstructionTabCoordinator:
         if envelopes_changed:
             self._reconstruction_instruments_logic.update_display()
 
-    def set_reconstruction_dimmed(self, dimmed: bool) -> None:
-        self._reconstruction_plot_panel.set_reconstruction_dimmed(dimmed)
+    def show_work(self, work: Optional[Work]) -> None:
+        self._reconstruction_plot_panel.show_work(work)
 
     def toggle_channel(self, channel: ChannelName) -> None:
         """Switches one channel's slice in and out of the waveform and of what plays."""

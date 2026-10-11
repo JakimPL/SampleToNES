@@ -86,9 +86,15 @@ moves the choice the listening makes on the new record, so its landing reads the
 listening waiting answers every choice made before it is taken, and a listening asked for during a
 rebuild reads the rebuilt document. A freshly opened document is shown the same way, so its channels
 render on the worker too. The showing the panel owes happens once the sound lands, and a hearing the
-cache already answers is shown at once.
+cache already answers is shown at once. A WAV export is a reading of what plays like a showing: it
+writes the kept sound at once, and where the cache keeps none it is owed beside the showing and written
+once the worker's reading lands, for what the reader hears then.
 
 ## The waveform fades while the line is busy
 
 The waveform is faded from the moment a step waits or runs until the last one lands. A reader sees the
-document is being rewritten for the whole span, however many steps it takes.
+document is being rewritten for the whole span, however many steps it takes. The status bar names what
+the fade waits for: an edit on its way reads "Regenerating reconstruction...", and a change to what is
+heard, or a document just opened, reads "Preparing the sound...". The line reports the kind of work it
+is busy with, so a hand-over from an edit to a reading of the sound changes the words under the same
+fade.

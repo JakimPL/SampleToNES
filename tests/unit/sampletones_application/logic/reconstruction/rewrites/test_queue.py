@@ -20,6 +20,7 @@ from sampletones_application.logic.reconstruction.rewrites.steps import (
     StemRemovalRequest,
 )
 from sampletones_application.services.regeneration.jobs import ListeningJob, RebuildJob
+from sampletones_application.view_model.reconstruction.work import Work
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
@@ -68,7 +69,7 @@ class Outcome:
     heard: List[bool] = field(default_factory=list)
     dropped: int = 0
     failures: List[Exception] = field(default_factory=list)
-    busy: List[bool] = field(default_factory=list)
+    work: List[Optional[Work]] = field(default_factory=list)
 
 
 @pytest.fixture
@@ -106,7 +107,7 @@ def rewrites(
     rewrites.on_heard_rendered = heard
     rewrites.on_dropped = drop
     rewrites.on_failed = outcome.failures.append
-    rewrites.on_busy_changed = outcome.busy.append
+    rewrites.on_work_changed = outcome.work.append
     return rewrites
 
 
@@ -522,7 +523,8 @@ class TestAStepThatReshapesTheDocument:
 
 
 class TestTheBusySpan:
-    """The line reports filling as the first step waits or runs, and emptying once the last one lands."""
+    """The line reports what it is busy with as the first step waits or runs, at a hand-over from one kind of
+    work to the other, and once the last step lands."""
 
     def test_a_rebuild_fills_the_line_until_it_lands(
         self,
@@ -533,12 +535,32 @@ class TestTheBusySpan:
         rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
         rewrites.request(_change(SOLE_CHANNEL, FeatureKey.VOLUME, SOLE_VOLUME))
         assert rewrites.is_busy
+        assert rewrites.work is Work.REBUILDING
         regeneration.finish()
-        assert outcome.busy == [True]
+        assert outcome.work == [Work.REBUILDING]
 
         regeneration.finish()
 
-        assert outcome.busy == [True, False]
+        assert outcome.work == [Work.REBUILDING, None]
+        assert not rewrites.is_busy
+        assert rewrites.work is None
+
+    def test_a_listening_waiting_behind_a_rebuild_is_named_at_the_hand_over(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        outcome: Outcome,
+    ) -> None:
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
+        rewrites.request(ListeningChange())
+        assert outcome.work == [Work.REBUILDING]
+
+        regeneration.finish()
+
+        assert outcome.work == [Work.REBUILDING, Work.READING]
+        assert rewrites.is_busy
+        regeneration.finish()
+        assert outcome.work == [Work.REBUILDING, Work.READING, None]
         assert not rewrites.is_busy
 
     def test_steps_taken_at_once_leave_the_line_empty(
@@ -552,7 +574,8 @@ class TestTheBusySpan:
         rewrites.request(AfterEdits(gesture=gesture))
 
         gesture.assert_called_once_with()
-        assert outcome.busy == []
+        assert outcome.work == []
+        assert not rewrites.is_busy
 
 
 class TestTheRendersALandingKeeps:
@@ -768,8 +791,10 @@ class TestAListening:
         outcome: Outcome,
     ) -> None:
         rewrites.request(ListeningChange())
-        assert outcome.busy == [True]
+        assert outcome.work == [Work.READING]
+        assert rewrites.is_busy
 
         regeneration.finish()
 
-        assert outcome.busy == [True, False]
+        assert outcome.work == [Work.READING, None]
+        assert not rewrites.is_busy

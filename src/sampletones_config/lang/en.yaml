@@ -332,6 +332,7 @@ global.graph.message.spectrum_navigation: "Right-click for more options."
 global.graph.message.waveform_navigation: "Double-click to fit the view. Drag to navigate waveform. Scroll to zoom horizontally. Shift + scroll to zoom vertically. Alt + scroll to pan. Alt + Shift + scroll to pan vertically. Right-click for more options."
 global.graph.message.waveform_playable_navigation: "Click to play from a point. Double-click to fit the view. Drag to navigate waveform. Scroll to zoom horizontally. Shift + scroll to zoom vertically. Alt + scroll to pan. Alt + Shift + scroll to pan vertically. Right-click for more options."
 global.graph.message.waveform_regenerating: "Regenerating reconstruction..."
+global.graph.message.waveform_reading: "Preparing the sound..."
 
 # =============================================================================
 # Main tab — Explorer

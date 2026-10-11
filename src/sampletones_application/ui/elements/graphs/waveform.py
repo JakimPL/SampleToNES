@@ -47,6 +47,7 @@ from sampletones_application.utils.gui.palette.dpg import dpg_add_palette_theme_
 from sampletones_application.utils.palette.colors.base import BaseColor
 from sampletones_application.utils.palette.colors.faded import FadedColor
 from sampletones_application.utils.palette.colors.grayscale import GrayscaleColor
+from sampletones_application.view_model.reconstruction.work import Work
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.audio import START_OF_AUDIO
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
@@ -94,9 +95,10 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self._lbl_waveform_original = language_manager["global.graph.label.waveform_original"]
         self._lbl_waveform_reconstruction = language_manager["global.graph.label.waveform_reconstruction"]
         self._msg_regenerating = language_manager["global.graph.message.waveform_regenerating"]
+        self._msg_reading = language_manager["global.graph.message.waveform_reading"]
 
         self.reconstruction_autoscale = True
-        self._reconstruction_dimmed: bool = False
+        self._work: Optional[Work] = None
         self._top_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
 
         self.position_indicator_tag = compose_tag(tag, SUF_WAVEFORM_POSITION_INDICATOR)
@@ -359,8 +361,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         super()._on_hover(sender, app_data, user_data)
         FrameCallbackManager.set_frame_callback(self._restate_zoomed_clock_ticks)
         self._status_bar.set(
-            self._msg_regenerating
-            if self._reconstruction_dimmed
+            self._work_words(self._work)
+            if self._work is not None
             else self._language_manager[
                 (
                     "global.graph.message.waveform_playable_navigation"
@@ -437,7 +439,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             name: The name the series is labeled by.
             color: The color the line is drawn in.
         """
-        self._reconstruction_dimmed = False
+        self._work = None
         self._sample_rate = 0
         self.clear_layers()
         self.add_layer(self._array_layer(audio, name=name, color=color))
@@ -499,19 +501,23 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
         self._restate_clock_ticks(*self.x_range)
 
-    def set_reconstruction_dimmed(self, dimmed: bool) -> None:
-        """Grays the reconstruction line while its audio is being regenerated, restoring it when done.
+    @property
+    def _reconstruction_dimmed(self) -> bool:
+        return self._work is not None
+
+    def show_work(self, work: Optional[Work]) -> None:
+        """Grays the reconstruction line under the words naming ``work``, and restores it once nothing is on its way.
 
         Only the reconstruction series is grayed; the original-audio series and the axes keep full
-        strength, so the fade reads as "this waveform is being recomputed", and the status bar shows a
-        regenerating hint for the same span. The state is remembered so an async data update arriving
-        mid-regeneration redraws the reconstruction still grayed.
+        strength, so the fade reads as "this waveform is being recomputed", and the status bar names
+        what it waits for: the document being rebuilt, or its sound being prepared. The work is
+        remembered so an async data update arriving mid-way redraws the reconstruction still grayed.
         """
-        if self._reconstruction_dimmed == dimmed:
+        if self._work == work:
             return
 
-        self._reconstruction_dimmed = dimmed
-        self._status_bar.set(self._msg_regenerating if dimmed else "")
+        self._work = work
+        self._status_bar.set(self._work_words(work))
 
         layer = self.layers.get(self._lbl_waveform_reconstruction)
         if layer is None:
@@ -520,6 +526,16 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         series_tag = self._series_tag(layer.name)
         if dpg.does_item_exist(series_tag):
             self._bind_series_theme(series_tag, layer)
+
+    def _work_words(self, work: Optional[Work]) -> str:
+        """The status line naming ``work``, and an empty one where nothing is on its way."""
+        match work:
+            case Work.REBUILDING:
+                return self._msg_regenerating
+            case Work.READING:
+                return self._msg_reading
+            case None:
+                return ""
 
     def reconstruction_layer(self, data: np.ndarray) -> ArrayLayer:
         return self._array_layer(
@@ -611,7 +627,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     def clear(self) -> None:
         """Empties the plot down to the marks it keeps for whatever it draws next: the position
         indicator and the overlay rectangle, both of which live among the axis's children."""
-        self._reconstruction_dimmed = False
+        self._work = None
         self._sample_rate = 0
         self._release_clock_ticks()
         self.clear_layers()

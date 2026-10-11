@@ -33,6 +33,7 @@ from sampletones_application.services.result import ServiceSuccess
 from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED
 from sampletones_application.utils.callbacks.gates import Gate, pass_gates
 from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
+from sampletones_application.view_model.reconstruction.work import Work
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.exporters import CHANNEL_TO_EXPORTER_MAP
@@ -1911,11 +1912,11 @@ class TestTheDocumentChangesOneStepAtATime:
     ) -> None:
         _move(following_coordinator, SHARED_CHANNEL, FeatureKey.VOLUME, EDITED_VOLUME)
         _move(following_coordinator, SOLE_CHANNEL, FeatureKey.VOLUME, SOLE_VOLUME)
-        assert tab.set_reconstruction_dimmed.call_args_list == [call(True)]
+        assert tab.show_work.call_args_list == [call(Work.REBUILDING)]
 
         held_queue.drain()
 
-        assert tab.set_reconstruction_dimmed.call_args_list == [call(True), call(False)]
+        assert tab.show_work.call_args_list == [call(Work.REBUILDING), call(None)]
 
     def test_a_drag_collapses_into_the_place_it_ended(
         self,

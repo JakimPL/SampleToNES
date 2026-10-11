@@ -31,6 +31,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 from sampletones_application.view_model.reconstruction.waveform import (
     InstrumentWaveformViewModel,
 )
+from sampletones_application.view_model.reconstruction.work import Work
 from sampletones_application.view_model.shared.ownership import OwnershipRibbonViewModel
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
@@ -161,8 +162,8 @@ class GUIReconstructionPlotPanel(GUIPanel):
     def set_waveform_top_source(self, audio_source: AudioSourceType) -> None:
         self.waveform_display.set_top_source(audio_source)
 
-    def set_reconstruction_dimmed(self, dimmed: bool) -> None:
-        self.waveform_display.set_reconstruction_dimmed(dimmed)
+    def show_work(self, work: Optional[Work]) -> None:
+        self.waveform_display.show_work(work)
 
     def set_overlay(self, index: Optional[int]) -> None:
         if self._frame_length is None:

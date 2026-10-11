@@ -134,6 +134,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         self._current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
         self._owed: Optional[OwedShowing] = None
+        self._export_owed: Optional[Path] = None
 
         self.on_view_changed: Optional[Callable[[ReconstructionViewModel], None]] = None
         self.on_audio_data_changed: Optional[Callable[[Optional[AudioData]], None]] = None
@@ -195,13 +196,16 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
 
     def redraw_listening(self) -> None:
-        """Shows what the reader hears once its sound is kept, where a showing waited for it."""
-        owed = self._owed
+        """Shows what the reader hears once its sound is kept, where a showing or an export waited for it."""
         reconstruction_data = self._reconstruction_data
-        if owed is None or not reconstruction_data:
+        if not reconstruction_data:
             return
 
-        self._show(reconstruction_data, owed)
+        if self._owed is not None:
+            self._show(reconstruction_data, self._owed)
+
+        if self._export_owed is not None:
+            self._export(reconstruction_data, self._export_owed)
 
     def _show(self, reconstruction_data: ReconstructionData, showing: OwedShowing) -> None:
         """Draws and plays what the reader hears, or asks for its sound where the screen holds none yet.
@@ -264,6 +268,10 @@ class ReconstructionPanelLogic(CallbackMixin):
     def close_reconstruction(self) -> None:
         self._current_audio_source = AudioSourceType.RECONSTRUCTION
         self._owed = None
+        if self._export_owed is not None:
+            logger.info(f"The export to {self._export_owed} waited for the sound of a document put away")
+            self._export_owed = None
+
         self.call(self.on_audio_data_changed, None)
         self.call(self.on_waveform_cleared)
         self.call(
@@ -702,13 +710,38 @@ class ReconstructionPanelLogic(CallbackMixin):
             logger.warning("No reconstruction data available for WAV export")
             return
 
-        audio_snapshot = reconstruction_data.audio_for(
-            self._reconstruction_manager.renders,
-            self._listening.hearing,
-        )
+        self._export(reconstruction_data, filepath)
+
+    def _export(
+        self,
+        reconstruction_data: ReconstructionData,
+        filepath: Path,
+    ) -> None:
+        """Writes what the reader hears to ``filepath``, or asks for its sound where the screen holds none yet.
+
+        An export is a reading of what plays like a showing, so it reads the kept sound and computes
+        no sample on the render thread. An export the cache cannot answer is owed beside a showing:
+        the worker is asked, and the file is written once the sound lands, for what the reader hears
+        then. A document put away before that takes the export with it.
+        """
+        waveform = reconstruction_data.waveform_data(self._reconstruction_manager.renders, self._listening.hearing)
+        if waveform is None:
+            self._export_owed = filepath
+            self.call(self.on_renders_wanted)
+            return
+
+        self._export_owed = None
+        self._write_wav(reconstruction_data, waveform.playing, filepath)
+
+    def _write_wav(
+        self,
+        reconstruction_data: ReconstructionData,
+        playing: np.ndarray,
+        filepath: Path,
+    ) -> None:
         sample_rate = reconstruction_data.reconstruction.config.sample_rate
         self._session_manager.set_audio_path(filepath)
-        self._export_service.export_wav(filepath, sample_rate, audio_snapshot)
+        self._export_service.export_wav(filepath, sample_rate, playing)
 
     def handle_locate_original_audio(self) -> None:
         if not self._reconstruction_manager.source_paths:
