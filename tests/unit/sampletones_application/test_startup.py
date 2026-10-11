@@ -574,18 +574,28 @@ class TestTheReconstructionsTabFollowsTheProject:
         assert title is not None
         assert title.included
 
-    def test_an_undo_redraws_the_instruments_panel(
+    def test_an_undo_redraws_the_instruments_panel_once_its_sound_lands(
         self,
         app: Application,
+        held_queue: HeldQueue,
         embedded_sample: Sample,
         reconstruction_factory: ReconstructionFactory,
     ) -> None:
+        """The restored document's envelopes are owed to the worker, so the panel draws them with its sound.
+
+        The queue is held before the sample opens, so the opening's own report is drained here too.
+        """
         self._edit(app, reconstruction_factory)
         drawn = self._drawn_envelopes(app)
 
         app.history.undo()
+        assert drawn == [None]
+        while app.reconstruction_rewrites.is_busy:
+            SingleThreadExecutor.join_all()
+            held_queue.drain()
 
-        assert drawn == [app.reconstruction_manager.current_features]
+        assert drawn[-1] is not None
+        assert drawn[-1] is app.reconstruction_manager.current_features
 
     def test_a_redo_shows_the_edit_again(
         self,

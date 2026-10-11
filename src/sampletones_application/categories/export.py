@@ -25,6 +25,7 @@ class ExportMessages:
         instruments_failed: Shown when a reconstruction's instrument export fails.
         wav_success: Shown when the reconstruction reaches a WAV file.
         wav_failed: Shown when the WAV export fails.
+        wav_dropped: Shown when a WAV export waited for a sound that was never rendered.
     """
 
     status_title: str
@@ -37,6 +38,7 @@ class ExportMessages:
     instruments_failed: str
     wav_success: str
     wav_failed: str
+    wav_dropped: str
 
     @classmethod
     def build(cls, language_manager: LanguageManager) -> ExportMessages:
@@ -59,4 +61,5 @@ class ExportMessages:
             instruments_failed=language_manager["reconstructions.instruments.message.export_instruments_failed"],
             wav_success=language_manager["reconstructions.reconstruction.message.export_wav_success"],
             wav_failed=language_manager["reconstructions.reconstruction.message.export_wav_failed"],
+            wav_dropped=language_manager["reconstructions.reconstruction.message.export_wav_dropped"],
         )

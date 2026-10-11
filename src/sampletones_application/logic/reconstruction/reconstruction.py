@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
@@ -77,17 +79,35 @@ EMPTY_STEMS_LIST: Final[StemsListViewModel] = StemsListViewModel.empty()
 
 @dataclass(frozen=True)
 class OwedShowing:
-    """A showing of the waveform and the audio that waits for the worker to render what the reader hears.
+    """What the screen owes the reader of the document's sound, settled once the worker has rendered what
+    the reader hears.
+
+    Every gesture that reads the sound joins what is owed, so a flip of the source during an
+    opening still loads the waveform, and a retune followed by a flip still re-fits it.
 
     Attributes:
-        load: Whether the waveform is loaded afresh, as after a listening change, or updated in place.
+        load: Whether the waveform is loaded afresh, as after a listening change.
+        update: Whether the waveform is updated in place, as after an edit.
         refit: Whether the waveform's view is re-fitted to the audio's length.
-        play: Whether the audio is handed to the player too.
+        play: Whether the audio is handed to the player.
+        export_to: The file what plays is written to, where an export waits for the sound.
     """
 
     load: bool
+    update: bool
     refit: bool
     play: bool
+    export_to: Optional[Path]
+
+    def joined(self, later: OwedShowing) -> OwedShowing:
+        """What is owed once ``later`` is asked for on top of this: every showing kept, the newest export's file."""
+        return OwedShowing(
+            load=self.load or later.load,
+            update=self.update or later.update,
+            refit=self.refit or later.refit,
+            play=self.play or later.play,
+            export_to=later.export_to if later.export_to is not None else self.export_to,
+        )
 
 
 class ExportServiceProtocol(Protocol):
@@ -134,7 +154,6 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         self._current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
         self._owed: Optional[OwedShowing] = None
-        self._export_owed: Optional[Path] = None
 
         self.on_view_changed: Optional[Callable[[ReconstructionViewModel], None]] = None
         self.on_audio_data_changed: Optional[Callable[[Optional[AudioData]], None]] = None
@@ -146,12 +165,15 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         self.on_open_export_instruments_dialog: Optional[Callable[[str, str, ExportFormat], None]] = None
         self.on_open_export_wav_dialog: Optional[Callable[[str, str], None]] = None
+        self.on_export_dropped: Optional[PathCallback] = None
 
         self.on_locate_audio_not_found: Optional[PathCallback] = None
         self.on_stems_view_changed: Optional[Callable[[ReconstructionStemsViewModel], None]] = None
         self.on_ownership_changed: Optional[Callable[[OwnershipRibbonViewModel], None]] = None
 
     def display_reconstruction(self) -> None:
+        """Puts the open document in front of the reader, letting go of what the one before it was owed."""
+        self._forget_owed()
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
             return
@@ -167,7 +189,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
         self.call(self.on_waveform_source_changed, self._current_audio_source)
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
-        self._show(reconstruction_data, OwedShowing(load=True, refit=False, play=True))
+        self._show(reconstruction_data, self._loading())
 
     def update_reconstruction(self, *, refit_waveform: bool = False) -> None:
         """Re-answers every reading of the document after an edit.
@@ -190,47 +212,85 @@ class ReconstructionPanelLogic(CallbackMixin):
             reconstruction_data,
             OwedShowing(
                 load=False,
+                update=True,
                 refit=refit_waveform,
                 play=self._current_audio_source != AudioSourceType.ORIGINAL,
+                export_to=None,
             ),
         )
 
     def redraw_listening(self) -> None:
-        """Shows what the reader hears once its sound is kept, where a showing or an export waited for it."""
+        """Settles what the reader is owed once the sound of what they hear is kept."""
         reconstruction_data = self._reconstruction_data
-        if not reconstruction_data:
+        owed = self._owed
+        if reconstruction_data is None or owed is None:
             return
 
-        if self._owed is not None:
-            self._show(reconstruction_data, self._owed)
+        self._owed = None
+        self._show(reconstruction_data, owed)
 
-        if self._export_owed is not None:
-            self._export(reconstruction_data, self._export_owed)
+    def abandon_showing(self) -> None:
+        """Lets go of what the reader is owed where the worker will never render it, keeping the waveform as it
+        stands; an export that waited is reported dropped.
+        """
+        self._forget_owed()
+
+    def _forget_owed(self) -> None:
+        owed = self._owed
+        self._owed = None
+        if owed is not None and owed.export_to is not None:
+            logger.info(f"The export to {logger.format_path(owed.export_to)} waited for a sound that never landed")
+            self.call(self.on_export_dropped, owed.export_to)
+
+    @staticmethod
+    def _loading() -> OwedShowing:
+        """A showing loading the waveform afresh and playing it, which a change to what is heard asks for."""
+        return OwedShowing(load=True, update=False, refit=False, play=True, export_to=None)
 
     def _show(self, reconstruction_data: ReconstructionData, showing: OwedShowing) -> None:
-        """Draws and plays what the reader hears, or asks for its sound where the screen holds none yet.
+        """Settles ``showing`` with what is owed already, or owes the whole where the screen holds no sound for
+        it yet and asks the worker for it.
 
-        The audio is read from what is kept, so a showing computes no sample on the render thread,
-        and the envelopes the instruments panel draws are read as the worker exported them for the
-        recordings heard. A showing the cache cannot answer in full, for want of the sound or of
-        envelopes for the recordings heard, is owed: the worker is asked to render it, and the
-        showing happens once the sound lands.
+        The reading is whole when the cache keeps the sound of what the reader hears and the
+        manager holds the envelopes the worker exported for it, so a showing computes no sample
+        on the render thread and draws what an export writes. What is owed settles in one reading
+        once the sound lands.
         """
-        hearing = self._listening.hearing
-        waveform = reconstruction_data.waveform_data(self._reconstruction_manager.renders, hearing)
-        if waveform is None or not self._reconstruction_manager.has_envelopes_for(hearing.selection):
-            self._owed = showing
+        owed = showing if self._owed is None else self._owed.joined(showing)
+        waveform = self._kept_waveform(reconstruction_data)
+        if waveform is None:
+            self._owed = owed
             self.call(self.on_renders_wanted)
             return
 
         self._owed = None
-        if showing.load:
-            self.call(self.on_waveform_load_changed, waveform)
-        else:
-            self.call(self.on_waveform_update_changed, waveform, refit=showing.refit)
+        self._settle(reconstruction_data, waveform, owed)
 
-        if showing.play:
+    def _kept_waveform(self, reconstruction_data: ReconstructionData) -> Optional[WaveformData]:
+        """The waveform of what the reader hears, where the screen keeps both its sound and its envelopes."""
+        hearing = self._listening.hearing
+        if not self._reconstruction_manager.has_envelopes_for(hearing.selection):
+            return None
+
+        return reconstruction_data.waveform_data(self._reconstruction_manager.renders, hearing)
+
+    def _settle(
+        self,
+        reconstruction_data: ReconstructionData,
+        waveform: WaveformData,
+        owed: OwedShowing,
+    ) -> None:
+        """Draws, plays and writes what ``owed`` names from one reading of the sound."""
+        if owed.load:
+            self.call(self.on_waveform_load_changed, waveform)
+        elif owed.update:
+            self.call(self.on_waveform_update_changed, waveform, refit=owed.refit)
+
+        if owed.play:
             self._emit_audio_data(reconstruction_data, waveform)
+
+        if owed.export_to is not None:
+            self._write_wav(reconstruction_data, waveform.playing, owed.export_to)
 
     @staticmethod
     def _in_channel_order(channels: FrozenSet[ChannelName]) -> List[ChannelName]:
@@ -267,11 +327,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
     def close_reconstruction(self) -> None:
         self._current_audio_source = AudioSourceType.RECONSTRUCTION
-        self._owed = None
-        if self._export_owed is not None:
-            logger.info(f"The export to {self._export_owed} waited for the sound of a document put away")
-            self._export_owed = None
-
+        self._forget_owed()
         self.call(self.on_audio_data_changed, None)
         self.call(self.on_waveform_cleared)
         self.call(
@@ -309,14 +365,8 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.call(self.on_waveform_source_changed, audio_source)
 
     def _play(self, reconstruction_data: ReconstructionData) -> None:
-        """Hands the player what the source chosen plays, or asks for its sound where the screen holds none yet."""
-        waveform = reconstruction_data.waveform_data(self._reconstruction_manager.renders, self._listening.hearing)
-        if waveform is None:
-            self._owed = OwedShowing(load=False, refit=False, play=True)
-            self.call(self.on_renders_wanted)
-            return
-
-        self._emit_audio_data(reconstruction_data, waveform)
+        """Hands the player what the source chosen plays, or owes it where the screen holds no sound yet."""
+        self._show(reconstruction_data, OwedShowing(load=False, update=False, refit=False, play=True, export_to=None))
 
     def set_selected_channels(self, channels: List[ChannelName]) -> None:
         """Adopts the reader's channel choice, which the stems list reports as muted columns."""
@@ -330,7 +380,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             self._build_stems_view_model(reconstruction_data),
         )
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
-        self._show(reconstruction_data, OwedShowing(load=True, refit=False, play=True))
+        self._show(reconstruction_data, self._loading())
 
     def set_stem_channels(
         self,
@@ -369,7 +419,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             self._build_stems_view_model(reconstruction_data),
         )
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
-        self._show(reconstruction_data, OwedShowing(load=True, refit=False, play=True))
+        self._show(reconstruction_data, self._loading())
 
     @property
     def _listening(self) -> Listening:
@@ -524,12 +574,17 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         Returns:
             Optional[ExportableInstrument]: The slice and the name to suggest for it, or ``None``
-            where that channel describes no frame and is written nowhere.
+            where that channel describes no frame and is written nowhere, or where the envelopes
+            of what the reader hears are still on their way from the worker.
 
         Raises:
             AssertionError: If no reconstruction is loaded.
         """
-        features = self._heard_features()[channel_name]
+        envelopes = self._heard_features()
+        if envelopes is None:
+            return None
+
+        features = envelopes[channel_name]
         if not features.has_frames:
             return None
 
@@ -543,15 +598,19 @@ class ReconstructionPanelLogic(CallbackMixin):
             ),
         )
 
-    def _heard_features(self) -> ChannelEnvelopesViewModel:
-        """The envelopes of the part the reader is listening to, as the open document reads them.
+    def _heard_features(self) -> Optional[ChannelEnvelopesViewModel]:
+        """The envelopes of the part the reader is listening to, as the worker exported them for the open document,
+        or ``None`` while they are still on their way.
 
         Raises:
             AssertionError: If no reconstruction is loaded.
         """
+        if self._reconstruction_data is None:
+            raise AssertionError("Expected reconstruction data to be loaded before reading its envelopes")
+
         features = self._reconstruction_manager.current_features
         if features is None:
-            raise AssertionError("Expected reconstruction data to be loaded before reading its envelopes")
+            logger.warning("The envelopes of what is heard are still on their way from the worker")
 
         return features
 
@@ -617,6 +676,9 @@ class ReconstructionPanelLogic(CallbackMixin):
             return
 
         request = self._sample_request(destination.stem)
+        if request is None:
+            return
+
         self._session_manager.set_instrument_path(destination.parent)
         self._export_service.export_sample(
             destination,
@@ -624,8 +686,9 @@ class ReconstructionPanelLogic(CallbackMixin):
             request,
         )
 
-    def sample_request(self) -> SampleExport:
-        """The loaded reconstruction's slices as one export, under the reconstruction's own name.
+    def sample_request(self) -> Optional[SampleExport]:
+        """The loaded reconstruction's slices as one export, under the reconstruction's own name, or ``None``
+        while the envelopes of what the reader hears are still on their way from the worker.
 
         A format asking for its choices in a setup of its own names the export before a
         destination exists, so the slices take the name the reconstruction is known by.
@@ -639,12 +702,17 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         return self._sample_request(reconstruction_data.name)
 
-    def _sample_request(self, name: str) -> SampleExport:
-        """The slice of every playing channel of the reconstruction as one export named ``name``.
+    def _sample_request(self, name: str) -> Optional[SampleExport]:
+        """The slice of every playing channel of the reconstruction as one export named ``name``, or ``None``
+        while the envelopes of what the reader hears are still on their way from the worker.
 
         Each slice takes its channel suffix from the name, and a channel describing no frame of
         what the reader is listening to is left to rest.
         """
+        envelopes = self._heard_features()
+        if envelopes is None:
+            return None
+
         return SampleExport(
             name=name,
             instruments=tuple(
@@ -653,7 +721,7 @@ class ReconstructionPanelLogic(CallbackMixin):
                     feature,
                     instrument_slice_name(name, channel_name),
                 )
-                for channel_name, feature in self._heard_features().channels.items()
+                for channel_name, feature in envelopes.channels.items()
                 if feature.has_frames
             ),
             nes_frequency=self._nes_frequency(),
@@ -717,21 +785,16 @@ class ReconstructionPanelLogic(CallbackMixin):
         reconstruction_data: ReconstructionData,
         filepath: Path,
     ) -> None:
-        """Writes what the reader hears to ``filepath``, or asks for its sound where the screen holds none yet.
+        """Writes what the reader hears to ``filepath``, or owes the file where the screen holds no sound yet.
 
         An export is a reading of what plays like a showing, so it reads the kept sound and computes
-        no sample on the render thread. An export the cache cannot answer is owed beside a showing:
-        the worker is asked, and the file is written once the sound lands, for what the reader hears
-        then. A document put away before that takes the export with it.
+        no sample on the render thread. An export owed is written once the sound lands, for what
+        the reader hears then; a document put away before that reports the export dropped.
         """
-        waveform = reconstruction_data.waveform_data(self._reconstruction_manager.renders, self._listening.hearing)
-        if waveform is None:
-            self._export_owed = filepath
-            self.call(self.on_renders_wanted)
-            return
-
-        self._export_owed = None
-        self._write_wav(reconstruction_data, waveform.playing, filepath)
+        self._show(
+            reconstruction_data,
+            OwedShowing(load=False, update=False, refit=False, play=False, export_to=filepath),
+        )
 
     def _write_wav(
         self,

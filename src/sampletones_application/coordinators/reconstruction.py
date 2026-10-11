@@ -103,6 +103,7 @@ class ReconstructionCoordinator:
         self._rewrites.on_heard_rendered = self._show_listening
         self._rewrites.on_dropped = self._redraw_open_document
         self._rewrites.on_failed = self._report_rebuild_failure
+        self._rewrites.on_reading_failed = self._abandon_showing
         self._rewrites.on_work_changed = self._show_work
         self._reconstruction_manager.set_callbacks(
             on_reconstruction_loaded=self.on_reconstruction_loaded,
@@ -425,7 +426,7 @@ class ReconstructionCoordinator:
             case ChannelEdit():
                 self._reconstruction_manager.apply_edited(edit.reconstruction, edit.envelopes)
             case Retune() | StemRemoval():
-                self._reconstruction_manager.apply_edited(edit.reconstruction)
+                self._reconstruction_manager.apply_edited(edit.reconstruction, None)
 
         self._show_edit(edit)
         self._reconstruction_manager.mark_updated()
@@ -559,7 +560,7 @@ class ReconstructionCoordinator:
 
         retimed = reconstruction.config.nes_frequency != open_reconstruction.config.nes_frequency
         self._drop_pending()
-        self._reconstruction_manager.apply_edited(reconstruction)
+        self._reconstruction_manager.apply_edited(reconstruction, None)
         self._tab.redraw_reconstruction(refit_waveform=retimed)
 
     def _redraw_open_document(self) -> None:
@@ -579,6 +580,10 @@ class ReconstructionCoordinator:
     def _report_rebuild_failure(self, exception: Exception) -> None:
         logger.error_with_traceback(exception, "Regeneration failed")
         self._dialogs.show_error(exception)
+
+    def _abandon_showing(self) -> None:
+        """Lets the tab go of what it owes the reader, where the listening that would have paid it failed."""
+        self._tab.abandon_showing()
 
     def _show_work(self, work: Optional[Work]) -> None:
         """Fades the reconstruction waveform under the words naming what the line is busy with.

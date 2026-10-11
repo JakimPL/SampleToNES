@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 
 from automation.scenario import BaseTestScenario, ScenarioStep
-from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
 from sampletones_application.services.regeneration.jobs import RebuildJob
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import ServiceError, ServiceSuccess
@@ -20,6 +19,7 @@ from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels
 from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing
+from tests.suite.envelopes import heard_envelopes
 from tests.suite.stems import everything_heard
 
 

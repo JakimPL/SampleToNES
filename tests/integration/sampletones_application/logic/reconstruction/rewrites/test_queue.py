@@ -24,6 +24,7 @@ from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
 from tests.conftest import RENDER_BUDGET
 from tests.suite.application import draw_frame, live_queue, scheduling
+from tests.suite.envelopes import land_envelopes
 from tests.suite.stems import (
     SHARED_CHANNEL,
     SHARED_OWNERS,
@@ -67,6 +68,7 @@ def coordinator(
     )
     coordinator.set_reconstructions_tab(MagicMock(spec=ReconstructionTabCoordinator))
     manager.load_reconstruction(taking_turns_file)
+    land_envelopes(manager)
     yield coordinator
 
 
@@ -156,6 +158,7 @@ class TestTheFirstFramesOfTheReadersOwn:
     ) -> None:
         manager = coordinator._reconstruction_manager
         manager.listening.set_channels(STEM_B_ID, frozenset())
+        land_envelopes(manager)
         listenings: List[Reconstruction] = []
         service = coordinator._rewrites._regeneration
 

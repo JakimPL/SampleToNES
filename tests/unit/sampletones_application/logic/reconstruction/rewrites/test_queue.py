@@ -20,6 +20,7 @@ from sampletones_application.logic.reconstruction.rewrites.steps import (
     RateChange,
     StemRemovalRequest,
 )
+from sampletones_application.services.regeneration import service as service_module
 from sampletones_application.services.regeneration.jobs import ListeningJob, RebuildJob
 from sampletones_application.view_model.reconstruction.work import Work
 from sampletones_core.constants.algorithm import AUTHORED_STEM_ID
@@ -28,13 +29,16 @@ from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing
 from tests.conftest import ReconstructionFactory
+from tests.suite.envelopes import land_envelopes
 from tests.suite.regeneration import HeldRegeneration
 from tests.suite.renders import warmed
 from tests.suite.stems import (
     SHARED_CHANNEL,
+    SHARED_OWNERS,
     SOLE_CHANNEL,
     STEM_A_ID,
     STEM_B_ID,
+    TAKING_TURNS_VOLUME,
     everything_heard,
     taking_turns,
 )
@@ -95,10 +99,12 @@ def rewrites(
 ) -> ReconstructionRewrites:
     """The steps of the two-recording document, each landing edit adopted the way the coordinator adopts it."""
     reconstruction_manager.load_reconstruction_object(taking_turns, name="turns", voice_id=VOICE_ID)
+    land_envelopes(reconstruction_manager)
 
     def adopt(edit: ReconstructionEdit) -> None:
         outcome.edits.append(edit)
-        reconstruction_manager.apply_edited(edit.reconstruction)
+        envelopes = edit.envelopes if isinstance(edit, ChannelEdit) else None
+        reconstruction_manager.apply_edited(edit.reconstruction, envelopes)
 
     def drop() -> None:
         outcome.dropped += 1
@@ -224,12 +230,19 @@ class TestEachStepReadsTheDocumentAtItsTurn:
         regeneration: HeldRegeneration,
         reconstruction_manager: ReconstructionManager,
     ) -> None:
+        """A box ticked behind a change leaves the envelopes of the new choice on their way, so the change
+        waits behind a listening of it and rebuilds on the recordings heard then.
+        """
         rewrites.request(_change(SOLE_CHANNEL, FeatureKey.VOLUME, SOLE_VOLUME))
         rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
         reconstruction_manager.listening.set_channels(STEM_B_ID, frozenset({SOLE_CHANNEL}))
         regeneration.finish()
+        assert [type(job) for job in regeneration.held] == [ListeningJob]
+        regeneration.finish()
 
         (shared,) = regeneration.held
+        assert isinstance(shared, RebuildJob)
+        assert shared.channel_name == SHARED_CHANNEL
         assert shared.hearing.selection.stems_for(SHARED_CHANNEL) == frozenset({STEM_A_ID})
 
 
@@ -462,6 +475,7 @@ class TestThePanelDrawsWhatTheDocumentWillHold:
     ) -> None:
         rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
         reconstruction_manager.load_reconstruction_object(taking_turns.model_copy(), name="copy", voice_id="copy")
+        land_envelopes(reconstruction_manager)
         document = reconstruction_manager.current_features
         assert document is not None
 
@@ -517,13 +531,16 @@ class TestAStepThatReshapesTheDocument:
         rewrites: ReconstructionRewrites,
         regeneration: HeldRegeneration,
     ) -> None:
+        """The removal leaves the envelopes owed, so the change waits behind a listening and is then taken."""
         rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
         rewrites.request(_removal(STEM_B_ID))
         regeneration.finish()
 
         rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, LATER_VOLUME))
 
-        assert len(regeneration.held) == 1
+        assert [type(job) for job in regeneration.held] == [ListeningJob]
+        regeneration.finish()
+        assert [type(job) for job in regeneration.held] == [RebuildJob]
 
 
 class TestTheBusySpan:
@@ -580,6 +597,53 @@ class TestTheBusySpan:
         gesture.assert_called_once_with()
         assert outcome.work == []
         assert not rewrites.is_busy
+
+
+class TestAChangeWhoseEnvelopesAreOwed:
+    """A change reaching its turn while the envelopes of what is heard are on their way waits behind a listening
+    of that choice, once: it rebuilds from the envelopes the listening lands, and is let go where it lands none.
+    """
+
+    def test_the_change_waits_behind_a_listening_and_rebuilds_from_what_it_lands(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+        outcome: Outcome,
+    ) -> None:
+        reconstruction_manager.listening.set_channels(STEM_B_ID, frozenset())
+
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
+
+        assert [type(job) for job in regeneration.held] == [ListeningJob]
+        regeneration.finish()
+        assert [type(job) for job in regeneration.held] == [RebuildJob]
+        regeneration.finish()
+        (edit,) = outcome.edits
+        assert isinstance(edit, ChannelEdit)
+        volumes = _volume_items(edit.reconstruction, SHARED_CHANNEL)
+        assert volumes[SHARED_OWNERS.index(STEM_A_ID)] == FIRST_VOLUME.items[0]
+        assert volumes[SHARED_OWNERS.index(STEM_B_ID)] == TAKING_TURNS_VOLUME
+        assert not rewrites.is_busy
+
+    def test_a_listening_landing_no_envelopes_lets_the_change_go(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+        outcome: Outcome,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        reconstruction_manager.listening.set_channels(STEM_B_ID, frozenset())
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
+        monkeypatch.setattr(service_module, "heard_renders", MagicMock(side_effect=RuntimeError("rendering failed")))
+
+        regeneration.finish()
+
+        assert regeneration.held == ()
+        assert outcome.edits == []
+        assert not rewrites.is_busy
+        assert rewrites.work is None
 
 
 class TestAJobThatFailsToStart:
@@ -728,6 +792,7 @@ class TestAListening:
         ones the listening reads after the landing, a recording muted beside the new row included.
         """
         reconstruction_manager.listening.set_channels(STEM_B_ID, frozenset())
+        land_envelopes(reconstruction_manager)
         rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, LONGER_VOLUME))
 
         regeneration.finish()
@@ -790,6 +855,7 @@ class TestAListening:
         reconstruction_manager: ReconstructionManager,
     ) -> None:
         reconstruction_manager.listening.set_channels(STEM_B_ID, frozenset())
+        land_envelopes(reconstruction_manager)
 
         rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
 
@@ -804,6 +870,7 @@ class TestAListening:
         reconstruction_manager: ReconstructionManager,
     ) -> None:
         reconstruction_manager.listening.set_channels(STEM_B_ID, frozenset())
+        land_envelopes(reconstruction_manager)
         rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
 
         regeneration.finish()

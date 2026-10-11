@@ -32,28 +32,6 @@ class HeardEnvelopes:
     channels: Mapping[ChannelName, Features]
 
 
-def heard_envelopes(
-    reconstruction: Reconstruction,
-    selection: StemSelection,
-) -> ChannelEnvelopesViewModel:
-    """The envelopes of the part each channel plays for the recordings a reader hears, exported here.
-
-    A reconstruction exports one entry per channel whatever it sounds, so a subscript answers
-    for any of them and :attr:`Features.has_frames` says which ones play. What is drawn, what is
-    measured and what an export writes are one reading, so a recording switched off on a channel
-    leaves the envelopes it held there, and a channel every recording is switched off on
-    describes no frame at all.
-
-    Args:
-        reconstruction: The reconstruction being read.
-        selection: The recordings the reader hears, channel by channel.
-
-    Returns:
-        ChannelEnvelopesViewModel: One entry per channel the reconstruction exports.
-    """
-    return envelopes_view(reconstruction, HeardEnvelopes(selection, reconstruction.export_heard(selection)))
-
-
 def envelopes_view(
     reconstruction: Reconstruction,
     heard: HeardEnvelopes,

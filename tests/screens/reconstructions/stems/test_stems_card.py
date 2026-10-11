@@ -83,11 +83,13 @@ class TestRevealingARecording:
 
 
 class TestRemovingARecording:
-    """Removing a recording asks first; the rest keep their colors and play, and the last one cannot go.
+    """Removing a recording asks first; the rest keep their colors, draw their bars again and play, and the last
+    one cannot go.
 
     The scenario cancels the question, then removes the middle recording and confirms. The rest play, the
     first goes too, and the last recording stays without a remove gesture. Saved and opened again, the card
-    lists only the last recording in its old color.
+    lists only the last recording in its old color. A removal sends the sound and the envelopes of what is
+    left to the worker, so the instruments panel draws its bars again once that sound has landed.
     """
 
     @pytest.fixture
@@ -96,11 +98,13 @@ class TestRemovingARecording:
         return Startup(reconstruction=STEMS_RECONSTRUCTION, project=None)
 
     def test_cancel_keeps_it_and_remove_leaves_the_rest_as_they_were(self, screen: Screen) -> None:
-        """Cancel keeps every row; Remove drops one, and the others keep their colors and play."""
+        """Cancel keeps every row; Remove drops one, and the others keep their colors, their bars and play."""
         reconstructions = screen.reconstructions
         stems = reconstructions.stems
+        instruments = reconstructions.instruments
         prompt = stems.remove_prompt
         colors: List[Dict[str, Tuple[float, ...]]] = []
+        drawn: List[Tuple[ChannelName, ...]] = []
 
         def the_file_named(screen: Screen) -> None:
             expect_open(screen, STEMS_RECONSTRUCTION)
@@ -108,6 +112,10 @@ class TestRemovingARecording:
             assert screen.title() == stems_title(screen, unsaved=False)
             assert all(stems.has_row(key) for key in KEYS)
             colors.append(swatches(stems, KEYS))
+            drawn.append(
+                tuple(channel for channel in PLAYING_CHANNELS if instruments.envelope(channel, FeatureKey.VOLUME))
+            )
+            assert drawn[0]
 
         def cancel_keeps_it(screen: Screen) -> None:
             stems.remove(MIDDLE)
@@ -131,6 +139,17 @@ class TestRemovingARecording:
             screen.expect(lambda: stems.has_row(MIDDLE), operator.not_, description="the middle recording gone")
             assert screen.title() == stems_title(screen, unsaved=True)
             assert swatches(stems, (FIRST, LAST)) == {key: colors[0][key] for key in (FIRST, LAST)}
+
+        def the_bars_come_back_with_the_sound(screen: Screen) -> None:
+            screen.expect(screen.sound_settled, bool, description="the sound of the rest landed")
+
+            for channel in drawn[0]:
+                screen.expect(
+                    partial(instruments.envelope, channel, FeatureKey.VOLUME),
+                    bool,
+                    description=f"the bars of {channel} drawn again",
+                )
+                assert instruments.can_export(channel)
 
         def the_rest_plays(screen: Screen) -> None:
             waveform = reconstructions.waveform
@@ -170,6 +189,7 @@ class TestRemovingARecording:
             the_file_named,
             cancel_keeps_it,
             remove_the_middle,
+            the_bars_come_back_with_the_sound,
             the_rest_plays,
             the_last_cannot_go,
             saved_and_opened_again_it_keeps_its_color,

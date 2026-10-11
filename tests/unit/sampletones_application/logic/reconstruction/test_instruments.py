@@ -9,7 +9,6 @@ from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.reconstruction.editor import InstrumentEditor
-from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
 from sampletones_application.logic.reconstruction.instruments import (
     ReconstructionInstrumentsLogic,
 )
@@ -33,6 +32,7 @@ from sampletones_core.formats.famitracker.footprint import (
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.application import HeldQueue, held_queue
+from tests.suite.envelopes import heard_envelopes
 from tests.suite.history.wiring import wired_history
 from tests.suite.regeneration import HeldRegeneration
 from tests.suite.stems import SHARED_CHANNEL, SOLE_CHANNEL, everything_heard, regenerated, taking_turns
