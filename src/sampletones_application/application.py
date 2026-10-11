@@ -75,6 +75,7 @@ from sampletones_application.logic.reconstruction.rewrites.queue import (
 )
 from sampletones_application.logic.reconstruction.rewrites.steps import RateChange
 from sampletones_application.logic.render import SongRenderLogic
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.parameters import (
     InstructionsTabParameters,
@@ -291,6 +292,9 @@ class Application:
             self.reconstruction_manager,
             self.regeneration_service,
         )
+        self.preview_service: RegenerationService = RegenerationService(priority=_priority)
+        self.document_previews: DocumentPreviews = DocumentPreviews(self.renders, self.preview_service)
+        self.document_previews.on_failed = self._report_preview_failure
         self.export_service: ExportService = ExportService(priority=_priority)
         self.export_service.subscribe(self._on_export_activity)
         self.render_service: SongRenderService = SongRenderService(priority=_priority)
@@ -593,7 +597,7 @@ class Application:
             browser_manager=self.browser_manager,
             project_controller=self.project_controller,
             history=self.history,
-            renders=self.renders,
+            previews=self.document_previews,
             original_audio_locator=self._original_audio_locator,
             instrument_exports=self._instrument_exports,
             tab_active=self._is_sequencer_tab_current,
@@ -1108,6 +1112,11 @@ class Application:
             or self._nsf_exports.is_active
             or self.export_service.is_running()
         )
+
+    def _report_preview_failure(self, exception: Exception) -> None:
+        """Tells the reader a voice's preview failed to render, the way a rebuild's failure is told."""
+        logger.error_with_traceback(exception, "A preview's render failed")
+        self.dialogs.show_error(exception)
 
     def _on_export_activity(self, result: ExportResult) -> None:
         """Follows an export claiming the application and handing it back.

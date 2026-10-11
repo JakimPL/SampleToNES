@@ -21,6 +21,7 @@ from sampletones_application.logic.reconstruction.rewrites.steps import (
 )
 from sampletones_application.services.regeneration.jobs import ListeningJob, RebuildJob
 from sampletones_application.view_model.reconstruction.work import Work
+from sampletones_core.constants.algorithm import AUTHORED_STEM_ID
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
@@ -42,6 +43,7 @@ VOICE_ID: Final[str] = "turns-id"
 FIRST_VOLUME: Final[Envelope[int]] = Envelope[int](items=(5, 5))
 SECOND_VOLUME: Final[Envelope[int]] = Envelope[int](items=(4, 4))
 LATER_VOLUME: Final[Envelope[int]] = Envelope[int](items=(3, 3))
+LONGER_VOLUME: Final[Envelope[int]] = Envelope[int](items=(5, 5, 5))
 SOLE_VOLUME: Final[Envelope[int]] = Envelope[int](items=(2,))
 ARPEGGIO: Final[Envelope[int]] = Envelope[int](items=(0, 3))
 RETUNED_FREQUENCY: Final[int] = 50
@@ -679,6 +681,29 @@ class TestAListening:
         assert isinstance(edit, ChannelEdit)
         assert edit.envelopes.selection == reconstruction_manager.listening.selection
         assert edit.envelopes.channels == edit.reconstruction.export_heard(edit.envelopes.selection)
+
+    def test_an_edit_first_writing_frames_of_the_readers_own_lands_heard_as_the_listening_hears_it(
+        self,
+        rewrites: ReconstructionRewrites,
+        regeneration: HeldRegeneration,
+        reconstruction_manager: ReconstructionManager,
+        outcome: Outcome,
+    ) -> None:
+        """The worker carries the choice onto the rebuilt record, so the one job's sound and envelopes are the
+        ones the listening reads after the landing, a recording muted beside the new row included.
+        """
+        reconstruction_manager.listening.set_channels(STEM_B_ID, frozenset())
+        rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, LONGER_VOLUME))
+
+        regeneration.finish()
+
+        (edit,) = outcome.edits
+        assert isinstance(edit, ChannelEdit)
+        hearing = reconstruction_manager.listening.hearing
+        assert AUTHORED_STEM_ID in hearing.selection.stems_for(SHARED_CHANNEL)
+        assert edit.envelopes.selection == hearing.selection
+        assert reconstruction_manager.renders.reading(edit.reconstruction, hearing) is not None
+        assert regeneration.held == ()
 
     def test_the_hearing_is_read_at_the_steps_turn(
         self,

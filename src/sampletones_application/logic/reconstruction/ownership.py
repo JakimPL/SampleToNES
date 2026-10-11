@@ -1,6 +1,5 @@
 from typing import AbstractSet, Callable, Dict, Final, Mapping, Sequence, Tuple
 
-from sampletones_application.logic.reconstruction.listening import offered_channels
 from sampletones_application.view_model.shared.ownership import (
     OwnershipLaneViewModel,
     OwnershipRunViewModel,
@@ -9,6 +8,7 @@ from sampletones_application.view_model.shared.recording import NamedRecordingVi
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.hearing import offered_channels
 from sampletones_core.reconstructions.reconstruction.stems.ownership import OwnerRun, heard_frame
 
 DISTINGUISHABLE_OWNERS: Final[int] = 2

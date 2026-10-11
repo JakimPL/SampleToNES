@@ -54,7 +54,7 @@ from sampletones_application.logic.sequencer.tracker import (
 )
 from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.logic.shared.file_playback import FilePlayback
-from sampletones_application.logic.shared.renders import RenderCache
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.sequencer import SequencerTabParameters
 from sampletones_application.services.song_player.service import SongPlayerService
@@ -119,7 +119,7 @@ class SequencerTabCoordinator:
         browser_manager: BrowserManager,
         project_controller: ProjectController,
         history: HistoryManager,
-        renders: RenderCache,
+        previews: DocumentPreviews,
         original_audio_locator: OriginalAudioLocator,
         instrument_exports: InstrumentExportCoordinator,
         *,
@@ -195,7 +195,7 @@ class SequencerTabCoordinator:
             session_manager,
             audio_device_manager,
             scheduling=layout.scheduling,
-            renders=renders,
+            previews=previews,
         )
         self._sequencer_channels_logic: SequencerChannelsLogic = SequencerChannelsLogic()
         self._song_player_logic: SongPlayerLogic = SongPlayerLogic(

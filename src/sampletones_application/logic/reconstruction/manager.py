@@ -124,8 +124,10 @@ class ReconstructionManager(CallbackMixin):
         answer for the part the reader is listening to as it now stands. ``voice_id`` names the
         project sample the document is, and ``None`` a standalone document. ``envelopes`` are the
         ones a worker exported for the document, which spare the reading here where they were
-        exported for the choice the listening makes on the new record; a document arriving with
-        none, or with envelopes for a choice an edit's new frames moved, is read on the spot.
+        exported for the choice the listening makes on the new record, as a rebuild's are: the
+        worker carries the choice onto the document it rebuilds by the rule the listening carries
+        it by. A document arriving with none, or with envelopes for another choice, is read on
+        the spot.
         """
         self._current_reconstruction = reconstruction_data
         self._voice_id = voice_id

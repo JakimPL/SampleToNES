@@ -18,7 +18,11 @@ from sampletones_core.generators.render import render_instructions
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.renders import sounding_streams
-from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing, heard_renders
+from sampletones_core.reconstructions.reconstruction.stems.hearing import (
+    Hearing,
+    heard_renders,
+    hearing_carried_onto,
+)
 
 
 class RegenerationService(ServiceBase[RegenerationResult]):
@@ -26,7 +30,11 @@ class RegenerationService(ServiceBase[RegenerationResult]):
 
     An edit reaches the frames the reader hears on the channel, so the hearing travels with it:
     a frame of a recording the reader left out stands as it is, which is what lets one
-    recording's part be shaped while the recordings beside it carry on.
+    recording's part be shaped while the recordings beside it carry on. The result sounds that
+    hearing carried onto the rebuilt document by the core's rule, the one the listening state
+    carries it by at the landing: the reader's own row joins what is heard on a channel the edit
+    first writes frames of its own on, and a channel coming into play joins the channels on, so
+    the landing installs sound and envelopes for the choice the listening then makes.
 
     A rebuild's result is a fresh reconstruction carrying the updated generator data, with the
     audio of every sounding channel, their mix, what the hearing sounds of it, and the envelopes
@@ -61,7 +69,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
             channel_name: The channel rebuilt.
             features: The envelopes the channel is rebuilt from.
             hearing: What the reader hears, which names the recordings the rebuild writes on the
-                channel and the reading the result sounds.
+                channel and, carried onto the rebuilt document, the reading the result sounds.
             kept: The renders the caller holds for ``reconstruction``'s channels, by channel. Every
                 channel but ``channel_name`` keeps its stream through the rebuild, so a render
                 handed for it carries over into the result, and the worker renders the rest. A
@@ -95,9 +103,11 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                 case RebuildJob():
                     document = self._rebuilt(job)
                     edited: Optional[ChannelName] = job.channel_name
+                    hearing = hearing_carried_onto(job.hearing, job.reconstruction, document)
                 case ListeningJob():
                     document = job.reconstruction
                     edited = None
+                    hearing = job.hearing
 
             if SingleThreadExecutor.is_shutting_down():
                 return
@@ -110,9 +120,9 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                         reconstruction=document,
                         channels=channels,
                         mix=mixed,
-                        hearing=job.hearing,
-                        heard=heard_renders(document, job.hearing, channels, mixed),
-                        envelopes=document.export_heard(job.hearing.selection),
+                        hearing=hearing,
+                        heard=heard_renders(document, hearing, channels, mixed),
+                        envelopes=document.export_heard(hearing.selection),
                     )
                 )
             )

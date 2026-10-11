@@ -1,17 +1,29 @@
+from dataclasses import dataclass
 from typing import Final, FrozenSet, List
 
 import pytest
 
-from sampletones_application.logic.reconstruction.listening import Listening, offered_channels
+from sampletones_application.logic.reconstruction.listening import Listening
 from sampletones_core.constants.algorithm import AUTHORED_STEM_ID, RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, bending_channels
+from sampletones_core.instructions import PulseInstruction
+from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.hearing import (
+    carried_hearing,
+    offered_channels,
+    whole_hearing,
+)
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
-from tests.suite.stems import RECORDED_SCALE
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
+from tests.suite.stems import RECORDED_SCALE, SHARED_CHANNEL, TAKING_TURNS_PITCH, taking_turns
+
+__all__ = ["taking_turns"]
 
 STEM_A: Final[int] = 0
 STEM_B: Final[int] = 1
@@ -41,31 +53,6 @@ def _stems_data(*assignments: ChannelAssignment) -> StemsData:
 @pytest.fixture
 def listening() -> Listening:
     return Listening()
-
-
-class TestWhatARecordingOffers:
-    def test_a_recording_offers_the_channels_it_holds_frames_on(self) -> None:
-        stems_data = _stems_data(
-            ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A, STEM_B]),
-            ChannelAssignment(channel_name=ChannelName.TRIANGLE, stem_ids=[STEM_A, RESTING_STEM_ID]),
-        )
-
-        offered = offered_channels(stems_data)
-
-        assert offered[STEM_A] == frozenset({ChannelName.PULSE1, ChannelName.TRIANGLE})
-        assert offered[STEM_B] == frozenset({ChannelName.PULSE1})
-
-    def test_a_recording_holding_nothing_offers_nothing(self) -> None:
-        stems_data = _stems_data(ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A]))
-
-        assert offered_channels(stems_data)[STEM_B] == frozenset()
-
-    def test_the_frames_the_reader_wrote_offer_a_row_of_their_own(self) -> None:
-        stems_data = _stems_data(
-            ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A, AUTHORED_STEM_ID]),
-        )
-
-        assert offered_channels(stems_data)[AUTHORED_STEM_ID] == frozenset({ChannelName.PULSE1})
 
 
 class TestWhatAFreshDocumentIsHeardAs:
@@ -148,6 +135,101 @@ class TestWhatTheChoiceCarriesAcrossAnEdit:
         listening.adopt(self._held_on(ChannelName.PULSE1, ChannelName.TRIANGLE), EVERY_CHANNEL)
 
         assert listening.heard == listening.offered
+
+
+class TestTheChoiceIsCarriedByTheCoreRule(BaseTestSuite):
+    """Adopting a record carries the choice by the rule the regeneration worker carries it by, so the hearing
+    the listening makes on a landed document is the one the worker rendered and exported for.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        before: StemsData
+        playing_before: FrozenSet[ChannelName]
+        chosen: FrozenSet[ChannelName]
+        after: StemsData
+        playing_after: FrozenSet[ChannelName]
+
+    test_cases = (
+        TestCase(
+            label="a record kept as it was",
+            before=_stems_data(ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A, STEM_B])),
+            playing_before=PULSES,
+            chosen=frozenset({ChannelName.PULSE1}),
+            after=_stems_data(ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A, STEM_B])),
+            playing_after=PULSES,
+        ),
+        TestCase(
+            label="a recording newly reaching a channel",
+            before=_stems_data(ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A, STEM_B])),
+            playing_before=PULSES,
+            chosen=frozenset(),
+            after=_stems_data(
+                ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A, STEM_B]),
+                ChannelAssignment(channel_name=ChannelName.TRIANGLE, stem_ids=[STEM_A]),
+            ),
+            playing_after=EVERY_CHANNEL,
+        ),
+        TestCase(
+            label="the reader's own row appearing while a recording is muted",
+            before=_stems_data(ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A, STEM_B])),
+            playing_before=PULSES,
+            chosen=frozenset(),
+            after=_stems_data(
+                ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A, STEM_B, AUTHORED_STEM_ID])
+            ),
+            playing_after=frozenset({ChannelName.PULSE1}),
+        ),
+        TestCase(
+            label="a recording leaving the record",
+            before=_stems_data(
+                ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A, STEM_B]),
+                ChannelAssignment(channel_name=ChannelName.TRIANGLE, stem_ids=[STEM_B]),
+            ),
+            playing_before=EVERY_CHANNEL,
+            chosen=frozenset({ChannelName.PULSE1}),
+            after=_stems_data(
+                ChannelAssignment(channel_name=ChannelName.PULSE1, stem_ids=[STEM_A, STEM_A])
+            ).without_entries(frozenset({STEM_B})),
+            playing_after=PULSES,
+        ),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
+    def test_adopting_a_record_hears_what_the_rule_carries(self, listening: Listening, test_case: TestCase) -> None:
+        listening.adopt(test_case.before, test_case.playing_before)
+        listening.set_channels(STEM_A, test_case.chosen)
+        listening.set_channels_on(frozenset({ChannelName.PULSE1}))
+        expected = carried_hearing(
+            listening.hearing,
+            offered_before=listening.offered,
+            playing_before=listening.playing,
+            offered_after=offered_channels(test_case.after),
+            playing_after=test_case.playing_after,
+        )
+
+        listening.adopt(test_case.after, test_case.playing_after)
+
+        assert listening.hearing == expected
+
+    def test_a_fresh_document_is_heard_as_the_whole_hearing(
+        self,
+        listening: Listening,
+        taking_turns: Reconstruction,
+    ) -> None:
+        """A preview of a document keys the cache the way the tab keys the same document opened afresh."""
+        shared = taking_turns.instructions[SHARED_CHANNEL]
+        edited = taking_turns.with_channel_data(
+            SHARED_CHANNEL,
+            [PulseInstruction(on=True, pitch=TAKING_TURNS_PITCH, volume=8, duty_cycle=0)] * (len(shared) + 1),
+            TAKING_TURNS_PITCH,
+            (),
+            heard=taking_turns.recorded_stem_ids,
+        )
+
+        listening.adopt(edited.stems_data, frozenset(edited.playing_channels))
+
+        assert listening.hearing == whole_hearing(edited)
 
 
 class TestSoloingARecording:
