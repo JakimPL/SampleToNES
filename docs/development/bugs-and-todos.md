@@ -87,11 +87,6 @@ dimension the import starts carrying.
   frames. A rebuild makes each frame of the channel anew, so on a four-channel conversion an entry has
   about a quarter of the document. Keeping the old instruction wherever the rebuilt one equals it brings an
   entry down to the frames the edit changed ([undo](application/undo.md)).
-* Strict history hashes the whole song and the whole new document at every commit. On a four-channel
-  conversion of 13,677 frames, hashing the document costs more than twice the rebuild of the edited
-  channel, and the song's hash grows with the song. Development runs and the test suite pay for it.
-  Memoizing each pattern's and each stream's hash by identity, as each document's is memoized now, brings
-  a commit down to the parts its gesture replaced.
 * What the Reconstructions tab still computes on the render thread. The regeneration worker renders,
   mixes and exports what the reader hears, and the landing installs it ([Editing the open
   reconstruction](application/reconstruction-edits.md)); three readings stay on the render thread. The

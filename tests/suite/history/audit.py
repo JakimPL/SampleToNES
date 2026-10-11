@@ -6,7 +6,11 @@ from typing import Callable, Iterator, List, Optional, Protocol, Sequence, Tuple
 import numpy as np
 
 from sampletones_application.logic.history.action import HistoryAction
-from sampletones_application.logic.history.fingerprint import ReconstructionHashCache, fingerprint_project
+from sampletones_application.logic.history.fingerprint import (
+    FreshHashes,
+    HashCache,
+    fingerprint_project,
+)
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_core.constants.enums import ChannelName
@@ -15,15 +19,14 @@ from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.types.callback import VoidCallback
-from sampletones_shared.utils.hashing import hash_model
 
 Settle = Callable[[VoidCallback], None]
 CommitKey = Tuple[HistoryAction, Hashable]
 
 
 def fresh_fingerprint(project: Project) -> str:
-    """The project's whole state, every reconstruction hashed afresh rather than through a memo."""
-    return fingerprint_project(project, reconstruction_hash=hash_model)
+    """The project's whole state, every reconstruction and every pattern hashed afresh."""
+    return fingerprint_project(project, hashes=FreshHashes())
 
 
 def immediately(gesture: VoidCallback) -> None:
@@ -381,7 +384,7 @@ class HistoryAudit:
 
     def check(self) -> None:
         self._check_shape()
-        hashes = ReconstructionHashCache(reconstruction_hash=hash_model)
+        hashes = HashCache()
         projects = [entry.project for entry in self._history.entries]
         if self._controller.is_open:
             projects.append(self._controller.project)
@@ -407,15 +410,15 @@ class HistoryAudit:
         assert self._history.can_undo == (self.model.cursor > 0)
         assert self._history.can_redo == (self.model.cursor < len(self.model.entries) - 1)
 
-    def _check_entries(self, hashes: ReconstructionHashCache) -> None:
+    def _check_entries(self, hashes: HashCache) -> None:
         for index, (entry, expected) in enumerate(zip(self._history.entries, self.model.entries)):
-            fingerprint = fingerprint_project(entry.project, reconstruction_hash=hashes.hash)
+            fingerprint = fingerprint_project(entry.project, hashes=hashes)
             assert (
                 fingerprint == expected.fingerprint
             ), f"Entry {index} ({entry.action}) no longer holds the state it recorded"
 
-    def _check_live(self, hashes: ReconstructionHashCache) -> None:
-        fingerprint = fingerprint_project(self._controller.project, reconstruction_hash=hashes.hash)
+    def _check_live(self, hashes: HashCache) -> None:
+        fingerprint = fingerprint_project(self._controller.project, hashes=hashes)
         assert (
             fingerprint == self.model.live.fingerprint
         ), f"The live project differs from entry {self.model.cursor} ({self.model.live.action})"
