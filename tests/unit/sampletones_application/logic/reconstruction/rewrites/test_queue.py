@@ -28,6 +28,7 @@ from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing
 from tests.conftest import ReconstructionFactory
 from tests.suite.regeneration import HeldRegeneration
+from tests.suite.renders import warmed
 from tests.suite.stems import (
     SHARED_CHANNEL,
     SOLE_CHANNEL,
@@ -606,7 +607,12 @@ class TestTheRendersALandingKeeps:
         reconstruction_manager: ReconstructionManager,
         taking_turns: Reconstruction,
     ) -> None:
-        kept = reconstruction_manager.renders.channels(taking_turns)
+        warmed(
+            reconstruction_manager.renders,
+            taking_turns,
+            Hearing(selection=everything_heard(taking_turns), channels_on=frozenset(ChannelName.items())),
+        )
+        kept = reconstruction_manager.renders.held(taking_turns)
 
         rewrites.request(_change(SHARED_CHANNEL, FeatureKey.VOLUME, FIRST_VOLUME))
 

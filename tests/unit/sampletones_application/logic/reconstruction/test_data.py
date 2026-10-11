@@ -646,9 +646,11 @@ class TestWaveformData:
 
         waveform_data = _kept(renders, data, _hearing(0))
 
+        reading = renders.reading(reconstruction, _hearing(0))
+        assert reading is not None
         assert waveform_data.original_audio is data.original_audio
-        assert waveform_data.approximation is renders.mix(reconstruction)
-        assert waveform_data.playing is renders.mix(reconstruction)
+        assert waveform_data.approximation is reading.mix
+        assert waveform_data.playing is reading.mix
         assert waveform_data.coefficient == reconstruction.coefficient
         assert waveform_data.frame_length == reconstruction.config.frame_length
 
@@ -672,6 +674,5 @@ class TestWaveformData:
 
         waveform_data = _kept(renders, data, _hearing())
 
-        assert waveform_data.approximation is not renders.mix(reconstruction)
-        np.testing.assert_array_equal(waveform_data.approximation, np.zeros_like(renders.mix(reconstruction)))
+        np.testing.assert_array_equal(waveform_data.approximation, np.zeros_like(rendered_mix(reconstruction)))
         np.testing.assert_array_equal(waveform_data.playing, waveform_data.approximation)

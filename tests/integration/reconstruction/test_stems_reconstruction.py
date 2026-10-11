@@ -400,7 +400,9 @@ class TestThreeStemHierarchy:
             )
 
         full = kept(all_stem_ids)
-        assert full.approximation is renders.mix(data.reconstruction)
+        whole = renders.reading(data.reconstruction, hearing(all_stem_ids))
+        assert whole is not None
+        assert full.approximation is whole.mix
         assert full.playing is full.approximation
         assert full.original_audio is data.original_audio
 

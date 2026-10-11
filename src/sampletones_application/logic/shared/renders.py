@@ -7,10 +7,8 @@ from typing import Dict, FrozenSet, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
-from sampletones_core.audio.mixing import mix
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.generators.render import render_instructions
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
 from sampletones_core.reconstructions.reconstruction.renders import sounding_streams
@@ -77,11 +75,13 @@ class RenderCache:
     names, for each channel the reader leaves an owner out on, the record and the owners heard, so
     two hearings leaving nothing out read one mix. A render goes with the objects it was made
     from, and beyond ``budget_bytes`` the renders read longest ago go first, so the cache keeps
-    audio alone. The render thread reads the cache and keeps what it renders or adopts, and an
-    object's collection may drop its renders from any thread, so every change to the cache is
-    made under one lock. The lock lets its holder in again, since a stream let go of while a keep
-    runs on the same thread is forgotten from inside that keep. A kept render is read-only, so the
-    readers it is shared with copy what they change.
+    audio alone. The cache renders nothing: every render it keeps is a worker's result, adopted at
+    its landing on the render thread, and a reading the cache cannot answer is what a worker is
+    asked for, so the render thread computes no sample. The render thread reads the cache and
+    keeps what it adopts, and an object's collection may drop its renders from any thread, so
+    every change to the cache is made under one lock. The lock lets its holder in again, since a
+    stream let go of while a keep runs on the same thread is forgotten from inside that keep. A
+    kept render is read-only, so the readers it is shared with copy what they change.
     """
 
     def __init__(self, *, budget_bytes: int) -> None:
@@ -95,26 +95,6 @@ class RenderCache:
     def held_bytes(self) -> int:
         """How many bytes the renders the cache keeps take."""
         return self._held_bytes
-
-    def channels(self, reconstruction: Reconstruction) -> Dict[ChannelName, np.ndarray]:
-        """The audio each channel in play renders from the stream it carries."""
-        return {
-            stream.channel_name: self._channel(stream, reconstruction.config)
-            for stream in sounding_streams(reconstruction)
-        }
-
-    def mix(self, reconstruction: Reconstruction) -> np.ndarray:
-        """The whole reconstruction, summed from the channels that play."""
-        streams = sounding_streams(reconstruction)
-        parts = [self._plain_part(stream) for stream in streams]
-        key = self._mix_key(parts, reconstruction.config)
-        cached = self._read(key)
-        if cached is not None:
-            return cached
-
-        mixed = mix([self._channel(stream, reconstruction.config) for stream in streams])
-        self._keep(key, mixed, [stream for part in parts for stream in part.watched])
-        return mixed
 
     def held(self, reconstruction: Reconstruction) -> Dict[ChannelName, np.ndarray]:
         """The renders the cache holds for the channels in play, by channel, which a lookup answers at once.
@@ -230,20 +210,6 @@ class RenderCache:
     @staticmethod
     def _mix_key(parts: Sequence[_Part], config: Config) -> RenderKey:
         return RenderKey(RenderKind.MIX, tuple(part.part for part in parts), config)
-
-    def _channel(self, stream: InstructionsItem, config: Config) -> np.ndarray:
-        key = self._channel_key(stream, config)
-        cached = self._read(key)
-        if cached is not None:
-            return cached
-
-        rendered = render_instructions(
-            [data.instruction for data in stream.instructions],
-            stream.channel_name,
-            config,
-        )
-        self._keep(key, rendered, [stream])
-        return rendered
 
     def _read(self, key: RenderKey) -> Optional[np.ndarray]:
         with self._lock:
