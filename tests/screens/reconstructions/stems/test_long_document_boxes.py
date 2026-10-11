@@ -7,6 +7,7 @@ from automation.application.startup import Startup
 from automation.screen import Screen
 from automation.steps.exports import leaving_asks_nothing
 from automation.steps.reconstructions import expect_open, reconstruction_shade, wait_for_the_fade_to_end
+from automation.vocabulary.graphs import WAVEFORM_READING
 from automation.worlds.home import World
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.screens.readings import expect_no_long_hold, frame_readings, keep_readings, longest_gap_after_each
@@ -81,3 +82,31 @@ class TestTheBoxesOnALongDocument:
             expect_no_long_hold(frames)
 
         screen.scenario(open_it, tick_the_boxes, keep_the_readings, leaving_asks_nothing).run()
+
+
+class TestWhatTheFadeSays:
+    """The status bar names what the fade waits for after a tick: the sound being prepared.
+
+    The words stand for the few frames the sound takes, so they are read after every frame through
+    the tick. The words on opening are pinned where the line reports a listening and where the
+    waveform shows them, since the browser's own hover text holds the status bar while the pointer
+    rests on the row that opened the document.
+    """
+
+    def test_a_tick_reads_as_the_sound_being_prepared(self, screen: Screen) -> None:
+        reconstructions = screen.reconstructions
+        reading = screen.words(WAVEFORM_READING)
+        unfaded: List[Optional[str]] = []
+
+        def open_it(screen: Screen) -> None:
+            expect_open(screen, LONG_RECONSTRUCTION)
+            unfaded.append(reconstruction_shade(screen))
+
+        def tick_a_box(screen: Screen) -> None:
+            with screen.record(screen.status_drawn) as recording:
+                reconstructions.tick_channel(TOGGLED_CHANNEL)
+                wait_for_the_fade_to_end(screen, unfaded[0])
+
+            assert reading in recording.values(), f"the status bar never read {reading!r} through the tick"
+
+        screen.scenario(open_it, tick_a_box, leaving_asks_nothing).run()

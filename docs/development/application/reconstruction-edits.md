@@ -91,4 +91,8 @@ cache already answers is shown at once.
 ## The waveform fades while the line is busy
 
 The waveform is faded from the moment a step waits or runs until the last one lands. A reader sees the
-document is being rewritten for the whole span, however many steps it takes.
+document is being rewritten for the whole span, however many steps it takes. The status bar names what
+the fade waits for: an edit on its way reads "Regenerating reconstruction...", and a change to what is
+heard, or a document just opened, reads "Preparing the sound...". The line reports the kind of work it
+is busy with, so a hand-over from an edit to a reading of the sound changes the words under the same
+fade.

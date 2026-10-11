@@ -192,6 +192,10 @@ class Screen:
         """What the status bar along the bottom of the window says."""
         return self.bridge.ask(lambda: read_label(STATUS_BAR))
 
+    def status_drawn(self) -> str:
+        """What the status bar says, read on the render thread itself, which a recording takes after every frame."""
+        return read_label(STATUS_BAR)
+
     def shows_text(self, words: str) -> bool:
         """Whether text reading ``words`` was drawn in the last frame, such as a tooltip standing open."""
         return self.bridge.ask(lambda: read_visible_text(words))

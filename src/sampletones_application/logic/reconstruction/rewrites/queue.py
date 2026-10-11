@@ -28,6 +28,7 @@ from sampletones_application.services.result import ServiceError, ServiceSuccess
 from sampletones_application.view_model.reconstruction.envelopes import (
     ChannelEnvelopesViewModel,
 )
+from sampletones_application.view_model.reconstruction.work import Work
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.removal import (
     can_remove_stem,
@@ -96,7 +97,8 @@ class ReconstructionRewrites(CallbackMixin):
     lands, ``on_heard_rendered`` once a listening's sound is kept for the open document (with
     whether its envelopes changed what the instruments panel draws), ``on_dropped`` when the panel
     draws a change that will never land, ``on_failed`` with a job's failure, and
-    ``on_busy_changed`` as the line fills and empties.
+    ``on_work_changed`` as the line fills, hands over from one kind of work to the other, and
+    empties.
     """
 
     def __init__(
@@ -109,20 +111,42 @@ class ReconstructionRewrites(CallbackMixin):
         self._waiting: List[Rewrite] = []
         self._running: Optional[Running] = None
         self._redraw_owed: bool = False
-        self._reported_busy: bool = False
+        self._reported_work: Optional[Work] = None
 
         self.on_edit: Optional[Callable[[ReconstructionEdit], None]] = None
         self.on_heard_rendered: Optional[Callable[[bool], None]] = None
         self.on_dropped: Optional[VoidCallback] = None
         self.on_failed: Optional[Callable[[Exception], None]] = None
-        self.on_busy_changed: Optional[Callable[[bool], None]] = None
+        self.on_work_changed: Optional[Callable[[Optional[Work]], None]] = None
 
         regeneration.subscribe(self._on_result)
 
     @property
+    def work(self) -> Optional[Work]:
+        """What the line is busy with, which the waveform's fade names, or ``None`` while it stands empty.
+
+        The running job says what it does. While steps wait with none running, the first of them
+        says what comes: a change to what is heard has the sound read, and every other step
+        rewrites the document.
+        """
+        match self._running:
+            case Rebuild():
+                return Work.REBUILDING
+            case Listening():
+                return Work.READING
+
+        match self._waiting[0] if self._waiting else None:
+            case None:
+                return None
+            case ListeningChange():
+                return Work.READING
+            case _:
+                return Work.REBUILDING
+
+    @property
     def is_busy(self) -> bool:
         """Whether a job runs or a step waits, which is the span the open document's sound is on its way."""
-        return self._running is not None or bool(self._waiting)
+        return self.work is not None
 
     def request(self, rewrite: Rewrite) -> None:
         """Puts a step at the end of the line, and takes it at once where nothing runs before it.
@@ -365,12 +389,12 @@ class ReconstructionRewrites(CallbackMixin):
             self.call(self.on_dropped)
 
     def _settle(self) -> None:
-        """Pays a redraw owed once the line empties, and reports the line filling or emptying."""
+        """Pays a redraw owed once the line empties, and reports what the line is busy with as it changes."""
         if not self.is_busy and self._redraw_owed:
             self._redraw_owed = False
             self.call(self.on_dropped)
 
-        busy = self.is_busy
-        if busy != self._reported_busy:
-            self._reported_busy = busy
-            self.call(self.on_busy_changed, busy)
+        work = self.work
+        if work != self._reported_work:
+            self._reported_work = work
+            self.call(self.on_work_changed, work)

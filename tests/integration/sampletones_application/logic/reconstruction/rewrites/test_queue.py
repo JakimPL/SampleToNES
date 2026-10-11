@@ -17,6 +17,7 @@ from sampletones_application.logic.reconstruction.rewrites.steps import (
 )
 from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.services.regeneration.service import RegenerationService
+from sampletones_application.view_model.reconstruction.work import Work
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
@@ -135,6 +136,6 @@ class TestEditingAFileBackedDocumentAtSpeed:
         assert _open_document(settled).config.nes_frequency == RETUNED_FREQUENCY
 
     def test_the_waveform_fades_for_the_whole_span(self, settled: ReconstructionCoordinator) -> None:
-        dims = [entry.args[0] for entry in settled._tab.set_reconstruction_dimmed.call_args_list]
+        work = [entry.args[0] for entry in settled._tab.show_work.call_args_list]
 
-        assert dims == [True, False]
+        assert work == [Work.REBUILDING, None]
