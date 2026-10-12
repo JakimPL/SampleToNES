@@ -12,22 +12,26 @@ EXECUTABLE: Final[int] = stat.S_IRWXU
 
 
 class FileManagerStandIn:
-    """Stands in for the desktop's file manager, noting every path the application asks it to show.
+    """Stands in for the desktop's file manager and its handler of files, noting every path the
+    application hands them.
 
     The application asks ``xdg-mime`` which file manager the desktop uses and then asks that file
-    manager, or ``xdg-open``, to show a path. Programs of those names lie in ``folder``, which leads
-    the search path, so the application's own reveal code runs and reaches them: the first names a
-    file manager they stand for, and the others write the path they were given to ``log``, one line
-    each.
+    manager, or ``xdg-open``, to show a path, and it asks ``xdg-open`` to open a page in the
+    browser. Programs of those names lie in ``folder``, which leads the search path, so the
+    application's own code runs and reaches them: the first names a file manager they stand for,
+    the file manager writes the path it was given to ``shown_log``, and ``xdg-open`` writes a folder
+    there and a file to ``opened_log``, one line each.
     """
 
     def __init__(
         self,
         folder: Path,
-        log: Path,
+        shown_log: Path,
+        opened_log: Path,
     ) -> None:
         self.folder = folder
-        self._log = log
+        self._shown_log = shown_log
+        self._opened_log = opened_log
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Lays the programs in the folder and puts the folder first on the search path."""
@@ -44,15 +48,30 @@ class FileManagerStandIn:
 
     def shown(self) -> Tuple[Path, ...]:
         """Every path the file manager was asked to show, in order."""
-        if not self._log.exists():
-            return ()
+        return _noted(self._shown_log)
 
-        return tuple(Path(line) for line in self._log.read_text().splitlines())
+    def opened(self) -> Tuple[Path, ...]:
+        """Every file handed to the desktop's program for its kind, in order."""
+        return _noted(self._opened_log)
 
     def _programs(self) -> Mapping[str, str]:
-        noting = f'#!/bin/sh\nfor path in "$@"; do printf \'%s\\n\' "$path" >> "{self._log}"; done\n'
+        noting = f'#!/bin/sh\nfor path in "$@"; do printf \'%s\\n\' "$path" >> "{self._shown_log}"; done\n'
+        sorting = (
+            "#!/bin/sh\n"
+            'for path in "$@"; do\n'
+            f'  if [ -d "$path" ]; then log="{self._shown_log}"; else log="{self._opened_log}"; fi\n'
+            '  printf \'%s\\n\' "$path" >> "$log"\n'
+            "done\n"
+        )
         return {
             "xdg-mime": f"#!/bin/sh\necho {FILE_MANAGER_ENTRY}\n",
             FILE_MANAGER: noting,
-            "xdg-open": noting,
+            "xdg-open": sorting,
         }
+
+
+def _noted(log: Path) -> Tuple[Path, ...]:
+    if not log.exists():
+        return ()
+
+    return tuple(Path(line) for line in log.read_text().splitlines())

@@ -40,6 +40,7 @@ from sampletones_shared.documentation.site import DocumentationSite
 ANSWER_TIMEOUT_SECONDS: Final[float] = 30.0
 STAND_IN_PROGRAMS: Final[str] = "programs"
 REVEALS_FILE: Final[str] = "reveals.log"
+OPENS_FILE: Final[str] = "opens.log"
 DISPLAY_NAME_KEY: Final[pytest.StashKey[str]] = pytest.StashKey()
 
 
@@ -88,7 +89,7 @@ def screen_boundaries_fixture(
     errors = ErrorRecords()
     errors.install()
     artifacts = Path(os.environ[ARTIFACTS_VARIABLE])
-    file_manager = FileManagerStandIn(artifacts / STAND_IN_PROGRAMS, artifacts / REVEALS_FILE)
+    file_manager = FileManagerStandIn(artifacts / STAND_IN_PROGRAMS, artifacts / REVEALS_FILE, artifacts / OPENS_FILE)
     file_manager.install(monkeypatch)
     spawns = SpawnGuard()
     spawns.install()
