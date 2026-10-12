@@ -1,0 +1,98 @@
+.prose {
+  min-width: 0;
+  padding: 0 var(--card-padding-x) var(--card-padding-y);
+  font-size: var(--size-sans-large);
+  line-height: 1.55;
+}
+
+.prose > :first-child {
+  margin-top: var(--card-padding-y);
+}
+
+.prose > :last-child {
+  margin-bottom: 0;
+}
+
+.prose p,
+.prose ul,
+.prose ol,
+.prose blockquote,
+.prose pre,
+.prose .table-scroll,
+.prose .figure {
+  margin: 0.7em 0;
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.5em;
+}
+
+.prose li + li,
+.prose li > ul,
+.prose li > ol {
+  margin-top: 0.25em;
+}
+
+.prose h3,
+.prose h4 {
+  margin: 1.4em 0 0.4em;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.prose h3 {
+  font-size: 1.15em;
+  color: var(--text);
+}
+
+.prose h4 {
+  font-size: 1em;
+  color: var(--text-muted);
+}
+
+.prose strong {
+  color: var(--text-strong);
+}
+
+.prose :not(pre) > code {
+  padding: 1px 5px;
+  font-size: 0.86em;
+  background: var(--recess);
+  border-radius: calc(var(--frame-radius) / 2);
+}
+
+.prose pre {
+  padding: calc(1.5 * var(--card-padding-y)) var(--card-padding-x);
+  overflow-x: auto;
+  font-size: var(--size-mono-small);
+  line-height: 1.5;
+  background: var(--recess);
+  border-radius: var(--frame-radius);
+}
+
+.prose pre code {
+  font-size: inherit;
+}
+
+.prose blockquote {
+  padding: 0 var(--card-padding-x);
+  color: var(--text-muted);
+  border-left: 3px solid var(--separator);
+}
+
+.prose hr {
+  margin: 1.2em 0;
+  border: 0;
+  border-top: 1px solid var(--separator);
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+}
+
+.prose .table {
+  font-size: var(--size-sans-medium);
+  line-height: normal;
+}

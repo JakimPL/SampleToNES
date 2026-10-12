@@ -36,8 +36,8 @@ function channelRow(channel, color) {
   swatch.style.background = `var(--${color})`;
   swatch.title = channel.name;
   row.append(swatch);
-  if (channel.solo) { row.append(clip("S", channel.solo, "clip part")); }
-  if (channel.mute) { row.append(clip("M", channel.mute, "clip part")); }
+  if (channel.solo) { row.append(clip("S", channel.solo, "button secondary compact clip part")); }
+  if (channel.mute) { row.append(clip("M", channel.mute, "button secondary compact clip part")); }
   const bar = element("div", "bar");
   bar.style.backgroundImage = gradient(channel.timeline, color);
   bar.title = channel.name;
@@ -53,7 +53,7 @@ function closed(cell) {
 
 function cellNode(cell, colors) {
   const node = element("div", "cell");
-  node.append(clip("play", cell.render, "clip"));
+  node.append(clip("play", cell.render, "button clip"));
   const reading = element("div", "reading");
   reading.append(element("b", null, cell.score.toFixed(2)));
   reading.append(element("span", null, closed(cell)));
@@ -73,7 +73,7 @@ function rowNode(row, colors) {
   sound.append(element("span", null, row.category));
   node.append(sound);
   const recording = element("td");
-  recording.append(clip("recording", row.recording, "clip"));
+  recording.append(clip("recording", row.recording, "button clip"));
   node.append(recording);
   for (const cell of row.cells) {
     const holder = element("td");
@@ -112,14 +112,14 @@ function legendNode(group, colors) {
   return legend;
 }
 
-function groupNode(group, colors) {
+function groupNode(group, glyph, colors) {
   const card = element("section", "card");
   card.dataset.group = group.name;
-  const heading = element("h2");
-  heading.append(element("span", null, group.name), legendNode(group, colors));
-  card.append(heading);
-  const scroll = element("div", "scroll");
-  const table = element("table");
+  const header = element("div", "card-header");
+  header.append(element("span", "card-glyph", glyph), element("span", "card-title", group.name), legendNode(group, colors));
+  card.append(header);
+  const scroll = element("div", "table-scroll");
+  const table = element("table", "table");
   const head = element("tr");
   for (const heading of ["sound", "recording", ...group.columns, "change"]) {
     head.append(element("th", null, heading));
@@ -207,13 +207,14 @@ function build(board) {
     `Scored by ${board.referee}; lower is closer to the recording.`;
   const groups = document.getElementById("groups");
   for (const group of board.groups) {
-    groups.append(groupNode(group, board.colors));
+    groups.append(groupNode(group, board.glyph, board.colors));
   }
   if (board.groups.length > 1) {
     const tabs = document.getElementById("tabs");
     tabs.hidden = false;
     for (const group of board.groups) {
-      const tab = element("button", null, group.name);
+      const tab = element("button", "tab", group.name);
+      tab.setAttribute("role", "tab");
       tab.dataset.group = group.name;
       tab.addEventListener("click", () => selectGroup(group.name));
       tabs.append(tab);

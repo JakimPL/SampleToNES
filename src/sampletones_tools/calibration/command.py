@@ -89,9 +89,9 @@ def run(arguments: Namespace) -> int:
 
 
 def _measure(given: CalibrationArguments) -> int:
+    from sampletones_application.utils.palette.catalog import DEFAULT_PALETTE_NAME
     from sampletones_core.headless.conversion.request import channels_named
     from sampletones_shared.utils.validation import describe_failure
-    from sampletones_tools.calibration.board.palette import DEFAULT_PALETTE
     from sampletones_tools.calibration.config.suite import SuiteConfig
     from sampletones_tools.calibration.session import (
         CalibrationRequest,
@@ -111,7 +111,7 @@ def _measure(given: CalibrationArguments) -> int:
             perceptual_exponents=floats_named(given.perceptual_exponents, suite.perceptual_exponents),
             temporal_weights=floats_named(given.temporal_weights, suite.temporal_weights),
             channels=channels_named(given.channels) if given.channels is not None else list(suite.channels),
-            palette=given.palette if given.palette is not None else DEFAULT_PALETTE,
+            palette=given.palette if given.palette is not None else DEFAULT_PALETTE_NAME,
         )
     except ValueError as error:
         raise SystemExit(describe_failure(error)) from error
@@ -122,7 +122,7 @@ def _measure(given: CalibrationArguments) -> int:
 
 
 def _compare(given: CalibrationArguments) -> int:
-    from sampletones_tools.calibration.board.palette import DEFAULT_PALETTE
+    from sampletones_application.utils.palette.catalog import DEFAULT_PALETTE_NAME
     from sampletones_tools.calibration.board.session import BoardRequest, build_board
     from sampletones_tools.calibration.session import default_page_output
 
@@ -130,7 +130,7 @@ def _compare(given: CalibrationArguments) -> int:
     request = BoardRequest(
         runs=list(given.board or []),
         output=given.output if given.output is not None else default_page_output(),
-        palette=given.palette if given.palette is not None else DEFAULT_PALETTE,
+        palette=given.palette if given.palette is not None else DEFAULT_PALETTE_NAME,
     )
     try:
         page = build_board(request)

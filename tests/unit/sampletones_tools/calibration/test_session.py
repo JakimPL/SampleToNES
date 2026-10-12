@@ -4,10 +4,10 @@ from typing import Callable, Dict, FrozenSet, List
 
 import pytest
 
+from sampletones_application.utils.palette.catalog import DEFAULT_PALETTE_NAME
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_tools.calibration.board.layout import PAGE_FILE
-from sampletones_tools.calibration.board.palette import DEFAULT_PALETTE
 from sampletones_tools.calibration.board.session import BoardRequest
 from sampletones_tools.calibration.corpus.item import CorpusItem
 from sampletones_tools.calibration.layout import CSV_REPORT, MARKDOWN_REPORT
@@ -166,7 +166,7 @@ class TestCalibrate:
 
         calibrate(request)
 
-        assert drawn == [DEFAULT_PALETTE]
+        assert drawn == [DEFAULT_PALETTE_NAME]
 
     def test_a_run_evaluates_with_the_channels_it_is_asked_for(
         self,

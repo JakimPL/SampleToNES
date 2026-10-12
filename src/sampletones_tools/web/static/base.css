@@ -1,0 +1,97 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+:root {
+  --page-gutter: 16px;
+}
+
+html {
+  scrollbar-color: var(--scrollbar-grab) var(--scrollbar-track);
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--size-sans-medium);
+  line-height: normal;
+}
+
+::selection {
+  background: var(--block-selection);
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--link-hover);
+  text-decoration: underline;
+}
+
+b,
+strong {
+  font-weight: 700;
+}
+
+code,
+kbd,
+samp,
+pre,
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--size-mono-medium);
+}
+
+.small {
+  font-size: var(--size-sans-small);
+}
+
+.mono.small {
+  font-size: var(--size-mono-small);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.strong {
+  color: var(--text-strong);
+}
+
+.highlight {
+  color: var(--text-highlight);
+}
+
+.error,
+.worse {
+  color: var(--text-error);
+}
+
+.better {
+  color: var(--heading);
+}
+
+.glyph {
+  font-family: var(--font-icon);
+}
+
+kbd {
+  padding: 0 5px;
+  font-size: var(--size-mono-small);
+  color: var(--text);
+  background: var(--recess);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: calc(var(--frame-radius) / 2);
+}

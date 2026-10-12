@@ -12,7 +12,13 @@ def page() -> BoardPage:
     cell = BoardCell(render="renders/cqt-pe1/tone-a.flac", score=9.5, silence=20.0, channels=(channel,))
     row = BoardRow(item="tone-a", category="tone", recording="recordings/tone-a.flac", cells=(cell,))
     group = BoardGroup(name="run-a", columns=("cqt-pe1",), rows=(row,))
-    return BoardPage(title="Calibration", referee="mr-auditory-dB", colors={"noise": "channel_noise"}, groups=(group,))
+    return BoardPage(
+        title="Calibration",
+        referee="mr-auditory-dB",
+        glyph="≈",
+        colors={"noise": "channel-noise"},
+        groups=(group,),
+    )
 
 
 class TestDataScript:

@@ -79,7 +79,8 @@ class BoardPage(BaseModel):
     Attributes:
         title: The heading the page carries.
         referee: The name of the referee whose scores the cells report.
-        colors: The palette token each channel's color stands under, by channel name.
+        glyph: The purpose glyph each table's card header carries.
+        colors: The role each channel's color stands under, by channel name.
         groups: The tables the page holds, one per tab.
     """
 
@@ -87,5 +88,6 @@ class BoardPage(BaseModel):
 
     title: str
     referee: str
+    glyph: str
     colors: Dict[str, str]
     groups: Tuple[BoardGroup, ...]

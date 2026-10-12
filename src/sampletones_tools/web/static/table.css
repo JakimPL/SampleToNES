@@ -1,0 +1,51 @@
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table th,
+.table td {
+  padding: var(--cell-padding-y) var(--cell-padding-x);
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--table-border);
+}
+
+.table thead th {
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--table-header);
+}
+
+.table tbody tr:nth-child(odd) {
+  background: var(--table-row);
+}
+
+.table tbody tr:nth-child(even) {
+  background: var(--table-row-alt);
+}
+
+.table tbody tr.selected {
+  background: var(--selection);
+}
+
+.table .number {
+  font-family: var(--font-mono);
+  font-size: var(--size-mono-medium);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.table .center {
+  text-align: center;
+}
+
+.table .right {
+  text-align: right;
+}
