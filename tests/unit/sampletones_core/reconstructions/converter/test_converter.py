@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Final
 from unittest.mock import patch
 
 import pytest
@@ -21,6 +22,8 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.settings impor
 from sampletones_shared.exceptions import NoFilesToProcessError
 
 _RECONSTRUCTOR_PATCH = "sampletones_core.reconstructions.converter.converter.Reconstructor"
+RECORDINGS: Final[str] = "recordings"
+RECONSTRUCTIONS: Final[str] = "reconstructions"
 
 
 @pytest.fixture(scope="module")
@@ -38,10 +41,21 @@ def _group(path: Path, stems: StemsConfig) -> GroupConversion:
 
 
 def _directory_of(directory: Path, stems: StemsConfig, *names: str) -> ReconstructionConverter:
-    """A converter over a folder holding ``names``, with its jobs read from the folder."""
+    """A converter over a folder of ``names`` under ``directory``, writing its reconstructions beside it.
+
+    The jobs are read from the folder, and their outputs stand under ``directory`` too, so a case writing
+    one keeps it in its own directory.
+    """
+    recordings = directory / RECORDINGS
+    recordings.mkdir()
     for name in names:
-        (directory / name).touch()
-    converter = ReconstructionConverter(Config(), DirectoryConversion(directory=directory, stems=stems))
+        (recordings / name).touch()
+    config = Config()
+    general = config.general.model_copy(update={"reconstructions_directory": str(directory / RECONSTRUCTIONS)})
+    converter = ReconstructionConverter(
+        config.model_copy(update={"general": general}),
+        DirectoryConversion(directory=recordings, stems=stems),
+    )
     with patch(_RECONSTRUCTOR_PATCH):
         converter._create_tasks()
     return converter
