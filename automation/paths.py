@@ -13,3 +13,4 @@ PROCESSES_DIRECTORY: Final[Path] = Path("/proc")
 REPORTS_FILE: Final[str] = "reports.jsonl"
 NO_BUS_FILE: Final[str] = "no-bus"
 FAILURE_SCREENSHOT: Final[str] = "failure.png"
+SHIPPED_DOCUMENTATION_FOLDER: Final[str] = "shipped-documentation"

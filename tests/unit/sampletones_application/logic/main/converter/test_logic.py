@@ -52,7 +52,13 @@ def _config_manager_writing_under(reconstructions_directory: Path) -> MagicMock:
 @pytest.fixture
 def session_manager(tmp_path: Path) -> SessionManager:
     """A session writing under the test's own directory, so the joining settings round-trip."""
-    return SessionManager(UserProfile(config=tmp_path / "config.json", state=tmp_path / "state.yaml"))
+    return SessionManager(
+        UserProfile(
+            config=tmp_path / "config.json",
+            state=tmp_path / "state.yaml",
+            documentation=tmp_path / "documentation",
+        )
+    )
 
 
 @pytest.fixture

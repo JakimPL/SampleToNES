@@ -8,6 +8,7 @@ from .base import SampleToNESError
 from .callback import CallbackQueueStop
 from .cuda import CuPyNotInstalledWarning, GPUBackendError
 from .dialog import FileDialogUnavailableError
+from .documentation import DocumentationUnavailableError
 from .instrument import (
     IncompatibleInstrumentVersionError,
     InstrumentError,
@@ -29,6 +30,7 @@ from .library import (
     NoLibraryDataError,
     UnhandledLibraryError,
 )
+from .opening import FileNotOpenedError
 from .operation import OperationCanceled
 from .player import (
     DriverBuildError,
@@ -69,8 +71,10 @@ __all__ = [
     "CallbackQueueStop",
     "CuPyNotInstalledWarning",
     "DeserializationError",
+    "DocumentationUnavailableError",
     "DriverBuildError",
     "FileDialogUnavailableError",
+    "FileNotOpenedError",
     "GPUBackendError",
     "IncompatibleInstrumentVersionError",
     "IncompatibleLibraryDataVersionError",

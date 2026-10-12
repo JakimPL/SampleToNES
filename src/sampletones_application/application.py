@@ -18,6 +18,7 @@ from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.playback import FollowMode
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.display import DisplayCoordinator
+from sampletones_application.coordinators.documentation import DocumentationCoordinator
 from sampletones_application.coordinators.edit.router import EditRouter
 from sampletones_application.coordinators.export import (
     InstrumentExportCoordinator,
@@ -47,6 +48,7 @@ from sampletones_application.coordinators.tabs.reconstruction import (
 from sampletones_application.coordinators.tabs.sequencer.coordinator import SequencerTabCoordinator
 from sampletones_application.exports import ExportBackends
 from sampletones_application.layout import LayoutConfig, load_layout_config
+from sampletones_application.logic.documentation.shelf import DocumentationShelf
 from sampletones_application.logic.export import SongExportLogic
 from sampletones_application.logic.export.instrument.logic import InstrumentExportLogic
 from sampletones_application.logic.export.nsf.logic import NSFExportLogic
@@ -196,11 +198,16 @@ from sampletones_shared.application import (
     SAMPLETONES_AUTHOR,
     SAMPLETONES_GROUP,
 )
-from sampletones_shared.distribution import SAMPLETONES_NAME_VERSION
+from sampletones_shared.distribution import (
+    SAMPLETONES_DOCUMENTATION_ADDRESS,
+    SAMPLETONES_NAME_VERSION,
+)
+from sampletones_shared.documentation.site import DocumentationSite
 from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.utils.system.opening import select_file_opener
 
 SEQUENCER_SAMPLE_TITLE_FORMAT: Final[str] = "{ordinal}: {name}"
 SEQUENCER_SAMPLE_ORDINAL_FORMAT: Final[str] = "02X"
@@ -224,6 +231,7 @@ class Application:
     def __init__(
         self,
         profile: UserProfile,
+        documentation: DocumentationSite,
         config_path: Optional[Path] = None,
         library_path: Optional[Path] = None,
         reconstruction_path: Optional[Path] = None,
@@ -497,6 +505,13 @@ class Application:
         self._original_audio_locator = OriginalAudioLocator(
             dialogs=self.dialogs,
             language_manager=self.language_manager,
+        )
+        self._documentation_coordinator = DocumentationCoordinator(
+            shelf=DocumentationShelf(site=documentation, copies=profile.documentation),
+            opener=select_file_opener(),
+            dialogs=self.dialogs,
+            language_manager=self.language_manager,
+            address=SAMPLETONES_DOCUMENTATION_ADDRESS,
         )
 
         self._instrument_exports = InstrumentExportCoordinator(
@@ -821,6 +836,7 @@ class Application:
             toggle_auto_expand_favorite_reconstructions=self._toggle_auto_expand_favorite_reconstructions,
             toggle_auto_expand_favorite_directories=self._toggle_auto_expand_favorite_directories,
             toggle_fullscreen=self._shell.toggle_fullscreen,
+            documentation=self._documentation_coordinator.open,
             about=self._open_about_dialog,
             next_tab=self._next_tab,
             previous_tab=self._previous_tab,

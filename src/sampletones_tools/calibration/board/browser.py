@@ -1,7 +1,7 @@
-import webbrowser
 from pathlib import Path
 
 from sampletones_shared.logger import logger
+from sampletones_shared.utils.system.opening import select_file_opener
 
 
 def open_page(page: Path) -> bool:
@@ -17,8 +17,10 @@ def open_page(page: Path) -> bool:
     Returns:
         bool: Whether a browser took the page.
     """
-    opened = webbrowser.open(page.resolve().as_uri())
-    if not opened:
+    try:
+        select_file_opener().open(page.resolve())
+    except OSError:
         logger.info("No browser answered; open the page from the link above")
+        return False
 
-    return opened
+    return True

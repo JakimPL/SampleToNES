@@ -595,6 +595,10 @@ class MenuBar:
     def _create_help_menu(self) -> None:
         with dpg.menu(label=self._label(MenuElements.GROUP_HELP)):
             self._shortcut_manager.add_menu_item(
+                ShortcutId.DOCUMENTATION,
+                label=self._label(MenuElements.ITEM_HELP_DOCUMENTATION),
+            )
+            self._shortcut_manager.add_menu_item(
                 ShortcutId.ABOUT_DIALOG,
                 label=self._label(MenuElements.ITEM_HELP_ABOUT),
             )

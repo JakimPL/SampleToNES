@@ -28,13 +28,14 @@ from automation.environment import (
     screen_size,
 )
 from automation.holds.base import Holds
-from automation.paths import FAILURE_SCREENSHOT
+from automation.paths import FAILURE_SCREENSHOT, SHIPPED_DOCUMENTATION_FOLDER
 from automation.plugin.constants import DISPLAY_KEY
 from automation.render_thread import QueueRenderThread
 from automation.screen import Screen
 from automation.worlds.home import World, lived_in_world
 from sampletones_application.application import Application
 from sampletones_application.config.profile import UserProfile
+from sampletones_shared.documentation.site import DocumentationSite
 
 ANSWER_TIMEOUT_SECONDS: Final[float] = 30.0
 STAND_IN_PROGRAMS: Final[str] = "programs"
@@ -125,6 +126,7 @@ def screen_application_fixture(
     world.write(profile)
     application = Application(
         profile=profile,
+        documentation=DocumentationSite(Path.home() / SHIPPED_DOCUMENTATION_FOLDER),
         reconstruction_path=startup.reconstruction,
         project_path=startup.project,
     )

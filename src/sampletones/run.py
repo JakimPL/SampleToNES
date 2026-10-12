@@ -4,6 +4,7 @@ from typing import Optional
 from sampletones_application.application import Application
 from sampletones_application.config.profile import UserProfile
 from sampletones_shared.distribution import SAMPLETONES_NAME_VERSION
+from sampletones_shared.documentation.site import DocumentationSite
 from sampletones_shared.logger import logger
 
 
@@ -17,6 +18,7 @@ def run_application(
     logger.info(SAMPLETONES_NAME_VERSION)
     gui = Application(
         profile=UserProfile.user(),
+        documentation=DocumentationSite.shipped(),
         config_path=config_path,
         library_path=library_path,
         reconstruction_path=reconstruction_path,
