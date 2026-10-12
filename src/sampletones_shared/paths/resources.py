@@ -3,6 +3,7 @@ from typing import Final
 
 from sampletones_shared.paths.package import package_directory
 
+ASSETS_PACKAGE: Final[str] = "sampletones_assets"
 CONFIG_DIRECTORY: Final[Path] = package_directory("sampletones_config")
 
 ICON_DIRECTORY: Final[str] = "icons"

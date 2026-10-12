@@ -1,4 +1,4 @@
-.PHONY: help setup install system-deps build release run calibration tracker-playback icons demo pictures clean pre-commit test test-docs benchmarks screens lint format
+.PHONY: help setup install system-deps build release run calibration tracker-playback icons docs demo pictures clean pre-commit test test-docs benchmarks screens lint format
 
 ifeq ($(OS),Windows_NT)
 PYTHON := python
@@ -30,6 +30,7 @@ help:
 	@echo $(Q)  make calibration - Measure reconstruction on the reference sounds; writes the renders and a report$(Q)
 	@echo $(Q)  make tracker-playback BITPHASE=folder FAMITRACKER=FamiTracker.exe [PROJECT=song.stp] - Play exported projects (the corpus by default) in Bitphase, FamiTracker or both; reports every tick that differs from the app$(Q)
 	@echo $(Q)  make icons       - Write the application icon suite from the mark into the package$(Q)
+	@echo $(Q)  make docs        - Write the user documentation as HTML pages into the package$(Q)
 	@echo $(Q)  make demo        - Make the demo tree (recordings, a library, reconstructions, a project) in DEMO=build/demo$(Q)
 	@echo $(Q)  make pictures    - Draw the guide's and the README's pictures of the application from the demo tree (needs Xvfb)$(Q)
 	@echo $(Q)  make clean       - Remove build artifacts and cache files$(Q)
@@ -66,6 +67,9 @@ tracker-playback:
 
 icons:
 	uv run python -m assets.icons
+
+docs:
+	uv run python -m assets.documentation
 
 demo:
 	uv run python -m assets.demo -o $(DEMO)

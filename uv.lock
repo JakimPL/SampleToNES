@@ -1857,6 +1857,7 @@ gpu-cuda11 = [
 
 [package.dev-dependencies]
 assets = [
+    { name = "markdown-it-py" },
     { name = "pillow" },
 ]
 calibration = [
@@ -1865,6 +1866,7 @@ calibration = [
 dev = [
     { name = "black" },
     { name = "isort" },
+    { name = "markdown-it-py" },
     { name = "mypy" },
     { name = "pillow" },
     { name = "pre-commit" },
@@ -1909,11 +1911,15 @@ requires-dist = [
 provides-extras = ["build", "gpu", "gpu-cuda11"]
 
 [package.metadata.requires-dev]
-assets = [{ name = "pillow", specifier = ">=11,<13" }]
+assets = [
+    { name = "markdown-it-py", specifier = ">=3,<5" },
+    { name = "pillow", specifier = ">=11,<13" },
+]
 calibration = [{ name = "zimtohrli", specifier = ">=0.2.1,<0.3" }]
 dev = [
     { name = "black", specifier = "==26.5.1" },
     { name = "isort", specifier = "==8.0.1" },
+    { name = "markdown-it-py", specifier = ">=3,<5" },
     { name = "mypy", specifier = "==2.1.0" },
     { name = "pillow", specifier = ">=11,<13" },
     { name = "pre-commit", specifier = "==4.6.0" },

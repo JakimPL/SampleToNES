@@ -9,6 +9,7 @@ SCREENS_DIRECTORY: Final[str] = "tests/screens"
 DISTRIBUTION: Final[str] = "bin"
 BUNDLES: Final[str] = "bundles"
 BUILD_ENVIRONMENT: Final[str] = ".venv-build"
+DOCUMENTATION_SITE: Final[str] = "src/sampletones_assets/documentation"
 RELEASE_HOOK: Final[str] = "scripts/runtime_hooks/release_environment.py"
 GPU_HOOK: Final[str] = "scripts/runtime_hooks/cuda_bundle.py"
 PYINSTALLER_HOOKS: Final[str] = "scripts/pyinstaller_hooks"
@@ -17,7 +18,15 @@ BUILD_TOOLS: Final[Tuple[str, ...]] = ("PIL",)
 CUPY_PACKAGES: Final[Tuple[str, ...]] = ("cupy", "cupy_backends", "cupyx")
 CUDA_PACKAGE: Final[str] = "nvidia"
 GPU_PACKAGES: Final[Tuple[str, ...]] = (*CUPY_PACKAGES, CUDA_PACKAGE)
-CLEAN_ARTIFACTS: Final[Tuple[str, ...]] = (DISTRIBUTION, BUNDLES, "build", "dist", "htmlcov", ".coverage")
+CLEAN_ARTIFACTS: Final[Tuple[str, ...]] = (
+    DISTRIBUTION,
+    BUNDLES,
+    DOCUMENTATION_SITE,
+    "build",
+    "dist",
+    "htmlcov",
+    ".coverage",
+)
 CLEAN_PATTERNS: Final[Tuple[str, ...]] = ("*.spec",)
 CACHE_DIRECTORIES: Final[Tuple[str, ...]] = ("__pycache__",)
 CACHE_DIRECTORY_SUFFIXES: Final[Tuple[str, ...]] = (".egg-info",)
