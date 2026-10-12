@@ -5,6 +5,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from sampletones_application.categories.conversion import SkippedRecordingMessages
+from sampletones_application.categories.skipped import ROW_BULLET
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.coordinators.tabs.hooks import MainTabHooks
@@ -41,6 +43,10 @@ LOAD_FILE_MESSAGE_KEY: Final[str] = "main.converter.message.load_file_prompt"
 LOAD_BUTTON_KEY: Final[str] = "main.converter.label.load_button"
 OPEN_BUTTON_KEY: Final[str] = "main.converter.label.open_button"
 CLOSE_BUTTON_KEY: Final[str] = "main.converter.label.close_button"
+SKIPPED_HEADING_KEY: Final[str] = "main.converter.message.skipped_recording_heading"
+NOTHING_WRITTEN_KEY: Final[str] = "main.converter.message.nothing_written"
+NOTHING_WRITTEN_TITLE_KEY: Final[str] = "main.converter.title.nothing_written_dialog"
+SKIPPED_RECORDING: Final[Path] = Path("/samples/broken.wav")
 STOP_BUTTON_KEY: Final[str] = "main.converter.label.stop_button"
 CONTINUE_BUTTON_KEY: Final[str] = "main.converter.label.continue_button"
 NOTHING_BELOW_KEY: Final[str] = "main.converter.message.scan_nothing_below"
@@ -243,7 +249,9 @@ def _success_coordinator() -> MainTabCoordinator:
     coordinator._dialogs = dialogs_on_the_line()
     coordinator._hooks = _hooks(operation_active=False)
     coordinator._converter_logic = MagicMock()
+    coordinator._converter_panel = MagicMock()
     coordinator._language_manager = FakeLanguageManager()
+    coordinator._skipped_recording_messages = SkippedRecordingMessages.build(FakeLanguageManager())
     return coordinator
 
 
@@ -277,6 +285,36 @@ class TestConversionSuccessDialog:
         _, kwargs = coordinator._dialogs.show_confirmation.call_args
         assert kwargs["ok_label"] == OPEN_BUTTON_KEY
         assert kwargs["path"] is None
+
+    def test_the_offer_names_the_recordings_the_run_skipped_beneath_it(self) -> None:
+        coordinator = _success_coordinator()
+        written = (Path("/reconstructions/kick.rcn"),)
+
+        coordinator._on_conversion_success(ConversionSuccess(written=written, skipped=(SKIPPED_RECORDING,)))
+
+        args, _ = coordinator._dialogs.show_confirmation.call_args
+        assert args[1] == f"{LOAD_FILE_MESSAGE_KEY}\n\n{SKIPPED_HEADING_KEY}\n{ROW_BULLET}{SKIPPED_RECORDING.name}"
+
+    def test_a_run_that_wrote_nothing_reports_what_it_skipped_and_offers_nothing(self) -> None:
+        coordinator = _success_coordinator()
+
+        coordinator._on_conversion_success(ConversionSuccess(written=(), skipped=(SKIPPED_RECORDING,)))
+
+        coordinator._dialogs.show_confirmation.assert_not_called()
+        coordinator._converter_logic.close.assert_called_once_with()
+        args, kwargs = coordinator._dialogs.show_info.call_args
+        assert args[1] == f"{NOTHING_WRITTEN_KEY}\n\n{SKIPPED_HEADING_KEY}\n{ROW_BULLET}{SKIPPED_RECORDING.name}"
+        assert args[2] == NOTHING_WRITTEN_TITLE_KEY
+        assert kwargs["modal"] is True
+
+    def test_a_run_that_wrote_nothing_and_skipped_nothing_still_offers_the_folder(self) -> None:
+        coordinator = _success_coordinator()
+
+        coordinator._on_conversion_success(ConversionSuccess(written=(), skipped=()))
+
+        coordinator._dialogs.show_info.assert_not_called()
+        _, kwargs = coordinator._dialogs.show_confirmation.call_args
+        assert kwargs["ok_label"] == OPEN_BUTTON_KEY
 
 
 class TestCancelConfirmation:
