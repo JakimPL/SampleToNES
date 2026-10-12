@@ -1,11 +1,12 @@
 from functools import partial
-from typing import Dict, List, Mapping, Optional, cast
+from typing import Dict, List, Mapping, Optional, Tuple, cast
 
 import numpy as np
 
 from sampletones_application.services.base import ServiceBase
 from sampletones_application.services.regeneration.jobs import ListeningJob, RebuildJob, RenderJob
 from sampletones_application.services.regeneration.result import (
+    OriginalMix,
     RegenerationResult,
     RenderedDocument,
 )
@@ -23,6 +24,7 @@ from sampletones_core.reconstructions.reconstruction.stems.hearing import (
     heard_renders,
     hearing_carried_onto,
 )
+from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 
 
 class RegenerationService(ServiceBase[RegenerationResult]):
@@ -37,8 +39,9 @@ class RegenerationService(ServiceBase[RegenerationResult]):
     the landing installs sound and envelopes for the choice the listening then makes.
 
     A rebuild's result is a fresh reconstruction carrying the updated generator data, with the
-    audio of every sounding channel, their mix, what the hearing sounds of it, and the envelopes
-    each channel exports for the recordings heard; the source reconstruction is left intact.
+    audio of every sounding channel, their mix, what the hearing sounds of it, the envelopes
+    each channel exports for the recordings heard, and the mix of the recordings heard anywhere,
+    which the waveform draws as the original; the source reconstruction is left intact.
     Producing a new object lets callers swap the edited reconstruction in while any history
     snapshot that shares the prior object stays valid. A listening renders the same reading of the
     document as it stands, for a hearing the screen holds no audio for yet. Carrying the audio
@@ -61,6 +64,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         *,
         hearing: Hearing,
         kept: Mapping[ChannelName, np.ndarray],
+        recordings: Mapping[int, np.ndarray],
     ) -> None:
         """Rebuilds ``channel_name`` of ``reconstruction`` from ``features`` on the worker thread.
 
@@ -74,8 +78,10 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                 channel but ``channel_name`` keeps its stream through the rebuild, so a render
                 handed for it carries over into the result, and the worker renders the rest. A
                 render handed for ``channel_name`` is passed over, since the edit rebuilds it.
+            recordings: The recordings loaded for the document, by stem id; the worker mixes the
+                ones the reading hears anywhere.
         """
-        self._execute(RebuildJob(reconstruction, channel_name, features, hearing, kept))
+        self._execute(RebuildJob(reconstruction, channel_name, features, hearing, kept, recordings))
 
     def start_listening(
         self,
@@ -83,6 +89,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         *,
         hearing: Hearing,
         kept: Mapping[ChannelName, np.ndarray],
+        recordings: Mapping[int, np.ndarray],
     ) -> None:
         """Renders what ``hearing`` sounds of ``reconstruction`` as it stands, on the worker thread.
 
@@ -91,8 +98,10 @@ class RegenerationService(ServiceBase[RegenerationResult]):
             hearing: What the reader hears of it.
             kept: The renders the caller holds for ``reconstruction``'s channels, by channel, each of
                 which carries over; the worker renders the rest.
+            recordings: The recordings loaded for the document, by stem id; the worker mixes the
+                ones ``hearing`` hears anywhere.
         """
-        self._execute(ListeningJob(reconstruction, hearing, kept))
+        self._execute(ListeningJob(reconstruction, hearing, kept, recordings))
 
     def _execute(self, job: RenderJob) -> None:
         self._executor.execute(partial(self._run, job), wait=True)
@@ -109,10 +118,10 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                     edited = None
                     hearing = job.hearing
 
-            if SingleThreadExecutor.is_shutting_down():
+            channels = self._rendered(document, edited, job.kept)
+            if channels is None or SingleThreadExecutor.is_shutting_down():
                 return
 
-            channels = self._rendered(document, edited, job.kept)
             mixed = mix(list(channels.values()))
             self._emit(
                 ServiceSuccess(
@@ -123,6 +132,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                         hearing=hearing,
                         heard=heard_renders(document, hearing, channels, mixed),
                         envelopes=document.export_heard(hearing.selection),
+                        original=self._original(document, hearing.selection, job.recordings),
                     )
                 )
             )
@@ -146,16 +156,42 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         )
 
     @staticmethod
+    def _original(
+        document: Reconstruction,
+        selection: StemSelection,
+        recordings: Mapping[int, np.ndarray],
+    ) -> Optional[OriginalMix]:
+        """The recordings ``selection`` hears anywhere mixed into one waveform, in ``document``'s record order, or
+        ``None`` where none is heard or none loaded.
+        """
+        heard = selection.any_channel()
+        mixed_from: Tuple[np.ndarray, ...] = tuple(
+            recordings[entry.id]
+            for entry in document.stems_data.config.entries
+            if entry.id in heard and entry.id in recordings
+        )
+        if not mixed_from:
+            return None
+
+        return OriginalMix(recordings=mixed_from, audio=mix(list(mixed_from)))
+
+    @staticmethod
     def _rendered(
         document: Reconstruction,
         edited: Optional[ChannelName],
         kept: Mapping[ChannelName, np.ndarray],
-    ) -> Dict[ChannelName, np.ndarray]:
+    ) -> Optional[Dict[ChannelName, np.ndarray]]:
         """The audio each sounding channel of ``document`` renders to, a handed render carried over where the
-        job left the channel alone.
+        job left the channel alone, or ``None`` where a shutdown asked for meanwhile ends the job.
+
+        The shutdown is read before each channel, so a worker joined at the teardown gives up at
+        its next step.
         """
         rendered: Dict[ChannelName, np.ndarray] = {}
         for stream in sounding_streams(document):
+            if SingleThreadExecutor.is_shutting_down():
+                return None
+
             handed = kept.get(stream.channel_name)
             if handed is not None and stream.channel_name != edited:
                 rendered[stream.channel_name] = handed

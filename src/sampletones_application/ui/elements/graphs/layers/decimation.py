@@ -51,11 +51,6 @@ class Decimations:
 
         return points
 
-    def peak(self, audio: np.ndarray) -> float:
-        """The farthest ``audio`` reaches from silence, read from the points it draws as."""
-        _, values = self.points(audio)
-        return float(np.max(np.abs(values))) if values.size else 0.0
-
     def _reduced(self, audio: np.ndarray) -> Points:
         values = audio.astype(np.float32, copy=False)
         if values.ndim != 1:

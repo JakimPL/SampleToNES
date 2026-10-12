@@ -3,7 +3,6 @@ from typing import (
     Callable,
     Dict,
     Final,
-    Generic,
     Iterable,
     List,
     Optional,
@@ -57,7 +56,10 @@ def _canonical(
     *,
     fields: Optional[Set[str]] = None,
 ) -> str:
-    """The model, or the fields of it named, spelled as JSON with its keys sorted, one spelling for one state."""
+    """The model, or the fields of it named, spelled as JSON with its keys sorted, one spelling for one state.
+
+    ``fields`` is the set pydantic's ``include`` takes.
+    """
     return dump(model.model_dump(mode="json", include=fields))
 
 
@@ -191,17 +193,21 @@ class FreshHashes:
         return hash_song(song)
 
 
-class _Memo(Generic[Value]):
+class _Memo:
     """Digests by object identity, each entry holding its object so its ``id()`` stays bound to it."""
 
-    def __init__(self, compute: Callable[[Value], str]) -> None:
-        self._compute = compute
-        self._entries: Dict[int, Tuple[Value, str]] = {}
+    def __init__(self) -> None:
+        self._entries: Dict[int, Tuple[object, str]] = {}
 
-    def digest(self, value: Value) -> str:
+    def digest(
+        self,
+        value: Value,
+        compute: Callable[[Value], str],
+    ) -> str:
+        """The digest kept for ``value``, computed by ``compute`` the first time the object is met."""
         cached = self._entries.get(id(value))
         if cached is None:
-            cached = (value, self._compute(value))
+            cached = (value, compute(value))
             self._entries[id(value)] = cached
 
         return cached[1]
@@ -209,9 +215,6 @@ class _Memo(Generic[Value]):
     def keep(self, live: AbstractSet[int]) -> None:
         """Releases every entry whose object's identity is outside ``live``."""
         self._entries = {key: value for key, value in self._entries.items() if key in live}
-
-    def __len__(self) -> int:
-        return len(self._entries)
 
 
 class HashCache:
@@ -233,47 +236,50 @@ class HashCache:
     def __init__(
         self,
         *,
-        stream_hash: StreamHash = hash_model,
-        assignment_hash: AssignmentHash = hash_model,
-        pattern_hash: PatternHash = hash_model,
+        stream_hash: StreamHash,
+        assignment_hash: AssignmentHash,
+        pattern_hash: PatternHash,
     ) -> None:
-        self._streams: _Memo[InstructionsItem] = _Memo(stream_hash)
-        self._assignments: _Memo[ChannelAssignment] = _Memo(assignment_hash)
-        self._patterns: _Memo[Pattern] = _Memo(pattern_hash)
-        self._reconstructions: _Memo[Reconstruction] = _Memo(self._compose_reconstruction)
+        self._stream_hash = stream_hash
+        self._assignment_hash = assignment_hash
+        self._pattern_hash = pattern_hash
+        self._memo = _Memo()
 
     def reconstruction(self, reconstruction: Reconstruction) -> str:
-        return self._reconstructions.digest(reconstruction)
+        return self._memo.digest(reconstruction, self._compose_reconstruction)
 
     def song(self, song: Song) -> str:
-        return song_digest(song, pattern_hash=self._patterns.digest)
+        return song_digest(song, pattern_hash=self._pattern)
 
     def _compose_reconstruction(self, reconstruction: Reconstruction) -> str:
         return reconstruction_digest(
             reconstruction,
-            stream_hash=self._streams.digest,
-            assignment_hash=self._assignments.digest,
+            stream_hash=self._stream,
+            assignment_hash=self._assignment,
         )
 
+    def _stream(self, stream: InstructionsItem) -> str:
+        return self._memo.digest(stream, self._stream_hash)
+
+    def _assignment(self, assignment: ChannelAssignment) -> str:
+        return self._memo.digest(assignment, self._assignment_hash)
+
+    def _pattern(self, pattern: Pattern) -> str:
+        return self._memo.digest(pattern, self._pattern_hash)
+
     def prune(self, projects: Iterable[Project]) -> None:
+        """Keeps the entries of the objects ``projects`` still hold, one live set over every kind of part."""
         retained = list(projects)
         reconstructions = [sample.reconstruction for project in retained for sample in samples(project.voices)]
-        self._reconstructions.keep({id(reconstruction) for reconstruction in reconstructions})
-        self._streams.keep(
-            {id(stream) for reconstruction in reconstructions for stream in reconstruction.instructions_data}
+        live: Set[int] = {id(reconstruction) for reconstruction in reconstructions}
+        live.update(id(stream) for reconstruction in reconstructions for stream in reconstruction.instructions_data)
+        live.update(
+            id(assignment) for reconstruction in reconstructions for assignment in reconstruction.stems_data.assignments
         )
-        self._assignments.keep(
-            {
-                id(assignment)
-                for reconstruction in reconstructions
-                for assignment in reconstruction.stems_data.assignments
-            }
+        live.update(
+            id(pattern)
+            for project in retained
+            for channel in project.song.channels.values()
+            for pattern in channel.patterns.values()
         )
-        self._patterns.keep(
-            {
-                id(pattern)
-                for project in retained
-                for channel in project.song.channels.values()
-                for pattern in channel.patterns.values()
-            }
-        )
+        self._memo.keep(live)

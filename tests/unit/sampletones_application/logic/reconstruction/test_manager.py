@@ -5,8 +5,6 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from sampletones_application.logic.reconstruction import manager as manager_module
-from sampletones_application.logic.reconstruction.envelopes import HeardEnvelopes
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_core.audio import write_wave
@@ -24,6 +22,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy impo
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.exceptions import LoadReconstructionError
 from tests.conftest import RENDER_BUDGET
+from tests.suite.envelopes import exported, land_envelopes
 from tests.suite.errors import DIRECTORY_READ_ERRORS
 from tests.suite.stems import RECORDED_SCALE, single_entry_stems_data
 
@@ -494,7 +493,7 @@ class TestReconstructionManagerProperties:
         reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
         assert reconstruction_manager.source_paths == reconstruction.audio_filepath
 
-    def test_current_features_is_populated_after_load(
+    def test_an_opening_leaves_the_envelopes_owed_to_the_worker(
         self,
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
@@ -504,10 +503,10 @@ class TestReconstructionManagerProperties:
             name="Sample",
             voice_id=SAMPLE_VOICE_ID,
         )
-        assert reconstruction_manager.current_features is not None
 
+        assert reconstruction_manager.current_features is None
+        assert not reconstruction_manager.has_envelopes_for(reconstruction_manager.listening.selection)
 
-class TestReconstructionManagerPropertiesWhenEmpty:
     def test_reconstruction_is_none_when_nothing_loaded(
         self,
         reconstruction_manager: ReconstructionManager,
@@ -551,7 +550,8 @@ class TestAnEditLettingARecordingGo:
     ) -> None:
         reconstruction_manager.load_reconstruction_object(two_recordings, name="Sample", voice_id=SAMPLE_VOICE_ID)
 
-        reconstruction_manager.apply_edited(self._edited(two_recordings))
+        reconstruction_manager.apply_edited(self._edited(two_recordings), None)
+        land_envelopes(reconstruction_manager)
 
         assert reconstruction_manager.listening.offered == {0: frozenset({ChannelName.PULSE1})}
         assert reconstruction_manager.source_paths == (tmp_path / "kick.wav",)
@@ -616,7 +616,7 @@ class TestAnOpenedDocumentIsHeardWhole:
         muted: ReconstructionManager,
         two_recordings: Reconstruction,
     ) -> None:
-        muted.apply_edited(two_recordings.model_copy(deep=True))
+        muted.apply_edited(two_recordings.model_copy(deep=True), None)
 
         assert muted.listening.heard[self.MUTED_STEM_ID] == frozenset()
 
@@ -677,7 +677,7 @@ class TestTheVoiceTheDocumentIs:
             voice_id=SAMPLE_VOICE_ID,
         )
 
-        reconstruction_manager.apply_edited(reconstruction_factory())
+        reconstruction_manager.apply_edited(reconstruction_factory(), None)
 
         assert reconstruction_manager.voice_id == SAMPLE_VOICE_ID
 
@@ -748,15 +748,6 @@ class TestReconstructionManagerMarkUpdated:
 
 
 class TestReconstructionManagerInternalGuards:
-    def test_load_features_without_reconstruction_raises_runtime_error(
-        self,
-        reconstruction_manager: ReconstructionManager,
-    ) -> None:
-        with pytest.raises(RuntimeError):
-            reconstruction_manager._load_reconstruction_features()
-
-
-class TestReconstructionManagerLocateOriginalAudio:
     def test_locate_audio_raises_file_not_found_when_audio_missing(
         self,
         reconstruction_manager: ReconstructionManager,
@@ -829,22 +820,39 @@ class TestReconstructionManagerLocateOriginalAudio:
         assert raised.value.filename == str(missing)
 
 
-def _exported(
-    reconstruction: Reconstruction,
-    selection: StemSelection,
-    *,
-    muted: bool = False,
-) -> HeardEnvelopes:
-    """What the worker exports for ``reconstruction`` heard as ``selection``, or with every recording left out."""
-    if muted:
-        selection = selection.model_copy(update={"channels": {name: frozenset() for name in selection.channels}})
+def _mute(reconstruction_manager: ReconstructionManager) -> None:
+    """The reader leaving every recording out of what is heard, box by box."""
+    for stem_id in reconstruction_manager.listening.heard:
+        reconstruction_manager.listening.set_channels(stem_id, frozenset())
 
-    return HeardEnvelopes(selection=selection, channels=reconstruction.export_heard(selection))
+
+class TestTheRecordingsTheWorkerMixes:
+    """The manager hands on the open document's recordings by stem id, and none while no document is open."""
+
+    def test_none_while_nothing_is_open(self, reconstruction_manager: ReconstructionManager) -> None:
+        assert reconstruction_manager.recordings == {}
+
+    def test_the_open_documents_recordings_by_stem(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        two_recordings: Reconstruction,
+    ) -> None:
+        for path in two_recordings.audio_filepath:
+            write_wave(path, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        reconstruction_manager.load_reconstruction_object(two_recordings, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        data = reconstruction_manager.current_reconstruction
+        assert data is not None
+
+        recordings = reconstruction_manager.recordings
+
+        assert list(recordings) == [entry.id for entry in two_recordings.stems_data.config.entries]
+        assert all(recordings[stem_id] is data.recordings_by_stem[stem_id] for stem_id in recordings)
 
 
 class TestEnvelopesTheWorkerExported:
     """The envelopes a landing installs are the worker's, read for the recordings heard, and a reading made for
-    another document or for the choice already drawn is passed over.
+    another document or for the choice already drawn is passed over; a document arriving without them leaves
+    them owed to the worker.
     """
 
     def test_a_landing_installs_them_for_the_open_document(
@@ -854,7 +862,8 @@ class TestEnvelopesTheWorkerExported:
     ) -> None:
         reconstruction = reconstruction_factory()
         reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
-        muted = _exported(reconstruction, reconstruction_manager.listening.selection, muted=True)
+        _mute(reconstruction_manager)
+        muted = exported(reconstruction, reconstruction_manager.listening.selection)
 
         changed = reconstruction_manager.adopt_envelopes(reconstruction, muted)
 
@@ -871,12 +880,11 @@ class TestEnvelopesTheWorkerExported:
     ) -> None:
         reconstruction = reconstruction_factory()
         reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        selection = reconstruction_manager.listening.selection
+        reconstruction_manager.adopt_envelopes(reconstruction, exported(reconstruction, selection))
         before = reconstruction_manager.current_features
 
-        changed = reconstruction_manager.adopt_envelopes(
-            reconstruction,
-            _exported(reconstruction, reconstruction_manager.listening.selection),
-        )
+        changed = reconstruction_manager.adopt_envelopes(reconstruction, exported(reconstruction, selection))
 
         assert not changed
         assert reconstruction_manager.current_features is before
@@ -890,34 +898,36 @@ class TestEnvelopesTheWorkerExported:
         reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
         other = reconstruction_factory()
         selection = reconstruction_manager.listening.selection
+        reconstruction_manager.adopt_envelopes(reconstruction, exported(reconstruction, selection))
 
-        changed = reconstruction_manager.adopt_envelopes(other, _exported(other, selection, muted=True))
+        installed = reconstruction_manager.current_features
+
+        changed = reconstruction_manager.adopt_envelopes(other, exported(other, selection))
 
         assert not changed
         assert reconstruction_manager.has_envelopes_for(selection)
+        assert reconstruction_manager.current_features is installed
 
-    def test_an_edit_arriving_with_envelopes_spares_the_reading(
+    def test_an_edit_arriving_with_envelopes_installs_them(
         self,
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         reconstruction = reconstruction_factory()
         reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
         edited = reconstruction_factory()
         selection = reconstruction_manager.listening.selection
-        monkeypatch.setattr(manager_module, "heard_envelopes", MagicMock(side_effect=AssertionError("read here")))
 
-        reconstruction_manager.apply_edited(edited, _exported(edited, selection))
+        reconstruction_manager.apply_edited(edited, exported(edited, selection))
 
         assert reconstruction_manager.reconstruction is edited
         assert reconstruction_manager.has_envelopes_for(selection)
+        assert reconstruction_manager.current_features is not None
 
     def test_an_edit_whose_new_frames_moved_the_choice_is_installed_as_the_worker_carried_it(
         self,
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """An edit writing frames of the reader's own offers a new row; the worker carried the choice onto it."""
         reconstruction = reconstruction_factory()
@@ -931,16 +941,15 @@ class TestEnvelopesTheWorkerExported:
             heard=reconstruction.recorded_stem_ids,
         )
         carried = hearing_carried_onto(before, reconstruction, edited).selection
-        monkeypatch.setattr(manager_module, "heard_envelopes", MagicMock(side_effect=AssertionError("read here")))
 
-        reconstruction_manager.apply_edited(edited, _exported(edited, carried))
+        reconstruction_manager.apply_edited(edited, exported(edited, carried))
 
         after = reconstruction_manager.listening.selection
         assert after != before.selection
         assert after == carried
         assert reconstruction_manager.has_envelopes_for(after)
 
-    def test_envelopes_exported_for_another_choice_are_read_on_the_spot(
+    def test_envelopes_exported_for_another_choice_are_left_owed(
         self,
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
@@ -956,21 +965,76 @@ class TestEnvelopesTheWorkerExported:
             heard=reconstruction.recorded_stem_ids,
         )
 
-        reconstruction_manager.apply_edited(edited, _exported(edited, before))
+        reconstruction_manager.apply_edited(edited, exported(edited, before))
 
         after = reconstruction_manager.listening.selection
         assert after != before
-        assert reconstruction_manager.has_envelopes_for(after)
+        assert not reconstruction_manager.has_envelopes_for(after)
+        assert reconstruction_manager.current_features is None
 
-    def test_an_edit_arriving_bare_is_read_on_the_spot(
+    def test_an_edit_arriving_bare_leaves_the_envelopes_owed(
         self,
         reconstruction_manager: ReconstructionManager,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
         reconstruction = reconstruction_factory()
         reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        reconstruction_manager.adopt_envelopes(
+            reconstruction, exported(reconstruction, reconstruction_manager.listening.selection)
+        )
         edited = reconstruction_factory()
 
-        reconstruction_manager.apply_edited(edited)
+        reconstruction_manager.apply_edited(edited, None)
 
-        assert reconstruction_manager.has_envelopes_for(reconstruction_manager.listening.selection)
+        assert not reconstruction_manager.has_envelopes_for(reconstruction_manager.listening.selection)
+        assert reconstruction_manager.current_features is None
+
+    def test_the_envelopes_of_a_document_put_back_answer_again(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        """An undo puts the document the envelopes were exported for back, so they answer for it as they did."""
+        reconstruction = reconstruction_factory()
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        selection = reconstruction_manager.listening.selection
+        reconstruction_manager.adopt_envelopes(reconstruction, exported(reconstruction, selection))
+        installed = reconstruction_manager.current_features
+        reconstruction_manager.apply_edited(reconstruction_factory(), None)
+
+        reconstruction_manager.apply_edited(reconstruction, None)
+
+        assert reconstruction_manager.current_features is installed
+
+    def test_a_save_as_leaves_the_envelopes_owed(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        """The saved copy is a document of its own, whose envelopes a listening lands like its sound."""
+        reconstruction = reconstruction_factory()
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        reconstruction_manager.adopt_envelopes(
+            reconstruction, exported(reconstruction, reconstruction_manager.listening.selection)
+        )
+
+        reconstruction_manager.save_reconstruction_as(tmp_path / "saved.stn")
+
+        assert reconstruction_manager.current_features is None
+
+    def test_a_close_forgets_the_envelopes(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        reconstruction_manager.adopt_envelopes(
+            reconstruction, exported(reconstruction, reconstruction_manager.listening.selection)
+        )
+
+        reconstruction_manager.close_reconstruction()
+
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        assert reconstruction_manager.current_features is None

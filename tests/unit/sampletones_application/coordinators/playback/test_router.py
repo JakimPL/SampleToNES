@@ -1,9 +1,11 @@
 from dataclasses import dataclass, field
 from typing import Final, List, Optional, Sequence
+from unittest.mock import MagicMock
 
 import pytest
 
 from sampletones_application.coordinators.playback.router import PlaybackRouter
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.language import FakeLanguageManager
@@ -77,12 +79,14 @@ def _router(
     active: Optional[FakeSource],
     sources: Sequence[FakeSource],
     device: FakeDevice,
+    previews: Optional[MagicMock] = None,
 ) -> PlaybackRouter:
     return PlaybackRouter(
         sources=sources,
         active_source_resolver=lambda: active,
         audio_device_manager=device,  # type: ignore[arg-type]
         language_manager=FakeLanguageManager(),  # type: ignore[arg-type]
+        previews=previews if previews is not None else MagicMock(spec=DocumentPreviews),
     )
 
 
@@ -159,6 +163,16 @@ class TestTransportCommands:
 
         assert idle.calls == []
         assert device.stop_calls == 1
+
+    def test_stop_forgets_a_preview_still_on_its_way(self) -> None:
+        previews = MagicMock(spec=DocumentPreviews)
+        router = _router(
+            active=None, sources=[FakeSource(loaded=True, state=IDLE)], device=FakeDevice(), previews=previews
+        )
+
+        router.stop()
+
+        previews.cancel.assert_called_once_with()
 
 
 class TestTransportShutdown:

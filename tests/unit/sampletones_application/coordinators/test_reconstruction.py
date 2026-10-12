@@ -24,6 +24,7 @@ from sampletones_application.logic.reconstruction.manager import ReconstructionM
 from sampletones_application.logic.reconstruction.rewrites.queue import ReconstructionRewrites
 from sampletones_application.logic.reconstruction.rewrites.steps import (
     ChannelChange,
+    ListeningChange,
     RateChange,
     StemRemovalRequest,
 )
@@ -52,6 +53,7 @@ from tests.conftest import RENDER_BUDGET, ReconstructionFactory
 from tests.suite.application import HeldQueue, held_queue, scheduling, synchronous_executor
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.envelopes import land_envelopes
 from tests.suite.frames import held_frames
 from tests.suite.history.wiring import wired_history
 from tests.suite.language import FakeLanguageManager
@@ -313,6 +315,7 @@ class TestAnEditIsRecordedBeforeItIsShown:
         taking_turns: Reconstruction,
     ) -> ReconstructionCoordinator:
         reconstruction_manager.load_reconstruction_object(taking_turns, name="lead", voice_id=OPEN_VOICE_ID)
+        land_envelopes(reconstruction_manager)
         coordinator = ReconstructionCoordinator(
             reconstruction_manager,
             MagicMock(),
@@ -719,6 +722,7 @@ def following_coordinator(
 @pytest.fixture
 def open_sample(
     following_coordinator: ReconstructionCoordinator,
+    reconstruction_manager: ReconstructionManager,
     project_controller: ProjectController,
     history: HistoryManager,
     tab: MagicMock,
@@ -726,11 +730,12 @@ def open_sample(
     reconstruction_factory: ReconstructionFactory,
     decline: MagicMock,
 ) -> Sample:
-    """A sample added to the project and opened on the tab, with the calls opening it cleared."""
+    """A sample added to the project and opened on the tab, its envelopes landed, with the calls opening it cleared."""
     with history.transaction(HistoryAction.ADD_SAMPLE):
         sample = project_controller.add_sample(reconstruction_factory(), "lead")
     _edit_voice(following_coordinator, sample.id, decline)
     held_queue.drain()
+    land_envelopes(reconstruction_manager)
     tab.reset_mock()
     return sample
 
@@ -745,6 +750,7 @@ def standalone_path(
     path = tmp_path / "lead.stn"
     reconstruction_factory().save(path)
     reconstruction_manager.load_reconstruction(path)
+    land_envelopes(reconstruction_manager)
     return path
 
 
@@ -1568,6 +1574,7 @@ class TestTheExitAsksAboutTheReconstruction(BaseTestSuite):
 @pytest.fixture
 def turns_sample(
     following_coordinator: ReconstructionCoordinator,
+    reconstruction_manager: ReconstructionManager,
     project_controller: ProjectController,
     history: HistoryManager,
     tab: MagicMock,
@@ -1580,6 +1587,7 @@ def turns_sample(
         sample = project_controller.add_sample(taking_turns, "turns")
     _edit_voice(following_coordinator, sample.id, decline)
     held_queue.drain()
+    land_envelopes(reconstruction_manager)
     tab.reset_mock()
     return sample
 
@@ -1595,6 +1603,7 @@ def turns_path(
     """The two-recording document opened from its file, with both recordings loaded beside it."""
     reconstruction_manager.load_reconstruction(taking_turns_file)
     held_queue.drain()
+    land_envelopes(reconstruction_manager)
     tab.reset_mock()
     return taking_turns_file
 
@@ -1886,6 +1895,7 @@ class TestTheDocumentChangesOneStepAtATime:
         following_coordinator: ReconstructionCoordinator,
         reconstruction_manager: ReconstructionManager,
         held_queue: HeldQueue,
+        tab: MagicMock,
         turns_sample: Sample,
     ) -> None:
         failure = RuntimeError("synthesis failed")
@@ -1902,6 +1912,42 @@ class TestTheDocumentChangesOneStepAtATime:
         assert following_coordinator._dialogs.show_error.call_args.args[0] is failure
         assert _sounding_volumes(reconstruction, SHARED_CHANNEL) == [TAKING_TURNS_VOLUME] * len(SHARED_OWNERS)
         assert _sounding_volumes(reconstruction, SOLE_CHANNEL) == list(SOLE_VOLUME)
+        tab.abandon_showing.assert_not_called()
+
+    def test_a_failed_listening_is_shown_and_the_tab_lets_its_debts_go(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        held_queue: HeldQueue,
+        tab: MagicMock,
+        turns_sample: Sample,
+    ) -> None:
+        failure = RuntimeError("rendering failed")
+        with patch("sampletones_application.services.regeneration.service.heard_renders", side_effect=failure):
+            following_coordinator.request_rewrite(ListeningChange())
+            held_queue.drain()
+
+        assert following_coordinator._dialogs.show_error.call_args.args[0] is failure
+        tab.abandon_showing.assert_called_once_with()
+        tab.redraw_listening.assert_not_called()
+
+    def test_a_removal_leaves_the_envelopes_owed_until_its_listening_lands(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        held_queue: HeldQueue,
+        tab: MagicMock,
+        turns_sample: Sample,
+    ) -> None:
+        _remove(following_coordinator, STEM_B_ID)
+        held_queue.drain()
+        assert reconstruction_manager.current_features is None
+        tab.redraw_reconstruction.assert_called_once_with(refit_waveform=False)
+
+        following_coordinator.request_rewrite(ListeningChange())
+        held_queue.drain()
+
+        assert reconstruction_manager.current_features is not None
+        tab.redraw_listening.assert_called_once_with(envelopes_changed=True)
 
     def test_the_waveform_stays_faded_until_every_step_has_landed(
         self,

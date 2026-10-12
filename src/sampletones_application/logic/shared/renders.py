@@ -1,39 +1,42 @@
 import threading
 import weakref
 from collections import OrderedDict
+from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Dict, FrozenSet, List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, FrozenSet, Iterator, List, Mapping, Optional, Sequence, Set, Tuple, Union
 
 import numpy as np
 
-from sampletones_core.audio.mixing import mix
+from sampletones_application.services.regeneration.result import RenderedDocument
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.generators.render import render_instructions
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.instructions import InstructionsItem
 from sampletones_core.reconstructions.reconstruction.renders import sounding_streams
+from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.hearing import HeardRenders, Hearing
 
 
 class RenderKind(StrEnum):
     CHANNEL = "channel"
     MIX = "mix"
+    ORIGINAL = "original"
 
 
 @dataclass(frozen=True)
 class RenderPart:
-    """One channel as a render sounds it: its stream, and the owners heard where the reader leaves one out.
+    """One part as a render sounds it: a channel's stream and the owners heard where the reader leaves one
+    out, or a recording.
 
     Attributes:
-        stream: The identity of the stream the channel plays.
+        source: The identity of the object the part sounds: a channel's stream, or a recording.
         assignment: The identity of the record naming the owner of each frame, where an owner is
             left out.
-        heard: The owners heard, where an owner is left out; ``None`` where the channel is heard whole.
+        heard: The owners heard, where an owner is left out; ``None`` where the part is heard whole.
     """
 
-    stream: int
+    source: int
     assignment: Optional[int]
     heard: Optional[FrozenSet[int]]
 
@@ -49,9 +52,12 @@ class RenderKey:
     @property
     def identities(self) -> FrozenSet[int]:
         """The identities of every object the render was made from."""
-        named = {part.stream for part in self.parts}
+        named = {part.source for part in self.parts}
         named.update(part.assignment for part in self.parts if part.assignment is not None)
         return frozenset(named)
+
+
+Watched = Union[InstructionsItem, ChannelAssignment, np.ndarray]
 
 
 @dataclass(frozen=True)
@@ -59,7 +65,7 @@ class _Part:
     """A part beside the objects it names, which the cache watches."""
 
     part: RenderPart
-    watched: Tuple[object, ...]
+    watched: Tuple[Watched, ...]
 
 
 class RenderCache:
@@ -75,46 +81,36 @@ class RenderCache:
     A render is keyed by the identity of the parts it sounds, which a lookup reads at once, where
     a stream's value would take every instruction it carries to hash. A mix as a reader hears it
     names, for each channel the reader leaves an owner out on, the record and the owners heard, so
-    two hearings leaving nothing out read one mix. A render goes with the objects it was made
+    two hearings leaving nothing out read one mix. The mix of the recordings heard, which the
+    waveform draws as the original, is kept under the recordings it was mixed from, so every
+    document holding those recordings reads one mix. A render goes with the objects it was made
     from, and beyond ``budget_bytes`` the renders read longest ago go first, so the cache keeps
-    audio alone. The render thread reads the cache and keeps what it renders or adopts, and an
-    object's collection may drop its renders from any thread, so every change to the cache is
-    made under one lock. The lock lets its holder in again, since a stream let go of while a keep
-    runs on the same thread is forgotten from inside that keep. A kept render is read-only, so the
-    readers it is shared with copy what they change.
+    audio alone. A landing is kept whole: the renders one landing keeps are spared by its own
+    eviction, so a document larger than the budget stands until the next landing, and a reading
+    taken right after a landing answers. A hearing with no channel on plays silence as long as
+    the document's mix, answered at the read and kept nowhere, since it names no part. Every
+    render the cache keeps is a worker's result, adopted at its landing on the render thread, and
+    a reading the cache leaves unanswered is what a worker is asked for, so the render thread
+    computes no sample. The render thread reads the cache and keeps what it adopts,
+    and an object's collection may drop its renders from any thread, so every change to the cache
+    is made under one lock. The lock lets its holder in again, since a stream let go of while a
+    keep runs on the same thread is forgotten from inside that keep. A kept render is read-only,
+    so the readers it is shared with copy what they change.
     """
 
     def __init__(self, *, budget_bytes: int) -> None:
         self._budget_bytes = budget_bytes
         self._renders: OrderedDict[RenderKey, np.ndarray] = OrderedDict()
-        self._watched: set[int] = set()
+        self._watched: Set[int] = set()
         self._held_bytes = 0
         self._lock = threading.RLock()
+        self._landing_depth = 0
+        self._landed: Set[RenderKey] = set()
 
     @property
     def held_bytes(self) -> int:
         """How many bytes the renders the cache keeps take."""
         return self._held_bytes
-
-    def channels(self, reconstruction: Reconstruction) -> Dict[ChannelName, np.ndarray]:
-        """The audio each channel in play renders from the stream it carries."""
-        return {
-            stream.channel_name: self._channel(stream, reconstruction.config)
-            for stream in sounding_streams(reconstruction)
-        }
-
-    def mix(self, reconstruction: Reconstruction) -> np.ndarray:
-        """The whole reconstruction, summed from the channels that play."""
-        streams = sounding_streams(reconstruction)
-        parts = [self._plain_part(stream) for stream in streams]
-        key = self._mix_key(parts, reconstruction.config)
-        cached = self._read(key)
-        if cached is not None:
-            return cached
-
-        mixed = mix([self._channel(stream, reconstruction.config) for stream in streams])
-        self._keep(key, mixed, [stream for part in parts for stream in part.watched])
-        return mixed
 
     def held(self, reconstruction: Reconstruction) -> Dict[ChannelName, np.ndarray]:
         """The renders the cache holds for the channels in play, by channel, which a lookup answers at once.
@@ -143,11 +139,58 @@ class RenderCache:
         """
         parts = self._heard_parts(reconstruction, hearing)
         mixed = self._read(self._mix_key(list(parts.values()), reconstruction.config))
-        playing = self._read(self._mix_key(self._playing_parts(parts, hearing), reconstruction.config))
-        if mixed is None or playing is None:
+        if mixed is None:
+            return None
+
+        playing_parts = self._playing_parts(parts, hearing)
+        if not playing_parts:
+            return HeardRenders(mix=mixed, playing=np.zeros_like(mixed))
+
+        playing = self._read(self._mix_key(playing_parts, reconstruction.config))
+        if playing is None:
             return None
 
         return HeardRenders(mix=mixed, playing=playing)
+
+    def original(
+        self,
+        recordings: Sequence[np.ndarray],
+        config: Config,
+    ) -> Optional[np.ndarray]:
+        """The mix of ``recordings``, heard in record order, which a lookup answers at once.
+
+        Returns:
+            Optional[np.ndarray]: The mix, or ``None`` where the cache keeps none, which is what a
+            worker is then asked for.
+        """
+        return self._read(self._original_key(recordings, config))
+
+    def adopt_original(
+        self,
+        recordings: Sequence[np.ndarray],
+        config: Config,
+        mixed: np.ndarray,
+    ) -> None:
+        """Keeps the mix of ``recordings`` made elsewhere, under the recordings it was mixed from.
+
+        A recording is shared by every document holding it, so its mix serves each of them, and
+        the mix goes with the recordings once the last document lets them go.
+        """
+        with self._landing():
+            self._keep(self._original_key(recordings, config), mixed, list(recordings))
+
+    def adopt_rendered(self, outcome: RenderedDocument) -> None:
+        """Keeps everything a job rendered as one landing: the channels, the mix, the hearing's reading, and the
+        original of the recordings heard.
+
+        Args:
+            outcome: What the worker handed back.
+        """
+        with self._landing():
+            self.adopt(outcome.reconstruction, outcome.channels, outcome.mix)
+            self.adopt_heard(outcome.reconstruction, outcome.hearing, outcome.heard)
+            if outcome.original is not None:
+                self.adopt_original(outcome.original.recordings, outcome.reconstruction.config, outcome.original.audio)
 
     def adopt(
         self,
@@ -166,11 +209,12 @@ class RenderCache:
             mixed: The whole document, summed from ``channels``.
         """
         streams = sounding_streams(reconstruction)
-        for stream in streams:
-            self._keep(self._channel_key(stream, reconstruction.config), channels[stream.channel_name], [stream])
+        with self._landing():
+            for stream in streams:
+                self._keep(self._channel_key(stream, reconstruction.config), channels[stream.channel_name], [stream])
 
-        parts = [self._plain_part(stream) for stream in streams]
-        self._keep(self._mix_key(parts, reconstruction.config), mixed, streams)
+            parts = [self._plain_part(stream) for stream in streams]
+            self._keep(self._mix_key(parts, reconstruction.config), mixed, streams)
 
     def adopt_heard(
         self,
@@ -180,16 +224,40 @@ class RenderCache:
     ) -> None:
         """Keeps what a hearing of the document sounds, rendered elsewhere, under the parts it was heard as.
 
+        What plays with no channel on is silence, answered at every read, so it is kept nowhere.
+
         Args:
             reconstruction: The document the renders sound.
             hearing: What the reader heard of it when the renders were made.
             heard: The heard mix and what plays.
         """
         parts = self._heard_parts(reconstruction, hearing)
-        self._keep_mix(list(parts.values()), reconstruction.config, heard.mix)
-        self._keep_mix(self._playing_parts(parts, hearing), reconstruction.config, heard.playing)
+        with self._landing():
+            self._keep_mix(list(parts.values()), reconstruction.config, heard.mix)
+            playing_parts = self._playing_parts(parts, hearing)
+            if playing_parts:
+                self._keep_mix(playing_parts, reconstruction.config, heard.playing)
 
-    def _keep_mix(self, parts: List[_Part], config: Config, mixed: np.ndarray) -> None:
+    @contextmanager
+    def _landing(self) -> Iterator[None]:
+        """One landing, whose keeps are spared by the eviction it runs; a landing inside another joins it."""
+        with self._lock:
+            self._landing_depth += 1
+
+        try:
+            yield
+        finally:
+            with self._lock:
+                self._landing_depth -= 1
+                if self._landing_depth == 0:
+                    self._landed.clear()
+
+    def _keep_mix(
+        self,
+        parts: List[_Part],
+        config: Config,
+        mixed: np.ndarray,
+    ) -> None:
         self._keep(
             self._mix_key(parts, config),
             mixed,
@@ -198,7 +266,7 @@ class RenderCache:
 
     @staticmethod
     def _plain_part(stream: InstructionsItem) -> _Part:
-        return _Part(part=RenderPart(stream=id(stream), assignment=None, heard=None), watched=(stream,))
+        return _Part(part=RenderPart(source=id(stream), assignment=None, heard=None), watched=(stream,))
 
     @staticmethod
     def _heard_parts(reconstruction: Reconstruction, hearing: Hearing) -> Dict[ChannelName, _Part]:
@@ -213,7 +281,7 @@ class RenderCache:
 
             record = stems_data.assignment_records[stream.channel_name]
             parts[stream.channel_name] = _Part(
-                part=RenderPart(stream=id(stream), assignment=id(record), heard=heard),
+                part=RenderPart(source=id(stream), assignment=id(record), heard=heard),
                 watched=(stream, record),
             )
 
@@ -225,25 +293,19 @@ class RenderCache:
 
     @staticmethod
     def _channel_key(stream: InstructionsItem, config: Config) -> RenderKey:
-        return RenderKey(RenderKind.CHANNEL, (RenderPart(stream=id(stream), assignment=None, heard=None),), config)
+        return RenderKey(RenderKind.CHANNEL, (RenderPart(source=id(stream), assignment=None, heard=None),), config)
+
+    @staticmethod
+    def _original_key(
+        recordings: Sequence[np.ndarray],
+        config: Config,
+    ) -> RenderKey:
+        parts = tuple(RenderPart(source=id(recording), assignment=None, heard=None) for recording in recordings)
+        return RenderKey(RenderKind.ORIGINAL, parts, config)
 
     @staticmethod
     def _mix_key(parts: Sequence[_Part], config: Config) -> RenderKey:
         return RenderKey(RenderKind.MIX, tuple(part.part for part in parts), config)
-
-    def _channel(self, stream: InstructionsItem, config: Config) -> np.ndarray:
-        key = self._channel_key(stream, config)
-        cached = self._read(key)
-        if cached is not None:
-            return cached
-
-        rendered = render_instructions(
-            [data.instruction for data in stream.instructions],
-            stream.channel_name,
-            config,
-        )
-        self._keep(key, rendered, [stream])
-        return rendered
 
     def _read(self, key: RenderKey) -> Optional[np.ndarray]:
         with self._lock:
@@ -257,9 +319,10 @@ class RenderCache:
         self,
         key: RenderKey,
         rendered: np.ndarray,
-        watched: Sequence[object],
+        watched: Sequence[Watched],
     ) -> None:
         with self._lock:
+            self._landed.add(key)
             if key in self._renders:
                 return
 
@@ -271,9 +334,18 @@ class RenderCache:
                     self._watched.add(id(named))
                     weakref.finalize(named, self._forget, id(named))
 
-            while self._held_bytes > self._budget_bytes and len(self._renders) > 1:
-                _, evicted = self._renders.popitem(last=False)
-                self._held_bytes -= evicted.nbytes
+            self._evict_beyond_the_budget()
+
+    def _evict_beyond_the_budget(self) -> None:
+        """Lets the renders read longest ago go, the landing's own spared, until the budget holds the rest."""
+        for key in list(self._renders):
+            if self._held_bytes <= self._budget_bytes:
+                return
+
+            if key in self._landed:
+                continue
+
+            self._held_bytes -= self._renders.pop(key).nbytes
 
     def _forget(self, identity: int) -> None:
         """Drops every render a collected stream or record sounds in, before its identity can name another."""

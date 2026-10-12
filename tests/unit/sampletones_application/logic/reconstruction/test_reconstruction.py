@@ -8,7 +8,6 @@ import pytest
 
 from sampletones_application.exports import ExportBackends
 from sampletones_application.logic.reconstruction.data import ReconstructionData
-from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
 from sampletones_application.logic.reconstruction.listening import Listening
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.reconstruction import (
@@ -55,6 +54,7 @@ from sampletones_shared.paths.extensions import (
 )
 from tests.conftest import RENDER_BUDGET
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.envelopes import heard_envelopes
 from tests.suite.renders import warmed
 from tests.suite.stems import RECORDED_SCALE, everything_heard, recorded_from
 
@@ -143,7 +143,12 @@ def _hear(manager: MagicMock) -> None:
     """Keeps the sound and the envelopes of what the reader hears now, the way a listening's landing does."""
     reconstruction_data = manager.current_reconstruction
     _refresh_features(manager)
-    warmed(manager.renders, reconstruction_data.reconstruction, manager.listening.hearing)
+    warmed(
+        manager.renders,
+        reconstruction_data.reconstruction,
+        manager.listening.hearing,
+        reconstruction_data.recordings_by_stem,
+    )
 
 
 def _refresh_features(manager: MagicMock) -> None:
@@ -337,11 +342,10 @@ class TestReconstructionPanelLogicPathRows:
     @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
     def test_audio_path_state_follows_loaded_content(self, case: AudioPathCase) -> None:
         source_paths = (Path("/songs/source.wav"),) if case.has_filepath else ()
-        original_audio = np.zeros(4, dtype=np.float32) if case.has_content else None
 
         view_model = ReconstructionPanelLogic._build_audio_path_view_model(
             source_paths,
-            original_audio,
+            loaded=case.has_content,
         )
 
         assert view_model.state is case.expected
@@ -351,11 +355,9 @@ class TestReconstructionPanelLogicPathRows:
             Path("/stems/drums/kick.wav"),
             Path("/stems/drums/snare.wav"),
         )
-        original_audio = np.zeros(4, dtype=np.float32)
-
         view_model = ReconstructionPanelLogic._build_audio_path_view_model(
             stem_paths,
-            original_audio,
+            loaded=True,
         )
 
         assert view_model.state is ReconstructionPathState.MULTIPLE
@@ -797,10 +799,11 @@ class TestReconstructionPanelLogicSelectedChannels:
 
 
 class TestOneReadingPerGesture:
-    """A gesture reads the waveform once, and what plays is read from the same reading.
+    """A gesture reads the waveform at most once, and what plays is read from the same reading.
 
     The reading is the costly part of what a gesture does on the render thread, so the waveform
-    the display draws and the audio that plays come from one reading of the document.
+    the display draws and the audio that plays come from one reading of the document, and a
+    gesture whose envelopes are on their way owes its showing before reading anything.
     """
 
     @dataclass(frozen=True)
@@ -834,7 +837,7 @@ class TestOneReadingPerGesture:
         ) as reading:
             gesture.act(panel_logic)
 
-        assert reading.call_count == 1
+        assert reading.call_count <= 1
 
     def test_what_plays_is_the_reading_the_waveform_draws(
         self,
@@ -857,15 +860,28 @@ class TestOneReadingPerGesture:
 class TestAShowingTheScreenHoldsNoSoundFor:
     """A gesture whose sound the cache keeps none of asks the worker for it, draws nothing yet, and shows
     what it owes once the sound lands.
+
+    The document carries two recordings, so leaving one out is a hearing the cache keeps no sound
+    for; every channel off is silence, which the cache answers at once.
     """
+
+    @pytest.fixture(name="recorded_data")
+    def recorded_data_fixture(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> ReconstructionData:
+        """Two recordings taking turns on the first pulse, one frame each."""
+        recorded = recorded_from(reconstruction_factory(), (tmp_path / "a.wav", tmp_path / "b.wav"))
+        return ReconstructionData.from_reconstruction(recorded, name="Sample")
 
     def test_a_gesture_asks_once_and_draws_nothing_yet(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
-        loaded_data: ReconstructionData,
+        recorded_data: ReconstructionData,
     ) -> None:
-        _open(mock_reconstruction_manager, loaded_data)
+        _open(mock_reconstruction_manager, recorded_data)
         asked = MagicMock()
         drawn = MagicMock()
         played = MagicMock()
@@ -873,7 +889,7 @@ class TestAShowingTheScreenHoldsNoSoundFor:
         panel_logic.on_waveform_load_changed = drawn
         panel_logic.on_audio_data_changed = played
 
-        panel_logic.set_selected_channels([])
+        panel_logic.set_stem_channels(1, frozenset())
 
         asked.assert_called_once()
         drawn.assert_not_called()
@@ -883,19 +899,43 @@ class TestAShowingTheScreenHoldsNoSoundFor:
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
-        loaded_data: ReconstructionData,
+        recorded_data: ReconstructionData,
     ) -> None:
-        _open(mock_reconstruction_manager, loaded_data)
+        _open(mock_reconstruction_manager, recorded_data)
         panel_logic.on_renders_wanted = MagicMock()
         drawn: List[WaveformData] = []
         played: List[Optional[AudioData]] = []
         panel_logic.on_waveform_load_changed = drawn.append
         panel_logic.on_audio_data_changed = played.append
-        panel_logic.set_selected_channels([])
+        panel_logic.set_stem_channels(1, frozenset())
         _hear(mock_reconstruction_manager)
 
         panel_logic.redraw_listening()
 
+        assert len(drawn) == 1
+        assert played[0] is not None
+        np.testing.assert_array_equal(
+            drawn[0].playing, _playing(recorded_data, mock_reconstruction_manager.listening.hearing)
+        )
+        np.testing.assert_array_equal(played[0].sample, drawn[0].playing)
+
+    def test_every_channel_off_shows_silence_at_once(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, loaded_data)
+        asked = MagicMock()
+        panel_logic.on_renders_wanted = asked
+        drawn: List[WaveformData] = []
+        played: List[Optional[AudioData]] = []
+        panel_logic.on_waveform_load_changed = drawn.append
+        panel_logic.on_audio_data_changed = played.append
+
+        panel_logic.set_selected_channels([])
+
+        asked.assert_not_called()
         assert len(drawn) == 1
         assert played[0] is not None
         np.testing.assert_array_equal(drawn[0].playing, np.zeros_like(drawn[0].approximation))
@@ -921,13 +961,13 @@ class TestAShowingTheScreenHoldsNoSoundFor:
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         mock_export_service: MagicMock,
-        loaded_data: ReconstructionData,
+        recorded_data: ReconstructionData,
         tmp_path: Path,
     ) -> None:
-        _open(mock_reconstruction_manager, loaded_data)
+        _open(mock_reconstruction_manager, recorded_data)
         asked = MagicMock()
         panel_logic.on_renders_wanted = asked
-        mock_reconstruction_manager.listening.set_channels_on(frozenset())
+        mock_reconstruction_manager.listening.set_channels(1, frozenset())
         panel_logic.handle_export_wav_confirmed(tmp_path / "output.wav")
         asked.assert_called_once()
         mock_export_service.export_wav.assert_not_called()
@@ -936,41 +976,173 @@ class TestAShowingTheScreenHoldsNoSoundFor:
         panel_logic.redraw_listening()
 
         mock_export_service.export_wav.assert_called_once()
-        kept = loaded_data.waveform_data(
+        kept = recorded_data.waveform_data(
             mock_reconstruction_manager.renders, mock_reconstruction_manager.listening.hearing
         )
         assert kept is not None
         assert mock_export_service.export_wav.call_args.args[2] is kept.playing
 
-    def test_a_close_forgets_an_owed_export(
+    def test_a_close_drops_an_owed_export_and_says_so(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
         mock_export_service: MagicMock,
-        loaded_data: ReconstructionData,
+        recorded_data: ReconstructionData,
         tmp_path: Path,
     ) -> None:
-        _open(mock_reconstruction_manager, loaded_data)
+        _open(mock_reconstruction_manager, recorded_data)
         panel_logic.on_renders_wanted = MagicMock()
-        mock_reconstruction_manager.listening.set_channels_on(frozenset())
+        dropped = MagicMock()
+        panel_logic.on_export_dropped = dropped
+        mock_reconstruction_manager.listening.set_channels(1, frozenset())
         panel_logic.handle_export_wav_confirmed(tmp_path / "output.wav")
 
         panel_logic.close_reconstruction()
 
-        _open(mock_reconstruction_manager, loaded_data)
+        dropped.assert_called_once_with(tmp_path / "output.wav")
+        _open(mock_reconstruction_manager, recorded_data)
         panel_logic.redraw_listening()
         mock_export_service.export_wav.assert_not_called()
+
+    def test_another_document_put_in_front_drops_an_owed_export_and_says_so(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        mock_export_service: MagicMock,
+        recorded_data: ReconstructionData,
+        loaded_data: ReconstructionData,
+        tmp_path: Path,
+    ) -> None:
+        _open(mock_reconstruction_manager, recorded_data)
+        panel_logic.on_renders_wanted = MagicMock()
+        dropped = MagicMock()
+        panel_logic.on_export_dropped = dropped
+        mock_reconstruction_manager.listening.set_channels(1, frozenset())
+        panel_logic.handle_export_wav_confirmed(tmp_path / "output.wav")
+
+        _open(mock_reconstruction_manager, loaded_data)
+        panel_logic.display_reconstruction()
+
+        dropped.assert_called_once_with(tmp_path / "output.wav")
+        panel_logic.redraw_listening()
+        mock_export_service.export_wav.assert_not_called()
+
+    def test_a_box_then_a_source_flip_loads_the_new_hearing(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        recorded_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, recorded_data)
+        panel_logic.on_renders_wanted = MagicMock()
+        drawn: List[WaveformData] = []
+        played: List[Optional[AudioData]] = []
+        panel_logic.on_waveform_load_changed = drawn.append
+        panel_logic.on_audio_data_changed = played.append
+        panel_logic.set_stem_channels(1, frozenset())
+        panel_logic.set_audio_source(AudioSourceType.RECONSTRUCTION)
+        _hear(mock_reconstruction_manager)
+
+        panel_logic.redraw_listening()
+
+        assert len(drawn) == 1
+        assert len(played) == 1
+        assert played[0] is not None
+        np.testing.assert_array_equal(
+            drawn[0].playing, _playing(recorded_data, mock_reconstruction_manager.listening.hearing)
+        )
+        np.testing.assert_array_equal(played[0].sample, drawn[0].playing)
+
+    def test_a_retune_then_a_flip_keeps_the_refit(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        recorded_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, recorded_data)
+        panel_logic.on_renders_wanted = MagicMock()
+        updated = MagicMock()
+        loaded = MagicMock()
+        panel_logic.on_waveform_update_changed = updated
+        panel_logic.on_waveform_load_changed = loaded
+        mock_reconstruction_manager.listening.set_channels(1, frozenset())
+        panel_logic.update_reconstruction(refit_waveform=True)
+        panel_logic.set_audio_source(AudioSourceType.RECONSTRUCTION)
+        _hear(mock_reconstruction_manager)
+
+        panel_logic.redraw_listening()
+
+        updated.assert_called_once()
+        assert updated.call_args.kwargs == {"refit": True}
+        loaded.assert_not_called()
+
+    def test_a_failed_listening_forgets_the_debts_and_keeps_the_waveform(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        mock_export_service: MagicMock,
+        recorded_data: ReconstructionData,
+        tmp_path: Path,
+    ) -> None:
+        _open(mock_reconstruction_manager, recorded_data)
+        panel_logic.on_renders_wanted = MagicMock()
+        drawn = MagicMock()
+        cleared = MagicMock()
+        dropped = MagicMock()
+        panel_logic.on_waveform_load_changed = drawn
+        panel_logic.on_waveform_update_changed = drawn
+        panel_logic.on_waveform_cleared = cleared
+        panel_logic.on_export_dropped = dropped
+        panel_logic.set_stem_channels(1, frozenset())
+        panel_logic.handle_export_wav_confirmed(tmp_path / "output.wav")
+
+        panel_logic.abandon_showing()
+
+        dropped.assert_called_once_with(tmp_path / "output.wav")
+        _hear(mock_reconstruction_manager)
+        panel_logic.redraw_listening()
+        drawn.assert_not_called()
+        cleared.assert_not_called()
+        mock_export_service.export_wav.assert_not_called()
+
+    def test_a_landing_pays_a_showing_and_an_export_from_one_reading(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        mock_export_service: MagicMock,
+        recorded_data: ReconstructionData,
+        tmp_path: Path,
+    ) -> None:
+        _open(mock_reconstruction_manager, recorded_data)
+        panel_logic.on_renders_wanted = MagicMock()
+        drawn = MagicMock()
+        panel_logic.on_waveform_load_changed = drawn
+        panel_logic.set_stem_channels(1, frozenset())
+        panel_logic.handle_export_wav_confirmed(tmp_path / "output.wav")
+        _hear(mock_reconstruction_manager)
+
+        with patch.object(
+            ReconstructionData,
+            "waveform_data",
+            autospec=True,
+            side_effect=ReconstructionData.waveform_data,
+        ) as reading:
+            panel_logic.redraw_listening()
+
+        assert reading.call_count == 1
+        drawn.assert_called_once()
+        mock_export_service.export_wav.assert_called_once()
 
     def test_an_edit_owed_a_showing_updates_the_waveform_in_place(
         self,
         panel_logic: ReconstructionPanelLogic,
         mock_reconstruction_manager: MagicMock,
-        loaded_data: ReconstructionData,
+        recorded_data: ReconstructionData,
     ) -> None:
         """What was owed is what is shown: an edit's update keeps the view, a listening change loads afresh."""
-        _open(mock_reconstruction_manager, loaded_data)
+        _open(mock_reconstruction_manager, recorded_data)
         panel_logic.on_renders_wanted = MagicMock()
-        mock_reconstruction_manager.listening.set_channels_on(frozenset())
+        mock_reconstruction_manager.listening.set_channels(1, frozenset())
         updated = MagicMock()
         loaded = MagicMock()
         panel_logic.on_waveform_update_changed = updated
@@ -993,6 +1165,18 @@ class TestReconstructionPanelLogicExportInstrument:
     ) -> None:
         with pytest.raises(AssertionError):
             panel_logic.exportable_instrument(ChannelName.PULSE1)
+
+    def test_envelopes_still_owed_offer_nothing(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        _open(mock_reconstruction_manager, loaded_data)
+        mock_reconstruction_manager.current_features = None
+
+        assert panel_logic.exportable_instrument(ChannelName.PULSE1) is None
+        assert panel_logic.sample_request() is None
 
     def test_a_playing_channel_offers_its_slice(
         self,

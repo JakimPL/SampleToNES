@@ -17,6 +17,7 @@ from sampletones_application.logic.main.converter.run import ConversionSuccess
 from sampletones_application.logic.main.explorer_manager import ExplorerManager
 from sampletones_application.logic.main.sources.scan import FolderScan
 from sampletones_application.logic.shared.file_playback import FilePlayback
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.main import MainTabParameters
 from sampletones_application.services.conversion.service import ConversionService
@@ -105,6 +106,7 @@ class MainTabCoordinator:
         library_manager: InstructionsLibraryManager,
         conversion_service: ConversionService,
         hooks: MainTabHooks,
+        previews: DocumentPreviews,
         *,
         layout: MainTabParameters,
         language_manager: LanguageManager,
@@ -135,6 +137,7 @@ class MainTabCoordinator:
             config_manager,
             session_manager,
             audio_device_manager,
+            previews,
             layout=layout,
             language_manager=language_manager,
             status_bar=status_bar,
@@ -165,6 +168,7 @@ class MainTabCoordinator:
         config_manager: ConfigManager,
         session_manager: SessionManager,
         audio_device_manager: AudioDeviceManager,
+        previews: DocumentPreviews,
         *,
         layout: MainTabParameters,
         language_manager: LanguageManager,
@@ -176,7 +180,7 @@ class MainTabCoordinator:
             language_manager=language_manager,
             open_directories=session_manager.expanded_directories,
         )
-        self._file_playback: FilePlayback = FilePlayback(audio_device_manager)
+        self._file_playback: FilePlayback = FilePlayback(audio_device_manager, previews)
         self._folder_scan: FolderScan = FolderScan(FolderScanService(priority=self._repaint_priority))
         self._explorer_tree_logic: TreeLogic = TreeLogic(
             session_manager,

@@ -1,12 +1,10 @@
 from functools import partial
-from typing import Final
 
 from automation.dearpygui.items.types import Item
 from automation.screen import Screen
+from automation.vocabulary.playback import PLAY_VOICE
 from sampletones_application.categories.hierarchy import Tab
 from tests.suite.screens.worlds.songs import LINE
-
-PLAY_VOICE: Final[str] = "global.context.label.play"
 
 
 def voice_row(screen: Screen, name: str) -> Item:

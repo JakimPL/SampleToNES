@@ -1,5 +1,5 @@
 import os
-from typing import Final
+from typing import Final, List, Tuple
 
 import pytest
 
@@ -7,13 +7,14 @@ from automation.application.startup import Startup
 from automation.environment import repeats
 from automation.holds.regeneration import RegenerationHold
 from automation.screen import Screen
-from automation.steps.reconstructions import expect_open
+from automation.steps.reconstructions import LOUDEST, drag_item_to, expect_open
 from automation.worlds.home import World
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from tests.suite.screens.worlds.recordings import LONG_RECONSTRUCTION, long_document_world
 
 DRAGGED_ITEM: Final[int] = 3
 QUIET: Final[float] = 2.0
+VOLUME_BOUNDS: Final[Tuple[int, int]] = (0, LOUDEST)
 NEAR_THE_START: Final[float] = 0.05
 ZOOM_NOTCHES: Final[int] = 5
 REPEATS: Final[int] = repeats(os.environ)
@@ -24,8 +25,9 @@ class TestClosingWhileALongRebuildRuns:
 
     A volume bar is dragged while the rebuild is held, so the rebuild is released and the close asked
     for in one breath, and the close meets the rebuild on its worker. The application waits for the
-    edit, asks about the unsaved document, and leaves on the answer. The scenario runs as many times
-    as ``SAMPLETONES_SCREENS_REPEATS`` says, which is how a change to the worker's work is held to a
+    edit, asks about the unsaved document once the edit has landed and the bar reads as the drag
+    left it, and leaves on the answer. The scenario runs as many times as
+    ``SAMPLETONES_SCREENS_REPEATS`` says, which is how a change to the worker's work is held to a
     clean exit over and over.
     """
 
@@ -50,6 +52,7 @@ class TestClosingWhileALongRebuildRuns:
         prompt = screen.reconstructions.unsaved_prompt
         instruments = screen.reconstructions.instruments
         graph = instruments.graph(ChannelName.PULSE1, FeatureKey.VOLUME)
+        moved: List[Tuple[int, List[int]]] = []
 
         def drag_while_the_rebuild_is_held(screen: Screen) -> None:
             expect_open(screen, LONG_RECONSTRUCTION)
@@ -58,7 +61,7 @@ class TestClosingWhileALongRebuildRuns:
             graph.zoom_in(NEAR_THE_START, ZOOM_NOTCHES)
             standing = instruments.envelope_items(ChannelName.PULSE1, FeatureKey.VOLUME)
 
-            graph.drag_item(DRAGGED_ITEM, start=standing[DRAGGED_ITEM], end=QUIET)
+            moved.append(drag_item_to(graph, standing, DRAGGED_ITEM, end=QUIET, bounds=VOLUME_BOUNDS))
 
             screen.expect(regeneration_hold.waiting, bool, description="the rebuild held")
 
@@ -66,9 +69,14 @@ class TestClosingWhileALongRebuildRuns:
             regeneration_hold.release()
             screen.close_window()
 
-        def the_question_comes_and_the_application_leaves(screen: Screen) -> None:
+        def the_question_comes_once_the_edit_has_landed(screen: Screen) -> None:
             screen.expect(prompt.is_shown, bool, description="the question about the edited reconstruction")
 
+            assert screen.sound_settled()
+            index, expected = moved[0]
+            assert instruments.envelope_items(ChannelName.PULSE1, FeatureKey.VOLUME)[index] == expected[index]
+
+        def the_application_leaves_on_the_answer(screen: Screen) -> None:
             prompt.confirm()
 
             assert screen.wait_for_exit()
@@ -76,5 +84,6 @@ class TestClosingWhileALongRebuildRuns:
         screen.scenario(
             drag_while_the_rebuild_is_held,
             release_and_close_at_once,
-            the_question_comes_and_the_application_leaves,
+            the_question_comes_once_the_edit_has_landed,
+            the_application_leaves_on_the_answer,
         ).run()

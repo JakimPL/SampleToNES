@@ -19,16 +19,17 @@ budget (`scheduling.queue_budget_seconds`), so a large backlog spreads across fr
 continues. Every background result reaches UI state this way. Applying one to UI state directly from the
 worker thread is forbidden.
 
-A result carries what the landing installs. The regeneration renders the edited channel's audio on its
-worker, the mix of what the reader hears and the envelopes each channel exports for the recordings heard,
-and hands them back inside its result; the landing keeps the audio in the render cache and installs the
-envelopes on the render thread. A reading the cache cannot answer, such as a recording
-left out for the first time or a freshly opened document, is asked of the same worker and lands the same
-way. What a worker produces for the interface therefore reaches what the interface reads through the
-queue alone, and the render thread computes no sample while the worker renders. A document previewed
-elsewhere, such as a voice clicked in the sequencer, reads the same cache and asks a worker of its own
-for what the cache lacks (`DocumentPreviews` in `logic/shared/previews.py`), and sounds at the landing;
-the cache's writers are the landings, every one of them on the render thread.
+A result carries what the landing installs. The regeneration worker renders every sound the
+Reconstructions tab draws or plays: each channel's audio, the mix of what the reader hears, the mix of the
+recordings heard, which the waveform draws as the original, and the envelopes each channel exports for the
+recordings heard. It hands them back inside its result. The landing keeps the audio in the render cache
+and installs the envelopes, on the render thread. A reading the cache leaves unanswered is asked of the
+same worker and lands the same way. What a worker produces for the interface therefore reaches what the
+interface reads through the queue alone, and the render thread computes no sample while the worker
+renders. A document previewed elsewhere reads the same cache and asks a worker of its own for what the
+cache lacks (`DocumentPreviews` in `logic/shared/previews.py`), and sounds at the landing; a
+reconstruction file a browser tree plays is read from disk and previewed the same way. The render cache
+keeps what the landings adopt, so its writers are the landings, every one of them on the render thread.
 
 A logic object hearing a worker's report, such as a library generation or the audio device's position,
 posts its own handler to the queue the same way. The logic layer reaches the queue, and `utils/gui`

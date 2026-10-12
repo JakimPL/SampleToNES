@@ -8,6 +8,7 @@ from automation.holds.regeneration import RegenerationHold
 from automation.screen import Screen
 from automation.steps.reconstructions import (
     expect_open,
+    leave_letting_it_go,
     load_from_the_browser,
     marked,
     raise_the_first_level_while_held,
@@ -15,7 +16,6 @@ from automation.steps.reconstructions import (
     titled,
 )
 from automation.vocabulary.dialogs import CLOSE_TITLE, LOAD_TITLE
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from tests.screens.prompts.modals.constants import SETTLING_FRAMES
 from tests.suite.screens.worlds.recordings import OPEN_RECONSTRUCTION, OTHER_RECONSTRUCTION
@@ -85,14 +85,6 @@ class TestTwoGesturesWaitingOnAHeldRebuild:
             assert screen.shown_windows() == ()
             assert screen.title() == titled(screen, marked(OPEN_RECONSTRUCTION.name, unsaved=True))
             assert reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME) == typed[0]
-
-        def leave_letting_it_go(screen: Screen) -> None:
-            screen.press_shortcut(ShortcutId.EXIT)
-            screen.expect(prompt.is_shown, bool, description="the question about leaving")
-
-            prompt.confirm()
-
-            assert screen.wait_for_exit()
 
         screen.scenario(
             edit_while_the_rebuild_is_held,
@@ -168,14 +160,6 @@ class TestAFailedRebuildBeforeAClose:
             screen.frames(SETTLING_FRAMES)
             assert screen.shown_windows() == ()
             assert reconstructions.instruments.envelope(ChannelName.PULSE1, FeatureKey.VOLUME) == standing[0]
-
-        def leave_letting_it_go(screen: Screen) -> None:
-            screen.press_shortcut(ShortcutId.EXIT)
-            screen.expect(prompt.is_shown, bool, description="the question about leaving")
-
-            prompt.confirm()
-
-            assert screen.wait_for_exit()
 
         screen.scenario(
             edit_a_removed_reconstruction_while_the_rebuild_is_held,

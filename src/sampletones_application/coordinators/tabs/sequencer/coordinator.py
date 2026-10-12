@@ -162,7 +162,7 @@ class SequencerTabCoordinator:
             browser_manager,
             project_controller,
         )
-        self._file_playback: FilePlayback = FilePlayback(audio_device_manager)
+        self._file_playback: FilePlayback = FilePlayback(audio_device_manager, previews)
         self._sequencer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
             self._file_playback,
@@ -217,6 +217,7 @@ class SequencerTabCoordinator:
         self._guarded_player = GuardedPlayer(
             self._song_player_logic,
             failures=playback_failures,
+            previews=previews,
         )
         self._sequencer_tracker_panel: GUISequencerTrackerPanel = GUISequencerTrackerPanel(
             self._sequencer_tracker_logic.settings,

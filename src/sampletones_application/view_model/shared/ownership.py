@@ -90,8 +90,10 @@ class OwnershipRibbonViewModel(BaseModel, extra="forbid", frozen=True):
     """The recordings behind each stretch of what a reader is listening to.
 
     The ribbon reads along the same span the waveform above it draws, so a lane is stated in
-    frames and the frame length turns them into the samples the plot counts. A document whose
-    frames all answer to one recording has nothing to tell apart, so it offers no lanes.
+    frames and the frame length turns them into the samples the plot counts. A lane stands for
+    every channel the document plays and paints the stretches the recordings heard there hold,
+    so a channel switched off keeps its lane and stands empty, and a document answering to one
+    recording throughout paints each lane as one stretch.
     """
 
     lanes: Tuple[OwnershipLaneViewModel, ...]

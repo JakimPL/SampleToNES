@@ -88,11 +88,6 @@ dimension the import starts carrying.
   frames. A rebuild makes each frame of the channel anew, so on a four-channel conversion an entry has
   about a quarter of the document. Keeping the old instruction wherever the rebuilt one equals it brings an
   entry down to the frames the edit changed ([undo](application/undo.md)).
-* What the Reconstructions tab still computes on the render thread. The regeneration worker renders,
-  mixes and exports what the reader hears, and the landing installs it ([Editing the open
-  reconstruction](application/reconstruction-edits.md)); one reading stays on the render thread. The
-  original mix of the recordings heard is mixed again on the render thread whenever a recording is
-  left out, which is a few milliseconds per recording on a two-minute document.
 * Improve performance of the browser's favorite scan of the entire tree per click
 * The `fft` and `logfft` analysis floors. Their window spans two cycles of the pulse's lowest note, so the
   triangle's lowest octave reaches them by its harmonics alone. Covering it doubles their window and
@@ -127,6 +122,10 @@ currently out of line. An entry leaves when the code meets the contract again.
   `RegenerationService._run` and reports through `_emit`, and the tracker view reads the caret's box from
   `CaretOverlay._rectangle`. Each is a seam a scenario needs, which [screens](application/screens.md)
   says the application offers as a public one.
+* The render thread still reads a reconstruction file and its recordings from disk, at an opening and
+  when a browser tree plays one, and renders an instrument's audition and the sequencer's instrument
+  preview; every other sound the interface draws or plays, the original line included, is a worker's
+  result ([the render thread](application/render-thread.md)).
 
 ## Bugs
 

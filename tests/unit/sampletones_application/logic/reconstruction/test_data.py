@@ -37,7 +37,7 @@ def _hearing(*stem_ids: int, channels_on: FrozenSet[ChannelName] = EVERY_CHANNEL
 
 def _kept(renders: RenderCache, data: ReconstructionData, hearing: Hearing) -> WaveformData:
     """The waveform data read once the sound of ``hearing`` is kept, the way a landing keeps it."""
-    warmed(renders, data.reconstruction, hearing)
+    warmed(renders, data.reconstruction, hearing, data.recordings_by_stem)
     waveform_data = data.waveform_data(renders, hearing)
     assert waveform_data is not None
     return waveform_data
@@ -83,7 +83,7 @@ class TestFromReconstruction:
         )
         assert data.name == "Kick drum"
 
-    def test_detached_reconstruction_has_no_original_audio(
+    def test_detached_reconstruction_has_no_recording(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
     ) -> None:
@@ -96,9 +96,9 @@ class TestFromReconstruction:
         )
 
         assert reconstruction.audio_filepath == ()
-        assert data.original_audio is None
+        assert data.stem_audios == ()
 
-    def test_loads_original_audio_when_source_file_is_available(
+    def test_loads_the_recording_when_its_file_is_available(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
@@ -116,7 +116,8 @@ class TestFromReconstruction:
             name="Sample",
         )
 
-        assert data.original_audio is not None
+        assert len(data.stem_audios) == 1
+        assert not data.stem_audios[0].flags.writeable
 
     def test_mixes_several_recorded_paths_at_the_balance_they_were_captured_in(
         self,
@@ -137,11 +138,9 @@ class TestFromReconstruction:
 
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
-        assert data.original_audio is not None
         louder, quieter = data.stem_audios
         np.testing.assert_allclose(louder, 2.0 * quieter, rtol=1e-6)
-        np.testing.assert_allclose(data.original_audio, mix([louder, quieter]))
-        np.testing.assert_allclose(np.max(np.abs(data.original_audio)), (0.5 + 0.25) / RECORDED_SCALE, rtol=1e-6)
+        np.testing.assert_allclose(np.max(np.abs(mix([louder, quieter]))), (0.5 + 0.25) / RECORDED_SCALE, rtol=1e-6)
 
     def test_one_unreadable_stem_costs_the_whole_original(
         self,
@@ -155,7 +154,7 @@ class TestFromReconstruction:
 
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
-        assert data.original_audio is None
+        assert data.stem_audios == ()
 
 
 class TestReconstructionDataLoad:
@@ -194,7 +193,7 @@ class TestReconstructionDataLoad:
 
         assert data.name == "Sample"
 
-    def test_load_has_no_original_audio_when_source_file_missing(
+    def test_load_has_no_recording_when_source_file_missing(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
@@ -205,7 +204,7 @@ class TestReconstructionDataLoad:
 
         data = ReconstructionData.load(save_path)
 
-        assert data.original_audio is None
+        assert data.stem_audios == ()
 
 
 class TestDetachedCopy:
@@ -287,7 +286,7 @@ class TestDetachedCopy:
 
         assert copy.name == "lead"
 
-    def test_reuses_the_already_loaded_original_audio(
+    def test_reuses_the_already_loaded_recordings(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
@@ -307,8 +306,6 @@ class TestDetachedCopy:
         copy = data.detached_copy(tmp_path / "lead.stn")
 
         assert copy.stem_audios is data.stem_audios
-        assert data.original_audio is not None
-        np.testing.assert_allclose(copy.original_audio, data.original_audio)
 
 
 class TestStemFilteredProjections:
@@ -371,10 +368,11 @@ class TestStemFilteredProjections:
             rendered_mix(data.reconstruction),
         )
 
-    def test_original_mix_mixes_the_selected_recordings(
+    def test_the_waveform_reads_the_original_of_the_recordings_heard(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
+        renders: RenderCache,
     ) -> None:
         first = tmp_path / "kick.wav"
         second = tmp_path / "snare.wav"
@@ -410,11 +408,10 @@ class TestStemFilteredProjections:
 
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
-        np.testing.assert_allclose(data.original_mix_for(_heard(0)), data.stem_audios[0])
-        assert data.original_audio is not None
-        assert data.original_mix_for(_heard(0, 1)) is data.original_audio
+        np.testing.assert_allclose(_kept(renders, data, _hearing(0)).original_audio, data.stem_audios[0])
+        np.testing.assert_allclose(_kept(renders, data, _hearing(0, 1)).original_audio, mix(list(data.stem_audios)))
         np.testing.assert_array_equal(
-            data.original_mix_for(_heard()),
+            _kept(renders, data, _hearing()).original_audio,
             np.zeros_like(rendered_mix(data.reconstruction)),
         )
 
@@ -430,12 +427,9 @@ class TestStemFilteredProjections:
 
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
-        np.testing.assert_array_equal(
-            _kept(renders, data, _hearing()).playing,
-            np.zeros_like(rendered_mix(data.reconstruction)),
-        )
-        assert data.original_audio is not None
-        np.testing.assert_allclose(data.original_mix_for(_heard(0)), data.original_audio)
+        waveform = _kept(renders, data, _hearing())
+        np.testing.assert_array_equal(waveform.playing, np.zeros_like(rendered_mix(data.reconstruction)))
+        np.testing.assert_array_equal(waveform.original_audio, np.zeros_like(rendered_mix(data.reconstruction)))
 
 
 class TestTheOriginalAMissingRecordingLeaves:
@@ -452,15 +446,15 @@ class TestTheOriginalAMissingRecordingLeaves:
         reconstruction = recorded_from(reconstruction_factory(), (first, tmp_path / "gone.wav"))
         return ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
-    def test_no_recording_mixes_into_no_original(
+    def test_no_recording_heard_mixes_into_no_original(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
+        renders: RenderCache,
     ) -> None:
         data = self._missing_a_recording(reconstruction_factory, tmp_path)
 
-        assert data.original_mix_for(_heard(0, 1)) is None
-        assert data.original_mix_for(_heard()) is None
+        assert _kept(renders, data, _hearing()).original_audio is None
 
     def test_the_heard_waveform_carries_no_original_line(
         self,
@@ -475,13 +469,14 @@ class TestTheOriginalAMissingRecordingLeaves:
     def test_a_detached_document_mixes_into_no_original(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
+        renders: RenderCache,
     ) -> None:
         reconstruction = reconstruction_factory()
         reconstruction = reconstruction.detached()
 
         data = ReconstructionData.from_reconstruction(reconstruction, name="Sample")
 
-        assert data.original_mix_for(_heard(0)) is None
+        assert _kept(renders, data, _hearing(0)).original_audio is None
 
     def test_a_loaded_recording_heard_nowhere_is_a_silent_line(
         self,
@@ -540,7 +535,7 @@ class TestRebindingToAnEditedReconstruction:
 
         remaining = data.with_reconstruction(without_stem(data.reconstruction, 1))
 
-        np.testing.assert_allclose(remaining.original_mix_for(_heard(2)), third)
+        assert remaining.recordings_by_stem[2] is third
 
     def test_the_removed_recording_is_released(
         self,
@@ -579,7 +574,7 @@ class TestRebindingToAnEditedReconstruction:
         assert [entry.id for entry in edited.stems_data.config.entries] == [0, 2]
         assert len(remaining.stem_audios) == 2
         assert all(not np.array_equal(audio, second) for audio in remaining.stem_audios)
-        np.testing.assert_allclose(remaining.original_mix_for(_heard(2)), third)
+        assert remaining.recordings_by_stem[2] is third
 
     def test_an_edit_keeping_every_entry_keeps_every_recording(
         self,
@@ -592,30 +587,20 @@ class TestRebindingToAnEditedReconstruction:
 
         assert rebound.stem_audios == data.stem_audios
 
-    def test_an_edit_keeping_every_entry_keeps_the_original_mix(
+    def test_a_removal_leaves_the_recordings_that_stay_in_place(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
         tmp_path: Path,
     ) -> None:
-        """The recordings stand as they were, so the mix of them stands too, which spares a landing the mixing."""
-        data = self._three_recordings(reconstruction_factory, tmp_path)
-
-        rebound = data.with_reconstruction(data.reconstruction.model_copy())
-
-        assert rebound.original_audio is data.original_audio
-
-    def test_a_removal_mixes_the_original_again(
-        self,
-        reconstruction_factory: Callable[[], Reconstruction],
-        tmp_path: Path,
-    ) -> None:
+        """The recordings that stay are the very objects they were, so the mix the cache keeps of them stands."""
         data = self._three_recordings(reconstruction_factory, tmp_path)
         first, third = data.stem_audios[0], data.stem_audios[2]
 
         remaining = data.with_reconstruction(without_stem(data.reconstruction, 1))
 
-        assert remaining.original_audio is not data.original_audio
-        np.testing.assert_allclose(remaining.original_audio, mix([first, third]))
+        assert remaining.stem_audios[0] is first
+        assert remaining.stem_audios[1] is third
+        assert remaining.recordings_heard(_heard(0, 2)) == (first, third)
 
     def test_a_document_naming_a_recording_the_load_lost_holds_none(
         self,
@@ -629,7 +614,7 @@ class TestRebindingToAnEditedReconstruction:
         restored = remaining.with_reconstruction(data.reconstruction)
 
         assert restored.stem_audios == ()
-        assert restored.original_audio is None
+        assert restored.recordings_by_stem == {}
 
 
 class TestWaveformData:
@@ -646,9 +631,11 @@ class TestWaveformData:
 
         waveform_data = _kept(renders, data, _hearing(0))
 
-        assert waveform_data.original_audio is data.original_audio
-        assert waveform_data.approximation is renders.mix(reconstruction)
-        assert waveform_data.playing is renders.mix(reconstruction)
+        reading = renders.reading(reconstruction, _hearing(0))
+        assert reading is not None
+        assert waveform_data.original_audio is None
+        assert waveform_data.approximation is reading.mix
+        assert waveform_data.playing is reading.mix
         assert waveform_data.coefficient == reconstruction.coefficient
         assert waveform_data.frame_length == reconstruction.config.frame_length
 
@@ -662,6 +649,28 @@ class TestWaveformData:
 
         assert data.waveform_data(renders, _hearing(0)) is None
 
+    def test_a_mix_of_the_recordings_heard_the_cache_keeps_none_of_reads_nothing(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+        renders: RenderCache,
+    ) -> None:
+        """The original is a worker's render like the sound, so a reading missing it is left to the worker."""
+        source_audio = tmp_path / "source.wav"
+        write_wave(source_audio, Config().library.sample_rate, np.ones(64, dtype=np.float32) * 0.5)
+        data = ReconstructionData.from_reconstruction(
+            recorded_from(reconstruction_factory(), (source_audio,)),
+            name="Sample",
+        )
+        warmed(renders, data.reconstruction, _hearing(0), {})
+        assert data.waveform_data(renders, _hearing(0)) is None
+
+        renders.adopt_original(data.recordings_heard(_heard(0)), data.config, mix(list(data.stem_audios)))
+
+        waveform = data.waveform_data(renders, _hearing(0))
+        assert waveform is not None
+        np.testing.assert_allclose(waveform.original_audio, data.stem_audios[0])
+
     def test_a_recording_left_out_reads_what_the_worker_kept(
         self,
         reconstruction_factory: Callable[[], Reconstruction],
@@ -672,6 +681,5 @@ class TestWaveformData:
 
         waveform_data = _kept(renders, data, _hearing())
 
-        assert waveform_data.approximation is not renders.mix(reconstruction)
-        np.testing.assert_array_equal(waveform_data.approximation, np.zeros_like(renders.mix(reconstruction)))
+        np.testing.assert_array_equal(waveform_data.approximation, np.zeros_like(rendered_mix(reconstruction)))
         np.testing.assert_array_equal(waveform_data.playing, waveform_data.approximation)

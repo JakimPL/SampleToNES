@@ -8,11 +8,7 @@ from typing import Callable, Final, Iterator, List
 import numpy as np
 import pytest
 
-from sampletones_application.logic.shared import renders as renders_module
 from sampletones_application.logic.shared.renders import RenderCache
-from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
-from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
 from tests.suite.stems import SHARED_CHANNEL, taking_turns_reconstruction
@@ -25,7 +21,6 @@ WRITERS: Final[int] = 2
 ROUNDS: Final[int] = 30
 KEPT_RENDERS: Final[int] = 3
 WRITER_SPACING: Final[int] = 1000
-RenderInstructions = Callable[[List[InstructionUnion], ChannelName, Config], np.ndarray]
 
 
 def _document(index: int) -> Reconstruction:
@@ -68,18 +63,22 @@ def _run_together(workers: List[Callable[[], None]]) -> None:
 
 
 def _reads(renders: RenderCache, shared: Reconstruction) -> None:
+    """Reads the shared document's renders over and over, adopting them again wherever the writers evicted them."""
     expected = rendered_channels(shared)
     expected_mix = rendered_mix(shared)
     for _ in range(ROUNDS):
-        channels = renders.channels(shared)
-        assert channels.keys() == expected.keys()
-        assert all(np.array_equal(channels[name], expected[name]) for name in expected)
-        assert np.array_equal(renders.mix(shared), expected_mix)
+        held = renders.held(shared)
+        if held.keys() != expected.keys():
+            renders.adopt(shared, expected, expected_mix)
+            held = renders.held(shared)
+
+        assert all(np.array_equal(held[name], expected[name]) for name in held)
 
 
 def _writes(renders: RenderCache, offset: int) -> None:
     for turn in range(ROUNDS):
-        renders.mix(_document(offset + turn))
+        document = _document(offset + turn)
+        renders.adopt(document, rendered_channels(document), rendered_mix(document))
 
 
 class TestReadersAndWritersSharingOneCache:
@@ -115,37 +114,58 @@ class TestReadersAndWritersSharingOneCache:
         assert renders.held_bytes == 0
 
 
-class TestADocumentLetGoWhileItsRenderIsMade:
-    """A document let go of everywhere else stays with the thread rendering it, and its render leaves once
-    that thread lets go.
+class TestTheLockLetsItsHolderInAgain:
+    """A watched stream let go of while the cache's lock is held on the same thread is forgotten from inside.
 
-    The maker's own reference keeps the streams alive through the render, so the render is kept
-    under a live identity; the forgetting then runs on the maker's thread as its references die.
+    A collector pass can run a stream's finalizer on the thread holding the lock, from inside a
+    keep; the lock lets that thread in again, so the forgetting completes and the keep goes on.
+    """
+
+    def test_a_stream_collected_under_the_lock_is_forgotten_at_once(
+        self,
+        renders: RenderCache,
+        thread_failures: List[BaseException],
+    ) -> None:
+        def keep_and_let_go() -> None:
+            document = _document(0)
+            renders.adopt(document, rendered_channels(document), rendered_mix(document))
+            with renders._lock:
+                del document
+                gc.collect()
+                assert renders.held_bytes == 0
+
+        _run_together([keep_and_let_go])
+
+        assert thread_failures == []
+
+
+class TestADocumentLetGoWhileItsRenderIsMade:
+    """A document let go of everywhere else stays with the thread making and adopting its render, and its
+    render leaves once that thread lets go.
+
+    The maker's own reference keeps the streams alive through the render and the keep, so the
+    render is kept under a live identity; the forgetting then runs as the maker's references die.
     """
 
     def test_the_render_leaves_once_the_maker_lets_go(
         self,
         renders: RenderCache,
-        monkeypatch: pytest.MonkeyPatch,
         thread_failures: List[BaseException],
     ) -> None:
-        rendering = threading.Event()
+        rendered = threading.Event()
         release = threading.Event()
-        real_render: RenderInstructions = renders_module.render_instructions
 
-        def held_render(
-            instructions: List[InstructionUnion],
-            channel_name: ChannelName,
-            config: Config,
-        ) -> np.ndarray:
-            rendering.set()
+        def make_and_adopt() -> None:
+            document = _document(0)
+            channels = rendered_channels(document)
+            mixed = rendered_mix(document)
+            rendered.set()
             assert release.wait(JOIN_TIMEOUT)
-            return real_render(instructions, channel_name, config)
+            renders.adopt(document, channels, mixed)
 
-        monkeypatch.setattr(renders_module, "render_instructions", held_render)
-        maker = threading.Thread(target=renders.mix, args=(_document(0),), name="RenderCaseMaker")
+        maker = threading.Thread(target=make_and_adopt, name="RenderCaseMaker")
         maker.start()
-        assert rendering.wait(JOIN_TIMEOUT)
+        assert rendered.wait(JOIN_TIMEOUT)
         gc.collect()
 
         release.set()

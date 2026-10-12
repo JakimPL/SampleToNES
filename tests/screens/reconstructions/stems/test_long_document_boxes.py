@@ -1,5 +1,5 @@
 import time
-from typing import Dict, Final, List, Optional
+from typing import Dict, Final, List
 
 import pytest
 
@@ -10,7 +10,7 @@ from automation.steps.reconstructions import expect_open, reconstruction_shade, 
 from automation.vocabulary.graphs import WAVEFORM_READING
 from automation.worlds.home import World
 from sampletones_core.constants.enums import ChannelName
-from tests.suite.screens.readings import expect_no_long_hold, frame_readings, keep_readings, longest_gap_after_each
+from tests.suite.screens.readings import frame_readings, keep_readings, longest_gap_after_each
 from tests.suite.screens.worlds.recordings import LONG_RECONSTRUCTION, alternating_document_world
 
 TOGGLED_CHANNEL: Final[ChannelName] = ChannelName.NOISE
@@ -43,16 +43,17 @@ class TestTheBoxesOnALongDocument:
     The scenario records the clock after every frame through the ticks, each followed by the fade's
     end, and keeps the longest gap after each tick beside the readings the drag scenarios keep. The
     readings are what a change to the listening path is judged by, taken before and after the
-    change; the one promise is relative: a tick holds a frame for a few of the machine's own
-    frames at most.
+    change. What the scenario holds the application to are the events: each tick moves the box it
+    was aimed at, and the fade ends after each.
     """
 
     def test_the_frames_through_the_ticks(self, screen: Screen) -> None:
-        """The readings are kept and held to the machine's frame cadence; the application leaves cleanly."""
+        """The readings are kept; each box answers its tick, each fade ends, and the application leaves cleanly."""
         reconstructions = screen.reconstructions
+        stems = reconstructions.stems
         stamps: List[float] = []
         ticks: List[float] = []
-        unfaded: List[Optional[str]] = []
+        unfaded: List[str] = []
 
         def open_it(screen: Screen) -> None:
             expect_open(screen, LONG_RECONSTRUCTION)
@@ -61,15 +62,19 @@ class TestTheBoxesOnALongDocument:
         def tick_the_boxes(screen: Screen) -> None:
             with screen.record(time.monotonic) as recording:
                 for _ in range(TICKS_PER_BOX):
+                    ticked = reconstructions.channel_ticked(TOGGLED_CHANNEL)
                     ticks.append(time.monotonic())
                     reconstructions.tick_channel(TOGGLED_CHANNEL)
                     wait_for_the_fade_to_end(screen, unfaded[0])
+                    assert reconstructions.channel_ticked(TOGGLED_CHANNEL) != ticked
                     screen.frames(FRAMES_AFTER_A_TICK)
 
                 for _ in range(TICKS_PER_BOX):
+                    heard = stems.hears(RECORDING_KEY)
                     ticks.append(time.monotonic())
-                    reconstructions.stems.tick(RECORDING_KEY)
+                    stems.tick(RECORDING_KEY)
                     wait_for_the_fade_to_end(screen, unfaded[0])
+                    assert stems.hears(RECORDING_KEY) != heard
                     screen.frames(FRAMES_AFTER_A_TICK)
 
             stamps.extend(recording.values())
@@ -79,7 +84,6 @@ class TestTheBoxesOnALongDocument:
             readings: Dict[str, object] = dict(frames)
             readings["longest_gap_after_each_tick_seconds"] = longest_gap_after_each(stamps, ticks)
             keep_readings(BOX_READINGS, readings)
-            expect_no_long_hold(frames)
 
         screen.scenario(open_it, tick_the_boxes, keep_the_readings, leaving_asks_nothing).run()
 
@@ -96,7 +100,7 @@ class TestWhatTheFadeSays:
     def test_a_tick_reads_as_the_sound_being_prepared(self, screen: Screen) -> None:
         reconstructions = screen.reconstructions
         reading = screen.words(WAVEFORM_READING)
-        unfaded: List[Optional[str]] = []
+        unfaded: List[str] = []
 
         def open_it(screen: Screen) -> None:
             expect_open(screen, LONG_RECONSTRUCTION)

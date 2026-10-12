@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 
 from automation.scenario import BaseTestScenario, ScenarioStep
-from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
 from sampletones_application.services.regeneration.jobs import RebuildJob
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import ServiceError, ServiceSuccess
@@ -20,6 +19,7 @@ from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels
 from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing
+from tests.suite.envelopes import heard_envelopes
 from tests.suite.stems import everything_heard
 
 
@@ -66,6 +66,7 @@ class TestRegenerationServicePipeline:
                 pulse_features,
                 _heard_whole(reconstruction_data.reconstruction),
                 {},
+                {},
             )
         )
 
@@ -83,6 +84,7 @@ class TestRegenerationServicePipeline:
                 ChannelName.PULSE1,
                 pulse_features,
                 _heard_whole(reconstruction_data.reconstruction),
+                {},
                 {},
             )
         )
@@ -106,6 +108,7 @@ class TestRegenerationServicePipeline:
                 pulse_features,
                 _heard_whole(reconstruction_data.reconstruction),
                 {},
+                {},
             )
         )
 
@@ -124,6 +127,7 @@ class TestRegenerationServicePipeline:
                 pulse_features,
                 _heard_whole(reconstruction_data.reconstruction),
                 {},
+                {},
             )
         )
 
@@ -141,6 +145,7 @@ class TestRegenerationServicePipeline:
                 ChannelName.PULSE1,
                 pulse_features,
                 _heard_whole(reconstruction_data.reconstruction),
+                {},
                 {},
             )
         )
@@ -165,6 +170,7 @@ class TestRegenerationServicePipeline:
                 silenced,
                 _heard_whole(reconstruction_data.reconstruction),
                 {},
+                {},
             )
         )
 
@@ -185,6 +191,7 @@ class TestRegenerationServicePipeline:
                 {},
                 _heard_whole(reconstruction_data.reconstruction),
                 {},
+                {},
             )
         )
 
@@ -202,6 +209,7 @@ class TestRegenerationServicePipeline:
             pulse_features,
             hearing=_heard_whole(reconstruction_data.reconstruction),
             kept={},
+            recordings={},
         )
 
         assert len(results) == 1
@@ -230,7 +238,7 @@ def _edit_arpeggio(context: ArpeggioEditContext, arpeggio: np.ndarray) -> None:
         Envelope(items=tuple(int(offset) for offset in arpeggio)),
     )
     service._run(
-        RebuildJob(context.reconstruction, ChannelName.PULSE1, edited, _heard_whole(context.reconstruction), {})
+        RebuildJob(context.reconstruction, ChannelName.PULSE1, edited, _heard_whole(context.reconstruction), {}, {})
     )
 
     assert len(results) == 1
@@ -353,6 +361,7 @@ class TestRegenerationDeliveryThroughRealQueue:
                 pulse_features,
                 _heard_whole(reconstruction_data.reconstruction),
                 {},
+                {},
             )
         )
 
@@ -385,6 +394,7 @@ class TestRegenerationDeliveryThroughRealQueue:
                 ChannelName.PULSE1,
                 pulse_features,
                 _heard_whole(reconstruction_data.reconstruction),
+                {},
                 {},
             )
         )

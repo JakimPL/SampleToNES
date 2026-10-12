@@ -19,6 +19,7 @@ from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.utils.hashing import hash_model
 
 Settle = Callable[[VoidCallback], None]
 CommitKey = Tuple[HistoryAction, Hashable]
@@ -384,7 +385,7 @@ class HistoryAudit:
 
     def check(self) -> None:
         self._check_shape()
-        hashes = HashCache()
+        hashes = HashCache(stream_hash=hash_model, assignment_hash=hash_model, pattern_hash=hash_model)
         projects = [entry.project for entry in self._history.entries]
         if self._controller.is_open:
             projects.append(self._controller.project)

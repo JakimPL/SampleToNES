@@ -386,7 +386,7 @@ class TestThreeStemHierarchy:
 
         def kept(selected: AbstractSet[int]) -> WaveformData:
             """The reading of the loaded document once the worker's sound for it is kept."""
-            warmed(renders, data.reconstruction, hearing(selected))
+            warmed(renders, data.reconstruction, hearing(selected), data.recordings_by_stem)
             waveform = data.waveform_data(renders, hearing(selected))
             assert waveform is not None
             return waveform
@@ -400,9 +400,11 @@ class TestThreeStemHierarchy:
             )
 
         full = kept(all_stem_ids)
-        assert full.approximation is renders.mix(data.reconstruction)
+        whole = renders.reading(data.reconstruction, hearing(all_stem_ids))
+        assert whole is not None
+        assert full.approximation is whole.mix
         assert full.playing is full.approximation
-        assert full.original_audio is data.original_audio
+        np.testing.assert_allclose(full.original_audio, mix(list(data.stem_audios)), atol=_MIX_TOLERANCE)
 
         for selected_id in (STEM_A_ID, STEM_B_ID, STEM_C_ID):
             selected = frozenset({selected_id})
@@ -413,9 +415,7 @@ class TestThreeStemHierarchy:
                 np.testing.assert_array_equal(filtered(selected)[channel], expected_audio)
             np.testing.assert_allclose(waveform.approximation, mix(list(expected.values())), atol=_MIX_TOLERANCE)
             np.testing.assert_allclose(waveform.playing, mix(list(expected.values())), atol=_MIX_TOLERANCE)
-            np.testing.assert_allclose(
-                data.original_mix_for(heard(selected)), data.stem_audios[selected_id], atol=_MIX_TOLERANCE
-            )
+            np.testing.assert_allclose(waveform.original_audio, data.stem_audios[selected_id], atol=_MIX_TOLERANCE)
 
         selected = frozenset()
         waveform = kept(selected)
@@ -426,10 +426,7 @@ class TestThreeStemHierarchy:
             )
         np.testing.assert_allclose(waveform.approximation, np.zeros_like(rendered_mix(data.reconstruction)))
         np.testing.assert_allclose(waveform.playing, np.zeros_like(rendered_mix(data.reconstruction)))
-        np.testing.assert_allclose(
-            data.original_mix_for(heard(selected)),
-            np.zeros_like(rendered_mix(data.reconstruction)),
-        )
+        np.testing.assert_allclose(waveform.original_audio, np.zeros_like(rendered_mix(data.reconstruction)))
 
 
 class TestRemovingAStem:
@@ -632,15 +629,13 @@ class TestStemsOriginalAudio:
 
         assert data.reconstruction.audio_filepath == (tone_path, noise_path)
         assert data.name == save_path.stem
-        assert data.original_audio is not None
         loaded_tone, loaded_noise = data.stem_audios
         np.testing.assert_allclose(
             np.max(np.abs(loaded_tone)) / np.max(np.abs(loaded_noise)),
             np.max(np.abs(tone)) / np.max(np.abs(noise)),
             rtol=1e-5,
         )
-        np.testing.assert_allclose(data.original_audio, mix([loaded_tone, loaded_noise]), atol=_MIX_TOLERANCE)
-        np.testing.assert_allclose(np.max(np.abs(data.original_audio)), 1.0, rtol=1e-5)
+        np.testing.assert_allclose(np.max(np.abs(mix([loaded_tone, loaded_noise]))), 1.0, rtol=1e-5)
 
     def test_the_conversion_records_the_scale_it_read_the_set_at(self, tmp_path: Path) -> None:
         config = Config()

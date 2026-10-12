@@ -20,4 +20,5 @@ class RegenerationServiceProtocol(ListeningServiceProtocol, Protocol):
         *,
         hearing: Hearing,
         kept: Mapping[ChannelName, np.ndarray],
+        recordings: Mapping[int, np.ndarray],
     ) -> None: ...

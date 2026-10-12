@@ -46,6 +46,7 @@ from sampletones_application.logic.reconstruction.rewrites.steps import (
 )
 from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.player import PlayerLogic
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.reconstruction import (
     ReconstructionTabParameters,
@@ -153,6 +154,7 @@ class ReconstructionTabCoordinator:
         instrument_exports: InstrumentExportCoordinator,
         history: HistoryManager,
         instrument_edit_detail: InstrumentEditDetail,
+        previews: DocumentPreviews,
         *,
         key_router: KeyRouter,
         tab_active: ActivePredicate,
@@ -201,7 +203,7 @@ class ReconstructionTabCoordinator:
             config_manager,
             browser_manager,
         )
-        self._file_playback: FilePlayback = FilePlayback(audio_device_manager)
+        self._file_playback: FilePlayback = FilePlayback(audio_device_manager, previews)
         self._browser_tree_logic: TreeLogic = TreeLogic(
             session_manager,
             self._file_playback,
@@ -233,6 +235,7 @@ class ReconstructionTabCoordinator:
         self._guarded_player = GuardedPlayer(
             self._reconstruction_player_logic,
             failures=playback_failures,
+            previews=previews,
         )
         self._reconstruction_audio_panel: GUIReconstructionAudioPanel = GUIReconstructionAudioPanel(
             path_colors=layout.path_colors,
@@ -319,6 +322,7 @@ class ReconstructionTabCoordinator:
         )
         self._reconstruction_panel_logic.on_open_export_instruments_dialog = self._open_export_instruments_dialog
         self._reconstruction_panel_logic.on_open_export_wav_dialog = self._open_export_wav_dialog
+        self._reconstruction_panel_logic.on_export_dropped = self._report_dropped_export
         self._reconstruction_panel_logic.on_locate_audio_not_found = lambda path: dialogs.show_file_not_found(
             path,
             language_manager["reconstructions.reconstruction.message.locate_audio_failed"],
@@ -391,6 +395,11 @@ class ReconstructionTabCoordinator:
                 self._dialogs.show_error(exception, messages.instrument_failed)
             case ExportError(kind=ExportKind.SAMPLE, exception=exception):
                 self._dialogs.show_error(exception, messages.instruments_failed)
+
+    def _report_dropped_export(self, filepath: Path) -> None:
+        """Reports an export that waited for a sound the worker never rendered, in the WAV dialog's words."""
+        messages = self._export_messages
+        self._dialogs.show_message_with_path(messages.wav_title, messages.wav_dropped, filepath)
 
     def _export_message(
         self,
@@ -812,6 +821,10 @@ class ReconstructionTabCoordinator:
         self._reconstruction_panel_logic.update_reconstruction(refit_waveform=refit_waveform)
         self._reconstruction_instruments_logic.update_display()
 
+    def abandon_showing(self) -> None:
+        """Lets the panel go of what it owes the reader, where the worker will never render it."""
+        self._reconstruction_panel_logic.abandon_showing()
+
     def redraw_listening(self, *, envelopes_changed: bool) -> None:
         """Shows what the reader hears once the worker has rendered it, where a showing waited for it.
 
@@ -844,7 +857,10 @@ class ReconstructionTabCoordinator:
         """Writes the loaded reconstruction's slices in ``export_format``, asking first for what the
         format leaves open: its own setup where it has one, and the destination alone otherwise."""
         if export_format in self._format_setups:
-            self._format_setups[export_format].open_sample(self._reconstruction_panel_logic.sample_request())
+            request = self._reconstruction_panel_logic.sample_request()
+            if request is not None:
+                self._format_setups[export_format].open_sample(request)
+
             return
 
         self._reconstruction_panel_logic.request_export_instruments_dialog(export_format)

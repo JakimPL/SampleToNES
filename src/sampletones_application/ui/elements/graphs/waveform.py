@@ -575,7 +575,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             data=data,
             name=name,
             color=color,
-            max_display_points=self._layout.waveform.max_display_points,
             points=(positions, values),
         )
 
