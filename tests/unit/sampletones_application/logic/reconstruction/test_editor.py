@@ -91,11 +91,24 @@ class TestWhatTheTabHasInFront:
         editor: InstrumentEditor,
         reconstruction_manager: MagicMock,
     ) -> None:
-        """An opening, a removal, a retune and an undo leave the envelopes to the worker, with the document open."""
+        """An edit, a retune, an undo and a new choice of what is heard leave the envelopes to the worker."""
         reconstruction_manager.reconstruction = MagicMock(spec=Reconstruction)
         reconstruction_manager.current_features = None
+        reconstruction_manager.has_landed_envelopes = True
 
-        assert isinstance(editor.edited_instrument(), EnvelopesOwed)
+        assert editor.edited_instrument() == EnvelopesOwed(opening=False)
+
+    def test_a_reconstruction_just_opened_answers_with_the_opening(
+        self,
+        editor: InstrumentEditor,
+        reconstruction_manager: MagicMock,
+    ) -> None:
+        """No envelopes have landed for a document just opened, so the panel has none of it to keep."""
+        reconstruction_manager.reconstruction = MagicMock(spec=Reconstruction)
+        reconstruction_manager.current_features = None
+        reconstruction_manager.has_landed_envelopes = False
+
+        assert editor.edited_instrument() == EnvelopesOwed(opening=True)
 
     def test_an_instrument_answers_with_what_it_states(
         self,

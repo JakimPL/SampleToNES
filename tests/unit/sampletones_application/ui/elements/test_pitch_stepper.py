@@ -1,10 +1,12 @@
 from typing import Any, Dict, List, Tuple
+from unittest.mock import MagicMock
 
 import pytest
 
 from sampletones_application.layout.general.pitch_stepper import PitchStepperLayout
 from sampletones_application.ui.elements import pitch_stepper as pitch_stepper_module
 from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
+from sampletones_application.ui.elements.plus_minus_buttons import GUIPlusMinusButtons
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.constants.general import MAX_PERIOD, MAX_PITCH, MIN_PITCH
 from sampletones_core.utils.pitch_kind import (
@@ -80,6 +82,42 @@ def _listen(stepper: GUIPitchStepper) -> List[int]:
     reported: List[int] = []
     stepper.on_value_changed = reported.append
     return reported
+
+
+class TestHoldingTheStepper:
+    """A stepper not the reader's to move takes neither a typed value nor a step of its buttons."""
+
+    def test_disabling_holds_the_input_and_the_buttons(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        configured: Dict[Any, Dict[str, Any]] = {}
+        monkeypatch.setattr(
+            pitch_stepper_module,
+            "dpg_configure_item",
+            lambda tag, **kwargs: configured.setdefault(tag, {}).update(kwargs),
+        )
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
+        buttons = MagicMock(spec=GUIPlusMinusButtons)
+        stepper._buttons = buttons
+
+        stepper.set_enabled(False)
+
+        assert configured[stepper._input_tag]["enabled"] is False
+        buttons.set_enabled.assert_called_once_with(False)
+
+    def test_enabling_frees_them(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        configured: Dict[Any, Dict[str, Any]] = {}
+        monkeypatch.setattr(
+            pitch_stepper_module,
+            "dpg_configure_item",
+            lambda tag, **kwargs: configured.setdefault(tag, {}).update(kwargs),
+        )
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
+        buttons = MagicMock(spec=GUIPlusMinusButtons)
+        stepper._buttons = buttons
+
+        stepper.set_enabled(True)
+
+        assert configured[stepper._input_tag]["enabled"] is True
+        buttons.set_enabled.assert_called_once_with(True)
 
 
 class TestSetValue:

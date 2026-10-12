@@ -895,6 +895,43 @@ class TestAShowingTheScreenHoldsNoSoundFor:
         drawn.assert_not_called()
         played.assert_not_called()
 
+    @pytest.mark.parametrize("gesture", ("tick", "solo"))
+    def test_a_new_choice_of_recordings_is_reported_before_it_is_asked_for(
+        self,
+        gesture: str,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        recorded_data: ReconstructionData,
+    ) -> None:
+        """The instruments panel locks before the worker is asked for the envelopes of the new choice."""
+        _open(mock_reconstruction_manager, recorded_data)
+        order: List[str] = []
+        panel_logic.on_listening_changed = lambda: order.append("reported")
+        panel_logic.on_renders_wanted = lambda: order.append("asked")
+
+        if gesture == "tick":
+            panel_logic.set_stem_channels(1, frozenset())
+        else:
+            panel_logic.solo_stem(0)
+
+        assert order == ["reported", "asked"]
+
+    def test_a_channel_box_changes_no_choice_of_recordings(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        recorded_data: ReconstructionData,
+    ) -> None:
+        """The envelopes answer the recordings heard, which the boxes above the waveform leave as they are."""
+        _open(mock_reconstruction_manager, recorded_data)
+        reported = MagicMock()
+        panel_logic.on_listening_changed = reported
+        panel_logic.on_renders_wanted = MagicMock()
+
+        panel_logic.set_selected_channels([])
+
+        reported.assert_not_called()
+
     def test_the_showing_happens_once_the_sound_lands(
         self,
         panel_logic: ReconstructionPanelLogic,

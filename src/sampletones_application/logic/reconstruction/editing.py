@@ -32,10 +32,16 @@ class InstrumentEdit:
 class EnvelopesOwed:
     """A reconstruction in front of the panel whose envelopes the worker is still rendering.
 
-    An opening, a removal, a retune and an undo send the envelopes to the worker with the sound, so
-    the document has channels to draw once they land. Until then the panel says they are on their
-    way, and an edit reaching it goes nowhere.
+    An opening, an edit, a retune, an undo and a new choice of what is heard send the envelopes to
+    the worker with the sound, so the document has channels to edit once they land, and an edit
+    reaching the panel meanwhile goes nowhere.
+
+    Attributes:
+        opening: Whether no envelopes have landed for the document since it was opened, so the
+            panel has none of it to keep showing.
     """
+
+    opening: bool
 
 
 EditedVoice = Union[ChannelEnvelopesViewModel, InstrumentEdit, EnvelopesOwed]

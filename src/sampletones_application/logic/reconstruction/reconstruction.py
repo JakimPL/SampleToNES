@@ -195,6 +195,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.on_waveform_load_changed: Optional[Callable[[WaveformData], None]] = None
         self.on_waveform_update_changed: Optional[WaveformUpdate] = None
         self.on_renders_wanted: Optional[VoidCallback] = None
+        self.on_listening_changed: Optional[VoidCallback] = None
         self.on_waveform_cleared: Optional[VoidCallback] = None
         self.on_waveform_source_changed: Optional[Callable[[AudioSourceType], None]] = None
 
@@ -449,7 +450,9 @@ class ReconstructionPanelLogic(CallbackMixin):
         """Re-answers every reading of the document after the listening choice changed.
 
         The stems card and the ribbon answer at once; the waveform, the audio and the envelopes
-        the instruments panel draws answer once the worker has rendered the new choice.
+        the instruments panel draws answer once the worker has rendered the new choice. The
+        choice is reported first, so the instruments panel takes no edit of envelopes read for
+        another choice.
         """
         reconstruction_data = self._reconstruction_data
         if not reconstruction_data:
@@ -460,6 +463,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             self._build_stems_view_model(reconstruction_data),
         )
         self.call(self.on_ownership_changed, self._build_ownership_ribbon(reconstruction_data))
+        self.call(self.on_listening_changed)
         self._show(reconstruction_data, self._loading())
 
     @property

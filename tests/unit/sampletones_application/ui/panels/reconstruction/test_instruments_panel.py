@@ -38,6 +38,7 @@ from sampletones_application.utils.gui.keyboard.piano import PIANO_KEYS
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.source import PaletteSource
 from sampletones_application.view_model.reconstruction.instruments import (
+    InstrumentsShowing,
     InstrumentViewModel,
     ReconstructionInstrumentsViewModel,
 )
@@ -88,15 +89,19 @@ PLOTTED_LANE: Final[OwnershipLaneViewModel] = OwnershipLaneViewModel(
 )
 
 NOT_LOADED: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrumentsViewModel(
-    reconstruction_loaded=False,
-    envelopes_owed=False,
+    showing=InstrumentsShowing.NOTHING,
     playing_channels=frozenset(),
     footprint=None,
 )
 
 ENVELOPES_ON_THEIR_WAY: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrumentsViewModel(
-    reconstruction_loaded=True,
-    envelopes_owed=True,
+    showing=InstrumentsShowing.PREPARING,
+    playing_channels=frozenset(),
+    footprint=None,
+)
+
+ENVELOPES_KEPT: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrumentsViewModel(
+    showing=InstrumentsShowing.KEPT,
     playing_channels=frozenset(),
     footprint=None,
 )
@@ -105,8 +110,7 @@ NOTHING_LOADED_KEY: Final[str] = "global.dialog.message.reconstruction_no_data"
 PREPARING_KEY: Final[str] = "reconstructions.instruments.message.preparing"
 
 ONE_INSTRUMENT: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrumentsViewModel(
-    reconstruction_loaded=False,
-    envelopes_owed=False,
+    showing=InstrumentsShowing.EDITABLE,
     playing_channels=frozenset((ChannelName.PULSE1,)),
     footprint=VoiceFootprintViewModel.from_instrument(LARGEST_PULSE),
     instrument=InstrumentViewModel(name="lead"),
@@ -123,8 +127,7 @@ def build_view_model(
 ) -> ReconstructionInstrumentsViewModel:
     """A loaded reconstruction playing the given channels, each measured as given."""
     return ReconstructionInstrumentsViewModel(
-        reconstruction_loaded=True,
-        envelopes_owed=False,
+        showing=InstrumentsShowing.EDITABLE,
         playing_channels=frozenset(channel_footprints),
         footprint=VoiceFootprintViewModel.from_footprints(channel_footprints),
     )
@@ -776,6 +779,95 @@ class TestSizeVisibility:
     ) -> None:
         panel.update_view(NOT_LOADED)
         assert set(written) == {panel.message_tag}
+
+
+class TestTheEnvelopesKeptWhileTheNextAreOnTheirWay:
+    """The panel keeps its tabs, figures and bars while the next envelopes are on their way, and takes no edit.
+
+    The bars, the sequence fields, the pitch steppers and the exports are held, and a view freeing
+    the panel takes edits again and marks the exports anew.
+    """
+
+    @pytest.fixture
+    def enabled(self, monkeypatch: pytest.MonkeyPatch) -> Dict[str, bool]:
+        """Records which items the panel enables, beside what it shows."""
+        flags: Dict[str, bool] = {}
+        shown_before = instruments_module.dpg_configure_item
+
+        def configure(tag: str, **kwargs: object) -> None:
+            shown_before(tag, **kwargs)
+            state = kwargs.get("enabled")
+            if isinstance(state, bool):
+                flags[tag] = state
+
+        monkeypatch.setattr(instruments_module, "dpg_configure_item", configure)
+        return flags
+
+    @staticmethod
+    def _held_parts(panel: GUIReconstructionInstrumentsPanel) -> Dict[str, MagicMock]:
+        """Stands in for every bar plot, pitch stepper and export button the panel holds, keyed by a name."""
+        parts: Dict[str, MagicMock] = {}
+        for channel_name in ChannelName.items():
+            stepper = MagicMock()
+            panel._pitch_steppers[channel_name] = stepper
+            parts[f"stepper.{channel_name}"] = stepper
+            button = MagicMock(spec=GUIButton)
+            panel._export_buttons[channel_name] = button
+            parts[f"export.{channel_name}"] = button
+            panel.channel_plots[channel_name] = {}
+            for feature_key in panel._generator_features(channel_name):
+                plot = MagicMock()
+                panel.channel_plots[channel_name][feature_key] = plot
+                parts[f"plot.{channel_name}.{feature_key}"] = plot
+
+        return parts
+
+    def test_kept_envelopes_keep_the_tabs_and_hold_every_edit(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        shown: Dict[str, bool],
+        written: Dict[str, str],
+        enabled: Dict[str, bool],
+    ) -> None:
+        parts = self._held_parts(panel)
+
+        panel.update_view(ENVELOPES_KEPT)
+
+        assert shown[panel.message_tag] is False
+        assert shown[panel.tab_bar_tag] is True
+        assert panel.sample_size_tag not in written
+        for name, part in parts.items():
+            if name.startswith("plot."):
+                part.set_locked.assert_called_once_with(True)
+            else:
+                part.set_enabled.assert_called_once_with(False)
+        fields = [
+            panel._get_feature_text_tag(channel_name, feature_key)
+            for channel_name in ChannelName.items()
+            for feature_key in panel._generator_features(channel_name)
+        ]
+        assert all(enabled[field] is False for field in fields)
+
+    def test_a_landed_view_frees_every_edit_and_marks_the_exports_anew(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        enabled: Dict[str, bool],
+    ) -> None:
+        parts = self._held_parts(panel)
+        panel.update_view(ENVELOPES_KEPT)
+        for part in parts.values():
+            part.reset_mock()
+
+        panel.update_view(build_view_model({ChannelName.PULSE1: LARGEST_PULSE}))
+
+        for name, part in parts.items():
+            if name.startswith("plot."):
+                part.set_locked.assert_called_once_with(False)
+            elif name.startswith("stepper."):
+                part.set_enabled.assert_called_once_with(True)
+        cast(MagicMock, parts[f"export.{ChannelName.PULSE1}"]).set_enabled.assert_called_with(True)
+        cast(MagicMock, parts[f"export.{ChannelName.PULSE2}"]).set_enabled.assert_called_with(False)
+        assert all(state is True for state in enabled.values())
 
 
 class TestTheWordsInPlaceOfTheTabs:

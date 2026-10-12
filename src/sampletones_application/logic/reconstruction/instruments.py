@@ -11,6 +11,7 @@ from sampletones_application.view_model.reconstruction.envelopes import (
     ChannelEnvelopesViewModel,
 )
 from sampletones_application.view_model.reconstruction.instruments import (
+    InstrumentsShowing,
     InstrumentViewModel,
     ReconstructionInstrumentsViewModel,
 )
@@ -106,6 +107,14 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         self.call(self.on_view_changed, self._build_view_model())
         self._redraw_silenced()
 
+    def follow_listening(self) -> None:
+        """Locks the panel while the envelopes of a new choice of what is heard are on their way, and frees it
+        once the choice is one whose envelopes it draws.
+
+        The bars stay as drawn either way: the envelopes of the new choice redraw them as they land.
+        """
+        self.call(self.on_view_changed, self._build_view_model())
+
     def _redraw_silenced(self) -> None:
         """Draws the channels an edit silenced as the document now holds them, once they stand by there."""
         envelopes = self._reconstruction_envelopes()
@@ -183,29 +192,29 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
     def _build_view_model(self) -> ReconstructionInstrumentsViewModel:
         """What the panel shows of the voice in front of it.
 
-        A reconstruction is shown by its channels once the worker has exported their envelopes, and
-        as a document on its way until then, so the panel says a document is open through an
-        opening, a removal, a retune and an undo. An instrument is shown by its own set.
+        A reconstruction is shown by its channels once the worker has exported their envelopes for
+        what the reader hears. While the next ones are on their way, the panel keeps the ones it
+        drew, and a document just opened, which has none yet, is shown as being prepared. An
+        instrument is shown by its own set.
         """
         match self._editor.edited_instrument():
             case InstrumentEdit() as instrument:
                 return self._instrument_view_model(instrument)
             case ChannelEnvelopesViewModel() as document:
                 return self._reconstruction_view_model(self._measured_channels(document))
-            case EnvelopesOwed():
-                return ReconstructionInstrumentsViewModel(
-                    reconstruction_loaded=True,
-                    envelopes_owed=True,
-                    playing_channels=frozenset(),
-                    footprint=None,
-                )
+            case EnvelopesOwed() as owed:
+                return self._bare_view_model(InstrumentsShowing.PREPARING if owed.opening else InstrumentsShowing.KEPT)
             case None:
-                return ReconstructionInstrumentsViewModel(
-                    reconstruction_loaded=False,
-                    envelopes_owed=False,
-                    playing_channels=frozenset(),
-                    footprint=None,
-                )
+                return self._bare_view_model(InstrumentsShowing.NOTHING)
+
+    @staticmethod
+    def _bare_view_model(showing: InstrumentsShowing) -> ReconstructionInstrumentsViewModel:
+        """A view naming what the panel shows and nothing it measures, which the panel keeps or has none of."""
+        return ReconstructionInstrumentsViewModel(
+            showing=showing,
+            playing_channels=frozenset(),
+            footprint=None,
+        )
 
     def _reconstruction_view_model(
         self,
@@ -213,8 +222,7 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
     ) -> ReconstructionInstrumentsViewModel:
         """What the panel shows of a reconstruction: the channels that play and what they cost."""
         return ReconstructionInstrumentsViewModel(
-            reconstruction_loaded=True,
-            envelopes_owed=False,
+            showing=InstrumentsShowing.EDITABLE,
             playing_channels=playing_channels(channels),
             footprint=self._build_footprint(channels),
         )
@@ -230,8 +238,7 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         writes one.
         """
         return ReconstructionInstrumentsViewModel(
-            reconstruction_loaded=False,
-            envelopes_owed=False,
+            showing=InstrumentsShowing.EDITABLE,
             playing_channels=playing_channels(self._instrument_channels(instrument)),
             footprint=VoiceFootprintViewModel.from_instrument(features_footprint(instrument.features)),
             instrument=InstrumentViewModel(name=instrument.name),

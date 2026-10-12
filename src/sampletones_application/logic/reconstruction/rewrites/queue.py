@@ -31,6 +31,7 @@ from sampletones_application.view_model.reconstruction.envelopes import (
 from sampletones_application.view_model.reconstruction.work import Work
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing
 from sampletones_core.reconstructions.reconstruction.stems.removal import (
     can_remove_stem,
     without_stem,
@@ -69,7 +70,21 @@ class Rebuild(Running):
 
 @dataclass(frozen=True)
 class Reading(Running):
-    """A reading of what the reader hears, which the worker is rendering."""
+    """A reading of what the reader hears, which the worker is rendering.
+
+    Attributes:
+        hearing: What the reader heard when the reading started, which is what it renders.
+    """
+
+    hearing: Hearing
+
+    def answers(
+        self,
+        reconstruction: Optional[Reconstruction],
+        hearing: Hearing,
+    ) -> bool:
+        """Whether the reading renders ``reconstruction`` heard as ``hearing``."""
+        return self.lands_on(reconstruction) and self.hearing == hearing
 
 
 class ReconstructionRewrites(CallbackMixin):
@@ -110,6 +125,8 @@ class ReconstructionRewrites(CallbackMixin):
         self._waiting: List[Rewrite] = []
         self._running: Optional[Running] = None
         self._awaiting_envelopes: Optional[ChannelName] = None
+        self._taking = False
+        self._unreadable: Optional[Reading] = None
         self._redraw_owed: bool = False
         self._reported_work: Optional[Work] = None
 
@@ -156,6 +173,7 @@ class ReconstructionRewrites(CallbackMixin):
                 self._waiting.append(rewrite)
 
         self._advance()
+        self._catch_up()
         self._settle()
 
     def drop(self) -> None:
@@ -219,8 +237,21 @@ class ReconstructionRewrites(CallbackMixin):
                 self._waiting.append(change)
 
     def _enqueue_listening(self, listening: ListeningChange) -> None:
-        if not any(isinstance(step, ListeningChange) for step in self._waiting):
-            self._waiting.append(listening)
+        """Puts a listening in line where none in line or running renders what the reader hears now.
+
+        A listening waiting reads the choice at its turn, so it answers every choice made before
+        it; the one running answers only the choice it started with.
+        """
+        if any(isinstance(step, ListeningChange) for step in self._waiting):
+            return
+
+        if isinstance(self._running, Reading) and self._running.answers(
+            self._manager.reconstruction,
+            self._manager.listening.hearing,
+        ):
+            return
+
+        self._waiting.append(listening)
 
     def _enqueue_rate(self, rate_change: RateChange) -> None:
         match self._waiting[-1] if self._waiting else None:
@@ -230,9 +261,22 @@ class ReconstructionRewrites(CallbackMixin):
                 self._waiting.append(rate_change)
 
     def _advance(self) -> None:
-        """Takes the waiting steps in order until a job runs or the line empties."""
-        while self._running is None and self._waiting:
-            self._take(self._waiting.pop(0))
+        """Takes the waiting steps in order until a job runs or the line empties.
+
+        A step taken, or a result landing, may ask for a step of its own, as a gesture redrawing
+        the document asks for a listening. The ask joins the line and is taken in its turn once
+        the step or the landing has returned, so a gesture never runs inside a landing or inside
+        another gesture.
+        """
+        if self._taking:
+            return
+
+        self._taking = True
+        try:
+            while self._running is None and self._waiting:
+                self._take(self._waiting.pop(0))
+        finally:
+            self._taking = False
 
     def _take(self, step: Rewrite) -> None:
         match step:
@@ -316,7 +360,7 @@ class ReconstructionRewrites(CallbackMixin):
 
         hearing = self._manager.listening.hearing
         kept = self._manager.renders.held(reconstruction)
-        self._running = Reading(base=reconstruction)
+        self._running = Reading(base=reconstruction, hearing=hearing)
         self._regeneration.start_listening(
             reconstruction,
             hearing=hearing,
@@ -370,14 +414,20 @@ class ReconstructionRewrites(CallbackMixin):
             raise RuntimeError("A regeneration result arrived while no job was running")
 
         self._running = None
-        match result:
-            case ServiceSuccess(value=outcome):
-                self._land(running, outcome)
-            case ServiceError(exception=exception):
-                self.call(self.on_failed, exception)
-                self._fail(running)
+        was_taking = self._taking
+        self._taking = True
+        try:
+            match result:
+                case ServiceSuccess(value=outcome):
+                    self._land(running, outcome)
+                case ServiceError(exception=exception):
+                    self.call(self.on_failed, exception)
+                    self._fail(running)
+        finally:
+            self._taking = was_taking
 
         self._advance()
+        self._catch_up()
         self._settle()
 
     def _land(
@@ -420,10 +470,37 @@ class ReconstructionRewrites(CallbackMixin):
     def _fail(self, running: Running) -> None:
         """Tells the panel what a failed job leaves it with: a change drawn that will never land, or a sound the
         open document waited for that will never land.
+
+        A failed listening is remembered, so the line asks the worker again for another choice
+        alone and a failure that repeats leaves the line idle.
         """
         self._let_go(running)
         if isinstance(running, Reading) and running.lands_on(self._manager.reconstruction):
+            self._unreadable = running
             self.call(self.on_reading_failed)
+
+    def _catch_up(self) -> None:
+        """Asks the worker for the envelopes of what the reader hears, where the line stands idle without them.
+
+        Every gesture and every landing passes here once the line has taken what it could, so an
+        idle line always holds the open document's envelopes for the reader's choice or is
+        rendering them: a reader who stops lets the last listening land what they hear. A choice
+        whose listening failed is left alone until the reader makes another.
+        """
+        reconstruction = self._manager.reconstruction
+        if self.is_busy or reconstruction is None:
+            return
+
+        hearing = self._manager.listening.hearing
+        if self._manager.has_envelopes_for(hearing.selection):
+            return
+
+        if self._unreadable is not None and self._unreadable.answers(reconstruction, hearing):
+            return
+
+        self._unreadable = None
+        self._waiting.append(ListeningChange())
+        self._advance()
 
     def _settle(self) -> None:
         """Pays a redraw owed once the line empties, and reports what the line is busy with as it changes."""

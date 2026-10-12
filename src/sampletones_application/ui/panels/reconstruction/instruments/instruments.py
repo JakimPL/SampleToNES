@@ -88,6 +88,7 @@ from sampletones_application.view_model.reconstruction.envelopes import (
     ChannelEnvelopesViewModel,
 )
 from sampletones_application.view_model.reconstruction.instruments import (
+    InstrumentsShowing,
     ReconstructionInstrumentsViewModel,
 )
 from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
@@ -508,18 +509,23 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         set every channel reads, so it shows a single tab under its own name, and the audition
         takes the pitch stepper's place: a row states the note an instrument sounds at, and
         what the panel offers instead is the generator to hear it on. Words stand in place of the
-        tabs while nothing is open, and while a reconstruction's envelopes are on their way from
-        the worker they say the instruments are being prepared.
+        tabs while nothing is open, and while a document just opened waits for its first envelopes
+        they say the instruments are being prepared. Envelopes kept while the next ones are on
+        their way stay drawn as they are, and the panel takes no edit of them.
         """
         instrument = view_model.instrument
         is_open = view_model.is_open
         dpg_set_value(
             self.message_tag,
-            self._msg_preparing if view_model.envelopes_owed else self._msg_nothing_loaded,
+            self._msg_preparing if view_model.showing is InstrumentsShowing.PREPARING else self._msg_nothing_loaded,
         )
         dpg_configure_item(self.message_tag, show=not is_open)
         dpg_configure_item(self.tab_bar_tag, show=is_open)
         dpg_configure_item(self.sample_size_group_tag, show=is_open)
+        self._lock(view_model.is_locked)
+        if view_model.is_locked:
+            return
+
         self._update_sizes(view_model.footprint, shows_one_instrument=instrument is not None)
         self._show_pitch_steppers(shown=instrument is None)
         self._show_audition_selector(shown=instrument is not None)
@@ -537,6 +543,25 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 channel_name,
                 channel_name in view_model.playing_channels,
             )
+
+    def _lock(self, locked: bool) -> None:
+        """Takes no edit of the envelopes drawn while the next ones are on their way, and takes edits again once
+        they land.
+
+        Every gesture writing an envelope is held: a bar pressed, a sequence typed, a pitch stepped
+        and an instrument exported. A view that frees the panel marks the exports anew.
+        """
+        for channel_name, plots in self.channel_plots.items():
+            for feature_key, plot in plots.items():
+                plot.set_locked(locked)
+                dpg_configure_item(self._get_feature_text_tag(channel_name, feature_key), enabled=not locked)
+
+        for stepper in self._pitch_steppers.values():
+            stepper.set_enabled(not locked)
+
+        if locked:
+            for export_button in self._export_buttons.values():
+                export_button.set_enabled(False)
 
     def _show_pitch_steppers(self, *, shown: bool) -> None:
         """Offers the pitch a channel measures its arpeggio against, where a reader may move it.

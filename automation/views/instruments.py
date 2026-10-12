@@ -89,13 +89,13 @@ class Instruments:
 
     def field(self, channel: ChannelName, feature: FeatureKey) -> str:
         """The name of the field holding the sequence of ``channel``'s ``feature`` envelope."""
-        return compose_tag(
-            TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR,
-            channel,
-            feature,
-            SUF_GRAPH_RAW_DATA,
-            SUF_TEXT,
-        )
+        return sequence_field(channel, feature)
+
+    def takes_edits(self, channel: ChannelName, feature: FeatureKey) -> bool:
+        """Whether ``channel``'s ``feature`` field takes a typed sequence, which it holds while the envelopes are on
+        their way.
+        """
+        return self._bridge.ask(lambda: read_takes_edits(channel, feature))
 
     def envelope(self, channel: ChannelName, feature: FeatureKey) -> str:
         """The sequence the field under ``channel``'s ``feature`` graph holds, as the reader would edit it."""
@@ -179,6 +179,22 @@ class Instruments:
         """Clicks ``channel``'s Export instrument button."""
         self._hand.scroll_into_view(export_button(channel))
         self._hand.click(export_button(channel))
+
+
+def sequence_field(channel: ChannelName, feature: FeatureKey) -> str:
+    """The name of the field holding the sequence of ``channel``'s ``feature`` envelope."""
+    return compose_tag(
+        TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR,
+        channel,
+        feature,
+        SUF_GRAPH_RAW_DATA,
+        SUF_TEXT,
+    )
+
+
+def read_takes_edits(channel: ChannelName, feature: FeatureKey) -> bool:
+    """Whether ``channel``'s ``feature`` field takes a typed sequence. Runs on the render thread."""
+    return read_item(sequence_field(channel, feature)).enabled
 
 
 def read_words() -> Optional[str]:

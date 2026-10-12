@@ -908,6 +908,63 @@ class TestEnvelopesTheWorkerExported:
         assert reconstruction_manager.has_envelopes_for(selection)
         assert reconstruction_manager.current_features is installed
 
+    def test_a_reading_for_a_choice_the_reader_has_left_is_passed_over(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        """A reading started before the reader ticked a box back lands envelopes for the choice they left."""
+        reconstruction = reconstruction_factory()
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        selection = reconstruction_manager.listening.selection
+        reconstruction_manager.adopt_envelopes(reconstruction, exported(reconstruction, selection))
+        installed = reconstruction_manager.current_features
+        heard = reconstruction_manager.listening.heard
+        _mute(reconstruction_manager)
+        left = exported(reconstruction, reconstruction_manager.listening.selection)
+        for stem_id, channels in heard.items():
+            reconstruction_manager.listening.set_channels(stem_id, channels)
+
+        changed = reconstruction_manager.adopt_envelopes(reconstruction, left)
+
+        assert not changed
+        assert reconstruction_manager.current_features is installed
+
+    def test_an_opening_starts_with_no_envelopes_landed(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        reconstruction = reconstruction_factory()
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        reconstruction_manager.adopt_envelopes(
+            reconstruction, exported(reconstruction, reconstruction_manager.listening.selection)
+        )
+        assert reconstruction_manager.has_landed_envelopes
+
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(), name="Other", voice_id=SAMPLE_VOICE_ID
+        )
+
+        assert not reconstruction_manager.has_landed_envelopes
+
+    def test_an_edit_keeps_the_envelopes_landed_last(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        """A removal, a retune and an undo leave the envelopes owed, and the ones landed last stand meanwhile."""
+        reconstruction = reconstruction_factory()
+        reconstruction_manager.load_reconstruction_object(reconstruction, name="Sample", voice_id=SAMPLE_VOICE_ID)
+        reconstruction_manager.adopt_envelopes(
+            reconstruction, exported(reconstruction, reconstruction_manager.listening.selection)
+        )
+
+        reconstruction_manager.apply_edited(reconstruction_factory(), None)
+
+        assert reconstruction_manager.current_features is None
+        assert reconstruction_manager.has_landed_envelopes
+
     def test_an_edit_arriving_with_envelopes_installs_them(
         self,
         reconstruction_manager: ReconstructionManager,

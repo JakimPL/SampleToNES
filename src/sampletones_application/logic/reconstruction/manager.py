@@ -130,6 +130,7 @@ class ReconstructionManager(CallbackMixin):
         belongs to the document it was made on, and an opened document starts a choice of its own.
         """
         self._listening.release()
+        self._envelopes = None
         self._adopt_reconstruction(reconstruction_data, voice_id=voice_id, envelopes=None)
         self._session.mark_loaded(name)
         self.call(self.on_reconstruction_loaded)
@@ -174,17 +175,20 @@ class ReconstructionManager(CallbackMixin):
         reconstruction: Reconstruction,
         envelopes: HeardEnvelopes,
     ) -> bool:
-        """Takes the envelopes the worker exported for ``reconstruction``, where it is the open document.
+        """Takes the envelopes the worker exported for ``reconstruction``, where it is the open document heard as the
+        reader hears it now.
 
         A box on the stems card moves which recordings a channel is heard on, and the plot, the
         figures and an export all read from the same envelopes, so they follow it together once
-        the worker's reading lands. Envelopes exported for the document and the choice the open
-        ones already answer change nothing.
+        the worker's reading lands. A reading started before the reader moved on exports for a
+        choice they have left, so its envelopes are passed over and the ones answering stay.
+        Envelopes exported for the document and the choice the open ones already answer change
+        nothing.
 
         Returns:
             bool: True where the open document's envelopes changed.
         """
-        if self.reconstruction is not reconstruction:
+        if self.reconstruction is not reconstruction or envelopes.selection != self._listening.selection:
             return False
 
         if self._envelopes is not None and self._envelopes.answers_for(reconstruction, envelopes.selection):
@@ -196,6 +200,15 @@ class ReconstructionManager(CallbackMixin):
     def has_envelopes_for(self, selection: StemSelection) -> bool:
         """Whether the worker's envelopes for the open document heard as ``selection`` are in place."""
         return self._envelopes is not None and self._envelopes.answers_for(self.reconstruction, selection)
+
+    @property
+    def has_landed_envelopes(self) -> bool:
+        """Whether the worker has landed envelopes for the open document since it was opened.
+
+        An edit, a retune, an undo and a new choice of what is heard keep the ones landed last
+        until the worker lands the next, so the instruments panel keeps drawing them meanwhile.
+        """
+        return self._envelopes is not None
 
     def save_reconstruction(self, filepath: Optional[Path] = None) -> bool:
         """Writes the open reconstruction to disk, reporting whether the write happened.

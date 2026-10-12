@@ -23,6 +23,10 @@ frequency, and a gesture that reads or puts away the whole document. The line ta
 the order the reader asked for them, and each step is built from the document the step before it left. Two
 quick edits therefore both land, whichever dimensions or channels they touch.
 
+A step the line takes, or a result it lands, may ask for another step, as an undo redrawing the document
+asks for a listening. The ask joins the line and is taken once the step or the landing has returned, so a
+gesture never runs inside another one.
+
 ## A step carries what the reader moved
 
 A channel change holds the dimensions the reader moved alone. At its turn it is written over the
@@ -48,10 +52,12 @@ therefore keeps what it held, and the history stays as it was.
 
 The instruments panel reads the document's envelopes through the changes still on their way, so the bars,
 the plots and the byte figures answer for the document once the line empties. A change the line lets go of,
-such as a failed rebuild, redraws the panel from the document as it stands. An opening, a removal, a retune
-and an undo leave the envelopes to the worker, so the document has no channels to draw until they land;
-the panel says the instruments are being prepared in place of its tabs, and an edit reaching it meanwhile
-goes nowhere.
+such as a failed rebuild, redraws the panel from the document as it stands.
+
+A removal, a retune, an undo and a new choice of what is heard leave the envelopes to the worker. The panel
+keeps the envelopes it drew until the next ones land, and it takes no edit of them meanwhile, since an edit
+would be written against frames the reader no longer hears. A document just opened has none to keep, so the
+panel says its instruments are being prepared.
 
 ## A step that no longer applies is skipped
 
@@ -93,6 +99,15 @@ reading of what plays like a showing: it writes the kept sound at once, or waits
 is written for what the reader hears once the sound lands. A document put away before that, or a reading
 that fails, drops the export and tells the reader so. A channel change reaching its turn while the
 envelopes of what is heard are on their way waits behind a listening of that choice.
+
+## The line catches up with what is heard
+
+A listening renders the choice standing when it starts, and the reader may move on before it lands. Its
+envelopes are kept only where they still answer the reader's choice. Once the line stands idle after a step
+or a landing, the open document holds the envelopes of what the reader hears, or the line asks the worker
+for them. The panel and the waveform therefore settle on the reader's last choice once the reader stops.
+A listening already running for the choice answers it, so no reading is rendered twice. A choice whose
+listening failed is asked for again once the reader makes another.
 
 ## The waveform fades while the line is busy
 

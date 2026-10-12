@@ -140,9 +140,10 @@ class TestEditingAFileBackedDocumentAtSpeed:
         assert _open_document(settled).config.nes_frequency == RETUNED_FREQUENCY
 
     def test_the_waveform_fades_for_the_whole_span(self, settled: ReconstructionCoordinator) -> None:
+        """The removal and the rate leave the envelopes owed, so the line reads them before the fade ends, once."""
         work = [entry.args[0] for entry in settled._tab.show_work.call_args_list]
 
-        assert work == [Work.REBUILDING, None]
+        assert work == [Work.REBUILDING, Work.READING, None]
 
 
 class TestTheFirstFramesOfTheReadersOwn:

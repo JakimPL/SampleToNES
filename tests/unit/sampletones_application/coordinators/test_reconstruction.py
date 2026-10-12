@@ -1938,12 +1938,12 @@ class TestTheDocumentChangesOneStepAtATime:
         tab: MagicMock,
         turns_sample: Sample,
     ) -> None:
+        """The line asks for the listening the removal owes itself, and the envelopes answer once it lands."""
         _remove(following_coordinator, STEM_B_ID)
-        held_queue.drain()
         assert reconstruction_manager.current_features is None
         tab.redraw_reconstruction.assert_called_once_with(refit_waveform=False)
+        tab.redraw_listening.assert_not_called()
 
-        following_coordinator.request_rewrite(ListeningChange())
         held_queue.drain()
 
         assert reconstruction_manager.current_features is not None

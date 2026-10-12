@@ -108,6 +108,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self.on_bar_point_hovered: Optional[OnBarPointHoveredCallback] = None
 
         self._press: LeftPress[HeldStroke] = LeftPress()
+        self._locked = False
 
         _min_x = layout.graph.min_x
         _max_x = layout.graph.max_x
@@ -173,8 +174,17 @@ class GUIBarGraph(GUIGraph[BarLayer]):
                 callback=self._on_release,
             )
 
+    def set_locked(self, locked: bool) -> None:
+        """Takes presses on the bars, or holds them while what the bars draw is on its way, ending a press held."""
+        self._locked = locked
+        if locked:
+            self._press.end()
+
     def _on_press(self, sender: Sender) -> None:
-        """Starts a press on the plot, which draws the bar it lands on."""
+        """Starts a press on the plot, which draws the bar it lands on, where the bars take presses."""
+        if self._locked:
+            return
+
         self._press.begin(HeldStroke())
         self._on_mouse_action(sender)
 

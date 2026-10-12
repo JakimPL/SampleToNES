@@ -80,7 +80,7 @@ class InstrumentEditor:
             return features
 
         if self._reconstruction_manager.reconstruction is not None:
-            return EnvelopesOwed()
+            return EnvelopesOwed(opening=not self._reconstruction_manager.has_landed_envelopes)
 
         return None
 

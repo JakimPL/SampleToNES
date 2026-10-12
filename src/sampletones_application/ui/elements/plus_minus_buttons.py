@@ -100,6 +100,15 @@ class GUIPlusMinusButtons(CallbackMixin):
         if self._decrement_button is not None:
             self._decrement_button.set_enabled(enabled)
 
+    def set_enabled(self, enabled: bool) -> None:
+        """Takes presses on both buttons, or holds them and ends a hold under way."""
+        for button in (self._decrement_button, self._increment_button):
+            if button is not None:
+                button.set_enabled(enabled)
+
+        if not enabled:
+            self._press.end()
+
     def delete(self) -> None:
         """Removes the buttons and, when hold-repeat is armed, the shared mouse handler."""
         self._clear_existing_items()

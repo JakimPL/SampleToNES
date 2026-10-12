@@ -64,7 +64,10 @@ from sampletones_application.utils.parallelization.background import (
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_application.view_model.main.converter import ConversionPhase, ConverterViewModel
 from sampletones_application.view_model.reconstruction.envelopes import ChannelEnvelopesViewModel
-from sampletones_application.view_model.reconstruction.instruments import ReconstructionInstrumentsViewModel
+from sampletones_application.view_model.reconstruction.instruments import (
+    InstrumentsShowing,
+    ReconstructionInstrumentsViewModel,
+)
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.audio import CurrentDevice
 from sampletones_core.constants.algorithm import UNIT_DRIVE
@@ -736,14 +739,14 @@ class TestTheReconstructionsTabFollowsTheProject:
         app.reconstruction_manager.load_reconstruction(path)
 
         assert views[-1].reconstruction_loaded
-        assert views[-1].envelopes_owed
+        assert views[-1].showing is InstrumentsShowing.PREPARING
         assert not views[-1].is_open
 
         SingleThreadExecutor.join_all()
         held_queue.drain()
 
+        assert views[-1].showing is InstrumentsShowing.EDITABLE
         assert views[-1].is_open
-        assert not views[-1].envelopes_owed
 
 
 class TestAGestureOnTheWholeDocumentWaitsForTheEdits:
