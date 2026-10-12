@@ -77,6 +77,7 @@ def history(project_controller: ProjectController) -> HistoryManager:
 
 @pytest.fixture
 def mock_reconstruction_manager() -> MagicMock:
+    """A stand-in for the manager with a document open, whose envelopes each case states."""
     return MagicMock(spec=ReconstructionManager)
 
 
@@ -126,6 +127,7 @@ class TestReconstructionInstrumentsLogicUpdateDisplay:
         instruments_logic: ReconstructionInstrumentsLogic,
         mock_reconstruction_manager: MagicMock,
     ) -> None:
+        mock_reconstruction_manager.reconstruction = None
         mock_reconstruction_manager.current_features = None
         received: List[ReconstructionInstrumentsViewModel] = []
         instruments_logic.on_view_changed = received.append
@@ -138,6 +140,7 @@ class TestReconstructionInstrumentsLogicUpdateDisplay:
         instruments_logic: ReconstructionInstrumentsLogic,
         mock_reconstruction_manager: MagicMock,
     ) -> None:
+        mock_reconstruction_manager.reconstruction = None
         mock_reconstruction_manager.current_features = None
         received: List[Optional[Dict[ChannelName, Features]]] = []
         instruments_logic.on_feature_data_changed = received.append
@@ -620,6 +623,7 @@ class TestAnEditReachingAVoiceThatLeft:
         rewrites: ReconstructionRewrites,
     ) -> ReconstructionInstrumentsLogic:
         """The panel's logic over an instrument the project has since removed."""
+        mock_reconstruction_manager.reconstruction = None
         mock_reconstruction_manager.current_features = None
         editor = _editor(mock_reconstruction_manager, project_controller, history)
         with history.transaction(HistoryAction.ADD_INSTRUMENT):
@@ -773,3 +777,111 @@ class TestEveryGestureReachesTheDocument:
         assert envelopes is not None
         assert envelopes[SHARED_CHANNEL].volume == shared
         assert envelopes[SOLE_CHANNEL].volume == sole
+
+
+class TestAReconstructionWhoseEnvelopesAreOnTheirWay:
+    """The panel says a document is open while the worker renders its envelopes, and draws them once they land.
+
+    An opening, a removal, a retune and an undo leave the envelopes owed to the worker, so until they
+    land the document has no channels to draw. The panel keeps saying so, as a document on its way,
+    and an edit reaching it meanwhile goes nowhere.
+    """
+
+    @pytest.fixture
+    def owed_logic(
+        self,
+        instruments_logic: ReconstructionInstrumentsLogic,
+        mock_reconstruction_manager: MagicMock,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> ReconstructionInstrumentsLogic:
+        """The panel's logic over an open document whose envelopes the worker has yet to export."""
+        mock_reconstruction_manager.reconstruction = reconstruction_factory()
+        mock_reconstruction_manager.current_features = None
+        return instruments_logic
+
+    def test_the_display_says_a_document_is_on_its_way(
+        self,
+        owed_logic: ReconstructionInstrumentsLogic,
+    ) -> None:
+        views: List[ReconstructionInstrumentsViewModel] = []
+        owed_logic.on_view_changed = views.append
+
+        owed_logic.update_display()
+
+        assert len(views) == 1
+        assert views[0].reconstruction_loaded
+        assert views[0].envelopes_owed
+        assert not views[0].is_open
+        assert views[0].playing_channels == frozenset()
+        assert views[0].footprint is None
+
+    def test_the_display_draws_no_envelopes_yet(
+        self,
+        owed_logic: ReconstructionInstrumentsLogic,
+    ) -> None:
+        drawn: List[Optional[ChannelEnvelopesViewModel]] = []
+        owed_logic.on_feature_data_changed = drawn.append
+
+        owed_logic.update_display()
+
+        assert drawn == [None]
+
+    def test_a_refresh_says_the_same(
+        self,
+        owed_logic: ReconstructionInstrumentsLogic,
+    ) -> None:
+        """A retune refreshes the figures of a document whose envelopes it left to the worker."""
+        views: List[ReconstructionInstrumentsViewModel] = []
+        owed_logic.on_view_changed = views.append
+
+        owed_logic.refresh_view()
+
+        assert len(views) == 1
+        assert views[0].reconstruction_loaded
+        assert views[0].envelopes_owed
+
+    def test_an_envelope_edit_goes_nowhere_and_keeps_the_words(
+        self,
+        owed_logic: ReconstructionInstrumentsLogic,
+    ) -> None:
+        views: List[ReconstructionInstrumentsViewModel] = []
+        changes: List[ChannelChange] = []
+        owed_logic.on_view_changed = views.append
+        owed_logic.on_channel_changed = changes.append
+
+        owed_logic.handle_envelope_changed(ChannelName.PULSE1, FeatureKey.VOLUME, Envelope[int](items=(7,)))
+
+        assert changes == []
+        assert len(views) == 1
+        assert views[0].envelopes_owed
+
+    def test_a_pitch_change_goes_nowhere_and_keeps_the_words(
+        self,
+        owed_logic: ReconstructionInstrumentsLogic,
+    ) -> None:
+        views: List[ReconstructionInstrumentsViewModel] = []
+        changes: List[ChannelChange] = []
+        owed_logic.on_view_changed = views.append
+        owed_logic.on_channel_changed = changes.append
+
+        owed_logic.handle_pitch_value_changed(ChannelName.PULSE1, NEW_PITCH)
+
+        assert changes == []
+        assert len(views) == 1
+        assert views[0].envelopes_owed
+
+    def test_the_landing_draws_the_channels(
+        self,
+        owed_logic: ReconstructionInstrumentsLogic,
+        mock_reconstruction_manager: MagicMock,
+    ) -> None:
+        views: List[ReconstructionInstrumentsViewModel] = []
+        owed_logic.on_view_changed = views.append
+        owed_logic.update_display()
+
+        mock_reconstruction_manager.current_features = _heard_features(mock_reconstruction_manager.reconstruction)
+        owed_logic.update_display()
+
+        assert [view.envelopes_owed for view in views] == [True, False]
+        assert views[-1].is_open
+        assert views[-1].playing_channels

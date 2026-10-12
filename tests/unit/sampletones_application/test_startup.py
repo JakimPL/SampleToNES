@@ -721,6 +721,30 @@ class TestTheReconstructionsTabFollowsTheProject:
         held_queue.drain()
         assert app.reconstruction_manager.filepath == path
 
+    def test_an_opening_says_the_envelopes_are_on_their_way_until_they_land(
+        self,
+        app: Application,
+        reconstruction_factory: ReconstructionFactory,
+        held_queue: HeldQueue,
+        tmp_path: Path,
+    ) -> None:
+        """The panel says a document is open from the opening on, and draws its channels once the worker lands them."""
+        views = self._drawn_views(app)
+        path = tmp_path / "lead.stn"
+        reconstruction_factory().save(path)
+
+        app.reconstruction_manager.load_reconstruction(path)
+
+        assert views[-1].reconstruction_loaded
+        assert views[-1].envelopes_owed
+        assert not views[-1].is_open
+
+        SingleThreadExecutor.join_all()
+        held_queue.drain()
+
+        assert views[-1].is_open
+        assert not views[-1].envelopes_owed
+
 
 class TestAGestureOnTheWholeDocumentWaitsForTheEdits:
     """A gesture that reads or puts away the open document runs once the edit on its way has landed.

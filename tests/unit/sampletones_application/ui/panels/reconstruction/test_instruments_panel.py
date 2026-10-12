@@ -89,12 +89,24 @@ PLOTTED_LANE: Final[OwnershipLaneViewModel] = OwnershipLaneViewModel(
 
 NOT_LOADED: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrumentsViewModel(
     reconstruction_loaded=False,
+    envelopes_owed=False,
     playing_channels=frozenset(),
     footprint=None,
 )
 
+ENVELOPES_ON_THEIR_WAY: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrumentsViewModel(
+    reconstruction_loaded=True,
+    envelopes_owed=True,
+    playing_channels=frozenset(),
+    footprint=None,
+)
+
+NOTHING_LOADED_KEY: Final[str] = "global.dialog.message.reconstruction_no_data"
+PREPARING_KEY: Final[str] = "reconstructions.instruments.message.preparing"
+
 ONE_INSTRUMENT: Final[ReconstructionInstrumentsViewModel] = ReconstructionInstrumentsViewModel(
     reconstruction_loaded=False,
+    envelopes_owed=False,
     playing_channels=frozenset((ChannelName.PULSE1,)),
     footprint=VoiceFootprintViewModel.from_instrument(LARGEST_PULSE),
     instrument=InstrumentViewModel(name="lead"),
@@ -112,6 +124,7 @@ def build_view_model(
     """A loaded reconstruction playing the given channels, each measured as given."""
     return ReconstructionInstrumentsViewModel(
         reconstruction_loaded=True,
+        envelopes_owed=False,
         playing_channels=frozenset(channel_footprints),
         footprint=VoiceFootprintViewModel.from_footprints(channel_footprints),
     )
@@ -762,7 +775,46 @@ class TestSizeVisibility:
         written: Dict[str, str],
     ) -> None:
         panel.update_view(NOT_LOADED)
-        assert written == {}
+        assert set(written) == {panel.message_tag}
+
+
+class TestTheWordsInPlaceOfTheTabs:
+    """The card says what stands in place of its tabs: no document, or one whose envelopes are on their way."""
+
+    def test_no_reconstruction_says_none_is_loaded(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        shown: Dict[str, bool],
+        written: Dict[str, str],
+    ) -> None:
+        panel.update_view(NOT_LOADED)
+
+        assert shown[panel.message_tag] is True
+        assert shown[panel.tab_bar_tag] is False
+        assert written[panel.message_tag] == panel._language_manager[NOTHING_LOADED_KEY]
+
+    def test_envelopes_on_their_way_say_the_instruments_are_being_prepared(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        shown: Dict[str, bool],
+        written: Dict[str, str],
+    ) -> None:
+        panel.update_view(ENVELOPES_ON_THEIR_WAY)
+
+        assert shown[panel.message_tag] is True
+        assert shown[panel.tab_bar_tag] is False
+        assert shown[panel.sample_size_group_tag] is False
+        assert written[panel.message_tag] == panel._language_manager[PREPARING_KEY]
+
+    def test_a_loaded_reconstruction_shows_its_tabs_instead(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        shown: Dict[str, bool],
+    ) -> None:
+        panel.update_view(build_view_model({ChannelName.PULSE1: LARGEST_PULSE}))
+
+        assert shown[panel.message_tag] is False
+        assert shown[panel.tab_bar_tag] is True
 
 
 class TestTheAuditionSelector:

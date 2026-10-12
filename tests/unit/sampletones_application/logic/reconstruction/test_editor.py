@@ -7,7 +7,7 @@ from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
-from sampletones_application.logic.reconstruction.editing import InstrumentEdit
+from sampletones_application.logic.reconstruction.editing import EnvelopesOwed, InstrumentEdit
 from sampletones_application.logic.reconstruction.editor import InstrumentEditor
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.view_model.reconstruction.envelopes import (
@@ -18,6 +18,7 @@ from sampletones_core.exporters import Features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.voices.creation import SUSTAINING_ENVELOPES, new_instrument
 from sampletones_core.project.voices.instrument import Instrument
+from sampletones_core.reconstructions import Reconstruction
 from tests.suite.history.wiring import wired_history
 
 ROOT_PITCH: Final[int] = 55
@@ -43,6 +44,7 @@ def controller() -> ProjectController:
 @pytest.fixture
 def reconstruction_manager() -> MagicMock:
     manager = MagicMock(spec=ReconstructionManager)
+    manager.reconstruction = None
     manager.current_features = None
     return manager
 
@@ -83,6 +85,17 @@ class TestWhatTheTabHasInFront:
 
         assert isinstance(edit, ChannelEnvelopesViewModel)
         assert list(edit.channels) == [ChannelName.PULSE1]
+
+    def test_a_reconstruction_whose_envelopes_are_on_their_way_answers_so(
+        self,
+        editor: InstrumentEditor,
+        reconstruction_manager: MagicMock,
+    ) -> None:
+        """An opening, a removal, a retune and an undo leave the envelopes to the worker, with the document open."""
+        reconstruction_manager.reconstruction = MagicMock(spec=Reconstruction)
+        reconstruction_manager.current_features = None
+
+        assert isinstance(editor.edited_instrument(), EnvelopesOwed)
 
     def test_an_instrument_answers_with_what_it_states(
         self,

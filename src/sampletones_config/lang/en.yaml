@@ -552,6 +552,7 @@ reconstructions.instruments.message.status_audition: "Click to choose the genera
 reconstructions.instruments.message.status_bar: "Click to change {instrument_feature}. Scroll to zoom horizontally. Alt + scroll to pan. Right-click for more options."
 reconstructions.instruments.message.status_sequence: "Type whole numbers to change {instrument_feature}, and \"|\" before the item it repeats from. Press Enter to apply."
 reconstructions.instruments.message.status_sequence_too_long: "{instrument_feature} has {items} items. {kept}."
+reconstructions.instruments.message.preparing: "Preparing the instruments..."
 reconstructions.instruments.template.kept_famitracker: "FamiTracker keeps the first {limit}"
 reconstructions.instruments.template.kept_bitphase: "a Bitphase project keeps the first {limit}"
 reconstructions.instruments.template.kept_bitphase_preset: "a Bitphase preset keeps the first {limit}"

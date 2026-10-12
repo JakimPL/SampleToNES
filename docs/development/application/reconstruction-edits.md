@@ -48,7 +48,10 @@ therefore keeps what it held, and the history stays as it was.
 
 The instruments panel reads the document's envelopes through the changes still on their way, so the bars,
 the plots and the byte figures answer for the document once the line empties. A change the line lets go of,
-such as a failed rebuild, redraws the panel from the document as it stands.
+such as a failed rebuild, redraws the panel from the document as it stands. An opening, a removal, a retune
+and an undo leave the envelopes to the worker, so the document has no channels to draw until they land;
+the panel says the instruments are being prepared in place of its tabs, and an edit reaching it meanwhile
+goes nowhere.
 
 ## A step that no longer applies is skipped
 

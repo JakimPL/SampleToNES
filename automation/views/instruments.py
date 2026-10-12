@@ -22,6 +22,7 @@ from sampletones_application.tags.general import (
 from sampletones_application.tags.graphs import SUF_GRAPH, SUF_GRAPH_RAW_DATA
 from sampletones_application.tags.reconstructions import (
     SUF_RECONSTRUCTIONS_INSTRUMENTS_INSTRUMENT_SIZE,
+    SUF_RECONSTRUCTIONS_INSTRUMENTS_MESSAGE,
     SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_RADIO_AUDITION,
@@ -31,6 +32,7 @@ from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 
 AUDITION_GROUP: Final[str] = compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_RADIO_AUDITION, SUF_GROUP)
+MESSAGE: Final[str] = compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR, SUF_RECONSTRUCTIONS_INSTRUMENTS_MESSAGE)
 
 
 class Instruments:
@@ -151,6 +153,10 @@ class Instruments:
         """Whether the Audition switch stands, which it does while an instrument is open."""
         return self._bridge.ask(lambda: read_item(AUDITION_GROUP)).shown
 
+    def says(self) -> Optional[str]:
+        """The words the card shows in place of its tabs, or ``None`` while the tabs stand."""
+        return self._bridge.ask(read_words)
+
     def audition(self) -> str:
         """The generator the Audition switch names."""
         return str(self._bridge.ask(lambda: read_value(TAG_RECONSTRUCTIONS_INSTRUMENTS_RADIO_AUDITION)))
@@ -173,6 +179,17 @@ class Instruments:
         """Clicks ``channel``'s Export instrument button."""
         self._hand.scroll_into_view(export_button(channel))
         self._hand.click(export_button(channel))
+
+
+def read_words() -> Optional[str]:
+    """The words the instruments card shows in place of its tabs, or ``None`` while the tabs stand.
+
+    Runs on the render thread, so a frame recording can take it after every frame.
+    """
+    if not read_item(MESSAGE).shown:
+        return None
+
+    return str(read_value(MESSAGE))
 
 
 def tab(channel: ChannelName) -> str:

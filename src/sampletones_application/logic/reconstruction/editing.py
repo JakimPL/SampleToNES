@@ -28,7 +28,17 @@ class InstrumentEdit:
     features: Features
 
 
-EditedVoice = Union[ChannelEnvelopesViewModel, InstrumentEdit]
+@dataclass(frozen=True)
+class EnvelopesOwed:
+    """A reconstruction in front of the panel whose envelopes the worker is still rendering.
+
+    An opening, a removal, a retune and an undo send the envelopes to the worker with the sound, so
+    the document has channels to draw once they land. Until then the panel says they are on their
+    way, and an edit reaching it goes nowhere.
+    """
+
+
+EditedVoice = Union[ChannelEnvelopesViewModel, InstrumentEdit, EnvelopesOwed]
 
 
 class InstrumentEditingProtocol(Protocol):
@@ -41,7 +51,9 @@ class InstrumentEditingProtocol(Protocol):
     """
 
     def edited_instrument(self) -> Optional[EditedVoice]:
-        """What the panel is editing, or ``None`` while it holds nothing."""
+        """What the panel is editing: an instrument, a reconstruction's channels, or a reconstruction whose
+        channels are on their way from the worker; ``None`` while it holds nothing.
+        """
 
     def write_envelope(self, feature_key: FeatureKey, envelope: Envelope[int]) -> None:
         """Writes one dimension of the instrument in front of the panel."""

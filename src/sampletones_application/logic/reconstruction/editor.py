@@ -5,6 +5,7 @@ from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.editing import (
     EditedVoice,
+    EnvelopesOwed,
     InstrumentEdit,
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
@@ -61,7 +62,11 @@ class InstrumentEditor:
         return voice if isinstance(voice, Instrument) else None
 
     def edited_instrument(self) -> Optional[EditedVoice]:
-        """What the instruments panel is editing, or ``None`` while it holds nothing."""
+        """What the instruments panel is editing, or ``None`` while it holds nothing.
+
+        An open reconstruction answers with its channels once the worker has exported their
+        envelopes for what the reader hears, and until then with the word that they are on their way.
+        """
         instrument = self.instrument
         if instrument is not None:
             return InstrumentEdit(
@@ -70,7 +75,14 @@ class InstrumentEditor:
                 features=instrument.instrument_features(),
             )
 
-        return self._reconstruction_manager.current_features
+        features = self._reconstruction_manager.current_features
+        if features is not None:
+            return features
+
+        if self._reconstruction_manager.reconstruction is not None:
+            return EnvelopesOwed()
+
+        return None
 
     def write_envelope(self, feature_key: FeatureKey, envelope: Envelope[int]) -> None:
         """Writes one dimension of the instrument in front of the tab, as one history entry.

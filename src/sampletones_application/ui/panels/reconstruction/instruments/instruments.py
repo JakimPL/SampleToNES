@@ -41,7 +41,7 @@ from sampletones_application.tags.graphs import (
 )
 from sampletones_application.tags.reconstructions import (
     SUF_RECONSTRUCTIONS_INSTRUMENTS_INSTRUMENT_SIZE,
-    SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE,
+    SUF_RECONSTRUCTIONS_INSTRUMENTS_MESSAGE,
     SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
@@ -155,7 +155,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._export_buttons: Dict[ChannelName, GUIButton] = {}
 
         self.tab_bar_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR
-        self.no_data_message_tag = compose_tag(self.tab_bar_tag, SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE)
+        self.message_tag = compose_tag(self.tab_bar_tag, SUF_RECONSTRUCTIONS_INSTRUMENTS_MESSAGE)
         self.mouse_item_handler_tag = compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL, SUF_HANDLER_REGISTRY)
         self.sample_size_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TEXT_SAMPLE_SIZE
         self.sample_size_group_tag = compose_tag(self.sample_size_tag, SUF_GROUP)
@@ -187,6 +187,8 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.on_envelope_changed: Optional[Callable[[ChannelName, FeatureKey, Envelope[int]], None]] = None
 
         self._lbl_copy = language_manager["reconstructions.instruments.label.copy_button"]
+        self._msg_nothing_loaded = language_manager["global.dialog.message.reconstruction_no_data"]
+        self._msg_preparing = language_manager["reconstructions.instruments.message.preparing"]
         self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
         self._lbl_instrument_size = context_label(language_manager, ContextElements.INSTRUMENT_SIZE)
         self._tpl_size_bytes = context_text(language_manager, TextType.TEMPLATE, ContextElements.SIZE_BYTES)
@@ -236,9 +238,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def _create_content(self) -> None:
         dpg.add_text(
-            tag=self.no_data_message_tag,
+            tag=self.message_tag,
             parent=self._body_container,
-            default_value=self._language_manager["global.dialog.message.reconstruction_no_data"],
+            default_value=self._msg_nothing_loaded,
             show=True,
         )
 
@@ -505,11 +507,17 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         muted tab label and a withheld export say which channels are there. An instrument is one
         set every channel reads, so it shows a single tab under its own name, and the audition
         takes the pitch stepper's place: a row states the note an instrument sounds at, and
-        what the panel offers instead is the generator to hear it on.
+        what the panel offers instead is the generator to hear it on. Words stand in place of the
+        tabs while nothing is open, and while a reconstruction's envelopes are on their way from
+        the worker they say the instruments are being prepared.
         """
         instrument = view_model.instrument
         is_open = view_model.is_open
-        dpg_configure_item(self.no_data_message_tag, show=not is_open)
+        dpg_set_value(
+            self.message_tag,
+            self._msg_preparing if view_model.envelopes_owed else self._msg_nothing_loaded,
+        )
+        dpg_configure_item(self.message_tag, show=not is_open)
         dpg_configure_item(self.tab_bar_tag, show=is_open)
         dpg_configure_item(self.sample_size_group_tag, show=is_open)
         self._update_sizes(view_model.footprint, shows_one_instrument=instrument is not None)
