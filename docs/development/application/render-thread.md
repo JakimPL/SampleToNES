@@ -19,6 +19,12 @@ budget (`scheduling.queue_budget_seconds`), so a large backlog spreads across fr
 continues. Every background result reaches UI state this way. Applying one to UI state directly from the
 worker thread is forbidden.
 
+A report of where a run stands crosses through `LatestDelivery` (`utils/callbacks/latest.py`). One delivery
+waits in the queue at a time, and the drain that reaches it hands over the newest report filed, so a burst
+of reports costs one handling. The delivery keeps the place its first report took, which keeps a result
+posted after that report, such as the run's outcome, behind it. [Progress](../progress.md) gives the
+principle.
+
 A result carries what the landing installs. The regeneration worker renders every sound the
 Reconstructions tab draws or plays: each channel's audio, the mix of what the reader hears, the mix of the
 recordings heard, which the waveform draws as the original, and the envelopes each channel exports for the

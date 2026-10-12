@@ -22,7 +22,7 @@ from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.constants.enums import GeneratorName, SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.library import InstructionLibraryData, InstructionLibraryKey, LibraryState
-from sampletones_core.parallelization import TaskStatus
+from sampletones_core.parallelization import TaskProgress, TaskStatus
 from sampletones_shared.application import SAMPLETONES_LIBRARY_DATA_VERSION
 from sampletones_shared.exceptions import (
     DeserializationError,
@@ -566,6 +566,56 @@ class TestAGenerationClosing:
             False,
             False,
         )
+
+
+def _report(catalog: Catalog, status: TaskStatus, completed: int) -> None:
+    """Files the report a creator's monitor sends once ``completed`` instructions are finished."""
+    catalog.creator.callbacks["on_progress"](
+        status,
+        TaskProgress(total=GENERATED_INSTRUCTIONS, completed=completed),
+    )
+
+
+class TestTheReportsOfAGeneration(BaseTestSuite):
+    """A creator reports every instruction it finishes. The render loop paints the newest report waiting,
+    once, and the generation's close follows it."""
+
+    def test_reports_filed_before_a_drain_wait_as_one(self, catalog: Catalog) -> None:
+        catalog.start_generation()
+
+        for completed in range(1, GENERATED_INSTRUCTIONS + 1):
+            _report(catalog, TaskStatus.RUNNING, completed)
+
+        assert catalog.queue.held == 1
+
+    def test_a_report_after_a_drain_waits_again(self, catalog: Catalog) -> None:
+        catalog.start_generation()
+        _report(catalog, TaskStatus.COMPLETED, GENERATED_INSTRUCTIONS)
+        catalog.queue.drain()
+
+        _report(catalog, TaskStatus.COMPLETED, GENERATED_INSTRUCTIONS)
+
+        assert catalog.queue.held == 1
+
+    def test_the_newest_report_is_the_one_painted(self, catalog: Catalog) -> None:
+        catalog.start_generation()
+        painted = len(catalog.views)
+
+        _report(catalog, TaskStatus.RUNNING, 1)
+        _report(catalog, TaskStatus.COMPLETED, GENERATED_INSTRUCTIONS)
+        catalog.queue.drain()
+
+        assert [view.status_text for view in catalog.views[painted:]] == ["saving"]
+
+    def test_the_close_paints_after_the_report_before_it(self, catalog: Catalog) -> None:
+        catalog.start_generation()
+        painted = len(catalog.views)
+
+        _report(catalog, TaskStatus.COMPLETED, GENERATED_INSTRUCTIONS)
+        catalog.write_library()
+        catalog.queue.drain()
+
+        assert (catalog.views[painted].status_text, catalog.views[-1].is_generating) == ("saving", False)
 
 
 class TestTheCatalogFollowingTheConfiguration:

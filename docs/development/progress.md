@@ -53,6 +53,12 @@ Both carriers use it: `StageProgress` in the application services, and `JobRepor
 `JobReporter` throttles on the worker side, so the line between processes carries only what a bar can be
 redrawn at.
 
+The render thread takes the newest report. A report states the whole of where a run stands, so a report
+still waiting for the render loop is superseded by the next one. A run filing thousands of reports between
+two frames, such as a library generation counting its instructions, is drawn once per drain, and the screen
+keeps pace with the run. The outcome of the run arrives after the reports filed before it.
+[The render thread](application/render-thread.md) describes the crossing.
+
 ### 4. A run reports in items when it has many, and in the part done of one item when it has one
 
 An operation counts the items it is measured in: files, samples, jobs. Where it is measured in many items,
@@ -84,6 +90,15 @@ the boundary, and callers depend on the Protocol and not on any one way of cross
 queue that reports travel up, and a flag that a withdrawal travels down. Both live under the same spawn
 context the pool's workers run in. Each end reaches a task as an ordinary value it is built with, so a
 worker started as a fresh interpreter reconnects on its own. That makes one channel serve every platform.
+
+### 6. A report redraws the run over a setup read once
+
+A report says where a run stands: the count, the stage, the item under way. The setup the run was started
+from stands still while it runs, so a panel reads what it shows of the setup once per change to it, and
+every report draws over that reading. The converter reads its rows, and the recordings its button names,
+where a gesture changes what it gathered. A report therefore costs the same for one gathered recording as
+for thousands. The button names the run the same way before it, during it and after it, whether the run
+succeeded, failed or was canceled.
 
 ---
 

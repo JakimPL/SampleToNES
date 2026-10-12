@@ -8,6 +8,8 @@ from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
+from sampletones_application.utils.callbacks.latest import LatestDelivery
+from sampletones_application.utils.callbacks.priority import DEFAULT_PRIORITY
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.instruction.library import (
     LibraryPanelViewModel,
@@ -92,9 +94,10 @@ class LibraryLogic(CallbackMixin):
         self._msg_window_not_available = language_manager["instructions.library.message.status_window_not_available"]
         self._msg_load_error = language_manager["instructions.library.message.status_load_error"]
 
+        self._generation_reports = LatestDelivery(self._on_generation_progress, priority=DEFAULT_PRIORITY)
         self._library_manager.set_callbacks(
             on_generation_start=partial(CallbackQueue.add, self._on_generation_start),
-            on_generation_progress=partial(CallbackQueue.add, self._on_generation_progress),
+            on_generation_progress=self._generation_reports.post,
             on_generation_completed=partial(CallbackQueue.add, self._on_generation_completed),
             on_generation_error=partial(CallbackQueue.add, self._on_generation_error),
             on_generation_canceled=partial(CallbackQueue.add, self._on_generation_canceled),
@@ -490,7 +493,7 @@ class LibraryLogic(CallbackMixin):
         task_status: TaskStatus,
         task_progress: TaskProgress,
     ) -> None:
-        """Paints a report of the generation under way."""
+        """Paints the newest report of the generation under way."""
         match task_status:
             case TaskStatus.COMPLETED:
                 self._emit_view(self._language_manager["instructions.library.message.status_saving"], progress=1.0)

@@ -102,6 +102,7 @@ class ConverterLogic(CallbackMixin):
             selected=None,
         )
         self._rows = self._read_rows()
+        self._converted = self._read_converted()
 
         self._run = ConversionRun(conversion_service, messages=self._messages)
         self._run.on_report = self._on_report
@@ -529,6 +530,7 @@ class ConverterLogic(CallbackMixin):
         self._remember(state.settings)
         self._state = self._redirected(state.selecting(state.selected))
         self._rows = self._read_rows()
+        self._converted = self._read_converted()
         self._run.return_to_idle()
         self._emit(self._messages.idle, 0.0)
 
@@ -642,10 +644,19 @@ class ConverterLogic(CallbackMixin):
         """
         return stem_rows(self._state.gathering, mixes=self.mixes)
 
+    def _read_converted(self) -> Tuple[Path, ...]:
+        """The recordings that take part in the setup now standing, read once for that setup.
+
+        A run writing one reconstruction apiece derives an entry for every gathered recording, so
+        the reading is taken where the setup changes. The button names the run from it before, during
+        and after the run, whatever the run comes to.
+        """
+        return playing_sources(self._state)
+
     def _action_label(self) -> str:
         """What the button says the run writes, read from the recordings taking part in it."""
         return self._messages.action_label(
             phase=self._run.phase,
             mixes=self.mixes,
-            converted=playing_sources(self._state),
+            converted=self._converted,
         )

@@ -1,13 +1,22 @@
-from typing import List
+from typing import Final, List
 from unittest.mock import MagicMock, call, patch
+
+import pytest
 
 from sampletones_application.services.base import ServiceBase
 from sampletones_application.utils.callbacks.queue import CallbackQueue
+from tests.suite.application import draw_frame
+from tests.suite.base import BaseTestSuite
+
+OUTCOME: Final[int] = 9
 
 
 class _ConcreteService(ServiceBase[int]):
     def emit(self, value: int) -> None:
         self._emit(value)
+
+    def report(self, value: int) -> None:
+        self._report(value)
 
 
 class TestServiceBaseSubscription:
@@ -126,3 +135,67 @@ class TestServiceBaseCallbackQueueIntegration:
             service._emit(0)
 
         mock_add.assert_not_called()
+
+
+@pytest.mark.usefixtures("live_queue")
+class TestServiceBaseReports(BaseTestSuite):
+    """A report waiting for the render loop is superseded by the next, while every emitted result arrives."""
+
+    def test_a_subscriber_takes_the_newest_report_once_per_drain(self) -> None:
+        service = _ConcreteService()
+        results: List[int] = []
+        service.subscribe(results.append)
+
+        service.report(1)
+        service.report(2)
+        service.report(3)
+        draw_frame()
+
+        assert results == [3]
+
+    def test_every_emitted_result_arrives(self) -> None:
+        service = _ConcreteService()
+        results: List[int] = []
+        service.subscribe(results.append)
+
+        service.emit(1)
+        service.emit(2)
+        service.emit(3)
+        draw_frame()
+
+        assert results == [1, 2, 3]
+
+    def test_an_outcome_emitted_after_reports_arrives_after_the_newest(self) -> None:
+        service = _ConcreteService()
+        results: List[int] = []
+        service.subscribe(results.append)
+
+        service.report(1)
+        service.report(2)
+        service.emit(OUTCOME)
+        draw_frame()
+
+        assert results == [2, OUTCOME]
+
+    def test_each_registration_takes_the_newest_report(self) -> None:
+        service = _ConcreteService()
+        results: List[int] = []
+        service.subscribe(results.append)
+        service.subscribe(results.append)
+
+        service.report(1)
+        service.report(2)
+        draw_frame()
+
+        assert results == [2, 2]
+
+    def test_an_unsubscribed_handler_takes_no_report(self) -> None:
+        service = _ConcreteService()
+        results: List[int] = []
+        service.subscribe(results.append)
+        service.unsubscribe(results.append)
+
+        service.report(1)
+        draw_frame()
+
+        assert results == []
