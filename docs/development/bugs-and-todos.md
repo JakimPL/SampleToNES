@@ -46,6 +46,9 @@ dimension the import starts carrying.
 * Waveform construction preview: a waveform drawn from the partial reconstruction while the converter
   reconstructs a single file.
 * Picking several rows of the converter's list at once, so a group leaves or settles in one gesture.
+* An option to skip a recording that fails in a run of one reconstruction per recording, on the Converter
+  card and on `sampletones convert`. A run ends at its first failure, so one broken file stops a whole
+  folder.
 * Selecting parts of a reconstruction's waveform to crop, trim, cut and paste them along with their
   instructions.
 * Marking broken files where the browsers list them: a reconstruction that fails to load, one whose
