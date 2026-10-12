@@ -21,6 +21,9 @@ class FileManagerStandIn:
     application's own code runs and reaches them: the first names a file manager they stand for,
     the file manager writes the path it was given to ``shown_log``, and ``xdg-open`` writes a folder
     there and a file to ``opened_log``, one line each.
+
+    The programs are shell scripts, which Linux and macOS start by name from their ``#!`` line.
+    Windows starts a program by name from an ``.exe`` file.
     """
 
     def __init__(
