@@ -2,7 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from sampletones_application.logic.documentation.shelf import STAGING_PREFIX, STAGING_SUFFIX, DocumentationShelf
+from sampletones_application.logic.documentation.shelf import (
+    HIDDEN_PREFIX,
+    RETIRED_SUFFIX,
+    STAGING_SUFFIX,
+    DocumentationShelf,
+)
 from sampletones_shared.documentation.site import INDEX_FILE, DocumentationSite
 from sampletones_shared.exceptions import DocumentationUnavailableError
 
@@ -18,90 +23,106 @@ def site(tmp_path: Path) -> DocumentationSite:
 
 
 @pytest.fixture
-def copies(tmp_path: Path) -> Path:
-    return tmp_path / "copies"
+def directory(tmp_path: Path) -> Path:
+    return tmp_path / "data" / "documentation"
 
 
 @pytest.fixture
-def shelf(site: DocumentationSite, copies: Path) -> DocumentationShelf:
-    return DocumentationShelf(site=site, copies=copies)
+def shelf(site: DocumentationSite, directory: Path) -> DocumentationShelf:
+    return DocumentationShelf(site=site, directory=directory)
 
 
-def stamp_of(site: DocumentationSite) -> str:
-    stamp = site.read_stamp()
-    assert stamp is not None
-    return stamp
+def beside(directory: Path, suffix: str) -> Path:
+    return directory.with_name(f"{HIDDEN_PREFIX}{directory.name}{suffix}")
 
 
 class TestPlace:
-    def test_the_pages_are_copied_under_their_stamp(
+    def test_the_pages_are_copied_into_the_folder(
         self,
         shelf: DocumentationShelf,
         site: DocumentationSite,
-        copies: Path,
+        directory: Path,
     ) -> None:
         index = shelf.place()
 
-        assert index == copies / stamp_of(site) / INDEX_FILE
-        assert (index.parent / "guide" / "page.html").read_text(encoding="utf-8") == "<p>page</p>"
-        assert DocumentationSite(index.parent).read_stamp() == stamp_of(site)
+        assert index == directory / INDEX_FILE
+        assert (directory / "guide" / "page.html").read_text(encoding="utf-8") == "<p>page</p>"
+        assert DocumentationSite(directory).read_stamp() == site.read_stamp()
 
-    def test_a_copy_in_place_is_read_again(self, shelf: DocumentationShelf) -> None:
-        index = shelf.place()
-        marker = index.parent / "opened.txt"
+    def test_a_copy_of_the_same_pages_is_read_again(self, shelf: DocumentationShelf, directory: Path) -> None:
+        shelf.place()
+        marker = directory / "opened.txt"
         marker.write_text("kept", encoding="utf-8")
 
-        assert shelf.place() == index
+        assert shelf.place() == directory / INDEX_FILE
         assert marker.is_file()
 
-    def test_an_unfinished_copy_is_made_again(
-        self, shelf: DocumentationShelf, site: DocumentationSite, copies: Path
+    def test_new_pages_replace_the_copy_whole(
+        self,
+        shelf: DocumentationShelf,
+        site: DocumentationSite,
+        directory: Path,
     ) -> None:
-        unfinished = copies / stamp_of(site)
-        unfinished.mkdir(parents=True)
-        (unfinished / "half.html").write_text("half", encoding="utf-8")
+        shelf.place()
+        (directory / "opened.txt").write_text("from the earlier pages", encoding="utf-8")
+        site.index.write_text("<p>new index</p>", encoding="utf-8")
+        site.write_stamp()
 
         index = shelf.place()
 
-        assert index.is_file()
-        assert not (unfinished / "half.html").exists()
+        assert index.read_text(encoding="utf-8") == "<p>new index</p>"
+        assert not (directory / "opened.txt").exists()
+        assert DocumentationSite(directory).read_stamp() == site.read_stamp()
 
-    def test_a_stale_staging_folder_gives_way(
-        self, shelf: DocumentationShelf, site: DocumentationSite, copies: Path
-    ) -> None:
-        staging = copies / f"{STAGING_PREFIX}{stamp_of(site)}{STAGING_SUFFIX}"
-        staging.mkdir(parents=True)
-        (staging / "left.html").write_text("left", encoding="utf-8")
+    def test_a_copy_in_an_earlier_layout_is_replaced(self, shelf: DocumentationShelf, directory: Path) -> None:
+        earlier = directory / "0123456789abcdef"
+        earlier.mkdir(parents=True)
+        (earlier / INDEX_FILE).write_text("<p>earlier</p>", encoding="utf-8")
 
         index = shelf.place()
 
-        assert not staging.exists()
+        assert index.read_text(encoding="utf-8") == "<p>index</p>"
+        assert not earlier.exists()
+
+    @pytest.mark.parametrize("suffix", [STAGING_SUFFIX, RETIRED_SUFFIX], ids=["staging", "retired"])
+    def test_a_folder_an_interrupted_replacement_left_gives_way(
+        self,
+        shelf: DocumentationShelf,
+        directory: Path,
+        suffix: str,
+    ) -> None:
+        leftover = beside(directory, suffix)
+        leftover.mkdir(parents=True)
+        (leftover / "left.html").write_text("left", encoding="utf-8")
+
+        index = shelf.place()
+
+        assert sorted(path.name for path in directory.parent.iterdir()) == [directory.name]
         assert not (index.parent / "left.html").exists()
-
-    def test_copies_of_other_versions_are_let_go(self, shelf: DocumentationShelf, copies: Path) -> None:
-        older = copies / "0123456789abcdef"
-        older.mkdir(parents=True)
-
-        index = shelf.place()
-
-        assert sorted(path.name for path in copies.iterdir()) == [index.parent.name]
 
 
 class TestPlaceRefuses:
-    def test_an_installation_without_pages(self, tmp_path: Path, copies: Path) -> None:
-        shelf = DocumentationShelf(site=DocumentationSite(tmp_path / "missing"), copies=copies)
+    def test_an_installation_without_pages(self, tmp_path: Path, directory: Path) -> None:
+        shelf = DocumentationShelf(site=DocumentationSite(tmp_path / "missing"), directory=directory)
 
         with pytest.raises(DocumentationUnavailableError):
             shelf.place()
 
-    def test_an_unsealed_site(self, site: DocumentationSite, copies: Path) -> None:
+    def test_an_unsealed_site(self, site: DocumentationSite, directory: Path) -> None:
         site.stamp_path.unlink()
 
         with pytest.raises(DocumentationUnavailableError):
-            DocumentationShelf(site=site, copies=copies).place()
+            DocumentationShelf(site=site, directory=directory).place()
 
-    def test_a_site_without_an_index(self, site: DocumentationSite, copies: Path) -> None:
+    def test_a_site_without_an_index(self, site: DocumentationSite, directory: Path) -> None:
         site.index.unlink()
 
         with pytest.raises(DocumentationUnavailableError):
-            DocumentationShelf(site=site, copies=copies).place()
+            DocumentationShelf(site=site, directory=directory).place()
+
+    def test_a_folder_that_cannot_be_written(self, site: DocumentationSite, tmp_path: Path) -> None:
+        blocked = tmp_path / "blocked"
+        blocked.write_text("a file where the folder belongs", encoding="utf-8")
+
+        with pytest.raises(OSError):
+            DocumentationShelf(site=site, directory=blocked / "documentation").place()

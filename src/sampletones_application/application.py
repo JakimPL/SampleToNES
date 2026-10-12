@@ -507,7 +507,7 @@ class Application:
             language_manager=self.language_manager,
         )
         self._documentation_coordinator = DocumentationCoordinator(
-            shelf=DocumentationShelf(site=documentation, copies=profile.documentation),
+            shelf=DocumentationShelf(site=documentation, directory=profile.documentation),
             opener=select_file_opener(),
             dialogs=self.dialogs,
             language_manager=self.language_manager,

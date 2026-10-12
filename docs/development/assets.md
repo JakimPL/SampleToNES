@@ -56,8 +56,8 @@ shared web layout ([tooling](tooling.md#pages-a-tool-writes)), in the applicatio
 The development pages, the changelog and anything else under `docs/` stay online: a link to one leads to
 the copy at the documentation address `pyproject.toml` names. A link to a missing document, heading or
 picture fails the run, so a site that builds holds no broken link. A site is sealed by a stamp written
-last, a hash over every file beside it, which names the pages exactly: the application keeps its copy of
-the pages under that stamp, and the self-check holds a build's pages to it.
+last, a hash over every file beside it, which names the pages exactly: the application replaces its copy
+of the pages when the stamp differs, and the self-check holds a build's pages to it.
 
 `make docs` writes the site into `src/sampletones_assets/documentation/`, which the history ignores, so a
 checkout opens its own documentation. `python -m assets.documentation -o DIR` writes it elsewhere; the

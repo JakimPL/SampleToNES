@@ -7,7 +7,7 @@ from automation.worlds.home import World, screen_filling_state
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.config.profile import UserProfile
 from sampletones_shared.distribution import SAMPLETONES_DOCUMENTATION_ADDRESS
-from sampletones_shared.documentation.site import INDEX_FILE
+from sampletones_shared.documentation.site import DocumentationSite
 from tests.suite.screens.seeds.documentation import SHIPPED_INDEX, ShippedDocumentation, shipped_site
 
 STILL_FRAMES: Final[int] = 20
@@ -24,10 +24,10 @@ def one_page(opened: Tuple[object, ...]) -> bool:
 def expect_the_copied_index(screen: Screen) -> None:
     """The browser was handed the index of the copy in the reader's data folder, holding the shipped page."""
     [index] = screen.expect(screen.opened, one_page, description="the documentation handed to the browser")
-    stamp = shipped_site().read_stamp()
-    assert stamp is not None
-    assert index == UserProfile.user().documentation / stamp / INDEX_FILE
+    copy = DocumentationSite(UserProfile.user().documentation)
+    assert index == copy.index
     assert index.read_text(encoding="utf-8") == SHIPPED_INDEX
+    assert copy.read_stamp() == shipped_site().read_stamp()
 
 
 class TestDocumentationOpens:

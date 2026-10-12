@@ -43,12 +43,12 @@ def shipped(tmp_path: Path) -> DocumentationSite:
 
 def coordinator(
     site: DocumentationSite,
-    copies: Path,
+    directory: Path,
     opener: RecordedOpener,
     dialogs: MagicMock,
 ) -> DocumentationCoordinator:
     return DocumentationCoordinator(
-        shelf=DocumentationShelf(site=site, copies=copies),
+        shelf=DocumentationShelf(site=site, directory=directory),
         opener=opener,
         dialogs=dialogs,
         language_manager=LANGUAGE_MANAGER,
@@ -60,16 +60,16 @@ class TestOpenDocumentation:
     def test_the_copied_index_is_opened(self, shipped: DocumentationSite, tmp_path: Path, dialogs: MagicMock) -> None:
         opener = RecordedOpener(takes=True)
 
-        coordinator(shipped, tmp_path / "copies", opener, dialogs).open()
+        coordinator(shipped, tmp_path / "documentation", opener, dialogs).open()
 
-        assert opener.opened == [tmp_path / "copies" / str(shipped.read_stamp()) / INDEX_FILE]
+        assert opener.opened == [tmp_path / "documentation" / INDEX_FILE]
         dialogs.show_info.assert_not_called()
         dialogs.show_error.assert_not_called()
 
     def test_an_installation_without_pages_names_the_online_copy(self, tmp_path: Path, dialogs: MagicMock) -> None:
         opener = RecordedOpener(takes=True)
 
-        coordinator(DocumentationSite(tmp_path / "missing"), tmp_path / "copies", opener, dialogs).open()
+        coordinator(DocumentationSite(tmp_path / "missing"), tmp_path / "documentation", opener, dialogs).open()
 
         assert opener.opened == []
         dialogs.show_info.assert_called_once_with(
@@ -86,7 +86,7 @@ class TestOpenDocumentation:
         tmp_path: Path,
         dialogs: MagicMock,
     ) -> None:
-        coordinator(shipped, tmp_path / "copies", RecordedOpener(takes=False), dialogs).open()
+        coordinator(shipped, tmp_path / "documentation", RecordedOpener(takes=False), dialogs).open()
 
         [exception, message] = dialogs.show_error.call_args.args
         assert isinstance(exception, FileNotOpenedError)
@@ -99,11 +99,11 @@ class TestOpenDocumentation:
         tmp_path: Path,
         dialogs: MagicMock,
     ) -> None:
-        blocked = tmp_path / "copies"
+        blocked = tmp_path / "blocked"
         blocked.write_text("a file where the folder belongs", encoding="utf-8")
         opener = RecordedOpener(takes=True)
 
-        coordinator(shipped, blocked, opener, dialogs).open()
+        coordinator(shipped, blocked / "documentation", opener, dialogs).open()
 
         assert opener.opened == []
         assert isinstance(dialogs.show_error.call_args.args[0], OSError)
