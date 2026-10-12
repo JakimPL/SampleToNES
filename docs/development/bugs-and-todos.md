@@ -54,8 +54,9 @@ dimension the import starts carrying.
 
 ### Features
 
-* In-application guide/tutorial
-* Language selector
+* MIDI keyboard support.
+* In-application guide/tutorial.
+* Language selector.
 * Reading only the bins the refinement asks for, since it transforms every bin the spectrum covers and
   uses a handful per frame.
 * Keeping the recordings a stopped folder scan has found, so stopping a long walk keeps the count the reader
