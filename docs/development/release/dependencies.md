@@ -42,6 +42,10 @@ The icon suite is generated from a mark declared in `assets/icons/mark/config` a
 
 Pillow rasterizes the suite. It is declared in the `assets` dependency group, which the `dev` group includes. It serves the assets unit alone, which the build environment never installs, and the bundle script passes `--exclude-module PIL` as well. `pygments`, which arrives with `rich`, offers an image formatter that imports Pillow where it is installed, and PyInstaller follows that import into the bundle. The application reads its icons as files, so the exclusion keeps Pillow's extension modules and the imaging libraries that come with them out of every bundle. `scripts/verify_bundle.py` holds the release bundles to it.
 
+## Documentation
+
+Every wheel build writes the HTML documentation ([assets](../assets.md#documentation)), so the build needs what that maker imports. `markdown-it-py` reads the Markdown, with the tables GitHub draws, and belongs to the `assets` group beside Pillow. The build hook names its own dependencies in `pyproject.toml`: markdown-it-py and the libraries the application's theme and palette code imports, each held to the project's own range, which a test compares. Every wheel is built in an isolated environment that installs them, so the first build on a machine reaches the network. `hatchling` 1.27 is the oldest build backend that reads the project's license fields.
+
 ## Calibration
 
 The calibration harness scores renders with referees of its own, built on `numpy` and `scipy`. The `calibration` dependency group adds [Zimtohrli](https://github.com/google/zimtohrli), a psychoacoustic model, as a second opinion. PyPI has its wheels for Windows, Intel macOS and x86-64 Linux, and other systems compile it on install. The group stays out of `dev`. `uv sync --group calibration`, with the extras the environment already uses named beside it, installs it. See [Calibration](../../tools/calibration.md).
@@ -84,3 +88,5 @@ Building a standalone executable on Linux needs the PortAudio, Tk and OpenGL/X11
 PortAudio is required. Tk backs the file dialogs where neither a portal nor a desktop tool answers, and `make release` requires it so the shipped executable stays self-contained.
 
 The executable links against the glibc of the machine that builds it and runs on that version or newer. A redistributable artifact therefore belongs on the oldest Debian or Ubuntu release being supported, so it runs on every newer one.
+
+The bootloader points `LD_LIBRARY_PATH` at the libraries the bundle carries, and a program the application starts would load them in place of the system's. Every system program the application starts, a file manager, a browser or a dialog tool, therefore receives the reader's own library path, which `program_environment()` in `sampletones_shared/utils/system/programs.py` restores.

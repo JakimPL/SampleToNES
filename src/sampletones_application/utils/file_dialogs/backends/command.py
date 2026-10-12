@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from sampletones_shared.utils.system.paths import normalize_path
+from sampletones_shared.utils.system.programs import program_environment
 
 
 def run_dialog_command(command: List[str]) -> Optional[Path]:
@@ -24,5 +25,6 @@ def run_dialog_command(command: List[str]) -> Optional[Path]:
         capture_output=True,
         text=True,
         check=False,
+        env=program_environment(),
     )
     return normalize_path(result.stdout.strip())

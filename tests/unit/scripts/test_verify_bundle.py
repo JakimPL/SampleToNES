@@ -2,9 +2,21 @@ from pathlib import Path
 
 import pytest
 
-from bootstrap.layout import BUILD_TOOLS, DISTRIBUTION, GPU_PACKAGES, NOTICES
+from bootstrap.layout import (
+    BUILD_TOOLS,
+    DISTRIBUTION,
+    DOCUMENTATION_FILES,
+    DOCUMENTATION_PACKAGE_PATH,
+    DOCUMENTATION_SITE,
+    GPU_PACKAGES,
+    NOTICES,
+    SOURCE_DIRECTORY,
+)
 from bootstrap.platforms.linux import Linux
 from bootstrap.platforms.macos import MacOS
+from hatch_build import SITE_DESTINATION
+from sampletones_shared.documentation.site import DOCUMENTATION_DIRECTORY, INDEX_FILE, STAMP_FILE
+from sampletones_shared.paths.resources import ASSETS_PACKAGE
 from tests.suite.bootstrap import PROJECT_NAME, RecordingRunner, write_project
 from tests.suite.scripts import load_script
 
@@ -13,18 +25,27 @@ verify_bundle = load_script("verify_bundle.py")
 
 @pytest.fixture(name="root")
 def root_fixture(tmp_path: Path) -> Path:
-    """A repository holding a release bundle with its notices and its launcher."""
+    """A repository holding a release bundle with its notices, its documentation and its launcher."""
     launcher = Linux().bundling().launcher(tmp_path / DISTRIBUTION, name=PROJECT_NAME, directory=True)
     launcher.parent.mkdir(parents=True)
     launcher.write_bytes(b"launcher")
     for name in NOTICES:
         (launcher.parent / name).write_text(name)
 
+    site = _site(launcher.parent)
+    site.mkdir(parents=True)
+    for name in DOCUMENTATION_FILES:
+        (site / name).write_text(name)
+
     return write_project(tmp_path)
 
 
 def _bundle(root: Path) -> Path:
     return root / DISTRIBUTION / PROJECT_NAME
+
+
+def _site(bundle: Path) -> Path:
+    return bundle / verify_bundle.INTERNAL_DIRECTORY / DOCUMENTATION_PACKAGE_PATH
 
 
 class TestMissingNotices:
@@ -42,6 +63,36 @@ class TestMissingNotices:
         (_bundle(root) / NOTICES[0]).mkdir()
 
         assert verify_bundle.missing_notices(_bundle(root)) == [NOTICES[0]]
+
+
+class TestMissingDocumentation:
+    def test_a_complete_bundle_lacks_nothing(self, root: Path) -> None:
+        assert verify_bundle.missing_documentation(_bundle(root)) == []
+
+    def test_an_unsealed_site_is_reported(self, root: Path) -> None:
+        (_site(_bundle(root)) / DOCUMENTATION_FILES[1]).unlink()
+
+        assert verify_bundle.missing_documentation(_bundle(root)) == [DOCUMENTATION_FILES[1]]
+
+    def test_a_bundle_without_pages_is_reported(self, root: Path) -> None:
+        for name in DOCUMENTATION_FILES:
+            (_site(_bundle(root)) / name).unlink()
+
+        assert verify_bundle.missing_documentation(_bundle(root)) == list(DOCUMENTATION_FILES)
+
+
+class TestTheDocumentationContract:
+    """The scripts run on the standard library alone, so they spell the site's place themselves; it has
+    to be the place the application reads and the build hook writes."""
+
+    def test_the_package_path_is_the_one_the_application_reads(self) -> None:
+        assert DOCUMENTATION_PACKAGE_PATH == f"{ASSETS_PACKAGE}/{DOCUMENTATION_DIRECTORY}" == SITE_DESTINATION
+
+    def test_the_checkout_site_lies_in_the_source_package(self) -> None:
+        assert DOCUMENTATION_SITE == f"{SOURCE_DIRECTORY}/{DOCUMENTATION_PACKAGE_PATH}"
+
+    def test_the_files_are_the_index_and_the_stamp(self) -> None:
+        assert DOCUMENTATION_FILES == (INDEX_FILE, STAMP_FILE)
 
 
 class TestCarriedBuildTools:
@@ -84,6 +135,13 @@ class TestBundleFailures:
 
         assert len(failures) == 1
         assert NOTICES[1] in failures[0]
+
+    def test_a_missing_documentation_is_named(self, root: Path) -> None:
+        (_site(_bundle(root)) / DOCUMENTATION_FILES[0]).unlink()
+
+        failures = verify_bundle.bundle_failures(root, Linux(), runner=RecordingRunner({}, None), environment={})
+
+        assert [DOCUMENTATION_FILES[0] in failure for failure in failures] == [True]
 
     def test_bundled_build_tooling_is_named(self, root: Path) -> None:
         (_bundle(root) / verify_bundle.INTERNAL_DIRECTORY / BUILD_TOOLS[0]).mkdir(parents=True)

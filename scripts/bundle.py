@@ -30,6 +30,7 @@ from bootstrap.venv_build import ensure_build_venv, install
 
 SELF_CHECK: Final[str] = "self-check"
 GPU_FLAG: Final[str] = "--gpu"
+DOCUMENTATION_FLAG: Final[str] = "--documentation"
 
 
 @dataclass(frozen=True)
@@ -139,11 +140,12 @@ def pyinstaller_command(
 
 
 def self_check_command(launcher: Path, options: BundleOptions) -> Tuple[str, ...]:
-    """The launcher's self-check, which a GPU bundle runs with the GPU check that proves it computes on the card."""
+    """The launcher's self-check, held to the documentation the wheel carries, which a GPU bundle runs
+    with the GPU check that proves it computes on the card."""
     if options.gpu:
-        return (str(launcher), SELF_CHECK, GPU_FLAG)
+        return (str(launcher), SELF_CHECK, DOCUMENTATION_FLAG, GPU_FLAG)
 
-    return (str(launcher), SELF_CHECK)
+    return (str(launcher), SELF_CHECK, DOCUMENTATION_FLAG)
 
 
 def remove_previous(distribution: Path, bundling: Bundling, name: str) -> None:

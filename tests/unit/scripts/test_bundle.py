@@ -114,10 +114,15 @@ class TestSelfCheckCommand:
     def test_a_gpu_bundle_is_held_to_the_gpu_check(self) -> None:
         launcher = Path("bin", PROJECT_NAME, PROJECT_NAME)
 
-        assert bundle.self_check_command(launcher, CPU_DEVELOPMENT) == (str(launcher), bundle.SELF_CHECK)
+        assert bundle.self_check_command(launcher, CPU_DEVELOPMENT) == (
+            str(launcher),
+            bundle.SELF_CHECK,
+            bundle.DOCUMENTATION_FLAG,
+        )
         assert bundle.self_check_command(launcher, GPU_DEVELOPMENT) == (
             str(launcher),
             bundle.SELF_CHECK,
+            bundle.DOCUMENTATION_FLAG,
             bundle.GPU_FLAG,
         )
 
@@ -163,7 +168,7 @@ class TestBuildBundle:
         assert "import pyaudio" in runner.lines[3]
         assert "import tkinter" in runner.lines[4]
         assert "PyInstaller" in runner.lines[5]
-        assert runner.lines[6] == f"{launcher} {bundle.SELF_CHECK}"
+        assert runner.lines[6] == f"{launcher} {bundle.SELF_CHECK} {bundle.DOCUMENTATION_FLAG}"
         assert all((launcher.parent / notice).read_text() == notice for notice in NOTICES)
 
     def test_a_gpu_bundle_installs_the_extra_probes_cupy_and_lands_in_a_directory(self, tmp_path: Path) -> None:
@@ -178,7 +183,7 @@ class TestBuildBundle:
         assert "import cupy" in runner.lines[4]
         assert "import tkinter" in runner.lines[5]
         assert "PyInstaller" in runner.lines[6]
-        assert runner.lines[7] == f"{launcher} {bundle.SELF_CHECK} {bundle.GPU_FLAG}"
+        assert runner.lines[7] == f"{launcher} {bundle.SELF_CHECK} {bundle.DOCUMENTATION_FLAG} {bundle.GPU_FLAG}"
         assert not any((launcher.parent / notice).exists() for notice in NOTICES)
 
     def test_a_bundle_pyinstaller_never_wrote_is_reported(self, tmp_path: Path) -> None:

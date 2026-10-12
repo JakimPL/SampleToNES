@@ -156,6 +156,27 @@ def _check_array_backend() -> str:
     return describe_array_backend()
 
 
+def _check_documentation() -> str:
+    """Reads the documentation the build ships, whose stamp has to match the pages beside it.
+
+    The wheel's build hook writes the pages and seals them, so a build carrying no pages, or pages
+    other than the ones sealed, names that here.
+    """
+    from sampletones_shared.documentation.site import DocumentationSite
+    from sampletones_shared.exceptions import DocumentationUnavailableError
+
+    site = DocumentationSite.shipped()
+    stamp = site.read_stamp()
+    if stamp is None or not site.index.is_file():
+        raise DocumentationUnavailableError(f"No documentation site lies in {site.directory}")
+
+    if stamp != site.content_stamp():
+        raise DocumentationUnavailableError(f"The documentation in {site.directory} differs from its stamp {stamp}")
+
+    pages = sum(1 for _ in site.directory.rglob(f"*{site.index.suffix}"))
+    return f"{pages} pages, stamp {stamp}"
+
+
 def _check_gpu_backend() -> str:
     """Computes on the graphics card, which is what a GPU build is held to."""
     from sampletones_shared.array import exercise_gpu
@@ -176,29 +197,39 @@ CHECKS: Final[Tuple[SelfCheck, ...]] = (
     SelfCheck(name="file dialog backend", run=_check_file_dialog_backend),
     SelfCheck(name="array backend", run=_check_array_backend),
 )
+DOCUMENTATION_CHECK: Final[SelfCheck] = SelfCheck(name="documentation", run=_check_documentation)
 GPU_CHECK: Final[SelfCheck] = SelfCheck(name="gpu backend", run=_check_gpu_backend)
 
 
-def checks_for(*, gpu: bool) -> Tuple[SelfCheck, ...]:
-    """The checks a build runs: every startup check, and the GPU check where the build carries GPU support."""
-    if gpu:
-        return (*CHECKS, GPU_CHECK)
+def checks_for(
+    *,
+    gpu: bool,
+    documentation: bool,
+) -> Tuple[SelfCheck, ...]:
+    """The checks a build runs: every startup check, the documentation check where the build was
+    installed from a wheel, and the GPU check last where the build carries GPU support."""
+    held = ((documentation, DOCUMENTATION_CHECK), (gpu, GPU_CHECK))
+    return (*CHECKS, *(check for wanted, check in held if wanted))
 
-    return CHECKS
 
-
-def run_self_check(*, gpu: bool) -> int:
+def run_self_check(
+    *,
+    gpu: bool,
+    documentation: bool,
+) -> int:
     """Runs every startup check in order and returns the process exit status.
 
     Prints one line per check so a passing run doubles as an inventory of what the build
     carries, and stops at the first failure with the offending check named on the standard
-    error stream. A packaged build runs this to prove it starts before it is shipped, and a GPU
-    bundle runs it with ``gpu`` set to prove it computes on the graphics card.
+    error stream. A packaged build runs this to prove it starts before it is shipped, with
+    ``documentation`` set to prove it carries its pages, and a GPU bundle runs it with ``gpu`` set
+    to prove it computes on the graphics card.
 
     Args:
         gpu: Whether the build is held to the GPU backend.
+        documentation: Whether the build is held to carrying its documentation.
     """
-    checks = checks_for(gpu=gpu)
+    checks = checks_for(gpu=gpu, documentation=documentation)
     for check in checks:
         try:
             detail = check.run()

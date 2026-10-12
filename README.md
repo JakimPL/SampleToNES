@@ -67,7 +67,7 @@ recording without the interface, for example. Run `sampletones --help` for the l
 
 ## Documentation
 
-The [user guide](https://github.com/JakimPL/SampleToNES/tree/main/docs/guide) explains how to use the app, step by step. The rest of [`docs/`](https://github.com/JakimPL/SampleToNES/tree/main/docs) covers the reconstruction algorithms, the file formats, the Python API and the developer notes.
+The [user guide](https://github.com/JakimPL/SampleToNES/tree/main/docs/guide) explains how to use the app, step by step. The app opens it in your browser from **Help ▸ Documentation**. The rest of [`docs/`](https://github.com/JakimPL/SampleToNES/tree/main/docs) covers the reconstruction algorithms, the file formats, the Python API and the developer notes.
 
 ## License
 

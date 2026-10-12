@@ -86,9 +86,9 @@ jobs:
           sampletones --version
           sampletones --help
 
-      - name: Check the wheel carries every resource it needs at startup
+      - name: Check the wheel carries every resource it needs at startup and its documentation
         shell: bash
-        run: sampletones self-check
+        run: sampletones self-check --documentation
 
       - name: Check a developer command refuses to run outside a checkout
         shell: bash

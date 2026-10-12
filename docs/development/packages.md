@@ -44,7 +44,7 @@ graph TD
 |---------|---------------|
 | `sampletones_shared` | Facts and helpers any package holds: constants, exception families, paths, the logger, the array backend, and the command type the entry and the tools share |
 | `sampletones_config` | The shipped YAML — layout, palettes, themes, keybindings, language, behavior, deployment, and these boundaries themselves — reached as package data and not by import |
-| `sampletones_assets` | The application icons and the bundled fonts, reached as package data |
+| `sampletones_assets` | The application icons, the bundled fonts and, in a wheel, the HTML documentation, reached as package data |
 | `sampletones_core` | The reconstruction engine, the project model, playing a song out into instructions, and the tracker export formats |
 | `sampletones_player` | The NES player: the register model, the re-clocking schedule, the 6502 driver and the NSF file |
 | `sampletones_application` | The DearPyGui front end |

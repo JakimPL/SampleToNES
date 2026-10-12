@@ -1,7 +1,7 @@
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Any, List, Type, Union
+from typing import Any, Dict, Final, List, Type, Union
 from unittest.mock import MagicMock, call, patch
 
 import pytest
@@ -27,6 +27,14 @@ from sampletones_shared.utils.system.system import System
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import expect_error
+
+PROGRAM_ENVIRONMENT: Final[Dict[str, str]] = {"PATH": "/usr/bin"}
+
+
+@pytest.fixture(autouse=True)
+def program_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every program a reveal starts receives the environment the shared helper answers."""
+    monkeypatch.setattr("sampletones_shared.utils.system.paths.program_environment", lambda: PROGRAM_ENVIRONMENT)
 
 
 class TestFirstMissing:
@@ -751,7 +759,7 @@ class TestOpenDirectoryInExplorerLinux:
             path = Path(tmpdir)
             open_directory_in_explorer_linux(path)
 
-            mock_run.assert_called_once_with(["xdg-open", tmpdir], check=False)
+            mock_run.assert_called_once_with(["xdg-open", tmpdir], check=False, env=PROGRAM_ENVIRONMENT)
 
     @patch("sampletones_shared.utils.system.paths.subprocess.run")
     def test_open_with_file(self, mock_run: MagicMock) -> None:
@@ -761,7 +769,7 @@ class TestOpenDirectoryInExplorerLinux:
 
             open_directory_in_explorer_linux(filepath)
 
-            mock_run.assert_called_once_with(["xdg-open", tmpdir], check=False)
+            mock_run.assert_called_once_with(["xdg-open", tmpdir], check=False, env=PROGRAM_ENVIRONMENT)
 
 
 class TestOpenFileInExplorerLinux(BaseTestSuite):
@@ -908,7 +916,9 @@ class TestOpenFileInExplorerLinux(BaseTestSuite):
 
             expected = test_case.expected + [str(path)]
             assert mock_run.call_count == 2
-            assert mock_run.call_args_list[1] == call(expected, check=False, capture_output=True)
+            assert mock_run.call_args_list[1] == call(
+                expected, check=False, capture_output=True, env=PROGRAM_ENVIRONMENT
+            )
 
 
 class TestOpenPathInExplorer(BaseTestSuite):
@@ -969,7 +979,7 @@ class TestOpenPathInExplorer(BaseTestSuite):
 
             open_path_in_explorer(path)
             expected = test_case.expected + [str(path)]
-            mock_run.assert_called_once_with(expected, check=False)
+            mock_run.assert_called_once_with(expected, check=False, env=PROGRAM_ENVIRONMENT)
 
     @pytest.mark.parametrize(
         "is_file",
@@ -999,7 +1009,7 @@ class TestOpenPathInExplorer(BaseTestSuite):
                 path = Path(tmpdir)
                 open_path_in_explorer(path)
                 mock_open_file.assert_not_called()
-                mock_run.assert_called_once_with(["xdg-open", tmpdir], check=False)
+                mock_run.assert_called_once_with(["xdg-open", tmpdir], check=False, env=PROGRAM_ENVIRONMENT)
 
     @patch("sampletones_shared.utils.system.paths.System.current")
     def test_unsupported_os(self, mock_system: MagicMock) -> None:
@@ -1018,7 +1028,7 @@ class TestOpenPathInExplorer(BaseTestSuite):
         with tempfile.TemporaryDirectory() as tmpdir:
             path_str = str(tmpdir)
             open_path_in_explorer(path_str)
-            mock_run.assert_called_once_with(["xdg-open", tmpdir], check=False)
+            mock_run.assert_called_once_with(["xdg-open", tmpdir], check=False, env=PROGRAM_ENVIRONMENT)
 
     def test_with_integer_raises_type_error(self) -> None:
         with pytest.raises(
