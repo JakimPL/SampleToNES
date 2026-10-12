@@ -131,11 +131,15 @@ class OwedShowing:
 
 
 class WaveformUpdate(Protocol):
-    """What draws an updated waveform in place, re-fitting its view to the audio's length where asked."""
+    """What draws an updated waveform in place, re-fitting its view to the audio's length where asked.
+
+    The waveform is handed over by position, so a drawer may name it as it likes.
+    """
 
     def __call__(
         self,
         waveform: WaveformData,
+        /,
         *,
         refit: bool,
     ) -> None: ...
