@@ -149,7 +149,9 @@ key held past 0.275 s repeats. A click and a key press therefore go down and com
 ImGui reads the press on one frame and the release on the next at any frame rate. A key stands down for a
 single frame, too briefly to repeat, and the presses of a double-click land two frames apart. Where two
 frames take longer than the double-click time, the hand raises `SlowFramesError` and says how far apart the
-presses landed.
+presses landed. A burst of more presses, such as the triple click a plot plays nothing on, holds every later
+press to the same time after the one before it, since a plot takes a press landing later than that as a
+click of its own.
 
 A person lets go of a click some frames after pressing it, and DearPyGui answers a double-click as its
 second press goes down. A scenario holding that press for as long as a person does sees what the answer

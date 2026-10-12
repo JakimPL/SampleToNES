@@ -218,6 +218,8 @@ class Pointer(Arrival):
         )
         if running and count > SINGLE_PRESS:
             self._require_double_click(imgui_button, releases, double_clicks)
+        if running and count > DOUBLE_PRESS:
+            self._require_one_burst(imgui_button, releases)
 
     def _counts(self, imgui_button: int) -> Tuple[int, int]:
         """The releases and the double-clicks the witness counted of ``imgui_button`` so far."""
@@ -225,6 +227,30 @@ class Pointer(Arrival):
             self._witness.button_releases(imgui_button),
             self._witness.double_clicks(imgui_button),
         )
+
+    def _require_one_burst(
+        self,
+        imgui_button: int,
+        releases: int,
+    ) -> None:
+        """Checks that every press after the double-click landed within Dear ImGui's double-click time of the one
+        before, which is what makes the presses one burst to a plot.
+
+        A plot takes a press that follows a double-click within that time as one more click of the
+        burst, and a later one as a click of its own, so a frame drawn slowly between two presses
+        turns a triple click into a double-click and a click.
+
+        Raises:
+            SlowFramesError: If a press of the burst came later than that after the one before it.
+        """
+        times = self._bridge.ask(lambda: self._witness.button_release_times(imgui_button))[releases:]
+        for earlier, later in zip(times[DOUBLE_PRESS - 1 :], times[DOUBLE_PRESS:]):
+            took = later - earlier
+            if took >= IMGUI_DOUBLE_CLICK_SECONDS:
+                raise SlowFramesError(
+                    f"Dear ImGui read a press of the burst as a click of its own: it came {took:.2f} s after "
+                    f"the one before, past the {IMGUI_DOUBLE_CLICK_SECONDS} s double-click time"
+                )
 
     def _require_double_click(
         self,
