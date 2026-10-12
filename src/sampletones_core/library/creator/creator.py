@@ -6,6 +6,7 @@ from sampletones_core.fft import Window
 from sampletones_core.generators import GeneratorUnion, get_generators_map
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.parallelization import TaskProcessor
+from sampletones_core.parallelization.outcome import RunCompleted
 from sampletones_shared.logger import LoggerProtocol
 from sampletones_shared.logger import logger as default_logger
 
@@ -60,9 +61,9 @@ class InstructionsLibraryCreator(TaskProcessor[Tuple[InstructionLibraryKey, Inst
 
     def _process_results(
         self,
-        results: List[Any],
+        completed: RunCompleted[Any],
     ) -> Tuple[InstructionLibraryKey, InstructionLibraryData]:
-        data: Dict[InstructionUnion, InstructionLibraryFragment[Any]] = dict(results)
+        data: Dict[InstructionUnion, InstructionLibraryFragment[Any]] = dict(completed.results)
         library_data = InstructionLibraryData.create(self.config, data)
 
         key = InstructionLibraryKey.create(self.config.library, self.window)

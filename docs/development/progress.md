@@ -116,6 +116,16 @@ arrived may be read after it. The run records the tasks it has counted (`TaskSte
 reports go. That keeps a task's own progress and the run's completed count from describing the same work
 twice, and it keeps the reading inside the run it describes.
 
+### A batch goes on past a failing item
+
+A task fails by raising or by losing its worker. A run whose answers make sense only together ends with
+the first failure: a library missing one instruction is no library. So does a run of one task, whose
+failure is the whole of its outcome. A run of several tasks that stand on their own
+(`skips_failed_tasks`), such as a folder converted one recording at a time, records the failure against
+its task, logs it with its traceback, and goes on. One unreadable or crashing recording among thousands
+then costs that recording alone. The completed outcome keeps the answers in task order and names every
+task the run went on without, so whoever reports the end of the run names them too.
+
 ### The pool's and the channel's lifetime
 
 The run's monitor thread (`TaskProcessor`) is the one owner of its pool. However the run ends, the monitor

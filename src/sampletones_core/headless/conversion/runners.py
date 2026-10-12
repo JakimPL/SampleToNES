@@ -5,11 +5,13 @@ from tqdm import tqdm
 
 from sampletones_core.configs import Config
 from sampletones_core.headless.conversion.request import ConversionRequest
+from sampletones_core.headless.conversion.skipped import skipped_lines
 from sampletones_core.headless.library import ensure_library
 from sampletones_core.parallelization import TaskProgress, TaskStatus
 from sampletones_core.reconstructions import Reconstructor
 from sampletones_core.reconstructions.converter import (
     ConversionJob,
+    ConversionOutcome,
     DirectoryConversion,
     ReconstructionConverter,
     reconstruct_job,
@@ -83,7 +85,8 @@ def reconstruct_directory(
     """Reconstructs every recording under the directory, each alone under the setup's stem.
 
     The library the configuration names is prepared first. The results mirror the directory's
-    tree inside the configuration's reconstructions directory.
+    tree inside the configuration's reconstructions directory. A recording that fails is skipped,
+    and the run names every skipped recording, with its error, once it ends.
 
     Args:
         directory: The directory of recordings.
@@ -97,9 +100,11 @@ def reconstruct_directory(
         progress_bar.disable = False
         logger.info(f"Starting reconstruction for directory {directory}")
 
-    def on_completed(written: Tuple[Path, ...]) -> None:
-        logger.info(f"Reconstructed {len(written)} files from {directory}")
+    def on_completed(outcome: ConversionOutcome) -> None:
         progress_bar.close()
+        logger.info(f"Reconstructed {len(outcome.written)} files from {directory}")
+        for line in skipped_lines(outcome):
+            logger.warning(line)
 
     def on_progress(
         task_status: TaskStatus,

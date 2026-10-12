@@ -1,5 +1,4 @@
-from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 from sampletones_application.services.base import ServiceBase
 from sampletones_application.services.conversion.result import (
@@ -19,7 +18,7 @@ from sampletones_application.services.result import (
 from sampletones_core.configs import Config
 from sampletones_core.parallelization import ETAEstimator, TaskProgress, TaskStatus
 from sampletones_core.parallelization.task import TaskStep
-from sampletones_core.reconstructions.converter import ConversionPlan, ReconstructionConverter
+from sampletones_core.reconstructions.converter import ConversionOutcome, ConversionPlan, ReconstructionConverter
 from sampletones_core.reconstructions.stage import ReconstructionStage
 from sampletones_shared.logger import logger
 
@@ -156,8 +155,8 @@ class ConversionService(ServiceBase[ConversionResult]):
             total=step.total,
         )
 
-    def _on_completed(self, written: Tuple[Path, ...]) -> None:
-        self._emit(ServiceSuccess(value=written))
+    def _on_completed(self, outcome: ConversionOutcome) -> None:
+        self._emit(ServiceSuccess(value=outcome))
 
     def _on_error(self, exception: Exception) -> None:
         self._emit(ServiceError(exception=exception))

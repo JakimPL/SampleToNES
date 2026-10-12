@@ -255,7 +255,7 @@ class TestConversionSuccessDialog:
         coordinator = _success_coordinator()
         output_path = Path("/reconstructions/kick.rcn")
 
-        coordinator._on_conversion_success(ConversionSuccess(written=(output_path,)))
+        coordinator._on_conversion_success(ConversionSuccess(written=(output_path,), skipped=()))
 
         coordinator._hooks.on_refresh_trees.assert_called_once_with()
         coordinator._dialogs.show_confirmation.assert_called_once()
@@ -272,7 +272,7 @@ class TestConversionSuccessDialog:
         coordinator = _success_coordinator()
         written = (Path("/reconstructions/kick.rcn"), Path("/reconstructions/snare.rcn"))
 
-        coordinator._on_conversion_success(ConversionSuccess(written=written))
+        coordinator._on_conversion_success(ConversionSuccess(written=written, skipped=()))
 
         _, kwargs = coordinator._dialogs.show_confirmation.call_args
         assert kwargs["ok_label"] == OPEN_BUTTON_KEY

@@ -17,7 +17,7 @@ from sampletones_application.view_model.main.converter import ACTIVE_PHASES, Con
 from sampletones_core.configs import Config
 from sampletones_core.library import InstructionLibraryKey, LibraryState
 from sampletones_core.parallelization import TaskProgress
-from sampletones_core.reconstructions.converter import ConversionPlan
+from sampletones_core.reconstructions.converter import ConversionOutcome, ConversionPlan
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
@@ -26,12 +26,14 @@ SYSTEM_PROGRESS_STEPS: Final[int] = 1000
 
 @dataclass(frozen=True)
 class ConversionSuccess:
-    """The outcome a completed conversion hands to its listener: the reconstructions it wrote.
+    """The outcome a completed conversion hands to its listener: the reconstructions it wrote, and
+    the recordings it skipped because they failed.
 
     One written reconstruction is one the reader can open straight away; several are a batch,
     which the reader reaches as a folder."""
 
     written: Tuple[Path, ...]
+    skipped: Tuple[Path, ...]
 
     @property
     def is_single(self) -> bool:
@@ -194,8 +196,8 @@ class ConversionRun(CallbackMixin):
                 self._handle_progress_result(progress)
             case ServiceIntermediate(data=progress):
                 self._handle_library_progress(progress)
-            case ServiceSuccess(value=written):
-                self._settle_as_complete(written)
+            case ServiceSuccess(value=outcome):
+                self._settle_as_complete(outcome)
             case ServiceError(exception=exception):
                 self._settle_as_failed(exception)
             case ServiceCanceled():
@@ -229,15 +231,16 @@ class ConversionRun(CallbackMixin):
         total = max(progress.total, 1)
         self._report(self._messages.preparing_library(request.library_state), progress.completed / total)
 
-    def _settle_as_complete(self, written: Tuple[Path, ...]) -> None:
+    def _settle_as_complete(self, outcome: ConversionOutcome) -> None:
         """Settles a finished run, telling its listener what was written before reporting.
 
         The reconstruction a run wrote is what a reader is then looking at, so the listener takes
         it up first and the report that follows names it.
         """
-        self._written = written
+        self._written = outcome.written
         self._phase = ConversionPhase.COMPLETED
-        self.call(self.on_success, ConversionSuccess(written=written))
+        skipped = tuple(source for skipped_job in outcome.skipped for source in skipped_job.job.sources)
+        self.call(self.on_success, ConversionSuccess(written=outcome.written, skipped=skipped))
         self._report(self._messages.completed, 1.0)
 
     def _settle_as_failed(self, exception: Exception) -> None:
