@@ -135,6 +135,8 @@ strip, the text, the accent, each the color or size the application draws that p
 as one stylesheet of variables beside the fonts the application ships, and the layout's own stylesheets
 name roles alone. A change to a theme or a palette therefore reaches every page the next time it is
 written. The fonts travel inside their stylesheet, which lets a page open from a file wherever it lies.
+A page is read rather than worked in, so it spaces its cards and its prose wider than the application
+does, in multiples of the application's own spacing, and its proportions follow the application.
 
 The calibration board and the documentation site ([assets](assets.md#documentation)) are written this
 way. A page's own files are shipped as they are read: `calibration/board/static/` holds the board's markup,

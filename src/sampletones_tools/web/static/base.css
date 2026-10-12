@@ -10,6 +10,10 @@
 
 :root {
   --page-gutter: 16px;
+  --card-gap: calc(3 * var(--panel-gap));
+  --prose-inset: calc(2 * var(--card-padding-x));
+  --block-gap: 1em;
+  --section-gap: 2em;
 }
 
 html {

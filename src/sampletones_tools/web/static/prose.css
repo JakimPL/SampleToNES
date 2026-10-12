@@ -1,12 +1,12 @@
 .prose {
   min-width: 0;
-  padding: 0 var(--card-padding-x) var(--card-padding-y);
+  padding: 0 var(--prose-inset) var(--prose-inset);
   font-size: var(--size-sans-large);
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
 .prose > :first-child {
-  margin-top: var(--card-padding-y);
+  margin-top: var(--prose-inset);
 }
 
 .prose > :last-child {
@@ -20,7 +20,7 @@
 .prose pre,
 .prose .table-scroll,
 .prose .figure {
-  margin: 0.7em 0;
+  margin: var(--block-gap) 0;
 }
 
 .prose ul,
@@ -31,12 +31,12 @@
 .prose li + li,
 .prose li > ul,
 .prose li > ol {
-  margin-top: 0.25em;
+  margin-top: 0.4em;
 }
 
 .prose h3,
 .prose h4 {
-  margin: 1.4em 0 0.4em;
+  margin: var(--section-gap) 0 0.5em;
   line-height: 1.3;
   text-wrap: balance;
 }
@@ -94,5 +94,17 @@
 
 .prose .table {
   font-size: var(--size-sans-medium);
-  line-height: normal;
+  line-height: 1.45;
+}
+
+.prose .table th,
+.prose .table td {
+  padding: calc(1.5 * var(--cell-padding-y)) calc(1.5 * var(--cell-padding-x));
+}
+
+@media (max-width: 600px) {
+  .prose {
+    padding-inline: var(--card-padding-x);
+    font-size: var(--size-sans-medium);
+  }
 }

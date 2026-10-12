@@ -17,14 +17,23 @@
   flex: 1;
 }
 
+.documentation .workspace {
+  padding-block: var(--card-gap);
+}
+
+.documentation .columns,
+.documentation .column {
+  gap: var(--card-gap);
+}
+
 .documentation .column.page {
   max-width: 980px;
 }
 
 .documentation .column.side {
   position: sticky;
-  top: var(--panel-gap);
-  max-height: calc(100vh - 2 * var(--panel-gap));
+  top: var(--card-gap);
+  max-height: calc(100vh - 2 * var(--card-gap));
   overflow-y: auto;
 }
 
@@ -69,7 +78,7 @@ h2.card-header {
 }
 
 .navigation li {
-  padding: 2px 0;
+  padding: 3px 0;
 }
 
 .navigation a {
@@ -96,9 +105,6 @@ h2.card-header {
   color: var(--text-muted);
 }
 
-.page {
-  gap: var(--panel-gap);
-}
 
 .prose div[align="center"] {
   text-align: center;

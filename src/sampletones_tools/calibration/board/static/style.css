@@ -5,7 +5,7 @@
 .board {
   display: flex;
   flex-direction: column;
-  gap: var(--panel-gap);
+  gap: var(--card-gap);
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -13,7 +13,7 @@
 .groups {
   display: flex;
   flex-direction: column;
-  gap: var(--panel-gap);
+  gap: var(--card-gap);
 }
 
 .status-bar p {
