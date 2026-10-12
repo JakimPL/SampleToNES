@@ -195,8 +195,8 @@ from sampletones_player.export.backend import NSFBackend
 from sampletones_shared.application import (
     SAMPLETONES_AUTHOR,
     SAMPLETONES_GROUP,
-    SAMPLETONES_NAME_VERSION,
 )
+from sampletones_shared.distribution import SAMPLETONES_NAME_VERSION
 from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender

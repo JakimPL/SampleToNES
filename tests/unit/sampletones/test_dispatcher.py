@@ -4,8 +4,8 @@ from typing import List, Tuple
 import pytest
 
 from sampletones.dispatcher import COMMAND_METAVAR, DEFAULT_COMMAND, PROGRAM, build_parser, dispatch
-from sampletones_shared.application import SAMPLETONES_NAME_VERSION
 from sampletones_shared.command import Command
+from sampletones_shared.distribution import SAMPLETONES_NAME_VERSION
 
 
 def _command(name: str, calls: List[Tuple[str, bool]]) -> Command:

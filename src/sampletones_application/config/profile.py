@@ -3,8 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from sampletones_application.paths import APPLICATION_STATE_PATH
-from sampletones_shared.paths.user import APPLICATION_CONFIG_PATH
+from sampletones_shared.paths.user import APPLICATION_CONFIG_PATH, APPLICATION_STATE_PATH
 
 
 @dataclass(frozen=True)

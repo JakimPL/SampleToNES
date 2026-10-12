@@ -9,9 +9,8 @@ from automation.screen import Screen
 from automation.worlds.home import World, screen_filling_state
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.session.state.current import Current
-from sampletones_application.paths import APPLICATION_STATE_PATH
 from sampletones_core.configs import Config
-from sampletones_shared.paths.user import CONFIG_PATH
+from sampletones_shared.paths.user import APPLICATION_STATE_PATH, CONFIG_PATH
 from tests.suite.screens.seeds.archives import WrittenBytes
 from tests.suite.screens.seeds.recordings import Recording
 

@@ -3,7 +3,7 @@ from typing import Optional
 
 from sampletones_application.application import Application
 from sampletones_application.config.profile import UserProfile
-from sampletones_shared.application import SAMPLETONES_NAME_VERSION
+from sampletones_shared.distribution import SAMPLETONES_NAME_VERSION
 from sampletones_shared.logger import logger
 
 

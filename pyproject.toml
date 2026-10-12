@@ -81,6 +81,7 @@ calibration = ["zimtohrli>=0.2.1,<0.3"]
 dev = [
     { include-group = "assets" },
     "black==26.5.1",
+    "hatchling>=1.27",
     "isort==8.0.1",
     "mypy==2.1.0",
     "pre-commit==4.6.0",
@@ -96,7 +97,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [tool.uv]
@@ -112,6 +113,16 @@ packages = [
     "src/sampletones_player",
     "src/sampletones_shared",
     "src/sampletones_tools",
+]
+
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "hatch_build.py"
+dependencies = [
+    "markdown-it-py>=3,<5",
+    "numpy>=2.0,<3",
+    "pydantic>=2.9,<3",
+    "PyYAML>=6.0,<7",
+    "rich>=13.0,<16",
 ]
 
 [tool.black]
@@ -166,6 +177,7 @@ files = [
     "scripts",
     "automation",
     "assets",
+    "hatch_build.py",
 ]
 exclude = ["tests"]
 disallow_subclassing_any = true

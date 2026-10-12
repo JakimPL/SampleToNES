@@ -13,10 +13,17 @@ from bootstrap.processes import Runner, expect_success, run
 from bootstrap.project import DEVELOPMENT_GROUP, read_project
 
 
-def setup_commands(extra: Optional[str]) -> List[List[str]]:
+def setup_commands(
+    name: str,
+    extra: Optional[str],
+) -> List[List[str]]:
     """The commands that create the development environment and install the global command.
 
+    The global command is rebuilt from the checkout on every run, so it carries the checkout's
+    code and documentation as they stand.
+
     Args:
+        name: The distribution's name, the package the global command is rebuilt from.
         extra: The GPU extra installed with the package, or ``None`` for the CPU backend.
 
     Returns:
@@ -30,12 +37,13 @@ def setup_commands(extra: Optional[str]) -> List[List[str]]:
 
     return [
         synchronize,
-        ["uv", "tool", "install", "--force", package],
+        ["uv", "tool", "install", "--force", "--reinstall-package", name, package],
     ]
 
 
 def set_up_environment(
     root: Path,
+    name: str,
     platform: Platform,
     extra: Optional[str],
     *,
@@ -47,6 +55,7 @@ def set_up_environment(
 
     Args:
         root: The repository.
+        name: The distribution's name, the package the global command is rebuilt from.
         platform: The system the setup runs on, which adds the variables the build needs.
         extra: The GPU extra installed with the package, or ``None`` for the CPU backend.
         machine: The processor architecture ``platform.machine()`` reports.
@@ -57,7 +66,7 @@ def set_up_environment(
         SystemExit: If a command fails.
     """
     variables = platform.setup_variables(environment, machine=machine)
-    for command in setup_commands(extra):
+    for command in setup_commands(name, extra):
         expect_success(runner, command, cwd=root, environment=variables)
 
 
@@ -73,10 +82,11 @@ def main(argv: Sequence[str]) -> int:
     arguments = parser.parse_args(list(argv))
 
     root = repository_root()
-    read_project(root)
+    project = read_project(root)
     platform = current_platform()
     set_up_environment(
         root,
+        project.name,
         platform,
         gpu_extra(arguments.gpu, platform, os.environ),
         machine=running.machine(),
