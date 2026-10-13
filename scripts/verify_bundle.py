@@ -6,12 +6,14 @@ from typing import Final, List, Mapping, Sequence
 
 from bootstrap.layout import (
     BUILD_TOOLS,
+    DEPLOYMENT_PACKAGE_PATH,
     DISTRIBUTION,
     DOCUMENTATION_FILES,
     DOCUMENTATION_PACKAGE_PATH,
     GPU_PACKAGES,
     INTERNAL_DIRECTORY,
     NOTICES,
+    RELEASE_DEPLOYMENT,
     repository_root,
 )
 from bootstrap.platforms.factory import current_platform
@@ -35,6 +37,20 @@ def missing_documentation(bundle: Path) -> List[str]:
     """
     site = bundle / INTERNAL_DIRECTORY / DOCUMENTATION_PACKAGE_PATH
     return [name for name in DOCUMENTATION_FILES if not (site / name).is_file()]
+
+
+def carries_release_deployment(root: Path, bundle: Path) -> bool:
+    """Whether a bundle carries the release deployment settings, as the wheel it was built from does.
+
+    Args:
+        root: The repository, which holds the release settings.
+        bundle: The bundle's directory, beside its launcher.
+
+    Returns:
+        bool: Whether the bundle's deployment file matches the release settings byte for byte.
+    """
+    shipped = bundle / INTERNAL_DIRECTORY / DEPLOYMENT_PACKAGE_PATH
+    return shipped.is_file() and shipped.read_bytes() == (root / RELEASE_DEPLOYMENT).read_bytes()
 
 
 def carried_packages(bundle: Path, names: Sequence[str]) -> List[str]:
@@ -71,8 +87,8 @@ def bundle_failures(
 ) -> List[str]:
     """What keeps the release bundle under ``root`` from shipping, each as a line of its own.
 
-    The bundle ships its notices and its documentation, carries the application and its CPU runtime
-    dependencies alone, and offers a launcher that starts.
+    The bundle ships its notices and its documentation, carries the release deployment settings,
+    the application and its CPU runtime dependencies alone, and offers a launcher that starts.
 
     Args:
         root: The repository the bundle was built in.
@@ -98,6 +114,9 @@ def bundle_failures(
     if pages:
         failures.append(f"Bundle {bundle} is missing its documentation: {', '.join(pages)}")
 
+    if not carries_release_deployment(root, bundle):
+        failures.append(f"Bundle {bundle} carries deployment settings other than {RELEASE_DEPLOYMENT}")
+
     carried = carried_build_tools(bundle)
     if carried:
         failures.append(f"Bundle {bundle} carries build-time tooling its notices leave out: {', '.join(carried)}")
@@ -118,8 +137,8 @@ def bundle_failures(
 
 
 def main(argv: Sequence[str]) -> int:
-    """Confirms the release bundle ships its notices and its documentation, holds to the notices, and that its
-    launcher starts."""
+    """Confirms the release bundle ships its notices, its documentation and the release deployment settings,
+    holds to the notices, and that its launcher starts."""
     parser = argparse.ArgumentParser(description="Verify the release bundle before it is archived.")
     parser.parse_args(list(argv))
 
@@ -130,7 +149,7 @@ def main(argv: Sequence[str]) -> int:
     if failures:
         return 1
 
-    print("The bundle ships its notices and its documentation, and its launcher starts")
+    print("The bundle ships its notices, its documentation and the release settings, and its launcher starts")
     return 0
 
 

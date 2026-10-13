@@ -10,13 +10,14 @@ from bootstrap.layout import (
     BUILD_TOOLS,
     CUDA_PACKAGE,
     CUPY_PACKAGES,
+    DEVELOPMENT_WHEEL,
+    DEVELOPMENT_WHEEL_ENABLED,
     DISTRIBUTION,
     GPU_HOOK,
     GPU_PACKAGES,
     INTERNAL_DIRECTORY,
     NOTICES,
     PYINSTALLER_HOOKS,
-    RELEASE_HOOK,
 )
 from bootstrap.platforms.linux import Linux
 from bootstrap.platforms.macos import MacOS
@@ -59,14 +60,14 @@ class TestBundleOptions:
 
 
 class TestPyInstallerCommand:
-    def test_a_release_is_a_directory_with_the_runtime_hook(self, tmp_path: Path) -> None:
+    def test_a_release_is_a_directory_taking_its_settings_from_the_wheel(self, tmp_path: Path) -> None:
         project = read_project(_repository(tmp_path))
 
         command = bundle.pyinstaller_command(Path("python"), Linux().bundling(), project, CPU_RELEASE)
 
         assert command[:3] == ["python", "-m", "PyInstaller"]
         assert "--onedir" in command
-        assert _values(command, "--runtime-hook") == [RELEASE_HOOK]
+        assert "--runtime-hook" not in command
         assert command[-1] == project.entry_script
 
     def test_a_cpu_development_bundle_is_one_file_without_the_hook(self, tmp_path: Path) -> None:
@@ -98,13 +99,26 @@ class TestPyInstallerCommand:
         assert _values(command, "--runtime-hook") == [GPU_HOOK]
         assert _values(command, "--exclude-module") == list(BUILD_TOOLS)
 
-    def test_a_gpu_release_carries_both_runtime_hooks(self, tmp_path: Path) -> None:
+    def test_a_gpu_release_carries_the_gpu_runtime_hook_alone(self, tmp_path: Path) -> None:
         project = read_project(_repository(tmp_path))
         options = bundle.BundleOptions(release=True, gpu_extra=GPU_EXTRA)
 
         command = bundle.pyinstaller_command(Path("python"), Linux().bundling(), project, options)
 
-        assert _values(command, "--runtime-hook") == [GPU_HOOK, RELEASE_HOOK]
+        assert _values(command, "--runtime-hook") == [GPU_HOOK]
+
+
+class TestWheelEnvironment:
+    def test_a_development_bundle_asks_the_wheel_for_the_checkout_settings(self) -> None:
+        variables = bundle.wheel_environment(CPU_DEVELOPMENT, {"PATH": "/usr/bin"})
+
+        assert variables == {"PATH": "/usr/bin", DEVELOPMENT_WHEEL: DEVELOPMENT_WHEEL_ENABLED}
+
+    def test_a_release_takes_the_release_settings_whatever_the_caller_set(self) -> None:
+        environment = {"PATH": "/usr/bin", DEVELOPMENT_WHEEL: DEVELOPMENT_WHEEL_ENABLED}
+
+        assert bundle.wheel_environment(CPU_RELEASE, environment) == {"PATH": "/usr/bin"}
+        assert environment[DEVELOPMENT_WHEEL] == DEVELOPMENT_WHEEL_ENABLED
 
 
 class TestExtras:
@@ -258,6 +272,7 @@ class TestBuildBundle:
         assert runner.lines[6] == f"{launcher} {bundle.SELF_CHECK} {bundle.DOCUMENTATION_FLAG}"
         assert all((launcher.parent / notice).read_text() == notice for notice in NOTICES)
         assert _environment_of(runner, "PyInstaller") == {}
+        assert DEVELOPMENT_WHEEL not in _environment_of(runner, f".[{BUILD_EXTRA}]")
 
     def test_a_gpu_bundle_installs_the_extra_probes_cupy_and_lands_in_a_directory(self, tmp_path: Path) -> None:
         root = _repository(tmp_path)
@@ -273,6 +288,7 @@ class TestBuildBundle:
         assert "PyInstaller" in runner.lines[6]
         assert runner.lines[7] == f"{launcher} {bundle.SELF_CHECK} {bundle.DOCUMENTATION_FLAG} {bundle.GPU_FLAG}"
         assert not any((launcher.parent / notice).exists() for notice in NOTICES)
+        assert _environment_of(runner, f".[{BUILD_EXTRA},{GPU_EXTRA}]")[DEVELOPMENT_WHEEL] == DEVELOPMENT_WHEEL_ENABLED
 
     def test_a_gpu_build_resolves_cuda_libraries_in_the_wheels_and_the_bundle_finds_them_alone(
         self,

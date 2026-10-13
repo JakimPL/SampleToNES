@@ -15,13 +15,14 @@ from bootstrap.layout import (
     CUDA_LIBRARY_DIRECTORIES,
     CUDA_PACKAGE,
     CUPY_PACKAGES,
+    DEVELOPMENT_WHEEL,
+    DEVELOPMENT_WHEEL_ENABLED,
     DISTRIBUTION,
     GPU_HOOK,
     GPU_PACKAGES,
     INTERNAL_DIRECTORY,
     NOTICES,
     PYINSTALLER_HOOKS,
-    RELEASE_HOOK,
     repository_root,
 )
 from bootstrap.platforms.bundling import Bundling
@@ -94,6 +95,27 @@ def backend_arguments(options: BundleOptions) -> List[str]:
         arguments.extend(("--collect-all", package))
 
     return arguments
+
+
+def wheel_environment(options: BundleOptions, environment: Mapping[str, str]) -> Dict[str, str]:
+    """The variables the package is built and installed into the build environment under.
+
+    The wheel build writes the release deployment settings into every wheel it makes, which is
+    what a release bundle carries. A development bundle asks the wheel build to keep the
+    checkout's development settings, and a release removes that request whatever the caller set.
+
+    Args:
+        options: How the bundle is built.
+        environment: The variables the build was started with.
+
+    Returns:
+        Dict[str, str]: The variables.
+    """
+    variables = {name: value for name, value in environment.items() if name != DEVELOPMENT_WHEEL}
+    if not options.release:
+        variables[DEVELOPMENT_WHEEL] = DEVELOPMENT_WHEEL_ENABLED
+
+    return variables
 
 
 def cuda_library_directories(site_packages: Path) -> List[Path]:
@@ -246,9 +268,6 @@ def pyinstaller_command(
         command.extend(("--exclude-module", module))
 
     command.extend(backend_arguments(options))
-    if options.release:
-        command.extend(("--runtime-hook", RELEASE_HOOK))
-
     command.append(project.entry_script)
     return command
 
@@ -307,7 +326,7 @@ def build_bundle(
     bundling = platform.bundling()
     project = read_project(root)
     if options.release:
-        print("Release build: onedir bundle, injecting release deployment configuration")
+        print("Release build: onedir bundle carrying the release deployment configuration")
 
     if options.gpu_extra is not None:
         print(f"GPU build: onedir bundle carrying the '{options.gpu_extra}' extra")
@@ -323,7 +342,7 @@ def build_bundle(
         python,
         extras=extras(options),
         runner=runner,
-        environment=environment,
+        environment=wheel_environment(options, environment),
     )
     check_build_interpreter(
         python,
