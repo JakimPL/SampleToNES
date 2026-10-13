@@ -1,6 +1,6 @@
 # SampleToNES
 
-## v0.3.2
+## v0.3.2 [2026-10-13]
 
 * Added NSF export.
 * Added support for pitch and hi-pitch envelopes.
