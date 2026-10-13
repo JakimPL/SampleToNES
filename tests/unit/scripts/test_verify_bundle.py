@@ -9,6 +9,7 @@ from bootstrap.layout import (
     DOCUMENTATION_PACKAGE_PATH,
     DOCUMENTATION_SITE,
     GPU_PACKAGES,
+    INTERNAL_DIRECTORY,
     NOTICES,
     SOURCE_DIRECTORY,
 )
@@ -45,7 +46,7 @@ def _bundle(root: Path) -> Path:
 
 
 def _site(bundle: Path) -> Path:
-    return bundle / verify_bundle.INTERNAL_DIRECTORY / DOCUMENTATION_PACKAGE_PATH
+    return bundle / INTERNAL_DIRECTORY / DOCUMENTATION_PACKAGE_PATH
 
 
 class TestMissingNotices:
@@ -100,7 +101,7 @@ class TestCarriedBuildTools:
         assert verify_bundle.carried_build_tools(_bundle(root)) == []
 
     def test_a_build_tool_beside_the_application_is_reported(self, root: Path) -> None:
-        (_bundle(root) / verify_bundle.INTERNAL_DIRECTORY / BUILD_TOOLS[0]).mkdir(parents=True)
+        (_bundle(root) / INTERNAL_DIRECTORY / BUILD_TOOLS[0]).mkdir(parents=True)
 
         assert verify_bundle.carried_build_tools(_bundle(root)) == [BUILD_TOOLS[0]]
 
@@ -116,7 +117,7 @@ class TestCarriedGpuPackages:
 
     def test_every_gpu_package_among_the_internals_is_reported(self, root: Path) -> None:
         for name in GPU_PACKAGES:
-            (_bundle(root) / verify_bundle.INTERNAL_DIRECTORY / name).mkdir(parents=True)
+            (_bundle(root) / INTERNAL_DIRECTORY / name).mkdir(parents=True)
 
         assert verify_bundle.carried_gpu_packages(_bundle(root)) == list(GPU_PACKAGES)
 
@@ -144,14 +145,14 @@ class TestBundleFailures:
         assert [DOCUMENTATION_FILES[0] in failure for failure in failures] == [True]
 
     def test_bundled_build_tooling_is_named(self, root: Path) -> None:
-        (_bundle(root) / verify_bundle.INTERNAL_DIRECTORY / BUILD_TOOLS[0]).mkdir(parents=True)
+        (_bundle(root) / INTERNAL_DIRECTORY / BUILD_TOOLS[0]).mkdir(parents=True)
 
         failures = verify_bundle.bundle_failures(root, Linux(), runner=RecordingRunner({}, None), environment={})
 
         assert [BUILD_TOOLS[0] in failure for failure in failures] == [True]
 
     def test_a_release_built_with_gpu_support_is_named(self, root: Path) -> None:
-        (_bundle(root) / verify_bundle.INTERNAL_DIRECTORY / GPU_PACKAGES[0]).mkdir(parents=True)
+        (_bundle(root) / INTERNAL_DIRECTORY / GPU_PACKAGES[0]).mkdir(parents=True)
 
         failures = verify_bundle.bundle_failures(root, Linux(), runner=RecordingRunner({}, None), environment={})
 

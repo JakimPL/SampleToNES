@@ -7,6 +7,12 @@ class TestWindows:
     def test_a_virtual_environment_runs_scripts_python(self) -> None:
         assert Windows().interpreter(Path(".venv-build")) == Path(".venv-build", "Scripts", "python.exe")
 
+    def test_a_virtual_environment_installs_under_lib(self) -> None:
+        assert Windows().site_packages(Path(".venv-build")) == Path(".venv-build", "Lib", "site-packages")
+
+    def test_the_dll_search_reads_the_path_variable(self) -> None:
+        assert Windows().bundling().library_search_variable == "PATH"
+
     def test_a_bundle_launcher_carries_the_executable_extension(self) -> None:
         launcher = Windows().bundling().launcher(Path("bin"), name="sampletones", directory=True)
 

@@ -70,12 +70,13 @@ A standalone executable built on a machine with an NVIDIA driver carries CuPy an
 
 A GPU bundle is a directory. The CUDA libraries would otherwise unpack from a single file on every start.
 
-PyInstaller needs four things to carry a CuPy that computes, and the repository supplies each:
+PyInstaller needs the following to carry a CuPy that computes, and the repository supplies each:
 
 - **CuPy whole.** CuPy imports its submodules by name at run time, so the build collects all of `cupy`, `cupy_backends` and `cupyx`.
 - **The hook beside the build** (`scripts/pyinstaller_hooks/hook-cupy.py`). It names the CUDA wheels installed in the build environment as hidden imports, which brings in the hooks that collect their shared libraries. It adds their header directories as data, because CuPy compiles kernels with NVRTC and looks the headers up, and it adds `graphlib`, which a compiled CuPy module imports out of sight of the analysis.
 - **The runtime hook** (`scripts/runtime_hooks/cuda_bundle.py`). The CUDA library search walks site-packages and then re-runs `sys.executable` to probe the system. Frozen, that re-runs the application and hangs. The hook makes the bundle the only site-packages, so every library is found inside it.
 - **A build environment that matches.** A CPU build excludes the GPU packages by name, so a `.venv-build` left over from a GPU build ships none of them.
+- **The wheels ahead of a system toolkit.** CuPy links the CUDA libraries by file name, and PyInstaller looks each name up the way the system loader does. A GPU build puts the wheels' library directories first on that search (`LD_LIBRARY_PATH`, or `PATH` on Windows). A CUDA toolkit installed on the build machine then adds no second copy of a different version, and the build fails if one still lands beside the wheels' own.
 
 The self-check is what proves a bundle. `sampletones self-check --gpu` computes a kernel and a matrix product on the card and holds the answer to NumPy's, and a GPU build runs it before it finishes. Importing CuPy alone passes in a bundle that lost its CUDA libraries.
 

@@ -19,6 +19,8 @@ NOTICES: Final[Tuple[str, ...]] = ("LICENSE", "THIRD-PARTY-NOTICES.md", "THIRD-P
 BUILD_TOOLS: Final[Tuple[str, ...]] = ("PIL",)
 CUPY_PACKAGES: Final[Tuple[str, ...]] = ("cupy", "cupy_backends", "cupyx")
 CUDA_PACKAGE: Final[str] = "nvidia"
+CUDA_LIBRARY_DIRECTORIES: Final[Tuple[str, ...]] = ("lib", "bin")
+INTERNAL_DIRECTORY: Final[str] = "_internal"
 GPU_PACKAGES: Final[Tuple[str, ...]] = (*CUPY_PACKAGES, CUDA_PACKAGE)
 CLEAN_ARTIFACTS: Final[Tuple[str, ...]] = (
     DISTRIBUTION,

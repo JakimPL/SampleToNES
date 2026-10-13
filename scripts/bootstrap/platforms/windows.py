@@ -5,6 +5,8 @@ from bootstrap.platforms.bundling import Bundling
 
 WINDOWS: Final[str] = "Windows"
 WINDOWS_INTERPRETER: Final[Tuple[str, str]] = ("Scripts", "python.exe")
+WINDOWS_SITE_PACKAGES: Final[Tuple[str, str]] = ("Lib", "site-packages")
+LIBRARY_SEARCH_VARIABLE: Final[str] = "PATH"
 ICO_ICON: Final[str] = "src/sampletones_assets/icons/sampletones.ico"
 EXECUTABLE_SUFFIX: Final[str] = ".exe"
 NVIDIA_SMI_LOCATIONS: Final[Tuple[Tuple[str, str], ...]] = (
@@ -19,6 +21,7 @@ BUNDLING: Final[Bundling] = Bundling(
     tkinter_warning=(
         "This bundle opens no file dialogs. Install Python from python.org or the Microsoft Store to include Tk."
     ),
+    library_search_variable=LIBRARY_SEARCH_VARIABLE,
 )
 
 
@@ -39,6 +42,9 @@ class Windows:
 
     def interpreter(self, environment: Path) -> Path:
         return environment.joinpath(*WINDOWS_INTERPRETER)
+
+    def site_packages(self, environment: Path) -> Path:
+        return environment.joinpath(*WINDOWS_SITE_PACKAGES)
 
     def bundling(self) -> Bundling:
         return BUNDLING

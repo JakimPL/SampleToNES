@@ -10,6 +10,7 @@ from bootstrap.layout import (
     DOCUMENTATION_FILES,
     DOCUMENTATION_PACKAGE_PATH,
     GPU_PACKAGES,
+    INTERNAL_DIRECTORY,
     NOTICES,
     repository_root,
 )
@@ -19,7 +20,6 @@ from bootstrap.processes import Runner, run
 from bootstrap.project import read_project
 
 VERSION_FLAG: Final[str] = "--version"
-INTERNAL_DIRECTORY: Final[str] = "_internal"
 
 
 def missing_notices(bundle: Path) -> List[str]:

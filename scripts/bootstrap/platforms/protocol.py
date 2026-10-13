@@ -25,6 +25,19 @@ class Platform(Protocol):
             Path: The interpreter.
         """
 
+    def site_packages(self, environment: Path) -> Path:
+        """The directory a virtual environment at ``environment`` installs packages into.
+
+        Args:
+            environment: The virtual environment's directory.
+
+        Returns:
+            Path: The environment's site-packages directory.
+
+        Raises:
+            FileNotFoundError: If the environment's layout names no single site-packages directory.
+        """
+
     def bundling(self) -> Bundling:
         """What building a standalone bundle takes on the system.
 

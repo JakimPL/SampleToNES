@@ -4,17 +4,21 @@ import shutil
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, Final, List, Mapping, Optional, Sequence, Tuple
 
 from bootstrap.cuda import DEFAULT_GPU, GPU_CHOICES, gpu_extra
 from bootstrap.files import remove_path
 from bootstrap.interpreter import running_version
 from bootstrap.layout import (
+    BUILD_ENVIRONMENT,
     BUILD_TOOLS,
+    CUDA_LIBRARY_DIRECTORIES,
+    CUDA_PACKAGE,
     CUPY_PACKAGES,
     DISTRIBUTION,
     GPU_HOOK,
     GPU_PACKAGES,
+    INTERNAL_DIRECTORY,
     NOTICES,
     PYINSTALLER_HOOKS,
     RELEASE_HOOK,
@@ -31,6 +35,7 @@ from bootstrap.venv_build import ensure_build_venv, install
 SELF_CHECK: Final[str] = "self-check"
 GPU_FLAG: Final[str] = "--gpu"
 DOCUMENTATION_FLAG: Final[str] = "--documentation"
+CPU_BUILD_ADVICE: Final[str] = "Build with '--gpu 0' for the CPU alone."
 
 
 @dataclass(frozen=True)
@@ -89,6 +94,115 @@ def backend_arguments(options: BundleOptions) -> List[str]:
         arguments.extend(("--collect-all", package))
 
     return arguments
+
+
+def cuda_library_directories(site_packages: Path) -> List[Path]:
+    """The directories the CUDA wheels installed in ``site_packages`` keep their shared libraries in.
+
+    Args:
+        site_packages: The site-packages directory of the environment the bundle is built in.
+
+    Returns:
+        List[Path]: The directories, in name order, empty where the CUDA wheels are absent.
+    """
+    root = site_packages / CUDA_PACKAGE
+    if not root.is_dir():
+        return []
+
+    return sorted(
+        component / libraries
+        for component in root.iterdir()
+        for libraries in CUDA_LIBRARY_DIRECTORIES
+        if (component / libraries).is_dir()
+    )
+
+
+def leading_search_path(
+    environment: Mapping[str, str],
+    *,
+    variable: str,
+    directories: Sequence[Path],
+) -> Dict[str, str]:
+    """The variables ``environment`` holds, with ``directories`` leading the search path ``variable`` names.
+
+    Args:
+        environment: The variables to extend.
+        variable: The search path's variable.
+        directories: The directories searched first, in order.
+
+    Returns:
+        Dict[str, str]: The variables, the search path keeping its earlier entries after ``directories``.
+    """
+    entries = [str(directory) for directory in directories]
+    existing = environment.get(variable)
+    if existing:
+        entries.append(existing)
+
+    return {**environment, variable: os.pathsep.join(entries)}
+
+
+def pyinstaller_environment(
+    root: Path,
+    platform: Platform,
+    options: BundleOptions,
+    environment: Mapping[str, str],
+) -> Dict[str, str]:
+    """The variables PyInstaller runs under.
+
+    CuPy names the CUDA libraries it links by their file names alone, and PyInstaller looks each
+    name up the way the system loader does. A GPU build places the CUDA wheels' library directories
+    first on that search, so every name resolves to the wheel the bundle carries, ahead of a CUDA
+    toolkit installed on the build machine, whose copy would land at the top of the bundle.
+
+    Args:
+        root: The repository, which holds the build environment.
+        platform: The system the bundle is built on, which places the search path and the packages.
+        options: How the bundle is built.
+        environment: The variables the build was started with.
+
+    Returns:
+        Dict[str, str]: The variables, as given for a CPU build.
+    """
+    if not options.gpu:
+        return dict(environment)
+
+    site_packages = platform.site_packages(root / BUILD_ENVIRONMENT)
+    return leading_search_path(
+        environment,
+        variable=platform.bundling().library_search_variable,
+        directories=cuda_library_directories(site_packages),
+    )
+
+
+def stray_cuda_libraries(bundle: Path) -> List[str]:
+    """The libraries at the top of a bundle's internals that repeat one the CUDA wheels carry.
+
+    Args:
+        bundle: The bundle's directory, beside its launcher.
+
+    Returns:
+        List[str]: The repeated file names, in name order, empty for a bundle carrying each CUDA library once.
+    """
+    internal = bundle / INTERNAL_DIRECTORY
+    carried = {path.name for path in (internal / CUDA_PACKAGE).rglob("*") if path.is_file()}
+    return sorted(path.name for path in internal.iterdir() if path.name in carried)
+
+
+def check_cuda_libraries(bundle: Path) -> None:
+    """Holds a GPU bundle to carrying each CUDA library once, the copy its wheel brings.
+
+    Args:
+        bundle: The bundle's directory, beside its launcher.
+
+    Raises:
+        SystemExit: If a library sits at the top of the bundle beside the wheel's copy.
+    """
+    stray = stray_cuda_libraries(bundle)
+    if stray:
+        raise SystemExit(
+            f"Build failed: {bundle} carries a second copy of CUDA libraries its wheels bring: "
+            f"{', '.join(stray)}. {CPU_BUILD_ADVICE}"
+        )
 
 
 def pyinstaller_command(
@@ -187,7 +301,8 @@ def build_bundle(
         Path: The launcher the bundle offers.
 
     Raises:
-        SystemExit: If the system builds no bundle, a step fails, or PyInstaller produced no launcher.
+        SystemExit: If the system builds no bundle, a step fails, PyInstaller produced no launcher, or a
+            GPU bundle carries a CUDA library twice.
     """
     bundling = platform.bundling()
     project = read_project(root)
@@ -226,11 +341,14 @@ def build_bundle(
         runner,
         pyinstaller_command(python, bundling, project, options),
         cwd=root,
-        environment=environment,
+        environment=pyinstaller_environment(root, platform, options, environment),
     )
     launcher = bundling.launcher(distribution, name=project.name, directory=options.directory)
     if not launcher.is_file():
         raise SystemExit(f"Build failed: PyInstaller produced no executable at {launcher}.")
+
+    if options.gpu:
+        check_cuda_libraries(launcher.parent)
 
     print("Verifying the bundle...")
     status = runner(self_check_command(launcher, options), cwd=root, environment=environment, quiet=False)

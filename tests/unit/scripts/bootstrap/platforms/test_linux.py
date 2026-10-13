@@ -7,6 +7,15 @@ class TestLinux:
     def test_a_virtual_environment_runs_bin_python(self) -> None:
         assert Linux().interpreter(Path(".venv-build")) == Path(".venv-build", "bin", "python")
 
+    def test_a_virtual_environment_installs_under_its_interpreter_s_version(self, tmp_path: Path) -> None:
+        site_packages = tmp_path / "lib" / "python3.12" / "site-packages"
+        site_packages.mkdir(parents=True)
+
+        assert Linux().site_packages(tmp_path) == site_packages
+
+    def test_the_loader_ldd_follows_reads_the_library_path_variable(self) -> None:
+        assert Linux().bundling().library_search_variable == "LD_LIBRARY_PATH"
+
     def test_a_bundle_launcher_carries_no_extension(self) -> None:
         assert Linux().bundling().launcher(Path("bin"), name="sampletones", directory=False) == Path(
             "bin", "sampletones"

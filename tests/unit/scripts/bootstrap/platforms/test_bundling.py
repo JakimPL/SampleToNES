@@ -17,6 +17,7 @@ def _bundling(executable_suffix: str) -> Bundling:
         pyaudio_advice="",
         tkinter_advice="",
         tkinter_warning="",
+        library_search_variable="",
     )
 
 
