@@ -78,7 +78,7 @@ class TestGpuCheck:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        monkeypatch.setattr(array, "CUPY_AVAILABLE", False)
+        monkeypatch.setattr(array, "FALLBACK_REASON", array.CUPY_MISSING_MESSAGE)
 
         status = run_self_check(gpu=True, documentation=False)
 
@@ -86,6 +86,7 @@ class TestGpuCheck:
         assert status == FAILURE_STATUS
         assert GPU_CHECK.name in captured.err
         assert "GPUBackendError" in captured.err
+        assert array.CUPY_MISSING_MESSAGE in captured.err
 
     @pytest.mark.skipif(not CUPY_AVAILABLE, reason=CUPY_REQUIRED_REASON)
     def test_a_gpu_build_computing_on_the_card_passes(self, capsys: pytest.CaptureFixture[str]) -> None:
