@@ -2,8 +2,11 @@ from pathlib import Path
 
 import pytest
 
+import hatch_build
 from bootstrap.layout import (
     BUILD_TOOLS,
+    DEPLOYMENT_PACKAGE_PATH,
+    DEVELOPMENT_WHEEL,
     DISTRIBUTION,
     DOCUMENTATION_FILES,
     DOCUMENTATION_PACKAGE_PATH,
@@ -11,17 +14,22 @@ from bootstrap.layout import (
     GPU_PACKAGES,
     INTERNAL_DIRECTORY,
     NOTICES,
+    RELEASE_DEPLOYMENT,
     SOURCE_DIRECTORY,
 )
 from bootstrap.platforms.linux import Linux
 from bootstrap.platforms.macos import MacOS
 from hatch_build import SITE_DESTINATION
+from sampletones_application.paths import DEPLOYMENT_CONFIG_PATH
 from sampletones_shared.documentation.site import DOCUMENTATION_DIRECTORY, INDEX_FILE, STAMP_FILE
-from sampletones_shared.paths.resources import ASSETS_PACKAGE
+from sampletones_shared.paths.resources import ASSETS_PACKAGE, CONFIG_DIRECTORY
 from tests.suite.bootstrap import PROJECT_NAME, RecordingRunner, write_project
 from tests.suite.scripts import load_script
 
 verify_bundle = load_script("verify_bundle.py")
+
+RELEASE_SETTINGS = b"log_level: INFO\nstrict_history: false\n"
+DEVELOPMENT_SETTINGS = b"log_level: DEBUG\nstrict_history: true\n"
 
 
 @pytest.fixture(name="root")
@@ -38,6 +46,10 @@ def root_fixture(tmp_path: Path) -> Path:
     for name in DOCUMENTATION_FILES:
         (site / name).write_text(name)
 
+    for settings in (tmp_path / RELEASE_DEPLOYMENT, _deployment(launcher.parent)):
+        settings.parent.mkdir(parents=True, exist_ok=True)
+        settings.write_bytes(RELEASE_SETTINGS)
+
     return write_project(tmp_path)
 
 
@@ -47,6 +59,10 @@ def _bundle(root: Path) -> Path:
 
 def _site(bundle: Path) -> Path:
     return bundle / INTERNAL_DIRECTORY / DOCUMENTATION_PACKAGE_PATH
+
+
+def _deployment(bundle: Path) -> Path:
+    return bundle / INTERNAL_DIRECTORY / DEPLOYMENT_PACKAGE_PATH
 
 
 class TestMissingNotices:
@@ -94,6 +110,34 @@ class TestTheDocumentationContract:
 
     def test_the_files_are_the_index_and_the_stamp(self) -> None:
         assert DOCUMENTATION_FILES == (INDEX_FILE, STAMP_FILE)
+
+
+class TestTheDeploymentContract:
+    """The scripts spell the deployment file's place, the release settings and the request for a development
+    wheel themselves; each has to be the one the application reads and the build hook writes."""
+
+    def test_the_package_path_is_the_one_the_application_reads(self) -> None:
+        assert Path(DEPLOYMENT_PACKAGE_PATH) == DEPLOYMENT_CONFIG_PATH.relative_to(CONFIG_DIRECTORY.parent)
+        assert DEPLOYMENT_PACKAGE_PATH == hatch_build.DEPLOYMENT_DESTINATION
+
+    def test_the_release_settings_and_the_request_are_the_build_hook_s(self) -> None:
+        assert RELEASE_DEPLOYMENT == hatch_build.RELEASE_DEPLOYMENT
+        assert DEVELOPMENT_WHEEL == hatch_build.DEVELOPMENT_WHEEL
+
+
+class TestCarriesReleaseDeployment:
+    def test_the_release_settings_are_carried(self, root: Path) -> None:
+        assert verify_bundle.carries_release_deployment(root, _bundle(root))
+
+    def test_the_development_settings_are_refused(self, root: Path) -> None:
+        _deployment(_bundle(root)).write_bytes(DEVELOPMENT_SETTINGS)
+
+        assert not verify_bundle.carries_release_deployment(root, _bundle(root))
+
+    def test_a_bundle_without_settings_is_refused(self, root: Path) -> None:
+        _deployment(_bundle(root)).unlink()
+
+        assert not verify_bundle.carries_release_deployment(root, _bundle(root))
 
 
 class TestCarriedBuildTools:
@@ -150,6 +194,13 @@ class TestBundleFailures:
         failures = verify_bundle.bundle_failures(root, Linux(), runner=RecordingRunner({}, None), environment={})
 
         assert [BUILD_TOOLS[0] in failure for failure in failures] == [True]
+
+    def test_a_bundle_with_development_settings_is_named(self, root: Path) -> None:
+        _deployment(_bundle(root)).write_bytes(DEVELOPMENT_SETTINGS)
+
+        failures = verify_bundle.bundle_failures(root, Linux(), runner=RecordingRunner({}, None), environment={})
+
+        assert [RELEASE_DEPLOYMENT in failure for failure in failures] == [True]
 
     def test_a_release_built_with_gpu_support_is_named(self, root: Path) -> None:
         (_bundle(root) / INTERNAL_DIRECTORY / GPU_PACKAGES[0]).mkdir(parents=True)
