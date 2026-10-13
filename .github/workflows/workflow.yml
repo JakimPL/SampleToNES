@@ -173,6 +173,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event_name == 'workflow_dispatch' && inputs.target || 'pypi' }}
+      deployment: ${{ github.event_name != 'workflow_dispatch' || inputs.target == 'pypi' }}
     permissions:
       id-token: write
     steps:
