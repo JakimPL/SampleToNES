@@ -6,7 +6,7 @@ from .audio import (
 )
 from .base import SampleToNESError
 from .callback import CallbackQueueStop
-from .cuda import CuPyNotInstalledWarning, GPUBackendError
+from .cuda import CuPyUnavailableWarning, GPUBackendError
 from .dialog import FileDialogUnavailableError
 from .documentation import DocumentationUnavailableError
 from .instrument import (
@@ -69,7 +69,7 @@ from .window import WindowError, WindowNotAvailableError
 __all__ = [
     "AudioWriteError",
     "CallbackQueueStop",
-    "CuPyNotInstalledWarning",
+    "CuPyUnavailableWarning",
     "DeserializationError",
     "DocumentationUnavailableError",
     "DriverBuildError",

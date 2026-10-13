@@ -1,8 +1,8 @@
 from .base import SampleToNESError, SampleToNESWarning
 
 
-class CuPyNotInstalledWarning(SampleToNESWarning):
-    """Warning raised when CuPy is not installed."""
+class CuPyUnavailableWarning(SampleToNESWarning):
+    """Warning raised when the process computes on NumPy because CuPy is missing or finds no graphics card."""
 
 
 class GPUBackendError(SampleToNESError):
