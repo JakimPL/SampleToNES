@@ -4,8 +4,11 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
+from bootstrap.layout import RELEASE_DEPLOYMENT
 from sampletones_application.config.deployment.deployment import DeploymentConfig
 from sampletones_application.config.deployment.logs import LogLevel
+from sampletones_application.paths import DEPLOYMENT_CONFIG_PATH
+from sampletones_shared.paths.source import REPOSITORY_ROOT
 
 LOG_LEVEL_ENV = "SAMPLETONES_LOG_LEVEL"
 STRICT_HISTORY_ENV = "SAMPLETONES_STRICT_HISTORY"
@@ -113,3 +116,13 @@ class TestDeploymentConfigValidation:
 
         with pytest.raises(TypeError):
             DeploymentConfig.load(path)
+
+
+class TestShippedDeployments:
+    """The checkout reports a missing transaction the moment it happens, and a release heals it."""
+
+    def test_the_checkout_holds_history_strictly(self) -> None:
+        assert DeploymentConfig.load(DEPLOYMENT_CONFIG_PATH).strict_history is True
+
+    def test_a_release_heals_history(self) -> None:
+        assert DeploymentConfig.load(REPOSITORY_ROOT / RELEASE_DEPLOYMENT).strict_history is False
