@@ -6,7 +6,11 @@ from sampletones_shared.constants.nes import DEFAULT_NES_FREQUENCY
 from sampletones_shared.paths.user import PROJECTS_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 from tests.suite.screens.seeds.libraries import MiniLibrary
 from tests.suite.screens.seeds.projects import StoredProject
-from tests.suite.screens.seeds.reconstructions import PlayableReconstruction, StoredReconstruction
+from tests.suite.screens.seeds.reconstructions import (
+    AlternatingReconstruction,
+    PlayableReconstruction,
+    StoredReconstruction,
+)
 from tests.suite.screens.seeds.recordings import Recording, stored_recording
 
 OPEN_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Open.stn"
@@ -22,10 +26,15 @@ PLAYABLE_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Playable.stn
 SECOND_PLAYABLE: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Second.stn"
 STEMS_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Stems.stn"
 SHORT_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Short.stn"
+LONG_RECONSTRUCTION: Final[Path] = RECONSTRUCTIONS_DIRECTORY / "Long.stn"
 TAKES: Final[Tuple[str, ...]] = ("take1.wav", "take2.wav", "take3.wav")
 STEM_TAKES: Final[Tuple[str, ...]] = ("stem1.wav", "stem2.wav", "stem3.wav")
+LONG_TAKE: Final[str] = "long.wav"
+LONG_TAKES: Final[Tuple[str, ...]] = ("long1.wav", "long2.wav", "long3.wav")
+TURN_FRAMES: Final[int] = 4
 STEM_FRAMES: Final[int] = 60
 PLAYABLE_FRAMES: Final[int] = 600
+LONG_FRAMES: Final[int] = 7200
 FRAMES_PER_SECOND: Final[int] = 60
 TAKE_FREQUENCY: Final[float] = 220.0
 
@@ -96,5 +105,44 @@ def playing_world() -> World:
             StoredReconstruction(OPEN_RECONSTRUCTION),
             stored_recording(),
             StoredProject(SONG, sample=SONG_SAMPLE, instrument=SONG_INSTRUMENT),
+        ),
+    )
+
+
+def alternating_document_world() -> World:
+    """A home holding :data:`LONG_RECONSTRUCTION` as two minutes over three recordings taking four-frame turns,
+    whose every lane divides into as many stretches as a long conversion over competing recordings does.
+    """
+    takes = tuple(Path.cwd() / take for take in LONG_TAKES)
+    return World(
+        state=screen_filling_state(),
+        application_config=None,
+        config=None,
+        files=(
+            *(
+                Recording(
+                    destination=take,
+                    seconds=LONG_FRAMES / FRAMES_PER_SECOND,
+                    frequency=TAKE_FREQUENCY * (index + 1),
+                )
+                for index, take in enumerate(takes)
+            ),
+            AlternatingReconstruction(LONG_RECONSTRUCTION, takes, LONG_FRAMES, TURN_FRAMES, DEFAULT_NES_FREQUENCY),
+        ),
+    )
+
+
+def long_document_world() -> World:
+    """A home holding :data:`LONG_RECONSTRUCTION`, two minutes of one recording, which an edit takes long enough
+    to rebuild and render for the frames to be read while it does.
+    """
+    take = Path.cwd() / LONG_TAKE
+    return World(
+        state=screen_filling_state(),
+        application_config=None,
+        config=None,
+        files=(
+            Recording(destination=take, seconds=LONG_FRAMES / FRAMES_PER_SECOND, frequency=TAKE_FREQUENCY),
+            PlayableReconstruction(LONG_RECONSTRUCTION, (take,), LONG_FRAMES, DEFAULT_NES_FREQUENCY),
         ),
     )

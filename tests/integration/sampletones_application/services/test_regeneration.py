@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from automation.scenario import BaseTestScenario, ScenarioStep
-from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
+from sampletones_application.services.regeneration.jobs import RebuildJob
 from sampletones_application.services.regeneration.service import RegenerationService
 from sampletones_application.services.result import ServiceError, ServiceSuccess
 from sampletones_application.utils.callbacks.queue import CallbackQueue
@@ -18,7 +18,14 @@ from sampletones_core.exporters import Features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels
+from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing
+from tests.suite.envelopes import heard_envelopes
 from tests.suite.stems import everything_heard
+
+
+def _heard_whole(reconstruction: Reconstruction) -> Hearing:
+    """Every recording heard on every channel, and every channel kept on."""
+    return Hearing(selection=everything_heard(reconstruction), channels_on=frozenset(ChannelName.items()))
 
 
 def _heard_features(reconstruction: Reconstruction) -> ChannelEnvelopesViewModel:
@@ -53,10 +60,14 @@ class TestRegenerationServicePipeline:
         service.subscribe(results.append)
 
         service._run(
-            reconstruction_data.reconstruction,
-            ChannelName.PULSE1,
-            pulse_features,
-            reconstruction_data.reconstruction.recorded_stem_ids,
+            RebuildJob(
+                reconstruction_data.reconstruction,
+                ChannelName.PULSE1,
+                pulse_features,
+                _heard_whole(reconstruction_data.reconstruction),
+                {},
+                {},
+            )
         )
 
         assert len(results) == 1
@@ -68,10 +79,14 @@ class TestRegenerationServicePipeline:
         service.subscribe(results.append)
 
         service._run(
-            reconstruction_data.reconstruction,
-            ChannelName.PULSE1,
-            pulse_features,
-            reconstruction_data.reconstruction.recorded_stem_ids,
+            RebuildJob(
+                reconstruction_data.reconstruction,
+                ChannelName.PULSE1,
+                pulse_features,
+                _heard_whole(reconstruction_data.reconstruction),
+                {},
+                {},
+            )
         )
 
         emitted = results[0].value
@@ -80,14 +95,40 @@ class TestRegenerationServicePipeline:
             len(rendered_channels(emitted.reconstruction).get(ChannelName.PULSE1, np.array([], dtype=np.float32))) > 0
         )
 
+    def test_the_result_sounds_what_the_core_renders(self, reconstruction_data, pulse_features) -> None:
+        """The audio the worker hands back is the render of the document it hands back."""
+        service = RegenerationService()
+        results: List[Any] = []
+        service.subscribe(results.append)
+
+        service._run(
+            RebuildJob(
+                reconstruction_data.reconstruction,
+                ChannelName.PULSE1,
+                pulse_features,
+                _heard_whole(reconstruction_data.reconstruction),
+                {},
+                {},
+            )
+        )
+
+        outcome = results[0].value
+        expected = rendered_channels(outcome.reconstruction)
+        assert outcome.channels.keys() == expected.keys()
+        assert all(np.array_equal(outcome.channels[name], expected[name]) for name in expected)
+
     def test_run_updates_reconstruction_approximation(self, reconstruction_data, pulse_features) -> None:
         service = RegenerationService()
 
         service._run(
-            reconstruction_data.reconstruction,
-            ChannelName.PULSE1,
-            pulse_features,
-            reconstruction_data.reconstruction.recorded_stem_ids,
+            RebuildJob(
+                reconstruction_data.reconstruction,
+                ChannelName.PULSE1,
+                pulse_features,
+                _heard_whole(reconstruction_data.reconstruction),
+                {},
+                {},
+            )
         )
 
         approximation = rendered_channels(reconstruction_data.reconstruction).get(
@@ -99,10 +140,14 @@ class TestRegenerationServicePipeline:
         service = RegenerationService()
 
         service._run(
-            reconstruction_data.reconstruction,
-            ChannelName.PULSE1,
-            pulse_features,
-            reconstruction_data.reconstruction.recorded_stem_ids,
+            RebuildJob(
+                reconstruction_data.reconstruction,
+                ChannelName.PULSE1,
+                pulse_features,
+                _heard_whole(reconstruction_data.reconstruction),
+                {},
+                {},
+            )
         )
 
         instructions = reconstruction_data.reconstruction.get_channel_instructions(ChannelName.PULSE1)
@@ -119,10 +164,14 @@ class TestRegenerationServicePipeline:
         service.subscribe(results.append)
 
         service._run(
-            reconstruction_data.reconstruction,
-            ChannelName.PULSE1,
-            silenced,
-            reconstruction_data.reconstruction.recorded_stem_ids,
+            RebuildJob(
+                reconstruction_data.reconstruction,
+                ChannelName.PULSE1,
+                silenced,
+                _heard_whole(reconstruction_data.reconstruction),
+                {},
+                {},
+            )
         )
 
         assert isinstance(results[0], ServiceSuccess)
@@ -136,10 +185,14 @@ class TestRegenerationServicePipeline:
         service.subscribe(results.append)
 
         service._run(
-            reconstruction_data.reconstruction,
-            ChannelName.PULSE1,
-            {},
-            reconstruction_data.reconstruction.recorded_stem_ids,
+            RebuildJob(
+                reconstruction_data.reconstruction,
+                ChannelName.PULSE1,
+                {},
+                _heard_whole(reconstruction_data.reconstruction),
+                {},
+                {},
+            )
         )
 
         assert len(results) == 1
@@ -154,7 +207,9 @@ class TestRegenerationServicePipeline:
             reconstruction_data.reconstruction,
             ChannelName.PULSE1,
             pulse_features,
-            reconstruction_data.reconstruction.recorded_stem_ids,
+            hearing=_heard_whole(reconstruction_data.reconstruction),
+            kept={},
+            recordings={},
         )
 
         assert len(results) == 1
@@ -183,10 +238,7 @@ def _edit_arpeggio(context: ArpeggioEditContext, arpeggio: np.ndarray) -> None:
         Envelope(items=tuple(int(offset) for offset in arpeggio)),
     )
     service._run(
-        context.reconstruction,
-        ChannelName.PULSE1,
-        edited,
-        context.reconstruction.recorded_stem_ids,
+        RebuildJob(context.reconstruction, ChannelName.PULSE1, edited, _heard_whole(context.reconstruction), {}, {})
     )
 
     assert len(results) == 1
@@ -303,10 +355,14 @@ class TestRegenerationDeliveryThroughRealQueue:
 
         # The real synthesis emits its ServiceSuccess onto the real queue, due at the current frame.
         service._run(
-            reconstruction_data.reconstruction,
-            ChannelName.PULSE1,
-            pulse_features,
-            reconstruction_data.reconstruction.recorded_stem_ids,
+            RebuildJob(
+                reconstruction_data.reconstruction,
+                ChannelName.PULSE1,
+                pulse_features,
+                _heard_whole(reconstruction_data.reconstruction),
+                {},
+                {},
+            )
         )
 
         # The real queue defers delivery until a frame is pumped; nothing has run yet. This also fails
@@ -333,10 +389,14 @@ class TestRegenerationDeliveryThroughRealQueue:
 
         new_volume = np.zeros(len(pulse_features.volume.items), dtype=np.int8)
         service._run(
-            reconstruction_data.reconstruction,
-            ChannelName.PULSE1,
-            pulse_features,
-            reconstruction_data.reconstruction.recorded_stem_ids,
+            RebuildJob(
+                reconstruction_data.reconstruction,
+                ChannelName.PULSE1,
+                pulse_features,
+                _heard_whole(reconstruction_data.reconstruction),
+                {},
+                {},
+            )
         )
 
         for _ in range(DELIVERY_BUDGET_FRAMES):

@@ -19,10 +19,12 @@ from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.reconstruction.edit import ChannelEdit, ReconstructionEdit, Retune, StemRemoval
+from sampletones_application.logic.reconstruction.envelopes import HeardEnvelopes
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.rewrites.queue import ReconstructionRewrites
 from sampletones_application.logic.reconstruction.rewrites.steps import (
     ChannelChange,
+    ListeningChange,
     RateChange,
     StemRemovalRequest,
 )
@@ -32,6 +34,7 @@ from sampletones_application.services.result import ServiceSuccess
 from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED
 from sampletones_application.utils.callbacks.gates import Gate, pass_gates
 from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
+from sampletones_application.view_model.reconstruction.work import Work
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.exporters import CHANNEL_TO_EXPORTER_MAP
@@ -50,6 +53,7 @@ from tests.conftest import RENDER_BUDGET, ReconstructionFactory
 from tests.suite.application import HeldQueue, held_queue, scheduling, synchronous_executor
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.envelopes import land_envelopes
 from tests.suite.frames import held_frames
 from tests.suite.history.wiring import wired_history
 from tests.suite.language import FakeLanguageManager
@@ -67,9 +71,22 @@ from tests.suite.stems import (
     STEM_B_ID,
     TAKING_TURNS_PITCH,
     TAKING_TURNS_VOLUME,
+    everything_heard,
     taking_turns,
     taking_turns_file,
 )
+
+
+def _channel_edit(reconstruction: Reconstruction) -> ChannelEdit:
+    """A regenerated first pulse of ``reconstruction``, with the envelopes its worker would export heard whole."""
+    selection = everything_heard(reconstruction)
+    return ChannelEdit(
+        reconstruction=reconstruction,
+        channel_name=ChannelName.PULSE1,
+        feature_key=FeatureKey.VOLUME,
+        envelopes=HeardEnvelopes(selection=selection, channels=reconstruction.export_heard(selection)),
+    )
+
 
 __all__ = [
     "held_frames",
@@ -298,6 +315,7 @@ class TestAnEditIsRecordedBeforeItIsShown:
         taking_turns: Reconstruction,
     ) -> ReconstructionCoordinator:
         reconstruction_manager.load_reconstruction_object(taking_turns, name="lead", voice_id=OPEN_VOICE_ID)
+        land_envelopes(reconstruction_manager)
         coordinator = ReconstructionCoordinator(
             reconstruction_manager,
             MagicMock(),
@@ -364,13 +382,7 @@ class TestAnEditRedrawsWhatItRewrote:
         reconstruction_factory: ReconstructionFactory,
     ) -> None:
         """The regeneration carries what the reader typed, so a field being typed in keeps its text."""
-        reconstruction_coordinator.apply_edit(
-            ChannelEdit(
-                reconstruction=reconstruction_factory(),
-                channel_name=ChannelName.PULSE1,
-                feature_key=FeatureKey.VOLUME,
-            )
-        )
+        reconstruction_coordinator.apply_edit(_channel_edit(reconstruction_factory()))
 
         tab.update_reconstruction.assert_called_once_with()
         tab.redraw_reconstruction.assert_not_called()
@@ -418,11 +430,7 @@ class TestAnEditRedrawsWhatItRewrote:
         reconstruction_factory: ReconstructionFactory,
     ) -> None:
         edits = {
-            "channel": ChannelEdit(
-                reconstruction=reconstruction_factory(),
-                channel_name=ChannelName.PULSE1,
-                feature_key=FeatureKey.VOLUME,
-            ),
+            "channel": _channel_edit(reconstruction_factory()),
             "retune": Retune(reconstruction=reconstruction_factory(), nes_frequency=RETUNED_FREQUENCY),
             "removal": StemRemoval(reconstruction=reconstruction_factory(), stem_name="kick"),
         }
@@ -714,6 +722,7 @@ def following_coordinator(
 @pytest.fixture
 def open_sample(
     following_coordinator: ReconstructionCoordinator,
+    reconstruction_manager: ReconstructionManager,
     project_controller: ProjectController,
     history: HistoryManager,
     tab: MagicMock,
@@ -721,11 +730,12 @@ def open_sample(
     reconstruction_factory: ReconstructionFactory,
     decline: MagicMock,
 ) -> Sample:
-    """A sample added to the project and opened on the tab, with the calls opening it cleared."""
+    """A sample added to the project and opened on the tab, its envelopes landed, with the calls opening it cleared."""
     with history.transaction(HistoryAction.ADD_SAMPLE):
         sample = project_controller.add_sample(reconstruction_factory(), "lead")
     _edit_voice(following_coordinator, sample.id, decline)
     held_queue.drain()
+    land_envelopes(reconstruction_manager)
     tab.reset_mock()
     return sample
 
@@ -740,6 +750,7 @@ def standalone_path(
     path = tmp_path / "lead.stn"
     reconstruction_factory().save(path)
     reconstruction_manager.load_reconstruction(path)
+    land_envelopes(reconstruction_manager)
     return path
 
 
@@ -763,13 +774,7 @@ class TestTheTabFollowsTheVoiceItShows:
         reconstruction_factory: ReconstructionFactory,
     ) -> None:
         original = open_sample.reconstruction
-        following_coordinator.apply_edit(
-            ChannelEdit(
-                reconstruction=reconstruction_factory(),
-                channel_name=ChannelName.PULSE1,
-                feature_key=FeatureKey.VOLUME,
-            )
-        )
+        following_coordinator.apply_edit(_channel_edit(reconstruction_factory()))
         tab.reset_mock()
 
         history.undo()
@@ -901,13 +906,7 @@ class TestTheTabFollowsTheVoiceItShows:
         """The write-back stamps the project while the document still holds what the edit started from."""
         edited = reconstruction_factory()
 
-        following_coordinator.apply_edit(
-            ChannelEdit(
-                reconstruction=edited,
-                channel_name=ChannelName.PULSE1,
-                feature_key=FeatureKey.VOLUME,
-            )
-        )
+        following_coordinator.apply_edit(_channel_edit(edited))
 
         assert reconstruction_manager.reconstruction is edited
         tab.redraw_reconstruction.assert_not_called()
@@ -1575,6 +1574,7 @@ class TestTheExitAsksAboutTheReconstruction(BaseTestSuite):
 @pytest.fixture
 def turns_sample(
     following_coordinator: ReconstructionCoordinator,
+    reconstruction_manager: ReconstructionManager,
     project_controller: ProjectController,
     history: HistoryManager,
     tab: MagicMock,
@@ -1587,6 +1587,7 @@ def turns_sample(
         sample = project_controller.add_sample(taking_turns, "turns")
     _edit_voice(following_coordinator, sample.id, decline)
     held_queue.drain()
+    land_envelopes(reconstruction_manager)
     tab.reset_mock()
     return sample
 
@@ -1602,6 +1603,7 @@ def turns_path(
     """The two-recording document opened from its file, with both recordings loaded beside it."""
     reconstruction_manager.load_reconstruction(taking_turns_file)
     held_queue.drain()
+    land_envelopes(reconstruction_manager)
     tab.reset_mock()
     return taking_turns_file
 
@@ -1893,6 +1895,7 @@ class TestTheDocumentChangesOneStepAtATime:
         following_coordinator: ReconstructionCoordinator,
         reconstruction_manager: ReconstructionManager,
         held_queue: HeldQueue,
+        tab: MagicMock,
         turns_sample: Sample,
     ) -> None:
         failure = RuntimeError("synthesis failed")
@@ -1909,6 +1912,42 @@ class TestTheDocumentChangesOneStepAtATime:
         assert following_coordinator._dialogs.show_error.call_args.args[0] is failure
         assert _sounding_volumes(reconstruction, SHARED_CHANNEL) == [TAKING_TURNS_VOLUME] * len(SHARED_OWNERS)
         assert _sounding_volumes(reconstruction, SOLE_CHANNEL) == list(SOLE_VOLUME)
+        tab.abandon_showing.assert_not_called()
+
+    def test_a_failed_listening_is_shown_and_the_tab_lets_its_debts_go(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        held_queue: HeldQueue,
+        tab: MagicMock,
+        turns_sample: Sample,
+    ) -> None:
+        failure = RuntimeError("rendering failed")
+        with patch("sampletones_application.services.regeneration.service.heard_renders", side_effect=failure):
+            following_coordinator.request_rewrite(ListeningChange())
+            held_queue.drain()
+
+        assert following_coordinator._dialogs.show_error.call_args.args[0] is failure
+        tab.abandon_showing.assert_called_once_with()
+        tab.redraw_listening.assert_not_called()
+
+    def test_a_removal_leaves_the_envelopes_owed_until_its_listening_lands(
+        self,
+        following_coordinator: ReconstructionCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        held_queue: HeldQueue,
+        tab: MagicMock,
+        turns_sample: Sample,
+    ) -> None:
+        """The line asks for the listening the removal owes itself, and the envelopes answer once it lands."""
+        _remove(following_coordinator, STEM_B_ID)
+        assert reconstruction_manager.current_features is None
+        tab.redraw_reconstruction.assert_called_once_with(refit_waveform=False)
+        tab.redraw_listening.assert_not_called()
+
+        held_queue.drain()
+
+        assert reconstruction_manager.current_features is not None
+        tab.redraw_listening.assert_called_once_with(envelopes_changed=True)
 
     def test_the_waveform_stays_faded_until_every_step_has_landed(
         self,
@@ -1919,11 +1958,11 @@ class TestTheDocumentChangesOneStepAtATime:
     ) -> None:
         _move(following_coordinator, SHARED_CHANNEL, FeatureKey.VOLUME, EDITED_VOLUME)
         _move(following_coordinator, SOLE_CHANNEL, FeatureKey.VOLUME, SOLE_VOLUME)
-        assert tab.set_reconstruction_dimmed.call_args_list == [call(True)]
+        assert tab.show_work.call_args_list == [call(Work.REBUILDING)]
 
         held_queue.drain()
 
-        assert tab.set_reconstruction_dimmed.call_args_list == [call(True), call(False)]
+        assert tab.show_work.call_args_list == [call(Work.REBUILDING), call(None)]
 
     def test_a_drag_collapses_into_the_place_it_ended(
         self,

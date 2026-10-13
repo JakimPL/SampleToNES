@@ -672,3 +672,17 @@ class TestVoiceMenu:
 
         assert asked == [1]
         assert framework.containers == [TAG_GLOBAL_MENU_GROUP_VOICE]
+
+
+class TestHelpMenu:
+    """The Help menu leads to the documentation first, then to the application's own notice."""
+
+    def test_the_documentation_comes_before_about(
+        self,
+        menu_bar: MenuBar,
+        shortcuts: _ShortcutManagerRecorder,
+    ) -> None:
+        menu_bar._create_help_menu()
+
+        assert [item["shortcut_id"] for item in shortcuts.items] == [ShortcutId.DOCUMENTATION, ShortcutId.ABOUT_DIALOG]
+        assert shortcuts.labels == ["Documentation", "About"]

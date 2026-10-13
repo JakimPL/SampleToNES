@@ -113,6 +113,9 @@ button reads **Open**. It takes you to the **Reconstruction** tab, where you pic
 If the open reconstruction has unsaved changes, **Load** asks what to do with them. If the conversion
 replaced that same file, click **Cancel** and use **Save reconstruction as...** to keep your changes.
 
+If a recording can't be converted, the conversion skips it and goes on with the rest. The dialog at
+the end lists the recordings it skipped.
+
 The first conversion with new settings takes longer, because it builds the [instruction
 library](../concepts/instruction-library.md) for them.
 

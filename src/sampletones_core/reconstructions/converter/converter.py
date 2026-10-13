@@ -4,6 +4,8 @@ from typing import Any, Callable, FrozenSet, List, Optional, Tuple
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.parallelization import TaskProcessor
+from sampletones_core.parallelization.outcome import RunCompleted
+from sampletones_core.parallelization.task import SINGLE_TASK
 from sampletones_shared.logger import LoggerProtocol
 from sampletones_shared.logger import logger as default_logger
 
@@ -11,6 +13,7 @@ from ..progress import ReconstructionReporter
 from ..reconstructor.reconstructor import Reconstructor
 from .conversion import reconstruct_job
 from .job import ConversionJob
+from .outcome import ConversionOutcome, SkippedJob
 from .plan.protocol import ConversionPlan
 from .progress import JobReporter
 
@@ -21,6 +24,9 @@ class ReconstructionConverter(TaskProcessor[Path]):
     The plan is resolved once the run starts, on the monitor thread, so a plan that scans a
     directory does its reading there. Every job is then built by one worker, and the run
     reports the reconstructions it wrote.
+
+    A run of several jobs, such as a folder converted one recording at a time, goes on past a job
+    that fails and reports it among the jobs it skipped. A run of one job ends with that job's error.
     """
 
     def __init__(
@@ -41,6 +47,11 @@ class ReconstructionConverter(TaskProcessor[Path]):
 
         super().start()
 
+    @property
+    def skips_failed_tasks(self) -> bool:
+        """A run holding several jobs goes on past a job that fails."""
+        return len(self.jobs) > SINGLE_TASK
+
     def _create_tasks(self) -> List[Any]:
         """One task per job, sharing the reconstructor the whole run's channels are built for."""
         self.jobs = self.plan.jobs(self.config)
@@ -56,9 +67,18 @@ class ReconstructionConverter(TaskProcessor[Path]):
     ) -> Callable[[Tuple[Reconstructor, ConversionJob, ReconstructionReporter]], Path]:
         return reconstruct_job
 
-    def _process_results(self, results: List[Path]) -> Tuple[Path, ...]:
-        """The reconstructions the run wrote, in job order."""
-        return tuple(output_path for output_path in results if output_path.exists())
+    def _process_results(self, completed: RunCompleted[Path]) -> ConversionOutcome:
+        """The reconstructions the run wrote, in job order, and the jobs it went on without."""
+        return ConversionOutcome(
+            written=tuple(output_path for output_path in completed.results if output_path.exists()),
+            skipped=tuple(
+                SkippedJob(job=self.jobs[failure.index], exception=failure.exception) for failure in completed.failures
+            ),
+        )
+
+    def _task_name(self, index: int) -> str:
+        """The recordings the job at ``index`` reads, which is how a reader finds it in the log."""
+        return ", ".join(str(source) for source in self.jobs[index].sources)
 
     def _notify_progress(self) -> None:
         job = self.job_under_way(self.completed_tasks)

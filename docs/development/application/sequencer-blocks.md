@@ -132,6 +132,8 @@ Both panels read the cell under a held pointer off their own geometry, because D
 
 The tracker's row lookup is arithmetic. It measures from the first row's top edge and divides by the row height, which holds while the rows are evenly pitched. That is what the pattern table's zero vertical cell padding and item spacing are for: a vertical padding there would drift the lookup further down the grid. The order's position lookup is arithmetic in the same way and takes its pitch from the first two columns. Its channel lookup walks the rows, because the master row stands apart from the channels beneath it.
 
+The caret (`ui/elements/table/caret.py`) draws on a front viewport drawlist from the rectangle the active cell reported: a mark under one character, measured off the label's width in the cell's font, and a frame around the cell. Both tables give their selectables zero item spacing, so a label starts at its rectangle's left edge and the character arithmetic holds in each. A table answers a scroll on the frame after the one that draws its highlights, so a move that re-centers the grid holds its painting one frame, the way the playhead does, and hands the caret the distance the pending scroll will carry the row.
+
 ### A drag past the edge carries the view
 
 A pointer held past the cells on screen travels the grid under it, so a selection reaches further than the viewport holds. `grid/scroll/` holds the travel. A grid says which axis it scrolls along and where its cells stand along it, and one class reads the two each frame. The tracker travels vertically and the order horizontally, from that same class.

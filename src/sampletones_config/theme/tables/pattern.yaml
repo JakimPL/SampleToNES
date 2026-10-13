@@ -10,7 +10,7 @@ components:
         y: 0
       - type: color
         key: HeaderHovered
-        value: .overlay/0.25
+        value: .overlay/0.08
       - type: color
         key: HeaderActive
         value: .transparent

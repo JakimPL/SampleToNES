@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Final, Tuple
+
+DEFAULT_PRIORITY: Final[int] = 0
 
 
 @dataclass(frozen=True)

@@ -73,7 +73,7 @@ The Makefile is the developer's index, one line per target. A target names the s
 and passes its flag. The `run` and `calibration` targets name the `sampletones` command they start with no
 options, and the `tracker-playback` target passes the inputs its command takes: the Bitphase source folder
 its `BITPHASE` variable names, the `FamiTracker.exe` its `FAMITRACKER` variable names, and the project
-files in `PROJECT`, if any. The `icons` and `demo` targets run makers of the assets unit. It runs each target it is
+files in `PROJECT`, if any. The `icons`, `docs` and `demo` targets run makers of the assets unit. It runs each target it is
 given. `install.sh` and `install.bat` at the root
 exist for the double-click path and call the same bundle script.
 
@@ -127,11 +127,21 @@ A test guards principle 4. It imports the registry in a subprocess and asserts t
 registry and package modules of the tools load and no heavy library does. A startup failure in any tool
 module would break every invocation, the GUI included.
 
-A tool that writes a page ships that page's files as they are read. `calibration/board/static/` holds the
-markup, the stylesheet and the script, copied out byte for byte, and the builder writes the palette, the
-faces and the run's own contents beside them. The stylesheet names color tokens and the script names no
-measurement, so a page is edited in place and drawn in the application's palettes. A test holds every
-shipped file to reaching nothing beyond the page, which lets one open from a file.
+### Pages a tool writes
+
+A page the repository writes wears the application's look, read from the application itself.
+`sampletones_tools/web/` resolves the theme set and a palette into *roles*: the ground, a card's header
+strip, the text, the accent, each the color or size the application draws that part with. It writes them
+as one stylesheet of variables beside the fonts the application ships, and the layout's own stylesheets
+name roles alone. A change to a theme or a palette therefore reaches every page the next time it is
+written. The fonts travel inside their stylesheet, which lets a page open from a file wherever it lies.
+A page is read rather than worked in, so it spaces its cards and its prose wider than the application
+does, in multiples of the application's own spacing, and its proportions follow the application.
+
+The calibration board and the documentation site ([assets](assets.md#documentation)) are written this
+way. A page's own files are shipped as they are read: `calibration/board/static/` holds the board's markup,
+its stylesheet and its script, copied out byte for byte beside the layout and the run's own contents. A test
+holds every shipped file to reaching nothing beyond the page.
 
 ## The bootstrap scripts
 

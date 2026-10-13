@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 from sampletones_application.services.result import (
     ServiceCanceled,
@@ -11,6 +11,7 @@ from sampletones_application.services.result import (
     ServiceSuccess,
 )
 from sampletones_core.parallelization import TaskProgress
+from sampletones_core.reconstructions.converter import ConversionOutcome
 from sampletones_core.reconstructions.stage import ReconstructionStage
 
 
@@ -46,7 +47,7 @@ ConversionResult = Union[
     ServiceStarted,
     ServiceProgress[ConversionItem],
     ServiceIntermediate[TaskProgress],
-    ServiceSuccess[Tuple[Path, ...]],
+    ServiceSuccess[ConversionOutcome],
     ServiceError,
     ServiceCanceled,
 ]

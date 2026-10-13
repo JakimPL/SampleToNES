@@ -7,6 +7,7 @@ from sampletones_application.logic.reconstruction.edit import (
     Retune,
     StemRemoval,
 )
+from sampletones_application.logic.reconstruction.envelopes import HeardEnvelopes
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.rewrites.regeneration import (
     RegenerationServiceProtocol,
@@ -14,19 +15,23 @@ from sampletones_application.logic.reconstruction.rewrites.regeneration import (
 from sampletones_application.logic.reconstruction.rewrites.steps import (
     AfterEdits,
     ChannelChange,
+    ListeningChange,
     RateChange,
     Rewrite,
     StemRemovalRequest,
 )
 from sampletones_application.services.regeneration.result import (
-    RegeneratedInstrument,
     RegenerationResult,
+    RenderedDocument,
 )
 from sampletones_application.services.result import ServiceError, ServiceSuccess
 from sampletones_application.view_model.reconstruction.envelopes import (
     ChannelEnvelopesViewModel,
 )
+from sampletones_application.view_model.reconstruction.work import Work
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing
 from sampletones_core.reconstructions.reconstruction.stems.removal import (
     can_remove_stem,
     without_stem,
@@ -37,16 +42,14 @@ from sampletones_shared.utils.callbacks import CallbackMixin
 
 
 @dataclass(frozen=True)
-class Rebuild:
-    """A channel change the regeneration is rebuilding, beside the document it started from.
+class Running:
+    """A job the worker runs, beside the document it started from.
 
     Attributes:
-        change: What the reader moved.
-        base: The document the rebuild started from, or ``None`` once an outside replacement put
-            that document away.
+        base: The document the job started from, or ``None`` once an outside replacement put that
+            document away.
     """
 
-    change: ChannelChange
     base: Optional[Reconstruction]
 
     def lands_on(self, reconstruction: Optional[Reconstruction]) -> bool:
@@ -54,23 +57,62 @@ class Rebuild:
         return self.base is not None and self.base is reconstruction
 
 
+@dataclass(frozen=True)
+class Rebuild(Running):
+    """A channel change the worker is rebuilding.
+
+    Attributes:
+        change: What the reader moved.
+    """
+
+    change: ChannelChange
+
+
+@dataclass(frozen=True)
+class Reading(Running):
+    """A reading of what the reader hears, which the worker is rendering.
+
+    Attributes:
+        hearing: What the reader heard when the reading started, which is what it renders.
+    """
+
+    hearing: Hearing
+
+    def answers(
+        self,
+        reconstruction: Optional[Reconstruction],
+        hearing: Hearing,
+    ) -> bool:
+        """Whether the reading renders ``reconstruction`` heard as ``hearing``."""
+        return self.lands_on(reconstruction) and self.hearing == hearing
+
+
 class ReconstructionRewrites(CallbackMixin):
-    """The steps that change the open document, taken one at a time in the order the reader asked.
+    """The steps that change the open document or what is heard of it, taken one at a time in the order the
+    reader asked.
 
     Every edit of the Reconstructions tab's document passes through here: a channel the reader
     moved, a recording taken out, a new NES frequency, and a gesture that reads or puts away the
-    whole document. Each step reads the document the step before it left, so one edit never
-    overwrites another and a rebuild always starts from what stands.
+    whole document. So does a change to what the reader hears whose sound the screen holds no
+    audio for yet, which the worker renders from the document as it then stands. Each step reads
+    the document the step before it left, so each edit stands on the one before it, a rebuild
+    starts from what stands, and a listening sounds the document the edits before it made.
 
-    Channel changes wait while a rebuild runs, and a change joins the one waiting at the end of the
-    line when both move the same channel, so a drag collapses into the place it ended. A rebuild's
-    result lands only on the document it was computed from. A removal or a whole-document gesture
-    changes what the panel was drawn on, so a channel change asked for while one waits is refused,
-    and the panel is redrawn once the line empties.
+    Channel changes wait while a job runs, and a change joins the one waiting at the end of the
+    line when both move the same channel, so a drag collapses into the place it ended; one
+    listening waiting answers every choice made before it is taken. A change reaching its turn
+    while the envelopes of what is heard are still on their way, as after a box ticked behind it,
+    waits behind a listening of that choice and rebuilds from the envelopes it lands. A result
+    lands only on the document it was computed from. A removal or a whole-document gesture
+    changes what the panel was drawn on, so a channel change asked for while one waits is
+    refused, and the panel is redrawn once the line empties.
 
     The hooks carry the outcome to whoever shows the document: ``on_edit`` with each edit that
-    lands, ``on_dropped`` when the panel draws a change that will never land, ``on_failed`` with a
-    rebuild's failure, and ``on_busy_changed`` as the line fills and empties.
+    lands, ``on_heard_rendered`` once a listening's sound is kept for the open document (with
+    whether its envelopes changed what the instruments panel draws), ``on_dropped`` when the panel
+    draws a change that will never land, ``on_failed`` with a job's failure, ``on_reading_failed``
+    when a listening the open document waits for failed, and ``on_work_changed`` as the line
+    fills, hands over from one kind of work to the other, and empties.
     """
 
     def __init__(
@@ -81,44 +123,64 @@ class ReconstructionRewrites(CallbackMixin):
         self._manager = reconstruction_manager
         self._regeneration = regeneration
         self._waiting: List[Rewrite] = []
-        self._running: Optional[Rebuild] = None
+        self._running: Optional[Running] = None
+        self._awaiting_envelopes: Optional[ChannelName] = None
+        self._taking = False
+        self._unreadable: Optional[Reading] = None
         self._redraw_owed: bool = False
-        self._reported_busy: bool = False
+        self._reported_work: Optional[Work] = None
 
         self.on_edit: Optional[Callable[[ReconstructionEdit], None]] = None
+        self.on_heard_rendered: Optional[Callable[[bool], None]] = None
         self.on_dropped: Optional[VoidCallback] = None
         self.on_failed: Optional[Callable[[Exception], None]] = None
-        self.on_busy_changed: Optional[Callable[[bool], None]] = None
+        self.on_reading_failed: Optional[VoidCallback] = None
+        self.on_work_changed: Optional[Callable[[Optional[Work]], None]] = None
 
         regeneration.subscribe(self._on_result)
 
     @property
+    def work(self) -> Optional[Work]:
+        """What the running job does, which the waveform's fade names, or ``None`` while none runs."""
+        match self._running:
+            case Rebuild():
+                return Work.REBUILDING
+            case Reading():
+                return Work.READING
+
+        return None
+
+    @property
     def is_busy(self) -> bool:
-        """Whether a rebuild runs or a step waits, which is the span the open document is being rewritten."""
+        """Whether a job runs or a step waits, which is the span the open document's sound is on its way."""
         return self._running is not None or bool(self._waiting)
 
     def request(self, rewrite: Rewrite) -> None:
-        """Puts a step at the end of the line, and takes it at once where nothing runs before it.
+        """Puts a step at the end of the line, and takes it at once where the line stands idle.
 
-        A channel change joins a waiting change of the same channel, and a new rate replaces a
-        waiting one, so what the reader asked for last is what lands.
+        A channel change joins a waiting change of the same channel, a new rate replaces a
+        waiting one, and one listening waiting stands for every one asked for after it, so what
+        the reader asked for last is what lands.
         """
         match rewrite:
             case ChannelChange() as change:
                 self._enqueue_change(change)
             case RateChange() as rate_change:
                 self._enqueue_rate(rate_change)
+            case ListeningChange() as listening:
+                self._enqueue_listening(listening)
             case StemRemovalRequest() | AfterEdits():
                 self._waiting.append(rewrite)
 
         self._advance()
+        self._catch_up()
         self._settle()
 
     def drop(self) -> None:
         """Lets go of the edits meant for a document an outside replacement puts away.
 
-        The channel changes, removals and rates waiting leave the line, and the running rebuild's
-        result no longer lands. A whole-document gesture the reader asked for keeps its place, so a
+        The channel changes, removals, rates and listenings waiting leave the line, and the running
+        job's result is let go. A whole-document gesture the reader asked for keeps its place, so a
         save, a load or an undo still happens, in order, on the document now open. The replacement
         draws the document it puts in place, which answers a redraw still owed.
         """
@@ -133,7 +195,7 @@ class ReconstructionRewrites(CallbackMixin):
         """The document's envelopes with every change still on its way written over them, in order.
 
         The instruments panel draws these, so what the reader sees is what the document will hold
-        once the line empties. A rebuild whose document was put away writes nothing.
+        once the line empties. A rebuild whose document was put away leaves the envelopes as drawn.
 
         Args:
             envelopes: The envelopes the open document holds.
@@ -151,7 +213,7 @@ class ReconstructionRewrites(CallbackMixin):
     def _pending_changes(self) -> List[ChannelChange]:
         """The channel changes on their way to the open document, the running one first."""
         changes: List[ChannelChange] = []
-        if self._running is not None and self._running.lands_on(self._manager.reconstruction):
+        if isinstance(self._running, Rebuild) and self._running.lands_on(self._manager.reconstruction):
             changes.append(self._running.change)
 
         changes.extend(step for step in self._waiting if isinstance(step, ChannelChange))
@@ -174,6 +236,23 @@ class ReconstructionRewrites(CallbackMixin):
             case _:
                 self._waiting.append(change)
 
+    def _enqueue_listening(self, listening: ListeningChange) -> None:
+        """Puts a listening in line where none in line or running renders what the reader hears now.
+
+        A listening waiting reads the choice at its turn, so it answers every choice made before
+        it; the one running answers only the choice it started with.
+        """
+        if any(isinstance(step, ListeningChange) for step in self._waiting):
+            return
+
+        if isinstance(self._running, Reading) and self._running.answers(
+            self._manager.reconstruction,
+            self._manager.listening.hearing,
+        ):
+            return
+
+        self._waiting.append(listening)
+
     def _enqueue_rate(self, rate_change: RateChange) -> None:
         match self._waiting[-1] if self._waiting else None:
             case RateChange():
@@ -182,9 +261,22 @@ class ReconstructionRewrites(CallbackMixin):
                 self._waiting.append(rate_change)
 
     def _advance(self) -> None:
-        """Takes the waiting steps in order until a rebuild runs or the line empties."""
-        while self._running is None and self._waiting:
-            self._take(self._waiting.pop(0))
+        """Takes the waiting steps in order until a job runs or the line empties.
+
+        A step taken, or a result landing, may ask for a step of its own, as a gesture redrawing
+        the document asks for a listening. The ask joins the line and is taken in its turn once
+        the step or the landing has returned, so a gesture never runs inside a landing or inside
+        another gesture.
+        """
+        if self._taking:
+            return
+
+        self._taking = True
+        try:
+            while self._running is None and self._waiting:
+                self._take(self._waiting.pop(0))
+        finally:
+            self._taking = False
 
     def _take(self, step: Rewrite) -> None:
         match step:
@@ -196,25 +288,84 @@ class ReconstructionRewrites(CallbackMixin):
                 self._retune(rate_change)
             case AfterEdits(gesture=gesture):
                 gesture()
+            case ListeningChange():
+                self._listen()
 
     def _rebuild(self, change: ChannelChange) -> None:
         """Starts the rebuild of a changed channel from the document and the listening as they stand.
 
-        The rebuild is marked running before it starts, since a result can arrive before the start
-        returns.
+        Everything the job takes is read first, so a reading that raises leaves the line idle;
+        the rebuild is then marked running before it starts, since a case's synchronous seam can
+        deliver the result inside the start. The renders the cache holds for the document go with
+        it, so the worker renders the edited channel alone and the landing finds every channel's
+        audio kept. A change finding the envelopes of what is heard on their way waits for them.
         """
         reconstruction = self._manager.reconstruction
-        envelopes = self._manager.current_features
-        if reconstruction is None or envelopes is None:
+        if reconstruction is None:
             logger.info(f"A change of {change.channel_name} found no document open")
             return
 
+        envelopes = self._manager.current_features
+        if envelopes is None:
+            self._await_envelopes(change)
+            return
+
+        self._awaiting_envelopes = None
+        rebased = change.rebased(envelopes[change.channel_name])
+        hearing = self._manager.listening.hearing
+        kept = self._manager.renders.held(reconstruction)
         self._running = Rebuild(change=change, base=reconstruction)
         self._regeneration.start(
             reconstruction,
             change.channel_name,
-            change.rebased(envelopes[change.channel_name]),
-            self._manager.listening.heard_on(change.channel_name),
+            rebased,
+            hearing=hearing,
+            kept=kept,
+            recordings=self._manager.recordings,
+        )
+
+    def _await_envelopes(self, change: ChannelChange) -> None:
+        """Puts ``change`` back in line behind a listening of the choice its envelopes are owed for.
+
+        A listening already waiting, as a box ticked meanwhile asks for, lands them, so the change
+        takes its place behind it. With none waiting, the line asks for one, once per channel: a
+        change whose listening landed no envelopes for it, as a failed one does, is let go and the
+        line moves on.
+        """
+        for index, step in enumerate(self._waiting):
+            if isinstance(step, ListeningChange):
+                self._waiting.insert(index + 1, change)
+                return
+
+        if self._awaiting_envelopes == change.channel_name:
+            logger.info(f"A change of {change.channel_name} found no envelopes to rebuild from and was let go")
+            self._awaiting_envelopes = None
+            return
+
+        self._awaiting_envelopes = change.channel_name
+        self._waiting[:0] = [ListeningChange(), change]
+
+    def _listen(self) -> None:
+        """Starts rendering what the reader hears of the document as it stands.
+
+        Everything the job takes is read first, so a reading that raises leaves the line idle; the
+        reading is then marked running before it starts, since a case's synchronous seam can
+        deliver the result inside the start. The renders the cache holds go with it, so the worker
+        renders what is missing alone.
+        """
+        reconstruction = self._manager.reconstruction
+        if reconstruction is None:
+            logger.info("A change to what is heard found no document open")
+            return
+
+        hearing = self._manager.listening.hearing
+        kept = self._manager.renders.held(reconstruction)
+        self._running = Reading(base=reconstruction, hearing=hearing)
+        self._regeneration.start_listening(
+            reconstruction,
+            hearing=hearing,
+            kept=kept,
+            recordings=self._manager.recordings,
         )
 
     def _remove(self, removal: StemRemovalRequest) -> None:
@@ -253,57 +404,111 @@ class ReconstructionRewrites(CallbackMixin):
         )
 
     def _on_result(self, result: RegenerationResult) -> None:
-        """Lands a finished rebuild on the document it was computed from, then takes the next step.
+        """Lands a finished job on the document it was computed from, then takes the next step.
 
         Raises:
-            RuntimeError: If a result arrives while no rebuild runs.
+            RuntimeError: If a result arrives while no job runs.
         """
-        rebuild = self._running
-        if rebuild is None:
-            raise RuntimeError("A regeneration result arrived while no rebuild was running")
+        running = self._running
+        if running is None:
+            raise RuntimeError("A regeneration result arrived while no job was running")
 
         self._running = None
-        match result:
-            case ServiceSuccess(value=outcome):
-                self._land(rebuild, outcome)
-            case ServiceError(exception=exception):
-                self.call(self.on_failed, exception)
-                self._let_go(rebuild)
+        was_taking = self._taking
+        self._taking = True
+        try:
+            match result:
+                case ServiceSuccess(value=outcome):
+                    self._land(running, outcome)
+                case ServiceError(exception=exception):
+                    self.call(self.on_failed, exception)
+                    self._fail(running)
+        finally:
+            self._taking = was_taking
 
         self._advance()
+        self._catch_up()
         self._settle()
 
-    def _land(self, rebuild: Rebuild, outcome: RegeneratedInstrument) -> None:
-        if not rebuild.lands_on(self._manager.reconstruction):
-            logger.info(f"A rebuild of {rebuild.change.channel_name} finished for a document put away since")
-            self._let_go(rebuild)
+    def _land(
+        self,
+        running: Running,
+        outcome: RenderedDocument,
+    ) -> None:
+        """Keeps the renders the job made and reports it, where its document is still open."""
+        if not running.lands_on(self._manager.reconstruction):
+            logger.info("A job finished for a document put away since")
+            self._let_go(running)
             return
 
-        self.call(
-            self.on_edit,
-            ChannelEdit(
-                reconstruction=outcome.reconstruction,
-                channel_name=rebuild.change.channel_name,
-                feature_key=rebuild.change.feature_key,
-            ),
-        )
+        self._manager.renders.adopt_rendered(outcome)
+        envelopes = HeardEnvelopes(selection=outcome.hearing.selection, channels=outcome.envelopes)
+        match running:
+            case Rebuild(change=change):
+                self.call(
+                    self.on_edit,
+                    ChannelEdit(
+                        reconstruction=outcome.reconstruction,
+                        channel_name=change.channel_name,
+                        feature_key=change.feature_key,
+                        envelopes=envelopes,
+                    ),
+                )
+            case Reading():
+                changed = self._manager.adopt_envelopes(outcome.reconstruction, envelopes)
+                self.call(self.on_heard_rendered, changed)
 
-    def _let_go(self, rebuild: Rebuild) -> None:
+    def _let_go(self, running: Running) -> None:
         """Redraws the panel where it still draws a change that will never land.
 
-        A rebuild an outside replacement dropped needs nothing, since the replacement drew the
-        document it put in place.
+        A rebuild an outside replacement dropped is answered by the replacement, which drew the
+        document it put in place, and a listening draws only once its sound lands.
         """
-        if rebuild.base is not None:
+        if isinstance(running, Rebuild) and running.base is not None:
             self.call(self.on_dropped)
 
+    def _fail(self, running: Running) -> None:
+        """Tells the panel what a failed job leaves it with: a change drawn that will never land, or a sound the
+        open document waited for that will never land.
+
+        A failed listening is remembered, so the line asks the worker again for another choice
+        alone and a failure that repeats leaves the line idle.
+        """
+        self._let_go(running)
+        if isinstance(running, Reading) and running.lands_on(self._manager.reconstruction):
+            self._unreadable = running
+            self.call(self.on_reading_failed)
+
+    def _catch_up(self) -> None:
+        """Asks the worker for the envelopes of what the reader hears, where the line stands idle without them.
+
+        Every gesture and every landing passes here once the line has taken what it could, so an
+        idle line always holds the open document's envelopes for the reader's choice or is
+        rendering them: a reader who stops lets the last listening land what they hear. A choice
+        whose listening failed is left alone until the reader makes another.
+        """
+        reconstruction = self._manager.reconstruction
+        if self.is_busy or reconstruction is None:
+            return
+
+        hearing = self._manager.listening.hearing
+        if self._manager.has_envelopes_for(hearing.selection):
+            return
+
+        if self._unreadable is not None and self._unreadable.answers(reconstruction, hearing):
+            return
+
+        self._unreadable = None
+        self._waiting.append(ListeningChange())
+        self._advance()
+
     def _settle(self) -> None:
-        """Pays a redraw owed once the line empties, and reports the line filling or emptying."""
+        """Pays a redraw owed once the line empties, and reports what the line is busy with as it changes."""
         if not self.is_busy and self._redraw_owed:
             self._redraw_owed = False
             self.call(self.on_dropped)
 
-        busy = self.is_busy
-        if busy != self._reported_busy:
-            self._reported_busy = busy
-            self.call(self.on_busy_changed, busy)
+        work = self.work
+        if work != self._reported_work:
+            self._reported_work = work
+            self.call(self.on_work_changed, work)

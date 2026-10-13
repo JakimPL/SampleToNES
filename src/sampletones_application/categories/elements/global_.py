@@ -99,6 +99,7 @@ class MenuElements(AbstractElement):
     ITEM_VIEW_DISPLAY_SETTINGS = "item_view_display_settings"
     ITEM_VIEW_KEYBOARD_SETTINGS = "item_view_keyboard_settings"
     GROUP_HELP = "group_help"
+    ITEM_HELP_DOCUMENTATION = "item_help_documentation"
     ITEM_HELP_ABOUT = "item_help_about"
     TAB_MAIN = "tab_main"
     TAB_INSTRUCTIONS = "tab_instructions"

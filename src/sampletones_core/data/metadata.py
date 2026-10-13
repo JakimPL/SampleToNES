@@ -9,9 +9,9 @@ from sampletones_shared.application import (
     SAMPLETONES_LIBRARY_DATA_VERSION,
     SAMPLETONES_NAME,
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
-    SAMPLETONES_VERSION,
 )
 from sampletones_shared.deployment.version import compare_versions
+from sampletones_shared.distribution import SAMPLETONES_VERSION
 from sampletones_shared.exceptions import InvalidMetadataError
 from sampletones_shared.exceptions.version import IncompatibleVersionError
 

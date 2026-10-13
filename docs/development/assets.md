@@ -1,7 +1,8 @@
 # Assets
 
 This document governs `assets/`, the checkout unit that makes the repository's own content: the icon suite
-the application ships, the demo tree, and the pictures of the application the guide and the README show.
+the application ships, the HTML documentation it opens, the demo tree, and the pictures of the application
+the guide and the README show.
 Consult it before adding something the repository keeps that a person would
 otherwise draw, record or arrange by hand, and before changing how one of these is made. What a checkout
 unit is, and what it may import, is in [tooling](tooling.md).
@@ -28,6 +29,9 @@ same hook. A maker whose output depends on the machine's arithmetic, such as a c
 `build/` and is run by hand. A maker whose output may differ by a pixel between machines, as a software
 renderer's does, is run by hand too, and the pull request shows what changed.
 
+The documentation site is the one output the history leaves out. It repeats `docs/` in another form, so
+`docs/` stays the single copy and every wheel build derives the site afresh ([documentation](#documentation)).
+
 ## The makers
 
 ### Icons
@@ -39,6 +43,28 @@ rendered geometry fills. The suite is the vector `sampletones.svg` and the raste
 from, `src/sampletones_assets/icons/`. `make icons` writes them, and `python -m assets.icons -o DIR` writes
 them elsewhere. The whole suite is committed, so every wheel, bundle and test run finds the icons where
 they lie. Pillow rasterizes the suite; it is a development dependency, so the maker runs in a checkout alone.
+
+### Documentation
+
+`assets/documentation/` writes the user's documentation as HTML pages in the application's look, the pages
+**Help > Documentation** opens. The Markdown under `docs/` is the specification: the index, the glossary,
+and the guide, concepts, tools, formats and API sections become pages, each at the place its document holds
+in `docs/`, so a picture a page shows keeps its relative link. Each second-level heading becomes one of the
+application's cards, and the index's sections lay out the navigation beside every page. The look is the
+shared web layout ([tooling](tooling.md#pages-a-tool-writes)), in the application's default palette.
+
+The development pages, the changelog and anything else under `docs/` stay online: a link to one leads to
+the copy at the documentation address `pyproject.toml` names. A link to a missing document, heading or
+picture fails the run, so a site that builds holds no broken link. A site is sealed by a stamp written
+last, a hash over every file beside it, which names the pages exactly: the application replaces its copy
+of the pages when the stamp differs, and the self-check holds a build's pages to it.
+
+`make docs` writes the site into `src/sampletones_assets/documentation/`, which the history ignores, so a
+checkout opens its own documentation. `python -m assets.documentation -o DIR` writes it elsewhere; the
+folder must be empty or hold an earlier site, which the run replaces. The wheel's build hook,
+`hatch_build.py`, runs the same maker into a temporary folder for every wheel and carries the site at the
+same package path, so every installation and every bundle built from a wheel opens the pages it was built
+with. An editable install reads the checkout, where `make docs` writes the site.
 
 ### Demo tree
 

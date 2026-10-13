@@ -1,0 +1,61 @@
+.button {
+  appearance: none;
+  margin: 0;
+  padding: var(--button-padding-y) var(--button-padding-x);
+  font: inherit;
+  line-height: normal;
+  color: var(--text);
+  text-align: center;
+  background: var(--button);
+  border: 0;
+  border-radius: var(--frame-radius);
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--button-hover);
+}
+
+.button:active,
+.button[aria-pressed="true"] {
+  background: var(--button-active);
+}
+
+.button:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 0;
+}
+
+.button:disabled {
+  color: var(--text-disabled);
+  background: var(--button-disabled);
+  cursor: default;
+}
+
+.button.secondary {
+  color: var(--secondary-text);
+  background: var(--secondary);
+  box-shadow: inset 0 0 0 1px var(--secondary-border);
+}
+
+.button.secondary:hover {
+  background: var(--secondary-hover);
+}
+
+.button.secondary:active,
+.button.secondary[aria-pressed="true"] {
+  background: var(--secondary-active);
+}
+
+.button.compact {
+  padding: 0 var(--button-padding-y);
+  min-width: 1.6em;
+}
+
+.swatch {
+  display: inline-block;
+  flex: none;
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 2px;
+}

@@ -5,6 +5,7 @@ import pytest
 from sampletones_application.view_model.shared.ownership import (
     OwnershipLaneViewModel,
     OwnershipRunViewModel,
+    runs_by_owner,
 )
 from sampletones_core.constants.enums import ChannelName
 
@@ -59,3 +60,34 @@ class TestTheStretchesUnderAReading:
 
     def test_a_lane_with_no_stretches_answers_with_none(self) -> None:
         assert _lane().up_to(10) == ()
+
+
+class TestRunsGatheredByOwner:
+    """A lane's runs gather by the recording holding them, so a surface paints each recording in one piece."""
+
+    @staticmethod
+    def _runs(*entries: Tuple[int, int, int, bool]) -> Tuple[OwnershipRunViewModel, ...]:
+        return tuple(
+            OwnershipRunViewModel(start_frame=start, end_frame=end, stem_id=stem_id, heard=heard)
+            for start, end, stem_id, heard in entries
+        )
+
+    def test_each_recording_gathers_its_stretches_in_frame_order(self) -> None:
+        owners = runs_by_owner(self._runs((0, 2, 0, True), (2, 4, 1, True), (4, 6, 0, True)))
+
+        assert owners[0].stretches == ((0, 2), (4, 6))
+        assert owners[1].stretches == ((2, 4),)
+
+    def test_the_recordings_stand_in_the_order_they_first_appear(self) -> None:
+        owners = runs_by_owner(self._runs((0, 2, 1, True), (2, 4, 0, True), (4, 6, 1, True)))
+
+        assert list(owners) == [1, 0]
+
+    def test_a_recording_left_out_reads_so_on_every_stretch(self) -> None:
+        owners = runs_by_owner(self._runs((0, 2, 0, False), (2, 4, 1, True), (4, 6, 0, False)))
+
+        assert owners[0].heard is False
+        assert owners[1].heard is True
+
+    def test_no_run_gathers_nothing(self) -> None:
+        assert runs_by_owner(()) == {}

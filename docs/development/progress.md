@@ -53,6 +53,12 @@ Both carriers use it: `StageProgress` in the application services, and `JobRepor
 `JobReporter` throttles on the worker side, so the line between processes carries only what a bar can be
 redrawn at.
 
+The render thread takes the newest report. A report states the whole of where a run stands, so a report
+still waiting for the render loop is superseded by the next one. A run filing thousands of reports between
+two frames, such as a library generation counting its instructions, is drawn once per drain, and the screen
+keeps pace with the run. The outcome of the run arrives after the reports filed before it.
+[The render thread](application/render-thread.md) describes the crossing.
+
 ### 4. A run reports in items when it has many, and in the part done of one item when it has one
 
 An operation counts the items it is measured in: files, samples, jobs. Where it is measured in many items,
@@ -85,6 +91,15 @@ queue that reports travel up, and a flag that a withdrawal travels down. Both li
 context the pool's workers run in. Each end reaches a task as an ordinary value it is built with, so a
 worker started as a fresh interpreter reconnects on its own. That makes one channel serve every platform.
 
+### 6. A report redraws the run over a setup read once
+
+A report says where a run stands: the count, the stage, the item under way. The setup the run was started
+from stands still while it runs, so a panel reads what it shows of the setup once per change to it, and
+every report draws over that reading. The converter reads its rows, and the recordings its button names,
+where a gesture changes what it gathered. A report therefore costs the same for one gathered recording as
+for thousands. The button names the run the same way before it, during it and after it, whether the run
+succeeded, failed or was canceled.
+
 ---
 
 ## Mechanics
@@ -100,6 +115,16 @@ A task's reports travel a line the run reads at its own pace, so a report filed 
 arrived may be read after it. The run records the tasks it has counted (`TaskSteps`) and lets their later
 reports go. That keeps a task's own progress and the run's completed count from describing the same work
 twice, and it keeps the reading inside the run it describes.
+
+### A batch goes on past a failing item
+
+A task fails by raising or by losing its worker. A run whose answers make sense only together ends with
+the first failure: a library missing one instruction is no library. So does a run of one task, whose
+failure is the whole of its outcome. A run of several tasks that stand on their own
+(`skips_failed_tasks`), such as a folder converted one recording at a time, records the failure against
+its task, logs it with its traceback, and goes on. One unreadable or crashing recording among thousands
+then costs that recording alone. The completed outcome keeps the answers in task order and names every
+task the run went on without, so whoever reports the end of the run names them too.
 
 ### The pool's and the channel's lifetime
 

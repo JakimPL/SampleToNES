@@ -4,23 +4,42 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Calibration</title>
-<link rel="stylesheet" href="page/palette.css">
 <link rel="stylesheet" href="page/fonts.css">
+<link rel="stylesheet" href="page/roles.css">
+<link rel="stylesheet" href="page/base.css">
+<link rel="stylesheet" href="page/shell.css">
+<link rel="stylesheet" href="page/card.css">
+<link rel="stylesheet" href="page/controls.css">
+<link rel="stylesheet" href="page/table.css">
+<link rel="stylesheet" href="page/prose.css">
+<link rel="stylesheet" href="page/print.css">
 <link rel="stylesheet" href="page/style.css">
 </head>
 <body>
-<header class="head">
-  <h1 id="title">Calibration</h1>
-  <p id="lead" class="lead"></p>
-  <nav id="tabs" class="tabs" hidden></nav>
+<div class="shell">
+<header class="menu-bar">
+  <img class="brand-mark" src="page/mark.svg" alt="" width="20" height="20">
+  <span class="title">SampleToNES</span>
+  <span class="spacer"></span>
+  <span class="small">Calibration</span>
 </header>
-<main id="groups"></main>
-<footer class="foot">
+<nav id="tabs" class="tab-bar" role="tablist" hidden></nav>
+<main class="workspace">
+<div class="board">
+  <header class="masthead">
+    <h1 id="title">Calibration</h1>
+    <p id="lead" class="lead"></p>
+  </header>
+  <div id="groups" class="groups"></div>
+</div>
+</main>
+<footer class="status-bar small">
   <p>Click a clip to play it from its beginning. <kbd>Space</kbd> pauses and resumes,
   <kbd>&larr;</kbd> <kbd>&rarr;</kbd> move across a sound's versions, <kbd>&uarr;</kbd> <kbd>&darr;</kbd>
   move to another sound. <b>S</b> plays one channel alone, <b>M</b> plays every other channel.
   A bar shows the frames its channel sounds.</p>
 </footer>
+</div>
 <script src="page/data.js"></script>
 <script src="page/page.js"></script>
 </body>

@@ -1,3 +1,3 @@
-from tests.suite.application import synchronous_executor, synchronous_queue
+from tests.suite.application import live_queue, synchronous_executor, synchronous_queue
 
-__all__ = ["synchronous_executor", "synchronous_queue"]
+__all__ = ["live_queue", "synchronous_executor", "synchronous_queue"]

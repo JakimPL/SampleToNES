@@ -1,16 +1,23 @@
 import operator
+from functools import partial
 from pathlib import Path
-from typing import Final, List, Optional
+from typing import Callable, Final, List, Optional, Tuple
 
+from automation.dearpygui.items.colors import read_theme
 from automation.dearpygui.items.types import Item
 from automation.holds.regeneration import RegenerationHold
 from automation.screen import Screen
+from automation.views.bar_graph import BarGraph
+from automation.vocabulary.graphs import WAVEFORM_RECONSTRUCTION
 from sampletones_application.categories.hierarchy import Tab
+from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.constants.symbols import TITLE_SEPARATOR
 from sampletones_shared.paths.user import RECONSTRUCTIONS_DIRECTORY
+
+FADE_TIMEOUT_SECONDS: Final[float] = 120.0
 
 APPLICATION_NAME: Final[str] = "global.dialog.title.main_window"
 UNTITLED: Final[str] = "global.dialog.label.untitled"
@@ -57,7 +64,7 @@ def reconstruction_row(screen: Screen, path: Path) -> Item:
         if not browser.is_open(above):
             browser.open_by_click(above)
             screen.expect(
-                lambda: browser.is_open(above),
+                partial(browser.is_open, above),
                 bool,
                 description=f"{browser.label(above)} open",
             )
@@ -72,12 +79,68 @@ def load_from_the_browser(screen: Screen, path: Path) -> None:
 
 
 def expect_open(screen: Screen, path: Path) -> None:
-    """Waits until the reconstruction stored at ``path`` is the one open."""
+    """Waits until the reconstruction stored at ``path`` is the one open and its sound has landed."""
     screen.expect(
         lambda: screen.reconstructions.shows_open(path),
         bool,
         description=f"{path.name} open",
     )
+    screen.expect(screen.sound_settled, bool, description=f"the sound of {path.name} landed")
+
+
+def reconstruction_shade(screen: Screen) -> str:
+    """The theme the waveform's reconstruction line wears, which the fade swaps while its sound is on its way.
+
+    Raises:
+        AssertionError: If the line wears no theme, which would leave a fade nothing to swap.
+    """
+    waveform = screen.reconstructions.waveform
+    shade = screen.theme_of(waveform.series_tag(screen.words(WAVEFORM_RECONSTRUCTION)))
+    assert shade is not None, "the reconstruction line wears no theme"
+    return shade
+
+
+def shade_reading(screen: Screen) -> Callable[[], Optional[str]]:
+    """A reading of the shade the reconstruction line wears, for a frame recording to take after every frame.
+
+    The reading runs on the render thread, so it reads the theme directly.
+    """
+    tag = screen.reconstructions.waveform.series_tag(screen.words(WAVEFORM_RECONSTRUCTION))
+    return partial(read_theme, tag)
+
+
+def wait_for_the_fade_to_end(
+    screen: Screen,
+    unfaded: str,
+) -> None:
+    """Waits until the reconstruction line wears ``unfaded`` again, which is when the last sound has landed."""
+    screen.bridge.expect(
+        lambda: reconstruction_shade(screen),
+        unfaded.__eq__,
+        description="the fade ended",
+        timeout=FADE_TIMEOUT_SECONDS,
+    )
+
+
+def drag_item_to(
+    graph: BarGraph,
+    standing: List[int],
+    item: int,
+    *,
+    end: float,
+    bounds: Tuple[int, int],
+) -> Tuple[int, List[int]]:
+    """Drags the bar of ``item`` to ``end`` and returns the item the plot moved and the items expected after.
+
+    The item the plot puts under the release takes the value there, brought within ``bounds``, and
+    every other item stands as it did.
+    """
+    release = graph.drag_item(item, start=standing[item], end=end)
+    index, value = graph.item_under(release)
+    low, high = bounds
+    expected = [*standing]
+    expected[index] = min(max(round(value), low), high)
+    return index, expected
 
 
 def edit_envelope(
@@ -223,3 +286,14 @@ def raise_the_first_level_while_held(screen: Screen, hold: RegenerationHold, cha
 def edited_title(screen: Screen, document: Path) -> str:
     """The window title while the open reconstruction ``document`` carries unsaved changes."""
     return titled(screen, marked(document.name, unsaved=True))
+
+
+def leave_letting_it_go(screen: Screen) -> None:
+    """Presses Exit, confirms the question about unsaved changes and waits for the application to close."""
+    prompt = screen.reconstructions.unsaved_prompt
+    screen.press_shortcut(ShortcutId.EXIT)
+    screen.expect(prompt.is_shown, bool, description="the question about leaving")
+
+    prompt.confirm()
+
+    assert screen.wait_for_exit()

@@ -2,6 +2,7 @@ from typing import Callable, Dict, Optional, Protocol, Set
 
 from sampletones_application.constants.instruments import INSTRUMENT_CHANNEL
 from sampletones_application.logic.reconstruction.editing import (
+    EnvelopesOwed,
     InstrumentEdit,
     InstrumentEditingProtocol,
 )
@@ -10,6 +11,7 @@ from sampletones_application.view_model.reconstruction.envelopes import (
     ChannelEnvelopesViewModel,
 )
 from sampletones_application.view_model.reconstruction.instruments import (
+    InstrumentsShowing,
     InstrumentViewModel,
     ReconstructionInstrumentsViewModel,
 )
@@ -65,7 +67,7 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         the same voice, so the render is reported once it has been made and they settle on it: an
         edit to an instrument redraws its waveform here.
         """
-        self.call(self.on_view_changed, self._build_view_model(self._measured_channels()))
+        self.call(self.on_view_changed, self._build_view_model())
         self.call(self.on_feature_data_changed, self._displayed_features())
         self.call(self.on_display_refreshed)
 
@@ -102,11 +104,16 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         panel draws it empty and the next edit starts from what the document holds. A document
         rewritten anywhere else is drawn whole through :meth:`update_display`.
         """
-        self.call(
-            self.on_view_changed,
-            self._build_view_model(self._measured_channels()),
-        )
+        self.call(self.on_view_changed, self._build_view_model())
         self._redraw_silenced()
+
+    def follow_listening(self) -> None:
+        """Locks the panel while the envelopes of a new choice of what is heard are on their way, and frees it
+        once the choice is one whose envelopes it draws.
+
+        The bars stay as drawn either way: the envelopes of the new choice redraw them as they land.
+        """
+        self.call(self.on_view_changed, self._build_view_model())
 
     def _redraw_silenced(self) -> None:
         """Draws the channels an edit silenced as the document now holds them, once they stand by there."""
@@ -133,32 +140,29 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
             ),
         )
 
-    def _measured_channels(self) -> Optional[Dict[ChannelName, Features]]:
-        """The channels of the reconstruction in front of the panel, as its figures measure them.
+    def _measured_channels(
+        self,
+        document: ChannelEnvelopesViewModel,
+    ) -> Dict[ChannelName, Features]:
+        """The channels of ``document``, the reconstruction in front of the panel, as its figures measure them.
 
         A channel measures as the document will hold it once the changes on their way land. A
         change silencing every frame of a channel leaves it standing by, so that channel measures
         standing by from the moment the change is made, with no frame and no figure.
         """
-        document = self._document_envelopes()
-        if document is None:
-            return None
-
         return {
-            channel_name: (
-                features if features == document[channel_name] else self._as_regenerated(channel_name, features)
-            )
+            channel_name: (features if features == document[channel_name] else self._as_regenerated(features))
             for channel_name, features in self._pending_changes.drawn(document).channels.items()
         }
 
     @staticmethod
-    def _as_regenerated(channel_name: ChannelName, features: Features) -> Features:
+    def _as_regenerated(features: Features) -> Features:
         """The envelopes a channel holds once the regeneration has rebuilt it from ``features``.
 
         A channel the envelopes silence rests through every frame, which the document stands by,
         describing no frame.
         """
-        if stands_by(channel_name, features):
+        if stands_by(features):
             return features.leave_to_channel(features.envelopes)
 
         return features
@@ -185,23 +189,40 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
             case _:
                 return None
 
-    def _build_view_model(
-        self,
-        channels: Optional[Dict[ChannelName, Features]],
-    ) -> ReconstructionInstrumentsViewModel:
-        instrument = self.instrument_edit
-        if instrument is not None:
-            return self._instrument_view_model(instrument)
+    def _build_view_model(self) -> ReconstructionInstrumentsViewModel:
+        """What the panel shows of the voice in front of it.
 
-        if channels is None:
-            return ReconstructionInstrumentsViewModel(
-                reconstruction_loaded=False,
-                playing_channels=frozenset(),
-                footprint=None,
-            )
+        A reconstruction is shown by its channels once the worker has exported their envelopes for
+        what the reader hears. While the next ones are on their way, the panel keeps the ones it
+        drew, and a document just opened, which has none yet, is shown as being prepared. An
+        instrument is shown by its own set.
+        """
+        match self._editor.edited_instrument():
+            case InstrumentEdit() as instrument:
+                return self._instrument_view_model(instrument)
+            case ChannelEnvelopesViewModel() as document:
+                return self._reconstruction_view_model(self._measured_channels(document))
+            case EnvelopesOwed() as owed:
+                return self._bare_view_model(InstrumentsShowing.PREPARING if owed.opening else InstrumentsShowing.KEPT)
+            case None:
+                return self._bare_view_model(InstrumentsShowing.NOTHING)
 
+    @staticmethod
+    def _bare_view_model(showing: InstrumentsShowing) -> ReconstructionInstrumentsViewModel:
+        """A view naming what the panel shows and nothing it measures, which the panel keeps or has none of."""
         return ReconstructionInstrumentsViewModel(
-            reconstruction_loaded=True,
+            showing=showing,
+            playing_channels=frozenset(),
+            footprint=None,
+        )
+
+    def _reconstruction_view_model(
+        self,
+        channels: Dict[ChannelName, Features],
+    ) -> ReconstructionInstrumentsViewModel:
+        """What the panel shows of a reconstruction: the channels that play and what they cost."""
+        return ReconstructionInstrumentsViewModel(
+            showing=InstrumentsShowing.EDITABLE,
             playing_channels=playing_channels(channels),
             footprint=self._build_footprint(channels),
         )
@@ -217,7 +238,7 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         writes one.
         """
         return ReconstructionInstrumentsViewModel(
-            reconstruction_loaded=False,
+            showing=InstrumentsShowing.EDITABLE,
             playing_channels=playing_channels(self._instrument_channels(instrument)),
             footprint=VoiceFootprintViewModel.from_instrument(features_footprint(instrument.features)),
             instrument=InstrumentViewModel(name=instrument.name),
@@ -264,7 +285,7 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
                         initial_pitch=value,
                     ),
                 )
-            case _:
+            case InstrumentEdit() | EnvelopesOwed() | None:
                 self.update_display()
 
     def handle_envelope_changed(
@@ -295,7 +316,7 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
                         initial_pitch=None,
                     ),
                 )
-            case None:
+            case EnvelopesOwed() | None:
                 self.update_display()
 
     def _change(self, document: ChannelEnvelopesViewModel, change: ChannelChange) -> None:
@@ -312,11 +333,11 @@ class ReconstructionInstrumentsLogic(CallbackMixin):
         drawn = self._pending_changes.drawn(document)
         self._note_silenced(change.channel_name, change.rebased(drawn[change.channel_name]))
         self.call(self.on_channel_changed, change)
-        self.call(self.on_view_changed, self._build_view_model(self._measured_channels()))
+        self.call(self.on_view_changed, self._build_view_model())
 
     def _note_silenced(self, channel_name: ChannelName, features: Features) -> None:
         """Remembers whether the latest edit of a channel silences it, which its rebuild then shows."""
-        if stands_by(channel_name, features):
+        if stands_by(features):
             self._silenced.add(channel_name)
         else:
             self._silenced.discard(channel_name)

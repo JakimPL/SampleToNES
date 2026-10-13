@@ -3,7 +3,7 @@ from typing import Dict, Final, FrozenSet, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from automation.dearpygui.bridge import Bridge
-from automation.dearpygui.geometry import Point
+from automation.dearpygui.geometry import Point, Rect
 from automation.dearpygui.hand import Hand
 from automation.dearpygui.items.colors import read_theme_text_color
 from automation.dearpygui.items.reading import read_item
@@ -61,7 +61,7 @@ def _table_rows() -> Tuple[Item, ...]:
     return tuple(dpg.get_item_children(TAG_SEQUENCER_TRACKER_TABLE, 1))
 
 
-def _frame_rows() -> Dict[int, int]:
+def frame_rows() -> Dict[int, int]:
     """Where each pattern row of the shown frame stands among the table's rows, by its index. Runs on the render
     thread.
     """
@@ -181,6 +181,10 @@ class Tracker:
         """Whether the caret stands in ``channel``'s cell on ``row``, as the box drawn over the grid shows it."""
         return self._bridge.ask(_caret_cell) == (row, channel)
 
+    def caret_box(self) -> Optional[Rect]:
+        """Where the caret's mark stands on the screen, while it shows one."""
+        return self._bridge.ask(caret_mark)
+
     def caret_row(self, channel: Optional[ChannelName]) -> Optional[int]:
         """The pattern row the caret stands on in ``channel``'s column, if it stands in that column."""
         cell = self._bridge.ask(_caret_cell)
@@ -208,7 +212,7 @@ class Tracker:
                 return None
 
             middle = band.y + band.height * HALF
-            for row, table_index in _frame_rows().items():
+            for row, table_index in frame_rows().items():
                 number = read_item(_number(table_index))
                 if number.rect is None or not number.visible:
                     continue
@@ -237,7 +241,7 @@ class Tracker:
         """What the row numbers of the ``count`` rows nearest below the frame read, top to bottom."""
 
         def read() -> Tuple[str, ...]:
-            last = max(_frame_rows().values())
+            last = max(frame_rows().values())
             return tuple(read_label(_number(index)) for index in range(last + 1, last + 1 + count))
 
         return self._bridge.ask(read)
@@ -262,7 +266,7 @@ class Tracker:
         def read() -> FrozenSet[int]:
             return frozenset(
                 row
-                for row, table_index in _frame_rows().items()
+                for row, table_index in frame_rows().items()
                 if read_item(_number(table_index)).visible
                 and dpg.is_table_row_highlighted(TAG_SEQUENCER_TRACKER_TABLE, table_index)
             )
@@ -304,7 +308,7 @@ def _caret_cell() -> Optional[Tuple[int, Optional[ChannelName]]]:
         return None
 
     x, y = middle
-    for row, table_index in _frame_rows().items():
+    for row, table_index in frame_rows().items():
         number = read_item(_number(table_index))
         if number.rect is None or not number.visible or not number.rect.y <= y < number.rect.y + number.rect.height:
             continue
@@ -318,9 +322,9 @@ def _caret_cell() -> Optional[Tuple[int, Optional[ChannelName]]]:
     return None
 
 
-def _caret_middle() -> Optional[Tuple[float, float]]:
-    """The middle of the box the caret overlay draws, while it shows one. Runs on the render thread."""
-    rectangle = CaretOverlay._rectangle  # pylint: disable=protected-access
+def caret_mark() -> Optional[Rect]:
+    """The mark the caret overlay draws under the active character, while it shows one. Runs on the render thread."""
+    rectangle = CaretOverlay._mark  # pylint: disable=protected-access
     if rectangle is None or not dpg.does_item_exist(rectangle):
         return None
 
@@ -329,4 +333,13 @@ def _caret_middle() -> Optional[Tuple[float, float]]:
         return None
 
     corner, far = configuration["pmin"], configuration["pmax"]
-    return (corner[0] + far[0]) * HALF, (corner[1] + far[1]) * HALF
+    return Rect(x=corner[0], y=corner[1], width=far[0] - corner[0], height=far[1] - corner[1])
+
+
+def _caret_middle() -> Optional[Tuple[float, float]]:
+    """The middle of the caret's mark, while it shows one. Runs on the render thread."""
+    mark = caret_mark()
+    if mark is None:
+        return None
+
+    return mark.x + mark.width * HALF, mark.y + mark.height * HALF

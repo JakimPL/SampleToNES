@@ -12,6 +12,8 @@ class Bundling:
         pyaudio_advice: How to supply PortAudio to the build interpreter.
         tkinter_advice: How to supply Tk to the build interpreter for a release bundle.
         tkinter_warning: What a development bundle built without Tk does about file dialogs.
+        library_search_variable: The variable naming the directories the system searches for
+            shared libraries, which PyInstaller's dependency analysis follows.
     """
 
     icon: str
@@ -19,20 +21,22 @@ class Bundling:
     pyaudio_advice: str
     tkinter_advice: str
     tkinter_warning: str
+    library_search_variable: str
 
-    def launcher(self, distribution: Path, *, name: str, release: bool) -> Path:
+    def launcher(self, distribution: Path, *, name: str, directory: bool) -> Path:
         """The executable PyInstaller writes under ``distribution``.
 
         Args:
             distribution: The directory the bundle is written into.
             name: The bundle's name.
-            release: Whether the bundle is a release, which is a directory beside its launcher.
+            directory: Whether the bundle is a directory beside its launcher, as a release and a
+                GPU bundle are, or one file.
 
         Returns:
             Path: The launcher.
         """
         executable = f"{name}{self.executable_suffix}"
-        if release:
+        if directory:
             return distribution / name / executable
 
         return distribution / executable

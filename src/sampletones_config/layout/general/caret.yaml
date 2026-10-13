@@ -1,4 +1,3 @@
-offset: 3
-width_padding: 2
-fill: .caret_fill
-border: .caret_border
+height: 2
+color: .caret
+frame: .caret_frame

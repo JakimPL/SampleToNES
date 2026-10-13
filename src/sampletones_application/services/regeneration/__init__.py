@@ -1,8 +1,8 @@
-from .result import RegeneratedInstrument, RegenerationResult
+from .result import RegenerationResult, RenderedDocument
 from .service import RegenerationService
 
 __all__ = [
-    "RegeneratedInstrument",
+    "RenderedDocument",
     "RegenerationResult",
     "RegenerationService",
 ]

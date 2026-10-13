@@ -10,6 +10,7 @@ from sampletones_application.layout.behavior.scheduling.priorities import Schedu
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode
 from sampletones_shared.exceptions import InvalidReconstructionError
@@ -46,7 +47,7 @@ def _tree(
 
     return TreeLogic(
         session_manager,
-        FilePlayback(audio_device_manager),
+        FilePlayback(audio_device_manager, MagicMock(spec=DocumentPreviews)),
         scheduling=scheduling,
     )
 

@@ -1,9 +1,12 @@
+import os
 import threading
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import Any, Callable, Final, FrozenSet, List, Optional, Tuple
 
 from sampletones_core.parallelization.channel.protocol import StepReporter
+from sampletones_core.parallelization.outcome import RunCompleted
 from sampletones_core.parallelization.processor import TaskProcessor
 from sampletones_core.parallelization.task import TaskProgress, TaskStatus, TaskStep
 from sampletones_shared.exceptions import OperationCanceled
@@ -15,6 +18,7 @@ HALFWAY: Final[int] = STEP_COUNT // 2
 NOTHING_COMPLETED: Final[int] = 0
 WHOLE_TASK: Final[float] = 1.0
 ONE_STEP: Final[int] = 1
+DIED_EXIT_CODE: Final[int] = 3
 
 LIVE_STATUSES: Final[FrozenSet[TaskStatus]] = frozenset({TaskStatus.RUNNING, TaskStatus.COMPLETED})
 
@@ -81,8 +85,8 @@ class CountingProcessor(TaskProcessor[int]):
     def _get_task_function(self) -> Callable[[CountingTask], int]:
         return count_task
 
-    def _process_results(self, results: List[int]) -> Tuple[int, ...]:
-        return tuple(results)
+    def _process_results(self, completed: RunCompleted[int]) -> Tuple[int, ...]:
+        return tuple(completed.results)
 
 
 def failing_task(task: CountingTask) -> int:
@@ -109,6 +113,65 @@ class FailingProcessor(CountingProcessor):
 
     def _get_task_function(self) -> Callable[[CountingTask], int]:
         return failing_task
+
+
+class TaskFate(StrEnum):
+    """How a task of a run ends: with an answer, with an error, or with its worker gone."""
+
+    ANSWERS = "answers"
+    RAISES = "raises"
+    DIES = "dies"
+
+
+@dataclass(frozen=True)
+class FatedTask:
+    """One task of a run whose ending the test decides."""
+
+    index: int
+    fate: TaskFate
+
+
+def fated_task(task: FatedTask) -> int:
+    """Answers which task it is, raises, or ends its worker, as the task's fate says.
+
+    Raises:
+        ValueError: Where the task's fate is to raise.
+    """
+    match task.fate:
+        case TaskFate.RAISES:
+            raise ValueError(f"task {task.index} raised")
+        case TaskFate.DIES:
+            os._exit(DIED_EXIT_CODE)
+
+    return task.index
+
+
+class FatedProcessor(TaskProcessor[int]):
+    """A run whose tasks end the way the test lays out, and which goes on past a failing one where asked."""
+
+    def __init__(
+        self,
+        fates: Tuple[TaskFate, ...],
+        *,
+        skips: bool,
+        max_workers: int,
+    ) -> None:
+        super().__init__(max_workers=max_workers)
+        self._fates = fates
+        self._skips = skips
+
+    @property
+    def skips_failed_tasks(self) -> bool:
+        return self._skips
+
+    def _create_tasks(self) -> List[Any]:
+        return [FatedTask(index=index, fate=fate) for index, fate in enumerate(self._fates)]
+
+    def _get_task_function(self) -> Callable[[FatedTask], int]:
+        return fated_task
+
+    def _process_results(self, completed: RunCompleted[int]) -> RunCompleted[int]:
+        return completed
 
 
 class ProgressRecorder:

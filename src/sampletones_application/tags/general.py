@@ -518,6 +518,12 @@ TAG_GLOBAL_DIALOG_ABOUT = TagName(
     Widget.DIALOG,
     "about",
 )
+TAG_GLOBAL_DIALOG_DOCUMENTATION = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.DIALOG,
+    "documentation",
+)
 TAG_GLOBAL_MENU_ITEM_FILE_NEW_PROJECT = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

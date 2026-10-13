@@ -3,21 +3,24 @@ from typing import Optional, TypeAlias, Union
 
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.transaction import CoalesceKey
+from sampletones_application.logic.reconstruction.envelopes import HeardEnvelopes
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.reconstructions import Reconstruction
 
 
 @dataclass(frozen=True)
 class ChannelEdit:
-    """A regenerated instrument paired with the channel and feature the reader moved.
+    """A regenerated instrument paired with the channel and feature the reader moved, and its envelopes.
 
     Carrying the request context alongside the fresh reconstruction lets the project history
-    record which channel and feature an edit touched.
+    record which channel and feature an edit touched. The envelopes the worker exported travel
+    with it, so the landing installs them where the instruments panel reads them.
     """
 
     reconstruction: Reconstruction
     channel_name: ChannelName
     feature_key: FeatureKey
+    envelopes: HeardEnvelopes
 
     @property
     def history_action(self) -> HistoryAction:

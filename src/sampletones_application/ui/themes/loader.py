@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Final, List, Optional, Set
+from typing import Dict, List
 
 from sampletones_application.ui.themes.dpg_constants import (
     CATEGORY_MAP,
@@ -16,11 +16,6 @@ from sampletones_application.ui.themes.items import (
     ThemeEntryKey,
     ThemeItems,
 )
-from sampletones_application.ui.themes.spec import (
-    ThemeColorEntrySpec,
-    ThemeEntrySpec,
-    ThemeSpec,
-)
 from sampletones_application.ui.themes.style import (
     ThemeColor,
     ThemeParameter,
@@ -28,73 +23,41 @@ from sampletones_application.ui.themes.style import (
     ThemeValue,
 )
 from sampletones_application.ui.themes.theme import Theme
-from sampletones_application.utils.palette.colors.written import PALETTE_SOURCE_CONTEXT_KEY
 from sampletones_application.utils.palette.source import PaletteSource
-from sampletones_shared.paths.extensions import EXT_FILE_YAML
-from sampletones_shared.utils.serialization import load_yaml
-
-_BASE_THEME_NAME: Final[str] = "default"
+from sampletones_application.utils.theme.catalog import ThemeSpecCatalog
+from sampletones_application.utils.theme.spec import (
+    ThemeColorEntrySpec,
+    ThemeEntrySpec,
+    ThemeSpec,
+)
 
 
 class ThemeLoader:
     """Resolves the theme YAML directory into complete runtime themes.
 
-    Each spec composes on top of its parent (the base theme by default), and every
-    enabled-state entry gains a disabled-state counterpart, so a loaded theme fully
-    describes both item states and stays authoritative wherever it is bound.
+    The specs come from :class:`ThemeSpecCatalog`, parents first. Each spec composes on top of
+    its parent (the base theme by default), and every enabled-state entry gains a disabled-state
+    counterpart, so a loaded theme fully describes both item states and stays authoritative
+    wherever it is bound.
     """
 
     def __init__(self, theme_directory: Path, palette_source: PaletteSource) -> None:
         self._directory = theme_directory
-        self._context: Dict[str, PaletteSource] = {PALETTE_SOURCE_CONTEXT_KEY: palette_source}
+        self._palette_source = palette_source
 
     def load_all(self) -> List[Theme]:
-        specs = self._load_specs()
-        name_index = {spec.name: spec for spec in specs}
-        self._check_for_cycles(name_index)
-        ordered = self._topological_sort(specs, name_index)
-
+        catalog = ThemeSpecCatalog.load(self._directory, self._palette_source)
         resolved: Dict[str, ThemeEntries] = {}
         themes: List[Theme] = []
-        for spec in ordered:
+        for spec in catalog.ordered:
             entries = self._spec_to_entries(spec)
-            parent = self._effective_parent(spec)
+            parent = spec.parent
             merged = {**resolved[parent], **entries} if parent is not None else entries
             resolved[spec.name] = merged
             items = self._entries_to_items(self._mirror_disabled_entries(merged))
             themes.append(Theme(tag=spec.tag, items=items))
 
         return themes
-
-    def _load_specs(self) -> List[ThemeSpec]:
-        specs: List[ThemeSpec] = []
-        for path in sorted(self._directory.rglob(f"*{EXT_FILE_YAML}")):
-            raw = load_yaml(path)
-            if not isinstance(raw, dict):
-                raise TypeError(f"Theme file {path} must contain a mapping, got {type(raw)}")
-
-            specs.append(ThemeSpec.model_validate(raw, context=self._context))
-
-        return specs
-
-    @staticmethod
-    def _effective_parent(spec: ThemeSpec) -> Optional[str]:
-        """The theme a spec composes on top of.
-
-        A spec inherits from its explicit ``extends`` when given, and otherwise from
-        the base theme, so every theme carries the shared base's complete component
-        set and states only its own overrides. The base theme itself stands alone.
-        This makes inheritance the default: a bound item theme always resolves to
-        the global base plus its overrides, so every color it omits keeps the
-        base's value.
-        """
-        if spec.extends is not None:
-            return spec.extends
-
-        if spec.name != _BASE_THEME_NAME:
-            return _BASE_THEME_NAME
-
-        return None
 
     @staticmethod
     def _resolve_color_key(key: str, category: str) -> int:
@@ -238,46 +201,3 @@ class ThemeLoader:
 
         ordered = sorted(grouped, key=lambda parameter: parameter.item_type != EVERY_ITEM_TYPE)
         return ThemeItems(items={parameter: grouped[parameter] for parameter in ordered})
-
-    @classmethod
-    def _check_for_cycles(cls, name_index: Dict[str, ThemeSpec]) -> None:
-        for name in name_index:
-            visited: Set[str] = set()
-            current: Optional[str] = name
-            while current is not None:
-                if current in visited:
-                    raise ValueError(f"Cycle detected in theme inheritance: {name!r} → {current!r}")
-
-                visited.add(current)
-                spec = name_index.get(current)
-                if spec is None:
-                    raise ValueError(
-                        f"Theme {name!r} extends unknown parent {current!r}. Known themes: {sorted(name_index)}"
-                    )
-
-                current = cls._effective_parent(spec)
-
-    @classmethod
-    def _topological_sort(
-        cls,
-        specs: List[ThemeSpec],
-        name_index: Dict[str, ThemeSpec],
-    ) -> List[ThemeSpec]:
-        ordered: List[ThemeSpec] = []
-        visited: Set[str] = set()
-
-        def visit(spec: ThemeSpec) -> None:
-            if spec.name in visited:
-                return
-
-            parent = cls._effective_parent(spec)
-            if parent is not None:
-                visit(name_index[parent])
-
-            visited.add(spec.name)
-            ordered.append(spec)
-
-        for spec in specs:
-            visit(spec)
-
-        return ordered

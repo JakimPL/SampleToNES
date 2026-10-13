@@ -17,10 +17,11 @@ The **Instructions** tab is optional. Use it to explore single [instructions](..
 
 ## The menus
 
-Two menu items are easy to miss:
+A few menu items are easy to miss:
 
 - **View ▸ Show advanced settings** adds the **Advanced settings** card to the **Main** tab. See [Configuration](configuration.md).
 - **Playback ▸ Audio settings...** sets the device you listen through. Its sample rate is separate from **Sample rate** on the **Main** tab, which sets how audio is converted.
+- **Help ▸ Documentation** opens this guide in your web browser, from a copy that comes with the app.
 
 Project properties belong to a project and are covered in the [sequencer guide](sequencer.md).
 

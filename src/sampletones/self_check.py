@@ -14,6 +14,7 @@ CHECK_FAILURES: Final[Tuple[Type[Exception], ...]] = (
     KeyError,
     TypeError,
     ValueError,
+    RuntimeError,
     SystemError,
     SampleToNESError,
 )
@@ -148,6 +149,41 @@ def _check_file_dialog_backend() -> str:
     return type(select_file_dialog_backend()).__name__
 
 
+def _check_array_backend() -> str:
+    """Names the backend the build computes on, so a GPU build that lost CuPy says so in its inventory."""
+    from sampletones_shared.array import describe_array_backend
+
+    return describe_array_backend()
+
+
+def _check_documentation() -> str:
+    """Reads the documentation the build ships, whose stamp has to match the pages beside it.
+
+    The wheel's build hook writes the pages and seals them, so a build carrying no pages, or pages
+    other than the ones sealed, names that here.
+    """
+    from sampletones_shared.documentation.site import DocumentationSite
+    from sampletones_shared.exceptions import DocumentationUnavailableError
+
+    site = DocumentationSite.shipped()
+    stamp = site.read_stamp()
+    if stamp is None or not site.index.is_file():
+        raise DocumentationUnavailableError(f"No documentation site lies in {site.directory}")
+
+    if stamp != site.content_stamp():
+        raise DocumentationUnavailableError(f"The documentation in {site.directory} differs from its stamp {stamp}")
+
+    pages = sum(1 for _ in site.directory.rglob(f"*{site.index.suffix}"))
+    return f"{pages} pages, stamp {stamp}"
+
+
+def _check_gpu_backend() -> str:
+    """Computes on the graphics card, which is what a GPU build is held to."""
+    from sampletones_shared.array import exercise_gpu
+
+    return exercise_gpu()
+
+
 CHECKS: Final[Tuple[SelfCheck, ...]] = (
     SelfCheck(name="application import", run=_check_application_import),
     SelfCheck(name="deployment config", run=_check_deployment_config),
@@ -159,17 +195,42 @@ CHECKS: Final[Tuple[SelfCheck, ...]] = (
     SelfCheck(name="resources", run=_check_resources),
     SelfCheck(name="export backends", run=_check_export_backends),
     SelfCheck(name="file dialog backend", run=_check_file_dialog_backend),
+    SelfCheck(name="array backend", run=_check_array_backend),
 )
+DOCUMENTATION_CHECK: Final[SelfCheck] = SelfCheck(name="documentation", run=_check_documentation)
+GPU_CHECK: Final[SelfCheck] = SelfCheck(name="gpu backend", run=_check_gpu_backend)
 
 
-def run_self_check() -> int:
+def checks_for(
+    *,
+    gpu: bool,
+    documentation: bool,
+) -> Tuple[SelfCheck, ...]:
+    """The checks a build runs: every startup check, the documentation check where the build was
+    installed from a wheel, and the GPU check last where the build carries GPU support."""
+    held = ((documentation, DOCUMENTATION_CHECK), (gpu, GPU_CHECK))
+    return (*CHECKS, *(check for wanted, check in held if wanted))
+
+
+def run_self_check(
+    *,
+    gpu: bool,
+    documentation: bool,
+) -> int:
     """Runs every startup check in order and returns the process exit status.
 
     Prints one line per check so a passing run doubles as an inventory of what the build
     carries, and stops at the first failure with the offending check named on the standard
-    error stream. A packaged build runs this to prove it starts before it is shipped.
+    error stream. A packaged build runs this to prove it starts before it is shipped, with
+    ``documentation`` set to prove it carries its pages, and a GPU bundle runs it with ``gpu`` set
+    to prove it computes on the graphics card.
+
+    Args:
+        gpu: Whether the build is held to the GPU backend.
+        documentation: Whether the build is held to carrying its documentation.
     """
-    for check in CHECKS:
+    checks = checks_for(gpu=gpu, documentation=documentation)
+    for check in checks:
         try:
             detail = check.run()
         except CHECK_FAILURES as exception:
@@ -181,5 +242,5 @@ def run_self_check() -> int:
 
         print(f"{SUCCESS_PREFIX} {check.name}: {detail}")
 
-    print(f"{SUCCESS_PREFIX} {len(CHECKS)} checks passed")
+    print(f"{SUCCESS_PREFIX} {len(checks)} checks passed")
     return SUCCESS_STATUS

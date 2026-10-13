@@ -29,10 +29,14 @@ LATE_RETUNE: Final[str] = (
 
 @contextmanager
 def held_reports(session: HistorySession) -> Iterator[HeldQueue]:
-    """Holds what the workers report until the case drains it, each gesture meanwhile landing what it does at once."""
+    """Holds what the workers report until the case drains it, each gesture meanwhile landing what it does at once.
+
+    What the drain hands the workers lands before the case goes on, so the next gesture meets no work on its way.
+    """
     queue = HeldQueue()
     with patch.object(CallbackQueue, "add", queue.add), session.audit.settling(immediately):
         yield queue
+        queue.settle()
 
 
 def _edit_lead(

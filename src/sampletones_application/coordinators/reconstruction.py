@@ -38,6 +38,7 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
+from sampletones_application.view_model.reconstruction.work import Work
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
@@ -99,9 +100,11 @@ class ReconstructionCoordinator:
 
         self._reconstruction_manager.session.on_state_changed = self._on_state_changed
         self._rewrites.on_edit = self.apply_edit
+        self._rewrites.on_heard_rendered = self._show_listening
         self._rewrites.on_dropped = self._redraw_open_document
         self._rewrites.on_failed = self._report_rebuild_failure
-        self._rewrites.on_busy_changed = self._set_reconstruction_dimmed
+        self._rewrites.on_reading_failed = self._abandon_showing
+        self._rewrites.on_work_changed = self._show_work
         self._reconstruction_manager.set_callbacks(
             on_reconstruction_loaded=self.on_reconstruction_loaded,
             on_reconstruction_closed=self._on_closed,
@@ -419,7 +422,12 @@ class ReconstructionCoordinator:
         the tab shows it.
         """
         self._on_reconstruction_updated_callback(edit)
-        self._reconstruction_manager.apply_edited(edit.reconstruction)
+        match edit:
+            case ChannelEdit():
+                self._reconstruction_manager.apply_edited(edit.reconstruction, edit.envelopes)
+            case Retune() | StemRemoval():
+                self._reconstruction_manager.apply_edited(edit.reconstruction, None)
+
         self._show_edit(edit)
         self._reconstruction_manager.mark_updated()
 
@@ -552,7 +560,7 @@ class ReconstructionCoordinator:
 
         retimed = reconstruction.config.nes_frequency != open_reconstruction.config.nes_frequency
         self._drop_pending()
-        self._reconstruction_manager.apply_edited(reconstruction)
+        self._reconstruction_manager.apply_edited(reconstruction, None)
         self._tab.redraw_reconstruction(refit_waveform=retimed)
 
     def _redraw_open_document(self) -> None:
@@ -560,20 +568,34 @@ class ReconstructionCoordinator:
         if self.is_loaded():
             self._tab.redraw_reconstruction(refit_waveform=False)
 
+    def _show_listening(self, envelopes_changed: bool) -> None:
+        """Shows what the reader hears once the worker has rendered it for the open document.
+
+        Args:
+            envelopes_changed: Whether the rendering brought envelopes the instruments panel has
+                yet to draw.
+        """
+        self._tab.redraw_listening(envelopes_changed=envelopes_changed)
+
     def _report_rebuild_failure(self, exception: Exception) -> None:
         logger.error_with_traceback(exception, "Regeneration failed")
         self._dialogs.show_error(exception)
 
-    def _set_reconstruction_dimmed(self, dimmed: bool) -> None:
-        """Fades the reconstruction waveform while the open document is being rewritten.
+    def _abandon_showing(self) -> None:
+        """Lets the tab go of what it owes the reader, where the listening that would have paid it failed."""
+        self._tab.abandon_showing()
 
-        The dim follows the rewrites' busy span, so a continuous edit stream keeps the waveform
-        faded until the last step lands, and it restores once nothing runs or waits.
+    def _show_work(self, work: Optional[Work]) -> None:
+        """Fades the reconstruction waveform under the words naming what the line is busy with.
+
+        The fade follows the rewrites' busy span, so a continuous edit stream keeps the waveform
+        faded until the last step lands, and it restores once nothing runs or waits. The words
+        follow the work, so a hand-over from an edit to a reading of the sound changes them.
         """
         if self._reconstructions_tab is None:
             return
 
-        self._reconstructions_tab.set_reconstruction_dimmed(dimmed)
+        self._reconstructions_tab.show_work(work)
 
     def _on_state_changed(self) -> None:
         self._on_session_state_changed_callback()

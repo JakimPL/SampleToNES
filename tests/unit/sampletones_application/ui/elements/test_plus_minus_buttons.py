@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, cast
 from unittest.mock import MagicMock
 
 import dearpygui.dearpygui as dpg
@@ -86,6 +86,30 @@ class TestStep:
         buttons.on_decrement = lambda: calls.append("decrement")
         buttons._step(-1)
         assert calls == ["decrement"]
+
+
+class TestHoldingBothButtons:
+    """A pair not the reader's to press holds both buttons and ends a hold under way."""
+
+    def test_disabling_holds_both_buttons_and_ends_the_hold(
+        self,
+        buttons: GUIPlusMinusButtons,
+        pointer: Pointer,
+    ) -> None:
+        pointer.on_increment = True
+        buttons._on_increment_pressed()
+
+        buttons.set_enabled(False)
+
+        cast(MagicMock, buttons._increment_button).set_enabled.assert_called_once_with(False)
+        cast(MagicMock, buttons._decrement_button).set_enabled.assert_called_once_with(False)
+        assert _frame(buttons, 2 * FIRST_REPEAT) is None
+
+    def test_enabling_frees_both_buttons(self, buttons: GUIPlusMinusButtons) -> None:
+        buttons.set_enabled(True)
+
+        cast(MagicMock, buttons._increment_button).set_enabled.assert_called_once_with(True)
+        cast(MagicMock, buttons._decrement_button).set_enabled.assert_called_once_with(True)
 
 
 class TestAHoldBelongsToTheButtonItWentDownOn:

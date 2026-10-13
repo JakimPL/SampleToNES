@@ -1,5 +1,4 @@
-from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 from sampletones_application.services.base import ServiceBase
 from sampletones_application.services.conversion.result import (
@@ -19,7 +18,7 @@ from sampletones_application.services.result import (
 from sampletones_core.configs import Config
 from sampletones_core.parallelization import ETAEstimator, TaskProgress, TaskStatus
 from sampletones_core.parallelization.task import TaskStep
-from sampletones_core.reconstructions.converter import ConversionPlan, ReconstructionConverter
+from sampletones_core.reconstructions.converter import ConversionOutcome, ConversionPlan, ReconstructionConverter
 from sampletones_core.reconstructions.stage import ReconstructionStage
 from sampletones_shared.logger import logger
 
@@ -90,7 +89,7 @@ class ConversionService(ServiceBase[ConversionResult]):
     ) -> None:
         match task_status:
             case TaskStatus.RUNNING | TaskStatus.CANCELING:
-                self._emit(self._reading(task_progress))
+                self._report(self._reading(task_progress))
             case _:
                 pass
 
@@ -156,8 +155,8 @@ class ConversionService(ServiceBase[ConversionResult]):
             total=step.total,
         )
 
-    def _on_completed(self, written: Tuple[Path, ...]) -> None:
-        self._emit(ServiceSuccess(value=written))
+    def _on_completed(self, outcome: ConversionOutcome) -> None:
+        self._emit(ServiceSuccess(value=outcome))
 
     def _on_error(self, exception: Exception) -> None:
         self._emit(ServiceError(exception=exception))
@@ -170,4 +169,4 @@ class ConversionService(ServiceBase[ConversionResult]):
         _status: TaskStatus,
         progress: TaskProgress,
     ) -> None:
-        self._emit(ServiceIntermediate(data=progress))
+        self._report(ServiceIntermediate(data=progress))

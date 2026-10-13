@@ -19,6 +19,24 @@ budget (`scheduling.queue_budget_seconds`), so a large backlog spreads across fr
 continues. Every background result reaches UI state this way. Applying one to UI state directly from the
 worker thread is forbidden.
 
+A report of where a run stands crosses through `LatestDelivery` (`utils/callbacks/latest.py`). One delivery
+waits in the queue at a time, and the drain that reaches it hands over the newest report filed, so a burst
+of reports costs one handling. The delivery keeps the place its first report took, which keeps a result
+posted after that report, such as the run's outcome, behind it. [Progress](../progress.md) gives the
+principle.
+
+A result carries what the landing installs. The regeneration worker renders every sound the
+Reconstructions tab draws or plays: each channel's audio, the mix of what the reader hears, the mix of the
+recordings heard, which the waveform draws as the original, and the envelopes each channel exports for the
+recordings heard. It hands them back inside its result. The landing keeps the audio in the render cache
+and installs the envelopes, on the render thread. A reading the cache leaves unanswered is asked of the
+same worker and lands the same way. What a worker produces for the interface therefore reaches what the
+interface reads through the queue alone, and the render thread computes no sample while the worker
+renders. A document previewed elsewhere reads the same cache and asks a worker of its own for what the
+cache lacks (`DocumentPreviews` in `logic/shared/previews.py`), and sounds at the landing; a
+reconstruction file a browser tree plays is read from disk and previewed the same way. The render cache
+keeps what the landings adopt, so its writers are the landings, every one of them on the render thread.
+
 A logic object hearing a worker's report, such as a library generation or the audio device's position,
 posts its own handler to the queue the same way. The logic layer reaches the queue, and `utils/gui`
 belongs to the visual layers.

@@ -54,7 +54,7 @@ from sampletones_application.logic.sequencer.tracker import (
 )
 from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.logic.shared.file_playback import FilePlayback
-from sampletones_application.logic.shared.renders import RenderCache
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.sequencer import SequencerTabParameters
 from sampletones_application.services.song_player.service import SongPlayerService
@@ -119,7 +119,7 @@ class SequencerTabCoordinator:
         browser_manager: BrowserManager,
         project_controller: ProjectController,
         history: HistoryManager,
-        renders: RenderCache,
+        previews: DocumentPreviews,
         original_audio_locator: OriginalAudioLocator,
         instrument_exports: InstrumentExportCoordinator,
         *,
@@ -162,7 +162,7 @@ class SequencerTabCoordinator:
             browser_manager,
             project_controller,
         )
-        self._file_playback: FilePlayback = FilePlayback(audio_device_manager)
+        self._file_playback: FilePlayback = FilePlayback(audio_device_manager, previews)
         self._sequencer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
             self._file_playback,
@@ -195,7 +195,7 @@ class SequencerTabCoordinator:
             session_manager,
             audio_device_manager,
             scheduling=layout.scheduling,
-            renders=renders,
+            previews=previews,
         )
         self._sequencer_channels_logic: SequencerChannelsLogic = SequencerChannelsLogic()
         self._song_player_logic: SongPlayerLogic = SongPlayerLogic(
@@ -217,6 +217,7 @@ class SequencerTabCoordinator:
         self._guarded_player = GuardedPlayer(
             self._song_player_logic,
             failures=playback_failures,
+            previews=previews,
         )
         self._sequencer_tracker_panel: GUISequencerTrackerPanel = GUISequencerTrackerPanel(
             self._sequencer_tracker_logic.settings,

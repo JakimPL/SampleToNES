@@ -1,21 +1,19 @@
 from dataclasses import dataclass, replace
 from functools import cached_property
 from pathlib import Path
-from typing import Dict, List, Optional, Self, Tuple
+from typing import Dict, Optional, Self, Tuple
 
 import numpy as np
 
 from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.view_model.shared.waveform_data import WaveformData
-from sampletones_core.audio import mix
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.recordings import load_recordings
 from sampletones_core.reconstructions.reconstruction.renders import rendered_length
-from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
-from sampletones_core.reconstructions.reconstruction.stems.filter import (
-    filter_approximations,
+from sampletones_core.reconstructions.reconstruction.stems.hearing import (
+    HeardRenders,
+    Hearing,
 )
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_shared.logger import logger
@@ -23,6 +21,17 @@ from sampletones_shared.logger import logger
 
 @dataclass(frozen=True)
 class ReconstructionData:
+    """The open document beside the recordings read for it.
+
+    Attributes:
+        name: The name the document is shown under.
+        config: The configuration the document was converted at.
+        reconstruction: The document itself.
+        stem_audios: The loaded recordings, one per entry in entry order, or none at all; each is
+            read-only, since a worker mixes them while the render thread holds them.
+        filepath: The file the document lives in, ``None`` for one held in memory.
+    """
+
     name: str
     config: Config
     reconstruction: Reconstruction
@@ -48,7 +57,7 @@ class ReconstructionData:
         caller (the project sample's name).
 
         A document whose file was removed in the Browser is wrapped the same way, under the name
-        it had. It keeps the locations of its recordings, so its original audio loads again from them.
+        it had. It keeps the locations of its recordings, so they load again from them.
         """
         return cls._assemble(
             reconstruction,
@@ -63,7 +72,7 @@ class ReconstructionData:
         document. The copy holds a reconstruction object of its own, which shares every part with
         the one it was copied from, so a document that was a project sample becomes a standalone
         entity: later edits reach only the saved file, leaving the project's sample unchanged. The
-        copy shares the loaded recordings, so the original audio carries over without a reload.
+        copy shares the loaded recordings, so the mix of them the cache keeps serves it too.
         """
         reconstruction = self.reconstruction.model_copy()
         return replace(
@@ -137,11 +146,13 @@ class ReconstructionData:
     def _load_stem_audios(
         reconstruction: Reconstruction,
     ) -> Tuple[np.ndarray, ...]:
-        """Loads the recorded source, one recording per path, in path order.
+        """Loads the recorded source, one recording per path, in path order, each kept read-only.
 
         Every recording is read at the level its conversion read it at, which the document
         records, so one heard on its own sounds at the level it holds in the mix, and it keeps
-        that level once another recording leaves the document.
+        that level once another recording leaves the document. A worker mixes the recordings
+        heard while the render thread holds them, so each is kept read-only and what both read
+        stands as it was loaded.
 
         A reconstruction detached from its origin (a project sample) records no source
         path, and a file-backed reconstruction may point at audio absent or unreadable on
@@ -150,122 +161,76 @@ class ReconstructionData:
         own in playback and the display.
         """
         try:
-            return load_recordings(reconstruction)
+            recordings = load_recordings(reconstruction)
         except (FileNotFoundError, IsADirectoryError, PermissionError, OSError) as error:
             logger.warning(f"Could not load the original audio: {error}. The original is unavailable")
             return ()
 
-    @cached_property
-    def original_audio(self) -> Optional[np.ndarray]:
-        """The recorded source mixed into one waveform, ``None`` while no source loads."""
-        return mix(list(self.stem_audios)) if self.stem_audios else None
+        for recording in recordings:
+            recording.setflags(write=False)
+
+        return recordings
 
     @cached_property
-    def _stem_recording_indexes(self) -> Dict[int, int]:
-        """Maps each stem id to the index of its recording in ``stem_audios``.
-
-        The entries' ids map to their recordings in entry order, and source audio absent
-        or unreadable maps nothing.
+    def recordings_by_stem(self) -> Dict[int, np.ndarray]:
+        """The loaded recordings by the id of the entry each was loaded for, in record order, or none where
+        the recordings are absent or unreadable.
         """
         if not self.stem_audios:
             return {}
 
-        stems_data = self.reconstruction.stems_data
-        return {entry.id: index for index, entry in enumerate(stems_data.config.entries)}
+        entries = self.reconstruction.stems_data.config.entries
+        return {entry.id: self.stem_audios[index] for index, entry in enumerate(entries)}
 
-    def original_mix_for(self, selection: StemSelection) -> Optional[np.ndarray]:
-        """The original audio of the stems heard anywhere.
-
-        Returns:
-            Optional[np.ndarray]: The mix of the recordings heard, silence where the recordings
-            loaded and none of them is heard, and ``None`` where no recording loaded, which leaves
-            the approximation on its own in playback and the display.
-        """
-        if not self.stem_audios:
-            return None
-
-        selected_stem_ids = selection.any_channel()
-        indexes = self._stem_recording_indexes
-        recordings = [self.stem_audios[index] for stem_id, index in indexes.items() if stem_id in selected_stem_ids]
-        if not recordings:
-            return np.zeros(rendered_length(self.reconstruction), dtype=np.float32)
-
-        return mix(recordings)
+    def recordings_heard(self, selection: StemSelection) -> Tuple[np.ndarray, ...]:
+        """The loaded recordings ``selection`` hears anywhere, in record order."""
+        heard = selection.any_channel()
+        return tuple(recording for stem_id, recording in self.recordings_by_stem.items() if stem_id in heard)
 
     def waveform_data(
         self,
         renders: RenderCache,
-        selection: Optional[StemSelection] = None,
-    ) -> WaveformData:
+        hearing: Hearing,
+    ) -> Optional[WaveformData]:
         """Projects the slice of this data the waveform display renders, the audio read from ``renders``.
 
-        With a stems selection, the projection carries the frames each channel's selected
-        stems own and the mix of the recordings heard anywhere, so the waveform answers
-        exactly what plays.
+        The projection carries what ``hearing`` sounds of the document and the mix of the
+        recordings heard anywhere, both read from what the cache keeps, so the reading computes
+        no sample. A document whose recordings loaded and none of which is heard draws a silent
+        original, answered here, and one with no recording loaded draws none.
+
+        Returns:
+            Optional[WaveformData]: The projection, or ``None`` where the cache keeps no audio for
+            ``hearing`` yet or no mix of the recordings heard, which is what a worker is then
+            asked to render.
         """
-        if selection is None:
-            return self._unfiltered_waveform(renders)
+        heard = renders.reading(self.reconstruction, hearing)
+        if heard is None:
+            return None
 
-        return self._filtered_waveform(
-            renders,
-            selection,
-            self.reconstruction.stems_data,
-        )
+        if not self.stem_audios:
+            return self._waveform_data(None, heard)
 
-    def _unfiltered_waveform(self, renders: RenderCache) -> WaveformData:
-        """The whole document: every channel's rendered audio and the full original."""
-        return self._waveform_data(
-            self.original_audio,
-            renders.channels(self.reconstruction),
-            renders.mix(self.reconstruction),
-        )
+        recordings = self.recordings_heard(hearing.selection)
+        if not recordings:
+            return self._waveform_data(np.zeros(rendered_length(self.reconstruction), dtype=np.float32), heard)
 
-    def _filtered_waveform(
-        self,
-        renders: RenderCache,
-        selection: StemSelection,
-        stems_data: StemsData,
-    ) -> WaveformData:
-        """The selected stems' frames and their original mix, in the unfiltered shape."""
-        approximations = filter_approximations(
-            stems_data,
-            renders.channels(self.reconstruction),
-            selection,
-            self.reconstruction.config.frame_length,
-        )
-        return self._waveform_data(
-            self.original_mix_for(selection),
-            approximations,
-            mix(list(approximations.values())),
-        )
+        original = renders.original(recordings, self.config)
+        if original is None:
+            return None
+
+        return self._waveform_data(original, heard)
 
     def _waveform_data(
         self,
         original_audio: Optional[np.ndarray],
-        approximations: Dict[ChannelName, np.ndarray],
-        approximation: np.ndarray,
+        heard: HeardRenders,
     ) -> WaveformData:
         return WaveformData(
             original_audio=original_audio,
-            approximation=approximation,
-            approximations=approximations,
+            approximation=heard.mix,
+            playing=heard.playing,
             coefficient=self.reconstruction.coefficient,
             frame_length=self.reconstruction.config.frame_length,
             sample_rate=self.reconstruction.config.sample_rate,
         )
-
-    def get_partials(
-        self,
-        renders: RenderCache,
-        channel_names: List[ChannelName],
-    ) -> np.ndarray:
-        return self.waveform_data(renders).partials(channel_names)
-
-    def partials_for(
-        self,
-        renders: RenderCache,
-        channel_names: List[ChannelName],
-        selection: StemSelection,
-    ) -> np.ndarray:
-        """Sums the selected channels with the unselected stems' frames silenced."""
-        return self.waveform_data(renders, selection).partials(channel_names)

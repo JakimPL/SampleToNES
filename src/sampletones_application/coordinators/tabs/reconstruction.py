@@ -39,12 +39,14 @@ from sampletones_application.logic.reconstruction.reconstruction import (
     ReconstructionPanelLogic,
 )
 from sampletones_application.logic.reconstruction.rewrites.steps import (
+    ListeningChange,
     RateChange,
     Rewrite,
     StemRemovalRequest,
 )
 from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.player import PlayerLogic
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.reconstruction import (
     ReconstructionTabParameters,
@@ -103,6 +105,7 @@ from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRoute
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
+from sampletones_application.view_model.reconstruction.work import Work
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_core.audio import AudioDeviceManager
@@ -151,6 +154,7 @@ class ReconstructionTabCoordinator:
         instrument_exports: InstrumentExportCoordinator,
         history: HistoryManager,
         instrument_edit_detail: InstrumentEditDetail,
+        previews: DocumentPreviews,
         *,
         key_router: KeyRouter,
         tab_active: ActivePredicate,
@@ -199,7 +203,7 @@ class ReconstructionTabCoordinator:
             config_manager,
             browser_manager,
         )
-        self._file_playback: FilePlayback = FilePlayback(audio_device_manager)
+        self._file_playback: FilePlayback = FilePlayback(audio_device_manager, previews)
         self._browser_tree_logic: TreeLogic = TreeLogic(
             session_manager,
             self._file_playback,
@@ -231,6 +235,7 @@ class ReconstructionTabCoordinator:
         self._guarded_player = GuardedPlayer(
             self._reconstruction_player_logic,
             failures=playback_failures,
+            previews=previews,
         )
         self._reconstruction_audio_panel: GUIReconstructionAudioPanel = GUIReconstructionAudioPanel(
             path_colors=layout.path_colors,
@@ -305,18 +310,20 @@ class ReconstructionTabCoordinator:
         self._reconstruction_panel_logic.on_view_changed = self._update_reconstruction_view
         self._reconstruction_panel_logic.on_stems_view_changed = self._reconstruction_stems_panel.update_view
         self._reconstruction_panel_logic.on_ownership_changed = self._reconstruction_plot_panel.update_ownership
-        self._reconstruction_panel_logic.on_heard_changed = self._reconstruction_instruments_logic.update_display
+        self._reconstruction_panel_logic.on_listening_changed = self._reconstruction_instruments_logic.follow_listening
         self._reconstruction_panel_logic.on_audio_data_changed = self._on_audio_data_changed
         self._reconstruction_panel_logic.on_waveform_load_changed = self._reconstruction_plot_panel.load_waveform_data
         self._reconstruction_panel_logic.on_waveform_update_changed = (
             self._reconstruction_plot_panel.update_waveform_data
         )
         self._reconstruction_panel_logic.on_waveform_cleared = self._reconstruction_plot_panel.clear_waveform
+        self._reconstruction_panel_logic.on_renders_wanted = self._request_listening
         self._reconstruction_panel_logic.on_waveform_source_changed = (
             self._reconstruction_plot_panel.set_waveform_top_source
         )
         self._reconstruction_panel_logic.on_open_export_instruments_dialog = self._open_export_instruments_dialog
         self._reconstruction_panel_logic.on_open_export_wav_dialog = self._open_export_wav_dialog
+        self._reconstruction_panel_logic.on_export_dropped = self._report_dropped_export
         self._reconstruction_panel_logic.on_locate_audio_not_found = lambda path: dialogs.show_file_not_found(
             path,
             language_manager["reconstructions.reconstruction.message.locate_audio_failed"],
@@ -389,6 +396,11 @@ class ReconstructionTabCoordinator:
                 self._dialogs.show_error(exception, messages.instrument_failed)
             case ExportError(kind=ExportKind.SAMPLE, exception=exception):
                 self._dialogs.show_error(exception, messages.instruments_failed)
+
+    def _report_dropped_export(self, filepath: Path) -> None:
+        """Reports an export that waited for a sound the worker never rendered, in the WAV dialog's words."""
+        messages = self._export_messages
+        self._dialogs.show_message_with_path(messages.wav_title, messages.wav_dropped, filepath)
 
     def _export_message(
         self,
@@ -731,6 +743,10 @@ class ReconstructionTabCoordinator:
         """Asks for the open document to be re-timed to the rate the reader typed."""
         self._on_rewrite_requested(RateChange(nes_frequency=nes_frequency))
 
+    def _request_listening(self) -> None:
+        """Asks for what the reader hears to be rendered, where the screen holds no audio for it yet."""
+        self._on_rewrite_requested(ListeningChange())
+
     def _request_remove_directory(self, directory: Path) -> None:
         self._dialogs.show_confirmation(
             tag=TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_DIRECTORY_CONFIRMATION,
@@ -806,8 +822,23 @@ class ReconstructionTabCoordinator:
         self._reconstruction_panel_logic.update_reconstruction(refit_waveform=refit_waveform)
         self._reconstruction_instruments_logic.update_display()
 
-    def set_reconstruction_dimmed(self, dimmed: bool) -> None:
-        self._reconstruction_plot_panel.set_reconstruction_dimmed(dimmed)
+    def abandon_showing(self) -> None:
+        """Lets the panel go of what it owes the reader, where the worker will never render it."""
+        self._reconstruction_panel_logic.abandon_showing()
+
+    def redraw_listening(self, *, envelopes_changed: bool) -> None:
+        """Shows what the reader hears once the worker has rendered it, where a showing waited for it.
+
+        A box on the stems card changes the part the instruments panel draws, so the panel is
+        redrawn when the rendering brought envelopes for a new choice; a box above the waveform
+        leaves them as they were.
+        """
+        self._reconstruction_panel_logic.redraw_listening()
+        if envelopes_changed:
+            self._reconstruction_instruments_logic.update_display()
+
+    def show_work(self, work: Optional[Work]) -> None:
+        self._reconstruction_plot_panel.show_work(work)
 
     def toggle_channel(self, channel: ChannelName) -> None:
         """Switches one channel's slice in and out of the waveform and of what plays."""
@@ -827,7 +858,10 @@ class ReconstructionTabCoordinator:
         """Writes the loaded reconstruction's slices in ``export_format``, asking first for what the
         format leaves open: its own setup where it has one, and the destination alone otherwise."""
         if export_format in self._format_setups:
-            self._format_setups[export_format].open_sample(self._reconstruction_panel_logic.sample_request())
+            request = self._reconstruction_panel_logic.sample_request()
+            if request is not None:
+                self._format_setups[export_format].open_sample(request)
+
             return
 
         self._reconstruction_panel_logic.request_export_instruments_dialog(export_format)

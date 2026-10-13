@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict, Final, Mapping, Optional, Sequence
 
 from bootstrap.platforms.bundling import Bundling
-from bootstrap.platforms.unix import unix_interpreter
+from bootstrap.platforms.unix import unix_interpreter, unix_site_packages
 
 DARWIN: Final[str] = "Darwin"
 HOMEBREW: Final[str] = "brew"
@@ -64,6 +64,9 @@ class MacOS:
 
     def interpreter(self, environment: Path) -> Path:
         return unix_interpreter(environment)
+
+    def site_packages(self, environment: Path) -> Path:
+        return unix_site_packages(environment)
 
     def bundling(self) -> Bundling:
         raise SystemExit(NO_BUNDLE)

@@ -15,6 +15,7 @@ def session(tmp_path: Path) -> SessionManager:
         UserProfile(
             config=tmp_path / "config.yaml",
             state=tmp_path / "state.yaml",
+            documentation=tmp_path / "documentation",
         )
     )
 

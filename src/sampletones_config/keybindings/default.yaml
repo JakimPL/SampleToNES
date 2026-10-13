@@ -64,6 +64,7 @@ bindings:
   ToggleFullscreen: {combination: "F11"}
   ToggleAutoExpandFavoriteReconstructions: {combination: ~}
   ToggleAutoExpandFavoriteDirectories: {combination: ~}
+  Documentation: {combination: ~}
   AboutDialog: {combination: ~}
   NextTab: {combination: "Ctrl+PgDn", field_transparent: true}
   PreviousTab: {combination: "Ctrl+PgUp", field_transparent: true}

@@ -44,6 +44,11 @@ jobs:
       - name: Check the committed icons match the mark
         run: uv run pre-commit run icons --all-files --hook-stage pre-push --color always
 
+      - name: Check a built wheel carries its documentation
+        run: |
+          uv build --wheel --out-dir dist
+          uv run --isolated --no-project --with dist/sampletones-*.whl sampletones self-check --documentation
+
   tests:
     name: Tests (${{ matrix.os }}, py${{ matrix.python }})
     runs-on: ${{ matrix.os }}

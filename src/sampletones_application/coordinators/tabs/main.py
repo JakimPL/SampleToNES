@@ -3,7 +3,9 @@ from typing import List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.conversion import SkippedRecordingMessages
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.categories.skipped import PARAGRAPH_BREAK
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.output import OutputKind
@@ -17,6 +19,7 @@ from sampletones_application.logic.main.converter.run import ConversionSuccess
 from sampletones_application.logic.main.explorer_manager import ExplorerManager
 from sampletones_application.logic.main.sources.scan import FolderScan
 from sampletones_application.logic.shared.file_playback import FilePlayback
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.main import MainTabParameters
 from sampletones_application.services.conversion.service import ConversionService
@@ -105,6 +108,7 @@ class MainTabCoordinator:
         library_manager: InstructionsLibraryManager,
         conversion_service: ConversionService,
         hooks: MainTabHooks,
+        previews: DocumentPreviews,
         *,
         layout: MainTabParameters,
         language_manager: LanguageManager,
@@ -129,12 +133,14 @@ class MainTabCoordinator:
         self._side_panel_count: int
         self._config_height = layout.config_height
         self._ttl_progress = language_manager["main.converter.title.progress_dialog"]
+        self._skipped_recording_messages = SkippedRecordingMessages.build(language_manager)
         self._repaint_priority = layout.scheduling.priorities.gui_action
 
         self._build_explorer(
             config_manager,
             session_manager,
             audio_device_manager,
+            previews,
             layout=layout,
             language_manager=language_manager,
             status_bar=status_bar,
@@ -165,6 +171,7 @@ class MainTabCoordinator:
         config_manager: ConfigManager,
         session_manager: SessionManager,
         audio_device_manager: AudioDeviceManager,
+        previews: DocumentPreviews,
         *,
         layout: MainTabParameters,
         language_manager: LanguageManager,
@@ -176,7 +183,7 @@ class MainTabCoordinator:
             language_manager=language_manager,
             open_directories=session_manager.expanded_directories,
         )
-        self._file_playback: FilePlayback = FilePlayback(audio_device_manager)
+        self._file_playback: FilePlayback = FilePlayback(audio_device_manager, previews)
         self._folder_scan: FolderScan = FolderScan(FolderScanService(priority=self._repaint_priority))
         self._explorer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
@@ -515,7 +522,16 @@ class MainTabCoordinator:
         )
 
     def _on_conversion_success(self, success: ConversionSuccess) -> None:
+        """Offers what the run wrote, with the recordings it skipped named beneath the offer.
+
+        A run that skipped every recording it held has nothing to offer, so it reports the recordings
+        it skipped and the converter returns to idle.
+        """
         self._hooks.on_refresh_trees()
+        if success.skipped and not success.written:
+            self._report_nothing_written(success)
+            return
+
         if success.is_single:
             message = self._language_manager["main.converter.message.load_file_prompt"]
             ok_label = self._language_manager["main.converter.label.load_button"]
@@ -527,7 +543,7 @@ class MainTabCoordinator:
 
         self._dialogs.show_confirmation(
             TAG_MAIN_CONVERTER_DIALOG_LOAD,
-            message,
+            self._with_skipped(message, success),
             self._language_manager["main.converter.title.load_dialog"],
             self._converter_logic.handle_load_request,
             ok_label=ok_label,
@@ -535,6 +551,23 @@ class MainTabCoordinator:
             path=path,
             on_cancel=self._converter_logic.close,
         )
+
+    def _report_nothing_written(self, success: ConversionSuccess) -> None:
+        self._converter_logic.close()
+        self._dialogs.show_info(
+            self._converter_panel.tag,
+            self._with_skipped(self._language_manager["main.converter.message.nothing_written"], success),
+            self._language_manager["main.converter.title.nothing_written_dialog"],
+            modal=True,
+        )
+
+    def _with_skipped(self, message: str, success: ConversionSuccess) -> str:
+        """``message`` followed by the paragraph naming the recordings the run skipped, where it skipped any."""
+        notice = self._skipped_recording_messages.notice(success.skipped)
+        if notice is None:
+            return message
+
+        return PARAGRAPH_BREAK.join((message, notice))
 
     def _request_output(self, output: OutputKind) -> None:
         """Answers the output switch, asking which recordings to mix where the list overflows one.

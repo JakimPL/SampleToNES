@@ -1,28 +1,29 @@
 from dataclasses import dataclass
+from typing import Tuple
 
 import numpy as np
 
 from sampletones_application.ui.elements.graphs.layers.layer import Layer
 from sampletones_application.utils.palette.colors.base import BaseColor
-from sampletones_core.audio import minmax_decimate
 
 
 @dataclass(frozen=True)
 class ArrayLayer(Layer):
+    """A waveform drawn as a line, at the points the display reduced it to.
+
+    Attributes:
+        data: The waveform, one-dimensional.
+        name: The name the series is labeled by.
+        color: The color the line is drawn in.
+        points: The positions and values ``data`` was reduced to for the display.
+    """
+
     data: np.ndarray
     name: str
     color: BaseColor
-    max_display_points: int
+    points: Tuple[np.ndarray, np.ndarray]
 
     def __post_init__(self) -> None:
-        y_data = self.data.astype(np.float32)
-        length = y_data.shape[0]
-
-        assert y_data.ndim == 1, "ArrayLayer data must be a 1D numpy array"
-        if length > self.max_display_points:
-            x_data, y_data = minmax_decimate(y_data, num_buckets=self.max_display_points)
-        else:
-            x_data = np.arange(y_data.shape[0], dtype=np.float32)
-
+        x_data, y_data = self.points
         object.__setattr__(self, "x_data", x_data)
         object.__setattr__(self, "y_data", y_data)

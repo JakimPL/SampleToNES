@@ -9,10 +9,28 @@ SCREENS_DIRECTORY: Final[str] = "tests/screens"
 DISTRIBUTION: Final[str] = "bin"
 BUNDLES: Final[str] = "bundles"
 BUILD_ENVIRONMENT: Final[str] = ".venv-build"
+DOCUMENTATION_PACKAGE_PATH: Final[str] = "sampletones_assets/documentation"
+DOCUMENTATION_SITE: Final[str] = f"{SOURCE_DIRECTORY}/{DOCUMENTATION_PACKAGE_PATH}"
+DOCUMENTATION_FILES: Final[Tuple[str, ...]] = ("index.html", "stamp")
 RELEASE_HOOK: Final[str] = "scripts/runtime_hooks/release_environment.py"
+GPU_HOOK: Final[str] = "scripts/runtime_hooks/cuda_bundle.py"
+PYINSTALLER_HOOKS: Final[str] = "scripts/pyinstaller_hooks"
 NOTICES: Final[Tuple[str, ...]] = ("LICENSE", "THIRD-PARTY-NOTICES.md", "THIRD-PARTY-LICENSES.txt")
 BUILD_TOOLS: Final[Tuple[str, ...]] = ("PIL",)
-CLEAN_ARTIFACTS: Final[Tuple[str, ...]] = (DISTRIBUTION, BUNDLES, "build", "dist", "htmlcov", ".coverage")
+CUPY_PACKAGES: Final[Tuple[str, ...]] = ("cupy", "cupy_backends", "cupyx")
+CUDA_PACKAGE: Final[str] = "nvidia"
+CUDA_LIBRARY_DIRECTORIES: Final[Tuple[str, ...]] = ("lib", "bin")
+INTERNAL_DIRECTORY: Final[str] = "_internal"
+GPU_PACKAGES: Final[Tuple[str, ...]] = (*CUPY_PACKAGES, CUDA_PACKAGE)
+CLEAN_ARTIFACTS: Final[Tuple[str, ...]] = (
+    DISTRIBUTION,
+    BUNDLES,
+    DOCUMENTATION_SITE,
+    "build",
+    "dist",
+    "htmlcov",
+    ".coverage",
+)
 CLEAN_PATTERNS: Final[Tuple[str, ...]] = ("*.spec",)
 CACHE_DIRECTORIES: Final[Tuple[str, ...]] = ("__pycache__",)
 CACHE_DIRECTORY_SUFFIXES: Final[Tuple[str, ...]] = (".egg-info",)

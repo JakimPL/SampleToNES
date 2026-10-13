@@ -53,6 +53,26 @@ class OwnerRun:
     stem_id: int
 
 
+def runs_up_to(runs: Sequence[OwnerRun], frame_count: int) -> List[OwnerRun]:
+    """The stretches standing under the first ``frame_count`` frames, the last of them ending there.
+
+    A surface draws a reading as far as that reading goes, so a surface drawing fewer frames than
+    the channel holds asks for the stretches standing under them.
+
+    Args:
+        runs: A channel's stretches, in frame order.
+        frame_count: How many frames the surface draws.
+
+    Returns:
+        List[OwnerRun]: The stretches under those frames, cut where the last one runs past them.
+    """
+    return [
+        run if run.end <= frame_count else OwnerRun(start=run.start, end=frame_count, stem_id=run.stem_id)
+        for run in runs
+        if run.start < frame_count
+    ]
+
+
 def owner_runs(stem_ids: Sequence[int]) -> List[OwnerRun]:
     """The stretches a channel divides into, each held by one recording throughout.
 

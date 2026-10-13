@@ -41,11 +41,12 @@ class InstantaneousPitch:
 
     Reading around a stated reference is what makes the answer usable: the reference names which
     bins carry the note's harmonics, and each harmonic's estimate is divided back down and weighted
-    by the energy standing behind it. The harmonics are read in order, each one settled against the
-    fundamental the ones below it agreed on, which is what keeps an upper harmonic on the right side
-    of the whole turn its phase states the reading to within. A later harmonic counts where its partial
-    stands within half a semitone of where that fundamental puts it, the room a note owns, so a
-    partial another voice sounds beside it stays out of the reading.
+    by the energy standing behind it. A harmonic is read where its bin carries energy, since a phase
+    turns at a partial's rate only where a partial sounds. The harmonics are read in order, each one
+    settled against the fundamental the ones below it agreed on, which is what keeps an upper harmonic
+    on the right side of the whole turn its phase states the reading to within. A later harmonic counts
+    where its partial stands within half a semitone of where that fundamental puts it, the room a note
+    owns, so a partial another voice sounds beside it stays out of the reading.
 
     The first harmonic read has the note alone to be settled against. From about 1 kHz up a note's
     room is wider than the whole turn the reading repeats over, so there a second reading, over a lag
@@ -100,7 +101,8 @@ class InstantaneousPitch:
 
         Returns:
             Optional[FundamentalReading]: The reading, or ``None`` where the frame lies outside
-                the transform or the reference names no bin the transform covers.
+                the transform, the reference names no bin the transform covers, or every bin it
+                names is silent in that frame.
         """
         opening, closing = self._pair(frame)
         if opening is None or closing is None:
@@ -115,6 +117,10 @@ class InstantaneousPitch:
             if bin_index is None:
                 continue
 
+            energy = float(self._magnitudes[bin_index, opening]) ** 2
+            if energy <= 0.0:
+                continue
+
             expected = running * harmonic
             if weight <= 0.0:
                 expected = self._first_guide(bin_index, opening, expected)
@@ -123,7 +129,6 @@ class InstantaneousPitch:
             if weight > 0.0 and not expected / HARMONIC_ROOM <= partial <= expected * HARMONIC_ROOM:
                 continue
 
-            energy = float(self._magnitudes[bin_index, opening]) ** 2
             weighted += energy * partial / harmonic
             weight += energy
             share += float(self._bin_energies[bin_index, opening])

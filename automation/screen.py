@@ -68,6 +68,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON,
+    TAG_GLOBAL_DIALOG_DOCUMENTATION,
     TAG_GLOBAL_DIALOG_ERROR,
     TAG_GLOBAL_DIALOG_FILE_NOT_FOUND,
     TAG_GLOBAL_DIALOG_NO_AUDIO_OUTPUT,
@@ -106,6 +107,7 @@ class Screen:
         window_manager: WindowManager,
         language: LanguageManager,
         shortcuts: ShortcutManager,
+        sound_settled: Callable[[], bool],
         dialogs: ScriptedFileDialogs,
         errors: ErrorRecords,
         file_manager: FileManagerStandIn,
@@ -118,6 +120,7 @@ class Screen:
         self._window_manager = window_manager
         self._render_thread = render_thread
         self._shortcuts = shortcuts
+        self._sound_settled = sound_settled
         self._dialogs = dialogs
         self._errors = errors
         self._file_manager = file_manager
@@ -142,6 +145,11 @@ class Screen:
         self.file_not_found_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_FILE_NOT_FOUND)
         self.no_output_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_NO_AUDIO_OUTPUT)
         self.no_project_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN)
+        self.documentation_notice = Notice(bridge, hand, TAG_GLOBAL_DIALOG_DOCUMENTATION)
+
+    def sound_settled(self) -> bool:
+        """Whether the open reconstruction's sound stands landed, which a box or an edit sends to the worker."""
+        return bool(self.bridge.ask(self._sound_settled))
 
     def expect(
         self,
@@ -185,6 +193,10 @@ class Screen:
     def status(self) -> str:
         """What the status bar along the bottom of the window says."""
         return self.bridge.ask(lambda: read_label(STATUS_BAR))
+
+    def status_drawn(self) -> str:
+        """What the status bar says, read on the render thread itself, which a recording takes after every frame."""
+        return read_label(STATUS_BAR)
 
     def shows_text(self, words: str) -> bool:
         """Whether text reading ``words`` was drawn in the last frame, such as a tooltip standing open."""
@@ -271,6 +283,11 @@ class Screen:
     def revealed(self) -> Tuple[Path, ...]:
         """Every path the application asked the desktop's file manager to show, in order."""
         return self._file_manager.shown()
+
+    def opened(self) -> Tuple[Path, ...]:
+        """Every file the application handed to the desktop's program for its kind, such as a page for
+        the browser, in order."""
+        return self._file_manager.opened()
 
     def table_highlights(self) -> Dict[HighlightPlace, Tuple[float, ...]]:
         """Every highlight standing on a table, with the color the application laid it in."""

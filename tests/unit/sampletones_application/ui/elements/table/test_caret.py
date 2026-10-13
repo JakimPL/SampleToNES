@@ -1,5 +1,5 @@
 from typing import Dict, Iterator, Optional
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 import pytest
 
@@ -23,11 +23,12 @@ _ALIAS_IDS: Dict[str, int] = {
     DIALOG_WINDOW: DIALOG_ID,
 }
 
+MARK = 123
+FRAME = 124
 CARET_LAYOUT = CaretLayout(
-    fill=LiteralColor((102, 187, 255, 64)),
-    border=LiteralColor((102, 187, 255, 255)),
-    offset=3,
-    width_padding=2,
+    height=2,
+    color=LiteralColor((102, 187, 255, 255)),
+    frame=LiteralColor((102, 187, 255, 255)),
 )
 
 
@@ -35,12 +36,14 @@ CARET_LAYOUT = CaretLayout(
 def caret_state() -> Iterator[None]:
     CaretOverlay._root_window = ROOT_WINDOW
     CaretOverlay._layout = CARET_LAYOUT
-    CaretOverlay._rectangle = 123
+    CaretOverlay._mark = MARK
+    CaretOverlay._frame = FRAME
     CaretOverlay._widget = None
     yield
     CaretOverlay._root_window = None
     CaretOverlay._layout = None
-    CaretOverlay._rectangle = None
+    CaretOverlay._mark = None
+    CaretOverlay._frame = None
     CaretOverlay._widget = None
 
 
@@ -92,4 +95,4 @@ class TestRedrawSuppression:
                         with patch("dearpygui.dearpygui.configure_item") as configure:
                             CaretOverlay.redraw()
 
-        configure.assert_called_once_with(123, show=False)
+        assert configure.call_args_list == [call(MARK, show=False), call(FRAME, show=False)]

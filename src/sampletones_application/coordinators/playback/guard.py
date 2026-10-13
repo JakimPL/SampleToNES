@@ -1,5 +1,6 @@
 from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.types.callback import VoidCallback
 
@@ -11,7 +12,9 @@ class GuardedPlayer:
     Panels only fire intent hooks, so this wrapper is the coordinator-layer
     recovery boundary for the transport commands that can raise
     ``PlaybackError``; queries pass straight through. A start that fails at once
-    reads the way a failure on the playing thread does.
+    reads the way a failure on the playing thread does. Every command here is
+    playback the reader asked for, so each forgets a preview still on its way:
+    the sound the reader asked for last is the one that takes the device.
     """
 
     def __init__(
@@ -19,9 +22,11 @@ class GuardedPlayer:
         player: AudioPlayerProtocol,
         *,
         failures: PlaybackFailurePresenter,
+        previews: DocumentPreviews,
     ) -> None:
         self._player = player
         self._failures = failures
+        self._previews = previews
 
     def play(self) -> None:
         self.run_guarded(self._player.play)
@@ -30,6 +35,7 @@ class GuardedPlayer:
         self.run_guarded(self._player.pause_or_resume)
 
     def stop(self) -> None:
+        self._previews.cancel()
         self._player.stop()
 
     def is_playing(self) -> bool:
@@ -48,8 +54,10 @@ class GuardedPlayer:
         """Runs a playback command, showing the reader a failure to start the audio.
 
         A command beyond the transport — sounding a sample from a point the reader clicked — goes
-        through the same boundary the transport commands do.
+        through the same boundary the transport commands do, and forgets a preview on its way the
+        same way.
         """
+        self._previews.cancel()
         try:
             command()
         except PlaybackError as exception:

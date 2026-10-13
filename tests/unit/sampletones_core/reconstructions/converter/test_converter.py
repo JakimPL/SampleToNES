@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Final
 from unittest.mock import patch
 
 import pytest
@@ -7,10 +8,13 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
 )
+from sampletones_core.parallelization.outcome import RunCompleted, TaskFailure
 from sampletones_core.reconstructions.converter import (
+    ConversionOutcome,
     DirectoryConversion,
     GroupConversion,
     ReconstructionConverter,
+    SkippedJob,
     reconstruct_job,
 )
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
@@ -18,6 +22,8 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.settings impor
 from sampletones_shared.exceptions import NoFilesToProcessError
 
 _RECONSTRUCTOR_PATCH = "sampletones_core.reconstructions.converter.converter.Reconstructor"
+RECORDINGS: Final[str] = "recordings"
+RECONSTRUCTIONS: Final[str] = "reconstructions"
 
 
 @pytest.fixture(scope="module")
@@ -32,6 +38,27 @@ def stems(config: Config) -> StemsConfig:
 
 def _group(path: Path, stems: StemsConfig) -> GroupConversion:
     return GroupConversion(sources=(path,), stems=stems)
+
+
+def _directory_of(directory: Path, stems: StemsConfig, *names: str) -> ReconstructionConverter:
+    """A converter over a folder of ``names`` under ``directory``, writing its reconstructions beside it.
+
+    The jobs are read from the folder, and their outputs stand under ``directory`` too, so a case writing
+    one keeps it in its own directory.
+    """
+    recordings = directory / RECORDINGS
+    recordings.mkdir()
+    for name in names:
+        (recordings / name).touch()
+    config = Config()
+    general = config.general.model_copy(update={"reconstructions_directory": str(directory / RECONSTRUCTIONS)})
+    converter = ReconstructionConverter(
+        config.model_copy(update={"general": general}),
+        DirectoryConversion(directory=recordings, stems=stems),
+    )
+    with patch(_RECONSTRUCTOR_PATCH):
+        converter._create_tasks()
+    return converter
 
 
 class TestReconstructionConverterInit:
@@ -162,7 +189,10 @@ class TestReconstructionConverterProcessResults:
         written = tmp_path / "a.stn"
         written.touch()
         converter = ReconstructionConverter(config, _group(tmp_path / "song.wav", stems))
-        assert converter._process_results([written]) == (written,)
+        assert converter._process_results(RunCompleted([written], ())) == ConversionOutcome(
+            written=(written,),
+            skipped=(),
+        )
 
     def test_leaves_out_a_job_that_wrote_nothing(
         self,
@@ -170,12 +200,50 @@ class TestReconstructionConverterProcessResults:
         stems: StemsConfig,
         tmp_path: Path,
     ) -> None:
-        """A source the loader has no reader for names its output and writes none, so the run
+        """A reconstruction that came to nothing names its output and writes none, so the run
         reports only what a reader can open."""
         written = tmp_path / "a.stn"
         written.touch()
         converter = ReconstructionConverter(config, _group(tmp_path / "song.wav", stems))
-        assert converter._process_results([written, tmp_path / "missing.stn"]) == (written,)
+        assert converter._process_results(RunCompleted([written, tmp_path / "missing.stn"], ())).written == (written,)
+
+    def test_names_each_job_the_run_went_on_without(self, stems: StemsConfig, tmp_path: Path) -> None:
+        converter = _directory_of(tmp_path, stems, "a.wav", "b.wav", "c.wav")
+        error = ZeroDivisionError("float division by zero")
+        written = converter.jobs[0].output_path
+        written.parent.mkdir(parents=True, exist_ok=True)
+        written.touch()
+
+        outcome = converter._process_results(RunCompleted([written], (TaskFailure(index=1, exception=error),)))
+
+        assert outcome == ConversionOutcome(
+            written=(written,),
+            skipped=(SkippedJob(job=converter.jobs[1], exception=error),),
+        )
+
+
+class TestWhichRunsGoOnPastAFailingJob:
+    """A run of several jobs goes on past a job that fails, and a run of one ends with it."""
+
+    def test_a_folder_of_several_recordings_goes_on(self, stems: StemsConfig, tmp_path: Path) -> None:
+        assert _directory_of(tmp_path, stems, "a.wav", "b.wav").skips_failed_tasks
+
+    def test_a_folder_of_one_recording_ends_with_it(self, stems: StemsConfig, tmp_path: Path) -> None:
+        assert not _directory_of(tmp_path, stems, "a.wav").skips_failed_tasks
+
+    def test_a_mix_ends_with_its_job(self, config: Config, stems: StemsConfig, tmp_path: Path) -> None:
+        audio_file = tmp_path / "song.wav"
+        audio_file.touch()
+        converter = ReconstructionConverter(config, _group(audio_file, stems))
+        with patch(_RECONSTRUCTOR_PATCH):
+            converter._create_tasks()
+
+        assert not converter.skips_failed_tasks
+
+    def test_the_log_names_a_job_by_its_recordings(self, stems: StemsConfig, tmp_path: Path) -> None:
+        converter = _directory_of(tmp_path, stems, "a.wav", "b.wav")
+
+        assert converter._task_name(1) == str(converter.jobs[1].sources[0])
 
 
 class TestReconstructionConverterNotifyProgress:

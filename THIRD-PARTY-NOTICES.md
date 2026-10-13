@@ -105,10 +105,15 @@ three years from the date of that release.
 
 ### GPU acceleration
 
-The published bundles are **CPU-only**: CuPy, the CUDA runtime and the NVIDIA libraries
-are proprietary, and their EULA reserves redistribution to NVIDIA. GPU acceleration comes
-from installing _SampleToNES_ from PyPI with the `gpu` extra, which fetches CuPy and the
-CUDA components from their publishers straight to your machine.
+The published bundles are **CPU-only** and carry no CuPy or CUDA libraries.
+
+CuPy is MIT-licensed. The CUDA libraries (cuBLAS, cuFFT, cuRAND, cuSOLVER, cuSPARSE, NVRTC and the CUDA
+runtime) are NVIDIA software under the
+[CUDA EULA](https://docs.nvidia.com/cuda/eula/index.html), which lists them as distributable inside an
+application with material functionality of its own, without modification and for use by that application
+alone. GPU support comes from installing _SampleToNES_ from PyPI with the `gpu` extra, or from building
+the standalone app on your own machine with an NVIDIA driver, which bundles the libraries fetched from
+NVIDIA's wheels for your own use.
 
 ## Build-time tooling
 

@@ -1,6 +1,7 @@
 import re
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, Mapping, Optional, Sequence, Tuple
@@ -13,6 +14,15 @@ CUDA12_MAJOR: Final[int] = 12
 CUDA11_MAJOR: Final[int] = 11
 CUDA_VERSION_PATTERN: Final[re.Pattern[str]] = re.compile(r"CUDA Version\s*:?\s*(\d+)\.(\d+)")
 QUERY_ARGUMENTS: Final[Tuple[Tuple[str, ...], ...]] = ((), ("-q",))
+GPU_AUTO: Final[str] = "auto"
+GPU_OFF: Final[str] = "0"
+GPU_CHOICES: Final[Tuple[str, ...]] = (
+    GPU_AUTO,
+    GPU_OFF,
+    GPU_EXTRA,
+    GPU_CUDA11_EXTRA,
+)
+DEFAULT_GPU: Final[str] = GPU_AUTO
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -140,3 +150,29 @@ def detect(platform: Platform, environment: Mapping[str, str]) -> CudaDetection:
     cuda_version = query_driver_cuda_version(nvidia_smi)
     extra = select_extra(cuda_version)
     return CudaDetection(extra=extra, reason=_describe(cuda_version=cuda_version, extra=extra))
+
+
+def gpu_extra(
+    choice: str,
+    platform: Platform,
+    environment: Mapping[str, str],
+) -> Optional[str]:
+    """The optional-dependency extra a GPU choice selects, shared by the setup and the build.
+
+    Args:
+        choice: ``auto`` to read the NVIDIA driver, ``0`` for the CPU backend, or an extra's name.
+        platform: The system the choice is made on.
+        environment: The variables the driver's locations are read from.
+
+    Returns:
+        Optional[str]: The extra, or ``None`` for the CPU backend.
+    """
+    if choice == GPU_OFF:
+        return None
+
+    if choice == GPU_AUTO:
+        detection = detect(platform, environment)
+        print(detection.reason, file=sys.stderr)
+        return detection.extra
+
+    return choice

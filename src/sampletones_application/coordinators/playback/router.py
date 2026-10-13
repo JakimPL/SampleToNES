@@ -2,6 +2,7 @@ from typing import Callable, Optional, Sequence
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_core.audio import AudioDeviceManager
 
 ActiveSourceResolver = Callable[[], Optional[AudioPlayerProtocol]]
@@ -12,7 +13,8 @@ class PlaybackRouter:
 
     Every command acts on one *target*: the active tab's own source when that tab has something to
     play, and otherwise the intentional source currently engaged (owning the device). Preview
-    sounds belong to no source and answer only to Stop. The full contract is documented in
+    sounds belong to no source and answer only to Stop, which silences one sounding and forgets
+    one still on its way. The full contract is documented in
     ``docs/development/application/playback.md``.
 
     It is stateless: the target is recomputed from the live sources on each call, so the transport
@@ -26,11 +28,13 @@ class PlaybackRouter:
         active_source_resolver: ActiveSourceResolver,
         audio_device_manager: AudioDeviceManager,
         language_manager: LanguageManager,
+        previews: DocumentPreviews,
     ) -> None:
         self._language_manager = language_manager
         self._sources = tuple(sources)
         self._active_source_resolver = active_source_resolver
         self._audio_device_manager = audio_device_manager
+        self._previews = previews
 
     def play(self) -> None:
         """Play/Pause: pause or resume the target when engaged, otherwise start it."""
@@ -45,7 +49,8 @@ class PlaybackRouter:
             active_source.play()
 
     def stop(self) -> None:
-        """Silence everything: the engaged source and any sounding preview."""
+        """Silence everything: the engaged source, any sounding preview, and a preview still on its way."""
+        self._previews.cancel()
         engaged_source = self._engaged_source()
         if engaged_source is not None:
             engaged_source.stop()
@@ -60,6 +65,7 @@ class PlaybackRouter:
         stream. Teardown therefore reaches every source rather than the engaged one alone, so a
         source holding a stream is wound down whatever the transport reports at that moment.
         """
+        self._previews.cancel()
         for source in self._sources:
             source.stop()
 

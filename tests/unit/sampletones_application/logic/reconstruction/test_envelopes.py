@@ -4,7 +4,6 @@ from typing import Callable
 
 import pytest
 
-from sampletones_application.logic.reconstruction.envelopes import heard_envelopes
 from sampletones_application.view_model.reconstruction.envelopes import (
     ChannelEnvelopesViewModel,
 )
@@ -20,6 +19,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.config import 
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from tests.suite.envelopes import heard_envelopes
 from tests.suite.stems import RECORDED_SCALE, STEM_A_ID, STEM_B_ID
 
 

@@ -6,10 +6,10 @@ from sampletones_shared.paths.extensions import EXT_FILE_FLAC
 from sampletones_shared.utils.system.paths import get_filename
 from sampletones_tools.calibration.layout import RECORDINGS_DIRECTORY, combination_name
 from sampletones_tools.calibration.renders import RenderRecord, item_directory, variant_directory
+from sampletones_tools.web.roles.table import channel_role
 
 from .clips import ClipStore
 from .model import BoardCell, BoardChannel, BoardGroup, BoardPage, BoardRow
-from .palette import channel_token
 from .reading import RunReading
 
 NO_CLIP: Final[str] = ""
@@ -19,6 +19,7 @@ def compose_page(
     runs: Sequence[RunReading],
     store: ClipStore,
     title: str,
+    glyph: str,
 ) -> BoardPage:
     """
     Assemble everything a page draws from the runs it reports.
@@ -31,6 +32,7 @@ def compose_page(
         runs: The runs the page reports, in the order the page holds them.
         store: Where the page finds each clip it plays.
         title: The heading the page carries.
+        glyph: The purpose glyph each table's card header carries.
 
     Returns:
         The page, ready to be written.
@@ -45,7 +47,8 @@ def compose_page(
     return BoardPage(
         title=title,
         referee=runs[0].referee,
-        colors={channel.value: channel_token(channel.value) for channel in ChannelName},
+        glyph=glyph,
+        colors={channel.value: channel_role(channel.value) for channel in ChannelName},
         groups=groups,
     )
 

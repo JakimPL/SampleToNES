@@ -22,6 +22,7 @@ from sampletones_core.reconstructions.converter import ConversionJob
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_core.reconstructions.stage import ReconstructionStage
+from tests.suite.application import draw_frame
 from tests.suite.base import BaseTestSuite
 
 MockConverterClass: TypeAlias = Tuple[MagicMock, MagicMock, Dict[str, Callable[..., Any]]]
@@ -45,6 +46,7 @@ SAMPLE_GAP: Final[float] = 0.02
 EARLY: Final[float] = 0.2
 HALFWAY: Final[float] = 0.5
 NEARLY_DONE: Final[float] = 0.9
+LIBRARY_INSTRUCTIONS: Final[int] = 100
 
 
 def _under_way(*fractions: float) -> Tuple[TaskStep, ...]:
@@ -498,3 +500,39 @@ class TestConversionServiceLifecycle:
         converter.is_running.return_value = False
         conversion_service.cancel()
         converter.cancel.assert_not_called()
+
+
+@pytest.mark.usefixtures("live_queue")
+class TestReportsWaitingForTheRenderLoop(BaseTestSuite):
+    """A run's reports reach the subscriber as the newest one waiting, and the run's outcome after it."""
+
+    def test_library_reports_filed_before_a_drain_arrive_as_the_newest(self, service: Service) -> None:
+        conversion_service, _, _, results = service
+        for completed in range(1, LIBRARY_INSTRUCTIONS + 1):
+            conversion_service.forward_library_progress(
+                TaskStatus.RUNNING,
+                TaskProgress(total=LIBRARY_INSTRUCTIONS, completed=completed),
+            )
+
+        draw_frame()
+
+        assert [result.data.completed for result in results] == [LIBRARY_INSTRUCTIONS]
+
+    def test_reports_filed_across_drains_arrive_once_per_drain(self, service: Service) -> None:
+        _, _, callbacks, results = service
+        for completed in range(SEVERAL_RECONSTRUCTIONS):
+            callbacks["on_progress"](TaskStatus.RUNNING, _account(SEVERAL_RECONSTRUCTIONS, completed))
+            draw_frame()
+
+        assert [result.completed for result in results] == list(range(SEVERAL_RECONSTRUCTIONS))
+
+    def test_the_outcome_arrives_after_the_reports_before_it(self, service: Service) -> None:
+        _, _, callbacks, results = service
+        for completed in range(SEVERAL_RECONSTRUCTIONS):
+            callbacks["on_progress"](TaskStatus.RUNNING, _account(SEVERAL_RECONSTRUCTIONS, completed))
+        callbacks["on_completed"]((Path(OUTPUT),))
+
+        draw_frame()
+
+        assert [type(result) for result in results] == [ServiceProgress, ServiceSuccess]
+        assert results[0].completed == SEVERAL_RECONSTRUCTIONS - 1

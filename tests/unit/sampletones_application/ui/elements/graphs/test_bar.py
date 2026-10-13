@@ -43,6 +43,7 @@ def _graph() -> GUIBarGraph:
         )
     }
     graph._press = LeftPress()
+    graph._locked = False
     graph.on_bar_point_clicked = None
     graph.on_bar_point_hovered = None
     return graph
@@ -110,6 +111,37 @@ def _with_bar(index: int, value: float) -> List[int]:
     expected = list(BAR_VALUES)
     expected[index] = int(value)
     return expected
+
+
+class TestBarsHeldWhileTheirValuesAreOnTheirWay:
+    """A locked plot takes no press, ends one held, and takes presses again once freed."""
+
+    def test_a_press_on_a_locked_plot_writes_nothing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        graph = _graph()
+        graph.set_locked(True)
+
+        _press(graph, monkeypatch, (PRESSED_BAR + 0.5, PRESSED_VALUE))
+
+        assert list(graph.layers[LAYER_NAME].y_data) == list(BAR_VALUES)
+
+    def test_locking_ends_a_press_held(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        graph = _graph()
+        last_bar = len(BAR_VALUES) - 1
+        _press(graph, monkeypatch, (0.5, PRESSED_VALUE))
+
+        graph.set_locked(True)
+        _hover(graph, monkeypatch, (last_bar + 0.5, PRESSED_VALUE))
+
+        assert graph.layers[LAYER_NAME].y_data[last_bar] == BAR_VALUES[last_bar]
+
+    def test_a_freed_plot_takes_a_press_again(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        graph = _graph()
+        graph.set_locked(True)
+        graph.set_locked(False)
+
+        _press(graph, monkeypatch, (PRESSED_BAR + 0.5, PRESSED_VALUE))
+
+        assert list(graph.layers[LAYER_NAME].y_data) == _with_bar(PRESSED_BAR, PRESSED_VALUE)
 
 
 class TestPressingTheBars:

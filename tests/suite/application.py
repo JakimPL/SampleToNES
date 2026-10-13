@@ -91,18 +91,30 @@ class HeldQueue:
             callback, args = self._held.pop(0)
             callback(*args)
 
+    def settle(self) -> None:
+        """Waits for the workers and runs what they reported, round after round, until a round brings nothing.
+
+        Running a report can hand a worker more to do, such as the render a landing asks for, and that
+        worker reports once the drain has passed. The rounds go on until the workers have ended with
+        nothing left to report.
+        """
+        SingleThreadExecutor.join_all()
+        while self._held:
+            self.drain()
+            SingleThreadExecutor.join_all()
+
 
 def settled(gesture: VoidCallback) -> None:
     """Runs ``gesture``, waits for the workers it started, and runs what they reported.
 
     A worker reports through the queue the render loop drains, so the reports are held while the
-    workers run and drained once they have ended, in the order they arrived.
+    workers run and drained once they have ended, in the order they arrived, until the workers have
+    nothing more to report.
     """
     queue = HeldQueue()
     with patch.object(CallbackQueue, "add", queue.add):
         gesture()
-        SingleThreadExecutor.join_all()
-        queue.drain()
+        queue.settle()
 
 
 @pytest.fixture

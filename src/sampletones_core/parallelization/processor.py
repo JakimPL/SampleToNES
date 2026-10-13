@@ -2,7 +2,7 @@ import multiprocessing
 import threading
 from abc import ABC, abstractmethod
 from concurrent.futures._base import CancelledError
-from typing import Any, Callable, Final, Generic, List, Optional, TypeVar
+from typing import Any, Callable, Final, Generic, Iterator, List, Optional, TypeVar
 
 from pebble import ProcessMapFuture, ProcessPool
 
@@ -10,7 +10,13 @@ from sampletones_core.constants.algorithm import MAX_WORKERS
 from sampletones_core.parallelization.channel.process import ProcessProgressChannel
 from sampletones_core.parallelization.channel.protocol import ProgressChannel, StepReporter
 from sampletones_core.parallelization.channel.pump import ProgressPump
-from sampletones_core.parallelization.outcome import RunCanceled, RunCompleted, RunFailed, RunOutcome
+from sampletones_core.parallelization.outcome import (
+    RunCanceled,
+    RunCompleted,
+    RunFailed,
+    RunOutcome,
+    TaskFailure,
+)
 from sampletones_core.parallelization.steps import TaskSteps
 from sampletones_core.parallelization.task import (
     TaskProgress,
@@ -33,6 +39,10 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
     The monitor thread builds the tasks, creates the pool, gathers the answers and, however the run
     ends, ends the pool and the progress channel before it announces the outcome. Whoever reacts to
     ``on_completed``, ``on_canceled`` or ``on_error`` therefore meets a run with no worker left.
+
+    A task that raises, or whose worker dies, ends the run with that error. A run that
+    ``skips_failed_tasks`` records the failure against the task instead, logs it, and goes on, so
+    its completed outcome names every task it went on without.
     """
 
     def __init__(
@@ -111,6 +121,11 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
     def is_running(self) -> bool:
         return self.running
 
+    @property
+    def skips_failed_tasks(self) -> bool:
+        """Whether a failing task leaves the rest of the run going, which a run decides from its tasks."""
+        return False
+
     @abstractmethod
     def _create_tasks(self) -> List[Any]: ...
 
@@ -118,7 +133,11 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
     def _get_task_function(self) -> Callback: ...
 
     @abstractmethod
-    def _process_results(self, results: List[T]) -> Any: ...
+    def _process_results(self, completed: RunCompleted[T]) -> Any: ...
+
+    def _task_name(self, index: int) -> str:
+        """How the log names the task at ``index``."""
+        return f"Task {index}"
 
     def _task_reporter(self, index: int) -> StepReporter:
         """The line the task at ``index`` reports its own progress on.
@@ -192,7 +211,7 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         """Builds the tasks and runs them on a pool that has ended by the time this returns."""
         try:
             tasks = self._create_tasks()
-        except Exception as exception:
+        except Exception as exception:  # pylint: disable=broad-exception-caught
             return RunFailed(exception)
 
         if self.canceling:
@@ -226,26 +245,56 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         self.call(self.on_start)
 
         results: List[T] = []
+        failures: List[TaskFailure] = []
         self.running = True
         self.status = TaskStatus.RUNNING
         self._notify_progress()
         try:
             iterator = self.future.result()
             while not self.canceling:
-                results.append(next(iterator))
+                self._take_answer(iterator, results, failures)
                 self._steps.complete(self.completed_tasks)
                 self.completed_tasks += 1
                 self._notify_progress()
         except StopIteration:
-            return RunCompleted(results)
+            return RunCompleted(results, tuple(failures))
         except (CancelledError, OperationCanceled):
             return RunCanceled()
-        except Exception as exception:
+        except Exception as exception:  # pylint: disable=broad-exception-caught
             return RunFailed(exception)
         finally:
             self.running = False
 
         return RunCanceled()
+
+    def _take_answer(
+        self,
+        iterator: Iterator[T],
+        results: List[T],
+        failures: List[TaskFailure],
+    ) -> None:
+        """Takes the next task's answer, or the error it ended in where the run goes on without it.
+
+        Raises:
+            StopIteration: Once every task has answered.
+            CancelledError: If the run was withdrawn.
+            OperationCanceled: If a task gave up on hearing the run was withdrawn.
+            Exception: The error a task ended in, where the run ends with it.
+        """
+        try:
+            results.append(next(iterator))
+        except (StopIteration, CancelledError, OperationCanceled):
+            raise
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+            if not self.skips_failed_tasks:
+                raise
+
+            failure = TaskFailure(index=self.completed_tasks, exception=exception)
+            self.logger.error_with_traceback(
+                exception,
+                f"{self._task_name(failure.index)} failed, and the run goes on without it: {exception}",
+            )
+            failures.append(failure)
 
     def _end_pool(
         self,
@@ -264,8 +313,8 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
 
     def _announce(self, outcome: RunOutcome[T]) -> None:
         match outcome:
-            case RunCompleted(results=results):
-                self._finalize_completion(results)
+            case RunCompleted() as completed:
+                self._finalize_completion(completed)
             case RunCanceled():
                 self._finalize_cancellation()
             case RunFailed(exception=exception):
@@ -293,13 +342,13 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         self._notify_progress()
         self.call(self.on_canceled)
 
-    def _finalize_completion(self, results: List[T]) -> None:
+    def _finalize_completion(self, completed: RunCompleted[T]) -> None:
         self.logger.info("Conversion completed successfully")
 
         self.status = TaskStatus.COMPLETED
         self._notify_progress()
 
-        processed_result = self._process_results(results)
+        processed_result = self._process_results(completed)
         self.call(self.on_completed, processed_result)
 
     def _stop_with_error(self, exception: Exception) -> None:

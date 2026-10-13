@@ -112,6 +112,7 @@ class ShortcutBindings:
     toggle_auto_expand_favorite_reconstructions: Callback
     toggle_auto_expand_favorite_directories: Callback
     toggle_fullscreen: Callback
+    documentation: Callback
     about: Callback
     next_tab: Callback
     previous_tab: Callback
@@ -281,6 +282,7 @@ class ApplicationShell:
             ),
             ShortcutId.TOGGLE_AUTO_EXPAND_FAVORITE_DIRECTORIES: bindings.toggle_auto_expand_favorite_directories,
             ShortcutId.TOGGLE_FULLSCREEN: bindings.toggle_fullscreen,
+            ShortcutId.DOCUMENTATION: bindings.documentation,
             ShortcutId.ABOUT_DIALOG: bindings.about,
             ShortcutId.NEXT_TAB: bindings.next_tab,
             ShortcutId.PREVIOUS_TAB: bindings.previous_tab,

@@ -4,12 +4,19 @@ from typing import Dict, Final, List, Tuple
 
 from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.configs import Config
+from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
+from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
+from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from tests.suite.compatibility import ARCHIVED_VERSIONS, archived
 from tests.suite.screens.seeds.constants import TURNING_LEVELS
-from tests.suite.stems import recorded_from, single_entry_stems_data
+from tests.suite.stems import RECORDED_SCALE, recorded_from, single_entry_stems_data
 
 LINE_START_PITCH: Final[int] = 60
 LINE_STEP_FRAMES: Final[int] = 15
@@ -69,6 +76,58 @@ class PlayableReconstruction:
     def write(self) -> None:
         """Saves the reconstruction to the destination, naming each recording as a source."""
         _save(self.destination, _playable_reconstruction(self.recordings, self.frames, self.nes_frequency))
+
+
+@dataclass(frozen=True)
+class AlternatingReconstruction:
+    """A :class:`PlayableReconstruction` whose recordings take turns holding the frames.
+
+    Each channel plays the ``frames`` frames once, and the recordings of ``recordings`` hold them in
+    turn, ``turn_frames`` frames at a time, so every lane divides into as many stretches as a long
+    conversion over competing recordings does. The recordings laid at those paths last the document's
+    length. It was converted at ``nes_frequency`` ticks a second.
+    """
+
+    destination: Path
+    recordings: Tuple[Path, ...]
+    frames: int
+    turn_frames: int
+    nes_frequency: int
+
+    def write(self) -> None:
+        """Saves the reconstruction to the destination, naming each recording as a source."""
+        instructions = _playable_instructions(self.frames)
+        stem_ids = list(range(len(self.recordings)))
+        assignments = [
+            ChannelAssignment(
+                channel_name=channel_name,
+                stem_ids=[
+                    stem_ids[(frame // self.turn_frames) % len(stem_ids)] if instruction.on else RESTING_STEM_ID
+                    for frame, instruction in enumerate(stream)
+                ],
+            )
+            for channel_name, stream in instructions.items()
+        ]
+        stems_data = StemsData(
+            config=StemsConfig(
+                entries=[
+                    StemEntry(id=stem_id, settings=StemSettings.covering(list(instructions))) for stem_id in stem_ids
+                ],
+                hierarchy=StemsHierarchy(levels=[stem_ids]),
+            ),
+            assignments=assignments,
+            scale=RECORDED_SCALE,
+        ).with_sources(list(self.recordings))
+        _save(
+            self.destination,
+            Reconstruction.create(
+                instructions=instructions,
+                config=Config().with_library(nes_frequency=self.nes_frequency),
+                coefficient=1.0,
+                audio_filepath=tuple(self.recordings),
+                stems_data=stems_data,
+            ),
+        )
 
 
 @dataclass(frozen=True)

@@ -52,6 +52,23 @@ class TestTheRecordingsHoldingAFrame:
         assert _record([LEAD, RESTING_STEM_ID, AUTHORED_STEM_ID]).holding_stem_ids == frozenset({LEAD})
 
 
+class TestWhoHoldsAFrameOnEachChannel:
+    def test_the_recordings_and_the_readers_own_row_hold_frames(self) -> None:
+        owners = _record([LEAD, AUTHORED_STEM_ID, BASS]).owners_by_channel
+
+        assert owners == {channel: frozenset({LEAD, BASS, AUTHORED_STEM_ID}) for channel in owners}
+
+    def test_a_rest_holds_for_nobody(self) -> None:
+        owners = _record([LEAD, RESTING_STEM_ID]).owners_by_channel
+
+        assert all(stem_ids == frozenset({LEAD}) for stem_ids in owners.values())
+
+    def test_a_channel_resting_throughout_has_no_owner(self) -> None:
+        owners = _record([RESTING_STEM_ID, RESTING_STEM_ID]).owners_by_channel
+
+        assert all(stem_ids == frozenset() for stem_ids in owners.values())
+
+
 class TestWhatSettlingLetsGoOf:
     """A settled record names the recordings behind its frames, unless nothing tells them apart."""
 

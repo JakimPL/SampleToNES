@@ -41,7 +41,7 @@ from sampletones_application.tags.graphs import (
 )
 from sampletones_application.tags.reconstructions import (
     SUF_RECONSTRUCTIONS_INSTRUMENTS_INSTRUMENT_SIZE,
-    SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE,
+    SUF_RECONSTRUCTIONS_INSTRUMENTS_MESSAGE,
     SUF_RECONSTRUCTIONS_INSTRUMENTS_WINDOW,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_BUTTON_EXPORT_INSTRUMENT,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL,
@@ -88,6 +88,7 @@ from sampletones_application.view_model.reconstruction.envelopes import (
     ChannelEnvelopesViewModel,
 )
 from sampletones_application.view_model.reconstruction.instruments import (
+    InstrumentsShowing,
     ReconstructionInstrumentsViewModel,
 )
 from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
@@ -155,7 +156,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._export_buttons: Dict[ChannelName, GUIButton] = {}
 
         self.tab_bar_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR
-        self.no_data_message_tag = compose_tag(self.tab_bar_tag, SUF_RECONSTRUCTIONS_INSTRUMENTS_NO_DATA_MESSAGE)
+        self.message_tag = compose_tag(self.tab_bar_tag, SUF_RECONSTRUCTIONS_INSTRUMENTS_MESSAGE)
         self.mouse_item_handler_tag = compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL, SUF_HANDLER_REGISTRY)
         self.sample_size_tag = TAG_RECONSTRUCTIONS_INSTRUMENTS_TEXT_SAMPLE_SIZE
         self.sample_size_group_tag = compose_tag(self.sample_size_tag, SUF_GROUP)
@@ -187,6 +188,8 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.on_envelope_changed: Optional[Callable[[ChannelName, FeatureKey, Envelope[int]], None]] = None
 
         self._lbl_copy = language_manager["reconstructions.instruments.label.copy_button"]
+        self._msg_nothing_loaded = language_manager["global.dialog.message.reconstruction_no_data"]
+        self._msg_preparing = language_manager["reconstructions.instruments.message.preparing"]
         self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
         self._lbl_instrument_size = context_label(language_manager, ContextElements.INSTRUMENT_SIZE)
         self._tpl_size_bytes = context_text(language_manager, TextType.TEMPLATE, ContextElements.SIZE_BYTES)
@@ -236,9 +239,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
     def _create_content(self) -> None:
         dpg.add_text(
-            tag=self.no_data_message_tag,
+            tag=self.message_tag,
             parent=self._body_container,
-            default_value=self._language_manager["global.dialog.message.reconstruction_no_data"],
+            default_value=self._msg_nothing_loaded,
             show=True,
         )
 
@@ -505,13 +508,24 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         muted tab label and a withheld export say which channels are there. An instrument is one
         set every channel reads, so it shows a single tab under its own name, and the audition
         takes the pitch stepper's place: a row states the note an instrument sounds at, and
-        what the panel offers instead is the generator to hear it on.
+        what the panel offers instead is the generator to hear it on. Words stand in place of the
+        tabs while nothing is open, and while a document just opened waits for its first envelopes
+        they say the instruments are being prepared. Envelopes kept while the next ones are on
+        their way stay drawn as they are, and the panel takes no edit of them.
         """
         instrument = view_model.instrument
         is_open = view_model.is_open
-        dpg_configure_item(self.no_data_message_tag, show=not is_open)
+        dpg_set_value(
+            self.message_tag,
+            self._msg_preparing if view_model.showing is InstrumentsShowing.PREPARING else self._msg_nothing_loaded,
+        )
+        dpg_configure_item(self.message_tag, show=not is_open)
         dpg_configure_item(self.tab_bar_tag, show=is_open)
         dpg_configure_item(self.sample_size_group_tag, show=is_open)
+        self._lock(view_model.is_locked)
+        if view_model.is_locked:
+            return
+
         self._update_sizes(view_model.footprint, shows_one_instrument=instrument is not None)
         self._show_pitch_steppers(shown=instrument is None)
         self._show_audition_selector(shown=instrument is not None)
@@ -529,6 +543,25 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 channel_name,
                 channel_name in view_model.playing_channels,
             )
+
+    def _lock(self, locked: bool) -> None:
+        """Takes no edit of the envelopes drawn while the next ones are on their way, and takes edits again once
+        they land.
+
+        Every gesture writing an envelope is held: a bar pressed, a sequence typed, a pitch stepped
+        and an instrument exported. A view that frees the panel marks the exports anew.
+        """
+        for channel_name, plots in self.channel_plots.items():
+            for feature_key, plot in plots.items():
+                plot.set_locked(locked)
+                dpg_configure_item(self._get_feature_text_tag(channel_name, feature_key), enabled=not locked)
+
+        for stepper in self._pitch_steppers.values():
+            stepper.set_enabled(not locked)
+
+        if locked:
+            for export_button in self._export_buttons.values():
+                export_button.set_enabled(False)
 
     def _show_pitch_steppers(self, *, shown: bool) -> None:
         """Offers the pitch a channel measures its arpeggio against, where a reader may move it.

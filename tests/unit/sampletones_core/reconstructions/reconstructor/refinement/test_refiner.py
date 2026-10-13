@@ -174,6 +174,22 @@ class TestEachNoteHoldsItsOwnBend:
         assert bends[SILENT_FRAMES:] == [BEND] * FRAMES
 
 
+class TestANoteHeldOverSilence:
+    """The decoder may hold a note through a stretch of digital silence, which states no fundamental."""
+
+    def test_a_note_over_silence_stays_at_its_note(self, config: Config) -> None:
+        stems = _stems(StemEntry(id=STEM_A, settings=StemSettings(channels=TONES, bends=list(TONES))))
+        refined = PitchRefiner(config=config, channels=get_generators_by_channels(config, TONES), stems=stems)
+        streams = refined.refine(
+            {channel_name: _stream(channel_name) for channel_name in TONES},
+            {channel_name: [STEM_A] * FRAMES for channel_name in TONES},
+            {STEM_A: np.zeros(int(config.library.sample_rate * SECONDS))},
+        )
+
+        assert not any(_bends(streams, ChannelName.PULSE1))
+        assert not any(_bends(streams, ChannelName.TRIANGLE))
+
+
 class TestWhatTheRefinementReadsPerStem:
     """A reading is taken for the recording a bend is read from, and for no other."""
 

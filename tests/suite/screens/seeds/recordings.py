@@ -13,6 +13,7 @@ RECORDING_AMPLITUDE: Final[float] = 0.5
 STORED_RECORDING_SECONDS: Final[float] = 0.5
 STORED_RECORDING_FREQUENCY: Final[float] = 220.0
 AUDIO_PATH_FIELD: Final[str] = "audio_filepath"
+UNREADABLE_BYTES: Final[bytes] = b"these bytes hold no sound"
 
 
 @dataclass(frozen=True)
@@ -29,6 +30,18 @@ class Recording:
         times = np.arange(round(self.seconds * RECORDING_SAMPLE_RATE)) / RECORDING_SAMPLE_RATE
         tone = RECORDING_AMPLITUDE * np.sin(2.0 * np.pi * self.frequency * times)
         soundfile.write(self.destination, tone, RECORDING_SAMPLE_RATE)
+
+
+@dataclass(frozen=True)
+class UnreadableRecording:
+    """A file in the home named like a recording, whose bytes no audio reader takes."""
+
+    destination: Path
+
+    def write(self) -> None:
+        """Writes bytes that hold no sound under the recording's name."""
+        self.destination.parent.mkdir(parents=True, exist_ok=True)
+        self.destination.write_bytes(UNREADABLE_BYTES)
 
 
 def stored_recording() -> Recording:

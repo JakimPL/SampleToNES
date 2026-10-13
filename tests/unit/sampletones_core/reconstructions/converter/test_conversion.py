@@ -14,7 +14,6 @@ from sampletones_core.reconstructions.converter.job import ConversionJob
 from sampletones_core.reconstructions.reconstructor.reconstructor import Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
-from sampletones_shared.exceptions import UnsupportedAudioFormatError
 from sampletones_shared.utils.progress import silent_reporter
 
 CHANNELS: Final[List[ChannelName]] = list(DEFAULT_CHANNELS)
@@ -86,15 +85,20 @@ class TestReconstructJob:
         job = _job(tmp_path, output_path)
         assert reconstruct_job((mock_reconstructor, job, silent_reporter)) == output_path
 
-    def test_unsupported_audio_format_error_is_swallowed(
+    def test_an_error_the_job_meets_reaches_the_run(
         self,
         mock_reconstructor: MagicMock,
         tmp_path: Path,
     ) -> None:
-        mock_reconstructor.reconstruct.side_effect = UnsupportedAudioFormatError("bad format")
+        """The run decides whether the jobs around a failing one go on, so the job hands its error up."""
+        mock_reconstructor.reconstruct.side_effect = ZeroDivisionError("float division by zero")
         output_path = tmp_path / "song.stn"
         job = _job(tmp_path, output_path)
-        assert reconstruct_job((mock_reconstructor, job, silent_reporter)) == output_path
+
+        with pytest.raises(ZeroDivisionError):
+            reconstruct_job((mock_reconstructor, job, silent_reporter))
+
+        assert not output_path.exists()
 
     def test_keyboard_interrupt_is_reraised(
         self,

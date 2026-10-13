@@ -110,7 +110,7 @@ class TestArchiveRoot:
 class TestArchiveRelease:
     def test_the_release_bundle_is_archived_into_the_bundles_directory(self, tmp_path: Path) -> None:
         root = write_project(tmp_path / "repository")
-        launcher = Windows().bundling().launcher(root / DISTRIBUTION, name=PROJECT_NAME, release=True)
+        launcher = Windows().bundling().launcher(root / DISTRIBUTION, name=PROJECT_NAME, directory=True)
         launcher.parent.mkdir(parents=True)
         launcher.write_bytes(b"MZ")
 

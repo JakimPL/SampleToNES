@@ -11,6 +11,7 @@ from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, bending_channels
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
+from sampletones_core.reconstructions.reconstruction.stems.ownership import owner_runs
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
@@ -42,8 +43,8 @@ def _stems_data(stem_ids: Sequence[int], *, owners: Sequence[int] = (STEM_A, STE
 
 def _lane_runs(stem_ids: Sequence[int]) -> Tuple[Tuple[int, int, int], ...]:
     """The stretches the first channel divides into, each as its start, end and owner."""
-    assignments: Dict[ChannelName, List[int]] = {CHANNEL: list(stem_ids)}
-    lanes = ownership_lanes(assignments, lambda _channel: {STEM_A, STEM_B})
+    runs = {CHANNEL: owner_runs(list(stem_ids))}
+    lanes = ownership_lanes(runs, lambda _channel: {STEM_A, STEM_B})
     return tuple((run.start_frame, run.end_frame, run.stem_id) for run in lanes[CHANNEL].runs)
 
 
@@ -72,9 +73,9 @@ class TestALaneStandsWhateverTheDocumentHoldsToTellApart:
     owner still divides into the one stretch that owner holds."""
 
     def test_a_single_owner_still_takes_a_lane(self) -> None:
-        assignments: Dict[ChannelName, List[int]] = {CHANNEL: [STEM_A, STEM_A]}
+        runs = {CHANNEL: owner_runs([STEM_A, STEM_A])}
 
-        lanes = ownership_lanes(assignments, lambda _channel: {STEM_A})
+        lanes = ownership_lanes(runs, lambda _channel: {STEM_A})
 
         assert [(run.start_frame, run.end_frame, run.stem_id) for run in lanes[CHANNEL].runs] == [(0, 2, STEM_A)]
 

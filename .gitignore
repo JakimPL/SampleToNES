@@ -15,6 +15,7 @@ wheels/
 /bin/
 /build/
 /bundles/
+/src/sampletones_assets/documentation/
 
 sampletones
 !src/sampletones

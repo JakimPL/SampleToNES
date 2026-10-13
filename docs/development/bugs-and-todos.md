@@ -54,8 +54,9 @@ dimension the import starts carrying.
 
 ### Features
 
-* In-application guide/tutorial
-* Language selector
+* MIDI keyboard support.
+* In-application guide/tutorial.
+* Language selector.
 * Reading only the bins the refinement asks for, since it transforms every bin the spectrum covers and
   uses a handful per frame.
 * Keeping the recordings a stopped folder scan has found, so stopping a long walk keeps the count the reader
@@ -87,11 +88,6 @@ dimension the import starts carrying.
   frames. A rebuild makes each frame of the channel anew, so on a four-channel conversion an entry has
   about a quarter of the document. Keeping the old instruction wherever the rebuilt one equals it brings an
   entry down to the frames the edit changed ([undo](application/undo.md)).
-* Strict history hashes the whole song and the whole new document at every commit. On a four-channel
-  conversion of 13,677 frames, hashing the document costs more than twice the rebuild of the edited
-  channel, and the song's hash grows with the song. Development runs and the test suite pay for it.
-  Memoizing each pattern's and each stream's hash by identity, as each document's is memoized now, brings
-  a commit down to the parts its gesture replaced.
 * Improve performance of the browser's favorite scan of the entire tree per click
 * The `fft` and `logfft` analysis floors. Their window spans two cycles of the pulse's lowest note, so the
   triangle's lowest octave reaches them by its harmonics alone. Covering it doubles their window and
@@ -126,6 +122,10 @@ currently out of line. An entry leaves when the code meets the contract again.
   `RegenerationService._run` and reports through `_emit`, and the tracker view reads the caret's box from
   `CaretOverlay._rectangle`. Each is a seam a scenario needs, which [screens](application/screens.md)
   says the application offers as a public one.
+* The render thread still reads a reconstruction file and its recordings from disk, at an opening and
+  when a browser tree plays one, and renders an instrument's audition and the sequencer's instrument
+  preview; every other sound the interface draws or plays, the original line included, is a worker's
+  result ([the render thread](application/render-thread.md)).
 
 ## Bugs
 

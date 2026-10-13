@@ -18,6 +18,7 @@ from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.playback import FollowMode
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.display import DisplayCoordinator
+from sampletones_application.coordinators.documentation import DocumentationCoordinator
 from sampletones_application.coordinators.edit.router import EditRouter
 from sampletones_application.coordinators.export import (
     InstrumentExportCoordinator,
@@ -47,6 +48,7 @@ from sampletones_application.coordinators.tabs.reconstruction import (
 from sampletones_application.coordinators.tabs.sequencer.coordinator import SequencerTabCoordinator
 from sampletones_application.exports import ExportBackends
 from sampletones_application.layout import LayoutConfig, load_layout_config
+from sampletones_application.logic.documentation.shelf import DocumentationShelf
 from sampletones_application.logic.export import SongExportLogic
 from sampletones_application.logic.export.instrument.logic import InstrumentExportLogic
 from sampletones_application.logic.export.nsf.logic import NSFExportLogic
@@ -75,6 +77,7 @@ from sampletones_application.logic.reconstruction.rewrites.queue import (
 )
 from sampletones_application.logic.reconstruction.rewrites.steps import RateChange
 from sampletones_application.logic.render import SongRenderLogic
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.parameters import (
     InstructionsTabParameters,
@@ -194,12 +197,17 @@ from sampletones_player.export.backend import NSFBackend
 from sampletones_shared.application import (
     SAMPLETONES_AUTHOR,
     SAMPLETONES_GROUP,
+)
+from sampletones_shared.distribution import (
+    SAMPLETONES_DOCUMENTATION_ADDRESS,
     SAMPLETONES_NAME_VERSION,
 )
+from sampletones_shared.documentation.site import DocumentationSite
 from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.utils.system.opening import select_file_opener
 
 SEQUENCER_SAMPLE_TITLE_FORMAT: Final[str] = "{ordinal}: {name}"
 SEQUENCER_SAMPLE_ORDINAL_FORMAT: Final[str] = "02X"
@@ -223,6 +231,7 @@ class Application:
     def __init__(
         self,
         profile: UserProfile,
+        documentation: DocumentationSite,
         config_path: Optional[Path] = None,
         library_path: Optional[Path] = None,
         reconstruction_path: Optional[Path] = None,
@@ -291,6 +300,8 @@ class Application:
             self.reconstruction_manager,
             self.regeneration_service,
         )
+        self.preview_service: RegenerationService = RegenerationService(priority=_priority)
+        self.document_previews: DocumentPreviews = DocumentPreviews(self.renders, self.preview_service)
         self.export_service: ExportService = ExportService(priority=_priority)
         self.export_service.subscribe(self._on_export_activity)
         self.render_service: SongRenderService = SongRenderService(priority=_priority)
@@ -495,6 +506,13 @@ class Application:
             dialogs=self.dialogs,
             language_manager=self.language_manager,
         )
+        self._documentation_coordinator = DocumentationCoordinator(
+            shelf=DocumentationShelf(site=documentation, directory=profile.documentation),
+            opener=select_file_opener(),
+            dialogs=self.dialogs,
+            language_manager=self.language_manager,
+            address=SAMPLETONES_DOCUMENTATION_ADDRESS,
+        )
 
         self._instrument_exports = InstrumentExportCoordinator(
             InstrumentExportLogic(
@@ -528,6 +546,7 @@ class Application:
             instrument_exports=self._instrument_exports,
             history=self.history,
             instrument_edit_detail=self._instrument_edit_detail,
+            previews=self.document_previews,
             key_router=self.key_router,
             tab_active=self._is_reconstructions_tab_current,
             layout=ReconstructionTabParameters.from_config(self.layout),
@@ -548,6 +567,7 @@ class Application:
             on_generation_state_changed=self._on_library_operation_changed,
             is_operation_active=self._is_operation_active,
             is_converter_visible=self._is_converter_panel_visible,
+            previews=self.document_previews,
             layout=InstructionsTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -573,6 +593,7 @@ class Application:
                 on_refresh_trees=self._refresh_browsers,
                 on_prepare_library=self._instructions_tab.prepare_library,
             ),
+            previews=self.document_previews,
             layout=MainTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -593,7 +614,7 @@ class Application:
             browser_manager=self.browser_manager,
             project_controller=self.project_controller,
             history=self.history,
-            renders=self.renders,
+            previews=self.document_previews,
             original_audio_locator=self._original_audio_locator,
             instrument_exports=self._instrument_exports,
             tab_active=self._is_sequencer_tab_current,
@@ -623,6 +644,7 @@ class Application:
             active_source_resolver=self._get_active_source,
             audio_device_manager=self.audio_device_manager,
             language_manager=self.language_manager,
+            previews=self.document_previews,
         )
 
         self._config_coordinator = ConfigCoordinator(
@@ -814,6 +836,7 @@ class Application:
             toggle_auto_expand_favorite_reconstructions=self._toggle_auto_expand_favorite_reconstructions,
             toggle_auto_expand_favorite_directories=self._toggle_auto_expand_favorite_directories,
             toggle_fullscreen=self._shell.toggle_fullscreen,
+            documentation=self._documentation_coordinator.open,
             about=self._open_about_dialog,
             next_tab=self._next_tab,
             previous_tab=self._previous_tab,
