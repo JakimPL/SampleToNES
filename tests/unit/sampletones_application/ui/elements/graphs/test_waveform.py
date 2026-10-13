@@ -1,14 +1,19 @@
 from types import SimpleNamespace
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, Final, List, Tuple, Union
 from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
 
 from sampletones_application.ui.elements.graphs import waveform as waveform_module
+from sampletones_application.ui.elements.graphs.layers.decimation import Decimations
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.utils.palette.colors.written import LiteralColor
+from sampletones_application.view_model.reconstruction.work import Work
 from sampletones_application.view_model.shared.waveform_data import WaveformData
+
+REGENERATING: Final[str] = "Regenerating reconstruction..."
+READING: Final[str] = "Preparing the sound..."
 
 VOICE_SAMPLES = 64
 
@@ -107,10 +112,11 @@ def _graph() -> GUIWaveformGraph:
     graph.position_indicator_tag = "indicator"
     graph.overlay_rectangle_tag = "overlay"
     graph.layers = {}
-    graph._reconstruction_dimmed = False
+    graph._work = None
     graph._lbl_waveform_reconstruction = "Reconstruction"
     graph._status_bar = MagicMock()
-    graph._msg_regenerating = "Regenerating reconstruction..."
+    graph._msg_regenerating = REGENERATING
+    graph._msg_reading = READING
     graph.tag = "waveform"
     graph._series_themes = {}
     return graph
@@ -162,7 +168,7 @@ class TestWaveformDataUpdateRefit:
         return WaveformData(
             original_audio=None,
             approximation=approximation,
-            approximations={},
+            playing=approximation,
             coefficient=1.0,
             frame_length=1,
             sample_rate=44100,
@@ -292,7 +298,7 @@ class TestWaveformReconstructionDim:
     def test_series_color_grays_the_reconstruction_when_dimmed(self) -> None:
         graph = _graph()
         _with_layout(graph, opacity=0.4)
-        graph._reconstruction_dimmed = True
+        graph._work = Work.REBUILDING
 
         layer = _Layer("Reconstruction")
         faded = graph._series_color(layer, graph._series_shade(layer))
@@ -303,7 +309,7 @@ class TestWaveformReconstructionDim:
     def test_series_color_leaves_other_layers_opaque_when_dimmed(self) -> None:
         graph = _graph()
         _with_layout(graph)
-        graph._reconstruction_dimmed = True
+        graph._work = Work.REBUILDING
         layer = _Layer("Sample Name")
 
         assert graph._series_color(layer, graph._series_shade(layer)) == layer.color
@@ -325,33 +331,54 @@ class TestWaveformReconstructionDim:
             lambda tag, theme: binds.append(theme),
         )
 
-        graph.set_reconstruction_dimmed(True)
+        graph.show_work(Work.REBUILDING)
         assert graph._reconstruction_dimmed is True
         assert len(binds) == 1
 
-        graph.set_reconstruction_dimmed(True)
+        graph.show_work(Work.REBUILDING)
         assert len(binds) == 1
 
     def test_set_dimmed_without_reconstruction_layer_is_a_noop(self) -> None:
         graph = _graph()
 
-        graph.set_reconstruction_dimmed(True)
+        graph.show_work(Work.REBUILDING)
 
         assert graph._reconstruction_dimmed is True
 
-    def test_set_dimmed_shows_then_clears_the_status_message(self) -> None:
+    @pytest.mark.parametrize(
+        ("work", "words"),
+        [
+            pytest.param(Work.REBUILDING, REGENERATING, id="an edit on its way"),
+            pytest.param(Work.READING, READING, id="the sound being prepared"),
+        ],
+    )
+    def test_showing_work_names_it_then_clears_the_status_message(
+        self,
+        work: Work,
+        words: str,
+    ) -> None:
         graph = _graph()
 
-        graph.set_reconstruction_dimmed(True)
-        graph._status_bar.set.assert_called_with("Regenerating reconstruction...")
+        graph.show_work(work)
+        graph._status_bar.set.assert_called_with(words)
 
-        graph.set_reconstruction_dimmed(False)
+        graph.show_work(None)
         graph._status_bar.set.assert_called_with("")
+        assert graph._reconstruction_dimmed is False
+
+    def test_a_hand_over_changes_the_words_under_the_same_fade(self) -> None:
+        graph = _graph()
+
+        graph.show_work(Work.REBUILDING)
+        graph.show_work(Work.READING)
+
+        graph._status_bar.set.assert_called_with(READING)
+        assert graph._reconstruction_dimmed is True
 
     def test_new_data_keeps_the_reconstruction_dimmed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """An edit landing while later ones are still on their way redraws the waveform still faded."""
         graph = _graph()
-        graph.set_reconstruction_dimmed(True)
+        graph.show_work(Work.REBUILDING)
         monkeypatch.setattr(graph, "clear_layers", MagicMock())
         monkeypatch.setattr(graph, "_restate_clock_ticks", MagicMock())
         monkeypatch.setattr(graph, "_display_layers", MagicMock(return_value=[]))
@@ -359,7 +386,7 @@ class TestWaveformReconstructionDim:
         waveform_data = WaveformData(
             original_audio=None,
             approximation=np.zeros(4),
-            approximations={},
+            playing=np.zeros(4),
             coefficient=1.0,
             frame_length=1,
             sample_rate=4,
@@ -381,6 +408,7 @@ class TestAClickReportsASampleOfDrawnAudio:
         graph._default_x_range = (0.0, 1.0)
         graph._default_y_range = (-1.0, 1.0)
         graph._layout = SimpleNamespace(waveform=SimpleNamespace(max_display_points=VOICE_SAMPLES))
+        graph._decimations = Decimations(VOICE_SAMPLES)
         monkeypatch.setattr(graph, "add_layer", lambda _layer: None)
         monkeypatch.setattr(graph, "_update_display", lambda: None)
         clicked: List[int] = []

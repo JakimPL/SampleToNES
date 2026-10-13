@@ -24,17 +24,37 @@ def filter_approximations(
     keep their lengths, which is what aligns a filtered mix with the unfiltered one sample for
     sample. The mask covers the frames the stored array holds; samples past the last recorded
     frame keep their values.
+
+    A channel every owner of which is heard comes back as the very array it was given. A
+    resting frame holds a silent instruction, which every generator renders as silence, so the
+    frames a mask would zero on such a channel are zero already and the array stands as its own
+    filtered reading, which a reader tells by identity.
     """
     filtered: Dict[ChannelName, np.ndarray] = {}
+    owners_by_channel = stems_data.owners_by_channel
     for channel, stem_ids in stems_data.assignments_by_channel.items():
         approximation = approximations[channel]
-        keep = np.isin(np.array(stem_ids, dtype=int), list(selection.stems_for(channel)))
-        keep_samples = np.repeat(keep, frame_length)
-        masked = np.array(approximation, copy=True)
-        masked[~keep_samples[: len(masked)]] = 0
-        filtered[channel] = masked
+        heard = selection.stems_for(channel)
+        if owners_by_channel[channel] <= heard:
+            filtered[channel] = approximation
+        else:
+            filtered[channel] = _silenced(approximation, stem_ids, heard, frame_length)
 
     return filtered
+
+
+def _silenced(
+    approximation: np.ndarray,
+    stem_ids: Sequence[int],
+    heard: AbstractSet[int],
+    frame_length: int,
+) -> np.ndarray:
+    """A copy of one channel's approximation with the frames of the recordings left out zeroed."""
+    keep = np.isin(np.array(stem_ids, dtype=int), list(heard))
+    keep_samples = np.repeat(keep, frame_length)
+    masked = np.array(approximation, copy=True)
+    masked[~keep_samples[: len(masked)]] = 0
+    return masked
 
 
 def heard_instructions(

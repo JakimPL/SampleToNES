@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, FrozenSet, List, Optional, Tuple
+from typing import Any, Callable, Final, FrozenSet, List, Optional, Tuple
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,8 +12,15 @@ from sampletones_application.constants.sources import SettingsField, SourceKind
 from sampletones_application.logic.instruction.readiness import LibraryReadiness
 from sampletones_application.logic.main.converter.logic import ConverterLogic
 from sampletones_application.logic.main.converter.run import ConversionSuccess
+from sampletones_application.logic.main.converter.setup import playing_sources
 from sampletones_application.services.conversion.result import ConversionItem, ConversionResult
-from sampletones_application.services.result import ServiceError, ServiceProgress, ServiceSuccess
+from sampletones_application.services.result import (
+    ServiceCanceled,
+    ServiceError,
+    ServiceIntermediate,
+    ServiceProgress,
+    ServiceSuccess,
+)
 from sampletones_application.view_model.main.converter import (
     ACTIVE_PHASES,
     ConversionPhase,
@@ -24,13 +31,16 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import UNIT_DRIVE
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
 from sampletones_core.library import LibraryState
-from sampletones_core.reconstructions.converter import ConversionJob, GroupConversion
+from sampletones_core.parallelization import TaskProgress
+from sampletones_core.reconstructions.converter import ConversionJob, ConversionOutcome, GroupConversion
 from sampletones_core.reconstructions.converter.paths import get_audio_files
 from tests.suite.base import BaseTestSuite
 from tests.suite.language import FakeLanguageManager
 from tests.unit.sampletones_application.logic.main.converter.texts import TEXTS
 
 SCHEDULING: str = "sampletones_application.logic.main.converter.logic.CallbackQueue.add"
+PLAYING_SOURCES: Final[str] = "sampletones_application.logic.main.converter.logic.playing_sources"
+LIBRARY_REPORTS: Final[int] = 100
 LOUD_DRIVE: float = 2.0
 
 
@@ -52,7 +62,13 @@ def _config_manager_writing_under(reconstructions_directory: Path) -> MagicMock:
 @pytest.fixture
 def session_manager(tmp_path: Path) -> SessionManager:
     """A session writing under the test's own directory, so the joining settings round-trip."""
-    return SessionManager(UserProfile(config=tmp_path / "config.json", state=tmp_path / "state.yaml"))
+    return SessionManager(
+        UserProfile(
+            config=tmp_path / "config.json",
+            state=tmp_path / "state.yaml",
+            documentation=tmp_path / "documentation",
+        )
+    )
 
 
 @pytest.fixture
@@ -126,6 +142,11 @@ def _card_channels(converter_logic: ConverterLogic) -> FrozenSet[ChannelName]:
     return frozenset(
         channel.channel for channel in converter_logic.source_settings_view.channels if channel.use is Agreement.ALL
     )
+
+
+def _written(*paths: Path) -> ConversionOutcome:
+    """The outcome of a run that wrote ``paths`` and skipped nothing."""
+    return ConversionOutcome(written=paths, skipped=())
 
 
 def _item_of(job: ConversionJob) -> ConversionItem:
@@ -469,6 +490,46 @@ class TestWhatTheSetupNamesItselfBy(BaseTestSuite):
         assert _view(converter_logic).input_path is None
 
 
+class TestTheRecordingsTheButtonNames(BaseTestSuite):
+    """The button names the run from the recordings read where the setup changed. Every report the run
+    files and every ending it comes to reuse that reading."""
+
+    def test_a_gesture_reads_the_recordings_again(self, converter_logic: ConverterLogic) -> None:
+        with patch(PLAYING_SOURCES, wraps=playing_sources) as reading:
+            _listed(converter_logic, "kick", "snare")
+
+        assert reading.called
+        assert _view(converter_logic).action_label == "Convert 2 recordings"
+
+    @pytest.mark.parametrize(
+        "ending",
+        [
+            ServiceSuccess(value=_written(Path("/reconstructions/kick.stn"), Path("/reconstructions/snare.stn"))),
+            ServiceError(exception=RuntimeError("a recording failed")),
+            ServiceCanceled(),
+        ],
+        ids=["succeeded", "failed", "canceled"],
+    )
+    def test_reports_and_the_ending_reuse_the_reading(
+        self,
+        converter_logic: ConverterLogic,
+        service: MagicMock,
+        ending: ConversionResult,
+    ) -> None:
+        _listed(converter_logic, "kick", "snare")
+        named = _view(converter_logic).action_label
+
+        with patch(SCHEDULING), patch(PLAYING_SOURCES, wraps=playing_sources) as reading:
+            converter_logic.start_conversion(confirmed=True)
+            for completed in range(1, LIBRARY_REPORTS + 1):
+                _reports(service, ServiceIntermediate(data=TaskProgress(total=LIBRARY_REPORTS, completed=completed)))
+            _reports(service, ending)
+            converter_logic.close()
+
+        assert reading.call_count == 0
+        assert _view(converter_logic).action_label == named
+
+
 class TestWhatACompletedConversionLeaves(BaseTestSuite):
     """A completed conversion tells its listener what it wrote, so the follow-up offer can target
     the single reconstruction or the folder holding a batch."""
@@ -482,10 +543,10 @@ class TestWhatACompletedConversionLeaves(BaseTestSuite):
         converter_logic.on_success = on_success
         written = (Path("/reconstructions/kick.stn"),)
 
-        _reports(service, ServiceSuccess(value=written))
+        _reports(service, ServiceSuccess(value=_written(*written)))
 
         assert _phase(converter_logic) == ConversionPhase.COMPLETED
-        on_success.assert_called_once_with(ConversionSuccess(written=written))
+        on_success.assert_called_once_with(ConversionSuccess(written=written, skipped=()))
 
     def test_one_written_reconstruction_becomes_the_displayed_output(
         self,
@@ -494,7 +555,7 @@ class TestWhatACompletedConversionLeaves(BaseTestSuite):
     ) -> None:
         written = (Path("/reconstructions/kick.stn"),)
 
-        _reports(service, ServiceSuccess(value=written))
+        _reports(service, ServiceSuccess(value=_written(*written)))
 
         assert _view(converter_logic).output_path == written[0]
 
@@ -506,13 +567,13 @@ class TestWhatACompletedConversionLeaves(BaseTestSuite):
         converter_logic.on_load_file = MagicMock()
         converter_logic.on_load_directory = MagicMock()
 
-        _reports(service, ServiceSuccess(value=(Path("/reconstructions/kick.stn"),)))
+        _reports(service, ServiceSuccess(value=_written(Path("/reconstructions/kick.stn"))))
         converter_logic.handle_load_request()
         converter_logic.on_load_file.assert_called_once_with(Path("/reconstructions/kick.stn"))
 
         _reports(
             service,
-            ServiceSuccess(value=(Path("/reconstructions/kick.stn"), Path("/reconstructions/snare.stn"))),
+            ServiceSuccess(value=_written(Path("/reconstructions/kick.stn"), Path("/reconstructions/snare.stn"))),
         )
         converter_logic.handle_load_request()
         converter_logic.on_load_directory.assert_called_once_with()
@@ -591,7 +652,7 @@ class TestActivePhases(BaseTestSuite):
         converter_logic: ConverterLogic,
         service: MagicMock,
     ) -> None:
-        _reports(service, ServiceSuccess(value=(Path("/reconstructions/kick.stn"),)))
+        _reports(service, ServiceSuccess(value=_written(Path("/reconstructions/kick.stn"))))
 
         assert converter_logic.is_active is False
 

@@ -6,6 +6,7 @@ import pytest
 
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.shared.renders import RenderCache
+from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.audio import mix, mix_scale, read_stems, scale_stems, write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import MAX_DRIVE, MIN_DRIVE, RESTING_STEM_ID, UNIT_DRIVE
@@ -19,6 +20,8 @@ from sampletones_core.generators import render_channels
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.converter import GroupConversion, reconstruct_job
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
+from sampletones_core.reconstructions.reconstruction.stems.filter import filter_approximations
+from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing, heard_renders
 from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
@@ -27,6 +30,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy impo
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.utils.progress import silent_reporter
 from sampletones_tools.corpus.catalog import build_mini_library
+from tests.suite.renders import warmed
 from tests.suite.stems import (
     STEM_A_ID,
     STEM_B_ID,
@@ -376,49 +380,53 @@ class TestThreeStemHierarchy:
             """The selection hearing the named stems on every channel."""
             return StemSelection.everywhere(frozenset(selected), channels)
 
-        unfiltered = data.waveform_data(renders)
-        full = data.waveform_data(renders, heard(all_stem_ids))
-        np.testing.assert_allclose(full.approximation, unfiltered.approximation, atol=_MIX_TOLERANCE)
-        np.testing.assert_allclose(full.original_audio, unfiltered.original_audio, atol=_MIX_TOLERANCE)
-        np.testing.assert_allclose(
-            data.partials_for(renders, channels, heard(all_stem_ids)),
-            data.get_partials(renders, channels),
-            atol=_MIX_TOLERANCE,
-        )
+        def hearing(selected: AbstractSet[int]) -> Hearing:
+            """Hearing the named stems on every channel, every channel kept on."""
+            return Hearing(selection=heard(selected), channels_on=frozenset(channels))
+
+        def kept(selected: AbstractSet[int]) -> WaveformData:
+            """The reading of the loaded document once the worker's sound for it is kept."""
+            warmed(renders, data.reconstruction, hearing(selected), data.recordings_by_stem)
+            waveform = data.waveform_data(renders, hearing(selected))
+            assert waveform is not None
+            return waveform
+
+        def filtered(selected: AbstractSet[int]) -> Dict[ChannelName, np.ndarray]:
+            return filter_approximations(
+                stems_data,
+                rendered_channels(data.reconstruction),
+                heard(selected),
+                frame_length,
+            )
+
+        full = kept(all_stem_ids)
+        whole = renders.reading(data.reconstruction, hearing(all_stem_ids))
+        assert whole is not None
+        assert full.approximation is whole.mix
+        assert full.playing is full.approximation
+        np.testing.assert_allclose(full.original_audio, mix(list(data.stem_audios)), atol=_MIX_TOLERANCE)
 
         for selected_id in (STEM_A_ID, STEM_B_ID, STEM_C_ID):
             selected = frozenset({selected_id})
             expected = masked_channels(selected)
-            waveform = data.waveform_data(renders, heard(selected))
+            waveform = kept(selected)
 
             for channel, expected_audio in expected.items():
-                np.testing.assert_array_equal(waveform.approximations[channel], expected_audio)
+                np.testing.assert_array_equal(filtered(selected)[channel], expected_audio)
             np.testing.assert_allclose(waveform.approximation, mix(list(expected.values())), atol=_MIX_TOLERANCE)
-            np.testing.assert_allclose(
-                data.partials_for(renders, channels, heard(selected)),
-                mix(list(expected.values())),
-                atol=_MIX_TOLERANCE,
-            )
-            np.testing.assert_allclose(
-                data.original_mix_for(heard(selected)), data.stem_audios[selected_id], atol=_MIX_TOLERANCE
-            )
+            np.testing.assert_allclose(waveform.playing, mix(list(expected.values())), atol=_MIX_TOLERANCE)
+            np.testing.assert_allclose(waveform.original_audio, data.stem_audios[selected_id], atol=_MIX_TOLERANCE)
 
         selected = frozenset()
-        waveform = data.waveform_data(renders, heard(selected))
+        waveform = kept(selected)
         for channel in stems_data.assignments_by_channel:
             np.testing.assert_array_equal(
-                waveform.approximations[channel],
+                filtered(selected)[channel],
                 np.zeros_like(rendered_channels(data.reconstruction)[channel]),
             )
         np.testing.assert_allclose(waveform.approximation, np.zeros_like(rendered_mix(data.reconstruction)))
-        np.testing.assert_allclose(
-            data.partials_for(renders, channels, heard(selected)),
-            np.zeros_like(rendered_mix(data.reconstruction)),
-        )
-        np.testing.assert_allclose(
-            data.original_mix_for(heard(selected)),
-            np.zeros_like(rendered_mix(data.reconstruction)),
-        )
+        np.testing.assert_allclose(waveform.playing, np.zeros_like(rendered_mix(data.reconstruction)))
+        np.testing.assert_allclose(waveform.original_audio, np.zeros_like(rendered_mix(data.reconstruction)))
 
 
 class TestRemovingAStem:
@@ -621,15 +629,13 @@ class TestStemsOriginalAudio:
 
         assert data.reconstruction.audio_filepath == (tone_path, noise_path)
         assert data.name == save_path.stem
-        assert data.original_audio is not None
         loaded_tone, loaded_noise = data.stem_audios
         np.testing.assert_allclose(
             np.max(np.abs(loaded_tone)) / np.max(np.abs(loaded_noise)),
             np.max(np.abs(tone)) / np.max(np.abs(noise)),
             rtol=1e-5,
         )
-        np.testing.assert_allclose(data.original_audio, mix([loaded_tone, loaded_noise]), atol=_MIX_TOLERANCE)
-        np.testing.assert_allclose(np.max(np.abs(data.original_audio)), 1.0, rtol=1e-5)
+        np.testing.assert_allclose(np.max(np.abs(mix([loaded_tone, loaded_noise]))), 1.0, rtol=1e-5)
 
     def test_the_conversion_records_the_scale_it_read_the_set_at(self, tmp_path: Path) -> None:
         config = Config()
@@ -862,10 +868,14 @@ class TestStemsCarryTheirOwnSound:
         assignments = reconstruction.stems_data.assignments_by_channel
         for stem_id, span in enumerate(spans):
             selection = StemSelection.everywhere(frozenset({stem_id}), list(assignments))
-            heard = ReconstructionData.from_reconstruction(reconstruction, name="disjoint").waveform_data(
-                renders, selection
+            hearing = Hearing(selection=selection, channels_on=frozenset(assignments))
+            heard = heard_renders(
+                reconstruction,
+                hearing,
+                rendered_channels(reconstruction),
+                rendered_mix(reconstruction),
             )
-            outside = np.array(heard.approximation, copy=True)
+            outside = np.array(heard.mix, copy=True)
             for frame in span:
                 outside[frame * frame_length : (frame + 1) * frame_length] = 0.0
 

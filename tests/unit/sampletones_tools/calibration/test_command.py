@@ -5,10 +5,10 @@ import pytest
 
 from sampletones.commands.registry import COMMANDS
 from sampletones.dispatcher import dispatch
+from sampletones_application.utils.palette.catalog import DEFAULT_PALETTE_NAME
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_tools.calibration.board.layout import PAGE_FILE
-from sampletones_tools.calibration.board.palette import DEFAULT_PALETTE
 from sampletones_tools.calibration.board.session import BoardRequest
 from sampletones_tools.calibration.config.suite import SuiteConfig
 from sampletones_tools.calibration.layout import MARKDOWN_REPORT
@@ -142,7 +142,7 @@ class TestCalibration:
     ) -> None:
         assert dispatch(COMMANDS, ["calibration"]) == 0
 
-        assert calibration.requests[0].palette == DEFAULT_PALETTE
+        assert calibration.requests[0].palette == DEFAULT_PALETTE_NAME
 
 
 class TestBoard:

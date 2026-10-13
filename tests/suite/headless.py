@@ -11,6 +11,7 @@ from sampletones_application.config.profile import UserProfile
 from sampletones_application.utils.parallelization.background import stop_background_workers
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.configs import Config
+from sampletones_shared.documentation.site import DocumentationSite
 from sampletones_shared.paths.user import CONFIG_PATH, LIBRARY_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 
 DISPLAY_FUNCTIONS: Final[Tuple[str, ...]] = (
@@ -63,6 +64,7 @@ def profile_in(directory: Path) -> UserProfile:
     return UserProfile(
         config=directory / "config.yaml",
         state=directory / "state.yaml",
+        documentation=directory / "documentation",
     )
 
 
@@ -87,7 +89,11 @@ def settings_in(directory: Path) -> Path:
 
 def headless_application(directory: Path) -> Application:
     """The whole application on a profile and settings of its own in ``directory``."""
-    return Application(profile=profile_in(directory), config_path=settings_in(directory))
+    return Application(
+        profile=profile_in(directory),
+        documentation=DocumentationSite(directory / "shipped-documentation"),
+        config_path=settings_in(directory),
+    )
 
 
 @contextmanager

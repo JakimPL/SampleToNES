@@ -6,16 +6,17 @@ import pytest
 
 from sampletones_tools.calibration.board.layout import (
     DATA_FILE,
-    FONTS_FILE,
     GENERATED_FILES,
     PAGE_DIRECTORY,
     PAGE_FILE,
-    PALETTE_FILE,
     SHIPPED_FILES,
 )
-from sampletones_tools.calibration.board.palette import board_palette, palette_names, palette_stylesheet
 from sampletones_tools.calibration.board.paths import STATIC_DIRECTORY
 from sampletones_tools.calibration.board.session import BoardRequest, build_board
+from sampletones_tools.web.colors import css_color
+from sampletones_tools.web.design import ApplicationDesign, palette_names
+from sampletones_tools.web.roles.table import COLOR_ROLES
+from sampletones_tools.web.writer import FONTS_STYLESHEET, ROLES_STYLESHEET
 
 MARKUP_REFERENCE: Final[re.Pattern[str]] = re.compile(r'(?:src|href)="([^"]+)"')
 CLIP_REFERENCE: Final[re.Pattern[str]] = re.compile(r'"((?:[\w.+-]+/)+[\w.+-]+\.flac)"')
@@ -28,7 +29,7 @@ def referenced(page: Path) -> Set[str]:
     directory = page.parent / PAGE_DIRECTORY
     data = (directory / DATA_FILE).read_text(encoding="utf-8")
     references.update(CLIP_REFERENCE.findall(data))
-    for name in (PALETTE_FILE, FONTS_FILE):
+    for name in (ROLES_STYLESHEET, FONTS_STYLESHEET):
         references.update(
             f"{PAGE_DIRECTORY}/{reference}"
             for reference in STYLE_REFERENCE.findall((directory / name).read_text(encoding="utf-8"))
@@ -74,8 +75,9 @@ class TestBuildBoard:
     def test_a_page_is_drawn_in_the_palette_it_is_asked_for(self, run: Path, name: str) -> None:
         build_board(BoardRequest(runs=[run], output=run, palette=name))
 
-        stylesheet = (run / PAGE_DIRECTORY / PALETTE_FILE).read_text(encoding="utf-8")
-        assert stylesheet == palette_stylesheet(board_palette(name))
+        stylesheet = (run / PAGE_DIRECTORY / ROLES_STYLESHEET).read_text(encoding="utf-8")
+        ground = COLOR_ROLES["ground"].resolve(ApplicationDesign.load(name))
+        assert f"--ground: {css_color(ground)};" in stylesheet
 
     def test_an_unknown_palette_is_refused(self, run: Path) -> None:
         with pytest.raises(KeyError):

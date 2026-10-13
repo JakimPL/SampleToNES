@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Generator, Optional
+from typing import Dict, Generator
 
 import dearpygui.dearpygui as dpg
 import pytest
@@ -11,14 +11,11 @@ from sampletones_application.tags.general import (
 )
 from sampletones_application.ui.themes.dpg_constants import EVERY_ITEM_TYPE
 from sampletones_application.ui.themes.loader import ThemeLoader
-from sampletones_application.ui.themes.spec import ThemeSpec
 from sampletones_application.ui.themes.style import ThemeParameter
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.palette import Palette
 from sampletones_application.utils.palette.source import PaletteSource
-
-_BASE_NAME = "default"
 
 _SYNTHETIC_BASE = """
 name: default
@@ -50,21 +47,6 @@ name: test_palette
 colors:
     reference: "#1a1a1a"
 """
-
-
-def _spec(name: str, *, extends: Optional[str] = None) -> ThemeSpec:
-    return ThemeSpec(name=name, tag=f"tag.{name}", extends=extends, components=[])
-
-
-class TestEffectiveParent:
-    def test_a_theme_inherits_the_base_by_default(self) -> None:
-        assert ThemeLoader._effective_parent(_spec("converter")) == _BASE_NAME
-
-    def test_the_base_theme_stands_alone(self) -> None:
-        assert ThemeLoader._effective_parent(_spec(_BASE_NAME)) is None
-
-    def test_an_explicit_parent_is_respected(self) -> None:
-        assert ThemeLoader._effective_parent(_spec("child", extends="table")) == "table"
 
 
 class TestLoadedInheritance:

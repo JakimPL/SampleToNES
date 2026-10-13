@@ -3,12 +3,12 @@ from typing import Final, List, Optional, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from sampletones_application.utils.palette.catalog import DEFAULT_PALETTE_NAME
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_shared.logger import logger
 from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
 from sampletones_shared.utils.text import listed_items
-from sampletones_tools.calibration.board.palette import DEFAULT_PALETTE
 from sampletones_tools.calibration.board.session import BoardRequest, build_board
 from sampletones_tools.calibration.config.corpus import CorpusConfig
 from sampletones_tools.calibration.corpus.synthesis import build_corpus
@@ -103,7 +103,7 @@ class CalibrationRequest(BaseModel):
     perceptual_exponents: List[float] = Field(min_length=1)
     temporal_weights: List[float]
     channels: List[ChannelName] = Field(min_length=1)
-    palette: str = DEFAULT_PALETTE
+    palette: str = DEFAULT_PALETTE_NAME
 
 
 class CalibrationOutcome(BaseModel):

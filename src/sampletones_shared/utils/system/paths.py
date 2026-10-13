@@ -5,6 +5,7 @@ from typing import Final, Optional, Sequence, Tuple, Union
 
 from sampletones_shared.types.path import GeneralPathlike, Pathlike
 
+from .programs import program_environment
 from .system import System
 
 DEFAULT_MAX_FILENAME_DISPLAY: Final[int] = 48
@@ -292,7 +293,7 @@ def open_directory_in_explorer_linux(path: Path) -> None:
         path (Path): The directory or file path to open.
     """
     path = path if path.is_dir() else path.parent
-    subprocess.run(["xdg-open", str(path)], check=False)
+    subprocess.run(["xdg-open", str(path)], check=False, env=program_environment())
 
 
 def open_file_in_explorer_linux(path: Path) -> None:
@@ -312,6 +313,7 @@ def open_file_in_explorer_linux(path: Path) -> None:
         capture_output=True,
         text=True,
         check=False,
+        env=program_environment(),
     )
 
     if xdg_mime_result.returncode != 0:
@@ -330,7 +332,7 @@ def open_file_in_explorer_linux(path: Path) -> None:
 
     command = file_manager_commands.get(desktop_file)
     if command:
-        result = subprocess.run(command, check=False, capture_output=True)
+        result = subprocess.run(command, check=False, capture_output=True, env=program_environment())
         if result.returncode != 0:
             open_directory_in_explorer_linux(path)
     else:
@@ -363,14 +365,14 @@ def open_path_in_explorer(path: Pathlike) -> None:
     match system:
         case System.WINDOWS:
             select = "/select," if path.is_file() else ""
-            subprocess.run(["explorer", select, path_string], check=False)
+            subprocess.run(["explorer", select, path_string], check=False, env=program_environment())
         case System.LINUX:
             if path.is_file():
                 open_file_in_explorer_linux(path)
             else:
-                subprocess.run(["xdg-open", path_string], check=False)
+                subprocess.run(["xdg-open", path_string], check=False, env=program_environment())
         case System.MACOS:
             select = "-R" if path.is_file() else ""
-            subprocess.run(["open", select, path_string], check=False)
+            subprocess.run(["open", select, path_string], check=False, env=program_environment())
         case _:
             raise OSError(f"Unsupported operating system: {system}")

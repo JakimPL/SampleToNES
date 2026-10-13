@@ -121,6 +121,12 @@ class GUIPitchStepper(CallbackMixin):
         """Shows or hides the stepper, label and buttons together, which is the whole of it."""
         dpg_configure_item(self._table_tag, show=shown)
 
+    def set_enabled(self, enabled: bool) -> None:
+        """Takes a typed value and a step of the buttons, or holds both while the value is not the reader's to move."""
+        dpg_configure_item(self._input_tag, enabled=enabled)
+        if self._buttons is not None:
+            self._buttons.set_enabled(enabled)
+
     def _build(self) -> None:
         self._clear_existing_items()
         with dpg.table(

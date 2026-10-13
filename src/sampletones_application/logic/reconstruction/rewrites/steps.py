@@ -83,4 +83,13 @@ class AfterEdits:
     gesture: VoidCallback
 
 
-Rewrite: TypeAlias = Union[ChannelChange, StemRemovalRequest, RateChange, AfterEdits]
+@dataclass(frozen=True)
+class ListeningChange:
+    """A change to what the reader hears, whose sound the worker renders for the document as it then stands.
+
+    The step carries nothing: what the reader hears is read at its turn, so the latest choice is
+    what is rendered, and one such step waiting answers every choice made before it is taken.
+    """
+
+
+Rewrite: TypeAlias = Union[ChannelChange, StemRemovalRequest, RateChange, AfterEdits, ListeningChange]

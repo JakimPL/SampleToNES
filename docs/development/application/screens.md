@@ -149,7 +149,9 @@ key held past 0.275 s repeats. A click and a key press therefore go down and com
 ImGui reads the press on one frame and the release on the next at any frame rate. A key stands down for a
 single frame, too briefly to repeat, and the presses of a double-click land two frames apart. Where two
 frames take longer than the double-click time, the hand raises `SlowFramesError` and says how far apart the
-presses landed.
+presses landed. A burst of more presses, such as the triple click a plot plays nothing on, holds every later
+press to the same time after the one before it, since a plot takes a press landing later than that as a
+click of its own.
 
 A person lets go of a click some frames after pressing it, and DearPyGui answers a double-click as its
 second press goes down. A scenario holding that press for as long as a person does sees what the answer
@@ -200,8 +202,9 @@ how a menu popup's width is measured.
   browser or a dialog tool would open on the desktop around the run. A shared library lookup passes, and
   so do the stand-ins below.
 - **The file manager.** Stand-in programs lead the search path: `xdg-mime` names a file manager, and that
-  file manager and `xdg-open` note each path they are asked to show. The application's own reveal code
-  runs, and `screen.revealed()` reads what it showed.
+  file manager and `xdg-open` note each path they are handed. The application's own code runs:
+  `screen.revealed()` reads the folders and files it asked the file manager to show, and `screen.opened()`
+  the files `xdg-open` handed to their program, such as the documentation's page for the browser.
 - **The window manager.** The scenario's X server runs none, so `screen.close_window()` sends the request
   a title bar's close button sends.
 - **Table highlights.** DearPyGui holds a table's row, cell and column highlights as table state and

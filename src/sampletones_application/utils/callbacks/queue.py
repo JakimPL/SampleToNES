@@ -6,7 +6,7 @@ import time
 from typing import Any, ClassVar, List
 
 from sampletones_application.utils.callbacks.failures import UnhandledFailures
-from sampletones_application.utils.callbacks.priority import CallbackPriority
+from sampletones_application.utils.callbacks.priority import DEFAULT_PRIORITY, CallbackPriority
 from sampletones_application.utils.callbacks.task import CallbackTask
 from sampletones_shared.exceptions import CallbackQueueStop
 from sampletones_shared.logger import logger
@@ -60,7 +60,7 @@ class CallbackQueue(metaclass=NonInstantiableMeta):
         cls,
         callback: Callback,
         *args: Any,
-        priority: int = 0,
+        priority: int = DEFAULT_PRIORITY,
         delay: int = 0,
         **kwargs: Any,
     ) -> None:

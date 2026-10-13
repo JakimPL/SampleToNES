@@ -229,3 +229,24 @@ class TestDetect:
 
         assert detection.extra == GPU_EXTRA
         assert "12.4" in detection.reason
+
+
+class TestGpuExtra:
+    def test_zero_keeps_the_cpu_backend(self) -> None:
+        assert cuda.gpu_extra(cuda.GPU_OFF, Linux(), {}) is None
+
+    def test_a_named_extra_is_taken_as_given(self) -> None:
+        assert cuda.gpu_extra(GPU_CUDA11_EXTRA, Linux(), {}) == GPU_CUDA11_EXTRA
+
+    def test_auto_on_macos_keeps_the_cpu_backend(self) -> None:
+        assert cuda.gpu_extra(cuda.GPU_AUTO, MacOS(), {}) is None
+
+    def test_auto_follows_the_driver(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(cuda.shutil, "which", lambda name: "/usr/bin/nvidia-smi")
+        monkeypatch.setattr(cuda.subprocess, "run", lambda command, **_: _completed(TABLE_OUTPUT_CUDA12))
+
+        assert cuda.gpu_extra(cuda.GPU_AUTO, Linux(), {}) == GPU_EXTRA
+
+    def test_every_choice_is_auto_off_or_an_extra(self) -> None:
+        assert set(cuda.GPU_CHOICES) == {cuda.GPU_AUTO, cuda.GPU_OFF, GPU_EXTRA, GPU_CUDA11_EXTRA}
+        assert cuda.DEFAULT_GPU == cuda.GPU_AUTO

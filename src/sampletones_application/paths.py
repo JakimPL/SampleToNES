@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Final
 
 from sampletones_shared.paths.resources import CONFIG_DIRECTORY
-from sampletones_shared.paths.user import USER_PATH_CONFIG
 
 APPLICATION_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "application"
 BEHAVIOR_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "behavior"
@@ -14,4 +13,3 @@ THEME_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "theme"
 
 LANG_EN: Final[Path] = LANG_DIRECTORY / "en.yaml"
 DEPLOYMENT_CONFIG_PATH: Final[Path] = APPLICATION_DIRECTORY / "deployment.yaml"
-APPLICATION_STATE_PATH: Final[Path] = USER_PATH_CONFIG / "state.yaml"

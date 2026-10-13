@@ -28,17 +28,19 @@ from automation.environment import (
     screen_size,
 )
 from automation.holds.base import Holds
-from automation.paths import FAILURE_SCREENSHOT
+from automation.paths import FAILURE_SCREENSHOT, SHIPPED_DOCUMENTATION_FOLDER
 from automation.plugin.constants import DISPLAY_KEY
 from automation.render_thread import QueueRenderThread
 from automation.screen import Screen
 from automation.worlds.home import World, lived_in_world
 from sampletones_application.application import Application
 from sampletones_application.config.profile import UserProfile
+from sampletones_shared.documentation.site import DocumentationSite
 
 ANSWER_TIMEOUT_SECONDS: Final[float] = 30.0
 STAND_IN_PROGRAMS: Final[str] = "programs"
 REVEALS_FILE: Final[str] = "reveals.log"
+OPENS_FILE: Final[str] = "opens.log"
 DISPLAY_NAME_KEY: Final[pytest.StashKey[str]] = pytest.StashKey()
 
 
@@ -87,7 +89,7 @@ def screen_boundaries_fixture(
     errors = ErrorRecords()
     errors.install()
     artifacts = Path(os.environ[ARTIFACTS_VARIABLE])
-    file_manager = FileManagerStandIn(artifacts / STAND_IN_PROGRAMS, artifacts / REVEALS_FILE)
+    file_manager = FileManagerStandIn(artifacts / STAND_IN_PROGRAMS, artifacts / REVEALS_FILE, artifacts / OPENS_FILE)
     file_manager.install(monkeypatch)
     spawns = SpawnGuard()
     spawns.install()
@@ -125,6 +127,7 @@ def screen_application_fixture(
     world.write(profile)
     application = Application(
         profile=profile,
+        documentation=DocumentationSite(Path.home() / SHIPPED_DOCUMENTATION_FOLDER),
         reconstruction_path=startup.reconstruction,
         project_path=startup.project,
     )
@@ -155,6 +158,7 @@ def screen_fixture(
         window_manager=window_manager,
         language=screen_application.language,
         shortcuts=screen_application.shortcuts,
+        sound_settled=screen_application.sound_settled,
         dialogs=screen_boundaries.dialogs,
         errors=screen_boundaries.errors,
         file_manager=screen_boundaries.file_manager,

@@ -1,0 +1,124 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.menu-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: calc(2 * var(--menu-padding-x));
+  padding: 2px var(--page-gutter);
+  background: var(--menu);
+}
+
+.menu-bar .title {
+  font-weight: 700;
+}
+
+.menu-bar .brand-mark {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.menu-bar .spacer {
+  flex: 1;
+}
+
+.tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 4px;
+  padding: var(--panel-gap) var(--page-gutter) 0;
+  background: var(--tab-strip);
+}
+
+.tab {
+  appearance: none;
+  margin: 0;
+  padding: 3px 11px;
+  font: inherit;
+  font-size: var(--size-sans-large);
+  color: var(--text);
+  background: var(--tab);
+  border: 0;
+  border-radius: var(--tab-radius) var(--tab-radius) 0 0;
+  cursor: pointer;
+}
+
+.tab:hover {
+  background: var(--tab-hover);
+}
+
+.tab[aria-selected="true"] {
+  background: var(--tab-selected);
+}
+
+.workspace {
+  flex: 1;
+  min-width: 0;
+  padding-block: var(--panel-gap);
+  padding-inline: var(--page-gutter);
+  background: var(--recess);
+}
+
+.columns {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--panel-gap);
+}
+
+.column {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--panel-gap);
+  min-width: 0;
+}
+
+.column.side {
+  flex: 0 0 var(--side-column);
+}
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--item-spacing-x);
+  min-height: var(--status-height);
+  padding: 0 var(--page-gutter);
+  color: var(--status-text);
+  background: var(--status);
+  border-top: 1px solid var(--border);
+}
+
+.masthead {
+  padding: var(--page-gutter) var(--card-padding-x) var(--card-padding-y);
+}
+
+.masthead h1 {
+  margin: 0;
+  font-size: var(--size-sans-title);
+  font-weight: 700;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.masthead .lead {
+  margin: 0.4em 0 0;
+  font-size: var(--size-sans-large);
+  color: var(--text-muted);
+}
+
+@media (max-width: 900px) {
+  .columns {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .column.side {
+    flex-basis: auto;
+  }
+}

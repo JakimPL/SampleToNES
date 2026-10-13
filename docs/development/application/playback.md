@@ -22,7 +22,7 @@ Two terms recur. A **source** is what plays one kind of audio: a reconstruction,
 
 An instrument's audition is a preview of that kind. It reads the generator chosen on the instruments card, takes the note from the keyboard's two octaves above the octave the tracker types in, and renders the voice through the same two steps a tracker row takes: the step from the instrument's own pitch to the note, at full volume. The plot card draws the same rendering at the pitch the instrument stands at, so what is seen and what is heard name one generator.
 
-**A preview sounds the frames it renders.** An instrument sounds the envelopes it has, and a sample previews the frames its reconstruction recorded. Both sound exactly what they carry, because a recording's drive matters only while the conversion runs.
+**A preview sounds the frames it renders.** An instrument sounds the envelopes it has, and a sample previews the frames its reconstruction recorded. Both sound exactly what they carry, because a recording's drive matters only while the conversion runs. A sample's preview sounds the render the render cache keeps, or the one a worker of its own lands a moment later, so the render thread computes no sample for it; a newer click replaces a preview still on its way, and playback the reader starts forgets one, so the voice heard is the last one asked for and a song started meanwhile keeps the device. A reconstruction a browser tree plays is read from disk and previewed the same way.
 
 **A voice sounded on its own runs to its release, or to the length it is offered.** A row holds a voice for as long as the pattern asks. An audition and the voice list's preview have no row behind them, so each has a span of its own. A volume dimension that ends at silence releases the voice, and the sound stops there. A voice that circles from a loop point never reaches a last item, so it sounds for the ticks `AUDITION_TICKS` offers it. One count serves both spans, so the plot card draws exactly the frames the keyboard sounds.
 
@@ -153,6 +153,7 @@ The manager's own playback is held to the same rule. A stop waits a while for it
 | What the reader is told when a sound fails | `PlaybackFailurePresenter` (`coordinators/playback/failures.py`) |
 | The boundary that hands a transport command's failure to the presenter | `GuardedPlayer` (`coordinators/playback/guard.py`) |
 | The sequencer's mute set, its mask, and solo | `SequencerChannelsLogic` (`logic/sequencer/channels.py`) |
+| A whole document's preview, read from the render cache or rendered on a worker of its own | `DocumentPreviews` (`logic/shared/previews.py`) |
 | Row mixing, and the mask it pulls while rendering | `RowSynthesizer` (`logic/sequencer/playback/synthesizer/`) |
 | The values a note starts from and a channel holds between frames | `ChannelPerformance` (`sampletones_core/performance/state.py`) |
 | What a row's voice and pitch start, and what they move | `apply_row` and `note_step` (`sampletones_core/performance/rows.py`) |

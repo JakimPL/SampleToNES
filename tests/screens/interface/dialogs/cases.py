@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Final, Tuple
 
 from sampletones_application.categories.elements.global_ import MenuElements
-from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_ABOUT
+from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_ABOUT, TAG_GLOBAL_DIALOG_DOCUMENTATION
 from sampletones_application.tags.settings import (
     TAG_SETTINGS_AUDIO_WINDOW,
     TAG_SETTINGS_DISPLAY_WINDOW,
@@ -66,6 +66,12 @@ DIALOGS: Final[Tuple[MenuDialog, ...]] = (
         MenuElements.GROUP_FILE,
         MenuElements.ITEM_FILE_EXPORT_NSF,
         TAG_SETTINGS_NSF_WINDOW,
+    ),
+    MenuDialog(
+        "Documentation notice",
+        MenuElements.GROUP_HELP,
+        MenuElements.ITEM_HELP_DOCUMENTATION,
+        TAG_GLOBAL_DIALOG_DOCUMENTATION,
     ),
     MenuDialog(
         "About",

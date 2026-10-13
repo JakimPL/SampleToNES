@@ -3,56 +3,27 @@ import os
 import platform as running
 import sys
 from pathlib import Path
-from typing import Final, List, Mapping, Optional, Sequence, Tuple
+from typing import List, Mapping, Optional, Sequence
 
-from bootstrap.cuda import detect
+from bootstrap.cuda import DEFAULT_GPU, GPU_CHOICES, gpu_extra
 from bootstrap.layout import repository_root
 from bootstrap.platforms.factory import current_platform
 from bootstrap.platforms.protocol import Platform
 from bootstrap.processes import Runner, expect_success, run
-from bootstrap.project import DEVELOPMENT_GROUP, GPU_CUDA11_EXTRA, GPU_EXTRA, read_project
-
-GPU_AUTO: Final[str] = "auto"
-GPU_OFF: Final[str] = "0"
-GPU_CHOICES: Final[Tuple[str, ...]] = (
-    GPU_AUTO,
-    GPU_OFF,
-    GPU_EXTRA,
-    GPU_CUDA11_EXTRA,
-)
-DEFAULT_GPU: Final[str] = GPU_AUTO
+from bootstrap.project import DEVELOPMENT_GROUP, read_project
 
 
-def gpu_extra(
-    choice: str,
-    platform: Platform,
-    environment: Mapping[str, str],
-) -> Optional[str]:
-    """The optional-dependency extra a GPU choice selects.
-
-    Args:
-        choice: ``auto`` to read the NVIDIA driver, ``0`` for the CPU backend, or an extra's name.
-        platform: The system the setup runs on.
-        environment: The variables the driver's locations are read from.
-
-    Returns:
-        Optional[str]: The extra, or ``None`` for the CPU backend.
-    """
-    if choice == GPU_OFF:
-        return None
-
-    if choice == GPU_AUTO:
-        detection = detect(platform, environment)
-        print(detection.reason, file=sys.stderr)
-        return detection.extra
-
-    return choice
-
-
-def setup_commands(extra: Optional[str]) -> List[List[str]]:
+def setup_commands(
+    name: str,
+    extra: Optional[str],
+) -> List[List[str]]:
     """The commands that create the development environment and install the global command.
 
+    The global command is rebuilt from the checkout on every run, so it carries the checkout's
+    code and documentation as they stand.
+
     Args:
+        name: The distribution's name, the package the global command is rebuilt from.
         extra: The GPU extra installed with the package, or ``None`` for the CPU backend.
 
     Returns:
@@ -66,12 +37,13 @@ def setup_commands(extra: Optional[str]) -> List[List[str]]:
 
     return [
         synchronize,
-        ["uv", "tool", "install", "--force", package],
+        ["uv", "tool", "install", "--force", "--reinstall-package", name, package],
     ]
 
 
 def set_up_environment(
     root: Path,
+    name: str,
     platform: Platform,
     extra: Optional[str],
     *,
@@ -83,6 +55,7 @@ def set_up_environment(
 
     Args:
         root: The repository.
+        name: The distribution's name, the package the global command is rebuilt from.
         platform: The system the setup runs on, which adds the variables the build needs.
         extra: The GPU extra installed with the package, or ``None`` for the CPU backend.
         machine: The processor architecture ``platform.machine()`` reports.
@@ -93,7 +66,7 @@ def set_up_environment(
         SystemExit: If a command fails.
     """
     variables = platform.setup_variables(environment, machine=machine)
-    for command in setup_commands(extra):
+    for command in setup_commands(name, extra):
         expect_success(runner, command, cwd=root, environment=variables)
 
 
@@ -109,10 +82,11 @@ def main(argv: Sequence[str]) -> int:
     arguments = parser.parse_args(list(argv))
 
     root = repository_root()
-    read_project(root)
+    project = read_project(root)
     platform = current_platform()
     set_up_environment(
         root,
+        project.name,
         platform,
         gpu_extra(arguments.gpu, platform, os.environ),
         machine=running.machine(),

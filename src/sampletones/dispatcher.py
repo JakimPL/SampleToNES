@@ -1,8 +1,8 @@
 from argparse import ArgumentParser
 from typing import Final, Sequence
 
-from sampletones_shared.application import SAMPLETONES_NAME_VERSION
 from sampletones_shared.command import Command
+from sampletones_shared.distribution import SAMPLETONES_NAME_VERSION
 
 PROGRAM: Final[str] = "sampletones"
 DESCRIPTION: Final[str] = "SampleToNES turns recordings into NES instruments and plays them back."

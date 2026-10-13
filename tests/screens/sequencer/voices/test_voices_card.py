@@ -11,7 +11,7 @@ from automation.screen import Screen
 from automation.steps.reconstructions import BY_CONFIGURATION
 from automation.steps.sequencer import leave_letting_the_project_go
 from automation.views.menus import MenuEntry
-from automation.vocabulary.playback import PAUSE
+from automation.vocabulary.playback import PAUSE, PLAY_VOICE
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.tags.sequencer import TAG_SEQUENCER_VOICES_TABLE
@@ -28,7 +28,6 @@ POOL_ACTIONS: Final[Tuple[str, ...]] = (
     "sequencer.voices.label.import_instrument",
 )
 
-PLAY_VOICE: Final[str] = "global.context.label.play"
 NEW_INSTRUMENT_TIP: Final[str] = "sequencer.voices.tooltip.new_instrument"
 NO_PROJECT_TIP: Final[str] = "sequencer.voices.tooltip.new_instrument_no_project"
 STATUS_SAMPLE: Final[str] = "sequencer.voices.template.status_sample"

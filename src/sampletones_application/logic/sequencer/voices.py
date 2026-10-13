@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 from typing import Callable, Final, Optional, Tuple
 
@@ -10,7 +11,7 @@ from sampletones_application.layout.behavior.scheduling.scheduling import (
 )
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
-from sampletones_application.logic.shared.renders import RenderCache
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.sequencer.kind import voice_kind
 from sampletones_application.view_model.sequencer.voices import (
@@ -58,7 +59,10 @@ class SequencerVoicesLogic(CallbackMixin):
 
     Previewing mirrors the reconstruction browser: a single click schedules a debounced autoplay
     that fires only when the session's autoplay flag is on, and a double-click (edit) cancels the
-    pending preview before it plays.
+    pending preview before it plays. A sample sounds through the document previews, which play
+    the render the cache keeps at once and otherwise sound the sample once a worker lands it, so
+    the debounce is this logic's own span and the preview on its way is the previews' own: a
+    double-click outliving the debounce cancels there too.
     """
 
     def __init__(
@@ -68,13 +72,13 @@ class SequencerVoicesLogic(CallbackMixin):
         audio_device_manager: AudioDeviceManager,
         *,
         scheduling: SchedulingBehavior,
-        renders: RenderCache,
+        previews: DocumentPreviews,
     ) -> None:
         self._controller = project_controller
         self._session_manager = session_manager
         self._audio_device_manager = audio_device_manager
         self._scheduling = scheduling
-        self._renders = renders
+        self._previews = previews
         self._pending_autoplay_voice: Optional[str] = None
 
         self.on_voices_changed: Optional[Callable[[SequencerVoicesViewModel], None]] = None
@@ -271,7 +275,9 @@ class SequencerVoicesLogic(CallbackMixin):
         )
 
     def cancel_autoplay(self) -> None:
+        """Forgets the preview pending, whether it waits for the debounce or for a worker's render."""
         self._pending_autoplay_voice = None
+        self._previews.cancel()
 
     def _execute_autoplay(self) -> None:
         if self._pending_autoplay_voice is None:
@@ -282,8 +288,8 @@ class SequencerVoicesLogic(CallbackMixin):
         if self._session_manager.autoplay:
             self._play_voice(voice_id, priority=PlaybackPriority.PREVIEW)
 
-    def _preview_audio(self, voice_id: str) -> Optional[np.ndarray]:
-        """The audio a preview sounds: a sample's approximation, or an instrument on the pulse.
+    def _audition_audio(self, instrument: Instrument) -> Optional[np.ndarray]:
+        """The audio an instrument's preview sounds, on the pulse.
 
         The pulse channel offers every dimension an instrument writes, so sounding the preview
         there sounds the whole instrument rather than the part another channel would read. The
@@ -291,24 +297,18 @@ class SequencerVoicesLogic(CallbackMixin):
         measured against.
 
         Args:
-            voice_id: The voice to preview.
+            instrument: The voice to preview.
 
         Returns:
             Optional[np.ndarray]: The waveform to play, or ``None`` where the voice sounds nothing.
         """
-        match self._controller.project.voices.get(voice_id):
-            case Sample() as sample:
-                return self._renders.mix(sample.reconstruction)
-            case Instrument() as instrument:
-                return audition_audio(
-                    instrument,
-                    PREVIEW_CHANNEL,
-                    self._preview_config(),
-                    pitch=instrument.reference(PREVIEW_CHANNEL),
-                    ticks=audition_ticks(instrument, cap=AUDITION_TICKS),
-                )
-            case _:
-                return None
+        return audition_audio(
+            instrument,
+            PREVIEW_CHANNEL,
+            self._preview_config(),
+            pitch=instrument.reference(PREVIEW_CHANNEL),
+            ticks=audition_ticks(instrument, cap=AUDITION_TICKS),
+        )
 
     def _preview_config(self) -> Config:
         settings = self._controller.project.settings
@@ -323,7 +323,32 @@ class SequencerVoicesLogic(CallbackMixin):
         *,
         priority: PlaybackPriority,
     ) -> None:
-        audio = self._preview_audio(voice_id)
+        """Sounds one voice: a sample through the document previews, an instrument rendered on the spot.
+
+        A preview asked for replaces one still on its way, so the voice heard is the last one
+        asked for.
+        """
+        self._previews.cancel()
+        match self._controller.project.voices.get(voice_id):
+            case Sample() as sample:
+                self._previews.play(
+                    sample.reconstruction,
+                    partial(self._sound, priority=priority),
+                    self._report_failed_render,
+                )
+            case Instrument() as instrument:
+                self._sound(self._audition_audio(instrument), priority=priority)
+
+    def _report_failed_render(self, exception: Exception) -> None:
+        """Reports a sample's preview whose render failed the way a refused one is reported."""
+        self.call(self.on_autoplay_error, exception)
+
+    def _sound(
+        self,
+        audio: Optional[np.ndarray],
+        *,
+        priority: PlaybackPriority,
+    ) -> None:
         if audio is None:
             return
 

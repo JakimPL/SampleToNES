@@ -10,7 +10,7 @@ from sampletones_shared.utils.hashing import hash_model
 
 from .action import HistoryAction
 from .errors import HistoryIntegrityError, UntrackedMutationError
-from .fingerprint import ReconstructionHashCache, fingerprint_project
+from .fingerprint import FreshHashes, HashCache, fingerprint_project
 from .snapshot import HistoryEntry
 from .transaction import CoalesceKey, PendingTransaction
 
@@ -41,8 +41,8 @@ class HistoryManager(CallbackMixin):
         self._controller = controller
         self._budget = budget
         self._strict = strict
-        self._hash_cache: Optional[ReconstructionHashCache] = (
-            ReconstructionHashCache(reconstruction_hash=hash_model) if strict else None
+        self._hash_cache: Optional[HashCache] = (
+            HashCache(stream_hash=hash_model, assignment_hash=hash_model, pattern_hash=hash_model) if strict else None
         )
         self._entries: List[HistoryEntry] = []
         self._cursor: int = -1
@@ -305,20 +305,13 @@ class HistoryManager(CallbackMixin):
     ) -> HistoryEntry:
         """Snapshots the live project, fingerprinting it under strict deployment.
 
-        Capture-time fingerprints reuse the memoized per-reconstruction hashes:
-        copy-on-write keeps a reconstruction's content fixed for the object's
-        lifetime, so the per-gesture cost collapses to hashing the light
-        structure.
+        Capture-time fingerprints reuse the memoized hashes of every value the project is made
+        of: each reconstruction with its streams and owner records, and each pattern of the song.
+        Copy-on-write keeps their content fixed for the object's lifetime, so the per-gesture cost
+        collapses to hashing what the gesture replaced and the light structure.
         """
         project = self._controller.project
-        fingerprint = (
-            fingerprint_project(
-                project,
-                reconstruction_hash=self._hash_cache.hash,
-            )
-            if self._hash_cache is not None
-            else None
-        )
+        fingerprint = fingerprint_project(project, hashes=self._hash_cache) if self._hash_cache is not None else None
         return HistoryEntry(
             project=project.snapshot(),
             action=action,
@@ -371,7 +364,7 @@ class HistoryManager(CallbackMixin):
     def _verify(self, entry: HistoryEntry) -> None:
         """Checks the restored project against the entry's recorded fingerprint.
 
-        Verification always hashes reconstructions fresh: an in-place mutation of
+        Verification always hashes every value fresh: an in-place mutation of
         shared state keeps the object's identity, so a memoized digest would
         reproduce the pre-mutation hash and mask exactly the divergence this
         tripwire exists to catch.
@@ -379,10 +372,7 @@ class HistoryManager(CallbackMixin):
         if entry.fingerprint is None:
             return
 
-        actual = fingerprint_project(
-            self._controller.project,
-            reconstruction_hash=hash_model,
-        )
+        actual = fingerprint_project(self._controller.project, hashes=FreshHashes())
         if actual != entry.fingerprint:
             raise HistoryIntegrityError(
                 f"Restoring history entry '{entry.action}' produced a project that "
@@ -390,12 +380,12 @@ class HistoryManager(CallbackMixin):
             )
 
     def _prune_hash_cache(self) -> None:
-        """Prunes the hash cache to the reconstructions the history still retains.
+        """Prunes the hash cache to the values the history still retains.
 
         Runs wherever snapshots are discarded — reset, redo-branch truncation,
         budget eviction, and coalescing replacement — keeping the cache bounded
-        by the reconstructions still reachable from the stack or the live
-        project.
+        by the reconstructions and patterns still reachable from the stack or
+        the live project.
         """
         if self._hash_cache is None:
             return

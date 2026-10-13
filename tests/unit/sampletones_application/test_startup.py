@@ -17,6 +17,7 @@ from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.sources import SettingsField, SourceKind
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.reconstruction.edit import ChannelEdit
+from sampletones_application.logic.reconstruction.envelopes import HeardEnvelopes
 from sampletones_application.logic.reconstruction.rewrites.steps import ChannelChange
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
@@ -63,7 +64,10 @@ from sampletones_application.utils.parallelization.background import (
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_application.view_model.main.converter import ConversionPhase, ConverterViewModel
 from sampletones_application.view_model.reconstruction.envelopes import ChannelEnvelopesViewModel
-from sampletones_application.view_model.reconstruction.instruments import ReconstructionInstrumentsViewModel
+from sampletones_application.view_model.reconstruction.instruments import (
+    InstrumentsShowing,
+    ReconstructionInstrumentsViewModel,
+)
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.audio import CurrentDevice
 from sampletones_core.constants.algorithm import UNIT_DRIVE
@@ -87,6 +91,7 @@ from tests.suite.headless import (
     headless_application,
     profile_in,
 )
+from tests.suite.stems import everything_heard
 
 REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
 DRAG_PAYLOAD_SLOT: Final[int] = 3
@@ -507,11 +512,13 @@ class TestTheReconstructionsTabFollowsTheProject:
         it lands names none either.
         """
         edited = reconstruction_factory().detached()
+        selection = everything_heard(edited)
         app._reconstruction_coordinator.apply_edit(
             ChannelEdit(
                 reconstruction=edited,
                 channel_name=ChannelName.PULSE1,
                 feature_key=FeatureKey.VOLUME,
+                envelopes=HeardEnvelopes(selection=selection, channels=edited.export_heard(selection)),
             )
         )
         return edited
@@ -570,18 +577,28 @@ class TestTheReconstructionsTabFollowsTheProject:
         assert title is not None
         assert title.included
 
-    def test_an_undo_redraws_the_instruments_panel(
+    def test_an_undo_redraws_the_instruments_panel_once_its_sound_lands(
         self,
         app: Application,
+        held_queue: HeldQueue,
         embedded_sample: Sample,
         reconstruction_factory: ReconstructionFactory,
     ) -> None:
+        """The restored document's envelopes are owed to the worker, so the panel draws them with its sound.
+
+        The queue is held before the sample opens, so the opening's own report is drained here too.
+        """
         self._edit(app, reconstruction_factory)
         drawn = self._drawn_envelopes(app)
 
         app.history.undo()
+        assert drawn == [None]
+        while app.reconstruction_rewrites.is_busy:
+            SingleThreadExecutor.join_all()
+            held_queue.drain()
 
-        assert drawn == [app.reconstruction_manager.current_features]
+        assert drawn[-1] is not None
+        assert drawn[-1] is app.reconstruction_manager.current_features
 
     def test_a_redo_shows_the_edit_again(
         self,
@@ -707,6 +724,30 @@ class TestTheReconstructionsTabFollowsTheProject:
         held_queue.drain()
         assert app.reconstruction_manager.filepath == path
 
+    def test_an_opening_says_the_envelopes_are_on_their_way_until_they_land(
+        self,
+        app: Application,
+        reconstruction_factory: ReconstructionFactory,
+        held_queue: HeldQueue,
+        tmp_path: Path,
+    ) -> None:
+        """The panel says a document is open from the opening on, and draws its channels once the worker lands them."""
+        views = self._drawn_views(app)
+        path = tmp_path / "lead.stn"
+        reconstruction_factory().save(path)
+
+        app.reconstruction_manager.load_reconstruction(path)
+
+        assert views[-1].reconstruction_loaded
+        assert views[-1].showing is InstrumentsShowing.PREPARING
+        assert not views[-1].is_open
+
+        SingleThreadExecutor.join_all()
+        held_queue.drain()
+
+        assert views[-1].showing is InstrumentsShowing.EDITABLE
+        assert views[-1].is_open
+
 
 class TestAGestureOnTheWholeDocumentWaitsForTheEdits:
     """A gesture that reads or puts away the open document runs once the edit on its way has landed.
@@ -719,10 +760,15 @@ class TestAGestureOnTheWholeDocumentWaitsForTheEdits:
     def edit_on_its_way(
         self,
         app: Application,
-        embedded_sample: Sample,
         held_queue: HeldQueue,
+        embedded_sample: Sample,
     ) -> Sample:
-        """The open sample with a volume edit rebuilt and its result held until the case drains the queue."""
+        """The open sample with a volume edit rebuilt and its result held until the case drains the queue.
+
+        The opening's own sound is rendered on a worker and reported through the held queue, so the
+        worker is joined and its report drained first, which leaves the line empty for the edit.
+        """
+        SingleThreadExecutor.join_all()
         held_queue.drain()
         with patch.object(
             app.regeneration_service._executor,

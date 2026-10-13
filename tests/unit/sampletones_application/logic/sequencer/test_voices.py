@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Dict, List, Tuple
 from unittest.mock import MagicMock
@@ -10,6 +11,7 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
@@ -31,23 +33,62 @@ from sampletones_core.formats.famitracker.specification.sequences import Sequenc
 from sampletones_core.formats.famitracker.voice import InstrumentOmission
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.note_on import NoteOn
+from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.renders import rendered_mix
+from sampletones_core.reconstructions.reconstruction.stems.hearing import whole_hearing
 from sampletones_shared.exceptions import LoadInstrumentError, NoOutputDeviceError
 from tests.conftest import RENDER_BUDGET
+from tests.suite.application import synchronous_queue
+from tests.suite.regeneration import HeldRegeneration
+from tests.suite.renders import warmed
 from tests.suite.sequencer import sample_reconstruction
+
+__all__ = ["synchronous_queue"]
+
+
+@dataclass(frozen=True)
+class VoicesHarness:
+    """The voices logic over a project of its own, with the device mocked and the worker held."""
+
+    controller: ProjectController
+    logic: SequencerVoicesLogic
+    session_manager: MagicMock
+    audio_device_manager: MagicMock
+    renders: RenderCache
+    regeneration: HeldRegeneration
+
+    def add_sample(self, reconstruction: Reconstruction, *, kept: bool) -> Sample:
+        """Adds a sample to the pool, its sound kept in the cache where ``kept`` says so."""
+        sample = self.controller.add_sample(reconstruction, name="lead")
+        if kept:
+            warmed(self.renders, sample.reconstruction, whole_hearing(sample.reconstruction), {})
+
+        return sample
+
+    def played(self) -> List[np.ndarray]:
+        return [call.args[0] for call in self.audio_device_manager.play.call_args_list]
+
+
+def _harness() -> VoicesHarness:
+    controller = ProjectController(ProjectManager())
+    renders = RenderCache(budget_bytes=RENDER_BUDGET)
+    regeneration = HeldRegeneration()
+    session_manager = MagicMock()
+    audio_device_manager = MagicMock()
+    logic = SequencerVoicesLogic(
+        controller,
+        session_manager,
+        audio_device_manager,
+        scheduling=MagicMock(),
+        previews=DocumentPreviews(renders, regeneration),
+    )
+    return VoicesHarness(controller, logic, session_manager, audio_device_manager, renders, regeneration)
 
 
 def _logic() -> Tuple[ProjectController, SequencerVoicesLogic]:
-    controller = ProjectController(ProjectManager())
-    logic = SequencerVoicesLogic(
-        controller,
-        MagicMock(),
-        MagicMock(),
-        scheduling=MagicMock(),
-        renders=RenderCache(budget_bytes=RENDER_BUDGET),
-    )
-    return controller, logic
+    harness = _harness()
+    return harness.controller, harness.logic
 
 
 def _logic_with_mocks() -> Tuple[
@@ -56,17 +97,8 @@ def _logic_with_mocks() -> Tuple[
     MagicMock,
     MagicMock,
 ]:
-    controller = ProjectController(ProjectManager())
-    session_manager = MagicMock()
-    audio_device_manager = MagicMock()
-    logic = SequencerVoicesLogic(
-        controller,
-        session_manager,
-        audio_device_manager,
-        scheduling=MagicMock(),
-        renders=RenderCache(budget_bytes=RENDER_BUDGET),
-    )
-    return controller, logic, session_manager, audio_device_manager
+    harness = _harness()
+    return harness.controller, harness.logic, harness.session_manager, harness.audio_device_manager
 
 
 def _place_instrument(
@@ -343,20 +375,37 @@ class TestTakingAChannelAsAnInstrument:
 
 
 class TestPlaySample:
-    def test_plays_reconstruction_regardless_of_autoplay(
+    """A sample plays from the render cache at once, or once the worker lands it, whatever the autoplay setting."""
+
+    def test_a_kept_sample_plays_at_once_regardless_of_autoplay(
         self, reconstruction_factory: Callable[[], Reconstruction]
     ) -> None:
-        controller, logic, session_manager, audio_device_manager = _logic_with_mocks()
-        session_manager.autoplay = False
-        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        harness = _harness()
+        harness.session_manager.autoplay = False
+        sample = harness.add_sample(reconstruction_factory(), kept=True)
 
-        logic.play_voice(sample.id)
+        harness.logic.play_voice(sample.id)
 
-        audio_device_manager.play.assert_called_once()
-        call = audio_device_manager.play.call_args
+        harness.audio_device_manager.play.assert_called_once()
+        call = harness.audio_device_manager.play.call_args
         assert np.array_equal(call.args[0], rendered_mix(sample.reconstruction))
         assert call.kwargs["priority"] == PlaybackPriority.NORMAL
         assert call.kwargs["update"] is False
+        assert harness.regeneration.held == ()
+
+    def test_an_unkept_sample_plays_once_the_worker_lands_it(
+        self, reconstruction_factory: Callable[[], Reconstruction]
+    ) -> None:
+        harness = _harness()
+        sample = harness.add_sample(reconstruction_factory(), kept=False)
+
+        harness.logic.play_voice(sample.id)
+
+        harness.audio_device_manager.play.assert_not_called()
+        harness.regeneration.finish()
+        call = harness.audio_device_manager.play.call_args
+        assert np.array_equal(call.args[0], rendered_mix(sample.reconstruction))
+        assert call.kwargs["priority"] == PlaybackPriority.NORMAL
 
     def test_unknown_sample_is_ignored(self) -> None:
         _, logic, _, audio_device_manager = _logic_with_mocks()
@@ -368,14 +417,14 @@ class TestPlaySample:
     def test_a_device_refusing_the_preview_reports_the_refusal(
         self, reconstruction_factory: Callable[[], Reconstruction]
     ) -> None:
-        controller, logic, _, audio_device_manager = _logic_with_mocks()
-        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        harness = _harness()
+        sample = harness.add_sample(reconstruction_factory(), kept=True)
         refusal = NoOutputDeviceError("no device")
-        audio_device_manager.play.side_effect = refusal
+        harness.audio_device_manager.play.side_effect = refusal
         reported: List[Exception] = []
-        logic.on_autoplay_error = reported.append
+        harness.logic.on_autoplay_error = reported.append
 
-        logic.play_voice(sample.id)
+        harness.logic.play_voice(sample.id)
 
         assert reported == [refusal]
 
@@ -384,15 +433,49 @@ class TestAutoplay:
     def test_executes_pending_preview_when_autoplay_enabled(
         self, reconstruction_factory: Callable[[], Reconstruction]
     ) -> None:
-        controller, logic, session_manager, audio_device_manager = _logic_with_mocks()
-        session_manager.autoplay = True
-        sample = controller.add_sample(reconstruction_factory(), name="lead")
-        logic._pending_autoplay_voice = sample.id
+        harness = _harness()
+        harness.session_manager.autoplay = True
+        sample = harness.add_sample(reconstruction_factory(), kept=True)
+        harness.logic._pending_autoplay_voice = sample.id
 
-        logic._execute_autoplay()
+        harness.logic._execute_autoplay()
 
-        audio_device_manager.play.assert_called_once()
-        assert audio_device_manager.play.call_args.kwargs["priority"] == PlaybackPriority.PREVIEW
+        harness.audio_device_manager.play.assert_called_once()
+        assert harness.audio_device_manager.play.call_args.kwargs["priority"] == PlaybackPriority.PREVIEW
+
+    def test_a_preview_landing_after_the_debounce_sounds_the_latest_voice(
+        self, reconstruction_factory: Callable[[], Reconstruction]
+    ) -> None:
+        """Two voices clicked faster than the worker renders sound the second alone, once it lands."""
+        harness = _harness()
+        harness.session_manager.autoplay = True
+        first = harness.add_sample(reconstruction_factory(), kept=False)
+        second = harness.add_sample(reconstruction_factory(), kept=False)
+        harness.logic._pending_autoplay_voice = first.id
+        harness.logic._execute_autoplay()
+        harness.logic._pending_autoplay_voice = second.id
+        harness.logic._execute_autoplay()
+
+        harness.regeneration.finish()
+        harness.regeneration.finish()
+
+        played = harness.played()
+        assert len(played) == 1
+        assert np.array_equal(played[0], rendered_mix(second.reconstruction))
+
+    def test_an_edit_request_forgets_a_preview_on_its_way(
+        self, reconstruction_factory: Callable[[], Reconstruction]
+    ) -> None:
+        harness = _harness()
+        harness.session_manager.autoplay = True
+        sample = harness.add_sample(reconstruction_factory(), kept=False)
+        harness.logic._pending_autoplay_voice = sample.id
+        harness.logic._execute_autoplay()
+
+        harness.logic.request_edit(sample.id)
+        harness.regeneration.finish()
+
+        harness.audio_device_manager.play.assert_not_called()
 
     def test_skips_pending_preview_when_autoplay_disabled(
         self,
@@ -464,6 +547,19 @@ class TestInstrumentsInTheVoiceList:
         assert footprint is not None
         assert footprint.total_bytes == features_footprint(instrument.instrument_features()).total_bytes
         assert [instrument.channel for instrument in footprint.instruments] == [None]
+
+    def test_a_samples_render_that_fails_is_reported_as_a_refusal_is(self) -> None:
+        harness = _harness()
+        sample = harness.add_sample(sample_reconstruction([ChannelName.PULSE1]), kept=False)
+        reported: List[Exception] = []
+        harness.logic.on_autoplay_error = reported.append
+        failure = RuntimeError("the worker fell over")
+        harness.logic.play_voice(sample.id)
+
+        harness.regeneration.fail(failure)
+
+        assert reported == [failure]
+        assert harness.played() == []
 
     def test_an_instrument_previews_through_the_pulse_channel(self) -> None:
         controller, logic, session_manager, audio_device_manager = _logic_with_mocks()

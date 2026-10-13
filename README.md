@@ -11,7 +11,7 @@
 
 ## Overview
 
-_SampleToNES_ (`sampletones`) is a desktop tool for people writing music for the NES 2A03 sound chip, mainly in [_FamiTracker_](http://famitracker.com/).
+_SampleToNES_ (`sampletones`) is a desktop tool for people writing music for the NES 2A03 sound chip, mainly in [_FamiTracker_](http://famitracker.com/) or [_Bitphase_](https://bitphase.app/).
 
 <div align="center">
     <img src="https://raw.githubusercontent.com/JakimPL/SampleToNES/main/docs/images/sampletones.webp" alt="SampleToNES" width="760">
@@ -67,7 +67,7 @@ recording without the interface, for example. Run `sampletones --help` for the l
 
 ## Documentation
 
-The [user guide](https://github.com/JakimPL/SampleToNES/tree/main/docs/guide) explains how to use the app, step by step. The rest of [`docs/`](https://github.com/JakimPL/SampleToNES/tree/main/docs) covers the reconstruction algorithms, the file formats, the Python API and the developer notes.
+The [user guide](https://github.com/JakimPL/SampleToNES/tree/main/docs/guide) explains how to use the app, step by step. The app opens it in your browser from **Help ▸ Documentation**. The rest of [`docs/`](https://github.com/JakimPL/SampleToNES/tree/main/docs) covers the reconstruction algorithms, the file formats, the Python API and the developer notes.
 
 ## License
 

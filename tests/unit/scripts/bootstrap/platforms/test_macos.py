@@ -12,6 +12,12 @@ class TestMacOS:
     def test_a_virtual_environment_runs_bin_python(self) -> None:
         assert MacOS().interpreter(Path(".venv-build")) == Path(".venv-build", "bin", "python")
 
+    def test_a_virtual_environment_installs_under_its_interpreter_s_version(self, tmp_path: Path) -> None:
+        site_packages = tmp_path / "lib" / "python3.13" / "site-packages"
+        site_packages.mkdir(parents=True)
+
+        assert MacOS().site_packages(tmp_path) == site_packages
+
     def test_a_bundle_is_refused_with_the_way_to_run_from_source(self) -> None:
         with pytest.raises(SystemExit, match="make setup"):
             MacOS().bundling()

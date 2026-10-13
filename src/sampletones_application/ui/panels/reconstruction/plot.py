@@ -31,6 +31,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 from sampletones_application.view_model.reconstruction.waveform import (
     InstrumentWaveformViewModel,
 )
+from sampletones_application.view_model.reconstruction.work import Work
 from sampletones_application.view_model.shared.ownership import OwnershipRibbonViewModel
 from sampletones_application.view_model.shared.waveform_data import WaveformData
 from sampletones_core.constants.enums import AudioSourceType, ChannelName
@@ -141,22 +142,17 @@ class GUIReconstructionPlotPanel(GUIPanel):
         dpg_configure_item(self.autoscale_tag, show=shown)
         dpg_configure_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_CHANNELS, show=shown)
 
-    def load_waveform_data(
-        self,
-        waveform_data: WaveformData,
-        generators: List[ChannelName],
-    ) -> None:
+    def load_waveform_data(self, waveform_data: WaveformData) -> None:
         self._frame_length = waveform_data.frame_length
-        self.waveform_display.load_waveform_data(waveform_data, generators)
+        self.waveform_display.load_waveform_data(waveform_data)
 
     def update_waveform_data(
         self,
         waveform_data: WaveformData,
-        generators: List[ChannelName],
         *,
         refit: bool = False,
     ) -> None:
-        self.waveform_display.update_waveform_data(waveform_data, generators, refit=refit)
+        self.waveform_display.update_waveform_data(waveform_data, refit=refit)
 
     def clear_waveform(self) -> None:
         self._frame_length = None
@@ -166,8 +162,8 @@ class GUIReconstructionPlotPanel(GUIPanel):
     def set_waveform_top_source(self, audio_source: AudioSourceType) -> None:
         self.waveform_display.set_top_source(audio_source)
 
-    def set_reconstruction_dimmed(self, dimmed: bool) -> None:
-        self.waveform_display.set_reconstruction_dimmed(dimmed)
+    def show_work(self, work: Optional[Work]) -> None:
+        self.waveform_display.show_work(work)
 
     def set_overlay(self, index: Optional[int]) -> None:
         if self._frame_length is None:

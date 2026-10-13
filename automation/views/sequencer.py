@@ -3,8 +3,9 @@ from typing import Final, List, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from automation.dearpygui.bridge import Bridge
-from automation.dearpygui.geometry import Point
+from automation.dearpygui.geometry import Point, Rect
 from automation.dearpygui.hand import Hand
+from automation.dearpygui.items.colors import read_theme_text_color
 from automation.dearpygui.items.reading import read_item
 from automation.dearpygui.items.regions import read_region_view, read_table
 from automation.dearpygui.items.texts import read_label
@@ -206,6 +207,19 @@ class OrderTable:
         return self._bridge.ask(
             lambda: len(read_table(TAG_SEQUENCER_ORDER_TABLE)[MASTER_ORDER_ROW]) - ORDER_LABEL_CELLS
         )
+
+    def cell_box(self, channel: Optional[ChannelName], position: int) -> Optional[Rect]:
+        """Where the entry of ``channel`` at frame ``position`` stands on the screen."""
+        return self._bridge.ask(lambda: read_item(_order_entry(channel, position)).rect)
+
+    def text_color(self, channel: Optional[ChannelName], position: int) -> Optional[Tuple[float, ...]]:
+        """The text color the theme bound to the entry of ``channel`` at frame ``position`` sets."""
+
+        def read() -> Optional[Tuple[float, ...]]:
+            theme = dpg.get_item_info(_order_entry(channel, position))["theme"]
+            return read_theme_text_color(theme) if theme is not None else None
+
+        return self._bridge.ask(read)
 
     def click(self, channel: Optional[ChannelName], position: int) -> None:
         """Clicks the entry of ``channel`` at frame ``position``, scrolling it into view first."""

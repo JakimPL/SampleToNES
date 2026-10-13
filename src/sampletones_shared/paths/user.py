@@ -17,6 +17,8 @@ RECONSTRUCTIONS_DIRECTORY: Final[Path] = USER_PATH_DOCUMENTS / "reconstructions"
 PROJECTS_DIRECTORY: Final[Path] = USER_PATH_DOCUMENTS / "projects"
 CONFIG_PATH: Final[Path] = USER_PATH_DOCUMENTS / "config.json"
 APPLICATION_CONFIG_PATH: Final[Path] = USER_PATH_CONFIG / "config.yaml"
+APPLICATION_STATE_PATH: Final[Path] = USER_PATH_CONFIG / "state.yaml"
+DOCUMENTATION_COPIES_DIRECTORY: Final[Path] = USER_PATH_DATA / "documentation"
 
 PROJECTS_DIRECTORY.mkdir(parents=True, exist_ok=True)
 LIBRARY_DIRECTORY.mkdir(parents=True, exist_ok=True)

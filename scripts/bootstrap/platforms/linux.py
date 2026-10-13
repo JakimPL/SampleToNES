@@ -2,10 +2,11 @@ from pathlib import Path
 from typing import Dict, Final, Mapping, Optional, Sequence, Tuple
 
 from bootstrap.platforms.bundling import Bundling
-from bootstrap.platforms.unix import unix_interpreter
+from bootstrap.platforms.unix import unix_interpreter, unix_site_packages
 
 LINUX: Final[str] = "Linux"
 PNG_ICON: Final[str] = "src/sampletones_assets/icons/sampletones.png"
+LIBRARY_SEARCH_VARIABLE: Final[str] = "LD_LIBRARY_PATH"
 SYSTEM_PACKAGES: Final[Tuple[str, ...]] = (
     "libportaudio2",
     "libasound-dev",
@@ -38,6 +39,7 @@ BUNDLING: Final[Bundling] = Bundling(
         "This bundle opens file dialogs through zenity or kdialog, which the machine running it has to "
         "provide. Run 'make system-deps' to install python3-tk and carry Tk as a self-contained fallback."
     ),
+    library_search_variable=LIBRARY_SEARCH_VARIABLE,
 )
 
 
@@ -54,6 +56,9 @@ class Linux:
 
     def interpreter(self, environment: Path) -> Path:
         return unix_interpreter(environment)
+
+    def site_packages(self, environment: Path) -> Path:
+        return unix_site_packages(environment)
 
     def bundling(self) -> Bundling:
         return BUNDLING

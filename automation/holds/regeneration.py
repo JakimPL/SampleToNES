@@ -1,15 +1,13 @@
 import threading
-from typing import AbstractSet, Optional
+from typing import Optional
 
 import pytest
 
+from sampletones_application.services.regeneration.jobs import ListeningJob, RenderJob
 from sampletones_application.services.regeneration.service import (
     RegenerationService,
 )
 from sampletones_application.services.result import ServiceError
-from sampletones_core.constants.enums import ChannelName
-from sampletones_core.exporters import Features
-from sampletones_core.reconstructions import Reconstruction
 
 
 class RegenerationHold:
@@ -17,7 +15,10 @@ class RegenerationHold:
     it.
 
     The rebuild waits where the real one runs, so the application draws and answers while the edit
-    is on its way, and once released the real rebuild computes the edit's result. The hold lets
+    is on its way, and once released the real rebuild computes the edit's result. A rendering of
+    what the reader hears, which the same worker runs on opening a document and on a box ticked,
+    goes through at once, so the document stands drawn while the rebuilds wait; a voice's preview
+    in the sequencer is a listening on a worker of its own and passes through the same way. The hold lets
     every rebuild through from its release on, until the scenario holds again. A scenario standing
     for a rebuild that breaks lets the held rebuilds go as that failure instead, which the service
     reports the way it reports a rebuild that raised.
@@ -31,21 +32,19 @@ class RegenerationHold:
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Replaces the service's rebuild with one that waits for the release before it computes."""
-        rebuild = RegenerationService._run  # pylint: disable=protected-access
+        run = RegenerationService._run  # pylint: disable=protected-access
 
-        def held(
-            service: RegenerationService,
-            reconstruction: Reconstruction,
-            channel_name: ChannelName,
-            features: Features,
-            heard: AbstractSet[int],
-        ) -> None:
+        def held(service: RegenerationService, job: RenderJob) -> None:
+            if isinstance(job, ListeningJob):
+                run(service, job)
+                return
+
             self._wait()
             if self._failure is not None:
                 service._emit(ServiceError(exception=self._failure))  # pylint: disable=protected-access
                 return
 
-            rebuild(service, reconstruction, channel_name, features, heard)
+            run(service, job)
 
         monkeypatch.setattr(RegenerationService, "_run", held)
 

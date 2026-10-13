@@ -30,6 +30,7 @@ class TrackerThemes:
         self._subcolumn: Dict[ThemeKey, int] = {}
         self._muted_subcolumn: Dict[ThemeKey, int] = {}
         self._context_subcolumn: Dict[ThemeKey, int] = {}
+        self._pending: int = UNBUILT_THEME
         self._header: int = UNBUILT_THEME
         self._muted_header: int = UNBUILT_THEME
         self._column_label: int = UNBUILT_THEME
@@ -39,6 +40,7 @@ class TrackerThemes:
     def create(self) -> None:
         """Builds every theme the grid binds, which a DearPyGui context has to stand behind."""
         self._create_subcolumn_themes()
+        self._pending = create_selectable_text_theme(self._layout.colors.text.pending)
         self._create_header_themes()
         row = self._layout.colors.text.row
         self._row_number = create_selectable_text_theme(row)
@@ -112,6 +114,11 @@ class TrackerThemes:
         """
         themes = self._muted_subcolumn if muted else self._subcolumn
         return themes[(subcolumn, kind)]
+
+    @property
+    def pending(self) -> int:
+        """The theme a cell wears while an entry is being typed into it: the plain text color, whatever the channel."""
+        return self._pending
 
     def context_cell(self, subcolumn: SubColumn, kind: Optional[VoiceKind]) -> int:
         """The theme a cell of another frame's row wears: its slot's color, dimmed, as a plain label."""

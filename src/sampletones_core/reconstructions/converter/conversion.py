@@ -2,7 +2,6 @@ import gc
 from pathlib import Path
 from typing import Tuple
 
-from sampletones_shared.exceptions import UnsupportedAudioFormatError
 from sampletones_shared.logger import logger
 
 from ..progress import ReconstructionReporter
@@ -14,8 +13,8 @@ def reconstruct_job(arguments: Tuple[Reconstructor, ConversionJob, Reconstructio
     """Builds one job's reconstruction and writes it where the job says.
 
     Runs in a pool worker, so the job travels with the reconstructor that builds it and the
-    reporter it tells its progress to. A source in a format the loader has no reader for is
-    reported and left, which keeps one such file from ending a batch.
+    reporter it tells its progress to. An error the job meets ends the job, and the run decides
+    whether the jobs around it go on.
 
     Returns:
         The file the job named, whether or not a reconstruction reached it.
@@ -35,8 +34,6 @@ def reconstruct_job(arguments: Tuple[Reconstructor, ConversionJob, Reconstructio
     except KeyboardInterrupt:
         logger.info("Reconstruction interrupted by user.")
         raise
-    except UnsupportedAudioFormatError:
-        logger.warning(f"Skipping job due to unsupported audio format: {job.sources}")
     finally:
         gc.collect()
 

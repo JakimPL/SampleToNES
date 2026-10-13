@@ -10,7 +10,7 @@ The interface is built with [DearPyGui](https://github.com/hoffstadt/DearPyGui),
 
 ## Core
 
-The reconstruction engine stands on the usual numerical stack, with `cupy` as an optional GPU backend. The GPU backend is installed as the extra that matches the machine's NVIDIA driver. See [GPU acceleration](../../guide/installation.md#gpu-acceleration) for enabling it.
+The reconstruction engine stands on the usual numerical stack, with `cupy` as an optional GPU backend. The GPU backend is installed as the extra that matches the machine's NVIDIA driver. See [GPU acceleration](../../guide/installation.md#gpu-acceleration) for enabling it. [GPU bundles](#gpu-bundles) says how a standalone executable carries it.
 
 ## Serialization
 
@@ -42,6 +42,10 @@ The icon suite is generated from a mark declared in `assets/icons/mark/config` a
 
 Pillow rasterizes the suite. It is declared in the `assets` dependency group, which the `dev` group includes. It serves the assets unit alone, which the build environment never installs, and the bundle script passes `--exclude-module PIL` as well. `pygments`, which arrives with `rich`, offers an image formatter that imports Pillow where it is installed, and PyInstaller follows that import into the bundle. The application reads its icons as files, so the exclusion keeps Pillow's extension modules and the imaging libraries that come with them out of every bundle. `scripts/verify_bundle.py` holds the release bundles to it.
 
+## Documentation
+
+Every wheel build writes the HTML documentation ([assets](../assets.md#documentation)), so the build needs what that maker imports. `markdown-it-py` reads the Markdown, with the tables GitHub draws, and belongs to the `assets` group beside Pillow. The build hook names its own dependencies in `pyproject.toml`: markdown-it-py and the libraries the application's theme and palette code imports, each held to the project's own range, which a test compares. Every wheel is built in an isolated environment that installs them, so the first build on a machine reaches the network. `hatchling` 1.27 is the oldest build backend that reads the project's license fields.
+
 ## Calibration
 
 The calibration harness scores renders with referees of its own, built on `numpy` and `scipy`. The `calibration` dependency group adds [Zimtohrli](https://github.com/google/zimtohrli), a psychoacoustic model, as a second opinion. PyPI has its wheels for Windows, Intel macOS and x86-64 Linux, and other systems compile it on install. The group stays out of `dev`. `uv sync --group calibration`, with the extras the environment already uses named beside it, installs it. See [Calibration](../../tools/calibration.md).
@@ -60,6 +64,24 @@ Listening to a real APU needs [ffmpeg](https://ffmpeg.org/) with the `libgme` de
 
 CI runs the driver on py65, which arrives with the package's own dependencies, and `scripts/system_dependencies.py` has what building and running the application needs. cc65 and ffmpeg stay on the machine of whoever assembles the driver or renders a wave. A workflow that did either would put them in those scripts. The application itself needs neither: an export is written by the package's own code, from the committed `driver.bin`.
 
+## GPU bundles
+
+A standalone executable built on a machine with an NVIDIA driver carries CuPy and the CUDA libraries. The build asks the same driver detector as `make setup`, and `--gpu 0` opts out. The published bundles are built with it off, and `scripts/verify_bundle.py` holds a release to carrying none of them.
+
+A GPU bundle is a directory. The CUDA libraries would otherwise unpack from a single file on every start.
+
+PyInstaller needs the following to carry a CuPy that computes, and the repository supplies each:
+
+- **CuPy whole.** CuPy imports its submodules by name at run time, so the build collects all of `cupy`, `cupy_backends` and `cupyx`.
+- **The hook beside the build** (`scripts/pyinstaller_hooks/hook-cupy.py`). It names the CUDA wheels installed in the build environment as hidden imports, which brings in the hooks that collect their shared libraries. It adds their header directories as data, because CuPy compiles kernels with NVRTC and looks the headers up, and it adds `graphlib`, which a compiled CuPy module imports out of sight of the analysis.
+- **The runtime hook** (`scripts/runtime_hooks/cuda_bundle.py`). The CUDA library search walks site-packages and then re-runs `sys.executable` to probe the system. Frozen, that re-runs the application and hangs. The hook makes the bundle the only site-packages, so every library is found inside it.
+- **A build environment that matches.** A CPU build excludes the GPU packages by name, so a `.venv-build` left over from a GPU build ships none of them.
+- **The wheels ahead of a system toolkit.** CuPy links the CUDA libraries by file name, and PyInstaller looks each name up the way the system loader does. A GPU build puts the wheels' library directories first on that search (`LD_LIBRARY_PATH`, or `PATH` on Windows). A CUDA toolkit installed on the build machine then adds no second copy of a different version, and the build fails if one still lands beside the wheels' own.
+
+The self-check is what proves a bundle. `sampletones self-check --gpu` computes a kernel and a matrix product on the card and holds the answer to NumPy's, and a GPU build runs it before it finishes. Importing CuPy alone passes in a bundle that lost its CUDA libraries.
+
+The CUDA license lets an application distribute these libraries inside itself, on its terms ([third-party notices](../../../THIRD-PARTY-NOTICES.md#gpu-acceleration)). A GPU bundle is for its builder's machine.
+
 ## Linux (standalone executable)
 
 Building a standalone executable on Linux needs the PortAudio, Tk and OpenGL/X11 system packages. `make system-deps` installs them (or run `python3 scripts/system_dependencies.py`), and the script has the full list.
@@ -67,3 +89,5 @@ Building a standalone executable on Linux needs the PortAudio, Tk and OpenGL/X11
 PortAudio is required. Tk backs the file dialogs where neither a portal nor a desktop tool answers, and `make release` requires it so the shipped executable stays self-contained.
 
 The executable links against the glibc of the machine that builds it and runs on that version or newer. A redistributable artifact therefore belongs on the oldest Debian or Ubuntu release being supported, so it runs on every newer one.
+
+The bootloader points `LD_LIBRARY_PATH` at the libraries the bundle carries, and a program the application starts would load them in place of the system's. Every system program the application starts, a file manager, a browser or a dialog tool, therefore receives the reader's own library path, which `program_environment()` in `sampletones_shared/utils/system/programs.py` restores.

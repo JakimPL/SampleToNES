@@ -5,6 +5,7 @@ from typing import Dict, Final, List, Set, Tuple
 import pytest
 from PIL import Image
 
+from assets.documentation.markdown.anchors import heading_anchor
 from sampletones_shared.paths.source import REPOSITORY_ROOT
 
 ENCODING: Final[str] = "utf-8"
@@ -18,19 +19,13 @@ INDEX: Final[Path] = DOCUMENTATION / "index.md"
 ROOT_PAGES: Final[Tuple[str, ...]] = ("README.md", "CHANGELOG.md")
 
 
-def anchor(heading: str) -> str:
-    """The fragment GitHub gives a heading: punctuation dropped, every remaining space a hyphen."""
-    text = re.sub(r"[`*]", "", heading).strip().lower()
-    return re.sub(r"[^\w\s-]", "", text).replace(" ", "-")
-
-
 def text(page: Path) -> str:
     """The page as it is stored, which is UTF-8 whatever encoding the platform prefers."""
     return page.read_text(encoding=ENCODING)
 
 
 def anchors(page: Path) -> Set[str]:
-    return {anchor(heading) for heading in HEADING.findall(text(page))}
+    return {heading_anchor(heading) for heading in HEADING.findall(text(page))}
 
 
 def images(page: Path) -> List[Dict[str, str]]:

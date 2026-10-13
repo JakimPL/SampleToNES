@@ -1,12 +1,19 @@
 import warnings
-from typing import Final, Optional, Type, Union
+from typing import Any, Final, Optional, Tuple, Type, Union
 
 import numpy as np
 
-from sampletones_shared.exceptions import CuPyNotInstalledWarning
+from sampletones_shared.exceptions import CuPyUnavailableWarning, GPUBackendError
 from sampletones_shared.logger import logger
 
 CUPY_MISSING_MESSAGE: Final[str] = "CuPy is not available, falling back to NumPy."
+NO_DEVICE_MESSAGE: Final[str] = "CuPy finds no graphics card to compute on ({reason}), falling back to NumPy."
+NO_DEVICE_COUNTED: Final[str] = "the driver counts no device"
+MINIMUM_DEVICES: Final[int] = 1
+CUPY_BACKEND: Final[str] = "CuPy"
+NUMPY_BACKEND: Final[str] = "NumPy"
+GPU_PROBE_SIZE: Final[int] = 64
+GPU_PROBE_MISMATCH: Final[str] = "The graphics card answered {device}, while the CPU answered {host}."
 
 
 def _preload_cuda_libraries() -> None:
@@ -46,17 +53,87 @@ def _format_warning_no_location(
     return f"{category.__name__}: {message}\n"
 
 
-CUPY_AVAILABLE = False  # pylint: disable=invalid-name
+def _absent_device_reason(cupy: Any) -> Optional[str]:
+    """Why CuPy has no graphics card to compute on, or ``None`` once the driver counts one.
+
+    Importing CuPy loads its libraries, and the driver is first asked when a computation starts.
+    Asking for the device count while the backend is chosen settles a machine without a card, or
+    without a working driver, on NumPy before anything is computed.
+
+    Args:
+        cupy: The imported CuPy module.
+
+    Returns:
+        Optional[str]: The reason the process falls back to NumPy, or ``None`` where a card answers.
+    """
+    try:
+        count = cupy.cuda.runtime.getDeviceCount()
+    except cupy.cuda.runtime.CUDARuntimeError as error:
+        return NO_DEVICE_MESSAGE.format(reason=error)
+
+    if count < MINIMUM_DEVICES:
+        return NO_DEVICE_MESSAGE.format(reason=NO_DEVICE_COUNTED)
+
+    return None
+
+
+FALLBACK_REASON: Optional[str]
 try:
     _preload_cuda_libraries()
     import cupy as xp
     import cupy.typing as xp_typing
+except (AttributeError, ImportError):
+    FALLBACK_REASON = CUPY_MISSING_MESSAGE
+else:
+    FALLBACK_REASON = _absent_device_reason(xp)
 
-    CUPY_AVAILABLE = True  # pylint: disable=invalid-name
-except (AttributeError, ImportError, ModuleNotFoundError):
+if FALLBACK_REASON is not None:
     import numpy.typing as xp_typing  # pylint: disable=ungrouped-imports
 
     xp = np
+
+CUPY_AVAILABLE = FALLBACK_REASON is None
+
+
+def describe_array_backend() -> str:
+    """The array backend the process computes on, named with its version."""
+    name = CUPY_BACKEND if CUPY_AVAILABLE else NUMPY_BACKEND
+    return f"{name} {xp.__version__}"
+
+
+def _probe_sums(module: Any) -> Tuple[float, float]:
+    """The sum of squares and the summed outer product of the first probe-size integers, computed by ``module``.
+
+    Both sums stay below 2**24 at the probe size, so single precision carries them exactly in any
+    order of summation and the card's answer is held to the CPU's as an equality.
+    """
+    values = module.arange(GPU_PROBE_SIZE, dtype=module.float32)
+    return float((values * values).sum()), float((values[:, None] @ values[None, :]).sum())
+
+
+def exercise_gpu() -> str:
+    """Computes on the graphics card, holds its answer to the CPU's, and names the device.
+
+    A kernel is compiled for the elementwise product, and the matrix product goes through cuBLAS,
+    so a build missing the CUDA libraries or the headers the compiler reads fails here rather than
+    in a conversion.
+
+    Returns:
+        str: The backend and the device's name.
+
+    Raises:
+        GPUBackendError: If the process computes on the CPU, or the card's answer differs from the CPU's.
+    """
+    if FALLBACK_REASON is not None:
+        raise GPUBackendError(FALLBACK_REASON)
+
+    device = _probe_sums(xp)
+    host = _probe_sums(np)
+    if device != host:
+        raise GPUBackendError(GPU_PROBE_MISMATCH.format(device=device, host=host))
+
+    properties = xp.cuda.runtime.getDeviceProperties(xp.cuda.runtime.getDevice())
+    return f"{describe_array_backend()} on {properties['name'].decode()}"
 
 
 def report_array_backend() -> None:
@@ -67,13 +144,13 @@ def report_array_backend() -> None:
     a run of the application, or a reconstruction from the command line — and leaves a tool that
     imports the array vocabulary for its types alone to its own output.
     """
-    if CUPY_AVAILABLE:
-        logger.info(f"CuPy {xp.__version__} is active")
+    if FALLBACK_REASON is None:
+        logger.info(f"{describe_array_backend()} is active")
         return
 
     warnings.formatwarning = _format_warning_no_location
-    warnings.warn(CUPY_MISSING_MESSAGE, CuPyNotInstalledWarning)
-    logger.warning(CUPY_MISSING_MESSAGE)
+    warnings.warn(FALLBACK_REASON, CuPyUnavailableWarning)
+    logger.warning(FALLBACK_REASON)
 
 
 def to_numpy(array: Union[np.ndarray, "xp.ndarray"]) -> np.ndarray:
@@ -88,6 +165,9 @@ def to_numpy(array: Union[np.ndarray, "xp.ndarray"]) -> np.ndarray:
 
 __all__ = [
     "CUPY_AVAILABLE",
+    "FALLBACK_REASON",
+    "describe_array_backend",
+    "exercise_gpu",
     "report_array_backend",
     "to_numpy",
     "xp",

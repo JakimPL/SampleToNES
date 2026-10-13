@@ -50,7 +50,8 @@ A `convert` command takes either `--channels` or `--stems`.
 
 - **Convert one file**: `sampletones convert input.wav -o output.stn`
 - **Convert a folder**: `sampletones convert path/to/folder`. Every recording in the folder
-  becomes its own reconstruction, saved in your reconstructions folder.
+  becomes its own reconstruction, saved in your reconstructions folder. A recording that fails is
+  skipped, and the end of the run lists the skipped recordings with their errors.
 - **Mix several recordings into one reconstruction**:
   `sampletones convert bass.wav lead.wav --stems stems.json`. The stems file lists the recordings in
   the same order. [Reconstructions](../formats/reconstructions.md) shows it.

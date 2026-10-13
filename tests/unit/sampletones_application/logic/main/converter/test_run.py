@@ -21,12 +21,17 @@ from sampletones_application.services.result import (
 )
 from sampletones_application.view_model.main.converter import ConversionPhase
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import DEFAULT_CHANNELS
 from sampletones_core.library import LibraryState
 from sampletones_core.parallelization import TaskProgress
+from sampletones_core.reconstructions.converter import ConversionJob, ConversionOutcome, SkippedJob
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from tests.suite.base import BaseTestSuite
 from tests.unit.sampletones_application.logic.main.converter.texts import messages
 
 WRITTEN: Tuple[Path, ...] = (Path("/reconstructions/kick.stn"),)
+SKIPPED_SOURCE: Path = Path("/samples/snare.wav")
 
 
 def _request(library_state: LibraryState) -> ConversionRequest:
@@ -105,7 +110,7 @@ class TestWhereARunStands(BaseTestSuite):
     @pytest.mark.parametrize(
         ("result", "phase"),
         [
-            (ServiceSuccess(value=WRITTEN), ConversionPhase.COMPLETED),
+            (ServiceSuccess(value=ConversionOutcome(written=WRITTEN, skipped=())), ConversionPhase.COMPLETED),
             (ServiceError(exception=RuntimeError("boom")), ConversionPhase.FAILED),
             (ServiceCanceled(), ConversionPhase.CANCELED),
         ],
@@ -217,10 +222,25 @@ class TestWhatACompletedRunHandsOver(BaseTestSuite):
     def test_success_carries_the_reconstructions_that_were_written(self, driver: Driver) -> None:
         driver.begin()
 
-        driver.reports_from_service(ServiceSuccess(value=WRITTEN))
+        driver.reports_from_service(ServiceSuccess(value=ConversionOutcome(written=WRITTEN, skipped=())))
 
-        driver.run.on_success.assert_called_once_with(ConversionSuccess(written=WRITTEN))
+        driver.run.on_success.assert_called_once_with(ConversionSuccess(written=WRITTEN, skipped=()))
         assert driver.run.written == WRITTEN
+
+    def test_success_names_the_recordings_the_run_went_on_without(self, driver: Driver) -> None:
+        skipped = SkippedJob(
+            job=ConversionJob(
+                sources=(SKIPPED_SOURCE,),
+                stems=StemsConfig.single_entry(StemSettings.covering(list(DEFAULT_CHANNELS))),
+                output_path=SKIPPED_SOURCE.with_suffix(".stn"),
+            ),
+            exception=ZeroDivisionError("float division by zero"),
+        )
+        driver.begin()
+
+        driver.reports_from_service(ServiceSuccess(value=ConversionOutcome(written=WRITTEN, skipped=(skipped,))))
+
+        driver.run.on_success.assert_called_once_with(ConversionSuccess(written=WRITTEN, skipped=(SKIPPED_SOURCE,)))
 
     def test_a_failure_hands_over_the_exception(self, driver: Driver) -> None:
         error = RuntimeError("boom")
@@ -247,7 +267,7 @@ class TestWhatACompletedRunHandsOver(BaseTestSuite):
 
     def test_closing_lets_the_written_reconstructions_go(self, driver: Driver) -> None:
         driver.begin()
-        driver.reports_from_service(ServiceSuccess(value=WRITTEN))
+        driver.reports_from_service(ServiceSuccess(value=ConversionOutcome(written=WRITTEN, skipped=())))
 
         driver.run.close()
 

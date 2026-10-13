@@ -1,10 +1,8 @@
 from pathlib import Path
-from typing import Final
 
 from sampletones_shared.paths.package import package_directory
+from sampletones_shared.paths.resources import ASSETS_PACKAGE
 from sampletones_shared.types.path import Pathlike
-
-ASSETS_PACKAGE: Final[str] = "sampletones_assets"
 
 
 class ResourceLoader:

@@ -32,7 +32,7 @@ from sampletones_application.ui.elements.plus_minus_buttons import (
     GUIPlusMinusButtons,
     PlusMinusOrder,
 )
-from sampletones_application.ui.elements.table.caret import CaretOverlay
+from sampletones_application.ui.elements.table.caret import STILL, CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells, pending_label
 from sampletones_application.ui.elements.table.selection import TableSelection
 from sampletones_application.ui.panels.sequencer.channels import (
@@ -860,6 +860,7 @@ class GUISequencerOrderPanel(GUIPanel):
             caret_index=len(self._input_state.pending),
             font=font,
             clip_widget=TAG_SEQUENCER_ORDER_WINDOW,
+            scroll_shift=STILL,
         )
 
     def _on_cell_clicked(

@@ -4,19 +4,19 @@ from typing import Final, Tuple
 
 import pytest
 
+from sampletones_application.utils.palette.catalog import DEFAULT_PALETTE_NAME
 from sampletones_core.constants.enums import ChannelName
 from sampletones_tools.calibration.board.layout import (
     DATA_FILE,
-    FONTS_FILE,
     PAGE_DIRECTORY,
     PAGE_FILE,
-    PALETTE_FILE,
     SCRIPT_FILE,
     SHIPPED_FILES,
     STYLE_FILE,
 )
-from sampletones_tools.calibration.board.palette import board_palette, palette_names
 from sampletones_tools.calibration.board.paths import STATIC_DIRECTORY
+from sampletones_tools.web.design import ApplicationDesign
+from sampletones_tools.web.writer import FONTS_STYLESHEET, LAYOUT_STYLESHEETS, MARK_FILE, ROLES_STYLESHEET, write_layout
 
 REACHING_OUT: Final[Tuple[str, ...]] = (
     "fetch(",
@@ -31,7 +31,8 @@ REACHING_OUT: Final[Tuple[str, ...]] = (
 )
 REFERENCE: Final[re.Pattern[str]] = re.compile(r'(?:src|href)="([^"]+)"')
 COLOR_LITERAL: Final[re.Pattern[str]] = re.compile(r"#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(")
-TOKEN: Final[re.Pattern[str]] = re.compile(r"var\(--([a-z0-9_]+)\)")
+USED: Final[re.Pattern[str]] = re.compile(r"var\(--([a-z0-9-]+)\)")
+DECLARED: Final[re.Pattern[str]] = re.compile(r"--([a-z0-9-]+):")
 REFEREE_NAMES: Final[Tuple[str, ...]] = ("mr-auditory", "mr-loudness", "zimtohrli")
 
 
@@ -59,24 +60,26 @@ class TestPageMarkup:
         assert [reference for reference in references if Path(reference).is_absolute()] == []
 
     def test_the_page_names_exactly_the_files_the_layout_declares(self) -> None:
-        expected = {
-            f"{PAGE_DIRECTORY}/{name}" for name in (PALETTE_FILE, FONTS_FILE, STYLE_FILE, DATA_FILE, SCRIPT_FILE)
-        }
+        names = (FONTS_STYLESHEET, ROLES_STYLESHEET, *LAYOUT_STYLESHEETS, MARK_FILE, STYLE_FILE, DATA_FILE, SCRIPT_FILE)
+        expected = {f"{PAGE_DIRECTORY}/{name}" for name in names}
 
         assert set(REFERENCE.findall(shipped(PAGE_FILE))) == expected
 
 
-class TestStylesheetDrawsFromThePalette:
+class TestStylesheetDrawsFromTheLayout:
     def test_no_color_is_written_into_the_stylesheet(self) -> None:
         assert COLOR_LITERAL.findall(shipped(STYLE_FILE)) == []
 
-    @pytest.mark.parametrize("name", palette_names())
-    def test_every_token_it_names_exists_in_every_palette(self, name: str) -> None:
-        colors = board_palette(name).colors
-        named = set(TOKEN.findall(shipped(STYLE_FILE)))
+    def test_every_variable_it_reads_is_declared(self, tmp_path: Path) -> None:
+        write_layout(tmp_path, ApplicationDesign.load(DEFAULT_PALETTE_NAME))
+        declared = set(DECLARED.findall(shipped(STYLE_FILE)))
+        for stylesheet in tmp_path.glob("*.css"):
+            declared.update(DECLARED.findall(stylesheet.read_text(encoding="utf-8")))
 
-        assert named
-        assert [token for token in sorted(named) if token not in colors] == []
+        used = set(USED.findall(shipped(STYLE_FILE)))
+
+        assert used
+        assert sorted(used - declared) == []
 
 
 class TestScriptStatesNoMeasurement:

@@ -7,6 +7,7 @@ from automation.application.startup import Startup
 from automation.screen import Screen
 from automation.steps.reconstructions import (
     expect_open,
+    leave_letting_it_go,
     marked,
     raise_the_first_level,
     remove_from_the_browser,
@@ -25,7 +26,6 @@ from automation.vocabulary.dialogs import (
     LOAD_TITLE,
     SAVE,
 )
-from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from tests.screens.prompts.every_door.cases import ASKING_DOORS, Door, Question, Standing
 from tests.screens.prompts.every_door.constants import EXIT, SETTLING_FRAMES
@@ -105,17 +105,6 @@ def asks_and_cancel_keeps_it(door: Door, *, voice: str) -> Callable[[Screen], No
 
     step.__name__ = f"{door.value}_asks_and_cancel_keeps_it"
     return step
-
-
-def leave_letting_it_go(screen: Screen) -> None:
-    """Exits and answers Exit to the question about the reconstruction."""
-    prompt = screen.reconstructions.unsaved_prompt
-    screen.press_shortcut(ShortcutId.EXIT)
-    screen.expect(prompt.is_shown, bool, description="the question about the reconstruction")
-
-    prompt.confirm()
-
-    assert screen.wait_for_exit()
 
 
 class TestAnEditedReconstructionAtEveryDoor:

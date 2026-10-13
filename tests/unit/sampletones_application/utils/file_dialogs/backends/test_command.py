@@ -8,6 +8,7 @@ from sampletones_application.utils.file_dialogs.backends.command import (
 MODULE = "sampletones_application.utils.file_dialogs.backends.command"
 
 COMMAND = ["kdialog", "--getopenfilename"]
+PROGRAM_ENVIRONMENT = {"PATH": "/usr/bin"}
 
 
 def _completed(stdout: str) -> MagicMock:
@@ -28,13 +29,17 @@ class TestRunDialogCommand:
         """The path is read from the captured output, and a dismissal is read from it as well,
         so the exit status stays with the caller of the tool.
         """
-        with patch(f"{MODULE}.subprocess.run", return_value=_completed("/audio/clip.wav")) as run:
+        with (
+            patch(f"{MODULE}.subprocess.run", return_value=_completed("/audio/clip.wav")) as run,
+            patch(f"{MODULE}.program_environment", return_value=PROGRAM_ENVIRONMENT),
+        ):
             run_dialog_command(COMMAND)
 
         assert run.call_args.kwargs == {
             "capture_output": True,
             "text": True,
             "check": False,
+            "env": PROGRAM_ENVIRONMENT,
         }
 
     def test_surrounding_whitespace_leaves_the_path(self) -> None:

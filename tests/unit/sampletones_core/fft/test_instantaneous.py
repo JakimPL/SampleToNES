@@ -1,5 +1,5 @@
 import math
-from typing import Final, List, Optional
+from typing import Final, List, Optional, Tuple
 
 import numpy as np
 import pytest
@@ -37,6 +37,10 @@ VIBRATO_CENT_TOLERANCE: Final[float] = 10.0
 BASS_FREQUENCY: Final[float] = 65.41
 BESIDE_FIFTH_HARMONIC: Final[float] = 349.23
 ON_FOURTH_HARMONIC: Final[float] = 4 * BASS_FREQUENCY
+GAP_SECONDS: Final[float] = 1.0
+GAP_MIDDLE_FRAMES: Final[int] = 5
+GATED_CENTS: Final[float] = 25.0
+SILENT_REFERENCES: Final[Tuple[float, ...]] = (LOW_BASS_FREQUENCY, A4_FREQUENCY, 3520.0)
 
 
 def _harmonic(frequency: float, seed: int = 0, seconds: float = SECONDS) -> np.ndarray:
@@ -204,6 +208,48 @@ class TestAnotherVoiceBesideTheHarmonics:
         """The triangle has no fourth harmonic, so the melody's fundamental fills that bin alone, at the
         frequency the note puts it."""
         assert abs(_bass_cents_under(ON_FOURTH_HARMONIC)) < CENT_TOLERANCE
+
+
+@pytest.fixture(scope="module")
+def silent_reader() -> InstantaneousPitch:
+    return InstantaneousPitch(np.zeros(int(SAMPLE_RATE * SECONDS), dtype=np.float32), SAMPLE_RATE, HOP)
+
+
+@pytest.fixture(scope="module")
+def gated_reader() -> InstantaneousPitch:
+    """Two hits of a tone standing ``GATED_CENTS`` off A4, with a stretch of digital silence between them."""
+    tone = _harmonic(A4_FREQUENCY * 2 ** (GATED_CENTS / CENTS_PER_OCTAVE))
+    gap = np.zeros(int(SAMPLE_RATE * GAP_SECONDS), dtype=np.float32)
+    return InstantaneousPitch(np.concatenate([tone, gap, tone]), SAMPLE_RATE, HOP)
+
+
+class TestASilentStretch:
+    """Digital silence gives every bin a coefficient of zero, which carries no phase to read. One-shot
+    samples and gated loops hold such stretches between their hits, and a note the decoder holds across
+    one has no fundamental there."""
+
+    @pytest.mark.parametrize("reference", SILENT_REFERENCES, ids=lambda reference: f"{reference:g} Hz")
+    def test_a_silent_recording_is_read_as_nothing(
+        self,
+        silent_reader: InstantaneousPitch,
+        reference: float,
+    ) -> None:
+        assert all(silent_reader.at(frame, reference) is None for frame in range(silent_reader.columns))
+
+    def test_the_middle_of_a_silent_gap_is_read_as_nothing(self, gated_reader: InstantaneousPitch) -> None:
+        middle = int((SECONDS + GAP_SECONDS / 2) * SAMPLE_RATE / HOP)
+        frames = range(middle - GAP_MIDDLE_FRAMES, middle + GAP_MIDDLE_FRAMES + 1)
+
+        assert all(gated_reader.at(frame, A4_FREQUENCY) is None for frame in frames)
+
+    def test_the_hits_around_a_silent_gap_are_read_where_they_stand(self, gated_reader: InstantaneousPitch) -> None:
+        tone_frames = int(SECONDS * SAMPLE_RATE / HOP)
+        hits = [*range(tone_frames), *range(gated_reader.columns - tone_frames, gated_reader.columns)]
+        read = [gated_reader.at(frame, A4_FREQUENCY) for frame in hits]
+        readings = [reading for reading in read if reading is not None]
+
+        assert len(readings) == len(hits)
+        assert abs(_median_cents(readings, A4_FREQUENCY) - GATED_CENTS) < CENT_TOLERANCE
 
 
 class TestHowMuchOfAFrameStandsBehindItsReading:

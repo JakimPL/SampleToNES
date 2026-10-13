@@ -1,0 +1,29 @@
+@media print {
+  .menu-bar,
+  .tab-bar,
+  .status-bar {
+    display: none;
+  }
+
+  .card,
+  .card-header,
+  .table,
+  .prose pre {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .card-header {
+    break-after: avoid;
+  }
+
+  .prose pre,
+  .figure,
+  tr {
+    break-inside: avoid;
+  }
+
+  .prose pre {
+    white-space: pre-wrap;
+  }
+}

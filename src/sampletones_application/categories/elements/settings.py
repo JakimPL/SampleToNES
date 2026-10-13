@@ -72,6 +72,7 @@ class KeybindingActionElements(AbstractElement):
     TOGGLE_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS = "toggle_auto_expand_favorite_reconstructions"
     TOGGLE_AUTO_EXPAND_FAVORITE_DIRECTORIES = "toggle_auto_expand_favorite_directories"
     TOGGLE_FULLSCREEN = "toggle_fullscreen"
+    DOCUMENTATION = "documentation"
     ABOUT_DIALOG = "about_dialog"
     NEXT_TAB = "next_tab"
     PREVIOUS_TAB = "previous_tab"

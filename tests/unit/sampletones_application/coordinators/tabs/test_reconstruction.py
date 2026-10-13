@@ -51,6 +51,7 @@ from sampletones_shared.exceptions import (
     UnhandledReconstructionError,
 )
 from tests.conftest import RENDER_BUDGET
+from tests.suite.envelopes import exported, land_envelopes
 from tests.suite.history.wiring import wired_history
 from tests.suite.language import FakeLanguageManager
 from tests.suite.regeneration import HeldRegeneration
@@ -506,6 +507,14 @@ class TestExportResultReportsTruncation:
 
         assert _shown_message(export_coordinator) == export_coordinator._export_messages.wav_success
 
+    def test_a_dropped_wav_export_shows_its_own_message(
+        self,
+        export_coordinator: ReconstructionTabCoordinator,
+    ) -> None:
+        export_coordinator._report_dropped_export(Path("track.wav"))
+
+        assert _shown_message(export_coordinator) == export_coordinator._export_messages.wav_dropped
+
 
 class TestUpdateReconstructionRefitsTheWaveformOnRequest:
     """A retune moves the audio's own length, so the caller that knows this asks the waveform to
@@ -564,6 +573,7 @@ class TestTheInstrumentsPanelDrawsTheDocument:
     ) -> ReconstructionManager:
         manager = ReconstructionManager(scheduling=scheduling, renders=RenderCache(budget_bytes=RENDER_BUDGET))
         manager.load_reconstruction_object(reconstruction, name="lead", voice_id=OPEN_VOICE_ID)
+        land_envelopes(manager)
         return manager
 
     @pytest.fixture
@@ -604,18 +614,42 @@ class TestTheInstrumentsPanelDrawsTheDocument:
         instance._reconstruction_instruments_logic = instruments_logic
         return instance
 
-    def test_a_removal_draws_the_document_it_leaves(
+    @staticmethod
+    def _remove(
+        coordinator: ReconstructionTabCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction: Reconstruction,
+    ) -> None:
+        """A removal landing on the open document the way the coordinator lands it, and the listening it owes."""
+        reconstruction_manager.apply_edited(without_stem(reconstruction, STEM_B_ID), None)
+        coordinator.redraw_reconstruction(refit_waveform=False)
+        land_envelopes(reconstruction_manager)
+        coordinator.redraw_listening(envelopes_changed=True)
+
+    def test_a_removal_draws_no_envelopes_until_its_listening_lands(
         self,
         coordinator: ReconstructionTabCoordinator,
         reconstruction_manager: ReconstructionManager,
         reconstruction: Reconstruction,
         drawn: List[Optional[ChannelEnvelopesViewModel]],
     ) -> None:
-        reconstruction_manager.apply_edited(without_stem(reconstruction, STEM_B_ID))
+        reconstruction_manager.apply_edited(without_stem(reconstruction, STEM_B_ID), None)
 
         coordinator.redraw_reconstruction(refit_waveform=False)
 
-        assert drawn == [reconstruction_manager.current_features]
+        assert drawn == [None]
+
+    def test_a_removal_draws_the_document_it_leaves_once_its_listening_lands(
+        self,
+        coordinator: ReconstructionTabCoordinator,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction: Reconstruction,
+        drawn: List[Optional[ChannelEnvelopesViewModel]],
+    ) -> None:
+        self._remove(coordinator, reconstruction_manager, reconstruction)
+
+        assert drawn[-1] is not None
+        assert drawn[-1] is reconstruction_manager.current_features
 
     def test_a_removal_draws_the_frames_it_released_as_rests(
         self,
@@ -624,9 +658,7 @@ class TestTheInstrumentsPanelDrawsTheDocument:
         reconstruction: Reconstruction,
         drawn: List[Optional[ChannelEnvelopesViewModel]],
     ) -> None:
-        reconstruction_manager.apply_edited(without_stem(reconstruction, STEM_B_ID))
-
-        coordinator.redraw_reconstruction(refit_waveform=False)
+        self._remove(coordinator, reconstruction_manager, reconstruction)
 
         envelopes = drawn[-1]
         assert envelopes is not None
@@ -639,9 +671,7 @@ class TestTheInstrumentsPanelDrawsTheDocument:
         reconstruction: Reconstruction,
         drawn: List[Optional[ChannelEnvelopesViewModel]],
     ) -> None:
-        reconstruction_manager.apply_edited(without_stem(reconstruction, STEM_B_ID))
-
-        coordinator.redraw_reconstruction(refit_waveform=False)
+        self._remove(coordinator, reconstruction_manager, reconstruction)
 
         envelopes = drawn[-1]
         assert envelopes is not None
@@ -658,7 +688,8 @@ class TestTheInstrumentsPanelDrawsTheDocument:
         envelopes = reconstruction_manager.current_features
         assert envelopes is not None
         typed = envelopes[SHARED_CHANNEL].with_envelope(FeatureKey.VOLUME, Envelope[int](items=TYPED_VOLUME))
-        reconstruction_manager.apply_edited(regenerated(reconstruction, SHARED_CHANNEL, typed))
+        rebuilt = regenerated(reconstruction, SHARED_CHANNEL, typed)
+        reconstruction_manager.apply_edited(rebuilt, exported(rebuilt, reconstruction_manager.listening.selection))
 
         coordinator.update_reconstruction()
 

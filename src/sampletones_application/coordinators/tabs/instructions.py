@@ -19,6 +19,7 @@ from sampletones_application.logic.instruction.library_manager import (
 )
 from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.player import PlayerLogic
+from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.instructions import InstructionsTabParameters
 from sampletones_application.tags.compose import compose_tag
@@ -101,6 +102,7 @@ class InstructionsTabCoordinator:
         on_generation_state_changed: VoidCallback,
         is_operation_active: Callable[[], bool],
         is_converter_visible: Callable[[], bool],
+        previews: DocumentPreviews,
         *,
         layout: InstructionsTabParameters,
         language_manager: LanguageManager,
@@ -131,7 +133,7 @@ class InstructionsTabCoordinator:
             language_manager=language_manager,
             is_operation_active=is_operation_active,
         )
-        self._file_playback: FilePlayback = FilePlayback(audio_device_manager)
+        self._file_playback: FilePlayback = FilePlayback(audio_device_manager, previews)
         self._library_tree_logic = TreeLogic(
             session_manager,
             self._file_playback,
@@ -180,6 +182,7 @@ class InstructionsTabCoordinator:
         self._guarded_player = GuardedPlayer(
             self._instruction_player_logic,
             failures=playback_failures,
+            previews=previews,
         )
         self._waveform_panel = GUIInstructionWaveformPanel(
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM),

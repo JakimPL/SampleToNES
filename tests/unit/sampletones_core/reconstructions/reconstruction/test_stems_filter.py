@@ -1,8 +1,13 @@
 from typing import Final, List, Tuple
 
 import numpy as np
+import pytest
 
+from sampletones_core.configs import Config
+from sampletones_core.constants.algorithm import AUTHORED_STEM_ID, RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName, bending_channels
+from sampletones_core.generators.render import render_instructions
+from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.filter import (
@@ -13,9 +18,13 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.config import 
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from tests.suite.long_documents import turning_instruction
 from tests.suite.stems import RECORDED_SCALE
 
 FRAME_LENGTH: Final[int] = 2
+SOUNDING_FRAME: Final[int] = 0
+RESTING_FRAME: Final[int] = 1
+FRAMES_AROUND_A_REST: Final[int] = 3
 EVERY_CHANNEL: Final[Tuple[ChannelName, ...]] = tuple(ChannelName.items())
 
 
@@ -145,3 +154,68 @@ class TestFilterApproximations:
 
         np.testing.assert_array_equal(filtered[ChannelName.PULSE1], np.ones(2, dtype=np.float32))
         np.testing.assert_array_equal(filtered[ChannelName.NOISE], np.zeros(2, dtype=np.float32))
+
+
+class TestAChannelHeardWhole:
+    """A channel every owner of which is heard keeps its array, which a reader tells by identity.
+
+    A resting frame belongs to nobody, so hearing every recording and the reader's own row is
+    hearing the channel whole; the frames a mask would zero are silent already, since every
+    generator renders a silent instruction as silence.
+    """
+
+    def test_every_owner_heard_hands_the_array_back_by_identity(self) -> None:
+        stems_data = _stems_data((ChannelName.PULSE1, [0, 1, 0]))
+        approximations = {ChannelName.PULSE1: np.arange(6, dtype=np.float32)}
+
+        filtered = filter_approximations(stems_data, approximations, _heard(0, 1), FRAME_LENGTH)
+
+        assert filtered[ChannelName.PULSE1] is approximations[ChannelName.PULSE1]
+
+    def test_resting_frames_leave_the_identity_standing(self) -> None:
+        stems_data = _stems_data((ChannelName.PULSE1, [0, RESTING_STEM_ID, 0]))
+        approximations = {ChannelName.PULSE1: np.arange(6, dtype=np.float32)}
+
+        filtered = filter_approximations(stems_data, approximations, _heard(0), FRAME_LENGTH)
+
+        assert filtered[ChannelName.PULSE1] is approximations[ChannelName.PULSE1]
+
+    def test_recordings_heard_beyond_the_channel_change_nothing(self) -> None:
+        stems_data = _stems_data((ChannelName.PULSE1, [0, 0]))
+        approximations = {ChannelName.PULSE1: np.arange(4, dtype=np.float32)}
+
+        filtered = filter_approximations(stems_data, approximations, _heard(0, 1, 2), FRAME_LENGTH)
+
+        assert filtered[ChannelName.PULSE1] is approximations[ChannelName.PULSE1]
+
+    def test_the_readers_own_frames_left_out_are_silenced(self) -> None:
+        """The reader's own row answers to boxes like any recording, so leaving it out filters the channel."""
+        stems_data = _stems_data((ChannelName.PULSE1, [0, AUTHORED_STEM_ID]))
+        approximations = {ChannelName.PULSE1: np.ones(4, dtype=np.float32)}
+
+        filtered = filter_approximations(stems_data, approximations, _heard(0), FRAME_LENGTH)
+
+        assert filtered[ChannelName.PULSE1] is not approximations[ChannelName.PULSE1]
+        np.testing.assert_array_equal(filtered[ChannelName.PULSE1], np.array([1, 1, 0, 0], dtype=np.float32))
+
+    def test_an_owner_left_out_hands_back_a_copy(self) -> None:
+        stems_data = _stems_data((ChannelName.PULSE1, [0, 1]))
+        approximations = {ChannelName.PULSE1: np.ones(4, dtype=np.float32)}
+
+        filtered = filter_approximations(stems_data, approximations, _heard(0), FRAME_LENGTH)
+
+        assert filtered[ChannelName.PULSE1] is not approximations[ChannelName.PULSE1]
+
+    @pytest.mark.parametrize("channel_name", EVERY_CHANNEL, ids=lambda channel_name: channel_name.value)
+    def test_a_resting_frame_renders_as_silence(self, channel_name: ChannelName) -> None:
+        """What the identity rests on: a silent instruction between two sounding ones renders as exact zeros."""
+        config = Config()
+        sounding = turning_instruction(channel_name, SOUNDING_FRAME)
+        stream: List[InstructionUnion] = [sounding, type(sounding).null_instruction(), sounding]
+
+        rendered = render_instructions(stream, channel_name, config)
+
+        frame_length = config.frame_length
+        assert len(rendered) == FRAMES_AROUND_A_REST * frame_length
+        resting = rendered[RESTING_FRAME * frame_length : (RESTING_FRAME + 1) * frame_length]
+        np.testing.assert_array_equal(resting, np.zeros(frame_length, dtype=np.float32))

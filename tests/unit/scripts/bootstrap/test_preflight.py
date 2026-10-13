@@ -1,9 +1,10 @@
+import re
 from pathlib import Path
 
 import pytest
 
 from bootstrap.platforms.linux import Linux
-from bootstrap.preflight import can_import, check_build_interpreter
+from bootstrap.preflight import CUPY_ADVICE, can_import, check_build_interpreter
 from tests.suite.bootstrap import RecordingRunner
 
 
@@ -32,6 +33,7 @@ class TestCheckBuildInterpreter:
                 python,
                 Linux().bundling(),
                 release=False,
+                gpu=False,
                 runner=RecordingRunner({"import pyaudio": 1}, None),
                 cwd=tmp_path,
                 environment={},
@@ -43,6 +45,7 @@ class TestCheckBuildInterpreter:
                 python,
                 Linux().bundling(),
                 release=True,
+                gpu=False,
                 runner=RecordingRunner({"import tkinter": 1}, None),
                 cwd=tmp_path,
                 environment={},
@@ -58,12 +61,58 @@ class TestCheckBuildInterpreter:
             python,
             Linux().bundling(),
             release=False,
+            gpu=False,
             runner=RecordingRunner({"import tkinter": 1}, None),
             cwd=tmp_path,
             environment={},
         )
 
         assert "WARNING" in capsys.readouterr().out
+
+    def test_a_gpu_bundle_without_cupy_is_refused_with_the_opt_out(self, python: Path, tmp_path: Path) -> None:
+        with pytest.raises(SystemExit, match=re.escape(CUPY_ADVICE)):
+            check_build_interpreter(
+                python,
+                Linux().bundling(),
+                release=False,
+                gpu=True,
+                runner=RecordingRunner({"import cupy": 1}, None),
+                cwd=tmp_path,
+                environment={},
+            )
+
+    def test_a_cpu_bundle_never_probes_cupy(self, python: Path, tmp_path: Path) -> None:
+        runner = RecordingRunner({"import cupy": 1}, None)
+
+        check_build_interpreter(
+            python,
+            Linux().bundling(),
+            release=False,
+            gpu=False,
+            runner=runner,
+            cwd=tmp_path,
+            environment={},
+        )
+
+        assert all("cupy" not in line for line in runner.lines)
+
+    def test_a_gpu_interpreter_carrying_cupy_passes(
+        self,
+        python: Path,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        check_build_interpreter(
+            python,
+            Linux().bundling(),
+            release=False,
+            gpu=True,
+            runner=RecordingRunner({}, None),
+            cwd=tmp_path,
+            environment={},
+        )
+
+        assert "cupy: available" in capsys.readouterr().out
 
     def test_an_interpreter_carrying_both_passes(
         self,
@@ -75,6 +124,7 @@ class TestCheckBuildInterpreter:
             python,
             Linux().bundling(),
             release=True,
+            gpu=False,
             runner=RecordingRunner({}, None),
             cwd=tmp_path,
             environment={},

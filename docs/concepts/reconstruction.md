@@ -337,8 +337,8 @@ dividers. A bend counts divider steps from its own note, so each note's frames a
 frame that reads nothing keeps a bend its own note read, and a new note starts from its own reading.
 
 A frame makes no proposal where it rests, where the stem holding it leaves that channel out, where its
-channel is not pitched (the noise channel's sixteen periods have no finer grid), or where its reading
-falls below the confidence threshold. A conversion that bent no note records both bend dimensions as ones
+channel is not pitched (the noise channel's sixteen periods have no finer grid), where the recording is
+silent, or where its reading falls below the confidence threshold. A conversion that bent no note records both bend dimensions as ones
 the channel governs, so it writes the instrument an unrefined run writes.
 
 Each stem entry says which recordings are carried, and on which channels, in `bends`: a subset of the

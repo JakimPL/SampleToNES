@@ -100,6 +100,7 @@ class ShortcutId(Enum):
         ShortcutCategory.APPLICATION,
     )
     TOGGLE_FULLSCREEN = ("ToggleFullscreen", ShortcutCategory.APPLICATION)
+    DOCUMENTATION = ("Documentation", ShortcutCategory.APPLICATION)
     ABOUT_DIALOG = ("AboutDialog", ShortcutCategory.APPLICATION)
     NEXT_TAB = ("NextTab", ShortcutCategory.APPLICATION)
     PREVIOUS_TAB = ("PreviousTab", ShortcutCategory.APPLICATION)
