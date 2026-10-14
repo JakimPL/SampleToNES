@@ -43,12 +43,18 @@ class TestAPreviewOnTheRealWorker:
     def test_the_sound_lands_and_a_second_ask_answers_from_the_cache(self, previews: DocumentPreviews) -> None:
         document = sample_reconstruction(PREVIEWED_CHANNELS)
         played: List[np.ndarray] = []
+        rates: List[int] = []
 
-        previews.play(document, played.append, _unexpected)
+        def sound(audio: np.ndarray, sample_rate: int) -> None:
+            played.append(audio)
+            rates.append(sample_rate)
+
+        previews.play(document, sound, _unexpected)
         _settle(previews)
 
         assert len(played) == 1
         np.testing.assert_array_equal(played[0], rendered_mix(document))
-        previews.play(document, played.append, _unexpected)
+        previews.play(document, sound, _unexpected)
         assert len(played) == 2
         assert played[1] is played[0]
+        assert rates == [document.config.sample_rate] * 2

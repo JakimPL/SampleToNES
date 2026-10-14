@@ -3,7 +3,6 @@ from typing import Final
 
 import numpy as np
 
-from tests.integration.sampletones_application.playback.breaks import SECOND_STREAM, UNREAD_FILE, broken
 from tests.integration.sampletones_application.playback.material import (
     REALTIME,
     SHORT,
@@ -79,7 +78,7 @@ class TestWedgedWrite(BaseTestSuite):
     """Rule 2: a sound taking the output from a writer wedged in a write opens its stream once the wedged one closed."""
 
     TestCase = SoundCase
-    test_cases = tuple(case(sound, broken(SECOND_STREAM)) for sound in (Sound.INSTRUCTION, Sound.SONG, Sound.FILE))
+    test_cases = tuple(case(sound) for sound in (Sound.INSTRUCTION, Sound.SONG, Sound.FILE))
 
     @each(test_cases)
     def test_a_takeover_from_a_wedged_writer_keeps_one_stream_open(
@@ -97,9 +96,9 @@ class TestWedgedWrite(BaseTestSuite):
 
         prepare(rig, test_case.sound, Span.LONG)
         rig.play(test_case.sound)
-        rig.wait_for(lambda: len(rig.timeline.streams()) == 2 or bool(rig.told), what="the second sound")
         rig.system.hooks.before_write = None
         gate.open()
+        rig.wait_for(lambda: len(rig.timeline.streams()) == 2 or bool(rig.told), what="the second sound")
         rig.stop_all()
         rig.settle()
 
@@ -159,8 +158,8 @@ def _assert_told_once_and_ended(rig: PlaybackRig, sound: Sound) -> None:
 class TestUnreadableFile(BaseTestSuite):
     """Rule 7: a file preview that cannot read its file has the failure told once, and sounds nothing."""
 
-    @broken(UNREAD_FILE)
     def test_an_unreadable_file_is_told_once(self, rig: PlaybackRig, tmp_path: Path) -> None:
+        rig.expect_errors()
         unreadable = tmp_path / UNREADABLE_NAME
         unreadable.write_bytes(UNREADABLE_BYTES)
         rig.stack.file = unreadable
@@ -176,6 +175,7 @@ class TestBusyDevice(BaseTestSuite):
     """Rule 7: a device another program holds refuses the sound once, and plays the next one asked for once free."""
 
     def test_a_busy_device_refuses_once_and_recovers(self, rig: PlaybackRig) -> None:
+        rig.expect_errors()
         played_through(rig, Sound.RECONSTRUCTION)
 
         rig.system.occupy()

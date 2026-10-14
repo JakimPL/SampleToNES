@@ -3,7 +3,6 @@ from typing import Final, List
 import numpy as np
 
 from sampletones_core.constants.audio import DEFAULT_BUFFER_SIZE, START_OF_AUDIO
-from tests.integration.sampletones_application.playback.breaks import FINAL_ZERO, POSITION_AHEAD, broken
 from tests.integration.sampletones_application.playback.material import (
     LONG,
     RATE,
@@ -37,11 +36,6 @@ class TestOrder(BaseTestSuite):
 
     TestCase = SoundCase
     test_cases = tuple(case(sound) for sound in (*BUFFERS, Sound.AUDITION))
-    before_end_cases = (
-        case(Sound.RECONSTRUCTION, broken(FINAL_ZERO)),
-        case(Sound.INSTRUCTION, broken(FINAL_ZERO)),
-        case(Sound.AUDITION),
-    )
 
     @each(test_cases)
     def test_positions_arrive_in_order(self, rig: PlaybackRig, test_case: SoundCase) -> None:
@@ -51,7 +45,7 @@ class TestOrder(BaseTestSuite):
         assert drawn
         assert drawn == sorted(drawn)
 
-    @each(before_end_cases)
+    @each(test_cases)
     def test_every_position_lands_before_the_end_report(self, rig: PlaybackRig, test_case: SoundCase) -> None:
         played_through(rig, test_case.sound)
 
@@ -71,8 +65,8 @@ class TestWritten(BaseTestSuite):
 
     TestCase = SoundCase
     test_cases = (
-        case(Sound.RECONSTRUCTION, broken(POSITION_AHEAD)),
-        case(Sound.INSTRUCTION, broken(POSITION_AHEAD)),
+        case(Sound.RECONSTRUCTION),
+        case(Sound.INSTRUCTION),
         case(Sound.AUDITION),
     )
 

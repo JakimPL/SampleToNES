@@ -3,13 +3,6 @@ from typing import Final
 import numpy as np
 
 from sampletones_core.constants.audio import DEFAULT_BUFFER_SIZE
-from tests.integration.sampletones_application.playback.breaks import (
-    FINAL_ZERO,
-    LOST_CLICK,
-    SILENT_PREVIEW_END,
-    SILENT_SONG_STOP,
-    broken,
-)
 from tests.integration.sampletones_application.playback.material import (
     SHORT,
     SoundCase,
@@ -32,9 +25,9 @@ class TestStopRacingTheEnd(BaseTestSuite):
 
     TestCase = SoundCase
     test_cases = (
-        case(Sound.RECONSTRUCTION, broken(FINAL_ZERO)),
-        case(Sound.SONG, broken(SILENT_SONG_STOP)),
-        case(Sound.FILE, broken(SILENT_PREVIEW_END)),
+        case(Sound.RECONSTRUCTION),
+        case(Sound.SONG),
+        case(Sound.FILE),
     )
 
     @each(test_cases)
@@ -82,7 +75,6 @@ class TestClickAroundTheEnd(BaseTestSuite):
         after = rig.positions(Sound.RECONSTRUCTION)[heard:]
         assert after[0] >= CLICKED
 
-    @broken(LOST_CLICK)
     def test_a_click_while_the_sound_winds_down_plays_from_the_click(self, rig: PlaybackRig) -> None:
         gate: Gate[StreamCall] = Gate(holds=every_call)
         rig.system.hooks.before_drain = gate

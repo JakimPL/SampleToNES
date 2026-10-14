@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 from sampletones_core.constants.audio import SampleRate
-from tests.integration.sampletones_application.playback.breaks import DEVICE_RATE, broken
 from tests.integration.sampletones_application.playback.material import (
     HEADPHONES_INDEX,
     HEADPHONES_RATE,
@@ -44,8 +43,7 @@ class TestRates(BaseTestSuite):
 
     TestCase = SoundCase
     test_cases = tuple(case(sound) for sound in (*BUFFERS, Sound.FILE))
-    faster_cases = tuple(case(sound, broken(DEVICE_RATE)) for sound in (*BUFFERS, Sound.FILE))
-    rendered_cases = tuple(case(sound, broken(DEVICE_RATE)) for sound in (Sound.AUDITION, Sound.VOICE))
+    rendered_cases = tuple(case(sound) for sound in (Sound.AUDITION, Sound.VOICE))
 
     @each(test_cases)
     def test_a_sound_at_the_device_rate_plays_every_sample_once(self, rig: PlaybackRig, test_case: SoundCase) -> None:
@@ -53,7 +51,7 @@ class TestRates(BaseTestSuite):
 
         np.testing.assert_array_equal(rig.written(), np.arange(SHORT))
 
-    @each(faster_cases)
+    @each(test_cases)
     def test_a_sound_keeps_its_length_on_a_faster_device(self, rig: PlaybackRig, test_case: SoundCase) -> None:
         rig.change_device(HEADPHONES_INDEX, sample_rate=HEADPHONES_RATE)
 
@@ -70,7 +68,6 @@ class TestRates(BaseTestSuite):
 
         _assert_lasts(_played(rig, test_case.sound), at_its_rate * HEADPHONES_RATE / RATE)
 
-    @broken(DEVICE_RATE)
     def test_a_96_khz_stereo_file_keeps_its_length(self, rig: PlaybackRig) -> None:
         frames = SHORT
         rig.load(Sound.FILE, np.repeat(ramp(frames)[:, np.newaxis], STEREO, axis=1), sample_rate=FILE_RATE)

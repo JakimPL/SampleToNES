@@ -4,7 +4,6 @@ import numpy as np
 
 from sampletones_core.constants.audio import DEFAULT_BUFFER_SIZE
 from sampletones_core.project.song_position import SongPosition
-from tests.integration.sampletones_application.playback.breaks import FINAL_ZERO, PAUSED_FAILURE, broken
 from tests.integration.sampletones_application.playback.material import (
     HEADPHONES_INDEX,
     HEADPHONES_RATE,
@@ -51,10 +50,6 @@ class TestPausedAndTaken(BaseTestSuite):
         takeover(Sound.RECONSTRUCTION, Sound.SONG),
         takeover(Sound.SONG, Sound.RECONSTRUCTION),
     )
-    told_cases = (
-        takeover(Sound.RECONSTRUCTION, Sound.SONG, broken(FINAL_ZERO)),
-        takeover(Sound.SONG, Sound.RECONSTRUCTION),
-    )
 
     @each(test_cases)
     def test_a_paused_source_taken_over_stays_silent(self, rig: PlaybackRig, test_case: TakeoverCase) -> None:
@@ -69,7 +64,7 @@ class TestPausedAndTaken(BaseTestSuite):
         assert not rig.engaged(test_case.taken)
         assert _written_after_the_taker_opened(rig, taken_stream) == 0
 
-    @each(told_cases)
+    @each(test_cases)
     def test_a_paused_source_taken_over_hears_its_end_once(
         self,
         rig: PlaybackRig,
@@ -136,7 +131,6 @@ class TestSeekWhilePaused(BaseTestSuite):
 class TestFailingWhilePaused(BaseTestSuite):
     """Rule 7: a song whose synthesizer fails while it stands paused has the failure told once."""
 
-    @broken(PAUSED_FAILURE)
     def test_a_failure_while_paused_is_told_once(self, rig: PlaybackRig) -> None:
         rig.expect_errors()
         failing = FailingRow(SongPosition(order_position=FAILING_ORDER, row_index=FAILING_ROW))

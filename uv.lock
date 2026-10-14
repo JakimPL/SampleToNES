@@ -1866,6 +1866,7 @@ dependencies = [
     { name = "scipy" },
     { name = "screeninfo" },
     { name = "soundfile" },
+    { name = "soxr" },
     { name = "tqdm" },
 ]
 
@@ -1936,6 +1937,7 @@ requires-dist = [
     { name = "scipy", specifier = ">=1.13,<2" },
     { name = "screeninfo", specifier = ">=0.8,<0.9" },
     { name = "soundfile", specifier = ">=0.13,<0.14" },
+    { name = "soxr", specifier = ">=1.0,<2" },
     { name = "tqdm", specifier = ">=4.66,<5" },
 ]
 provides-extras = ["build", "gpu", "gpu-cuda11"]

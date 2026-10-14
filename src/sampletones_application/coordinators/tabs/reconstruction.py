@@ -44,8 +44,10 @@ from sampletones_application.logic.reconstruction.rewrites.steps import (
     Rewrite,
     StemRemovalRequest,
 )
+from sampletones_application.logic.shared.audio_player import AudioPlayer
 from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.player import PlayerLogic
+from sampletones_application.logic.shared.preview_player import PreviewPlayer
 from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.reconstruction import (
@@ -108,7 +110,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import (
 from sampletones_application.view_model.reconstruction.work import Work
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
-from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.audio.output import AudioOutput
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.backend import ExportBackend
@@ -137,7 +139,8 @@ class ReconstructionTabCoordinator:
         self,
         config_manager: ConfigManager,
         session_manager: SessionManager,
-        audio_device_manager: AudioDeviceManager,
+        output: AudioOutput,
+        preview_player: PreviewPlayer,
         reconstruction_manager: ReconstructionManager,
         project_controller: ProjectController,
         browser_manager: BrowserManager,
@@ -203,7 +206,7 @@ class ReconstructionTabCoordinator:
             config_manager,
             browser_manager,
         )
-        self._file_playback: FilePlayback = FilePlayback(audio_device_manager, previews)
+        self._file_playback: FilePlayback = FilePlayback(preview_player, previews)
         self._browser_tree_logic: TreeLogic = TreeLogic(
             session_manager,
             self._file_playback,
@@ -229,9 +232,10 @@ class ReconstructionTabCoordinator:
         self._browser_panel.set_collapse_handler(self._on_browser_collapse_changed)
         self._browser_panel.on_favorites_filter_changed = self._on_browser_favorites_filter_changed
         self._reconstruction_player_logic = PlayerLogic(
-            audio_device_manager,
+            AudioPlayer(output),
             on_change_audio_state,
         )
+        self._reconstruction_player_logic.on_error = playback_failures.present_playing_failure
         self._guarded_player = GuardedPlayer(
             self._reconstruction_player_logic,
             failures=playback_failures,
@@ -291,7 +295,7 @@ class ReconstructionTabCoordinator:
             self._instrument_editor,
             project_controller,
             session_manager,
-            audio_device_manager,
+            preview_player,
         )
 
         self._browser_panel.on_refresh_tree = self._browser_logic.refresh_tree

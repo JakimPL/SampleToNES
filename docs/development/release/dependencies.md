@@ -22,7 +22,9 @@ Playback goes through PortAudio, reached with the `pyaudio` package. PyPI has `p
 
 On macOS the compile architecture is pinned to the machine's own (`ARCHFLAGS`). Homebrew's PortAudio is native to the machine, while the python.org interpreter is universal2, and pinning makes the two agree. `make setup` sets it, and the CI workflows take it from `scripts/build_environment.py`.
 
-The device manager reaches PortAudio through one driver, `PyAudioDriver` (`sampletones_core/audio/driver/portaudio/`), the only application module that imports `pyaudio`. The behavior PortAudio shows on one platform and not another is named there. The test suite stands a fake machine (`tests/suite/audio/`) where the driver stands, so playback is tested on every platform the suite runs on, with no sound card.
+The audio output reaches PortAudio through one driver, `PyAudioDriver` (`sampletones_core/audio/driver/portaudio/`), the only application module that imports `pyaudio`. The behavior PortAudio shows on one platform and not another is named there. The test suite stands a fake machine (`tests/suite/audio/`) where the driver stands, so playback is tested on every platform the suite runs on, with no sound card.
+
+A sound plays at the rate its audio was made at, resampled to the device's rate as it streams, with libsoxr reached through the `soxr` package. Its wheels carry libsoxr built in for Linux (x86-64 and aarch64), macOS (Intel and Apple Silicon) and Windows x64. Each wheel is a stable-ABI build, so one wheel serves every Python the application supports, and nothing is installed alongside it. `librosa` depends on `soxr` too. The streaming resampler's quirk is named in `BlockResampler` (`sampletones_core/audio/output/buffer/resampler.py`).
 
 ## Audio rendering
 

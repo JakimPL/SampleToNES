@@ -7,11 +7,11 @@ import pytest
 from sampletones_application.constants.playback import FollowMode
 from sampletones_application.logic.sequencer.playback.song_player import SongPlayerLogic
 from sampletones_application.services.song_player.result import (
-    SongPlaybackError,
-    SongPlaybackStopped,
+    SongPlaybackEnded,
     SongPositionUpdate,
 )
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
+from sampletones_core.audio.output import EndCause, Ending
 from sampletones_core.project.song_position import SongPosition
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -241,7 +241,7 @@ class TestOnServiceResult:
         logic = _make_logic()
         views = _capture_views(logic)
 
-        logic._on_service_result(SongPlaybackStopped())
+        logic._on_service_result(SongPlaybackEnded(ending=Ending.of(EndCause.FINISHED)))
 
         assert len(views) == 1
 
@@ -256,7 +256,7 @@ class TestOnServiceResult:
         logic._service.is_paused = True
         views = _capture_views(logic)
 
-        logic._on_service_result(SongPlaybackStopped())
+        logic._on_service_result(SongPlaybackEnded(ending=Ending.of(EndCause.FINISHED)))
 
         assert views[-1].is_playing is False
         assert views[-1].is_paused is False
@@ -266,7 +266,7 @@ class TestOnServiceResult:
         logic._position = SongPosition(order_position=3, row_index=9)
         views = _capture_views(logic)
 
-        logic._on_service_result(SongPlaybackStopped())
+        logic._on_service_result(SongPlaybackEnded(ending=Ending.of(EndCause.FINISHED)))
 
         assert logic._position.order_position == 0
         assert logic._position.row_index == 0
@@ -278,7 +278,7 @@ class TestOnServiceResult:
         logic.on_error = lambda _: None
         views = _capture_views(logic)
 
-        logic._on_service_result(SongPlaybackError(error=ValueError("stream closed")))
+        logic._on_service_result(SongPlaybackEnded(ending=Ending.failure(ValueError("stream closed"))))
 
         assert views[-1].error == "stream closed"
 
@@ -290,7 +290,7 @@ class TestOnServiceResult:
         class SilentError(Exception):
             pass
 
-        logic._on_service_result(SongPlaybackError(error=SilentError()))
+        logic._on_service_result(SongPlaybackEnded(ending=Ending.failure(SilentError())))
 
         assert logic._last_error == "SilentError"
 
@@ -300,7 +300,7 @@ class TestOnServiceResult:
         logic.on_view_changed = lambda _: None
         logic._position = SongPosition(order_position=3, row_index=2)
 
-        logic._on_service_result(SongPlaybackError(error=RuntimeError("fail")))
+        logic._on_service_result(SongPlaybackEnded(ending=Ending.failure(RuntimeError("fail"))))
 
         assert logic._position.order_position == 0
         assert logic._position.row_index == 0
@@ -312,7 +312,7 @@ class TestOnServiceResult:
         logic.on_error = errors.append
 
         error = RuntimeError("device lost")
-        logic._on_service_result(SongPlaybackError(error=error))
+        logic._on_service_result(SongPlaybackEnded(ending=Ending.failure(error)))
 
         assert errors == [error]
 
@@ -343,13 +343,15 @@ class TestTheTransitionHook(BaseTestSuite):
         TestCase(label="stop of a silent song", gesture=SongPlayerLogic.stop, expected=0),
         TestCase(
             label="the song ending by itself",
-            gesture=lambda logic: logic._on_service_result(SongPlaybackStopped()),
+            gesture=lambda logic: logic._on_service_result(SongPlaybackEnded(ending=Ending.of(EndCause.FINISHED))),
             playing=True,
             expected=1,
         ),
         TestCase(
             label="a playback error",
-            gesture=lambda logic: logic._on_service_result(SongPlaybackError(error=RuntimeError("device lost"))),
+            gesture=lambda logic: logic._on_service_result(
+                SongPlaybackEnded(ending=Ending.failure(RuntimeError("device lost")))
+            ),
             playing=True,
             expected=1,
         ),

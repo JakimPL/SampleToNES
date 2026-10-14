@@ -44,12 +44,12 @@ class End:
     """An end report an owner took, with the state the output stood in when it landed.
 
     Attributes:
-        cause: The cause the report names, or ``None`` where the report carries none.
+        cause: The cause the report names.
         holding: Whether the owner still read itself engaged as the report landed.
         open_streams: The streams the device held open as the report landed.
     """
 
-    cause: Optional[EndCause]
+    cause: EndCause
     holding: bool
     open_streams: FrozenSet[int]
 

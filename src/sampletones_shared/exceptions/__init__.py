@@ -1,4 +1,5 @@
 from .audio import (
+    AudioReadError,
     AudioWriteError,
     NoOutputDeviceError,
     PlaybackError,
@@ -67,6 +68,7 @@ from .validation import (
 from .window import WindowError, WindowNotAvailableError
 
 __all__ = [
+    "AudioReadError",
     "AudioWriteError",
     "CallbackQueueStop",
     "CuPyUnavailableWarning",

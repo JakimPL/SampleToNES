@@ -21,7 +21,6 @@ SHORT_SONG: Final[Tuple[Tuple[int, ...], ...]] = ((ROW,) * 4,) * 2
 LONG_SONG: Final[Tuple[Tuple[int, ...], ...]] = ((ROW,) * 16,) * 50
 HEARD: Final[int] = 4096
 WRITER_SECONDS: Final[float] = 10.0
-HOLDS: Final[Tuple[MarkDecorator, ...]] = ()
 REALTIME: Final[MarkDecorator] = pytest.mark.realtime
 STEPPED: Final[MarkDecorator] = pytest.mark.stepped
 REALTIME_MARKER: Final[str] = REALTIME.name
@@ -37,9 +36,7 @@ class Span(Enum):
 
 @dataclass(frozen=True, kw_only=True)
 class PlaybackCase(BaseRegularTestCase):
-    """A case a rule is held to, and the break today's code shows on it, where it shows one."""
-
-    breaks: Tuple[MarkDecorator, ...] = HOLDS
+    """A case a rule is held to."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -57,19 +54,19 @@ class TakeoverCase(PlaybackCase):
     taker: Sound
 
 
-def case(sound: Sound, *breaks: MarkDecorator) -> SoundCase:
-    return SoundCase(sound=sound, breaks=breaks, label=sound.value)
+def case(sound: Sound) -> SoundCase:
+    return SoundCase(sound=sound, label=sound.value)
 
 
-def takeover(taken: Sound, taker: Sound, *breaks: MarkDecorator) -> TakeoverCase:
-    return TakeoverCase(taken=taken, taker=taker, breaks=breaks, label=f"{taker.value}_over_{taken.value}")
+def takeover(taken: Sound, taker: Sound) -> TakeoverCase:
+    return TakeoverCase(taken=taken, taker=taker, label=f"{taker.value}_over_{taken.value}")
 
 
 def each(test_cases: Sequence[PlaybackCase]) -> MarkDecorator:
-    """Runs a case once per entry, each carrying the break it shows today."""
+    """Runs a case once per entry."""
     return pytest.mark.parametrize(
         "test_case",
-        [pytest.param(test_case, marks=test_case.breaks, id=test_case.label) for test_case in test_cases],
+        [pytest.param(test_case, id=test_case.label) for test_case in test_cases],
     )
 
 

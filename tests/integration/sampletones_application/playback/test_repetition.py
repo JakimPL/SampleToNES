@@ -2,12 +2,6 @@ from typing import Final, List
 
 import numpy as np
 
-from tests.integration.sampletones_application.playback.breaks import (
-    FINAL_ZERO,
-    SILENT_PREVIEW_END,
-    SILENT_SONG_STOP,
-    broken,
-)
 from tests.integration.sampletones_application.playback.material import (
     REALTIME,
     SHORT,
@@ -32,14 +26,6 @@ class TestStorms(BaseTestSuite):
 
     TestCase = SoundCase
     test_cases = tuple(case(sound) for sound in Sound)
-    ending_cases = (
-        case(Sound.RECONSTRUCTION, broken(FINAL_ZERO)),
-        case(Sound.INSTRUCTION, broken(FINAL_ZERO)),
-        case(Sound.SONG, broken(SILENT_SONG_STOP)),
-        case(Sound.AUDITION, broken(FINAL_ZERO)),
-        case(Sound.VOICE, broken(SILENT_PREVIEW_END)),
-        case(Sound.FILE, broken(SILENT_PREVIEW_END)),
-    )
 
     @each(test_cases)
     def test_a_storm_keeps_one_stream_open_at_a_time(self, rig: PlaybackRig, test_case: SoundCase) -> None:
@@ -53,7 +39,7 @@ class TestStorms(BaseTestSuite):
         assert rig.timeline.most_streams_open() <= 1
         assert not rig.timeline.violations()
 
-    @each(ending_cases)
+    @each(test_cases)
     def test_a_storm_ends_every_playback_once(self, rig: PlaybackRig, test_case: SoundCase) -> None:
         prepare(rig, test_case.sound, Span.LONG)
         for _ in range(STORM):
@@ -91,8 +77,8 @@ class TestEndHandler(BaseTestSuite):
 
     TestCase = SoundCase
     test_cases = (
-        case(Sound.RECONSTRUCTION, broken(FINAL_ZERO)),
-        case(Sound.INSTRUCTION, broken(FINAL_ZERO)),
+        case(Sound.RECONSTRUCTION),
+        case(Sound.INSTRUCTION),
         case(Sound.SONG),
     )
 

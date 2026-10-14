@@ -5,8 +5,10 @@ from typing import Callable, Optional
 import numpy as np
 
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
+from sampletones_application.logic.shared.preview_player import PreviewPlayer
 from sampletones_application.logic.shared.previews import DocumentPreviews
-from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.audio import read_mono
+from sampletones_core.audio.output import Ending, Playback
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import PlaybackError, SampleToNESError
 from sampletones_shared.logger import logger
@@ -18,21 +20,22 @@ class FilePlayback(CallbackMixin):
     """Wherever a file is named and asked to sound, this is what answers.
 
     A reconstruction is read and previewed whole through the document previews, so its sound is
-    the render the cache keeps or the one a worker lands a moment later; an audio file is played
-    from disk. The browser's tree, a row in the converter's list and a menu item all name a file
-    the same way, so what a suffix means and what a failure to read one reports stand in one
-    place. A device that refuses the sound reports through ``on_error`` whenever the refusal
-    comes, at once for a file or at the landing for a document, and so does a document's render
-    that fails.
+    the render the cache keeps or the one a worker lands a moment later; an audio file is read from
+    disk as one channel at the rate it was recorded at. Either sounds through the preview player at
+    its own rate. The browser's tree, a row in the converter's list and a menu item all name a file
+    the same way, so what a suffix means and what a failure to read one reports stand in one place.
+    A file that fails to read, a device that refuses the sound, a document's render that fails and a
+    sound that fails as it plays each report through ``on_error``, once.
     """
 
     def __init__(
         self,
-        audio_device_manager: AudioDeviceManager,
+        preview_player: PreviewPlayer,
         previews: DocumentPreviews,
     ) -> None:
-        self._audio_device_manager = audio_device_manager
+        self._preview_player = preview_player
         self._previews = previews
+        self._playback: Optional[Playback[int]] = None
 
         self.on_error: Optional[Callable[[Exception], None]] = None
 
@@ -51,22 +54,35 @@ class FilePlayback(CallbackMixin):
         self.play_at(path, PlaybackPriority.NORMAL)
 
     def play_at(self, path: Path, priority: PlaybackPriority) -> None:
-        """Play a file at the priority the gesture asking for it carries.
-
-        A device that refuses the playback reports through ``on_error``, the way a file that
-        fails to read does.
-        """
-        try:
-            self._play_file(path, priority)
-        except PlaybackError as exception:
-            self.call(self.on_error, exception)
-
-    def _play_file(self, path: Path, priority: PlaybackPriority) -> None:
+        """Play a file at the priority the gesture asking for it carries."""
         match path.suffix.lower():
             case extensions.EXT_FILE_RECONSTRUCTION:
                 self._play_reconstruction(path, priority)
             case suffix if suffix in extensions.EXT_FILES_AUDIO:
-                self._audio_device_manager.play_file(path, update=False, priority=priority)
+                self._play_audio(path, priority)
+
+    def positioned(self, _playback: Playback[int], _report: int) -> None:
+        """Hears where a file stands, which no browser draws."""
+        return None
+
+    def ended(self, playback: Playback[int], ending: Ending) -> None:
+        """Reports a failure of the file sounded last."""
+        if playback is not self._playback:
+            return
+
+        self._playback = None
+        if ending.error is not None:
+            self.call(self.on_error, ending.error)
+
+    def _play_audio(self, path: Path, priority: PlaybackPriority) -> None:
+        try:
+            audio, sample_rate = read_mono(path)
+        except (OSError, SampleToNESError) as exception:
+            logger.error_with_traceback(exception, f"Failed to play audio file: {path}")
+            self.call(self.on_error, exception)
+            return
+
+        self._sound(audio, sample_rate, priority=priority)
 
     def _play_reconstruction(self, path: Path, priority: PlaybackPriority) -> None:
         try:
@@ -81,13 +97,18 @@ class FilePlayback(CallbackMixin):
     def _sound(
         self,
         audio: np.ndarray,
+        sample_rate: int,
         *,
         priority: PlaybackPriority,
     ) -> None:
         try:
-            self._audio_device_manager.play(audio, update=False, priority=priority)
+            playback = self._preview_player.play(audio, sample_rate=sample_rate, rank=priority, listener=self)
         except PlaybackError as exception:
             self.call(self.on_error, exception)
+            return
+
+        if playback is not None:
+            self._playback = playback
 
     def _report(self, exception: Exception) -> None:
         self.call(self.on_error, exception)

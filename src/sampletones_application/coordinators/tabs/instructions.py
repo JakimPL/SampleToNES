@@ -17,8 +17,10 @@ from sampletones_application.logic.instruction.library import LibraryLogic
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
+from sampletones_application.logic.shared.audio_player import AudioPlayer
 from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.player import PlayerLogic
+from sampletones_application.logic.shared.preview_player import PreviewPlayer
 from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.instructions import InstructionsTabParameters
@@ -73,7 +75,7 @@ from sampletones_application.view_model.instruction.details import (
     InstructionDetailsPanelViewModel,
 )
 from sampletones_application.view_model.shared.audio_data import AudioData
-from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.audio.output import AudioOutput
 from sampletones_core.library import InstructionLibraryKey, LibraryState
 from sampletones_core.structures.tree import FileSystemNode
 from sampletones_shared.exceptions import LibraryDisplayError, SampleToNESError
@@ -96,7 +98,8 @@ class InstructionsTabCoordinator:
         self,
         config_manager: ConfigManager,
         session_manager: SessionManager,
-        audio_device_manager: AudioDeviceManager,
+        output: AudioOutput,
+        preview_player: PreviewPlayer,
         library_manager: InstructionsLibraryManager,
         on_audio_state_changed: VoidCallback,
         on_generation_state_changed: VoidCallback,
@@ -113,7 +116,6 @@ class InstructionsTabCoordinator:
         self._language_manager = language_manager
         self._config_manager = config_manager
         self._session_manager = session_manager
-        self._audio_device_manager = audio_device_manager
         self._on_audio_state_changed = on_audio_state_changed
         self._is_converter_visible = is_converter_visible
         self._dialogs = dialogs
@@ -133,7 +135,7 @@ class InstructionsTabCoordinator:
             language_manager=language_manager,
             is_operation_active=is_operation_active,
         )
-        self._file_playback: FilePlayback = FilePlayback(audio_device_manager, previews)
+        self._file_playback: FilePlayback = FilePlayback(preview_player, previews)
         self._library_tree_logic = TreeLogic(
             session_manager,
             self._file_playback,
@@ -176,9 +178,10 @@ class InstructionsTabCoordinator:
         self._library_panel.on_generator_selected = self._library_logic.load_library_generator
         self._library_panel.on_library_remove_requested = self._request_remove_library
         self._instruction_player_logic = PlayerLogic(
-            audio_device_manager,
+            AudioPlayer(output),
             on_audio_state_changed,
         )
+        self._instruction_player_logic.on_error = playback_failures.present_playing_failure
         self._guarded_player = GuardedPlayer(
             self._instruction_player_logic,
             failures=playback_failures,

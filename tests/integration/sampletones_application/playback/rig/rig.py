@@ -2,7 +2,7 @@ import contextlib
 import time
 from functools import partial
 from pathlib import Path
-from typing import Callable, Final, FrozenSet, Iterator, List, Optional, Sequence, Tuple
+from typing import Callable, Final, FrozenSet, Iterator, List, Optional, Sequence
 
 import numpy as np
 import pytest
@@ -12,7 +12,6 @@ from sampletones_application.logic.shared.playback_priority import PlaybackPrior
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio.io import write_wave
 from sampletones_core.constants.audio import BufferSize, SampleRate
-from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.types.callback import VoidCallback
 from tests.suite.application import draw_frame
 from tests.suite.audio.machine import FakeAudioSystem
@@ -34,11 +33,6 @@ AUDITION_SEMITONE: Final[int] = 0
 FILE_STEM: Final[str] = "preview"
 FILE_SUFFIX: Final[str] = ".wav"
 SHORT_DEADLINE_SECONDS: Final[float] = 0.05
-DEADLINES: Final[Tuple[str, ...]] = (
-    "sampletones_core.audio.manager.STOP_JOIN_SECONDS",
-    "sampletones_core.audio.manager.LET_GO_JOIN_SECONDS",
-    "sampletones_application.services.song_player.service.STOP_JOIN_TIMEOUT",
-)
 
 
 class PlaybackRig:
@@ -67,7 +61,6 @@ class PlaybackRig:
         self.errors = ErrorLog()
         self.errors.attach()
         self.expects_errors: bool = False
-        self._monkeypatch = monkeypatch
         self._directory = directory
         self._files: int = 0
         self._torn_down: bool = False
@@ -87,9 +80,9 @@ class PlaybackRig:
         self.expects_errors = True
 
     def shorten_deadlines(self) -> None:
-        """Gives every wait on an audio thread ``SHORT_DEADLINE_SECONDS``, for a case wedging a thread on purpose."""
-        for deadline in DEADLINES:
-            self._monkeypatch.setattr(deadline, SHORT_DEADLINE_SECONDS)
+        """Gives the teardown's wait on the audio threads ``SHORT_DEADLINE_SECONDS``, for a case wedging a thread on
+        purpose."""
+        self.stack.teardown_seconds = SHORT_DEADLINE_SECONDS
 
     def load(self, sound: Sound, audio: np.ndarray, *, sample_rate: int) -> None:
         """Gives a player its audio, which replaces the audio of a playback under way, or writes the file a preview reads."""
@@ -170,34 +163,27 @@ class PlaybackRig:
             self.stack.router.stop()
 
     def change_device(self, device_index: int, *, sample_rate: SampleRate) -> None:
-        """Applies the Audio settings dialog's device and rate, reporting a refusal as the application does."""
+        """Applies the Audio settings dialog's device and rate."""
         with self._gesture():
-            try:
-                self.stack.manager.configure_device(device_index, sample_rate)
-            except PlaybackError as exception:
-                self.hearing.tell(None, exception)
+            self.stack.change_device(device_index, sample_rate=sample_rate)
 
     def set_buffer_size(self, frames: BufferSize) -> None:
         with self._gesture():
-            self.stack.manager.set_buffer_size(frames)
+            self.stack.set_buffer_size(frames)
 
     def refresh(self) -> None:
-        """The Audio settings dialog's Refresh, reporting a refusal as the application does."""
+        """The Audio settings dialog's Refresh."""
         with self._gesture():
-            try:
-                self.stack.manager.refresh_devices()
-            except PlaybackError as exception:
-                self.hearing.tell(None, exception)
+            self.stack.refresh()
 
     def teardown(self) -> None:
-        """Quits the way the application does: every source is wound down, then the backend goes."""
+        """Quits the way the application does: every sound stops, then the output closes."""
         if self._torn_down:
             return
 
         self._torn_down = True
         with self.hearing.gesture():
-            self.stack.router.shutdown()
-            self.stack.manager.terminate()
+            self.stack.teardown()
 
     def on_end(self, sound: Sound, action: VoidCallback) -> None:
         """Runs ``action`` on the render thread each time ``sound``'s owner hears an end."""

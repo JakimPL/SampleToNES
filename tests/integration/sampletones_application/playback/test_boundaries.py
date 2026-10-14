@@ -5,7 +5,6 @@ import numpy as np
 from sampletones_application.services.song_player.constants import PREFETCH_SECONDS
 from sampletones_core.constants.audio import DEFAULT_BUFFER_SIZE, BufferSize
 from sampletones_core.project.song_position import SongPosition
-from tests.integration.sampletones_application.playback.breaks import STOP_WAITS, broken
 from tests.integration.sampletones_application.playback.material import RATE, REALTIME, SHORT, start_sounding
 from tests.integration.sampletones_application.playback.rig import (
     ROW_SECONDS,
@@ -62,7 +61,6 @@ class TestSongShapes(BaseTestSuite):
 class TestStarvedSong(BaseTestSuite):
     """Rules 4 and 6: a song its synthesizer starves stops at once, and pauses and resumes without a gap."""
 
-    @broken(STOP_WAITS)
     def test_a_starved_song_stops_at_once(self, rig: PlaybackRig) -> None:
         rig.shorten_deadlines()
         rig.expect_errors()

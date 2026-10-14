@@ -4,8 +4,7 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.playback import FollowMode
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.services.song_player.result import (
-    SongPlaybackError,
-    SongPlaybackStopped,
+    SongPlaybackEnded,
     SongPlayerResult,
     SongPositionUpdate,
 )
@@ -127,10 +126,9 @@ class SongPlayerLogic(CallbackMixin):
         Drives the follow-playback behavior: selecting a different order while the song plays
         relocates the playhead in place. The service stays idle when nothing is playing.
 
-        The worker emits each row's position only after its blocking write, so one in-flight update
-        for the pre-seek order can still arrive. Recording the seek target lets ``_on_service_result``
-        drop those stale updates until the playhead reports the new order, so the grid stays on the
-        new order.
+        Rows rendered ahead of the seek still play out and report the pre-seek order. Recording the
+        seek target lets ``_on_service_result`` drop those stale updates until the playhead reports the
+        new order, so the grid stays on the new order.
         """
         self._service.seek(order_position)
         if self._service.alive:
@@ -202,17 +200,16 @@ class SongPlayerLogic(CallbackMixin):
                 self._position.row_index = position.row_index
                 self.call(self.on_position_changed, position.order_position, position.row_index)
                 self._emit_view()
-            case SongPlaybackStopped():
+            case SongPlaybackEnded(ending=ending):
                 self._position = SongPosition()
                 self._awaiting_seek_order = None
-                self._emit_idle_view()
-                self._notify_audio_state_changed()
-            case SongPlaybackError(error=error):
-                self._last_error = str(error) if str(error) else type(error).__name__
-                self._position = SongPosition()
-                self._awaiting_seek_order = None
-                self.call(self.on_error, error)
-                self._emit_view()
+                if ending.error is None:
+                    self._emit_idle_view()
+                else:
+                    self._last_error = str(ending.error) if str(ending.error) else type(ending.error).__name__
+                    self.call(self.on_error, ending.error)
+                    self._emit_view()
+
                 self._notify_audio_state_changed()
 
     def _notify_audio_state_changed(self) -> None:
@@ -227,9 +224,8 @@ class SongPlayerLogic(CallbackMixin):
     def _emit_idle_view(self) -> None:
         """Pushes a definitively stopped view.
 
-        ``SongPlaybackStopped`` is the authoritative end-of-playback signal, and the service hands its
-        stream back before sending it, so the view reads the song silent and the playing highlight
-        settles.
+        ``SongPlaybackEnded`` is the authoritative end-of-playback signal, and the song lets go of the
+        output before it lands, so the view reads the song silent and the playing highlight settles.
         """
         self.call(
             self.on_view_changed,

@@ -9,12 +9,13 @@ from sampletones_application.logic.reconstruction.editing import (
     InstrumentAuditionProtocol,
 )
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
-from sampletones_application.utils.callbacks.queue import CallbackQueue
+from sampletones_application.logic.shared.preview_player import PreviewPlayer
 from sampletones_application.view_model.reconstruction.waveform import (
     InstrumentWaveformViewModel,
 )
-from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.audio.output import Ending, Playback
 from sampletones_core.configs import Config
+from sampletones_core.constants.audio import START_OF_AUDIO
 from sampletones_core.constants.enums import ChannelName, GeneratorName
 from sampletones_core.features import generator_channel, speaks_in_periods
 from sampletones_core.performance.audition import audition_audio, audition_ticks
@@ -31,7 +32,8 @@ class InstrumentAuditionLogic(CallbackMixin):
     rendering it. Both read the same choice — the generator the reader is auditioning it as — so
     the choice is held here and what the plot card draws is what the note keys sound. The audition
     plays at preview priority, so it yields to playback the reader asked for and answers Stop the
-    way every other preview does.
+    way every other preview does. It holds the key it sounds last and follows that one alone with
+    its cursor, which comes off the card once the key ends.
     """
 
     def __init__(
@@ -39,13 +41,14 @@ class InstrumentAuditionLogic(CallbackMixin):
         editor: InstrumentAuditionProtocol,
         project_controller: ProjectController,
         session_manager: SessionManager,
-        audio_device_manager: AudioDeviceManager,
+        previews: PreviewPlayer,
     ) -> None:
         self._editor = editor
         self._controller = project_controller
         self._session_manager = session_manager
-        self._audio_device_manager = audio_device_manager
+        self._previews = previews
         self._generator_name: GeneratorName = AUDITION_GENERATOR
+        self._playback: Optional[Playback[int]] = None
 
         self.on_audition_error: Optional[Callable[[Exception], None]] = None
         self.on_waveform_changed: Optional[Callable[[Optional[InstrumentWaveformViewModel]], None]] = None
@@ -141,32 +144,36 @@ class InstrumentAuditionLogic(CallbackMixin):
         )
 
     def _play(self, audio: np.ndarray) -> None:
-        """Sounds the rendering, following it with a cursor while the audition holds the output.
+        """Sounds the rendering at the rate the project renders at, following it with a cursor once it sounds.
 
-        A preview yields to playback the reader asked for, so the cursor is followed only once the
-        audition has the device: an audition that stands aside leaves the mark of whatever is
-        sounding where it is. A device that refuses the audition reports through
+        A preview yields to playback the reader asked for, so an audition that stands aside leaves the
+        mark of whatever is sounding where it is. A device that refuses the audition reports through
         ``on_audition_error``.
         """
         try:
-            sounding = self._audio_device_manager.play(
+            playback = self._previews.play(
                 audio,
-                update=True,
-                priority=PlaybackPriority.PREVIEW,
-                owner=self,
+                sample_rate=self._controller.project.settings.sample_rate,
+                rank=PlaybackPriority.PREVIEW,
+                listener=self,
             )
         except PlaybackError as exception:
             self.call(self.on_audition_error, exception)
             return
 
-        if sounding:
-            self._audio_device_manager.set_position_callback(self._on_device_position)
+        if playback is not None:
+            self._playback = playback
 
-    def _on_device_position(self, position: int) -> None:
-        """Carries the sounding position from the playback thread to the card that draws it.
+    def positioned(self, playback: Playback[int], report: int) -> None:
+        if playback is self._playback:
+            self.call(self.on_position_changed, report)
 
-        The device reports from the thread writing the audio, and the mark is a widget, so the
-        report crosses to the render thread the way every other background result does. The device
-        reports a final zero as it winds down, which is what takes the mark off the card.
-        """
-        CallbackQueue.add(self.call, self.on_position_changed, position)
+    def ended(self, playback: Playback[int], ending: Ending) -> None:
+        """Takes the cursor off the card once the key held ends, telling the failure where it failed."""
+        if playback is not self._playback:
+            return
+
+        self._playback = None
+        self.call(self.on_position_changed, START_OF_AUDIO)
+        if ending.error is not None:
+            self.call(self.on_audition_error, ending.error)

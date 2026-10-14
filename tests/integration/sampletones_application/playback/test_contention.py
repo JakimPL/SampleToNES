@@ -1,10 +1,4 @@
 from sampletones_core.constants.audio import START_OF_AUDIO
-from tests.integration.sampletones_application.playback.breaks import (
-    FINAL_ZERO,
-    SILENT_PREVIEW_END,
-    STOP_ANY_BUFFER,
-    broken,
-)
 from tests.integration.sampletones_application.playback.material import (
     REALTIME,
     SoundCase,
@@ -32,12 +26,6 @@ class TestPlayerOverPlayer(BaseTestSuite):
         takeover(Sound.RECONSTRUCTION, Sound.SONG),
         takeover(Sound.SONG, Sound.RECONSTRUCTION),
     )
-    told_cases = (
-        takeover(Sound.RECONSTRUCTION, Sound.INSTRUCTION, broken(FINAL_ZERO)),
-        takeover(Sound.INSTRUCTION, Sound.RECONSTRUCTION, broken(FINAL_ZERO)),
-        takeover(Sound.RECONSTRUCTION, Sound.SONG, broken(FINAL_ZERO)),
-        takeover(Sound.SONG, Sound.RECONSTRUCTION),
-    )
 
     @each(test_cases)
     def test_the_taker_holds_the_output(self, rig: PlaybackRig, test_case: TakeoverCase) -> None:
@@ -48,7 +36,7 @@ class TestPlayerOverPlayer(BaseTestSuite):
         assert rig.engaged(test_case.taker)
         assert not rig.engaged(test_case.taken)
 
-    @each(told_cases)
+    @each(test_cases)
     def test_the_taken_source_hears_its_end_once(self, rig: PlaybackRig, test_case: TakeoverCase) -> None:
         start_sounding(rig, test_case.taken)
 
@@ -58,7 +46,6 @@ class TestPlayerOverPlayer(BaseTestSuite):
         assert len(ends) == 1
         assert not ends[0].holding
 
-    @broken(FINAL_ZERO)
     def test_the_taken_player_takes_its_mark_off(self, rig: PlaybackRig) -> None:
         start_sounding(rig, Sound.RECONSTRUCTION)
 
@@ -71,7 +58,6 @@ class TestPlayerOverPlayer(BaseTestSuite):
 class TestAuditionTaken(BaseTestSuite):
     """Rule 3: an audition a player takes the output from hears its end once."""
 
-    @broken(FINAL_ZERO)
     def test_the_audition_hears_its_end_once(self, rig: PlaybackRig) -> None:
         start_sounding(rig, Sound.AUDITION)
 
@@ -86,11 +72,6 @@ class TestPreviewAgainstTheSong(BaseTestSuite):
 
     TestCase = SoundCase
     test_cases = tuple(case(sound) for sound in (Sound.AUDITION, Sound.VOICE, Sound.FILE))
-    told_cases = (
-        case(Sound.AUDITION),
-        case(Sound.VOICE, broken(SILENT_PREVIEW_END)),
-        case(Sound.FILE, broken(SILENT_PREVIEW_END)),
-    )
     asked_for = tuple(case(sound) for sound in (Sound.VOICE, Sound.FILE))
 
     @each(test_cases)
@@ -114,7 +95,7 @@ class TestPreviewAgainstTheSong(BaseTestSuite):
         assert rig.engaged(Sound.SONG)
         assert rig.timeline.most_streams_open() == 1
 
-    @each(told_cases)
+    @each(test_cases)
     def test_a_preview_the_song_takes_over_hears_its_end_once(self, rig: PlaybackRig, test_case: SoundCase) -> None:
         start_sounding(rig, test_case.sound)
 
@@ -138,7 +119,6 @@ class TestPreviewAgainstTheSong(BaseTestSuite):
 class TestOwnStop(BaseTestSuite):
     """Rule 3: an owner's stop ends its own playback, and a sound another owner started plays on."""
 
-    @broken(STOP_ANY_BUFFER)
     def test_a_player_stopping_leaves_a_preview_sounding(self, rig: PlaybackRig) -> None:
         start_sounding(rig, Sound.FILE)
 

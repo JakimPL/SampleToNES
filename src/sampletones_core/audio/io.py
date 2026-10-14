@@ -3,10 +3,12 @@ from typing import Final, Optional, Sequence, Tuple
 
 import numpy as np
 from scipy.io import wavfile
+from soundfile import SoundFileError
 from soundfile import read as sf_read
 from soundfile import write as sf_write
 
 from sampletones_core.constants.algorithm import QUANTIZATION_LEVELS
+from sampletones_shared.exceptions import AudioReadError
 from sampletones_shared.types.path import Pathlike
 
 from .mixing import align, common_length, mix
@@ -95,6 +97,25 @@ def read_wave(path: Pathlike) -> Tuple[np.ndarray, int]:
 
     audio, sample_rate = sf_read(path, dtype="float32")
     return audio, sample_rate
+
+
+def read_mono(path: Pathlike) -> Tuple[np.ndarray, int]:
+    """Reads an audio file as one channel at the rate it was recorded at, the form a preview sounds.
+
+    Returns:
+        Tuple of (audio_array, sample_rate) where audio_array is mono float32.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        IsADirectoryError: If the path points to a directory instead of a file.
+        AudioReadError: If the file holds no audio the reader understands.
+    """
+    try:
+        audio, sample_rate = read_wave(path)
+    except SoundFileError as error:
+        raise AudioReadError(f"Failed to read audio file '{path}': {error}") from error
+
+    return to_mono(audio), sample_rate
 
 
 def load_audio(

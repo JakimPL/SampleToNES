@@ -55,6 +55,7 @@ from sampletones_application.logic.sequencer.tracker import (
 from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
+from sampletones_application.logic.shared.preview_player import PreviewPlayer
 from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.sequencer import SequencerTabParameters
@@ -102,7 +103,7 @@ from sampletones_application.view_model.shared.history import (
     HistoryDetail,
 )
 from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
-from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.audio.output import AudioOutput
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
@@ -114,7 +115,8 @@ class SequencerTabCoordinator:
         self,
         config_manager: ConfigManager,
         session_manager: SessionManager,
-        audio_device_manager: AudioDeviceManager,
+        output: AudioOutput,
+        preview_player: PreviewPlayer,
         key_router: KeyRouter,
         shortcut_source: ShortcutSource,
         browser_manager: BrowserManager,
@@ -163,7 +165,7 @@ class SequencerTabCoordinator:
             browser_manager,
             project_controller,
         )
-        self._file_playback: FilePlayback = FilePlayback(audio_device_manager, previews)
+        self._file_playback: FilePlayback = FilePlayback(preview_player, previews)
         self._sequencer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
             self._file_playback,
@@ -194,7 +196,7 @@ class SequencerTabCoordinator:
         self._sequencer_voices_logic: SequencerVoicesLogic = SequencerVoicesLogic(
             project_controller,
             session_manager,
-            audio_device_manager,
+            preview_player,
             scheduling=layout.scheduling,
             previews=previews,
         )
@@ -203,13 +205,8 @@ class SequencerTabCoordinator:
             project_controller,
             session_manager,
             service=SongPlayerService(
-                audio_device_manager,
-                RowSynthesizer(
-                    project_controller,
-                    config_manager.config,
-                    active_channels=lambda: self._sequencer_channels_logic.active_channels,
-                    sample_rate=lambda: audio_device_manager.sample_rate,
-                ),
+                output,
+                partial(self._song_synthesizer, project_controller, config_manager),
                 should_loop=lambda: session_manager.loop_song,
                 master_gain=lambda: session_manager.master_gain,
                 output_priority=PlaybackPriority.NORMAL,
@@ -332,6 +329,23 @@ class SequencerTabCoordinator:
         )
 
         self._wire_callbacks()
+
+    def _song_synthesizer(
+        self,
+        project_controller: ProjectController,
+        config_manager: ConfigManager,
+        sample_rate: int,
+    ) -> RowSynthesizer:
+        """The synthesizer one playback of the song renders with, at the rate of the stream it plays on.
+
+        The configuration is read as the playback starts, so a song started after a change hears it.
+        """
+        return RowSynthesizer(
+            project_controller,
+            config_manager.config,
+            active_channels=lambda: self._sequencer_channels_logic.active_channels,
+            sample_rate=lambda: sample_rate,
+        )
 
     def _wire_callbacks(self) -> None:
         """Connects every panel and logic object this tab owns to the handler that serves it."""

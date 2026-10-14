@@ -1,6 +1,5 @@
 from typing import Final, Set
 
-from tests.integration.sampletones_application.playback.breaks import STOP_WAITS, TAIL_ON_STOP, broken
 from tests.integration.sampletones_application.playback.material import (
     REALTIME,
     SoundCase,
@@ -28,7 +27,7 @@ class TestStopReturnsAtOnce(BaseTestSuite):
     """Rule 6: Stop silences everything and returns at once, so the render thread waits on no device."""
 
     TestCase = SoundCase
-    test_cases = tuple(case(sound, broken(STOP_WAITS)) for sound in Sound)
+    test_cases = tuple(case(sound) for sound in Sound)
 
     @each(test_cases)
     def test_stop_returns_while_the_writer_is_held(self, rig: PlaybackRig, test_case: SoundCase) -> None:
@@ -53,7 +52,6 @@ class TestTail(BaseTestSuite):
 
     TestCase = SoundCase
     test_cases = tuple(case(sound) for sound in Sound)
-    stopped_cases = tuple(case(sound, broken(TAIL_ON_STOP)) for sound in Sound)
 
     @each(test_cases)
     def test_a_natural_end_plays_the_tail_out(self, rig: PlaybackRig, test_case: SoundCase) -> None:
@@ -62,7 +60,7 @@ class TestTail(BaseTestSuite):
         assert set(rig.timeline.streams()) == _drained(rig)
 
     @REALTIME
-    @each(stopped_cases)
+    @each(test_cases)
     def test_a_stop_cuts_the_tail(self, rig: PlaybackRig, test_case: SoundCase) -> None:
         start_sounding(rig, test_case.sound)
 
@@ -73,7 +71,6 @@ class TestTail(BaseTestSuite):
         assert not _drained(rig)
 
     @REALTIME
-    @broken(TAIL_ON_STOP)
     def test_a_takeover_cuts_the_tail(self, rig: PlaybackRig) -> None:
         start_sounding(rig, Sound.RECONSTRUCTION)
         taken = rig.timeline.streams()[0]

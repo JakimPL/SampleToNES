@@ -1,8 +1,10 @@
+from .catalog import DeviceCatalog
 from .device import AudioDevice, CurrentDevice
 from .io import (
     UNIT_SCALE,
     load_audio,
     mix_scale,
+    read_mono,
     read_stems,
     read_wave,
     scale_stems,
@@ -35,6 +37,7 @@ __all__ = [
     "AudioDevice",
     "AudioDeviceManager",
     "CurrentDevice",
+    "DeviceCatalog",
     "active_frame_level",
     "align",
     "amplitude_to_decibels",
@@ -48,6 +51,7 @@ __all__ = [
     "mix_scale",
     "normalize",
     "quantize",
+    "read_mono",
     "read_stems",
     "read_wave",
     "resample",

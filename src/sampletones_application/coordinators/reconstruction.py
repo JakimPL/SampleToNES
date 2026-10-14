@@ -24,6 +24,7 @@ from sampletones_application.logic.reconstruction.rewrites.steps import (
     AfterEdits,
     Rewrite,
 )
+from sampletones_application.logic.shared.preview_player import PreviewPlayer
 from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
     TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED,
@@ -39,7 +40,6 @@ from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
 from sampletones_application.view_model.reconstruction.work import Work
-from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
@@ -75,7 +75,7 @@ class ReconstructionCoordinator:
         reconstruction_manager: ReconstructionManager,
         session_manager: SessionManager,
         rewrites: ReconstructionRewrites,
-        audio_device_manager: AudioDeviceManager,
+        preview_player: PreviewPlayer,
         project_controller: ProjectController,
         history: HistoryManager,
         *,
@@ -88,7 +88,7 @@ class ReconstructionCoordinator:
         self._reconstruction_manager = reconstruction_manager
         self._session_manager = session_manager
         self._rewrites = rewrites
-        self._audio_device_manager = audio_device_manager
+        self._preview_player = preview_player
         self._project_controller = project_controller
         self._history = history
         self._reconstructions_tab: Optional[ReconstructionTabCoordinator] = None
@@ -388,13 +388,18 @@ class ReconstructionCoordinator:
         """Puts away the edits meant for the open document, which an outside change is about to replace."""
         self._rewrites.drop()
 
+    def _stop_what_the_document_replaces(self) -> None:
+        """Stops the tab's own player and every preview, which a document just loaded replaces; the song plays on."""
+        self._tab.player.stop()
+        self._preview_player.stop()
+
     def on_reconstruction_loaded(self) -> None:
         reconstruction_data = self._reconstruction_manager.current_reconstruction
         if reconstruction_data is None:
             raise RuntimeError("No reconstruction is loaded after loading process")
 
         self._drop_pending()
-        self._audio_device_manager.stop()
+        self._stop_what_the_document_replaces()
         missing_path = first_missing(reconstruction_data.reconstruction.audio_filepath)
         if missing_path is not None:
             self._dialogs.show_file_not_found(

@@ -1,14 +1,9 @@
 import contextlib
 import threading
-from typing import Callable, Dict, FrozenSet, Iterator, List, Optional
+from typing import Callable, Dict, FrozenSet, Generic, Iterator, List, Optional
 
-from sampletones_application.services.song_player.result import (
-    SongPlaybackError,
-    SongPlaybackStopped,
-    SongPlayerResult,
-    SongPositionUpdate,
-)
-from sampletones_core.constants.audio import START_OF_AUDIO
+from sampletones_core.audio.output import Ending, Playback, PlaybackListener
+from sampletones_core.audio.output.source import ReportT
 from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.types.callback import VoidCallback
 
@@ -28,16 +23,11 @@ class Hearing:
     """What each owner hears, counted as the render thread takes it.
 
     A report counts as heard when a drain of the callback queue delivers it, which is the render thread
-    taking a report the device sent. A notification an owner makes while a gesture runs answers that
-    gesture, so it counts for nothing the device did. Today's owners take their reports in these shapes:
-
-    - a reconstruction or instruction player hears its end as a transport notification a drain delivers,
-      and draws every mark it is handed;
-    - the song hears its end as the service's terminal result, and draws its rows;
-    - the audition draws every position it is handed, and hears its end as the final zero;
-    - a voice or a file preview has its failures alone to hear.
-
-    Every failure told to a listener is kept, whenever and wherever it is told.
+    taking a report the output sent. A notification an owner makes while a gesture runs answers that
+    gesture, so it counts for nothing the device did. Each owner is the listener of the playbacks it
+    starts, so the end report an owner takes is the one the output sent it, cause and all; a player, the
+    audition and the song draw marks, and every failure told to a listener is kept, whenever and wherever
+    it is told.
     """
 
     def __init__(
@@ -52,6 +42,7 @@ class Hearing:
         self._written = written
         self._context = _Context()
         self._lock = threading.Lock()
+        self._owners: Dict[int, Sound] = {}
         self._logs: Dict[Sound, OwnerLog] = {sound: OwnerLog() for sound in Sound}
         self._rows: List[RowMark] = []
         self._told: List[Told] = []
@@ -68,7 +59,7 @@ class Hearing:
 
     @contextlib.contextmanager
     def delivering(self) -> Iterator[None]:
-        """Marks the block as a drain, which delivers what the device reported."""
+        """Marks the block as a drain, which delivers what the output reported."""
         delivering, self._context.delivering = self._context.delivering, True
         try:
             yield
@@ -78,6 +69,14 @@ class Hearing:
     @property
     def heard(self) -> bool:
         return self._context.delivering and self._context.gestures == 0
+
+    def owns(self, sound: Sound, owner: PlaybackListener[ReportT]) -> None:
+        """Names the sound whose playbacks ``owner`` starts and listens to."""
+        self._owners[id(owner)] = sound
+
+    def listening(self, owner: PlaybackListener[ReportT]) -> PlaybackListener[ReportT]:
+        """The listener a playback of ``owner`` reports to: the owner, with the rig hearing its end beside it."""
+        return _HeardListener(owner, sound=self._owners[id(owner)], hearing=self)
 
     def log(self, sound: Sound) -> OwnerLog:
         with self._lock:
@@ -104,43 +103,39 @@ class Hearing:
                 log = self._logs[sound]
                 log.marks.append(Mark(position=position, written=self._written(), ends_heard=len(log.ends)))
 
-    def notified(self, sound: Sound) -> None:
-        if self.heard:
-            self._end(sound, None)
-
-    def auditioned(self, position: int) -> None:
-        if not self.heard:
-            return
-
-        if position == START_OF_AUDIO:
-            self._end(Sound.AUDITION, None)
-            return
-
-        self.marked(Sound.AUDITION, position)
-
     def rowed(self, order_position: int, row_index: int) -> None:
         if self.heard:
             position = SongPosition(order_position=order_position, row_index=row_index)
             with self._lock:
                 self._rows.append(RowMark(position=position, written=self._written()))
 
-    def song_result(self, result: SongPlayerResult) -> None:
-        match result:
-            case SongPositionUpdate():
-                return
-            case SongPlaybackStopped():
-                self._end(Sound.SONG, None)
-            case SongPlaybackError():
-                self._end(Sound.SONG, EndCause.FAILED)
-
     def tell(self, listener: Optional[Sound], error: Exception) -> None:
         with self._lock:
             self._told.append(Told(listener=listener, error=error))
 
-    def _end(self, sound: Sound, cause: Optional[EndCause]) -> None:
-        end = End(cause=cause, holding=self._holding(sound), open_streams=self._open_streams())
+    def ended(self, sound: Sound, ending: Ending) -> None:
+        if not self.heard:
+            return
+
+        end = End(cause=EndCause(ending.cause.value), holding=self._holding(sound), open_streams=self._open_streams())
         with self._lock:
             self._logs[sound].ends.append(end)
 
         for action in list(self._end_handlers[sound]):
             action()
+
+
+class _HeardListener(Generic[ReportT]):
+    """An owner's listener with the rig hearing each end report once the owner has taken it."""
+
+    def __init__(self, owner: PlaybackListener[ReportT], *, sound: Sound, hearing: Hearing) -> None:
+        self._owner = owner
+        self._sound = sound
+        self._hearing = hearing
+
+    def positioned(self, playback: Playback[ReportT], report: ReportT) -> None:
+        self._owner.positioned(playback, report)
+
+    def ended(self, playback: Playback[ReportT], ending: Ending) -> None:
+        self._owner.ended(playback, ending)
+        self._hearing.ended(self._sound, ending)

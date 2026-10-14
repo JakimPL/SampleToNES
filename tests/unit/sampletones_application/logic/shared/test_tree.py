@@ -1,7 +1,8 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import Final, List, Optional
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
 from sampletones_application.layout.behavior.scheduling.delays import SchedulingDelays
@@ -10,16 +11,21 @@ from sampletones_application.layout.behavior.scheduling.priorities import Schedu
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.shared.file_playback import FilePlayback
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
+from sampletones_application.logic.shared.preview_player import PreviewPlayer
 from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.tree import TreeLogic
+from sampletones_core.audio.io import write_wave
+from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode
 from sampletones_shared.exceptions import InvalidReconstructionError
 from sampletones_shared.paths import extensions
 
+AUDIO_FRAMES: Final[int] = 64
+
 
 def _tree(
     session_manager: Optional[MagicMock] = None,
-    audio_device_manager: Optional[MagicMock] = None,
+    preview_player: Optional[MagicMock] = None,
     scheduling: Optional[SchedulingBehavior] = None,
 ) -> TreeLogic:
     if session_manager is None:
@@ -27,8 +33,8 @@ def _tree(
         session_manager.autoplay = True
         session_manager.favorites = set()
 
-    if audio_device_manager is None:
-        audio_device_manager = MagicMock()
+    if preview_player is None:
+        preview_player = MagicMock(spec=PreviewPlayer)
 
     if scheduling is None:
         scheduling = SchedulingBehavior(
@@ -47,9 +53,16 @@ def _tree(
 
     return TreeLogic(
         session_manager,
-        FilePlayback(audio_device_manager, MagicMock(spec=DocumentPreviews)),
+        FilePlayback(preview_player, MagicMock(spec=DocumentPreviews)),
         scheduling=scheduling,
     )
+
+
+def _audio_file(directory: Path) -> Path:
+    """A short audio file the player reads, so a preview of it sounds."""
+    path = directory / "audio.wav"
+    write_wave(path, DEFAULT_SAMPLE_RATE, np.zeros(AUDIO_FRAMES, dtype=np.float32))
+    return path
 
 
 def _file_node(filepath: Path) -> FileSystemNode:
@@ -158,52 +171,48 @@ class TestTreeLogicAutoplay:
         assert tree._pending_autoplay_node is None
 
     def test_autoplay_wav_file_calls_play_file(self, tmp_path: Path) -> None:
-        audio_device_manager = MagicMock()
+        preview_player = MagicMock(spec=PreviewPlayer)
         session_manager = MagicMock()
         session_manager.autoplay = True
         session_manager.favorites = set()
         tree = _tree(
             session_manager=session_manager,
-            audio_device_manager=audio_device_manager,
+            preview_player=preview_player,
         )
-        node = _file_node(tmp_path / "audio.wav")
+        node = _file_node(_audio_file(tmp_path))
         tree.request_autoplay(node)
-        audio_device_manager.play_file.assert_called_once_with(
-            node.filepath,
-            update=False,
-            priority=PlaybackPriority.PREVIEW,
-        )
+        preview_player.play.assert_called_once()
+        assert preview_player.play.call_args.kwargs["rank"] == PlaybackPriority.PREVIEW
 
     def test_autoplay_with_directory_node_is_no_op(
         self,
         tmp_path: Path,
     ) -> None:
-        audio_device_manager = MagicMock()
+        preview_player = MagicMock(spec=PreviewPlayer)
         session_manager = MagicMock()
         session_manager.autoplay = True
         tree = _tree(
             session_manager=session_manager,
-            audio_device_manager=audio_device_manager,
+            preview_player=preview_player,
         )
         node = _dir_node(tmp_path / "mydir")
         tree.request_autoplay(node)
-        audio_device_manager.play_file.assert_not_called()
-        audio_device_manager.play.assert_not_called()
+        preview_player.play.assert_not_called()
 
     def test_autoplay_when_session_autoplay_disabled_is_no_op(
         self,
         tmp_path: Path,
     ) -> None:
-        audio_device_manager = MagicMock()
+        preview_player = MagicMock(spec=PreviewPlayer)
         session_manager = MagicMock()
         session_manager.autoplay = False
         tree = _tree(
             session_manager=session_manager,
-            audio_device_manager=audio_device_manager,
+            preview_player=preview_player,
         )
         node = _file_node(tmp_path / "audio.wav")
         tree.request_autoplay(node)
-        audio_device_manager.play_file.assert_not_called()
+        preview_player.play.assert_not_called()
 
     def test_autoplay_enabled_property_reflects_session(self) -> None:
         session_manager = MagicMock()
@@ -218,33 +227,29 @@ class TestTreeLogicPlayNode:
         self,
         tmp_path: Path,
     ) -> None:
-        audio_device_manager = MagicMock()
+        preview_player = MagicMock(spec=PreviewPlayer)
         session_manager = MagicMock()
         session_manager.autoplay = False
         session_manager.favorites = set()
         tree = _tree(
             session_manager=session_manager,
-            audio_device_manager=audio_device_manager,
+            preview_player=preview_player,
         )
-        node = _file_node(tmp_path / "audio.wav")
+        node = _file_node(_audio_file(tmp_path))
 
         tree.play_node(node)
 
-        audio_device_manager.play_file.assert_called_once_with(
-            node.filepath,
-            update=False,
-            priority=PlaybackPriority.NORMAL,
-        )
+        preview_player.play.assert_called_once()
+        assert preview_player.play.call_args.kwargs["rank"] == PlaybackPriority.NORMAL
 
     def test_play_node_with_directory_is_no_op(self, tmp_path: Path) -> None:
-        audio_device_manager = MagicMock()
-        tree = _tree(audio_device_manager=audio_device_manager)
+        preview_player = MagicMock(spec=PreviewPlayer)
+        tree = _tree(preview_player=preview_player)
         node = _dir_node(tmp_path / "mydir")
 
         tree.play_node(node)
 
-        audio_device_manager.play_file.assert_not_called()
-        audio_device_manager.play.assert_not_called()
+        preview_player.play.assert_not_called()
 
 
 class TestTreeLogicIsPlayableFile:

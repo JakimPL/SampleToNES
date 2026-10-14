@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, Final, FrozenSet, Generator, List, Optio
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import dearpygui.dearpygui as dpg
+import numpy as np
 import pytest
 
 from sampletones_application.application import Application
@@ -71,7 +72,7 @@ from sampletones_application.view_model.reconstruction.instruments import (
 from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.audio import CurrentDevice
 from sampletones_core.constants.algorithm import UNIT_DRIVE
-from sampletones_core.constants.audio import BufferSize, SampleRate
+from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE, BufferSize, SampleRate
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.voices.instrument import Instrument
@@ -97,6 +98,8 @@ REBOUND_UNDO: Final[Dict[str, str]] = {"Undo": "Ctrl+Alt+U"}
 DRAG_PAYLOAD_SLOT: Final[int] = 3
 LOUD_DRIVE: Final[float] = 1.75
 UNBUILT_ROW: Final[str] = "browser.row.unbuilt"
+FILE_PLAYBACK_READ: Final[str] = "sampletones_application.logic.shared.file_playback.read_mono"
+RECORDING_FRAMES: Final[int] = 64
 EDITED_VOLUME: Final[Envelope[int]] = Envelope[int](items=(7, 7))
 REMEMBERED_DEVICE: Final[CurrentDevice] = CurrentDevice(
     device_index=7,
@@ -267,6 +270,7 @@ class TestLeaving:
             application = headless_application(tmp_path)
             with (
                 patch.object(application._main_tab, "cleanup", side_effect=RuntimeError),
+                patch.object(application.audio_output, "close", wraps=application.audio_output.close) as closed,
                 patch("dearpygui.dearpygui.destroy_context") as destroy_context,
                 pytest.raises(RuntimeError),
                 application._teardown(),
@@ -274,7 +278,7 @@ class TestLeaving:
                 pass
 
         destroy_context.assert_called_once_with()
-        assert application.audio_device_manager._driver is None
+        closed.assert_called_once()
         assert profile_in(tmp_path).state.exists()
 
     def test_a_failing_step_keeps_the_failure_that_ended_the_run(self, tmp_path: Path) -> None:
@@ -1200,10 +1204,15 @@ class TestGatheringAFolderIntoAMix:
         window.open(offered, room, answer)
         recording = offered[0]
 
-        with patch.object(app.audio_device_manager, "play_file") as sounded:
+        heard = (np.zeros(RECORDING_FRAMES, dtype=np.float32), DEFAULT_SAMPLE_RATE)
+        with (
+            patch(FILE_PLAYBACK_READ, return_value=heard) as read,
+            patch.object(app.preview_player, "play") as sounded,
+        ):
             _double_click_name(PRE_MAIN_CONVERTER_CANDIDATE, recording.key)
 
-        assert sounded.call_args.args[0] == recording.path
+        read.assert_called_once_with(recording.path)
+        assert sounded.call_args.args[0] is heard[0]
 
 
 class TestMainTabReadingOrder:

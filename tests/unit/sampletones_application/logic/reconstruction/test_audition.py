@@ -10,11 +10,13 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.reconstruction.audition import InstrumentAuditionLogic
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
+from sampletones_application.logic.shared.preview_player import PreviewPlayer
 from sampletones_application.view_model.reconstruction.waveform import (
     InstrumentWaveformViewModel,
 )
-from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.audio.output import EndCause, Ending
 from sampletones_core.configs import Config
+from sampletones_core.constants.audio import START_OF_AUDIO
 from sampletones_core.constants.enums import ChannelName, GeneratorName
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.performance.audition import audition_audio, audition_ticks
@@ -67,7 +69,8 @@ def session() -> MagicMock:
 
 @pytest.fixture
 def device() -> MagicMock:
-    return MagicMock(spec=AudioDeviceManager)
+    """The preview player the audition sounds through."""
+    return MagicMock(spec=PreviewPlayer)
 
 
 def _logic(
@@ -190,7 +193,17 @@ class TestWhatAKeySounds:
     ) -> None:
         _sounded(_instrument(), controller, session, device, GeneratorName.PULSE, SEMITONE_G)
 
-        assert device.play.call_args.kwargs["priority"] is PlaybackPriority.PREVIEW
+        assert device.play.call_args.kwargs["rank"] is PlaybackPriority.PREVIEW
+
+    def test_an_audition_plays_at_the_rate_the_project_renders_at(
+        self,
+        controller: ProjectController,
+        session: MagicMock,
+        device: MagicMock,
+    ) -> None:
+        _sounded(_instrument(), controller, session, device, GeneratorName.PULSE, SEMITONE_G)
+
+        assert device.play.call_args.kwargs["sample_rate"] == controller.project.settings.sample_rate
 
 
 class TestTheCursorAnAuditionDraws:
@@ -203,15 +216,14 @@ class TestTheCursorAnAuditionDraws:
         device: MagicMock,
     ) -> None:
         """The device reports where it has reached, which is what moves the mark."""
-        device.play.return_value = True
         logic = _logic(_instrument(), controller, session, device)
         marked: List[int] = []
         logic.on_position_changed = marked.append
 
         logic.sound(SEMITONE_G)
-        device.set_position_callback.call_args.args[0](512)
+        logic.positioned(device.play.return_value, 512)
 
-        assert device.play.call_args.kwargs["update"] is True
+        assert device.play.call_args.kwargs["listener"] is logic
         assert marked == [512]
 
     def test_an_audition_standing_aside_leaves_the_mark_where_it_is(
@@ -221,12 +233,49 @@ class TestTheCursorAnAuditionDraws:
         device: MagicMock,
     ) -> None:
         """A preview outranked by playback the reader asked for follows nothing."""
-        device.play.return_value = False
+        device.play.return_value = None
         logic = _logic(_instrument(), controller, session, device)
+        marked: List[int] = []
+        logic.on_position_changed = marked.append
 
         logic.sound(SEMITONE_G)
+        logic.positioned(MagicMock(), 512)
 
-        device.set_position_callback.assert_not_called()
+        assert marked == []
+
+    def test_the_end_of_the_key_takes_the_mark_off(
+        self,
+        controller: ProjectController,
+        session: MagicMock,
+        device: MagicMock,
+    ) -> None:
+        logic = _logic(_instrument(), controller, session, device)
+        marked: List[int] = []
+        logic.on_position_changed = marked.append
+        logic.sound(SEMITONE_G)
+
+        logic.ended(device.play.return_value, Ending.of(EndCause.FINISHED))
+
+        assert marked == [START_OF_AUDIO]
+
+    def test_the_end_of_a_key_pressed_before_leaves_the_mark_of_the_next(
+        self,
+        controller: ProjectController,
+        session: MagicMock,
+        device: MagicMock,
+    ) -> None:
+        logic = _logic(_instrument(), controller, session, device)
+        marked: List[int] = []
+        logic.on_position_changed = marked.append
+        device.play.return_value = MagicMock()
+        logic.sound(SEMITONE_G)
+        earlier = device.play.return_value
+        device.play.return_value = MagicMock()
+        logic.sound(SEMITONE_G)
+
+        logic.ended(earlier, Ending.of(EndCause.TAKEN))
+
+        assert marked == []
 
 
 class TestWhenNothingSounds:
@@ -265,6 +314,22 @@ class TestWhenNothingSounds:
         logic.sound(SEMITONE_G)
 
         assert reported == [refusal]
+
+    def test_an_audition_failing_as_it_plays_reports_the_failure_once(
+        self,
+        controller: ProjectController,
+        session: MagicMock,
+        device: MagicMock,
+    ) -> None:
+        failure = OSError("The device failed")
+        logic = _logic(_instrument(), controller, session, device)
+        reported: List[Exception] = []
+        logic.on_audition_error = reported.append
+        logic.sound(SEMITONE_G)
+
+        logic.ended(device.play.return_value, Ending.failure(failure))
+
+        assert reported == [failure]
 
 
 class TestTheWaveformTheCardDraws:

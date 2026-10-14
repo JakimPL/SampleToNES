@@ -16,15 +16,14 @@ class ScriptedSong:
     Each order holds rows of the lengths it is given. A row continues the ramp from where the rows before it
     in the song end, so what the device received reads back as the song samples it played, and a seek shows
     as a jump in the indices. ``before_render`` runs on the render thread before each row, which is where a
-    case holds the synthesis back or fails it.
+    case holds the synthesis back or fails it. Every playback renders through a cursor of its own, which
+    ``synthesizer`` builds the way the application builds a synthesizer per playback.
     """
 
     def __init__(self, orders: Sequence[Sequence[int]]) -> None:
         self._lock = threading.Lock()
         self._orders: List[Tuple[int, ...]] = []
         self._starts: List[Tuple[int, ...]] = []
-        self._order_position: int = 0
-        self._row_index: int = 0
         self.before_render: Optional[RenderHook] = None
         self.compose(orders)
 
@@ -48,53 +47,64 @@ class ScriptedSong:
         with self._lock:
             return sum(sum(order) for order in self._orders)
 
+    def synthesizer(self, _sample_rate: int) -> "SongCursor":
+        """A cursor of its own for one playback of the song."""
+        return SongCursor(self)
+
+    def orders(self) -> int:
+        with self._lock:
+            return len(self._orders)
+
+    def rows_in(self, order_position: int) -> int:
+        with self._lock:
+            return len(self._orders[order_position])
+
+    def row(self, position: SongPosition) -> np.ndarray:
+        """The samples one row holds, running the ramp on from the rows before it."""
+        with self._lock:
+            frames = self._orders[position.order_position][position.row_index]
+            start = self._starts[position.order_position][position.row_index]
+
+        return ramp(frames, start=start)
+
+
+class SongCursor:
+    """Where one playback of a scripted song stands, rendered row by row."""
+
+    def __init__(self, song: ScriptedSong) -> None:
+        self._song = song
+        self._order_position: int = 0
+        self._row_index: int = 0
+
     @property
     def order_position(self) -> int:
-        with self._lock:
-            return self._order_position
+        return self._order_position
 
     @property
     def row_index(self) -> int:
-        with self._lock:
-            return self._row_index
+        return self._row_index
 
     @property
     def is_finished(self) -> bool:
-        with self._lock:
-            return self._order_position >= len(self._orders)
+        return self._order_position >= self._song.orders()
 
     def set_position(self, order_position: int, row_index: int) -> None:
-        with self._lock:
-            self._order_position = order_position
-            self._row_index = row_index
+        self._order_position = order_position
+        self._row_index = row_index
 
     def reset(self) -> None:
         return None
 
     def render_row(self) -> Tuple[np.ndarray, SongPosition]:
-        with self._lock:
-            position = SongPosition(order_position=self._order_position, row_index=self._row_index)
+        position = SongPosition(order_position=self._order_position, row_index=self._row_index)
+        hook = self._song.before_render
+        if hook is not None:
+            hook(position)
 
-        if self.before_render is not None:
-            self.before_render(position)
-
-        with self._lock:
-            frames = self._orders[position.order_position][position.row_index]
-            start = self._starts[position.order_position][position.row_index]
-            self._advance(position)
-
-        return ramp(frames, start=start), position
-
-    def _advance(self, position: SongPosition) -> None:
-        """Moves past the row just rendered, onto the next order once the row ends its own.
-
-        A seek made while the row rendered stands, since the cursor already names where the song goes next.
-        The caller holds the lock.
-        """
-        if (self._order_position, self._row_index) != (position.order_position, position.row_index):
-            return
-
+        samples = self._song.row(position)
         self._row_index += 1
-        if self._row_index >= len(self._orders[self._order_position]):
+        if self._row_index >= self._song.rows_in(position.order_position):
             self._order_position += 1
             self._row_index = 0
+
+        return samples, position
