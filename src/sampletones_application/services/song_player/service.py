@@ -7,7 +7,7 @@ from sampletones_application.services.song_player.result import (
     SongPositionUpdate,
 )
 from sampletones_application.services.song_player.source import SongSource, SynthesizerFactory
-from sampletones_core.audio.output import AudioOutput, Ending, GainReader, Playback
+from sampletones_core.audio.output import AudioOutput, Ending, Playback
 from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.logger import logger
 
@@ -33,7 +33,7 @@ class SongPlayerService:
         synthesizer_factory: SynthesizerFactory,
         *,
         should_loop: Callable[[], bool],
-        master_gain: GainReader,
+        master_gain: Callable[[], float],
         output_priority: int,
     ) -> None:
         self._output = output
@@ -79,9 +79,10 @@ class SongPlayerService:
             self._synthesizer_factory,
             start=SongPosition(order_position=order_position, row_index=row_index),
             should_loop=self._should_loop,
+            master_gain=self._master_gain,
             threads=self._output.threads,
         )
-        playback = self._output.play(source, rank=self._output_priority, listener=self, gain=self._master_gain)
+        playback = self._output.play(source, rank=self._output_priority, listener=self)
         if playback is None:
             logger.info("SongPlayerService: the output is held above the song; start declined")
             return

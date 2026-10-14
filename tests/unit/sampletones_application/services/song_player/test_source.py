@@ -9,7 +9,8 @@ from sampletones_application.services.song_player.source import SongSource
 from sampletones_core.audio.output import AudioThreads, Fill
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones_core.project.song_position import SongPosition
-from tests.suite.audio.ramp import ramp_indices
+from sampletones_shared.constants.audio import UNITY_GAIN
+from tests.suite.audio.ramp import ramp, ramp_indices
 from tests.unit.sampletones_application.services.song_player.ramp_song import (
     ROW,
     SYNTHESIS_FAILURE,
@@ -19,7 +20,18 @@ from tests.unit.sampletones_application.services.song_player.ramp_song import (
 
 BLOCK: Final[int] = 128
 SEEK_ORDER: Final[int] = 2
+HALF_GAIN: Final[float] = 0.5
 START: Final[SongPosition] = SongPosition(order_position=0, row_index=0)
+
+
+class MasterGain:
+    """The gain a song plays at, which a case moves while the song plays."""
+
+    def __init__(self, value: float) -> None:
+        self.value = value
+
+    def __call__(self) -> float:
+        return self.value
 
 
 class Failures:
@@ -40,8 +52,15 @@ def _source(
     looping: bool = False,
     start: SongPosition = START,
     failures: Optional[Failures] = None,
+    master_gain: Optional[MasterGain] = None,
 ) -> SongSource:
-    source = SongSource(song.factory, start=start, should_loop=lambda: looping, threads=AudioThreads())
+    source = SongSource(
+        song.factory,
+        start=start,
+        should_loop=lambda: looping,
+        master_gain=MasterGain(UNITY_GAIN) if master_gain is None else master_gain,
+        threads=AudioThreads(),
+    )
     source.begin(DEFAULT_SAMPLE_RATE, Failures() if failures is None else failures)
     return source
 
@@ -94,6 +113,27 @@ class TestRows:
 
         assert len(played) == 0
         assert positions == []
+
+
+class TestMasterGain:
+    """Every block plays at the master gain read as it is read, so a change is heard from the next block."""
+
+    def test_the_rows_play_at_the_master_gain(self) -> None:
+        played, _ = _read_all(_source(RampSong([0], rows=2), master_gain=MasterGain(HALF_GAIN)))
+
+        np.testing.assert_array_equal(played, ramp(2 * ROW) * HALF_GAIN)
+
+    def test_a_change_is_heard_from_the_next_block(self) -> None:
+        master_gain = MasterGain(UNITY_GAIN)
+        source = _source(RampSong([0], rows=4), master_gain=master_gain)
+
+        before, _ = _read(source)
+        master_gain.value = HALF_GAIN
+        after, _ = _read(source)
+        source.close()
+
+        np.testing.assert_array_equal(before, ramp(BLOCK))
+        np.testing.assert_array_equal(after, ramp(BLOCK, start=BLOCK) * HALF_GAIN)
 
 
 class TestLooping:
@@ -203,7 +243,13 @@ class TestClose:
 
     def test_a_source_closed_before_it_begins_renders_nothing(self) -> None:
         song = RampSong([0], rows=4)
-        source = SongSource(song.factory, start=START, should_loop=lambda: False, threads=AudioThreads())
+        source = SongSource(
+            song.factory,
+            start=START,
+            should_loop=lambda: False,
+            master_gain=MasterGain(UNITY_GAIN),
+            threads=AudioThreads(),
+        )
 
         source.close()
         source.begin(DEFAULT_SAMPLE_RATE, Failures())

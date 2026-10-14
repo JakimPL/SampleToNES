@@ -23,6 +23,8 @@ class SongSource:
     the device stays fed. Each row reports the position it played once the device has taken its last
     sample. A seek or a relocation reaches the synthesizer between rows, so rows already rendered ahead
     play out first and the jump lands within one look-ahead window, with the voices sounding carried over.
+    Every block plays at the master gain read as the device asks for it, so a change is heard from the
+    next block.
 
     The render thread starts through the output's registry, so a teardown waits for it. A synthesis that
     fails however its code fails ends the rows and ends the playback at once with the failure, sounding or
@@ -35,6 +37,7 @@ class SongSource:
         *,
         start: SongPosition,
         should_loop: Callable[[], bool],
+        master_gain: Callable[[], float],
         threads: AudioThreads,
     ) -> None:
         """Holds what the song is rendered from and where it starts.
@@ -43,11 +46,13 @@ class SongSource:
             synthesizer_factory: Builds the synthesizer for the rate of the stream the song plays on.
             start: The row the song starts at.
             should_loop: Whether the song starts over once it reaches its end, read as it gets there.
+            master_gain: The gain the song plays at, read for every block.
             threads: The registry the render thread starts through.
         """
         self._factory = synthesizer_factory
         self._start = start
         self._should_loop = should_loop
+        self._master_gain = master_gain
         self._threads = threads
         self._lock = threading.Lock()
         self._moves: List[SongMove] = []
@@ -82,6 +87,7 @@ class SongSource:
         if taken.frames < len(block) and self._failure is not None:
             raise self._failure
 
+        block[: taken.frames] *= np.float32(self._master_gain())
         return Fill(frames=taken.frames, reports=taken.reports)
 
     def seek(self, order_position: int) -> None:

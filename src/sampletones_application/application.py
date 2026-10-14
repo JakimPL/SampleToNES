@@ -142,7 +142,6 @@ from sampletones_application.ui.panels.dialogs.render import GUIRenderWindow
 from sampletones_application.ui.panels.dialogs.stem_selection import GUIStemSelectionWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
-from sampletones_application.utils.callbacks.crossing import RenderThreadCrossing
 from sampletones_application.utils.callbacks.failures import UnhandledFailures
 from sampletones_application.utils.callbacks.gates import (
     FirstRequestFlight,
@@ -154,7 +153,6 @@ from sampletones_application.utils.callbacks.gates import (
     waiting,
     waiting_for_the_screen,
 )
-from sampletones_application.utils.callbacks.priority import DEFAULT_PRIORITY
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.frame_limiter import FrameLimiter
@@ -279,9 +277,7 @@ class Application:
             language_manager=self.language_manager,
         )
         UnhandledFailures.attach(self._unhandled_failures.present, post=CallbackQueue.add)
-        self.audio_output: AudioOutput = AudioOutput(
-            PyAudioDriver, post=RenderThreadCrossing(priority=DEFAULT_PRIORITY)
-        )
+        self.audio_output: AudioOutput = AudioOutput(PyAudioDriver, post=CallbackQueue.add)
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager(self.audio_output.catalog)
         self.preview_player: PreviewPlayer = PreviewPlayer(self.audio_output)
         self.config_manager = ConfigManager(config_path)

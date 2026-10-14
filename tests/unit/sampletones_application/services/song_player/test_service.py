@@ -1,5 +1,6 @@
 from typing import Final, List
 
+import numpy as np
 import pytest
 
 from sampletones_application.services.song_player.result import (
@@ -10,13 +11,16 @@ from sampletones_application.services.song_player.result import (
 from sampletones_application.services.song_player.service import SongPlayerService
 from sampletones_application.services.song_player.source import SongSource
 from sampletones_core.audio.output import EndCause, Ending
+from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.exceptions import NoOutputDeviceError
 from tests.suite.audio.output import FakeAudioOutput
-from tests.unit.sampletones_application.services.song_player.ramp_song import RampSong
+from tests.suite.audio.ramp import ramp
+from tests.unit.sampletones_application.services.song_player.ramp_song import WAIT_SECONDS, RampSong
 
 OUTPUT_PRIORITY: Final[int] = 1
 MASTER_GAIN: Final[float] = 0.5
+BLOCK: Final[int] = 128
 ROW: Final[SongPosition] = SongPosition(order_position=1, row_index=3)
 DEVICE_FAILURE: Final[str] = "The device failed"
 
@@ -59,8 +63,22 @@ class TestStart:
         assert service.alive
         assert service.is_playing
         assert output.claim(output.latest).rank == OUTPUT_PRIORITY
-        assert output.latest.gain() == MASTER_GAIN
         assert isinstance(output.claim(output.latest).source, SongSource)
+
+    def test_the_song_plays_at_the_master_gain(self, service: SongPlayerService, output: FakeAudioOutput) -> None:
+        _start(service)
+        source = output.claim(output.latest).source
+        failures: List[Exception] = []
+        block = np.zeros(BLOCK, dtype=np.float32)
+
+        source.begin(DEFAULT_SAMPLE_RATE, failures.append)
+        fill = source.read_into(block)
+        source.close()
+
+        assert output.threads.join(deadline_seconds=WAIT_SECONDS) == []
+        assert fill.frames == BLOCK
+        np.testing.assert_array_equal(block, ramp(BLOCK) * MASTER_GAIN)
+        assert failures == []
 
     def test_a_declined_start_leaves_the_song_idle(self, service: SongPlayerService, output: FakeAudioOutput) -> None:
         output.declining = True

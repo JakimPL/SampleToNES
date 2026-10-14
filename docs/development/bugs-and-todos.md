@@ -55,6 +55,8 @@ dimension the import starts carrying.
 ### Features
 
 * MIDI keyboard support.
+* A preview volume slider below the browsers, setting the level every preview plays at. The preview player
+  hands each preview's source a level it reads per block, as the song reads the master gain.
 * In-application guide/tutorial.
 * Language selector.
 * Reading only the bins the refinement asks for, since it transforms every bin the spectrum covers and

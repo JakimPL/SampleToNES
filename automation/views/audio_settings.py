@@ -7,8 +7,10 @@ from automation.dearpygui.geometry import Point
 from automation.dearpygui.hand import Hand
 from automation.dearpygui.items.reading import read_item, read_value
 from automation.dearpygui.reach import UnreachableError
+from automation.dearpygui.semantic import pick
 from sampletones_application.tags.settings import (
     TAG_SETTINGS_AUDIO_BUTTON_APPLY,
+    TAG_SETTINGS_AUDIO_COMBO_SAMPLE_RATE,
     TAG_SETTINGS_AUDIO_SLIDER_MASTER_GAIN,
     TAG_SETTINGS_AUDIO_TEXT_MASTER_GAIN_DB,
     TAG_SETTINGS_AUDIO_WINDOW,
@@ -19,8 +21,8 @@ MIDDLE: Final[float] = 0.5
 
 
 class AudioSettings:
-    """The Audio settings dialog, as far as its master gain and Apply: the slider, the line reading its level
-    in decibels, and the button that applies the choices.
+    """The Audio settings dialog, as far as its sample rate, its master gain and Apply: the rate list, the
+    slider, the line reading its level in decibels, and the button that applies the choices.
     """
 
     def __init__(
@@ -38,6 +40,14 @@ class AudioSettings:
     def apply(self) -> None:
         """Clicks Apply."""
         self._hand.click(TAG_SETTINGS_AUDIO_BUTTON_APPLY)
+
+    def sample_rate(self) -> str:
+        """The rate the Sample rate list names."""
+        return str(self._bridge.ask(lambda: read_value(TAG_SETTINGS_AUDIO_COMBO_SAMPLE_RATE)))
+
+    def choose_sample_rate(self, label: str) -> None:
+        """Picks the rate reading ``label`` in the Sample rate list, which Apply puts in force."""
+        self._bridge.ask(lambda: pick(TAG_SETTINGS_AUDIO_COMBO_SAMPLE_RATE, label))
 
     def gain(self) -> float:
         """The master gain the slider stands at."""

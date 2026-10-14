@@ -3,7 +3,7 @@ from typing import Final
 import numpy as np
 import pytest
 
-from sampletones_core.audio.output import BufferSource, EndCause, Ending, Playback, unity_gain
+from sampletones_core.audio.output import BufferSource, EndCause, Ending, Playback
 from sampletones_core.audio.output.playback import PlaybackFeed
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones_shared.types.callback import VoidCallback
@@ -57,7 +57,7 @@ def source() -> BufferSource:
 
 
 def _playback(source: BufferSource, listener: RecordingListener[int], post: QueuedPost) -> Playback[int]:
-    return Playback(source, gain=unity_gain, listener=listener, post=post, control=_Output())
+    return Playback(source, listener=listener, post=post, control=_Output())
 
 
 def _block(playback: Playback[int]) -> None:
@@ -138,7 +138,7 @@ class TestEnd:
         source: BufferSource,
         listener: RecordingListener[int],
     ) -> None:
-        playback = Playback(source, gain=unity_gain, listener=listener, post=_now, control=_Output())
+        playback = Playback(source, listener=listener, post=_now, control=_Output())
 
         _block(playback)
         playback.end(FINISHED)

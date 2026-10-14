@@ -197,7 +197,9 @@ how a menu popup's width is measured.
   clock returns each write and each stop when a device would. JACK looks for a server no one runs and
   starts none, so a JACK server on the machine stays outside the run too. A scenario can start on a
   machine offering no device at all, or on one whose device refuses every stream, with the same
-  configuration in place.
+  configuration in place. The device records every stream the application opens, with its rate, the frames
+  written to it and whether it closed, so a scenario reads a sound's length and a teardown's closing where
+  the sound ends up.
 - **Programs.** An audit hook refuses every program the application tries to start: a file manager, a
   browser or a dialog tool would open on the desktop around the run. A shared library lookup passes, and
   so do the stand-ins below.

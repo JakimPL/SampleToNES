@@ -26,21 +26,19 @@ An instrument's audition is a preview of that kind. It reads the generator chose
 
 **A voice sounded on its own runs to its release, or to the length it is offered.** A row holds a voice for as long as the pattern asks. An audition and the voice list's preview have no row behind them, so each has a span of its own. A volume dimension that ends at silence releases the voice, and the sound stops there. A voice that circles from a loop point never reaches a last item, so it sounds for the ticks `AUDITION_TICKS` offers it. One count serves both spans, so the plot card draws exactly the frames the keyboard sounds.
 
-**A sounding voice is marked where it has reached.** The device reports its position while it plays, and the plot card carries that mark along the voice it drew, as it does for a reconstruction's playback. A preview follows its own sound alone: `play` reports whether the request took the output, and the audition starts following only when it did. A request that yields to playback the reader asked for leaves that playback's mark where it is. The device reports a final zero as it winds down, which takes the mark off the card.
+**A sounding voice is marked where it has reached.** Its playback reports each position the device took, and the plot card carries that mark along the voice it drew, as it does for a reconstruction's playback. A preview follows its own playback alone: `play` answers with the playback, or with nothing where the output declined the request, and the audition follows only a playback it holds. A declined request leaves the holder's mark where it is. The playback's end report takes the mark off the card.
 
-A report comes from the thread writing the audio, and the mark is a widget, so every report crosses to the render thread before it moves anything (architecture principle 6). A source's player reads where its own playback stands when the report arrives. A seek made in the meantime therefore stands: the mark shows the device as it is, and a report that set out before the seek draws the seek.
+A report comes from the thread writing the audio, and the mark is a widget, so every report crosses to the render thread before it moves anything (architecture principle 6). An owner hears only the playback it holds, so a report from a sound it let go of moves nothing. A seek travels to the source as a command between two reads, and a position read before the owner's latest command is dropped as it lands, so a mark drawn after a seek reads the seek.
 
 **Intentional playback** is the audio a tab is built around: a reconstruction's audio, an instruction's audio or the sequencer song. The source that started it owns it, and it is resumable, seekable and stoppable. At most one intentional source is engaged at any moment.
 
-Priority ranks the two kinds and settles every contest for the device. Starting intentional playback preempts a sounding preview, and a preview requested while intentional playback holds the device is declined.
+Rank settles every contest for the device. Intentional playback claims at the higher rank, and so does a preview the reader asks for by name, such as Play on a voice's row or on a file. A preview that a selection or a key fires, such as autoplay or an audition, claims at the lower rank. A claim ranked below the holder is declined, and any other takes the output. Starting intentional playback therefore ends a sounding preview, a preview asked for by name ends whatever sounds, and an autoplay is declined while intentional playback holds the device. A sound holds the output from its claim, before its stream opens, so every contest is settled at the moment of asking, and the sound that lost hears its end at once.
 
-**A source that streams claims the output as it is asked to play.** The song writes to the device from a thread of its own, so it takes a lease on the output when it starts, before its stream opens, and holds the lease until its writer hands it back. The lease carries the request's priority, so a buffer and a stream are weighed by one rule: a request ranked below a holder is declined, and any other takes the output, while each holder's release winds its writing down. A lease that lost the output opens no stream. A song that loses the output reports its end as it stops, so the transport and the playhead settle whichever sound took it.
-
-**A sound starts only on a device in force.** Every request, of either kind, asks the device manager for the output before a thread or a stream opens, so a machine offering no output device refuses the request at once with `NoOutputDeviceError`. One presenter, `PlaybackFailurePresenter` (`coordinators/playback/failures.py`), tells the reader what stopped any sound: a missing output reads as a plain notice, and every other failure as an error. A failure on the thread playing the sound, such as a stream the device refused or a write it failed, reads the same whichever source played it, and is told once.
+**A sound starts only on a device in force.** The output refuses a claim with `NoOutputDeviceError` when no device is in force, before a thread or a stream opens. One presenter, `PlaybackFailurePresenter` (`coordinators/playback/failures.py`), tells the reader what stopped any sound: a missing output reads as a plain notice, and every other failure as an error. A failure on the thread playing the sound, such as a stream the device refused or a write it failed, reaches the owner as its playback's end report. It reads the same whichever source played it, and is told once.
 
 ## Engagement
 
-A source is **engaged** while it owns the device output, whether it is sounding or held paused. A source therefore reports itself engaged only while *its own* audio is the one on the device. While a preview sounds, ownership rests outside every source and each of them reports itself idle.
+A source is **engaged** while its playback holds the output, from the claim until its end is decided, whether it is sounding or held paused. A source therefore reports itself engaged only while *its own* audio is the one on the device. While a preview sounds, ownership rests outside every source and each of them reports itself idle.
 
 Engagement is the ownership test of principle 2 in practice, and it is the single fact the transport and the toolbar consult.
 
@@ -56,6 +54,32 @@ Every sound on the device answers to the rules below, whatever its kind and whoe
 6. **Stop silences everything, and the call returns at once.** A natural end plays the tail out, and a stop or a takeover cuts it.
 7. **A failure is told once,** to its owner's listener.
 8. **After teardown, every audio thread has ended and every stream is closed.** The teardown reports a thread that outlives its deadline, and a writer among them keeps the backend alive.
+
+The integration suite under `tests/integration/sampletones_application/playback/` holds every sound to these rules through the application's own owners, and a seeded storm (`tests/unit/sampletones_core/audio/output/test_storms.py`) holds the output to them under owners acting at once over a device that is slow and fails.
+
+## The audio output
+
+Every sound plays through one `AudioOutput` (`sampletones_core/audio/output/`), which holds the device's one stream and the backend under it. An owner hands the output an **audio source**, which the output reads a block at a time, and the rank it claims at. The owner then holds the **playback** the output answers with.
+
+**One path carries every sound.** The playback is the owner's handle on the sound, from its claim to its end report. The owner pauses, resumes, stops and commands the sound there, and hears of it through its listener. Every rule of the contract therefore holds for every kind of sound through one implementation, and each part of the path is tested alone against a fake device.
+
+**A playback is the identity of one sound.** Each start makes a new playback, and an owner listens only to the playbacks it holds. A late report from a sound the owner let go of finds no holder, so a newer sound keeps its mark and its state.
+
+**Requests are decided at once, and one thread calls the device.** A claim, a stop, a pause and a device change are decided under the output's lock as they arrive, so the render thread waits on no device (architecture principle 6). One writer thread carries the decisions out: it opens the stream, reads a block from each playback, writes the mix, and drains or cuts the stream. Every device call runs outside the lock, so a device slow to answer holds that thread alone. The writer starts with the request that gives it work and ends once nothing is left, so an idle application runs no audio thread.
+
+**The decisions are pure state machines.** `SessionCore` and the lifecycles it holds decide each step from the events before it alone, so a case drives them directly. A model check drives them through every order of events up to a bound and holds each order to the contract. The output's lock and its waking of the writer are all the threads add.
+
+**Every claim plays on a stream of its own.** A claim made while a stream is open cuts that stream, and the new sound opens the next one. A stream therefore carries one sound from its opening to its close, and a takeover cuts the tail by closing that sound's stream (rule 6). A paused playback keeps its stream, and the writer sleeps beside it until a request arrives, so a pause costs nothing while it lasts and a resume plays on at once.
+
+**An audio source learns the stream's rate as it begins.** The writer begins each source at its first read with the rate of the stream it plays on, so a sound always plays at the rate the device takes (rule 5). Document audio keeps its own rate in a `BufferSource`, which resamples it as it streams and reports positions in document samples. The song builds its synthesizer for the stream's rate.
+
+**A source is read on the writer's thread alone.** An owner's command, such as a seek or a new buffer of audio, runs there between two reads, so every read and every command of a source runs on one thread, in order. A source failing on a thread of its own, such as the song's renderer, tells its playback through the failure report it was begun with, which ends the playback at once, sounding or paused. A read fails however the source's code fails, so the writer catches the read whole: the failure ends that playback as its end report, and every other playback plays on.
+
+**Every report crosses in the order it was made.** The output hands each report to the post it was built with. The application posts through the callback queue at one priority, so an owner hears its positions in order and its end report last.
+
+**Each sound carries its own level.** The mix sums the blocks the playbacks fill and clips the sum to full scale. A level belongs to the sound it shapes: the song reads the master gain for every block it hands the device, so a move of the slider is heard from the next block.
+
+**A sound starts and ends on one device.** A new device or rate ends every playback as stopped, and the next sound opens on the new settings. A new buffer size reaches the next stream, so a sound playing carries on. A refresh renews the backend on the writer's thread while no stream is open, finds the device in force again by its name, and hands the devices it lists to the render thread.
 
 ## The target
 
@@ -77,7 +101,7 @@ The transport's verbs are reached identically from the Playback menu, the toolba
 
 Each verb is an action, so the combination it answers to is the shipped scheme's (`sampletones_config/keybindings/`) and every surface prints what the scheme says.
 
-**A click on a waveform puts the playhead at a sample.** The Reconstructions and Instructions waveforms draw the audio their tab's own source plays, so a click reaches that source at the sample under the pointer. An engaged source moves there and goes on sounding or stays paused, and an idle one starts sounding there. The seek and the ownership it depends on are read under one lock, so a source another has taken the output from starts sounding and does not move a playback it lost. A waveform that draws a voice's own audio draws nothing its player sounds, so it takes no click and its hint names none.
+**A click on a waveform puts the playhead at a sample.** The Reconstructions and Instructions waveforms draw the audio their tab's own source plays, so a click reaches that source at the sample under the pointer. An engaged source moves there and goes on sounding or stays paused, and an idle one starts sounding there. The seek is a command to the source's own playback. A playback another sound took refuses it, so the source starts a new playback at that sample, and the sound it lost stays where it was. A waveform that draws a voice's own audio draws nothing its player sounds, so it takes no click and its hint names none.
 
 The left button carries three gestures: a click seeks, a drag pans the view, and a double-click fits it to the audio. `PlotClickGesture` (`ui/elements/graphs/gesture.py`) settles which one a press was, so the playhead and the view each answer only the gesture meant for them.
 
@@ -89,7 +113,7 @@ Because the target prefers the active tab's own source, Play/Pause acts on what 
 
 The toolbar's transport strip and the Playback menu describe the target. The Play/Pause/Resume label and the paused indicator report what the toggle will do. Stop is available while any sound is on the device, engaged or previewed. The display therefore carries across tabs that play nothing of their own, showing the source sounding elsewhere, and shows the local source on tabs that have one. A verb tied to one screen, such as playing from the shown frame, is offered on that screen with its document open.
 
-**A source reports its own transitions.** Each source tells the surfaces when it starts, pauses, resumes, stops or ends, whichever gesture moved it: the transport, a context menu, a key a grid owns, or the end of the sound. The surfaces therefore stay in step with a source no caller remembered to mention. A preview belongs to no source, so the surfaces read the device for it.
+**A source reports its own transitions.** Each source tells the surfaces when it starts, pauses, resumes, stops or ends, whichever gesture moved it: the transport, a context menu, a key a grid owns, or the end of the sound. The surfaces therefore stay in step with a source no caller remembered to mention. A preview belongs to no source, so the surfaces read the output for it: whether any sound holds it.
 
 The sequencer view reports the playhead too, at the reach the **follow mode** chooses: the sounding row, the frame that holds it, or the view the user placed. The mode is one setting with two derived answers: whether the tracker shows the frame being played, and whether it keeps the sounding row at the center of its band. Those two are its whole contract, and every surface that follows the playhead reads them. The song player holds the mode and emits it with every position, so the menu's check and the grid's scrolling settle in one step when the mode changes mid-playback.
 
@@ -135,9 +159,9 @@ The exports write every note at the step the walk gives it, so an instrument-onl
 
 A render writes the whole song to an audio file through the synthesizer that plays it. `RowSynthesizer` serves both: the player drives it to feed the device, and the render drives it to feed a file writer. The synthesis is therefore written once, and the file and the playback agree on what the song sounds like by construction.
 
-Two things differ between them, and whoever asks for the audio sets each. The **document** is read through an interface. The synthesizer reads its project through `ProjectSource`, which the live controller satisfies for playback and a frozen `ProjectSnapshot` satisfies for a render. The player therefore follows every edit as the buffer drains (principle 6), while a render describes one state of the document however the project moves on. The **rate** is the consumer's: the device for playback, the chosen output format for a render. The synthesizer rebuilds its generators and its tick clock when either changes, so a file is written at the rate its engine ran at.
+Two things differ between them, and whoever asks for the audio sets each. The **document** is read through an interface. The synthesizer reads its project through `ProjectSource`, which the live controller satisfies for playback and a frozen `ProjectSnapshot` satisfies for a render. The player therefore follows every edit as the buffer drains (principle 6), while a render describes one state of the document however the project moves on. The **rate** is the consumer's: the stream's for playback, the chosen output format for a render. Playback builds a synthesizer for each start at the rate of the stream that start opens, and a render builds one at its format's rate, so a file is written at the rate its engine ran at.
 
-A rate is asked for once there is audio to take it, which is the first row the synthesizer renders. A device has been chosen by the time playback starts, and a format by the time a render does. A session on a machine with no output device opens on that rule, and everything that writes and does not sound works on it: editing, exporting a module and rendering to a file.
+A rate is asked for once there is audio to take it. The song's source learns it as its stream opens, and a render as it begins. A session on a machine with no output device opens on that rule, and everything that writes and does not sound works on it: editing, exporting a module and rendering to a file.
 
 The session keeps the device the user last applied in Audio settings. A remembered device unplugged for one run is therefore looked for again in the next, the way a remembered folder is.
 
@@ -149,21 +173,22 @@ The write takes one pass, or two where the user asks for a normalized peak. The 
 
 ## Teardown
 
-The device is torn down once every lease has been handed back. A source that streams to the device writes from a thread of its own, so only that source can bring the writing to a stop and hand its lease back. The hand-back closes the stream, and is what leaves the backend safe to terminate.
+The application stops every sound early in its teardown and closes the output last, before the interface goes. Closing ends every playback for good and declines every later claim. It then waits up to `AUDIO_TEARDOWN_SECONDS` for every audio thread: each writer, and each thread a source started through the output's registry, such as the song's renderer. A thread that outlives the deadline is reported.
 
-`PlaybackRouter.shutdown()` is the entry point the application calls as it quits. It reaches every registered source and not only the engaged one, so a source holding a stream is wound down whatever the transport reports at that moment.
-
-The device invokes a lease's release whenever it needs the output free: for a request that outranks the holder, as the backend is torn down, and on a device change, where the release stops the song so the new device opens cleanly. Every claim is declined while the backend changes or goes. A stream that outlives its release leaves the running backend in place. The manager reports the failure and keeps the instance, since the source still writes to memory that terminating would reclaim.
-
-The manager's own playback is held to the same rule. A stop waits a while for its worker and then lets it go, since a device can be slow to open a stream. The manager keeps a worker it let go of, and a teardown waits for it, so the backend is never terminated under an open in progress. A worker that outlives that wait leaves the backend running, as a stream that outlives its release does.
+The backend is terminated once every writer has ended. A writer still inside a device call keeps the backend running, since terminating it would reclaim memory that call still uses. The closing thread then ends that writer's playbacks itself, so every owner hears its end.
 
 ## Who governs what
 
 | Concern | Owner |
 |---------|-------|
-| The device, its stream, and arbitration between requests | `AudioDeviceManager` (`sampletones_core/audio/`) |
+| The devices the backend lists, and the device, rate and buffer size the reader chose | `DeviceCatalog` and `AudioDeviceManager` (`sampletones_core/audio/`) |
 | The audio backend: the devices it lists and the streams it opens | `AudioDriverProtocol` and `PyAudioDriver` (`sampletones_core/audio/driver/`) |
-| A streaming source's claim on the output, and the stream opened under it | `OutputLease` (`sampletones_core/audio/lease.py`) |
+| The one output every sound plays through: its claims, its stream, its writer and its threads | `AudioOutput` (`sampletones_core/audio/output/`) |
+| One sound as its owner holds it, and what the owner hears of it | `Playback` and `PlaybackListener` (`sampletones_core/audio/output/playback/`) |
+| Every decision the output makes, as state machines a model check covers | `SessionCore` (`sampletones_core/audio/output/session/`) and the lifecycles (`sampletones_core/audio/output/lifecycle/`) |
+| Document audio played at the stream's rate | `BufferSource` (`sampletones_core/audio/output/buffer/`) |
+| The song rendered ahead of the device, and its playback | `SongSource` and `SongPlayerService` (`services/song_player/`) |
+| Every preview, and the one stop that reaches them | `PreviewPlayer` (`logic/shared/preview_player.py`) |
 | The ranking that settles a contest for the device | `PlaybackPriority` (`logic/shared/`) |
 | The verbs, target resolution, and the registry of sources | `coordinators/playback/` |
 | A source's engagement reporting | the transport's player protocol, implemented per source |

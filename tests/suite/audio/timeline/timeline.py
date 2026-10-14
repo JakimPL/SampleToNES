@@ -27,6 +27,11 @@ class Timeline:
         with self._lock:
             return list(self._events)
 
+    def count(self) -> int:
+        """How many events the timeline holds, which marks a moment to compare a later event's index with."""
+        with self._lock:
+            return len(self._events)
+
     def of(self, kind: Type[EventT]) -> List[EventT]:
         """The events of one kind, in the order they happened."""
         return [event for event in self.events() if isinstance(event, kind)]

@@ -23,11 +23,10 @@ from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.paths import LANG_EN
 from sampletones_application.services.song_player.service import SongPlayerService
-from sampletones_application.utils.callbacks.crossing import RenderThreadCrossing
-from sampletones_application.utils.callbacks.priority import DEFAULT_PRIORITY
+from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.audio import AudioDeviceManager, DeviceCatalog
 from sampletones_core.audio.driver import AudioDriverFactory
-from sampletones_core.audio.output import AudioOutput, AudioSource, GainReader, Playback, PlaybackListener
+from sampletones_core.audio.output import AudioOutput, AudioSource, Playback, PlaybackListener
 from sampletones_core.audio.output.source import ReportT
 from sampletones_core.constants.audio import BufferSize, SampleRate
 from sampletones_core.project.voices.creation import new_instrument
@@ -51,7 +50,7 @@ class HeardOutput(AudioOutput):
     """The application's audio output, with each playback's end report heard by the rig as its owner takes it."""
 
     def __init__(self, driver_factory: AudioDriverFactory, *, hearing: Hearing) -> None:
-        super().__init__(driver_factory, post=RenderThreadCrossing(priority=DEFAULT_PRIORITY))
+        super().__init__(driver_factory, post=CallbackQueue.add)
         self._hearing = hearing
 
     def play(
@@ -60,9 +59,8 @@ class HeardOutput(AudioOutput):
         *,
         rank: int,
         listener: PlaybackListener[ReportT],
-        gain: GainReader,
     ) -> Optional[Playback[ReportT]]:
-        return super().play(source, rank=rank, listener=self._hearing.listening(listener), gain=gain)
+        return super().play(source, rank=rank, listener=self._hearing.listening(listener))
 
 
 class PlaybackStack:
@@ -85,7 +83,6 @@ class PlaybackStack:
         scheduling: SchedulingBehavior,
     ) -> None:
         self.looping: bool = False
-        self.gain: float = UNITY_GAIN
         self.active: Optional[Sound] = None
         self.file: Optional[Path] = None
         self.teardown_seconds: float = AUDIO_TEARDOWN_SECONDS
@@ -108,7 +105,7 @@ class PlaybackStack:
             self.output,
             self.song.synthesizer,
             should_loop=lambda: self.looping,
-            master_gain=lambda: self.gain,
+            master_gain=lambda: UNITY_GAIN,
             output_priority=PlaybackPriority.NORMAL,
         )
         hearing.owns(Sound.SONG, self.song_service)

@@ -10,7 +10,7 @@ from .lifecycle import (
     StreamState,
 )
 from .output import AudioOutput
-from .playback import GainReader, Playback, PlaybackListener, Post, unity_gain
+from .playback import Playback, PlaybackListener, Post
 from .prefetch import PrefetchBuffer, Taken
 from .session import (
     EndReport,
@@ -36,7 +36,6 @@ __all__ = [
     "EndReport",
     "Ending",
     "Fill",
-    "GainReader",
     "OutputSettings",
     "Playback",
     "PlaybackLifecycle",
@@ -58,5 +57,4 @@ __all__ = [
     "Tagged",
     "Taken",
     "mixed_block",
-    "unity_gain",
 ]

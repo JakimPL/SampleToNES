@@ -9,7 +9,6 @@ from sampletones_core.audio.output.source import AudioSource, ReportT, Tagged
 from sampletones_shared.types.callback import VoidCallback
 
 from .feed import PlaybackControl
-from .gain import GainReader
 from .listener import PlaybackListener, Post
 
 
@@ -30,7 +29,6 @@ class Playback(Generic[ReportT]):
         self,
         source: AudioSource[ReportT],
         *,
-        gain: GainReader,
         listener: PlaybackListener[ReportT],
         post: Post,
         control: PlaybackControl,
@@ -39,13 +37,11 @@ class Playback(Generic[ReportT]):
 
         Args:
             source: What the playback reads its sound from.
-            gain: Reads the gain each block plays at, so a change is heard from the next block.
             listener: The owner, which hears the positions and the end report.
             post: Carries a report to the owner's thread.
             control: The output the playback plays on.
         """
         self._source = source
-        self._gain = gain
         self._listener = listener
         self._post = post
         self._control = control
@@ -88,9 +84,6 @@ class Playback(Generic[ReportT]):
                 to, so its owner starts a new one.
         """
         return self._control.command(self, action)
-
-    def gain(self) -> float:
-        return self._gain()
 
     def enqueue(self, action: VoidCallback) -> None:
         with self._lock:

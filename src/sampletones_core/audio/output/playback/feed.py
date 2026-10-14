@@ -17,9 +17,6 @@ class PlaybackFeed(Protocol):
 
     def __hash__(self) -> int: ...
 
-    def gain(self) -> float:
-        """The gain the playback's next block plays at."""
-
     def enqueue(self, action: VoidCallback) -> None:
         """Keeps a command the output accepted for the playback's next read."""
 

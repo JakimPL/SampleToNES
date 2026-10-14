@@ -3,7 +3,7 @@ from typing import Callable, Optional
 
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.view_model.shared.audio_data import AudioData
-from sampletones_core.audio.output import AudioOutput, BufferSource, Ending, Playback, unity_gain
+from sampletones_core.audio.output import AudioOutput, BufferSource, Ending, Playback
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE, START_OF_AUDIO
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -94,7 +94,7 @@ class AudioPlayer(CallbackMixin):
 
         self._let_go()
         source = BufferSource(self.audio_data.sample, sample_rate=self.audio_data.sample_rate, start=start)
-        playback = self._output.play(source, rank=PlaybackPriority.NORMAL, listener=self, gain=unity_gain)
+        playback = self._output.play(source, rank=PlaybackPriority.NORMAL, listener=self)
         if playback is not None:
             self._playback, self._source = playback, source
             self._position = self._clamped(start)

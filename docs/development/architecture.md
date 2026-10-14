@@ -203,7 +203,7 @@ Owns domain state and implements the state-machine transitions that govern it, k
 
 Runs long operations (file conversion, waveform regeneration, export, playback synthesis) on background threads and delivers typed results to the render thread.
 
-- Every service inherits `ServiceBase[ResultType]`, which provides `subscribe(handler)`, `unsubscribe(handler)` and `_emit(result)`.
+- Every service inherits `ServiceBase[ResultType]`, which provides `subscribe(handler)`, `unsubscribe(handler)` and `_emit(result)`. A service whose work is a sound drives a playback: it plays a source through the audio output, listens to the playback it holds, and hands its subscribers what that playback reports, which already arrives on the render thread (see [`playback.md`](application/playback.md#the-audio-output)). `SongPlayerService` is one.
 - `_emit` posts the result to `CallbackQueue`, which puts every handler on the render thread (principle 6).
 - `_emit` delivers every result it is given, which is how an outcome travels. `_report` carries where a run stands, and the newest report waiting supersedes the ones before it, so a subscriber draws a run once per drain however often the run reports.
 - Result types are a tagged union, so a subscriber matches exhaustively. A long operation reports through `ServiceStarted`, `ServiceProgress`, `ServiceIntermediate`, `ServiceSuccess`, `ServiceError` and `ServiceCanceled`, and a service whose reports carry more, such as the playhead or the request they answer, declares a union of its own in its `result.py`.
@@ -285,7 +285,7 @@ Every failure ends in a recovery or in a report. A failure no layer recovered fr
 
 Each hands the exception to `UnhandledFailures` (`utils/callbacks/failures.py`). It logs the failure with its traceback and posts the report to the render thread through the queue, whichever thread failed. `UnhandledFailurePresenter` shows the error dialog: one plain line saying the last action did not finish, then the error and its traceback. A report standing on the screen or waiting for it absorbs later ones until the reader dismisses it, so a failure repeating every frame is read once. The composition root attaches the presenter and the teardown detaches it, so a failure outside a running interface is logged alone.
 
-These catches and the service task wrapper are the only places a non-specific exception type is caught. They recover nothing: the gesture ends, the interface keeps running, and the reader learns that the action stopped. A failure a coordinator can name and explain is still caught there, with a message of its own. The last resort serves what nobody named, such as a bug or a document breaking its own rules.
+These catches, the service task wrapper and the audio source boundary are the only places a non-specific exception type is caught. The audio output's writer catches a source's read whole, and the song's renderer its synthesis, since a source fails however its code fails: the failure ends that playback as its end report (see [`playback.md`](application/playback.md#the-audio-output)). They recover nothing: the gesture ends, the interface keeps running, and the reader learns that the action stopped. A failure a coordinator can name and explain is still caught there, with a message of its own. The last resort serves what nobody named, such as a bug or a document breaking its own rules.
 
 ### UI layer — errors arrive as data
 

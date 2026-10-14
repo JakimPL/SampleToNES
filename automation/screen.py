@@ -13,7 +13,7 @@ from typing import (
 
 import numpy as np
 
-from automation.boundaries.audio import OutputRecord
+from automation.boundaries.audio import OutputRecord, StreamReading
 from automation.boundaries.dialogs import (
     DialogKind,
     DialogRequest,
@@ -275,6 +275,15 @@ class Screen:
         all the same.
         """
         return self._output.sounding_samples()
+
+    def output_streams(self) -> Tuple[StreamReading, ...]:
+        """Every output stream the application opened so far, in order: its rate, the frames written to it, and
+        whether it closed."""
+        return self._output.streams()
+
+    def backends_terminated(self) -> int:
+        """How many instances of the audio backend the application terminated so far."""
+        return self._output.terminations()
 
     def dialog_requests(self) -> Tuple[DialogRequest, ...]:
         """Every file dialog the application opened so far, in order."""

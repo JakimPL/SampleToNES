@@ -23,11 +23,10 @@ class StreamSession:
     """The thread writing to the device, for one run: from the step a request started it at until nothing is left.
 
     It asks the arbiter for each step and makes the device call that step names. It opens the stream on the
-    device in force, reads one block from each playback the step mixes, sums them at their gains, and hands
-    the device as many frames as the longest of them filled, so a sound ends on its last sample. A natural
-    end plays the tail out, any other closes the stream at once, and a refresh renews the backend while no
-    stream is open. Every device call runs outside the arbiter's lock, so a device slow to answer holds this
-    thread alone.
+    device in force, reads one block from each playback the step mixes, sums them, and hands the device as
+    many frames as the longest of them filled, so a sound ends on its last sample. A natural end plays the
+    tail out, any other closes the stream at once, and a refresh renews the backend while no stream is open.
+    Every device call runs outside the arbiter's lock, so a device slow to answer holds this thread alone.
 
     A source fails however its code fails, so its read is caught whole, and the failure ends that playback
     and leaves the others playing.
@@ -93,7 +92,7 @@ class StreamSession:
 
     def _write(self, mixed: Sequence[PlaybackFeed]) -> None:
         reads, fills = self._read(mixed)
-        frames = max((len(samples) for samples, _ in fills), default=0)
+        frames = max((len(samples) for samples in fills), default=0)
         if frames:
             try:
                 self._require_stream().write(mixed_block(fills, frames).tobytes())
@@ -109,10 +108,10 @@ class StreamSession:
     def _read(
         self,
         mixed: Sequence[PlaybackFeed],
-    ) -> Tuple[Dict[PlaybackFeed, SourceRead], List[Tuple[np.ndarray, float]]]:
+    ) -> Tuple[Dict[PlaybackFeed, SourceRead], List[np.ndarray]]:
         """Reads one block from each playback, answering how each read went and the samples each one filled."""
         reads: Dict[PlaybackFeed, SourceRead] = {}
-        fills: List[Tuple[np.ndarray, float]] = []
+        fills: List[np.ndarray] = []
         for feed in mixed:
             block = silence(self._block_frames)
             try:
@@ -123,7 +122,7 @@ class StreamSession:
                 continue
 
             reads[feed] = SourceRead.filled() if frames == self._block_frames else SourceRead.last()
-            fills.append((block[:frames], feed.gain()))
+            fills.append(block[:frames])
 
         return reads, fills
 

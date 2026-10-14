@@ -12,7 +12,6 @@ from sampletones_core.audio.output import (
     Ending,
     OutputSettings,
     Playback,
-    unity_gain,
 )
 from sampletones_core.constants.audio import DEFAULT_BUFFER_SIZE, DEFAULT_SAMPLE_RATE, BufferSize
 from sampletones_shared.exceptions import NoOutputDeviceError, PlaybackError
@@ -37,7 +36,6 @@ SHORT: Final[int] = 4 * DEFAULT_BUFFER_SIZE + 300
 LONG: Final[int] = 20 * DEFAULT_SAMPLE_RATE
 HEARD: Final[int] = 4 * DEFAULT_BUFFER_SIZE
 SEEK_TARGET: Final[int] = 300_000
-HALF_GAIN: Final[float] = 0.5
 SMALLER_BUFFER: Final[BufferSize] = 256
 LENGTH_TOLERANCE: Final[float] = 0.01
 QUIET_SECONDS: Final[float] = 0.2
@@ -60,7 +58,6 @@ def _play(
         BufferSource(ramp(length), sample_rate=DEFAULT_SAMPLE_RATE, start=start),
         rank=rank,
         listener=listener,
-        gain=unity_gain,
     )
     assert playback is not None
     return playback
@@ -174,25 +171,6 @@ class TestPlayingThrough:
         assert running
         assert _writers() == []
 
-    def test_a_sound_plays_at_its_gain(
-        self,
-        output: AudioOutput,
-        system: FakeAudioSystem,
-        post: QueuedPost,
-        listener: RecordingListener[int],
-    ) -> None:
-        playback = output.play(
-            BufferSource(ramp(SHORT), sample_rate=DEFAULT_SAMPLE_RATE, start=0),
-            rank=NORMAL,
-            listener=listener,
-            gain=lambda: HALF_GAIN,
-        )
-        assert playback is not None
-
-        _wait_for_end(post, listener, playback)
-
-        np.testing.assert_allclose(system.timeline.written(), ramp(SHORT) * HALF_GAIN)
-
 
 class TestClaims:
     """Rules 1 and 2: a claim below the holder is declined, any other takes the output on a stream of its own."""
@@ -208,7 +186,6 @@ class TestClaims:
             BufferSource(ramp(SHORT), sample_rate=DEFAULT_SAMPLE_RATE, start=0),
             rank=PREVIEW,
             listener=realtime_listener,
-            gain=unity_gain,
         )
 
         assert declined is None
@@ -363,7 +340,7 @@ class TestCommands:
         realtime_listener: RecordingListener[int],
     ) -> None:
         source = BufferSource(ramp(LONG), sample_rate=DEFAULT_SAMPLE_RATE, start=0)
-        playback = realtime_output.play(source, rank=NORMAL, listener=realtime_listener, gain=unity_gain)
+        playback = realtime_output.play(source, rank=NORMAL, listener=realtime_listener)
         assert playback is not None
         _wait_until_written(post, realtime_system, HEARD)
         heard = len(realtime_listener.heard(playback).positions)
@@ -389,7 +366,7 @@ class TestCommands:
         stepped_listener: RecordingListener[int],
     ) -> None:
         source = BufferSource(ramp(LONG), sample_rate=DEFAULT_SAMPLE_RATE, start=0)
-        playback = stepped_output.play(source, rank=NORMAL, listener=stepped_listener, gain=unity_gain)
+        playback = stepped_output.play(source, rank=NORMAL, listener=stepped_listener)
         assert playback is not None
         assert steps.wait_for_writer(timeout=WRITER_SECONDS)
         steps.grant(1)
@@ -504,7 +481,7 @@ class TestFailures:
         listener: RecordingListener[int],
     ) -> None:
         source = FailingSource(failing_read=2)
-        failing = output.play(source, rank=NORMAL, listener=listener, gain=unity_gain)
+        failing = output.play(source, rank=NORMAL, listener=listener)
         assert failing is not None
         _wait_for_end(post, listener, failing)
 
@@ -526,7 +503,7 @@ class TestFailuresAside:
         realtime_listener: RecordingListener[int],
     ) -> None:
         source = AsideFailingSource()
-        playback = realtime_output.play(source, rank=NORMAL, listener=realtime_listener, gain=unity_gain)
+        playback = realtime_output.play(source, rank=NORMAL, listener=realtime_listener)
         assert playback is not None
         _wait_until_written(post, realtime_system, HEARD)
         playback.pause()
@@ -545,7 +522,7 @@ class TestFailuresAside:
         realtime_listener: RecordingListener[int],
     ) -> None:
         source = AsideFailingSource()
-        playback = realtime_output.play(source, rank=NORMAL, listener=realtime_listener, gain=unity_gain)
+        playback = realtime_output.play(source, rank=NORMAL, listener=realtime_listener)
         assert playback is not None
         _wait_until_written(post, realtime_system, HEARD)
         playback.stop()
@@ -728,7 +705,6 @@ class TestClose:
             BufferSource(ramp(SHORT), sample_rate=DEFAULT_SAMPLE_RATE, start=0),
             rank=NORMAL,
             listener=listener,
-            gain=unity_gain,
         )
 
         assert declined is None

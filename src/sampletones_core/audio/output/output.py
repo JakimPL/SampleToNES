@@ -7,7 +7,7 @@ from sampletones_shared.logger import logger
 
 from .arbiter import OutputArbiter, RefreshListener
 from .backend import AudioBackend
-from .playback import GainReader, Playback, PlaybackListener, Post
+from .playback import Playback, PlaybackListener, Post
 from .settings import OutputSettings
 from .source import AudioSource, ReportT
 from .threads import AudioThreads
@@ -65,7 +65,6 @@ class AudioOutput:
         *,
         rank: int,
         listener: PlaybackListener[ReportT],
-        gain: GainReader,
     ) -> Optional[Playback[ReportT]]:
         """Claims the output for ``source`` at ``rank``.
 
@@ -73,7 +72,6 @@ class AudioOutput:
             source: What the sound is read from.
             rank: The claim's rank; a claim ranked below the holder is declined.
             listener: The owner, which hears the playback's positions and its end report.
-            gain: Reads the gain each block of the sound plays at.
 
         Returns:
             Optional[Playback[ReportT]]: The playback the owner holds, or ``None`` where the claim is declined.
@@ -83,7 +81,6 @@ class AudioOutput:
         """
         playback = Playback(
             source,
-            gain=gain,
             listener=listener,
             post=self._post,
             control=self._arbiter,

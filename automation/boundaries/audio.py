@@ -1,8 +1,9 @@
 import threading
 import time
+from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Final, Optional
+from typing import Final, List, Optional, Tuple
 from weakref import WeakKeyDictionary
 
 import numpy as np
@@ -13,6 +14,7 @@ ALSA_CONFIGURATION_FILE: Final[str] = ".asound.conf"
 ALSA_CONFIGURATION_VARIABLE: Final[str] = "ALSA_CONFIG_PATH"
 DEVICE_BUFFER_SECONDS: Final[float] = 0.05
 SILENT_DEFAULT_DEVICE: Final[str] = "pcm.!default {\n    type null\n}\n"
+SILENT_DEVICE_NAME: Final[str] = "default"
 REFUSED_STREAM: Final[str] = "A screen scenario's device refuses every stream"
 JACK_SERVER_VARIABLE: Final[str] = "JACK_DEFAULT_SERVER"
 JACK_NO_START_VARIABLE: Final[str] = "JACK_NO_START_SERVER"
@@ -29,24 +31,78 @@ class OutputDevice(StrEnum):
     NONE = "none"
 
 
-class OutputRecord:
-    """What the application wrote to its output device: how many of the samples it played carry sound.
+@dataclass(frozen=True)
+class StreamReading:
+    """One output stream the application opened, as the device met it.
 
-    It wraps the write of every output stream, so a sound counts once it reaches the device, however briefly it
-    plays and however many frames pass between two readings of it. The playback thread writes while a
-    scenario reads, so the count stands behind a lock.
+    Attributes:
+        rate: The samples a second the stream played.
+        frames: The frames written to it.
+        closed: Whether the application closed it.
+    """
+
+    rate: int
+    frames: int
+    closed: bool
+
+
+@dataclass
+class _StreamLog:
+    """What the device met of one stream so far."""
+
+    rate: int
+    bytes_per_frame: int
+    frames: int = 0
+    closed: bool = False
+
+    def reading(self) -> StreamReading:
+        return StreamReading(rate=self.rate, frames=self.frames, closed=self.closed)
+
+
+class OutputRecord:
+    """What the application did with its output device: the streams it opened, what it wrote to each, how many
+    of the samples it played carry sound, and how often it terminated the backend.
+
+    It wraps the calls every output stream and every backend instance takes, so a sound counts once it reaches
+    the device, however briefly it plays and however many frames pass between two readings of it. The
+    playback thread writes while a scenario reads, so the record stands behind a lock.
     """
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._sounding_samples = 0
+        self._streams: List[_StreamLog] = []
+        self._logs: WeakKeyDictionary[pyaudio.PyAudio.Stream, _StreamLog] = WeakKeyDictionary()
+        self._terminations = 0
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Puts the record in front of every output stream's write before the application starts.
+        """Puts the record in front of the backend's open and terminate, and of every stream's write and close,
+        before the application starts.
 
-        ``PyAudio.open`` builds its streams from ``PyAudio.Stream``, the class whose write is wrapped.
+        ``PyAudio.open`` builds its streams from ``PyAudio.Stream``, the class whose calls are wrapped.
         """
+        open_stream = pyaudio.PyAudio.open
+        terminate = pyaudio.PyAudio.terminate
         write = pyaudio.PyAudio.Stream.write
+        close = pyaudio.PyAudio.Stream.close
+
+        def opened(
+            audio: pyaudio.PyAudio,
+            *,
+            rate: int,
+            channels: int,
+            format: int,  # pylint: disable=redefined-builtin
+            **options: object,
+        ) -> pyaudio.PyAudio.Stream:
+            stream = open_stream(audio, rate=rate, channels=channels, format=format, **options)
+            self._opened(
+                stream,
+                _StreamLog(
+                    rate=rate,
+                    bytes_per_frame=channels * pyaudio.get_sample_size(format),
+                ),
+            )
+            return stream
 
         def recorded(
             stream: pyaudio.PyAudio.Stream,
@@ -54,20 +110,56 @@ class OutputRecord:
             num_frames: Optional[int] = None,
             exception_on_underflow: bool = False,
         ) -> None:
-            self._count(frames)
+            self._count(stream, frames)
             write(stream, frames, num_frames, exception_on_underflow)
 
+        def closed(stream: pyaudio.PyAudio.Stream) -> None:
+            close(stream)
+            self._closed(stream)
+
+        def terminated(audio: pyaudio.PyAudio) -> None:
+            terminate(audio)
+            with self._lock:
+                self._terminations += 1
+
+        monkeypatch.setattr(pyaudio.PyAudio, "open", opened)
+        monkeypatch.setattr(pyaudio.PyAudio, "terminate", terminated)
         monkeypatch.setattr(pyaudio.PyAudio.Stream, "write", recorded)
+        monkeypatch.setattr(pyaudio.PyAudio.Stream, "close", closed)
 
     def sounding_samples(self) -> int:
         """How many samples carrying sound the application has written to its output so far."""
         with self._lock:
             return self._sounding_samples
 
-    def _count(self, frames: bytes) -> None:
+    def streams(self) -> Tuple[StreamReading, ...]:
+        """Every output stream the application opened so far, in the order it opened them."""
+        with self._lock:
+            return tuple(log.reading() for log in self._streams)
+
+    def terminations(self) -> int:
+        """How many backend instances the application terminated so far."""
+        with self._lock:
+            return self._terminations
+
+    def _opened(self, stream: pyaudio.PyAudio.Stream, log: _StreamLog) -> None:
+        with self._lock:
+            self._streams.append(log)
+            self._logs[stream] = log
+
+    def _count(self, stream: pyaudio.PyAudio.Stream, frames: bytes) -> None:
         sounding = int(np.count_nonzero(np.frombuffer(frames, dtype=np.float32)))
         with self._lock:
             self._sounding_samples += sounding
+            log = self._logs.get(stream)
+            if log is not None:
+                log.frames += len(frames) // log.bytes_per_frame
+
+    def _closed(self, stream: pyaudio.PyAudio.Stream) -> None:
+        with self._lock:
+            log = self._logs.get(stream)
+            if log is not None:
+                log.closed = True
 
 
 class DeviceClock:
@@ -94,7 +186,8 @@ class DeviceClock:
 
 
 class SilentOutputDevice:
-    """The one output device a scenario's application finds: ALSA's null sink, played out in real time.
+    """The one output device a scenario's application finds: ALSA's null sink, played out in real time, which
+    PortAudio names :data:`SILENT_DEVICE_NAME`.
 
     The scenario's ALSA reads a configuration of its own, which names the null sink its default device and
     leaves the machine's sound cards and sound server out, so every machine offers the same device and plays

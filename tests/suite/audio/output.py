@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from sampletones_core.audio.output import AudioSource, AudioThreads, Ending, GainReader, Playback, PlaybackListener
+from sampletones_core.audio.output import AudioSource, AudioThreads, Ending, Playback, PlaybackListener
 from sampletones_core.audio.output.playback import PlaybackFeed
 from sampletones_core.audio.output.source import ReportT
 from sampletones_shared.types.callback import VoidCallback
@@ -53,7 +53,6 @@ class FakeAudioOutput:
         *,
         rank: int,
         listener: PlaybackListener[ReportT],
-        gain: GainReader,
     ) -> Optional[Playback[ReportT]]:
         if self.refusal is not None:
             raise self.refusal
@@ -61,7 +60,7 @@ class FakeAudioOutput:
         if self.declining:
             return None
 
-        playback = Playback(source, gain=gain, listener=listener, post=_now, control=self)
+        playback = Playback(source, listener=listener, post=_now, control=self)
         self._claims[playback] = Claim(source=source, rank=rank, listener=listener)
         self.playbacks.append(playback)
         return playback

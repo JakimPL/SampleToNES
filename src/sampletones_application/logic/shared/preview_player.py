@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
-from sampletones_core.audio.output import AudioOutput, BufferSource, Playback, PlaybackListener, unity_gain
+from sampletones_core.audio.output import AudioOutput, BufferSource, Playback, PlaybackListener
 from sampletones_core.constants.audio import START_OF_AUDIO
 
 
@@ -47,7 +47,6 @@ class PreviewPlayer:
             BufferSource(audio, sample_rate=sample_rate, start=START_OF_AUDIO),
             rank=rank,
             listener=listener,
-            gain=unity_gain,
         )
         if playback is not None:
             self._playback = playback
