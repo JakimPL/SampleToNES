@@ -1,13 +1,15 @@
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Final, Iterator, List, Tuple, Union
+from threading import Thread
+from typing import Any, Callable, Dict, Final, Iterator, List, Optional, Tuple, Union
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
 
 from sampletones_core.audio.device import AudioDevice, CurrentDevice
+from sampletones_core.audio.lease import OutputLease
 from sampletones_core.audio.manager import AudioDeviceManager
 from sampletones_core.audio.stream import write_to_stream
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE, START_OF_AUDIO, SampleRate
@@ -62,79 +64,104 @@ def _manager() -> AudioDeviceManager:
     manager._active_priority = 0
     manager._generation = 0
     manager._let_go_workers = []
-    manager._stream_owners = {}
-    manager.on_acquire_output = None
-    manager.external_output_priority = None
+    manager._claims = []
+    manager._outstanding = []
+    manager._output_closed = False
     return manager
 
 
-def _holding_manager(release: Callable[[], None]) -> AudioDeviceManager:
-    """A manager that handed out one output stream against ``release``."""
-    manager = _manager()
-    manager.stop = MagicMock()
-    manager._stream_owners = {MagicMock(): release}
-    return manager
+class _Holder:
+    """A source streaming under a lease, which hands it back from the thread that was writing to it.
 
-
-class _ThreadedOwner:
-    """A stream owner that hands its stream back from the thread that was writing to it.
-
-    Mirrors the song player: the release runs on the caller's thread while the hand-back comes
-    from the writer, so the two meet only while the manager holds no lock across a release.
+    Mirrors the song player: the release runs on the caller's thread while the hand-back comes from
+    the writer, so the two meet only while the manager holds no lock across a release. The writer is
+    built from the ``Thread`` this module imported, which cases patching the manager's thread factory
+    leave in place.
     """
 
-    def __init__(self, manager: AudioDeviceManager, stream: MagicMock) -> None:
+    def __init__(self, manager: AudioDeviceManager) -> None:
         self._manager = manager
-        self._stream = stream
+        self.lease: Optional[OutputLease] = None
+        self.releases: int = 0
         self.handed_back = threading.Event()
 
+    def claim(self, priority: int) -> Optional[OutputLease]:
+        self.lease = self._manager.acquire_output(priority=priority, release=self.release)
+        return self.lease
+
     def release(self) -> None:
-        writer = threading.Thread(target=self._hand_back, daemon=True)
+        self.releases += 1
+        writer = Thread(target=self._hand_back, daemon=True)
         writer.start()
         writer.join(timeout=_RELEASE_TIMEOUT)
 
     def _hand_back(self) -> None:
-        self._manager.close_output_stream(self._stream)
+        if self.lease is not None:
+            self._manager.hand_back(self.lease)
+
         self.handed_back.set()
+
+
+def _streaming_holder(manager: AudioDeviceManager, priority: int) -> _Holder:
+    """A holder whose claim was granted and whose stream is open."""
+    holder = _Holder(manager)
+    lease = holder.claim(priority)
+    assert lease is not None
+    assert manager.open_output_stream(lease, sample_rate=DEFAULT_SAMPLE_RATE, buffer_size=800) is not None
+    return holder
+
+
+def _holding_manager(release: Callable[[], None]) -> AudioDeviceManager:
+    """A manager with one stream open under a lease whose holder answers ``release``."""
+    manager = _manager()
+    manager.stop = MagicMock()
+    lease = OutputLease(priority=_LOW, release=release, stream=MagicMock())
+    manager._claims = [lease]
+    manager._outstanding = [lease]
+    return manager
 
 
 class TestSingleOutputExclusion:
     """The output device allows one open stream, so the two playback paths must release each other."""
 
-    def test_open_output_stream_stops_internal_playback(self) -> None:
+    def test_a_claim_stops_internal_playback(self) -> None:
         manager = _manager()
         manager.stop = MagicMock()
 
-        manager.open_output_stream(sample_rate=48000, buffer_size=800, release=MagicMock())
+        lease = manager.acquire_output(priority=_LOW, release=MagicMock())
 
         manager.stop.assert_called_once()
-        manager._pyaudio.open.assert_called_once()
+        assert lease is not None
 
-    def test_play_releases_active_external_output(self) -> None:
+    def test_play_releases_a_lease_it_outranks(self) -> None:
         manager = _manager()
         manager.stop = MagicMock()
-        manager.on_acquire_output = MagicMock()
-        manager.external_output_priority = lambda: _HIGH
+        holder = _streaming_holder(manager, _LOW)
 
         with patch("sampletones_core.audio.manager.threading.Thread"):
-            manager.play(np.zeros(4, dtype=np.float32), priority=_HIGH)
+            took = manager.play(np.zeros(4, dtype=np.float32), priority=_HIGH)
 
-        manager.on_acquire_output.assert_called_once()
+        assert took is True
+        assert holder.handed_back.is_set()
+        assert manager._outstanding == []
 
 
 class TestPriorityArbitration:
     """A lower-priority request yields to active higher-priority playback; ties take over."""
 
-    def test_yields_to_higher_external_priority(self) -> None:
+    def test_yields_to_a_higher_lease(self) -> None:
         manager = _manager()
         manager.stop = MagicMock()
-        manager.external_output_priority = lambda: _HIGH
+        holder = _streaming_holder(manager, _HIGH)
+        manager.stop.reset_mock()
 
         with patch("sampletones_core.audio.manager.threading.Thread") as thread:
-            manager.play(np.zeros(4, dtype=np.float32), priority=_LOW)
+            took = manager.play(np.zeros(4, dtype=np.float32), priority=_LOW)
 
+        assert took is False
         thread.assert_not_called()
         manager.stop.assert_not_called()
+        assert holder.releases == 0
 
     def test_yields_to_higher_internal_priority(self) -> None:
         manager = _manager()
@@ -224,15 +251,17 @@ class TestAStreamTheDeviceRefuses:
         assert playing_when_reported == [False]
         manager._position_callback.assert_called_once_with(0)
 
-    def test_a_handed_out_stream_refused_raises_a_playback_error(self) -> None:
+    def test_a_stream_refused_under_a_lease_raises_a_playback_error(self) -> None:
         manager = _manager()
         manager.stop = MagicMock()
         manager._pyaudio.open.side_effect = OSError("the device is busy")
+        lease = manager.acquire_output(priority=_LOW, release=MagicMock())
+        assert lease is not None
 
         with pytest.raises(PlaybackError, match="the device is busy"):
-            manager.open_output_stream(sample_rate=DEFAULT_SAMPLE_RATE, buffer_size=800, release=MagicMock())
+            manager.open_output_stream(lease, sample_rate=DEFAULT_SAMPLE_RATE, buffer_size=800)
 
-        assert manager._stream_owners == {}
+        assert manager._outstanding == []
 
     def test_both_kinds_of_playback_name_the_refusal_alike(self) -> None:
         """A refused stream reads the same whether the manager plays the audio or hands the stream out."""
@@ -245,9 +274,11 @@ class TestAStreamTheDeviceRefuses:
         manager._playing = True
         manager._audio_data = np.zeros(TestPlaybackStart.AUDIO_LENGTH, dtype=np.float32)
         manager._playback_worker(output=manager.require_output(), update=False, generation=manager._generation)
+        lease = manager.acquire_output(priority=_LOW, release=MagicMock())
+        assert lease is not None
 
         with pytest.raises(PlaybackError) as raised:
-            manager.open_output_stream(sample_rate=DEFAULT_SAMPLE_RATE, buffer_size=800, release=MagicMock())
+            manager.open_output_stream(lease, sample_rate=DEFAULT_SAMPLE_RATE, buffer_size=800)
 
         assert [str(error) for error in reported] == [str(raised.value)]
 
@@ -599,33 +630,38 @@ class TestPositionOfAnOwner:
 
 
 class TestBackendTeardown:
-    """The backend is torn down only once every handed-out stream has come back."""
+    """The backend is torn down only once every stream opened under a lease has come back."""
 
-    def test_a_handed_out_stream_is_outstanding_until_it_comes_back(self) -> None:
+    def test_a_stream_is_outstanding_until_its_lease_comes_back(self) -> None:
         manager = _manager()
         manager.stop = MagicMock()
-        stream = manager.open_output_stream(sample_rate=48000, buffer_size=800, release=MagicMock())
-        assert stream in manager._stream_owners
+        lease = manager.acquire_output(priority=_LOW, release=MagicMock())
+        assert lease is not None
+        stream = manager.open_output_stream(lease, sample_rate=48000, buffer_size=800)
+        assert stream is not None
+        assert manager._outstanding == [lease]
 
-        manager.close_output_stream(stream)
+        manager.hand_back(lease)
 
-        assert manager._stream_owners == {}
+        assert (manager._claims, manager._outstanding, lease.stream) == ([], [], None)
         stream.stop_stream.assert_called_once()
         stream.close.assert_called_once()
 
-    def test_terminate_releases_a_handed_out_stream_first(self) -> None:
+    def test_terminate_releases_a_lease_first(self) -> None:
         events: List[str] = []
         manager = _manager()
         manager.stop = MagicMock()
         instance = manager._pyaudio
         instance.terminate.side_effect = lambda: events.append("terminate")
-        stream = MagicMock()
+        holder = _streaming_holder(manager, _LOW)
+        holder_release = holder.release
 
         def release() -> None:
             events.append("release")
-            manager.close_output_stream(stream)
+            holder_release()
 
-        manager._stream_owners = {stream: release}
+        assert holder.lease is not None
+        holder.lease.release = release
         manager.terminate()
 
         assert events == ["release", "terminate"]
@@ -650,17 +686,164 @@ class TestBackendTeardown:
         instance.terminate.assert_not_called()
         assert manager._pyaudio is instance
 
-    def test_a_release_may_hand_its_stream_back_from_the_writing_thread(self) -> None:
+    def test_a_release_may_hand_its_lease_back_from_the_writing_thread(self) -> None:
         manager = _manager()
         manager.stop = MagicMock()
-        stream = MagicMock()
-        owner = _ThreadedOwner(manager, stream)
-        manager._stream_owners = {stream: owner.release}
+        holder = _streaming_holder(manager, _LOW)
 
         manager.terminate()
 
-        assert owner.handed_back.is_set()
+        assert holder.handed_back.is_set()
         assert manager._pyaudio is None
+
+
+class TestOutputLeases(BaseTestSuite):
+    """A lease claims the output from the moment a source asks to play until it is handed back.
+
+    A claim is ranked against every holder in force: one ranked strictly below is declined and
+    releases nobody, and an equal or higher one takes the output over and asks each other holder to
+    hand its lease back. A lease that lost the output opens no stream, and the backend declines
+    every claim while it is reconfigured or torn down.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        held: int
+        asked: int
+        granted: bool
+
+    test_cases = (
+        TestCase(held=_HIGH, asked=_LOW, granted=False, label="a_claim_below_the_holder_is_declined"),
+        TestCase(held=_LOW, asked=_LOW, granted=True, label="an_equal_claim_takes_the_output_over"),
+        TestCase(held=_LOW, asked=_HIGH, granted=True, label="a_higher_claim_takes_the_output_over"),
+    )
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_a_claim_is_ranked_against_the_holder(self, test_case: TestCase) -> None:
+        manager = _manager()
+        manager.stop = MagicMock()
+        holder = _streaming_holder(manager, test_case.held)
+
+        lease = manager.acquire_output(priority=test_case.asked, release=MagicMock())
+
+        assert (lease is not None) is test_case.granted
+        assert holder.handed_back.is_set() is test_case.granted
+        assert holder.releases == int(test_case.granted)
+
+    def test_a_claim_below_buffer_playback_is_declined(self) -> None:
+        manager = _manager()
+        manager.stop = MagicMock()
+        manager._playing = True
+        manager._active_priority = _HIGH
+
+        lease = manager.acquire_output(priority=_LOW, release=MagicMock())
+
+        assert lease is None
+        manager.stop.assert_not_called()
+
+    def test_a_lease_that_lost_the_output_opens_nothing(self) -> None:
+        manager = _manager()
+        manager.stop = MagicMock()
+        first = manager.acquire_output(priority=_LOW, release=MagicMock())
+        assert first is not None
+        manager.acquire_output(priority=_LOW, release=MagicMock())
+
+        stream = manager.open_output_stream(first, sample_rate=DEFAULT_SAMPLE_RATE, buffer_size=800)
+
+        assert stream is None
+        manager._pyaudio.open.assert_not_called()
+
+    def test_a_lease_that_lost_the_output_while_opening_closes_what_it_opened(self) -> None:
+        """A device slow to open lets another claim land meanwhile; the stream opened late closes unplayed."""
+        manager = _manager()
+        manager.stop = MagicMock()
+        first = manager.acquire_output(priority=_LOW, release=MagicMock())
+        assert first is not None
+        opened = MagicMock()
+
+        def open_while_another_claims(**_options: Any) -> MagicMock:
+            manager.acquire_output(priority=_LOW, release=MagicMock())
+            return opened
+
+        manager._pyaudio.open.side_effect = open_while_another_claims
+
+        stream = manager.open_output_stream(first, sample_rate=DEFAULT_SAMPLE_RATE, buffer_size=800)
+
+        assert stream is None
+        opened.close.assert_called_once_with()
+        assert manager._outstanding == []
+
+    def test_two_claims_at_once_leave_one_holder(self) -> None:
+        manager = _manager()
+        manager.stop = MagicMock()
+        barrier = threading.Barrier(2)
+        holders = [_Holder(manager), _Holder(manager)]
+
+        def claim(holder: _Holder) -> None:
+            barrier.wait(timeout=_RELEASE_TIMEOUT)
+            holder.claim(_LOW)
+
+        threads = [threading.Thread(target=claim, args=(holder,), daemon=True) for holder in holders]
+        for thread in threads:
+            thread.start()
+
+        for thread in threads:
+            thread.join(timeout=_RELEASE_TIMEOUT)
+
+        assert len(manager._claims) == 1
+        assert sum(holder.releases for holder in holders) == 1
+
+    def test_a_claim_while_the_device_changes_is_declined(self) -> None:
+        """A holder asking again from inside its release meets the closed output, and the switch goes through."""
+        manager = _manager()
+        manager.stop = MagicMock()
+        holder = _streaming_holder(manager, _LOW)
+        claims_during_the_switch: List[Optional[OutputLease]] = []
+        holder_release = holder.release
+
+        def release_then_claim() -> None:
+            holder_release()
+            claims_during_the_switch.append(manager.acquire_output(priority=_LOW, release=MagicMock()))
+
+        assert holder.lease is not None
+        holder.lease.release = release_then_claim
+
+        manager.configure_device(_SPEAKERS_INDEX, DEFAULT_SAMPLE_RATE)
+
+        assert claims_during_the_switch == [None]
+        assert manager.acquire_output(priority=_LOW, release=MagicMock()) is not None
+
+    def test_a_device_change_releases_every_lease(self) -> None:
+        manager = _manager()
+        manager.stop = MagicMock()
+        holder = _streaming_holder(manager, _LOW)
+
+        manager.configure_device(_SPEAKERS_INDEX, DEFAULT_SAMPLE_RATE)
+
+        assert holder.handed_back.is_set()
+        assert (manager._claims, manager._outstanding) == ([], [])
+
+    def test_a_claim_after_teardown_is_declined(self) -> None:
+        manager = _manager()
+        manager.stop = MagicMock()
+        manager.terminate()
+
+        assert manager.acquire_output(priority=_HIGH, release=MagicMock()) is None
+
+    def test_a_lease_handed_back_unopened_leaves_nothing_outstanding(self) -> None:
+        manager = _manager()
+        manager.stop = MagicMock()
+        lease = manager.acquire_output(priority=_LOW, release=MagicMock())
+        assert lease is not None
+
+        manager.hand_back(lease)
+
+        assert (manager._claims, manager._outstanding) == ([], [])
+        assert manager.acquire_output(priority=_LOW, release=MagicMock()) is not None
 
 
 class TestTeardownAfterAStopLetAWorkerGo:
@@ -853,10 +1036,10 @@ class TestPlayingWithNoOutput:
         silent_backend: MagicMock,
     ) -> None:
         with pytest.raises(NoOutputDeviceError):
-            silent_manager.open_output_stream(sample_rate=DEFAULT_SAMPLE_RATE, buffer_size=800, release=MagicMock())
+            silent_manager.acquire_output(priority=_LOW, release=MagicMock())
 
         silent_backend.open.assert_not_called()
-        assert silent_manager._stream_owners == {}
+        assert silent_manager._claims == []
 
     def test_the_rate_reads_as_the_same_refusal(self, silent_manager: AudioDeviceManager) -> None:
         with pytest.raises(NoOutputDeviceError):

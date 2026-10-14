@@ -54,6 +54,7 @@ from sampletones_application.logic.sequencer.tracker import (
 )
 from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.logic.shared.file_playback import FilePlayback
+from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.sequencer import SequencerTabParameters
@@ -199,7 +200,6 @@ class SequencerTabCoordinator:
         )
         self._sequencer_channels_logic: SequencerChannelsLogic = SequencerChannelsLogic()
         self._song_player_logic: SongPlayerLogic = SongPlayerLogic(
-            audio_device_manager,
             project_controller,
             session_manager,
             service=SongPlayerService(
@@ -212,6 +212,7 @@ class SequencerTabCoordinator:
                 ),
                 should_loop=lambda: session_manager.loop_song,
                 master_gain=lambda: session_manager.master_gain,
+                output_priority=PlaybackPriority.NORMAL,
             ),
         )
         self._guarded_player = GuardedPlayer(

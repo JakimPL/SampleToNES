@@ -2,6 +2,11 @@
 
 ## v0.3.3
 
+* [?] Added MIDI keyboard support.
+* [?] Added Polish application language.
+* [?] Added NES binary player.
+* [?] Extended
+
 ## v0.3.2 [2026-10-13]
 
 * Added NSF export.

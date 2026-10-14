@@ -23,6 +23,7 @@ from sampletones_shared.utils.system.locales import to_utf8
 
 from .device import AudioDevice, CurrentDevice
 from .io import load_audio
+from .lease import OutputLease
 from .stream import close_stream, write_to_stream
 from .validation import validate_buffer_size, validate_sample_rate
 
@@ -98,15 +99,15 @@ class AudioDeviceManager(CallbackMixin):
 
         self._playback_thread: Optional[threading.Thread] = None
         self._let_go_workers: List[threading.Thread] = []
-        self._stream_owners: Dict[pyaudio.Stream, VoidCallback] = {}
+        self._claims: List[OutputLease] = []
+        self._outstanding: List[OutputLease] = []
+        self._output_closed: bool = False
         self._lock: threading.Lock = threading.Lock()
         self._resume_event: threading.Event = threading.Event()
         self._resume_event.set()
 
         self._position_callback: Optional[Callable[[int], None]] = None
         self.on_playback_error: Optional[OnPlaybackErrorCallback] = None
-        self.on_acquire_output: Optional[VoidCallback] = None
-        self.external_output_priority: Optional[Callable[[], Optional[int]]] = None
 
         self.refresh_devices()
         self._initialize_default_device()
@@ -116,32 +117,37 @@ class AudioDeviceManager(CallbackMixin):
         Reinitialize the PyAudio instance.
 
         Creates a new PyAudio instance if none exists, or terminates the existing
-        instance and creates a new one. Active playback is stopped and every handed-out
-        output stream is released first, since terminating closes any stream still open
-        while its owner writes to it. A worker a stop let go of is waited for too, since it
-        may still be opening its stream.
+        instance and creates a new one. Active playback is stopped and every lease is
+        released first, since terminating closes any stream still open while its holder
+        writes to it. A worker a stop let go of is waited for too, since it may still be
+        opening its stream. Every claim on the output is declined while the instance is
+        replaced.
 
         Raises:
-            PlaybackError: If an output stream is still held after its owner was asked to
-                release it, or a worker a stop let go of outlives the wait, which leaves the
-                running instance in place.
+            PlaybackError: If a stream is still open after its holder was asked to release
+                it, or a worker a stop let go of outlives the wait, which leaves the running
+                instance in place.
         """
         with _capture_stderr_to_logger():
             if self._pyaudio is None:
                 self._pyaudio = pyaudio.PyAudio()
+                with self._lock:
+                    self._output_closed = False
+
                 logger.debug("AudioDeviceManager initialized")
                 return
 
-            self.stop()
-            if not self._release_output_streams():
-                raise PlaybackError("An output stream is still held; the audio backend stays as it is")
+            with self._output_held_closed():
+                self.stop()
+                if not self._release_every_lease():
+                    raise PlaybackError("An output stream is still held; the audio backend stays as it is")
 
-            if not self._join_let_go_workers():
-                raise PlaybackError("A playback worker still reaches into the audio backend; it stays as it is")
+                if not self._join_let_go_workers():
+                    raise PlaybackError("A playback worker still reaches into the audio backend; it stays as it is")
 
-            self._pyaudio.terminate()
-            self._pyaudio = pyaudio.PyAudio()
-            logger.debug("AudioDeviceManager reinitialized")
+                self._pyaudio.terminate()
+                self._pyaudio = pyaudio.PyAudio()
+                logger.debug("AudioDeviceManager reinitialized")
 
     def refresh_devices(self) -> None:
         """
@@ -468,9 +474,9 @@ class AudioDeviceManager(CallbackMixin):
         Stops any active playback and switches to the specified device and sample rate.
         If the sample rate is not supported, falls back to the first supported rate for that device.
 
-        A stream handed out to a streaming source was opened on the device and rate in force at
-        the time, so the new settings reach it only once it is wound down; the source is asked to
-        hand the output back before the switch, and playback resumes under the new settings.
+        A stream opened under a lease was opened on the device and rate in force at the time, so
+        the new settings reach it only once it is wound down; every holder is asked to hand its
+        lease back before the switch, and every claim on the output is declined while it happens.
 
         Args:
             device_index: Index of the device to configure.
@@ -481,8 +487,8 @@ class AudioDeviceManager(CallbackMixin):
 
         Raises:
             ValueError: If the device index is not found.
-            PlaybackError: If a handed-out stream survives its release, which leaves the device
-                and rate as they stand.
+            PlaybackError: If a stream opened under a lease survives its release, which leaves the
+                device and rate as they stand.
         """
         if device_index not in self._devices:
             raise ValueError(f"Device with index {device_index} not found")
@@ -495,13 +501,14 @@ class AudioDeviceManager(CallbackMixin):
             )
             sample_rate = fallback_rate
 
-        self.stop()
-        self.call(self.on_acquire_output)
-        if not self._release_output_streams():
-            raise PlaybackError("An output stream is still held; the audio device stays as it is")
+        with self._output_held_closed():
+            self.stop()
+            if not self._release_every_lease():
+                raise PlaybackError("An output stream is still held; the audio device stays as it is")
 
-        self.device_index = device_index
-        self.sample_rate = sample_rate
+            self.device_index = device_index
+            self.sample_rate = sample_rate
+
         logger.info(f"Audio device configured: '{self.device_name}' (index={device_index}, sample_rate={sample_rate})")
         return CurrentDevice.from_device(device, sample_rate)
 
@@ -597,8 +604,8 @@ class AudioDeviceManager(CallbackMixin):
 
         The output device exposes a single stream, so requests are ranked by ``priority``:
         this request is skipped when output is already held at a strictly higher priority
-        (a buffer of this manager, or an external stream reported by ``external_output_priority``).
-        Otherwise it takes over, releasing any external stream first via ``on_acquire_output``.
+        (a buffer of this manager, or a lease). Otherwise it takes over, asking every holder of
+        a lease to hand it back first.
 
         Args:
             audio: Audio data as numpy array (will be converted to float32).
@@ -617,19 +624,14 @@ class AudioDeviceManager(CallbackMixin):
             NoOutputDeviceError: If no output device is in force.
         """
         output = self.require_output()
-        external_priority = self.call(self.external_output_priority)
         with self._lock:
-            internal_priority = self._active_priority if self._playing else None
+            if self._outranked(priority):
+                return False
 
-        held = max(
-            (priority for priority in (internal_priority, external_priority) if priority is not None), default=None
-        )
-        if held is not None and priority < held:
-            return False
+            displaced = self._displace_claims()
 
         self.stop()
-        if external_priority is not None:
-            self.call(self.on_acquire_output)
+        self._release(displaced)
 
         with self._lock:
             self._audio_data = audio.astype(np.float32)
@@ -943,26 +945,70 @@ class AudioDeviceManager(CallbackMixin):
 
             return START_OF_AUDIO
 
+    def acquire_output(
+        self,
+        *,
+        priority: int,
+        release: VoidCallback,
+    ) -> Optional[OutputLease]:
+        """Claim the output for a source that streams to it from a thread of its own.
+
+        A claim is ranked the way :meth:`play` ranks a buffer: it is declined while the output is held
+        strictly above ``priority``, and otherwise it takes the output over, stopping this manager's own
+        playback and asking every other holder to hand its lease back. The claim is recorded under the
+        lock before anything is released, so two sources asking at once are settled there and one of
+        them holds the output afterwards. A holder hands its lease back before it asks for another,
+        since a release winds the holder's own writing down.
+
+        Every claim is declined while the backend is reconfigured or torn down.
+
+        Args:
+            priority: The rank of the claim; higher wins. Callers assign the meaning.
+            release: Winds the caller's writing down; returns once the lease is handed back.
+
+        Returns:
+            Optional[OutputLease]: The lease to open a stream under and to hand back, or ``None`` where
+                the claim is declined.
+
+        Raises:
+            NoOutputDeviceError: If no output device is in force.
+        """
+        self.require_output()
+        lease = OutputLease(priority=priority, release=release)
+        with self._lock:
+            if self._output_closed or self._outranked(priority):
+                return None
+
+            displaced = self._displace_claims()
+            self._claims.append(lease)
+
+        self.stop()
+        self._release(displaced)
+        return lease
+
     def open_output_stream(
         self,
+        lease: OutputLease,
         *,
         sample_rate: int,
         buffer_size: int,
-        release: VoidCallback,
-    ) -> pyaudio.Stream:
-        """Open a blocking output stream for caller-managed streaming playback.
+    ) -> Optional[pyaudio.Stream]:
+        """Open a blocking output stream under ``lease`` for the holder to write from its own thread.
 
-        The caller drives the stream from a thread of its own and hands it back through
-        ``close_output_stream`` once that thread finishes. Until then the manager counts the
-        stream as outstanding and calls ``release`` whenever it needs the backend free, so a
-        stream is torn down by the thread that writes to it. Any buffer playback owned by this
-        manager is stopped first, since the output device allows only a single open stream at a
-        time.
+        The holder hands the lease back through :meth:`hand_back` once its writing finishes, which
+        closes the stream. Until then the manager counts the stream as outstanding and calls the
+        lease's release whenever it needs the backend free, so a stream is torn down by the thread
+        that writes to it. A lease another claim took the output from opens nothing: the claim is
+        checked before the open, and again after it, since a device can be slow to open and the
+        output may change hands meanwhile.
 
         Args:
+            lease: The claim the stream opens under.
             sample_rate: Sample rate in Hz.
             buffer_size: Frames per buffer (controls write granularity).
-            release: Winds the caller's writing down; returns once the stream is handed back.
+
+        Returns:
+            Optional[pyaudio.Stream]: The stream, or ``None`` where the lease no longer holds the output.
 
         Raises:
             PlaybackError: If PyAudio is not initialized, or the device refuses to open the stream.
@@ -972,16 +1018,33 @@ class AudioDeviceManager(CallbackMixin):
             raise PlaybackError("PyAudio not initialized; call reinitialize() first")
 
         output = self.require_output()
-        self.stop()
-        stream = self._open_stream(
-            device_index=output.device_index,
-            sample_rate=sample_rate,
-            frames_per_buffer=buffer_size,
-        )
         with self._lock:
-            self._stream_owners[stream] = release
+            if not self._holds(lease):
+                return None
 
-        return stream
+            self._outstanding.append(lease)
+
+        try:
+            stream = self._open_stream(
+                device_index=output.device_index,
+                sample_rate=sample_rate,
+                frames_per_buffer=buffer_size,
+            )
+        except PlaybackError:
+            self._settle(lease)
+            raise
+
+        with self._lock:
+            if self._holds(lease):
+                lease.stream = stream
+                return stream
+
+        try:
+            close_stream(stream)
+        finally:
+            self._settle(lease)
+
+        return None
 
     def _open_stream(
         self,
@@ -1011,37 +1074,42 @@ class AudioDeviceManager(CallbackMixin):
         except OSError as exception:
             raise PlaybackError(f"Failed to open audio stream: {exception}") from exception
 
-    def close_output_stream(self, stream: pyaudio.Stream) -> None:
-        """Take a handed-out stream back and close it.
+    def hand_back(self, lease: OutputLease) -> None:
+        """Take a lease back, closing the stream opened under it.
 
-        Called by the owner from the thread that wrote to the stream, once that writing has
-        finished. Returning the stream is what tells the manager the backend is free again, so
-        the manager takes it back before it winds the stream down.
+        Called by the holder from the thread that wrote to the stream once that writing has finished,
+        and by a holder whose stream never opened. Taking the lease back is what tells the manager the
+        backend is free again, so the lease is forgotten before its stream is wound down.
 
         Raises:
             PlaybackError: If the device fails to stop or to close the stream.
         """
         with self._lock:
-            self._stream_owners.pop(stream, None)
+            self._forget(lease)
+            stream, lease.stream = lease.stream, None
 
-        close_stream(stream)
+        if stream is not None:
+            close_stream(stream)
 
     def terminate(self) -> None:
         """
         Clean up and terminate the audio device manager.
 
-        Stops any active playback, releases every handed-out output stream, waits for the
-        workers a stop let go of, and terminates the PyAudio instance. A stream that survives its
-        release leaves the instance running, since terminating closes any open stream and the
-        owning thread would go on writing to freed memory. A worker that outlives the wait leaves it
-        running too, since it may still be opening its stream. Should be called once you are
-        finished with the manager.
+        Declines every later claim on the output, stops any active playback, releases every
+        lease, waits for the workers a stop let go of, and terminates the PyAudio instance. A
+        stream that survives its release leaves the instance running, since terminating closes
+        any open stream and the owning thread would go on writing to freed memory. A worker that
+        outlives the wait leaves it running too, since it may still be opening its stream. Should
+        be called once you are finished with the manager.
         """
         if self._pyaudio is None:
             return
 
+        with self._lock:
+            self._output_closed = True
+
         self.stop()
-        if not self._release_output_streams():
+        if not self._release_every_lease():
             logger.error("AudioDeviceManager: an output stream is still held; PyAudio left running")
             return
 
@@ -1052,24 +1120,74 @@ class AudioDeviceManager(CallbackMixin):
         self._pyaudio.terminate()
         self._pyaudio = None
 
-    def _release_output_streams(self) -> bool:
-        """Ask each streaming owner to wind down; report whether every stream was released.
+    @contextlib.contextmanager
+    def _output_held_closed(self) -> Generator[None, None, None]:
+        """Declines every claim on the output while the backend changes underneath it."""
+        with self._lock:
+            self._output_closed = True
 
-        An owner writes to its stream from its own thread, so only that owner can bring the
-        writing to a stop. A release both stops the writer and hands the stream back through
-        ``close_output_stream``, which is what leaves the instance safe to terminate.
+        try:
+            yield
+        finally:
+            with self._lock:
+                self._output_closed = False
+
+    def _outranked(self, priority: int) -> bool:
+        """Whether the output is held strictly above ``priority``. The caller holds the lock."""
+        held = [claim.priority for claim in self._claims]
+        if self._playing:
+            held.append(self._active_priority)
+
+        return any(rank > priority for rank in held)
+
+    def _holds(self, lease: OutputLease) -> bool:
+        """Whether ``lease`` still claims the output. The caller holds the lock."""
+        return not self._output_closed and any(claim is lease for claim in self._claims)
+
+    def _displace_claims(self) -> List[OutputLease]:
+        """Withdraws every claim, and answers the leases whose holders are to be asked to wind down.
+
+        A withdrawn lease ranks no more and opens no stream, so a claim made afterwards is weighed against
+        the holders still in force alone. A lease already opening or writing stays outstanding until its
+        holder hands it back. The caller holds the lock.
         """
-        with self._lock:
-            releases = list(self._stream_owners.values())
+        displaced, self._claims = self._claims, []
+        return displaced
 
-        for release in releases:
-            release()
+    def _release_every_lease(self) -> bool:
+        """Asks every holder to wind down; reports whether every stream was handed back."""
+        with self._lock:
+            leases = self._displace_claims()
+            leases.extend(lease for lease in self._outstanding if not any(lease is held for held in leases))
+
+        return self._release(leases)
+
+    def _release(self, leases: List[OutputLease]) -> bool:
+        """Asks each holder of ``leases`` to wind down; reports whether each one handed its stream back.
+
+        A holder writes to its stream from its own thread, so only the holder can bring the writing to a
+        stop. A release both stops the writer and hands the lease back through :meth:`hand_back`, which is
+        what leaves the instance safe to terminate. Each release runs outside the lock, so a holder handing
+        its lease back from the writing thread meets no lock the releaser holds.
+        """
+        for lease in leases:
+            lease.release()
 
         with self._lock:
-            outstanding = len(self._stream_owners)
+            outstanding = sum(1 for lease in leases if any(lease is held for held in self._outstanding))
 
         if outstanding:
             logger.error(f"AudioDeviceManager: {outstanding} output stream(s) outlived their release")
             return False
 
         return True
+
+    def _settle(self, lease: OutputLease) -> None:
+        """Counts ``lease`` off the outstanding streams once the device holds nothing of it."""
+        with self._lock:
+            self._outstanding = [held for held in self._outstanding if held is not lease]
+
+    def _forget(self, lease: OutputLease) -> None:
+        """Takes ``lease`` off both registries. The caller holds the lock."""
+        self._claims = [claim for claim in self._claims if claim is not lease]
+        self._outstanding = [held for held in self._outstanding if held is not lease]

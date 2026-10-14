@@ -16,10 +16,12 @@ from sampletones_application.services.song_player.service import (
     _RenderedRow,
 )
 from sampletones_core.audio.device import CurrentDevice
+from sampletones_core.audio.lease import OutputLease
 from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.exceptions import NoOutputDeviceError, PlaybackError
 
 SAMPLE_RATE: Final[int] = 44100
+OUTPUT_PRIORITY: Final[int] = 1
 SPEAKERS: Final[CurrentDevice] = CurrentDevice(device_index=0, name="Speakers", sample_rate=SAMPLE_RATE, host_api=0)
 WRITE_BLOCK: Final[int] = 64
 WAIT_TIMEOUT: Final[float] = 5.0
@@ -42,6 +44,7 @@ def _make_service(
         synthesizer,
         should_loop=lambda: should_loop,
         master_gain=lambda: master_gain,
+        output_priority=OUTPUT_PRIORITY,
     )
 
 
@@ -114,15 +117,36 @@ def _close_stream(stream: _FakeStream) -> None:
     stream.close()
 
 
+def _granted(*, priority: int, release: Callable[[], None]) -> OutputLease:
+    return OutputLease(priority=priority, release=release)
+
+
+def _winding_down(stream: Optional[_FakeStream]) -> Callable[[OutputLease], None]:
+    """A hand-back that closes the stream opened under the lease, as the real manager does."""
+
+    def hand_back(_lease: OutputLease) -> None:
+        if stream is not None:
+            _close_stream(stream)
+
+    return hand_back
+
+
 def _make_device_manager(stream: Optional[_FakeStream] = None) -> MagicMock:
-    """A device manager that winds a handed-back stream down as the real one does."""
+    """A device manager that grants every claim and winds a handed-back stream down as the real one does."""
     audio_device_manager = MagicMock()
     audio_device_manager.require_output.return_value = SPEAKERS
     audio_device_manager.sample_rate = SAMPLE_RATE
     audio_device_manager.buffer_size = WRITE_BLOCK
+    audio_device_manager.acquire_output.side_effect = _granted
     audio_device_manager.open_output_stream.return_value = stream
-    audio_device_manager.close_output_stream.side_effect = _close_stream
+    audio_device_manager.hand_back.side_effect = _winding_down(stream)
     return audio_device_manager
+
+
+def _claimed(service: SongPlayerService) -> SongPlayerService:
+    """The service holding a lease, as a start leaves it, for a case driving the writer by hand."""
+    service._lease = OutputLease(priority=OUTPUT_PRIORITY, release=service.stop)
+    return service
 
 
 def _make_streaming_service(
@@ -136,6 +160,7 @@ def _make_streaming_service(
         _FakeSynthesizer(rows=rows, frames=frames),
         should_loop=lambda: False,
         master_gain=lambda: 1.0,
+        output_priority=OUTPUT_PRIORITY,
     )
 
 
@@ -144,6 +169,20 @@ def _assert_names_the_failed_write(result: SongPlayerResult, error: OSError) -> 
     assert isinstance(result, SongPlaybackError)
     assert isinstance(result.error, PlaybackError)
     assert result.error.__cause__ is error
+
+
+def _record_ends(service: SongPlayerService) -> Tuple[List[Tuple[SongPlayerResult, bool]], threading.Event]:
+    """Subscribes a listener noting each terminal result with whether the song held the output then."""
+    ends: List[Tuple[SongPlayerResult, bool]] = []
+    reported = threading.Event()
+
+    def listen(result: SongPlayerResult) -> None:
+        if isinstance(result, (SongPlaybackStopped, SongPlaybackError)):
+            ends.append((result, service.alive))
+            reported.set()
+
+    service.subscribe(listen)
+    return ends, reported
 
 
 def _wedged_thread(gate: threading.Event) -> threading.Thread:
@@ -386,6 +425,7 @@ class TestSongPlayerServiceMasterGain:
             synthesizer,
             should_loop=lambda: False,
             master_gain=lambda: gain["value"],
+            output_priority=OUTPUT_PRIORITY,
         )
 
         chunk = np.array([0.5], dtype=np.float32)
@@ -547,6 +587,7 @@ class TestSongPlayerServiceStopQuiescence:
             with patch(JOIN_TIMEOUT_TARGET, SHORT_JOIN_TIMEOUT):
                 service.start()
 
+            audio_device_manager.acquire_output.assert_not_called()
             audio_device_manager.open_output_stream.assert_not_called()
         finally:
             gate.set()
@@ -568,6 +609,7 @@ class TestSongPlayerServiceWithNoOutput:
             synthesizer,
             should_loop=lambda: False,
             master_gain=lambda: 1.0,
+            output_priority=OUTPUT_PRIORITY,
         )
 
         with pytest.raises(NoOutputDeviceError):
@@ -577,6 +619,7 @@ class TestSongPlayerServiceWithNoOutput:
         assert service._render_thread is None
         assert service._write_thread is None
         synthesizer.set_position.assert_not_called()
+        audio_device_manager.acquire_output.assert_not_called()
         audio_device_manager.open_output_stream.assert_not_called()
 
     def test_a_device_in_force_starts_the_song(self) -> None:
@@ -592,19 +635,6 @@ class TestSongPlayerServiceWithNoOutput:
 
 class TestSongPlayerServiceEndOfSong:
     """The song lets go of the output before it reports how it ended, so a listener reads it free."""
-
-    def record_ends(self, service: SongPlayerService) -> Tuple[List[Tuple[SongPlayerResult, bool]], threading.Event]:
-        """Subscribes a listener noting each terminal result with whether the song held the output then."""
-        ends: List[Tuple[SongPlayerResult, bool]] = []
-        reported = threading.Event()
-
-        def listen(result: SongPlayerResult) -> None:
-            if isinstance(result, (SongPlaybackStopped, SongPlaybackError)):
-                ends.append((result, service.alive))
-                reported.set()
-
-        service.subscribe(listen)
-        return ends, reported
 
     def test_the_output_is_held_from_the_start(self) -> None:
         gate = threading.Event()
@@ -624,7 +654,7 @@ class TestSongPlayerServiceEndOfSong:
     def test_a_song_reaching_its_end_reports_it_with_the_output_free(self) -> None:
         stream = _FakeStream()
         service = _make_streaming_service(_make_device_manager(stream))
-        ends, reported = self.record_ends(service)
+        ends, reported = _record_ends(service)
 
         service.start()
 
@@ -635,7 +665,7 @@ class TestSongPlayerServiceEndOfSong:
     def test_a_failing_write_reports_it_with_the_output_free(self) -> None:
         error = OSError("device disappeared")
         service = _make_streaming_service(_make_device_manager(_FakeStream(error=error)))
-        ends, reported = self.record_ends(service)
+        ends, reported = _record_ends(service)
 
         service.start()
 
@@ -650,7 +680,7 @@ class TestSongPlayerServiceEndOfSong:
         audio_device_manager = _make_device_manager()
         audio_device_manager.open_output_stream.side_effect = refusal
         service = _make_streaming_service(audio_device_manager)
-        ends, reported = self.record_ends(service)
+        ends, reported = _record_ends(service)
 
         service.start()
 
@@ -662,9 +692,9 @@ class TestSongPlayerServiceEndOfSong:
     def test_a_close_the_device_fails_reports_it_with_the_output_free(self) -> None:
         failure = PlaybackError("Failed to close the audio stream: the device went away")
         audio_device_manager = _make_device_manager(_FakeStream())
-        audio_device_manager.close_output_stream.side_effect = failure
+        audio_device_manager.hand_back.side_effect = failure
         service = _make_streaming_service(audio_device_manager)
-        ends, reported = self.record_ends(service)
+        ends, reported = _record_ends(service)
 
         service.start()
 
@@ -672,16 +702,17 @@ class TestSongPlayerServiceEndOfSong:
         assert ends == [(SongPlaybackError(error=failure), False)]
 
     def test_a_close_the_device_failed_leaves_the_song_free_to_start_again(self) -> None:
-        audio_device_manager = _make_device_manager(_FakeStream())
-        audio_device_manager.close_output_stream.side_effect = PlaybackError("Failed to close the audio stream")
+        stream = _FakeStream()
+        audio_device_manager = _make_device_manager(stream)
+        audio_device_manager.hand_back.side_effect = PlaybackError("Failed to close the audio stream")
         service = _make_streaming_service(audio_device_manager)
-        _, reported = self.record_ends(service)
+        _, reported = _record_ends(service)
         service.start()
         assert reported.wait(timeout=WAIT_TIMEOUT)
         assert service._write_thread is not None
         service._write_thread.join(timeout=WAIT_TIMEOUT)
 
-        audio_device_manager.close_output_stream.side_effect = _close_stream
+        audio_device_manager.hand_back.side_effect = _winding_down(stream)
         service.start()
         service.stop()
 
@@ -691,7 +722,7 @@ class TestSongPlayerServiceEndOfSong:
         gate = threading.Event()
         stream = _FakeStream(gate=gate)
         service = _make_streaming_service(_make_device_manager(stream), rows=8)
-        ends, _ = self.record_ends(service)
+        ends, _ = _record_ends(service)
 
         service.start()
         assert stream.entered_write.wait(timeout=WAIT_TIMEOUT)
@@ -707,10 +738,14 @@ class TestSongPlayerServiceEndOfSong:
         assert service.alive is False
 
 
-class TestSongPlayerServiceStreamOwnership:
-    """The device hands out a stream against a release, and gets it back when the writer finishes."""
+class TestSongPlayerServiceOutputClaim:
+    """The song claims the output when it starts, opens its stream under the claim, and hands both back.
 
-    def test_the_stream_is_opened_against_a_release_that_stops_playback(self) -> None:
+    A sound the device gives the output to takes it from the song through the claim's release, and the
+    song reports that end once, with the output free. A stop the song's own player asks for reports none.
+    """
+
+    def test_the_song_claims_the_output_at_its_priority(self) -> None:
         audio_device_manager = _make_device_manager(_FakeStream())
         service = _make_streaming_service(audio_device_manager)
         service.subscribe(lambda result: None)
@@ -718,25 +753,100 @@ class TestSongPlayerServiceStreamOwnership:
         service.start()
         service.stop()
 
-        _, keywords = audio_device_manager.open_output_stream.call_args
-        assert keywords["release"] == service.stop
+        _, keywords = audio_device_manager.acquire_output.call_args
+        assert keywords["priority"] == OUTPUT_PRIORITY
 
-    def test_the_writer_hands_the_stream_back(self) -> None:
-        stream = _FakeStream()
-        audio_device_manager = _make_device_manager(stream)
+    def test_the_writer_hands_the_lease_back(self) -> None:
+        audio_device_manager = _make_device_manager(_FakeStream())
         service = _make_streaming_service(audio_device_manager)
         service.subscribe(lambda result: None)
 
         service.start()
+        [lease] = [call.args[0] for call in audio_device_manager.open_output_stream.call_args_list]
         service.stop()
 
-        audio_device_manager.close_output_stream.assert_called_once_with(stream)
+        audio_device_manager.hand_back.assert_called_once_with(lease)
+
+    def test_a_declined_claim_starts_nothing(self) -> None:
+        audio_device_manager = _make_device_manager(_FakeStream())
+        audio_device_manager.acquire_output.side_effect = None
+        audio_device_manager.acquire_output.return_value = None
+        synthesizer = MagicMock()
+        service = SongPlayerService(
+            audio_device_manager,
+            synthesizer,
+            should_loop=lambda: False,
+            master_gain=lambda: 1.0,
+            output_priority=OUTPUT_PRIORITY,
+        )
+
+        service.start()
+
+        assert service.alive is False
+        assert service._write_thread is None
+        synthesizer.set_position.assert_not_called()
+        audio_device_manager.open_output_stream.assert_not_called()
+
+    def test_a_song_the_output_is_taken_from_reports_it_stopped_with_the_output_free(self) -> None:
+        gate = threading.Event()
+        stream = _FakeStream(gate=gate)
+        audio_device_manager = _make_device_manager(stream)
+        service = _make_streaming_service(audio_device_manager, rows=8)
+        ends, reported = _record_ends(service)
+        service.start()
+        assert stream.entered_write.wait(timeout=WAIT_TIMEOUT)
+        _, keywords = audio_device_manager.acquire_output.call_args
+
+        releaser = threading.Timer(WRITE_RELEASE_DELAY, gate.set)
+        releaser.start()
+        try:
+            keywords["release"]()
+        finally:
+            releaser.cancel()
+            gate.set()
+
+        assert reported.wait(timeout=WAIT_TIMEOUT)
+        assert ends == [(SongPlaybackStopped(), False)]
+        assert stream.closed.is_set()
+
+    def test_a_lease_taken_before_the_stream_opens_reports_it_stopped_with_the_output_free(self) -> None:
+        audio_device_manager = _make_device_manager()
+        audio_device_manager.open_output_stream.return_value = None
+        service = _make_streaming_service(audio_device_manager)
+        ends, reported = _record_ends(service)
+
+        service.start()
+
+        assert reported.wait(timeout=WAIT_TIMEOUT)
+        assert ends == [(SongPlaybackStopped(), False)]
+        audio_device_manager.hand_back.assert_called_once()
+
+    def test_a_release_landing_while_the_song_starts_reports_it_stopped(self) -> None:
+        """A release reaching the song between its claim and its writer still ends it, and says so once."""
+        audio_device_manager = _make_device_manager()
+        audio_device_manager.open_output_stream.return_value = None
+
+        def granted_then_taken(*, priority: int, release: Callable[[], None]) -> OutputLease:
+            lease = _granted(priority=priority, release=release)
+            release()
+            return lease
+
+        audio_device_manager.acquire_output.side_effect = granted_then_taken
+        service = _make_streaming_service(audio_device_manager)
+        ends, reported = _record_ends(service)
+
+        service.start()
+
+        assert reported.wait(timeout=WAIT_TIMEOUT)
+        assert service._write_thread is not None
+        service._write_thread.join(timeout=WAIT_TIMEOUT)
+        assert ends == [(SongPlaybackStopped(), False)]
 
 
 class TestSongPlayerServiceWriteFailure:
     def test_a_failing_write_reports_a_playback_error(self) -> None:
         error = OSError("device disappeared")
-        service = _make_streaming_service(_make_device_manager(_FakeStream(error=error)))
+        service = _claimed(_make_streaming_service(_make_device_manager(_FakeStream(error=error))))
         received: List[SongPlayerResult] = []
         service.subscribe(received.append)
         service._resume_event.set()
@@ -749,7 +859,7 @@ class TestSongPlayerServiceWriteFailure:
 
     def test_a_failing_write_still_closes_the_stream(self) -> None:
         stream = _FakeStream(error=OSError("device disappeared"))
-        service = _make_streaming_service(_make_device_manager(stream))
+        service = _claimed(_make_streaming_service(_make_device_manager(stream)))
         service.subscribe(lambda result: None)
         service._resume_event.set()
         service._buffer.append(_RenderedRow(chunk=np.ones(WRITE_BLOCK, dtype=np.float32), position=SongPosition()))

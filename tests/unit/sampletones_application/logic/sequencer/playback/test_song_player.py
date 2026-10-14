@@ -26,7 +26,6 @@ def _make_logic(*, is_open: bool = True) -> SongPlayerLogic:
         controller._project_manager.new()
 
     return SongPlayerLogic(
-        MagicMock(),
         controller,
         MagicMock(follow_mode=FollowMode.ROWS),
         service=MagicMock(is_playing=False, is_paused=False),

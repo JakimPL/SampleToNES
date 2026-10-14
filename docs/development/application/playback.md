@@ -34,6 +34,8 @@ A report comes from the thread writing the audio, and the mark is a widget, so e
 
 Priority ranks the two kinds and settles every contest for the device. Starting intentional playback preempts a sounding preview, and a preview requested while intentional playback holds the device is declined.
 
+**A source that streams claims the output as it is asked to play.** The song writes to the device from a thread of its own, so it takes a lease on the output when it starts, before its stream opens, and holds the lease until its writer hands it back. The lease carries the request's priority, so a buffer and a stream are weighed by one rule: a request ranked below a holder is declined, and any other takes the output, while each holder's release winds its writing down. A lease that lost the output opens no stream. A song that loses the output reports its end as it stops, so the transport and the playhead settle whichever sound took it.
+
 **A sound starts only on a device in force.** Every request, of either kind, asks the device manager for the output before a thread or a stream opens, so a machine offering no output device refuses the request at once with `NoOutputDeviceError`. One presenter, `PlaybackFailurePresenter` (`coordinators/playback/failures.py`), tells the reader what stopped any sound: a missing output reads as a plain notice, and every other failure as an error. A failure on the thread playing the sound, such as a stream the device refused or a write it failed, reads the same whichever source played it, and is told once.
 
 ## Engagement
@@ -134,11 +136,11 @@ The write takes one pass, or two where the user asks for a normalized peak. The 
 
 ## Teardown
 
-The device is torn down once every source holding a stream has released it. A source that streams to the device writes from a thread of its own, so only that source can bring the writing to a stop and hand the stream back. The hand-back is what leaves the backend safe to terminate.
+The device is torn down once every lease has been handed back. A source that streams to the device writes from a thread of its own, so only that source can bring the writing to a stop and hand its lease back. The hand-back closes the stream, and is what leaves the backend safe to terminate.
 
 `PlaybackRouter.shutdown()` is the entry point the application calls as it quits. It reaches every registered source and not only the engaged one, so a source holding a stream is wound down whatever the transport reports at that moment.
 
-The device holds a release per stream it handed out and invokes it whenever it needs the output free: as the backend is torn down, and on a device change, where the release stops the song so the new device opens cleanly. A stream that outlives its release leaves the running backend in place. The manager reports the failure and keeps the instance, since the source still writes to memory that terminating would reclaim.
+The device invokes a lease's release whenever it needs the output free: for a request that outranks the holder, as the backend is torn down, and on a device change, where the release stops the song so the new device opens cleanly. Every claim is declined while the backend changes or goes. A stream that outlives its release leaves the running backend in place. The manager reports the failure and keeps the instance, since the source still writes to memory that terminating would reclaim.
 
 The manager's own playback is held to the same rule. A stop waits a while for its worker and then lets it go, since a device can be slow to open a stream. The manager keeps a worker it let go of, and a teardown waits for it, so the backend is never terminated under an open in progress. A worker that outlives that wait leaves the backend running, as a stream that outlives its release does.
 
@@ -147,6 +149,7 @@ The manager's own playback is held to the same rule. A stop waits a while for it
 | Concern | Owner |
 |---------|-------|
 | The device, its stream, and arbitration between requests | `AudioDeviceManager` (`sampletones_core/audio/`) |
+| A streaming source's claim on the output, and the stream opened under it | `OutputLease` (`sampletones_core/audio/lease.py`) |
 | The ranking that settles a contest for the device | `PlaybackPriority` (`logic/shared/`) |
 | The verbs, target resolution, and the registry of sources | `coordinators/playback/` |
 | A source's engagement reporting | the transport's player protocol, implemented per source |

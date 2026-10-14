@@ -3,7 +3,6 @@ from typing import Callable, Optional, Protocol
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.playback import FollowMode
 from sampletones_application.logic.project.controller import ProjectController
-from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.services.song_player.result import (
     SongPlaybackError,
     SongPlaybackStopped,
@@ -11,7 +10,6 @@ from sampletones_application.services.song_player.result import (
     SongPositionUpdate,
 )
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
-from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.project.song_position import SongPosition
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -60,25 +58,22 @@ class SongPlayerLogic(CallbackMixin):
     updates are forwarded to the coordinator via callbacks.
 
     Every transition of the playback reaches ``on_change_audio_state``: a start, a pause, a resume,
-    a stop, the song ending by itself and a playback error. Whoever shows the transport follows the
-    song through that one hook, whichever gesture moved it. Position updates leave the hook quiet.
+    a stop, the song ending by itself or giving the output up to another sound, and a playback
+    error. Whoever shows the transport follows the song through that one hook, whichever gesture
+    moved it. Position updates leave the hook quiet.
     """
 
     def __init__(
         self,
-        audio_device_manager: AudioDeviceManager,
         project_controller: ProjectController,
         session_manager: SessionManager,
         *,
         service: SongPlayerServiceProtocol,
     ) -> None:
-        self._audio_device_manager = audio_device_manager
         self._project_controller = project_controller
         self._session_manager = session_manager
         self._service = service
         self._service.subscribe(self._on_service_result)
-        self._audio_device_manager.on_acquire_output = self.stop
-        self._audio_device_manager.external_output_priority = self._external_output_priority
         self._position = SongPosition()
         self._last_error: Optional[str] = None
         self._awaiting_seek_order: Optional[int] = None
@@ -192,10 +187,6 @@ class SongPlayerLogic(CallbackMixin):
 
     def refresh_view(self) -> None:
         self._emit_view()
-
-    def _external_output_priority(self) -> Optional[int]:
-        """The song holds the shared output device while its stream is alive (playing or paused)."""
-        return PlaybackPriority.NORMAL if self._service.alive else None
 
     def on_project_replaced(self) -> None:
         self.stop()

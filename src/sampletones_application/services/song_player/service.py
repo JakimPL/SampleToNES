@@ -20,6 +20,7 @@ from sampletones_application.services.song_player.result import (
 )
 from sampletones_application.services.synthesis.protocol import RowSynthesizerProtocol
 from sampletones_core.audio import AudioDeviceManager, clip_audio_inplace
+from sampletones_core.audio.lease import OutputLease
 from sampletones_core.audio.stream import write_to_stream
 from sampletones_core.constants.audio import DEFAULT_BUFFER_SIZE
 from sampletones_core.project.song_position import SongPosition
@@ -44,7 +45,12 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
 
     Each row's position is emitted as the writer hands that row to the device, so the
     reported playhead tracks the audio the listener is hearing. The caller receives
-    ``SongPositionUpdate`` per row and ``SongPlaybackStopped`` when the song ends.
+    ``SongPositionUpdate`` per row and ``SongPlaybackStopped`` when the song ends, and when
+    another sound takes the output from it.
+
+    The song claims the output when it is asked to start, at ``output_priority``, and holds the
+    claim until its writer hands the stream back, so a sound ranked below it is declined for the
+    whole span, the moments before the stream opens included.
     """
 
     def __init__(
@@ -54,6 +60,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         *,
         should_loop: Callable[[], bool],
         master_gain: Callable[[], float],
+        output_priority: int,
         priority: int = 0,
     ) -> None:
         super().__init__(priority)
@@ -61,9 +68,12 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         self._synthesizer = synthesizer
         self._should_loop = should_loop
         self._master_gain = master_gain
+        self._output_priority = output_priority
+        self._lease: Optional[OutputLease] = None
         self._stop_event = threading.Event()
         self._resume_event = threading.Event()
         self._holding_output = threading.Event()
+        self._taken = threading.Event()
         self._render_thread: Optional[threading.Thread] = None
         self._write_thread: Optional[threading.Thread] = None
 
@@ -76,7 +86,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
 
     @property
     def alive(self) -> bool:
-        """Whether the song holds the output, from :meth:`start` until the writer hands its stream back.
+        """Whether the song holds the output, from its claim in :meth:`start` until the writer hands it back.
 
         The writer lets go before it reports the song's end, so a listener reading ``alive`` on
         ``SongPlaybackStopped`` or ``SongPlaybackError`` reads the output free.
@@ -100,7 +110,8 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         """Starts the song at a row, replacing any song this service is playing.
 
         The device manager is asked for the output first, so a machine offering no output device
-        refuses the song before any thread starts and leaves the playback as it stands.
+        refuses the song before any thread starts and leaves the playback as it stands. A claim the
+        device declines starts nothing either.
 
         Raises:
             NoOutputDeviceError: If no output device is in force.
@@ -111,6 +122,17 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
             logger.error(f"{self.class_name}: the previous writer still holds the output; start ignored")
             return
 
+        self._taken.clear()
+        lease = self._audio_device_manager.acquire_output(
+            priority=self._output_priority,
+            release=self._give_up_output,
+        )
+        if lease is None:
+            logger.info(f"{self.class_name}: the output is held above the song; start declined")
+            return
+
+        self._lease = lease
+        self._holding_output.set()
         self._synthesizer.set_position(order_position, row_index)
         self._synthesizer.reset()
         self._playback_error = None
@@ -123,7 +145,6 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         self._write_block_frames = self._audio_device_manager.buffer_size
         self._stop_event.clear()
         self._resume_event.set()
-        self._holding_output.set()
         self._render_thread = threading.Thread(
             target=self._render_loop,
             daemon=True,
@@ -144,6 +165,15 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         self._render_thread = self._join_worker(self._render_thread)
         self._write_thread = self._join_worker(self._write_thread)
         self._clear_buffer()
+
+    def _give_up_output(self) -> None:
+        """Stops the song for a sound that took the output, which the writer reports as the song's end.
+
+        A stop asked for by the song's own player is that player's to report, so the writer tells
+        the subscribers of an end only where the song reached it or the output was taken from it.
+        """
+        self._taken.set()
+        self.stop()
 
     def pause(self) -> None:
         self._resume_event.clear()
@@ -216,13 +246,18 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         """Drains the song to the device, hands the stream back, and then reports how the song ended.
 
         This is the writer thread's whole task, so a stream the device refuses ends here as the song's
-        error, and so do a write and a hand-back the device fails. Each is reported once, with the
-        output free.
+        error, and so do a write and a hand-back the device fails. A song another sound took the output
+        from ends here too, before its stream opened or while it drained. Each end is reported once,
+        with the output free, and a stop the player asked for reports none.
         """
         try:
             stream = self._open_stream()
         except Exception as exception:  # pylint: disable=broad-exception-caught
             self._end_refused(exception)
+            return
+
+        if stream is None:
+            self._end_taken()
             return
 
         ended = True
@@ -234,7 +269,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         finally:
             self._holding_output.clear()
 
-        if ended:
+        if ended or self._taken.is_set():
             self._emit_terminal()
 
     def _play_through(self, stream: pyaudio.Stream) -> bool:
@@ -246,26 +281,46 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         try:
             return self._drain_to_stream(stream)
         finally:
-            self._audio_device_manager.close_output_stream(stream)
+            self._hand_back()
 
-    def _open_stream(self) -> pyaudio.Stream:
+    def _open_stream(self) -> Optional[pyaudio.Stream]:
+        """Opens the song's stream under its lease, or answers ``None`` where another sound took the lease."""
+        assert self._lease is not None, "the song writes only under the lease its start claimed"
         sample_rate = self._audio_device_manager.sample_rate
         stream = self._audio_device_manager.open_output_stream(
+            self._lease,
             sample_rate=sample_rate,
             buffer_size=self._audio_device_manager.buffer_size,
-            release=self.stop,
         )
-        logger.debug(f"{self.class_name}: audio stream opened at {sample_rate} Hz")
+        if stream is not None:
+            logger.debug(f"{self.class_name}: audio stream opened at {sample_rate} Hz")
+
         return stream
+
+    def _hand_back(self) -> None:
+        """Hands the song's lease back, closing the stream opened under it."""
+        lease, self._lease = self._lease, None
+        if lease is not None:
+            self._audio_device_manager.hand_back(lease)
 
     def _end_refused(self, exception: Exception) -> None:
         """Ends a song whose stream never opened: the renderer stops, the output goes free, and the error is told."""
         logger.error_with_traceback(exception, f"{self.class_name}: failed to open audio stream")
         self._playback_error = exception
+        self._end_unopened()
+        self._emit_terminal()
+
+    def _end_taken(self) -> None:
+        """Ends a song whose lease another sound took before the stream opened, and tells the subscribers it stopped."""
+        logger.debug(f"{self.class_name}: the output was taken before the stream opened")
+        self._end_unopened()
+        self._emit_terminal()
+
+    def _end_unopened(self) -> None:
         self._stop_event.set()
         self._wake_buffer()
+        self._hand_back()
         self._holding_output.clear()
-        self._emit_terminal()
 
     def _drain_to_stream(self, stream: pyaudio.Stream) -> bool:
         """Hands the buffered rows to the device until the song ends or a stop comes.
