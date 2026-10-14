@@ -4,6 +4,9 @@ SEMITONE_STEP: Final[int] = 1
 OCTAVE_SEMITONES: Final[int] = 12
 OCTAVE_OFFSET: Final[int] = 2
 
+MIN_VELOCITY: Final[int] = 1
+MAX_VELOCITY: Final[int] = 127
+
 LIMIT_MIN_PITCH: Final[int] = 24
 LIMIT_MAX_PITCH: Final[int] = 127
 

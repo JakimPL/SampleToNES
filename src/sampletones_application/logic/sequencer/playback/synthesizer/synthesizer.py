@@ -1,22 +1,20 @@
 from dataclasses import replace
-from typing import Callable, FrozenSet, Optional, Tuple
+from typing import Callable, Dict, FrozenSet, Optional, Tuple
 
 import numpy as np
 
 from sampletones_application.logic.shared.project_source import ProjectSource
+from sampletones_application.logic.shared.synthesis import ChannelBank, EngineRates, synthesize_tick
 from sampletones_core.audio import clip_audio_inplace, silence
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.performance import VoiceReading, apply_row, resolve_row, sound_tick
+from sampletones_core.performance import ChannelPerformance, VoiceReading, apply_row, resolve_row, sound_tick
 from sampletones_core.project import Project
 from sampletones_core.project.song import Song
 from sampletones_core.project.song_position import SongPosition
 from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 
-from .bank import ChannelBank
 from .frames import RowFrames
-from .rates import EngineRates
-from .state import ChannelState
 
 
 class RowSynthesizer:
@@ -67,6 +65,9 @@ class RowSynthesizer:
         self._position = SongPosition()
         self._timing: SongTiming = SongTiming.from_project(project_source.project, bounds=SONG_TICK_BOUNDS)
         self._channels: Optional[ChannelBank] = None
+        self._performances: Dict[ChannelName, ChannelPerformance] = {
+            channel_name: ChannelPerformance() for channel_name in ChannelName.items()
+        }
         self._elapsed_ticks: int = 0
 
     @property
@@ -88,8 +89,8 @@ class RowSynthesizer:
 
     def reset(self) -> None:
         self._elapsed_ticks = 0
-        if self._channels is not None:
-            self._channels.reset()
+        for performance in self._performances.values():
+            performance.reset()
 
     def render_row(self) -> Tuple[np.ndarray, SongPosition]:
         project = self._project_source.project
@@ -186,64 +187,32 @@ class RowSynthesizer:
         frames: RowFrames,
         channels: ChannelBank,
     ) -> np.ndarray:
-        state = channels.state(channel_name)
+        performance = self._performances[channel_name]
+        generator = channels.generator(channel_name)
 
         row = resolve_row(song, self._position, channel_name)
-        if row is not None and apply_row(state.performance, row, channel_name, project.voice):
-            state.generator.reset()
+        if row is not None and apply_row(performance, row, channel_name, project.voice):
+            generator.reset()
 
-        voice_id = state.performance.voice_id
+        voice_id = performance.voice_id
         if voice_id is None or channel_name not in self._active_channels():
             return silence(frames.total)
 
-        return self._synthesize_ticks(
-            state,
-            voice_id,
-            project,
-            channel_name,
-            frames,
-        )
-
-    def _synthesize_ticks(
-        self,
-        state: ChannelState,
-        voice_id: str,
-        project: Project,
-        channel_name: ChannelName,
-        frames: RowFrames,
-    ) -> np.ndarray:
         voice = project.voice(voice_id)
         reading = VoiceReading.read(voice, channel_name) if voice is not None else None
         if reading is None:
             return silence(frames.total)
 
         output = silence(frames.total)
-        silence_frame = silence(frames.longest)
-
         for tick, frame_length in enumerate(frames.lengths):
-            frame = self._synthesize_tick(
-                state,
-                reading,
-                silence_frame[:frame_length],
+            instruction = sound_tick(performance, reading)
+            output[frames.bounds[tick] : frames.bounds[tick + 1]] = synthesize_tick(
+                generator,
+                instruction,
                 frame_length,
             )
-            output[frames.bounds[tick] : frames.bounds[tick + 1]] = frame
 
         return output
-
-    def _synthesize_tick(
-        self,
-        state: ChannelState,
-        reading: VoiceReading,
-        silence_frame: np.ndarray,
-        frame_length: int,
-    ) -> np.ndarray:
-        instruction = sound_tick(state.performance, reading)
-        if instruction is None:
-            return silence_frame
-
-        state.generator.frame_length = frame_length
-        return state.generator(instruction, save=True)
 
     def _advance_position(self, song: Song) -> None:
         self._position.advance(song.rows_per_pattern, song.order_length())

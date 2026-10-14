@@ -195,8 +195,7 @@ def apply_row(
             )
             return True
         case NoteOff():
-            performance.voice_id = None
-            performance.tick_index = 0
+            performance.end_note()
             return True
         case None:
             if row.pitch is not None:

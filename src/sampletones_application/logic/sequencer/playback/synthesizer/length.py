@@ -1,10 +1,9 @@
 from dataclasses import dataclass
 from typing import Self
 
+from sampletones_application.logic.shared.synthesis import EngineRates
 from sampletones_core.project import Project
 from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
-
-from .rates import EngineRates
 
 
 @dataclass(frozen=True)

@@ -10,8 +10,8 @@ class EngineRates:
     """The pair of rates a tick is sized from, held together so a change is one comparison.
 
     Each rate is owned elsewhere: the project states how many instructions the engine consumes
-    each second, and whoever takes the audio states the rate it is rendered at — the output
-    device for playback, the chosen format for a file. Together they fix how many samples one
+    each second, and whoever takes the audio states the rate it is rendered at — the stream a
+    playback opens, the chosen format for a file. Together they fix how many samples one
     tick spans, so the synthesizer follows both.
 
     Attributes:

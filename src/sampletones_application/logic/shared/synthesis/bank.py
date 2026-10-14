@@ -5,42 +5,33 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.generators.maps import CHANNEL_CLASSES
 from sampletones_core.timing import TickClock
 
-from ..protocol import ChannelGeneratorProtocol
+from .protocol import ChannelGeneratorProtocol
 from .rates import EngineRates
-from .state import ChannelState
 
 
 class ChannelBank:
-    """The channels a song sounds through, and the rates they are built at.
+    """The generators a sound is synthesized through, one per NES channel, and the rates they are built at.
 
-    One generator per NES channel, each holding the timer state that carries a note's phase across
-    ticks and rows, beside the pattern state its channel has reached. Holding the rates here as
-    well is what makes following them a single decision: the generators and the tick clock are
-    built from the same pair, so they agree on how long a tick is.
+    Each generator holds the timer state that carries a note's phase across ticks. Holding the rates here
+    as well is what makes following them a single decision: the generators and the tick clock are built
+    from the same pair, so they agree on how long a tick is. What each channel plays belongs to whoever
+    drives the bank: the song's row walk, or a live note.
     """
 
     def __init__(self, config: Config, rates: EngineRates) -> None:
         self._config = config
         self._rates = rates
         self._clock: TickClock = rates.clock()
-        self._states: Dict[ChannelName, ChannelState] = {
-            channel_name: ChannelState(generator=generator)
-            for channel_name, generator in self._build_generators(rates).items()
-        }
+        self._generators: Dict[ChannelName, ChannelGeneratorProtocol] = self._build_generators(rates)
 
     @property
     def clock(self) -> TickClock:
         """The samples each tick spans at the rates in force."""
         return self._clock
 
-    def state(self, channel_name: ChannelName) -> ChannelState:
-        """What ``channel_name`` carries from row to row."""
-        return self._states[channel_name]
-
-    def reset(self) -> None:
-        """Returns every channel to silence at full volume, as a song starts them."""
-        for state in self._states.values():
-            state.reset()
+    def generator(self, channel_name: ChannelName) -> ChannelGeneratorProtocol:
+        """The generator filling ``channel_name``'s ticks."""
+        return self._generators[channel_name]
 
     def follow(self, rates: EngineRates) -> None:
         """Rebuilds the generators when either rate a tick is sized from changes.
@@ -56,15 +47,14 @@ class ChannelBank:
         The tick clock follows the same pair, since it states how long one of those ticks lasts.
 
         Args:
-            rates: The pair in force for the row about to be rendered.
+            rates: The pair in force for the ticks about to be synthesized.
         """
         if rates == self._rates:
             return
 
         self._rates = rates
         self._clock = rates.clock()
-        for channel_name, generator in self._build_generators(rates).items():
-            self._states[channel_name].generator = generator
+        self._generators = self._build_generators(rates)
 
     def _build_generators(
         self,

@@ -73,8 +73,13 @@ frames its envelopes make of it.
 The sequencer renders those instructions to audio, and the player encodes them into register values. What
 a listener hears and what the console plays are therefore the same walk read two ways, and not two
 implementations of one rule. A voice sounded on its own, such as a preview or an audition at a note a key
-names, takes the same two steps a row takes. It lives in `performance/` too, and not beside whichever
-surface asked.
+names, is a **live note** (`performance/live.py`): it starts each channel at the step the key's pitch asks,
+plays every tick through the step a row's tick takes, and ends as a note-off does. It lives in
+`performance/` too, and not beside whichever surface asked.
+
+The audio side is shared the same way. `sampletones_application/logic/shared/synthesis/` holds the
+generators at the rates in force and the synthesis of one tick, so the song's row synthesizer and a live
+note sound an instruction through one path.
 
 **Equal temperament sits at the bottom.** The MIDI pitch limits and the A4 reference are in
 `sampletones_shared/constants/music.py`, and the pitch-to-frequency conversion they govern is in

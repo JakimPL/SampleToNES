@@ -13,6 +13,7 @@ from sampletones_core.constants.enums import (
 )
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.features import CHANNEL_FEATURE_DEFAULTS
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.instructions import (
     InstructionUnion,
     NoiseInstruction,
@@ -20,6 +21,8 @@ from sampletones_core.instructions import (
     TriangleInstruction,
 )
 from sampletones_core.performance import VoiceReading
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from tests.suite.base import BaseTestSuite
@@ -304,3 +307,32 @@ class TestAHeldDimensionSoundsAtTheChannelsValue(BaseTestSuite):
         voice.sound(rest, values)
 
         assert values[FeatureKey.DUTY_CYCLE] == DUTY_CYCLE
+
+
+class TestHowLongAVoiceSoundsOnItsOwn:
+    """A recording sounds the frames it holds, an instrument releasing at silence stops there, and any other
+    instrument sounds until a row ends it."""
+
+    def test_a_recording_sounds_the_frames_it_holds(self) -> None:
+        reading = _voice(ChannelName.PULSE1, [PulseInstruction(on=True, pitch=60, volume=15, duty_cycle=0)] * 5, ())
+
+        assert reading.length == 5
+
+    def test_an_instrument_releasing_at_silence_sounds_up_to_its_release(self) -> None:
+        reading = VoiceReading.read(_instrument_with_volume(Envelope[int](items=(15, 9, 0))), ChannelName.PULSE1)
+
+        assert reading is not None
+        assert reading.length == 3
+
+    def test_an_instrument_circling_from_a_loop_point_sounds_until_a_row_ends_it(self) -> None:
+        reading = VoiceReading.read(
+            _instrument_with_volume(Envelope[int](items=(15, 9), loop_point=0)),
+            ChannelName.PULSE1,
+        )
+
+        assert reading is not None
+        assert reading.length is None
+
+
+def _instrument_with_volume(volume: Envelope[int]) -> Instrument:
+    return Instrument(name="lead", envelopes=InstrumentEnvelopes(volume=volume))

@@ -5,6 +5,7 @@ from typing import Dict, Optional, Sequence, Tuple
 
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import CHANNEL_TO_EXPORTER_MAP, ExporterTypeUnion
+from sampletones_core.features.envelope import release_length
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
@@ -84,6 +85,19 @@ class VoiceReading:
             channel_name=channel_name,
             sustaining=sustaining,
         )
+
+    @property
+    def length(self) -> Optional[int]:
+        """The ticks the voice sounds for on its own, or ``None`` for one that sounds until a row ends it.
+
+        A recording sounds the frames its conversion found. An instrument whose volume ends at silence
+        releases itself there, and one circling from a loop point, or leaving its volume to the
+        channel, sounds on.
+        """
+        if self.sustaining is None:
+            return len(self.instructions)
+
+        return release_length(self.sustaining.envelopes.volume)
 
     def at(self, tick_index: int) -> Optional[InstructionUnion]:
         """The frame standing at ``tick_index`` of a sounding note.

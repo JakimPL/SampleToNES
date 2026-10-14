@@ -4,7 +4,7 @@ from typing import Final, Optional, Tuple
 import pytest
 from pydantic import ValidationError
 
-from sampletones_core.features.envelope import Envelope
+from sampletones_core.features.envelope import Envelope, release_length
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -119,3 +119,19 @@ class TestADimensionBroughtToALength:
 
         assert resized.items == (15, 12)
         assert resized.loop_point == 1
+
+
+class TestWhereAVolumeReleasesTheNote:
+    """A volume ending at silence releases the note once its items run out, and any other volume never does."""
+
+    def test_a_volume_ending_at_silence_releases_at_its_length(self) -> None:
+        assert release_length(Envelope[int](items=(15, 9, 3, 0))) == 4
+
+    def test_a_volume_ending_above_silence_never_releases(self) -> None:
+        assert release_length(Envelope[int](items=(15, 9, 3))) is None
+
+    def test_a_volume_circling_back_through_silence_never_releases(self) -> None:
+        assert release_length(Envelope[int](items=(15, 0), loop_point=0)) is None
+
+    def test_a_volume_left_to_the_channel_never_releases(self) -> None:
+        assert release_length(Envelope[int]()) is None
