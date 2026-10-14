@@ -12,6 +12,11 @@ from tests.suite.audio.ramp import ramp, ramp_indices
 from tests.suite.audio.timeline import Closed, ViolationKind
 
 BLOCK: Final[int] = 32
+CLOSE_FAILED: Final[str] = "Close failed"
+
+
+def _failing_close(_call: StreamCall) -> None:
+    raise OSError(CLOSE_FAILED)
 
 
 class TestStreamUse:
@@ -97,3 +102,15 @@ class TestStreamHooks:
         stream.close()
 
         assert open_when_hooked == [True]
+
+    def test_a_close_that_fails_lets_the_device_go(self, system: FakeAudioSystem) -> None:
+        system.hooks.before_close = _failing_close
+        stream = system.driver().open_output(device_index=0, sample_rate=44100, frames_per_buffer=BLOCK)
+
+        with pytest.raises(OSError, match=CLOSE_FAILED):
+            stream.close()
+
+        system.hooks.before_close = None
+        system.driver().open_output(device_index=0, sample_rate=44100, frames_per_buffer=BLOCK).close()
+        assert not system.timeline.open_streams()
+        assert not system.timeline.violations()

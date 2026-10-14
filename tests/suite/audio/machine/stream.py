@@ -17,7 +17,8 @@ class FakeOutputStream:
     """A blocking stream on the fake device, paced by the machine's clock and recorded on its timeline.
 
     A write counts as in progress from the moment it begins, its hook included, so a close another thread
-    makes meanwhile is recorded as one.
+    makes meanwhile is recorded as one. A close lets the device go even where it fails, as a device frees a
+    stream it reports an error closing.
     """
 
     def __init__(
@@ -97,10 +98,12 @@ class FakeOutputStream:
         if writing is not None and writing != thread:
             self._violate(ViolationKind.CLOSE_DURING_WRITE, thread)
 
-        self._hooks.closing(StreamCall(stream=self.stream, writes=writes, frames=0))
-        discarded = self._pacing.discard(self.stream)
-        self._on_closed(self.stream)
-        self._timeline.record(Closed(stream=self.stream, discarded=discarded, thread=thread))
+        try:
+            self._hooks.closing(StreamCall(stream=self.stream, writes=writes, frames=0))
+        finally:
+            discarded = self._pacing.discard(self.stream)
+            self._on_closed(self.stream)
+            self._timeline.record(Closed(stream=self.stream, discarded=discarded, thread=thread))
 
     def _violate(self, kind: ViolationKind, thread: str) -> None:
         self._timeline.record(Violation(kind=kind, stream=self.stream, thread=thread))

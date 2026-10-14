@@ -1,4 +1,4 @@
-from .builders import machine, stepped_machine, ticking_machine
+from .builders import machine, realtime_machine, stepped_machine, ticking_machine
 from .calls import OpenCall, StreamCall
 from .catalog import HEADPHONES, MICROPHONE, SPEAKERS
 from .device import FakeDevice
@@ -24,6 +24,7 @@ __all__ = [
     "OpenCall",
     "StreamCall",
     "machine",
+    "realtime_machine",
     "stepped_machine",
     "ticking_machine",
 ]

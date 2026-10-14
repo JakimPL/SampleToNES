@@ -44,6 +44,19 @@ A source is **engaged** while it owns the device output, whether it is sounding 
 
 Engagement is the ownership test of principle 2 in practice, and it is the single fact the transport and the toolbar consult.
 
+## The output contract
+
+Every sound on the device answers to the rules below, whatever its kind and whoever started it. A **playback** is one sound, from the moment it asks for the output until it ends. Its **owner** is what started it. A source owns its intentional playback, and one preview owner plays and owns every preview. Each playback case names the rule it holds.
+
+1. **A claim ranked below the holder is declined, and any other claim takes the output.** Claims made at the same moment leave one holder.
+2. **The device holds at most one open stream.** A stream opens once the one before it has closed.
+3. **Every playback sends exactly one end report, and the report names its cause:** the sound finished, its owner stopped it, another sound took the output, or it failed. Once the report lands, the output is free of the playback, and the device has already received its last sample.
+4. **Positions are reported per playback, in order, for audio the device has received.** They arrive before the end report. A position read after a seek reads the seek. A playback that has ended refuses a seek, so its owner starts a new one.
+5. **A sound plays at its own pitch and length on a device of any rate.**
+6. **Stop silences everything, and the call returns at once.** A natural end plays the tail out, and a stop or a takeover cuts it.
+7. **A failure is told once,** to its owner's listener.
+8. **After teardown, every audio thread has ended and every stream is closed.** The teardown reports a thread that outlives its deadline, and a writer among them keeps the backend alive.
+
 ## The target
 
 The transport acts on one **target**, resolved in two steps. The active tab's own source is the target when that tab has one to play: a loaded reconstruction, a loaded instruction or the song of an open project. Otherwise the target is whatever source is engaged. The Main tab plays only previews, so its target is always the source engaged elsewhere, if any. The transport thus controls the tab you are on when it has something to play, and otherwise controls what is already sounding.

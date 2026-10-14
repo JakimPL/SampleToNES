@@ -7,6 +7,7 @@ from .device import FakeDevice
 from .system import FakeAudioSystem
 
 TICKER_SPEED: Final[float] = 50.0
+REAL_TIME: Final[float] = 1.0
 TICKER_BUFFER_SECONDS: Final[float] = 0.05
 
 
@@ -21,6 +22,15 @@ def ticking_machine(devices: Sequence[FakeDevice], *, default_device: Optional[i
         devices,
         default_device=default_device,
         pacing=TickerPacing(speed=TICKER_SPEED, buffer_seconds=TICKER_BUFFER_SECONDS),
+    )
+
+
+def realtime_machine(devices: Sequence[FakeDevice], *, default_device: Optional[int]) -> FakeAudioSystem:
+    """A fake machine whose device plays at its own rate, for a case acting on a sound while it plays."""
+    return machine(
+        devices,
+        default_device=default_device,
+        pacing=TickerPacing(speed=REAL_TIME, buffer_seconds=TICKER_BUFFER_SECONDS),
     )
 
 

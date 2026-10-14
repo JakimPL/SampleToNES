@@ -140,6 +140,31 @@ currently out of line. An entry leaves when the code meets the contract again.
 * Another voice inside a harmonic's bin pulls the pitch reading. A partial of another voice within half a
   semitone of one of a note's harmonics shares that harmonic's bin and adds to its reading: a 65 Hz bass
   under a steady 330 Hz pulse reads about 4 cents off, and within a cent alone.
+* Each playback entry below breaks a rule of [the output contract](application/playback.md#the-output-contract), and
+  a strict expected failure in the playback cases holds it until the rework closes it.
+  * Every buffer start and stop sends the device's final zero to whichever player asked for positions last. A
+    player therefore hears an end as it starts, a player another one takes over hears nothing, and a stop sends a
+    second end (rule 3).
+  * An end report names no cause, so its owner reads a finished, stopped, taken and failed sound alike (rule 3).
+  * A voice or file preview hears nothing of its end, which is why the menu reads the device every frame
+    (rule 3).
+  * A song its owner or the transport stops sends no end report (rule 3).
+  * A player's stop silences whatever buffer the device plays, a preview included (rule 3).
+  * A takeover from a writer that outlived the stop's wait opens a second stream while the first is still open,
+    and a device holding one stream refuses it (rule 2).
+  * A player's position counts the block still being written, so its mark runs a block ahead of what the device
+    received (rule 4).
+  * A click on the waveform while the sound winds down moves the playback that is ending, so the click plays
+    nothing (rule 4).
+  * A buffer plays at the device's rate, whatever rate it was made at: a 44.1 kHz reconstruction on a 48 kHz
+    device plays about 9% fast and sharp (rule 5).
+  * Stop waits on the render thread for each audio thread to end, up to that thread's stop deadline (rule 6).
+  * A stop or a takeover plays the tail out (rule 6).
+  * A song that fails while paused and is then stopped never tells the failure (rule 7).
+  * A file preview that fails to read its file raises past its listener (rule 7).
+  * Two claims made at the same moment can leave the output with no holder: a buffer's play and the song's
+    claim stop each other, and a claim that reaches the song while it starts its threads fails to join one
+    (rule 1). No device call lies inside the race, so the seeded storm is the case that holds it.
 * The Sample column shows no sample on a frame's first rows, since its reading starts over at each frame. It
   offers no transpose or volume there, while playback applies them to the sample the previous frame left
   sounding. The rows the tracker shows beside a frame read the same way, each from its own frame's start.
