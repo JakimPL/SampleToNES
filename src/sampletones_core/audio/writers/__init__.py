@@ -14,9 +14,18 @@ from .format import (
     AudioFormat,
 )
 from .protocol import AudioWriter
-from .selection import available_audio_formats, available_depths, open_audio_writer
+from .selection import (
+    available_audio_formats,
+    available_depths,
+    open_audio_writer,
+)
 from .soundfile import SoundFileAudioWriter
-from .spec import AudioOutputSpec, AudioOutputSpecBase, Mp3OutputSpec, WaveOutputSpec
+from .spec import (
+    AudioOutputSpec,
+    AudioOutputSpecBase,
+    Mp3OutputSpec,
+    WaveOutputSpec,
+)
 
 __all__ = [
     "AUDIO_DEPTHS",

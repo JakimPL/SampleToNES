@@ -274,7 +274,7 @@ class TestLeaving:
                 pass
 
         destroy_context.assert_called_once_with()
-        assert application.audio_device_manager._pyaudio is None
+        assert application.audio_device_manager._driver is None
         assert profile_in(tmp_path).state.exists()
 
     def test_a_failing_step_keeps_the_failure_that_ended_the_run(self, tmp_path: Path) -> None:

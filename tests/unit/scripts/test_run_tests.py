@@ -54,6 +54,28 @@ class TestPlannedPasses:
         assert "-n" not in command
 
 
+class TestCaseLimits(BaseTestSuite):
+    """The covered suite and the doctests hold each case to the configured limit; the passes with a deadline of their own lift it."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        name: str
+        lifted: bool
+
+    test_cases = (
+        TestCase(name="suite", lifted=False, label="the_suite_keeps_the_limit"),
+        TestCase(name="doctests", lifted=False, label="the_doctests_keep_the_limit"),
+        TestCase(name="benchmarks", lifted=True, label="the_benchmarks_lift_it"),
+        TestCase(name="screens", lifted=True, label="the_screen_scenarios_lift_it"),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_pass_keeps_or_lifts_the_case_limit(self, test_case: TestCase) -> None:
+        command = run_tests.planned_passes(run_tests.DEFAULT_WORKERS, run_tests.SCREEN_WORKERS)[test_case.name].command
+
+        assert (run_tests.OWN_DEADLINE in command) is test_case.lifted
+
+
 class TestRunEnvironment:
     def test_a_shard_reaches_the_screen_scenarios_plugin(self) -> None:
         environment = run_tests.run_environment({"DISPLAY": ":1"}, shard="2/3")

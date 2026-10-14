@@ -1,12 +1,9 @@
 import contextlib
-import os
-import sys
 import threading
 from pathlib import Path
 from typing import Any, Callable, Dict, Final, Generator, List, Optional, cast
 
 import numpy as np
-import pyaudio
 
 from sampletones_core.constants.audio import (
     DEFAULT_BUFFER_SIZE,
@@ -19,48 +16,22 @@ from sampletones_shared.exceptions import NoOutputDeviceError, PlaybackError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
-from sampletones_shared.utils.system.locales import to_utf8
 
 from .device import AudioDevice, CurrentDevice
+from .driver import (
+    AudioDriverFactory,
+    AudioDriverProtocol,
+    OutputStreamProtocol,
+)
 from .io import load_audio
 from .lease import OutputLease
 from .stream import close_stream, write_to_stream
 from .validation import validate_buffer_size, validate_sample_rate
 
-CHANNELS = 1
-FORMAT = pyaudio.paFloat32
 STOP_JOIN_SECONDS: Final[float] = 1.0
 LET_GO_JOIN_SECONDS: Final[float] = 2.0
 
 OnPlaybackErrorCallback = Callable[[PlaybackError], None]
-
-
-@contextlib.contextmanager
-def _capture_stderr_to_logger() -> Generator[None, None, None]:
-    stderr_fd = sys.stderr.fileno()
-    original_stderr_fd = os.dup(stderr_fd)
-
-    read_pipe, write_pipe = os.pipe()
-    os.dup2(write_pipe, stderr_fd)
-
-    try:
-        yield
-    finally:
-        os.dup2(original_stderr_fd, stderr_fd)
-        os.close(original_stderr_fd)
-        os.close(write_pipe)
-
-        os.set_blocking(read_pipe, False)
-        try:
-            captured = os.read(read_pipe, 65536).decode("utf-8", errors="replace")
-        except BlockingIOError:
-            captured = ""
-        os.close(read_pipe)
-
-        for line in captured.strip().splitlines():
-            if line.strip():
-                line = line.replace("ALSA lib ", "")
-                logger.warning(f"ALSA: {line.strip()}")
 
 
 class AudioDeviceManager(CallbackMixin):
@@ -69,19 +40,24 @@ class AudioDeviceManager(CallbackMixin):
 
     This class handles enumeration and configuration of audio output devices,
     manages threaded audio playback with pause/resume capabilities, and provides
-    position callbacks for playback tracking. Uses PyAudio for low-level audio I/O.
+    position callbacks for playback tracking. The audio backend is reached through a driver,
+    which the manager creates from ``driver_factory`` each time it starts the backend afresh.
 
     The manager uses a background thread for audio playback.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, driver_factory: AudioDriverFactory) -> None:
         """
         Initialize the audio device manager.
 
         Enumerates available audio devices, initializes the default output device,
         and sets up threading primitives for playback management.
+
+        Args:
+            driver_factory: Creates the driver the backend is reached through.
         """
-        self._pyaudio: Optional[pyaudio.PyAudio] = None
+        self._driver_factory = driver_factory
+        self._driver: Optional[AudioDriverProtocol] = None
         self._devices: Dict[int, AudioDevice] = {}
 
         self._device_index: Optional[int] = None
@@ -114,10 +90,10 @@ class AudioDeviceManager(CallbackMixin):
 
     def reinitialize(self) -> None:
         """
-        Reinitialize the PyAudio instance.
+        Reinitialize the audio backend.
 
-        Creates a new PyAudio instance if none exists, or terminates the existing
-        instance and creates a new one. Active playback is stopped and every lease is
+        Creates a driver if none exists, or terminates the existing one and creates
+        the next. Active playback is stopped and every lease is
         released first, since terminating closes any stream still open while its holder
         writes to it. A worker a stop let go of is waited for too, since it may still be
         opening its stream. Every claim on the output is declined while the instance is
@@ -128,62 +104,71 @@ class AudioDeviceManager(CallbackMixin):
                 it, or a worker a stop let go of outlives the wait, which leaves the running
                 instance in place.
         """
-        with _capture_stderr_to_logger():
-            if self._pyaudio is None:
-                self._pyaudio = pyaudio.PyAudio()
-                with self._lock:
-                    self._output_closed = False
+        if self._driver is None:
+            self._driver = self._driver_factory()
+            with self._lock:
+                self._output_closed = False
 
-                logger.debug("AudioDeviceManager initialized")
-                return
+            logger.debug("AudioDeviceManager initialized")
+            return
 
-            with self._output_held_closed():
-                self.stop()
-                if not self._release_every_lease():
-                    raise PlaybackError("An output stream is still held; the audio backend stays as it is")
+        with self._output_held_closed():
+            self.stop()
+            if not self._release_every_lease():
+                raise PlaybackError("An output stream is still held; the audio backend stays as it is")
 
-                if not self._join_let_go_workers():
-                    raise PlaybackError("A playback worker still reaches into the audio backend; it stays as it is")
+            if not self._join_let_go_workers():
+                raise PlaybackError("A playback worker still reaches into the audio backend; it stays as it is")
 
-                self._pyaudio.terminate()
-                self._pyaudio = pyaudio.PyAudio()
-                logger.debug("AudioDeviceManager reinitialized")
+            self._driver.terminate()
+            self._driver = self._driver_factory()
+            logger.debug("AudioDeviceManager reinitialized")
 
     def refresh_devices(self) -> None:
         """
         Enumerate and refresh the list of available audio output devices.
 
-        Queries PyAudio for all available devices, filters for output-capable devices,
+        Queries the driver for all available devices, filters for output-capable devices,
         and determines supported sample rates for each device. Only devices with
         supported sample rates are kept.
         """
         self.reinitialize()
-        assert self._pyaudio is not None, "PyAudio instance is not initialized"
+        driver = self._require_driver()
 
         self._devices = {}
-        for i in range(self._pyaudio.get_device_count()):
-            info = self._pyaudio.get_device_info_by_index(i)
-            if int(info["maxOutputChannels"]) == 0:
+        for index in range(driver.device_count()):
+            device = driver.device(index)
+            if not device.plays_output:
                 continue
 
-            device_name = to_utf8(str(info["name"]))
-            default_sample_rate: int = int(info["defaultSampleRate"])
-            if default_sample_rate not in SAMPLE_RATES:
-                logger.warning(f"Device '{device_name}' has an uncommon default sample rate {default_sample_rate}")
+            if device.default_sample_rate not in SAMPLE_RATES:
+                logger.warning(
+                    f"Device '{device.name}' has an uncommon default sample rate {device.default_sample_rate}"
+                )
 
-            supported_rates = self._get_supported_sample_rates(i, default_sample_rate)
+            supported_rates = self._get_supported_sample_rates(index, device.default_sample_rate)
             if not supported_rates:
-                logger.warning(f"Device '{device_name}' has no supported sample rates, skipping")
+                logger.warning(f"Device '{device.name}' has no supported sample rates, skipping")
                 continue
 
-            host_api = int(info["hostApi"])
-            self._devices[i] = AudioDevice(
-                index=i,
-                name=device_name,
-                default_sample_rate=cast(SampleRate, default_sample_rate),
+            self._devices[index] = AudioDevice(
+                index=index,
+                name=device.name,
+                default_sample_rate=cast(SampleRate, device.default_sample_rate),
                 supported_sample_rates=supported_rates,
-                host_api=host_api,
+                host_api=device.host_api,
             )
+
+    def _require_driver(self) -> AudioDriverProtocol:
+        """The driver in force, which every call reaching the backend goes through.
+
+        Raises:
+            PlaybackError: If the backend was terminated and not started again.
+        """
+        if self._driver is None:
+            raise PlaybackError("The audio backend is not initialized; call reinitialize() first")
+
+        return self._driver
 
     def _is_sample_rate_supported(
         self,
@@ -200,17 +185,7 @@ class AudioDeviceManager(CallbackMixin):
         Returns:
             True if the device supports the sample rate, False otherwise.
         """
-        assert self._pyaudio is not None, "PyAudio instance is not initialized"
-        try:
-            self._pyaudio.is_format_supported(
-                rate=sample_rate,
-                output_device=device_index,
-                output_channels=CHANNELS,
-                output_format=FORMAT,
-            )
-            return True
-        except ValueError:
-            return False
+        return self._require_driver().supports(device_index, sample_rate)
 
     def _get_supported_sample_rates(
         self,
@@ -242,20 +217,19 @@ class AudioDeviceManager(CallbackMixin):
         """
         Initialize the default audio output device.
 
-        Queries PyAudio for the system's default output device and configures
+        Queries the driver for the system's default output device and configures
         the manager to use it with its default sample rate. If no default device
         is found, logs a warning.
         """
-        assert self._pyaudio is not None, "PyAudio instance is not initialized"
-        try:
-            info = self._pyaudio.get_default_output_device_info()
-            device_index = int(info["index"])
-            if device_index in self._devices:
-                device = self._devices[device_index]
-                self._device_index = device_index
-                self._sample_rate = device.default_sample_rate
-        except OSError:
+        device_index = self._require_driver().default_output_index()
+        if device_index is None:
             logger.warning("No default output device found")
+            return
+
+        if device_index in self._devices:
+            device = self._devices[device_index]
+            self._device_index = device_index
+            self._sample_rate = device.default_sample_rate
 
     @property
     def device_index(self) -> int:
@@ -647,7 +621,11 @@ class AudioDeviceManager(CallbackMixin):
         self._resume_event.set()
         self._playback_thread = threading.Thread(
             target=self._playback_worker,
-            kwargs={"output": output, "update": update, "generation": generation},
+            kwargs={
+                "output": output,
+                "update": update,
+                "generation": generation,
+            },
             daemon=True,
             name="AudioPlaybackWorker",
         )
@@ -686,7 +664,7 @@ class AudioDeviceManager(CallbackMixin):
 
     def _playback_loop(
         self,
-        stream: pyaudio.Stream,
+        stream: OutputStreamProtocol,
         update: bool,
         generation: int,
     ) -> None:
@@ -698,7 +676,7 @@ class AudioDeviceManager(CallbackMixin):
         playback has taken the generation over.
 
         Args:
-            stream: PyAudio stream to write audio data to.
+            stream: The stream to write audio data to.
             update: If True, invoke position callback after each chunk.
             generation: The playback this loop plays.
         """
@@ -774,7 +752,7 @@ class AudioDeviceManager(CallbackMixin):
             stream = self._open_stream(
                 device_index=output.device_index,
                 sample_rate=output.sample_rate,
-                frames_per_buffer=pyaudio.paFramesPerBufferUnspecified,
+                frames_per_buffer=None,
             )
             try:
                 if self._is_current(generation):
@@ -992,7 +970,7 @@ class AudioDeviceManager(CallbackMixin):
         *,
         sample_rate: int,
         buffer_size: int,
-    ) -> Optional[pyaudio.Stream]:
+    ) -> Optional[OutputStreamProtocol]:
         """Open a blocking output stream under ``lease`` for the holder to write from its own thread.
 
         The holder hands the lease back through :meth:`hand_back` once its writing finishes, which
@@ -1008,15 +986,13 @@ class AudioDeviceManager(CallbackMixin):
             buffer_size: Frames per buffer (controls write granularity).
 
         Returns:
-            Optional[pyaudio.Stream]: The stream, or ``None`` where the lease no longer holds the output.
+            Optional[OutputStreamProtocol]: The stream, or ``None`` where the lease no longer holds the output.
 
         Raises:
-            PlaybackError: If PyAudio is not initialized, or the device refuses to open the stream.
+            PlaybackError: If the backend is not initialized, or the device refuses to open the stream.
             NoOutputDeviceError: If no output device is in force.
         """
-        if self._pyaudio is None:
-            raise PlaybackError("PyAudio not initialized; call reinitialize() first")
-
+        self._require_driver()
         output = self.require_output()
         with self._lock:
             if not self._holds(lease):
@@ -1051,24 +1027,21 @@ class AudioDeviceManager(CallbackMixin):
         *,
         device_index: int,
         sample_rate: int,
-        frames_per_buffer: int,
-    ) -> pyaudio.Stream:
+        frames_per_buffer: Optional[int],
+    ) -> OutputStreamProtocol:
         """Opens an output stream on the device, naming a refusal the way every playback reports it.
 
         Both kinds of playback open their stream here, the one this manager plays and the one it hands
         out, so a reader told of a refused stream reads the same words whichever source asked.
 
         Raises:
-            PlaybackError: If the device refuses to open the stream.
+            PlaybackError: If the backend is not initialized, or the device refuses to open the stream.
         """
-        assert self._pyaudio is not None, "PyAudio instance is not initialized"
+        driver = self._require_driver()
         try:
-            return self._pyaudio.open(
-                format=FORMAT,
-                channels=CHANNELS,
-                rate=sample_rate,
-                output=True,
-                output_device_index=device_index,
+            return driver.open_output(
+                device_index=device_index,
+                sample_rate=sample_rate,
                 frames_per_buffer=frames_per_buffer,
             )
         except OSError as exception:
@@ -1096,13 +1069,13 @@ class AudioDeviceManager(CallbackMixin):
         Clean up and terminate the audio device manager.
 
         Declines every later claim on the output, stops any active playback, releases every
-        lease, waits for the workers a stop let go of, and terminates the PyAudio instance. A
+        lease, waits for the workers a stop let go of, and terminates the backend. A
         stream that survives its release leaves the instance running, since terminating closes
         any open stream and the owning thread would go on writing to freed memory. A worker that
         outlives the wait leaves it running too, since it may still be opening its stream. Should
         be called once you are finished with the manager.
         """
-        if self._pyaudio is None:
+        if self._driver is None:
             return
 
         with self._lock:
@@ -1110,15 +1083,15 @@ class AudioDeviceManager(CallbackMixin):
 
         self.stop()
         if not self._release_every_lease():
-            logger.error("AudioDeviceManager: an output stream is still held; PyAudio left running")
+            logger.error("AudioDeviceManager: an output stream is still held; the audio backend left running")
             return
 
         if not self._join_let_go_workers():
-            logger.error("AudioDeviceManager: a playback worker is still running; PyAudio left running")
+            logger.error("AudioDeviceManager: a playback worker is still running; the audio backend left running")
             return
 
-        self._pyaudio.terminate()
-        self._pyaudio = None
+        self._driver.terminate()
+        self._driver = None
 
     @contextlib.contextmanager
     def _output_held_closed(self) -> Generator[None, None, None]:

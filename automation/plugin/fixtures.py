@@ -89,7 +89,11 @@ def screen_boundaries_fixture(
     errors = ErrorRecords()
     errors.install()
     artifacts = Path(os.environ[ARTIFACTS_VARIABLE])
-    file_manager = FileManagerStandIn(artifacts / STAND_IN_PROGRAMS, artifacts / REVEALS_FILE, artifacts / OPENS_FILE)
+    file_manager = FileManagerStandIn(
+        artifacts / STAND_IN_PROGRAMS,
+        artifacts / REVEALS_FILE,
+        artifacts / OPENS_FILE,
+    )
     file_manager.install(monkeypatch)
     spawns = SpawnGuard()
     spawns.install()

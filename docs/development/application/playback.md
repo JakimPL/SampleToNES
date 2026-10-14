@@ -149,6 +149,7 @@ The manager's own playback is held to the same rule. A stop waits a while for it
 | Concern | Owner |
 |---------|-------|
 | The device, its stream, and arbitration between requests | `AudioDeviceManager` (`sampletones_core/audio/`) |
+| The audio backend: the devices it lists and the streams it opens | `AudioDriverProtocol` and `PyAudioDriver` (`sampletones_core/audio/driver/`) |
 | A streaming source's claim on the output, and the stream opened under it | `OutputLease` (`sampletones_core/audio/lease.py`) |
 | The ranking that settles a contest for the device | `PlaybackPriority` (`logic/shared/`) |
 | The verbs, target resolution, and the registry of sources | `coordinators/playback/` |

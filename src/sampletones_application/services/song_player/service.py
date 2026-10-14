@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Callable, Deque, Optional, Tuple
 
 import numpy as np
-import pyaudio
 
 from sampletones_application.services.base import ServiceBase
 from sampletones_application.services.song_player.constants import (
@@ -20,6 +19,7 @@ from sampletones_application.services.song_player.result import (
 )
 from sampletones_application.services.synthesis.protocol import RowSynthesizerProtocol
 from sampletones_core.audio import AudioDeviceManager, clip_audio_inplace
+from sampletones_core.audio.driver import OutputStreamProtocol
 from sampletones_core.audio.lease import OutputLease
 from sampletones_core.audio.stream import write_to_stream
 from sampletones_core.constants.audio import DEFAULT_BUFFER_SIZE
@@ -272,7 +272,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         if ended or self._taken.is_set():
             self._emit_terminal()
 
-    def _play_through(self, stream: pyaudio.Stream) -> bool:
+    def _play_through(self, stream: OutputStreamProtocol) -> bool:
         """Drains the song to ``stream``, and then hands the stream back to the device however the drain ended.
 
         Returns:
@@ -283,7 +283,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         finally:
             self._hand_back()
 
-    def _open_stream(self) -> Optional[pyaudio.Stream]:
+    def _open_stream(self) -> Optional[OutputStreamProtocol]:
         """Opens the song's stream under its lease, or answers ``None`` where another sound took the lease."""
         assert self._lease is not None, "the song writes only under the lease its start claimed"
         sample_rate = self._audio_device_manager.sample_rate
@@ -322,7 +322,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         self._hand_back()
         self._holding_output.clear()
 
-    def _drain_to_stream(self, stream: pyaudio.Stream) -> bool:
+    def _drain_to_stream(self, stream: OutputStreamProtocol) -> bool:
         """Hands the buffered rows to the device until the song ends or a stop comes.
 
         Returns:
@@ -344,7 +344,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
 
         return False
 
-    def _play_row(self, stream: pyaudio.Stream, row: _RenderedRow) -> None:
+    def _play_row(self, stream: OutputStreamProtocol, row: _RenderedRow) -> None:
         """Hands one row to the device, reporting its position once the whole row is written.
 
         A row cut short by a stop reports no position, so the playhead reflects the audio the
@@ -355,7 +355,7 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
 
         self._emit(SongPositionUpdate(position=row.position))
 
-    def _write_chunk(self, stream: pyaudio.Stream, chunk: np.ndarray) -> bool:
+    def _write_chunk(self, stream: OutputStreamProtocol, chunk: np.ndarray) -> bool:
         """Writes one row to the device in buffer-sized blocks; reports whether it completed.
 
         Each block is a separate blocking write, so a stop reached mid-row is honored within

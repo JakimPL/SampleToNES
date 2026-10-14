@@ -61,7 +61,13 @@ def write_flac(path: Pathlike, sample_rate: int, audio: np.ndarray) -> None:
     """
     validate_sample_rate(sample_rate)
     validate_audio_array(audio, allowed_dims=(1, 2))
-    sf_write(path, clip_audio(audio), sample_rate, subtype=FLAC_SUBTYPE, format=FLAC_FORMAT)
+    sf_write(
+        path,
+        clip_audio(audio),
+        sample_rate,
+        subtype=FLAC_SUBTYPE,
+        format=FLAC_FORMAT,
+    )
 
 
 def read_wave(path: Pathlike) -> Tuple[np.ndarray, int]:

@@ -22,6 +22,8 @@ Playback goes through PortAudio, reached with the `pyaudio` package. PyPI has `p
 
 On macOS the compile architecture is pinned to the machine's own (`ARCHFLAGS`). Homebrew's PortAudio is native to the machine, while the python.org interpreter is universal2, and pinning makes the two agree. `make setup` sets it, and the CI workflows take it from `scripts/build_environment.py`.
 
+The device manager reaches PortAudio through one driver, `PyAudioDriver` (`sampletones_core/audio/driver/portaudio/`), the only application module that imports `pyaudio`. The behavior PortAudio shows on one platform and not another is named there. The test suite stands a fake machine (`tests/suite/audio/`) where the driver stands, so playback is tested on every platform the suite runs on, with no sound card.
+
 ## Audio rendering
 
 Audio files are written with libsndfile, reached with the `soundfile` package. Its wheels carry a prebuilt libsndfile for every supported platform, so the encoders come with the package and need nothing installed alongside them.

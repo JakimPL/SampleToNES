@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-import pyaudio
-
 from sampletones_shared.types.callback import VoidCallback
+
+from .driver import OutputStreamProtocol
 
 
 @dataclass(eq=False)
@@ -24,4 +24,4 @@ class OutputLease:
 
     priority: int
     release: VoidCallback
-    stream: Optional[pyaudio.Stream] = field(default=None)
+    stream: Optional[OutputStreamProtocol] = field(default=None)

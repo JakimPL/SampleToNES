@@ -1,6 +1,15 @@
 from .device import AudioDevice, CurrentDevice
-from .io import UNIT_SCALE, load_audio, mix_scale, read_stems, read_wave, scale_stems, write_flac, write_wave
-from .manager import CHANNELS, FORMAT, AudioDeviceManager
+from .io import (
+    UNIT_SCALE,
+    load_audio,
+    mix_scale,
+    read_stems,
+    read_wave,
+    scale_stems,
+    write_flac,
+    write_wave,
+)
+from .manager import AudioDeviceManager
 from .mixing import align, common_length, mix
 from .processing import (
     active_frame_level,
@@ -22,8 +31,6 @@ from .validation import (
 )
 
 __all__ = [
-    "CHANNELS",
-    "FORMAT",
     "UNIT_SCALE",
     "AudioDevice",
     "AudioDeviceManager",

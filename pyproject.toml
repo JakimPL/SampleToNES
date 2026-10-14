@@ -89,6 +89,7 @@ dev = [
     "pylint-pydantic==0.4.1",
     "pytest==9.1.1",
     "pytest-cov==7.1.0",
+    "pytest-timeout==2.4.0",
     "pytest-xdist==3.8.0",
     "python-xlib==0.33",
     "pyvirtualdisplay==3.0",
@@ -147,6 +148,8 @@ known_first_party = [
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
 pythonpath = [".", "scripts"]
+timeout = 300
+timeout_method = "thread"
 
 [tool.coverage.run]
 core = "sysmon"
