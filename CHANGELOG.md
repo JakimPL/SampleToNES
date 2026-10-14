@@ -1,5 +1,7 @@
 # SampleToNES
 
+## v0.3.3
+
 ## v0.3.2 [2026-10-13]
 
 * Added NSF export.
