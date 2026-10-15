@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
+from sampletones_application.logic.shared.live import Keyboard, LiveKey
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio.io import write_wave
@@ -30,6 +31,7 @@ WAIT_SECONDS: Final[float] = 10.0
 POLL_SECONDS: Final[float] = 0.002
 DRAIN_FRAMES: Final[int] = 3
 AUDITION_SEMITONE: Final[int] = 0
+PLAYED_KEY: Final[int] = 60
 FILE_STEM: Final[str] = "preview"
 FILE_SUFFIX: Final[str] = ".wav"
 SHORT_DEADLINE_SECONDS: Final[float] = 0.05
@@ -39,8 +41,8 @@ class PlaybackRig:
     """The application's playback, driven the way a reader drives it, on a fake machine a case controls.
 
     The verbs are the gestures a reader makes on the render thread: playing, seeking, pausing and stopping a
-    source, previewing a file or a voice, auditioning an instrument, the transport's Stop, a device change,
-    a buffer size, a refresh, and the teardown. The readouts are what each owner heard once a drain delivered
+    source, previewing a file or a voice, auditioning an instrument, pressing and lifting a key played live,
+    the transport's Stop, a device change, a buffer size, a refresh, and the teardown. The readouts are what each owner heard once a drain delivered
     it, what the device received, and what the render thread waited for.
 
     A case reads outcomes alone. ``wait_for`` drains the queue until a condition holds and fails with the
@@ -103,8 +105,33 @@ class PlaybackRig:
         """Brings the tab whose source is ``sound`` to the front, or a tab with no source of its own."""
         self.stack.active = sound
 
+    def hold_keys(self, held: bool) -> None:
+        """Whether a key :meth:`play` presses stays down until the case lifts it, or is tapped and let go at once."""
+        self.stack.keys_held = held
+
+    def press(self, number: int, *, keyboard: Keyboard) -> None:
+        """Presses a key played live, as its keyboard hands it over."""
+        with self._gesture():
+            self.stack.keys.key_down(self.stack.strike(keyboard, number))
+
+    def lift(self, number: int, *, keyboard: Keyboard) -> None:
+        with self._gesture():
+            self.stack.keys.key_up(LiveKey(keyboard=keyboard, number=number))
+
+    def pedal(self, down: bool) -> None:
+        with self._gesture():
+            self.stack.keys.pedal(down)
+
     def play(self, sound: Sound) -> None:
-        """Plays a sound on the reader's request: a source from its start, a voice or a file at once, an audition key."""
+        """Plays a sound on the reader's request: a source from its start, a voice or a file at once, an audition key,
+        a key played live, held or tapped as :meth:`hold_keys` says."""
+        if sound is Sound.KEYS:
+            self.press(PLAYED_KEY, keyboard=Keyboard.MIDI)
+            if not self.stack.keys_held:
+                self.lift(PLAYED_KEY, keyboard=Keyboard.MIDI)
+
+            return
+
         with self._gesture():
             match sound:
                 case Sound.RECONSTRUCTION | Sound.INSTRUCTION | Sound.SONG:

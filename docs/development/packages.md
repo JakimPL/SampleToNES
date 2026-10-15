@@ -79,7 +79,7 @@ plays every tick through the step a row's tick takes, and ends as a note-off doe
 
 The audio side is shared the same way. `sampletones_application/logic/shared/synthesis/` holds the
 generators at the rates in force and the synthesis of one tick, so the song's row synthesizer and a live
-note sound an instruction through one path.
+note sound an instruction through one path. `logic/shared/live/` plays keys live through that path.
 
 **Equal temperament sits at the bottom.** The MIDI pitch limits and the A4 reference are in
 `sampletones_shared/constants/music.py`, and the pitch-to-frequency conversion they govern is in

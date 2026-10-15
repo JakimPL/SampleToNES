@@ -14,7 +14,7 @@ from tests.integration.sampletones_application.playback.material import (
     start,
     start_sounding,
 )
-from tests.integration.sampletones_application.playback.rig import BUFFERS, PlaybackRig, Sound
+from tests.integration.sampletones_application.playback.rig import BUFFERS, EndCause, PlaybackRig, Sound
 from tests.suite.base import BaseTestSuite
 
 STORM: Final[int] = 20
@@ -52,10 +52,13 @@ class TestStorms(BaseTestSuite):
 
 
 class TestOverItself(BaseTestSuite):
-    """Rule 2: a sound played again while it plays starts over on a stream opened once the first has closed."""
+    """Rule 2: a sound played again while it plays starts over on a stream opened once the first has closed.
+
+    A key played live while keys sound joins the playback holding the output, so it plays on that stream.
+    """
 
     TestCase = SoundCase
-    test_cases = tuple(case(sound) for sound in Sound)
+    test_cases = tuple(case(sound) for sound in Sound if sound is not Sound.KEYS)
 
     @REALTIME
     @each(test_cases)
@@ -70,6 +73,17 @@ class TestOverItself(BaseTestSuite):
         assert rig.timeline.most_streams_open() == 1
         if ramp_material(test_case.sound):
             assert list(rig.written()).count(0) == 2
+
+    @REALTIME
+    def test_a_key_played_while_keys_sound_plays_on_their_stream(self, rig: PlaybackRig) -> None:
+        start_sounding(rig, Sound.KEYS)
+
+        start_sounding(rig, Sound.KEYS)
+        rig.stop_all()
+        rig.settle()
+
+        assert len(rig.timeline.streams()) == 1
+        assert rig.causes(Sound.KEYS) == [EndCause.STOPPED]
 
 
 class TestEndHandler(BaseTestSuite):

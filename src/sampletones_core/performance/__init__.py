@@ -1,5 +1,5 @@
 from .audition import audition_audio
-from .live import LiveChannel, LiveNote
+from .live import LiveChannel, LiveNote, live_channels
 from .modifiers import apply_modifiers
 from .progress import (
     WalkProgress,
@@ -24,6 +24,7 @@ __all__ = [
     "apply_modifiers",
     "apply_row",
     "audition_audio",
+    "live_channels",
     "note_step",
     "resolve_row",
     "song_instructions",

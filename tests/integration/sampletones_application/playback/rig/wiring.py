@@ -16,6 +16,7 @@ from sampletones_application.logic.sequencer.playback.song_player import SongPla
 from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.logic.shared.audio_player import AudioPlayer
 from sampletones_application.logic.shared.file_playback import FilePlayback
+from sampletones_application.logic.shared.live import Keyboard, LiveKey, LiveKeysLogic, LiveSound, Strike
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.preview_player import PreviewPlayer
@@ -28,7 +29,11 @@ from sampletones_core.audio import AudioDeviceManager, DeviceCatalog
 from sampletones_core.audio.driver import AudioDriverFactory
 from sampletones_core.audio.output import AudioOutput, AudioSource, Playback, PlaybackListener
 from sampletones_core.audio.output.source import ReportT
+from sampletones_core.configs import Config
 from sampletones_core.constants.audio import BufferSize, SampleRate
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.general import MAX_VOLUME
+from sampletones_core.project.patterns.pitch import Note
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_shared.constants.audio import UNITY_GAIN
@@ -44,6 +49,8 @@ from .song import ScriptedSong
 from .sound import Sound
 
 VOICE_NAME: Final[str] = "lead"
+KEYS_LINGER_SECONDS: Final[float] = 0.25
+KEYS_CHANNEL: Final[ChannelName] = ChannelName.PULSE1
 
 
 class HeardOutput(AudioOutput):
@@ -66,9 +73,10 @@ class HeardOutput(AudioOutput):
 class PlaybackStack:
     """Every object that sounds, wired as the composition root wires it, over one audio output on a fake machine.
 
-    The reconstruction and instruction players, the song, the instrument's audition, the voice list and the
-    file previews share the output, the previews through the one preview player, and the router reaches the
-    three sources through the guards their tabs put in front of them. Each owner's marks and failures go to
+    The reconstruction and instruction players, the song, the instrument's audition, the voice list, the
+    file previews and the keys played live share the output, the previews and the keys through the one
+    preview player, and the router reaches the three sources through the guards their tabs put in front of
+    them. Each owner's marks and failures go to
     the hearing, the way each tab hands them to what it draws and to the failure presenter, and each owner
     is named to the hearing as the listener of its playbacks. The Audio settings verbs and the teardown
     reach the output the way the application's do.
@@ -134,6 +142,14 @@ class PlaybackStack:
         self.files = FilePlayback(self.preview_player, self.previews)
         hearing.owns(Sound.FILE, self.files)
         self.files.on_error = partial(hearing.tell, Sound.FILE)
+        self.keys_held: bool = False
+        self.keys = LiveKeysLogic(
+            self.preview_player,
+            post=CallbackQueue.add,
+            failed=partial(hearing.tell, Sound.KEYS),
+            linger_seconds=KEYS_LINGER_SECONDS,
+        )
+        hearing.owns(Sound.KEYS, self.keys)
 
         self.guards: Dict[Sound, GuardedPlayer] = {
             Sound.RECONSTRUCTION: self._guarded(Sound.RECONSTRUCTION, self.reconstruction, hearing),
@@ -157,6 +173,16 @@ class PlaybackStack:
                 return self.instruction
             case _:
                 raise ValueError(f"The {sound.value} plays no buffer of its own")
+
+    def strike(self, keyboard: Keyboard, number: int) -> Strike:
+        """A press of key ``number`` on ``keyboard``, sounding the instrument at the note it names."""
+        sound = LiveSound.of_voice(
+            self.instrument,
+            pitches={KEYS_CHANNEL: Note(value=number)},
+            levels={KEYS_CHANNEL: MAX_VOLUME},
+            config=Config(),
+        )
+        return Strike(key=LiveKey(keyboard=keyboard, number=number), sound=sound)
 
     def change_device(self, device_index: int, *, sample_rate: SampleRate) -> None:
         """Applies the Audio settings dialog's device and rate, as the application does."""

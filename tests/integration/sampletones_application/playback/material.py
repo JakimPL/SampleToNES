@@ -73,7 +73,8 @@ def each(test_cases: Sequence[PlaybackCase]) -> MarkDecorator:
 def prepare(rig: PlaybackRig, sound: Sound, span: Span) -> None:
     """Gives a sound its material: a ramp for a player or a file, rows of the ramp for the song.
 
-    An audition and a voice preview sound what the instrument renders, so they take no material.
+    An audition and a voice preview sound what the instrument renders, so they take no material. A key played
+    live is tapped for a short sound and held down for a long one.
     """
     length = SHORT if span is Span.SHORT else LONG
     match sound:
@@ -83,12 +84,14 @@ def prepare(rig: PlaybackRig, sound: Sound, span: Span) -> None:
             rig.compose(SHORT_SONG if span is Span.SHORT else LONG_SONG)
         case Sound.AUDITION | Sound.VOICE:
             return
+        case Sound.KEYS:
+            rig.hold_keys(span is Span.LONG)
 
 
 def start(rig: PlaybackRig, sound: Sound) -> None:
     """Starts a sound the way a reader most often does: a source from its start, a preview by picking it."""
     match sound:
-        case Sound.RECONSTRUCTION | Sound.INSTRUCTION | Sound.SONG | Sound.AUDITION:
+        case Sound.RECONSTRUCTION | Sound.INSTRUCTION | Sound.SONG | Sound.AUDITION | Sound.KEYS:
             rig.play(sound)
         case Sound.VOICE | Sound.FILE:
             rig.autoplay(sound)

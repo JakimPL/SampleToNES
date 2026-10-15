@@ -28,6 +28,16 @@ An instrument's audition is a preview of that kind. It reads the generator chose
 
 **A voice sounded on its own runs to its release, or to the length it is offered.** A row holds a voice for as long as the pattern asks. An audition and the voice list's preview have no row behind them, so each has a span of its own. A volume dimension that ends at silence releases the voice, and the sound stops there. A recording runs out once its frames are played. A voice that circles from a loop point never reaches a last item, so it sounds for the ticks `AUDITION_TICKS` offers it. One count serves both spans, so the plot card draws exactly the frames the keyboard sounds.
 
+**Keys played live are one preview for as long as they are played.** One owner, `LiveKeysLogic` (`logic/shared/live/`), takes every key from either keyboard. The first press claims the output at the preview rank through the preview player, so Stop silences it, the song declines it, and it takes the output from another preview. Every later press, lift and pedal change reaches that playback as a command, so keys played one after another sound on one stream. A key lifted after a stop or a takeover reaches nothing.
+
+**One note sounds at a time, and the newest press is it.** Lifting that key returns to the most recent key still held, which strikes again, and lifting a key behind it changes nothing heard. A lift ends an instrument's note on either keyboard. A MIDI key ends a recording as it lifts, and a computer key lets a recording play to its end. The sustain pedal keeps a lifted note sounding until the pedal comes up. The pedal's state belongs to the pedal, so a playback started while it is down starts sustained.
+
+**Each strike starts afresh.** A strike starts its note at the next block, on a tick grid of its own, with its generators at rest, so it sounds as a row starting that note does. A lift ends the note at the next block. Each sound carries the settings its voice is synthesized under, so a recording converted at another tick rate keeps its pace.
+
+**The keys' playback lingers.** Once no key is down and no note sounds, the source plays `LIVE_LINGER_SECONDS` of silence before it ends. A press during the linger is heard after the audio the device has ahead. A press with nothing playing first waits for a writer to start, a stream to open and the generators to be built, and that wait grows with the render loop's load. The linger therefore keeps a phrase's timing steady, and the phrase opens one stream. `tests/benchmarks/test_live_keys.py` measures both waits.
+
+**A key reaches the sound from the thread its keyboard reports on.** A computer key arrives on the render thread and a MIDI key on the MIDI thread. Each call is decided under the owner's lock and becomes a command the writer runs between two reads, so both keyboards can play at once. The preview player decides each claim and its stop under a lock of its own, so Stop always reaches the latest preview, whichever thread claimed it.
+
 **A sounding voice is marked where it has reached.** Its playback reports each position the device took, and the plot card carries that mark along the voice it drew, as it does for a reconstruction's playback. A preview follows its own playback alone: `play` answers with the playback, or with nothing where the output declined the request, and the audition follows only a playback it holds. A declined request leaves the holder's mark where it is. The playback's end report takes the mark off the card.
 
 A report comes from the thread writing the audio, and the mark is a widget, so every report crosses to the render thread before it moves anything (architecture principle 6). An owner hears only the playback it holds, so a report from a sound it let go of moves nothing. A seek travels to the source as a command between two reads, and a position read before the owner's latest command is dropped as it lands, so a mark drawn after a seek reads the seek.
@@ -200,6 +210,9 @@ The backend is terminated once every writer has ended. A writer still inside a d
 | A whole document's preview, read from the render cache or rendered on a worker of its own | `DocumentPreviews` (`logic/shared/previews.py`) |
 | Row mixing, and the mask it pulls while rendering | `RowSynthesizer` (`logic/sequencer/playback/synthesizer/`) |
 | A voice sounded on its own from a key, and its velocity's level | `LiveNote` and `velocity_level` (`sampletones_core/performance/`) |
+| The keys played live, their one playback, and the pedal's state | `LiveKeysLogic` (`logic/shared/live/keys.py`) |
+| Which press sounds, and whether a lift ends its note | `HeldKeys` and `release_ends_note` (`logic/shared/live/`) |
+| A strike synthesized on a tick grid of its own, and the keys' linger | `SoundingNote` and `LiveNoteSource` (`logic/shared/live/`) |
 | The generators at the rates in force, and the synthesis of one tick | `ChannelBank` and `synthesize_tick` (`logic/shared/synthesis/`) |
 | The values a note starts from and a channel holds between frames | `ChannelPerformance` (`sampletones_core/performance/state.py`) |
 | What a row's voice and pitch start, and what they move | `apply_row` and `note_step` (`sampletones_core/performance/rows.py`) |

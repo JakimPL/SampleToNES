@@ -11,6 +11,7 @@ class Sound(Enum):
     AUDITION = "audition"
     VOICE = "voice"
     FILE = "file"
+    KEYS = "keys"
 
 
 SOURCES: Final[Tuple[Sound, ...]] = (Sound.RECONSTRUCTION, Sound.INSTRUCTION, Sound.SONG)

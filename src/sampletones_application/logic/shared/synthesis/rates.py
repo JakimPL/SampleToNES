@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Self
 
+from sampletones_core.configs import Config
 from sampletones_core.project import Project
 from sampletones_core.timing import TickClock
 
@@ -27,6 +28,18 @@ class EngineRates:
         """The rates in force for ``project`` rendered at ``sample_rate``."""
         return cls(
             nes_frequency=project.settings.nes_frequency,
+            sample_rate=sample_rate,
+        )
+
+    @classmethod
+    def from_config(cls, config: Config, sample_rate: int) -> Self:
+        """The rates in force for audio a voice makes under ``config``, rendered at ``sample_rate``.
+
+        A recording plays at the tick rate it was converted at, and a voice on its own at the one its
+        settings name, so a voice sounded from a key keeps its own pace on any device.
+        """
+        return cls(
+            nes_frequency=config.nes_frequency,
             sample_rate=sample_rate,
         )
 

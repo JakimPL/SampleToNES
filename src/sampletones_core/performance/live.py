@@ -69,17 +69,7 @@ class LiveNote:
             pitches: The pitch the key names on each channel.
             levels: The level the note plays at on each channel ``pitches`` names.
         """
-        channels: Dict[ChannelName, LiveChannel] = {}
-        for channel_name in voice_channels(voice):
-            reading = VoiceReading.read(voice, channel_name)
-            if reading is not None and channel_name in pitches:
-                channels[channel_name] = LiveChannel(
-                    reading=reading,
-                    pitch=pitches[channel_name],
-                    level=levels[channel_name],
-                )
-
-        return cls(voice.id, channels)
+        return cls(voice.id, live_channels(voice, pitches=pitches, levels=levels))
 
     @property
     def channel_names(self) -> Tuple[ChannelName, ...]:
@@ -114,6 +104,35 @@ class LiveNote:
 
         length = self._readings[channel_name].length
         return length is not None and performance.tick_index >= length
+
+
+def live_channels(
+    voice: VoiceUnion,
+    *,
+    pitches: Mapping[ChannelName, RowPitch],
+    levels: Mapping[ChannelName, int],
+) -> Dict[ChannelName, LiveChannel]:
+    """What a key asks of ``voice`` on each channel it has frames on and ``pitches`` names a pitch for.
+
+    A note is struck from these, and a sound kept for later strikes holds them, so every strike reads the
+    voice the same way.
+
+    Args:
+        voice: The voice the key sounds.
+        pitches: The pitch the key names on each channel.
+        levels: The level the note plays at on each channel ``pitches`` names.
+    """
+    channels: Dict[ChannelName, LiveChannel] = {}
+    for channel_name in voice_channels(voice):
+        reading = VoiceReading.read(voice, channel_name)
+        if reading is not None and channel_name in pitches:
+            channels[channel_name] = LiveChannel(
+                reading=reading,
+                pitch=pitches[channel_name],
+                level=levels[channel_name],
+            )
+
+    return channels
 
 
 def _struck(voice_id: str, channel: LiveChannel) -> ChannelPerformance:
