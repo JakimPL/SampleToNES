@@ -51,6 +51,55 @@ TAG_SETTINGS_AUDIO_BUTTON_REFRESH = TagName(
     "refresh",
 )
 
+TAG_SETTINGS_MIDI_WINDOW = TagName(
+    Page.SETTINGS,
+    Panel.MIDI,
+    Widget.WINDOW,
+    "midi",
+)
+TAG_SETTINGS_MIDI_COMBO_PORT = TagName(
+    Page.SETTINGS,
+    Panel.MIDI,
+    Widget.COMBO,
+    "port",
+)
+TAG_SETTINGS_MIDI_BUTTON_REFRESH = TagName(
+    Page.SETTINGS,
+    Panel.MIDI,
+    Widget.BUTTON,
+    "refresh",
+)
+TAG_SETTINGS_MIDI_CHECKBOX_VELOCITY = TagName(
+    Page.SETTINGS,
+    Panel.MIDI,
+    Widget.CHECKBOX,
+    "velocity",
+)
+TAG_SETTINGS_MIDI_TEXT_LAST_KEY = TagName(
+    Page.SETTINGS,
+    Panel.MIDI,
+    Widget.TEXT,
+    "last_key",
+)
+TAG_SETTINGS_MIDI_TEXT_UNAVAILABLE = TagName(
+    Page.SETTINGS,
+    Panel.MIDI,
+    Widget.TEXT,
+    "unavailable",
+)
+TAG_SETTINGS_MIDI_BUTTON_CANCEL = TagName(
+    Page.SETTINGS,
+    Panel.MIDI,
+    Widget.BUTTON,
+    "cancel",
+)
+TAG_SETTINGS_MIDI_BUTTON_OK = TagName(
+    Page.SETTINGS,
+    Panel.MIDI,
+    Widget.BUTTON,
+    "ok",
+)
+
 TAG_SETTINGS_DISPLAY_WINDOW = TagName(
     Page.SETTINGS,
     Panel.DISPLAY,

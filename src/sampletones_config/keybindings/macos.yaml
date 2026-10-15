@@ -59,6 +59,7 @@ bindings:
   # view
   AudioSettings: {combination: "Cmd+U"}
   DisplaySettings: {combination: "Cmd+D"}
+  MidiSettings: {combination: ~}
   KeyboardSettings: {combination: "Cmd+K"}
   ToggleAdvancedSettings: {combination: "Cmd+Alt+T"}
   ToggleFullscreen: {combination: "Cmd+Ctrl+F"}

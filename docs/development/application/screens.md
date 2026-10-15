@@ -200,6 +200,11 @@ how a menu popup's width is measured.
   configuration in place. The device records every stream the application opens, with its rate, the frames
   written to it and whether it closed, so a scenario reads a sound's length and a teardown's closing where
   the sound ends up.
+- **MIDI.** A scripted MIDI library stands where the platform's would, so a scenario reaches no keyboard of
+  the machine it runs on. The keyboards a scenario's machine offers are the `midi_keyboards` fixture, none
+  by default. `screen.play_midi()` plays a message on one of them, and `screen.midi_ports_opened()` reads
+  the ports the application opened. The unit suite holds the same stand-in to the protocol every MIDI
+  library keeps.
 - **Programs.** An audit hook refuses every program the application tries to start: a file manager, a
   browser or a dialog tool would open on the desktop around the run. A shared library lookup passes, and
   so do the stand-ins below.

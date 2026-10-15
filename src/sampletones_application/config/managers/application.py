@@ -83,6 +83,20 @@ class ApplicationConfigManager:
         self.config.audio.master_gain = value
 
     @property
+    def midi_port(self) -> Optional[str]:
+        return self.config.midi.port
+
+    def set_midi_port(self, name: Optional[str]) -> None:
+        self.config.midi.port = name
+
+    @property
+    def velocity_sets_volume(self) -> bool:
+        return self.config.midi.velocity_sets_volume
+
+    def set_velocity_sets_volume(self, value: bool) -> None:
+        self.config.midi.velocity_sets_volume = value
+
+    @property
     def palette_name(self) -> str:
         return self.config.display.palette
 

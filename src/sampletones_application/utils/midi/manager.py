@@ -38,7 +38,8 @@ class MidiInputManager:
     Whenever the keys stop reaching the listener, as the port changes, goes away or is let go, the listener
     hears every key let go and the pedal come up, so no note hangs on a key whose release will never arrive.
 
-    The manager is driven from one thread at a time, and the backend calls its sink from a thread of its own.
+    Its operations run one at a time under a lock of their own, so a startup thread and the render thread may
+    both drive it, and the backend calls its sink from a thread of its own.
     """
 
     def __init__(
@@ -62,6 +63,7 @@ class MidiInputManager:
         self._settle_seconds = settle_seconds
         self._clock = clock
         self._lock = threading.Lock()
+        self._operations = threading.RLock()
         self._connection: Optional[_Connection] = None
 
     @property
@@ -70,13 +72,23 @@ class MidiInputManager:
         with self._lock:
             return None if self._connection is None else self._connection.name
 
+    def describe(self) -> str:
+        """The library the input is read through, loading it.
+
+        Raises:
+            MidiPortError: If the library fails to load.
+        """
+        with self._operations:
+            return self._backend.describe()
+
     def ports(self) -> Tuple[str, ...]:
         """The names of the inputs as they stand now.
 
         Raises:
             MidiPortError: If the library fails to list them.
         """
-        return tuple(port.name for port in self._backend.ports())
+        with self._operations:
+            return tuple(port.name for port in self._backend.ports())
 
     def connect(self, name: str) -> bool:
         """Reads the port named ``name`` from now on, letting the port read before go.
@@ -87,8 +99,9 @@ class MidiInputManager:
         Raises:
             MidiPortError: If the library fails to list the inputs or to open the port.
         """
-        self.disconnect()
-        return self._open_named(name, self._backend.ports())
+        with self._operations:
+            self.disconnect()
+            return self._open_named(name, self._backend.ports())
 
     def refresh(self) -> Tuple[str, ...]:
         """Lists the inputs again and reads the port read before by its name, where it still stands.
@@ -99,22 +112,24 @@ class MidiInputManager:
         Raises:
             MidiPortError: If the library fails to list the inputs or to open the port again.
         """
-        name = self.port_name
-        self.disconnect()
-        ports = self._backend.ports()
-        if name is not None:
-            self._open_named(name, ports)
+        with self._operations:
+            name = self.port_name
+            self.disconnect()
+            ports = self._backend.ports()
+            if name is not None:
+                self._open_named(name, ports)
 
-        return tuple(port.name for port in ports)
+            return tuple(port.name for port in ports)
 
     def disconnect(self) -> None:
         """Lets the port read go, and lets every key go with it."""
-        with self._lock:
-            connection, self._connection = self._connection, None
+        with self._operations:
+            with self._lock:
+                connection, self._connection = self._connection, None
 
-        self._backend.close()
-        if connection is not None:
-            self._release_keys()
+            self._backend.close()
+            if connection is not None:
+                self._release_keys()
 
     def _open_named(self, name: str, ports: Tuple[MidiPort, ...]) -> bool:
         port = next((listed for listed in ports if listed.name == name), None)

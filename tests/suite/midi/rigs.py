@@ -1,10 +1,10 @@
 from typing import Protocol
 
+from automation.boundaries.midi import ScriptedMidiInput
 from sampletones_application.utils.midi.backends import MidiInputBackend
 from sampletones_application.utils.midi.backends.alsa import AlsaMidiBackend
 from sampletones_application.utils.midi.backends.portmidi import PortMidiBackend
 
-from .backend import FakeMidiBackend
 from .portmidi import FakePortMidi
 from .sequencer import FakeSequencer
 
@@ -79,10 +79,10 @@ class FakeRig:
     """The fake backend the manager is tested over, held to the same protocol."""
 
     def __init__(self) -> None:
-        self._backend = FakeMidiBackend()
+        self._backend = ScriptedMidiInput()
 
     @property
-    def backend(self) -> FakeMidiBackend:
+    def backend(self) -> ScriptedMidiInput:
         return self._backend
 
     def offer(self, name: str) -> None:

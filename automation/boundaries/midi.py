@@ -2,12 +2,17 @@ import queue
 import threading
 from typing import Final, List, Optional, Tuple, Union
 
+import pytest
+
+import sampletones_application.application as application_module
 from sampletones_application.utils.midi.backends import MidiPort, MidiSink
 from sampletones_shared.exceptions import MidiPortError
 
 THREAD_NAME: Final[str] = "FakeMidi"
 SYSTEM_EXCLUSIVE: Final[int] = 0xF0
 BACKEND_FAILURE: Final[str] = "The fake MIDI library failed"
+
+Delivery = Union[bytes, "_Lost", "_Stop"]
 
 
 class _Lost:
@@ -18,13 +23,12 @@ class _Stop:
     """The open port is let go."""
 
 
-Delivery = Union[bytes, _Lost, _Stop]
+class ScriptedMidiInput:
+    """The MIDI library a scenario stands behind: ports it plugs in, plays and unplugs, delivered from a thread of
+    its own.
 
-
-class FakeMidiBackend:
-    """A MIDI backend whose ports a case plugs in, plays and unplugs, delivering from a thread of its own.
-
-    It keeps the protocol a library backend keeps, so the manager meets here what it meets in the application.
+    It keeps the protocol a library backend keeps, so the application meets here what it meets on a machine with
+    a keyboard, and a scenario reaches the MIDI library of no machine it runs on.
     """
 
     def __init__(self) -> None:
@@ -36,7 +40,12 @@ class FakeMidiBackend:
         self.failing: bool = False
         self.opened: List[str] = []
 
+    def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Stands in for the MIDI library the application selects as it starts."""
+        monkeypatch.setattr(application_module, "select_midi_backend", lambda: self)
+
     def describe(self) -> str:
+        self._check()
         return "fake MIDI backend"
 
     def ports(self) -> Tuple[MidiPort, ...]:
@@ -55,7 +64,12 @@ class FakeMidiBackend:
             self._open_name, self._deliveries = port.name, deliveries
             self.opened.append(port.name)
 
-        self._thread = threading.Thread(target=self._deliver, args=(deliveries, sink), name=THREAD_NAME, daemon=True)
+        self._thread = threading.Thread(
+            target=self._deliver,
+            args=(deliveries, sink),
+            name=THREAD_NAME,
+            daemon=True,
+        )
         self._thread.start()
 
     def close(self) -> None:

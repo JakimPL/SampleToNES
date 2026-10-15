@@ -139,6 +139,14 @@ and opens once that conversation has ended. Every modal opens through `GUIWindow
 each reaches the screen, so a caller raises a dialog the moment it has one. [Dialogs](application/dialogs.md)
 describes the conversation and its hand-offs.
 
+### 16. One dispatcher owns the MIDI keyboard
+
+A MIDI keyboard's keys arrive on the MIDI library's thread, so the keyboard needs a dispatcher of its own, built the way principle 12 builds the keyboard's. A single `MidiRouter` offers each key to registered scopes from the highest priority to the lowest, and a modal dialog ranks above the tabs. Whether a scope is active is a question about the interface, so the render thread publishes the active scopes once a frame, and a key reads the latest publication on the thread it arrived on.
+
+**A key lifted reaches the scope that took its press.** A tab switched or a dialog opened while a key is down therefore leaves no note hanging. Whenever the keys stop arriving, as a port changes, goes away or is let go, every held key is lifted through its taker and the pedal comes up. The pedal belongs to the sound alone.
+
+**A scope acts on the thread the key arrived on.** A scope that sounds therefore acts at once, with no frame between the key and the sound. A scope that changes the interface hands its work to the render thread itself (principle 6). [`midi.md`](application/midi.md) covers the libraries, the manager and the scopes.
+
 ---
 
 ## Enforcement

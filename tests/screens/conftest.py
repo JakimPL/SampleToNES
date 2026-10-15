@@ -1,4 +1,6 @@
 from automation.plugin.fixtures import (
+    midi_keyboards_fixture,
+    midi_library_loads_fixture,
     output_device_fixture,
     screen_application_fixture,
     screen_boundaries_fixture,
@@ -26,6 +28,8 @@ from automation.plugin.hooks import (
 __all__ = [
     "conversion_hold_fixture",
     "export_hold_fixture",
+    "midi_keyboards_fixture",
+    "midi_library_loads_fixture",
     "output_device_fixture",
     "pytest_collection_modifyitems",
     "pytest_configure",

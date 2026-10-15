@@ -1,3 +1,4 @@
+import time
 from contextlib import ExitStack, contextmanager
 from functools import partial
 from pathlib import Path
@@ -15,6 +16,7 @@ from sampletones_application.config.deployment.deployment import (
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
+from sampletones_application.constants.midi import MIDI_SETTLE_SECONDS
 from sampletones_application.constants.playback import AUDIO_TEARDOWN_SECONDS, FollowMode
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.display import DisplayCoordinator
@@ -28,6 +30,7 @@ from sampletones_application.coordinators.export.nsf import NSFExportCoordinator
 from sampletones_application.coordinators.export.setup import ExportSetup
 from sampletones_application.coordinators.failures import UnhandledFailurePresenter
 from sampletones_application.coordinators.keybindings import KeybindingsCoordinator
+from sampletones_application.coordinators.midi import MidiCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
@@ -134,6 +137,7 @@ from sampletones_application.ui.panels.dialogs.display_settings import (
 )
 from sampletones_application.ui.panels.dialogs.export import GUIExportWindow
 from sampletones_application.ui.panels.dialogs.keybindings import GUIKeybindingsWindow
+from sampletones_application.ui.panels.dialogs.midi_settings import GUIMidiSettingsWindow
 from sampletones_application.ui.panels.dialogs.nsf import GUINSFExportWindow
 from sampletones_application.ui.panels.dialogs.project_properties import (
     GUIProjectPropertiesWindow,
@@ -168,6 +172,7 @@ from sampletones_application.utils.gui.shortcuts.catalog import ShortcutCatalog
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.shortcuts.scheme import ShortcutScheme
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
+from sampletones_application.utils.midi import MidiRouter, select_midi_backend
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.palette import Palette
 from sampletones_application.utils.palette.source import PaletteSource
@@ -340,6 +345,24 @@ class Application:
         self.audio_settings_window.on_commit = self._apply_audio_settings
         self.audio_settings_window.on_refresh_devices = self._refresh_audio_devices
         self.audio_settings_window.on_master_gain_changed = self.session_manager.set_master_gain
+        self.midi_settings_window: GUIMidiSettingsWindow = GUIMidiSettingsWindow(
+            layout=self.layout.settings,
+            language_manager=self.language_manager,
+            key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
+        )
+        self.midi_router: MidiRouter = MidiRouter()
+        self._midi_coordinator = MidiCoordinator(
+            select_midi_backend(),
+            self.midi_router,
+            self.session_manager,
+            window=self.midi_settings_window,
+            language_manager=self.language_manager,
+            show_status=self.status_bar.set,
+            settle_seconds=MIDI_SETTLE_SECONDS,
+            clock=time.monotonic,
+            post=CallbackQueue.add,
+        )
         self.display_settings_window: GUIDisplaySettingsWindow = GUIDisplaySettingsWindow(
             layout=self.layout.settings,
             language_manager=self.language_manager,
@@ -722,6 +745,7 @@ class Application:
 
         self._config_coordinator.present_pending_load_outcomes()
         self._load_settings()
+        self._midi_coordinator.start()
 
     def _set_logging_level(self) -> None:
         logger.set_level(self.deployment.log_level.to_logging_level())
@@ -839,6 +863,7 @@ class Application:
             unmute_all_channels=self._sequencer_tab.unmute_all_channels,
             audio_settings=self._open_audio_settings,
             display_settings=self._display_coordinator.open,
+            midi_settings=self._midi_coordinator.open,
             keyboard_settings=self._keybindings_coordinator.open,
             toggle_advanced_settings=self._toggle_advanced_settings,
             toggle_auto_expand_favorite_reconstructions=self._toggle_auto_expand_favorite_reconstructions,
@@ -1706,6 +1731,7 @@ class Application:
         self._shell.update_fps(delta_time)
         self._shell.update_status_bar(delta_time)
         self._display_coordinator.tick(delta_time)
+        self.midi_router.publish()
         self._refresh_playback_menu_state()
 
     def _refresh_playback_menu_state(self) -> None:
@@ -1791,6 +1817,7 @@ class Application:
             UnhandledFailures.detach,
             self._render_coordinator.cleanup,
             self._export_coordinator.cleanup,
+            self._midi_coordinator.close,
             self.audio_output.stop_all,
             stop_background_workers,
             self._main_tab.cleanup,

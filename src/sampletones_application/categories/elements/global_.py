@@ -90,6 +90,7 @@ class MenuElements(AbstractElement):
     GROUP_PLAYBACK_CHANNELS = "group_playback_channels"
     ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS = "item_playback_unmute_all_channels"
     ITEM_PLAYBACK_AUDIO_SETTINGS = "item_playback_audio_settings"
+    ITEM_PLAYBACK_MIDI_SETTINGS = "item_playback_midi_settings"
     GROUP_VIEW = "group_view"
     ITEM_VIEW_SHOW_ADVANCED_SETTINGS = "item_view_show_advanced_settings"
     ITEM_VIEW_FULLSCREEN = "item_view_fullscreen"

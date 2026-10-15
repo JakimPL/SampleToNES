@@ -494,6 +494,10 @@ class MenuBar:
                 ShortcutId.AUDIO_SETTINGS,
                 label=self._label(MenuElements.ITEM_PLAYBACK_AUDIO_SETTINGS),
             )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.MIDI_SETTINGS,
+                label=self._label(MenuElements.ITEM_PLAYBACK_MIDI_SETTINGS),
+            )
 
     def _create_follow_menu(self, state: MenuBarViewModel) -> None:
         """Builds the submenu that chooses how far the sequencer view chases the playhead.

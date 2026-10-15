@@ -12,7 +12,7 @@ from sampletones_application.utils.midi import (
 )
 from sampletones_shared.exceptions import MidiPortError
 from tests.suite.application import ManualClock
-from tests.suite.midi import FakeMidiBackend, RecordingListener
+from tests.suite.midi import RecordingListener, ScriptedMidiInput
 
 KEYBOARD: Final[str] = "Keyboard"
 OTHER: Final[str] = "Other Keyboard"
@@ -28,8 +28,8 @@ GATE_SECONDS: Final[float] = 5.0
 
 
 @pytest.fixture
-def backend() -> FakeMidiBackend:
-    backend = FakeMidiBackend()
+def backend() -> ScriptedMidiInput:
+    backend = ScriptedMidiInput()
     backend.offer(KEYBOARD)
     backend.offer(OTHER)
     return backend
@@ -46,7 +46,7 @@ def listener() -> RecordingListener:
 
 
 @pytest.fixture
-def manager(backend: FakeMidiBackend, listener: RecordingListener, clock: ManualClock) -> Iterator[MidiInputManager]:
+def manager(backend: ScriptedMidiInput, listener: RecordingListener, clock: ManualClock) -> Iterator[MidiInputManager]:
     manager = MidiInputManager(backend, listener=listener, settle_seconds=SETTLE_SECONDS, clock=clock)
     yield manager
     backend.close()
@@ -63,7 +63,7 @@ class TestConnecting:
     def test_a_port_named_is_read(
         self,
         manager: MidiInputManager,
-        backend: FakeMidiBackend,
+        backend: ScriptedMidiInput,
         listener: RecordingListener,
         clock: ManualClock,
     ) -> None:
@@ -74,7 +74,7 @@ class TestConnecting:
         assert manager.port_name == OTHER
         assert listener.wait_for(MidiNoteOn(note=60, velocity=100)) == [MidiNoteOn(note=60, velocity=100)]
 
-    def test_a_name_no_port_has_opens_nothing(self, manager: MidiInputManager, backend: FakeMidiBackend) -> None:
+    def test_a_name_no_port_has_opens_nothing(self, manager: MidiInputManager, backend: ScriptedMidiInput) -> None:
         assert not manager.connect(UNKNOWN)
         assert manager.port_name is None
         assert backend.opened == []
@@ -82,14 +82,14 @@ class TestConnecting:
     def test_a_port_plugged_in_after_the_start_is_found(
         self,
         manager: MidiInputManager,
-        backend: FakeMidiBackend,
+        backend: ScriptedMidiInput,
     ) -> None:
         backend.offer(UNKNOWN)
 
         assert manager.connect(UNKNOWN)
         assert backend.opened == [UNKNOWN]
 
-    def test_the_ports_are_named_as_they_stand(self, manager: MidiInputManager, backend: FakeMidiBackend) -> None:
+    def test_the_ports_are_named_as_they_stand(self, manager: MidiInputManager, backend: ScriptedMidiInput) -> None:
         backend.unplug(OTHER)
 
         assert manager.ports() == (KEYBOARD,)
@@ -101,7 +101,7 @@ class TestSettling:
     def test_messages_arriving_as_the_port_opens_are_dropped(
         self,
         manager: MidiInputManager,
-        backend: FakeMidiBackend,
+        backend: ScriptedMidiInput,
         listener: RecordingListener,
         clock: ManualClock,
     ) -> None:
@@ -117,7 +117,7 @@ class TestSettling:
     def test_messages_that_play_nothing_reach_nobody(
         self,
         manager: MidiInputManager,
-        backend: FakeMidiBackend,
+        backend: ScriptedMidiInput,
         listener: RecordingListener,
         clock: ManualClock,
     ) -> None:
@@ -152,7 +152,7 @@ class TestLettingKeysGo:
     def test_changing_ports_lets_the_keys_of_the_port_before_go(
         self,
         manager: MidiInputManager,
-        backend: FakeMidiBackend,
+        backend: ScriptedMidiInput,
         listener: RecordingListener,
         clock: ManualClock,
     ) -> None:
@@ -167,7 +167,7 @@ class TestLettingKeysGo:
     def test_an_unplugged_port_lets_every_key_go_and_is_told_lost(
         self,
         manager: MidiInputManager,
-        backend: FakeMidiBackend,
+        backend: ScriptedMidiInput,
         listener: RecordingListener,
     ) -> None:
         manager.connect(KEYBOARD)
@@ -182,7 +182,7 @@ class TestLettingKeysGo:
     def test_disconnecting_after_a_loss_tells_nothing_more(
         self,
         manager: MidiInputManager,
-        backend: FakeMidiBackend,
+        backend: ScriptedMidiInput,
         listener: RecordingListener,
     ) -> None:
         manager.connect(KEYBOARD)
@@ -215,7 +215,7 @@ class TestALossRacingASwitch:
 
     def test_a_loss_arriving_during_a_switch_tells_nothing(
         self,
-        backend: FakeMidiBackend,
+        backend: ScriptedMidiInput,
         clock: ManualClock,
     ) -> None:
         listener = GatedListener()
@@ -244,7 +244,7 @@ class TestRefreshing:
     def test_a_refresh_reads_the_port_read_before_again(
         self,
         manager: MidiInputManager,
-        backend: FakeMidiBackend,
+        backend: ScriptedMidiInput,
         listener: RecordingListener,
         clock: ManualClock,
     ) -> None:
@@ -261,7 +261,7 @@ class TestRefreshing:
     def test_a_refresh_with_no_port_read_opens_nothing(
         self,
         manager: MidiInputManager,
-        backend: FakeMidiBackend,
+        backend: ScriptedMidiInput,
     ) -> None:
         backend.offer(UNKNOWN)
 
@@ -276,7 +276,7 @@ class TestFailures:
     def test_a_failing_listing_raises_and_reads_nothing(
         self,
         manager: MidiInputManager,
-        backend: FakeMidiBackend,
+        backend: ScriptedMidiInput,
     ) -> None:
         manager.connect(KEYBOARD)
         backend.failing = True

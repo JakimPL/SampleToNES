@@ -1,4 +1,5 @@
-from .backend import FakeMidiBackend
+from automation.boundaries.midi import ScriptedMidiInput
+
 from .listener import RecordingListener
 from .portmidi import FakeDevice, FakeInput, FakePortMidi
 from .rigs import AlsaRig, BackendRig, FakeRig, PortMidiRig
@@ -12,7 +13,7 @@ __all__ = [
     "FakeConnection",
     "FakeDevice",
     "FakeInput",
-    "FakeMidiBackend",
+    "ScriptedMidiInput",
     "FakePortMidi",
     "FakeRig",
     "FakeSequencer",

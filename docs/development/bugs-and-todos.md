@@ -131,6 +131,10 @@ currently out of line. An entry leaves when the code meets the contract again.
 
 ## Bugs
 
+* A screen scenario that ends within the first frames after the application starts never stops it. Its
+  Exit leaves the application drawing, and the run waits until the suite's timeout, which ends the parent
+  process and leaves the scenario's own process running at several cores. A scenario whose body is a single
+  check that holds at startup reproduces it.
 * A click on the History card's line in force takes its highlight off. The jump goes nowhere, so the card
   repaints nothing and shows no line in force until the next step.
 * A rate change's retune can land as an entry of its own. When another gesture commits before the
