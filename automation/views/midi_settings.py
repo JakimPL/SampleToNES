@@ -16,7 +16,9 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_MIDI_BUTTON_REFRESH,
     TAG_SETTINGS_MIDI_COMBO_PORT,
     TAG_SETTINGS_MIDI_TEXT_LAST_KEY,
+    TAG_SETTINGS_MIDI_TEXT_MESSAGE,
     TAG_SETTINGS_MIDI_TEXT_UNAVAILABLE,
+    TAG_SETTINGS_MIDI_TEXT_VELOCITY,
     TAG_SETTINGS_MIDI_WINDOW,
 )
 from sampletones_application.utils.callbacks.queue import CallbackQueue
@@ -25,7 +27,7 @@ ITEMS = "items"
 
 
 class MidiSettings:
-    """The MIDI settings dialog: the input list, Refresh, the line naming the key played last, OK and Cancel."""
+    """The MIDI settings dialog: the input list, Refresh, the key played last with its velocity, OK and Cancel."""
 
     def __init__(self, bridge: Bridge, hand: Hand, menu: MenuBar) -> None:
         self._bridge = bridge
@@ -57,9 +59,18 @@ class MidiSettings:
         """Picks ``name`` in the input list, which reads that keyboard at once."""
         self._bridge.ask(lambda: choose(TAG_SETTINGS_MIDI_COMBO_PORT, name, CallbackQueue.run))
 
-    def last_key(self) -> str:
-        """What the line naming the key played last reads."""
-        return str(self._bridge.ask(lambda: read_value(TAG_SETTINGS_MIDI_TEXT_LAST_KEY)))
+    def last_key(self) -> Tuple[str, str]:
+        """The name of the key played last and its velocity, as the dialog reads them."""
+        return self._bridge.ask(
+            lambda: (
+                str(read_value(TAG_SETTINGS_MIDI_TEXT_LAST_KEY)),
+                str(read_value(TAG_SETTINGS_MIDI_TEXT_VELOCITY)),
+            )
+        )
+
+    def message(self) -> str:
+        """What the line above the key played last reads: how to try the keyboard, or why it failed to open."""
+        return str(self._bridge.ask(lambda: read_value(TAG_SETTINGS_MIDI_TEXT_MESSAGE)))
 
     def unavailable_line(self) -> str:
         """What the line telling of a machine with no MIDI library reads."""

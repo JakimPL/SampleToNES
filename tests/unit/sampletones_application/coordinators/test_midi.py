@@ -1,6 +1,6 @@
 import threading
 import time
-from typing import Any, Final, List, Optional
+from typing import Any, Final, List, Optional, Tuple
 
 import pytest
 
@@ -29,7 +29,7 @@ class WindowRecorder:
 
     def __init__(self) -> None:
         self.view_models: List[MidiSettingsViewModel] = []
-        self.lines: List[str] = []
+        self.keys: List[Tuple[str, int]] = []
         self.is_open = False
         self.on_port_changed: Any = None
         self.on_refresh: Any = None
@@ -46,8 +46,8 @@ class WindowRecorder:
     def hide(self) -> None:
         self.is_open = False
 
-    def show_line(self, line: str) -> None:
-        self.lines.append(line)
+    def show_key(self, name: str, velocity: int) -> None:
+        self.keys.append((name, velocity))
 
     @property
     def shown(self) -> MidiSettingsViewModel:
@@ -261,7 +261,7 @@ class TestKeysAndLosses:
 
         harness.coordinator.heard(MidiNoteOn(note=MIDDLE_C, velocity=VELOCITY))
 
-        assert harness.window.lines == ["Last key: C-3, velocity 100"]
+        assert harness.window.keys == [("C-3", VELOCITY)]
 
     def test_a_key_played_with_the_dialog_closed_names_nothing(self, harness: Harness) -> None:
         harness.start()
@@ -269,7 +269,7 @@ class TestKeysAndLosses:
 
         harness.coordinator.heard(MidiNoteOn(note=MIDDLE_C, velocity=VELOCITY))
 
-        assert harness.window.lines == []
+        assert harness.window.keys == []
 
     def test_a_keyboard_going_away_is_told_on_the_status_bar(
         self,

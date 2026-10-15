@@ -11,7 +11,7 @@ from sampletones_application.utils.gui.keyboard.router import PRIORITY_MODAL
 from sampletones_application.utils.midi import MidiInputManager, MidiMessage, MidiRouter
 from sampletones_application.utils.midi.backends import MidiInputBackend
 from sampletones_application.utils.midi.manager import Clock
-from sampletones_application.view_model.shared.midi_settings import MidiSettingsViewModel, last_key_label
+from sampletones_application.view_model.shared.midi_settings import MidiSettingsViewModel, key_name
 from sampletones_core.audio.output import Post
 from sampletones_shared.exceptions import MidiPortError
 from sampletones_shared.logger import logger
@@ -21,17 +21,14 @@ STARTUP_THREAD_NAME: Final[str] = "MidiStartup"
 
 
 class _LastKey:
-    """The dialog's scope: it names each key played on the dialog's line while the dialog stands."""
+    """The dialog's scope: it names each key played, with its velocity, while the dialog stands."""
 
-    def __init__(self, delivery: LatestDelivery[[str]], *, template: str, number_template: str) -> None:
+    def __init__(self, delivery: LatestDelivery[[str, int]], *, number_template: str) -> None:
         self._delivery = delivery
-        self._template = template
         self._number_template = number_template
 
     def press(self, note: int, velocity: int) -> None:
-        self._delivery.post(
-            last_key_label(note, velocity, template=self._template, number_template=self._number_template)
-        )
+        self._delivery.post(key_name(note, number_template=self._number_template), velocity)
 
     def lift(self, note: int) -> None:
         del note
@@ -81,8 +78,7 @@ class MidiCoordinator:
 
         router.register(
             _LastKey(
-                LatestDelivery(window.show_line, priority=DEFAULT_PRIORITY),
-                template=language_manager["settings.midi.template.last_key"],
+                LatestDelivery(window.show_key, priority=DEFAULT_PRIORITY),
                 number_template=language_manager["settings.midi.template.key_number"],
             ),
             priority=PRIORITY_MODAL,

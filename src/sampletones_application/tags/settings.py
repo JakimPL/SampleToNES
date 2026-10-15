@@ -75,11 +75,23 @@ TAG_SETTINGS_MIDI_CHECKBOX_VELOCITY = TagName(
     Widget.CHECKBOX,
     "velocity",
 )
+TAG_SETTINGS_MIDI_TEXT_MESSAGE = TagName(
+    Page.SETTINGS,
+    Panel.MIDI,
+    Widget.TEXT,
+    "message",
+)
 TAG_SETTINGS_MIDI_TEXT_LAST_KEY = TagName(
     Page.SETTINGS,
     Panel.MIDI,
     Widget.TEXT,
     "last_key",
+)
+TAG_SETTINGS_MIDI_TEXT_VELOCITY = TagName(
+    Page.SETTINGS,
+    Panel.MIDI,
+    Widget.TEXT,
+    "velocity",
 )
 TAG_SETTINGS_MIDI_TEXT_UNAVAILABLE = TagName(
     Page.SETTINGS,

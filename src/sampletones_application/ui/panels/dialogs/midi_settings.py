@@ -11,11 +11,15 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_MIDI_CHECKBOX_VELOCITY,
     TAG_SETTINGS_MIDI_COMBO_PORT,
     TAG_SETTINGS_MIDI_TEXT_LAST_KEY,
+    TAG_SETTINGS_MIDI_TEXT_MESSAGE,
     TAG_SETTINGS_MIDI_TEXT_UNAVAILABLE,
+    TAG_SETTINGS_MIDI_TEXT_VELOCITY,
     TAG_SETTINGS_MIDI_WINDOW,
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.field import labeled_field
+from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.seeded import GUISeededDialogWindow
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.dialog_navigation import FocusStop
@@ -35,9 +39,9 @@ class GUIMidiSettingsWindow(GUISeededDialogWindow[MidiSettingsViewModel]):
     played last.
 
     Picking an input reports it through ``on_port_changed`` at once, so the reader tries the keyboard on the
-    line naming the key played last before keeping it. ``on_commit`` keeps what the dialog shows, with the
-    velocity setting it reports, and ``on_cancel`` puts back what the dialog opened with. On a computer
-    offering no MIDI library the dialog says so in one line.
+    fields naming the key played last and its velocity before keeping it. ``on_commit`` keeps what the dialog
+    shows, with the velocity setting it reports, and ``on_cancel`` puts back what the dialog opened with. On a
+    computer offering no MIDI library the dialog says so in one line.
     """
 
     def __init__(
@@ -70,9 +74,10 @@ class GUIMidiSettingsWindow(GUISeededDialogWindow[MidiSettingsViewModel]):
         """Whether the dialog stands on the screen."""
         return bool(dpg.does_item_exist(self.tag) and dpg.is_item_shown(self.tag))
 
-    def show_line(self, line: str) -> None:
-        """Puts ``line`` where the key played last is named, while the dialog stands."""
-        dpg_set_value(TAG_SETTINGS_MIDI_TEXT_LAST_KEY, line)
+    def show_key(self, name: str, velocity: int) -> None:
+        """Names the key played last and its velocity, while the dialog stands."""
+        dpg_set_value(TAG_SETTINGS_MIDI_TEXT_LAST_KEY, name)
+        dpg_set_value(TAG_SETTINGS_MIDI_TEXT_VELOCITY, str(velocity))
 
     def create_window(self) -> None:
         with self.dialog_window(
@@ -83,7 +88,15 @@ class GUIMidiSettingsWindow(GUISeededDialogWindow[MidiSettingsViewModel]):
                 self._create_input_selection()
                 self._create_velocity_choice()
                 dpg.add_separator()
-                dpg.add_text(tag=TAG_SETTINGS_MIDI_TEXT_LAST_KEY)
+                dpg.add_text(tag=TAG_SETTINGS_MIDI_TEXT_MESSAGE)
+                self._create_reading(
+                    self._language_manager["settings.midi.label.last_key"],
+                    TAG_SETTINGS_MIDI_TEXT_LAST_KEY,
+                )
+                self._create_reading(
+                    self._language_manager["settings.midi.label.velocity"],
+                    TAG_SETTINGS_MIDI_TEXT_VELOCITY,
+                )
             else:
                 dpg.add_text(
                     self._language_manager["settings.midi.message.unavailable"],
@@ -136,6 +149,12 @@ class GUIMidiSettingsWindow(GUISeededDialogWindow[MidiSettingsViewModel]):
             label=self._language_manager["settings.midi.label.velocity_sets_volume"],
         )
 
+    def _create_reading(self, label: str, tag: str) -> None:
+        """Lays out one reading of the key played last, with its value in the mono font."""
+        with labeled_field(label, self._layout.label_width):
+            dpg.add_text(tag=tag)
+            FontRegistry.bind_to_item(tag, Font.MONO)
+
     @table_wrapper(columns=3)
     def _create_buttons_with_refresh(self) -> None:
         GUIButton(
@@ -165,7 +184,10 @@ class GUIMidiSettingsWindow(GUISeededDialogWindow[MidiSettingsViewModel]):
         )
 
     def _render(self) -> None:
-        """Shows the inputs, the one read, the velocity setting, and why an input failed to open, if one did."""
+        """Shows the inputs, the one read, the velocity setting, and why an input failed to open, if one did.
+
+        The readings of the key played last start empty, so they name only a key played on the input shown.
+        """
         view_model = self.view_model
         if not view_model.available:
             return
@@ -174,7 +196,10 @@ class GUIMidiSettingsWindow(GUISeededDialogWindow[MidiSettingsViewModel]):
         dpg_set_value(TAG_SETTINGS_MIDI_COMBO_PORT, view_model.port_item(self._no_input))
         dpg_set_value(TAG_SETTINGS_MIDI_CHECKBOX_VELOCITY, view_model.velocity_sets_volume)
         refusal = view_model.refusal
-        self.show_line(self._language_manager["settings.midi.message.play_a_key"] if refusal is None else refusal)
+        message = self._language_manager["settings.midi.message.play_a_key"] if refusal is None else refusal
+        dpg_set_value(TAG_SETTINGS_MIDI_TEXT_MESSAGE, message)
+        dpg_set_value(TAG_SETTINGS_MIDI_TEXT_LAST_KEY, "")
+        dpg_set_value(TAG_SETTINGS_MIDI_TEXT_VELOCITY, "")
 
     def _on_port_changed(self, _sender: Sender, app_data: str) -> None:
         self.call(self.on_port_changed, None if app_data == self._no_input else app_data)

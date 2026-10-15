@@ -32,14 +32,11 @@ class MidiSettingsViewModel(BaseModel, frozen=True):
         return no_input if self.port is None else self.port
 
 
-def last_key_label(note: int, velocity: int, *, template: str, number_template: str) -> str:
-    """The line naming the key played last, by its note name where the application names that note.
+def key_name(note: int, *, number_template: str) -> str:
+    """The name the dialog gives a key: its note name where the application names that note.
 
     Args:
         note: The MIDI note number of the key.
-        velocity: How hard it was struck.
-        template: The line, naming ``note`` and ``velocity``.
         number_template: How a key below or above the named notes is named, by its ``number``.
     """
-    name = pitch_to_name(note) if LIMIT_MIN_PITCH <= note <= LIMIT_MAX_PITCH else number_template.format(number=note)
-    return template.format(note=name, velocity=velocity)
+    return pitch_to_name(note) if LIMIT_MIN_PITCH <= note <= LIMIT_MAX_PITCH else number_template.format(number=note)

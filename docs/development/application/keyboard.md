@@ -80,6 +80,8 @@ An assignment displaces only what it takes. Giving an action keys its category a
 
 `ShortcutId` and `ShortcutCategory` are the same on every platform. `PLATFORM_SCHEME_NAMES` (`constants/keybindings.py`) says which scheme each platform ships. A profile makes that choice once, at creation, and the stored name selects from then on. The modifier table reads every spelling on every platform, and `Modifier.SUPER` displays as the name the machine is labeled with. A scheme written for one keyboard therefore loads, validates and reads on another, and the completeness validation holds every shipped scheme to the same action set.
 
+On macOS, GLFW gives the window a menu whose keys reach the menu before the application: Cmd+M minimizes the window, Cmd+H and Cmd+Alt+H hide it and the others, Cmd+Q quits, and Cmd+Ctrl+F toggles fullscreen. The macOS scheme leaves Cmd+M and the hiding keys to that menu, and gives Cmd+Q and Cmd+Ctrl+F the actions the menu performs.
+
 ---
 
 ## Actions

@@ -12,16 +12,18 @@ from tests.screens.application.restart.steps import leave
 KEYBOARD: Final[str] = "Test Keyboard"
 OTHER: Final[str] = "Other Keyboard"
 MIDDLE_C: Final[bytes] = bytes((0x90, 60, 100))
-MIDDLE_C_LINE: Final[str] = "Last key: C-3, velocity 100"
+MIDDLE_C_READING: Final[Tuple[str, str]] = ("C-3", "100")
+UNREAD: Final[Tuple[str, str]] = ("", "")
 NO_INPUT: Final[str] = "settings.midi.label.no_input"
+PLAY_A_KEY: Final[str] = "settings.midi.message.play_a_key"
 UNAVAILABLE: Final[str] = "settings.midi.message.unavailable"
 
 
-def _named_after_playing(screen: Screen, keyboard: str) -> str:
-    """Plays middle C on ``keyboard`` and reads the line naming the key played last.
+def _named_after_playing(screen: Screen, keyboard: str) -> Tuple[str, str]:
+    """Plays middle C on ``keyboard`` and reads the key played last with its velocity.
 
     A port drops what arrives as it opens, so a key played that early stays unnamed; the reading plays again on
-    each frame until the line names it.
+    each frame until the dialog names it.
     """
     screen.play_midi(keyboard, MIDDLE_C)
     return screen.midi_settings.last_key()
@@ -84,9 +86,16 @@ class TestPickingAKeyboard:
         _opened(screen)
 
         screen.midi_settings.choose_input(KEYBOARD)
+        before = screen.midi_settings.message(), screen.midi_settings.last_key()
 
-        screen.expect(lambda: _named_after_playing(screen, KEYBOARD), MIDDLE_C_LINE.__eq__, description="the key named")
+        screen.expect(
+            lambda: _named_after_playing(screen, KEYBOARD),
+            MIDDLE_C_READING.__eq__,
+            description="the key named",
+        )
         _canceled(screen)
+
+        assert before == (screen.words(PLAY_A_KEY), UNREAD)
 
     def test_ok_keeps_the_keyboard_for_the_next_run(self, screen: Screen) -> None:
         _opened(screen)

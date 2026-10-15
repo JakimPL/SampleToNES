@@ -7,7 +7,7 @@ bindings:
   SaveProject: {combination: "Ctrl+S"}
   SaveProjectAs: {combination: "Ctrl+Shift+S"}
   ProjectProperties: {combination: "Alt+P"}
-  ExportProjectFamiTracker: {combination: "Ctrl+M"}
+  ExportProjectFamiTracker: {combination: "Ctrl+T"}
   ExportProjectBitphase: {combination: "Ctrl+B"}
   ExportProjectNSF: {combination: ~}
   RenderSong: {combination: "Ctrl+Shift+E"}
@@ -59,7 +59,7 @@ bindings:
   # view
   AudioSettings: {combination: "Ctrl+U"}
   DisplaySettings: {combination: "Ctrl+D"}
-  MidiSettings: {combination: ~}
+  MidiSettings: {combination: "Ctrl+M"}
   KeyboardSettings: {combination: "Ctrl+K"}
   ToggleAdvancedSettings: {combination: "Ctrl+Alt+T"}
   ToggleFullscreen: {combination: "F11"}
