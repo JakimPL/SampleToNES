@@ -179,7 +179,7 @@ class TestMenuDispatchPreservesPayload:
             ),
         )
         chosen: List[str] = []
-        panel.on_set_row = lambda row, channel, voice_id, transpose, volume: chosen.append(voice_id)
+        panel.on_set_row = lambda row, channel, voice_id, transpose, volume, levels: chosen.append(voice_id)
 
         menu._add_voice_submenu(_cell(0, ChannelName.PULSE2))
         recorder.dispatch_as_dpg()

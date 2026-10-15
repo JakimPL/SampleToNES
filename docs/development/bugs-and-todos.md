@@ -40,6 +40,10 @@ dimension the import starts carrying.
   both routes closes it.
 * A drag past the edge and the followed playhead both write the scroll, so with **Follow rows** on they take
   turns each frame. One writer of the scroll at a time closes it.
+* A MIDI key enters a note only where the caret stands on a pitch cell. Every subcolumn could take the key
+  that fits it, such as a volume or an effect.
+* Several MIDI keys played at once enter one note and the caret leaves it, so a chord writes the last key
+  alone. Spreading a chord over the channels would close it.
 
 ### Workflow
 
@@ -54,7 +58,6 @@ dimension the import starts carrying.
 
 ### Features
 
-* MIDI keyboard support.
 * A preview volume slider below the browsers, setting the level every preview plays at. The preview player
   hands each preview's source a level it reads per block, as the song reads the master gain.
 * In-application guide/tutorial.
@@ -128,6 +131,11 @@ currently out of line. An entry leaves when the code meets the contract again.
   when a browser tree plays one, and renders the instrument the plot card draws and the sequencer's
   instrument preview; every other sound the interface draws or plays, the original line included, is a worker's
   result ([the render thread](application/render-thread.md)).
+* PortMidi notices an unplugged keyboard only at its next listing, so on Windows and macOS the status bar
+  tells it when the reader opens the MIDI settings or presses **Refresh**. Linux's ALSA backend tells it at
+  once. Windows' own timing is unmeasured.
+* PortMidi reads its device list once, so a keyboard plugged in after the application started appears
+  after a restart on Windows and macOS.
 
 ## Bugs
 

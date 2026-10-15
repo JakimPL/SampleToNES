@@ -18,7 +18,7 @@ Each keyboard consumer registers one scope through `register(handle, *, priority
 
 A scope that sounds a note for as long as its key is down registers through `register_holding(handle, release, *, priority, active)`. The router remembers which scope claimed each press and hands that scope the key's release, whichever scope is active when the key comes up. A tab switch or a dialog opening while a key is down therefore leaves no note hanging.
 
-DearPyGui repeats a press for as long as its key is down, so the router claims the repeats of a held key for its scope and offers them to none. A window that loses focus while a key is down never hears its release, and ImGui then reports the key up. `KeyRouter.sweep()` runs once a frame and releases every held key the window no longer reports down. A scope registered through `register` holds nothing, so a navigation key held down repeats its move.
+DearPyGui repeats a press for as long as its key is down, so the router claims the repeats of a held key for its scope and offers them to none. A window that loses focus while a key is down never hears its release, and ImGui then reports the key up. `KeyRouter.sweep()` runs once a frame and releases every held key the window no longer reports down. A scope registered through `register` holds nothing, so a navigation key held down repeats its move. The tracker holds its note keys through a scope of its own, registered ahead of its grid keys at the same priority, so a note key held enters its note once and its row sounds until the key lifts, while the arrows keep repeating.
 
 ### Priorities
 

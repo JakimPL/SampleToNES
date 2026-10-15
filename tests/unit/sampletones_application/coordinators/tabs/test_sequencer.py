@@ -1987,7 +1987,7 @@ def _place_transpose(
         HistoryAction.EDIT_ROW,
         coordinator._sequencer_tracker_logic.write_cell,
     )
-    edit(0, ChannelName.PULSE1, None, Step(value=transpose), None)
+    edit(0, ChannelName.PULSE1, None, Step(value=transpose), None, None)
 
 
 def _break_song_changes(coordinator: SequencerTabCoordinator) -> None:

@@ -1,4 +1,4 @@
-from typing import Callable, Optional, ParamSpec
+from typing import Callable, Mapping, Optional, ParamSpec
 
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
@@ -124,6 +124,7 @@ class SequencerHistoryRecorder:
         voice_id: Optional[str],
         pitch: Optional[RowPitch],
         volume: Optional[int],
+        levels: Optional[Mapping[ChannelName, int]],
     ) -> CoalesceKey:
         """Extends the cell target with the subcolumns the edit writes.
 
@@ -135,7 +136,7 @@ class SequencerHistoryRecorder:
             *self.cell_key(row_index, channel),
             voice_id is not None,
             pitch is not None,
-            volume is not None,
+            volume is not None or levels is not None,
         )
 
     def module_setting_key(self, _value: int) -> CoalesceKey:

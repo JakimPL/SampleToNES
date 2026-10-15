@@ -657,6 +657,8 @@ class Application:
             previews=self.document_previews,
             original_audio_locator=self._original_audio_locator,
             instrument_exports=self._instrument_exports,
+            midi_router=self.midi_router,
+            live_keys=self.live_keys,
             tab_active=self._is_sequencer_tab_current,
             layout=SequencerTabParameters.from_config(self.layout),
             language_manager=self.language_manager,

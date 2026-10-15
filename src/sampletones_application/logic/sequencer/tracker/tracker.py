@@ -229,22 +229,26 @@ class SequencerTrackerLogic(CallbackMixin):
         voice_id: Optional[str],
         pitch: Optional[RowPitch],
         volume: Optional[int],
+        levels: Optional[Mapping[ChannelName, int]],
     ) -> None:
         """Writes the values a cell edit carries, keeping the rest of the cell as it stands.
 
         A voice is placed first, and the pitch and the volume reach the cell after it, so a pitch
         typed with a marked voice lands on the channels the voice was just placed on: in the sample
-        column the sample spreads over its channels, then the pitch reaches them.
+        column the sample spreads over its channels, then the pitch reaches them. A struck key's
+        ``levels`` write each channel's own volume in place of ``volume``, and a channel they leave
+        out keeps its volume.
         """
         if voice_id is not None:
             self.place_note(row_index, channel, voice_id)
 
-        if pitch is not None or volume is not None:
+        if pitch is not None or volume is not None or levels is not None:
             self.set_cell_subcolumn(
                 row_index,
                 channel,
                 pitch=pitch,
                 volume=volume,
+                levels=levels,
             )
 
     def place_note(
@@ -297,19 +301,21 @@ class SequencerTrackerLogic(CallbackMixin):
         *,
         pitch: Optional[RowPitch] = None,
         volume: Optional[int] = None,
+        levels: Optional[Mapping[ChannelName, int]] = None,
     ) -> None:
         if channel is None:
             self.set_sample_subcolumn(
                 row_index,
                 pitch=pitch,
                 volume=volume,
+                levels=levels,
             )
         else:
             self.set_row(
                 channel,
                 row_index,
                 pitch=pitch,
-                volume=volume,
+                volume=_channel_volume(channel, volume, levels),
             )
 
     def set_row(
@@ -457,6 +463,7 @@ class SequencerTrackerLogic(CallbackMixin):
         *,
         pitch: Optional[RowPitch] = None,
         volume: Optional[int] = None,
+        levels: Optional[Mapping[ChannelName, int]] = None,
     ) -> None:
         """Writes a pitch or a volume to the channels a sample plays on at the row.
 
@@ -464,13 +471,14 @@ class SequencerTrackerLogic(CallbackMixin):
         the channels the sample is still playing on, as :meth:`relevant_channels` reads them.
         A row where no sample plays takes nothing, and gains no pattern. A note reaches each
         channel as that channel names it, so the noise channel takes the period the pitch names.
+        A typed volume reaches every one of them, and a struck key's ``levels`` give each its own.
         """
         for channel in self._subcolumn_generators(row_index):
             self.set_row(
                 channel,
                 row_index,
                 pitch=self._channel_pitch(channel, pitch),
-                volume=volume,
+                volume=_channel_volume(channel, volume, levels),
             )
 
     @staticmethod
@@ -816,3 +824,16 @@ class SequencerTrackerLogic(CallbackMixin):
 
         self._frame_index = max(0, min(self._frame_index, frame_count - 1))
         return self._frame_index
+
+
+def _channel_volume(
+    channel: ChannelName,
+    volume: Optional[int],
+    levels: Optional[Mapping[ChannelName, int]],
+) -> Optional[int]:
+    """The volume an edit writes on one channel: a struck key's level for it where levels are given, the typed one
+    otherwise."""
+    if levels is None:
+        return volume
+
+    return levels.get(channel)

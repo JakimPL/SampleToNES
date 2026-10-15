@@ -261,7 +261,7 @@ class TrackerMenu(CallbackMixin):
         user_data: Tuple[int, Optional[ChannelName], str],
     ) -> None:
         row_index, channel, voice_id = user_data
-        self.call(self._panel.on_set_row, row_index, channel, voice_id, None, None)
+        self.call(self._panel.on_set_row, row_index, channel, voice_id, None, None, None)
 
     def _on_transpose_menu(
         self,

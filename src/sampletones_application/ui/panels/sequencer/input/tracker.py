@@ -48,6 +48,7 @@ def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
                     sample_index=int(pending, HEXADECIMAL_BASE),
                     pitch=None,
                     volume=None,
+                    levels=None,
                 )
             case SubColumn.VOLUME:
                 return EditAction(
@@ -56,6 +57,7 @@ def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
                     sample_index=None,
                     pitch=None,
                     volume=min(int(pending, HEXADECIMAL_BASE), MAX_VOLUME),
+                    levels=None,
                 )
             case SubColumn.TRANSPOSE:
                 sign = -1 if pending.startswith(MINUS) else 1
@@ -69,6 +71,7 @@ def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
                     sample_index=None,
                     pitch=clamped_step(sign * int(magnitude, DECIMAL_BASE)),
                     volume=None,
+                    levels=None,
                 )
     except ValueError:
         return None
@@ -290,6 +293,7 @@ class TrackerInputState(GridInputState[TrackerCursor, TrackerRegion]):
             sample_index=None,
             pitch=None,
             volume=None,
+            levels=None,
             note_off=True,
         )
 

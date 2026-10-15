@@ -42,6 +42,12 @@ The tab's scope (`ReconstructionKeys`, `logic/reconstruction/keys/`) takes a key
 
 **The voice a key sounds is armed once a frame.** The voice and the settings a key is read under are the render thread's to read, so `KeyArming` builds an `ArmedVoice` from them and keeps it until they change: the instrument on the auditioned generator at the project's rates, or the recording as the reader hears it at the rates it was converted at, with the velocity setting. An edit puts a new object in place of the one it changed, so arming compares objects by identity and rebuilds only after an edit. A MIDI key strikes the voice armed last, whole, from the MIDI thread, and a computer key arms first, since it arrives on the render thread.
 
+## The tracker enters the notes played
+
+The tracker's scope (`TrackerKeys`, `coordinators/tabs/sequencer/keys.py`) takes a key while the grid owns the keys with its caret on a pitch and no modal dialog stands. Entering a note writes the project and draws the grid, so a key's press and its release each cross to the render thread, in the order played, and the release follows its press there. The press asks the tracker again before it writes, since the grid may have moved on since the frame that published the scope. It writes the note at the caret, with the level the key was struck at on each channel where the MIDI settings say so (`velocity_levels`, which leaves the triangle's volume as it is), and the caret steps a row down.
+
+**The row a key wrote sounds while the key is down.** `SequencerKeys` (`logic/sequencer/keys.py`) reads the row back from the project after the write, so what is heard is what the song plays there: the voice the row names on each channel the cell reaches, at the row's pitch and volume. A row moving a note it did not start, and a channel the reader silenced, sound nothing. The computer keyboard's note keys reach the same logic through the grid's own holding scope.
+
 ## Who governs what
 
 | Concern | Owner |
@@ -55,3 +61,4 @@ The tab's scope (`ReconstructionKeys`, `logic/reconstruction/keys/`) takes a key
 | Which scope takes a key | `MidiRouter` (`utils/midi/router.py`) |
 | The port kept, the dialog, and a keyboard going away | `MidiCoordinator` (`coordinators/midi.py`) and `MidiConfig` (`config/session/application/midi.py`) |
 | What a key sounds on the Reconstructions tab | `KeyArming`, `ArmedVoice` and `ReconstructionKeys` (`logic/reconstruction/keys/`) |
+| A key entering a note in the tracker, and the row it sounds | `TrackerKeys` (`coordinators/tabs/sequencer/keys.py`) and `SequencerKeys` (`logic/sequencer/keys.py`) |

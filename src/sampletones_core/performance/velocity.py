@@ -1,5 +1,5 @@
 import math
-from typing import Optional
+from typing import Dict, Optional
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
@@ -31,3 +31,20 @@ def velocity_level(channel_name: ChannelName, velocity: int) -> Optional[int]:
         return None
 
     return math.ceil(velocity * MAX_VOLUME / MAX_VELOCITY)
+
+
+def velocity_levels(velocity: int) -> Dict[ChannelName, int]:
+    """The level a key struck at ``velocity`` plays at on each channel whose level a strike sets.
+
+    The triangle's level only gates it, so the triangle is left out and keeps the level it has.
+
+    Raises:
+        ValueError: If ``velocity`` lies outside the range a struck key reports.
+    """
+    levels: Dict[ChannelName, int] = {}
+    for channel_name in ChannelName.items():
+        level = velocity_level(channel_name, velocity)
+        if level is not None:
+            levels[channel_name] = level
+
+    return levels

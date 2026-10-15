@@ -10,7 +10,7 @@ from .rows import apply_row, note_step, resolve_row, sounding_pitch, sounding_vo
 from .song import song_instructions
 from .state import ChannelPerformance
 from .ticks import sound_tick
-from .velocity import velocity_level
+from .velocity import velocity_level, velocity_levels
 from .voice import VoiceReading, heard_readings
 
 __all__ = [
@@ -33,4 +33,5 @@ __all__ = [
     "sounding_pitch",
     "sounding_voice",
     "velocity_level",
+    "velocity_levels",
 ]

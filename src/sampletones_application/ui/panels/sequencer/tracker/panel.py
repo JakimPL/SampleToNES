@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from functools import partial
-from typing import Callable, Dict, Final, FrozenSet, Iterator, Optional, Set, Tuple
+from typing import Callable, Dict, Final, FrozenSet, Iterator, Mapping, Optional, Set, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -72,6 +72,7 @@ from sampletones_application.ui.panels.sequencer.grid.surface.edit import (
 from sampletones_application.ui.panels.sequencer.input.edit import (
     ClearAction,
     EditAction,
+    EnteredNote,
 )
 from sampletones_application.ui.panels.sequencer.input.target import TrackerTarget
 from sampletones_application.ui.panels.sequencer.input.tracker import (
@@ -98,6 +99,8 @@ from sampletones_application.ui.panels.sequencer.tracker.callbacks import (
     OnChannelSoloedCallback,
     OnClearRowCallback,
     OnClearSubcolumnCallback,
+    OnNoteEnteredCallback,
+    OnNoteReleasedCallback,
     OnPasteBlockCallback,
     OnPlayFromFrameCallback,
     OnPlayFromRowCallback,
@@ -265,6 +268,8 @@ class GUISequencerTrackerPanel(GUIPanel):
         self.on_clear_subcolumn: Optional[OnClearSubcolumnCallback] = None
         self.on_set_row: Optional[OnSetRowCallback] = None
         self.on_set_note_off: Optional[OnSetNoteOffCallback] = None
+        self.on_note_entered: Optional[OnNoteEnteredCallback] = None
+        self.on_note_released: Optional[OnNoteReleasedCallback] = None
         self.on_octave_changed: Optional[Callable[[int], None]] = None
         self.on_cell_selected: Optional[OnCellSelectedCallback] = None
         self.on_play_from_row: Optional[OnPlayFromRowCallback] = None
@@ -413,6 +418,12 @@ class GUISequencerTrackerPanel(GUIPanel):
         with dpg.item_handler_registry(tag=self._band_handler_tag):
             dpg.add_item_resize_handler(callback=self._on_band_resized)
 
+        self._router.register_holding(
+            self._on_note_key_pressed,
+            self._on_note_key_released,
+            priority=PRIORITY_PANEL,
+            active=self._keys_active,
+        )
         self._router.register(
             self._on_key_pressed,
             priority=PRIORITY_PANEL,
@@ -1232,10 +1243,11 @@ class GUISequencerTrackerPanel(GUIPanel):
         if action.pitch is not None:
             self._editable_cells.values[(row, channel, SubColumn.TRANSPOSE)] = display_pitch(action.pitch)
 
-        if action.volume is not None:
+        shown_volume = action.volume if action.levels is None or channel is None else action.levels.get(channel)
+        if shown_volume is not None:
             self._editable_cells.values[(row, channel, SubColumn.VOLUME)] = tracker_display.format_committed(
                 SubColumn.VOLUME,
-                action.volume,
+                shown_volume,
             )
 
         self.call(
@@ -1245,6 +1257,7 @@ class GUISequencerTrackerPanel(GUIPanel):
             voice_id,
             action.pitch,
             action.volume,
+            action.levels,
         )
 
     def _place_marked_voice(self, row: int, channel: Optional[ChannelName]) -> Optional[str]:
@@ -1277,7 +1290,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         if action.channel is not None:
             return True
 
-        if action.pitch is None and action.volume is None:
+        if action.pitch is None and action.volume is None and action.levels is None:
             return True
 
         return action.row in self._rows_taking_offsets
@@ -1583,6 +1596,55 @@ class GUISequencerTrackerPanel(GUIPanel):
     def owns_keys(self) -> bool:
         """Whether the grid owns the next key, which is also what the Edit menu asks."""
         return self._keys_active()
+
+    def takes_notes(self) -> bool:
+        """Whether a key played now enters its note: the grid owns the keys, its cursor stands on a pitch, and no
+        dialog holds the keyboard.
+
+        A key from another keyboard reaches the grid around the keyboard's router, so the dialog is asked here.
+        """
+        cursor = self._input_state.cursor
+        return (
+            cursor is not None
+            and cursor.subcolumn is SubColumn.TRANSPOSE
+            and self._keys_active()
+            and not self._router.is_modal_open
+        )
+
+    def enter_note(self, pitch: int, *, levels: Optional[Mapping[ChannelName, int]]) -> Optional[EnteredNote]:
+        """Enters ``pitch`` into the pitch cell under the cursor and steps a row down, answering the cell it wrote.
+
+        The note goes the way a typed step goes, so it lands in every column alike: a channel takes it as that
+        channel names notes, the noise channel as one of its periods, and the sample column hands it to the
+        channels still playing a sample, each in its own terms. A struck key's ``levels`` write each channel's
+        volume beside it.
+
+        Args:
+            pitch: The pitch the key names, held within the notes a channel plays as it is written.
+            levels: The volume a struck key writes on each channel, or ``None`` to leave the volume as it is.
+
+        Returns:
+            Optional[EnteredNote]: The cell the note went to, or ``None`` where the cursor stands on no pitch.
+        """
+        cursor = self._input_state.cursor
+        if cursor is None or cursor.subcolumn is not SubColumn.TRANSPOSE:
+            return None
+
+        with self._holding_paint():
+            self._handle_edit_action(
+                EditAction(
+                    row=cursor.row,
+                    channel=cursor.channel,
+                    sample_index=None,
+                    pitch=self._typed_note(cursor.channel, pitch),
+                    volume=None,
+                    levels=None if levels is None else dict(levels),
+                )
+            )
+            self._apply_state(self._input_state.reset_pending().navigate_row(1, self._current_row_count))
+
+        self._release_paint(recentering=True)
+        return EnteredNote(row=cursor.row, channel=cursor.channel)
 
     @property
     def channel_switch(self) -> ChannelSwitch:
@@ -1959,9 +2021,6 @@ class GUISequencerTrackerPanel(GUIPanel):
         if not event.is_plain:
             return False
 
-        if self._type_note(event):
-            return True
-
         char = HEX_KEYS.get(event.key) or SIGN_KEYS.get(event.key)
         if char is None:
             return False
@@ -1974,33 +2033,31 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._apply_state(new_state)
         return True
 
-    def _type_note(self, event: KeyEvent) -> bool:
-        """Types the note a piano key names into the pitch cell under the cursor, reporting whether it did.
+    def _on_note_key_pressed(self, event: KeyEvent) -> bool:
+        """Enters the note a plain piano key names at a cursor on a pitch, holding the key until it lifts.
 
-        The note goes the way a typed step goes, so it lands in every column alike: a channel takes
-        it as that channel names notes, the noise channel as one of its periods, and the sample
-        column hands it to the channels still playing a sample, each in its own terms.
+        A key the tracker's own shortcuts name, and a press off the pitch slot, go on to the grid's other keys.
+        The cell the note went to is reported with the key, so the row it wrote sounds while the key is down.
         """
         cursor = self._input_state.cursor
-        if cursor is None or cursor.subcolumn is not SubColumn.TRANSPOSE:
+        if cursor is None or cursor.subcolumn is not SubColumn.TRANSPOSE or not event.is_plain:
+            return False
+
+        if self._shortcuts.action(ShortcutCategory.TRACKER, event) is not None:
             return False
 
         semitone = semitone_of(event)
         if semitone is None:
             return False
 
-        pitch = (self._octave + OCTAVE_OFFSET) * OCTAVE_SEMITONES + semitone
-        self._handle_edit_action(
-            EditAction(
-                row=cursor.row,
-                channel=cursor.channel,
-                sample_index=None,
-                pitch=self._typed_note(cursor.channel, pitch),
-                volume=None,
-            )
-        )
-        self._apply_state(self._input_state.reset_pending().navigate_row(1, self._current_row_count))
+        entered = self.enter_note((self._octave + OCTAVE_OFFSET) * OCTAVE_SEMITONES + semitone, levels=None)
+        if entered is not None:
+            self.call(self.on_note_entered, event.key, entered.row, entered.channel)
+
         return True
+
+    def _on_note_key_released(self, key: int) -> None:
+        self.call(self.on_note_released, key)
 
     @staticmethod
     def _typed_note(channel: Optional[ChannelName], pitch: int) -> Note:

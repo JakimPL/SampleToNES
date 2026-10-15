@@ -99,8 +99,14 @@ empty duty cycle sequence plays duty 0 on a pulse channel and the long mode on n
 You can also edit an [**instrument**](../glossary.md#instrument) here: right-click it in the
 **Voices** list and choose **Edit**. See [voices](sequencer.md#voices-samples-and-instruments).
 
-For an instrument, **Audition** lets you choose **Pulse**, **Triangle** or **Noise** and play the
-instrument on that channel with the note keys.
+## Playing the keys
+
+The note keys of your computer keyboard and a [MIDI keyboard](interface.md#midi-keyboard) play the
+voice you have open. A recording plays from its start, as recorded on middle C, and higher or lower on the
+other keys. A computer key plays it to the end. A MIDI key stops it when you let go.
+
+An instrument sounds for as long as you hold the key. **Audition** lets you choose **Pulse**,
+**Triangle** or **Noise** and play the instrument on that channel.
 
 ## Exporting
 

@@ -63,7 +63,7 @@ class TestTrackerDetails:
         target = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="bass")
         formatter = _formatter(controller)
 
-        segments = formatter.edit_row(10, ChannelName.PULSE1, target.id, None, None)
+        segments = formatter.edit_row(10, ChannelName.PULSE1, target.id, None, None, None)
 
         assert _pairs(segments) == [
             ("00", HistoryDetailRole.FRAME),
@@ -81,7 +81,7 @@ class TestTrackerDetails:
         )
         formatter = _formatter(controller)
 
-        segments = formatter.edit_row(0, None, sample.id, None, None)
+        segments = formatter.edit_row(0, None, sample.id, None, None, None)
 
         assert _pairs(segments) == [
             ("00", HistoryDetailRole.FRAME),
@@ -95,7 +95,7 @@ class TestTrackerDetails:
         controller = _controller()
         formatter = _formatter(controller)
 
-        segments = formatter.edit_row(0, ChannelName.TRIANGLE, None, Step(value=5), None)
+        segments = formatter.edit_row(0, ChannelName.TRIANGLE, None, Step(value=5), None, None)
 
         assert _pairs(segments) == [
             ("00", HistoryDetailRole.FRAME),
@@ -114,7 +114,7 @@ class TestTrackerDetails:
         SequencerTrackerLogic(controller).place_note(0, None, sample.id)
         formatter = _formatter(controller)
 
-        segments = formatter.edit_row(2, None, None, None, 8)
+        segments = formatter.edit_row(2, None, None, None, 8, None)
 
         assert _pairs(segments) == [
             ("00", HistoryDetailRole.FRAME),
@@ -123,6 +123,24 @@ class TestTrackerDetails:
             ("v", HistoryDetailRole.VOLUME),
             ("8", HistoryDetailRole.VOLUME),
         ]
+
+    def test_a_struck_key_reads_as_the_level_it_wrote(self) -> None:
+        controller = _controller()
+        formatter = _formatter(controller)
+
+        segments = formatter.edit_row(0, ChannelName.PULSE1, None, None, None, {ChannelName.PULSE1: 8})
+
+        assert _pairs(segments)[-2:] == [("v", HistoryDetailRole.VOLUME), ("8", HistoryDetailRole.VOLUME)]
+
+    def test_a_struck_key_on_the_triangle_names_no_volume(self) -> None:
+        """The triangle keeps its volume under a struck key, so the entry names none for it."""
+        controller = _controller()
+        formatter = _formatter(controller)
+
+        segments = formatter.edit_row(0, ChannelName.TRIANGLE, None, Step(value=5), None, {ChannelName.PULSE1: 8})
+
+        assert ("v", HistoryDetailRole.VOLUME) not in _pairs(segments)
+        assert ("+05", HistoryDetailRole.TRANSPOSE) in _pairs(segments)
 
     def test_note_off_sample_column_lists_every_channel(self) -> None:
         controller = _controller()
@@ -470,7 +488,7 @@ class TestWhichKindADetailNames:
         instrument = controller.add_instrument(new_instrument("Pad"))
         formatter = _formatter(controller)
 
-        segments = formatter.edit_row(0, ChannelName.PULSE2, instrument.id, None, None)
+        segments = formatter.edit_row(0, ChannelName.PULSE2, instrument.id, None, None, None)
 
         assert _pairs(segments)[-1] == ("00", HistoryDetailRole.INSTRUMENT)
 
@@ -478,7 +496,7 @@ class TestWhichKindADetailNames:
         """An id nothing answers for states no kind, so it reads as the voice slot itself does."""
         formatter = _formatter(_controller())
 
-        segments = formatter.edit_row(0, ChannelName.PULSE1, UNKNOWN_SAMPLE_ID, None, None)
+        segments = formatter.edit_row(0, ChannelName.PULSE1, UNKNOWN_SAMPLE_ID, None, None, None)
 
         assert _pairs(segments)[-1] == (display_id(None), HistoryDetailRole.VOICE)
 

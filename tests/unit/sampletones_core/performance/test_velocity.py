@@ -4,7 +4,7 @@ import pytest
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME, MIN_VOLUME
-from sampletones_core.performance import velocity_level
+from sampletones_core.performance import velocity_level, velocity_levels
 from sampletones_shared.constants.music import MAX_VELOCITY, MIN_VELOCITY
 
 SCALING_CHANNELS: Final[List[ChannelName]] = [ChannelName.PULSE1, ChannelName.PULSE2, ChannelName.NOISE]
@@ -33,3 +33,18 @@ class TestTheLevelAStrikePlaysAt:
     def test_a_velocity_no_struck_key_reports_is_refused(self, velocity: int) -> None:
         with pytest.raises(ValueError):
             velocity_level(ChannelName.PULSE1, velocity)
+
+
+class TestTheLevelsOfAStrike:
+    """A strike names a level on every channel whose level it sets, and leaves the triangle out."""
+
+    @pytest.mark.parametrize("velocity", [MIN_VELOCITY, MAX_VELOCITY])
+    def test_every_channel_but_the_triangle_takes_the_level_its_velocity_names(self, velocity: int) -> None:
+        levels = velocity_levels(velocity)
+
+        assert set(levels) == set(ChannelName.items()) - {ChannelName.TRIANGLE}
+        assert all(level == velocity_level(channel_name, velocity) for channel_name, level in levels.items())
+
+    def test_a_velocity_no_struck_key_reports_is_refused(self) -> None:
+        with pytest.raises(ValueError):
+            velocity_levels(MAX_VELOCITY + 1)
