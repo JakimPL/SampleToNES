@@ -20,6 +20,8 @@ class BoundaryDeclaration(BaseModel):
         forbidden: Import prefixes out of reach in them, beyond the groups'.
         contract_groups: Groups whose prefixes are exempt from the forbidden ones.
         contracts: Import prefixes exempt from the forbidden ones, beyond the groups'.
+        excluding: Globs naming the modules the pattern reaches that the boundary leaves alone, such as the one
+            module a library is confined to.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -30,6 +32,7 @@ class BoundaryDeclaration(BaseModel):
     forbidden: Tuple[str, ...] = ()
     contract_groups: Tuple[str, ...] = ()
     contracts: Tuple[str, ...] = ()
+    excluding: Tuple[str, ...] = ()
 
     def rule(self, general: GeneralBoundaries) -> BoundaryRule:
         """The rule the declaration amounts to, with every group it names spelled out.
@@ -57,4 +60,5 @@ class BoundaryDeclaration(BaseModel):
                 *general.prefixes(self.contract_groups),
                 *self.contracts,
             ),
+            excluding=self.excluding,
         )

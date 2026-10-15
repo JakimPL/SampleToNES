@@ -31,6 +31,7 @@ from .library import (
     NoLibraryDataError,
     UnhandledLibraryError,
 )
+from .midi import MidiPortError
 from .opening import FileNotOpenedError
 from .operation import OperationCanceled
 from .player import (
@@ -102,6 +103,7 @@ __all__ = [
     "LoadReconstructionError",
     "MalformedInstrumentError",
     "MalformedTextKeyError",
+    "MidiPortError",
     "MissingProjectDataFileError",
     "MissingTextError",
     "NoFilesToProcessError",

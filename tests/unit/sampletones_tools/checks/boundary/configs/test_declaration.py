@@ -5,6 +5,7 @@ from sampletones_tools.checks.boundary.configs.general import GeneralBoundaries
 
 ROOT: Final[str] = "package"
 PATTERN: Final[str] = "logic/**/*.py"
+CONFINED: Final[str] = "logic/library/adapter.py"
 
 GENERAL: Final[GeneralBoundaries] = GeneralBoundaries(
     groups={
@@ -59,3 +60,22 @@ class TestDeclaredRule:
         rule = declaration.rule(GENERAL)
 
         assert (rule.root, rule.pattern) == (ROOT, PATTERN)
+
+    def test_a_declaration_leaves_the_modules_it_excludes_to_their_own_rules(self) -> None:
+        declaration = BoundaryDeclaration(
+            root=ROOT,
+            pattern=PATTERN,
+            forbidden=("library",),
+            excluding=(CONFINED,),
+        )
+
+        assert declaration.rule(GENERAL).excluding == (CONFINED,)
+
+    def test_a_declaration_excluding_nothing_reaches_every_module_of_its_pattern(self) -> None:
+        declaration = BoundaryDeclaration(
+            root=ROOT,
+            pattern=PATTERN,
+            forbidden=("library",),
+        )
+
+        assert declaration.rule(GENERAL).excluding == ()

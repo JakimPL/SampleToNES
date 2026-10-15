@@ -15,10 +15,11 @@ from sampletones.self_check import (
 from sampletones_shared import array
 from sampletones_shared.array import CUPY_AVAILABLE
 from sampletones_shared.documentation.site import DocumentationSite
-from sampletones_shared.exceptions import FileDialogUnavailableError
+from sampletones_shared.exceptions import FileDialogUnavailableError, MidiPortError
 
 RESOURCES_MODULE = "sampletones_application.ui.resources.resources"
 SELECTION_MODULE = "sampletones_application.utils.file_dialogs.selection"
+MIDI_SELECTION_MODULE = "sampletones_application.utils.midi.selection"
 CUPY_REQUIRED_REASON = "the GPU check needs CuPy and an NVIDIA graphics card"
 
 
@@ -51,6 +52,16 @@ class TestRunSelfCheck:
 
         assert status == FAILURE_STATUS
         assert "file dialog backend" in capsys.readouterr().err
+
+    def test_a_midi_library_failing_to_load_fails(self, capsys: pytest.CaptureFixture[str]) -> None:
+        with patch(
+            f"{MIDI_SELECTION_MODULE}.select_midi_backend",
+            side_effect=MidiPortError("The MIDI library failed to load"),
+        ):
+            status = run_self_check(gpu=False, documentation=False)
+
+        assert status == FAILURE_STATUS
+        assert "midi backend" in capsys.readouterr().err
 
 
 class TestChecksFor:

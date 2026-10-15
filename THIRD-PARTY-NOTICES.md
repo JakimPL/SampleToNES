@@ -35,14 +35,16 @@ are not used in any SampleToNES component name.
 
 Every dependency is installed separately by `pip`/`uv` from PyPI and imported at runtime.
 
-Most dependencies are permissively licensed (MIT, BSD, Apache-2.0, ISC). Three carry code
+Most dependencies are permissively licensed (MIT, BSD, Apache-2.0, ISC). Some carry code
 under the GNU Lesser General Public License — [Pebble](https://pypi.org/project/Pebble/)
 (LGPL-3.0, a direct dependency), [soxr](https://pypi.org/project/soxr/)
-(LGPL-2.1-or-later, a transitive dependency of `librosa`), and
+(LGPL-2.1-or-later, a transitive dependency of `librosa`),
 [soundfile](https://pypi.org/project/soundfile/) (BSD-3-Clause itself, a direct
 dependency, whose wheel carries the libsndfile shared library under LGPL-2.1-or-later with
-LAME and mpg123 statically linked into it) — and two, `certifi` and `tqdm`, are under
-MPL-2.0.
+LAME and mpg123 statically linked into it), and, on Windows and macOS,
+[pygame-ce](https://pypi.org/project/pygame-ce/) (LGPL-2.1, a direct dependency read for the
+PortMidi library it carries) — and two, `certifi` and `tqdm`, are under MPL-2.0. On Linux, MIDI
+input comes through [alsa-midi](https://pypi.org/project/alsa-midi/), under the MIT License.
 
 All of them are used as unmodified, separately installed libraries loaded dynamically at
 import time. No LGPL- or MPL-licensed code is copied into the wheel or the sdist, so the
@@ -63,6 +65,7 @@ bundle. The components below are the ones whose licenses ask for more than attri
 | Component | License | How it enters the bundle |
 | --- | --- | --- |
 | [Pebble](https://pypi.org/project/Pebble/) 5.2.0 | LGPL-3.0 | Python package, direct dependency |
+| [pygame-ce](https://pypi.org/project/pygame-ce/) 2.5.8 | LGPL-2.1 | Python package and its native libraries, direct dependency, Windows bundle only |
 | [libsndfile](https://github.com/libsndfile/libsndfile) 1.2.2 | LGPL-2.1-or-later | prebuilt shared library inside the `soundfile` package |
 | [mpg123](https://www.mpg123.de/) | LGPL-2.1-or-later | statically linked inside libsndfile (MP3 decoding) |
 | [LAME](https://lame.sourceforge.io/) 3.100 | LGPL-2.0-or-later | statically linked inside libsndfile (MP3 encoding) |
