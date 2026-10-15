@@ -2,7 +2,7 @@
 
 ## v0.3.3
 
-* [?] Added MIDI keyboard support.
+* Added MIDI keyboard support.
 * [?] Added Polish application language.
 * [?] Added NES binary player.
 
