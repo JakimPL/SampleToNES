@@ -1,58 +1,42 @@
 from typing import Callable, Optional
 
-import numpy as np
-
-from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.instruments import AUDITION_GENERATOR, AUDITION_TICKS
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.editing import (
     InstrumentAuditionProtocol,
 )
-from sampletones_application.logic.shared.playback_priority import PlaybackPriority
-from sampletones_application.logic.shared.preview_player import PreviewPlayer
 from sampletones_application.view_model.reconstruction.waveform import (
     InstrumentWaveformViewModel,
 )
-from sampletones_core.audio.output import Ending, Playback
-from sampletones_core.configs import Config
-from sampletones_core.constants.audio import START_OF_AUDIO
 from sampletones_core.constants.enums import ChannelName, GeneratorName
-from sampletones_core.features import generator_channel, speaks_in_periods
+from sampletones_core.features import generator_channel
 from sampletones_core.performance.audition import audition_audio, audition_ticks
-from sampletones_core.project.voices.instrument import Instrument
-from sampletones_shared.constants.music import OCTAVE_OFFSET, OCTAVE_SEMITONES
-from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
 class InstrumentAuditionLogic(CallbackMixin):
-    """Sounds and draws the instrument the Reconstructions tab is showing, on one generator.
+    """Holds the generator the Reconstructions tab auditions an instrument on, and draws the instrument there.
 
-    An instrument stands on no recording, so hearing one means playing it and seeing one means
-    rendering it. Both read the same choice — the generator the reader is auditioning it as — so
-    the choice is held here and what the plot card draws is what the note keys sound. The audition
-    plays at preview priority, so it yields to playback the reader asked for and answers Stop the
-    way every other preview does. It holds the key it sounds last and follows that one alone with
-    its cursor, which comes off the card once the key ends.
+    An instrument stands on no recording, so seeing one means rendering it. The plot card draws it on the
+    generator the reader chose, and a key sounds it on the channel of that same generator, so what the card
+    draws is what the note keys sound.
     """
 
     def __init__(
         self,
         editor: InstrumentAuditionProtocol,
         project_controller: ProjectController,
-        session_manager: SessionManager,
-        previews: PreviewPlayer,
     ) -> None:
         self._editor = editor
         self._controller = project_controller
-        self._session_manager = session_manager
-        self._previews = previews
         self._generator_name: GeneratorName = AUDITION_GENERATOR
-        self._playback: Optional[Playback[int]] = None
 
-        self.on_audition_error: Optional[Callable[[Exception], None]] = None
         self.on_waveform_changed: Optional[Callable[[Optional[InstrumentWaveformViewModel]], None]] = None
-        self.on_position_changed: Optional[Callable[[int], None]] = None
+
+    @property
+    def channel_name(self) -> ChannelName:
+        """The channel of the generator the instrument is auditioned on."""
+        return generator_channel(self._generator_name)
 
     def set_generator(self, generator_name: GeneratorName) -> None:
         """Takes the generator the voice is auditioned as, redrawing it as the one now chosen."""
@@ -67,29 +51,6 @@ class InstrumentAuditionLogic(CallbackMixin):
         """
         self.call(self.on_waveform_changed, self._waveform())
 
-    def sound(self, semitone: int) -> None:
-        """Sounds the instrument in front of the tab at one key of the keyboard's two octaves.
-
-        Args:
-            semitone: How far the key pressed stands above the C of the octave in force.
-        """
-        instrument = self._editor.instrument
-        if instrument is None:
-            return
-
-        channel_name = generator_channel(self._generator_name)
-        audio = audition_audio(
-            instrument,
-            channel_name,
-            self._audition_config(),
-            pitch=self._sounding_pitch(instrument, channel_name, semitone),
-            ticks=audition_ticks(instrument, cap=AUDITION_TICKS),
-        )
-        if audio is None:
-            return
-
-        self._play(audio)
-
     def _waveform(self) -> Optional[InstrumentWaveformViewModel]:
         """The audio the open instrument makes at the pitch it stands at, drawn as it sounds.
 
@@ -100,8 +61,8 @@ class InstrumentAuditionLogic(CallbackMixin):
         if instrument is None:
             return None
 
-        channel_name = generator_channel(self._generator_name)
-        config = self._audition_config()
+        channel_name = self.channel_name
+        config = self._controller.project.settings.synthesis_config()
         audio = audition_audio(
             instrument,
             channel_name,
@@ -118,62 +79,3 @@ class InstrumentAuditionLogic(CallbackMixin):
             audio=audio,
             frame_length=config.frame_length,
         )
-
-    def _sounding_pitch(
-        self,
-        instrument: Instrument,
-        channel_name: ChannelName,
-        semitone: int,
-    ) -> int:
-        """The value the channel sounds the voice at, which is a note or a noise period.
-
-        Two rows of keys name two octaves above the one in force, the way the tracker's own note
-        entry reads them. The noise channel selects one of sixteen periods instead of naming
-        notes, so a key there sounds the instrument at the period it states.
-        """
-        if speaks_in_periods(channel_name):
-            return instrument.reference(channel_name)
-
-        return (self._session_manager.octave + OCTAVE_OFFSET) * OCTAVE_SEMITONES + semitone
-
-    def _audition_config(self) -> Config:
-        settings = self._controller.project.settings
-        return Config().with_library(
-            nes_frequency=settings.nes_frequency,
-            sample_rate=settings.sample_rate,
-        )
-
-    def _play(self, audio: np.ndarray) -> None:
-        """Sounds the rendering at the rate the project renders at, following it with a cursor once it sounds.
-
-        A preview yields to playback the reader asked for, so an audition that stands aside leaves the
-        mark of whatever is sounding where it is. A device that refuses the audition reports through
-        ``on_audition_error``.
-        """
-        try:
-            playback = self._previews.play(
-                audio,
-                sample_rate=self._controller.project.settings.sample_rate,
-                rank=PlaybackPriority.PREVIEW,
-                listener=self,
-            )
-        except PlaybackError as exception:
-            self.call(self.on_audition_error, exception)
-            return
-
-        if playback is not None:
-            self._playback = playback
-
-    def positioned(self, playback: Playback[int], report: int) -> None:
-        if playback is self._playback:
-            self.call(self.on_position_changed, report)
-
-    def ended(self, playback: Playback[int], ending: Ending) -> None:
-        """Takes the cursor off the card once the key held ends, telling the failure where it failed."""
-        if playback is not self._playback:
-            return
-
-        self._playback = None
-        self.call(self.on_position_changed, START_OF_AUDIO)
-        if ending.error is not None:
-            self.call(self.on_audition_error, ending.error)

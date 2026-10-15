@@ -1,8 +1,15 @@
-from typing import Final, List
+from typing import Final, List, Optional
 
 import pytest
 
-from sampletones_application.logic.shared.live import Keyboard, LiveKeysLogic, LiveNoteSource, Strike
+from sampletones_application.logic.shared.live import (
+    Keyboard,
+    LiveKeysLogic,
+    LiveNoteSource,
+    LivePosition,
+    LiveReport,
+    Strike,
+)
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.logic.shared.preview_player import PreviewPlayer
 from sampletones_core.audio import silence
@@ -11,7 +18,7 @@ from sampletones_core.configs import Config
 from sampletones_shared.exceptions import NoOutputDeviceError, PlaybackError
 from sampletones_shared.types.callback import VoidCallback
 from tests.suite.audio.output import FakeAudioOutput
-from tests.suite.live import held_instrument, instrument_sound, strike
+from tests.suite.live import followed_strike, held_instrument, instrument_sound, strike
 
 OUTPUT_RATE: Final[int] = 44100
 BLOCK: Final[int] = 1024
@@ -21,6 +28,8 @@ LOW: Final[int] = 60
 HIGH: Final[int] = 67
 NO_DEVICE: Final[str] = "No audio output device is in force"
 DEVICE_FAILURE: Final[str] = "The device failed"
+FIRST_POSITION: Final[int] = 735
+SECOND_POSITION: Final[int] = 1470
 
 
 class Told:
@@ -70,7 +79,7 @@ def _unexpected(error: Exception) -> None:
     raise AssertionError(f"a live source told a failure between reads: {error}")
 
 
-def _source(output: FakeAudioOutput, playback: Playback[None]) -> LiveNoteSource:
+def _source(output: FakeAudioOutput, playback: Playback[LiveReport]) -> LiveNoteSource:
     source = output.claim(playback).source
     assert isinstance(source, LiveNoteSource)
     return source
@@ -285,3 +294,108 @@ class TestFailures:
 
         assert not told.failures
         assert not told.posted
+
+
+class Followed:
+    """What one press's follower heard: each position of its note, and ``None`` once it sounded no more."""
+
+    def __init__(self) -> None:
+        self.heard: List[Optional[int]] = []
+
+    def __call__(self, position: Optional[int]) -> None:
+        self.heard.append(position)
+
+
+def _followed(number: int, follower: Followed) -> Strike:
+    return followed_strike(
+        Keyboard.MIDI,
+        number,
+        instrument_sound(held_instrument(), note=number, config=Config()),
+        follower,
+    )
+
+
+class TestWhereANoteStandsReachesItsPress:
+    """A note's positions reach the follower of the press that struck it, and its end reaches it once."""
+
+    def test_a_position_reaches_the_follower_of_the_press_sounding(
+        self,
+        keys: LiveKeysLogic,
+        output: FakeAudioOutput,
+    ) -> None:
+        follower = Followed()
+        press = _followed(LOW, follower)
+        keys.key_down(press)
+
+        output.report(output.latest, LivePosition(press, FIRST_POSITION))
+
+        assert follower.heard == [FIRST_POSITION]
+
+    def test_a_press_giving_way_tells_its_follower_once(self, keys: LiveKeysLogic, output: FakeAudioOutput) -> None:
+        first_follower, second_follower = Followed(), Followed()
+        first, second = _followed(LOW, first_follower), _followed(HIGH, second_follower)
+        keys.key_down(first)
+        output.report(output.latest, LivePosition(first, FIRST_POSITION))
+
+        keys.key_down(second)
+        output.report(output.latest, LivePosition(second, FIRST_POSITION))
+        output.report(output.latest, LivePosition(second, SECOND_POSITION))
+
+        assert first_follower.heard == [FIRST_POSITION, None]
+        assert second_follower.heard == [FIRST_POSITION, SECOND_POSITION]
+
+    def test_a_note_stopping_tells_its_follower_once(self, keys: LiveKeysLogic, output: FakeAudioOutput) -> None:
+        follower = Followed()
+        press = _followed(LOW, follower)
+        keys.key_down(press)
+        output.report(output.latest, LivePosition(press, FIRST_POSITION))
+
+        output.report(output.latest, None)
+        output.end(output.latest, Ending.of(EndCause.FINISHED))
+
+        assert follower.heard == [FIRST_POSITION, None]
+
+    def test_a_playback_ending_mid_note_tells_its_follower(self, keys: LiveKeysLogic, output: FakeAudioOutput) -> None:
+        follower = Followed()
+        press = _followed(LOW, follower)
+        keys.key_down(press)
+        output.report(output.latest, LivePosition(press, FIRST_POSITION))
+
+        output.end(output.latest, Ending.of(EndCause.TAKEN))
+
+        assert follower.heard == [FIRST_POSITION, None]
+
+    def test_a_silenced_playback_ending_still_tells_its_follower(
+        self,
+        keys: LiveKeysLogic,
+        output: FakeAudioOutput,
+    ) -> None:
+        follower = Followed()
+        press = _followed(LOW, follower)
+        keys.key_down(press)
+        playback = output.latest
+        output.report(playback, LivePosition(press, FIRST_POSITION))
+
+        keys.silence()
+        output.end(playback, Ending.of(EndCause.STOPPED))
+
+        assert follower.heard == [FIRST_POSITION, None]
+
+    def test_a_position_of_a_playback_let_go_reaches_no_follower(
+        self,
+        keys: LiveKeysLogic,
+        output: FakeAudioOutput,
+    ) -> None:
+        follower = Followed()
+        press = _followed(LOW, follower)
+        keys.key_down(press)
+        playback = output.latest
+        keys.silence()
+
+        output.report(playback, LivePosition(press, FIRST_POSITION))
+
+        assert follower.heard == []
+        later = _followed(HIGH, follower)
+        keys.key_down(later)
+        output.report(output.latest, LivePosition(later, SECOND_POSITION))
+        assert follower.heard == [SECOND_POSITION]

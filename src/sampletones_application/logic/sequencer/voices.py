@@ -22,7 +22,6 @@ from sampletones_application.view_model.sequencer.voices import (
 )
 from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.audio.output import Ending, Playback
-from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.slices import VoiceSlice, sample_slices
 from sampletones_core.formats.famitracker.footprint import (
@@ -308,16 +307,9 @@ class SequencerVoicesLogic(CallbackMixin):
         return audition_audio(
             instrument,
             PREVIEW_CHANNEL,
-            self._preview_config(),
+            self._controller.project.settings.synthesis_config(),
             pitch=instrument.reference(PREVIEW_CHANNEL),
             ticks=audition_ticks(instrument, cap=AUDITION_TICKS),
-        )
-
-    def _preview_config(self) -> Config:
-        settings = self._controller.project.settings
-        return Config().with_library(
-            nes_frequency=settings.nes_frequency,
-            sample_rate=settings.sample_rate,
         )
 
     def _play_voice(

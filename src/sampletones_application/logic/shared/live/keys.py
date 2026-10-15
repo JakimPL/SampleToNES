@@ -1,6 +1,6 @@
 import threading
 from functools import partial
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.logic.shared.preview_player import PreviewPlayer
@@ -9,6 +9,7 @@ from sampletones_core.audio.output.source import FailureReport
 from sampletones_shared.exceptions import PlaybackError
 
 from .key import LiveKey
+from .position import LiveReport
 from .source import LiveNoteSource
 from .strike import Strike
 
@@ -28,6 +29,10 @@ class LiveKeysLogic:
     thread for a MIDI one. Each call is decided under one lock and posts to the playback, which runs it on
     the writer's thread. A claim refused for want of a device is posted to ``failed`` on the render thread,
     and a playback ending in failure is told there as well.
+
+    Where a note stands reaches the follower of the press that struck it, on the render thread, so whoever
+    struck it draws it. A note giving way to another press, ending, or ending with its playback is told to
+    its follower as ``None``, once.
     """
 
     def __init__(
@@ -51,9 +56,10 @@ class LiveKeysLogic:
         self._failed = failed
         self._linger_seconds = linger_seconds
         self._lock = threading.Lock()
-        self._playback: Optional[Playback[None]] = None
+        self._playback: Optional[Playback[LiveReport]] = None
         self._source: Optional[LiveNoteSource] = None
         self._sustained: bool = False
+        self._followed: Optional[Tuple[Playback[LiveReport], Strike]] = None
 
     def key_down(self, strike: Strike) -> None:
         """Presses a key, on the playback holding the output or on a new one claiming it."""
@@ -80,12 +86,28 @@ class LiveKeysLogic:
         if playback is not None:
             playback.stop()
 
-    def positioned(self, _playback: Playback[None], _report: None) -> None:
-        """Hears where a live playback stands, which carries no mark to draw."""
-        return None
+    def positioned(self, playback: Playback[LiveReport], report: LiveReport) -> None:
+        """Hands where the note sounding stands to the follower of its press, telling the one before it went."""
+        with self._lock:
+            if playback is not self._playback:
+                return
 
-    def ended(self, playback: Playback[None], ending: Ending) -> None:
-        """Lets the playback go, telling the failure where it failed."""
+        strike = None if report is None else report.strike
+        if self._followed is not None and self._followed[1] is not strike:
+            self._unfollow()
+
+        if report is None:
+            return
+
+        self._followed = (playback, report.strike)
+        if report.strike.follower is not None:
+            report.strike.follower(report.position)
+
+    def ended(self, playback: Playback[LiveReport], ending: Ending) -> None:
+        """Lets the playback go, telling its note's follower and the failure where it failed."""
+        if self._followed is not None and self._followed[0] is playback:
+            self._unfollow()
+
         with self._lock:
             if playback is not self._playback:
                 return
@@ -94,6 +116,16 @@ class LiveKeysLogic:
 
         if ending.error is not None:
             self._failed(ending.error)
+
+    def _unfollow(self) -> None:
+        """Tells the follower of the note followed that it sounds no more."""
+        if self._followed is None:
+            return
+
+        _playback, strike = self._followed
+        self._followed = None
+        if strike.follower is not None:
+            strike.follower(None)
 
     def _commanded(self, command: SourceCommand) -> bool:
         """Runs ``command`` on the source of the playback held; answers whether that playback still plays."""

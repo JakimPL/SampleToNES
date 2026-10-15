@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 
+from sampletones_core.configs import Config
 from sampletones_core.constants.audio import (
     DEFAULT_SAMPLE_RATE,
     MAX_SAMPLE_RATE,
@@ -63,3 +64,11 @@ class ProjectSettings(BaseModel):
         le=MAX_HIGHLIGHT,
         description="Rows per bar, the unit that groups beats.",
     )
+
+    def synthesis_config(self) -> Config:
+        """The settings a voice of the project is synthesized under: the defaults at the project's tick rate and
+        sample rate."""
+        return Config().with_library(
+            nes_frequency=self.nes_frequency,
+            sample_rate=self.sample_rate,
+        )

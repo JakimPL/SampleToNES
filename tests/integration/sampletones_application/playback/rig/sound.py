@@ -8,7 +8,6 @@ class Sound(Enum):
     RECONSTRUCTION = "reconstruction"
     INSTRUCTION = "instruction"
     SONG = "song"
-    AUDITION = "audition"
     VOICE = "voice"
     FILE = "file"
     KEYS = "keys"
@@ -16,4 +15,4 @@ class Sound(Enum):
 
 SOURCES: Final[Tuple[Sound, ...]] = (Sound.RECONSTRUCTION, Sound.INSTRUCTION, Sound.SONG)
 BUFFERS: Final[Tuple[Sound, ...]] = (Sound.RECONSTRUCTION, Sound.INSTRUCTION)
-PREVIEWS: Final[Tuple[Sound, ...]] = (Sound.AUDITION, Sound.VOICE, Sound.FILE)
+PREVIEWS: Final[Tuple[Sound, ...]] = (Sound.VOICE, Sound.FILE, Sound.KEYS)

@@ -17,7 +17,7 @@ from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.midi import MIDI_SETTLE_SECONDS
-from sampletones_application.constants.playback import AUDIO_TEARDOWN_SECONDS, FollowMode
+from sampletones_application.constants.playback import AUDIO_TEARDOWN_SECONDS, LIVE_LINGER_SECONDS, FollowMode
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.display import DisplayCoordinator
 from sampletones_application.coordinators.documentation import DocumentationCoordinator
@@ -80,6 +80,7 @@ from sampletones_application.logic.reconstruction.rewrites.queue import (
 )
 from sampletones_application.logic.reconstruction.rewrites.steps import RateChange
 from sampletones_application.logic.render import SongRenderLogic
+from sampletones_application.logic.shared.live import LiveKeysLogic
 from sampletones_application.logic.shared.preview_player import PreviewPlayer
 from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.renders import RenderCache
@@ -352,6 +353,13 @@ class Application:
             shortcut_source=self._shortcut_source,
         )
         self.midi_router: MidiRouter = MidiRouter()
+        self.live_keys: LiveKeysLogic = LiveKeysLogic(
+            self.preview_player,
+            post=CallbackQueue.add,
+            failed=partial(self._playback_failures.present, message=None),
+            linger_seconds=LIVE_LINGER_SECONDS,
+        )
+        self.midi_router.take_pedal(self.live_keys.pedal)
         self._midi_coordinator = MidiCoordinator(
             select_midi_backend(),
             self.midi_router,
@@ -575,6 +583,9 @@ class Application:
             instrument_edit_detail=self._instrument_edit_detail,
             previews=self.document_previews,
             key_router=self.key_router,
+            midi_router=self.midi_router,
+            live_keys=self.live_keys,
+            sample_root=self.layout.behavior.playing.sample_root,
             tab_active=self._is_reconstructions_tab_current,
             layout=ReconstructionTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
@@ -1731,6 +1742,8 @@ class Application:
         self._shell.update_fps(delta_time)
         self._shell.update_status_bar(delta_time)
         self._display_coordinator.tick(delta_time)
+        self.key_router.sweep()
+        self._reconstructions_tab.arm_keys()
         self.midi_router.publish()
         self._refresh_playback_menu_state()
 

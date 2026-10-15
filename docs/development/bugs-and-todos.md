@@ -125,8 +125,8 @@ currently out of line. An entry leaves when the code meets the contract again.
   `CaretOverlay._rectangle`. Each is a seam a scenario needs, which [screens](application/screens.md)
   says the application offers as a public one.
 * The render thread still reads a reconstruction file and its recordings from disk, at an opening and
-  when a browser tree plays one, and renders an instrument's audition and the sequencer's instrument
-  preview; every other sound the interface draws or plays, the original line included, is a worker's
+  when a browser tree plays one, and renders the instrument the plot card draws and the sequencer's
+  instrument preview; every other sound the interface draws or plays, the original line included, is a worker's
   result ([the render thread](application/render-thread.md)).
 
 ## Bugs

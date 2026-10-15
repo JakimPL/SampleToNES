@@ -112,7 +112,7 @@ Ordering the implementations is part of the factory's job: where several are ava
 
 ### 12. One dispatcher owns the keyboard
 
-DearPyGui gives every key handler the same global reach, so priority and consume semantics exist only where the application builds them. A single `KeyRouter` owns the one `add_key_press_handler` for the whole application. It offers each press to registered **scopes** from the highest priority to the lowest, and the first active scope that claims the press ends the walk. A modal dialog ranks above a sequencer sub-panel, which ranks above the application shortcuts. Each consumer registers one scope that says when it wants keys and which presses it claims.
+DearPyGui gives every key handler the same global reach, so priority and consume semantics exist only where the application builds them. A single `KeyRouter` owns the one key-press handler and the one key-release handler for the whole application. It offers each press to registered **scopes** from the highest priority to the lowest, and the first active scope that claims the press ends the walk. A modal dialog ranks above a sequencer sub-panel, which ranks above the application shortcuts. Each consumer registers one scope that says when it wants keys and which presses it claims. A scope that holds its keys, as a key sounding a note does, takes the release of each press it claimed, whatever is active by then.
 
 A binding is declared once and read by everyone who prints or fires it. `ShortcutId` names the action with the category that answers it, and the scheme under `sampletones_config/keybindings/` decides the combination. A printed key and the handler behind it therefore stay in step by construction.
 
@@ -145,7 +145,7 @@ A MIDI keyboard's keys arrive on the MIDI library's thread, so the keyboard need
 
 **A key lifted reaches the scope that took its press.** A tab switched or a dialog opened while a key is down therefore leaves no note hanging. Whenever the keys stop arriving, as a port changes, goes away or is let go, every held key is lifted through its taker and the pedal comes up. The pedal belongs to the sound alone.
 
-**A scope acts on the thread the key arrived on.** A scope that sounds therefore acts at once, with no frame between the key and the sound. A scope that changes the interface hands its work to the render thread itself (principle 6). [`midi.md`](application/midi.md) covers the libraries, the manager and the scopes.
+**A scope acts on the thread the key arrived on.** A scope that sounds therefore acts at once, with no frame between the key and the sound. What a key sounds belongs to the interface as well, so the scope's owner publishes it once a frame as a value that changes nothing once built, and the key strikes the value published last. A scope that changes the interface hands its work to the render thread itself (principle 6). [`midi.md`](application/midi.md) covers the libraries, the manager and the scopes.
 
 ---
 

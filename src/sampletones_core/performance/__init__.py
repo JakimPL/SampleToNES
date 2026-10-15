@@ -11,7 +11,7 @@ from .song import song_instructions
 from .state import ChannelPerformance
 from .ticks import sound_tick
 from .velocity import velocity_level
-from .voice import VoiceReading
+from .voice import VoiceReading, heard_readings
 
 __all__ = [
     "ChannelPerformance",
@@ -24,6 +24,7 @@ __all__ = [
     "apply_modifiers",
     "apply_row",
     "audition_audio",
+    "heard_readings",
     "live_channels",
     "note_step",
     "resolve_row",

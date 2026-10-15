@@ -55,15 +55,16 @@ class TestPlayerOverPlayer(BaseTestSuite):
 
 
 @REALTIME
-class TestAuditionTaken(BaseTestSuite):
-    """Rule 3: an audition a player takes the output from hears its end once."""
+class TestAKeyTaken(BaseTestSuite):
+    """Rule 3: a key held while a player takes the output hears its end once, and its mark comes off."""
 
-    def test_the_audition_hears_its_end_once(self, rig: PlaybackRig) -> None:
-        start_sounding(rig, Sound.AUDITION)
+    def test_the_key_hears_its_end_once(self, rig: PlaybackRig) -> None:
+        start_sounding(rig, Sound.KEYS)
 
         start_sounding(rig, Sound.RECONSTRUCTION)
 
-        assert len(rig.ends(Sound.AUDITION)) == 1
+        assert len(rig.ends(Sound.KEYS)) == 1
+        assert rig.positions(Sound.KEYS)[-1] == START_OF_AUDIO
 
 
 @REALTIME
@@ -71,7 +72,7 @@ class TestPreviewAgainstTheSong(BaseTestSuite):
     """Rules 1 and 3: a preview yields to the song, and the song, or a preview the reader asked for, takes the output."""
 
     TestCase = SoundCase
-    test_cases = tuple(case(sound) for sound in (Sound.AUDITION, Sound.VOICE, Sound.FILE))
+    test_cases = tuple(case(sound) for sound in (Sound.KEYS, Sound.VOICE, Sound.FILE))
     asked_for = tuple(case(sound) for sound in (Sound.VOICE, Sound.FILE))
 
     @each(test_cases)

@@ -1,9 +1,12 @@
 from dataclasses import dataclass
+from typing import Callable, Optional
 
 from sampletones_application.view_model.sequencer.voices import VoiceKind
 
 from .key import Keyboard, LiveKey
 from .sound import LiveSound
+
+StrikeFollower = Callable[[Optional[int]], None]
 
 
 def release_ends_note(keyboard: Keyboard, kind: VoiceKind) -> bool:
@@ -30,10 +33,13 @@ class Strike:
     Attributes:
         key: The key pressed.
         sound: What the press sounds.
+        follower: What hears where the press's note stands in its voice's samples while it sounds, and ``None``
+            once it sounds no more, on the render thread; ``None`` for a press nothing follows.
     """
 
     key: LiveKey
     sound: LiveSound
+    follower: Optional[StrikeFollower]
 
     @property
     def ends_on_release(self) -> bool:

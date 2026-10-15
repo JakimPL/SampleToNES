@@ -72,7 +72,7 @@ frames its envelopes make of it.
 
 The sequencer renders those instructions to audio, and the player encodes them into register values. What
 a listener hears and what the console plays are therefore the same walk read two ways, and not two
-implementations of one rule. A voice sounded on its own, such as a preview or an audition at a note a key
+implementations of one rule. A voice sounded on its own, such as a preview or a key played live at the note it
 names, is a **live note** (`performance/live.py`): it starts each channel at the step the key's pitch asks,
 plays every tick through the step a row's tick takes, and ends as a note-off does. It lives in
 `performance/` too, and not beside whichever surface asked.

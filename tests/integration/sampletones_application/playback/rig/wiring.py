@@ -11,7 +11,6 @@ from sampletones_application.coordinators.playback.router import PlaybackRouter
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
-from sampletones_application.logic.reconstruction.audition import InstrumentAuditionLogic
 from sampletones_application.logic.sequencer.playback.song_player import SongPlayerLogic
 from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.logic.shared.audio_player import AudioPlayer
@@ -30,7 +29,7 @@ from sampletones_core.audio.driver import AudioDriverFactory
 from sampletones_core.audio.output import AudioOutput, AudioSource, Playback, PlaybackListener
 from sampletones_core.audio.output.source import ReportT
 from sampletones_core.configs import Config
-from sampletones_core.constants.audio import BufferSize, SampleRate
+from sampletones_core.constants.audio import START_OF_AUDIO, BufferSize, SampleRate
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.project.patterns.pitch import Note
@@ -42,7 +41,6 @@ from tests.suite.audio.machine import FakeAudioSystem
 from tests.suite.headless import profile_in
 from tests.suite.regeneration import HeldRegeneration
 
-from .editor import HeldInstrument
 from .failures import RecordedFailures
 from .hearing import Hearing
 from .song import ScriptedSong
@@ -73,13 +71,12 @@ class HeardOutput(AudioOutput):
 class PlaybackStack:
     """Every object that sounds, wired as the composition root wires it, over one audio output on a fake machine.
 
-    The reconstruction and instruction players, the song, the instrument's audition, the voice list, the
-    file previews and the keys played live share the output, the previews and the keys through the one
-    preview player, and the router reaches the three sources through the guards their tabs put in front of
-    them. Each owner's marks and failures go to
-    the hearing, the way each tab hands them to what it draws and to the failure presenter, and each owner
-    is named to the hearing as the listener of its playbacks. The Audio settings verbs and the teardown
-    reach the output the way the application's do.
+    The reconstruction and instruction players, the song, the voice list, the file previews and the keys
+    played live share the output, the previews and the keys through the one preview player, and the router
+    reaches the three sources through the guards their tabs put in front of them. Each owner's marks and
+    failures go to the hearing, the way each tab hands them to what it draws and to the failure presenter, a
+    key's marks through the follower of its press, and each owner is named to the hearing as the listener of
+    its playbacks. The Audio settings verbs and the teardown reach the output the way the application's do.
     """
 
     def __init__(
@@ -90,6 +87,7 @@ class PlaybackStack:
         profile: Path,
         scheduling: SchedulingBehavior,
     ) -> None:
+        self._hearing = hearing
         self.looping: bool = False
         self.active: Optional[Sound] = None
         self.file: Optional[Path] = None
@@ -121,15 +119,6 @@ class PlaybackStack:
         self.song_player.on_position_changed = hearing.rowed
         self.song_player.on_error = partial(hearing.tell, Sound.SONG)
 
-        self.audition = InstrumentAuditionLogic(
-            HeldInstrument(self.instrument),
-            self.controller,
-            self.session_manager,
-            self.preview_player,
-        )
-        hearing.owns(Sound.AUDITION, self.audition)
-        self.audition.on_position_changed = partial(hearing.marked, Sound.AUDITION)
-        self.audition.on_audition_error = partial(hearing.tell, Sound.AUDITION)
         self.voices = SequencerVoicesLogic(
             self.controller,
             self.session_manager,
@@ -182,7 +171,11 @@ class PlaybackStack:
             levels={KEYS_CHANNEL: MAX_VOLUME},
             config=Config(),
         )
-        return Strike(key=LiveKey(keyboard=keyboard, number=number), sound=sound)
+        return Strike(key=LiveKey(keyboard=keyboard, number=number), sound=sound, follower=self._mark_key)
+
+    def _mark_key(self, position: Optional[int]) -> None:
+        """Marks where a key's note stands, taking the mark off once it ends, as the Reconstructions tab does."""
+        self._hearing.marked(Sound.KEYS, START_OF_AUDIO if position is None else position)
 
     def change_device(self, device_index: int, *, sample_rate: SampleRate) -> None:
         """Applies the Audio settings dialog's device and rate, as the application does."""

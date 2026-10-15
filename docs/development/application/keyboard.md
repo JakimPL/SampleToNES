@@ -10,9 +10,15 @@ The design truths it realizes are principles 12 and 14 of [`architecture.md`](..
 
 DearPyGui delivers a press to every registered key handler with the same global reach. No handler can stop another handler, or ImGui itself, from also seeing it. Priority and consume semantics therefore exist only where the application builds them.
 
-A single `KeyRouter` (`utils/gui/keyboard/`) owns the one `add_key_press_handler` for the whole application. It snapshots the modifier state once into a frozen `KeyEvent` and offers that event to registered **scopes** from the highest priority to the lowest. The first active scope whose handler returns `True` claims the press and ends the walk. This software walk is the only consume mechanism the framework leaves available.
+A single `KeyRouter` (`utils/gui/keyboard/`) owns the one `add_key_press_handler` and the one `add_key_release_handler` for the whole application. It snapshots the modifier state once into a frozen `KeyEvent` and offers that event to registered **scopes** from the highest priority to the lowest. The first active scope whose handler returns `True` claims the press and ends the walk. This software walk is the only consume mechanism the framework leaves available.
 
 Each keyboard consumer registers one scope through `register(handle, *, priority, active)`. `active()` reports whether the scope wants keys at this moment, and `handle(event) -> bool` acts on the press and reports whether it claimed it.
+
+### A held key's release reaches the scope that took it
+
+A scope that sounds a note for as long as its key is down registers through `register_holding(handle, release, *, priority, active)`. The router remembers which scope claimed each press and hands that scope the key's release, whichever scope is active when the key comes up. A tab switch or a dialog opening while a key is down therefore leaves no note hanging.
+
+DearPyGui repeats a press for as long as its key is down, so the router claims the repeats of a held key for its scope and offers them to none. A window that loses focus while a key is down never hears its release, and ImGui then reports the key up. `KeyRouter.sweep()` runs once a frame and releases every held key the window no longer reports down. A scope registered through `register` holds nothing, so a navigation key held down repeats its move.
 
 ### Priorities
 
@@ -21,14 +27,14 @@ The application orders its scopes by priority, from highest to lowest:
 | Priority | Scope | Active when | Behavior |
 |----------|-------|-------------|-----------|
 | `MODAL` | the open dialog's navigator | a modal dialog holds the keyboard | routes Tab/Enter/Escape to the dialog's focus ring and claims every press, so a dialog owns the keyboard exclusively while it is shown |
-| `PANEL` | a sub-panel the keys are meant for | its tab is in front, its card is open, and the sub-panel holds what the keys act on: a cursor, a row picked out, or an open audition | handles the keys its own category names and yields every combination it does not own, so a higher-reaching shortcut still wins |
+| `PANEL` | a sub-panel the keys are meant for | its tab is in front, its card is open, and the sub-panel holds what the keys act on: a cursor, a row picked out, or an open voice | handles the keys its own category names and yields every combination it does not own, so a higher-reaching shortcut still wins |
 | `SHORTCUT` | application shortcuts (`ShortcutManager`) | always | fires the matching shortcut while no field is being edited, or whenever the shortcut is `field_transparent` |
 
 The router offers a panel the key ahead of the shortcut scope. A panel therefore returns `False` on any combination it does not own. A panel that reads keys as entry, such as notes or hex digits, takes **plain presses** alone: a key pressed on its own or with Shift, the way a character is typed. Ctrl, Alt and Super make a press a command, and a command goes on to the shortcuts. The grid therefore lets `Ctrl+D` through, and an open instrument's note keys let `Ctrl+Z` through. That lets field-transparent shortcuts, such as the tab switch, reach the shortcut scope while a grid cursor is set.
 
 ### A panel scope answers on its own tab, from an open card
 
-A cursor, a picked row and an open audition all outlive a move to another tab and a collapsed card. A panel is therefore given a predicate that reports whether its tab is the one in front. It reads the predicate, and its card's collapse, at the moment of the press, as it reads focus. The composition root resolves the tab, and the scope composes the answer into its `active`. That keeps the fact in one place and leaves the router's contract as it stands: the scope decides whether it wants the key.
+A cursor, a picked row and an open voice all outlive a move to another tab and a collapsed card. A panel is therefore given a predicate that reports whether its tab is the one in front. It reads the predicate, and its card's collapse, at the moment of the press, as it reads focus. The composition root resolves the tab, and the scope composes the answer into its `active`. That keeps the fact in one place and leaves the router's contract as it stands: the scope decides whether it wants the key.
 
 A shortcut in the `SHORTCUT` scope that reaches a panel's selection asks the panel the same question. The channel keys reach the converter's picked row only while its list would take a key itself.
 

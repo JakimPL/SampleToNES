@@ -30,7 +30,6 @@ from .wiring import PlaybackStack
 WAIT_SECONDS: Final[float] = 10.0
 POLL_SECONDS: Final[float] = 0.002
 DRAIN_FRAMES: Final[int] = 3
-AUDITION_SEMITONE: Final[int] = 0
 PLAYED_KEY: Final[int] = 60
 FILE_STEM: Final[str] = "preview"
 FILE_SUFFIX: Final[str] = ".wav"
@@ -123,8 +122,8 @@ class PlaybackRig:
             self.stack.keys.pedal(down)
 
     def play(self, sound: Sound) -> None:
-        """Plays a sound on the reader's request: a source from its start, a voice or a file at once, an audition key,
-        a key played live, held or tapped as :meth:`hold_keys` says."""
+        """Plays a sound on the reader's request: a source from its start, a voice or a file at once, or a key played
+        live, held or tapped as :meth:`hold_keys` says."""
         if sound is Sound.KEYS:
             self.press(PLAYED_KEY, keyboard=Keyboard.MIDI)
             if not self.stack.keys_held:
@@ -136,8 +135,6 @@ class PlaybackRig:
             match sound:
                 case Sound.RECONSTRUCTION | Sound.INSTRUCTION | Sound.SONG:
                     self.stack.guards[sound].play()
-                case Sound.AUDITION:
-                    self.stack.audition.sound(AUDITION_SEMITONE)
                 case Sound.VOICE:
                     self.stack.voices.play_voice(self.stack.instrument.id)
                 case Sound.FILE:
@@ -157,8 +154,6 @@ class PlaybackRig:
             case Sound.FILE:
                 with self._gesture():
                     self.stack.files.play_at(self._file(), PlaybackPriority.PREVIEW)
-            case Sound.AUDITION:
-                self.play(Sound.AUDITION)
             case _:
                 raise ValueError(f"The {sound.value} is a source, which a reader plays")
 

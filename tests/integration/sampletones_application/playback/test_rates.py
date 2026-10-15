@@ -43,7 +43,7 @@ class TestRates(BaseTestSuite):
 
     TestCase = SoundCase
     test_cases = tuple(case(sound) for sound in (*BUFFERS, Sound.FILE))
-    rendered_cases = tuple(case(sound) for sound in (Sound.AUDITION, Sound.VOICE))
+    rendered_cases = (case(Sound.VOICE),)
 
     @each(test_cases)
     def test_a_sound_at_the_device_rate_plays_every_sample_once(self, rig: PlaybackRig, test_case: SoundCase) -> None:

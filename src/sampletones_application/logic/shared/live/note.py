@@ -26,8 +26,14 @@ class SoundingNote:
         self._tick_index: int = 0
         self._tick: np.ndarray = silence(0)
         self._handed: int = 0
+        self._played: int = 0
         for channel_name in note.channel_names:
             bank.generator(channel_name).reset()
+
+    @property
+    def played(self) -> int:
+        """The samples the note has handed out since its strike, at the stream's rate."""
+        return self._played
 
     @property
     def finished(self) -> bool:
@@ -53,6 +59,7 @@ class SoundingNote:
             frames += count
             self._handed += count
 
+        self._played += frames
         return frames
 
     def release(self) -> None:

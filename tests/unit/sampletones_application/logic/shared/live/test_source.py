@@ -3,7 +3,15 @@ from typing import Final, List
 import numpy as np
 import pytest
 
-from sampletones_application.logic.shared.live import Keyboard, LiveKey, LiveNoteSource, LiveSound, Strike
+from sampletones_application.logic.shared.live import (
+    Keyboard,
+    LiveKey,
+    LiveNoteSource,
+    LivePosition,
+    LiveReport,
+    LiveSound,
+    Strike,
+)
 from sampletones_core.audio import silence
 from sampletones_core.audio.output import Fill
 from sampletones_core.configs import Config
@@ -31,7 +39,7 @@ def _begun(source: LiveNoteSource) -> LiveNoteSource:
     return source
 
 
-def _read(source: LiveNoteSource) -> Fill[None]:
+def _read(source: LiveNoteSource) -> Fill[LiveReport]:
     return source.read_into(silence(BLOCK))
 
 
@@ -253,3 +261,60 @@ class TestTheSettingsOfEachSound:
         source.release(take.key)
 
         assert _played_out(source) == SAMPLE_FRAMES * OUTPUT_RATE // PAL_FREQUENCY
+
+
+def _report(fill: Fill[LiveReport]) -> LiveReport:
+    """The one report a read made."""
+    (tagged,) = fill.reports
+    return tagged.report
+
+
+class TestWhereTheNoteStands:
+    """Each block a note sounds in reports where it stands beside its press; the block it stops in reports its end once."""
+
+    def test_a_sounding_note_reports_its_press_and_the_voice_samples_it_reached(
+        self,
+        source: LiveNoteSource,
+        low: Strike,
+    ) -> None:
+        _begun(source).press(low)
+
+        first, second = _read(source), _read(source)
+
+        assert _report(first) == LivePosition(low, round(BLOCK * low.sound.config.sample_rate / OUTPUT_RATE))
+        assert _report(second) == LivePosition(low, round(2 * BLOCK * low.sound.config.sample_rate / OUTPUT_RATE))
+
+    def test_a_note_reports_its_place_in_the_samples_of_the_rate_it_is_drawn_at(self, low: Strike) -> None:
+        source = LiveNoteSource(sustained=False, linger_seconds=LINGER_SECONDS)
+        source.press(low)
+        source.begin(OUTPUT_RATE * 2, _unexpected)
+
+        position = _report(_read(source))
+
+        assert position == LivePosition(low, round(BLOCK * low.sound.config.sample_rate / (OUTPUT_RATE * 2)))
+
+    def test_a_new_press_reports_from_its_own_strike(self, source: LiveNoteSource, low: Strike, high: Strike) -> None:
+        _begun(source).press(low)
+        _read(source)
+
+        source.press(high)
+        position = _report(_read(source))
+
+        assert position == LivePosition(high, round(BLOCK * high.sound.config.sample_rate / OUTPUT_RATE))
+
+    def test_the_block_a_note_stops_in_reports_its_end_once(self, source: LiveNoteSource, low: Strike) -> None:
+        _begun(source).press(low)
+        _read(source)
+        source.release(low.key)
+
+        stopped, lingering = _read(source), _read(source)
+
+        assert _report(stopped) is None
+        assert lingering.reports == ()
+        assert lingering.frames == BLOCK
+
+    def test_a_source_nothing_pressed_reports_nothing(self, source: LiveNoteSource) -> None:
+        fill = _read(_begun(source))
+
+        assert fill.reports == ()
+        assert fill.frames == BLOCK

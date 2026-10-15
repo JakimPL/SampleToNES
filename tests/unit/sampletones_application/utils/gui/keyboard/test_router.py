@@ -1,10 +1,12 @@
-from typing import Callable, List
+from typing import Callable, Final, List
 from unittest.mock import patch
 
+import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.utils.gui.keyboard import (
     PRIORITY_MODAL,
+    PRIORITY_PANEL,
     PRIORITY_SHORTCUT,
     KeyEvent,
     KeyRouter,
@@ -13,6 +15,8 @@ from sampletones_application.utils.gui.keyboard import (
 from sampletones_application.utils.gui.keyboard.modifiers import CTRL, NO_MODIFIERS
 
 EVENT_MODULE = "sampletones_application.utils.gui.keyboard.event"
+PIANO_KEY: Final[int] = 90
+OTHER_KEY: Final[int] = 83
 
 
 def _event() -> KeyEvent:
@@ -248,3 +252,176 @@ class TestFieldFocus:
 
         monkeypatch.setattr(focus, "is_field_focused", lambda: False)
         assert not router.is_field_focused
+
+
+class _Holder:
+    """A scope holding the keys it claims, as a key sounding a note does, keeping each press and release."""
+
+    def __init__(self, *, claims: bool) -> None:
+        self.claims = claims
+        self.active = True
+        self.presses: List[int] = []
+        self.releases: List[int] = []
+
+    def press(self, event: KeyEvent) -> bool:
+        if self.claims:
+            self.presses.append(event.key)
+
+        return self.claims
+
+    def release(self, key: int) -> None:
+        self.releases.append(key)
+
+    def register(self, router: KeyRouter, *, priority: int) -> None:
+        router.register_holding(self.press, self.release, priority=priority, active=lambda: self.active)
+
+
+def _key(key: int) -> KeyEvent:
+    return KeyEvent(key=key, modifiers=NO_MODIFIERS)
+
+
+class TestHeldKeys:
+    """A scope holding its keys takes their releases, hears no repeat, and lets go of a key found up."""
+
+    def test_a_held_key_lifted_reaches_the_scope_that_took_it(self) -> None:
+        router = KeyRouter()
+        holder = _Holder(claims=True)
+        holder.register(router, priority=PRIORITY_PANEL)
+
+        router.route(_key(PIANO_KEY))
+        router.release(PIANO_KEY)
+
+        assert holder.releases == [PIANO_KEY]
+
+    def test_a_held_key_lifted_after_its_scope_went_inactive_still_reaches_it(self) -> None:
+        router = KeyRouter()
+        holder = _Holder(claims=True)
+        holder.register(router, priority=PRIORITY_PANEL)
+        router.route(_key(PIANO_KEY))
+
+        holder.active = False
+        router.release(PIANO_KEY)
+
+        assert holder.releases == [PIANO_KEY]
+
+    def test_a_held_key_lifted_under_a_modal_still_reaches_its_scope(self) -> None:
+        router = KeyRouter()
+        holder = _Holder(claims=True)
+        holder.register(router, priority=PRIORITY_PANEL)
+        router.route(_key(PIANO_KEY))
+        modal = _RecordingModal()
+
+        router.push_modal(modal)
+        router.release(PIANO_KEY)
+
+        assert holder.releases == [PIANO_KEY]
+        assert modal.keys == []
+
+    def test_a_repeat_of_a_held_key_reaches_no_scope(self) -> None:
+        router = KeyRouter()
+        holder = _Holder(claims=True)
+        holder.register(router, priority=PRIORITY_PANEL)
+        router.route(_key(PIANO_KEY))
+
+        repeated = router.route(_key(PIANO_KEY))
+        router.release(PIANO_KEY)
+        router.route(_key(PIANO_KEY))
+
+        assert repeated
+        assert holder.presses == [PIANO_KEY, PIANO_KEY]
+
+    def test_a_repeat_reaches_a_scope_holding_nothing(self) -> None:
+        router = KeyRouter()
+        log: List[str] = []
+        router.register(_recorder(log, "navigation", True), priority=PRIORITY_SHORTCUT, active=lambda: True)
+
+        router.route(_key(PIANO_KEY))
+        router.route(_key(PIANO_KEY))
+
+        assert log == ["navigation", "navigation"]
+
+    def test_a_press_the_holding_scope_declines_holds_nothing(self) -> None:
+        router = KeyRouter()
+        holder = _Holder(claims=False)
+        holder.register(router, priority=PRIORITY_PANEL)
+        log: List[str] = []
+        router.register(_recorder(log, "shortcut", True), priority=PRIORITY_SHORTCUT, active=lambda: True)
+
+        router.route(_key(PIANO_KEY))
+        router.release(PIANO_KEY)
+
+        assert holder.releases == []
+        assert log == ["shortcut"]
+
+    def test_a_release_of_a_key_nobody_holds_reaches_no_scope(self) -> None:
+        router = KeyRouter()
+        holder = _Holder(claims=True)
+        holder.register(router, priority=PRIORITY_PANEL)
+        router.route(_key(PIANO_KEY))
+
+        router.release(OTHER_KEY)
+
+        assert holder.releases == []
+        router.release(PIANO_KEY)
+        assert holder.releases == [PIANO_KEY]
+
+    def test_a_key_released_twice_is_lifted_once(self) -> None:
+        router = KeyRouter()
+        holder = _Holder(claims=True)
+        holder.register(router, priority=PRIORITY_PANEL)
+        router.route(_key(PIANO_KEY))
+
+        router.release(PIANO_KEY)
+        router.release(PIANO_KEY)
+
+        assert holder.releases == [PIANO_KEY]
+
+    def test_the_release_handler_reaches_the_scope_holding_the_key(self) -> None:
+        router = KeyRouter()
+        holder = _Holder(claims=True)
+        holder.register(router, priority=PRIORITY_PANEL)
+        router.route(_key(PIANO_KEY))
+
+        router._dispatch_release("handler", PIANO_KEY)
+
+        assert holder.releases == [PIANO_KEY]
+
+
+class TestTheSweep:
+    """A held key the window no longer reports down is let go, as when the window lost focus while it was down."""
+
+    def test_a_held_key_found_up_is_released(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        router = KeyRouter()
+        holder = _Holder(claims=True)
+        holder.register(router, priority=PRIORITY_PANEL)
+        router.route(_key(PIANO_KEY))
+        monkeypatch.setattr(dpg, "is_key_down", lambda key: False)
+
+        router.sweep()
+
+        assert holder.releases == [PIANO_KEY]
+
+    def test_a_held_key_still_down_stays_held(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        router = KeyRouter()
+        holder = _Holder(claims=True)
+        holder.register(router, priority=PRIORITY_PANEL)
+        router.route(_key(PIANO_KEY))
+        monkeypatch.setattr(dpg, "is_key_down", lambda key: key == PIANO_KEY)
+
+        router.sweep()
+
+        assert holder.releases == []
+        router.release(PIANO_KEY)
+        assert holder.releases == [PIANO_KEY]
+
+    def test_a_key_swept_up_takes_a_new_press_afresh(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        router = KeyRouter()
+        holder = _Holder(claims=True)
+        holder.register(router, priority=PRIORITY_PANEL)
+        router.route(_key(PIANO_KEY))
+        monkeypatch.setattr(dpg, "is_key_down", lambda key: False)
+
+        router.sweep()
+        router.route(_key(PIANO_KEY))
+
+        assert holder.presses == [PIANO_KEY, PIANO_KEY]

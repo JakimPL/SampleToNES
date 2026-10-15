@@ -1,6 +1,6 @@
 from typing import Final
 
-from sampletones_application.logic.shared.live import Keyboard, LiveKey, LiveSound, Strike
+from sampletones_application.logic.shared.live import Keyboard, LiveKey, LiveSound, Strike, StrikeFollower
 from sampletones_application.view_model.sequencer.voices import VoiceKind
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
@@ -63,5 +63,10 @@ def unheard_sound(kind: VoiceKind) -> LiveSound:
 
 
 def strike(keyboard: Keyboard, number: int, sound: LiveSound) -> Strike:
-    """One press of key ``number`` on ``keyboard``, sounding ``sound``."""
-    return Strike(key=LiveKey(keyboard=keyboard, number=number), sound=sound)
+    """One press of key ``number`` on ``keyboard``, sounding ``sound``, which nothing follows."""
+    return Strike(key=LiveKey(keyboard=keyboard, number=number), sound=sound, follower=None)
+
+
+def followed_strike(keyboard: Keyboard, number: int, sound: LiveSound, follower: StrikeFollower) -> Strike:
+    """One press of key ``number`` on ``keyboard``, sounding ``sound``, whose note ``follower`` follows."""
+    return Strike(key=LiveKey(keyboard=keyboard, number=number), sound=sound, follower=follower)

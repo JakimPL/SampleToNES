@@ -2,28 +2,36 @@ from typing import Final, List
 
 import numpy as np
 
+from sampletones_application.logic.shared.live import Keyboard
 from sampletones_core.constants.audio import DEFAULT_BUFFER_SIZE, START_OF_AUDIO
 from tests.integration.sampletones_application.playback.material import (
     LONG,
-    RATE,
     REALTIME,
     SHORT_SONG,
     STEPPED,
     SoundCase,
+    Span,
     case,
     each,
     grant_and_hold,
     played_through,
+    prepare,
     start_sounding,
 )
-from tests.integration.sampletones_application.playback.rig import BUFFERS, PlaybackRig, Sound
+from tests.integration.sampletones_application.playback.rig import BUFFERS, PLAYED_KEY, PlaybackRig, Sound
 from tests.suite.audio.pacing import StepPacing
-from tests.suite.audio.ramp import ramp
 from tests.suite.base import BaseTestSuite
 
 GRANTED_WRITES: Final[int] = 4
 SEEK_TARGET: Final[int] = 300_000
 SONG_SEEK_ORDER: Final[int] = 30
+
+
+def _held_then_lifted(rig: PlaybackRig) -> None:
+    """Holds a key until the device has played some of its note, then lifts it and lets every report land."""
+    start_sounding(rig, Sound.KEYS)
+    rig.lift(PLAYED_KEY, keyboard=Keyboard.MIDI)
+    rig.settle()
 
 
 def _drawn(rig: PlaybackRig, sound: Sound) -> List[int]:
@@ -35,7 +43,7 @@ class TestOrder(BaseTestSuite):
     """Rule 4: a sound's positions arrive in order, and before its end report."""
 
     TestCase = SoundCase
-    test_cases = tuple(case(sound) for sound in (*BUFFERS, Sound.AUDITION))
+    test_cases = tuple(case(sound) for sound in BUFFERS)
 
     @each(test_cases)
     def test_positions_arrive_in_order(self, rig: PlaybackRig, test_case: SoundCase) -> None:
@@ -50,6 +58,19 @@ class TestOrder(BaseTestSuite):
         played_through(rig, test_case.sound)
 
         assert all(mark.ends_heard == 0 for mark in rig.marks(test_case.sound) if mark.position != START_OF_AUDIO)
+
+    def test_a_held_keys_positions_arrive_in_order(self, rig: PlaybackRig) -> None:
+        _held_then_lifted(rig)
+
+        drawn = _drawn(rig, Sound.KEYS)
+        assert drawn
+        assert drawn == sorted(drawn)
+
+    def test_every_position_of_a_key_lands_before_its_end_report(self, rig: PlaybackRig) -> None:
+        _held_then_lifted(rig)
+
+        assert _drawn(rig, Sound.KEYS)
+        assert all(mark.ends_heard == 0 for mark in rig.marks(Sound.KEYS) if mark.position != START_OF_AUDIO)
 
     def test_the_song_rows_arrive_in_order(self, rig: PlaybackRig) -> None:
         played_through(rig, Sound.SONG)
@@ -67,7 +88,7 @@ class TestWritten(BaseTestSuite):
     test_cases = (
         case(Sound.RECONSTRUCTION),
         case(Sound.INSTRUCTION),
-        case(Sound.AUDITION),
+        case(Sound.KEYS),
     )
 
     @each(test_cases)
@@ -77,9 +98,7 @@ class TestWritten(BaseTestSuite):
         steps: StepPacing,
         test_case: SoundCase,
     ) -> None:
-        if test_case.sound in BUFFERS:
-            rig.load(test_case.sound, ramp(LONG), sample_rate=RATE)
-
+        prepare(rig, test_case.sound, Span.LONG)
         rig.play(test_case.sound)
         grant_and_hold(rig, steps, GRANTED_WRITES)
         rig.drain()

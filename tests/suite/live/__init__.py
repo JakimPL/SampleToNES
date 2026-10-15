@@ -1,6 +1,7 @@
 from .sounds import (
     LIVE_CHANNEL,
     REFERENCE_PITCH,
+    followed_strike,
     held_instrument,
     instrument_sound,
     sample_sound,
@@ -12,6 +13,7 @@ from .sounds import (
 __all__ = [
     "LIVE_CHANNEL",
     "REFERENCE_PITCH",
+    "followed_strike",
     "held_instrument",
     "instrument_sound",
     "sample_sound",

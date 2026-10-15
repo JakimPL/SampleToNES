@@ -1,16 +1,17 @@
 import threading
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 
 from sampletones_application.logic.shared.synthesis import ChannelBank, EngineRates
 from sampletones_core.audio.output import Fill
-from sampletones_core.audio.output.source import FailureReport
+from sampletones_core.audio.output.source import FailureReport, Tagged
 from sampletones_core.configs import Config
 
 from .held import HeldKeys
 from .key import LiveKey
 from .note import SoundingNote
+from .position import LivePosition, LiveReport
 from .strike import Strike
 
 
@@ -29,6 +30,10 @@ class LiveNoteSource:
 
     The generators are built at the first strike, for the stream's rate and the sound's settings, and built
     again for a strike under other settings. A strike under the same settings starts them from rest.
+
+    Each block a note sounds in reports where the note stands, beside the press that struck it, and the
+    block it stops in reports ``None`` once, so whoever follows the press draws the note for as long as it
+    sounds.
     """
 
     def __init__(self, *, sustained: bool, linger_seconds: float) -> None:
@@ -48,6 +53,8 @@ class LiveNoteSource:
         self._bank_config: Optional[Config] = None
         self._struck: Optional[Strike] = None
         self._sounding: Optional[SoundingNote] = None
+        self._sounding_strike: Optional[Strike] = None
+        self._reporting: bool = False
 
     def press(self, strike: Strike) -> None:
         """Presses a key, whose sound is heard from the next block."""
@@ -74,20 +81,21 @@ class LiveNoteSource:
         self._linger_frames = round(self._linger_seconds * output_rate)
         self._follow_front()
 
-    def read_into(self, block: np.ndarray) -> Fill[None]:
+    def read_into(self, block: np.ndarray) -> Fill[LiveReport]:
         """Fills ``block`` with the note sounding and silence around it, short once the linger has run out."""
         if self._closed.is_set():
             return Fill(frames=0, reports=())
 
         sounded = self._sounded_into(block)
         block[sounded:] = 0.0
+        reports = self._reports(sounded)
         if self._held.holds or self._sounding is not None:
             self._lingered = 0
-            return Fill(frames=len(block), reports=())
+            return Fill(frames=len(block), reports=reports)
 
         quiet = min(len(block) - sounded, self._linger_frames - self._lingered)
         self._lingered += quiet
-        return Fill(frames=sounded + quiet, reports=())
+        return Fill(frames=sounded + quiet, reports=reports)
 
     def close(self) -> None:
         """Ends the sound: every read from now on comes up empty."""
@@ -110,6 +118,7 @@ class LiveNoteSource:
             return
 
         self._sounding = SoundingNote(front.sound.note(), self._bank_for(front.sound.config, self._output_rate))
+        self._sounding_strike = front
 
     def _sounded_into(self, block: np.ndarray) -> int:
         if self._sounding is None:
@@ -117,9 +126,22 @@ class LiveNoteSource:
 
         frames = self._sounding.fill(block)
         if self._sounding.finished:
-            self._sounding = None
+            self._sounding, self._sounding_strike = None, None
 
         return frames
+
+    def _reports(self, sounded: int) -> Tuple[Tagged[LiveReport], ...]:
+        """Where the note sounding stands once the block's ``sounded`` frames are heard, or its end, told once."""
+        if self._sounding is not None and self._sounding_strike is not None and self._output_rate is not None:
+            self._reporting = True
+            position = round(self._sounding.played * self._sounding_strike.sound.config.sample_rate / self._output_rate)
+            return (Tagged(offset=sounded, report=LivePosition(self._sounding_strike, position)),)
+
+        if self._reporting:
+            self._reporting = False
+            return (Tagged(offset=sounded, report=None),)
+
+        return ()
 
     def _bank_for(self, config: Config, output_rate: int) -> ChannelBank:
         """The generators for ``config`` at the stream's rate, built where none are or other settings built them."""

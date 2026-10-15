@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Final, FrozenSet, List, cast
+from typing import Dict, Final, FrozenSet, List, Tuple, cast
 from unittest.mock import MagicMock
 
 import dearpygui.dearpygui as dpg
@@ -942,29 +942,40 @@ class TestTheAuditionSelector:
 
 
 class TestTheNoteKeys:
-    """A note key sounds the instrument in front of the panel, and claims the press it used."""
+    """A note key plays the voice in front of the panel, a recording or an instrument, and holds the press it used."""
 
     def test_a_note_key_asks_for_the_note_it_names(
         self,
         panel: GUIReconstructionInstrumentsPanel,
     ) -> None:
-        sounded: List[int] = []
-        panel.on_audition_requested = sounded.append
+        pressed: List[Tuple[int, int]] = []
+        panel.on_piano_key_pressed = lambda key, semitone: pressed.append((key, semitone))
         panel.update_view(ONE_INSTRUMENT)
 
         assert panel._on_key_pressed(KeyEvent(key=dpg.mvKey_Z, modifiers=frozenset())) is True
-        assert sounded == [PIANO_KEYS[dpg.mvKey_Z]]
+        assert pressed == [(dpg.mvKey_Z, PIANO_KEYS[dpg.mvKey_Z])]
+
+    def test_a_note_key_lifted_reports_the_key(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+    ) -> None:
+        lifted: List[int] = []
+        panel.on_piano_key_lifted = lifted.append
+
+        panel._on_key_lifted(dpg.mvKey_Z)
+
+        assert lifted == [dpg.mvKey_Z]
 
     def test_a_key_naming_no_note_is_left_to_the_shortcuts(
         self,
         panel: GUIReconstructionInstrumentsPanel,
     ) -> None:
-        sounded: List[int] = []
-        panel.on_audition_requested = sounded.append
+        pressed: List[Tuple[int, int]] = []
+        panel.on_piano_key_pressed = lambda key, semitone: pressed.append((key, semitone))
         panel.update_view(ONE_INSTRUMENT)
 
         assert panel._on_key_pressed(KeyEvent(key=dpg.mvKey_Spacebar, modifiers=frozenset())) is False
-        assert sounded == []
+        assert pressed == []
 
     @pytest.mark.parametrize("typed", ["Ctrl+Z", "Ctrl+S", "Ctrl+Shift+Z", "Alt+Z", "Super+Z"])
     def test_a_combination_ending_in_a_note_key_is_left_to_the_shortcuts(
@@ -972,39 +983,55 @@ class TestTheNoteKeys:
         panel: GUIReconstructionInstrumentsPanel,
         typed: str,
     ) -> None:
-        """Undo, Save and the rest reach their shortcuts while an instrument is open."""
-        sounded: List[int] = []
-        panel.on_audition_requested = sounded.append
+        """Undo, Save and the rest reach their shortcuts while a voice is open."""
+        pressed: List[Tuple[int, int]] = []
+        panel.on_piano_key_pressed = lambda key, semitone: pressed.append((key, semitone))
         panel.update_view(ONE_INSTRUMENT)
         combination = KeyCombination.parse(typed)
 
         assert panel._on_key_pressed(KeyEvent(key=combination.key, modifiers=combination.modifiers)) is False
-        assert sounded == []
+        assert pressed == []
 
     def test_a_note_key_under_shift_sounds_its_note(
         self,
         panel: GUIReconstructionInstrumentsPanel,
     ) -> None:
-        sounded: List[int] = []
-        panel.on_audition_requested = sounded.append
+        pressed: List[Tuple[int, int]] = []
+        panel.on_piano_key_pressed = lambda key, semitone: pressed.append((key, semitone))
         panel.update_view(ONE_INSTRUMENT)
 
         assert panel._on_key_pressed(KeyEvent(key=dpg.mvKey_Z, modifiers=SHIFT)) is True
-        assert sounded == [PIANO_KEYS[dpg.mvKey_Z]]
+        assert pressed == [(dpg.mvKey_Z, PIANO_KEYS[dpg.mvKey_Z])]
 
     def test_the_keys_answer_while_an_instrument_is_open(
         self,
         panel: GUIReconstructionInstrumentsPanel,
     ) -> None:
         panel.update_view(ONE_INSTRUMENT)
-        assert panel._audition_keys_active() is True
+        assert panel._piano_keys_active() is True
 
-    def test_a_loaded_reconstruction_keeps_the_keys_out_of_the_panel(
+    @pytest.mark.parametrize(
+        "view_model",
+        [build_view_model({ChannelName.PULSE1: LARGEST_PULSE}), ENVELOPES_ON_THEIR_WAY, ENVELOPES_KEPT],
+        ids=["envelopes landed", "envelopes on their way", "envelopes kept"],
+    )
+    def test_the_keys_answer_while_a_recording_is_open(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        view_model: ReconstructionInstrumentsViewModel,
+    ) -> None:
+        """A recording plays from the keys whether its envelopes landed or are on their way."""
+        panel.update_view(view_model)
+        assert panel._piano_keys_active() is True
+
+    def test_nothing_open_keeps_the_keys_out_of_the_panel(
         self,
         panel: GUIReconstructionInstrumentsPanel,
     ) -> None:
-        panel.update_view(build_view_model({ChannelName.PULSE1: LARGEST_PULSE}))
-        assert panel._audition_keys_active() is False
+        panel.update_view(ONE_INSTRUMENT)
+        panel.update_view(NOT_LOADED)
+
+        assert panel._piano_keys_active() is False
 
     def test_a_field_being_typed_into_keeps_its_own_characters(
         self,
@@ -1013,7 +1040,7 @@ class TestTheNoteKeys:
     ) -> None:
         panel.update_view(ONE_INSTRUMENT)
         key_router.is_field_focused = True
-        assert panel._audition_keys_active() is False
+        assert panel._piano_keys_active() is False
 
     def test_another_tab_in_front_keeps_the_keys_from_the_panel(
         self,
@@ -1032,7 +1059,7 @@ class TestTheNoteKeys:
             tab_active=lambda: False,
         )
         panel.update_view(ONE_INSTRUMENT)
-        assert panel._audition_keys_active() is False
+        assert panel._piano_keys_active() is False
 
     def test_a_rail_put_away_keeps_the_keys_from_the_panel(
         self,
@@ -1053,4 +1080,4 @@ class TestTheNoteKeys:
             tab_active=lambda: True,
         )
         panel.update_view(ONE_INSTRUMENT)
-        assert panel._audition_keys_active() is False
+        assert panel._piano_keys_active() is False

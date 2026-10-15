@@ -36,6 +36,12 @@ Each library is imported by one module, which the import-boundary check holds. A
 - **A keyboard going away is told on the status bar.** The session keeps its name, so the next start reads it again, and the reader picks it again in the dialog to read it sooner.
 - **The teardown lets the keyboard go before playback stops**, so the sound hears every key let go.
 
+## The Reconstructions tab plays the voice in front of it
+
+The tab's scope (`ReconstructionKeys`, `logic/reconstruction/keys/`) takes a key while the tab is in front and no modal dialog stands, and hands it to the one owner of the keys played live, `LiveKeysLogic`, whose playback the pedal reaches. The computer keyboard's piano keys reach the same scope through the instruments card, so a key sounds alike from either keyboard ([keyboard](keyboard.md)). The MIDI keyboard answers whether the card is open or not, since the tab alone reads it, while the computer keyboard is shared among the cards.
+
+**The voice a key sounds is armed once a frame.** The voice and the settings a key is read under are the render thread's to read, so `KeyArming` builds an `ArmedVoice` from them and keeps it until they change: the instrument on the auditioned generator at the project's rates, or the recording as the reader hears it at the rates it was converted at, with the velocity setting. An edit puts a new object in place of the one it changed, so arming compares objects by identity and rebuilds only after an edit. A MIDI key strikes the voice armed last, whole, from the MIDI thread, and a computer key arms first, since it arrives on the render thread.
+
 ## Who governs what
 
 | Concern | Owner |
@@ -48,3 +54,4 @@ Each library is imported by one module, which the import-boundary check holds. A
 | The port read, its settling, and the keys let go | `MidiInputManager` (`utils/midi/manager.py`) |
 | Which scope takes a key | `MidiRouter` (`utils/midi/router.py`) |
 | The port kept, the dialog, and a keyboard going away | `MidiCoordinator` (`coordinators/midi.py`) and `MidiConfig` (`config/session/application/midi.py`) |
+| What a key sounds on the Reconstructions tab | `KeyArming`, `ArmedVoice` and `ReconstructionKeys` (`logic/reconstruction/keys/`) |

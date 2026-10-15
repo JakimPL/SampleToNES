@@ -34,6 +34,7 @@ from sampletones_application.logic.reconstruction.instruments import (
     PendingChangesProtocol,
     ReconstructionInstrumentsLogic,
 )
+from sampletones_application.logic.reconstruction.keys import KeyArming, ReconstructionKeys
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.reconstruction import (
     ReconstructionPanelLogic,
@@ -46,6 +47,7 @@ from sampletones_application.logic.reconstruction.rewrites.steps import (
 )
 from sampletones_application.logic.shared.audio_player import AudioPlayer
 from sampletones_application.logic.shared.file_playback import FilePlayback
+from sampletones_application.logic.shared.live import LiveKeysLogic
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.logic.shared.preview_player import PreviewPlayer
 from sampletones_application.logic.shared.previews import DocumentPreviews
@@ -103,7 +105,8 @@ from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
-from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRouter
+from sampletones_application.utils.gui.keyboard import PRIORITY_PANEL, ActivePredicate, KeyRouter
+from sampletones_application.utils.midi import MidiRouter
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )
@@ -111,6 +114,7 @@ from sampletones_application.view_model.reconstruction.work import Work
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_core.audio.output import AudioOutput
+from sampletones_core.constants.audio import START_OF_AUDIO
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.truncation import EnvelopeTruncation
 from sampletones_core.exports.backend import ExportBackend
@@ -160,6 +164,9 @@ class ReconstructionTabCoordinator:
         previews: DocumentPreviews,
         *,
         key_router: KeyRouter,
+        midi_router: MidiRouter,
+        live_keys: LiveKeysLogic,
+        sample_root: int,
         tab_active: ActivePredicate,
         layout: ReconstructionTabParameters,
         language_manager: LanguageManager,
@@ -294,8 +301,25 @@ class ReconstructionTabCoordinator:
         self._instrument_audition_logic: InstrumentAuditionLogic = InstrumentAuditionLogic(
             self._instrument_editor,
             project_controller,
+        )
+        self._key_arming: KeyArming = KeyArming(
+            self._instrument_editor,
+            self._instrument_audition_logic,
+            reconstruction_manager,
+            project_controller,
             session_manager,
-            preview_player,
+            sample_root=sample_root,
+        )
+        self._reconstruction_keys: ReconstructionKeys = ReconstructionKeys(
+            self._key_arming,
+            live_keys,
+            session_manager,
+            follower=self._follow_key,
+        )
+        midi_router.register(
+            self._reconstruction_keys,
+            priority=PRIORITY_PANEL,
+            active=lambda: tab_active() and not key_router.is_modal_open,
         )
 
         self._browser_panel.on_refresh_tree = self._browser_logic.refresh_tree
@@ -351,13 +375,12 @@ class ReconstructionTabCoordinator:
         self._reconstruction_instruments_panel.on_envelope_changed = (
             self._reconstruction_instruments_logic.handle_envelope_changed
         )
-        self._reconstruction_instruments_panel.on_audition_requested = self._instrument_audition_logic.sound
+        self._reconstruction_instruments_panel.on_piano_key_pressed = self._reconstruction_keys.press_computer_key
+        self._reconstruction_instruments_panel.on_piano_key_lifted = self._reconstruction_keys.lift_computer_key
         self._reconstruction_instruments_panel.on_audition_generator_changed = (
             self._instrument_audition_logic.set_generator
         )
-        self._instrument_audition_logic.on_audition_error = self._on_preview_error
         self._instrument_audition_logic.on_waveform_changed = self._reconstruction_plot_panel.update_instrument_view
-        self._instrument_audition_logic.on_position_changed = self._reconstruction_plot_panel.set_playback_position
         self._reconstruction_instruments_logic.on_display_refreshed = self._instrument_audition_logic.refresh
 
     def _on_export_result(self, result: ExportResult) -> None:
@@ -870,11 +893,18 @@ class ReconstructionTabCoordinator:
 
         self._reconstruction_panel_logic.request_export_instruments_dialog(export_format)
 
-    def _on_preview_error(self, exception: Exception) -> None:
-        """Reports a preview the audio device refused, whichever of the tab's previews asked for it.
+    def arm_keys(self) -> None:
+        """Keeps what a key sounds in step with the voice in front of the tab, once a frame."""
+        self._key_arming.arm()
 
-        A browser autoplay and an instrument audition both sound on demand, so both report the
-        same way: on the frame after the one that failed, which leaves the gesture that started it
+    def _follow_key(self, position: Optional[int]) -> None:
+        """Marks where the note a key struck stands on the plot card, taking the mark off once it ends."""
+        self._reconstruction_plot_panel.set_playback_position(START_OF_AUDIO if position is None else position)
+
+    def _on_preview_error(self, exception: Exception) -> None:
+        """Reports a preview the audio device refused, which a browser autoplay asks for on demand.
+
+        It reports on the frame after the one that failed, which leaves the gesture that started it
         finished before a dialog is raised.
         """
         FrameCallbackManager.set_frame_callback(lambda: self._playback_failures.present(exception, message=None))

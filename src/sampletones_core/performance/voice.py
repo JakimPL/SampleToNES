@@ -10,6 +10,8 @@ from sampletones_core.instructions import InstructionUnion
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.project.voices.voice import VoiceUnion, voice_reference
+from sampletones_core.reconstructions.reconstruction.stems.filter import heard_instructions
+from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing
 
 
 @dataclass(frozen=True)
@@ -74,6 +76,25 @@ class VoiceReading:
                 held_features = voice.held_features(channel_name)
                 sustaining = voice
 
+        return cls.of_frames(
+            voice,
+            channel_name,
+            instructions=instructions,
+            held_features=held_features,
+            sustaining=sustaining,
+        )
+
+    @classmethod
+    def of_frames(
+        cls,
+        voice: VoiceUnion,
+        channel_name: ChannelName,
+        *,
+        instructions: Sequence[InstructionUnion],
+        held_features: Tuple[FeatureKey, ...],
+        sustaining: Optional[Instrument],
+    ) -> Optional[VoiceReading]:
+        """The reading of ``instructions`` as the frames ``voice`` plays on a channel, ``None`` where there are none."""
         if not instructions:
             return None
 
@@ -154,3 +175,37 @@ class VoiceReading:
             self.reference,
         )
         return sounded
+
+
+def heard_readings(sample: Sample, hearing: Hearing) -> Dict[ChannelName, VoiceReading]:
+    """How each channel a reader keeps on reads a recording, narrowed to the recordings the reader hears there.
+
+    A key sounds a recording as the reader hears it: a frame of a recording left out reads as the channel's
+    silent instruction, a channel's reading ends at the last frame heard, and a channel switched off, or one
+    holding no frame heard, reads nothing.
+
+    Args:
+        sample: The recording sounded.
+        hearing: What the reader hears of it.
+
+    Returns:
+        Dict[ChannelName, VoiceReading]: The reading of each channel sounding what the reader hears.
+    """
+    reconstruction = sample.reconstruction
+    heard = heard_instructions(reconstruction.stems_data, reconstruction.instructions, hearing.selection)
+    readings: Dict[ChannelName, VoiceReading] = {}
+    for channel_name in ChannelName.items():
+        if channel_name not in hearing.channels_on:
+            continue
+
+        reading = VoiceReading.of_frames(
+            sample,
+            channel_name,
+            instructions=heard[channel_name],
+            held_features=reconstruction.held_features[channel_name],
+            sustaining=None,
+        )
+        if reading is not None:
+            readings[channel_name] = reading
+
+    return readings
