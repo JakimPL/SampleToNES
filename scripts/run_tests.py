@@ -32,6 +32,8 @@ def planned_passes(workers: str, screen_workers: str) -> Dict[str, Pass]:
     The covered suite and the doctests hold each case to the configured limit, so a hang fails
     with every thread's stack. A benchmark measures for as long as its reading takes, and a
     scenario's process answers to the screen tier's own deadline, so both passes lift the limit.
+    The covered suite keeps the cases of one ``xdist_group`` on one worker, so a session fixture
+    as large as the demo tree is built once.
 
     Args:
         workers: The worker count for the covered suite, or ``auto`` for one per processor.
@@ -49,6 +51,8 @@ def planned_passes(workers: str, screen_workers: str) -> Dict[str, Pass]:
                 *PYTEST,
                 "-n",
                 workers,
+                "--dist",
+                "loadgroup",
                 "--cov",
                 f"--ignore={BENCHMARKS_DIRECTORY}",
                 f"--ignore={SCREENS_DIRECTORY}",

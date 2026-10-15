@@ -15,11 +15,19 @@ from sampletones_shared.paths.extensions import EXT_FILE_PROJECT, EXT_FILE_RECON
 
 SPECIFICATION: Final[DemoSpecification] = DemoSpecification.load()
 AUDIBLE_RMS: Final[float] = 0.01
+TREE_GROUP: Final[str] = "demo-tree"
+TREE_DEADLINE_SECONDS: Final[int] = 1800
+
+pytestmark = [pytest.mark.xdist_group(TREE_GROUP), pytest.mark.timeout(TREE_DEADLINE_SECONDS)]
 
 
 @pytest.fixture(name="tree", scope="session")
 def tree_fixture(tmp_path_factory: pytest.TempPathFactory) -> Tuple[Path, Tuple[Path, ...]]:
-    """The demo tree built once for the session, with every file the build reported."""
+    """The demo tree built once for the session, with every file the build reported.
+
+    The build generates a whole library and converts every recording with it, so the cases sharing the tree
+    stay on one worker, which builds it once, and answer to a deadline long enough for that build.
+    """
     destination = tmp_path_factory.mktemp("demo") / "tree"
     return destination, build_demo(destination)
 

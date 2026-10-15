@@ -18,12 +18,14 @@ class TestPlannedPasses:
         assert all(name == current.name for name, current in passes.items())
         assert set(passes) == {run_tests.SUITE, run_tests.DOCTESTS, run_tests.BENCHMARKS, run_tests.SCREENS}
 
-    def test_the_suite_is_covered_across_the_workers_and_leaves_the_other_passes_out(self) -> None:
+    def test_the_suite_is_covered_across_the_workers_by_group_and_leaves_the_other_passes_out(self) -> None:
         command = run_tests.planned_passes("auto", run_tests.SCREEN_WORKERS)[run_tests.SUITE].command
 
-        assert command[-5:] == (
+        assert command[-7:] == (
             "-n",
             "auto",
+            "--dist",
+            "loadgroup",
             "--cov",
             f"--ignore={BENCHMARKS_DIRECTORY}",
             f"--ignore={SCREENS_DIRECTORY}",

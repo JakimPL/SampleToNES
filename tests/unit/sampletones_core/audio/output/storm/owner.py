@@ -106,6 +106,23 @@ class StormOwner:
         self._stage.record.log(self.name, "claim at once", self._claim_outcome(sound, rank, playback))
         return rank, playback
 
+    def play_scripted(self, *, length: Optional[int], failing_read: Optional[int], rank: int) -> Sounding:
+        """Plays a sound the storm chose over the quiesced output, at a rank no other playback stands above.
+
+        Raises:
+            AssertionError: If the output declines the sound.
+        """
+        sound = StormSound(
+            identity=self._stage.record.next_identity(),
+            length=length,
+            failing_read=failing_read,
+            read_seconds=0.0,
+        )
+        playback = self._play(sound, rank)
+        self._stage.record.log(self.name, "play scripted", self._claim_outcome(sound, rank, playback))
+        assert playback is not None, f"The output declined sound {sound.identity} at rank {rank}"
+        return self._soundings[-1]
+
     def _run(self, operation: Operation) -> str:
         match operation:
             case Operation.PLAY:
