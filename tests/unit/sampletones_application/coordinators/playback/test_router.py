@@ -62,12 +62,17 @@ class FakeSource:
 
 
 class FakeDevice:
+    """The output and the preview player as the router reads them: a sound holds the output while a source
+    is engaged or a preview sounds, and a stop silences the preview."""
+
     def __init__(self, *, playing: bool = False) -> None:
         self.playing = playing
+        self.sources: Sequence[FakeSource] = ()
         self.stop_calls = 0
 
-    def is_playing(self) -> bool:
-        return self.playing
+    @property
+    def is_sounding(self) -> bool:
+        return self.playing or any(source.is_engaged() for source in self.sources)
 
     def stop(self) -> None:
         self.stop_calls += 1
@@ -81,11 +86,13 @@ def _router(
     device: FakeDevice,
     previews: Optional[MagicMock] = None,
 ) -> PlaybackRouter:
+    device.sources = sources
     return PlaybackRouter(
         sources=sources,
         active_source_resolver=lambda: active,
-        audio_device_manager=device,  # type: ignore[arg-type]
-        language_manager=FakeLanguageManager(),  # type: ignore[arg-type]
+        output=device,
+        preview_player=device,
+        language_manager=FakeLanguageManager(),
         previews=previews if previews is not None else MagicMock(spec=DocumentPreviews),
     )
 
@@ -144,7 +151,7 @@ class TestTransportCommands:
 
         assert background.calls == []
 
-    def test_stop_stops_the_engaged_source_and_the_device(self) -> None:
+    def test_stop_stops_the_engaged_source_and_the_preview(self) -> None:
         engaged = FakeSource(loaded=True, state=PLAYING)
         device = FakeDevice(playing=True)
         router = _router(active=None, sources=[engaged], device=device)
@@ -173,26 +180,6 @@ class TestTransportCommands:
         router.stop()
 
         previews.cancel.assert_called_once_with()
-
-
-class TestTransportShutdown:
-    def test_shutdown_stops_every_source_not_only_the_engaged_one(self) -> None:
-        engaged = FakeSource(loaded=True, state=PLAYING)
-        idle = FakeSource(loaded=True, state=IDLE)
-        router = _router(active=None, sources=[engaged, idle], device=FakeDevice())
-
-        router.shutdown()
-
-        assert engaged.calls == ["stop"]
-        assert idle.calls == ["stop"]
-
-    def test_shutdown_stops_the_device(self) -> None:
-        device = FakeDevice(playing=True)
-        router = _router(active=None, sources=[FakeSource(loaded=True)], device=device)
-
-        router.shutdown()
-
-        assert device.stop_calls == 1
 
 
 class TestTransportState(BaseTestSuite):

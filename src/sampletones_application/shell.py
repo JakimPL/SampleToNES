@@ -107,6 +107,7 @@ class ShortcutBindings:
     unmute_all_channels: Callback
     audio_settings: Callback
     display_settings: Callback
+    midi_settings: Callback
     keyboard_settings: Callback
     toggle_advanced_settings: Callback
     toggle_auto_expand_favorite_reconstructions: Callback
@@ -275,6 +276,7 @@ class ApplicationShell:
             ShortcutId.TOGGLE_LOOP_SONG: bindings.toggle_loop_song,
             ShortcutId.AUDIO_SETTINGS: bindings.audio_settings,
             ShortcutId.DISPLAY_SETTINGS: bindings.display_settings,
+            ShortcutId.MIDI_SETTINGS: bindings.midi_settings,
             ShortcutId.KEYBOARD_SETTINGS: bindings.keyboard_settings,
             ShortcutId.TOGGLE_ADVANCED_SETTINGS: bindings.toggle_advanced_settings,
             ShortcutId.TOGGLE_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS: (

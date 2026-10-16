@@ -8,7 +8,12 @@ from sampletones_shared.exceptions import UnsupportedAudioFormatError
 from .capability import capability_of
 from .format import AudioDepth, AudioFormat
 from .protocol import AudioWriter
-from .soundfile import CONTAINERS, FIXED_SUBTYPES, SUBTYPES, SoundFileAudioWriter
+from .soundfile import (
+    CONTAINERS,
+    FIXED_SUBTYPES,
+    SUBTYPES,
+    SoundFileAudioWriter,
+)
 from .spec import AudioOutputSpec
 
 

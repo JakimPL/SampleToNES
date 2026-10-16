@@ -59,3 +59,13 @@
     - automation
     - assets
     - tests
+
+- root: ""
+  pattern: "**/*.py"
+  forbidden: [alsa_midi]
+  excluding: ["sampletones_application/utils/midi/backends/alsa/library.py"]
+
+- root: ""
+  pattern: "**/*.py"
+  forbidden: [pygame]
+  excluding: ["sampletones_application/utils/midi/backends/portmidi/library.py"]

@@ -21,6 +21,7 @@ from sampletones_application.coordinators.tabs.sequencer.frames import Sequencer
 from sampletones_application.coordinators.tabs.sequencer.history import (
     SequencerHistoryRecorder,
 )
+from sampletones_application.coordinators.tabs.sequencer.keys import TrackerKeys
 from sampletones_application.coordinators.tabs.sequencer.layout import (
     SequencerTabLayout,
 )
@@ -43,6 +44,7 @@ from sampletones_application.logic.sequencer.channels import SequencerChannelsLo
 from sampletones_application.logic.sequencer.history_detail import (
     SequencerHistoryDetail,
 )
+from sampletones_application.logic.sequencer.keys import SequencerKeys
 from sampletones_application.logic.sequencer.order import (
     SequencerOrderLogic,
 )
@@ -54,6 +56,9 @@ from sampletones_application.logic.sequencer.tracker import (
 )
 from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
 from sampletones_application.logic.shared.file_playback import FilePlayback
+from sampletones_application.logic.shared.live import LiveKeysLogic
+from sampletones_application.logic.shared.playback_priority import PlaybackPriority
+from sampletones_application.logic.shared.preview_player import PreviewPlayer
 from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.sequencer import SequencerTabParameters
@@ -81,11 +86,13 @@ from sampletones_application.ui.panels.sequencer.voices.panel import (
     GUISequencerVoicesPanel,
 )
 from sampletones_application.utils.callbacks.gates import Wait, gated
+from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.gui.clipboard.selection import select_text_clipboard
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.frame import FrameCallbackManager
-from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRouter
+from sampletones_application.utils.gui.keyboard import PRIORITY_PANEL, ActivePredicate, KeyRouter
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
+from sampletones_application.utils.midi import MidiRouter
 from sampletones_application.view_model.sequencer.channels import (
     SequencerChannelsViewModel,
 )
@@ -101,7 +108,7 @@ from sampletones_application.view_model.shared.history import (
     HistoryDetail,
 )
 from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
-from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.audio.output import AudioOutput
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode
@@ -113,7 +120,8 @@ class SequencerTabCoordinator:
         self,
         config_manager: ConfigManager,
         session_manager: SessionManager,
-        audio_device_manager: AudioDeviceManager,
+        output: AudioOutput,
+        preview_player: PreviewPlayer,
         key_router: KeyRouter,
         shortcut_source: ShortcutSource,
         browser_manager: BrowserManager,
@@ -123,6 +131,8 @@ class SequencerTabCoordinator:
         original_audio_locator: OriginalAudioLocator,
         instrument_exports: InstrumentExportCoordinator,
         *,
+        midi_router: MidiRouter,
+        live_keys: LiveKeysLogic,
         tab_active: ActivePredicate,
         layout: SequencerTabParameters,
         language_manager: LanguageManager,
@@ -162,7 +172,7 @@ class SequencerTabCoordinator:
             browser_manager,
             project_controller,
         )
-        self._file_playback: FilePlayback = FilePlayback(audio_device_manager, previews)
+        self._file_playback: FilePlayback = FilePlayback(preview_player, previews)
         self._sequencer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
             self._file_playback,
@@ -193,25 +203,20 @@ class SequencerTabCoordinator:
         self._sequencer_voices_logic: SequencerVoicesLogic = SequencerVoicesLogic(
             project_controller,
             session_manager,
-            audio_device_manager,
+            preview_player,
             scheduling=layout.scheduling,
             previews=previews,
         )
         self._sequencer_channels_logic: SequencerChannelsLogic = SequencerChannelsLogic()
         self._song_player_logic: SongPlayerLogic = SongPlayerLogic(
-            audio_device_manager,
             project_controller,
             session_manager,
             service=SongPlayerService(
-                audio_device_manager,
-                RowSynthesizer(
-                    project_controller,
-                    config_manager.config,
-                    active_channels=lambda: self._sequencer_channels_logic.active_channels,
-                    sample_rate=lambda: audio_device_manager.sample_rate,
-                ),
+                output,
+                partial(self._song_synthesizer, project_controller, config_manager),
                 should_loop=lambda: session_manager.loop_song,
                 master_gain=lambda: session_manager.master_gain,
+                output_priority=PlaybackPriority.NORMAL,
             ),
         )
         self._guarded_player = GuardedPlayer(
@@ -331,6 +336,41 @@ class SequencerTabCoordinator:
         )
 
         self._wire_callbacks()
+        self._tracker_keys: TrackerKeys = TrackerKeys(
+            self._sequencer_tracker_panel,
+            SequencerKeys(
+                self._sequencer_tracker_logic,
+                self._sequencer_channels_logic,
+                project_controller,
+                live_keys,
+            ),
+            session_manager,
+            post=CallbackQueue.add,
+        )
+        self._sequencer_tracker_panel.on_note_entered = self._tracker_keys.computer_key_entered
+        self._sequencer_tracker_panel.on_note_released = self._tracker_keys.computer_key_released
+        midi_router.register(
+            self._tracker_keys,
+            priority=PRIORITY_PANEL,
+            active=self._sequencer_tracker_panel.takes_notes,
+        )
+
+    def _song_synthesizer(
+        self,
+        project_controller: ProjectController,
+        config_manager: ConfigManager,
+        sample_rate: int,
+    ) -> RowSynthesizer:
+        """The synthesizer one playback of the song renders with, at the rate of the stream it plays on.
+
+        The configuration is read as the playback starts, so a song started after a change hears it.
+        """
+        return RowSynthesizer(
+            project_controller,
+            config_manager.config,
+            active_channels=lambda: self._sequencer_channels_logic.active_channels,
+            sample_rate=lambda: sample_rate,
+        )
 
     def _wire_callbacks(self) -> None:
         """Connects every panel and logic object this tab owns to the handler that serves it."""

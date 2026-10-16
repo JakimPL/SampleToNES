@@ -11,6 +11,7 @@ from sampletones_application.layout.behavior.scheduling.scheduling import (
 )
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
+from sampletones_application.logic.shared.preview_player import PreviewPlayer
 from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.sequencer.kind import voice_kind
@@ -20,8 +21,7 @@ from sampletones_application.view_model.sequencer.voices import (
     VoiceKind,
 )
 from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
-from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.configs import Config
+from sampletones_core.audio.output import Ending, Playback
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters.slices import VoiceSlice, sample_slices
 from sampletones_core.formats.famitracker.footprint import (
@@ -62,23 +62,25 @@ class SequencerVoicesLogic(CallbackMixin):
     pending preview before it plays. A sample sounds through the document previews, which play
     the render the cache keeps at once and otherwise sound the sample once a worker lands it, so
     the debounce is this logic's own span and the preview on its way is the previews' own: a
-    double-click outliving the debounce cancels there too.
+    double-click outliving the debounce cancels there too. A voice sounds through the preview player,
+    and a failure of the voice it sounds last reports through ``on_autoplay_error``.
     """
 
     def __init__(
         self,
         project_controller: ProjectController,
         session_manager: SessionManager,
-        audio_device_manager: AudioDeviceManager,
+        preview_player: PreviewPlayer,
         *,
         scheduling: SchedulingBehavior,
         previews: DocumentPreviews,
     ) -> None:
         self._controller = project_controller
         self._session_manager = session_manager
-        self._audio_device_manager = audio_device_manager
+        self._preview_player = preview_player
         self._scheduling = scheduling
         self._previews = previews
+        self._playback: Optional[Playback[int]] = None
         self._pending_autoplay_voice: Optional[str] = None
 
         self.on_voices_changed: Optional[Callable[[SequencerVoicesViewModel], None]] = None
@@ -305,16 +307,9 @@ class SequencerVoicesLogic(CallbackMixin):
         return audition_audio(
             instrument,
             PREVIEW_CHANNEL,
-            self._preview_config(),
+            self._controller.project.settings.synthesis_config(),
             pitch=instrument.reference(PREVIEW_CHANNEL),
             ticks=audition_ticks(instrument, cap=AUDITION_TICKS),
-        )
-
-    def _preview_config(self) -> Config:
-        settings = self._controller.project.settings
-        return Config().with_library(
-            nes_frequency=settings.nes_frequency,
-            sample_rate=settings.sample_rate,
         )
 
     def _play_voice(
@@ -337,7 +332,9 @@ class SequencerVoicesLogic(CallbackMixin):
                     self._report_failed_render,
                 )
             case Instrument() as instrument:
-                self._sound(self._audition_audio(instrument), priority=priority)
+                audio = self._audition_audio(instrument)
+                if audio is not None:
+                    self._sound(audio, self._controller.project.settings.sample_rate, priority=priority)
 
     def _report_failed_render(self, exception: Exception) -> None:
         """Reports a sample's preview whose render failed the way a refused one is reported."""
@@ -345,18 +342,29 @@ class SequencerVoicesLogic(CallbackMixin):
 
     def _sound(
         self,
-        audio: Optional[np.ndarray],
+        audio: np.ndarray,
+        sample_rate: int,
         *,
         priority: PlaybackPriority,
     ) -> None:
-        if audio is None:
-            return
-
         try:
-            self._audio_device_manager.play(
-                audio,
-                update=False,
-                priority=priority,
-            )
+            playback = self._preview_player.play(audio, sample_rate=sample_rate, rank=priority, listener=self)
         except PlaybackError as exception:
             self.call(self.on_autoplay_error, exception)
+            return
+
+        if playback is not None:
+            self._playback = playback
+
+    def positioned(self, _playback: Playback[int], _report: int) -> None:
+        """Hears where a voice stands, which the voice list draws nothing of."""
+        return None
+
+    def ended(self, playback: Playback[int], ending: Ending) -> None:
+        """Reports a failure of the voice sounded last the way a refused one is reported."""
+        if playback is not self._playback:
+            return
+
+        self._playback = None
+        if ending.error is not None:
+            self.call(self.on_autoplay_error, ending.error)

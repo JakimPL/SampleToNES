@@ -1,4 +1,4 @@
-from typing import Dict, Final, List, Optional, Set
+from typing import Dict, Final, List, Mapping, Optional, Set
 
 from sampletones_application.logic.sequencer.tracker import SequencerTrackerLogic
 from sampletones_application.logic.sequencer.voices import SequencerVoicesLogic
@@ -112,8 +112,15 @@ class SequencerHistoryDetail:
         voice_id: Optional[str],
         pitch: Optional[RowPitch],
         volume: Optional[int],
+        levels: Optional[Mapping[ChannelName, int]],
     ) -> Segments:
+        """Reads a cell edit as the cell, the voice placed and the subcolumns written.
+
+        A struck key's volume is read as the level it writes on the first channel the edit reaches that takes
+        one, which every such channel shares.
+        """
         affected = self._edit_row_channels(channel, voice_id, row_index)
+        written = volume if levels is None else next((levels[name] for name in affected if name in levels), None)
         segments = list(self._location(row_index, channel, affected))
         if voice_id is not None:
             segments.append(self._arrow())
@@ -128,10 +135,10 @@ class SequencerHistoryDetail:
                 ),
             )
 
-        if volume is not None:
+        if written is not None:
             segments.append(self._subcolumn(SubColumn.VOLUME))
             segments.append(
-                self._segment(display_volume(volume), HistoryDetailRole.VOLUME),
+                self._segment(display_volume(written), HistoryDetailRole.VOLUME),
             )
 
         return tuple(segments)

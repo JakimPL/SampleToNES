@@ -32,6 +32,7 @@ from sampletones_application.view_model.reconstruction.envelopes import (
 from sampletones_application.view_model.reconstruction.instruments import (
     ReconstructionInstrumentsViewModel,
 )
+from sampletones_core.constants.audio import START_OF_AUDIO
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.constants.general import SILENT_VOLUME
 from sampletones_core.exporters.skipped import NO_SKIPPED_ROWS
@@ -75,6 +76,7 @@ REMOVE_RECONSTRUCTION_MESSAGE_KEY: Final[str] = "reconstructions.browser.message
 REMOVE_DIRECTORY_MESSAGE_KEY: Final[str] = "reconstructions.browser.message.remove_directory_message"
 
 TEXTS: Final[Dict[str, str]] = {INCOMPATIBLE_VERSION_KEY: "got {} expected {}"}
+KEY_POSITION: Final[int] = 735
 HISTORY_BUDGET: Final[int] = 16
 TYPED_VOLUME: Final[Tuple[int, ...]] = (6, 6)
 RETIMED_FREQUENCY: Final[int] = 50
@@ -220,6 +222,26 @@ class TestAudioDataChanged:
 
         instance._reconstruction_player_logic.clear_audio.assert_called_once_with()
         instance._reconstruction_player_logic.load_audio_data.assert_not_called()
+
+
+class TestTheMarkOfAKey:
+    """The note a key struck on the tab carries the plot card's mark, which comes off once the note ends."""
+
+    def test_a_note_sounding_marks_where_it_stands(self) -> None:
+        instance = object.__new__(ReconstructionTabCoordinator)
+        instance._reconstruction_plot_panel = MagicMock()
+
+        instance._follow_key(KEY_POSITION)
+
+        instance._reconstruction_plot_panel.set_playback_position.assert_called_once_with(KEY_POSITION)
+
+    def test_a_note_ended_takes_the_mark_off(self) -> None:
+        instance = object.__new__(ReconstructionTabCoordinator)
+        instance._reconstruction_plot_panel = MagicMock()
+
+        instance._follow_key(None)
+
+        instance._reconstruction_plot_panel.set_playback_position.assert_called_once_with(START_OF_AUDIO)
 
 
 @pytest.fixture

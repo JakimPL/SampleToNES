@@ -98,6 +98,36 @@ class TestApplicationConfigManagerShortcuts:
         assert reloaded.shortcut_overrides == {"Undo": "Ctrl+Alt+U"}
 
 
+class TestApplicationConfigManagerMidi:
+    """The MIDI keyboard is kept by its port's name, read back on the next run with its velocity setting."""
+
+    def test_a_fresh_configuration_reads_no_keyboard(self, tmp_path: Path) -> None:
+        manager = ApplicationConfigManager(tmp_path / "config.yaml")
+
+        assert manager.midi_port is None
+
+    def test_the_keyboard_and_its_velocity_setting_reach_the_next_run(self, tmp_path: Path) -> None:
+        path = tmp_path / "config.yaml"
+        manager = ApplicationConfigManager(path)
+        manager.set_midi_port("SL STUDIO MIDI 1")
+        manager.set_velocity_sets_volume(not manager.velocity_sets_volume)
+        manager.save()
+
+        reloaded = ApplicationConfigManager(path)
+
+        assert reloaded.midi_port == "SL STUDIO MIDI 1"
+        assert reloaded.velocity_sets_volume == manager.velocity_sets_volume
+
+    def test_a_file_written_before_midi_keeps_its_other_settings(self, tmp_path: Path) -> None:
+        path = tmp_path / "config.yaml"
+        path.write_text(yaml.safe_dump({"audio": {"master_gain": 1.5}}))
+
+        manager = ApplicationConfigManager(path)
+
+        assert manager.midi_port is None
+        assert manager.master_gain == 1.5
+
+
 class TestApplicationConfigManagerPlatformScheme:
     """The keyboard a Mac opens on, decided when the configuration is created."""
 

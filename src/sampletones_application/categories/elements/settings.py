@@ -67,6 +67,7 @@ class KeybindingActionElements(AbstractElement):
     UNMUTE_ALL_CHANNELS = "unmute_all_channels"
     AUDIO_SETTINGS = "audio_settings"
     DISPLAY_SETTINGS = "display_settings"
+    MIDI_SETTINGS = "midi_settings"
     KEYBOARD_SETTINGS = "keyboard_settings"
     TOGGLE_ADVANCED_SETTINGS = "toggle_advanced_settings"
     TOGGLE_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS = "toggle_auto_expand_favorite_reconstructions"

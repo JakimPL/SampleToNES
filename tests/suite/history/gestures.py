@@ -179,19 +179,19 @@ def _voices(session: HistorySession) -> GUISequencerVoicesPanel:
 
 
 def _type_a_sample_note(session: HistorySession) -> None:
-    _tracker(session).on_set_row(1, ChannelName.PULSE1, session.voice_id(LEAD), Note(value=62), None)
+    _tracker(session).on_set_row(1, ChannelName.PULSE1, session.voice_id(LEAD), Note(value=62), None, None)
 
 
 def _type_an_instrument_note(session: HistorySession) -> None:
-    _tracker(session).on_set_row(3, ChannelName.PULSE2, session.voice_id(PAD), Note(value=65), 7)
+    _tracker(session).on_set_row(3, ChannelName.PULSE2, session.voice_id(PAD), Note(value=65), 7, None)
 
 
 def _type_a_volume(session: HistorySession) -> None:
-    _tracker(session).on_set_row(0, ChannelName.PULSE1, None, None, 5)
+    _tracker(session).on_set_row(0, ChannelName.PULSE1, None, None, 5, None)
 
 
 def _type_a_step(session: HistorySession) -> None:
-    _tracker(session).on_set_row(2, ChannelName.TRIANGLE, None, Step(value=-3), None)
+    _tracker(session).on_set_row(2, ChannelName.TRIANGLE, None, Step(value=-3), None, None)
 
 
 def _cut_a_note(session: HistorySession) -> None:

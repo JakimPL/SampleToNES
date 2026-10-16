@@ -122,7 +122,8 @@ from sampletones_shared.utils.arrays import clamp
 ONE_SLOT_PER_FRAME: Final[float] = 1.0
 
 OnInstrumentExportCallback = Callable[[ChannelName], None]
-OnAuditionCallback = Callable[[int], None]
+PianoKeyCallback = Callable[[int, int], None]
+KeyLiftCallback = Callable[[int], None]
 OnReconstructionInstrumentHoveredCallback = Callable[[Optional[int]], None]
 
 
@@ -166,6 +167,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._graphs: Dict[str, GUIBarGraph] = {}
         self._sequences: Dict[Tuple[ChannelName, FeatureKey], Envelope[int]] = {}
         self._audition_open: bool = False
+        self._voice_shown: bool = False
         self._pitch_stepper_style = pitch_stepper_style
         self._copy_width = copy_width
         self._layout_graphs = layout_graphs
@@ -183,7 +185,8 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.on_reconstruction_instrument_hovered: Optional[OnReconstructionInstrumentHoveredCallback] = None
 
         self.on_pitch_value_changed: Optional[Callable[[ChannelName, int], None]] = None
-        self.on_audition_requested: Optional[OnAuditionCallback] = None
+        self.on_piano_key_pressed: Optional[PianoKeyCallback] = None
+        self.on_piano_key_lifted: Optional[KeyLiftCallback] = None
         self.on_audition_generator_changed: Optional[Callable[[GeneratorName], None]] = None
         self.on_envelope_changed: Optional[Callable[[ChannelName, FeatureKey, Envelope[int]], None]] = None
 
@@ -231,10 +234,11 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             self._create_content()
 
         self._setup_mouse_event_handler()
-        self._router.register(
+        self._router.register_holding(
             self._on_key_pressed,
+            self._on_key_lifted,
             priority=PRIORITY_PANEL,
-            active=self._audition_keys_active,
+            active=self._piano_keys_active,
         )
 
     def _create_content(self) -> None:
@@ -515,6 +519,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         """
         instrument = view_model.instrument
         is_open = view_model.is_open
+        self._voice_shown = view_model.showing is not InstrumentsShowing.NOTHING
         dpg_set_value(
             self.message_tag,
             self._msg_preparing if view_model.showing is InstrumentsShowing.PREPARING else self._msg_nothing_loaded,
@@ -622,31 +627,30 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._audition_open = shown
         dpg_configure_item(self.audition_group_tag, show=shown)
 
-    def _audition_keys_active(self) -> bool:
-        """Whether a note key sounds the instrument the panel has in front of it.
-
-        The keys reach an instrument alone, since a recording plays the audio it was made from,
-        so an open audition is what the panel holds them for.
-        """
+    def _piano_keys_active(self) -> bool:
+        """Whether a note key plays the voice the panel has in front of it, a recording or an instrument."""
         return panel_scope_active(
             tab_active=self._tab_active,
             router=self._router,
-            holds=self._audition_open,
+            holds=self._voice_shown,
             card_open=self.card_open,
         )
 
     def _on_key_pressed(self, event: KeyEvent) -> bool:
-        """Sounds the open instrument at the note a plain piano key names, reporting whether it did.
+        """Plays the open voice at the note a plain piano key names, holding the key until it lifts.
 
         A combination ending in a note key passes on to the shortcuts, so Undo and Save answer
-        while an instrument is open.
+        while a voice is open.
         """
         semitone = semitone_of(event)
         if semitone is None:
             return False
 
-        self.call(self.on_audition_requested, semitone)
+        self.call(self.on_piano_key_pressed, event.key, semitone)
         return True
+
+    def _on_key_lifted(self, key: int) -> None:
+        self.call(self.on_piano_key_lifted, key)
 
     def _apply_playing_state(
         self,

@@ -1,5 +1,7 @@
 from dataclasses import dataclass
+from typing import Union
 
+from sampletones_core.audio.output import Ending
 from sampletones_core.project.song_position import SongPosition
 
 
@@ -9,13 +11,10 @@ class SongPositionUpdate:
 
 
 @dataclass(frozen=True)
-class SongPlaybackStopped:
-    pass
+class SongPlaybackEnded:
+    """The song's one end report, naming why it ended, and the failure behind it where it failed."""
+
+    ending: Ending
 
 
-@dataclass(frozen=True)
-class SongPlaybackError:
-    error: Exception
-
-
-SongPlayerResult = SongPositionUpdate | SongPlaybackStopped | SongPlaybackError
+SongPlayerResult = Union[SongPositionUpdate, SongPlaybackEnded]

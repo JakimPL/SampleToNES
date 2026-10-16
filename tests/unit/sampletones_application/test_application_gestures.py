@@ -25,6 +25,7 @@ COLLABORATORS: Final[Tuple[str, ...]] = (
     "_config_coordinator",
     "_display_coordinator",
     "_keybindings_coordinator",
+    "_midi_coordinator",
     "_documentation_coordinator",
     "_main_tab",
     "_shell",

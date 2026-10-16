@@ -22,6 +22,20 @@ Playback goes through PortAudio, reached with the `pyaudio` package. PyPI has `p
 
 On macOS the compile architecture is pinned to the machine's own (`ARCHFLAGS`). Homebrew's PortAudio is native to the machine, while the python.org interpreter is universal2, and pinning makes the two agree. `make setup` sets it, and the CI workflows take it from `scripts/build_environment.py`.
 
+The audio output reaches PortAudio through one driver, `PyAudioDriver` (`sampletones_core/audio/driver/portaudio/`), the only application module that imports `pyaudio`. The behavior PortAudio shows on one platform and not another is named there. The test suite stands a fake machine (`tests/suite/audio/`) where the driver stands, so playback is tested on every platform the suite runs on, with no sound card.
+
+A sound plays at the rate its audio was made at, resampled to the device's rate as it streams, with libsoxr reached through the `soxr` package. Its wheels carry libsoxr built in for Linux (x86-64 and aarch64), macOS (Intel and Apple Silicon) and Windows x64. Each wheel is a stable-ABI build, so one wheel serves every Python the application supports, and nothing is installed alongside it. `librosa` depends on `soxr` too. The streaming resampler's quirk is named in `BlockResampler` (`sampletones_core/audio/output/buffer/resampler.py`).
+
+## MIDI input
+
+A MIDI keyboard is read through the system's own MIDI service, so each platform has a library of its own behind one backend protocol (`sampletones_application/utils/midi/backends/`). A library is reached from one module alone, which the import-boundary check holds, and everything above the protocol reads MIDI 1.0 bytes, so changing a library means one backend.
+
+On Linux the ALSA sequencer is read through `alsa-midi` (MIT). It calls the system's own `libasound.so.2`, the one PyAudio's PortAudio uses, so it finds the sequencer through the system's ALSA configuration. Its wheels are built for x86-64 and i686, and a pure Python wheel serves other machines through `cffi`.
+
+On Windows and macOS PortMidi is read through `pygame.pypm` from `pygame-ce` (LGPL-2.1), whose wheels carry PortMidi. Importing it initializes the whole of pygame, so the backend imports it on its own thread at its first call. pygame-ce is left out on Linux, since its Linux wheels carry an ALSA library of their own that looks for its configuration under `/usr/local` and lists no MIDI port.
+
+The quirks of each library are named in its backend. The suite drives both backends through stand-ins for their libraries on every platform.
+
 ## Audio rendering
 
 Audio files are written with libsndfile, reached with the `soundfile` package. Its wheels carry a prebuilt libsndfile for every supported platform, so the encoders come with the package and need nothing installed alongside them.

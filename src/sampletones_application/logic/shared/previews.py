@@ -15,7 +15,7 @@ from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.hearing import whole_hearing
 from sampletones_shared.logger import logger
 
-Play = Callable[[np.ndarray], None]
+Play = Callable[[np.ndarray, int], None]
 Failed = Callable[[Exception], None]
 NO_RECORDINGS: Final[Mapping[int, np.ndarray]] = MappingProxyType({})
 
@@ -27,8 +27,8 @@ class WantedPreview:
 
     Attributes:
         reconstruction: The document to sound.
-        play: What sounds the audio, which owns the device, the priority and the refusal a device
-            answers with.
+        play: What sounds the audio at the rate it was made at, which owns the device, the priority and
+            the refusal a device answers with.
         failed: What reports a render that failed, which owns the way the reader is told.
     """
 
@@ -87,7 +87,7 @@ class DocumentPreviews:
 
         Args:
             reconstruction: The document to sound.
-            play: What sounds the audio once it is in hand.
+            play: What sounds the audio, at the rate it was made at, once it is in hand.
             failed: What reports a render that failed.
         """
         self._wanted = WantedPreview(reconstruction, play, failed)
@@ -110,7 +110,7 @@ class DocumentPreviews:
         heard = self._renders.reading(wanted.reconstruction, hearing)
         if heard is not None:
             self._wanted = None
-            wanted.play(heard.playing)
+            wanted.play(heard.playing, wanted.reconstruction.config.sample_rate)
             return
 
         self._running = wanted
@@ -150,4 +150,4 @@ class DocumentPreviews:
         wanted = self._wanted
         if wanted is not None and wanted.reconstruction is outcome.reconstruction:
             self._wanted = None
-            wanted.play(outcome.heard.playing)
+            wanted.play(outcome.heard.playing, wanted.reconstruction.config.sample_rate)

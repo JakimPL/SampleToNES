@@ -333,7 +333,12 @@ def caret_mark() -> Optional[Rect]:
         return None
 
     corner, far = configuration["pmin"], configuration["pmax"]
-    return Rect(x=corner[0], y=corner[1], width=far[0] - corner[0], height=far[1] - corner[1])
+    return Rect(
+        x=corner[0],
+        y=corner[1],
+        width=far[0] - corner[0],
+        height=far[1] - corner[1],
+    )
 
 
 def _caret_middle() -> Optional[Tuple[float, float]]:

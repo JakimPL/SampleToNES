@@ -18,12 +18,14 @@ class TestPlannedPasses:
         assert all(name == current.name for name, current in passes.items())
         assert set(passes) == {run_tests.SUITE, run_tests.DOCTESTS, run_tests.BENCHMARKS, run_tests.SCREENS}
 
-    def test_the_suite_is_covered_across_the_workers_and_leaves_the_other_passes_out(self) -> None:
+    def test_the_suite_is_covered_across_the_workers_by_group_and_leaves_the_other_passes_out(self) -> None:
         command = run_tests.planned_passes("auto", run_tests.SCREEN_WORKERS)[run_tests.SUITE].command
 
-        assert command[-5:] == (
+        assert command[-7:] == (
             "-n",
             "auto",
+            "--dist",
+            "loadgroup",
             "--cov",
             f"--ignore={BENCHMARKS_DIRECTORY}",
             f"--ignore={SCREENS_DIRECTORY}",
@@ -52,6 +54,28 @@ class TestPlannedPasses:
         assert "--no-cov" in command
         assert "-s" in command
         assert "-n" not in command
+
+
+class TestCaseLimits(BaseTestSuite):
+    """The covered suite and the doctests hold each case to the configured limit; the passes with a deadline of their own lift it."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        name: str
+        lifted: bool
+
+    test_cases = (
+        TestCase(name="suite", lifted=False, label="the_suite_keeps_the_limit"),
+        TestCase(name="doctests", lifted=False, label="the_doctests_keep_the_limit"),
+        TestCase(name="benchmarks", lifted=True, label="the_benchmarks_lift_it"),
+        TestCase(name="screens", lifted=True, label="the_screen_scenarios_lift_it"),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_pass_keeps_or_lifts_the_case_limit(self, test_case: TestCase) -> None:
+        command = run_tests.planned_passes(run_tests.DEFAULT_WORKERS, run_tests.SCREEN_WORKERS)[test_case.name].command
+
+        assert (run_tests.OWN_DEADLINE in command) is test_case.lifted
 
 
 class TestRunEnvironment:

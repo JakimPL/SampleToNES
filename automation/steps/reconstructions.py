@@ -85,7 +85,11 @@ def expect_open(screen: Screen, path: Path) -> None:
         bool,
         description=f"{path.name} open",
     )
-    screen.expect(screen.sound_settled, bool, description=f"the sound of {path.name} landed")
+    screen.expect(
+        screen.sound_settled,
+        bool,
+        description=f"the sound of {path.name} landed",
+    )
 
 
 def reconstruction_shade(screen: Screen) -> str:

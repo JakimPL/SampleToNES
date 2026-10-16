@@ -32,7 +32,10 @@ from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 
 AUDITION_GROUP: Final[str] = compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_RADIO_AUDITION, SUF_GROUP)
-MESSAGE: Final[str] = compose_tag(TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR, SUF_RECONSTRUCTIONS_INSTRUMENTS_MESSAGE)
+MESSAGE: Final[str] = compose_tag(
+    TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR,
+    SUF_RECONSTRUCTIONS_INSTRUMENTS_MESSAGE,
+)
 
 
 class Instruments:

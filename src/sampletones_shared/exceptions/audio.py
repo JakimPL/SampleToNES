@@ -17,5 +17,9 @@ class NoOutputDeviceError(PlaybackError):
     """Exception raised when playback is asked for while no output device is in force."""
 
 
+class AudioReadError(AudioError):
+    """Exception raised when a file holds no audio that can be read."""
+
+
 class AudioWriteError(AudioError):
     """Exception raised when audio cannot be written to a file."""

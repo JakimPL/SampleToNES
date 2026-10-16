@@ -4,6 +4,7 @@ from automation.boundaries.audio import OutputRecord
 from automation.boundaries.dialogs import ScriptedFileDialogs
 from automation.boundaries.errors import ErrorRecords
 from automation.boundaries.highlights import TableHighlights
+from automation.boundaries.midi import ScriptedMidiInput
 from automation.boundaries.reveals import FileManagerStandIn
 from automation.boundaries.spawns import SpawnGuard
 from automation.holds.base import Holds
@@ -20,3 +21,4 @@ class Boundaries:
     file_manager: FileManagerStandIn
     highlights: TableHighlights
     output: OutputRecord
+    midi: ScriptedMidiInput

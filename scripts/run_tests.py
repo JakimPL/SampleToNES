@@ -15,6 +15,7 @@ DEFAULT_WORKERS: Final[str] = "6"
 SCREEN_WORKERS: Final[str] = "4"
 PYTEST: Final[Tuple[str, ...]] = ("uv", "run", "python", "-m", "pytest")
 SHARD_VARIABLE: Final[str] = "SAMPLETONES_SCREENS_SHARD"
+OWN_DEADLINE: Final[str] = "--timeout=0"
 
 
 def planned_passes(workers: str, screen_workers: str) -> Dict[str, Pass]:
@@ -27,6 +28,12 @@ def planned_passes(workers: str, screen_workers: str) -> Dict[str, Pass]:
     reaches the terminal. The screen scenarios drive the running application on a display of
     each worker's own, each scenario in a process of its own, so they run uncovered across
     ``screen_workers`` workers, each drawing its frames on the processor.
+
+    The covered suite and the doctests hold each case to the configured limit, so a hang fails
+    with every thread's stack. A benchmark measures for as long as its reading takes, and a
+    scenario's process answers to the screen tier's own deadline, so both passes lift the limit.
+    The covered suite keeps the cases of one ``xdist_group`` on one worker, so a session fixture
+    as large as the demo tree is built once.
 
     Args:
         workers: The worker count for the covered suite, or ``auto`` for one per processor.
@@ -44,6 +51,8 @@ def planned_passes(workers: str, screen_workers: str) -> Dict[str, Pass]:
                 *PYTEST,
                 "-n",
                 workers,
+                "--dist",
+                "loadgroup",
                 "--cov",
                 f"--ignore={BENCHMARKS_DIRECTORY}",
                 f"--ignore={SCREENS_DIRECTORY}",
@@ -57,12 +66,12 @@ def planned_passes(workers: str, screen_workers: str) -> Dict[str, Pass]:
         Pass(
             BENCHMARKS,
             "Running benchmarks...",
-            (*PYTEST, BENCHMARKS_DIRECTORY, "--no-cov", "-s"),
+            (*PYTEST, BENCHMARKS_DIRECTORY, OWN_DEADLINE, "--no-cov", "-s"),
         ),
         Pass(
             SCREENS,
             "Running screen scenarios...",
-            (*PYTEST, SCREENS_DIRECTORY, "-n", screen_workers, "--no-cov"),
+            (*PYTEST, SCREENS_DIRECTORY, OWN_DEADLINE, "-n", screen_workers, "--no-cov"),
         ),
     )
     return {current.name: current for current in passes}

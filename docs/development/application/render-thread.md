@@ -37,9 +37,14 @@ cache lacks (`DocumentPreviews` in `logic/shared/previews.py`), and sounds at th
 reconstruction file a browser tree plays is read from disk and previewed the same way. The render cache
 keeps what the landings adopt, so its writers are the landings, every one of them on the render thread.
 
-A logic object hearing a worker's report, such as a library generation or the audio device's position,
-posts its own handler to the queue the same way. The logic layer reaches the queue, and `utils/gui`
-belongs to the visual layers.
+A logic object hearing a worker's report, such as a library generation, posts its own handler to the
+queue the same way. The logic layer reaches the queue, and `utils/gui` belongs to the visual layers.
+
+The audio output is built with the queue's `add` as the post every playback report takes. Its writer
+thread posts each position and each end report there at one priority, so an owner hears its playback on
+the render thread, in the order the output made the reports, with the end report last.
+
+The MIDI library's thread crosses in both directions. The render thread publishes which MIDI scopes are active once a frame, together with what a key sounds on the Reconstructions tab, and a key arriving on the MIDI thread reads those publications without touching DearPyGui. A scope that changes the interface posts its work to the queue: the MIDI dialog names the key played last through `LatestDelivery`, so a run of keys costs one repaint a frame. A keyboard going away is told on the render thread the same way ([MIDI input](midi.md)).
 
 A failure crosses the same way. `UnhandledFailures` posts the report of a failure nothing recovered from to
 the queue, so the error dialog is built on the render thread whichever thread failed (see the Error Handling

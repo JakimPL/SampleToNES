@@ -2,8 +2,9 @@ from typing import Callable, Optional, Sequence
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
+from sampletones_application.logic.shared.preview_player import PreviewPlayer
 from sampletones_application.logic.shared.previews import DocumentPreviews
-from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.audio.output import AudioOutput
 
 ActiveSourceResolver = Callable[[], Optional[AudioPlayerProtocol]]
 
@@ -13,8 +14,8 @@ class PlaybackRouter:
 
     Every command acts on one *target*: the active tab's own source when that tab has something to
     play, and otherwise the intentional source currently engaged (owning the device). Preview
-    sounds belong to no source and answer only to Stop, which silences one sounding and forgets
-    one still on its way. The full contract is documented in
+    sounds belong to the preview player and answer only to Stop, which silences one sounding and
+    forgets one still on its way. The full contract is documented in
     ``docs/development/application/playback.md``.
 
     It is stateless: the target is recomputed from the live sources on each call, so the transport
@@ -26,14 +27,16 @@ class PlaybackRouter:
         *,
         sources: Sequence[AudioPlayerProtocol],
         active_source_resolver: ActiveSourceResolver,
-        audio_device_manager: AudioDeviceManager,
+        output: AudioOutput,
+        preview_player: PreviewPlayer,
         language_manager: LanguageManager,
         previews: DocumentPreviews,
     ) -> None:
         self._language_manager = language_manager
         self._sources = tuple(sources)
         self._active_source_resolver = active_source_resolver
-        self._audio_device_manager = audio_device_manager
+        self._output = output
+        self._preview_player = preview_player
         self._previews = previews
 
     def play(self) -> None:
@@ -49,27 +52,16 @@ class PlaybackRouter:
             active_source.play()
 
     def stop(self) -> None:
-        """Silence everything: the engaged source, any sounding preview, and a preview still on its way."""
+        """Silence everything: the engaged source, any sounding preview, and a preview still on its way.
+
+        Each sound is stopped through its owner, so the owner's transport and mark follow at once.
+        """
         self._previews.cancel()
         engaged_source = self._engaged_source()
         if engaged_source is not None:
             engaged_source.stop()
 
-        self._audio_device_manager.stop()
-
-    def shutdown(self) -> None:
-        """Quiesces every source and the device ahead of tearing the audio backend down.
-
-        A source that streams to the device writes from a thread of its own, so the audio
-        backend stays safe to terminate only once each such thread has stopped and closed its
-        stream. Teardown therefore reaches every source rather than the engaged one alone, so a
-        source holding a stream is wound down whatever the transport reports at that moment.
-        """
-        self._previews.cancel()
-        for source in self._sources:
-            source.stop()
-
-        self._audio_device_manager.stop()
+        self._preview_player.stop()
 
     @property
     def play_label(self) -> str:
@@ -106,11 +98,9 @@ class PlaybackRouter:
 
     @property
     def is_stop_enabled(self) -> bool:
-        """Stop is available whenever any sound is on the device — a source or a preview."""
-        if self._engaged_source() is not None:
-            return True
-
-        return self._audio_device_manager.is_playing()
+        """Stop is available whenever any sound holds the output, a source or a preview, its stream opening
+        included."""
+        return self._output.is_sounding
 
     def _target(self) -> Optional[AudioPlayerProtocol]:
         active_source = self._active_source()

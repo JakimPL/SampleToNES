@@ -25,3 +25,7 @@ class FollowMode(StrEnum):
 
 
 DEFAULT_FOLLOW_MODE: Final[FollowMode] = FollowMode.ROWS
+
+AUDIO_TEARDOWN_SECONDS: Final[float] = 2.0
+
+LIVE_LINGER_SECONDS: Final[float] = 2.0

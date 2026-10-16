@@ -180,6 +180,11 @@ class SessionManager:
     def set_master_gain(self, value: float) -> None:
         self._config_manager.set_master_gain(value)
 
+    def set_midi_settings(self, port: Optional[str], *, velocity_sets_volume: bool) -> None:
+        """Keeps the MIDI keyboard read, by its port's name, and whether its velocity sets the volume."""
+        self._config_manager.set_midi_port(port)
+        self._config_manager.set_velocity_sets_volume(velocity_sets_volume)
+
     def set_palette_name(self, name: str) -> None:
         self._config_manager.set_palette_name(name)
 
@@ -247,6 +252,14 @@ class SessionManager:
     @property
     def master_gain(self) -> float:
         return self._config_manager.master_gain
+
+    @property
+    def midi_port(self) -> Optional[str]:
+        return self._config_manager.midi_port
+
+    @property
+    def velocity_sets_volume(self) -> bool:
+        return self._config_manager.velocity_sets_volume
 
     @property
     def palette_name(self) -> str:

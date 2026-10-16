@@ -3,7 +3,10 @@ from typing import Optional
 
 import pytest
 
-from sampletones_application.services.regeneration.jobs import ListeningJob, RenderJob
+from sampletones_application.services.regeneration.jobs import (
+    ListeningJob,
+    RenderJob,
+)
 from sampletones_application.services.regeneration.service import (
     RegenerationService,
 )

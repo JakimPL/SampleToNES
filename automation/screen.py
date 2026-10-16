@@ -13,7 +13,7 @@ from typing import (
 
 import numpy as np
 
-from automation.boundaries.audio import OutputRecord
+from automation.boundaries.audio import OutputRecord, StreamReading
 from automation.boundaries.dialogs import (
     DialogKind,
     DialogRequest,
@@ -21,6 +21,7 @@ from automation.boundaries.dialogs import (
 )
 from automation.boundaries.errors import ErrorRecords
 from automation.boundaries.highlights import HighlightPlace, TableHighlights
+from automation.boundaries.midi import ScriptedMidiInput
 from automation.boundaries.reveals import FileManagerStandIn
 from automation.dearpygui.bridge import Bridge, ExpectationError
 from automation.dearpygui.geometry import Point
@@ -54,6 +55,7 @@ from automation.views.instructions import Instructions
 from automation.views.keyboard_settings import KeyboardSettings
 from automation.views.main import Main
 from automation.views.menus import MenuBar
+from automation.views.midi_settings import MidiSettings
 from automation.views.notices import Notice
 from automation.views.project import Project
 from automation.views.reconstructions import Reconstructions
@@ -113,6 +115,7 @@ class Screen:
         file_manager: FileManagerStandIn,
         highlights: TableHighlights,
         output: OutputRecord,
+        midi: ScriptedMidiInput,
         artifacts: Path,
     ) -> None:
         self.bridge = bridge
@@ -126,6 +129,7 @@ class Screen:
         self._file_manager = file_manager
         self._highlights = highlights
         self._output = output
+        self._midi = midi
         self._artifacts = artifacts
         self._language = language
         self.tabs = Tabs(bridge, hand)
@@ -133,6 +137,7 @@ class Screen:
         self.display_settings = DisplaySettings(bridge, hand, self.menu)
         self.keyboard_settings = KeyboardSettings(bridge, hand, self.menu)
         self.audio_settings = AudioSettings(bridge, hand)
+        self.midi_settings = MidiSettings(bridge, hand, self.menu)
         self.project = Project(bridge, hand, self.menu)
         self.main = Main(bridge, hand, language)
         self.context_menu = ContextMenu(bridge, hand)
@@ -275,6 +280,23 @@ class Screen:
         all the same.
         """
         return self._output.sounding_samples()
+
+    def output_streams(self) -> Tuple[StreamReading, ...]:
+        """Every output stream the application opened so far, in order: its rate, the frames written to it, and
+        whether it closed."""
+        return self._output.streams()
+
+    def backends_terminated(self) -> int:
+        """How many instances of the audio backend the application terminated so far."""
+        return self._output.terminations()
+
+    def play_midi(self, keyboard: str, message: bytes) -> None:
+        """Plays ``message`` on the MIDI keyboard plugged in as ``keyboard``, heard if the application reads it."""
+        self._midi.play(keyboard, message)
+
+    def midi_ports_opened(self) -> Tuple[str, ...]:
+        """Every MIDI port the application opened so far, in order."""
+        return tuple(self._midi.opened)
 
     def dialog_requests(self) -> Tuple[DialogRequest, ...]:
         """Every file dialog the application opened so far, in order."""

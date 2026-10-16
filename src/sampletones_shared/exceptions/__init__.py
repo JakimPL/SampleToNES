@@ -1,4 +1,5 @@
 from .audio import (
+    AudioReadError,
     AudioWriteError,
     NoOutputDeviceError,
     PlaybackError,
@@ -30,6 +31,7 @@ from .library import (
     NoLibraryDataError,
     UnhandledLibraryError,
 )
+from .midi import MidiPortError
 from .opening import FileNotOpenedError
 from .operation import OperationCanceled
 from .player import (
@@ -67,6 +69,7 @@ from .validation import (
 from .window import WindowError, WindowNotAvailableError
 
 __all__ = [
+    "AudioReadError",
     "AudioWriteError",
     "CallbackQueueStop",
     "CuPyUnavailableWarning",
@@ -100,6 +103,7 @@ __all__ = [
     "LoadReconstructionError",
     "MalformedInstrumentError",
     "MalformedTextKeyError",
+    "MidiPortError",
     "MissingProjectDataFileError",
     "MissingTextError",
     "NoFilesToProcessError",

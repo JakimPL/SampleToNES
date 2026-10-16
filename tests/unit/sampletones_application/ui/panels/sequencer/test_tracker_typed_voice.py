@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Mapping, Optional, Tuple
 
 import pytest
 
@@ -76,7 +76,9 @@ class Panel:
         voice_id: Optional[str],
         pitch: Optional[RowPitch],
         volume: Optional[int],
+        levels: Optional[Mapping[ChannelName, int]],
     ) -> None:
+        del levels
         self.writes.append((row, channel, voice_id))
         if pitch is not None or volume is not None:
             self.offsets.append((row, channel, pitch, volume))
@@ -93,6 +95,7 @@ class Panel:
                 sample_index=None,
                 pitch=pitch,
                 volume=None,
+                levels=None,
             )
         )
 
@@ -104,6 +107,7 @@ class Panel:
                 sample_index=index,
                 pitch=None,
                 volume=None,
+                levels=None,
             )
         )
 
@@ -115,6 +119,7 @@ class Panel:
                 sample_index=None,
                 pitch=None,
                 volume=volume,
+                levels=None,
             )
         )
 
@@ -218,6 +223,7 @@ class TestWhatColorATypedVoiceTakes:
                 sample_index=None,
                 pitch=None,
                 volume=None,
+                levels=None,
                 note_off=True,
             )
         )

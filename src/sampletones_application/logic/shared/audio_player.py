@@ -1,82 +1,82 @@
+from functools import partial
 from typing import Callable, Optional
 
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
-from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.shared.audio_data import AudioData
-from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.audio.output import AudioOutput, BufferSource, Ending, Playback
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE, START_OF_AUDIO
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
 class AudioPlayer(CallbackMixin):
-    def __init__(
-        self,
-        audio_device_manager: AudioDeviceManager,
-        *,
-        sample_rate: int = DEFAULT_SAMPLE_RATE,
-        on_position_changed: Optional[Callable[[int], None]] = None,
-        on_change_audio_state: Optional[VoidCallback] = None,
-    ):
-        self.audio_device_manager = audio_device_manager
-        self.audio_data: AudioData = AudioData.empty(sample_rate)
+    """Plays the buffer a tab holds, the reconstruction or the instruction it shows, at the reader's request.
 
-        self.on_position_changed = on_position_changed
-        self.on_change_audio_state = on_change_audio_state
+    The player holds the playback it started and is that playback's listener, so a report of an older one
+    finds a newer one held and changes nothing. The mark follows the positions the device took, and a seek
+    draws the sample it moved to at once, which the positions then follow. A playback whose end is decided
+    refuses a seek, and the click then starts a new one from the sample clicked. The player tells a failure
+    of its playback through ``on_error`` and moves its mark off once the playback ends.
+    """
+
+    def __init__(self, output: AudioOutput) -> None:
+        self._output = output
+        self.audio_data: AudioData = AudioData.empty(DEFAULT_SAMPLE_RATE)
+        self._playback: Optional[Playback[int]] = None
+        self._source: Optional[BufferSource] = None
+        self._position: int = START_OF_AUDIO
+
+        self.on_position_changed: Optional[Callable[[int], None]] = None
+        self.on_change_audio_state: Optional[VoidCallback] = None
+        self.on_error: Optional[Callable[[Exception], None]] = None
 
     @property
     def current_position(self) -> int:
-        """Where this player's own playback stands on the device, sounding or held paused."""
-        return self.audio_device_manager.position_of(self)
+        """Where this player's playback stands, sounding or held paused, as the device last reported it."""
+        return self._position
+
+    @property
+    def is_playing(self) -> bool:
+        """Whether this player's playback holds the output, sounding or held paused."""
+        return self._playback is not None and self._playback.engaged
+
+    @property
+    def is_paused(self) -> bool:
+        return self._playback is not None and self._playback.engaged and self._playback.paused
 
     def load_audio_data(self, audio_data: AudioData) -> None:
+        """Takes the audio the tab now shows, which a playback under way plays on from the moment it reached."""
         self.audio_data = audio_data
-        self.audio_device_manager.replace_audio(audio_data.sample, owner=self)
+        if self._playback is not None and self._source is not None:
+            self._playback.command(partial(self._source.replace, audio_data.sample, sample_rate=audio_data.sample_rate))
+
         self._notify_audio_state_changed()
 
     def clear_audio(self) -> None:
         self.stop()
         self.audio_data = AudioData.empty(self.audio_data.sample_rate)
 
-    def _on_device_position_changed(self, position: int) -> None:
-        """Carries a report from the thread writing the audio to the render thread.
-
-        The mark the report moves is a widget, so the report crosses the way every background result
-        does. The device reports the start of the audio once, as it winds down, and a position past
-        it after each buffer it writes.
-        """
-        CallbackQueue.add(self._report_position, position == START_OF_AUDIO)
-
-    def _report_position(self, wound_down: bool) -> None:
-        """Reports where the playback stands, read as the report arrives on the render thread.
-
-        A report travels while the reader may seek, so the position is read from the device where the
-        report arrives, and a report overtaken by a seek draws the seek. A playback winding down is
-        also when the transport's labels follow the state it left.
-
-        Args:
-            wound_down: Whether the report is the device's last for the playback.
-        """
-        self.call(self.on_position_changed, self.current_position)
-        if wound_down:
-            self._notify_audio_state_changed()
-
     def seek(self, position: int) -> bool:
-        """Moves this player's own playback to a sample, whether it sounds or stands paused.
+        """Moves this player's playback to a sample, whether it sounds or stands paused.
 
-        The device reports positions as it writes, and a paused one writes nothing, so the player
-        reports the sample it moved to, which carries the mark there during a pause as well.
+        The device reports positions as it plays, and a paused one plays nothing, so the player draws the
+        sample it moved to, which carries the mark there during a pause as well.
 
         Args:
             position: The sample to move to, clamped to the audio.
 
         Returns:
-            bool: Whether this player held the output, and so moved its own playback.
+            bool: Whether this player's playback still played, and so moved.
         """
-        if not self.audio_device_manager.set_position(position, owner=self):
+        if self._playback is None or self._source is None:
             return False
 
-        self.call(self.on_position_changed, self.current_position)
+        target = self._clamped(position)
+        if not self._playback.command(partial(self._source.seek, target)):
+            return False
+
+        self._position = target
+        self.call(self.on_position_changed, target)
         return True
 
     def play(self, *, start: int) -> None:
@@ -92,42 +92,61 @@ class AudioPlayer(CallbackMixin):
             self._notify_audio_state_changed()
             return
 
-        self.audio_device_manager.set_position_callback(
-            self._on_device_position_changed,
-        )
-        self.audio_device_manager.play(
-            self.audio_data.sample,
-            priority=PlaybackPriority.NORMAL,
-            owner=self,
-            start=start,
-        )
+        self._let_go()
+        source = BufferSource(self.audio_data.sample, sample_rate=self.audio_data.sample_rate, start=start)
+        playback = self._output.play(source, rank=PlaybackPriority.NORMAL, listener=self)
+        if playback is not None:
+            self._playback, self._source = playback, source
+            self._position = self._clamped(start)
+
         self._notify_audio_state_changed()
 
     def pause(self) -> None:
-        self.audio_device_manager.pause()
+        if self._playback is not None:
+            self._playback.pause()
+
         self._notify_audio_state_changed()
 
     def resume(self) -> None:
-        self.audio_device_manager.resume()
+        if self._playback is not None:
+            self._playback.resume()
+
         self._notify_audio_state_changed()
 
     def stop(self) -> None:
-        self.audio_device_manager.stop()
+        self._let_go()
         self.call(self.on_position_changed, START_OF_AUDIO)
         self._notify_audio_state_changed()
 
-    @property
-    def is_playing(self) -> bool:
-        """Whether this player owns the live output, sounding or held paused.
+    def positioned(self, playback: Playback[int], report: int) -> None:
+        if playback is not self._playback:
+            return
 
-        Engagement is read from ownership so the player reports itself active only while its own
-        audio is on the device, leaving a preview or another source's playback to their owners.
-        """
-        return self.audio_device_manager.is_owned_by(self)
+        self._position = report
+        self.call(self.on_position_changed, report)
 
-    @property
-    def is_paused(self) -> bool:
-        return self.audio_device_manager.is_owned_by(self) and self.audio_device_manager.is_paused()
+    def ended(self, playback: Playback[int], ending: Ending) -> None:
+        """Moves the mark off once this player's playback ends, telling the failure where it failed."""
+        if playback is not self._playback:
+            return
+
+        self._playback, self._source = None, None
+        self._position = START_OF_AUDIO
+        self.call(self.on_position_changed, START_OF_AUDIO)
+        if ending.error is not None:
+            self.call(self.on_error, ending.error)
+
+        self._notify_audio_state_changed()
+
+    def _let_go(self) -> None:
+        """Stops the playback held and lets it go, so its end report finds nothing held."""
+        playback, self._playback, self._source = self._playback, None, None
+        self._position = START_OF_AUDIO
+        if playback is not None:
+            playback.stop()
+
+    def _clamped(self, position: int) -> int:
+        return max(START_OF_AUDIO, min(position, self.audio_data.samples))
 
     def _notify_audio_state_changed(self) -> None:
         self.call(self.on_change_audio_state)

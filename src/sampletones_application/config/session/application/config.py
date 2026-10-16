@@ -6,6 +6,7 @@ from sampletones_application.config.session.application.converter import Convert
 from sampletones_application.config.session.application.display import DisplayConfig
 from sampletones_application.config.session.application.favorites import Favorites
 from sampletones_application.config.session.application.history import HistoryConfig
+from sampletones_application.config.session.application.midi import MidiConfig
 from sampletones_application.config.session.application.playback import PlaybackConfig
 from sampletones_application.config.session.application.shortcuts import ShortcutsConfig
 from sampletones_application.config.session.application.tracker import TrackerConfig
@@ -42,6 +43,10 @@ class ApplicationConfig(BaseModel):
     history: HistoryConfig = Field(
         default_factory=HistoryConfig,
         description="The undo/redo history preferences.",
+    )
+    midi: MidiConfig = Field(
+        default_factory=MidiConfig,
+        description="The MIDI keyboard read and how its keys are read.",
     )
     playback: PlaybackConfig = Field(
         default_factory=PlaybackConfig,

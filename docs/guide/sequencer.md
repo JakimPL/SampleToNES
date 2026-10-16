@@ -88,6 +88,9 @@ Type a note on your keyboard like a piano. The bottom two rows of keys play one 
 `D` `C` and so on. The row above plays the white keys of the next octave: `Q` `W` `E` `R` `T` `Y`
 `U`. **Octave**, above the grid, sets the octave of the bottom row.
 
+A MIDI keyboard types notes too. Each key writes its note at the cursor and moves down a row. See [MIDI
+keyboard](interface.md#midi-keyboard) for the volume it writes. Both keyboards sound the row you wrote for as long as you hold the key.
+
 Type a step with the digit keys: `0` `3` writes `+03`, and `-` `1` `2` writes `-12`.
 
 The noise channel has sixteen sounds instead of notes. A note key picks one, and a step moves to

@@ -1,3 +1,4 @@
+import time
 from contextlib import ExitStack, contextmanager
 from functools import partial
 from pathlib import Path
@@ -15,7 +16,8 @@ from sampletones_application.config.deployment.deployment import (
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
-from sampletones_application.constants.playback import FollowMode
+from sampletones_application.constants.midi import MIDI_SETTLE_SECONDS
+from sampletones_application.constants.playback import AUDIO_TEARDOWN_SECONDS, LIVE_LINGER_SECONDS, FollowMode
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.display import DisplayCoordinator
 from sampletones_application.coordinators.documentation import DocumentationCoordinator
@@ -28,6 +30,7 @@ from sampletones_application.coordinators.export.nsf import NSFExportCoordinator
 from sampletones_application.coordinators.export.setup import ExportSetup
 from sampletones_application.coordinators.failures import UnhandledFailurePresenter
 from sampletones_application.coordinators.keybindings import KeybindingsCoordinator
+from sampletones_application.coordinators.midi import MidiCoordinator
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
@@ -77,6 +80,8 @@ from sampletones_application.logic.reconstruction.rewrites.queue import (
 )
 from sampletones_application.logic.reconstruction.rewrites.steps import RateChange
 from sampletones_application.logic.render import SongRenderLogic
+from sampletones_application.logic.shared.live import LiveKeysLogic
+from sampletones_application.logic.shared.preview_player import PreviewPlayer
 from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.parameters import (
@@ -133,6 +138,7 @@ from sampletones_application.ui.panels.dialogs.display_settings import (
 )
 from sampletones_application.ui.panels.dialogs.export import GUIExportWindow
 from sampletones_application.ui.panels.dialogs.keybindings import GUIKeybindingsWindow
+from sampletones_application.ui.panels.dialogs.midi_settings import GUIMidiSettingsWindow
 from sampletones_application.ui.panels.dialogs.nsf import GUINSFExportWindow
 from sampletones_application.ui.panels.dialogs.project_properties import (
     GUIProjectPropertiesWindow,
@@ -161,13 +167,13 @@ from sampletones_application.utils.gui.keyboard import KeyRouter
 from sampletones_application.utils.gui.palette.palette import PaletteBindings
 from sampletones_application.utils.gui.render_thread import (
     claim_render_thread,
-    on_render_thread,
     release_render_thread,
 )
 from sampletones_application.utils.gui.shortcuts.catalog import ShortcutCatalog
 from sampletones_application.utils.gui.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.gui.shortcuts.scheme import ShortcutScheme
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
+from sampletones_application.utils.midi import MidiRouter, select_midi_backend
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.palette import Palette
 from sampletones_application.utils.palette.source import PaletteSource
@@ -184,7 +190,9 @@ from sampletones_application.view_model.shared.project_properties import (
 )
 from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_application.viewport import ViewportManager
-from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.audio import AudioDeviceManager, DeviceCatalog
+from sampletones_core.audio.driver.portaudio import PyAudioDriver
+from sampletones_core.audio.output import AudioOutput
 from sampletones_core.constants.audio import BufferSize, SampleRate
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exports.backend import ExportBackend
@@ -203,7 +211,6 @@ from sampletones_shared.distribution import (
     SAMPLETONES_NAME_VERSION,
 )
 from sampletones_shared.documentation.site import DocumentationSite
-from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
@@ -276,7 +283,9 @@ class Application:
             language_manager=self.language_manager,
         )
         UnhandledFailures.attach(self._unhandled_failures.present, post=CallbackQueue.add)
-        self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
+        self.audio_output: AudioOutput = AudioOutput(PyAudioDriver, post=CallbackQueue.add)
+        self.audio_device_manager: AudioDeviceManager = AudioDeviceManager(self.audio_output.catalog)
+        self.preview_player: PreviewPlayer = PreviewPlayer(self.audio_output)
         self.config_manager = ConfigManager(config_path)
 
         self.library_manager = InstructionsLibraryManager(
@@ -326,7 +335,7 @@ class Application:
 
         self.fps_timer: FPSTimer = FPSTimer(interval=self.layout.behavior.ui.fps_update_interval)
         self.frame_limiter: FrameLimiter = FrameLimiter(self.session_manager.max_fps)
-        self._audio_was_playing: bool = False
+        self._audio_was_sounding: bool = False
 
         self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(
             layout=self.layout.settings,
@@ -337,6 +346,31 @@ class Application:
         self.audio_settings_window.on_commit = self._apply_audio_settings
         self.audio_settings_window.on_refresh_devices = self._refresh_audio_devices
         self.audio_settings_window.on_master_gain_changed = self.session_manager.set_master_gain
+        self.midi_settings_window: GUIMidiSettingsWindow = GUIMidiSettingsWindow(
+            layout=self.layout.settings,
+            language_manager=self.language_manager,
+            key_router=self.key_router,
+            shortcut_source=self._shortcut_source,
+        )
+        self.midi_router: MidiRouter = MidiRouter()
+        self.live_keys: LiveKeysLogic = LiveKeysLogic(
+            self.preview_player,
+            post=CallbackQueue.add,
+            failed=partial(self._playback_failures.present, message=None),
+            linger_seconds=LIVE_LINGER_SECONDS,
+        )
+        self.midi_router.take_pedal(self.live_keys.pedal)
+        self._midi_coordinator = MidiCoordinator(
+            select_midi_backend(),
+            self.midi_router,
+            self.session_manager,
+            window=self.midi_settings_window,
+            language_manager=self.language_manager,
+            show_status=self.status_bar.set,
+            settle_seconds=MIDI_SETTLE_SECONDS,
+            clock=time.monotonic,
+            post=CallbackQueue.add,
+        )
         self.display_settings_window: GUIDisplaySettingsWindow = GUIDisplaySettingsWindow(
             layout=self.layout.settings,
             language_manager=self.language_manager,
@@ -491,7 +525,7 @@ class Application:
             self.reconstruction_manager,
             self.session_manager,
             self.reconstruction_rewrites,
-            self.audio_device_manager,
+            self.preview_player,
             self.project_controller,
             self.history,
             dialogs=self.dialogs,
@@ -529,7 +563,8 @@ class Application:
         self._reconstructions_tab = ReconstructionTabCoordinator(
             config_manager=self.config_manager,
             session_manager=self.session_manager,
-            audio_device_manager=self.audio_device_manager,
+            output=self.audio_output,
+            preview_player=self.preview_player,
             reconstruction_manager=self.reconstruction_manager,
             project_controller=self.project_controller,
             browser_manager=self.browser_manager,
@@ -548,6 +583,9 @@ class Application:
             instrument_edit_detail=self._instrument_edit_detail,
             previews=self.document_previews,
             key_router=self.key_router,
+            midi_router=self.midi_router,
+            live_keys=self.live_keys,
+            sample_root=self.layout.behavior.playing.sample_root,
             tab_active=self._is_reconstructions_tab_current,
             layout=ReconstructionTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
@@ -561,7 +599,8 @@ class Application:
         self._instructions_tab = InstructionsTabCoordinator(
             config_manager=self.config_manager,
             session_manager=self.session_manager,
-            audio_device_manager=self.audio_device_manager,
+            output=self.audio_output,
+            preview_player=self.preview_player,
             library_manager=self.library_manager,
             on_audio_state_changed=self._update_menu,
             on_generation_state_changed=self._on_library_operation_changed,
@@ -578,7 +617,7 @@ class Application:
         self._main_tab = MainTabCoordinator(
             config_manager=self.config_manager,
             session_manager=self.session_manager,
-            audio_device_manager=self.audio_device_manager,
+            preview_player=self.preview_player,
             library_manager=self.library_manager,
             conversion_service=self.conversion_service,
             hooks=MainTabHooks(
@@ -608,7 +647,8 @@ class Application:
         self._sequencer_tab = SequencerTabCoordinator(
             config_manager=self.config_manager,
             session_manager=self.session_manager,
-            audio_device_manager=self.audio_device_manager,
+            output=self.audio_output,
+            preview_player=self.preview_player,
             key_router=self.key_router,
             shortcut_source=self._shortcut_source,
             browser_manager=self.browser_manager,
@@ -617,6 +657,8 @@ class Application:
             previews=self.document_previews,
             original_audio_locator=self._original_audio_locator,
             instrument_exports=self._instrument_exports,
+            midi_router=self.midi_router,
+            live_keys=self.live_keys,
             tab_active=self._is_sequencer_tab_current,
             layout=SequencerTabParameters.from_config(self.layout),
             language_manager=self.language_manager,
@@ -642,7 +684,8 @@ class Application:
                 self._sequencer_tab.player,
             ),
             active_source_resolver=self._get_active_source,
-            audio_device_manager=self.audio_device_manager,
+            output=self.audio_output,
+            preview_player=self.preview_player,
             language_manager=self.language_manager,
             previews=self.document_previews,
         )
@@ -715,6 +758,7 @@ class Application:
 
         self._config_coordinator.present_pending_load_outcomes()
         self._load_settings()
+        self._midi_coordinator.start()
 
     def _set_logging_level(self) -> None:
         logger.set_level(self.deployment.log_level.to_logging_level())
@@ -724,6 +768,7 @@ class Application:
         buffer_size = self.session_manager.current_buffer_size
         self.audio_device_manager.set_current_device(audio_device)
         self.audio_device_manager.set_buffer_size(buffer_size)
+        self.audio_output.configure(self.audio_device_manager.settings)
 
     def _try_load_reconstruction(self, path: Path) -> None:
         self._reconstruction_coordinator.load_reconstruction_safely(path)
@@ -831,6 +876,7 @@ class Application:
             unmute_all_channels=self._sequencer_tab.unmute_all_channels,
             audio_settings=self._open_audio_settings,
             display_settings=self._display_coordinator.open,
+            midi_settings=self._midi_coordinator.open,
             keyboard_settings=self._keybindings_coordinator.open,
             toggle_advanced_settings=self._toggle_advanced_settings,
             toggle_auto_expand_favorite_reconstructions=self._toggle_auto_expand_favorite_reconstructions,
@@ -925,7 +971,6 @@ class Application:
 
     def _set_callbacks(self) -> None:
         self.config_manager.add_config_change_callback(self._update_menu)
-        self.audio_device_manager.set_callbacks(on_playback_error=self._on_playback_error)
         self._reconstructions_tab.set_on_add_to_sequencer(self._sequencer_tab.import_reconstruction)
         self._reconstructions_tab.set_can_add_to_sequencer(self._is_project_open)
         self._palette_source.on_palette_changed = self._on_palette_changed
@@ -1192,15 +1237,6 @@ class Application:
         self._set_current_tab(Tab.INSTRUCTIONS)
         self._update_menu()
 
-    def _on_playback_error(self, exception: Exception) -> None:
-        """Reports a playback the device refused, on the render thread whichever thread heard of it.
-
-        The device manager reports a stream that failed to open from the thread playing the audio, and
-        the report raises a dialog, so it crosses to the render thread the way every worker's result does.
-        """
-        logger.error_with_traceback(exception, "Playback error occurred")
-        on_render_thread(self._playback_failures.present_playing_failure, exception)
-
     def _refresh_browsers(self) -> None:
         """Reads the disk afresh in every browser, so a reconstruction just written stands in each.
 
@@ -1453,17 +1489,17 @@ class Application:
         )
 
     def _refresh_audio_devices(self) -> None:
-        """Re-enumerates the output devices and repaints the open dialog in place.
+        """Asks the output to list the devices again, which repaints the open dialog once they are listed.
 
-        Re-enumeration restarts the audio backend, which needs the output free; a source that
-        keeps hold of it leaves the device list as it stands and reports the failure.
+        Listing them again restarts the audio backend, which ends every sound playing; the output does
+        it on the thread writing to the device, and the devices it lists land here on the render thread.
         """
-        try:
-            self.audio_device_manager.refresh_devices()
-        except PlaybackError as exception:
-            self._on_playback_error(exception)
-            return
+        self.audio_output.refresh(self._on_audio_devices_refreshed)
 
+    def _on_audio_devices_refreshed(self, catalog: DeviceCatalog) -> None:
+        """Takes the devices a refresh listed, with the device in force found again by its name."""
+        self.audio_device_manager.adopt(catalog)
+        self.audio_output.configure(self.audio_device_manager.settings)
         self.audio_settings_window.update_view(
             AudioSettingsViewModel.from_device_manager(
                 self.audio_device_manager,
@@ -1479,17 +1515,13 @@ class Application:
     ) -> None:
         """Applies the dialog's committed device, sample rate, and buffer size, and remembers them.
 
-        Switching devices needs the output free; a source that keeps hold of it leaves the
-        settings as they stand and reports the failure. The session keeps what the user chose,
-        so a remembered device that is unplugged for one run is looked for again in the next.
+        A new device or rate ends every sound playing, and the next sound opens on it; a new buffer size
+        reaches the next sound. The session keeps what the user chose, so a remembered device that is
+        unplugged for one run is looked for again in the next.
         """
-        try:
-            current_device = self.audio_device_manager.configure_device(device_index, sample_rate)
-        except PlaybackError as exception:
-            self._on_playback_error(exception)
-            return
-
+        current_device = self.audio_device_manager.configure_device(device_index, sample_rate)
         self.audio_device_manager.set_buffer_size(buffer_size)
+        self.audio_output.configure(self.audio_device_manager.settings)
         self.session_manager.set_audio_settings(current_device, buffer_size)
 
     def _owning_project_sample(self) -> Optional[Sample]:
@@ -1712,20 +1744,22 @@ class Application:
         self._shell.update_fps(delta_time)
         self._shell.update_status_bar(delta_time)
         self._display_coordinator.tick(delta_time)
+        self.key_router.sweep()
+        self._reconstructions_tab.arm_keys()
+        self.midi_router.publish()
         self._refresh_playback_menu_state()
 
     def _refresh_playback_menu_state(self) -> None:
-        """Keeps the playback menu entries in step with the output device.
+        """Keeps the playback menu entries in step with the output.
 
-        Tree previews drive the output device directly, so the menu learns about
-        preview playback starting or finishing by sampling the device once per
-        frame and refreshing when the playing state flips.
+        A preview starts and ends without telling the menu, so the menu samples whether any sound holds
+        the output once per frame and refreshes when that flips.
         """
-        playing = self.audio_device_manager.is_playing()
-        if playing == self._audio_was_playing:
+        sounding = self.audio_output.is_sounding
+        if sounding == self._audio_was_sounding:
             return
 
-        self._audio_was_playing = playing
+        self._audio_was_sounding = sounding
         self._update_menu()
 
     def frame(self) -> None:
@@ -1798,13 +1832,14 @@ class Application:
             UnhandledFailures.detach,
             self._render_coordinator.cleanup,
             self._export_coordinator.cleanup,
+            self._midi_coordinator.close,
+            self.audio_output.stop_all,
             stop_background_workers,
-            self._playback_router.shutdown,
             self._main_tab.cleanup,
             self.library_manager.release_creator,
             self._display_coordinator.cleanup,
             self._save_config,
             self._persist_application_state,
-            self.audio_device_manager.terminate,
+            partial(self.audio_output.close, deadline_seconds=AUDIO_TEARDOWN_SECONDS),
             dpg.destroy_context,
         )

@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Final, Iterator
+from typing import Final, Iterator, Tuple
 
 import pytest
 
@@ -15,6 +15,7 @@ from automation.boundaries.audio import (
 from automation.boundaries.dialogs import ScriptedFileDialogs
 from automation.boundaries.errors import ErrorRecords
 from automation.boundaries.highlights import TableHighlights
+from automation.boundaries.midi import ScriptedMidiInput
 from automation.boundaries.reveals import FileManagerStandIn
 from automation.boundaries.spawns import SpawnGuard
 from automation.dearpygui.bridge import Bridge
@@ -65,6 +66,19 @@ def output_device_fixture() -> OutputDevice:
     return OutputDevice.SILENT
 
 
+@pytest.fixture(name="midi_keyboards")
+def midi_keyboards_fixture() -> Tuple[str, ...]:
+    """The MIDI keyboards the scenario's machine offers, by their ports' names; a scenario overrides it to plug some
+    in."""
+    return ()
+
+
+@pytest.fixture(name="midi_library_loads")
+def midi_library_loads_fixture() -> bool:
+    """Whether the scenario's machine offers a MIDI library; a scenario overrides it to start without one."""
+    return True
+
+
 @pytest.fixture(name="screen_render_thread")
 def screen_render_thread_fixture() -> QueueRenderThread:
     """The queue-backed render thread the scenario's application and bridge share."""
@@ -80,6 +94,8 @@ def screen_bridge_fixture(screen_render_thread: QueueRenderThread) -> Bridge:
 @pytest.fixture(name="screen_boundaries")
 def screen_boundaries_fixture(
     output_device: OutputDevice,
+    midi_keyboards: Tuple[str, ...],
+    midi_library_loads: bool,
     screen_holds: Holds,
     monkeypatch: pytest.MonkeyPatch,
 ) -> Boundaries:
@@ -89,7 +105,11 @@ def screen_boundaries_fixture(
     errors = ErrorRecords()
     errors.install()
     artifacts = Path(os.environ[ARTIFACTS_VARIABLE])
-    file_manager = FileManagerStandIn(artifacts / STAND_IN_PROGRAMS, artifacts / REVEALS_FILE, artifacts / OPENS_FILE)
+    file_manager = FileManagerStandIn(
+        artifacts / STAND_IN_PROGRAMS,
+        artifacts / REVEALS_FILE,
+        artifacts / OPENS_FILE,
+    )
     file_manager.install(monkeypatch)
     spawns = SpawnGuard()
     spawns.install()
@@ -98,6 +118,12 @@ def screen_boundaries_fixture(
     highlights.install(monkeypatch)
     output = OutputRecord()
     output.install(monkeypatch)
+    midi = ScriptedMidiInput()
+    midi.failing = not midi_library_loads
+    for keyboard in midi_keyboards:
+        midi.offer(keyboard)
+
+    midi.install(monkeypatch)
     provide_output_device(
         output_device,
         home=Path.home(),
@@ -111,6 +137,7 @@ def screen_boundaries_fixture(
         file_manager=file_manager,
         highlights=highlights,
         output=output,
+        midi=midi,
     )
 
 
@@ -164,6 +191,7 @@ def screen_fixture(
         file_manager=screen_boundaries.file_manager,
         highlights=screen_boundaries.highlights,
         output=screen_boundaries.output,
+        midi=screen_boundaries.midi,
         artifacts=Path(os.environ[ARTIFACTS_VARIABLE]),
     )
     window_manager.close()

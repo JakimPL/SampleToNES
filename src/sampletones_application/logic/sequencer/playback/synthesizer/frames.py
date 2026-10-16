@@ -40,8 +40,3 @@ class RowFrames:
     def total(self) -> int:
         """The samples the whole row spans."""
         return self.bounds[-1]
-
-    @property
-    def longest(self) -> int:
-        """The samples the row's longest tick spans."""
-        return max(self.lengths, default=0)

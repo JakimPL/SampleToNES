@@ -5,10 +5,11 @@ import numpy as np
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME
-from sampletones_core.features.envelope import releases
+from sampletones_core.features.envelope import release_length
 from sampletones_core.generators.render import render_instructions
 from sampletones_core.instructions import InstructionUnion
-from sampletones_core.performance.modifiers import apply_modifiers
+from sampletones_core.performance.live import LiveNote
+from sampletones_core.project.patterns.pitch import Note
 from sampletones_core.project.voices.instrument import Instrument
 
 
@@ -27,11 +28,8 @@ def audition_ticks(instrument: Instrument, *, cap: int) -> int:
     Returns:
         int: The ticks the audition sounds.
     """
-    volume = instrument.envelopes.volume
-    if releases(volume):
-        return len(volume.items)
-
-    return cap
+    length = release_length(instrument.envelopes.volume)
+    return cap if length is None else length
 
 
 def audition_instructions(
@@ -43,10 +41,10 @@ def audition_instructions(
 ) -> List[InstructionUnion]:
     """The frames an instrument sounds on one channel at one note, at full volume.
 
-    An instrument's frames are built at the reference the channel reads, so sounding it at a note
-    is the step from that reference to the note — the same step a tracker row states, taken here
-    without a row to state it. A voice sounds past the frames it writes the way a held row sounds
-    it: each dimension circles from its own loop point or holds its last item.
+    An audition is a live note held for ``ticks`` ticks, so it sounds what a tracker row holding the note
+    sounds: the step from the voice's reference to the note, each dimension the voice leaves empty at the
+    value a note starts on, and the frames past the written ones circling from their loop points or
+    holding their last items.
 
     Args:
         instrument: The voice being sounded.
@@ -57,13 +55,21 @@ def audition_instructions(
     Returns:
         List[InstructionUnion]: The frames, empty where the instrument writes no envelope.
     """
-    if not instrument.instructions(channel_name):
+    note = LiveNote.of_voice(
+        instrument,
+        pitches={channel_name: Note(value=pitch)},
+        levels={channel_name: MAX_VOLUME},
+    )
+    if channel_name not in note.channel_names:
         return []
 
-    transpose = pitch - instrument.reference(channel_name)
-    return [
-        apply_modifiers(instrument.instruction_at(channel_name, tick), transpose, MAX_VOLUME) for tick in range(ticks)
-    ]
+    frames: List[InstructionUnion] = []
+    for _ in range(ticks):
+        instruction = note.tick()[channel_name]
+        if instruction is not None:
+            frames.append(instruction)
+
+    return frames
 
 
 def audition_audio(

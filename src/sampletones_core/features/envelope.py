@@ -141,3 +141,16 @@ def releases(volume: Envelope[int]) -> bool:
         bool: Whether the note ends where the dimension runs out.
     """
     return bool(volume.items) and volume.items[-1] == SILENT_VOLUME and not volume.loops
+
+
+def release_length(volume: Envelope[int]) -> Optional[int]:
+    """The ticks a note sounds before its volume dimension releases it, or ``None`` for one it never releases.
+
+    Args:
+        volume: The volume dimension of the voice being sounded.
+
+    Returns:
+        Optional[int]: The ticks up to and including the silence it ends on, or ``None`` where the
+            dimension circles from a loop point or ends anywhere but at silence.
+    """
+    return len(volume.items) if releases(volume) else None

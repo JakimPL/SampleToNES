@@ -89,6 +89,7 @@ class ShortcutId(Enum):
     UNMUTE_ALL_CHANNELS = ("UnmuteAllChannels", ShortcutCategory.APPLICATION)
     AUDIO_SETTINGS = ("AudioSettings", ShortcutCategory.APPLICATION)
     DISPLAY_SETTINGS = ("DisplaySettings", ShortcutCategory.APPLICATION)
+    MIDI_SETTINGS = ("MidiSettings", ShortcutCategory.APPLICATION)
     KEYBOARD_SETTINGS = ("KeyboardSettings", ShortcutCategory.APPLICATION)
     TOGGLE_ADVANCED_SETTINGS = ("ToggleAdvancedSettings", ShortcutCategory.APPLICATION)
     TOGGLE_AUTO_EXPAND_FAVORITE_RECONSTRUCTIONS = (

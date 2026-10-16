@@ -7,6 +7,7 @@ import pytest
 from automation.scenario import BaseTestScenario, ScenarioStep
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
+from sampletones_application.logic.shared.synthesis import ChannelGeneratorProtocol
 from sampletones_core.configs import Config
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName, FeatureKey
@@ -80,7 +81,13 @@ def _performance(
     context: SynthesizerContext,
     channel: ChannelName = ChannelName.PULSE1,
 ) -> ChannelPerformance:
-    return context.synthesizer._channels.state(channel).performance
+    return context.synthesizer._performances[channel]
+
+
+def _generator(synthesizer: RowSynthesizer) -> ChannelGeneratorProtocol:
+    """The generator Pulse 1 renders through at the rates in force."""
+    assert synthesizer._channels is not None
+    return synthesizer._channels.generator(ChannelName.PULSE1)
 
 
 def _render(context: SynthesizerContext) -> np.ndarray:
@@ -861,14 +868,13 @@ class TestNesFrequencyTempo:
 
         controller.set_nes_frequency(60)
         synthesizer.render_row()
-        pulse_state = synthesizer._channels.state(ChannelName.PULSE1)
-        assert pulse_state.generator.frame_length == round(SAMPLE_RATE / 60)
+        assert _generator(synthesizer).frame_length == round(SAMPLE_RATE / 60)
 
         controller.set_nes_frequency(30)
         synthesizer.render_row()
 
-        assert pulse_state.generator.frame_length == round(SAMPLE_RATE / 30)
-        assert pulse_state.performance.voice_id is not None
+        assert _generator(synthesizer).frame_length == round(SAMPLE_RATE / 30)
+        assert synthesizer._performances[ChannelName.PULSE1].voice_id is not None
 
 
 class TestChannelHeldValues:

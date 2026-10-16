@@ -37,6 +37,7 @@ PAD: Final[str] = "02"
 CONTEXT_REACH: Final[int] = 2
 VOLUME_BEFORE: Final[int] = 5
 VOLUME_AFTER: Final[int] = 9
+STRUCK_LEVEL: Final[int] = 12
 
 
 def _controller() -> ProjectController:
@@ -183,7 +184,7 @@ class TestWriteCell:
             name="lead",
         )
 
-        logic.write_cell(0, None, sample.id, None, None)
+        logic.write_cell(0, None, sample.id, None, None, None)
 
         for channel in (ChannelName.PULSE1, ChannelName.TRIANGLE):
             assert isinstance(_row(controller, channel).command, NoteOn)
@@ -200,7 +201,7 @@ class TestWriteCell:
             name="lead",
         )
 
-        logic.write_cell(0, ChannelName.NOISE, sample.id, None, None)
+        logic.write_cell(0, ChannelName.NOISE, sample.id, None, None, None)
 
         command = _row(controller, ChannelName.NOISE).command
         assert isinstance(command, NoteOn)
@@ -212,7 +213,7 @@ class TestWriteCell:
         logic = SequencerTrackerLogic(controller)
         sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="lead")
 
-        logic.write_cell(0, ChannelName.PULSE1, sample.id, Note(value=60), None)
+        logic.write_cell(0, ChannelName.PULSE1, sample.id, Note(value=60), None, None)
 
         row = _row(controller, ChannelName.PULSE1)
         assert row.command == NoteOn(voice_id=sample.id)
@@ -227,7 +228,7 @@ class TestWriteCell:
             name="lead",
         )
 
-        logic.write_cell(0, None, sample.id, Note(value=60), None)
+        logic.write_cell(0, None, sample.id, Note(value=60), None, None)
 
         for channel in (ChannelName.PULSE1, ChannelName.TRIANGLE):
             assert _row(controller, channel).command == NoteOn(voice_id=sample.id)
@@ -241,7 +242,7 @@ class TestWriteCell:
         logic = SequencerTrackerLogic(controller)
         logic.set_row(ChannelName.PULSE1, 0, pitch=Step(value=5))
 
-        logic.write_cell(0, ChannelName.PULSE1, None, None, 10)
+        logic.write_cell(0, ChannelName.PULSE1, None, None, 10, None)
 
         row = _row(controller, ChannelName.PULSE1)
         assert row.pitch == Step(value=5)
@@ -254,7 +255,7 @@ class TestWriteCell:
         controller.append_frame()
         logic.select_frame(1)
 
-        logic.write_cell(0, ChannelName.PULSE1, None, None, None)
+        logic.write_cell(0, ChannelName.PULSE1, None, None, None, None)
 
         assert controller.project.song.order[1][ChannelName.PULSE1] is None
 
@@ -856,7 +857,7 @@ class TestTheSampleColumnFollowsTheSampleInForce:
             voice_ids=grid.voice_ids,
         )
 
-        grid.logic.write_cell(2, None, None, None, 10)
+        grid.logic.write_cell(2, None, None, None, 10, None)
 
         assert render_frame(grid.logic) == (
             "00 ... . | .. ... . | 00 ... . | .. ... .",
@@ -875,7 +876,7 @@ class TestTheSampleColumnFollowsTheSampleInForce:
             voice_ids=grid.voice_ids,
         )
 
-        grid.logic.write_cell(2, None, None, Step(value=3), None)
+        grid.logic.write_cell(2, None, None, Step(value=3), None, None)
 
         assert render_frame(grid.logic)[2] == ".. +03 . | .. ... . | .. ... . | .. ... ."
 
@@ -889,7 +890,7 @@ class TestTheSampleColumnFollowsTheSampleInForce:
             voice_ids=grid.voice_ids,
         )
 
-        grid.logic.write_cell(2, None, None, None, 10)
+        grid.logic.write_cell(2, None, None, None, 10, None)
 
         assert render_frame(grid.logic)[2] == ".. ... A | .. ... . | .. ... . | .. ... ."
 
@@ -898,8 +899,8 @@ class TestTheSampleColumnFollowsTheSampleInForce:
         grid.controller.append_frame()
         grid.logic.select_frame(position)
 
-        grid.logic.write_cell(0, None, None, 5, None)
-        grid.logic.write_cell(0, None, None, None, 10)
+        grid.logic.write_cell(0, None, None, 5, None, None)
+        grid.logic.write_cell(0, None, None, None, 10, None)
 
         assert render_slots(grid.controller, position) == ".. .. .. .."
 
@@ -915,7 +916,7 @@ class TestTheSampleColumnFollowsTheSampleInForce:
             voice_ids=grid.voice_ids,
         )
 
-        grid.logic.write_cell(1, None, None, None, 10)
+        grid.logic.write_cell(1, None, None, None, 10, None)
 
         assert render_frame(grid.logic)[1] == "00 ... A | .. ... . | .. ... A | .. ... ."
 
@@ -935,7 +936,7 @@ class TestTheSampleColumnFollowsTheSampleInForce:
             voice_ids=grid.voice_ids,
         )
 
-        grid.logic.write_cell(0, None, None, None, 10)
+        grid.logic.write_cell(0, None, None, None, 10, None)
 
         assert render_frame(grid.logic)[0] == EMPTY
 
@@ -1017,3 +1018,65 @@ class TestTheSampleColumnReadsWhereItWrites(BaseTestSuite):
 
         for row in rows:
             assert frozenset(grid.logic.note_channels(row.index)) == row.note_channels
+
+
+class TestAStruckKeysLevels:
+    """A struck key writes each channel its own level, and a channel the levels leave out keeps its volume."""
+
+    def test_a_channel_cell_takes_its_level(self) -> None:
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+
+        logic.write_cell(0, ChannelName.PULSE1, None, Note(value=60), None, {ChannelName.PULSE1: STRUCK_LEVEL})
+
+        assert _row(controller, ChannelName.PULSE1).volume == STRUCK_LEVEL
+
+    def test_a_channel_the_levels_leave_out_keeps_its_volume(self) -> None:
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+        logic.set_row(ChannelName.TRIANGLE, 0, volume=VOLUME_BEFORE)
+
+        logic.write_cell(0, ChannelName.TRIANGLE, None, Note(value=60), None, {ChannelName.PULSE1: STRUCK_LEVEL})
+
+        row = _row(controller, ChannelName.TRIANGLE)
+        assert row.volume == VOLUME_BEFORE
+        assert row.pitch == Note(value=60)
+
+    def test_levels_alone_write_the_volume(self) -> None:
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+        logic.set_row(ChannelName.PULSE1, 0, pitch=Step(value=5))
+
+        logic.write_cell(0, ChannelName.PULSE1, None, None, None, {ChannelName.PULSE1: STRUCK_LEVEL})
+
+        row = _row(controller, ChannelName.PULSE1)
+        assert row.volume == STRUCK_LEVEL
+        assert row.pitch == Step(value=5)
+
+    def test_the_sample_column_gives_each_channel_its_own_level(self) -> None:
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+        sample = controller.add_sample(
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
+            name="lead",
+        )
+        logic.write_cell(0, None, sample.id, None, VOLUME_BEFORE, None)
+
+        logic.write_cell(0, None, None, Note(value=60), None, {ChannelName.PULSE1: STRUCK_LEVEL})
+
+        assert _row(controller, ChannelName.PULSE1).volume == STRUCK_LEVEL
+        assert _row(controller, ChannelName.TRIANGLE).volume == VOLUME_BEFORE
+
+    def test_a_typed_volume_still_reaches_every_channel_of_the_sample_column(self) -> None:
+        controller = _controller()
+        logic = SequencerTrackerLogic(controller)
+        sample = controller.add_sample(
+            sample_reconstruction([ChannelName.PULSE1, ChannelName.TRIANGLE]),
+            name="lead",
+        )
+        logic.write_cell(0, None, sample.id, None, None, None)
+
+        logic.write_cell(0, None, None, None, VOLUME_AFTER, None)
+
+        assert _row(controller, ChannelName.PULSE1).volume == VOLUME_AFTER
+        assert _row(controller, ChannelName.TRIANGLE).volume == VOLUME_AFTER

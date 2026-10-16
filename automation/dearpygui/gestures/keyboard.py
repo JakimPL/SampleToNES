@@ -17,8 +17,9 @@ class Keyboard(Arrival):
 
     It owns every gesture made with keys and builds each from `Arrival`'s steps. Modifiers go down first and
     read as held, and the key itself goes down and comes up in one go, so Dear ImGui reads it down for a
-    single frame at any frame rate, the one press a person made, and the witness confirms its release. The
-    full hand also uses it to replace the text of a field.
+    single frame at any frame rate, the one press a person made, and the witness confirms its release. A key
+    held to sound stays down until the case lifts it. The full hand also uses it to replace the text of a
+    field.
     """
 
     def press_key(
@@ -43,6 +44,19 @@ class Keyboard(Arrival):
             for modifier in reversed(modifiers):
                 self._device.key_up(keysym_of(modifier))
 
+        self._settle(SETTLE_FRAMES)
+
+    def hold_key(self, key: int) -> None:
+        """Presses the Dear ImGui key ``key`` and keeps it down until :meth:`lift_key`, as a key held to sound."""
+        self._device.key_down(keysym_of(key))
+        self._confirm_keys((key,))
+
+    def lift_key(self, key: int) -> None:
+        """Lets the Dear ImGui key ``key`` held by :meth:`hold_key` come up, once the application reads it up."""
+        released = partial(self._witness.key_releases, key)
+        before = self._bridge.ask(released)
+        self._device.key_up(keysym_of(key))
+        self._await_count(released, before + 1, f"The key {key_name(key)}")
         self._settle(SETTLE_FRAMES)
 
     def type_text(self, text: str) -> None:

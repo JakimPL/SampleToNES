@@ -91,7 +91,7 @@ class TestATypedPitchIsStoredAsWritten(BaseTestSuite):
         instrument = _instrument(controller)
         _write(controller, test_case.channel, 0, NoteOn(voice_id=instrument.id))
 
-        logic.write_cell(0, test_case.channel, None, test_case.pitch, None)
+        logic.write_cell(0, test_case.channel, None, test_case.pitch, None, None)
 
         assert _pitch(logic, test_case.channel, 0) == test_case.expected
 
@@ -102,7 +102,7 @@ class TestThePitchLandsWhateverTheChannelCarries:
         sample = controller.add_sample(sample_reconstruction([ChannelName.PULSE1]), name="bass")
         _write(controller, ChannelName.PULSE1, 0, NoteOn(voice_id=sample.id))
 
-        logic.write_cell(0, ChannelName.PULSE1, None, Note(value=TYPED_NOTE), None)
+        logic.write_cell(0, ChannelName.PULSE1, None, Note(value=TYPED_NOTE), None, None)
 
         assert _pitch(logic, ChannelName.PULSE1, 0) == Note(value=TYPED_NOTE)
 
@@ -111,14 +111,14 @@ class TestThePitchLandsWhateverTheChannelCarries:
         instrument = _instrument(controller)
         _write(controller, ChannelName.PULSE1, 0, NoteOn(voice_id=instrument.id))
 
-        logic.write_cell(2, ChannelName.PULSE1, None, Note(value=TYPED_NOTE), None)
+        logic.write_cell(2, ChannelName.PULSE1, None, Note(value=TYPED_NOTE), None, None)
 
         assert _pitch(logic, ChannelName.PULSE1, 2) == Note(value=TYPED_NOTE)
 
     def test_a_row_carrying_no_voice_takes_a_note(self) -> None:
         _, logic = _logic()
 
-        logic.write_cell(0, ChannelName.PULSE1, None, Note(value=TYPED_NOTE), None)
+        logic.write_cell(0, ChannelName.PULSE1, None, Note(value=TYPED_NOTE), None, None)
 
         assert _pitch(logic, ChannelName.PULSE1, 0) == Note(value=TYPED_NOTE)
 
@@ -128,7 +128,7 @@ class TestThePitchLandsWhateverTheChannelCarries:
         _write(controller, ChannelName.PULSE1, 0, NoteOn(voice_id=instrument.id))
         _write(controller, ChannelName.PULSE1, 1, NoteOff())
 
-        logic.write_cell(2, ChannelName.PULSE1, None, Note(value=TYPED_NOTE), None)
+        logic.write_cell(2, ChannelName.PULSE1, None, Note(value=TYPED_NOTE), None, None)
 
         assert _pitch(logic, ChannelName.PULSE1, 2) == Note(value=TYPED_NOTE)
 
@@ -138,7 +138,7 @@ class TestThePitchLandsWhateverTheChannelCarries:
         _write(controller, ChannelName.PULSE1, 0, NoteOn(voice_id=instrument.id))
         logic.adjust_volume(ChannelName.PULSE1, 0, -1)
 
-        logic.write_cell(0, ChannelName.PULSE1, None, Step(value=TYPED_STEP), None)
+        logic.write_cell(0, ChannelName.PULSE1, None, Step(value=TYPED_STEP), None, None)
 
         row = logic.row(ChannelName.PULSE1, 0)
         assert row is not None
@@ -157,7 +157,7 @@ class TestANoteWrittenThroughTheSampleColumn:
         )
         logic.place_note(0, None, sample.id)
 
-        logic.write_cell(0, None, None, Note(value=TYPED_NOTE), None)
+        logic.write_cell(0, None, None, Note(value=TYPED_NOTE), None, None)
 
         assert _pitch(logic, ChannelName.PULSE1, 0) == Note(value=TYPED_NOTE)
         assert _pitch(logic, ChannelName.NOISE, 0) == Note(value=TYPED_NOTE % NUM_PERIODS)
@@ -170,7 +170,7 @@ class TestANoteWrittenThroughTheSampleColumn:
         )
         logic.place_note(0, None, sample.id)
 
-        logic.write_cell(0, None, None, Step(value=TYPED_STEP), None)
+        logic.write_cell(0, None, None, Step(value=TYPED_STEP), None, None)
 
         assert _pitch(logic, ChannelName.PULSE1, 0) == Step(value=TYPED_STEP)
         assert _pitch(logic, ChannelName.NOISE, 0) == Step(value=TYPED_STEP)

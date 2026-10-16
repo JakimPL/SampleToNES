@@ -3,25 +3,29 @@ from typing import Callable, Optional
 from sampletones_application.logic.shared.audio_player import AudioPlayer
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_application.view_model.shared.player import PlayerViewModel
-from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.audio import START_OF_AUDIO
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
 class PlayerLogic(CallbackMixin):
+    """The transport of a tab's player: what it sounds, where it stands, and the view the tab draws of it.
+
+    A failure of the playback reaches ``on_error``, which is where the tab shows it to the reader.
+    """
+
     def __init__(
         self,
-        audio_device_manager: AudioDeviceManager,
+        audio_player: AudioPlayer,
         on_change_audio_state: Optional[VoidCallback] = None,
     ) -> None:
-        self._audio_player = AudioPlayer(
-            audio_device_manager,
-            on_position_changed=self._on_position_changed,
-            on_change_audio_state=on_change_audio_state,
-        )
+        self._audio_player = audio_player
+        self._audio_player.on_position_changed = self._on_position_changed
+        self._audio_player.on_change_audio_state = on_change_audio_state
+        self._audio_player.on_error = self._on_error
         self.on_view_changed: Optional[Callable[[PlayerViewModel], None]] = None
         self.on_position_changed: Optional[Callable[[int], None]] = None
+        self.on_error: Optional[Callable[[Exception], None]] = None
 
     def load_audio_data(self, audio_data: AudioData) -> None:
         self._audio_player.load_audio_data(audio_data)
@@ -86,6 +90,10 @@ class PlayerLogic(CallbackMixin):
     def _on_position_changed(self, position: int) -> None:
         self._emit_view()
         self.call(self.on_position_changed, position)
+
+    def _on_error(self, error: Exception) -> None:
+        self._emit_view()
+        self.call(self.on_error, error)
 
     def _emit_view(self) -> None:
         if self.on_view_changed is not None:

@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Tuple
+from typing import Callable, Mapping, Optional, Tuple
 
 from sampletones_application.ui.panels.sequencer.grid.surface.edit import GridEditSurface
 from sampletones_application.ui.panels.sequencer.input.target import TrackerTarget
@@ -12,8 +12,13 @@ from sampletones_shared.types.callback import VoidCallback
 
 OnClearRowCallback = Callable[[int, Optional[ChannelName]], None]
 OnClearSubcolumnCallback = Callable[[int, Optional[ChannelName], SubColumn], None]
-OnSetRowCallback = Callable[[int, Optional[ChannelName], Optional[str], Optional[RowPitch], Optional[int]], None]
+OnSetRowCallback = Callable[
+    [int, Optional[ChannelName], Optional[str], Optional[RowPitch], Optional[int], Optional[Mapping[ChannelName, int]]],
+    None,
+]
 OnSetNoteOffCallback = Callable[[int, Optional[ChannelName]], None]
+OnNoteEnteredCallback = Callable[[int, int, Optional[ChannelName]], None]
+OnNoteReleasedCallback = Callable[[int], None]
 OnCellSelectedCallback = VoidCallback
 OnPlayFromRowCallback = Callable[[int], None]
 OnPlayFromFrameCallback = VoidCallback

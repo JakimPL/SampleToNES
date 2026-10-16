@@ -40,6 +40,10 @@ dimension the import starts carrying.
   both routes closes it.
 * A drag past the edge and the followed playhead both write the scroll, so with **Follow rows** on they take
   turns each frame. One writer of the scroll at a time closes it.
+* A MIDI key enters a note only where the caret stands on a pitch cell. Every subcolumn could take the key
+  that fits it, such as a volume or an effect.
+* Several MIDI keys played at once enter one note and the caret leaves it, so a chord writes the last key
+  alone. Spreading a chord over the channels would close it.
 
 ### Workflow
 
@@ -54,7 +58,8 @@ dimension the import starts carrying.
 
 ### Features
 
-* MIDI keyboard support.
+* A preview volume slider below the browsers, setting the level every preview plays at. The preview player
+  hands each preview's source a level it reads per block, as the song reads the master gain.
 * In-application guide/tutorial.
 * Language selector.
 * Reading only the bins the refinement asks for, since it transforms every bin the spectrum covers and
@@ -123,12 +128,21 @@ currently out of line. An entry leaves when the code meets the contract again.
   `CaretOverlay._rectangle`. Each is a seam a scenario needs, which [screens](application/screens.md)
   says the application offers as a public one.
 * The render thread still reads a reconstruction file and its recordings from disk, at an opening and
-  when a browser tree plays one, and renders an instrument's audition and the sequencer's instrument
-  preview; every other sound the interface draws or plays, the original line included, is a worker's
+  when a browser tree plays one, and renders the instrument the plot card draws and the sequencer's
+  instrument preview; every other sound the interface draws or plays, the original line included, is a worker's
   result ([the render thread](application/render-thread.md)).
+* PortMidi notices an unplugged keyboard only at its next listing, so on Windows and macOS the status bar
+  tells it when the reader opens the MIDI settings or presses **Refresh**. Linux's ALSA backend tells it at
+  once. Windows' own timing is unmeasured.
+* PortMidi reads its device list once, so a keyboard plugged in after the application started appears
+  after a restart on Windows and macOS.
 
 ## Bugs
 
+* A screen scenario that ends within the first frames after the application starts never stops it. Its
+  Exit leaves the application drawing, and the run waits until the suite's timeout, which ends the parent
+  process and leaves the scenario's own process running at several cores. A scenario whose body is a single
+  check that holds at startup reproduces it.
 * A click on the History card's line in force takes its highlight off. The jump goes nowhere, so the card
   repaints nothing and shows no line in force until the next step.
 * A rate change's retune can land as an entry of its own. When another gesture commits before the

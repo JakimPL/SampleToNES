@@ -149,6 +149,16 @@ def _check_file_dialog_backend() -> str:
     return type(select_file_dialog_backend()).__name__
 
 
+def _check_midi_backend() -> str:
+    """Names the MIDI library the system is read through, loading it the way listing a port does.
+
+    A device is optional, so the check holds the build to carrying the library alone.
+    """
+    from sampletones_application.utils.midi.selection import select_midi_backend
+
+    return select_midi_backend().describe()
+
+
 def _check_array_backend() -> str:
     """Names the backend the build computes on, so a GPU build that lost CuPy says so in its inventory."""
     from sampletones_shared.array import describe_array_backend
@@ -195,6 +205,7 @@ CHECKS: Final[Tuple[SelfCheck, ...]] = (
     SelfCheck(name="resources", run=_check_resources),
     SelfCheck(name="export backends", run=_check_export_backends),
     SelfCheck(name="file dialog backend", run=_check_file_dialog_backend),
+    SelfCheck(name="midi backend", run=_check_midi_backend),
     SelfCheck(name="array backend", run=_check_array_backend),
 )
 DOCUMENTATION_CHECK: Final[SelfCheck] = SelfCheck(name="documentation", run=_check_documentation)

@@ -5,10 +5,13 @@ from typing import Dict, Optional, Sequence, Tuple
 
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.exporters import CHANNEL_TO_EXPORTER_MAP, ExporterTypeUnion
+from sampletones_core.features.envelope import release_length
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.project.voices.voice import VoiceUnion, voice_reference
+from sampletones_core.reconstructions.reconstruction.stems.filter import heard_instructions
+from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing
 
 
 @dataclass(frozen=True)
@@ -73,6 +76,25 @@ class VoiceReading:
                 held_features = voice.held_features(channel_name)
                 sustaining = voice
 
+        return cls.of_frames(
+            voice,
+            channel_name,
+            instructions=instructions,
+            held_features=held_features,
+            sustaining=sustaining,
+        )
+
+    @classmethod
+    def of_frames(
+        cls,
+        voice: VoiceUnion,
+        channel_name: ChannelName,
+        *,
+        instructions: Sequence[InstructionUnion],
+        held_features: Tuple[FeatureKey, ...],
+        sustaining: Optional[Instrument],
+    ) -> Optional[VoiceReading]:
+        """The reading of ``instructions`` as the frames ``voice`` plays on a channel, ``None`` where there are none."""
         if not instructions:
             return None
 
@@ -84,6 +106,19 @@ class VoiceReading:
             channel_name=channel_name,
             sustaining=sustaining,
         )
+
+    @property
+    def length(self) -> Optional[int]:
+        """The ticks the voice sounds for on its own, or ``None`` for one that sounds until a row ends it.
+
+        A recording sounds the frames its conversion found. An instrument whose volume ends at silence
+        releases itself there, and one circling from a loop point, or leaving its volume to the
+        channel, sounds on.
+        """
+        if self.sustaining is None:
+            return len(self.instructions)
+
+        return release_length(self.sustaining.envelopes.volume)
 
     def at(self, tick_index: int) -> Optional[InstructionUnion]:
         """The frame standing at ``tick_index`` of a sounding note.
@@ -140,3 +175,37 @@ class VoiceReading:
             self.reference,
         )
         return sounded
+
+
+def heard_readings(sample: Sample, hearing: Hearing) -> Dict[ChannelName, VoiceReading]:
+    """How each channel a reader keeps on reads a recording, narrowed to the recordings the reader hears there.
+
+    A key sounds a recording as the reader hears it: a frame of a recording left out reads as the channel's
+    silent instruction, a channel's reading ends at the last frame heard, and a channel switched off, or one
+    holding no frame heard, reads nothing.
+
+    Args:
+        sample: The recording sounded.
+        hearing: What the reader hears of it.
+
+    Returns:
+        Dict[ChannelName, VoiceReading]: The reading of each channel sounding what the reader hears.
+    """
+    reconstruction = sample.reconstruction
+    heard = heard_instructions(reconstruction.stems_data, reconstruction.instructions, hearing.selection)
+    readings: Dict[ChannelName, VoiceReading] = {}
+    for channel_name in ChannelName.items():
+        if channel_name not in hearing.channels_on:
+            continue
+
+        reading = VoiceReading.of_frames(
+            sample,
+            channel_name,
+            instructions=heard[channel_name],
+            held_features=reconstruction.held_features[channel_name],
+            sustaining=None,
+        )
+        if reading is not None:
+            readings[channel_name] = reading
+
+    return readings

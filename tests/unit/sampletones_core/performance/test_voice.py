@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Final, Iterable, List, Sequence
+from typing import Dict, Final, FrozenSet, Iterable, List, Sequence
 
 import numpy as np
 import pytest
@@ -13,18 +13,33 @@ from sampletones_core.constants.enums import (
 )
 from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.features import CHANNEL_FEATURE_DEFAULTS
+from sampletones_core.features.envelope import Envelope
 from sampletones_core.instructions import (
     InstructionUnion,
     NoiseInstruction,
     PulseInstruction,
     TriangleInstruction,
 )
-from sampletones_core.performance import VoiceReading
+from sampletones_core.performance import VoiceReading, heard_readings
+from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
+from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing
+from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
-from tests.suite.stems import single_entry_stems_data
+from tests.suite.stems import (
+    SHARED_CHANNEL,
+    SOLE_CHANNEL,
+    STEM_A_ID,
+    STEM_B_ID,
+    everything_heard,
+    single_entry_stems_data,
+    taking_turns,
+)
+
+__all__ = ["taking_turns"]
 
 AUDIO_LENGTH: Final[int] = 64
 REFERENCE_PITCH: Final[int] = 60
@@ -304,3 +319,92 @@ class TestAHeldDimensionSoundsAtTheChannelsValue(BaseTestSuite):
         voice.sound(rest, values)
 
         assert values[FeatureKey.DUTY_CYCLE] == DUTY_CYCLE
+
+
+class TestHowLongAVoiceSoundsOnItsOwn:
+    """A recording sounds the frames it holds, an instrument releasing at silence stops there, and any other
+    instrument sounds until a row ends it."""
+
+    def test_a_recording_sounds_the_frames_it_holds(self) -> None:
+        reading = _voice(ChannelName.PULSE1, [PulseInstruction(on=True, pitch=60, volume=15, duty_cycle=0)] * 5, ())
+
+        assert reading.length == 5
+
+    def test_an_instrument_releasing_at_silence_sounds_up_to_its_release(self) -> None:
+        reading = VoiceReading.read(_instrument_with_volume(Envelope[int](items=(15, 9, 0))), ChannelName.PULSE1)
+
+        assert reading is not None
+        assert reading.length == 3
+
+    def test_an_instrument_circling_from_a_loop_point_sounds_until_a_row_ends_it(self) -> None:
+        reading = VoiceReading.read(
+            _instrument_with_volume(Envelope[int](items=(15, 9), loop_point=0)),
+            ChannelName.PULSE1,
+        )
+
+        assert reading is not None
+        assert reading.length is None
+
+
+def _instrument_with_volume(volume: Envelope[int]) -> Instrument:
+    return Instrument(name="lead", envelopes=InstrumentEnvelopes(volume=volume))
+
+
+def _hearing(heard: Dict[ChannelName, FrozenSet[int]], channels_on: FrozenSet[ChannelName]) -> Hearing:
+    return Hearing(selection=StemSelection(channels=heard), channels_on=channels_on)
+
+
+def _whole(reconstruction: Reconstruction) -> Hearing:
+    """Every recording heard on every channel the document plays, each of those kept on."""
+    return Hearing(
+        selection=everything_heard(reconstruction),
+        channels_on=frozenset(reconstruction.playing_channels),
+    )
+
+
+class TestAKeyHearsWhatTheReaderHears:
+    """A recording's readings follow the reader's hearing: recordings left out fall silent, channels off read nothing."""
+
+    def test_a_recording_heard_whole_reads_as_its_own_frames(self, taking_turns: Reconstruction) -> None:
+        sample = Sample(name="turns", reconstruction=taking_turns)
+
+        readings = heard_readings(sample, _whole(taking_turns))
+
+        for channel_name in (SHARED_CHANNEL, SOLE_CHANNEL):
+            expected = VoiceReading.read(sample, channel_name)
+            assert expected is not None
+            assert list(readings[channel_name].instructions) == list(expected.instructions)
+            assert readings[channel_name].reference == expected.reference
+
+    def test_a_recording_left_out_reads_as_silence_where_it_held_frames(self, taking_turns: Reconstruction) -> None:
+        sample = Sample(name="turns", reconstruction=taking_turns)
+        hearing = _hearing(
+            {SHARED_CHANNEL: frozenset({STEM_B_ID}), SOLE_CHANNEL: frozenset({STEM_B_ID})},
+            frozenset({SHARED_CHANNEL, SOLE_CHANNEL}),
+        )
+
+        shared = heard_readings(sample, hearing)[SHARED_CHANNEL].instructions
+
+        first, second = taking_turns.instructions[SHARED_CHANNEL]
+        assert list(shared) == [type(first).null_instruction(), second]
+
+    def test_a_channel_holding_no_frame_heard_reads_nothing(self, taking_turns: Reconstruction) -> None:
+        sample = Sample(name="turns", reconstruction=taking_turns)
+        hearing = _hearing(
+            {SHARED_CHANNEL: frozenset({STEM_A_ID}), SOLE_CHANNEL: frozenset()},
+            frozenset({SHARED_CHANNEL, SOLE_CHANNEL}),
+        )
+
+        readings = heard_readings(sample, hearing)
+
+        assert SOLE_CHANNEL not in readings
+        assert list(readings[SHARED_CHANNEL].instructions) == [taking_turns.instructions[SHARED_CHANNEL][0]]
+
+    def test_a_channel_switched_off_reads_nothing(self, taking_turns: Reconstruction) -> None:
+        sample = Sample(name="turns", reconstruction=taking_turns)
+        whole = _whole(taking_turns)
+        hearing = whole.model_copy(update={"channels_on": frozenset({SOLE_CHANNEL})})
+
+        readings = heard_readings(sample, hearing)
+
+        assert set(readings) == {SOLE_CHANNEL}

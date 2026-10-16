@@ -19,6 +19,7 @@ from sampletones_application.logic.main.converter.run import ConversionSuccess
 from sampletones_application.logic.main.explorer_manager import ExplorerManager
 from sampletones_application.logic.main.sources.scan import FolderScan
 from sampletones_application.logic.shared.file_playback import FilePlayback
+from sampletones_application.logic.shared.preview_player import PreviewPlayer
 from sampletones_application.logic.shared.previews import DocumentPreviews
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.parameters.main import MainTabParameters
@@ -75,7 +76,6 @@ from sampletones_application.view_model.main.advanced import (
 )
 from sampletones_application.view_model.main.config import ConfigPanelViewModel
 from sampletones_application.view_model.main.converter import ConverterViewModel
-from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.library import library_state
 from sampletones_core.structures.tree import FileSystemNode
@@ -104,7 +104,7 @@ class MainTabCoordinator:
         self,
         config_manager: ConfigManager,
         session_manager: SessionManager,
-        audio_device_manager: AudioDeviceManager,
+        preview_player: PreviewPlayer,
         library_manager: InstructionsLibraryManager,
         conversion_service: ConversionService,
         hooks: MainTabHooks,
@@ -139,7 +139,7 @@ class MainTabCoordinator:
         self._build_explorer(
             config_manager,
             session_manager,
-            audio_device_manager,
+            preview_player,
             previews,
             layout=layout,
             language_manager=language_manager,
@@ -170,7 +170,7 @@ class MainTabCoordinator:
         self,
         config_manager: ConfigManager,
         session_manager: SessionManager,
-        audio_device_manager: AudioDeviceManager,
+        preview_player: PreviewPlayer,
         previews: DocumentPreviews,
         *,
         layout: MainTabParameters,
@@ -183,7 +183,7 @@ class MainTabCoordinator:
             language_manager=language_manager,
             open_directories=session_manager.expanded_directories,
         )
-        self._file_playback: FilePlayback = FilePlayback(audio_device_manager, previews)
+        self._file_playback: FilePlayback = FilePlayback(preview_player, previews)
         self._folder_scan: FolderScan = FolderScan(FolderScanService(priority=self._repaint_priority))
         self._explorer_tree_logic: TreeLogic = TreeLogic(
             session_manager,

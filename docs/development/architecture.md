@@ -112,7 +112,7 @@ Ordering the implementations is part of the factory's job: where several are ava
 
 ### 12. One dispatcher owns the keyboard
 
-DearPyGui gives every key handler the same global reach, so priority and consume semantics exist only where the application builds them. A single `KeyRouter` owns the one `add_key_press_handler` for the whole application. It offers each press to registered **scopes** from the highest priority to the lowest, and the first active scope that claims the press ends the walk. A modal dialog ranks above a sequencer sub-panel, which ranks above the application shortcuts. Each consumer registers one scope that says when it wants keys and which presses it claims.
+DearPyGui gives every key handler the same global reach, so priority and consume semantics exist only where the application builds them. A single `KeyRouter` owns the one key-press handler and the one key-release handler for the whole application. It offers each press to registered **scopes** from the highest priority to the lowest, and the first active scope that claims the press ends the walk. A modal dialog ranks above a sequencer sub-panel, which ranks above the application shortcuts. Each consumer registers one scope that says when it wants keys and which presses it claims. A scope that holds its keys, as a key sounding a note does, takes the release of each press it claimed, whatever is active by then.
 
 A binding is declared once and read by everyone who prints or fires it. `ShortcutId` names the action with the category that answers it, and the scheme under `sampletones_config/keybindings/` decides the combination. A printed key and the handler behind it therefore stay in step by construction.
 
@@ -138,6 +138,14 @@ its answers raise. A modal asked for from anywhere else, such as the report of a
 and opens once that conversation has ended. Every modal opens through `GUIWindow`, and one line decides when
 each reaches the screen, so a caller raises a dialog the moment it has one. [Dialogs](application/dialogs.md)
 describes the conversation and its hand-offs.
+
+### 16. One dispatcher owns the MIDI keyboard
+
+A MIDI keyboard's keys arrive on the MIDI library's thread, so the keyboard needs a dispatcher of its own, built the way principle 12 builds the keyboard's. A single `MidiRouter` offers each key to registered scopes from the highest priority to the lowest, and a modal dialog ranks above the tabs. Whether a scope is active is a question about the interface, so the render thread publishes the active scopes once a frame, and a key reads the latest publication on the thread it arrived on.
+
+**A key lifted reaches the scope that took its press.** A tab switched or a dialog opened while a key is down therefore leaves no note hanging. Whenever the keys stop arriving, as a port changes, goes away or is let go, every held key is lifted through its taker and the pedal comes up. The pedal belongs to the sound alone.
+
+**A scope acts on the thread the key arrived on.** A scope that sounds therefore acts at once, with no frame between the key and the sound. What a key sounds belongs to the interface as well, so the scope's owner publishes it once a frame as a value that changes nothing once built, and the key strikes the value published last. A scope that changes the interface hands its work to the render thread itself (principle 6). [`midi.md`](application/midi.md) covers the libraries, the manager and the scopes.
 
 ---
 
@@ -203,7 +211,7 @@ Owns domain state and implements the state-machine transitions that govern it, k
 
 Runs long operations (file conversion, waveform regeneration, export, playback synthesis) on background threads and delivers typed results to the render thread.
 
-- Every service inherits `ServiceBase[ResultType]`, which provides `subscribe(handler)`, `unsubscribe(handler)` and `_emit(result)`.
+- Every service inherits `ServiceBase[ResultType]`, which provides `subscribe(handler)`, `unsubscribe(handler)` and `_emit(result)`. A service whose work is a sound drives a playback: it plays a source through the audio output, listens to the playback it holds, and hands its subscribers what that playback reports, which already arrives on the render thread (see [`playback.md`](application/playback.md#the-audio-output)). `SongPlayerService` is one.
 - `_emit` posts the result to `CallbackQueue`, which puts every handler on the render thread (principle 6).
 - `_emit` delivers every result it is given, which is how an outcome travels. `_report` carries where a run stands, and the newest report waiting supersedes the ones before it, so a subscriber draws a run once per drain however often the run reports.
 - Result types are a tagged union, so a subscriber matches exhaustively. A long operation reports through `ServiceStarted`, `ServiceProgress`, `ServiceIntermediate`, `ServiceSuccess`, `ServiceError` and `ServiceCanceled`, and a service whose reports carry more, such as the playhead or the request they answer, declares a union of its own in its `result.py`.
@@ -285,7 +293,7 @@ Every failure ends in a recovery or in a report. A failure no layer recovered fr
 
 Each hands the exception to `UnhandledFailures` (`utils/callbacks/failures.py`). It logs the failure with its traceback and posts the report to the render thread through the queue, whichever thread failed. `UnhandledFailurePresenter` shows the error dialog: one plain line saying the last action did not finish, then the error and its traceback. A report standing on the screen or waiting for it absorbs later ones until the reader dismisses it, so a failure repeating every frame is read once. The composition root attaches the presenter and the teardown detaches it, so a failure outside a running interface is logged alone.
 
-These catches and the service task wrapper are the only places a non-specific exception type is caught. They recover nothing: the gesture ends, the interface keeps running, and the reader learns that the action stopped. A failure a coordinator can name and explain is still caught there, with a message of its own. The last resort serves what nobody named, such as a bug or a document breaking its own rules.
+These catches, the service task wrapper and the audio source boundary are the only places a non-specific exception type is caught. The audio output's writer catches a source's read whole, and the song's renderer its synthesis, since a source fails however its code fails: the failure ends that playback as its end report (see [`playback.md`](application/playback.md#the-audio-output)). They recover nothing: the gesture ends, the interface keeps running, and the reader learns that the action stopped. A failure a coordinator can name and explain is still caught there, with a message of its own. The last resort serves what nobody named, such as a bug or a document breaking its own rules.
 
 ### UI layer — errors arrive as data
 

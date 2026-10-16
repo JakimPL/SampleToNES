@@ -59,6 +59,11 @@ class ChannelPerformance:
         self.volume = volume
         self.feature_values = CHANNEL_FEATURE_DEFAULTS.copy()
 
+    def end_note(self) -> None:
+        """Silences the note sounding, as a note-off row does, keeping the transpose and volume the rows set."""
+        self.voice_id = None
+        self.tick_index = 0
+
     def reset(self) -> None:
         """Returns the channel to silence at full volume, as a song starts it.
 

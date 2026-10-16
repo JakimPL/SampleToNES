@@ -1,5 +1,6 @@
 from typing import Final
 
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_VOLUME, MIN_VOLUME, SILENT_VOLUME
 from sampletones_core.instructions import (
     InstructionUnion,
@@ -26,6 +27,11 @@ def triangle_sounds_at(row_volume: int) -> bool:
         bool: Whether the triangle sounds at that level.
     """
     return row_volume > TRIANGLE_LOUDEST_SILENT_VOLUME
+
+
+def level_scales(channel_name: ChannelName) -> bool:
+    """Whether a level scales what a channel sounds, which on the triangle only gates it."""
+    return channel_name is not ChannelName.TRIANGLE
 
 
 def pulse_volume(

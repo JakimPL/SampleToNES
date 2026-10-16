@@ -1,6 +1,6 @@
 [project]
 name = "sampletones"
-version = "0.3.2"
+version = "0.3.3"
 description = "Approximate audio samples with the NES 2A03 oscillators and export them as FamiTracker instruments"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -43,12 +43,15 @@ dependencies = [
     "pebble>=5.0,<6",
     "py65>=1.2,<2",
     "pydantic>=2.9,<3",
+    "pygame-ce>=2.5.8,<2.6; sys_platform != 'linux'",
     "pyaudio>=0.2.14,<0.3",
     "rich>=13.0,<16",
     "scipy>=1.13,<2",
     "screeninfo>=0.8,<0.9",
     "soundfile>=0.13,<0.14",
+    "soxr>=1.0,<2",
     "tqdm>=4.66,<5",
+    "alsa-midi>=1.0.4,<2; sys_platform == 'linux'",
     "jeepney>=0.8,<1; sys_platform == 'linux'",
     "pytaskbar>=0.1.1,<0.2; platform_system == 'Windows'",
     "pywin32>=306; platform_system == 'Windows'",
@@ -89,6 +92,7 @@ dev = [
     "pylint-pydantic==0.4.1",
     "pytest==9.1.1",
     "pytest-cov==7.1.0",
+    "pytest-timeout==2.4.0",
     "pytest-xdist==3.8.0",
     "python-xlib==0.33",
     "pyvirtualdisplay==3.0",
@@ -147,6 +151,8 @@ known_first_party = [
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
 pythonpath = [".", "scripts"]
+timeout = 300
+timeout_method = "thread"
 
 [tool.coverage.run]
 core = "sysmon"

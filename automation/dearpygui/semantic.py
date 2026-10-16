@@ -9,6 +9,7 @@ from automation.dearpygui.reach import UnreachableError, covering_modal
 
 CallbackRunner = Callable[..., object]
 POSITIONAL: Final = (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD)
+ITEMS: Final[str] = "items"
 
 
 def invoke(
@@ -61,6 +62,33 @@ def choose(
     dpg.set_value(item, value)
     arguments = (item, value, dpg.get_item_user_data(item))
     run(callback, *_declared(callback, arguments))
+
+
+def pick(
+    item: Item,
+    value: str,
+) -> None:
+    """Sets the list ``item`` to the entry ``value``, as a pick of that entry does. Runs on the render thread.
+
+    This is the gesture for a list whose dialog reads it once the choices are applied, so a pick runs nothing
+    of its own. The list must stand in reach the way :func:`invoke` asks.
+
+    Raises:
+        UnreachableError: Naming what keeps a user from the entry, or a list that answers a pick at once,
+            which :func:`choose` makes.
+    """
+    refusal = _refusal(read_item(item))
+    if refusal is not None:
+        raise UnreachableError(f"{item!r} is out of reach: {refusal}")
+
+    if dpg.get_item_callback(item) is not None:
+        raise UnreachableError(f"{item!r} answers a pick at once: choose its entry instead")
+
+    entries = dpg.get_item_configuration(item)[ITEMS]
+    if value not in entries:
+        raise UnreachableError(f"{item!r} offers no entry {value!r}, only {entries!r}")
+
+    dpg.set_value(item, value)
 
 
 def _refusal(reading: ItemReading) -> Optional[str]:

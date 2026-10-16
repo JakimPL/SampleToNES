@@ -30,6 +30,8 @@ CHILD_ARGUMENTS: Final[Sequence[str]] = (
     "no:cov",
     "-p",
     "no:xdist",
+    "-p",
+    "no:timeout",
     "-q",
     "--no-header",
 )
@@ -105,7 +107,9 @@ def run_isolated(
 
     The child is a pytest run of the item's node id alone, under ``environment`` and started in
     ``working_directory``, which is where the application under test finds itself launched. It
-    writes its reports to ``report_path``. A phase missing from them, because the child crashed or
+    runs without the cache, coverage, xdist and the per-case limit, since ``timeout`` bounds the
+    whole child and a limit's own thread would outlive the application it watches. It writes its
+    reports to ``report_path``. A phase missing from them, because the child crashed or
     ran out of time, comes back as a failure carrying the child's output, and so does the last phase
     of a child that crashed after reporting all of them.
     """
