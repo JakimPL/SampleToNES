@@ -2,7 +2,7 @@ from typing import Protocol
 
 from sampletones_core.exports.format import ExportFormat
 from sampletones_player.export.program import Program
-from sampletones_player.information import TextLine
+from sampletones_player.information import ProgramText
 from sampletones_player.song import Song
 
 
@@ -24,8 +24,8 @@ class ProgramContainer(Protocol):
         """The extension a file of this kind takes."""
 
     @property
-    def text(self) -> TextLine:
-        """The room each line of the program's text has in the file."""
+    def text(self) -> ProgramText:
+        """The room each of the program's lines of text has in the file."""
 
     @property
     def song_room(self) -> int:

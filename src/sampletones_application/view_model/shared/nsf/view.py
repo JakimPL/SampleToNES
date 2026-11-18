@@ -7,18 +7,23 @@ from sampletones_application.view_model.shared.nsf.choices import NSFExportChoic
 from sampletones_application.view_model.shared.nsf.offer import NSFExportOffer
 from sampletones_application.view_model.shared.nsf.repeat import NSFRepeat
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.exports.format import ExportFormat
 from sampletones_player.compression.scheme import CompressionScheme
-from sampletones_player.nsf.header import HEADER_TEXT
+from sampletones_player.information import ProgramText, TextLine
 from sampletones_shared.utils.time import format_span
 
 
 class NSFExportViewModel(BaseModel, frozen=True):
-    """What the NSF export dialog draws: what the source offers, the choices standing, and the file.
+    """What the program export dialog draws: the format, what the source offers, the choices
+    standing, and the file.
 
     The dialog stands while an export is set up, and the run that follows reports through the
     export's own window, so everything here describes the setup.
 
     Attributes:
+        export_format: The format the program is written in.
+        extension: The extension a file of that format takes.
+        text: The room each of the program's lines of text has in the file.
         offer: What the source leaves to choose.
         choices: The choices the dialog is standing at.
         destination: The file the export writes.
@@ -26,6 +31,9 @@ class NSFExportViewModel(BaseModel, frozen=True):
         nes_frequency: The rate in Hz the console plays those ticks at.
     """
 
+    export_format: ExportFormat
+    extension: str
+    text: ProgramText
     offer: NSFExportOffer
     choices: NSFExportChoices
     destination: Path
@@ -79,9 +87,9 @@ class NSFExportViewModel(BaseModel, frozen=True):
             rate=self.nes_frequency,
         )
 
-    def text_size_label(self, text: str, template: str) -> str:
-        """The bytes ``text`` takes in its header field against the room there, as ``template`` states them."""
-        return template.format(used=HEADER_TEXT.size(text), room=HEADER_TEXT.room)
+    def text_size_label(self, text: str, line: TextLine, template: str) -> str:
+        """The room ``text`` takes on ``line`` against the room there, as ``template`` states them."""
+        return template.format(used=line.size(text), room=line.room)
 
     def loop_frame_label(self, template: str) -> str:
         """The order frame a repeat returns to, as ``template`` states it."""

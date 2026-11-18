@@ -7,7 +7,7 @@ import pytest
 
 from sampletones_player.driver.addresses import DriverAddresses
 from sampletones_player.information import ProgramInformation
-from sampletones_player.nsf.header import HEADER_TEXT, header_to_bytes
+from sampletones_player.nsf.header import HEADER_LINE, header_to_bytes
 from sampletones_player.specification.clock import (
     MICROSECONDS_PER_SECOND,
     NTSC_FRAME_RATE,
@@ -169,7 +169,7 @@ class TestHeaderStrings(BaseTestSuite):
         )
 
     def test_the_room_a_line_has_leaves_the_field_its_terminator(self) -> None:
-        assert HEADER_TEXT.room + STRING_TERMINATOR_SIZE == STRING_FIELD_SIZE
+        assert HEADER_LINE.room + STRING_TERMINATOR_SIZE == STRING_FIELD_SIZE
 
     def test_the_fields_stand_back_to_back(self) -> None:
         assert (

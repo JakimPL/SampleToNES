@@ -2,9 +2,11 @@ from pathlib import Path
 from typing import Protocol
 
 from sampletones_core.exports.backend import ExportBackend
+from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.request import ProjectExport, SampleExport
 from sampletones_core.exports.scope import ExportScope
 from sampletones_player.export.program import Program
+from sampletones_player.information import ProgramText
 
 
 class NSFExportServiceProtocol(Protocol):
@@ -30,7 +32,17 @@ class NSFExportServiceProtocol(Protocol):
 
 
 class NSFProgramBackend(Protocol):
-    """The backend writing console programs, which binds a run to the program a setup chose."""
+    """A backend writing console programs in one format, which binds a run to the program a setup chose.
+
+    The format it writes, the extension its files take and the room each of a program's lines of
+    text has are the backend's own, so a setup opened for any format reads them here.
+    """
+
+    @property
+    def export_format(self) -> ExportFormat: ...
+
+    @property
+    def text(self) -> ProgramText: ...
 
     def choosing(self, program: Program) -> ExportBackend: ...
 

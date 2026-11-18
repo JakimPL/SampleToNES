@@ -18,7 +18,7 @@ from sampletones_player.export.container import ProgramContainer
 from sampletones_player.export.program import Program
 from sampletones_player.export.stated import StatedProgram
 from sampletones_player.export.writer import ProgramWriter
-from sampletones_player.information import TextLine
+from sampletones_player.information import ProgramText
 from sampletones_shared.utils.progress import silent_reporter
 
 SUPPORTED_SCOPES: FrozenSet[ExportScope] = frozenset(
@@ -87,8 +87,8 @@ class ProgramBackend:
         return SUPPORTED_SCOPES
 
     @property
-    def text(self) -> TextLine:
-        """The room each line of a program's text has in the files this backend writes."""
+    def text(self) -> ProgramText:
+        """The room each of a program's lines of text has in the files this backend writes."""
         return self._container.text
 
     def extension(self, scope: ExportScope) -> str:  # pylint: disable=unused-argument

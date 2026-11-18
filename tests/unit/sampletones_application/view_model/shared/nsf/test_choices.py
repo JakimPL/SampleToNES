@@ -11,12 +11,13 @@ from sampletones_core.project.project import Project
 from sampletones_player.builder import SONG_START
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.export.program import Program
-from sampletones_player.information import ProgramInformation
-from sampletones_player.nsf.header import HEADER_TEXT
+from sampletones_player.information import ProgramInformation, ProgramText, TextLine
+from sampletones_player.nsf.header import HEADER_LINE, HEADER_TEXT
 from sampletones_player.specification.nsf import STRING_TEXT_SIZE
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.nsf import (
+    NARROW_TEXT,
     PROGRAM_ARTIST,
     PROGRAM_TITLE,
     SAMPLE_CHANNELS,
@@ -30,42 +31,52 @@ LATER_FRAME: Final[int] = 3
 
 
 class TestTheTextFitsItsField(BaseTestSuite):
-    """A typed text is held as the part of it the header field carries, so the dialog shows what
-    the file will list."""
+    """A typed text is held as the part of it its line of the file carries, so the dialog shows
+    what the file will list."""
 
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
-        edit: Callable[[NSFExportChoices, str], NSFExportChoices]
+        edit: Callable[[NSFExportChoices, str, ProgramText], NSFExportChoices]
         read: Callable[[ProgramInformation], str]
+        line: Callable[[ProgramText], TextLine]
 
     test_cases = (
         TestCase(
             label="title",
             edit=NSFExportChoices.with_title,
             read=lambda information: information.title,
+            line=lambda text: text.title,
         ),
         TestCase(
             label="artist",
             edit=NSFExportChoices.with_artist,
             read=lambda information: information.artist,
+            line=lambda text: text.artist,
         ),
         TestCase(
             label="copyright",
             edit=NSFExportChoices.with_copyright,
             read=lambda information: information.copyright,
+            line=lambda text: text.copyright,
         ),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_an_overlong_text_is_cut_by_the_fields_rule(self, test_case: TestCase) -> None:
-        edited = test_case.edit(standing_choices(project_offer()), OVERLONG_TEXT)
+        edited = test_case.edit(standing_choices(project_offer()), OVERLONG_TEXT, HEADER_TEXT)
 
-        assert test_case.read(edited.information) == HEADER_TEXT.fit(OVERLONG_TEXT)
+        assert test_case.read(edited.information) == HEADER_LINE.fit(OVERLONG_TEXT)
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_room_is_the_one_its_own_line_states(self, test_case: TestCase) -> None:
+        edited = test_case.edit(standing_choices(project_offer()), OVERLONG_TEXT, NARROW_TEXT)
+
+        assert test_case.read(edited.information) == test_case.line(NARROW_TEXT).fit(OVERLONG_TEXT)
 
     def test_editing_one_field_keeps_the_others(self) -> None:
         choices = standing_choices(project_offer())
 
-        edited = choices.with_copyright(PROGRAM_ARTIST)
+        edited = choices.with_copyright(PROGRAM_ARTIST, HEADER_TEXT)
 
         assert edited.information.title == PROGRAM_TITLE
         assert edited.information.artist == PROGRAM_ARTIST
@@ -159,7 +170,7 @@ class TestTheDialogOpensOnTheStatedProgram:
     def test_a_project_opens_on_the_program_it_is_written_as(self) -> None:
         program = Program.for_project(Project.create(title=PROGRAM_TITLE, author=PROGRAM_ARTIST))
 
-        choices = NSFExportChoices.initial(program, project_offer())
+        choices = NSFExportChoices.initial(program, project_offer(), HEADER_TEXT)
 
         assert choices.information == program.information
         assert choices.channels == program.channels
@@ -169,14 +180,14 @@ class TestTheDialogOpensOnTheStatedProgram:
     def test_the_channels_narrow_to_the_ones_the_source_sounds(self) -> None:
         program = Program.for_project(Project.create())
 
-        choices = NSFExportChoices.initial(program, sample_offer())
+        choices = NSFExportChoices.initial(program, sample_offer(), HEADER_TEXT)
 
         assert choices.channels == frozenset(SAMPLE_CHANNELS)
 
     def test_a_program_stopping_at_its_end_opens_playing_once(self) -> None:
         program = Program.for_project(Project.create()).model_copy(update={"loop_tick": None})
 
-        choices = NSFExportChoices.initial(program, sample_offer())
+        choices = NSFExportChoices.initial(program, sample_offer(), HEADER_TEXT)
 
         assert choices.repeat == NSFRepeat.ONCE
 
@@ -184,4 +195,4 @@ class TestTheDialogOpensOnTheStatedProgram:
         program = Program.for_project(Project.create()).model_copy(update={"loop_tick": SONG_START + 1})
 
         with pytest.raises(ValueError):
-            NSFExportChoices.initial(program, project_offer())
+            NSFExportChoices.initial(program, project_offer(), HEADER_TEXT)

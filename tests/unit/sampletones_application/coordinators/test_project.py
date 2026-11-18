@@ -289,7 +289,7 @@ class TestAFormatWithASetupOpensIt:
     ) -> None:
         coordinator.export_project_dialog(ExportFormat.NSF)
 
-        setup.open_project.assert_called_once_with()
+        setup.open_project.assert_called_once_with(ExportFormat.NSF)
         save_dialog.assert_not_called()
 
     def test_a_format_asking_for_the_file_alone_opens_the_save_dialog(

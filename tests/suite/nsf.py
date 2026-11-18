@@ -8,17 +8,26 @@ from sampletones_application.view_model.shared.nsf.offer import FIRST_FRAME, NO_
 from sampletones_application.view_model.shared.nsf.repeat import NSFRepeat
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exports.backend import ExportBackend
+from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.request import ProjectExport, SampleExport
 from sampletones_core.exports.scope import ExportScope
 from sampletones_player.compression.scheme import offered_schemes
 from sampletones_player.export.program import Program
-from sampletones_player.information import ProgramInformation
+from sampletones_player.information import ProgramInformation, ProgramText, TextLine
+from sampletones_player.nsf.header import HEADER_TEXT
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
 
 ORDER_FRAMES: Final[int] = 12
 SAMPLE_CHANNELS: Final[Tuple[ChannelName, ...]] = (ChannelName.PULSE1, ChannelName.TRIANGLE)
 PROGRAM_TITLE: Final[str] = "Rainy Day Theme"
 PROGRAM_ARTIST: Final[str] = "J. Kowalski"
+OTHER_FORMAT: Final[ExportFormat] = ExportFormat.BITPHASE
+OTHER_EXTENSION: Final[str] = ".prg"
+NARROW_TEXT: Final[ProgramText] = ProgramText(
+    title=TextLine(encoding="ascii", room=2, folded=True),
+    artist=TextLine(encoding="ascii", room=3, folded=True),
+    copyright=TextLine(encoding="ascii", room=4, folded=True),
+)
 
 
 def project_offer() -> NSFExportOffer:
@@ -89,9 +98,22 @@ class FakeNSFExportService:
 
 
 class FakeProgramBackend:
-    """The NSF backend as a setup binds it, holding each program chosen and the backend it gave."""
+    """A program backend as a setup binds it, holding each program chosen and the backend it gave.
 
-    def __init__(self) -> None:
+    Attributes:
+        export_format: The format the backend stands for.
+        text: The room each of a program's lines of text has in its files.
+    """
+
+    def __init__(
+        self,
+        export_format: ExportFormat,
+        file_extension: str,
+        text: ProgramText,
+    ) -> None:
+        self.export_format = export_format
+        self.text = text
+        self._file_extension = file_extension
         self.programs: List[Program] = []
         self.chosen: List[ExportBackend] = []
 
@@ -107,4 +129,15 @@ class FakeProgramBackend:
         return backend
 
     def extension(self, scope: ExportScope) -> str:  # pylint: disable=unused-argument
-        return EXT_FILE_NSF
+        return self._file_extension
+
+
+def nsf_backend() -> FakeProgramBackend:
+    """A backend standing for the NSF format, its files and the room their header gives the text."""
+    return FakeProgramBackend(ExportFormat.NSF, EXT_FILE_NSF, HEADER_TEXT)
+
+
+def other_backend() -> FakeProgramBackend:
+    """A backend standing for a second kind of program file, with an extension and a narrow line
+    of text of its own for each line, so a setup is seen to follow the format it was opened for."""
+    return FakeProgramBackend(OTHER_FORMAT, OTHER_EXTENSION, NARROW_TEXT)

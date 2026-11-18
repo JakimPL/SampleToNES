@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Dict, List, Mapping, Optional, Tuple
 
+from sampletones_application.categories.dialog import dialog_title, filter_name
 from sampletones_application.categories.elements.global_ import (
     DialogElements,
     FileFilterElements,
@@ -287,7 +288,7 @@ class ProjectCoordinator:
             return
 
         if export_format in self._format_setups:
-            self._format_setups[export_format].open_project()
+            self._format_setups[export_format].open_project(export_format)
             return
 
         backend = self._export_backends[export_format]
@@ -467,12 +468,7 @@ class ProjectCoordinator:
             )
 
     def _title(self, element: GlobalDialogTitleElements) -> str:
-        return self._language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TITLE,
-            element,
-        ]
+        return dialog_title(self._language_manager, element)
 
     def _message(self, element: GlobalMessageElements) -> str:
         return self._language_manager[
@@ -491,9 +487,4 @@ class ProjectCoordinator:
         ]
 
     def _filter_name(self, element: FileFilterElements) -> str:
-        return self._language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.FILTER,
-            element,
-        ]
+        return filter_name(self._language_manager, element)

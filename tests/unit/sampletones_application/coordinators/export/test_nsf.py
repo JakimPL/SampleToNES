@@ -13,9 +13,16 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.view_model.shared.nsf.choices import NSFExportChoices
 from sampletones_application.view_model.shared.nsf.view import NSFExportViewModel
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.exports.format import ExportFormat
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
 from tests.suite.language import FakeLanguageManager
-from tests.suite.nsf import FakeNSFExportService, FakeProgramBackend
+from tests.suite.nsf import (
+    OTHER_EXTENSION,
+    OTHER_FORMAT,
+    FakeNSFExportService,
+    nsf_backend,
+    other_backend,
+)
 from tests.suite.player import player_sample
 
 PROJECT_FILE: Final[Path] = Path("/home/user/projects/chiptune.stp")
@@ -25,6 +32,9 @@ PROJECT_NAME: Final[str] = "chiptune"
 SAMPLE_NAME: Final[str] = "Amen"
 NTSC_FREQUENCY: Final[int] = 60
 CHOSEN: Final[Path] = Path("/home/user/programs/take one.nsf")
+NSF_TITLE: Final[str] = "global.dialog.title.export_nsf_project"
+NSF_FILTER: Final[str] = "global.dialog.filter.nsf"
+OTHER_TITLE: Final[str] = "global.dialog.title.export_bitphase_project"
 
 
 class _WindowRecorder:
@@ -89,12 +99,13 @@ class NSFExportFixture:
         self.session_manager.get_project_path.return_value = PROJECT_FILE
         self.session_manager.get_instrument_path.return_value = INSTRUMENT_DIRECTORY
         self.service = FakeNSFExportService()
-        self.backend = FakeProgramBackend()
+        self.backend = nsf_backend()
+        self.other = other_backend()
         self.logic = NSFExportLogic(
             self.controller,
             self.session_manager,
             self.service,
-            self.backend,
+            {ExportFormat.NSF: self.backend, OTHER_FORMAT: self.other},
             is_operation_active=lambda: operation_active,
         )
 
@@ -134,19 +145,22 @@ def nsf(monkeypatch: pytest.MonkeyPatch) -> NSFExportFixture:
 
 class TestOfferingTheSetup:
     def test_a_project_opens_the_dialog_over_its_setup(self, nsf: NSFExportFixture) -> None:
-        nsf.coordinator.open_project()
+        nsf.coordinator.open_project(ExportFormat.NSF)
 
         assert nsf.window.visible
         assert nsf.window.view.destination == PROJECT_DIRECTORY / f"{PROJECT_NAME}{EXT_FILE_NSF}"
 
     def test_a_reconstruction_opens_the_dialog_over_its_slices(self, nsf: NSFExportFixture) -> None:
-        nsf.coordinator.open_sample(player_sample(SAMPLE_NAME, (), nes_frequency=NTSC_FREQUENCY))
+        nsf.coordinator.open_sample(
+            ExportFormat.NSF,
+            player_sample(SAMPLE_NAME, (), nes_frequency=NTSC_FREQUENCY),
+        )
 
         assert nsf.window.visible
         assert nsf.window.view.destination == INSTRUMENT_DIRECTORY / f"{SAMPLE_NAME}{EXT_FILE_NSF}"
 
     def test_opening_claims_the_application(self, nsf: NSFExportFixture) -> None:
-        nsf.coordinator.open_project()
+        nsf.coordinator.open_project(ExportFormat.NSF)
 
         assert nsf.coordinator.is_active
         assert nsf.activity == 1
@@ -154,13 +168,13 @@ class TestOfferingTheSetup:
     def test_another_exclusive_operation_leaves_the_dialog_closed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         nsf = NSFExportFixture(monkeypatch, operation_active=True)
 
-        nsf.coordinator.open_project()
+        nsf.coordinator.open_project(ExportFormat.NSF)
 
         assert not nsf.window.visible
         assert not nsf.activity
 
     def test_closing_the_setup_hands_the_application_back(self, nsf: NSFExportFixture) -> None:
-        nsf.coordinator.open_project()
+        nsf.coordinator.open_project(ExportFormat.NSF)
 
         nsf.close()
 
@@ -172,7 +186,7 @@ class TestOfferingTheSetup:
 
 class TestTheEditsTheDialogReports:
     def test_an_edit_comes_back_to_the_window(self, nsf: NSFExportFixture) -> None:
-        nsf.coordinator.open_project()
+        nsf.coordinator.open_project(ExportFormat.NSF)
         view = nsf.window.view
 
         nsf.edit(view.choices.with_channel(ChannelName.NOISE, False, view.offer))
@@ -182,7 +196,7 @@ class TestTheEditsTheDialogReports:
 
 class TestAskingForTheDestination:
     def test_the_file_is_asked_for_from_where_it_stands(self, nsf: NSFExportFixture) -> None:
-        nsf.coordinator.open_project()
+        nsf.coordinator.open_project(ExportFormat.NSF)
 
         nsf.browse()
 
@@ -191,15 +205,33 @@ class TestAskingForTheDestination:
         assert request["default_filename"] == f"{PROJECT_NAME}{EXT_FILE_NSF}"
         assert [file_filter.extensions for file_filter in nsf.save_dialog.filters] == [(EXT_FILE_NSF,)]
 
+    def test_the_dialog_is_titled_and_filtered_by_the_format(self, nsf: NSFExportFixture) -> None:
+        nsf.coordinator.open_project(ExportFormat.NSF)
+
+        nsf.browse()
+
+        assert nsf.save_dialog.requests[-1]["title"] == NSF_TITLE
+        assert [file_filter.name for file_filter in nsf.save_dialog.filters] == [NSF_FILTER]
+
+    def test_another_format_asks_for_a_file_of_its_own_kind(self, nsf: NSFExportFixture) -> None:
+        nsf.coordinator.open_project(OTHER_FORMAT)
+
+        nsf.browse()
+
+        request = nsf.save_dialog.requests[-1]
+        assert request["title"] == OTHER_TITLE
+        assert request["default_filename"] == f"{PROJECT_NAME}{OTHER_EXTENSION}"
+        assert [file_filter.extensions for file_filter in nsf.save_dialog.filters] == [(OTHER_EXTENSION,)]
+
     def test_a_chosen_file_becomes_the_one_the_export_writes(self, nsf: NSFExportFixture) -> None:
-        nsf.coordinator.open_project()
+        nsf.coordinator.open_project(ExportFormat.NSF)
 
         nsf.browse()
 
         assert nsf.window.view.destination == CHOSEN
 
     def test_a_dismissed_dialog_leaves_the_file_alone(self, nsf: NSFExportFixture) -> None:
-        nsf.coordinator.open_project()
+        nsf.coordinator.open_project(ExportFormat.NSF)
         nsf.save_dialog.answer = None
         standing = nsf.window.view.destination
 
@@ -210,7 +242,7 @@ class TestAskingForTheDestination:
 
 class TestHandingTheExportOver:
     def test_the_dialog_leaves_the_screen_and_the_run_starts(self, nsf: NSFExportFixture) -> None:
-        nsf.coordinator.open_project()
+        nsf.coordinator.open_project(ExportFormat.NSF)
         destination = nsf.window.view.destination
 
         nsf.export()
@@ -221,7 +253,7 @@ class TestHandingTheExportOver:
         assert nsf.activity == 2
 
     def test_the_run_writes_the_program_the_dialog_stood_at(self, nsf: NSFExportFixture) -> None:
-        nsf.coordinator.open_project()
+        nsf.coordinator.open_project(ExportFormat.NSF)
         view = nsf.window.view
         nsf.edit(view.choices.with_channel(ChannelName.NOISE, False, view.offer))
         nsf.export()

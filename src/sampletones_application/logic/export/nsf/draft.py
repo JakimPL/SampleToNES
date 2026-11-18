@@ -4,6 +4,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Optional
 
+from sampletones_application.logic.export.nsf.protocol import NSFProgramBackend
 from sampletones_application.logic.export.nsf.source.protocol import NSFExportSource
 from sampletones_application.view_model.shared.nsf.choices import NSFExportChoices
 from sampletones_application.view_model.shared.nsf.offer import NSFExportOffer
@@ -15,16 +16,18 @@ from sampletones_player.export.program import Program
 
 @dataclass(frozen=True)
 class NSFExportDraft:
-    """An NSF export as it stands while its dialog is open.
+    """A program export as it stands while its dialog is open.
 
     Attributes:
         source: What the export writes.
+        backend: The backend of the format the export was opened for.
         offer: What the source leaves to choose, read once the dialog opens.
         choices: The choices the dialog stands at.
         destination: The file the export writes.
     """
 
     source: NSFExportSource
+    backend: NSFProgramBackend
     offer: NSFExportOffer
     choices: NSFExportChoices
     destination: Path
@@ -60,6 +63,9 @@ class NSFExportDraft:
 
     def view(self) -> NSFExportViewModel:
         return NSFExportViewModel(
+            export_format=self.backend.export_format,
+            extension=self.backend.extension(self.source.scope),
+            text=self.backend.text,
             offer=self.offer,
             choices=self.choices,
             destination=self.destination,

@@ -1,7 +1,7 @@
 from sampletones_core.exports.format import ExportFormat
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.export.program import Program
-from sampletones_player.information import TextLine
+from sampletones_player.information import ProgramText
 from sampletones_player.nsf.file import nsf_to_bytes, song_room
 from sampletones_player.nsf.header import HEADER_TEXT
 from sampletones_player.song import Song
@@ -28,7 +28,7 @@ class NSFContainer:
         return EXT_FILE_NSF
 
     @property
-    def text(self) -> TextLine:
+    def text(self) -> ProgramText:
         return HEADER_TEXT
 
     @property

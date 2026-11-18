@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Final
+import unicodedata
+from typing import Dict, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -8,6 +9,20 @@ from sampletones_shared.application import SAMPLETONES_COPYRIGHT
 
 REPLACING_UNKNOWN_CHARACTERS: Final[str] = "replace"
 DROPPING_CUT_CHARACTERS: Final[str] = "ignore"
+DECOMPOSITION: Final[Literal["NFKD"]] = "NFKD"
+BASE_LETTERS: Final[Dict[str, str]] = {
+    "ł": "l",
+    "Ł": "L",
+    "ø": "o",
+    "Ø": "O",
+    "đ": "d",
+    "Đ": "D",
+    "ß": "ss",
+    "æ": "ae",
+    "Æ": "AE",
+    "œ": "oe",
+    "Œ": "OE",
+}
 
 
 class TextLine(BaseModel):
@@ -17,15 +32,23 @@ class TextLine(BaseModel):
     way. A line states the encoding the text reaches the file in and how many units of that
     encoding fit, so whoever offers the text for editing shows exactly what the file will carry.
 
+    A folded line writes every character as text its encoding holds before it counts or cuts:
+    a character the encoding holds stays itself, an accented letter becomes the letters it is
+    built on (``ż`` as ``z``), and a letter built on none becomes the one :data:`BASE_LETTERS`
+    names (``ł`` as ``l``). A font drawing a handful of glyphs then shows a name as close to its
+    spelling as those glyphs reach.
+
     Attributes:
         encoding: The encoding the text is written in.
         room: The encoded units one line holds.
+        folded: Whether each character is written as the nearest text the encoding holds.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     encoding: str
     room: int = Field(..., ge=1)
+    folded: bool
 
     def fit(self, text: str) -> str:
         """The part of ``text`` the line holds.
@@ -37,16 +60,63 @@ class TextLine(BaseModel):
             text: The text offered for the line.
 
         Returns:
-            str: ``text`` itself, or as many of its leading characters as the line holds.
+            str: ``text`` itself, or as many of its leading characters as the line holds,
+            folded where the line folds.
         """
         return self._encoded(text)[: self.room].decode(self.encoding, errors=DROPPING_CUT_CHARACTERS)
 
     def size(self, text: str) -> int:
-        """The units ``text`` takes on the line."""
+        """The units ``text`` takes on the line, folded where the line folds."""
         return len(self._encoded(text))
 
     def _encoded(self, text: str) -> bytes:
-        return text.encode(self.encoding, errors=REPLACING_UNKNOWN_CHARACTERS)
+        shown = self._folded(text) if self.folded else text
+        return shown.encode(self.encoding, errors=REPLACING_UNKNOWN_CHARACTERS)
+
+    def _folded(self, text: str) -> str:
+        return "".join(self._folded_character(character) for character in text)
+
+    def _folded_character(self, character: str) -> str:
+        """The text ``character`` is written as: itself, the letters it decomposes into, or its base letter.
+
+        A character with none of the three stays itself, so the encoding writes it as its
+        replacement mark.
+        """
+        if self._holds(character):
+            return character
+
+        decomposed = "".join(part for part in unicodedata.normalize(DECOMPOSITION, character) if self._holds(part))
+        if decomposed:
+            return decomposed
+
+        return BASE_LETTERS.get(character, character)
+
+    def _holds(self, character: str) -> bool:
+        try:
+            character.encode(self.encoding)
+        except UnicodeEncodeError:
+            return False
+
+        return True
+
+
+class ProgramText(BaseModel):
+    """The room a file gives each of a program's three lines of text.
+
+    A file may give its lines different room, as a screen setting a line beside its label does,
+    so each line states its own.
+
+    Attributes:
+        title: The line the song's name is listed on.
+        artist: The line the song is credited on.
+        copyright: The line stating who holds the rights.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    title: TextLine
+    artist: TextLine
+    copyright: TextLine
 
 
 class ProgramInformation(BaseModel):
@@ -67,17 +137,17 @@ class ProgramInformation(BaseModel):
     artist: str
     copyright: str = SAMPLETONES_COPYRIGHT
 
-    def fitted(self, line: TextLine) -> ProgramInformation:
-        """The text as a file giving each line the room ``line`` states carries it.
+    def fitted(self, text: ProgramText) -> ProgramInformation:
+        """The text as a file giving its lines the room ``text`` states carries it.
 
         Args:
-            line: The room one line has.
+            text: The room each line has.
 
         Returns:
-            ProgramInformation: Every line held as the part of itself that fits.
+            ProgramInformation: Every line held as the part of itself its own room holds.
         """
         return ProgramInformation(
-            title=line.fit(self.title),
-            artist=line.fit(self.artist),
-            copyright=line.fit(self.copyright),
+            title=text.title.fit(self.title),
+            artist=text.artist.fit(self.artist),
+            copyright=text.copyright.fit(self.copyright),
         )

@@ -2,7 +2,7 @@ from typing import Final
 
 from sampletones_core.formats.binary import BinaryWriter
 from sampletones_player.driver.addresses import DriverAddresses
-from sampletones_player.information import ProgramInformation, TextLine
+from sampletones_player.information import ProgramInformation, ProgramText, TextLine
 from sampletones_player.specification.nsf import (
     FIRST_SONG,
     NO_BANKSWITCHING,
@@ -20,7 +20,8 @@ from sampletones_player.specification.nsf import (
     STRING_TEXT_SIZE,
 )
 
-HEADER_TEXT: Final[TextLine] = TextLine(encoding=STRING_ENCODING, room=STRING_TEXT_SIZE)
+HEADER_LINE: Final[TextLine] = TextLine(encoding=STRING_ENCODING, room=STRING_TEXT_SIZE, folded=False)
+HEADER_TEXT: Final[ProgramText] = ProgramText(title=HEADER_LINE, artist=HEADER_LINE, copyright=HEADER_LINE)
 
 
 def _write_identity(writer: BinaryWriter) -> None:
@@ -63,7 +64,7 @@ def header_to_bytes(
     of what the console needs to run the driver is named here. The song is one tune played on
     the 2A03 alone, loaded whole at a fixed address and driven at the NTSC rate the schedule
     counts in. Each line of text reaches its fixed 32-byte field as the part of itself
-    :data:`HEADER_TEXT` holds, which leaves the field its terminator.
+    :data:`HEADER_LINE` holds, which leaves the field its terminator.
 
     Args:
         information: The text the file is listed under.
