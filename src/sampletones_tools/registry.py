@@ -6,6 +6,7 @@ from sampletones_tools.checks.command import CHECK
 from sampletones_tools.codec.command import CODEC
 from sampletones_tools.compatibility.command import COMPATIBILITY
 from sampletones_tools.player.command import DRIVER
+from sampletones_tools.player.graphics.command import TILES
 from sampletones_tools.samples.commands.btp import BTP
 from sampletones_tools.samples.commands.ftm import FTM
 from sampletones_tools.samples.commands.nsf import NSF
@@ -20,5 +21,6 @@ DEVELOPER_COMMANDS: Final[Tuple[Command, ...]] = (
     DRIVER,
     FTM,
     NSF,
+    TILES,
     TRACKER_PLAYBACK,
 )

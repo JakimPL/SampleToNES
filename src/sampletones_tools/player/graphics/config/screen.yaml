@@ -1,0 +1,111 @@
+palettes:
+  background:
+    - [0x0F, 0x03, 0x23, 0x30]
+    - [0x0F, 0x01, 0x21, 0x30]
+    - [0x0F, 0x27, 0x21, 0x30]
+    - [0x0F, 0x28, 0x10, 0x30]
+  sprites:
+    - [0x0F, 0x27, 0x28, 0x30]
+    - [0x0F, 0x21, 0x10, 0x30]
+    - [0x0F, 0x00, 0x10, 0x30]
+    - [0x0F, 0x0F, 0x0F, 0x0F]
+
+attributes: |
+  0000000000000000
+  1211111111111111
+  0000000000000000
+  0000000000000000
+  0000000000000000
+  0000000000000000
+  0000000000000000
+  0222222222222220
+  0333333333333330
+  0222222222222220
+  0333333333333330
+  0000000000000000
+  0000000000000000
+  0000000000000000
+  0000000000000000
+
+elements:
+  - {kind: pattern, row: 2, column: 0, width: 32, height: 2, group: bar, members: [" "]}
+  - {kind: pattern, row: 2, column: 2, width: 2, height: 1, group: logo, members: [logo_top_left, logo_top_right]}
+  - {kind: pattern, row: 3, column: 2, width: 2, height: 1, group: logo, members: [logo_bottom_left, logo_bottom_right]}
+  - {kind: text, row: 3, column: 5, group: bar, text: "SampleToNES"}
+  - {kind: pattern, row: 3, column: 17, width: 1, height: 1, group: bar, members: [stop]}
+  - {kind: text, row: 3, column: 19, group: bar, text: "00:00/00:00"}
+
+  - {kind: pattern, row: 2, column: 5, width: 25, height: 1, group: progress, members: [progress_0]}
+
+  - {kind: pattern, row: 5, column: 1, width: 1, height: 1, group: chrome, members: [strip_left]}
+  - {kind: pattern, row: 5, column: 2, width: 28, height: 1, group: header, members: [" "]}
+  - {kind: pattern, row: 5, column: 30, width: 1, height: 1, group: chrome, members: [strip_right]}
+  - {kind: pattern, row: 5, column: 2, width: 1, height: 1, group: header, members: [note]}
+  - {kind: text, row: 5, column: 4, group: header, text: "PROGRAM"}
+  - {kind: pattern, row: 6, column: 1, width: 1, height: 4, group: chrome, members: [edge_left]}
+  - {kind: pattern, row: 6, column: 30, width: 1, height: 4, group: chrome, members: [edge_right]}
+  - {kind: pattern, row: 10, column: 1, width: 1, height: 1, group: chrome, members: [foot_left]}
+  - {kind: pattern, row: 10, column: 2, width: 28, height: 1, group: chrome, members: [foot]}
+  - {kind: pattern, row: 10, column: 30, width: 1, height: 1, group: chrome, members: [foot_right]}
+
+  - {kind: pattern, row: 12, column: 1, width: 1, height: 1, group: chrome, members: [strip_left]}
+  - {kind: pattern, row: 12, column: 2, width: 28, height: 1, group: header, members: [" "]}
+  - {kind: pattern, row: 12, column: 30, width: 1, height: 1, group: chrome, members: [strip_right]}
+  - {kind: pattern, row: 12, column: 2, width: 1, height: 1, group: header, members: [notes]}
+  - {kind: text, row: 12, column: 4, group: header, text: "CHANNELS"}
+  - {kind: pattern, row: 13, column: 1, width: 1, height: 9, group: chrome, members: [edge_left]}
+  - {kind: pattern, row: 13, column: 30, width: 1, height: 9, group: chrome, members: [edge_right]}
+  - {kind: text, row: 14, column: 2, group: label_pulse, text: "PULSE 1"}
+  - {kind: text, row: 16, column: 2, group: label_pulse, text: "PULSE 2"}
+  - {kind: text, row: 18, column: 2, group: label_other, text: "TRIANGLE"}
+  - {kind: text, row: 20, column: 2, group: label_other, text: "NOISE"}
+  - {kind: pattern, row: 22, column: 1, width: 1, height: 1, group: chrome, members: [foot_left]}
+  - {kind: pattern, row: 22, column: 2, width: 28, height: 1, group: chrome, members: [foot]}
+  - {kind: pattern, row: 22, column: 30, width: 1, height: 1, group: chrome, members: [foot_right]}
+
+  - {kind: pattern, row: 24, column: 1, width: 1, height: 1, group: chrome, members: [strip_left]}
+  - {kind: pattern, row: 24, column: 2, width: 28, height: 1, group: header, members: [" "]}
+  - {kind: pattern, row: 24, column: 30, width: 1, height: 1, group: chrome, members: [strip_right]}
+  - {kind: pattern, row: 24, column: 2, width: 1, height: 1, group: header, members: [grid]}
+  - {kind: text, row: 24, column: 4, group: header, text: "KEYBOARD"}
+  - {kind: pattern, row: 25, column: 1, width: 1, height: 3, group: chrome, members: [edge_left]}
+  - {kind: pattern, row: 25, column: 30, width: 1, height: 3, group: chrome, members: [edge_right]}
+  - {kind: pattern, row: 26, column: 3, width: 26, height: 1, group: keys, members: [key_c, key_e, key_g]}
+  - {kind: text, row: 27, column: 3, group: plain, text: "C0 C1 C2 C3 C4 C5 C6 C7 C8"}
+  - {kind: pattern, row: 28, column: 1, width: 1, height: 1, group: chrome, members: [foot_left]}
+  - {kind: pattern, row: 28, column: 2, width: 28, height: 1, group: chrome, members: [foot]}
+  - {kind: pattern, row: 28, column: 30, width: 1, height: 1, group: chrome, members: [foot_right]}
+
+labels:
+  - {row: 7, column: 2, group: label, text: "Title:", palette: 2}
+  - {row: 8, column: 2, group: label, text: "Author:", palette: 2}
+
+program:
+  title: {row: 7, column: 10, width: 20}
+  artist: {row: 8, column: 10, width: 20}
+  copyright: {row: 9, column: 2, width: 28}
+
+transport:
+  row: 3
+  state_column: 17
+  played_column: 19
+  total_column: 25
+
+progress:
+  row: 2
+  column: 5
+  width: 25
+
+channels:
+  wave_column: 12
+  note_column: 18
+  meter_column: 22
+  pulse1_row: 14
+  pulse2_row: 16
+  triangle_row: 18
+  noise_row: 20
+
+keyboard:
+  lane_row: 25
+  key_row: 26
+  column: 3
