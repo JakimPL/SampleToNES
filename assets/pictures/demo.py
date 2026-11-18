@@ -2,15 +2,14 @@ from pathlib import Path
 from typing import Final
 
 from assets.demo.paths import (
-    RECONSTRUCTIONS_FOLDER,
     RECORDINGS_FOLDER,
     hit_recording_path,
+    piece_document_path,
     piece_folder_path,
     project_path,
     stem_recording_path,
 )
 from assets.demo.specification import DemoSpecification
-from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
 
 SPECIFICATION: Final[DemoSpecification] = DemoSpecification.load()
@@ -40,7 +39,7 @@ def stem_recording(name: str) -> Path:
 
 def piece_document() -> Path:
     """The piece's reconstruction in the home's documents folder, under its configuration folder."""
-    return next((USER_PATH_DOCUMENTS / RECONSTRUCTIONS_FOLDER).rglob(f"{PIECE}{EXT_FILE_RECONSTRUCTION}"))
+    return piece_document_path(USER_PATH_DOCUMENTS, PIECE)
 
 
 def project_document() -> Path:
