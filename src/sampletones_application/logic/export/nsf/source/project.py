@@ -11,7 +11,7 @@ from sampletones_core.exports.request import ProjectExport
 from sampletones_core.exports.scope import ExportScope
 from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_player.compression.scheme import offered_schemes
-from sampletones_player.export.program import NSFProgram
+from sampletones_player.export.program import Program
 from sampletones_shared.utils.system.paths import get_directory
 
 
@@ -43,8 +43,8 @@ class ProjectSource:
             schemes=offered_schemes(seeded=True),
         )
 
-    def program(self) -> NSFProgram:
-        return NSFProgram.for_project(self.request.project)
+    def program(self) -> Program:
+        return Program.for_project(self.request.project)
 
     def ticks(self, channels: AbstractSet[ChannelName]) -> int:  # pylint: disable=unused-argument
         """The ticks the whole order plays for, which every channel shares."""

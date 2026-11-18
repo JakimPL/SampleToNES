@@ -6,7 +6,8 @@ from typing import Dict
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.registry import build_tracker_backends
-from sampletones_player.export.backend import NSFBackend
+from sampletones_player.export.backend import ProgramBackend
+from sampletones_player.export.backends import program_backends
 
 
 @dataclass(frozen=True)
@@ -25,7 +26,7 @@ class ExportBackends:
         trackers: The backends writing the tracker formats, keyed by the format each writes.
     """
 
-    nsf: NSFBackend
+    nsf: ProgramBackend
     trackers: Dict[ExportFormat, ExportBackend]
 
     @classmethod
@@ -36,7 +37,7 @@ class ExportBackends:
             OSError: If the console player's packaged driver is absent.
         """
         return cls(
-            nsf=NSFBackend.stated(),
+            nsf=program_backends()[ExportFormat.NSF],
             trackers=build_tracker_backends(),
         )
 

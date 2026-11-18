@@ -11,8 +11,8 @@ from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.request import ProjectExport, SampleExport
 from sampletones_core.exports.scope import ExportScope
 from sampletones_player.compression.scheme import offered_schemes
-from sampletones_player.export.program import NSFProgram
-from sampletones_player.nsf.information import NSFInformation
+from sampletones_player.export.program import Program
+from sampletones_player.information import ProgramInformation
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
 
 ORDER_FRAMES: Final[int] = 12
@@ -42,7 +42,7 @@ def sample_offer() -> NSFExportOffer:
 def standing_choices(offer: NSFExportOffer) -> NSFExportChoices:
     """Choices sounding every channel ``offer`` holds and repeating from the start."""
     return NSFExportChoices(
-        information=NSFInformation(title=PROGRAM_TITLE, artist=PROGRAM_ARTIST),
+        information=ProgramInformation(title=PROGRAM_TITLE, artist=PROGRAM_ARTIST),
         channels=frozenset(offer.channels),
         repeat=NSFRepeat.FROM_START,
         loop_frame=FIRST_FRAME,
@@ -92,15 +92,15 @@ class FakeProgramBackend:
     """The NSF backend as a setup binds it, holding each program chosen and the backend it gave."""
 
     def __init__(self) -> None:
-        self.programs: List[NSFProgram] = []
+        self.programs: List[Program] = []
         self.chosen: List[ExportBackend] = []
 
     @property
-    def program(self) -> NSFProgram:
+    def program(self) -> Program:
         assert self.programs, "A program was expected to be chosen"
         return self.programs[-1]
 
-    def choosing(self, program: NSFProgram) -> ExportBackend:
+    def choosing(self, program: Program) -> ExportBackend:
         backend = MagicMock(spec=ExportBackend)
         self.programs.append(program)
         self.chosen.append(backend)

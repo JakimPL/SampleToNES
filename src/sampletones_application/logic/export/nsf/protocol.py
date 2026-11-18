@@ -4,7 +4,7 @@ from typing import Protocol
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.request import ProjectExport, SampleExport
 from sampletones_core.exports.scope import ExportScope
-from sampletones_player.export.program import NSFProgram
+from sampletones_player.export.program import Program
 
 
 class NSFExportServiceProtocol(Protocol):
@@ -32,6 +32,6 @@ class NSFExportServiceProtocol(Protocol):
 class NSFProgramBackend(Protocol):
     """The backend writing console programs, which binds a run to the program a setup chose."""
 
-    def choosing(self, program: NSFProgram) -> ExportBackend: ...
+    def choosing(self, program: Program) -> ExportBackend: ...
 
     def extension(self, scope: ExportScope) -> str: ...

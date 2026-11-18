@@ -2,7 +2,7 @@ from typing import Protocol
 
 from sampletones_core.exports.request import SampleExport
 from sampletones_core.project.project import Project
-from sampletones_player.export.program import NSFProgram
+from sampletones_player.export.program import Program
 
 
 class ProgramChoice(Protocol):
@@ -13,8 +13,8 @@ class ProgramChoice(Protocol):
     user settled before the run.
     """
 
-    def for_sample(self, request: SampleExport) -> NSFProgram:
+    def for_sample(self, request: SampleExport) -> Program:
         """The program a reconstruction's slices are written as."""
 
-    def for_project(self, project: Project) -> NSFProgram:
+    def for_project(self, project: Project) -> Program:
         """The program a whole composition is written as."""

@@ -10,8 +10,9 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.project import Project
 from sampletones_player.builder import SONG_START
 from sampletones_player.compression.scheme import CompressionScheme
-from sampletones_player.export.program import NSFProgram
-from sampletones_player.nsf.information import NSFInformation, fit_field
+from sampletones_player.export.program import Program
+from sampletones_player.information import ProgramInformation
+from sampletones_player.nsf.header import HEADER_TEXT
 from sampletones_player.specification.nsf import STRING_TEXT_SIZE
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -35,7 +36,7 @@ class TestTheTextFitsItsField(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
         edit: Callable[[NSFExportChoices, str], NSFExportChoices]
-        read: Callable[[NSFInformation], str]
+        read: Callable[[ProgramInformation], str]
 
     test_cases = (
         TestCase(
@@ -59,7 +60,7 @@ class TestTheTextFitsItsField(BaseTestSuite):
     def test_an_overlong_text_is_cut_by_the_fields_rule(self, test_case: TestCase) -> None:
         edited = test_case.edit(standing_choices(project_offer()), OVERLONG_TEXT)
 
-        assert test_case.read(edited.information) == fit_field(OVERLONG_TEXT)
+        assert test_case.read(edited.information) == HEADER_TEXT.fit(OVERLONG_TEXT)
 
     def test_editing_one_field_keeps_the_others(self) -> None:
         choices = standing_choices(project_offer())
@@ -156,7 +157,7 @@ class TestTheSourceBoundsTheChoices:
 
 class TestTheDialogOpensOnTheStatedProgram:
     def test_a_project_opens_on_the_program_it_is_written_as(self) -> None:
-        program = NSFProgram.for_project(Project.create(title=PROGRAM_TITLE, author=PROGRAM_ARTIST))
+        program = Program.for_project(Project.create(title=PROGRAM_TITLE, author=PROGRAM_ARTIST))
 
         choices = NSFExportChoices.initial(program, project_offer())
 
@@ -166,21 +167,21 @@ class TestTheDialogOpensOnTheStatedProgram:
         assert choices.scheme == program.scheme
 
     def test_the_channels_narrow_to_the_ones_the_source_sounds(self) -> None:
-        program = NSFProgram.for_project(Project.create())
+        program = Program.for_project(Project.create())
 
         choices = NSFExportChoices.initial(program, sample_offer())
 
         assert choices.channels == frozenset(SAMPLE_CHANNELS)
 
     def test_a_program_stopping_at_its_end_opens_playing_once(self) -> None:
-        program = NSFProgram.for_project(Project.create()).model_copy(update={"loop_tick": None})
+        program = Program.for_project(Project.create()).model_copy(update={"loop_tick": None})
 
         choices = NSFExportChoices.initial(program, sample_offer())
 
         assert choices.repeat == NSFRepeat.ONCE
 
     def test_a_program_repeating_from_later_in_the_song_is_refused(self) -> None:
-        program = NSFProgram.for_project(Project.create()).model_copy(update={"loop_tick": SONG_START + 1})
+        program = Program.for_project(Project.create()).model_copy(update={"loop_tick": SONG_START + 1})
 
         with pytest.raises(ValueError):
             NSFExportChoices.initial(program, project_offer())

@@ -10,7 +10,7 @@ from sampletones_application.view_model.shared.nsf.offer import NSFExportOffer
 from sampletones_application.view_model.shared.nsf.repeat import NSFRepeat
 from sampletones_application.view_model.shared.nsf.view import NSFExportViewModel
 from sampletones_player.builder import SONG_START
-from sampletones_player.export.program import NSFProgram
+from sampletones_player.export.program import Program
 
 
 @dataclass(frozen=True)
@@ -35,13 +35,13 @@ class NSFExportDraft:
     def with_destination(self, destination: Path) -> NSFExportDraft:
         return replace(self, destination=destination)
 
-    def program(self) -> NSFProgram:
+    def program(self) -> Program:
         """The program the standing choices write, its repeat placed on the source's own ticks.
 
         Raises:
             ValidationError: If no channel is ticked.
         """
-        return NSFProgram(
+        return Program(
             information=self.choices.information,
             channels=self.choices.channels,
             loop_tick=self._loop_tick(),

@@ -9,8 +9,9 @@ from sampletones_application.view_model.shared.nsf.repeat import NSFRepeat
 from sampletones_core.constants.enums import ChannelName
 from sampletones_player.builder import SONG_START
 from sampletones_player.compression.scheme import CompressionScheme
-from sampletones_player.export.program import NSFProgram
-from sampletones_player.nsf.information import NSFInformation
+from sampletones_player.export.program import Program
+from sampletones_player.information import ProgramInformation
+from sampletones_player.nsf.header import HEADER_TEXT
 
 
 class NSFExportChoices(BaseModel, frozen=True):
@@ -30,14 +31,14 @@ class NSFExportChoices(BaseModel, frozen=True):
         scheme: The layers of the codec the song is written with.
     """
 
-    information: NSFInformation
+    information: ProgramInformation
     channels: FrozenSet[ChannelName]
     repeat: NSFRepeat
     loop_frame: int
     scheme: CompressionScheme
 
     @classmethod
-    def initial(cls, program: NSFProgram, offer: NSFExportOffer) -> NSFExportChoices:
+    def initial(cls, program: Program, offer: NSFExportOffer) -> NSFExportChoices:
         """The choices a dialog opens on: the program an export writes as its source states it.
 
         Args:
@@ -51,7 +52,7 @@ class NSFExportChoices(BaseModel, frozen=True):
             ValueError: If the program repeats from a tick past the song's start.
         """
         return cls(
-            information=program.information,
+            information=program.information.fitted(HEADER_TEXT),
             channels=program.channels.intersection(offer.channels),
             repeat=cls._stated_repeat(program.loop_tick),
             loop_frame=FIRST_FRAME,
@@ -66,7 +67,7 @@ class NSFExportChoices(BaseModel, frozen=True):
     def with_title(self, title: str) -> NSFExportChoices:
         """The choices listing the file under ``title``, as much of it as the field holds."""
         return self._with_information(
-            NSFInformation(
+            ProgramInformation(
                 title=title,
                 artist=self.information.artist,
                 copyright=self.information.copyright,
@@ -76,7 +77,7 @@ class NSFExportChoices(BaseModel, frozen=True):
     def with_artist(self, artist: str) -> NSFExportChoices:
         """The choices crediting the file to ``artist``, as much of it as the field holds."""
         return self._with_information(
-            NSFInformation(
+            ProgramInformation(
                 title=self.information.title,
                 artist=artist,
                 copyright=self.information.copyright,
@@ -86,7 +87,7 @@ class NSFExportChoices(BaseModel, frozen=True):
     def with_copyright(self, copyright_text: str) -> NSFExportChoices:
         """The choices stating ``copyright_text`` as the rights, as much of it as the field holds."""
         return self._with_information(
-            NSFInformation(
+            ProgramInformation(
                 title=self.information.title,
                 artist=self.information.artist,
                 copyright=copyright_text,
@@ -144,8 +145,8 @@ class NSFExportChoices(BaseModel, frozen=True):
 
         return self.model_copy(update={"scheme": scheme})
 
-    def _with_information(self, information: NSFInformation) -> NSFExportChoices:
-        return self.model_copy(update={"information": information})
+    def _with_information(self, information: ProgramInformation) -> NSFExportChoices:
+        return self.model_copy(update={"information": information.fitted(HEADER_TEXT)})
 
     @staticmethod
     def _stated_repeat(loop_tick: Optional[int]) -> NSFRepeat:

@@ -9,20 +9,20 @@ from sampletones_core.exports.request import SampleExport
 from sampletones_core.project.project import Project
 from sampletones_player.builder import SONG_START, loop_tick_from_instruments
 from sampletones_player.compression.scheme import CompressionScheme
-from sampletones_player.nsf.information import NSFInformation
+from sampletones_player.information import ProgramInformation
 from sampletones_shared.application import SAMPLETONES_COPYRIGHT
 
 NO_ARTIST: Final[str] = ""
 DEFAULT_SCHEME: Final[CompressionScheme] = CompressionScheme.SEARCH
 
 
-class NSFProgram(BaseModel):
+class Program(BaseModel):
     """Everything a written program states beyond the song it plays.
 
     A song reaches the console as the channels it sounds, the tick it returns to once it ends and
     the layers it is compressed with, and the file lists it under three lines of text. Those are
-    the choices an export makes, and :meth:`for_project` and :meth:`for_sample` state the ones it
-    makes on its own.
+    the choices an export makes, whichever kind of file carries the program, and
+    :meth:`for_project` and :meth:`for_sample` state the ones it makes on its own.
 
     Attributes:
         information: The text the file is listed under.
@@ -33,27 +33,27 @@ class NSFProgram(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    information: NSFInformation
+    information: ProgramInformation
     channels: FrozenSet[ChannelName] = Field(min_length=1)
     loop_tick: Optional[Annotated[int, Field(ge=0)]]
     scheme: CompressionScheme
 
     @classmethod
-    def for_project(cls, project: Project) -> NSFProgram:
+    def for_project(cls, project: Project) -> Program:
         """The program a whole composition is written as.
 
         The file is listed under the project's own title and author, sounds every channel, and
-        repeats from its first tick, which is how a piece of music is listened to and what an NSF
+        repeats from its first tick, which is how a piece of music is listened to and what a
         player expects of a song that has reached its end.
 
         Args:
             project: The composition to write.
 
         Returns:
-            NSFProgram: The program, compressed as hard as the codec reaches.
+            Program: The program, compressed as hard as the codec reaches.
         """
         return cls(
-            information=NSFInformation(
+            information=ProgramInformation(
                 title=project.info.title,
                 artist=project.info.author,
                 copyright=SAMPLETONES_COPYRIGHT,
@@ -64,7 +64,7 @@ class NSFProgram(BaseModel):
         )
 
     @classmethod
-    def for_sample(cls, request: SampleExport) -> NSFProgram:
+    def for_sample(cls, request: SampleExport) -> Program:
         """The program a reconstruction's slices are written as.
 
         The file is listed under the reconstruction's name and credited to nobody, sounds every
@@ -74,10 +74,10 @@ class NSFProgram(BaseModel):
             request: The slices to write.
 
         Returns:
-            NSFProgram: The program, compressed as hard as the codec reaches.
+            Program: The program, compressed as hard as the codec reaches.
         """
         return cls(
-            information=NSFInformation(
+            information=ProgramInformation(
                 title=request.name,
                 artist=NO_ARTIST,
                 copyright=SAMPLETONES_COPYRIGHT,

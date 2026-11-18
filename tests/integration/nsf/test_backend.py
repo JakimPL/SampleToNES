@@ -7,6 +7,7 @@ import pytest
 from sampletones_core.audio.mixing import mix
 from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
 from sampletones_core.exporters.naming import instrument_slice_name
+from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.request import (
     InstrumentExport,
     ProjectExport,
@@ -26,8 +27,9 @@ from sampletones_player.builder import (
     song_from_sample,
 )
 from sampletones_player.compression.scheme import CompressionScheme
-from sampletones_player.export.backend import NSFBackend
-from sampletones_player.export.program import NSFProgram
+from sampletones_player.export.backend import ProgramBackend
+from sampletones_player.export.backends import program_backends
+from sampletones_player.export.program import Program
 from sampletones_player.song import Song
 from sampletones_player.specification.nsf import NSF_MAGIC
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
@@ -76,8 +78,8 @@ def sample_request(sample: Sample) -> SampleExport:
 
 
 @pytest.fixture(scope="module")
-def backend() -> NSFBackend:
-    return NSFBackend.stated()
+def backend() -> ProgramBackend:
+    return program_backends()[ExportFormat.NSF]
 
 
 @pytest.fixture(scope="module")
@@ -88,7 +90,7 @@ def requests(instrument_catalog: Dict[str, Sample]) -> Dict[str, SampleExport]:
 
 @pytest.fixture(scope="module")
 def exported(
-    backend: NSFBackend,
+    backend: ProgramBackend,
     requests: Dict[str, SampleExport],
     tmp_path_factory: pytest.TempPathFactory,
 ) -> Dict[str, Path]:
@@ -112,7 +114,7 @@ def played(
     """What the console sounds when it plays each written file, read back out of its register writes."""
     played: Dict[str, ChannelInstructions] = {}
     for name, destination in exported.items():
-        program = NSFProgram.for_sample(requests[name])
+        program = Program.for_sample(requests[name])
         song = song_from_sample(
             requests[name],
             channels=program.channels,
@@ -206,7 +208,7 @@ def project_song(integration_project: Project) -> Song:
 
 @pytest.fixture(scope="module")
 def project_file(
-    backend: NSFBackend,
+    backend: ProgramBackend,
     integration_project: Project,
     tmp_path_factory: pytest.TempPathFactory,
 ) -> Path:
@@ -267,9 +269,9 @@ class TestTheBackendWritesAWholeSong:
 
 
 def chosen_file(
-    backend: NSFBackend,
+    backend: ProgramBackend,
     project: Project,
-    program: NSFProgram,
+    program: Program,
     directory: Path,
 ) -> Path:
     """The integration project written as ``program`` through the backend the application registers."""
@@ -294,12 +296,12 @@ class TestTheConsoleSoundsTheChosenProgram:
 
     def test_a_channel_left_out_rests_while_the_others_play_the_arrangement(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         integration_project: Project,
         project_song: Song,
         tmp_path: Path,
     ) -> None:
-        program = NSFProgram.for_project(integration_project).model_copy(
+        program = Program.for_project(integration_project).model_copy(
             update={"channels": ALL_CHANNELS - {ChannelName.NOISE}}
         )
         data = chosen_file(backend, integration_project, program, tmp_path).read_bytes()
@@ -317,12 +319,12 @@ class TestTheConsoleSoundsTheChosenProgram:
 
     def test_a_song_written_without_compression_sounds_the_arrangement(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         integration_project: Project,
         project_song: Song,
         tmp_path: Path,
     ) -> None:
-        program = NSFProgram.for_project(integration_project).model_copy(update={"scheme": CompressionScheme.NONE})
+        program = Program.for_project(integration_project).model_copy(update={"scheme": CompressionScheme.NONE})
         data = chosen_file(backend, integration_project, program, tmp_path).read_bytes()
         played = sounded_program(data, project_song, integration_project, project_song.ticks)
         reading = DividerReading.from_tuning(tuning_from_project(integration_project))
@@ -334,14 +336,14 @@ class TestTheConsoleSoundsTheChosenProgram:
 
     def test_a_song_repeating_from_a_frame_comes_round_to_that_frame(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         integration_project: Project,
         project_song: Song,
         tmp_path: Path,
     ) -> None:
         """The calls past the arrangement's end sound the frame the program returns to, onward."""
         loop_tick = SongTiming.from_project(integration_project, bounds=SONG_TICK_BOUNDS).frame_tick(LOOP_FRAME)
-        program = NSFProgram.for_project(integration_project).model_copy(update={"loop_tick": loop_tick})
+        program = Program.for_project(integration_project).model_copy(update={"loop_tick": loop_tick})
         data = chosen_file(backend, integration_project, program, tmp_path).read_bytes()
         ticks = project_song.ticks
         played = sounded_program(data, project_song, integration_project, 2 * ticks)

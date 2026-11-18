@@ -6,7 +6,7 @@ from sampletones_application.view_model.shared.nsf.offer import NSFExportOffer
 from sampletones_application.view_model.shared.nsf.repeat import NSFRepeat
 from sampletones_application.view_model.shared.nsf.view import NSFExportViewModel
 from sampletones_core.constants.enums import ChannelName
-from sampletones_player.nsf.information import field_size
+from sampletones_player.nsf.header import HEADER_TEXT
 from sampletones_player.specification.nsf import STRING_TEXT_SIZE
 from sampletones_shared.utils.time import format_span
 from tests.suite.nsf import SAMPLE_CHANNELS, project_offer, sample_offer, standing_choices
@@ -66,4 +66,4 @@ class TestTheSetupShowsTheChoices:
 
         label = view.text_size_label(view.choices.information.title, SIZE_TEMPLATE)
 
-        assert label == f"{field_size(view.choices.information.title)}|{STRING_TEXT_SIZE}"
+        assert label == f"{HEADER_TEXT.size(view.choices.information.title)}|{STRING_TEXT_SIZE}"

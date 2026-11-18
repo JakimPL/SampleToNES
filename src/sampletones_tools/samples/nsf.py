@@ -1,22 +1,23 @@
 from pathlib import Path
 from typing import Final, List
 
+from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.request import ProjectExport
 from sampletones_player.builder import song_from_reconstruction
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.driver.image import DriverImage
-from sampletones_player.export.backend import NSFBackend
+from sampletones_player.export.backends import program_backends
+from sampletones_player.information import ProgramInformation
 from sampletones_player.nsf.file import write_nsf
-from sampletones_player.nsf.information import NSFInformation
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
 from sampletones_tools.corpus.build import Corpus
 
 SONG_NAME: Final[str] = "song"
 
 
-def exported_information(name: str, author: str) -> NSFInformation:
+def exported_information(name: str, author: str) -> ProgramInformation:
     """The header text an exported sample carries: its own name, by the author of the arrangement."""
-    return NSFInformation(title=name, artist=author)
+    return ProgramInformation(title=name, artist=author)
 
 
 def write_samples(corpus: Corpus, output: Path) -> List[Path]:
@@ -46,7 +47,7 @@ def write_samples(corpus: Corpus, output: Path) -> List[Path]:
         written.append(destination)
 
     arrangement = output / f"{SONG_NAME}{EXT_FILE_NSF}"
-    NSFBackend.stated().write_project(
+    program_backends()[ExportFormat.NSF].write_project(
         arrangement,
         ProjectExport(project=corpus.project),
     )

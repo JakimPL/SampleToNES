@@ -58,7 +58,7 @@ from sampletones_application.view_model.shared.nsf.repeat import NSFRepeat
 from sampletones_application.view_model.shared.nsf.view import NSFExportViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_player.compression.scheme import CompressionScheme
-from sampletones_player.nsf.information import NSFInformation
+from sampletones_player.information import ProgramInformation
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 
@@ -82,7 +82,7 @@ class HeaderField:
     input_tag: str
     size_tag: str
     label: str
-    read: Callable[[NSFInformation], str]
+    read: Callable[[ProgramInformation], str]
     edit: Callable[[NSFExportChoices, str], NSFExportChoices]
 
 

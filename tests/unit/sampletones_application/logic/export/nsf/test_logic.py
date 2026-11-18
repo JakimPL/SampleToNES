@@ -16,7 +16,7 @@ from sampletones_core.exports.request import SampleExport
 from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_player.builder import SONG_START
 from sampletones_player.compression.scheme import CompressionScheme, offered_schemes
-from sampletones_player.export.program import NSFProgram
+from sampletones_player.export.program import Program
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -108,7 +108,7 @@ class TestOfferingTheProject:
     def test_the_dialog_opens_on_the_program_the_project_is_written_as(self, export: NSFExportFixture) -> None:
         export.logic.open_project()
 
-        program = NSFProgram.for_project(export.controller.project)
+        program = Program.for_project(export.controller.project)
         assert export.view.choices == NSFExportChoices.initial(program, export.view.offer)
 
     def test_every_channel_frame_and_scheme_is_offered(self, export: NSFExportFixture) -> None:

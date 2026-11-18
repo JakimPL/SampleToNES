@@ -9,13 +9,14 @@ from sampletones_player.block.song import song_to_bytes
 from sampletones_player.builder import song_from_project
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.driver.image import DriverImage
+from sampletones_player.nsf.file import song_room
 from sampletones_player.song import Song
 from sampletones_player.specification.song import (
     SONG_HEADER_SIZE,
     TOTAL_TICKS_OFFSET,
 )
 from sampletones_shared.exceptions import SongTooLargeError
-from sampletones_tools.codec.report.songs import RECORD_BYTES_PER_TICK, available_bytes
+from sampletones_tools.codec.report.songs import RECORD_BYTES_PER_TICK
 
 
 def read_word(data: bytes, offset: int) -> int:
@@ -60,7 +61,7 @@ class TestTheProjectReachesTheConsole:
         driver_image: DriverImage,
     ) -> None:
         """The block states the whole arrangement, in less room than a record a tick would take."""
-        block = song_to_bytes(project_song, available_bytes(driver_image))
+        block = song_to_bytes(project_song, song_room(driver_image))
         assert read_word(block, TOTAL_TICKS_OFFSET) == project_song.ticks
         assert len(block) < SONG_HEADER_SIZE + RECORD_BYTES_PER_TICK * project_song.ticks
 
@@ -74,7 +75,7 @@ class TestTheProgramAreaBoundsTheSong:
         driver_image: DriverImage,
     ) -> None:
         """The exporter names the overflow rather than writing a file the console truncates."""
-        block = song_to_bytes(project_song, available_bytes(driver_image))
+        block = song_to_bytes(project_song, song_room(driver_image))
 
         with pytest.raises(SongTooLargeError):
             song_to_bytes(project_song, len(block) - 1)

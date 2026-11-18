@@ -14,10 +14,11 @@ from sampletones_core.exports.request import (
 from sampletones_core.exports.scope import ExportScope
 from sampletones_player.export.choice import ProgramChoice
 from sampletones_player.export.chosen import ChosenProgram
-from sampletones_player.export.program import NSFProgram
+from sampletones_player.export.container import ProgramContainer
+from sampletones_player.export.program import Program
 from sampletones_player.export.stated import StatedProgram
-from sampletones_player.export.writer import NSFWriter
-from sampletones_shared.paths.extensions import EXT_FILE_NSF
+from sampletones_player.export.writer import ProgramWriter
+from sampletones_player.information import TextLine
 from sampletones_shared.utils.progress import silent_reporter
 
 SUPPORTED_SCOPES: FrozenSet[ExportScope] = frozenset(
@@ -29,66 +30,69 @@ SUPPORTED_SCOPES: FrozenSet[ExportScope] = frozenset(
 )
 
 
-class NSFBackend:
-    """Writes the ``.nsf`` files NES sound players and the console itself play.
+class ProgramBackend:
+    """Writes the programs the console itself runs, in the kind of file its container lays out.
 
-    An NSF carries its own driver, so the file plays the reconstruction rather than describing
-    it to a program that does: every channel slice sounds at once on the channel it was
-    reconstructed for, at the rate it was built at and in the tuning it was built with. One file
-    holds one song, so a reconstruction and a single slice each become a program of their own,
-    the slice sounding on its channel alone.
+    A program carries its own driver, so the file itself plays the reconstruction: every channel
+    slice sounds at once on the channel it was reconstructed for, at the rate it was built at and
+    in the tuning it was built with. One file holds one song, so a reconstruction and a single
+    slice each become a program of their own, the slice sounding on its channel alone.
 
     What the program states beyond its song — the channels, the repeat, the compression and the
     text — is a :class:`ProgramChoice`. The backend the application registers writes each request
     as its source states; :meth:`choosing` answers with one writing the program a user settled.
+    The format, the extension and the room the text has are the container's own.
 
-    The console's program area bounds how long a song may run, and one outgrowing it is reported
-    rather than written short.
+    The file bounds how long a song may run, and a song outgrowing it is reported as too large.
     """
 
     def __init__(
         self,
-        writer: NSFWriter,
+        container: ProgramContainer,
         choice: ProgramChoice,
     ) -> None:
-        self._writer = writer
+        self._container = container
+        self._writer = ProgramWriter(container)
         self._choice = choice
 
     @classmethod
-    def stated(cls) -> NSFBackend:
-        """The backend writing each request as the program its own source states.
+    def stated(cls, container: ProgramContainer) -> ProgramBackend:
+        """The backend writing each request into ``container`` as the program its own source states.
 
-        The driver every file carries is read here, so a build shipping without it reports itself
-        where the backends are composed.
+        Args:
+            container: The kind of file the backend writes.
 
-        Raises:
-            OSError: If the packaged driver is absent.
-            ValueError: If the packaged driver lays out something other than the addresses it
-                is built to answer at.
+        Returns:
+            ProgramBackend: The backend the application registers for the container's format.
         """
-        return cls(NSFWriter.load(), StatedProgram())
+        return cls(container, StatedProgram())
 
-    def choosing(self, program: NSFProgram) -> NSFBackend:
-        """The backend writing every request as ``program``, over the driver this one holds.
+    def choosing(self, program: Program) -> ProgramBackend:
+        """The backend writing every request as ``program``, into the container this one holds.
 
         Args:
             program: The choices the file carries.
 
         Returns:
-            NSFBackend: The backend to hand the run.
+            ProgramBackend: The backend to hand the run.
         """
-        return NSFBackend(self._writer, ChosenProgram(program))
+        return ProgramBackend(self._container, ChosenProgram(program))
 
     @property
     def export_format(self) -> ExportFormat:
-        return ExportFormat.NSF
+        return self._container.export_format
 
     @property
     def supported_scopes(self) -> FrozenSet[ExportScope]:
         return SUPPORTED_SCOPES
 
+    @property
+    def text(self) -> TextLine:
+        """The room each line of a program's text has in the files this backend writes."""
+        return self._container.text
+
     def extension(self, scope: ExportScope) -> str:  # pylint: disable=unused-argument
-        return EXT_FILE_NSF
+        return self._container.extension
 
     def write_instrument(
         self,
@@ -100,7 +104,7 @@ class NSFBackend:
 
         Raises:
             OperationCanceled: If ``report`` withdraws the write.
-            SongTooLargeError: If the slice runs longer than the program area holds.
+            SongTooLargeError: If the slice runs longer than the file holds.
             OSError: If the destination cannot be written.
         """
         sample = SampleExport(
@@ -121,7 +125,7 @@ class NSFBackend:
 
         Raises:
             OperationCanceled: If ``report`` withdraws the write.
-            SongTooLargeError: If the reconstruction runs longer than the program area holds.
+            SongTooLargeError: If the reconstruction runs longer than the file holds.
             OSError: If the destination cannot be written.
             ValueError: If the program's loop tick lies outside the song.
         """
@@ -142,7 +146,7 @@ class NSFBackend:
 
         Raises:
             OperationCanceled: If ``report`` withdraws the write.
-            SongTooLargeError: If the song holds more than the program area has room for.
+            SongTooLargeError: If the song holds more than the file has room for.
             OSError: If the destination cannot be written.
             ValueError: If the program's loop tick lies outside the song, or the project's samples
                 were reconstructed against tunings that differ.

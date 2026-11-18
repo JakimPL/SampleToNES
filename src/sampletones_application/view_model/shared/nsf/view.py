@@ -8,8 +8,7 @@ from sampletones_application.view_model.shared.nsf.offer import NSFExportOffer
 from sampletones_application.view_model.shared.nsf.repeat import NSFRepeat
 from sampletones_core.constants.enums import ChannelName
 from sampletones_player.compression.scheme import CompressionScheme
-from sampletones_player.nsf.information import field_size
-from sampletones_player.specification.nsf import STRING_TEXT_SIZE
+from sampletones_player.nsf.header import HEADER_TEXT
 from sampletones_shared.utils.time import format_span
 
 
@@ -82,7 +81,7 @@ class NSFExportViewModel(BaseModel, frozen=True):
 
     def text_size_label(self, text: str, template: str) -> str:
         """The bytes ``text`` takes in its header field against the room there, as ``template`` states them."""
-        return template.format(used=field_size(text), room=STRING_TEXT_SIZE)
+        return template.format(used=HEADER_TEXT.size(text), room=HEADER_TEXT.room)
 
     def loop_frame_label(self, template: str) -> str:
         """The order frame a repeat returns to, as ``template`` states it."""

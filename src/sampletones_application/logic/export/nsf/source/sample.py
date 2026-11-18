@@ -10,7 +10,7 @@ from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.request import SampleExport
 from sampletones_core.exports.scope import ExportScope
 from sampletones_player.compression.scheme import offered_schemes
-from sampletones_player.export.program import NSFProgram
+from sampletones_player.export.program import Program
 
 NO_TICKS: Final[int] = 0
 
@@ -46,8 +46,8 @@ class SampleSource:
             schemes=offered_schemes(seeded=False),
         )
 
-    def program(self) -> NSFProgram:
-        return NSFProgram.for_sample(self.request)
+    def program(self) -> Program:
+        return Program.for_sample(self.request)
 
     def ticks(self, channels: AbstractSet[ChannelName]) -> int:
         """The ticks the longest slice on ``channels`` runs for, which is how long the song lasts."""

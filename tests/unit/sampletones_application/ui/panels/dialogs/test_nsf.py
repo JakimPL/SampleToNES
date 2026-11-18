@@ -37,7 +37,7 @@ from sampletones_application.view_model.shared.nsf.repeat import NSFRepeat
 from sampletones_application.view_model.shared.nsf.view import NSFExportViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_player.compression.scheme import CompressionScheme
-from sampletones_player.nsf.information import fit_field
+from sampletones_player.nsf.header import HEADER_TEXT
 from sampletones_player.specification.nsf import STRING_TEXT_SIZE
 from sampletones_shared.utils.system.paths import shorten_path
 from tests.suite.nsf import PROGRAM_ARTIST, PROGRAM_TITLE, project_offer, sample_offer, standing_choices
@@ -124,7 +124,7 @@ class TestTheProgramText:
 
         edit(TAG_SETTINGS_NSF_INPUT_TITLE, OVERLONG_TITLE * 2)
 
-        assert reported[-1].information.title == fit_field(OVERLONG_TITLE * 2)
+        assert reported[-1].information.title == HEADER_TEXT.fit(OVERLONG_TITLE * 2)
         assert len(reported[-1].information.title.encode()) <= STRING_TEXT_SIZE
 
 
