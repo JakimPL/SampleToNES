@@ -2,7 +2,7 @@ import struct
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Final, List
+from typing import Final, List
 
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.specification.clock import (
@@ -17,22 +17,12 @@ from sampletones_player.specification.song import (
 )
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.paths.extensions import EXT_FILE_NSF, EXT_FILE_WAVE
-from sampletones_shared.utils.system.programs import (
-    locate_program,
-    missing_program_message,
-)
-from sampletones_shared.utils.system.system import System
+from sampletones_shared.utils.system.programs import locate_program
+from sampletones_tools.ffmpeg import FFMPEG, missing_ffmpeg_message
 
-FFMPEG: Final[str] = "ffmpeg"
 GME_FORMAT: Final[str] = "libgme"
 WORD: Final[str] = "<H"
 RENDER_PURPOSE: Final[str] = f"an exported file is decoded through its {GME_FORMAT} demuxer"
-
-INSTALL_HINTS: Final[Dict[System, str]] = {
-    System.LINUX: "sudo apt install ffmpeg",
-    System.MACOS: "brew install ffmpeg",
-    System.WINDOWS: "install ffmpeg from https://ffmpeg.org and add its bin directory to PATH",
-}
 
 
 class RenderingError(SampleToNESError):
@@ -83,9 +73,7 @@ def require_renderer() -> None:
             libgme demuxer.
     """
     if locate_program(FFMPEG) is None:
-        raise RenderingError(
-            missing_program_message(FFMPEG, RENDER_PURPOSE, INSTALL_HINTS),
-        )
+        raise RenderingError(missing_ffmpeg_message(RENDER_PURPOSE))
 
     if not decodes_exports():
         raise RenderingError(
