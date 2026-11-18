@@ -144,8 +144,9 @@ The frames come from a scene under `assets/footage/scenes/`, named so that the f
 collects it. Its window holds the Reconstruction card's column whole, with the Instruments card folded.
 For each frame, the scene sets the listening where it changes, presses Step forward and waits for the
 cursor to mark the frame's tick, then cuts the Source card's bar with its switch, the Waveform card and the
-Stems card out of the settled screen and stacks them on a 1080×1920 frame, inside the band the platform's
-overlays leave clear, on the palette's ground color. The runner hands the scene its take, the schedule,
+Stems card out of the settled screen and stacks them on a 1080×1920 frame, on the palette's ground color.
+The stack is enlarged as far as the frame's width and the band the platform's overlays leave clear allow,
+so the window is sized to hold the column a little narrower than the frame. The runner hands the scene its take, the schedule,
 the stem rows, the frames folder and the frame to stop before, through an environment variable.
 
 `make footage` (`SPEC=` a specification, `OUTPUT=` the video) writes the soundtrack, films the frames

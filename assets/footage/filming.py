@@ -5,7 +5,7 @@ from typing import List
 from assets.footage.composition import Box, Ground, composed
 from assets.footage.frames import filmed, frame_path, write_frame
 from assets.footage.shoot import Take
-from assets.footage.shot import MARGIN, REEL, panes
+from assets.footage.shot import panes
 from assets.footage.specification import Listening
 from assets.stage.camera import Camera
 from assets.stage.frames import eight_bit
@@ -69,7 +69,8 @@ class Filming:
                 expect_the_playhead_at(screen, self._sample(frame))
                 pixels = eight_bit(self._camera.pixels())
 
-            write_frame(composed(pixels, boxes, REEL, self._ground), frame_path(self._take.frames, frame))
+            layout = self._take.shoot.shot.layout
+            write_frame(composed(pixels, boxes, layout, self._ground), frame_path(self._take.frames, frame))
 
     def _sample(self, frame: int) -> int:
         return self._take.shoot.schedule.tick(frame) * self._take.shoot.tick_length
@@ -94,8 +95,9 @@ class Filming:
         wait_for_the_fade_to_end(screen, unfaded)
 
     def _boxes(self, width: int, height: int) -> List[Box]:
-        """The pixels each pane of the shot stands in, with a margin around it."""
+        """The pixels each pane of the shot stands in, with the shot's margin around it."""
+        margin = self._take.shoot.shot.margin
         return [
-            Rect.spanning([self._camera.rect(item) for item in items]).pixel_box(MARGIN, width=width, height=height)
+            Rect.spanning([self._camera.rect(item) for item in items]).pixel_box(margin, width=width, height=height)
             for items in panes(self._screen)
         ]

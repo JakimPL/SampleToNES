@@ -25,7 +25,7 @@ from assets.footage.paths import (
 )
 from assets.footage.schedule import Schedule, schedule
 from assets.footage.shoot import Shoot, Take, digest, take_environment
-from assets.footage.shot import SCREEN
+from assets.footage.shot import RECONSTRUCTIONS_SHOT, SCREEN
 from assets.footage.soundtrack import ListeningAudio, soundtrack
 from assets.footage.specification import Footage
 from assets.stage.paths import HOMES_DIRECTORY
@@ -83,6 +83,7 @@ def main(argv: Sequence[str]) -> int:
         tick_length=config.frame_length,
         stem_keys={name: str(stem_id) for name, stem_id in stem_ids(data.reconstruction.stems_data).items()},
         schedule=laid,
+        shot=RECONSTRUCTIONS_SHOT,
     )
     frames = folder / FRAMES_FOLDER
     prepare_frames(frames, shoot.model_dump_json(), fresh=arguments.fresh)

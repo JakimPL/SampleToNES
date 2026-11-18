@@ -4,7 +4,6 @@ from pathlib import Path
 import pytest
 
 from assets.footage.shoot import Take, handed_take
-from assets.footage.shot import COLLAPSED_CARDS, VIEWPORT
 from assets.stage.demo import piece_document
 from assets.stage.worlds import demo_tree, stage_world
 from automation.application.startup import Startup
@@ -27,7 +26,8 @@ def document_fixture(take: Take) -> Path:
 def world_fixture(take: Take) -> World:
     """A home opening the window the shot is framed in, holding the demo tree where the demo piece is filmed."""
     files = (demo_tree(),) if take.shoot.document is None else ()
-    return stage_world(VIEWPORT, collapsed_cards=COLLAPSED_CARDS, files=files)
+    shot = take.shoot.shot
+    return stage_world(shot.viewport, collapsed_cards=shot.collapsed_cards, files=files)
 
 
 @pytest.fixture(name="startup")
