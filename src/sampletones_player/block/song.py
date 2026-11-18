@@ -1,10 +1,10 @@
 from typing import Final
 
 from sampletones_core.formats.binary import BinaryWriter
+from sampletones_player.block.layout import SongLayout
 from sampletones_player.compression.dictionary.table import PhraseTable
 from sampletones_player.compression.pitch import PitchTable
 from sampletones_player.compression.planes.order import PlaneOrder
-from sampletones_player.nsf.layout import SongLayout
 from sampletones_player.song import Song
 from sampletones_player.specification.compression import NO_DEFAULT_COUNT
 from sampletones_player.specification.song import MAX_BLOCK_OFFSET, NO_LOOP

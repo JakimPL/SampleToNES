@@ -24,11 +24,11 @@ from sampletones_player.driver.image import DriverImage
 from sampletones_player.export.backend import NSFBackend
 from sampletones_player.export.program import NSFProgram
 from sampletones_player.nsf.information import NSFInformation
+from sampletones_player.specification.memory import PROGRAM_SIZE
 from sampletones_player.specification.nsf import (
     ARTIST_OFFSET,
     COPYRIGHT_OFFSET,
     HEADER_SIZE,
-    PROGRAM_SIZE,
     STRING_FIELD_SIZE,
     TITLE_OFFSET,
 )

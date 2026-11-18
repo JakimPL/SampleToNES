@@ -21,7 +21,8 @@ from sampletones_core.exports.stage import ExportStage
 from sampletones_core.project.project import Project
 from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_player.export.backend import NSFBackend
-from sampletones_player.specification.nsf import NSF_MAGIC, PROGRAM_SIZE
+from sampletones_player.specification.memory import PROGRAM_SIZE
+from sampletones_player.specification.nsf import NSF_MAGIC
 from sampletones_shared.music import Tuning
 from tests.suite.performance import (
     make_pulse_reconstruction,

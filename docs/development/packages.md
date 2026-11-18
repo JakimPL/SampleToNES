@@ -109,6 +109,7 @@ a song exist independently of the file they are written into or the driver that 
 - The clock, the per-tick register values and the codec stand on it.
 - `Song` gathers what a file carries into one value.
 - `builder.py` is the one place a song is made, whatever asked for it.
+- `block/` writes a song as the bytes the driver reads, wherever a file places them.
 - `nsf/`, `driver/` and `export/` sit at the top, where a song becomes the file the console loads.
 
 [The console player](player.md) says what the player is for and what holds it correct.

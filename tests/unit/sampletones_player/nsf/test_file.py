@@ -4,17 +4,14 @@ from typing import Final
 
 import pytest
 
+from sampletones_player.block.song import song_to_bytes
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.nsf.file import nsf_to_bytes, write_nsf
 from sampletones_player.nsf.header import header_to_bytes
 from sampletones_player.nsf.information import NSFInformation
-from sampletones_player.nsf.song import song_to_bytes
 from sampletones_player.song import Song
-from sampletones_player.specification.nsf import (
-    HEADER_SIZE,
-    LOAD_ADDRESS_OFFSET,
-    PROGRAM_SIZE,
-)
+from sampletones_player.specification.memory import PROGRAM_SIZE
+from sampletones_player.specification.nsf import HEADER_SIZE, LOAD_ADDRESS_OFFSET
 from sampletones_shared.exceptions import SongTooLargeError
 from tests.suite.player import (
     PLAYER_FULL_VOLUME,

@@ -2,7 +2,7 @@ from typing import Final
 
 from sampletones_core.project.project import Project
 from sampletones_player.driver.image import DriverImage
-from sampletones_player.specification.nsf import PROGRAM_SIZE
+from sampletones_player.specification.memory import PROGRAM_SIZE
 
 RECORD_BYTES_PER_TICK: Final[int] = 11
 

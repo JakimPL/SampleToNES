@@ -1,9 +1,9 @@
+from sampletones_player.block.song import song_to_bytes
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.nsf.header import header_to_bytes
 from sampletones_player.nsf.information import NSFInformation
-from sampletones_player.nsf.song import song_to_bytes
 from sampletones_player.song import Song
-from sampletones_player.specification.nsf import PROGRAM_SIZE
+from sampletones_player.specification.memory import PROGRAM_SIZE
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import save_binary
 

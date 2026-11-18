@@ -5,10 +5,10 @@ import pytest
 from sampletones_core.constants.enums import ALL_CHANNELS
 from sampletones_core.project.project import Project
 from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
+from sampletones_player.block.song import song_to_bytes
 from sampletones_player.builder import song_from_project
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.driver.image import DriverImage
-from sampletones_player.nsf.song import song_to_bytes
 from sampletones_player.song import Song
 from sampletones_player.specification.song import (
     SONG_HEADER_SIZE,

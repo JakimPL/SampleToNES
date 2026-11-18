@@ -6,9 +6,6 @@ from sampletones_player.specification.clock import (
     NTSC_FRAME_RATE,
 )
 
-PROGRAM_START: Final[int] = 0x8000
-PROGRAM_SIZE: Final[int] = 0x8000
-
 NSF_MAGIC: Final[bytes] = b"NESM\x1a"
 NSF_VERSION: Final[int] = 1
 SONG_COUNT: Final[int] = 1

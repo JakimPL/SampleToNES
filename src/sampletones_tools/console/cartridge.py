@@ -2,7 +2,7 @@ from typing import Final, List
 
 from py65.memory import ObservableMemory
 
-from sampletones_player.specification.nsf import PROGRAM_START
+from sampletones_player.specification.memory import PROGRAM_START
 from sampletones_tools.console.header import NSFHeader
 
 BANK_SIZE: Final[int] = 0x1000

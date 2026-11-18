@@ -7,7 +7,7 @@ from sampletones_player.specification.driver import (
     LOAD_ADDRESS,
     PLAY_ADDRESS,
 )
-from sampletones_player.specification.nsf import PROGRAM_START
+from sampletones_player.specification.memory import PROGRAM_START
 from tests.suite.base import BaseTestSuite
 
 CODE_LENGTH: Final[int] = 512

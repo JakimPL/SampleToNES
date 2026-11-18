@@ -3,13 +3,13 @@ from typing import Final, Tuple
 
 import pytest
 
+from sampletones_player.specification.memory import PROGRAM_START
 from sampletones_player.specification.nsf import (
     DUAL_REGION_FLAG,
     NTSC_PLAY_PERIOD_MICROSECONDS,
     NTSC_REGION,
     PAL_PLAY_PERIOD_MICROSECONDS,
     PAL_REGION_FLAG,
-    PROGRAM_START,
 )
 from sampletones_shared.exceptions.validation import TruncatedDataError
 from sampletones_tools.console.errors import NotAnNSFError

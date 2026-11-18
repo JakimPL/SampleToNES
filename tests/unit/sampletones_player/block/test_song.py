@@ -4,10 +4,10 @@ from typing import Final, Tuple
 
 import pytest
 
+from sampletones_player.block.layout import NAME_SEPARATOR, SongLayout
+from sampletones_player.block.song import STATED_BEYOND_THE_FIRST, song_to_bytes
 from sampletones_player.compression.decode import decode_planes
 from sampletones_player.compression.planes.order import PlaneOrder
-from sampletones_player.nsf.layout import NAME_SEPARATOR, SongLayout
-from sampletones_player.nsf.song import STATED_BEYOND_THE_FIRST, song_to_bytes
 from sampletones_player.song import Song
 from sampletones_player.specification.binary import WORD_SIZE
 from sampletones_player.specification.compression import (

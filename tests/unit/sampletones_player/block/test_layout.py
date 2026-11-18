@@ -1,7 +1,7 @@
 from typing import Final, List, Tuple
 
+from sampletones_player.block.layout import SongLayout
 from sampletones_player.compression.decode import decode_planes
-from sampletones_player.nsf.layout import SongLayout
 from sampletones_player.song import Song
 from sampletones_player.specification.compression import (
     PHRASE_DEFAULT_SIZE,
