@@ -54,7 +54,13 @@ NAMETABLE_START: Final[int] = 0x2000
 NOTES_PER_OCTAVE: Final[int] = 12
 NOTE_NAME_CELLS: Final[int] = 2
 DIGITS: Final[str] = "0123456789"
+HEX_DIGITS: Final[str] = DIGITS + "ABCDEF"
 CLOCK_CELLS: Final[int] = len(clock_text(0))
+CLOCK_COLON: Final[int] = clock_text(0).index(":")
+WAVE_ROW_TILES: Final[int] = len(PULSE_REST.top)
+PACKED_SCREEN_LIMIT: Final[int] = 0x100
+LAST_NOISE_PERIOD: Final[int] = NOISE_PERIOD_COUNT - 1
+NOISE_SUFFIX: Final[str] = noise_name(LAST_NOISE_PERIOD)[1:]
 METER_CELLS: Final[int] = len(meter_members(0))
 WAVE_CELLS: Final[int] = WAVE_PERIODS * len(PULSE_REST.top)
 SHOWN_CHARACTERS: Final[str] = "".join(character for character in printable if character.isprintable())
@@ -68,12 +74,28 @@ class ShellData:
 
     Attributes:
         equates: Named numbers: where each field lies and which tile draws each reading.
-        tables: Named runs of bytes: the palette, the packed screen, the labels and the tiles of
-            every wave shape and name.
+        tables: Named runs of bytes: the palette, the packed screen, the labels, the tiles of every
+            wave shape and the note names.
     """
 
     equates: Dict[str, int]
     tables: Dict[str, bytes]
+
+
+@dataclass(frozen=True)
+class WaveTable:
+    """Every wave shape the shell draws, laid out in one table it reads by offset.
+
+    The pulse waves open the table, one per duty, so a duty times the size of a wave is its
+    offset. Each noise pair overlaps: the shimmering wave starts at the still one's bottom row.
+
+    Attributes:
+        tiles: The tiles of every wave, top row then bottom row of each.
+        offsets: Where each shape starts in ``tiles``, named as the shell reads it.
+    """
+
+    tiles: bytes
+    offsets: Dict[str, int]
 
 
 def shell_data(layout: ScreenLayout, sheet: TileSheet) -> ShellData:
@@ -87,8 +109,9 @@ def shell_data(layout: ScreenLayout, sheet: TileSheet) -> ShellData:
         ValueError: If the sheet or the deck departs from a rule the shell draws by.
     """
     _validate_the_rules(sheet)
-    _validate_the_fields(layout)
-    return ShellData(equates=_equates(layout, sheet), tables=_tables(layout, sheet))
+    _validate_the_fields(layout, sheet)
+    waves = _wave_table(sheet)
+    return ShellData(equates={**_equates(layout, sheet), **waves.offsets}, tables=_tables(layout, sheet, waves))
 
 
 def _cell(row: int, column: int) -> int:
@@ -139,10 +162,17 @@ def _validate_the_rules(sheet: TileSheet) -> None:
         ),
         "a note is its name within the octave followed by the octave's digit",
     )
+    _require(
+        all(
+            noise_name(period) == HEX_DIGITS[LAST_NOISE_PERIOD - period] + NOISE_SUFFIX
+            for period in range(NOISE_PERIOD_COUNT)
+        ),
+        "a noise period is named by the hex digit of its distance from the last period, then one suffix",
+    )
 
 
-def _validate_the_fields(layout: ScreenLayout) -> None:
-    program = layout.program
+def _validate_the_fields(layout: ScreenLayout, sheet: TileSheet) -> None:
+    program, transport = layout.program, layout.transport
     _require(
         (program.title.width, program.artist.width, program.copyright.width)
         == (TITLE_COLUMNS, ARTIST_COLUMNS, COPYRIGHT_COLUMNS),
@@ -152,6 +182,38 @@ def _validate_the_fields(layout: ScreenLayout) -> None:
         layout.progress.width * PROGRESS_STEPS == PROGRESS_PIXELS,
         "the progress bar spans the pixels the program block counts",
     )
+    colon = layout.nametable(sheet)[transport.row * SCREEN_COLUMNS + transport.total_column + CLOCK_COLON]
+    _require(colon == _background(sheet, BAR_GROUP, ":"), "the resting screen shows the total time's colon")
+
+
+def _wave_table(sheet: TileSheet) -> WaveTable:
+    tiles = bytearray()
+    offsets: Dict[str, int] = {}
+    for name, shapes in (
+        ("PULSE_WAVES_OFFSET", PULSE_WAVES),
+        ("PULSE_REST_OFFSET", (PULSE_REST,)),
+        ("TRIANGLE_WAVE_OFFSET", (TRIANGLE_WAVE,)),
+        ("OTHER_REST_OFFSET", (OTHER_REST,)),
+    ):
+        offsets[name] = len(tiles)
+        tiles += b"".join(_wave(sheet, shape) for shape in shapes)
+
+    offsets["NOISE_WAVES_OFFSET"] = len(tiles)
+    pairs = [_noise_pair(sheet, *NOISE_WAVES[short]) for short in (False, True)]
+    offsets["NOISE_SHIMMER_OFFSET"] = WAVE_ROW_TILES
+    offsets["NOISE_SHORT_OFFSET"] = len(pairs[0])
+    tiles += b"".join(pairs)
+    return WaveTable(tiles=bytes(tiles), offsets=offsets)
+
+
+def _noise_pair(sheet: TileSheet, still: Wave, shimmering: Wave) -> bytes:
+    """A still noise wave and its shimmering one in one run, the second starting at the first's bottom row."""
+    still_tiles, shimmering_tiles = _wave(sheet, still), _wave(sheet, shimmering)
+    _require(
+        shimmering_tiles[:WAVE_ROW_TILES] == still_tiles[WAVE_ROW_TILES:],
+        "a shimmering noise wave's top row is the still wave's bottom row",
+    )
+    return still_tiles + shimmering_tiles[WAVE_ROW_TILES:]
 
 
 def _pin(sheet: TileSheet, prefix: str, pin: Pin) -> Dict[str, int]:
@@ -228,6 +290,9 @@ def _equates(layout: ScreenLayout, sheet: TileSheet) -> Dict[str, int]:
         "OCTAVE_ZERO_TILE": _background(sheet, TEXT_GROUP, DIGITS[0]),
         **_meter(sheet, "PULSE", PULSE_METER_GROUP),
         **_meter(sheet, "OTHER", OTHER_METER_GROUP),
+        "HEX_TEN_TILE": _background(sheet, TEXT_GROUP, HEX_DIGITS[len(DIGITS)]),
+        "NOISE_SUFFIX_TILE": _background(sheet, TEXT_GROUP, NOISE_SUFFIX[0]),
+        "NOISE_SUFFIX_END_TILE": _background(sheet, TEXT_GROUP, NOISE_SUFFIX[1]),
         "LANE_TOP": keyboard.lane_row * TILE_SIDE - SPRITE_SCANLINE_DELAY,
         "KEYBOARD_LEFT": keyboard.column * TILE_SIDE - PIN_STEM_COLUMN,
         "PIXELS_PER_PITCH": PIXELS_PER_PITCH,
@@ -241,18 +306,15 @@ def _equates(layout: ScreenLayout, sheet: TileSheet) -> Dict[str, int]:
     }
 
 
-def _tables(layout: ScreenLayout, sheet: TileSheet) -> Dict[str, bytes]:
+def _tables(layout: ScreenLayout, sheet: TileSheet, waves: WaveTable) -> Dict[str, bytes]:
     labels = sum(len(label.text) for label in layout.labels)
     sprites = Deck(layout, sheet).resting().sprites
+    screen = pack(layout.nametable(sheet) + layout.attribute_table())
+    _require(len(screen) <= PACKED_SCREEN_LIMIT, "the packed screen fits the one-byte index the shell reads it by")
     return {
         "deck_palette": layout.palettes.to_bytes(),
-        "deck_screen": pack(layout.nametable(sheet) + layout.attribute_table()),
+        "deck_screen": screen,
         "deck_labels": sprites[MARKER_SLOTS * SPRITE_BYTES : (MARKER_SLOTS + labels) * SPRITE_BYTES],
-        "pulse_waves": b"".join(_wave(sheet, wave) for wave in PULSE_WAVES),
-        "pulse_rest": _wave(sheet, PULSE_REST),
-        "triangle_wave": _wave(sheet, TRIANGLE_WAVE),
-        "other_rest": _wave(sheet, OTHER_REST),
-        "noise_waves": b"".join(_wave(sheet, wave) for short in (False, True) for wave in NOISE_WAVES[short]),
+        "deck_waves": waves.tiles,
         "note_names": b"".join(_text(sheet, pitch_name(pitch)[:NOTE_NAME_CELLS]) for pitch in range(NOTES_PER_OCTAVE)),
-        "noise_names": b"".join(_text(sheet, noise_name(period)) for period in range(NOISE_PERIOD_COUNT)),
     }

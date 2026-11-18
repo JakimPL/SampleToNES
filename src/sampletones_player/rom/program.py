@@ -7,6 +7,7 @@ from sampletones_player.specification.program import (
     ARTIST_COLUMNS,
     COPYRIGHT_COLUMNS,
     FRAME_COUNT_SIZE,
+    FRAME_COUNT_VALUES,
     PROGRESS_SIZE,
     TITLE_COLUMNS,
 )
@@ -39,6 +40,18 @@ def screen_line(text: str, columns: int) -> bytes:
     return drawn.ljust(columns, BLANK_CELL).encode(SCREEN_ENCODING)
 
 
+def frame_count(frames: int) -> bytes:
+    """A count of frames as the shell counts it: negated, so a frame steps it up and the end is zero.
+
+    Raises:
+        ValueError: If the frames are negative or exceed what the count's bytes hold.
+    """
+    if not 0 <= frames < FRAME_COUNT_VALUES:
+        raise ValueError(f"a frame count holds 0 through {FRAME_COUNT_VALUES - 1} frames, got {frames}")
+
+    return ((FRAME_COUNT_VALUES - frames) % FRAME_COUNT_VALUES).to_bytes(FRAME_COUNT_SIZE, BYTE_ORDER)
+
+
 def program_block(song_address: int, information: ProgramInformation, clock: ProgramClock) -> bytes:
     """Lays out what the cartridge's screen shows about a song, in the order the shell reads it.
 
@@ -61,9 +74,9 @@ def program_block(song_address: int, information: ProgramInformation, clock: Pro
         writer.write_bytes(screen_line(text, columns))
 
     writer.write_bytes(bytes(clock.total_time))
-    writer.write_bytes(clock.total_frames.to_bytes(FRAME_COUNT_SIZE, BYTE_ORDER))
+    writer.write_bytes(frame_count(clock.total_frames))
     writer.write_bytes(clock.progress_step.to_bytes(PROGRESS_SIZE, BYTE_ORDER))
-    writer.write_bytes(clock.loop_frames.to_bytes(FRAME_COUNT_SIZE, BYTE_ORDER))
+    writer.write_bytes(frame_count(clock.loop_frames))
     writer.write_bytes(bytes(clock.loop_time))
     writer.write_uint16(clock.loop_second)
     writer.write_bytes(clock.loop_progress.to_bytes(PROGRESS_SIZE, BYTE_ORDER))

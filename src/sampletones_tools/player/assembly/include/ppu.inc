@@ -28,6 +28,7 @@ SPRITE_PAGE             = $0200
 SPRITE_COUNT            = 64
 SPRITE_BYTES            = 4
 BUFFER                  = $0300
+SCREEN_WINDOW           = $0400
 
 CONTROLLER_STROBE       = $01
 CONTROLLER_RELEASE      = $00

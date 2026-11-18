@@ -8,16 +8,30 @@ from sampletones_tools.player.graphics.deck.deck import Deck
 from sampletones_tools.player.graphics.deck.markers import MARKER_SLOTS
 from sampletones_tools.player.graphics.deck.state import DUTY_COUNT, NOISE_PERIOD_COUNT
 from sampletones_tools.player.graphics.deck.texts import noise_name, pitch_name
-from sampletones_tools.player.graphics.deck.waves import NOISE_WAVES, PULSE_WAVES, TRIANGLE_WAVE, Wave
+from sampletones_tools.player.graphics.deck.waves import (
+    NOISE_WAVES,
+    OTHER_REST,
+    PULSE_REST,
+    PULSE_WAVES,
+    TRIANGLE_WAVE,
+    Wave,
+)
 from sampletones_tools.player.graphics.layout.screen import TEXT_GROUP, ScreenLayout
 from sampletones_tools.player.graphics.sheet.groups import PatternTable, SheetGroups
 from sampletones_tools.player.graphics.sheet.sheet import TileSheet
-from sampletones_tools.player.graphics.shell.data import NOTE_NAME_CELLS, NOTES_PER_OCTAVE, ShellData, shell_data
+from sampletones_tools.player.graphics.shell.data import (
+    NOTE_NAME_CELLS,
+    NOTES_PER_OCTAVE,
+    PACKED_SCREEN_LIMIT,
+    ShellData,
+    shell_data,
+)
 from sampletones_tools.player.graphics.shell.packing import unpack
 from tests.suite.base import BaseTestSuite
 
 WAVE_TABLE_SIZE: Final[int] = 4
-NAME_CELLS: Final[int] = 3
+DECIMAL_DIGITS: Final[int] = 10
+LAST_NOISE_PERIOD: Final[int] = NOISE_PERIOD_COUNT - 1
 
 
 @pytest.fixture(name="data", scope="module")
@@ -32,6 +46,21 @@ def text_tiles(sheet: TileSheet, text: str) -> bytes:
 def wave_tiles(sheet: TileSheet, wave: Wave) -> bytes:
     names = (*wave.top, *wave.bottom)
     return bytes(sheet.tile(PatternTable.BACKGROUND, name.group, name.member) for name in names)
+
+
+def wave_at(data: ShellData, offset: str) -> bytes:
+    start = data.equates[offset]
+    return data.tables["deck_waves"][start : start + WAVE_TABLE_SIZE]
+
+
+def noise_name_tiles(data: ShellData, period: int) -> bytes:
+    """The tiles the shell names a noise period with: a hex digit counted down from the last period, then the suffix."""
+    digit = LAST_NOISE_PERIOD - period
+    first = data.equates["OCTAVE_ZERO_TILE"] + digit
+    if digit >= DECIMAL_DIGITS:
+        first = data.equates["HEX_TEN_TILE"] + digit - DECIMAL_DIGITS
+
+    return bytes((first, data.equates["NOISE_SUFFIX_TILE"], data.equates["NOISE_SUFFIX_END_TILE"]))
 
 
 def regrouped(sheet: TileSheet, group: str, first: int) -> TileSheet:
@@ -53,6 +82,9 @@ class TestTheShellData(BaseTestSuite):
 
         assert unpack(data.tables["deck_screen"]) == expected
 
+    def test_the_packed_screen_fits_the_one_byte_index_the_shell_reads_it_by(self, data: ShellData) -> None:
+        assert len(data.tables["deck_screen"]) <= PACKED_SCREEN_LIMIT
+
     def test_the_labels_are_the_sprites_the_deck_rests_with(self, data: ShellData, shipped_deck: Deck) -> None:
         labels = data.tables["deck_labels"]
         start = MARKER_SLOTS * SPRITE_BYTES
@@ -71,30 +103,37 @@ class TestTheShellData(BaseTestSuite):
             shown = names[note : note + NOTE_NAME_CELLS] + bytes([zero + pitch // NOTES_PER_OCTAVE])
             assert shown == text_tiles(shipped_sheet, pitch_name(pitch))
 
-    def test_every_noise_period_is_named(self, data: ShellData, shipped_sheet: TileSheet) -> None:
-        names = data.tables["noise_names"]
-
+    def test_every_noise_period_is_named_by_the_shell_s_rule(self, data: ShellData, shipped_sheet: TileSheet) -> None:
         for period in range(NOISE_PERIOD_COUNT):
-            shown = names[period * NAME_CELLS : (period + 1) * NAME_CELLS]
-            assert shown == text_tiles(shipped_sheet, noise_name(period))
+            assert noise_name_tiles(data, period) == text_tiles(shipped_sheet, noise_name(period))
 
     def test_every_duty_draws_the_deck_s_wave(self, data: ShellData, shipped_sheet: TileSheet) -> None:
-        waves = data.tables["pulse_waves"]
+        waves = data.tables["deck_waves"]
+        start = data.equates["PULSE_WAVES_OFFSET"]
 
         for duty in range(DUTY_COUNT):
-            shown = waves[duty * WAVE_TABLE_SIZE : (duty + 1) * WAVE_TABLE_SIZE]
+            shown = waves[start + duty * WAVE_TABLE_SIZE : start + (duty + 1) * WAVE_TABLE_SIZE]
             assert shown == wave_tiles(shipped_sheet, PULSE_WAVES[duty])
 
-    def test_the_noise_waves_follow_the_sequence_then_the_shimmer(
+    def test_every_noise_wave_stands_where_its_length_and_its_shimmer_point(
         self, data: ShellData, shipped_sheet: TileSheet
     ) -> None:
-        waves = data.tables["noise_waves"]
-        expected = b"".join(wave_tiles(shipped_sheet, wave) for short in (False, True) for wave in NOISE_WAVES[short])
-
-        assert waves == expected
+        waves = data.tables["deck_waves"]
+        for short_index, short in enumerate((False, True)):
+            for shimmer_index, wave in enumerate(NOISE_WAVES[short]):
+                start = (
+                    data.equates["NOISE_WAVES_OFFSET"]
+                    + short_index * data.equates["NOISE_SHORT_OFFSET"]
+                    + shimmer_index * data.equates["NOISE_SHIMMER_OFFSET"]
+                )
+                assert waves[start : start + WAVE_TABLE_SIZE] == wave_tiles(shipped_sheet, wave)
 
     def test_the_triangle_draws_the_deck_s_wave(self, data: ShellData, shipped_sheet: TileSheet) -> None:
-        assert data.tables["triangle_wave"] == wave_tiles(shipped_sheet, TRIANGLE_WAVE)
+        assert wave_at(data, "TRIANGLE_WAVE_OFFSET") == wave_tiles(shipped_sheet, TRIANGLE_WAVE)
+
+    def test_the_rests_draw_the_deck_s_rest_waves(self, data: ShellData, shipped_sheet: TileSheet) -> None:
+        assert wave_at(data, "PULSE_REST_OFFSET") == wave_tiles(shipped_sheet, PULSE_REST)
+        assert wave_at(data, "OTHER_REST_OFFSET") == wave_tiles(shipped_sheet, OTHER_REST)
 
 
 class TestASheetTheShellCannotDraw(BaseTestSuite):

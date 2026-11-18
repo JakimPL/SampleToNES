@@ -33,7 +33,7 @@ $FFFA            the vectors: frame interrupt, power-on, interrupt
 ```
 
 The driver and the song stand where an NSF puts them, so the two files differ only around them. The song
-has the room between the driver and the shell, about 30 KB.
+has the room between the driver and the shell, about 30.6 KB.
 
 The shell is assembled once with the driver sources and committed as `shell.bin`, so writing a cartridge
 needs no assembler. It reads the driver's memory by name, which keeps its readings tied to the driver it
@@ -52,9 +52,9 @@ little-endian; times are four digits, minutes then seconds, each 0-9.
 | `0x16` | 20 | artist |
 | `0x2A` | 28 | copyright |
 | `0x46` | 4 | total time |
-| `0x4A` | 3 | total frames: the frames the song takes to run past its end the first time |
+| `0x4A` | 3 | total frames, negated: the frames the song takes to run past its end the first time |
 | `0x4D` | 3 | progress step: pixels the progress bar grows by a frame, in 1/65536ths |
-| `0x50` | 3 | loop frames: the frames from the loop tick to the end, or 0 for a song that ends |
+| `0x50` | 3 | loop frames, negated: the frames from the loop tick to the end, or 0 for a song that ends |
 | `0x53` | 4 | loop time |
 | `0x57` | 2 | loop second: the part of a second the clock holds at the loop, in 1/65536ths |
 | `0x59` | 3 | loop progress: where the progress bar stands at the loop, in 1/65536ths of a pixel |
@@ -63,8 +63,9 @@ The text is plain ASCII, the codes the screen's font draws at. A letter outside 
 base letter (`ż` as `z`, `ł` as `l`), and any other character as `?`.
 
 The shell counts the song's time itself, once a frame. It adds 1,090/65,536 of a second (one NTSC frame)
-to its clock and the progress step to the bar, and counts the total frames down. When they run out, a
-song that repeats takes up the loop's time, progress and frames, and one that ends holds the clock.
+to its clock and the progress step to the bar, and counts the frames up. A count of frames is stored as
+16,777,216 less the frames, so it reaches zero once they have passed. When it does, a song that repeats
+takes up the loop's time, progress and frames, and one that ends holds the clock.
 Python works out every figure with the same arithmetic, so the total time is the time the frames add up
 to.
 
@@ -73,12 +74,12 @@ to.
 Each frame interrupt does the same work in the same number of cycles:
 
 1. Sends the 64 sprites to the video chip.
-2. Writes six runs of cells: the playing state and the time (7), the progress bar (25), and two channels
-   (18 and 4 cells each). The pulses are written on one frame and the triangle and the noise on the next.
+2. Writes six runs of cells: two channels (4 and 18 cells each), the progress bar (25), and the playing
+   state and the time (7). The pulses are written on one frame and the triangle and the noise on the next.
 3. Calls the driver's play routine, unless the song is paused, and moves the clock on.
 
-The last write to the video chip lands 1,934 cycles into the 2,273-cycle vertical blank. The driver is
-entered 1,935 or 1,936 cycles after the interrupt, the one cycle being the sprite transfer's alignment,
+The last write to the video chip lands 1,904 cycles into the 2,273-cycle vertical blank. The driver is
+entered 1,905 or 1,906 cycles after the interrupt, the one cycle being the sprite transfer's alignment,
 so the cartridge writes the sound registers as steadily as an NSF player.
 
 Between frames the shell reads the controller and composes the next frame's cells from the driver's
@@ -93,7 +94,7 @@ memory: each channel's level, duty, pitch index and noise period.
 
 ## F. Limits
 
-- The song has about 30 KB; a longer one is refused with the room it needed. A larger board with bank
+- The song has about 30.6 KB; a longer one is refused with the room it needed. A larger board with bank
   switching is a separate change to the driver and the song block.
 - The cartridge runs at the NTSC rate. A song at a rate that divides 60 or is a multiple of it moves on
   the same frames throughout and runs 0.16% fast ([the step](nsf.md#b1-the-header)); the clock on

@@ -4,12 +4,14 @@ import pytest
 
 from sampletones_player.information import ProgramInformation
 from sampletones_player.rom.clock import ProgramClock
-from sampletones_player.rom.program import SCREEN_TEXT, program_block, screen_line
+from sampletones_player.rom.program import SCREEN_TEXT, frame_count, program_block, screen_line
 from sampletones_player.specification.program import (
     ARTIST_COLUMNS,
     ARTIST_OFFSET,
     COPYRIGHT_COLUMNS,
     COPYRIGHT_OFFSET,
+    FRAME_COUNT_SIZE,
+    FRAME_COUNT_VALUES,
     LOOP_FRAMES_OFFSET,
     LOOP_TIME_OFFSET,
     PROGRAM_BLOCK_SIZE,
@@ -61,11 +63,12 @@ class TestTheProgramBlock(BaseTestSuite):
 
         assert field(program_block(SONG_ADDRESS, long, CLOCK), TITLE_OFFSET, TITLE_COLUMNS) == "x" * TITLE_COLUMNS
 
-    def test_the_counts_are_written_low_byte_first(self) -> None:
+    def test_the_counts_are_written_negated_low_byte_first(self) -> None:
+        """The shell counts a song's frames up to zero, so the block holds each count negated."""
         block = program_block(SONG_ADDRESS, INFORMATION, CLOCK)
 
-        assert block[TOTAL_FRAMES_OFFSET : TOTAL_FRAMES_OFFSET + 3] == bytes((0x45, 0x23, 0x01))
-        assert block[LOOP_FRAMES_OFFSET : LOOP_FRAMES_OFFSET + 3] == CLOCK.loop_frames.to_bytes(3, "little")
+        assert block[TOTAL_FRAMES_OFFSET : TOTAL_FRAMES_OFFSET + FRAME_COUNT_SIZE] == bytes((0xBB, 0xDC, 0xFE))
+        assert block[LOOP_FRAMES_OFFSET : LOOP_FRAMES_OFFSET + FRAME_COUNT_SIZE] == frame_count(CLOCK.loop_frames)
 
     def test_the_times_are_written_as_their_digits(self) -> None:
         block = program_block(SONG_ADDRESS, INFORMATION, CLOCK)
@@ -75,3 +78,17 @@ class TestTheProgramBlock(BaseTestSuite):
 
     def test_every_line_of_the_screen_folds(self) -> None:
         assert all(line.folded for line in (SCREEN_TEXT.title, SCREEN_TEXT.artist, SCREEN_TEXT.copyright))
+
+
+class TestAFrameCount(BaseTestSuite):
+    def test_counting_up_from_it_reaches_zero_after_the_frames(self) -> None:
+        stored = int.from_bytes(frame_count(CLOCK.total_frames), "little")
+
+        assert (stored + CLOCK.total_frames) % FRAME_COUNT_VALUES == 0
+
+    def test_no_frames_stay_zero_which_marks_a_song_that_ends(self) -> None:
+        assert frame_count(0) == bytes(FRAME_COUNT_SIZE)
+
+    def test_a_count_beyond_its_bytes_is_refused(self) -> None:
+        with pytest.raises(ValueError, match=str(FRAME_COUNT_VALUES - 1)):
+            frame_count(FRAME_COUNT_VALUES)

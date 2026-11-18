@@ -3,12 +3,30 @@ from typing import Final
 
 import pytest
 
-from sampletones_tools.player.graphics.shell.packing import END_MARK, LONGEST_RUN, pack, unpack
+from sampletones_tools.player.graphics.shell.packing import (
+    COPY_FLAG,
+    END_MARK,
+    LENGTH_SHIFT,
+    LONGEST_TOKEN,
+    WINDOW_SIZE,
+    pack,
+    unpack,
+)
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
 VALUE: Final[int] = 0x20
 OTHER: Final[int] = 0x41
+PATTERN: Final[bytes] = bytes((0xE0, 0xE1, 0xE2))
+DISTINCT: Final[bytes] = bytes(range(1, 201))
+
+
+def literal_header(length: int) -> int:
+    return length << LENGTH_SHIFT
+
+
+def copy_header(length: int) -> int:
+    return (length << LENGTH_SHIFT) | COPY_FLAG
 
 
 class TestPackedData(BaseTestSuite):
@@ -19,10 +37,14 @@ class TestPackedData(BaseTestSuite):
     test_cases = (
         TestCase(data=b"", label="no data"),
         TestCase(data=bytes([VALUE]), label="one byte"),
-        TestCase(data=bytes([VALUE]) * 3, label="the shortest run"),
-        TestCase(data=bytes([VALUE]) * (2 * LONGEST_RUN + 5), label="a run longer than one header holds"),
-        TestCase(data=bytes(range(LONGEST_RUN)) * 2 + bytes([OTHER]), label="literals longer than one header holds"),
+        TestCase(data=bytes([VALUE]) * 3, label="a short run"),
+        TestCase(data=bytes([VALUE]) * (2 * LONGEST_TOKEN + 5), label="a run longer than one header holds"),
+        TestCase(data=DISTINCT + bytes([OTHER]), label="literals longer than one header holds"),
         TestCase(data=bytes([VALUE, VALUE, OTHER, OTHER, OTHER, VALUE]), label="a pair, a run and a single byte"),
+        TestCase(
+            data=PATTERN + DISTINCT + DISTINCT[:WINDOW_SIZE] + PATTERN, label="a repeat farther back than the window"
+        ),
+        TestCase(data=bytes(range(WINDOW_SIZE)) * 3, label="a stretch the window repeats whole"),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
@@ -33,19 +55,24 @@ class TestPackedData(BaseTestSuite):
     def test_the_packed_data_closes_with_the_end_mark(self, test_case: TestCase) -> None:
         assert pack(test_case.data)[-1] == END_MARK
 
-    def test_a_run_is_a_header_and_its_byte(self) -> None:
-        assert pack(bytes([VALUE]) * 3) == bytes((254, VALUE, END_MARK))
+    def test_a_run_is_its_byte_and_a_copy_from_one_byte_back(self) -> None:
+        packed = pack(bytes([VALUE]) * (LONGEST_TOKEN + 1))
 
-    def test_the_longest_run_takes_the_lowest_repeat_header(self) -> None:
-        assert pack(bytes([VALUE]) * LONGEST_RUN) == bytes((129, VALUE, END_MARK))
+        assert packed == bytes((literal_header(1), VALUE, copy_header(LONGEST_TOKEN), 0, END_MARK))
 
-    def test_a_pair_stays_among_the_literals(self) -> None:
-        assert pack(bytes([VALUE, VALUE])) == bytes((1, VALUE, VALUE, END_MARK))
+    def test_a_repeat_is_copied_from_where_the_window_holds_it(self) -> None:
+        packed = pack(PATTERN * 2)
 
-    def test_no_header_takes_the_end_mark_as_a_count(self) -> None:
-        packed = pack(bytes(range(LONGEST_RUN)) * 3)
+        assert packed == bytes((literal_header(len(PATTERN)), *PATTERN, copy_header(len(PATTERN)), 0, END_MARK))
 
-        assert packed.count(END_MARK) == 1 + bytes(range(LONGEST_RUN)).count(END_MARK) * 3
+    def test_a_copy_names_the_window_place_written_that_many_bytes_before(self) -> None:
+        packed = pack(DISTINCT + PATTERN + PATTERN)
+        start = len(DISTINCT)
+
+        assert packed[-3:] == bytes((copy_header(len(PATTERN)), start % WINDOW_SIZE, END_MARK))
+
+    def test_literals_longer_than_a_header_states_take_one_header_more(self) -> None:
+        assert len(pack(DISTINCT)) == len(DISTINCT) + 2 + 1
 
     def test_data_without_its_end_mark_is_refused(self) -> None:
         with pytest.raises(ValueError, match="end mark"):

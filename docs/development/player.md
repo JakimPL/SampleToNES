@@ -171,6 +171,11 @@ count down and returns, which makes the common tick cheaper than reaching a new 
 Everything that keeps either in range is settled in Python, so what crosses into assembly
 stays a byte moved and a carry followed.
 
+**The driver starts from cleared memory.** An NSF player clears the console's memory before it
+calls the initialization, and the cartridge's shell clears it at power-on and before SELECT starts
+the song over. The clock, the triangle's last pitch and every plane field the seeding leaves to
+the tokens start at the zero that memory holds.
+
 ## How it is verified
 
 The chain runs from the register values upward, and each link is held on its own: the codec against its
@@ -218,8 +223,10 @@ where each reading is written. `Deck` states in Python what the screen shows for
 rules the 6502 follows: which tiles a level lights, which shape a duty draws, where a pitch stands on the
 keyboard. `sampletones tiles` writes `patterns.bin` and the shell's data, `deck.inc` with the cells and
 tiles the shell writes and `deck.s` with its tables, and checks on the way that the deck draws by rules
-the shell can follow. `sampletones tiles --preview DIR` renders the screen and the tile sheet as pictures.
-Editing the look means editing that data and running `sampletones tiles`, then `sampletones driver`.
+the shell can follow. The resting screen is packed as stretches of tiles and copies of the 256 tiles
+before them, which the shell unpacks through a page of memory holding those tiles.
+`sampletones tiles --preview DIR` renders the screen and the tile sheet as pictures. Editing the look
+means editing that data and running `sampletones tiles`, then `sampletones driver`.
 
 The cartridge is held to the same chain. The ROM console in `sampletones_tools/console/rom/` boots it from
 its reset vector with a register-level video chip and controller: its sound writes equal

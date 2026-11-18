@@ -2,7 +2,6 @@
 
 .include "song.inc"
 
-.export clock_reset
 .export clock_advance
 .export clock_step
 
@@ -16,18 +15,10 @@ finished:       .res 1
 
 .segment "CODE"
 
-clock_reset:
-    lda #$00
-    sta accumulator
-    sta accumulator + 1
-    sta current_tick
-    sta current_tick + 1
-    sta finished
-    rts
-
 ; Answers with the ticks this play call advances the streams by, which the accumulator reads off
 ; the top of a step added once a call. A song standing still between its own ticks, and one that
-; has ended, both answer with none.
+; has ended, both answer with none: an ended song holds one in `finished`, which a shift turns
+; into none.
 clock_advance:
     lda finished
     bne @none
@@ -43,7 +34,7 @@ clock_advance:
     adc #$00
     rts
 @none:
-    lda #$00
+    lsr a
     rts
 
 ; Moves the clock on by a single tick and answers what the channels are to do with it: play it
@@ -54,23 +45,17 @@ clock_step:
     bne @reached
     inc current_tick + 1
 @reached:
-    lda current_tick + 1
-    cmp song_data + TOTAL_TICKS_OFFSET + 1
-    bcc @plays
-    bne @ended
     lda current_tick
     cmp song_data + TOTAL_TICKS_OFFSET
+    lda current_tick + 1
+    sbc song_data + TOTAL_TICKS_OFFSET + 1
     bcc @plays
-@ended:
     lda song_data + LOOP_TICK_OFFSET
+    and song_data + LOOP_TICK_OFFSET + 1
     cmp #<NO_LOOP
     bne @repeats
-    lda song_data + LOOP_TICK_OFFSET + 1
-    cmp #>NO_LOOP
-    bne @repeats
 
-    lda #$01
-    sta finished
+    inc finished
     lda #TICK_FINISHED
     rts
 @repeats:
@@ -83,3 +68,5 @@ clock_step:
 @plays:
     lda #TICK_PLAYS
     rts
+
+.assert <NO_LOOP = >NO_LOOP, error, "a song that ends is told apart by both its loop bytes reading the same"

@@ -1,6 +1,6 @@
 from typing import Final
 
-from sampletones_player.specification.binary import WORD_SIZE
+from sampletones_player.specification.binary import BYTE_VALUES, WORD_SIZE
 from sampletones_player.specification.clock import FIXED_POINT_SCALE, NTSC_FRAME_RATE
 
 TITLE_COLUMNS: Final[int] = 20
@@ -10,6 +10,7 @@ CLOCK_DIGITS: Final[int] = 4
 FRAME_COUNT_SIZE: Final[int] = 3
 SECOND_FRACTION_SIZE: Final[int] = 2
 PROGRESS_SIZE: Final[int] = 3
+FRAME_COUNT_VALUES: Final[int] = BYTE_VALUES**FRAME_COUNT_SIZE
 
 LINKED_SONG_OFFSET: Final[int] = 0
 TITLE_OFFSET: Final[int] = LINKED_SONG_OFFSET + WORD_SIZE
