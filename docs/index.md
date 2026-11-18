@@ -2,8 +2,8 @@
 
 _SampleToNES_ rebuilds an audio sample from the sound channels of the NES's 2A03 chip: two pulse
 waves, a triangle and noise. You can arrange the results into a song. You can export them to
-[FamiTracker](glossary.md#famitracker), to [Bitphase](glossary.md#bitphase), or as an `.nsf` program
-the NES plays.
+[FamiTracker](glossary.md#famitracker), to [Bitphase](glossary.md#bitphase), as an `.nsf` program the
+NES plays, or as a `.nes` cartridge that plays the song on a player screen.
 
 The sections below are grouped by what you want to do. The guide needs no prior knowledge. The concepts
 and formats sections assume you have used the application. The API and development sections are for
@@ -53,6 +53,7 @@ The [**formats**](formats/) section documents the files _SampleToNES_ reads and 
 - [FamiTracker export](formats/famitracker.md) — the `.fti` instrument and `.ftm` module formats.
 - [Bitphase export](formats/bitphase.md) — the `.btp` document and `.json` instrument preset formats.
 - [NSF export](formats/nsf.md) — the `.nsf` program the console plays, and the song block inside it.
+- [NES ROM export](formats/rom.md) — the `.nes` cartridge: the driver and the song, the player screen and its controls.
 - [Configuration file](formats/configuration.md) — the `config.json` structure.
 
 ## Programming with SampleToNES

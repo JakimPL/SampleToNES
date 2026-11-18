@@ -237,6 +237,7 @@ class TestInstrumentsExportMenu:
             "FamiTracker instruments...",
             "Bitphase presets...",
             "NSF program...",
+            "NES ROM...",
         ]
 
     def test_the_submenu_waits_for_a_loaded_reconstruction(

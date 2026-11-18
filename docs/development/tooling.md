@@ -86,8 +86,8 @@ each one reaches files the same way in all of them:
 - *Outputs* go where `--output` (`-o`) names. A measurement given no `-o` writes a timestamped directory
   under the user's Documents. `codec report` and the sample emitters always take `-o`.
 - *The repository* is reached through the checkout guard. A command that reads or writes the repository,
-  or needs a development dependency, runs from a checkout. `driver` rewrites the files the package ships
-  from a checkout, and a measurement runs anywhere. What exists only to make the repository's own content
+  or needs a development dependency, runs from a checkout. `driver` and `tiles` rewrite the files the
+  package ships from a checkout, and a measurement runs anywhere. What exists only to make the repository's own content
   is a checkout unit rather than a command ([assets](assets.md)).
 - *Package data* is read from the package it ships in, which holds in a checkout, in the wheel and in the
   bundle.

@@ -10,6 +10,7 @@ bindings:
   ExportProjectFamiTracker: {combination: "Ctrl+T"}
   ExportProjectBitphase: {combination: "Ctrl+B"}
   ExportProjectNSF: {combination: ~}
+  ExportProjectROM: {combination: ~}
   RenderSong: {combination: "Ctrl+Shift+E"}
   CloseProject: {combination: "Ctrl+W"}
   Exit: {combination: "Alt+F4"}
@@ -31,6 +32,7 @@ bindings:
   ExportInstrumentsFamiTracker: {combination: "Ctrl+I"}
   ExportInstrumentsBitphasePreset: {combination: ~}
   ExportInstrumentsNSF: {combination: ~}
+  ExportInstrumentsROM: {combination: ~}
   AddReconstructionToSequencer: {combination: ~}
   OpenReconstructionInExplorer: {combination: ~}
   LocateOriginalAudio: {combination: ~}

@@ -1,7 +1,8 @@
 # The console player
 
-This document governs `sampletones_player`: the 6502 driver an exported `.nsf` carries, the codec that fits a
-song into the console's program area, and the chain that holds both to what the application plays. Read it
+This document governs `sampletones_player`: the 6502 driver an exported `.nsf` or `.nes` carries, the codec
+that fits a song into the console's program area, the cartridge's shell and screen, and the chain that holds
+them to what the application plays. Read it
 before changing the assembly under `sampletones_tools/player/assembly/`, anything under `compression/`, or
 the way a song is built in `builder.py`. The byte layout the two sides meet on is
 [the NSF format](../formats/nsf.md). [Package layers](packages.md) says where the package sits among the
@@ -195,4 +196,32 @@ and runtime in the bytes the package distributes. A build also holds the linker'
 addresses the exporter states without one, so the committed image and the header describing it stay in
 step.
 
+`sampletones driver` then builds the shell, `sampletones_player/shell/binary/shell.bin`, from the driver
+sources and `shell.s` with a second configuration, `rom.cfg`. The shell ends at the top of the address
+space, so its start follows from its length, and the link runs twice: once to measure it and once to place
+it. The build holds the linked program's driver bytes to `driver.bin` and its fill to `$FF`, so the shell
+can read the driver's memory by name while the driver stays byte for byte the one an NSF carries.
+
 Installing cc65 is covered in [dependencies](release/dependencies.md).
+
+## The cartridge
+
+A `.nes` carries the driver and the song where an NSF does, and the shell closes the program area
+([the ROM format](../formats/rom.md)). The shell starts the console from cleared memory, draws the player
+screen, and once a frame sends the sprites, writes a fixed list of cells and calls the driver, so the driver
+is entered at the same cycle of every frame. Everything the screen shows is already in the driver's memory:
+each channel's level, duty, pitch index and noise period.
+
+The screen is data under `sampletones_tools/player/graphics/`: an original 8x8 font, named drawings, a tile
+sheet placing them in the two pattern tables, and a layout stating the palettes, the fixed elements and
+where each reading is written. `Deck` states in Python what the screen shows for a moment of the song, the
+rules the 6502 follows: which tiles a level lights, which shape a duty draws, where a pitch stands on the
+keyboard. `sampletones tiles` writes `patterns.bin` and the shell's data, `deck.inc` with the cells and
+tiles the shell writes and `deck.s` with its tables, and checks on the way that the deck draws by rules
+the shell can follow. `sampletones tiles --preview DIR` renders the screen and the tile sheet as pictures.
+Editing the look means editing that data and running `sampletones tiles`, then `sampletones driver`.
+
+The cartridge is held to the same chain. The ROM console in `sampletones_tools/console/rom/` boots it from
+its reset vector with a register-level video chip and controller: its sound writes equal
+`RegisterTrace.from_song` from any power-on memory, every write to the video chip lands inside vertical
+blank, and a paused screen equals the `Deck` picture of the moment it paused at.

@@ -75,6 +75,17 @@ dimension the import starts carrying.
 
 ### Technical
 
+* A cartridge for songs over 30 KB. A board with bank switching (UNROM or MMC1) needs the driver and the
+  song block to read across banks.
+* Channel mute on the cartridge's controller, about 180 bytes of shell.
+* Several songs on one cartridge, with a song list on the screen.
+* A scrolling piano roll on the cartridge's screen. It needs a raster split and a second pattern table.
+* Running the cartridge on a real console, and on Mesen beside FCEUX for an accuracy check. The video
+  model under `sampletones_tools/console/rom/` leaves out the odd-frame dot skip, the sprite-zero and
+  overflow flags and PAL timing.
+* Renaming the program export setup's `nsf` names (`NSFExportLogic`, `ui/panels/dialogs/nsf.py`, the
+  `settings.nsf` keys) now that the setup serves the cartridge as well.
+
 * Screen scenarios on Windows and macOS. They run on Linux alone, and whether DearPyGui opens its window on
   GitHub's Windows and macOS runners is unverified.
 * An upgrade path for the configuration and the session state. A file an older build left behind is read

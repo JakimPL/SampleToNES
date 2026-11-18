@@ -28,11 +28,12 @@ tab, or right-click in the **Filesystem** browser.
 | `.json` | [Bitphase instrument preset](../formats/bitphase.md) |
 | `.btp` | [Bitphase project](../formats/bitphase.md) |
 | `.nsf` | [NSF program](../formats/nsf.md) |
+| `.nes` | [NES ROM](../formats/rom.md) |
 
 The first three are your own work, saved in the folders above. The rest are exports, and the save
 dialog asks where each one goes. [FamiTracker](../formats/famitracker.md) opens `.fti` and `.ftm`,
-[Bitphase](../formats/bitphase.md) opens `.json` and `.btp`, and an `.nsf` plays in an NSF player or
-on a NES.
+[Bitphase](../formats/bitphase.md) opens `.json` and `.btp`, an `.nsf` plays in an NSF player or
+on a NES, and a `.nes` runs in an emulator or from a flash cartridge.
 
 ## Naming exported files
 

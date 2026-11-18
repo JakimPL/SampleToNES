@@ -111,7 +111,9 @@ a song exist independently of the file they are written into or the driver that 
 - `builder.py` is the one place a song is made, whatever asked for it.
 - `block/` writes a song as the bytes the driver reads, wherever a file places them.
 - `information.py` holds the text a program is listed under, and the room a file gives each line of it.
-- `nsf/`, `driver/` and `export/` sit at the top, where a song becomes the file the console loads. `export/`
+- `driver/` and `shell/` hold the committed images: the driver every file carries, and the cartridge's
+  shell with the tiles of its screen.
+- `nsf/`, `rom/` and `export/` sit at the top, where a song becomes the file the console loads. `export/`
   writes a program through a container, the one part that knows the kind of file.
 
 [The console player](player.md) says what the player is for and what holds it correct.
@@ -123,7 +125,10 @@ neither. The assembler builds the committed `driver.bin` ([the console player](p
 The tests rebuild the sources wherever cc65 is installed and hold the committed image to them.
 `RegisterTrace` says what the driver is expected to write, call by call, and the emulator tests hold the
 assembled driver to it. They run it on the console in `sampletones_tools/console/`, which plays any `.nsf`
-the way an NSF player does, loaded whole or in switched banks. Exporting reads the assembled binary. The
+the way an NSF player does, loaded whole or in switched banks, and boots a `.nes` from its reset vector
+with a register-level video chip and controller. The player screen is data in
+`sampletones_tools/player/graphics/`: the tile sheet, the layout and the rules the deck draws by, from
+which `sampletones tiles` writes the tiles and the shell's tables. Exporting reads the assembled binary. The
 wheel carries the assembly sources beside it, inside the tools package.
 [`dependencies.md`](release/dependencies.md) describes the toolchain the build needs.
 

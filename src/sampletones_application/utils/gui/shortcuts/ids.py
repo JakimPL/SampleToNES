@@ -50,6 +50,7 @@ class ShortcutId(Enum):
     EXPORT_PROJECT_FAMITRACKER = ("ExportProjectFamiTracker", ShortcutCategory.APPLICATION)
     EXPORT_PROJECT_BITPHASE = ("ExportProjectBitphase", ShortcutCategory.APPLICATION)
     EXPORT_PROJECT_NSF = ("ExportProjectNSF", ShortcutCategory.APPLICATION)
+    EXPORT_PROJECT_ROM = ("ExportProjectROM", ShortcutCategory.APPLICATION)
     RENDER_SONG = ("RenderSong", ShortcutCategory.APPLICATION)
     CLOSE_PROJECT = ("CloseProject", ShortcutCategory.APPLICATION)
     EXIT = ("Exit", ShortcutCategory.APPLICATION)
@@ -67,6 +68,7 @@ class ShortcutId(Enum):
     EXPORT_INSTRUMENTS_FAMITRACKER = ("ExportInstrumentsFamiTracker", ShortcutCategory.APPLICATION)
     EXPORT_INSTRUMENTS_BITPHASE_PRESET = ("ExportInstrumentsBitphasePreset", ShortcutCategory.APPLICATION)
     EXPORT_INSTRUMENTS_NSF = ("ExportInstrumentsNSF", ShortcutCategory.APPLICATION)
+    EXPORT_INSTRUMENTS_ROM = ("ExportInstrumentsROM", ShortcutCategory.APPLICATION)
     NEW_INSTRUMENT = ("NewInstrument", ShortcutCategory.APPLICATION)
     ADD_SAMPLE_FROM_FILE = ("AddSampleFromFile", ShortcutCategory.APPLICATION)
     IMPORT_INSTRUMENT = ("ImportInstrument", ShortcutCategory.APPLICATION)
@@ -234,12 +236,14 @@ PROJECT_EXPORT_SHORTCUT_IDS: Final[Dict[ExportFormat, ShortcutId]] = {
     ExportFormat.FAMITRACKER: ShortcutId.EXPORT_PROJECT_FAMITRACKER,
     ExportFormat.BITPHASE: ShortcutId.EXPORT_PROJECT_BITPHASE,
     ExportFormat.NSF: ShortcutId.EXPORT_PROJECT_NSF,
+    ExportFormat.ROM: ShortcutId.EXPORT_PROJECT_ROM,
 }
 
 SAMPLE_EXPORT_SHORTCUT_IDS: Final[Dict[ExportFormat, ShortcutId]] = {
     ExportFormat.FAMITRACKER: ShortcutId.EXPORT_INSTRUMENTS_FAMITRACKER,
     ExportFormat.BITPHASE_PRESET: ShortcutId.EXPORT_INSTRUMENTS_BITPHASE_PRESET,
     ExportFormat.NSF: ShortcutId.EXPORT_INSTRUMENTS_NSF,
+    ExportFormat.ROM: ShortcutId.EXPORT_INSTRUMENTS_ROM,
 }
 
 FAMILY_SHORTCUT_IDS: Final[FrozenSet[ShortcutId]] = frozenset(

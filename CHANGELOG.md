@@ -4,7 +4,7 @@
 
 * Added MIDI keyboard support.
 * [?] Added Polish application language.
-* [?] Added NES binary player.
+* Added NES ROM export: a cartridge that plays the song and shows it on a player screen.
 
 ## v0.3.2 [2026-10-13]
 

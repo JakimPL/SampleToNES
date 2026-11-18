@@ -117,6 +117,8 @@ You export a reconstruction from the **Reconstruction** menu:
 - **Export instruments ▸ NSF program...** opens the **Export NSF program** window and writes a single
   `.nsf` file that plays the whole reconstruction on a NES. The window is described [in the
   sequencer guide](sequencer.md#exporting-the-song).
+- **Export instruments ▸ NES ROM...** writes the reconstruction as a `.nes` cartridge with a player
+  screen, through the same window.
 - **Export to WAV...** renders the audio using the channel and recording checkboxes you have set.
 
 <div align="center">
