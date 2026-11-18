@@ -28,7 +28,6 @@ timer_low_table:        .res 2
 timer_high_table:       .res 2
 bend:                   .res 1
 bend_sign:              .res 1
-triangle_pitch:         .res 1
 bend_planes:            .res 1
 plane_state:            .res PLANE_STATE_BYTES
 timer_high_shadows:     .res TRIANGLE_REGISTERS + 1
@@ -45,6 +44,7 @@ timer_high_shadows:     .res TRIANGLE_REGISTERS + 1
 .assert PITCH_COUNT <= BEND_FLAG, error, "every pitch index fits below the flag"
 .assert SILENT_PITCH_INDEX >= PITCH_COUNT, error, "the index standing for silence sounds no pitch"
 .assert SILENT_PITCH_INDEX < BEND_FLAG, error, "the index standing for silence bends nowhere"
+.assert (TRIANGLE_COUNTER | TRIANGLE_SOUNDING) <> 0, error, "a sounding triangle's counter clears the zero flag"
 .assert COUNT_STEP = 1 << COUNT_SHIFT, error, "a repeat count steps from the bit it is shifted down by"
 .assert PLANE_STATE_BYTES + PLANE_PHRASE < $100, error, "a plane's phrase pointer is reached in page zero"
 
@@ -321,7 +321,8 @@ plane_advance:
 
 ; Writes what every plane last played to the registers its channel owns. The triangle names its
 ; silence in the pitch its value plane carries: the index standing above every pitch the table
-; holds silences the linear counter and leaves the divider where the channel last sounded.
+; holds writes the silenced linear counter alone, so the divider stays where the channel last
+; sounded. The comparison's zero flag survives the counter's store and tells the rest apart.
 channels_write:
     ldx #PULSE1_REGISTERS
     ldy #PULSE1_CONTROL_PLANE
@@ -334,16 +335,16 @@ channels_write:
     ldy #TRIANGLE_COUNTER | TRIANGLE_SILENT
     cmp #SILENT_PITCH_INDEX
     beq @counter
-    sta triangle_pitch
     ldy #TRIANGLE_COUNTER | TRIANGLE_SOUNDING
 @counter:
     sty CHANNEL_CONTROL + TRIANGLE_REGISTERS
-    lda plane_state + TRIANGLE_BEND_PLANE + PLANE_VALUE
-    sta bend
+    beq @noise
+    ldy plane_state + TRIANGLE_BEND_PLANE + PLANE_VALUE
+    sty bend
     ldx #TRIANGLE_REGISTERS
-    lda triangle_pitch
     jsr write_timer
 
+@noise:
     lda plane_state + NOISE_CONTROL_PLANE + PLANE_VALUE
     and #NOISE_CONTROL_MASK
     ora #NOISE_CONTROL_FIXED

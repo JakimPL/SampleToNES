@@ -23,6 +23,7 @@ from sampletones_player.specification.registers import (
     REGISTERS_WRITTEN_ON_CHANGE,
     SILENCED_REGISTER,
     SWEEP_DISABLED,
+    TRIANGLE_LINEAR_COUNTER,
     TRIANGLE_TIMER_HIGH,
 )
 from sampletones_tools.player.trace.trace import RegisterTrace, channel_writes, setup_writes
@@ -37,6 +38,8 @@ from tests.suite.player import (
     player_song,
     pulse_tick,
     resting_streams,
+    triangle_streams,
+    triangle_tick,
 )
 
 NTSC_FREQUENCY: Final[int] = 60
@@ -46,6 +49,8 @@ WRITES_PER_TICK: Final[int] = 11
 SOUNDING: Final = pulse_tick(PLAYER_FULL_VOLUME, 0, PLAYER_REFERENCE_TIMER)
 RESTING: Final = pulse_tick(PLAYER_SILENT_VOLUME, 0, PLAYER_REFERENCE_TIMER)
 OCTAVE_UP: Final = pulse_tick(PLAYER_FULL_VOLUME, 0, PLAYER_OCTAVE_UP_TIMER)
+TRIANGLE_SOUNDING: Final = triangle_tick(True, PLAYER_REFERENCE_TIMER)
+TRIANGLE_RESTING: Final = triangle_tick(False, PLAYER_REFERENCE_TIMER)
 
 
 def call_onto(song: Song, tick: int) -> int:
@@ -60,7 +65,9 @@ def addresses(writes: Tuple[RegisterWrite, ...]) -> Tuple[int, ...]:
 class TestInitialization:
     """The init routine leaves a silent console enabled and sounding the song's first tick."""
 
-    SONG: Final = player_song(resting_streams((SOUNDING, RESTING)), NTSC_FREQUENCY, loop_tick=None)
+    SONG: Final = player_song(
+        triangle_streams((SOUNDING, RESTING), (TRIANGLE_SOUNDING,)), NTSC_FREQUENCY, loop_tick=None
+    )
 
     @property
     def initialization(self) -> Tuple[RegisterWrite, ...]:
@@ -108,6 +115,19 @@ class TestInitialization:
         first_tick = self.initialization[-WRITES_PER_TICK:]
         assert REGISTERS_WRITTEN_ON_CHANGE.issubset(set(addresses(first_tick)))
 
+    def test_a_triangle_resting_at_the_start_loads_its_counter_on_the_tick_it_first_sounds(self) -> None:
+        song = player_song(
+            triangle_streams((SOUNDING, SOUNDING), (TRIANGLE_RESTING, TRIANGLE_SOUNDING)),
+            NTSC_FREQUENCY,
+            loop_tick=None,
+        )
+        call = call_onto(song, 1)
+        trace = RegisterTrace.from_song(song, play_calls=call + 1)
+        enabled = trace.initialization.index(RegisterWrite(APU_STATUS, CHANNELS_ENABLED))
+
+        assert TRIANGLE_TIMER_HIGH not in addresses(trace.initialization[enabled:])
+        assert TRIANGLE_TIMER_HIGH in addresses(trace.play_calls[call])
+
 
 class TestTickWrites:
     """The writes the init routine opens with and the writes one tick's channels make."""
@@ -119,8 +139,16 @@ class TestTickWrites:
 
         assert initialization[: len(setup_writes())] == setup_writes()
 
-    def test_a_tick_writes_every_register_each_channel_owns_in_channel_order(self) -> None:
+    def test_a_resting_triangle_writes_its_silenced_counter_alone(self) -> None:
         streams = resting_streams((SOUNDING,))
+
+        writes = channel_writes(streams.at(0))
+
+        triangle = [write for write in writes if write.address in CHANNEL_REGISTER_ADDRESSES[ChannelName.TRIANGLE]]
+        assert triangle == [RegisterWrite(TRIANGLE_LINEAR_COUNTER, TRIANGLE_RESTING.linear_counter)]
+
+    def test_a_tick_writes_every_register_each_channel_owns_in_channel_order(self) -> None:
+        streams = triangle_streams((SOUNDING,), (TRIANGLE_SOUNDING,))
 
         writes = channel_writes(streams.at(0))
 

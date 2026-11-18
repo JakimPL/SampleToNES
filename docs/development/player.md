@@ -108,8 +108,8 @@ block states none of it and the driver knows it by plane.
 
 **The triangle names its silence in the pitch it plays.** The channel sounds at one level,
 so the index its value plane carries is enough to say whether it sounds at all: an index
-above every pitch the table holds silences the linear counter. That spares a whole plane,
-in the block and on the tick path both.
+above every pitch the table holds writes the silenced linear counter alone. That spares a
+whole plane in the block, and a resting tick skips the timer on the tick path.
 
 **Tokens.** A plane is written as holds, literals and phrase plays — the encoding is in
 [the format document](../formats/nsf.md#b4-the-token-streams). What matters here is that a

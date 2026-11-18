@@ -53,18 +53,18 @@ def setup_writes() -> Tuple[RegisterWrite, ...]:
 
 
 def channel_writes(registers: Sequence[ChannelRegisters]) -> Tuple[RegisterWrite, ...]:
-    """Every register the four channels' values of one tick reach, each channel in the order the driver writes it.
+    """The registers the four channels' values of one tick reach, each channel in the order the driver writes it.
 
     Args:
         registers: One register set per channel, in channel order.
 
     Returns:
-        Tuple[RegisterWrite, ...]: One write per register the channels own.
+        Tuple[RegisterWrite, ...]: One write per register each channel writes on the tick.
     """
     return tuple(
         RegisterWrite(address, value)
         for channel, channel_registers in zip(ChannelName.items(), registers, strict=True)
-        for address, value in zip(CHANNEL_REGISTER_ADDRESSES[channel], channel_registers.values, strict=True)
+        for address, value in zip(CHANNEL_REGISTER_ADDRESSES[channel], channel_registers.written, strict=False)
     )
 
 
@@ -76,13 +76,15 @@ class RegisterTrace:
     enables them and sounds the song's first tick, and each play call afterward either advances
     the streams and writes the tick it lands on, or leaves the console alone. The three registers
     that reset a running channel are written only where their value changes, which is what keeps
-    a pulse waveform's phase running across a rest the way a rendered channel does.
+    a pulse waveform's phase running across a rest the way a rendered channel does, and a resting
+    triangle writes its silenced counter alone.
 
     A channel sounds only while its length counter stands above zero, and the counter loads from a
     write to the register carrying the length index once the channel is enabled. Initialization
     therefore reaches those registers after :data:`APU_STATUS`: the noise channel's directly, and
-    the three that carry a timer through the first tick's high byte. Halting every counter is what
-    holds them there for the rest of the song.
+    the three that carry a timer through the first tick's high byte. A triangle resting on the first
+    tick loads its counter on the first tick it sounds, whose high byte is the first the channel
+    writes. Halting every counter is what holds them there for the rest of the song.
 
     Attributes:
         initialization: The writes the init routine makes, leaving the console on the song's

@@ -211,8 +211,8 @@ triangle spends nothing on its value plane.
 
 **The triangle names its silence in the pitch it plays.** The channel sounds at one level, so a tick
 states whether it sounds through the index its value plane names. The index standing above every pitch the
-table covers silences the linear counter, and the divider stays where the channel last sounded. That is a
-whole plane the block does without.
+table covers writes the silenced linear counter alone, so the divider stays where the channel last
+sounded. That is a whole plane the block does without.
 
 **The noise channel has no bend plane.** It selects one of sixteen fixed periods, so there is no finer
 grid for a bend to reach, and its block leaves the plane out.

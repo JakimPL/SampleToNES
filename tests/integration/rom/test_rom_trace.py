@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, Dict, Final, FrozenSet, List, Optional, Tuple
+from typing import Callable, Dict, Final, List, Optional, Tuple
 
 import pytest
 
@@ -8,13 +8,6 @@ from sampletones_player.driver.image import DriverImage
 from sampletones_player.information import ProgramInformation
 from sampletones_player.nsf.file import nsf_to_bytes
 from sampletones_player.song import Song
-from sampletones_player.specification.registers import (
-    TRIANGLE_COUNTER_CONTROL,
-    TRIANGLE_LINEAR_COUNTER,
-    TRIANGLE_SILENT_RELOAD,
-    TRIANGLE_TIMER_HIGH,
-    TRIANGLE_TIMER_LOW,
-)
 from sampletones_tools.player.trace.trace import RegisterTrace
 from tests.integration.nsf.console.session import captured_run
 from tests.integration.nsf.header import sample_information
@@ -39,26 +32,7 @@ FIGURE_REPEATS: Final[int] = 2
 ABSENT_SONG_NAME: Final[str] = "absent"
 DECK_INFORMATION: Final[ProgramInformation] = ProgramInformation(title="Deck", artist="Every reading")
 DECK_LOOP_TICK: Final[int] = DECK_SONG_TICKS // 2
-SILENT_LINEAR_COUNTER: Final[int] = TRIANGLE_COUNTER_CONTROL | TRIANGLE_SILENT_RELOAD
-TRIANGLE_DIVIDER: Final[FrozenSet[int]] = frozenset({TRIANGLE_TIMER_LOW, TRIANGLE_TIMER_HIGH})
-RESTING_TRIANGLE_DIVIDER: Final[str] = (
-    "a resting triangle holds the divider of the last tick the driver wrote, and the model the one of the last "
-    "tick the stream sounded, which part where a call skips that tick or a loop comes round onto a rest"
-)
-
-RegisterState = Dict[int, int]
 TracedSong = Tuple[Song, ProgramInformation]
-
-
-def register_states(trace: RegisterTrace) -> List[RegisterState]:
-    """What every register holds once each play call of a trace has written, initialization included."""
-    held: RegisterState = {write.address: write.value for write in trace.initialization}
-    states: List[RegisterState] = []
-    for writes in trace.play_calls:
-        held.update({write.address: write.value for write in writes})
-        states.append(dict(held))
-
-    return states
 
 
 def corpus_songs(catalog: Dict[str, Sample], nes_frequency: int, *, looping: bool) -> List[TracedSong]:
@@ -145,16 +119,12 @@ class TestACartridgeOfAFewChannels:
         assert trace == RegisterTrace.from_song(sparse, calls)
 
 
-class TestARestingTriangleHoldsADividerOfItsOwn(BaseTestSuite):
-    """A resting triangle keeps its divider where it last sounded, and the driver and the model read that apart.
+class TestARestingTriangleWritesItsCounterAlone(BaseTestSuite):
+    """A resting triangle writes its silenced counter alone, so its divider stays where it last sounded.
 
-    The driver keeps the pitch of the last tick it wrote under the bend its bend plane holds, and
-    the model the divider of the last tick the stream sounded before the rest. The two part where
-    a call moving several ticks skips that tick, and where a loop comes round onto a rest, since
-    the bend plane starts over at the loop while the pitch stays. The linear counter holds the
-    channel silent through the rest, so the console sounds the same either way, and the next tick
-    the triangle sounds on states its own divider in both. The cartridge carries the very driver
-    an NSF does, so it parts with the model exactly where the NSF parts with it.
+    These are the songs where a tick the stream sounded is never written: a call moving several
+    ticks skips the last sounding one, or a loop comes round onto a rest while the bend plane
+    starts over. The cartridge carries the very driver an NSF does, so both hold to the model there.
     """
 
     @dataclass(frozen=True, kw_only=True)
@@ -173,7 +143,6 @@ class TestARestingTriangleHoldsADividerOfItsOwn(BaseTestSuite):
         TestCase(label="300-hz-looping-corpus", songs=lambda catalog: corpus_songs(catalog, FAST_RATE, looping=True)),
     )
 
-    @pytest.mark.xfail(strict=True, reason=RESTING_TRIANGLE_DIVIDER)
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_the_trace_equals_the_model_s(self, test_case: TestCase, instrument_catalog: Dict[str, Sample]) -> None:
         for song, information in test_case.songs(instrument_catalog):
@@ -190,20 +159,3 @@ class TestARestingTriangleHoldsADividerOfItsOwn(BaseTestSuite):
 
             nsf = nsf_to_bytes(song, information, driver_image)
             assert cartridge_trace(song, information, calls) == captured_run(nsf, calls)
-
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
-    def test_the_two_part_on_a_silent_triangle_s_divider_alone(
-        self, test_case: TestCase, instrument_catalog: Dict[str, Sample]
-    ) -> None:
-        for song, information in test_case.songs(instrument_catalog):
-            calls = calls_through(song)
-            played = register_states(cartridge_trace(song, information, calls))
-            stated = register_states(RegisterTrace.from_song(song, calls))
-
-            for held, expected in zip(played, stated, strict=True):
-                parted = {
-                    address for address in held.keys() | expected.keys() if held.get(address) != expected.get(address)
-                }
-                assert parted <= TRIANGLE_DIVIDER
-                if parted:
-                    assert held[TRIANGLE_LINEAR_COUNTER] == SILENT_LINEAR_COUNTER

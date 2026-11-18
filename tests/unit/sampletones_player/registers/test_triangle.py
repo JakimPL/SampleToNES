@@ -56,6 +56,20 @@ class TestTriangleRegisters:
         registers = TriangleRegisters.from_instructions(instructions, PLAYER_TIMER_TABLE)
         assert registers[1].linear_counter == 0x80
 
+    def test_a_sounding_tick_writes_the_counter_and_the_timer(self) -> None:
+        registers = TriangleRegisters.from_instructions([sounding_triangle()], PLAYER_TIMER_TABLE)[0]
+        assert registers.sounding
+        assert registers.written == registers.values
+
+    def test_a_resting_tick_writes_the_silenced_counter_alone(self) -> None:
+        instructions = [
+            sounding_triangle(),
+            TriangleInstruction.null_instruction(),
+        ]
+        resting = TriangleRegisters.from_instructions(instructions, PLAYER_TIMER_TABLE)[1]
+        assert not resting.sounding
+        assert resting.written == (resting.linear_counter,)
+
     def test_rest_keeps_the_timer(self) -> None:
         instructions = [
             sounding_triangle(),
