@@ -223,5 +223,7 @@ Editing the look means editing that data and running `sampletones tiles`, then `
 
 The cartridge is held to the same chain. The ROM console in `sampletones_tools/console/rom/` boots it from
 its reset vector with a register-level video chip and controller: its sound writes equal
-`RegisterTrace.from_song` from any power-on memory, every write to the video chip lands inside vertical
-blank, and a paused screen equals the `Deck` picture of the moment it paused at.
+`RegisterTrace.from_song` from any power-on memory, every frame's writes to the video chip land inside
+vertical blank, and a paused screen equals the picture `ScreenTrace` states for the moment it paused at.
+`ScreenTrace` works that moment out from the song and from `CartridgeClock`, the shell's clock
+arithmetic stated in Python.

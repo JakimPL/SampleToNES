@@ -77,8 +77,9 @@ Each frame interrupt does the same work in the same number of cycles:
    (18 and 4 cells each). The pulses are written on one frame and the triangle and the noise on the next.
 3. Calls the driver's play routine, unless the song is paused, and moves the clock on.
 
-Screen work ends about 1,950 cycles into the 2,273-cycle vertical blank, and the driver is entered at the
-same cycle of every frame, so the cartridge writes the sound registers as steadily as an NSF player.
+The last write to the video chip lands 1,934 cycles into the 2,273-cycle vertical blank. The driver is
+entered 1,935 or 1,936 cycles after the interrupt, the one cycle being the sprite transfer's alignment,
+so the cartridge writes the sound registers as steadily as an NSF player.
 
 Between frames the shell reads the controller and composes the next frame's cells from the driver's
 memory: each channel's level, duty, pitch index and noise period.
