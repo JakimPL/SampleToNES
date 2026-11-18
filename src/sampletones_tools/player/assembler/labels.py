@@ -56,7 +56,21 @@ def read_addresses(path: Path) -> DriverAddresses:
     Raises:
         DriverBuildError: If the linker reported no address for one of the four symbols.
     """
-    labels = read_labels(path)
+    return addresses_of(read_labels(path))
+
+
+def addresses_of(labels: Dict[str, int]) -> DriverAddresses:
+    """Where a linker laid the driver and the song behind it, among the symbols it reported.
+
+    Args:
+        labels: Each symbol's address, as :func:`read_labels` answers.
+
+    Returns:
+        DriverAddresses: The addresses the linker reported.
+
+    Raises:
+        DriverBuildError: If the linker reported no address for one of the four symbols.
+    """
     return DriverAddresses(
         load=address_of(labels, LOAD_SYMBOL),
         init=address_of(labels, INIT_SYMBOL),

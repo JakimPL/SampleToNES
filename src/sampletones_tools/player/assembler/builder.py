@@ -1,6 +1,6 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Final, List
+from typing import Final, List, Sequence
 
 from sampletones_player.driver.addresses import DriverAddresses
 from sampletones_player.driver.image import DriverImage
@@ -42,7 +42,7 @@ def build_driver(destination: Path) -> DriverImage:
     toolchain = Toolchain.locate()
     with TemporaryDirectory() as directory:
         work_directory = Path(directory)
-        objects = assemble_sources(toolchain, ASSEMBLY_DIRECTORY, work_directory)
+        objects = assemble_sources(toolchain, ASSEMBLY_DIRECTORY, work_directory, SOURCE_NAMES)
         assembled = work_directory / DRIVER_CODE_NAME
         labels = work_directory / LABELS_NAME
         toolchain.link(ASSEMBLY_DIRECTORY / LINKER_CONFIGURATION, objects, assembled, labels)
@@ -57,14 +57,20 @@ def build_driver(destination: Path) -> DriverImage:
     return image
 
 
-def assemble_sources(toolchain: Toolchain, sources: Path, work_directory: Path) -> List[Path]:
-    """Assembles every source the driver is built from.
+def assemble_sources(
+    toolchain: Toolchain,
+    sources: Path,
+    work_directory: Path,
+    names: Sequence[str],
+) -> List[Path]:
+    """Assembles the named sources of the assembly package.
 
     Args:
         toolchain: The cc65 programs the build runs.
         sources: The assembly package as a directory: the sources, their includes and the
             linker configuration.
         work_directory: The directory receiving the object files.
+        names: The sources to assemble, in the order their code takes in the image.
 
     Returns:
         List[Path]: The object files, in the order they take in the image.
@@ -73,7 +79,7 @@ def assemble_sources(toolchain: Toolchain, sources: Path, work_directory: Path) 
         DriverBuildError: If the assembler reports a failure.
     """
     objects: List[Path] = []
-    for name in SOURCE_NAMES:
+    for name in names:
         object_file = (work_directory / name).with_suffix(OBJECT_SUFFIX)
         toolchain.assemble(sources / SOURCE_DIRECTORY / name, sources / INCLUDE_DIRECTORY, object_file)
         objects.append(object_file)

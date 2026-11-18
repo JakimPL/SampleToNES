@@ -43,6 +43,3 @@ HIDDEN_SPRITE_Y: Final[int] = 0xF0
 FIRST_GLYPH: Final[int] = 0x20
 LAST_GLYPH: Final[int] = 0x7E
 GLYPH_COUNT: Final[int] = LAST_GLYPH - FIRST_GLYPH + 1
-TITLE_COLUMNS: Final[int] = 20
-ARTIST_COLUMNS: Final[int] = 20
-COPYRIGHT_COLUMNS: Final[int] = 28

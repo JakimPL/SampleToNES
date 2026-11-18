@@ -7,6 +7,7 @@
 .export channels_rewind
 .export channels_advance
 .export channels_write
+.exportzp plane_state
 
 .import song_data
 
