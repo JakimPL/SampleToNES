@@ -7,7 +7,7 @@ from sampletones_application.view_model.shared.nsf.offer import NSFExportOffer
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.scope import ExportScope
-from sampletones_player.export.program import NSFProgram
+from sampletones_player.export.program import Program
 
 
 class NSFExportSource(Protocol):
@@ -29,7 +29,7 @@ class NSFExportSource(Protocol):
 
     def offer(self) -> NSFExportOffer: ...
 
-    def program(self) -> NSFProgram: ...
+    def program(self) -> Program: ...
 
     def ticks(self, channels: AbstractSet[ChannelName]) -> int: ...
 

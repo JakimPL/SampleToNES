@@ -5,9 +5,10 @@ from sampletones_core.formats.binary import BinaryWriter
 from sampletones_player.specification.memory import (
     IRQ_VECTOR,
     NMI_VECTOR,
+    PROGRAM_SIZE,
+    PROGRAM_START,
     RESET_VECTOR,
 )
-from sampletones_player.specification.nsf import PROGRAM_SIZE, PROGRAM_START
 from sampletones_player.specification.rom import (
     MAPPER_HIGH_NIBBLE_MASK,
     MAPPER_NIBBLE_SHIFT,

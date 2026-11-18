@@ -4,17 +4,14 @@ from typing import Final
 
 import pytest
 
+from sampletones_player.block.song import song_to_bytes
 from sampletones_player.driver.image import DriverImage
-from sampletones_player.nsf.file import nsf_to_bytes, write_nsf
+from sampletones_player.information import ProgramInformation
+from sampletones_player.nsf.file import nsf_to_bytes, song_room, write_nsf
 from sampletones_player.nsf.header import header_to_bytes
-from sampletones_player.nsf.information import NSFInformation
-from sampletones_player.nsf.song import song_to_bytes
 from sampletones_player.song import Song
-from sampletones_player.specification.nsf import (
-    HEADER_SIZE,
-    LOAD_ADDRESS_OFFSET,
-    PROGRAM_SIZE,
-)
+from sampletones_player.specification.memory import PROGRAM_SIZE
+from sampletones_player.specification.nsf import HEADER_SIZE, LOAD_ADDRESS_OFFSET
 from sampletones_shared.exceptions import SongTooLargeError
 from tests.suite.player import (
     PLAYER_FULL_VOLUME,
@@ -28,7 +25,7 @@ from tests.suite.player import (
 
 NTSC_FREQUENCY: Final[int] = 60
 FILENAME: Final[str] = "song.nsf"
-INFORMATION: Final[NSFInformation] = NSFInformation(
+INFORMATION: Final[ProgramInformation] = ProgramInformation(
     title="Amen",
     artist="Author",
 )
@@ -64,6 +61,13 @@ def oversized_song(image: DriverImage) -> Song:
         PROGRAM_SIZE - len(image.code),
         NTSC_FREQUENCY,
     )
+
+
+class TestSongRoom:
+    """The room an NSF leaves its song."""
+
+    def test_the_song_has_the_program_area_behind_the_driver(self, image: DriverImage) -> None:
+        assert song_room(image) == PROGRAM_SIZE - len(image.code)
 
 
 class TestNSFBytes:

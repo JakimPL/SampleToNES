@@ -2,7 +2,7 @@ from typing import Final, FrozenSet
 
 from py65.memory import ObservableMemory
 
-from sampletones_player.specification.nsf import PROGRAM_SIZE, PROGRAM_START
+from sampletones_player.specification.memory import PROGRAM_SIZE, PROGRAM_START
 from sampletones_player.specification.rom import NROM_MAPPER
 from sampletones_shared.exceptions.validation import TruncatedDataError
 from sampletones_tools.console.rom.errors import (

@@ -4,6 +4,8 @@ from typing import Callable, Dict, Final, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.context import channel_label
+from sampletones_application.categories.dialog import dialog_title
+from sampletones_application.categories.exports import EXPORT_PROJECT_ELEMENTS
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors.path import PathColors
 from sampletones_application.layout.general.colors.text import TextColors
@@ -58,7 +60,7 @@ from sampletones_application.view_model.shared.nsf.repeat import NSFRepeat
 from sampletones_application.view_model.shared.nsf.view import NSFExportViewModel
 from sampletones_core.constants.enums import ChannelName
 from sampletones_player.compression.scheme import CompressionScheme
-from sampletones_player.nsf.information import NSFInformation
+from sampletones_player.information import ProgramInformation, ProgramText, TextLine
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 
@@ -69,33 +71,37 @@ ChoicesCallback = Callable[[NSFExportChoices], None]
 
 @dataclass(frozen=True)
 class HeaderField:
-    """One of the header's text fields, as the dialog lays it out and edits it.
+    """One of the program's lines of text, as the dialog lays it out and edits it.
 
     Attributes:
         input_tag: The field the text is typed into.
-        size_tag: The line stating the bytes the text takes.
+        size_tag: The line stating the room the text takes.
         label: What the field is known by.
-        read: The field's text, out of the header information.
-        edit: The choices holding a typed text in the field.
+        read: The field's text, out of the program's information.
+        line: The field's line, out of the room the file gives each of the program's lines.
+        edit: The choices holding a typed text in the field, cut to the room its line has.
     """
 
     input_tag: str
     size_tag: str
     label: str
-    read: Callable[[NSFInformation], str]
-    edit: Callable[[NSFExportChoices, str], NSFExportChoices]
+    read: Callable[[ProgramInformation], str]
+    line: Callable[[ProgramText], TextLine]
+    edit: Callable[[NSFExportChoices, str, ProgramText], NSFExportChoices]
 
 
 class GUINSFExportWindow(GUISeededDialogWindow[NSFExportViewModel]):
-    """Modal form over writing a project or a reconstruction as an NSF program.
+    """Modal form over writing a project or a reconstruction as a program the console runs.
 
     The dialog sets the export up and hands it over: the program's text, the channels it sounds,
     how it repeats and how hard it is compressed are chosen here along with the file, and the
-    export's own window reports the run that follows.
+    export's own window reports the run that follows. It serves every format a program is written
+    in, so it is titled by the format it was opened for and counts each line of text against the
+    room that format's file gives that line.
 
     Every control reports the whole edited choices through ``on_choices_changed``, which the owner
     reconciles and hands back, so the dialog shows the choices as they end up. A field being typed
-    into keeps the text the reader types, and takes the text the header holds once it is left.
+    into keeps the text the reader types, and takes the text the file holds once it is left.
     """
 
     def __init__(
@@ -136,6 +142,7 @@ class GUINSFExportWindow(GUISeededDialogWindow[NSFExportViewModel]):
                 size_tag=TAG_SETTINGS_NSF_TEXT_TITLE_SIZE,
                 label=language_manager["settings.nsf.label.title"],
                 read=lambda information: information.title,
+                line=lambda text: text.title,
                 edit=NSFExportChoices.with_title,
             ),
             HeaderField(
@@ -143,6 +150,7 @@ class GUINSFExportWindow(GUISeededDialogWindow[NSFExportViewModel]):
                 size_tag=TAG_SETTINGS_NSF_TEXT_ARTIST_SIZE,
                 label=language_manager["settings.nsf.label.artist"],
                 read=lambda information: information.artist,
+                line=lambda text: text.artist,
                 edit=NSFExportChoices.with_artist,
             ),
             HeaderField(
@@ -150,6 +158,7 @@ class GUINSFExportWindow(GUISeededDialogWindow[NSFExportViewModel]):
                 size_tag=TAG_SETTINGS_NSF_TEXT_COPYRIGHT_SIZE,
                 label=language_manager["settings.nsf.label.copyright"],
                 read=lambda information: information.copyright,
+                line=lambda text: text.copyright,
                 edit=NSFExportChoices.with_copyright,
             ),
         )
@@ -181,7 +190,10 @@ class GUINSFExportWindow(GUISeededDialogWindow[NSFExportViewModel]):
 
     def create_window(self) -> None:
         with self.dialog_window(
-            label=self._language_manager["settings.nsf.title.window_title"],
+            label=dialog_title(
+                self._language_manager,
+                EXPORT_PROJECT_ELEMENTS[self.view_model.export_format].dialog_title,
+            ),
             on_close=self._request_close,
         ):
             self._create_program_section()
@@ -397,7 +409,10 @@ class GUINSFExportWindow(GUISeededDialogWindow[NSFExportViewModel]):
         for field in self._fields:
             text = field.read(view_model.choices.information)
             self._settle_input(field.input_tag, text)
-            dpg_set_value(field.size_tag, view_model.text_size_label(text, self._fmt_text_size))
+            dpg_set_value(
+                field.size_tag,
+                view_model.text_size_label(text, field.line(view_model.text), self._fmt_text_size),
+            )
 
     def _render_channels(self, view_model: NSFExportViewModel) -> None:
         for channel in ChannelName.items():
@@ -473,7 +488,7 @@ class GUINSFExportWindow(GUISeededDialogWindow[NSFExportViewModel]):
         app_data: str,
         field: HeaderField,
     ) -> None:
-        self._emit(field.edit(self._choices(), app_data))
+        self._emit(field.edit(self._choices(), app_data, self.view_model.text))
 
     def _on_channel_changed(
         self,

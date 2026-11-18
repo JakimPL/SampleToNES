@@ -4,27 +4,30 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Optional
 
+from sampletones_application.logic.export.nsf.protocol import NSFProgramBackend
 from sampletones_application.logic.export.nsf.source.protocol import NSFExportSource
 from sampletones_application.view_model.shared.nsf.choices import NSFExportChoices
 from sampletones_application.view_model.shared.nsf.offer import NSFExportOffer
 from sampletones_application.view_model.shared.nsf.repeat import NSFRepeat
 from sampletones_application.view_model.shared.nsf.view import NSFExportViewModel
 from sampletones_player.builder import SONG_START
-from sampletones_player.export.program import NSFProgram
+from sampletones_player.export.program import Program
 
 
 @dataclass(frozen=True)
 class NSFExportDraft:
-    """An NSF export as it stands while its dialog is open.
+    """A program export as it stands while its dialog is open.
 
     Attributes:
         source: What the export writes.
+        backend: The backend of the format the export was opened for.
         offer: What the source leaves to choose, read once the dialog opens.
         choices: The choices the dialog stands at.
         destination: The file the export writes.
     """
 
     source: NSFExportSource
+    backend: NSFProgramBackend
     offer: NSFExportOffer
     choices: NSFExportChoices
     destination: Path
@@ -35,13 +38,13 @@ class NSFExportDraft:
     def with_destination(self, destination: Path) -> NSFExportDraft:
         return replace(self, destination=destination)
 
-    def program(self) -> NSFProgram:
+    def program(self) -> Program:
         """The program the standing choices write, its repeat placed on the source's own ticks.
 
         Raises:
             ValidationError: If no channel is ticked.
         """
-        return NSFProgram(
+        return Program(
             information=self.choices.information,
             channels=self.choices.channels,
             loop_tick=self._loop_tick(),
@@ -60,6 +63,9 @@ class NSFExportDraft:
 
     def view(self) -> NSFExportViewModel:
         return NSFExportViewModel(
+            export_format=self.backend.export_format,
+            extension=self.backend.extension(self.source.scope),
+            text=self.backend.text,
             offer=self.offer,
             choices=self.choices,
             destination=self.destination,

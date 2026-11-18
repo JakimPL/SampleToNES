@@ -6,7 +6,8 @@ from typing import Dict
 from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.registry import build_tracker_backends
-from sampletones_player.export.backend import NSFBackend
+from sampletones_player.export.backend import ProgramBackend
+from sampletones_player.export.backends import program_backends
 
 
 @dataclass(frozen=True)
@@ -17,15 +18,15 @@ class ExportBackends:
     alone, so the backend writing a program the console runs joins them here, where both
     packages are in reach. Everything the application offers to export in is keyed by its
     format in :attr:`by_format`, so a menu entry, a file type and a shortcut all reach one
-    backend, and the console player's backend is named as well, since the NSF export setup binds
-    that same backend to the program it chooses.
+    backend, and the console player's backends are named as well, since the program export setup
+    binds the backend of the format it was opened for to the program it chooses.
 
     Attributes:
-        nsf: The backend writing console programs.
+        programs: The backends writing console programs, keyed by the format each writes.
         trackers: The backends writing the tracker formats, keyed by the format each writes.
     """
 
-    nsf: NSFBackend
+    programs: Dict[ExportFormat, ProgramBackend]
     trackers: Dict[ExportFormat, ExportBackend]
 
     @classmethod
@@ -36,7 +37,7 @@ class ExportBackends:
             OSError: If the console player's packaged driver is absent.
         """
         return cls(
-            nsf=NSFBackend.stated(),
+            programs=program_backends(),
             trackers=build_tracker_backends(),
         )
 
@@ -45,5 +46,5 @@ class ExportBackends:
         """Every backend, keyed by the format it writes."""
         return {
             **self.trackers,
-            ExportFormat.NSF: self.nsf,
+            **self.programs,
         }

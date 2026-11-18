@@ -3,8 +3,7 @@ from typing import AbstractSet, Dict, Final, FrozenSet, List, Optional, Sequence
 from py65.devices.mpu6502 import MPU
 from py65.memory import ObservableMemory
 
-from sampletones_player.specification.memory import RAM_SIZE
-from sampletones_player.specification.nsf import PROGRAM_START
+from sampletones_player.specification.memory import PROGRAM_START, RAM_SIZE
 from sampletones_player.specification.registers import (
     APU_FRAME_COUNTER,
     APU_STATUS,

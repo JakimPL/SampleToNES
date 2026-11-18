@@ -1,6 +1,6 @@
 from typing import Final
 
-from sampletones_player.specification.nsf import PROGRAM_START
+from sampletones_player.specification.memory import PROGRAM_START
 
 DRIVER_PACKAGE: Final[str] = "sampletones_player.driver"
 DRIVER_BINARY_DIRECTORY: Final[str] = "binary"

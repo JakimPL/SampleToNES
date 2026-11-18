@@ -7,18 +7,15 @@ import pytest
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_player.block.song import song_to_bytes
 from sampletones_player.builder import song_from_reconstruction
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.nsf.file import write_nsf
-from sampletones_player.nsf.song import song_to_bytes
 from sampletones_player.song import Song
 from sampletones_player.specification.binary import WORD_SIZE
-from sampletones_player.specification.nsf import (
-    HEADER_SIZE,
-    NSF_MAGIC,
-    PROGRAM_SIZE,
-)
+from sampletones_player.specification.memory import PROGRAM_SIZE
+from sampletones_player.specification.nsf import HEADER_SIZE, NSF_MAGIC
 from sampletones_player.specification.planes import PLANE_COUNT
 from sampletones_player.specification.song import (
     ABSENT_STREAM,

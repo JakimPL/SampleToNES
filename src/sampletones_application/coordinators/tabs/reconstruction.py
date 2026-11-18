@@ -887,7 +887,7 @@ class ReconstructionTabCoordinator:
         if export_format in self._format_setups:
             request = self._reconstruction_panel_logic.sample_request()
             if request is not None:
-                self._format_setups[export_format].open_sample(request)
+                self._format_setups[export_format].open_sample(export_format, request)
 
             return
 

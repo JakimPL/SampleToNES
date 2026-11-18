@@ -6,8 +6,8 @@ from typing import Final, Tuple
 import pytest
 
 from sampletones_player.driver.addresses import DriverAddresses
-from sampletones_player.nsf.header import header_to_bytes
-from sampletones_player.nsf.information import NSFInformation
+from sampletones_player.information import ProgramInformation
+from sampletones_player.nsf.header import HEADER_LINE, header_to_bytes
 from sampletones_player.specification.clock import (
     MICROSECONDS_PER_SECOND,
     NTSC_FRAME_RATE,
@@ -41,6 +41,7 @@ from sampletones_player.specification.nsf import (
     SONG_COUNT,
     SONG_COUNT_OFFSET,
     STRING_FIELD_SIZE,
+    STRING_TERMINATOR_SIZE,
     STRING_TEXT_SIZE,
     TITLE_OFFSET,
     VERSION_OFFSET,
@@ -52,8 +53,9 @@ from tests.suite.case import BaseAutolabelTestCase
 SONG_ADDRESS: Final[int] = 0x8153
 TITLE: Final[str] = "Amen"
 ARTIST: Final[str] = "Jakim"
+WIDE_CHARACTER: Final[str] = "ü"
 ADDRESSES: Final[DriverAddresses] = DriverAddresses(song=SONG_ADDRESS)
-INFORMATION: Final[NSFInformation] = NSFInformation(title=TITLE, artist=ARTIST)
+INFORMATION: Final[ProgramInformation] = ProgramInformation(title=TITLE, artist=ARTIST)
 RATE_TOLERANCE: Final[Fraction] = Fraction(1, 10_000)
 
 
@@ -155,8 +157,19 @@ class TestHeaderStrings(BaseTestSuite):
     ) -> None:
         """A player reads each field up to its NUL, so the field keeps a byte for one."""
         overlong = "A" * (STRING_FIELD_SIZE * 2)
-        data = header_to_bytes(NSFInformation(title=overlong, artist=ARTIST), ADDRESSES)
+        data = header_to_bytes(ProgramInformation(title=overlong, artist=ARTIST), ADDRESSES)
         assert read_string(data, TITLE_OFFSET) == overlong.encode("utf-8")[:STRING_TEXT_SIZE] + b"\x00"
+
+    def test_a_character_straddling_the_fields_edge_is_left_out_whole(self) -> None:
+        """The field holds whole characters alone, so a player decoding it reads text throughout."""
+        straddling = "A" * (STRING_TEXT_SIZE - 1) + WIDE_CHARACTER
+        data = header_to_bytes(ProgramInformation(title=straddling, artist=ARTIST), ADDRESSES)
+        assert read_string(data, TITLE_OFFSET) == b"A" * (STRING_TEXT_SIZE - 1) + bytes(
+            STRING_FIELD_SIZE - STRING_TEXT_SIZE + 1
+        )
+
+    def test_the_room_a_line_has_leaves_the_field_its_terminator(self) -> None:
+        assert HEADER_LINE.room + STRING_TERMINATOR_SIZE == STRING_FIELD_SIZE
 
     def test_the_fields_stand_back_to_back(self) -> None:
         assert (

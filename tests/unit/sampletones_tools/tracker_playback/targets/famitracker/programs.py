@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Final, List, Optional, Tuple
 
-from sampletones_player.specification.nsf import PROGRAM_START
+from sampletones_player.specification.memory import PROGRAM_START
 from sampletones_player.specification.registers import DMC_DIRECT_LOAD
 from tests.unit.sampletones_tools.console.files import (
     INIT,

@@ -2,7 +2,8 @@ from typing import Final, Tuple
 
 import pytest
 
-from sampletones_player.specification.nsf import PAL_REGION_FLAG, PROGRAM_START
+from sampletones_player.specification.memory import PROGRAM_START
+from sampletones_player.specification.nsf import PAL_REGION_FLAG
 from sampletones_player.specification.registers import APU_STATUS, PULSE1_CONTROL
 from sampletones_tools.console.cartridge import BANK_SIZE, FIRST_BANK_REGISTER
 from sampletones_tools.console.errors import RoutineOverrunError

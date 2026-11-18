@@ -9,13 +9,14 @@ from automation.screen import Screen
 from automation.vocabulary.exports import NSF_EXPORTED, NSF_TYPE
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_core.constants.enums import ALL_CHANNELS, ChannelName
+from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.request import ProjectExport
 from sampletones_core.project import ProjectContainer
 from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_player.compression.scheme import CompressionScheme
-from sampletones_player.export.backend import NSFBackend
-from sampletones_player.export.program import NSFProgram
-from sampletones_player.nsf.information import NSFInformation
+from sampletones_player.export.backends import program_backends
+from sampletones_player.export.program import Program
+from sampletones_player.information import ProgramInformation
 from sampletones_shared.application import SAMPLETONES_COPYRIGHT
 from sampletones_shared.paths.extensions import EXT_FILE_NSF
 from tests.screens.exports.nsf_window.constants import LEFT_OUT, SETTLING_FRAMES
@@ -37,8 +38,8 @@ def write_chosen_program(destination: Path) -> None:
     held sounds stored once and the typed title, the rest as the project states it.
     """
     project = ProjectContainer.load(LOOPING_PROJECT)
-    program = NSFProgram(
-        information=NSFInformation(
+    program = Program(
+        information=ProgramInformation(
             title=TYPED_TITLE,
             artist=project.info.author,
             copyright=SAMPLETONES_COPYRIGHT,
@@ -47,13 +48,13 @@ def write_chosen_program(destination: Path) -> None:
         loop_tick=SongTiming.from_project(project, bounds=SONG_TICK_BOUNDS).frame_tick(LOOP_FRAME),
         scheme=CompressionScheme.RUNS,
     )
-    NSFBackend.stated().choosing(program).write_project(destination, ProjectExport(project=project))
+    program_backends()[ExportFormat.NSF].choosing(program).write_project(destination, ProjectExport(project=project))
 
 
 def write_stated_program(destination: Path) -> None:
     """Writes the program the project states for itself, the one the window opens on."""
     project = ProjectContainer.load(LOOPING_PROJECT)
-    NSFBackend.stated().choosing(NSFProgram.for_project(project)).write_project(
+    program_backends()[ExportFormat.NSF].choosing(Program.for_project(project)).write_project(
         destination,
         ProjectExport(project=project),
     )

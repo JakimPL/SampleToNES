@@ -59,11 +59,20 @@ whole project. The three differ only in where the ticks come from. A project is 
 through the same walk the sequencer sounds a song with, and it is the case that seeds the dictionary from
 the project's samples.
 
-**A program states what an export chooses.** `NSFProgram` holds the channels a song sounds, the tick it
-returns to, the `CompressionScheme` it is written with and the header text. The builders take the first
-three explicitly. The defaults an export writes when nobody chose otherwise are stated once, and the export
-dialog opens on the same values. A user's choice replaces those defaults, so the service that runs an
-export stays free of anything the format decides.
+**A program states what an export chooses.** `Program` holds the channels a song sounds, the tick it
+returns to, the `CompressionScheme` it is written with and the text the file is listed under. The builders
+take the first three explicitly. The defaults an export writes when nobody chose otherwise are stated once,
+and the export dialog opens on the same values. A user's choice replaces those defaults, so the service that
+runs an export stays free of anything the format decides.
+
+**A container is the one part that knows the file.** `ProgramWriter` builds the song the same way for a
+reconstruction and for a project, and a `ProgramContainer` states everything that differs between kinds of
+file: the format it is offered under, the extension, the room each line of text has (`ProgramText`, one
+`TextLine` a line), the room the song has, and the bytes the two are laid out as. `NSFContainer` is the
+`.nsf`. The text is kept as it was given, and each container carries the part of every line it has room for.
+A line drawn by a font of a few glyphs folds the text first, so an accented letter is written as the letter it
+is built on. The export dialog opens on the format it was asked for, and counts and cuts each line by that
+format's container.
 
 A project has no tuning of its own, because each sample was reconstructed against one. The samples
 therefore state the tuning by agreeing on it. A project whose samples disagree is refused, so nothing

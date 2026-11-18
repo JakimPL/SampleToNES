@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Mapping, Optional
 
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.logic.export.nsf.draft import NSFExportDraft
@@ -13,6 +13,7 @@ from sampletones_application.logic.export.nsf.source.sample import SampleSource
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.view_model.shared.nsf.choices import NSFExportChoices
 from sampletones_application.view_model.shared.nsf.view import NSFExportViewModel
+from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.request import SampleExport
 from sampletones_shared.constants.project import DEFAULT_EXPORT_NAME
 from sampletones_shared.logger import logger
@@ -22,12 +23,14 @@ from sampletones_shared.utils.system.paths import get_filename
 
 
 class NSFExportLogic(CallbackMixin):
-    """Owns setting an NSF export up: what it writes, the program it writes it as, and the file.
+    """Owns setting a program export up: what it writes, the program it writes it as, and the file.
 
-    The dialog opens on the program the export writes as its source states it, so a reader
-    changing nothing writes what the save dialog alone would have written. Every choice is the
-    player's own, held in the form the file states it, and the source places the choices on its
-    own ticks once the export is handed over.
+    The setup serves every format a console program is written in, and each opening names the
+    one the export is written as, whose backend states the extension the file takes and the room
+    its text has. The dialog opens on the program the export writes as its source states it, so
+    a reader changing nothing writes what the save dialog alone would have written. Every choice
+    is the player's own, held in the form the file states it, and the source places the choices
+    on its own ticks once the export is handed over.
 
     Setting an export up is an exclusive operation, claimed the moment the dialog opens. Handing
     the export over closes the setup in the same call the service starts running in, so the
@@ -39,14 +42,14 @@ class NSFExportLogic(CallbackMixin):
         project_controller: ProjectController,
         session_manager: SessionManager,
         export_service: NSFExportServiceProtocol,
-        backend: NSFProgramBackend,
+        backends: Mapping[ExportFormat, NSFProgramBackend],
         *,
         is_operation_active: Callable[[], bool],
     ) -> None:
         self._project_controller = project_controller
         self._session_manager = session_manager
         self._service = export_service
-        self._backend = backend
+        self._backends = backends
         self._is_operation_active = is_operation_active
         self._draft: Optional[NSFExportDraft] = None
 
@@ -55,21 +58,24 @@ class NSFExportLogic(CallbackMixin):
 
     @property
     def is_active(self) -> bool:
-        """An NSF export occupies the application while its setup is open."""
+        """A program export occupies the application while its setup is open."""
         return self._draft is not None
 
-    def open_project(self) -> bool:
-        """Offers the open project's song as a program, reporting whether the setup took over."""
+    def open_project(self, export_format: ExportFormat) -> bool:
+        """Offers the open project's song as a program in ``export_format``, reporting whether the
+        setup took over."""
         return self._open(
             ProjectSource(
                 request=self._project_controller.export_request,
                 name=self._project_controller.name or DEFAULT_EXPORT_NAME,
-            )
+            ),
+            self._backends[export_format],
         )
 
-    def open_sample(self, request: SampleExport) -> bool:
-        """Offers a reconstruction's slices as a program, reporting whether the setup took over."""
-        return self._open(SampleSource(request=request))
+    def open_sample(self, export_format: ExportFormat, request: SampleExport) -> bool:
+        """Offers a reconstruction's slices as a program in ``export_format``, reporting whether the
+        setup took over."""
+        return self._open(SampleSource(request=request), self._backends[export_format])
 
     def apply(self, choices: NSFExportChoices) -> None:
         """Takes the reconciled choices the dialog reports."""
@@ -102,7 +108,7 @@ class NSFExportLogic(CallbackMixin):
         draft.source.submit(
             self._service,
             draft.destination,
-            self._backend.choosing(draft.program()),
+            draft.backend.choosing(draft.program()),
         )
         self.close()
         return True
@@ -111,23 +117,25 @@ class NSFExportLogic(CallbackMixin):
         """Leaves the setup, releasing the application."""
         self._draft = None
 
-    def _open(self, source: NSFExportSource) -> bool:
-        """Sets an export of ``source`` up, where no other exclusive operation holds the application.
+    def _open(self, source: NSFExportSource, backend: NSFProgramBackend) -> bool:
+        """Sets an export of ``source`` through ``backend`` up, where no other exclusive operation
+        holds the application.
 
         The destination is proposed afresh each time, carrying the source's name into the folder
-        that kind of export opens on.
+        that kind of export opens on, under the extension the backend's files take.
         """
         if self._is_operation_active():
-            logger.warning("An exclusive operation is already in progress; the NSF export was not offered")
+            logger.warning("An exclusive operation is already in progress; the program export was not offered")
             return False
 
         offer = source.offer()
         self._draft = NSFExportDraft(
             source=source,
+            backend=backend,
             offer=offer,
-            choices=NSFExportChoices.initial(source.program(), offer),
+            choices=NSFExportChoices.initial(source.program(), offer, backend.text),
             destination=source.proposed_directory(self._session_manager)
-            / get_filename(source.name, self._backend.extension(source.scope)),
+            / get_filename(source.name, backend.extension(source.scope)),
         )
         self._emit_view()
         return True
@@ -139,7 +147,7 @@ class NSFExportLogic(CallbackMixin):
             SystemError: when the setup is driven while its dialog is closed.
         """
         if self._draft is None:
-            raise SystemError("An NSF export is set up only while its dialog is open")
+            raise SystemError("A program export is set up only while its dialog is open")
 
         return self._draft
 

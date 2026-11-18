@@ -6,9 +6,6 @@ from sampletones_player.specification.clock import (
     NTSC_FRAME_RATE,
 )
 
-PROGRAM_START: Final[int] = 0x8000
-PROGRAM_SIZE: Final[int] = 0x8000
-
 NSF_MAGIC: Final[bytes] = b"NESM\x1a"
 NSF_VERSION: Final[int] = 1
 SONG_COUNT: Final[int] = 1
@@ -17,6 +14,7 @@ FIRST_SONG: Final[int] = 1
 STRING_FIELD_SIZE: Final[int] = 32
 STRING_TERMINATOR_SIZE: Final[int] = 1
 STRING_TEXT_SIZE: Final[int] = STRING_FIELD_SIZE - STRING_TERMINATOR_SIZE
+STRING_ENCODING: Final[str] = "utf-8"
 BANKSWITCH_SIZE: Final[int] = 8
 NSF2_LENGTH_SIZE: Final[int] = 3
 

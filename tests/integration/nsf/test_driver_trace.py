@@ -4,13 +4,13 @@ from typing import Final
 import pytest
 
 from sampletones_core.project.voices.sample import Sample
+from sampletones_player.block.song import song_to_bytes
 from sampletones_player.builder import song_from_reconstruction
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.driver.image import DriverImage
-from sampletones_player.nsf.song import song_to_bytes
 from sampletones_player.song import Song
 from sampletones_player.specification.binary import WORD_SIZE
-from sampletones_player.specification.nsf import PROGRAM_SIZE
+from sampletones_player.specification.memory import PROGRAM_SIZE
 from sampletones_player.specification.song import STEP_FRACTION_OFFSET, STEP_WHOLE_OFFSET
 from sampletones_tools.player.trace.trace import RegisterTrace
 from tests.integration.nsf.console.session import (

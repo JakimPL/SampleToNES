@@ -4,7 +4,7 @@ from typing import Final, Tuple
 import pytest
 from py65.memory import ObservableMemory
 
-from sampletones_player.specification.nsf import PROGRAM_SIZE, PROGRAM_START
+from sampletones_player.specification.memory import PROGRAM_SIZE, PROGRAM_START
 from sampletones_player.specification.rom import (
     ALTERNATIVE_LAYOUT_FLAG,
     PATTERN_UNIT_SIZE,

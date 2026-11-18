@@ -201,7 +201,7 @@ from sampletones_core.exports.stage import ExportStage
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.project.voices.voice import samples
 from sampletones_core.structures.tree import FileSystemNode
-from sampletones_player.export.backend import NSFBackend
+from sampletones_player.export.backend import ProgramBackend
 from sampletones_shared.application import (
     SAMPLETONES_AUTHOR,
     SAMPLETONES_GROUP,
@@ -318,7 +318,7 @@ class Application:
         self.retune_service.subscribe(self._on_retune_result)
 
         backends = ExportBackends.build()
-        self.nsf_backend: NSFBackend = backends.nsf
+        self.program_backends: Dict[ExportFormat, ProgramBackend] = backends.programs
         self.export_backends: Dict[ExportFormat, ExportBackend] = backends.by_format
 
         self.project_manager: ProjectManager = ProjectManager()
@@ -497,7 +497,7 @@ class Application:
                 self.project_controller,
                 self.session_manager,
                 self.export_service,
-                self.nsf_backend,
+                self.program_backends,
                 is_operation_active=self._is_operation_active,
             ),
             window=self.nsf_export_window,
@@ -505,7 +505,7 @@ class Application:
             on_activity_changed=self._on_dialog_activity_changed,
         )
         self._format_setups: Dict[ExportFormat, ExportSetup] = {
-            ExportFormat.NSF: self._nsf_exports,
+            export_format: self._nsf_exports for export_format in self.program_backends
         }
 
         self._project_coordinator = ProjectCoordinator(

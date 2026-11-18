@@ -3,8 +3,7 @@ from typing import Callable, Final, List, Tuple
 
 import pytest
 
-from sampletones_player.specification.memory import RAM_SIZE
-from sampletones_player.specification.nsf import PROGRAM_START
+from sampletones_player.specification.memory import PROGRAM_START, RAM_SIZE
 from sampletones_player.specification.registers import APU_STATUS, PULSE1_CONTROL
 from sampletones_tools.console.rom.controller import NO_BUTTONS, Button
 from sampletones_tools.console.rom.errors import (
