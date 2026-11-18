@@ -71,6 +71,32 @@ class PlayerLogic(CallbackMixin):
     def is_loaded(self) -> bool:
         return self._audio_player.audio_data.is_loaded()
 
+    def can_step(self) -> bool:
+        """Whether this player holds the output on audio laid on a tick grid, which its playhead steps along."""
+        return self._audio_player.is_playing and self._audio_player.audio_data.tick_length is not None
+
+    def step(self, ticks: int) -> None:
+        """Moves the playhead ``ticks`` tick boundaries forward, or back for a negative count, holding it paused.
+
+        A playhead between two boundaries counts the one it is moving toward as its first step, so a step
+        always lands on the start of a tick, where the reconstruction's instructions change. A sounding
+        player pauses first, so the playhead stands where the step put it.
+
+        Args:
+            ticks: How many tick boundaries to move by.
+        """
+        tick_length = self._audio_player.audio_data.tick_length
+        if tick_length is None or not self._audio_player.is_playing:
+            return
+
+        if not self._audio_player.is_paused:
+            self._audio_player.pause()
+
+        position = self._audio_player.current_position
+        boundary = position // tick_length if ticks > 0 else -(-position // tick_length)
+        self._audio_player.seek((boundary + ticks) * tick_length)
+        self._emit_view()
+
     def is_playing(self) -> bool:
         return self._audio_player.is_playing
 

@@ -57,6 +57,8 @@ class KeybindingActionElements(AbstractElement):
     PLAY_FROM_START = "play_from_start"
     PLAY_FROM_FRAME = "play_from_frame"
     STOP = "stop"
+    STEP_BACKWARD = "step_backward"
+    STEP_FORWARD = "step_forward"
     TOGGLE_AUTOPLAY = "toggle_autoplay"
     FOLLOW_ROWS = "follow_rows"
     FOLLOW_PATTERNS = "follow_patterns"

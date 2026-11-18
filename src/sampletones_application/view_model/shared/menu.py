@@ -22,6 +22,7 @@ class MenuBarViewModel(BaseModel, frozen=True):
     pause_enabled: bool
     player_paused: bool
     stop_enabled: bool
+    step_enabled: bool
     autoplay: bool
     follow_mode: FollowMode
     loop_song: bool

@@ -894,14 +894,14 @@ class ReconstructionPanelLogic(CallbackMixin):
         waveform: WaveformData,
     ) -> Optional[AudioData]:
         """What plays for the source chosen: the recordings heard, or the channels ticked of ``waveform``."""
-        sample_rate = reconstruction_data.reconstruction.config.sample_rate
+        config = reconstruction_data.reconstruction.config
         if self._current_audio_source == AudioSourceType.ORIGINAL:
             if waveform.original_audio is None:
                 return None
 
-            return AudioData.from_array(waveform.original_audio, sample_rate)
+            return AudioData.from_array(waveform.original_audio, config.sample_rate, tick_length=config.frame_length)
 
-        return AudioData.from_array(waveform.playing, sample_rate)
+        return AudioData.from_array(waveform.playing, config.sample_rate, tick_length=config.frame_length)
 
     def _build_path_view_models(
         self,

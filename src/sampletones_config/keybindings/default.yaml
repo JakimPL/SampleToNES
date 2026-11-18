@@ -47,6 +47,8 @@ bindings:
   PlayFromStart: {combination: "Shift+Space"}
   PlayFromFrame: {combination: "Ctrl+Space"}
   Stop: {combination: "Esc"}
+  StepBackward: {combination: "Comma"}
+  StepForward: {combination: "Period"}
   ToggleAutoplay: {combination: "Ctrl+P"}
   FollowRows: {combination: "Ctrl+F"}
   FollowPatterns: {combination: "Ctrl+Shift+F"}

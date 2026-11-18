@@ -175,6 +175,13 @@ class SongPlayerLogic(CallbackMixin):
     def is_loaded(self) -> bool:
         return self._project_controller.is_open
 
+    def can_step(self) -> bool:
+        """A song moves by rows, so the transport's tick step stays with the reconstruction and instruction players."""
+        return False
+
+    def step(self, ticks: int) -> None:
+        """Keeps the song's playhead where it stands; a song moves by rows, which the tracker steps through."""
+
     @property
     def follow_mode(self) -> FollowMode:
         return self._session_manager.follow_mode

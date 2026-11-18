@@ -72,6 +72,30 @@ class TestGuardedCommands:
         failures.present_playing_failure.assert_called_once_with(exception)
 
 
+class TestAStepIsGuarded:
+    """A step moves the playhead through the same boundary as the transport commands."""
+
+    def test_a_step_reaches_the_logic_with_its_count(
+        self, guarded_player: GuardedPlayer, player_logic: MagicMock
+    ) -> None:
+        guarded_player.step(-1)
+
+        player_logic.step.assert_called_once_with(-1)
+
+    def test_a_playback_error_while_stepping_reaches_the_presenter(
+        self,
+        guarded_player: GuardedPlayer,
+        player_logic: MagicMock,
+        failures: MagicMock,
+    ) -> None:
+        failure = PlaybackError("device unavailable")
+        player_logic.step.side_effect = failure
+
+        guarded_player.step(1)
+
+        failures.present_playing_failure.assert_called_once_with(failure)
+
+
 class TestAStartForgetsThePreviewOnItsWay:
     """Playback the reader asks for forgets a preview still on its way before it starts, so a late render
     sounds nothing over it.

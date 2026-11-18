@@ -11,6 +11,8 @@ from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE, START_OF_AUDIO
 from tests.suite.audio.output import FakeAudioOutput
 
 AUDIO_LENGTH: Final[int] = 1000
+TICK_LENGTH: Final[int] = 100
+BETWEEN_TICKS: Final[int] = 450
 POINTED: Final[int] = 400
 SOUNDING: Final[int] = 700
 DEVICE_FAILURE: Final[str] = "The device failed"
@@ -24,7 +26,9 @@ def output() -> FakeAudioOutput:
 @pytest.fixture
 def player(output: FakeAudioOutput) -> PlayerLogic:
     player = PlayerLogic(AudioPlayer(output))
-    player.load_audio_data(AudioData.from_array(np.zeros(AUDIO_LENGTH, dtype=np.float32), DEFAULT_SAMPLE_RATE))
+    player.load_audio_data(
+        AudioData.from_array(np.zeros(AUDIO_LENGTH, dtype=np.float32), DEFAULT_SAMPLE_RATE, tick_length=TICK_LENGTH)
+    )
     return player
 
 
@@ -107,6 +111,86 @@ class TestPlayFromPutsThePlayheadAtASample:
         player.play()
 
         assert _source(output).position == START_OF_AUDIO
+
+
+def _held_at(player: PlayerLogic, position: int) -> None:
+    player.play_from(position)
+    player.pause()
+
+
+class TestStepMovesThePlayheadAlongTheTickGrid:
+    """A step moves an engaged playhead from tick boundary to tick boundary and holds it paused there."""
+
+    def test_a_step_forward_from_a_boundary_moves_one_tick(self, player: PlayerLogic, output: FakeAudioOutput) -> None:
+        _held_at(player, POINTED)
+        positions = _positions_reported(player)
+
+        player.step(1)
+
+        assert _source(output).position == POINTED + TICK_LENGTH
+        assert positions == [POINTED + TICK_LENGTH]
+        assert player.is_paused() is True
+
+    def test_a_step_back_from_a_boundary_moves_one_tick(self, player: PlayerLogic, output: FakeAudioOutput) -> None:
+        _held_at(player, POINTED)
+
+        player.step(-1)
+
+        assert _source(output).position == POINTED - TICK_LENGTH
+
+    def test_a_playhead_between_boundaries_steps_onto_the_one_it_moves_toward(
+        self,
+        player: PlayerLogic,
+        output: FakeAudioOutput,
+    ) -> None:
+        _held_at(player, BETWEEN_TICKS)
+        player.step(1)
+        forward = _source(output).position
+        _held_at(player, BETWEEN_TICKS)
+        player.step(-1)
+
+        assert forward == (BETWEEN_TICKS // TICK_LENGTH + 1) * TICK_LENGTH
+        assert _source(output).position == (BETWEEN_TICKS // TICK_LENGTH) * TICK_LENGTH
+
+    def test_a_sounding_player_pauses_and_steps_from_where_it_sounded(
+        self,
+        player: PlayerLogic,
+        output: FakeAudioOutput,
+    ) -> None:
+        player.play()
+        output.report(output.latest, SOUNDING)
+
+        player.step(1)
+
+        assert player.is_paused() is True
+        assert _source(output).position == SOUNDING + TICK_LENGTH
+
+    def test_a_step_stops_at_either_end_of_the_audio(self, player: PlayerLogic, output: FakeAudioOutput) -> None:
+        _held_at(player, START_OF_AUDIO)
+        player.step(-1)
+        at_start = _source(output).position
+        player.step(AUDIO_LENGTH)
+
+        assert at_start == START_OF_AUDIO
+        assert _source(output).position == AUDIO_LENGTH
+
+    def test_an_idle_player_takes_no_step(self, player: PlayerLogic, output: FakeAudioOutput) -> None:
+        player.step(1)
+
+        assert player.can_step() is False
+        assert output.playbacks == []
+
+    def test_audio_laid_on_no_tick_grid_takes_no_step(self, output: FakeAudioOutput) -> None:
+        player = PlayerLogic(AudioPlayer(output))
+        player.load_audio_data(
+            AudioData.from_array(np.zeros(AUDIO_LENGTH, dtype=np.float32), DEFAULT_SAMPLE_RATE, tick_length=None)
+        )
+        _held_at(player, POINTED)
+
+        player.step(1)
+
+        assert player.can_step() is False
+        assert _source(output).position == POINTED
 
 
 class TestFailures:

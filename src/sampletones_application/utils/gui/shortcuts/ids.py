@@ -79,6 +79,8 @@ class ShortcutId(Enum):
     PLAY_FROM_START = ("PlayFromStart", ShortcutCategory.APPLICATION)
     PLAY_FROM_FRAME = ("PlayFromFrame", ShortcutCategory.APPLICATION)
     STOP = ("Stop", ShortcutCategory.APPLICATION)
+    STEP_BACKWARD = ("StepBackward", ShortcutCategory.APPLICATION)
+    STEP_FORWARD = ("StepForward", ShortcutCategory.APPLICATION)
     TOGGLE_AUTOPLAY = ("ToggleAutoplay", ShortcutCategory.APPLICATION)
     FOLLOW_ROWS = ("FollowRows", ShortcutCategory.APPLICATION)
     FOLLOW_PATTERNS = ("FollowPatterns", ShortcutCategory.APPLICATION)

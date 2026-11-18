@@ -145,6 +145,7 @@ def _state(
         pause_enabled=False,
         player_paused=False,
         stop_enabled=False,
+        step_enabled=False,
         autoplay=False,
         follow_mode=follow_mode,
         loop_song=False,

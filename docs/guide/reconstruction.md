@@ -37,6 +37,8 @@ type in a field.
 On the waveform:
 
 - Click to play from that point, or to move the playback position while paused.
+- Press `.` or `,` to move the playback position one frame forward or back, as **Playback ▸ Step
+  forward** and **Step back** do. Playback pauses at the start of that frame.
 - Drag to move the view.
 - Double-click to show the whole waveform.
 - Scroll to zoom. Hold **Alt** and scroll to move sideways, or **Alt** and **Shift** to move up and

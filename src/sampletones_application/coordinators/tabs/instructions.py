@@ -341,6 +341,7 @@ class InstructionsTabCoordinator:
             AudioData.from_library_fragment(
                 instruction_data.fragment,
                 instruction_data.config.sample_rate,
+                tick_length=instruction_data.config.frame_length,
             )
         )
 

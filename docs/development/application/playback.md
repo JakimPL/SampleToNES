@@ -112,6 +112,7 @@ The transport's verbs are reached identically from the Playback menu, the toolba
 | Play from this frame | Sequencer: plays the song from the first row of the frame the tracker shows. |
 | Play from here | Sequencer panels: plays the song from the cursor's row. |
 | Stop | Silences everything, the engaged source and any preview, from any tab. |
+| Step back / Step forward | Moves the engaged target's playhead to the previous or next tick boundary and holds it paused there, pausing a sounding target first. A target whose audio lies on no tick grid, such as the song, takes no step. |
 
 Each verb is an action, so the combination it answers to is the shipped scheme's (`sampletones_config/keybindings/`) and every surface prints what the scheme says.
 

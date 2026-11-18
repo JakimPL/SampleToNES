@@ -100,6 +100,8 @@ class ShortcutBindings:
     play_from_start: Callback
     play_from_frame: Callback
     stop: Callback
+    step_backward: Callback
+    step_forward: Callback
     toggle_autoplay: Callback
     set_follow_mode: Callable[[FollowMode], None]
     toggle_loop_song: Callback
@@ -272,6 +274,8 @@ class ApplicationShell:
             ShortcutId.PLAY_FROM_START: bindings.play_from_start,
             ShortcutId.PLAY_FROM_FRAME: bindings.play_from_frame,
             ShortcutId.STOP: bindings.stop,
+            ShortcutId.STEP_BACKWARD: bindings.step_backward,
+            ShortcutId.STEP_FORWARD: bindings.step_forward,
             ShortcutId.TOGGLE_AUTOPLAY: bindings.toggle_autoplay,
             ShortcutId.TOGGLE_LOOP_SONG: bindings.toggle_loop_song,
             ShortcutId.AUDIO_SETTINGS: bindings.audio_settings,

@@ -83,6 +83,8 @@ class MenuElements(AbstractElement):
     ITEM_PLAYBACK_PLAY_FROM_START = "item_playback_play_from_start"
     ITEM_PLAYBACK_PLAY_FROM_FRAME = "item_playback_play_from_frame"
     ITEM_PLAYBACK_STOP = "item_playback_stop"
+    ITEM_PLAYBACK_STEP_BACKWARD = "item_playback_step_backward"
+    ITEM_PLAYBACK_STEP_FORWARD = "item_playback_step_forward"
     ITEM_PLAYBACK_AUTOPLAY = "item_playback_autoplay"
     GROUP_PLAYBACK_FOLLOW = "group_playback_follow"
     ITEM_PLAYBACK_FOLLOW_ROWS = "item_playback_follow_rows"

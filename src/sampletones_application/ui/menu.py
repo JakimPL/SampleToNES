@@ -43,6 +43,8 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_FRAME,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_STEP_BACKWARD,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_STEP_FORWARD,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_UNMUTE_ALL_CHANNELS,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_ADD_TO_SEQUENCER,
@@ -474,6 +476,18 @@ class MenuBar:
                 label=self._label(MenuElements.ITEM_PLAYBACK_STOP),
                 enabled=state.stop_enabled,
             )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.STEP_BACKWARD,
+                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_STEP_BACKWARD,
+                label=self._label(MenuElements.ITEM_PLAYBACK_STEP_BACKWARD),
+                enabled=state.step_enabled,
+            )
+            self._shortcut_manager.add_menu_item(
+                ShortcutId.STEP_FORWARD,
+                tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_STEP_FORWARD,
+                label=self._label(MenuElements.ITEM_PLAYBACK_STEP_FORWARD),
+                enabled=state.step_enabled,
+            )
             dpg.add_separator()
             self._shortcut_manager.add_menu_item(
                 ShortcutId.TOGGLE_AUTOPLAY,
@@ -721,6 +735,9 @@ class MenuBar:
             TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
             enabled=state.stop_enabled,
         )
+        for step_tag in (TAG_GLOBAL_MENU_ITEM_PLAYBACK_STEP_BACKWARD, TAG_GLOBAL_MENU_ITEM_PLAYBACK_STEP_FORWARD):
+            dpg_configure_item(step_tag, enabled=state.step_enabled)
+
         self._update_player_toolbar(state)
 
         dpg_set_value(TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY, state.autoplay)

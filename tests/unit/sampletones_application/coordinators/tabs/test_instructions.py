@@ -221,6 +221,7 @@ class TestDisplayInstruction:
         audio_data_cls.from_library_fragment.assert_called_once_with(
             instruction_data.fragment,
             instruction_data.config.sample_rate,
+            tick_length=instruction_data.config.frame_length,
         )
         coordinator._instruction_player_logic.load_audio_data.assert_called_once_with(
             audio_data_cls.from_library_fragment.return_value

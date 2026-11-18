@@ -1,5 +1,6 @@
 from automation.screen import Screen
 from automation.views.waveform import Waveform
+from tests.screens.reconstructions.player.constants import STILL_FRAMES
 
 
 def entry(screen: Screen) -> str:
@@ -19,3 +20,18 @@ def advancing(screen: Screen, waveform: Waveform, after: float) -> float:
         lambda reading: reading > after,
         description=f"the cursor moving past sample {after:.0f}",
     )
+
+
+def cursor(waveform: Waveform) -> float:
+    """The cursor's sample on the waveform, which must be drawn."""
+    found = waveform.cursor()
+    assert found is not None, "no cursor stands on the waveform"
+    return found
+
+
+def held_still(screen: Screen, waveform: Waveform) -> float:
+    """The cursor's sample, read twice some frames apart and found the same."""
+    standing = cursor(waveform)
+    screen.frames(STILL_FRAMES)
+    assert waveform.cursor() == standing
+    return standing
