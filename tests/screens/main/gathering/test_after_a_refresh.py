@@ -24,7 +24,7 @@ class TestGatheringARowRefreshBuiltAnew:
 
             screen.hand.click(compose_tag(TAG_MAIN_EXPLORER_BUTTON_REFRESH))
 
-            screen.expect(lambda: explorer.file_row(kick), before.__ne__, description="the row taken down")
+            screen.expect(lambda: explorer.file_row(kick), lambda row: row != before, description="the row taken down")
 
         def ctrl_click_the_row_it_brought_back(screen: Screen) -> None:
             gather(screen, kick)
