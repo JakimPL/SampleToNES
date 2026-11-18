@@ -6,7 +6,7 @@ from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_core.audio import mix
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
-from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing, heard_renders
+from sampletones_core.reconstructions.reconstruction.stems.hearing import Hearing, heard_renders, recordings_heard
 
 
 def warmed(
@@ -25,7 +25,6 @@ def warmed(
     mixed = rendered_mix(reconstruction)
     renders.adopt(reconstruction, channels, mixed)
     renders.adopt_heard(reconstruction, hearing, heard_renders(reconstruction, hearing, channels, mixed))
-    heard = hearing.selection.any_channel()
-    mixed_from = [recording for stem_id, recording in recordings.items() if stem_id in heard]
+    mixed_from = list(recordings_heard(reconstruction.stems_data, hearing.selection, recordings))
     if mixed_from:
         renders.adopt_original(mixed_from, reconstruction.config, mix(mixed_from))

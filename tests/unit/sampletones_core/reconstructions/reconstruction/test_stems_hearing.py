@@ -19,6 +19,7 @@ from sampletones_core.reconstructions.reconstruction.stems.hearing import (
     heard_renders,
     hearing_carried_onto,
     offered_channels,
+    recordings_heard,
     selection_of,
     whole_hearing,
 )
@@ -210,6 +211,41 @@ class TestHowAChoiceTravelsAcrossAnEdit:
         assert AUTHORED_STEM_ID in carried.selection.stems_for(SHARED_CHANNEL)
         assert carried.filter_for(SHARED_CHANNEL, edited.stems_data) is None
         assert carried.channels_on == frozenset(edited.playing_channels)
+
+
+class TestWhichRecordingsAreHeard:
+    STEM_C: Final[int] = 2
+
+    def test_the_recordings_heard_come_in_record_order_as_the_arrays_given(self) -> None:
+        first, third = np.zeros(4), np.ones(4)
+        recordings = {self.STEM_C: third, STEM_A: first}
+        selection = StemSelection.everywhere(frozenset({STEM_A, self.STEM_C}), ChannelName.items())
+
+        heard = recordings_heard(_stems_data(), selection, recordings)
+
+        assert len(heard) == 2
+        assert heard[0] is first
+        assert heard[1] is third
+
+    def test_a_recording_heard_but_not_loaded_is_left_out(self) -> None:
+        first = np.zeros(4)
+        selection = StemSelection.everywhere(BOTH, ChannelName.items())
+
+        heard = recordings_heard(_stems_data(), selection, {STEM_A: first})
+
+        assert len(heard) == 1
+        assert heard[0] is first
+
+    def test_a_recording_heard_on_one_channel_alone_is_heard(self) -> None:
+        second = np.ones(4)
+        selection = StemSelection(channels={CHANNEL: frozenset(), OTHER_CHANNEL: frozenset({STEM_B})})
+
+        assert recordings_heard(_stems_data(), selection, {STEM_A: np.zeros(4), STEM_B: second})[0] is second
+
+    def test_nothing_heard_hears_no_recording(self) -> None:
+        selection = StemSelection.everywhere(frozenset(), ChannelName.items())
+
+        assert recordings_heard(_stems_data(), selection, {STEM_A: np.zeros(4)}) == ()
 
 
 class TestWhatAWholeHearingHears:
