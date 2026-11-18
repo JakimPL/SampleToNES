@@ -44,6 +44,19 @@ REVEALS_FILE: Final[str] = "reveals.log"
 OPENS_FILE: Final[str] = "opens.log"
 DISPLAY_NAME_KEY: Final[pytest.StashKey[str]] = pytest.StashKey()
 
+__all__ = [
+    "midi_keyboards_fixture",
+    "midi_library_loads_fixture",
+    "output_device_fixture",
+    "screen_application_fixture",
+    "screen_boundaries_fixture",
+    "screen_bridge_fixture",
+    "screen_fixture",
+    "screen_render_thread_fixture",
+    "startup_fixture",
+    "world_fixture",
+]
+
 
 @pytest.fixture(name="world")
 def world_fixture() -> World:

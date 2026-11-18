@@ -27,6 +27,14 @@ REPORT_RECORDER_NAME: Final[str] = "screens-report-recorder"
 SCREEN_APPLICATION_FIXTURE: Final[str] = "screen_application"
 SOUND_SERVER_FOLDER: Final[str] = "sound"
 
+__all__ = [
+    "pytest_collection_modifyitems",
+    "pytest_configure",
+    "pytest_pyfunc_call",
+    "pytest_runtest_protocol",
+    "pytest_unconfigure",
+]
+
 
 class ScreenScenarioError(AssertionError):
     """Raised when a screen scenario is written in a shape the tier cannot host."""
