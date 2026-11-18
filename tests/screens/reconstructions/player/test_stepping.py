@@ -6,15 +6,13 @@ import pytest
 from automation.application.startup import Startup
 from automation.screen import Screen
 from automation.steps.reconstructions import expect_open
-from automation.vocabulary.playback import PAUSE, PLAY
+from automation.vocabulary.playback import PAUSE, PLAY, RESUME
 from sampletones_application.tags.general import TAG_GLOBAL_MENU_ITEM_PLAYBACK_STEP_FORWARD
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.reconstructions import Reconstruction
 from tests.screens.reconstructions.player.constants import STILL_FRAMES
 from tests.screens.reconstructions.player.steps import entry, expect_entry, held_still
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION
-
-RESUME: Final[str] = "global.menu.label.item_playback_resume"
 
 
 class TestStepping:

@@ -32,7 +32,9 @@ one, which keeps the scenario independent of how the code is arranged inside.
 
 Every scenario runs in a fresh process started in a home directory of its own, so settings, session state
 and the documents folder hold only what the scenario put there. The process ends with the scenario, so the
-exit and its teardown are part of what the scenario proves, and a crash on the way out fails it. A worker
+exit and its teardown are part of what the scenario proves, and a crash on the way out fails it. The
+process lives for the tier's deadline, `CHILD_TIMEOUT_SECONDS`; an item that needs longer, such as a
+maker's scene filming many frames, names its own with `@pytest.mark.screen_timeout(seconds)`. A worker
 draws on an X server of its own, so its scenarios take only its own input.
 
 The `world` fixture says what the home holds before the first frame: the session a previous run left, the

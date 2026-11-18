@@ -22,6 +22,8 @@ from automation.plugin.fixtures import _worker_display
 from sampletones_shared.utils.system.system import System
 
 CHILD_TIMEOUT_SECONDS: Final[float] = 600.0
+TIMEOUT_MARKER: Final[str] = "screen_timeout"
+TIMEOUT_MARKER_WORDS: Final[str] = "screen_timeout(seconds): the scenario's process lives this long"
 JOIN_TIMEOUT_SECONDS: Final[float] = 30.0
 REPORT_RECORDER_NAME: Final[str] = "screens-report-recorder"
 SCREEN_APPLICATION_FIXTURE: Final[str] = "screen_application"
@@ -43,6 +45,14 @@ class ScreenScenarioError(AssertionError):
 def is_screen_item(item: pytest.Item) -> bool:
     """Whether ``item`` is a screen scenario, which is any function taking the application under test."""
     return isinstance(item, pytest.Function) and SCREEN_APPLICATION_FIXTURE in item.fixturenames
+
+
+def child_timeout(item: pytest.Item) -> float:
+    """How long the process ``item`` runs in may live: the seconds its ``screen_timeout`` marker names, or the
+    tier's own deadline for an item that names none.
+    """
+    marker = item.get_closest_marker(TIMEOUT_MARKER)
+    return CHILD_TIMEOUT_SECONDS if marker is None else float(marker.args[0])
 
 
 def is_child_process() -> bool:
@@ -101,7 +111,7 @@ def pytest_runtest_protocol(
         environment=environment,
         working_directory=folders.home,
         report_path=folders.reports,
-        timeout=CHILD_TIMEOUT_SECONDS,
+        timeout=child_timeout(item),
     ):
         failed = failed or report.failed
         item.ihook.pytest_runtest_logreport(report=report)
@@ -146,7 +156,10 @@ def _worker_sound_server(config: pytest.Config) -> Optional[str]:
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    """In a scenario's own process, registers the recorder that writes its reports to the report file."""
+    """Declares the timeout marker, and in a scenario's own process, registers the recorder that writes its
+    reports to the report file.
+    """
+    config.addinivalue_line("markers", TIMEOUT_MARKER_WORDS)
     if is_child_process():
         recorder = ReportRecorder(config, Path(os.environ[REPORT_VARIABLE]))
         config.pluginmanager.register(recorder, REPORT_RECORDER_NAME)

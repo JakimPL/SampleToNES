@@ -7,7 +7,7 @@ from automation.application.startup import Startup
 from automation.screen import Screen
 from automation.steps.reconstructions import expect_open
 from automation.views.waveform import Waveform
-from automation.vocabulary.playback import PAUSE, PLAY
+from automation.vocabulary.playback import PAUSE, PLAY, RESUME
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.screens.reconstructions.player.constants import STILL_FRAMES
 from tests.screens.reconstructions.player.steps import advancing, cursor, entry, expect_entry, held_still
@@ -19,7 +19,6 @@ ZOOM_NOTCHES: Final[int] = 3
 WIDTH_TOLERANCE: Final[float] = 0.01
 SPACE_BURST: Final[int] = 5
 PAST_THE_EDGE: Final[float] = 1.4
-RESUME: Final[str] = "global.menu.label.item_playback_resume"
 
 
 def playing_from(screen: Screen, waveform: Waveform, sample: float) -> float:
