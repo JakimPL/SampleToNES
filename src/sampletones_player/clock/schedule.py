@@ -12,7 +12,27 @@ from sampletones_player.specification.clock import (
     FIXED_POINT_SCALE,
     MAX_STEP_WHOLE,
     NTSC_FRAME_RATE,
+    NTSC_NOMINAL_FRAME_RATE,
 )
+
+
+def play_rate_of(nes_frequency: int) -> Fraction:
+    """The calls a second a stream built at ``nes_frequency`` is measured against.
+
+    A rate that divides the console's nominal frame rate, or is a whole multiple of it, meets the
+    frames evenly at that nominal rate. Every other rate is measured against the frame rate the
+    console actually runs at.
+
+    Args:
+        nes_frequency: The engine tick rate the stream was built at, in Hz, at least 1.
+
+    Returns:
+        Fraction: `NTSC_NOMINAL_FRAME_RATE` for a rate that meets it evenly, `NTSC_FRAME_RATE` otherwise.
+    """
+    if NTSC_NOMINAL_FRAME_RATE % nes_frequency == 0 or nes_frequency % NTSC_NOMINAL_FRAME_RATE == 0:
+        return Fraction(NTSC_NOMINAL_FRAME_RATE)
+
+    return NTSC_FRAME_RATE
 
 
 class PlaySchedule(BaseModel):
@@ -38,20 +58,27 @@ class PlaySchedule(BaseModel):
 
     Attributes:
         ticks_per_play_call: The exact ticks one play call advances the stream by.
+        play_rate: The play calls a second the stream is measured against, which a file asks its
+            player for.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     ticks_per_play_call: Fraction = Field(..., gt=0, le=MAX_STEP_WHOLE)
+    play_rate: Fraction = Field(..., gt=0)
 
     @classmethod
     def from_parameters(cls, nes_frequency: int) -> PlaySchedule:
         """Derives the schedule a stream built at ``nes_frequency`` plays on.
 
-        The console calls the play routine once a video frame, so the rate a stream is read at
-        is its own rate measured against `NTSC_FRAME_RATE`. The header states that same rate as
-        the period it asks for, so a player honoring the field and one driving from the frame
-        itself run the stream at the speed it was built at.
+        The console calls the play routine once a video frame, so a stream is read at its own
+        rate measured against the frames, at the rate :func:`play_rate_of` picks. A stream at 60,
+        30, 20 or 15 Hz, or at 120 Hz and the other multiples of 60, is measured against 60 calls
+        a second: each tick holds the same calls, or each call advances the same ticks, and on a
+        console it runs as much faster than built as `NTSC_FRAME_RATE` is faster than 60. Every
+        other rate is measured against `NTSC_FRAME_RATE` and runs at its own speed there. The
+        header asks for the rate the stream is measured against, so a player honoring the field
+        runs every stream at the speed it was built at.
 
         Args:
             nes_frequency: The engine tick rate the reconstruction was built at, in Hz.
@@ -66,7 +93,8 @@ class PlaySchedule(BaseModel):
         if nes_frequency < 1:
             raise ValueError(f"nes_frequency must be at least 1, got {nes_frequency}")
 
-        return cls(ticks_per_play_call=Fraction(nes_frequency) / NTSC_FRAME_RATE)
+        play_rate = play_rate_of(nes_frequency)
+        return cls(ticks_per_play_call=Fraction(nes_frequency) / play_rate, play_rate=play_rate)
 
     def ticks_at(self, play_calls: int) -> int:
         """The tick the stream stands on once ``play_calls`` calls have been made.

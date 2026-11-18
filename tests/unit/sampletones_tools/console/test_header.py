@@ -6,7 +6,6 @@ import pytest
 from sampletones_player.specification.memory import PROGRAM_START
 from sampletones_player.specification.nsf import (
     DUAL_REGION_FLAG,
-    NTSC_PLAY_PERIOD_MICROSECONDS,
     NTSC_REGION,
     PAL_PLAY_PERIOD_MICROSECONDS,
     PAL_REGION_FLAG,
@@ -16,7 +15,7 @@ from sampletones_tools.console.errors import NotAnNSFError
 from sampletones_tools.console.header import NTSC_MACHINE, PAL_MACHINE, NSFHeader
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
-from tests.unit.sampletones_tools.console.files import INIT, LOADED_WHOLE, PLAY, NSFFile
+from tests.unit.sampletones_tools.console.files import INIT, LOADED_WHOLE, NTSC_PERIOD, PLAY, NSFFile
 
 BANKS: Final[Tuple[int, ...]] = (0, 1, 2, 3, 4, 5, 6, 7)
 LOAD: Final[int] = PROGRAM_START + 0x0100
@@ -32,7 +31,7 @@ class TestReadingAHeader:
             load=LOAD,
             init=INIT,
             play=PLAY,
-            ntsc_period=NTSC_PLAY_PERIOD_MICROSECONDS,
+            ntsc_period=NTSC_PERIOD,
             banks=BANKS,
             pal_period=PAL_PLAY_PERIOD_MICROSECONDS,
             region=NTSC_REGION,

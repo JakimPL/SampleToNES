@@ -8,7 +8,6 @@ from sampletones_player.specification.nsf import (
     NSF2_LENGTH_SIZE,
     NSF_MAGIC,
     NSF_VERSION,
-    NTSC_PLAY_PERIOD_MICROSECONDS,
     NTSC_REGION,
     PAL_PLAY_PERIOD_MICROSECONDS,
     STRING_FIELD_SIZE,
@@ -16,6 +15,7 @@ from sampletones_player.specification.nsf import (
 from sampletones_tools.console.cartridge import BANK_SIZE
 
 INIT: Final[int] = PROGRAM_START
+NTSC_PERIOD: Final[int] = 16639
 PLAY: Final[int] = PROGRAM_START + 0x10
 LOADED_WHOLE: Final[Tuple[int, ...]] = (0,) * BANKSWITCH_SIZE
 ONE_SONG: Final[int] = 1
@@ -77,7 +77,7 @@ class NSFFile:
         for text in ("Title", "Artist", "Copyright"):
             writer.write_fixed_string(text, STRING_FIELD_SIZE)
 
-        writer.write_uint16(NTSC_PLAY_PERIOD_MICROSECONDS)
+        writer.write_uint16(NTSC_PERIOD)
         writer.write_bytes(bytes(self.banks))
         writer.write_uint16(PAL_PLAY_PERIOD_MICROSECONDS)
         writer.write_uint8(self.region)

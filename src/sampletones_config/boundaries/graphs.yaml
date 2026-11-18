@@ -22,7 +22,7 @@ player:
     builder.py: [song.py, registers, clock, compression]
     block: [song.py, specification, compression]
     information.py: []
-    nsf: [block, song.py, specification, driver, information.py]
+    nsf: [block, song.py, clock, specification, driver, information.py]
     export: [builder.py, song.py, information.py, nsf, rom, shell, driver, compression]
     driver: [specification]
     shell: [specification]

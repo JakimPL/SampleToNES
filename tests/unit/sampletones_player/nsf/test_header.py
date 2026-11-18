@@ -5,13 +5,11 @@ from typing import Final, Tuple
 
 import pytest
 
+from sampletones_player.clock.schedule import PlaySchedule
 from sampletones_player.driver.addresses import DriverAddresses
 from sampletones_player.information import ProgramInformation
 from sampletones_player.nsf.header import HEADER_LINE, header_to_bytes
-from sampletones_player.specification.clock import (
-    MICROSECONDS_PER_SECOND,
-    NTSC_FRAME_RATE,
-)
+from sampletones_player.specification.clock import MICROSECONDS_PER_SECOND
 from sampletones_player.specification.nsf import (
     ARTIST_OFFSET,
     BANKSWITCH_OFFSET,
@@ -32,7 +30,6 @@ from sampletones_player.specification.nsf import (
     NSF_MAGIC,
     NSF_VERSION,
     NTSC_PERIOD_OFFSET,
-    NTSC_PLAY_PERIOD_MICROSECONDS,
     NTSC_REGION,
     PAL_PERIOD_OFFSET,
     PAL_PLAY_PERIOD_MICROSECONDS,
@@ -57,10 +54,12 @@ WIDE_CHARACTER: Final[str] = "ü"
 ADDRESSES: Final[DriverAddresses] = DriverAddresses(song=SONG_ADDRESS)
 INFORMATION: Final[ProgramInformation] = ProgramInformation(title=TITLE, artist=ARTIST)
 RATE_TOLERANCE: Final[Fraction] = Fraction(1, 10_000)
+SCHEDULE: Final[PlaySchedule] = PlaySchedule.from_parameters(60)
+SCHEDULED_FREQUENCIES: Final[Tuple[int, ...]] = (30, 41, 60, 100)
 
 
 def header() -> bytes:
-    return header_to_bytes(INFORMATION, ADDRESSES)
+    return header_to_bytes(INFORMATION, ADDRESSES, SCHEDULE)
 
 
 def read_word(data: bytes, offset: int) -> int:
@@ -86,7 +85,7 @@ class TestHeaderBytes:
         + TITLE.encode("utf-8").ljust(STRING_FIELD_SIZE, b"\x00")
         + ARTIST.encode("utf-8").ljust(STRING_FIELD_SIZE, b"\x00")
         + SAMPLETONES_COPYRIGHT.encode("utf-8").ljust(STRING_FIELD_SIZE, b"\x00")
-        + b"\xff\x40"
+        + b"\x1b\x41"
         + bytes(BANKSWITCH_SIZE)
         + b"\x20\x4e"
         + b"\x00\x00\x00"
@@ -157,13 +156,13 @@ class TestHeaderStrings(BaseTestSuite):
     ) -> None:
         """A player reads each field up to its NUL, so the field keeps a byte for one."""
         overlong = "A" * (STRING_FIELD_SIZE * 2)
-        data = header_to_bytes(ProgramInformation(title=overlong, artist=ARTIST), ADDRESSES)
+        data = header_to_bytes(ProgramInformation(title=overlong, artist=ARTIST), ADDRESSES, SCHEDULE)
         assert read_string(data, TITLE_OFFSET) == overlong.encode("utf-8")[:STRING_TEXT_SIZE] + b"\x00"
 
     def test_a_character_straddling_the_fields_edge_is_left_out_whole(self) -> None:
         """The field holds whole characters alone, so a player decoding it reads text throughout."""
         straddling = "A" * (STRING_TEXT_SIZE - 1) + WIDE_CHARACTER
-        data = header_to_bytes(ProgramInformation(title=straddling, artist=ARTIST), ADDRESSES)
+        data = header_to_bytes(ProgramInformation(title=straddling, artist=ARTIST), ADDRESSES, SCHEDULE)
         assert read_string(data, TITLE_OFFSET) == b"A" * (STRING_TEXT_SIZE - 1) + bytes(
             STRING_FIELD_SIZE - STRING_TEXT_SIZE + 1
         )
@@ -184,15 +183,13 @@ class TestHeaderStrings(BaseTestSuite):
 class TestHeaderPlayback:
     """The rate the console drives the file at, and the hardware it asks for."""
 
-    def test_the_ntsc_period_is_the_one_the_specification_names(self) -> None:
-        assert read_word(header(), NTSC_PERIOD_OFFSET) == NTSC_PLAY_PERIOD_MICROSECONDS
-
-    def test_the_ntsc_period_asks_for_the_rate_the_schedule_counts_in(
-        self,
-    ) -> None:
-        """A player reading the field and one driving from the frame run a stream at one speed."""
-        requested = Fraction(MICROSECONDS_PER_SECOND, read_word(header(), NTSC_PERIOD_OFFSET))
-        assert abs(requested - NTSC_FRAME_RATE) / NTSC_FRAME_RATE < RATE_TOLERANCE
+    @pytest.mark.parametrize("nes_frequency", SCHEDULED_FREQUENCIES)
+    def test_the_ntsc_period_asks_for_the_rate_the_schedule_counts_in(self, nes_frequency: int) -> None:
+        """A player reading the field calls the driver at the rate the song's step was measured against."""
+        schedule = PlaySchedule.from_parameters(nes_frequency)
+        data = header_to_bytes(INFORMATION, ADDRESSES, schedule)
+        requested = Fraction(MICROSECONDS_PER_SECOND, read_word(data, NTSC_PERIOD_OFFSET))
+        assert abs(requested - schedule.play_rate) / schedule.play_rate < RATE_TOLERANCE
 
     def test_the_pal_period_states_the_fiftieth_of_a_second(self) -> None:
         assert read_word(header(), PAL_PERIOD_OFFSET) == PAL_PLAY_PERIOD_MICROSECONDS

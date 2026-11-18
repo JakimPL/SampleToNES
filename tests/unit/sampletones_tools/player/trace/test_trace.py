@@ -4,6 +4,7 @@ from typing import Final, Tuple
 import pytest
 
 from sampletones_core.constants.enums import ChannelName
+from sampletones_player.song import Song
 from sampletones_player.specification.channels import CHANNEL_REGISTER_ADDRESSES
 from sampletones_player.specification.registers import (
     APU_FRAME_COUNTER,
@@ -45,6 +46,11 @@ WRITES_PER_TICK: Final[int] = 11
 SOUNDING: Final = pulse_tick(PLAYER_FULL_VOLUME, 0, PLAYER_REFERENCE_TIMER)
 RESTING: Final = pulse_tick(PLAYER_SILENT_VOLUME, 0, PLAYER_REFERENCE_TIMER)
 OCTAVE_UP: Final = pulse_tick(PLAYER_FULL_VOLUME, 0, PLAYER_OCTAVE_UP_TIMER)
+
+
+def call_onto(song: Song, tick: int) -> int:
+    """The first play call that leaves ``song`` on ``tick``, which is the call whose writes play it."""
+    return next(play_call for play_call in range(song.ticks) if song.tick_at(play_call) == tick)
 
 
 def addresses(writes: Tuple[RegisterWrite, ...]) -> Tuple[int, ...]:
@@ -131,23 +137,28 @@ class TestChangeSuppression:
 
     def test_a_held_pitch_leaves_the_timer_high_byte_alone(self) -> None:
         song = player_song(resting_streams((SOUNDING, RESTING)), NTSC_FREQUENCY, loop_tick=None)
-        trace = RegisterTrace.from_song(song, play_calls=2)
-        assert PULSE1_TIMER_HIGH not in addresses(trace.play_calls[1])
+        call = call_onto(song, 1)
+        trace = RegisterTrace.from_song(song, play_calls=call + 1)
+        assert trace.play_calls[call]
+        assert PULSE1_TIMER_HIGH not in addresses(trace.play_calls[call])
 
     def test_a_held_pitch_still_writes_the_timer_low_byte(self) -> None:
         song = player_song(resting_streams((SOUNDING, RESTING)), NTSC_FREQUENCY, loop_tick=None)
-        trace = RegisterTrace.from_song(song, play_calls=2)
-        assert PULSE1_TIMER_LOW in addresses(trace.play_calls[1])
+        call = call_onto(song, 1)
+        trace = RegisterTrace.from_song(song, play_calls=call + 1)
+        assert PULSE1_TIMER_LOW in addresses(trace.play_calls[call])
 
     def test_a_pitch_change_writes_the_timer_high_byte(self) -> None:
         song = player_song(resting_streams((SOUNDING, OCTAVE_UP)), NTSC_FREQUENCY, loop_tick=None)
-        trace = RegisterTrace.from_song(song, play_calls=2)
-        assert PULSE1_TIMER_HIGH in addresses(trace.play_calls[1])
+        call = call_onto(song, 1)
+        trace = RegisterTrace.from_song(song, play_calls=call + 1)
+        assert PULSE1_TIMER_HIGH in addresses(trace.play_calls[call])
 
     def test_a_returning_pitch_writes_the_timer_high_byte_again(self) -> None:
         song = player_song(resting_streams((SOUNDING, OCTAVE_UP, SOUNDING)), NTSC_FREQUENCY, loop_tick=None)
-        trace = RegisterTrace.from_song(song, play_calls=3)
-        assert PULSE1_TIMER_HIGH in addresses(trace.play_calls[2])
+        call = call_onto(song, 2)
+        trace = RegisterTrace.from_song(song, play_calls=call + 1)
+        assert PULSE1_TIMER_HIGH in addresses(trace.play_calls[call])
 
     def test_an_unchanging_channel_never_rewrites_its_high_byte(self) -> None:
         song = player_song(resting_streams((SOUNDING, RESTING, RESTING)), NTSC_FREQUENCY, loop_tick=None)
@@ -169,9 +180,9 @@ class TestPlaySchedule(BaseTestSuite):
             return f"{self.nes_frequency}hz"
 
     test_cases: Tuple[TestCase, ...] = (
-        TestCase(nes_frequency=NTSC_FREQUENCY, expected=(False, True, True, True)),
-        TestCase(nes_frequency=HALF_RATE_FREQUENCY, expected=(False, False, True, False)),
-        TestCase(nes_frequency=15, expected=(False, False, False, False)),
+        TestCase(nes_frequency=NTSC_FREQUENCY, expected=(True, True, True)),
+        TestCase(nes_frequency=HALF_RATE_FREQUENCY, expected=(False, True, False, True)),
+        TestCase(nes_frequency=15, expected=(False, False, False, True)),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
@@ -201,8 +212,10 @@ class TestEndOfSong:
 
     def test_a_song_without_a_loop_stops_writing(self) -> None:
         song = player_song(resting_streams((SOUNDING, RESTING)), NTSC_FREQUENCY, loop_tick=None)
+        last = call_onto(song, song.ticks - 1)
         trace = RegisterTrace.from_song(song, play_calls=6)
-        assert all(writes == () for writes in trace.play_calls[3:])
+        assert trace.play_calls[last]
+        assert all(writes == () for writes in trace.play_calls[last + 1 :])
 
     def test_a_song_with_a_loop_keeps_writing(self) -> None:
         song = player_song(resting_streams((SOUNDING, OCTAVE_UP)), NTSC_FREQUENCY, loop_tick=0)

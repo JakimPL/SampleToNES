@@ -81,6 +81,7 @@ class TestNSFBytes:
         assert nsf_to_bytes(song, INFORMATION, image)[:HEADER_SIZE] == header_to_bytes(
             INFORMATION,
             image.addresses,
+            song.schedule,
         )
 
     def test_the_driver_follows_the_header(

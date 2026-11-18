@@ -44,7 +44,7 @@ def nsf_to_bytes(
     """
     data = song_to_bytes(song, song_room(image))
 
-    return header_to_bytes(information, image.addresses) + image.code + data
+    return header_to_bytes(information, image.addresses, song.schedule) + image.code + data
 
 
 def write_nsf(

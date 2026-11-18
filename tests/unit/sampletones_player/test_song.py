@@ -53,7 +53,10 @@ class TestSongLoopBounds:
 
 
 class TestSongPlayback(BaseTestSuite):
-    """The tick each call lands on, read across a song that ends and one that repeats."""
+    """The tick each call lands on, read across a song that ends and one that repeats.
+
+    Initialization plays the first tick, and at 60 Hz every call moves the song on by one.
+    """
 
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseAutolabelTestCase):
@@ -77,22 +80,22 @@ class TestSongPlayback(BaseTestSuite):
         TestCase(
             name="stops",
             loop_tick=None,
-            expected=(0, 1, 2, 3, None, None, None, None),
+            expected=(1, 2, 3, None, None, None, None, None),
         ),
         TestCase(
             name="repeats-from-the-start",
             loop_tick=0,
-            expected=(0, 1, 2, 3, 0, 1, 2, 3),
+            expected=(1, 2, 3, 0, 1, 2, 3, 0),
         ),
         TestCase(
             name="repeats-from-the-middle",
             loop_tick=2,
-            expected=(0, 1, 2, 3, 2, 3, 2, 3),
+            expected=(1, 2, 3, 2, 3, 2, 3, 2),
         ),
         TestCase(
             name="repeats-one-tick",
             loop_tick=3,
-            expected=(0, 1, 2, 3, 3, 3, 3, 3),
+            expected=(1, 2, 3, 3, 3, 3, 3, 3),
         ),
     )
 
@@ -124,9 +127,9 @@ class TestSongPlayback(BaseTestSuite):
         )
         assert tuple(song.tick_at(play_call) for play_call in range(6)) == (
             0,
-            0,
             1,
             1,
             2,
             2,
+            3,
         )

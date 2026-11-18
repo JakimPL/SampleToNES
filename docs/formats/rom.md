@@ -94,6 +94,8 @@ memory: each channel's level, duty, pitch index and noise period.
 
 - The song has about 30 KB; a longer one is refused with the room it needed. A larger board with bank
   switching is a separate change to the driver and the song block.
-- The cartridge runs at the NTSC rate. A PAL console plays it about 17% slower and a little over a
-  semitone lower.
+- The cartridge runs at the NTSC rate. A song at a rate that divides 60 or is a multiple of it moves on
+  the same frames throughout and runs 0.16% fast ([the step](nsf.md#b1-the-header)); the clock on
+  the screen shows the time that passes. A PAL console plays the cartridge about 17% slower and a little
+  over a semitone lower.
 - The screen shows one song. The title and the artist hold 20 characters, the copyright 28.

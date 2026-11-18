@@ -35,7 +35,7 @@ The header is NSF version 1:
 | `0x0E` | 32 | title | UTF-8 text ending in a NUL |
 | `0x2E` | 32 | artist | as the title |
 | `0x4E` | 32 | copyright | as the title |
-| `0x6E` | 2 | NTSC play period | microseconds per video frame |
+| `0x6E` | 2 | NTSC play period | microseconds per call at the rate the step is measured against: `16667` or `16639` |
 | `0x70` | 8 | bankswitch | zeros |
 | `0x78` | 2 | PAL play period | `20000` microseconds |
 | `0x7A` | 1 | region | `0`, NTSC |
@@ -49,8 +49,9 @@ The driver's image starts with two jumps, the entry points. `init` is at the loa
 three bytes later, whatever the driver's own length. The header can therefore give both addresses without
 assembling anything. The song follows the code directly. That address is the one thing a build decides.
 
-The console calls `init` once and then `play` once per video frame. The header asks for the NTSC frame
-period. The song's speed does not depend on the header's play period.
+The console calls `init` once and then `play` once per video frame. The header asks for the rate the
+song's step is measured against ([B.1](#b1-the-header)), so a player that honors the field plays the
+song at the speed it was built at.
 
 **The program area is 32 KB**, from `$8000` upward, and the song block gets what the driver leaves of it.
 A song that outgrows that space is reported as an export failure, and no shortened file is written.
@@ -90,6 +91,11 @@ was built at, and the console calls `play` at the video frame rate. The step is 
 against the second, held as a whole byte and a 16-bit fraction. The driver adds it to an accumulator on
 each call and advances the streams by the whole ticks that fall out. A song slower than the play rate
 stands still on the calls between its ticks, and a faster one advances several.
+
+A rate that divides 60 or is a multiple of it (15, 20, 30, 60, 120 Hz and so on) is measured against 60
+calls a second, so every tick holds the same number of calls, or every call advances the same number of
+ticks. On a console's own 60.0988 Hz frame such a song runs 0.16% fast, about 0.3 seconds in three
+minutes. Every other rate is measured against the console's frame rate and runs at its own speed there.
 
 ### B.2 The timer table
 

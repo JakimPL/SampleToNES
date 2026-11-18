@@ -101,7 +101,7 @@ class TestSongBytes:
 
     EXPECTED_HEADER: Final[bytes] = (
         b"\x00"
-        b"\xca\x7f"
+        b"\x00\x80"
         b"\x02\x00"
         b"\xff\xff"
         b"\x33\x00"
@@ -143,10 +143,10 @@ class TestSongHeader(BaseTestSuite):
             return self.name
 
     test_cases: Tuple[TestCase, ...] = (
-        TestCase(name="60hz-whole", nes_frequency=NTSC_FREQUENCY, expected=0),
+        TestCase(name="60hz-whole", nes_frequency=NTSC_FREQUENCY, expected=1),
         TestCase(name="30hz-whole", nes_frequency=HALF_RATE_FREQUENCY, expected=0),
-        TestCase(name="120hz-whole", nes_frequency=120, expected=1),
-        TestCase(name="300hz-whole", nes_frequency=300, expected=4),
+        TestCase(name="120hz-whole", nes_frequency=120, expected=2),
+        TestCase(name="300hz-whole", nes_frequency=300, expected=5),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
