@@ -1,10 +1,10 @@
 document: ~
 frame_rate: 60
 timeline:
-  start: 0.0
+  start: 0.5
   end: 8.0
   segments:
-    - {from: 0.0, audio: original, stems: [Bass, Lead, Drums]}
+    - {from: 0.5, audio: original, stems: [Bass, Lead, Drums]}
     - {from: 2.0, audio: reconstruction, stems: [Bass, Lead, Drums]}
     - {from: 4.0, audio: reconstruction, stems: [Lead]}
     - {from: 5.0, audio: reconstruction, stems: [Lead, Drums]}

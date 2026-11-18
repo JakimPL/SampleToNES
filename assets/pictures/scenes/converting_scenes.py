@@ -4,15 +4,15 @@ from typing import Final
 
 import pytest
 
-from assets.pictures.demo import (
+from assets.pictures.paths import guide_picture
+from assets.pictures.writer import Pictures
+from assets.stage.demo import (
     SPECIFICATION,
     hit_recording,
     piece_folder,
     recordings_folder,
     stem_recording,
 )
-from assets.pictures.paths import guide_picture
-from assets.pictures.writer import Pictures
 from automation.screen import Screen
 from automation.steps.instructions import load_library
 from automation.steps.main import (

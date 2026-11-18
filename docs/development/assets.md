@@ -1,8 +1,8 @@
 # Assets
 
 This document governs `assets/`, the checkout unit that makes the repository's own content: the icon suite
-the application ships, the HTML documentation it opens, the demo tree, and the pictures of the application
-the guide and the README show.
+the application ships, the HTML documentation it opens, the demo tree, the pictures of the application
+the guide and the README show, and the footage of the application for short videos.
 Consult it before adding something the repository keeps that a person would
 otherwise draw, record or arrange by hand, and before changing how one of these is made. What a checkout
 unit is, and what it may import, is in [tooling](tooling.md).
@@ -88,8 +88,9 @@ the same recordings into slightly different documents.
 
 `assets/stage/` puts the application on a virtual display for the makers that film it. It holds what they
 share: the runner arguments and environment that start scenes under pytest with a naming of their own, the
-demo tree laid into a scene's home (`worlds.py`), and the camera that reads the settled frame, the box of an
-item and the pointer's resting place. The scenes import the screen plugin through `assets/conftest.py`, and a
+world a scene's home holds, with its window size, its folded cards and the demo tree (`worlds.py`), where
+the demo's documents stand in that home (`demo.py`), and the camera that reads the settled frame, the box of
+an item and the pointer's resting place. Each scene's process keeps the deadline the screen plugin gives it. The scenes import the screen plugin through `assets/conftest.py`, and a
 maker's own `scenes/conftest.py` overrides the world and adds its writer.
 
 ### Pictures
@@ -123,3 +124,33 @@ plot edges on every run, and a lossless file would carry every flip as new bytes
 keeps the picture that stands when a new drawing differs from it by that scatter alone, and rewrites it
 when any small block of the frame changed as a whole, which is what a changed glyph, a moved control or a
 redrawn line does. A run after no change to the interface leaves the repository as it was.
+
+### Footage
+
+`assets/footage/` films the Reconstructions tab for a short vertical video: the application plays a
+document while a timeline switches what is heard, and the maker keeps one frame per tick of the playhead.
+A specification in YAML names the document, the frame rate and the timeline, a list of segments, each
+naming the source the switch shows and the stem rows ticked from a moment of the document on. A
+specification naming no document films the demo piece, as `assets/footage/config/demo.yaml` does.
+
+The timeline is laid on the document's tick grid: frame *i* shows the playhead at tick *f₀ + i·k*, *k* being
+the ticks one frame spans, so the frame rate divides the NES frequency, and a listening takes over at the
+first frame at or after its segment begins. The soundtrack is cut on the same frames. Each segment's audio
+is read as the application plays it, the recordings heard for the original and the heard render for the
+reconstruction, joined with short equal-power crossfades, the reconstruction matched in loudness to the
+original, and mastered by ffmpeg to −14 LUFS with a true peak at −1 dBTP at most.
+
+The frames come from a scene under `assets/footage/scenes/`, named so that the footage maker alone
+collects it. Its window holds the Reconstruction card's column whole, with the Instruments card folded.
+For each frame, the scene sets the listening where it changes, presses Step forward and waits for the
+cursor to mark the frame's tick, then cuts the Source card's bar with its switch, the Waveform card and the
+Stems card out of the settled screen and stacks them on a 1080×1920 frame, inside the band the platform's
+overlays leave clear, on the palette's ground color. The runner hands the scene its take, the schedule,
+the stem rows, the frames folder and the frame to stop before, through an environment variable.
+
+`make footage` (`SPEC=` a specification, `OUTPUT=` the video) writes the soundtrack, films the frames
+missing from `build/footage/<name>/frames/`, and encodes them with the soundtrack into an H.264 and AAC video
+tagged BT.709. Each frame is written whole as it is filmed, so a run cut short resumes where it stopped,
+and the frames are filmed again once the specification or the document changes, or with `--fresh`.
+`--limit N` films the first frames alone, which is how a change to the shot is checked on one still, and
+`--limit 0` writes the soundtrack alone. The maker needs Xvfb and ffmpeg and runs by hand.

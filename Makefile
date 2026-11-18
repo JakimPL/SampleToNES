@@ -1,4 +1,4 @@
-.PHONY: help setup install system-deps build release run calibration tracker-playback icons docs demo pictures clean pre-commit test test-docs benchmarks screens lint format
+.PHONY: help setup install system-deps build release run calibration tracker-playback icons docs demo pictures footage clean pre-commit test test-docs benchmarks screens lint format
 
 ifeq ($(OS),Windows_NT)
 PYTHON := python
@@ -15,6 +15,7 @@ endif
 GPU ?= auto
 DEMO ?= build/demo
 PROJECT_OPTIONS = $(foreach project,$(PROJECT),--project $(project))
+FOOTAGE_OPTIONS = $(if $(SPEC),--spec $(SPEC)) $(if $(OUTPUT),-o $(OUTPUT))
 
 help:
 	@echo $(Q)Available targets:$(Q)
@@ -33,6 +34,7 @@ help:
 	@echo $(Q)  make docs        - Write the user documentation as HTML pages into the package$(Q)
 	@echo $(Q)  make demo        - Make the demo tree (recordings, a library, reconstructions, a project) in DEMO=build/demo$(Q)
 	@echo $(Q)  make pictures    - Draw the guide's and the README's pictures of the application from the demo tree (needs Xvfb)$(Q)
+	@echo $(Q)  make footage [SPEC=reel.yaml] [OUTPUT=reel.mp4] - Film the Reconstructions tab through a timeline into a vertical video, the demo piece by default (needs Xvfb, ffmpeg)$(Q)
 	@echo $(Q)  make clean       - Remove build artifacts and cache files$(Q)
 	@echo $(Q)  make lint        - Run mypy and pylint (ARGS=--mypy or ARGS=--pylint for one of them)$(Q)
 	@echo $(Q)  make format      - Auto-format code (isort, black)$(Q)
@@ -76,6 +78,9 @@ demo:
 
 pictures:
 	uv run python -m assets.pictures
+
+footage:
+	uv run python -m assets.footage $(FOOTAGE_OPTIONS)
 
 clean:
 	$(PYTHON) scripts/clean.py

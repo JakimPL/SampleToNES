@@ -10,6 +10,7 @@ from assets.demo.paths import (
     stem_recording_path,
 )
 from assets.demo.specification import DemoSpecification
+from assets.stage.paths import DEMO_DIRECTORY
 from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
 
 SPECIFICATION: Final[DemoSpecification] = DemoSpecification.load()
@@ -38,8 +39,12 @@ def stem_recording(name: str) -> Path:
 
 
 def piece_document() -> Path:
-    """The piece's reconstruction in the home's documents folder, under its configuration folder."""
-    return piece_document_path(USER_PATH_DOCUMENTS, PIECE)
+    """The piece's reconstruction in the home's documents folder, under its configuration folder.
+
+    The demo tree is laid into the documents folder as the demo maker wrote it, so the place is read from the
+    tree itself, and it is known before the home is written.
+    """
+    return USER_PATH_DOCUMENTS / piece_document_path(DEMO_DIRECTORY, PIECE).relative_to(DEMO_DIRECTORY)
 
 
 def project_document() -> Path:

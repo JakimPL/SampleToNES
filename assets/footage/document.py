@@ -1,11 +1,13 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Dict
 
 from assets.demo.paths import piece_document_path
 from assets.demo.specification import DemoSpecification
 from assets.footage.specification import Footage
 from assets.stage.paths import DEMO_DIRECTORY
 from assets.stage.runner import ensure_demo_tree
+from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 
 
 @dataclass(frozen=True)
@@ -31,3 +33,8 @@ def located_document(footage: Footage, specification: Path) -> LocatedDocument:
 
     folder = specification.parent
     return LocatedDocument(path=(folder / footage.document).resolve(), working_directory=folder)
+
+
+def stem_ids(stems_data: StemsData) -> Dict[str, int]:
+    """The number each named recording of ``stems_data`` goes by, under its name, which keys its Stems card row."""
+    return {name: entry.id for entry in stems_data.config.entries if (name := stems_data.named(entry.id)) is not None}

@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Dict, Final
 
-from assets.stage.runner import pytest_arguments, run_environment
+from assets.stage.runner import OWN_DEADLINE, pytest_arguments, run_environment
 from automation.environment import HOMES_VARIABLE, KEPT_VARIABLE, SCREEN_VARIABLE
 
 SCENES: Final[Path] = Path("/checkout/assets/maker/scenes")
@@ -44,6 +44,11 @@ class TestPytestArguments:
 
         assert "-m" not in arguments
         assert arguments.count("-o") == len(NAMING)
+
+    def test_the_scenes_run_under_the_deadline_of_their_own_process(self) -> None:
+        arguments = pytest_arguments(SCENES, NAMING, markers={}, workers=None, selection=None)
+
+        assert OWN_DEADLINE in arguments
 
 
 class TestRunEnvironment:

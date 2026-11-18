@@ -2,10 +2,10 @@ from typing import Final
 
 import pytest
 
-from assets.pictures.demo import piece_document
 from assets.pictures.paths import README_PICTURE
 from assets.pictures.worlds import README_VIEWPORT
 from assets.pictures.writer import Pictures
+from assets.stage.demo import piece_document
 from assets.stage.worlds import demo_world
 from automation.screen import Screen
 from automation.steps.reconstructions import expect_open, load_from_the_browser

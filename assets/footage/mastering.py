@@ -9,7 +9,7 @@ import numpy as np
 import soundfile
 
 from sampletones_shared.utils.system.programs import locate_program
-from sampletones_tools.ffmpeg import FFMPEG, missing_ffmpeg_message
+from sampletones_tools.ffmpeg import FFMPEG, UNATTENDED, missing_ffmpeg_message
 
 PURPOSE: Final[str] = "footage is mastered and encoded with it"
 TARGET_LOUDNESS: Final[float] = -14.0
@@ -22,7 +22,7 @@ WORKING_SUBTYPE: Final[str] = "FLOAT"
 SUMMARY: Final[str] = "Summary:"
 INTEGRATED_PATTERN: Final[re.Pattern[str]] = re.compile(r"I:\s+(-?[\d.]+|-inf) LUFS")
 PEAK_PATTERN: Final[re.Pattern[str]] = re.compile(r"Peak:\s+(-?[\d.]+|-inf) dBFS")
-UNATTENDED: Final[List[str]] = ["-nostdin", "-nostats", "-y"]
+QUIET: Final[str] = "-nostats"
 
 
 class MissingFfmpegError(RuntimeError):
@@ -54,7 +54,7 @@ def decibel_gain(decibels: float) -> float:
 
 
 def loudness_command(source: Path) -> List[str]:
-    return [FFMPEG, *UNATTENDED, "-i", str(source), "-af", "ebur128=peak=true", "-f", "null", "-"]
+    return [FFMPEG, *UNATTENDED, QUIET, "-i", str(source), "-af", "ebur128=peak=true", "-f", "null", "-"]
 
 
 def limiter_command(source: Path, target: Path, *, gain_decibels: float) -> List[str]:
@@ -66,6 +66,7 @@ def limiter_command(source: Path, target: Path, *, gain_decibels: float) -> List
     return [
         FFMPEG,
         *UNATTENDED,
+        QUIET,
         "-loglevel",
         "error",
         "-i",

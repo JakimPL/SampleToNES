@@ -1,9 +1,10 @@
-from typing import Dict, Final
+from typing import Dict, Final, Tuple
 
 from sampletones_shared.utils.system.programs import missing_program_message
 from sampletones_shared.utils.system.system import System
 
 FFMPEG: Final[str] = "ffmpeg"
+UNATTENDED: Final[Tuple[str, ...]] = ("-nostdin", "-y")
 
 INSTALL_HINTS: Final[Dict[System, str]] = {
     System.LINUX: "sudo apt install ffmpeg",

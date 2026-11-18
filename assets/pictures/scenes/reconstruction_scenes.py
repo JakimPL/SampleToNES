@@ -1,8 +1,8 @@
 from typing import Final
 
-from assets.pictures.demo import piece_document
 from assets.pictures.paths import guide_picture
 from assets.pictures.writer import Pictures
+from assets.stage.demo import piece_document
 from automation.screen import Screen
 from automation.steps.reconstructions import expect_open, load_from_the_browser
 from automation.views.instruments import tab

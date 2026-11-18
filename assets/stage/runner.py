@@ -9,6 +9,7 @@ from automation.environment import HOMES_VARIABLE, KEPT_VARIABLE, SCREEN_VARIABL
 from automation.homes import HIDDEN_PREFIX
 
 NOTHING_TO_RUN: Final[int] = int(pytest.ExitCode.NO_TESTS_COLLECTED)
+OWN_DEADLINE: Final[str] = "--timeout=0"
 
 
 def pytest_arguments(
@@ -22,6 +23,8 @@ def pytest_arguments(
     """The arguments a maker's scenes run under: their folder, their naming, the markers they carry, the marker
     expression ``selection`` picks them by, or every scene for ``None``, and ``workers`` workers, or one process
     at a time for ``None``, without coverage.
+
+    Each scene's process keeps the deadline the screen plugin gives it, so the run itself sets none.
     """
     overrides = [argument for key, value in naming.items() for argument in ("-o", f"{key}={value}")]
     declared = [argument for marker, words in markers.items() for argument in ("-o", f"markers={marker}: {words}")]
@@ -33,6 +36,7 @@ def pytest_arguments(
         *declared,
         *picked,
         *spread,
+        OWN_DEADLINE,
         "--no-cov",
         "-p",
         "no:cacheprovider",

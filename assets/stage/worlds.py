@@ -1,7 +1,7 @@
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final
+from typing import Dict, Final, Tuple
 
 from assets.demo.paths import (
     LIBRARY_FOLDER,
@@ -10,7 +10,7 @@ from assets.demo.paths import (
     RECORDINGS_FOLDER,
 )
 from assets.stage.paths import DEMO_DIRECTORY
-from automation.worlds.home import World, one_worker_config
+from automation.worlds.home import HomeFile, World, one_worker_config
 from sampletones_application.config.session.application.config import (
     ApplicationConfig,
 )
@@ -75,8 +75,19 @@ class DemoTree:
             )
 
 
-def demo_world(viewport: ViewportState) -> World:
-    """A home holding the demo tree, opening a window of ``viewport`` with the frame-rate reading off.
+def demo_tree() -> DemoTree:
+    """The demo tree laid beside the working directory the application is started in and into its documents."""
+    return DemoTree(source=DEMO_DIRECTORY, working_directory=Path.cwd(), documents=USER_PATH_DOCUMENTS)
+
+
+def stage_world(
+    viewport: ViewportState,
+    *,
+    collapsed_cards: Dict[str, bool],
+    files: Tuple[HomeFile, ...],
+) -> World:
+    """A home holding ``files``, opening a window of ``viewport`` with the cards ``collapsed_cards`` folds and the
+    frame-rate reading off.
 
     The session remembers the documents folder as where audio was last written, so a window proposing
     a file for a render names a place under the documents.
@@ -85,14 +96,14 @@ def demo_world(viewport: ViewportState) -> World:
         state=ApplicationState(
             viewport=viewport,
             last_paths=LastPaths(audio=USER_PATH_DOCUMENTS),
+            collapsed_cards=collapsed_cards,
         ),
         application_config=ApplicationConfig(display=DisplayConfig(show_frame_rate=False)),
         config=one_worker_config(),
-        files=(
-            DemoTree(
-                source=DEMO_DIRECTORY,
-                working_directory=Path.cwd(),
-                documents=USER_PATH_DOCUMENTS,
-            ),
-        ),
+        files=files,
     )
+
+
+def demo_world(viewport: ViewportState) -> World:
+    """A home holding the demo tree, opening a window of ``viewport`` with every card open."""
+    return stage_world(viewport, collapsed_cards={}, files=(demo_tree(),))

@@ -18,7 +18,7 @@ from sampletones_player.specification.song import (
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.paths.extensions import EXT_FILE_NSF, EXT_FILE_WAVE
 from sampletones_shared.utils.system.programs import locate_program
-from sampletones_tools.ffmpeg import FFMPEG, missing_ffmpeg_message
+from sampletones_tools.ffmpeg import FFMPEG, UNATTENDED, missing_ffmpeg_message
 
 GME_FORMAT: Final[str] = "libgme"
 WORD: Final[str] = "<H"
@@ -118,7 +118,7 @@ def render(source: Path, destination: Path, seconds: float) -> None:
     subprocess.run(
         [
             FFMPEG,
-            "-y",
+            *UNATTENDED,
             "-loglevel",
             "error",
             "-f",

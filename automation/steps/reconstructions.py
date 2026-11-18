@@ -9,6 +9,7 @@ from automation.holds.regeneration import RegenerationHold
 from automation.screen import Screen
 from automation.views.bar_graph import BarGraph
 from automation.vocabulary.graphs import WAVEFORM_RECONSTRUCTION
+from automation.vocabulary.playback import PAUSE, RESUME
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName, FeatureKey
@@ -18,6 +19,7 @@ from sampletones_shared.constants.symbols import TITLE_SEPARATOR
 from sampletones_shared.paths.user import RECONSTRUCTIONS_DIRECTORY
 
 FADE_TIMEOUT_SECONDS: Final[float] = 120.0
+CLICK_INSET: Final[float] = 0.01
 
 APPLICATION_NAME: Final[str] = "global.dialog.title.main_window"
 UNTITLED: Final[str] = "global.dialog.label.untitled"
@@ -124,6 +126,41 @@ def wait_for_the_fade_to_end(
         description="the fade ended",
         timeout=FADE_TIMEOUT_SECONDS,
     )
+
+
+def expect_the_playhead_at(screen: Screen, sample: int) -> None:
+    """Waits until the waveform's cursor marks ``sample``."""
+    screen.expect(
+        screen.reconstructions.waveform.cursor,
+        lambda reading: reading == sample,
+        description=f"the playhead at sample {sample}",
+    )
+
+
+def put_the_playhead_at(screen: Screen, sample: int, *, tick_length: int) -> None:
+    """Clicks the waveform near ``sample``, which plays from there, steps the playback paused, and walks the
+    playhead a tick of ``tick_length`` samples at a time until it stands at ``sample``, a tick boundary.
+
+    The click lands a little inside the ends of what the plot shows, where the plot takes it. ``sample`` must lie
+    past the first sample, the one place the waveform marks with no cursor.
+    """
+    waveform = screen.reconstructions.waveform
+    playback = screen.sequencer.playback
+    low, high = waveform.limits()
+    inset = (high - low) * CLICK_INSET
+    waveform.click(waveform.fraction_at(min(max(sample, low + inset), high - inset)))
+    screen.expect(playback.play_entry, screen.words(PAUSE).__eq__, description="the playback playing")
+    screen.press_shortcut(ShortcutId.STEP_FORWARD)
+    screen.expect(playback.play_entry, screen.words(RESUME).__eq__, description="the playback paused")
+
+    landed = waveform.cursor()
+    assert landed is not None, "the paused playback marks no playhead"
+    ticks = (sample - round(landed)) // tick_length
+    shortcut = ShortcutId.STEP_FORWARD if ticks > 0 else ShortcutId.STEP_BACKWARD
+    for _ in range(abs(ticks)):
+        screen.press_shortcut(shortcut)
+
+    expect_the_playhead_at(screen, sample)
 
 
 def drag_item_to(

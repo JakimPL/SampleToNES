@@ -2,6 +2,7 @@ from typing import Dict, Final, FrozenSet, List, Sequence, Tuple
 
 import numpy as np
 
+from assets.footage.document import stem_ids
 from assets.footage.mastering import decibel_gain, measure
 from assets.footage.schedule import Schedule
 from assets.footage.specification import Listening
@@ -42,9 +43,7 @@ class ListeningAudio:
         self._mixed = mix(list(self._channels.values()))
         self._offered = offered_channels(stems_data)
         self._playing: FrozenSet[ChannelName] = frozenset(reconstruction.playing_channels)
-        self._ids: Dict[str, int] = {
-            name: entry.id for entry in stems_data.config.entries if (name := stems_data.named(entry.id)) is not None
-        }
+        self._ids = stem_ids(stems_data)
 
     def audio(self, listening: Listening) -> np.ndarray:
         """The audio the tab plays under ``listening``, from the document's first sample.
