@@ -84,6 +84,14 @@ the folder must be empty, which keeps a stale tree from mixing with a fresh one.
 longest part of a run, and the conversions run on whatever the machine offers, so two machines may convert
 the same recordings into slightly different documents.
 
+### Stage
+
+`assets/stage/` puts the application on a virtual display for the makers that film it. It holds what they
+share: the runner arguments and environment that start scenes under pytest with a naming of their own, the
+demo tree laid into a scene's home (`worlds.py`), and the camera that reads the settled frame, the box of an
+item and the pointer's resting place. The scenes import the screen plugin through `assets/conftest.py`, and a
+maker's own `scenes/conftest.py` overrides the world and adds its writer.
+
 ### Pictures
 
 `assets/pictures/` draws the pictures the guide and the README show: the application running on the demo
@@ -105,8 +113,8 @@ the others: the file browser lists the folders beside the scene's home, and ever
 folder is named after the run that made it, so the scene waits until those are gone. The homes stand deep
 enough under `build/worlds/`, which nothing under `build/` follows, that the rows of the checkout's own
 folders under the home's rows end before a picture bounded by those rows begins. The frame-rate reading is off in every scene, since it
-would change the picture on every run. A scene's own window size and world come from
-`assets/pictures/worlds.py`.
+would change the picture on every run. A scene's own window size comes from `assets/pictures/worlds.py`,
+and its world from the stage.
 
 A picture is regenerated on purpose, by running the maker again after a change to the interface, and the
 pull request shows the pictures that changed. A software renderer lands an anti-aliased edge a fraction of

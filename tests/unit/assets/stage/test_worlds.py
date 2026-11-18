@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from assets.demo.paths import LIBRARY_FOLDER, PROJECTS_FOLDER, RECONSTRUCTIONS_FOLDER, RECORDINGS_FOLDER
-from assets.pictures.worlds import DemoTree, MissingDemoError
+from assets.stage.worlds import DemoTree, MissingDemoError
 
 
 def demo_tree(source: Path) -> None:

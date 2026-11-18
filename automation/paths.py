@@ -1,11 +1,11 @@
 from pathlib import Path
 from typing import Final
 
-from sampletones_shared.paths.source import REPOSITORY_ROOT
+from sampletones_shared.paths.source import BUILD_ROOT, REPOSITORY_ROOT
 
 AUTOMATION_DIRECTORY: Final[Path] = REPOSITORY_ROOT / "automation"
 DEARPYGUI_LAYER_DIRECTORY: Final[Path] = AUTOMATION_DIRECTORY / "dearpygui"
-KEPT_DIRECTORY: Final[Path] = REPOSITORY_ROOT / "build" / "screens"
+KEPT_DIRECTORY: Final[Path] = BUILD_ROOT / "screens"
 HOME_FOLDER: Final[str] = "home"
 HOMES_PREFIX: Final[str] = "sampletones-screens-"
 HOME_COPY_NOTE: Final[str] = "home-copy-incomplete.txt"

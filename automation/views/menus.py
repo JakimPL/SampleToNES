@@ -141,12 +141,20 @@ class MenuBar:
 
     def close(self) -> None:
         """Clicks the bare far end of the tab bar, clear of every menu's popup, which puts an open menu away."""
+        self._hand.click_at(self.bare_spot())
+
+    def bare_spot(self) -> Point:
+        """The bare far end of the tab bar, where the pointer lights nothing and clears every menu's popup.
+
+        Raises:
+            LookupError: If the last tab reports no box to stand beside.
+        """
         last_tab = self._bridge.ask(lambda: read_item(TAG_GLOBAL_TAB_INSTRUCTIONS).rect)
         viewport = self._bridge.ask(read_viewport)
         if last_tab is None:
-            raise LookupError("The last tab reports no box to click beside")
+            raise LookupError("The last tab reports no box to stand beside")
 
-        self._hand.click_at(Point(x=round(viewport.width) - FAR_END_INSET, y=last_tab.center.y))
+        return Point(x=round(viewport.width) - FAR_END_INSET, y=last_tab.center.y)
 
     def entries(self, group: MenuElements) -> List[MenuEntry]:
         """The entries of the menu ``group``, in order: their words, whether they answer, and the keys printed."""

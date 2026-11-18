@@ -1,7 +1,8 @@
 import pytest
 
-from assets.pictures.worlds import GUIDE_VIEWPORT, demo_world
+from assets.pictures.worlds import GUIDE_VIEWPORT
 from assets.pictures.writer import Pictures
+from assets.stage.worlds import demo_world
 from automation.screen import Screen
 from automation.worlds.home import World
 

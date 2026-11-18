@@ -2,16 +2,15 @@ from pathlib import Path
 from typing import Final
 
 from assets.demo.paths import (
-    PROJECTS_FOLDER,
     RECONSTRUCTIONS_FOLDER,
     RECORDINGS_FOLDER,
+    hit_recording_path,
+    piece_folder_path,
+    project_path,
+    stem_recording_path,
 )
 from assets.demo.specification import DemoSpecification
-from sampletones_shared.paths.extensions import (
-    EXT_FILE_PROJECT,
-    EXT_FILE_RECONSTRUCTION,
-    EXT_FILE_WAVE,
-)
+from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
 
 SPECIFICATION: Final[DemoSpecification] = DemoSpecification.load()
@@ -26,17 +25,17 @@ def recordings_folder() -> Path:
 
 def piece_folder() -> Path:
     """The folder holding the piece's stems, inside the recordings."""
-    return recordings_folder() / PIECE
+    return piece_folder_path(recordings_folder(), PIECE)
 
 
 def hit_recording(name: str) -> Path:
     """The recording of the hit ``name``."""
-    return recordings_folder() / f"{name}{EXT_FILE_WAVE}"
+    return hit_recording_path(recordings_folder(), name)
 
 
 def stem_recording(name: str) -> Path:
     """The recording of the piece's stem ``name``."""
-    return piece_folder() / f"{name}{EXT_FILE_WAVE}"
+    return stem_recording_path(recordings_folder(), PIECE, name)
 
 
 def piece_document() -> Path:
@@ -46,4 +45,4 @@ def piece_document() -> Path:
 
 def project_document() -> Path:
     """The demo project in the home's documents folder."""
-    return USER_PATH_DOCUMENTS / PROJECTS_FOLDER / f"{PROJECT}{EXT_FILE_PROJECT}"
+    return project_path(USER_PATH_DOCUMENTS, PROJECT)
