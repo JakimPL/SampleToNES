@@ -6,10 +6,10 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_player.registers.base import ChannelRegisters
-from sampletones_player.registers.hold import hold
 from sampletones_player.registers.noise import NoiseRegisters
 from sampletones_player.registers.pulse import PulseRegisters
 from sampletones_player.registers.triangle import TriangleRegisters
+from sampletones_shared.utils.sequences import hold
 
 
 class ChannelStreams(BaseModel):

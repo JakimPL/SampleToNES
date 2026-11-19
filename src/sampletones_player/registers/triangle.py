@@ -10,7 +10,6 @@ from sampletones_player.registers.dividers import (
     anchored_pitches,
     bent_dividers,
 )
-from sampletones_player.registers.hold import hold
 from sampletones_player.registers.tone import ToneRegisters
 from sampletones_player.specification.registers import (
     MAX_REGISTER_VALUE,
@@ -20,6 +19,7 @@ from sampletones_player.specification.registers import (
     TRIANGLE_SOUNDING_RELOAD,
 )
 from sampletones_shared.constants.music import LIMIT_MIN_PITCH
+from sampletones_shared.utils.sequences import hold
 
 
 class TriangleRegisters(ToneRegisters):

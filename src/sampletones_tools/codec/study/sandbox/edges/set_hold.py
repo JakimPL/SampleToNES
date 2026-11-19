@@ -1,8 +1,8 @@
 from typing import Final
 
+from sampletones_player.compression.parse.shortest import Shortest
 from sampletones_tools.codec.study.sandbox.context import PlaneContext
 from sampletones_tools.codec.study.sandbox.edges.generator import EdgeGenerator, offered_lengths
-from sampletones_tools.codec.study.sandbox.shortest import Shortest
 from sampletones_tools.codec.study.sandbox.tokens import SetHold, StudyToken
 
 LEAST_SET_HOLD_TICKS: Final[int] = 2

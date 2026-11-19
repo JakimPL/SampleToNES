@@ -8,12 +8,12 @@ from sampletones_core.constants.general import MAX_PERIOD
 from sampletones_core.exporters.implementation.noise import NoiseExporter
 from sampletones_core.instructions import NoiseInstruction
 from sampletones_player.registers.base import ChannelRegisters
-from sampletones_player.registers.hold import hold
 from sampletones_player.specification.registers import (
     MAX_REGISTER_VALUE,
     NOISE_MODE_SHIFT,
     SUSTAINED_LEVEL,
 )
+from sampletones_shared.utils.sequences import hold
 
 
 class NoiseRegisters(ChannelRegisters):

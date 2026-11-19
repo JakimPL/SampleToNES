@@ -15,6 +15,7 @@ from sampletones_player.compression.tokens.sizes import (
     literal_size,
     phrase_size,
 )
+from sampletones_player.compression.tokens.types import TokenUnion
 from sampletones_player.specification.compression import (
     MAX_HOLD_TICKS,
     MAX_LITERAL_BYTES,
@@ -24,7 +25,7 @@ from sampletones_player.specification.compression import (
 
 
 def _relax_literal(
-    shortest: Shortest,
+    shortest: Shortest[TokenUnion],
     plane: bytes,
     window: LiteralWindow,
     position: int,
@@ -43,7 +44,7 @@ def _relax_literal(
 
 
 def _relax_forward(
-    shortest: Shortest,
+    shortest: Shortest[TokenUnion],
     index: PlaneIndex,
     matcher: PhraseMatcher,
     options: CodecOptions,
@@ -127,7 +128,7 @@ def parse_plane(
     entries = Boundaries.across(ticks, boundaries)
     previous = entries.previous
     following = entries.following
-    shortest = Shortest.across(ticks)
+    shortest: Shortest[TokenUnion] = Shortest.across(ticks)
     window = LiteralWindow(shortest.costs)
     _relax_forward(shortest, index, matcher, options, 0, following[0], holdable=False)
     for position in range(1, ticks + 1):

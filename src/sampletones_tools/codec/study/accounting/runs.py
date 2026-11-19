@@ -1,7 +1,7 @@
-from itertools import groupby, pairwise
+from itertools import groupby
 from typing import Tuple
 
-from sampletones_player.specification.binary import BYTE_VALUES
+from sampletones_player.specification.binary import byte_steps
 
 
 def runs(data: bytes) -> Tuple[int, ...]:
@@ -28,5 +28,5 @@ def ramps(data: bytes) -> Tuple[int, ...]:
     Returns:
         Tuple[int, ...]: The length of every ramp of at least two values.
     """
-    steps = tuple((following - value) % BYTE_VALUES for value, following in pairwise(data))
+    steps = byte_steps(data)
     return tuple(len(list(group)) + 1 for step, group in groupby(steps) if step != 0)

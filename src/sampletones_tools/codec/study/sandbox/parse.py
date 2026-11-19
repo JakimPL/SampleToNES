@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import List, Sequence, Tuple
 
 from sampletones_player.compression.parse.literals import LiteralWindow
+from sampletones_player.compression.parse.shortest import Shortest
 from sampletones_player.specification.compression import MAX_LITERAL_BYTES
 from sampletones_tools.codec.study.sandbox.context import PlaneContext
 from sampletones_tools.codec.study.sandbox.edges.generator import EdgeGenerator
@@ -13,7 +14,6 @@ from sampletones_tools.codec.study.sandbox.edges.literals import relax_literal
 from sampletones_tools.codec.study.sandbox.edges.phrases import phrase_edges
 from sampletones_tools.codec.study.sandbox.edges.set_hold import set_hold_edges
 from sampletones_tools.codec.study.sandbox.grammar import Grammar
-from sampletones_tools.codec.study.sandbox.shortest import Shortest
 from sampletones_tools.codec.study.sandbox.tokens import StudyToken
 
 

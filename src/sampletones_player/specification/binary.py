@@ -1,3 +1,4 @@
+from itertools import pairwise
 from typing import Final
 
 WORD_SIZE: Final[int] = 2
@@ -37,3 +38,18 @@ def unsigned_byte(value: int) -> int:
         raise ValueError(f"a byte states {-SIGNED_BYTE_LIMIT} through {SIGNED_BYTE_LIMIT - 1}, and this is {value}")
 
     return value % BYTE_VALUES
+
+
+def byte_steps(data: bytes) -> bytes:
+    """The step from each byte to the next, wrapping around the byte's range.
+
+    A run of steps is the shape a shift leaves alone, so a phrase and a plane are matched and
+    counted by their steps. The steps are one fewer than the bytes.
+
+    Args:
+        data: The bytes read.
+
+    Returns:
+        bytes: One step per neighboring pair.
+    """
+    return bytes((following - value) % BYTE_VALUES for value, following in pairwise(data))

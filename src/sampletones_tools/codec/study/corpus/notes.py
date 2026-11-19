@@ -4,7 +4,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import PulseExporter, TriangleExporter
 from sampletones_core.instructions import InstructionUnion, PulseInstruction, TriangleInstruction
 from sampletones_player.registers.channel import channel_instructions
-from sampletones_player.registers.hold import hold
+from sampletones_shared.utils.sequences import hold
 
 TONE_ORDER: Final[Tuple[ChannelName, ...]] = (
     ChannelName.PULSE1,
