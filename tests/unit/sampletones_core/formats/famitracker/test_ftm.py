@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from sampletones_core.formats.famitracker.builder import project_to_module
 from sampletones_core.formats.famitracker.export import write_ftm
 from sampletones_core.formats.famitracker.module import module_to_ftm_bytes
@@ -31,6 +33,7 @@ from sampletones_core.formats.famitracker.specification.patterns import (
     NoteValue,
 )
 from sampletones_core.formats.famitracker.specification.sequences import NO_LOOP_POINT, SequenceKind
+from sampletones_shared.constants.project import MAX_HIGHLIGHT, MIN_HIGHLIGHT
 from tests.suite.famitracker import ParsedModule, ParsedSequence, parse_ftm
 
 from .conftest import ProjectFixture
@@ -90,6 +93,23 @@ class TestParamsBlock:
 
     def test_speed_split_point(self, project_fixture: ProjectFixture) -> None:
         assert _parsed(project_fixture).params.speed_split_point == DEFAULT_SPEED_SPLIT_POINT
+
+    @pytest.mark.parametrize(
+        "first, second",
+        [(MIN_HIGHLIGHT, MAX_HIGHLIGHT), (MAX_HIGHLIGHT, MIN_HIGHLIGHT), (3, 12)],
+        ids=["the bounds", "the bounds reversed", "a waltz"],
+    )
+    def test_the_module_groups_rows_by_the_projects_highlights(
+        self, project_fixture: ProjectFixture, first: int, second: int
+    ) -> None:
+        """FamiTracker groups rows and reads its tempo by the highlights the module states, so the
+        module states the project's own and opens with the rows grouped as the application groups them."""
+        project_fixture.project.settings.first_highlight = first
+        project_fixture.project.settings.second_highlight = second
+
+        params = _parsed(project_fixture).params
+
+        assert (params.highlight_first, params.highlight_second) == (first, second)
 
 
 class TestInfoAndComments:

@@ -89,8 +89,8 @@ written. After the last block comes the 3-byte marker `END`.
 | machine | `int32` | `0` NTSC, `1` PAL |
 | engine speed | `int32` | `0` for the machine's default, otherwise a refresh rate in Hz |
 | vibrato style | `int32` | `1` |
-| highlight first | `int32` | `4` |
-| highlight second | `int32` | `16` |
+| highlight first | `int32` | the project's first row highlight |
+| highlight second | `int32` | the project's second row highlight |
 | speed split point | `int32` | the row where the tempo and speed interpretation splits (`speed_split_point`) |
 
 `HEADER` payload:
