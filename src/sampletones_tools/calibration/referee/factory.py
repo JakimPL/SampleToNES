@@ -3,6 +3,7 @@ from typing import List
 from sampletones_tools.calibration.config.referee import RefereeConfig
 
 from .auditory import MultiResolutionAuditoryReferee
+from .balance import BalanceReferee
 from .loudness import LoudnessWeightedReferee
 from .pitch import PitchReferee
 from .protocol import Referee, TruthReferee
@@ -39,11 +40,12 @@ def build_truth_referees() -> List[TruthReferee]:
     """Referees reading a conversion against what its reference sound plays, with the packaged tuning.
 
     Returns:
-        List[TruthReferee]: The transcription, the pitch and the stability referees.
+        List[TruthReferee]: The transcription, the pitch, the stability and the balance referees.
     """
     config = RefereeConfig.load()
     return [
         TranscriptionReferee(volume_tolerance=config.volume_tolerance),
         PitchReferee(),
         StabilityReferee(),
+        BalanceReferee(),
     ]

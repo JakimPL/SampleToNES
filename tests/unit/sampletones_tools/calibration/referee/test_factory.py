@@ -1,6 +1,7 @@
 import pytest
 
 from sampletones_tools.calibration.referee.auditory import AUDITORY_REFEREE_NAME
+from sampletones_tools.calibration.referee.balance import BALANCE_REFEREE
 from sampletones_tools.calibration.referee.factory import build_referees, build_truth_referees
 from sampletones_tools.calibration.referee.loudness import LOUDNESS_REFEREE_NAME
 from sampletones_tools.calibration.referee.pitch import PITCH_REFEREE
@@ -27,9 +28,10 @@ class TestBuildReferees:
 
 
 class TestBuildTruthReferees:
-    def test_the_transcription_leads_the_pitch_and_the_stability(self) -> None:
+    def test_the_transcription_leads_the_pitch_the_stability_and_the_balance(self) -> None:
         assert [referee.name for referee in build_truth_referees()] == [
             TRANSCRIPTION_REFEREE,
             PITCH_REFEREE,
             STABILITY_REFEREE,
+            BALANCE_REFEREE,
         ]

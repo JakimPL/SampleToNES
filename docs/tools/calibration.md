@@ -114,7 +114,7 @@ The `mr-loudness-dB` section adds a table for each of its readings:
 
 The score is `missing` plus `added`. `level` is reported separately.
 
-The `transcription`, `pitch` and `stability` sections read the reconstruction's instructions against
+The `transcription`, `pitch`, `stability` and `balance` sections read the reconstruction's instructions against
 what a reference sound plays, so they cover only the sounds whose frames or pitches the run knows.
 Their readings are shares of frames, from 0 to 1, except where the
 [referees](#the-truth-referees) say otherwise. Lower is better there too.
@@ -307,3 +307,12 @@ They never listen, so they say *what* went wrong where the audio referees say ho
   note or noise period while sounding (`moves`). The score is how many more changes per second the
   reconstruction makes than the sound itself, the two readings together. A reconstruction that
   flickers where the sound holds still scores high.
+- **`balance`** compares how the channels share the sound out. A part's share is its energy over
+  the energy of every part, the two pulses one part. The score is the share that would have to move
+  between parts to match the sound, from 0 to 1. Its readings:
+  - `pulses`, `triangle`, `noise`: each part's share played less its share written. A triangle
+    whose line went to a pulse reads below zero.
+  - `bass-on-pulse`: the share of the triangle's frames whose note a pulse plays, in any octave,
+    while the triangle plays another or none.
+  - `scale`: how much the reconstruction scaled the sound before matching it. A round trip matched
+    at the level the channels play it reads 1.
