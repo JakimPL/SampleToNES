@@ -512,6 +512,8 @@ reconstructions.browser.message.status_refresh: "Rescan for available reconstruc
 reconstructions.browser.message.remove_reconstruction_message: "Remove this reconstruction?"
 reconstructions.browser.message.remove_directory_message: "Remove this directory and all included reconstructions?"
 reconstructions.browser.title.load_reconstruction_dialog: "Load reconstruction"
+reconstructions.browser.message.remove_file_error: "Could not remove the reconstruction."
+reconstructions.browser.message.remove_directory_error: "Could not remove the folder."
 reconstructions.browser.title.remove_reconstruction_dialog: "Remove reconstruction"
 reconstructions.browser.title.remove_directory_dialog: "Remove directory"
 reconstructions.browser.template.incompatible_version_template: "Incompatible reconstruction version: {}, expected {}."

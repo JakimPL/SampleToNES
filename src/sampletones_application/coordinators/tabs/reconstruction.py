@@ -198,6 +198,8 @@ class ReconstructionTabCoordinator:
         self._lbl_remove = language_manager["global.dialog.label.remove"]
 
         self._msg_load_error = language_manager["reconstructions.browser.message.load_error"]
+        self._msg_remove_file_error = language_manager["reconstructions.browser.message.remove_file_error"]
+        self._msg_remove_directory_error = language_manager["reconstructions.browser.message.remove_directory_error"]
         self._export_messages = ExportMessages.build(language_manager)
         self._instrument_filter_names: Dict[ExportFormat, str] = {
             export_format: language_manager[
@@ -791,7 +793,7 @@ class ReconstructionTabCoordinator:
             self._browser_logic.remove_path(filepath)
         except OSError as exception:
             logger.error_with_traceback(exception, f"Failed to remove reconstruction: {filepath}")
-            self._dialogs.show_error(exception, self._msg_load_error)
+            self._dialogs.show_error(exception, self._msg_remove_file_error)
             return
 
         if stood_on_it:
@@ -801,8 +803,7 @@ class ReconstructionTabCoordinator:
 
     def _remove_directory(self, directory: Path) -> None:
         """Deletes a folder, keeping the open document once the file it stood on inside it is gone."""
-        current_filepath = self._reconstruction_manager.filepath
-        stood_in_it = current_filepath is not None and current_filepath.is_relative_to(directory)
+        stood_in_it = self._reconstruction_manager.lies_within(directory)
         try:
             self._browser_logic.remove_path(directory)
         except OSError as exception:
@@ -810,7 +811,7 @@ class ReconstructionTabCoordinator:
                 exception,
                 f"Failed to remove directory: {directory}",
             )
-            self._dialogs.show_error(exception, self._msg_load_error)
+            self._dialogs.show_error(exception, self._msg_remove_directory_error)
             return
 
         if stood_in_it:

@@ -67,6 +67,8 @@ from tests.suite.stems import (
 
 FILE_NOT_FOUND_KEY: Final[str] = "reconstructions.browser.message.file_not_found"
 LOAD_ERROR_KEY: Final[str] = "reconstructions.browser.message.load_error"
+REMOVE_FILE_ERROR_KEY: Final[str] = "reconstructions.browser.message.remove_file_error"
+REMOVE_DIRECTORY_ERROR_KEY: Final[str] = "reconstructions.browser.message.remove_directory_error"
 INVALID_METADATA_KEY: Final[str] = "global.dialog.message.invalid_metadata_error"
 INVALID_VALUES_KEY: Final[str] = "reconstructions.browser.message.invalid_values"
 INVALID_FILE_KEY: Final[str] = "reconstructions.browser.message.invalid_file"
@@ -256,6 +258,8 @@ def removal_coordinator() -> ReconstructionTabCoordinator:
     instance._language_manager = FakeLanguageManager(TEXTS)
     instance._lbl_remove = "Remove"
     instance._msg_load_error = LOAD_ERROR_KEY
+    instance._msg_remove_file_error = REMOVE_FILE_ERROR_KEY
+    instance._msg_remove_directory_error = REMOVE_DIRECTORY_ERROR_KEY
     return instance
 
 
@@ -356,6 +360,7 @@ class TestRemoveTreeEntries:
         removal_coordinator._reconstruction_manager.detach_current_reconstruction.assert_not_called()
         removal_coordinator._reconstruction_manager.mark_updated.assert_not_called()
         removal_coordinator._dialogs.show_error.assert_called_once()
+        assert removal_coordinator._dialogs.show_error.call_args.args[1] == REMOVE_FILE_ERROR_KEY
 
     def test_removing_another_file_leaves_the_open_document_as_it_is(
         self,
@@ -373,14 +378,38 @@ class TestRemoveTreeEntries:
         removal_coordinator: ReconstructionTabCoordinator,
     ) -> None:
         directory = Path("set")
-        removal_coordinator._reconstruction_manager.filepath = directory / "tone.strec"
+        removal_coordinator._reconstruction_manager.lies_within.return_value = True
 
         removal_coordinator._remove_directory(directory)
 
+        removal_coordinator._reconstruction_manager.lies_within.assert_called_once_with(directory)
         removal_coordinator._reconstruction_manager.detach_current_reconstruction.assert_called_once_with()
         removal_coordinator._reconstruction_manager.mark_updated.assert_called_once_with()
         removal_coordinator._browser_logic.remove_path.assert_called_once_with(directory)
         removal_coordinator._browser_panel.refresh.assert_called_once_with()
+
+    def test_removing_another_directory_leaves_the_open_document_as_it_is(
+        self,
+        removal_coordinator: ReconstructionTabCoordinator,
+    ) -> None:
+        removal_coordinator._reconstruction_manager.lies_within.return_value = False
+
+        removal_coordinator._remove_directory(Path("other"))
+
+        removal_coordinator._reconstruction_manager.detach_current_reconstruction.assert_not_called()
+        removal_coordinator._browser_logic.remove_path.assert_called_once_with(Path("other"))
+
+    def test_a_directory_that_stays_is_reported_as_a_failed_removal(
+        self,
+        removal_coordinator: ReconstructionTabCoordinator,
+    ) -> None:
+        removal_coordinator._reconstruction_manager.lies_within.return_value = True
+        removal_coordinator._browser_logic.remove_path.side_effect = OSError("busy")
+
+        removal_coordinator._remove_directory(Path("set"))
+
+        removal_coordinator._reconstruction_manager.detach_current_reconstruction.assert_not_called()
+        assert removal_coordinator._dialogs.show_error.call_args.args[1] == REMOVE_DIRECTORY_ERROR_KEY
 
     def test_request_remove_directory_prompts_with_path(
         self,
