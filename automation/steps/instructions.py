@@ -8,12 +8,13 @@ from sampletones_application.categories.hierarchy import Tab
 from sampletones_core.configs import Config
 from sampletones_core.fft import Window
 from sampletones_core.library.key import InstructionLibraryKey
+from sampletones_core.library.settings import LibrarySettings
 from sampletones_shared.paths.user import LIBRARY_DIRECTORY
 
 
 def library_path(config: Config) -> Path:
     """Where the library built for ``config`` is stored, under the name its settings give it."""
-    key = InstructionLibraryKey.create(config.library, Window.from_config(config))
+    key = InstructionLibraryKey.create(LibrarySettings.of(config), Window.from_config(config))
     return LIBRARY_DIRECTORY / key.filename
 
 

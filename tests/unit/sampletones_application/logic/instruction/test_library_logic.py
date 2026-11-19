@@ -22,6 +22,7 @@ from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.constants.enums import GeneratorName, SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.library import InstructionLibraryData, InstructionLibraryKey, LibraryState
+from sampletones_core.library.settings import LibrarySettings
 from sampletones_core.parallelization import TaskProgress, TaskStatus
 from sampletones_shared.application import SAMPLETONES_LIBRARY_DATA_VERSION
 from sampletones_shared.exceptions import (
@@ -472,8 +473,11 @@ def _write_library(
     """Writes an empty library built for ``library_config`` under ``directory``, stated at
     ``library_data_version``, its window ``window_size`` samples long where that is given and the one
     this build derives otherwise."""
-    key = InstructionLibraryKey.create(library_config, Window.from_config(library_config, custom_size=window_size))
-    library = InstructionLibraryData.create(Config().model_copy(update={"library": library_config}), {})
+    config = Config().model_copy(update={"library": library_config})
+    key = InstructionLibraryKey.create(
+        LibrarySettings.of(config), Window.from_config(library_config, custom_size=window_size)
+    )
+    library = InstructionLibraryData.create(config, {})
     stated = library.metadata.model_copy(update={"library_data_version": library_data_version})
     directory.mkdir(parents=True, exist_ok=True)
     library.model_copy(update={"metadata": stated}).save(directory / key.filename)
@@ -804,9 +808,10 @@ class TestTheCatalogFollowingTheConfiguration:
         key = _opened_library(catalog)
         aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
         settings = _other_settings(catalog)
+        stated = LibrarySettings(library=settings, pitch_range=Config().general.pitch_range)
         catalog.config_manager.apply_library_config(
-            InstructionLibraryKey.create(settings, Window.from_config(settings)),
-            settings,
+            InstructionLibraryKey.create(stated, Window.from_config(settings)),
+            stated,
         )
 
         aim_library_directory(catalog.config_manager, ours)

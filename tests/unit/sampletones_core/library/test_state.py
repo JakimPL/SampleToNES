@@ -7,13 +7,16 @@ import msgpack
 import pytest
 
 from sampletones_core.compatibility.kind import ObjectKind
-from sampletones_core.configs import Config
+from sampletones_core.configs import Config, PitchRange
 from sampletones_core.constants.enums import SpectrumMethod
+from sampletones_core.constants.general import MIN_PLAYED_PITCH
 from sampletones_core.data import Metadata
 from sampletones_core.library.data import InstructionLibraryData
+from sampletones_core.library.settings import LibrarySettings
 from sampletones_core.library.state import (
     CONFIG_FIELD,
     METADATA_FIELD,
+    PITCH_RANGE_FIELD,
     VERSION_FIELD,
     LibraryHeader,
     LibraryState,
@@ -29,6 +32,8 @@ LATER_LIBRARY_VERSION: Final[str] = "99.0"
 MALFORMED_VERSION: Final[str] = "not a version"
 STORED_GAMMA: Final[int] = 50
 STORED_SAMPLE_RATE: Final[int] = 22050
+STORED_MIN_PITCH: Final[int] = 40
+STORED_MAX_PITCH: Final[int] = 90
 
 
 def _write_current(path: Path) -> None:
@@ -130,6 +135,48 @@ class TestTheSettingsALibraryStates:
         path.write_bytes(msgpack.packb(payload, use_bin_type=True))
 
         assert LibraryHeader.read(path).config is None
+
+    def test_the_range_of_notes_reads_as_the_library_was_built_for(self, tmp_path: Path) -> None:
+        base = Config()
+        general = base.general.model_copy(update={"min_pitch": STORED_MIN_PITCH, "max_pitch": STORED_MAX_PITCH})
+        path = tmp_path / LIBRARY_NAME
+        InstructionLibraryData.create(base.model_copy(update={"general": general}), {}).save(path)
+
+        header = LibraryHeader.read(path)
+
+        assert header.pitch_range == PitchRange(min_pitch=STORED_MIN_PITCH, max_pitch=STORED_MAX_PITCH)
+        assert header.settings == LibrarySettings(library=base.library, pitch_range=general.pitch_range)
+
+    @pytest.mark.parametrize(
+        "stored",
+        [
+            "no range",
+            {"min_pitch": STORED_MAX_PITCH, "max_pitch": STORED_MIN_PITCH},
+            {"min_pitch": MIN_PLAYED_PITCH - 1, "max_pitch": STORED_MAX_PITCH},
+            {"min_pitch": STORED_MIN_PITCH},
+        ],
+        ids=["not a mapping", "reversed", "below the lowest note", "one bound alone"],
+    )
+    def test_a_range_stated_in_no_form_this_build_reads_leaves_the_settings_unstated(
+        self, tmp_path: Path, stored: object
+    ) -> None:
+        payload = msgpack.unpackb(InstructionLibraryData.create(Config(), {}).serialize(), raw=False)
+        payload[PITCH_RANGE_FIELD] = stored
+        path = tmp_path / LIBRARY_NAME
+        path.write_bytes(msgpack.packb(payload, use_bin_type=True))
+
+        header = LibraryHeader.read(path)
+
+        assert header.config == Config().library
+        assert (header.pitch_range, header.settings) == (None, None)
+
+    def test_a_library_stating_no_range_states_no_settings(self, tmp_path: Path) -> None:
+        payload = msgpack.unpackb(InstructionLibraryData.create(Config(), {}).serialize(), raw=False)
+        del payload[PITCH_RANGE_FIELD]
+        path = tmp_path / LIBRARY_NAME
+        path.write_bytes(msgpack.packb(payload, use_bin_type=True))
+
+        assert LibraryHeader.read(path).settings is None
 
     def test_the_metadata_names_the_build_that_wrote_it(self, tmp_path: Path) -> None:
         path = tmp_path / LIBRARY_NAME

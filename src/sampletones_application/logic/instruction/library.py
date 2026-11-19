@@ -14,7 +14,6 @@ from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.instruction.library import (
     LibraryPanelViewModel,
 )
-from sampletones_core.configs import InstructionsLibraryConfig
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.generators import (
     GENERATOR_CLASS_MAP,
@@ -29,6 +28,7 @@ from sampletones_core.library import (
     get_display_name_from_key,
 )
 from sampletones_core.library.filename.utils import create_key_from_filename
+from sampletones_core.library.settings import LibrarySettings
 from sampletones_core.parallelization import (
     ETAEstimator,
     TaskProgress,
@@ -50,7 +50,7 @@ from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.filesystem import remove_path
 
 OnLoadInstructionCallback = Callable[[InstructionUnion], None]
-OnApplyLibraryConfigCallback = Callable[[InstructionLibraryKey, Optional[InstructionsLibraryConfig]], None]
+OnApplyLibraryConfigCallback = Callable[[InstructionLibraryKey, Optional[LibrarySettings]], None]
 
 
 class LibraryLogic(CallbackMixin):
@@ -289,7 +289,7 @@ class LibraryLogic(CallbackMixin):
             logger.warning("A conversion or library generation is already in progress")
             return
 
-        self.call(self.on_apply_library_config, library_key, self._library_manager.stored_config(library_key))
+        self.call(self.on_apply_library_config, library_key, self._library_manager.stored_settings(library_key))
         replaced = self._library_manager.get_path(library_key)
         rebuilt = self._library_manager.get_path(self._config_manager.key)
         self.generate_library()
@@ -350,7 +350,7 @@ class LibraryLogic(CallbackMixin):
         """
         library_data = self._load_readable_library(library_key)
         if library_data is not None:
-            self.call(self.on_apply_library_config, library_key, library_data.config)
+            self.call(self.on_apply_library_config, library_key, library_data.settings)
 
         self.update_status()
         return library_data is not None

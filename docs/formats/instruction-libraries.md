@@ -51,7 +51,7 @@ sr_44100_nf_60_ws_27157_tg_0_sm_cqt_ch_384e710987cb958adf2b214df1267d10.ins
 | `ws_27157` | FFT window size (samples) |
 | `tg_0` | transformation gamma 0 |
 | `sm_cqt` | spectrum method (`fft` / `logfft` / `cqt`) |
-| `ch_384e…` | a hash of the library configuration section |
+| `ch_384e…` | a hash of the library configuration section and the lowest and highest note |
 
 The fragments stand in this order and are written as shown. A file in the library folder named any other
 way is passed over and left as it is.
@@ -69,4 +69,4 @@ The version names what generation produces. A change to the generators or to fea
 it, and every stored library is then rebuilt. Installs of different versions that share one library
 folder rebuild each other's libraries as each needs them.
 
-The current data version is 2.1.
+The current data version is 2.2.

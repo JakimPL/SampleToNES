@@ -1,4 +1,6 @@
-from typing import Final, Tuple
+from typing import Annotated, Final, Tuple
+
+from pydantic import Field
 
 from sampletones_shared.constants.music import LIMIT_MIN_PITCH
 
@@ -14,6 +16,7 @@ MIN_PITCH: Final[int] = 33
 MAX_PITCH: Final[int] = 119
 MIN_PLAYED_PITCH: Final[int] = LIMIT_MIN_PITCH
 PITCH_RANGE: Final[int] = MAX_PITCH - MIN_PITCH
+PlayedPitch = Annotated[int, Field(ge=MIN_PLAYED_PITCH, le=MAX_PITCH)]
 
 TRIANGLE_PHASE_INCREMENT: Final[float] = 0.5
 

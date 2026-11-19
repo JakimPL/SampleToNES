@@ -8,6 +8,7 @@ from .generation import (
     WeightsConfig,
 )
 from .library import InstructionsLibraryConfig
+from .pitch import PitchRange
 
 __all__ = [
     "CalculationConfig",
@@ -17,5 +18,6 @@ __all__ = [
     "GenerationConfig",
     "InstructionsLibraryConfig",
     "MetricConfig",
+    "PitchRange",
     "WeightsConfig",
 ]

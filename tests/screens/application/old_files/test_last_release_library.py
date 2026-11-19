@@ -13,6 +13,7 @@ from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.fft import Window
 from sampletones_core.library.key import InstructionLibraryKey
+from sampletones_core.library.settings import LibrarySettings
 from sampletones_shared.application import SAMPLETONES_LIBRARY_DATA_VERSION
 from sampletones_shared.paths.user import LIBRARY_DIRECTORY
 from tests.screens.application.old_files.steps import world_of
@@ -28,7 +29,7 @@ def archived_library_path() -> Path:
     """Where the archived library lies in the library folder, named as its settings name a library file."""
     document = stored_document(archived(ObjectKind.LIBRARY, ARCHIVED_VERSIONS[ObjectKind.LIBRARY]))
     config = Config(library=InstructionsLibraryConfig.model_validate(document[CONFIG_FIELD]))
-    key = InstructionLibraryKey.create(config.library, Window.from_config(config))
+    key = InstructionLibraryKey.create(LibrarySettings.of(config), Window.from_config(config))
     return LIBRARY_DIRECTORY / key.filename
 
 

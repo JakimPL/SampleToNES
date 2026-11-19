@@ -9,6 +9,7 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     NOTE_RANGE,
     NoteName,
 )
+from sampletones_shared.utils.arrays import clamp
 
 
 def pitch_to_note_index(pitch: int) -> int:
@@ -24,7 +25,7 @@ def pitch_to_note_index(pitch: int) -> int:
         int: Index into the tuning table.
     """
     index = pitch - NOTE_INDEX_PITCH_OFFSET
-    return max(MIN_NOTE_INDEX, min(MAX_NOTE_INDEX, index))
+    return clamp(index, MIN_NOTE_INDEX, MAX_NOTE_INDEX)
 
 
 def note_index_to_note_cell(index: int) -> NoteCell:

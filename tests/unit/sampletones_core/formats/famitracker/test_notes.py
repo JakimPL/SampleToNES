@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 import pytest
 
+from sampletones_core.constants.general import MAX_PITCH, MIN_PLAYED_PITCH
 from sampletones_core.formats.famitracker.notes import (
     period_to_note_cell,
     pitch_to_note_cell,
@@ -11,6 +12,7 @@ from sampletones_core.formats.famitracker.specification.parameters import (
     ENGINE_SPEED_MACHINE_DEFAULT,
     Machine,
 )
+from sampletones_core.formats.famitracker.specification.patterns import FT_MAX_PITCH, FT_MIN_PITCH
 
 
 @dataclass
@@ -73,3 +75,12 @@ class TestResolveMachine:
 
     def test_custom_rate_keeps_ntsc_and_carries_engine_speed(self) -> None:
         assert resolve_machine(30) == (Machine.NTSC, 30)
+
+
+class TestACellNamesThePlayedNotes:
+    """A FamiTracker cell names C-0 through B-7, the notes a channel plays, which is what lets the
+    writer hold a pitch where the engine plays it. The bounds are the format's own facts, so the
+    case states them against the engine's range."""
+
+    def test_the_cell_range_is_the_played_range(self) -> None:
+        assert (FT_MIN_PITCH, FT_MAX_PITCH) == (MIN_PLAYED_PITCH, MAX_PITCH)

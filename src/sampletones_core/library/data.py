@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, Final, KeysView, List, Self, Union, ValuesView
+from typing import Any, Dict, Final, KeysView, List, Self, ValuesView
 
 from pydantic import ConfigDict, Field, ValidationError
 
-from sampletones_core.configs import Config, InstructionsLibraryConfig
+from sampletones_core.configs import Config, InstructionsLibraryConfig, PitchRange
 from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.data import DataModel, Metadata, MetadataContract
 from sampletones_core.data.document import decompress_document
@@ -24,6 +24,7 @@ from sampletones_shared.utils.serialization import load_binary
 
 from .fragment import InstructionLibraryFragment
 from .item import LibraryItem
+from .settings import LibrarySettings
 
 LIBRARY_DATA_CONTRACT: Final[MetadataContract] = MetadataContract(
     label="Library data",
@@ -40,6 +41,7 @@ class InstructionLibraryData(DataModel):
         description="Library metadata",
     )
     config: InstructionsLibraryConfig = Field(..., description="Configuration of the library data")
+    pitch_range: PitchRange = Field(..., description="The notes the library holds tonal instructions for")
     items: List[LibraryItem[InstructionUnion]] = Field(
         ...,
         description="Library data mapping instructions to fragments",
@@ -69,13 +71,16 @@ class InstructionLibraryData(DataModel):
     def __getitem__(self, key: InstructionUnion) -> InstructionLibraryFragment[Any]:
         return self.data[key]
 
+    @property
+    def settings(self) -> LibrarySettings:
+        return LibrarySettings(library=self.config, pitch_range=self.pitch_range)
+
     @classmethod
     def create(
         cls,
-        config: Union[Config, InstructionsLibraryConfig],
+        config: Config,
         data: Dict[InstructionUnion, InstructionLibraryFragment[Any]],
     ) -> Self:
-        library_config = config.library if isinstance(config, Config) else config
         items = [
             LibraryItem.create(
                 instruction=instruction,
@@ -83,7 +88,7 @@ class InstructionLibraryData(DataModel):
             )
             for instruction, fragment in data.items()
         ]
-        return cls(config=library_config, items=items)
+        return cls(config=config.library, pitch_range=config.general.pitch_range, items=items)
 
     def filter(
         self,

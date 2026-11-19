@@ -8,6 +8,7 @@ from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.fft import Window
 from sampletones_core.library.key import InstructionLibraryKey
+from sampletones_core.library.settings import LibrarySettings
 from tests.suite.compatibility import ARCHIVED_VERSIONS, archived, restated_document, stored_document
 
 FOREIGN_BYTES: Final[bytes] = b"These bytes were written by another program and belong to no SampleToNES document.\n"
@@ -64,7 +65,7 @@ def archived_library(folder: Path) -> CopiedFile:
     """The library a release built, laid in ``folder`` under the name its settings give a library file."""
     source = archived(ObjectKind.LIBRARY, ARCHIVED_VERSIONS[ObjectKind.LIBRARY])
     config = Config(library=InstructionsLibraryConfig.model_validate(stored_document(source)[CONFIG_FIELD]))
-    key = InstructionLibraryKey.create(config.library, Window.from_config(config))
+    key = InstructionLibraryKey.create(LibrarySettings.of(config), Window.from_config(config))
     return CopiedFile(source=source, destination=folder / key.filename)
 
 

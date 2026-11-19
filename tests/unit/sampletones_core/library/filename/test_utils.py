@@ -2,9 +2,10 @@ from typing import Final
 
 import pytest
 
-from sampletones_core.configs import InstructionsLibraryConfig
+from sampletones_core.configs import Config, InstructionsLibraryConfig, PitchRange
 from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE, SAMPLE_RATES
 from sampletones_core.constants.enums import SpectrumMethod
+from sampletones_core.constants.general import MAX_PITCH, MIN_PLAYED_PITCH
 from sampletones_core.fft import Window
 from sampletones_core.library.filename.fields import InstructionsFilenameFields
 from sampletones_core.library.filename.utils import (
@@ -13,6 +14,7 @@ from sampletones_core.library.filename.utils import (
     library_key_from_filename,
 )
 from sampletones_core.library.key import InstructionLibraryKey
+from sampletones_core.library.settings import LibrarySettings
 from sampletones_shared.constants.nes import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
 
 HASH: Final[str] = "6c2f0b1f03cdc2dff8c4ed808b4d2864"
@@ -87,7 +89,8 @@ class TestAKeyReadsTheFrequencyItsNameStates:
 
     def test_a_key_created_from_settings_names_the_file_it_reads_back_from(self) -> None:
         config = InstructionsLibraryConfig(nes_frequency=221)
-        created = InstructionLibraryKey.create(config, Window.from_config(config))
+        settings = LibrarySettings(library=config, pitch_range=Config().general.pitch_range)
+        created = InstructionLibraryKey.create(settings, Window.from_config(config))
 
         assert create_key_from_filename(created.filename) == created
 
@@ -112,3 +115,30 @@ class TestAStrayNameNamesNoLibrary:
 
         with pytest.raises(ValueError):
             create_key_from_filename(filename)
+
+
+class TestALibrarysNameCoversItsRangeOfNotes:
+    """A library holds tonal instructions for the configured notes alone, so two ranges name two
+    files and a range edited since names a library still to be built."""
+
+    def test_ranges_apart_name_files_apart(self) -> None:
+        config = InstructionsLibraryConfig()
+        window = Window.from_config(config)
+        whole = LibrarySettings(library=config, pitch_range=PitchRange(min_pitch=MIN_PLAYED_PITCH, max_pitch=MAX_PITCH))
+        narrow = LibrarySettings(
+            library=config, pitch_range=PitchRange(min_pitch=MIN_PLAYED_PITCH, max_pitch=MAX_PITCH - 1)
+        )
+
+        assert (
+            InstructionLibraryKey.create(whole, window).filename
+            != InstructionLibraryKey.create(narrow, window).filename
+        )
+
+    def test_equal_settings_name_one_file(self) -> None:
+        config = InstructionsLibraryConfig()
+        window = Window.from_config(config)
+        settings = LibrarySettings.of(Config())
+
+        assert InstructionLibraryKey.create(settings, window) == InstructionLibraryKey.create(
+            LibrarySettings(library=config, pitch_range=Config().general.pitch_range), window
+        )

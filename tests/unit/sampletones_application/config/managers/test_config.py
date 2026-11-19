@@ -15,14 +15,17 @@ from sampletones_application.view_model.main.updates import (
     AudioSettingsUpdate,
     LibrarySettingsUpdate,
 )
-from sampletones_core.configs import Config, InstructionsLibraryConfig
+from sampletones_core.configs import Config, InstructionsLibraryConfig, PitchRange
 from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.library import InstructionLibraryKey, create_key_from_filename
+from sampletones_core.library.settings import LibrarySettings
 
 OTHER_TUNING: Final[float] = 432.0
 STORED_GAMMA: Final[int] = 50
 LOSSY_NES_FREQUENCY: Final[int] = 221
+STORED_MIN_PITCH: Final[int] = 40
+STORED_MAX_PITCH: Final[int] = 90
 
 
 def _manager(path: Path) -> ConfigManager:
@@ -190,7 +193,7 @@ class TestApplyingTheSettingsOfALibrary:
         stored = _library_settings(manager).model_copy(update={"a4_frequency": OTHER_TUNING})
         key = _key_of(stored)
 
-        manager.apply_library_config(key, stored)
+        manager.apply_library_config(key, _stated(stored))
 
         assert (manager.config.library, manager.key) == (stored, key)
 
@@ -206,7 +209,7 @@ class TestApplyingTheSettingsOfALibrary:
     ) -> None:
         manager = _manager(tmp_path / "missing.json")
         named = _library_settings(manager)
-        stored = None if stored_tuning is None else named.model_copy(update={"a4_frequency": stored_tuning})
+        stored = None if stored_tuning is None else _stated(named.model_copy(update={"a4_frequency": stored_tuning}))
 
         manager.apply_library_config(_key_of(named), stored)
 
@@ -229,6 +232,35 @@ class TestApplyingTheSettingsOfALibrary:
         assert manager.config.library.nes_frequency == nes_frequency
         assert manager.key.filename == key.filename
 
+    def test_the_range_of_notes_a_library_states_is_applied_with_its_settings(self, tmp_path: Path) -> None:
+        manager = _manager(tmp_path / "missing.json")
+        stored = LibrarySettings(
+            library=_library_settings(manager),
+            pitch_range=PitchRange(min_pitch=STORED_MIN_PITCH, max_pitch=STORED_MAX_PITCH),
+        )
+        key = InstructionLibraryKey.create(stored, Window.from_config(stored.library))
+
+        manager.apply_library_config(key, stored)
+
+        assert manager.config.general.pitch_range == stored.pitch_range
+        assert manager.key == key
+
+    def test_a_stated_range_naming_another_file_leaves_the_current_range(self, tmp_path: Path) -> None:
+        manager = _manager(tmp_path / "missing.json")
+        current = manager.config.general.pitch_range
+        named = _library_settings(manager)
+        stated = LibrarySettings(
+            library=named, pitch_range=PitchRange(min_pitch=STORED_MIN_PITCH, max_pitch=STORED_MAX_PITCH)
+        )
+
+        manager.apply_library_config(_key_of(named), stated)
+
+        assert (manager.config.library, manager.config.general.pitch_range) == (named, current)
+
+
+def _stated(library_config: InstructionsLibraryConfig) -> LibrarySettings:
+    return LibrarySettings(library=library_config, pitch_range=Config().general.pitch_range)
+
 
 def _library_settings(manager: ConfigManager) -> InstructionsLibraryConfig:
     """Library settings the manager's configuration differs from, at the manager's own tuning."""
@@ -238,7 +270,9 @@ def _library_settings(manager: ConfigManager) -> InstructionsLibraryConfig:
 
 
 def _key_of(library_config: InstructionsLibraryConfig) -> InstructionLibraryKey:
-    return InstructionLibraryKey.create(library_config, Window.from_config(library_config))
+    """The key of a library built under ``library_config`` for the notes a default configuration covers."""
+    settings = LibrarySettings(library=library_config, pitch_range=Config().general.pitch_range)
+    return InstructionLibraryKey.create(settings, Window.from_config(library_config))
 
 
 class TestConfigManagerProperties:

@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, Final, FrozenSet, Optional, Self
+from typing import Any, Final, FrozenSet, Optional, Self, Type, TypeVar
 
-from sampletones_core.configs import InstructionsLibraryConfig
-from sampletones_core.data import Metadata
+from sampletones_core.configs import InstructionsLibraryConfig, PitchRange
+from sampletones_core.data import DataModel, Metadata
 from sampletones_core.data.stored import read_leading_fields
 from sampletones_shared.exceptions import (
     IncompatibleLibraryDataVersionError,
@@ -12,10 +12,14 @@ from sampletones_shared.exceptions import (
 )
 
 from .data import LIBRARY_DATA_CONTRACT
+from .settings import LibrarySettings
+
+StoredT = TypeVar("StoredT", bound=DataModel)
 
 METADATA_FIELD: Final[str] = "metadata"
 CONFIG_FIELD: Final[str] = "config"
-HEADER_FIELDS: Final[FrozenSet[str]] = frozenset({METADATA_FIELD, CONFIG_FIELD})
+PITCH_RANGE_FIELD: Final[str] = "pitch_range"
+HEADER_FIELDS: Final[FrozenSet[str]] = frozenset({METADATA_FIELD, CONFIG_FIELD, PITCH_RANGE_FIELD})
 VERSION_FIELD: Final[str] = "library_data_version"
 
 
@@ -43,6 +47,7 @@ class LibraryHeader:
 
     metadata: Optional[Metadata]
     config: Optional[InstructionsLibraryConfig]
+    pitch_range: Optional[PitchRange]
 
     @classmethod
     def read(cls, path: Path) -> Self:
@@ -60,8 +65,18 @@ class LibraryHeader:
 
         return cls(
             metadata=cls._stored_metadata(fields.get(METADATA_FIELD)),
-            config=cls._stored_config(fields.get(CONFIG_FIELD)),
+            config=cls._stored(InstructionsLibraryConfig, fields.get(CONFIG_FIELD)),
+            pitch_range=cls._stored(PitchRange, fields.get(PITCH_RANGE_FIELD)),
         )
+
+    @property
+    def settings(self) -> Optional[LibrarySettings]:
+        """The settings the library was built under, where the file states both in a form this
+        build reads."""
+        if self.config is None or self.pitch_range is None:
+            return None
+
+        return LibrarySettings(library=self.config, pitch_range=self.pitch_range)
 
     @property
     def is_current(self) -> bool:
@@ -93,13 +108,13 @@ class LibraryHeader:
             return None
 
     @staticmethod
-    def _stored_config(stored: Any) -> Optional[InstructionsLibraryConfig]:
-        """The settings a file states it was built for, where this build reads them."""
+    def _stored(model_type: Type[StoredT], stored: Any) -> Optional[StoredT]:
+        """One section of the settings a file states it was built for, where this build reads it."""
         if not isinstance(stored, dict):
             return None
 
         try:
-            return InstructionsLibraryConfig.deserialize_inner(stored, fast=False)
+            return model_type.deserialize_inner(stored, fast=False)
         except (ValueError, TypeError):
             return None
 

@@ -8,7 +8,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.logic.instruction.readiness import LibraryReadiness
 from sampletones_application.view_model.instruction.data import InstructionPanelData
-from sampletones_core.configs import Config, InstructionsLibraryConfig
+from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.fft import Window
 from sampletones_core.instructions.types import InstructionUnion
@@ -23,6 +23,7 @@ from sampletones_core.library import (
 )
 from sampletones_core.library.creator import InstructionsLibraryCreator
 from sampletones_core.library.filename.utils import library_key_from_filename
+from sampletones_core.library.settings import LibrarySettings
 from sampletones_core.parallelization import TaskProgress, TaskStatus
 from sampletones_core.structures.tree import (
     GeneratorNode,
@@ -176,11 +177,11 @@ class InstructionsLibraryManager(CallbackMixin):
         """Where the library ``library_key`` names stands in the catalog for this build."""
         return self._catalog.library.state(library_key)
 
-    def stored_config(self, library_key: InstructionLibraryKey) -> Optional[InstructionsLibraryConfig]:
+    def stored_settings(self, library_key: InstructionLibraryKey) -> Optional[LibrarySettings]:
         """The settings the library ``library_key`` names states it was built for, where its file
         states them in a form this build reads."""
         try:
-            return LibraryHeader.read(self.get_path(library_key)).config
+            return LibraryHeader.read(self.get_path(library_key)).settings
         except FileNotFoundError:
             return None
 

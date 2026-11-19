@@ -12,6 +12,7 @@ from sampletones_shared.paths.user import LIBRARY_DIRECTORY
 
 from .data import InstructionLibraryData
 from .key import InstructionLibraryKey
+from .settings import LibrarySettings
 from .state import LibraryState, library_state
 
 
@@ -65,7 +66,7 @@ class InstructionLibrary(BaseModel):
         Returns:
             InstructionLibraryKey: The key locating this configuration's library.
         """
-        return InstructionLibraryKey.create(config.library, window)
+        return InstructionLibraryKey.create(LibrarySettings.of(config), window)
 
     def get(self, config: Config, window: Optional[Window] = None) -> Optional[InstructionLibraryData]:
         """Returns the library data for a configuration, loading it if needed.

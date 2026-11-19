@@ -3,7 +3,7 @@ from typing import Final
 
 import pytest
 
-from sampletones_core.constants.general import NOISE_PERIODS, NUM_PERIODS
+from sampletones_core.constants.general import MAX_PITCH, MIN_PLAYED_PITCH, NOISE_PERIODS, NUM_PERIODS
 from sampletones_core.formats.bitphase.notes import (
     noise_arpeggio_to_table_offset,
     noise_period_to_note_index,
@@ -19,6 +19,7 @@ from sampletones_core.formats.bitphase.specification.patterns import (
     NOTE_RANGE,
     NoteName,
 )
+from sampletones_core.utils.frequencies import played_pitch
 from tests.suite.bitphase import BITPHASE_NOISE_TIMERS, noise_register
 from tests.suite.case import BaseRegularTestCase
 
@@ -128,3 +129,17 @@ class TestNoisePeriods:
         offset = noise_arpeggio_to_table_offset(step)
         indices = [noise_period_to_note_index(period) + offset for period in range(NUM_PERIODS)]
         assert all(MIN_NOTE_INDEX <= index <= MAX_NOTE_INDEX for index in indices)
+
+
+class TestTheTuningTableSpansThePlayedNotes:
+    """Bitphase's tuning table starts at C-0 and ends at B-7: the notes a channel plays, which is
+    what lets a pitch held there by the engine land on the index Bitphase sounds it at. The
+    constants are the format's own facts, so the case states them against the engine's range."""
+
+    def test_the_table_opens_at_the_lowest_played_note_and_closes_at_the_highest(self) -> None:
+        assert NOTE_INDEX_PITCH_OFFSET + MIN_NOTE_INDEX == MIN_PLAYED_PITCH
+        assert NOTE_INDEX_PITCH_OFFSET + MAX_NOTE_INDEX == MAX_PITCH
+
+    @pytest.mark.parametrize("pitch", [MIN_PLAYED_PITCH - 1, MIN_PLAYED_PITCH, MAX_PITCH, MAX_PITCH + 1, 0, 127])
+    def test_a_pitch_writes_the_index_of_the_note_it_is_played_at(self, pitch: int) -> None:
+        assert pitch_to_note_index(pitch) == played_pitch(pitch) - NOTE_INDEX_PITCH_OFFSET
