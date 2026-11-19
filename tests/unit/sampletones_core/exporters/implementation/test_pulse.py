@@ -1,5 +1,3 @@
-import numpy as np
-
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.constants.general import MAX_PITCH, MIN_PITCH, MIN_PLAYED_PITCH
 from sampletones_core.exporters.implementation.pulse import PulseExporter

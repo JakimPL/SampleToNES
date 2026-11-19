@@ -12,7 +12,7 @@ from sampletones_application.utils.parallelization.background import stop_backgr
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.configs import Config
 from sampletones_shared.documentation.site import DocumentationSite
-from sampletones_shared.paths.user import CONFIG_PATH, LIBRARY_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
+from sampletones_shared.paths.user import CONFIG_PATH
 
 DISPLAY_FUNCTIONS: Final[Tuple[str, ...]] = (
     "create_context",

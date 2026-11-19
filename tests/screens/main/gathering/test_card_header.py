@@ -1,7 +1,5 @@
 from automation.screen import Screen
-from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
-    SUF_COLLAPSE_STRIP,
     TAG_GLOBAL_THEME_COLLAPSE_HEADER,
     TAG_GLOBAL_THEME_COLLAPSE_HEADER_HOVERED,
 )

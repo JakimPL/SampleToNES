@@ -4,7 +4,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.coordinators import render as render_module
 from sampletones_application.coordinators.render import SongRenderCoordinator
 from sampletones_application.logic.project.controller import ProjectController

@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable, Dict, Final, List, Optional
+from typing import Callable, Dict, Final, List
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -23,7 +23,6 @@ from sampletones_application.coordinators.tabs.sequencer.project import OpenProj
 from sampletones_application.coordinators.tabs.sequencer.reconstructions import SequencerReconstructions
 from sampletones_application.coordinators.tabs.sequencer.voices import SequencerVoices
 from sampletones_application.logic.history.action import HistoryAction
-from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.history.snapshot import HistoryEntry
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager

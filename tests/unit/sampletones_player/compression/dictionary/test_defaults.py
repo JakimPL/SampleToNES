@@ -38,5 +38,5 @@ class TestThePhrasesDefaultCount:
     @pytest.mark.parametrize("plays", [((0, 1),) * 5 + ((0, 2),) * 4, ((1, 8),) * 2 + ((1, 3),) * 2])
     def test_the_count_chosen_is_one_the_tokens_play(self, plays: Tuple[Tuple[int, int], ...]) -> None:
         counts = modal_counts(plays, PHRASES)
-        for phrase_id, ticks in set(plays):
+        for phrase_id in {played_id for played_id, _ in plays}:
             assert counts[phrase_id] in {played for played_id, played in plays if played_id == phrase_id}

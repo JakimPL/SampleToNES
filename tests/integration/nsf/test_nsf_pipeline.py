@@ -4,7 +4,6 @@ from typing import Dict, Tuple
 
 import pytest
 
-from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_player.block.song import song_to_bytes

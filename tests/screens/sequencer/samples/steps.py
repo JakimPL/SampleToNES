@@ -3,7 +3,6 @@ from functools import partial
 from pathlib import Path
 
 from automation.boundaries.dialogs import DialogKind
-from automation.dearpygui.items.types import Item
 from automation.screen import Screen
 from automation.steps.reconstructions import expect_open
 from automation.steps.sequencer import voice_row

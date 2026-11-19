@@ -1,5 +1,3 @@
-import numpy as np
-
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.constants.general import NUM_PERIODS
 from sampletones_core.exporters.implementation.noise import NoiseExporter

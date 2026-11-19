@@ -14,7 +14,7 @@ from sampletones_core.configs.display import (
     short_hash,
     unique_display_names,
 )
-from sampletones_core.constants.enums import ChannelName, SpectrumMethod
+from sampletones_core.constants.enums import SpectrumMethod
 
 
 class TestFormatSampleRate:

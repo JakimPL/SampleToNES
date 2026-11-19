@@ -7,7 +7,6 @@ import pytest
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.skipped import MAX_REPORTED_ROWS
-from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.coordinators import project as project_module
 from sampletones_application.coordinators.project import ProjectCoordinator
 from sampletones_application.logic.project.controller import ProjectController

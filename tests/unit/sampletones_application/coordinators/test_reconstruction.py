@@ -30,7 +30,6 @@ from sampletones_application.logic.reconstruction.rewrites.steps import (
 )
 from sampletones_application.logic.shared.renders import RenderCache
 from sampletones_application.services.regeneration.service import RegenerationService
-from sampletones_application.services.result import ServiceSuccess
 from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_RECONSTRUCTION_REPLACED
 from sampletones_application.utils.callbacks.gates import Gate, pass_gates
 from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
@@ -42,7 +41,6 @@ from sampletones_core.features.envelope import Envelope
 from sampletones_core.project.voices.creation import new_instrument
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_core.reconstructions.reconstruction.stems.removal import without_stem
 from sampletones_shared.exceptions import (
     InvalidMetadataError,
     InvalidReconstructionValuesError,
