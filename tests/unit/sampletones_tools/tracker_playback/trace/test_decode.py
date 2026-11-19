@@ -6,6 +6,7 @@ import pytest
 from sampletones_core.constants.enums import ChannelName
 from sampletones_player.specification.registers import (
     APU_STATUS,
+    CHANNEL_STATUS_BITS,
     CHANNELS_ENABLED,
     CONSTANT_VOLUME,
     DUTY_CYCLE_SHIFT,
@@ -24,16 +25,12 @@ from sampletones_player.specification.registers import (
     TIMER_HIGH_SHIFT,
     TRIANGLE_COUNTER_CONTROL,
     TRIANGLE_LINEAR_COUNTER,
+    TRIANGLE_SOUNDING_RELOAD,
     TRIANGLE_TIMER_HIGH,
     TRIANGLE_TIMER_LOW,
 )
 from sampletones_tools.player.trace.write import RegisterWrite
-from sampletones_tools.tracker_playback.trace.decode import (
-    CHANNEL_STATUS_BITS,
-    LINEAR_COUNTER_RELOAD,
-    channel_sound,
-    song_trace,
-)
+from sampletones_tools.tracker_playback.trace.decode import channel_sound, song_trace
 from sampletones_tools.tracker_playback.trace.registers import ChipRegisters
 from sampletones_tools.tracker_playback.trace.sound import ABSENT_REGISTER, ChannelSound, TickPosition
 from tests.suite.base import BaseTestSuite
@@ -47,7 +44,7 @@ DUTY: Final[int] = 1
 LEVEL: Final[int] = 9
 NOISE_REGISTER_PERIOD: Final[int] = 6
 SOUNDING_PULSE: Final[int] = (DUTY << DUTY_CYCLE_SHIFT) | SUSTAINED_LEVEL | LEVEL
-SOUNDING_TRIANGLE: Final[int] = TRIANGLE_COUNTER_CONTROL | LINEAR_COUNTER_RELOAD
+SOUNDING_TRIANGLE: Final[int] = TRIANGLE_COUNTER_CONTROL | TRIANGLE_SOUNDING_RELOAD
 SOUNDING_NOISE: Final[int] = SUSTAINED_LEVEL | LEVEL
 SHORT_NOISE_PERIOD: Final[int] = (1 << NOISE_MODE_SHIFT) | NOISE_REGISTER_PERIOD
 
@@ -166,7 +163,7 @@ class TestTriangleSound:
         assert not channel_sound(ChannelName.TRIANGLE, registers).audible
 
     def test_a_clear_control_flag_counts_the_triangle_down(self) -> None:
-        registers = _registers((TRIANGLE_LINEAR_COUNTER, LINEAR_COUNTER_RELOAD))
+        registers = _registers((TRIANGLE_LINEAR_COUNTER, TRIANGLE_SOUNDING_RELOAD))
 
         sound = channel_sound(ChannelName.TRIANGLE, registers)
 

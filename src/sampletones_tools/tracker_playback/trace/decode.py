@@ -2,26 +2,20 @@ from typing import Dict, Final, NamedTuple, Sequence, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_PERIOD, MAX_VOLUME, SILENT_VOLUME
+from sampletones_player.specification.channels import CHANNEL_REGISTER_ADDRESSES
 from sampletones_player.specification.registers import (
     APU_STATUS,
+    CHANNEL_STATUS_BITS,
     CONSTANT_VOLUME,
     DUTY_CYCLE_SHIFT,
     MAX_TIMER_HIGH,
     NOISE_CONTROL,
     NOISE_MODE_SHIFT,
     NOISE_PERIOD,
-    PULSE1_CONTROL,
-    PULSE1_TIMER_HIGH,
-    PULSE1_TIMER_LOW,
-    PULSE2_CONTROL,
-    PULSE2_TIMER_HIGH,
-    PULSE2_TIMER_LOW,
     SUSTAINED_LEVEL,
-    TIMER_HIGH_SHIFT,
     TRIANGLE_COUNTER_CONTROL,
-    TRIANGLE_LINEAR_COUNTER,
-    TRIANGLE_TIMER_HIGH,
-    TRIANGLE_TIMER_LOW,
+    TRIANGLE_SOUNDING_RELOAD,
+    divider,
 )
 from sampletones_tools.tracker_playback.trace.registers import ChipRegisters
 from sampletones_tools.tracker_playback.trace.sound import (
@@ -31,14 +25,7 @@ from sampletones_tools.tracker_playback.trace.sound import (
     TickPosition,
 )
 
-CHANNEL_STATUS_BITS: Final[Dict[ChannelName, int]] = {
-    ChannelName.PULSE1: 0x01,
-    ChannelName.PULSE2: 0x02,
-    ChannelName.TRIANGLE: 0x04,
-    ChannelName.NOISE: 0x08,
-}
 DMC_STATUS_BIT: Final[int] = 0x10
-LINEAR_COUNTER_RELOAD: Final[int] = 0x7F
 
 
 class ToneAddresses(NamedTuple):
@@ -57,21 +44,8 @@ class ToneAddresses(NamedTuple):
 
 
 TONE_ADDRESSES: Final[Dict[ChannelName, ToneAddresses]] = {
-    ChannelName.PULSE1: ToneAddresses(
-        control=PULSE1_CONTROL,
-        timer_low=PULSE1_TIMER_LOW,
-        timer_high=PULSE1_TIMER_HIGH,
-    ),
-    ChannelName.PULSE2: ToneAddresses(
-        control=PULSE2_CONTROL,
-        timer_low=PULSE2_TIMER_LOW,
-        timer_high=PULSE2_TIMER_HIGH,
-    ),
-    ChannelName.TRIANGLE: ToneAddresses(
-        control=TRIANGLE_LINEAR_COUNTER,
-        timer_low=TRIANGLE_TIMER_LOW,
-        timer_high=TRIANGLE_TIMER_HIGH,
-    ),
+    channel: ToneAddresses(*CHANNEL_REGISTER_ADDRESSES[channel])
+    for channel in (ChannelName.PULSE1, ChannelName.PULSE2, ChannelName.TRIANGLE)
 }
 
 
@@ -164,7 +138,7 @@ def triangle_sound(registers: ChipRegisters) -> ChannelSound:
     addresses = TONE_ADDRESSES[ChannelName.TRIANGLE]
     control = registers.value(addresses.control)
     return ChannelSound(
-        audible=is_enabled(ChannelName.TRIANGLE, registers) and (control & LINEAR_COUNTER_RELOAD) > 0,
+        audible=is_enabled(ChannelName.TRIANGLE, registers) and (control & TRIANGLE_SOUNDING_RELOAD) > 0,
         period=timer(addresses, registers),
         volume=ABSENT_REGISTER,
         held=bool(control & TRIANGLE_COUNTER_CONTROL),
@@ -205,8 +179,7 @@ def timer(
     registers: ChipRegisters,
 ) -> int:
     """The 11-bit timer a pulse or triangle channel's two timer bytes carry together."""
-    high = registers.value(addresses.timer_high) & MAX_TIMER_HIGH
-    return (high << TIMER_HIGH_SHIFT) | registers.value(addresses.timer_low)
+    return divider(registers.value(addresses.timer_high) & MAX_TIMER_HIGH, registers.value(addresses.timer_low))
 
 
 def level_sounds(control: int) -> bool:

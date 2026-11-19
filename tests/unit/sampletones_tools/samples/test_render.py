@@ -6,6 +6,7 @@ import pytest
 from sampletones_player.specification.clock import FIXED_POINT_SCALE, MICROSECONDS_PER_SECOND
 from sampletones_player.specification.nsf import HEADER_SIZE, NTSC_PERIOD_OFFSET
 from sampletones_player.specification.song import (
+    SONG_HEADER_SIZE,
     STEP_FRACTION_OFFSET,
     STEP_WHOLE_OFFSET,
     TOTAL_TICKS_OFFSET,
@@ -20,7 +21,7 @@ PERIOD_MICROSECONDS = 16667
 def _exported(ticks: int, whole: int, fraction: int, period: int) -> bytes:
     header = bytearray(HEADER_SIZE + CODE_LENGTH)
     struct.pack_into("<H", header, NTSC_PERIOD_OFFSET, period)
-    block = bytearray(max(TOTAL_TICKS_OFFSET, STEP_FRACTION_OFFSET, STEP_WHOLE_OFFSET) + 2)
+    block = bytearray(SONG_HEADER_SIZE)
     struct.pack_into("<H", block, TOTAL_TICKS_OFFSET, ticks)
     block[STEP_WHOLE_OFFSET] = whole
     struct.pack_into("<H", block, STEP_FRACTION_OFFSET, fraction)

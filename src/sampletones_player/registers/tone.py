@@ -6,7 +6,7 @@ from sampletones_player.registers.base import ChannelRegisters
 from sampletones_player.specification.registers import (
     MAX_REGISTER_VALUE,
     MAX_TIMER_HIGH,
-    TIMER_HIGH_SHIFT,
+    divider,
 )
 from sampletones_shared.constants.music import LIMIT_MAX_PITCH, LIMIT_MIN_PITCH
 
@@ -31,4 +31,4 @@ class ToneRegisters(ChannelRegisters, ABC):
     @property
     def divider(self) -> int:
         """The divider the two halves of the timer carry together."""
-        return (self.timer_high << TIMER_HIGH_SHIFT) | self.timer_low
+        return divider(self.timer_high, self.timer_low)

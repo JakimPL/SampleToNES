@@ -8,6 +8,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_player.block.song import song_to_bytes
+from sampletones_player.block.stated import StatedSong
 from sampletones_player.builder import song_from_reconstruction
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.driver.image import DriverImage
@@ -19,13 +20,9 @@ from sampletones_player.specification.nsf import HEADER_SIZE, NSF_MAGIC
 from sampletones_player.specification.planes import PLANE_COUNT
 from sampletones_player.specification.song import (
     ABSENT_STREAM,
-    LOOP_TICK_OFFSET,
     NO_LOOP,
     SONG_HEADER_SIZE,
-    STEP_FRACTION_OFFSET,
-    STEP_WHOLE_OFFSET,
     STREAM_OFFSETS_OFFSET,
-    TOTAL_TICKS_OFFSET,
 )
 from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 from tests.integration.nsf.header import sample_information
@@ -96,7 +93,7 @@ class TestTheSongTheFileCarries:
         song: Song,
         driver_image: DriverImage,
     ) -> None:
-        assert read_word(song_block(exported, driver_image), TOTAL_TICKS_OFFSET) == song.ticks
+        assert StatedSong.read(song_block(exported, driver_image)).ticks == song.ticks
 
     def test_the_song_states_the_rate_it_was_built_at(
         self,
@@ -104,17 +101,15 @@ class TestTheSongTheFileCarries:
         song: Song,
         driver_image: DriverImage,
     ) -> None:
-        block = song_block(exported, driver_image)
-        step = song.schedule.fixed_point_step
-        assert (block[STEP_WHOLE_OFFSET], read_word(block, STEP_FRACTION_OFFSET)) == (step.whole, step.fraction)
+        stated = StatedSong.read(song_block(exported, driver_image))
+        assert stated.step == song.schedule.fixed_point_step.value
 
     def test_a_sample_that_ends_stops_there(
         self,
         exported: bytes,
         driver_image: DriverImage,
     ) -> None:
-        block = song_block(exported, driver_image)
-        assert read_word(block, LOOP_TICK_OFFSET) == NO_LOOP
+        assert StatedSong.read(song_block(exported, driver_image)).loop_tick == NO_LOOP
 
     def test_every_stream_begins_inside_the_block(
         self,

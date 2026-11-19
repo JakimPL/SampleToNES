@@ -4,17 +4,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, List
 
+from sampletones_player.block.stated import StatedSong
 from sampletones_player.driver.image import DriverImage
 from sampletones_player.specification.clock import (
     FIXED_POINT_SCALE,
     MICROSECONDS_PER_SECOND,
 )
 from sampletones_player.specification.nsf import HEADER_SIZE, NTSC_PERIOD_OFFSET
-from sampletones_player.specification.song import (
-    STEP_FRACTION_OFFSET,
-    STEP_WHOLE_OFFSET,
-    TOTAL_TICKS_OFFSET,
-)
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.paths.extensions import EXT_FILE_NSF, EXT_FILE_WAVE
 from sampletones_shared.utils.system.programs import locate_program
@@ -95,12 +91,9 @@ def song_seconds(data: bytes, code_length: int) -> float:
     Returns:
         float: The seconds the song lasts.
     """
-    block = data[HEADER_SIZE + code_length :]
-    ticks: int = struct.unpack_from(WORD, block, TOTAL_TICKS_OFFSET)[0]
-    fraction: int = struct.unpack_from(WORD, block, STEP_FRACTION_OFFSET)[0]
+    stated = StatedSong.read(data[HEADER_SIZE + code_length :])
     period: int = struct.unpack_from(WORD, data, NTSC_PERIOD_OFFSET)[0]
-    step: float = block[STEP_WHOLE_OFFSET] + fraction / FIXED_POINT_SCALE
-    play_calls = ticks / step
+    play_calls = stated.ticks * FIXED_POINT_SCALE / stated.step
     return play_calls * period / MICROSECONDS_PER_SECOND
 
 

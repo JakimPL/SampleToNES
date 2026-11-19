@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Final, Iterable, Mapping, Self
+from typing import Dict, Final, Iterable, List, Mapping, Self, Tuple
 
 from sampletones_tools.player.trace.write import RegisterWrite
 
@@ -40,6 +40,25 @@ class ChipRegisters:
             values[write.address] = write.value
 
         return type(self)(values=values)
+
+    @classmethod
+    def fold(cls, initial: Iterable[RegisterWrite], ticks: Iterable[Iterable[RegisterWrite]]) -> Tuple[Self, ...]:
+        """The registers standing on each tick of a run that powers up and sets the chip up first.
+
+        Args:
+            initial: The writes that set the chip up before the first tick.
+            ticks: Each tick's writes, in the order the chip takes them.
+
+        Returns:
+            Tuple[Self, ...]: The registers once each tick's writes land, one per tick.
+        """
+        registers = cls.power_up().written(initial)
+        per_tick: List[Self] = []
+        for writes in ticks:
+            registers = registers.written(writes)
+            per_tick.append(registers)
+
+        return tuple(per_tick)
 
     def value(self, address: int) -> int:
         """The value standing in one register.
