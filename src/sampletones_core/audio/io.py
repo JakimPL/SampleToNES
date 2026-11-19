@@ -140,7 +140,7 @@ def read_recording(path: Pathlike, *, target_sample_rate: int) -> np.ndarray:
     """
     validate_sample_rate(target_sample_rate)
     audio, sample_rate = read_wave(path)
-    return resample(audio, original_sample_rate=sample_rate, target_sample_rate=target_sample_rate)
+    return resample(to_mono(audio), original_sample_rate=sample_rate, target_sample_rate=target_sample_rate)
 
 
 def read_stems(
