@@ -136,6 +136,7 @@ class TestCalibrate:
             categories=CATEGORIES,
             workers=1,
             resume=False,
+            corpus=None,
         )
 
         outcome = calibrate(request)
@@ -160,6 +161,7 @@ class TestCalibrate:
             categories=CATEGORIES,
             workers=1,
             resume=False,
+            corpus=None,
         )
 
         outcome = calibrate(request)
@@ -185,6 +187,7 @@ class TestCalibrate:
             categories=CATEGORIES,
             workers=1,
             resume=False,
+            corpus=None,
             palette="light",
         )
 
@@ -210,6 +213,7 @@ class TestCalibrate:
             categories=CATEGORIES,
             workers=1,
             resume=False,
+            corpus=None,
         )
 
         calibrate(request)
@@ -233,6 +237,7 @@ class TestCalibrate:
             categories=CATEGORIES,
             workers=1,
             resume=False,
+            corpus=None,
         )
 
         calibrate(request)
@@ -256,6 +261,7 @@ class TestCalibrate:
             categories=["sequences-melody", "tone"],
             workers=1,
             resume=False,
+            corpus=None,
         )
 
         calibrate(request)
@@ -276,6 +282,7 @@ class TestResumingARun:
             categories=CATEGORIES,
             workers=1,
             resume=True,
+            corpus=None,
         )
 
         with pytest.raises(ResumeRefusedError, match="holds no run"):
@@ -293,6 +300,7 @@ class TestResumingARun:
             categories=CATEGORIES,
             workers=1,
             resume=False,
+            corpus=None,
         )
         calibrate(first)
 
@@ -310,6 +318,7 @@ class TestResumingARun:
             categories=CATEGORIES,
             workers=1,
             resume=False,
+            corpus=None,
         )
         calibrate(first)
 
@@ -330,6 +339,7 @@ class TestCalibrationRequest:
                 categories=CATEGORIES,
                 workers=1,
                 resume=False,
+                corpus=None,
             )
 
 

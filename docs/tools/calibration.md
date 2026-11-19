@@ -132,6 +132,7 @@ Each option replaces one part of the default run. The rest stays as the suite se
 | `--skip LIST` | The families or categories of reference sounds left out | `--skip composites` |
 | `--workers N` | How many sounds are converted at once; without it, the `general.max_workers` of the configuration | `--workers 3` |
 | `--resume` | Takes up the run in `-o` where it stopped | `-o before --resume` |
+| `--corpus FILE` | Adds the sounds a manifest names to the packaged ones; see [your own sounds](#your-own-sounds) | `--corpus nesmdb.yaml` |
 | `--perceptual-exponents LIST` | The perceptual exponents measured, one variant each | `--perceptual-exponents 0.5,1` |
 | `--temporal-weights LIST` | The temporal loss weights measured, one variant each | `--temporal-weights 0.1,0.3` |
 | `-o DIR`, `--output DIR` | The folder the run writes into | `-o before` |
@@ -147,6 +148,36 @@ Lists are comma separated. Several lists multiply: `--methods fft,cqt --perceptu
 0.5,1` measures four variants, and the run takes about four times as long as one variant.
 
 From a copy of the source code, put `uv run` in front: `uv run sampletones calibration --methods cqt`.
+
+## Your own sounds
+
+A manifest names reference sounds kept on your own machine, which join the packaged ones with
+`--corpus FILE`. It is a YAML file with a list of `items`. Every path in it is read from the
+manifest's own folder.
+
+Today a manifest names pieces of [NES-MDB](https://github.com/chrisdonahue/nesmdb), a collection of
+NES game music transcribed from what the console's sound chip played. Download its MIDI archive
+yourself; the pieces are read straight out of it.
+
+```yaml
+items:
+  - kind: nesmdb
+    name: castlevania-vampire-killer
+    archive: nesmdb_midi.tar.gz
+    member: nesmdb_midi/train/045_Castlevania_01_02VampireKiller.mid
+    start_frame: 0
+    frames: 448
+    split: review
+```
+
+A piece plays `frames` frames from `start_frame`, at the run's NES frequency, and joins the
+`sequences` family as a round trip: the run knows every frame it plays. `split` puts it in one of two
+categories:
+
+- `nesmdb-review`: pieces you listen to. The page lists them.
+- `nesmdb-held-out`: pieces kept out of listening. The run measures them and writes their records,
+  and no audio. A change that improves the review pieces counts once the held-out ones agree, since
+  nothing was tuned on them.
 
 ## Compare runs
 

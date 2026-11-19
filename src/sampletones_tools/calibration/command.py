@@ -28,6 +28,7 @@ CATEGORIES_HELP: Final[str] = "categories of reference sounds to measure, comma 
 SKIP_HELP: Final[str] = "families or categories of reference sounds to leave out, comma separated, e.g. notes"
 WORKERS_HELP: Final[str] = "how many conversions run at once; without it, the configuration's general.max_workers"
 RESUME_HELP: Final[str] = "take up the run in --output where it stopped, converting only the sounds it has no record of"
+CORPUS_HELP: Final[str] = "a manifest of local sounds, such as NES-MDB pieces, that join the packaged reference sounds"
 BOARD_HELP: Final[str] = (
     "run directories to compare on one listening page, measuring nothing; without -o the page lands in a "
     "timestamped directory under Documents/SampleToNES/calibration/pages"
@@ -45,6 +46,7 @@ MEASURING_OPTIONS: Final[List[str]] = [
     "--skip",
     "--workers",
     "--resume",
+    "--corpus",
 ]
 
 
@@ -62,6 +64,7 @@ class CalibrationArguments:
     skip: Optional[str]
     workers: Optional[int]
     resume: bool
+    corpus: Optional[Path]
     board: Optional[List[Path]]
     palette: Optional[str]
     open_page: bool
@@ -78,6 +81,7 @@ def configure(parser: ArgumentParser) -> None:
     parser.add_argument("--skip", type=str, default=None, help=SKIP_HELP)
     parser.add_argument("--workers", type=int, default=None, help=WORKERS_HELP)
     parser.add_argument("--resume", action="store_true", help=RESUME_HELP)
+    parser.add_argument("--corpus", type=Path, default=None, metavar="FILE", help=CORPUS_HELP)
     parser.add_argument("--board", type=Path, nargs="+", default=None, metavar="RUN", help=BOARD_HELP)
     parser.add_argument("--palette", type=str, default=None, help=PALETTE_HELP)
     parser.add_argument("--no-open", dest="open_page", action="store_false", help=NO_OPEN_HELP)
@@ -87,9 +91,9 @@ def run(arguments: Namespace) -> int:
     """Runs the calibration the options describe, or builds a page over the runs they name.
 
     Raises:
-        SystemExit: If a method, a value, a channel or a palette is unknown, a run cannot be resumed,
-            a run directory holds
-            no renders, or a page is asked for beside the options that measure.
+        SystemExit: If a method, a value, a channel or a palette is unknown, a file named is missing,
+            a manifest is malformed, a run cannot be resumed, a run directory holds no renders, or a
+            page is asked for beside the options that measure.
     """
     given = CalibrationArguments(
         config=arguments.config,
@@ -102,6 +106,7 @@ def run(arguments: Namespace) -> int:
         skip=arguments.skip,
         workers=arguments.workers,
         resume=arguments.resume,
+        corpus=arguments.corpus,
         board=arguments.board,
         palette=arguments.palette,
         open_page=arguments.open_page,
@@ -114,6 +119,7 @@ def _measure(given: CalibrationArguments) -> int:
     from sampletones_application.utils.palette.catalog import DEFAULT_PALETTE_NAME
     from sampletones_core.headless.conversion.request import channels_named
     from sampletones_shared.utils.validation import describe_failure
+    from sampletones_tools.calibration.config.manifest import CorpusManifest
     from sampletones_tools.calibration.config.suite import SuiteConfig
     from sampletones_tools.calibration.corpus.reference import reference_catalog
     from sampletones_tools.calibration.fingerprint import ResumeRefusedError
@@ -129,6 +135,7 @@ def _measure(given: CalibrationArguments) -> int:
 
     suite = SuiteConfig.load()
     try:
+        manifest = CorpusManifest.read(given.corpus) if given.corpus is not None else None
         base = base_configuration(given.config)
         request = CalibrationRequest(
             base=base,
@@ -137,13 +144,16 @@ def _measure(given: CalibrationArguments) -> int:
             perceptual_exponents=floats_named(given.perceptual_exponents, suite.perceptual_exponents),
             temporal_weights=floats_named(given.temporal_weights, suite.temporal_weights),
             channels=channels_named(given.channels) if given.channels is not None else list(suite.channels),
-            categories=measured_categories(given.categories, given.skip, reference_catalog()),
+            categories=measured_categories(given.categories, given.skip, reference_catalog(manifest)),
             workers=given.workers if given.workers is not None else base.general.max_workers,
             resume=given.resume,
+            corpus=given.corpus,
             palette=given.palette if given.palette is not None else DEFAULT_PALETTE_NAME,
         )
     except ValueError as error:
         raise SystemExit(describe_failure(error)) from error
+    except FileNotFoundError as error:
+        raise SystemExit(str(error)) from error
 
     try:
         outcome = calibrate(request)
@@ -193,6 +203,7 @@ def _refuse_measuring(given: CalibrationArguments) -> None:
         given.categories,
         given.skip,
         given.workers,
+        given.corpus,
     )
     if any(value is not None for value in measuring) or given.resume:
         named = ", ".join(MEASURING_OPTIONS)

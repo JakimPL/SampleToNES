@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import List
 
 import pytest
+import yaml
 
 from sampletones.commands.registry import COMMANDS
 from sampletones.dispatcher import dispatch
@@ -19,6 +20,7 @@ from sampletones_tools.calibration.session import (
     CalibrationOutcome,
     CalibrationRequest,
 )
+from tests.unit.sampletones_tools.calibration.midifiles import nesmdb_archive
 from tests.unit.sampletones_tools.calibration.runs import write_run
 
 CALIBRATE = "sampletones_tools.calibration.session.calibrate"
@@ -45,6 +47,24 @@ class RecordedBoard:
     def __call__(self, request: BoardRequest) -> Path:
         self.requests.append(request)
         return request.output / PAGE_FILE
+
+
+@pytest.fixture(name="manifest")
+def manifest_fixture(tmp_path: Path) -> Path:
+    member = "nesmdb_midi/train/piece.mid"
+    archive = nesmdb_archive(tmp_path, member)
+    path = tmp_path / "manifest.yaml"
+    item = {
+        "kind": "nesmdb",
+        "name": "piece",
+        "archive": archive.name,
+        "member": member,
+        "start_frame": 0,
+        "frames": 30,
+        "split": "review",
+    }
+    path.write_text(yaml.safe_dump({"items": [item]}), encoding="utf-8")
+    return path
 
 
 @pytest.fixture(name="calibration")
@@ -107,7 +127,7 @@ class TestCalibration:
         assert request.perceptual_exponents == list(suite.perceptual_exponents)
         assert request.temporal_weights == list(suite.temporal_weights)
         assert request.channels == list(suite.channels)
-        assert request.categories == reference_categories()
+        assert request.categories == reference_categories(None)
         assert request.output.parent == OUTPUT_ROOT
 
     def test_a_configuration_file_is_measured_in_place_of_the_defaults(
@@ -156,6 +176,22 @@ class TestCalibration:
 
         assert calibration.requests[0].workers == Config().general.max_workers
         assert not calibration.requests[0].resume
+
+    def test_a_manifest_s_sounds_join_the_categories_measured(
+        self,
+        calibration: RecordedCalibration,
+        manifest: Path,
+    ) -> None:
+        assert dispatch(COMMANDS, ["calibration", "--corpus", str(manifest)]) == 0
+
+        assert calibration.requests[0].corpus == manifest
+        assert "nesmdb-review" in calibration.requests[0].categories
+
+    def test_a_missing_manifest_is_refused(self, calibration: RecordedCalibration, tmp_path: Path) -> None:
+        with pytest.raises(SystemExit):
+            dispatch(COMMANDS, ["calibration", "--corpus", str(tmp_path / "absent.yaml")])
+
+        assert calibration.requests == []
 
     def test_an_unknown_category_is_refused(self, calibration: RecordedCalibration) -> None:
         with pytest.raises(SystemExit, match="Unknown category"):

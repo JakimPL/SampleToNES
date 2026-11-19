@@ -10,6 +10,7 @@ from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.text import parsed_items
 from sampletones_tools.calibration.board.session import BoardRequest, build_board
+from sampletones_tools.calibration.config.manifest import CorpusManifest
 from sampletones_tools.calibration.corpus.families import Family
 from sampletones_tools.calibration.corpus.reference import reference_corpus
 from sampletones_tools.calibration.corpus.writer import write_corpus
@@ -139,6 +140,7 @@ class CalibrationRequest(BaseModel):
         categories: The categories of reference sounds measured.
         workers: How many conversions run at once.
         resume: Whether the run takes up a run already in ``output`` where it stopped.
+        corpus: A manifest of local sounds that join the packaged ones, or ``None``.
         palette: The name of the palette the run's listening page is drawn in.
     """
 
@@ -153,6 +155,7 @@ class CalibrationRequest(BaseModel):
     categories: List[str] = Field(min_length=1)
     workers: int = Field(ge=1)
     resume: bool
+    corpus: Optional[Path]
     palette: str = DEFAULT_PALETTE_NAME
 
 
@@ -183,7 +186,8 @@ def calibrate(request: CalibrationRequest) -> CalibrationOutcome:
         ResumeRefusedError: If a run is resumed in a directory holding no run, or another run.
     """
     sample_rate = request.base.library.sample_rate
-    items = reference_corpus(request.base, request.categories)
+    manifest = CorpusManifest.read(request.corpus) if request.corpus is not None else None
+    items = reference_corpus(request.base, request.categories, manifest)
     variants = build_variants(
         request.base,
         request.methods,
