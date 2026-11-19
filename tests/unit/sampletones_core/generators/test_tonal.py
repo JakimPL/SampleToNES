@@ -1,5 +1,5 @@
 import math
-from typing import Final
+from typing import Final, List, Optional
 
 import pytest
 
@@ -14,10 +14,12 @@ from sampletones_core.constants.general import (
 from sampletones_core.generators.implementation.pulse import PulseGenerator
 from sampletones_core.generators.implementation.triangle import TriangleGenerator
 from sampletones_core.instructions import PulseInstruction, TriangleInstruction
+from sampletones_core.timers.nearest import nearest_pitch
 
 PITCH: Final[int] = 60
 VOLUME: Final[int] = 15
 CENTS_PER_OCTAVE: Final[float] = 1200.0
+RETUNED_A4: Final[float] = 432.0
 
 
 @pytest.fixture
@@ -102,3 +104,57 @@ class TestTriangleBend:
         generator.set_timer(TriangleInstruction(on=True, pitch=PITCH, detune=-3))
 
         assert generator.timer.timer == generator.timer_table[PITCH] - 3
+
+
+def _own_pitches(generator: PulseGenerator) -> List[int]:
+    """The library's notes standing between two neighbors on dividers of their own: the notes whose
+    room :func:`nearest_pitch` and the generator measure from the same neighbors."""
+    table = generator.timer_table
+    return [
+        pitch
+        for pitch in sorted(table)
+        if pitch - 1 in table and pitch + 1 in table and table[pitch - 1] > table[pitch] > table[pitch + 1]
+    ]
+
+
+class TestABendStaysTheNotesOwn:
+    """A bend a note offers lands on a divider ``nearest_pitch`` names after that very note, so the
+    refiner's choice and the player's reading of the divider name one decomposition."""
+
+    @pytest.mark.parametrize("a4_frequency", [None, RETUNED_A4], ids=["concert pitch", "retuned"])
+    def test_every_bend_a_note_offers_names_that_note(self, a4_frequency: Optional[float]) -> None:
+        config = Config()
+        if a4_frequency is not None:
+            config = config.model_copy(
+                update={"library": config.library.model_copy(update={"a4_frequency": a4_frequency})}
+            )
+        generator = PulseGenerator(config, ChannelName.PULSE1)
+        pitches = _own_pitches(generator)
+        assert pitches
+
+        for pitch in pitches:
+            lowest, highest = generator.bend_range(pitch)
+            assert lowest <= 0 <= highest
+            for bend in range(lowest, highest + 1):
+                divider = generator.timer_table[pitch] + bend
+                assert nearest_pitch(generator.played_timer_table, divider) == (pitch, bend), (pitch, bend)
+
+    def test_neighboring_rooms_meet_without_overlapping(self, generator: PulseGenerator) -> None:
+        """The divider halfway across an even gap belongs to the higher note alone."""
+        pitches = _own_pitches(generator)
+        for lower, higher in zip(pitches, pitches[1:]):
+            if higher != lower + 1:
+                continue
+
+            lower_reach = generator.timer_table[lower] + generator.bend_range(lower)[0]
+            higher_reach = generator.timer_table[higher] + generator.bend_range(higher)[1]
+            assert lower_reach == higher_reach + 1, (lower, higher)
+
+    def test_a_note_sharing_its_divider_with_the_note_above_offers_no_bend_up(self, generator: PulseGenerator) -> None:
+        shared = [
+            pitch
+            for pitch in generator.timer_table
+            if generator.timer_table.get(pitch + 1) == generator.timer_table[pitch]
+        ]
+        for pitch in shared:
+            assert generator.bend_range(pitch)[0] == 0

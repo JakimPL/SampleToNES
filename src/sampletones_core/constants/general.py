@@ -6,6 +6,7 @@ from sampletones_shared.constants.music import LIMIT_MIN_PITCH
 
 # Pitches and frequencies
 
+# FamiTracker and Bitphase round the NTSC master clock divided by 12 to this figure.
 APU_CLOCK: Final[float] = 1789773.0
 TIMER_CYCLE_DIVIDER: Final[int] = 16
 MIN_TIMER: Final[int] = 1
@@ -15,8 +16,8 @@ MAX_TIMER: Final[int] = 0x7FF
 MIN_PITCH: Final[int] = 33
 MAX_PITCH: Final[int] = 119
 MIN_PLAYED_PITCH: Final[int] = LIMIT_MIN_PITCH
-PITCH_RANGE: Final[int] = MAX_PITCH - MIN_PITCH
 PlayedPitch = Annotated[int, Field(ge=MIN_PLAYED_PITCH, le=MAX_PITCH)]
+PITCH_RANGE: Final[int] = MAX_PITCH - MIN_PITCH
 
 TRIANGLE_PHASE_INCREMENT: Final[float] = 0.5
 
