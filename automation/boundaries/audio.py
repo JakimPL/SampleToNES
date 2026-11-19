@@ -13,9 +13,13 @@ import pytest
 ALSA_CONFIGURATION_FILE: Final[str] = ".asound.conf"
 ALSA_CONFIGURATION_VARIABLE: Final[str] = "ALSA_CONFIG_PATH"
 DEVICE_BUFFER_SECONDS: Final[float] = 0.05
-SILENT_DEFAULT_DEVICE: Final[str] = "pcm.!default {\n    type null\n}\n"
+SILENT_DEFAULT_DEVICE: Final[str] = (
+    'pcm.!default {\n    type plug\n    slave.pcm "null"\n}\n' "pcm.null {\n    type null\n}\n"
+)
 SILENT_DEVICE_NAME: Final[str] = "default"
 REFUSED_STREAM: Final[str] = "A screen scenario's device refuses every stream"
+REFUSED_START: Final[str] = "A screen scenario's audio system refuses to start"
+UNANTICIPATED_HOST_ERROR: Final[int] = -9999
 JACK_SERVER_VARIABLE: Final[str] = "JACK_DEFAULT_SERVER"
 JACK_NO_START_VARIABLE: Final[str] = "JACK_NO_START_SERVER"
 ABSENT_JACK_SERVER: Final[str] = "sampletones-screens-absent"
@@ -24,11 +28,12 @@ JACK_STAYS_DOWN: Final[str] = "1"
 
 class OutputDevice(StrEnum):
     """The output a scenario's machine offers: a device that plays into silence, one that refuses every
-    stream, or none at all."""
+    stream, none at all, or an audio system that refuses to start."""
 
     SILENT = "silent"
     REFUSING = "refusing"
     NONE = "none"
+    UNSTARTED = "unstarted"
 
 
 @dataclass(frozen=True)
@@ -186,13 +191,14 @@ class DeviceClock:
 
 
 class SilentOutputDevice:
-    """The one output device a scenario's application finds: ALSA's null sink, played out in real time, which
+    """The output device a scenario's application plays through: ALSA's null sink, played out in real time, which
     PortAudio names :data:`SILENT_DEVICE_NAME`.
 
-    The scenario's ALSA reads a configuration of its own, which names the null sink its default device and
-    leaves the machine's sound cards and sound server out, so every machine offers the same device and plays
-    into silence. The null sink takes sound as fast as it comes, so a clock behind each output stream returns
-    a write and a stop when a device would.
+    The scenario's ALSA reads a configuration of its own, which makes the null sink its default device behind
+    the plug converter and leaves the machine's sound cards and sound server out, so every machine offers the
+    same device first and plays into silence. PortAudio lists the converter, which a newer PortAudio needs to
+    list the device at all, and passes over the sink beneath it by its name. The null sink takes sound as fast
+    as it comes, so a clock behind each output stream returns a write and a stop when a device would.
     """
 
     def __init__(self) -> None:
@@ -249,8 +255,9 @@ def provide_output_device(
 ) -> None:
     """Gives the application the output ``device`` before it starts, with the machine's own sound kept out.
 
-    Whatever the device, the scenario's ALSA reads its own configuration and JACK looks for a server no
-    one runs, so neither the sound cards nor a sound server running on the machine reach the run.
+    Whatever the device, the scenario's ALSA reads its own configuration, JACK looks for a server no
+    one runs, and PulseAudio reaches the worker's own server, which ``PULSE_SERVER`` names, so neither
+    the sound cards nor a sound server running on the machine reach the run.
     """
     silent = SilentOutputDevice()
     silent.configure(home, monkeypatch)
@@ -263,6 +270,8 @@ def provide_output_device(
             _refusing_output_device(monkeypatch)
         case OutputDevice.NONE:
             _no_output_device(monkeypatch)
+        case OutputDevice.UNSTARTED:
+            _unstarted_audio_system(monkeypatch)
 
 
 def _away_from_jack(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -288,3 +297,13 @@ def _no_output_device(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _no_default_device(_: pyaudio.PyAudio) -> None:
     raise OSError("A screen scenario offers no output device")
+
+
+def _unstarted_audio_system(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Starts the application on a machine whose audio system refuses to start, as PortAudio refuses where one
+    of its host APIs reaches no server it needs."""
+    monkeypatch.setattr(pyaudio.PyAudio, "__init__", _refused_start)
+
+
+def _refused_start(_: pyaudio.PyAudio) -> None:
+    raise OSError(UNANTICIPATED_HOST_ERROR, REFUSED_START)

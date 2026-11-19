@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Final, Mapping, Optional, Tuple
 
+from automation.boundaries.sound_server import PULSE_SERVER_VARIABLE
 from automation.dearpygui.display import DisplayBackend, ScreenSize
 from automation.homes import let_go, reopen_folders
 from automation.paths import (
@@ -200,6 +201,7 @@ def child_environment(
     folders: ScenarioFolders,
     *,
     display: str,
+    sound_server: Optional[str],
 ) -> Dict[str, str]:
     """The environment a scenario's process starts under: ``base``, pointed at the scenario's own world.
 
@@ -208,7 +210,8 @@ def child_environment(
     The process makes its temporary files where the machine keeps them, as it does on a user's
     machine, which keeps the socket paths it opens there short. The display is the worker's own
     server, the session bus address leads nowhere, and the input method is off, so everything a
-    scenario does stays on its own display and in its own home.
+    scenario does stays on its own display and in its own home. Where the worker runs a sound
+    server, ``PULSE_SERVER`` names it, so PulseAudio reaches that server in place of the machine's.
     """
     environment = {name: value for name, value in base.items() if not name.startswith(DROPPED_PREFIXES)}
     home = folders.home
@@ -228,4 +231,7 @@ def child_environment(
             REPORT_VARIABLE: str(folders.reports),
         }
     )
+    if sound_server is not None:
+        environment[PULSE_SERVER_VARIABLE] = sound_server
+
     return environment

@@ -191,7 +191,7 @@ from sampletones_application.view_model.shared.project_properties import (
 from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager, DeviceCatalog
-from sampletones_core.audio.driver.portaudio import PyAudioDriver
+from sampletones_core.audio.driver.portaudio import start_portaudio
 from sampletones_core.audio.output import AudioOutput
 from sampletones_core.constants.audio import BufferSize, SampleRate
 from sampletones_core.constants.enums import ChannelName, FeatureKey
@@ -283,7 +283,7 @@ class Application:
             language_manager=self.language_manager,
         )
         UnhandledFailures.attach(self._unhandled_failures.present, post=CallbackQueue.add)
-        self.audio_output: AudioOutput = AudioOutput(PyAudioDriver, post=CallbackQueue.add)
+        self.audio_output: AudioOutput = AudioOutput(start_portaudio, post=CallbackQueue.add)
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager(self.audio_output.catalog)
         self.preview_player: PreviewPlayer = PreviewPlayer(self.audio_output)
         self.config_manager = ConfigManager(config_path)

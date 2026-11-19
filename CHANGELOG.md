@@ -4,8 +4,7 @@
 
 * Added MIDI keyboard support.
 * [?] Added Polish application language.
-* Added NES ROM export: a cartridge that plays the song and shows it on a player screen.
-* Improved NSF timing: a song at 60, 30, 20 or 15 Hz moves on the same frames throughout.
+* Added NES ROM export.
 
 ## v0.3.2 [2026-10-13]
 

@@ -150,12 +150,6 @@ currently out of line. An entry leaves when the code meets the contract again.
 
 ## Bugs
 
-* On Ubuntu 26.04 the application stops at startup on a machine with no PulseAudio server. Its PortAudio,
-  19.7, carries a PulseAudio host API, and a host API that reaches no server fails PortAudio's whole start
-  with an unanticipated host error, where 19.6 starts with the devices ALSA offers. The application should
-  open without output and show the no-output notice. The screen scenarios meet the same refusal on GitHub's
-  `ubuntu-latest`, which runs 26.04: they need a PulseAudio server of their own with a null sink, which
-  also keeps a desktop's own server out of the run.
 * A screen scenario that ends within the first frames after the application starts never stops it. Its
   Exit leaves the application drawing, and the run waits until the suite's timeout, which ends the parent
   process and leaves the scenario's own process running at several cores. A scenario whose body is a single

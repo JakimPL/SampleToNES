@@ -1,21 +1,18 @@
-import operator
 from typing import Final
 
 import pytest
 
 from automation.application.startup import Startup
 from automation.screen import Screen
+from automation.steps.output import the_reader_is_told_no_sound_plays
 from automation.steps.reconstructions import expect_open
 from automation.steps.sequencer import on_the_sequencer
-from automation.vocabulary.playback import PLAY
 from automation.worlds.home import World
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT, sequencer_world
 
-NO_OUTPUT_TITLE: Final[str] = "global.dialog.title.no_audio_output"
-NO_OUTPUT_MESSAGE: Final[str] = "global.dialog.message.no_audio_output"
 MIDDLE_OF_THE_WAVEFORM: Final[float] = 0.5
 
 
@@ -29,23 +26,6 @@ def world() -> World:
 def startup() -> Startup:
     """The application opens on a reconstruction that plays and on the arranged project."""
     return Startup(reconstruction=PLAYABLE_RECONSTRUCTION, project=ARRANGED_PROJECT)
-
-
-def the_reader_is_told(screen: Screen) -> None:
-    """Waits for the notice that no sound can play, reads its words, and dismisses it with OK.
-
-    The Playback menu still offers Play, since nothing took the output.
-    """
-    notice = screen.no_output_notice
-    screen.expect(notice.is_shown, bool, description="the notice that no sound can play")
-
-    assert notice.prompt.title() == screen.words(NO_OUTPUT_TITLE)
-    assert notice.words() == screen.words(NO_OUTPUT_MESSAGE)
-    assert not screen.error_notice.is_shown()
-    assert screen.sequencer.playback.play_entry() == screen.words(PLAY)
-
-    notice.dismiss()
-    screen.expect(notice.is_shown, operator.not_, description="the notice dismissed")
 
 
 class TestPlayingAReconstruction:
@@ -64,12 +44,12 @@ class TestPlayingAReconstruction:
 
             screen.press_shortcut(ShortcutId.PLAY)
 
-            the_reader_is_told(screen)
+            the_reader_is_told_no_sound_plays(screen)
 
         def a_click_on_the_waveform_tells_the_reader_again(screen: Screen) -> None:
             screen.reconstructions.waveform.click(MIDDLE_OF_THE_WAVEFORM)
 
-            the_reader_is_told(screen)
+            the_reader_is_told_no_sound_plays(screen)
 
         screen.scenario(play_tells_the_reader, a_click_on_the_waveform_tells_the_reader_again).run()
 
@@ -89,11 +69,11 @@ class TestPlayingTheSong:
 
             screen.press_shortcut(ShortcutId.PLAY)
 
-            the_reader_is_told(screen)
+            the_reader_is_told_no_sound_plays(screen)
 
         def play_from_this_frame_tells_the_reader_again(screen: Screen) -> None:
             screen.press_shortcut(ShortcutId.PLAY_FROM_FRAME)
 
-            the_reader_is_told(screen)
+            the_reader_is_told_no_sound_plays(screen)
 
         screen.scenario(play_tells_the_reader, play_from_this_frame_tells_the_reader_again).run()

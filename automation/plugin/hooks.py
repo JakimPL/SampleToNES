@@ -5,6 +5,7 @@ from typing import Final, Generator, List, Optional
 import pytest
 
 from automation.application.running import ScreenApplication
+from automation.boundaries.sound_server import SoundServer
 from automation.dearpygui.hosting import host
 from automation.dearpygui.isolation import ReportRecorder, run_isolated
 from automation.environment import (
@@ -16,13 +17,15 @@ from automation.environment import (
     shard,
 )
 from automation.homes import let_go, make_worker_homes
-from automation.plugin.constants import DISPLAY_KEY, HOMES_KEY
+from automation.plugin.constants import DISPLAY_KEY, HOMES_KEY, SOUND_SERVER_KEY
 from automation.plugin.fixtures import _worker_display
+from sampletones_shared.utils.system.system import System
 
 CHILD_TIMEOUT_SECONDS: Final[float] = 600.0
 JOIN_TIMEOUT_SECONDS: Final[float] = 30.0
 REPORT_RECORDER_NAME: Final[str] = "screens-report-recorder"
 SCREEN_APPLICATION_FIXTURE: Final[str] = "screen_application"
+SOUND_SERVER_FOLDER: Final[str] = "sound"
 
 
 class ScreenScenarioError(AssertionError):
@@ -81,6 +84,7 @@ def pytest_runtest_protocol(
         os.environ,
         folders,
         display=_worker_display(item.config),
+        sound_server=_worker_sound_server(item.config),
     )
     item.ihook.pytest_runtest_logstart(nodeid=item.nodeid, location=item.location)
     failed = False
@@ -114,6 +118,25 @@ def _worker_homes(config: pytest.Config) -> Path:
     return homes
 
 
+def _worker_sound_server(config: pytest.Config) -> Optional[str]:
+    """The address of the PulseAudio server this worker's scenarios reach, started with the first of them.
+
+    PortAudio carries a PulseAudio host API on Linux alone, so the server runs there, in the worker's
+    homes folder, whose path stays short enough for its socket.
+    """
+    if System.current() is not System.LINUX:
+        return None
+
+    server = config.stash.get(SOUND_SERVER_KEY, None)
+    if server is not None:
+        return server.address
+
+    server = SoundServer(_worker_homes(config) / SOUND_SERVER_FOLDER)
+    address = server.start()
+    config.stash[SOUND_SERVER_KEY] = server
+    return address
+
+
 def pytest_configure(config: pytest.Config) -> None:
     """In a scenario's own process, registers the recorder that writes its reports to the report file."""
     if is_child_process():
@@ -122,10 +145,15 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 def pytest_unconfigure(config: pytest.Config) -> None:
-    """Stops the virtual display this worker started, and lets its temporary homes go, if it made them."""
+    """Stops the virtual display and the sound server this worker started, and lets its temporary homes go, if it
+    made them."""
     display = config.stash.get(DISPLAY_KEY, None)
     if display is not None:
         display.stop()
+
+    server = config.stash.get(SOUND_SERVER_KEY, None)
+    if server is not None:
+        server.stop()
 
     homes = config.stash.get(HOMES_KEY, None)
     if homes is not None:

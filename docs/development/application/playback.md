@@ -197,6 +197,7 @@ The backend is terminated once every writer has ended. A writer still inside a d
 |---------|-------|
 | The devices the backend lists, and the device, rate and buffer size the reader chose | `DeviceCatalog` and `AudioDeviceManager` (`sampletones_core/audio/`) |
 | The audio backend: the devices it lists and the streams it opens | `AudioDriverProtocol` and `PyAudioDriver` (`sampletones_core/audio/driver/`) |
+| Starting the backend, and the one listing no device where the audio system refuses to start | `start_portaudio` and `UnstartedDriver` (`sampletones_core/audio/driver/`) |
 | The one output every sound plays through: its claims, its stream, its writer and its threads | `AudioOutput` (`sampletones_core/audio/output/`) |
 | One sound as its owner holds it, and what the owner hears of it | `Playback` and `PlaybackListener` (`sampletones_core/audio/output/playback/`) |
 | Every decision the output makes, as state machines a model check covers | `SessionCore` (`sampletones_core/audio/output/session/`) and the lifecycles (`sampletones_core/audio/output/lifecycle/`) |
