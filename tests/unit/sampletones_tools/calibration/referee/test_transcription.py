@@ -54,6 +54,18 @@ class TestTranscriptionReferee:
 
         assert _judged(referee, written_truth(written), converted(swapped)).score == 0.0
 
+    def test_swapped_pulses_pair_by_the_fields_they_agree_on_where_every_frame_misses(
+        self,
+        referee: TranscriptionReferee,
+    ) -> None:
+        written = {ChannelName.PULSE1: LEAD, ChannelName.PULSE2: HARMONY}
+        quieter = {ChannelName.PULSE1: _pulse(4, 1, 64), ChannelName.PULSE2: _pulse(4, 2, 69)}
+
+        judgment = _judged(referee, written_truth(written), converted(quieter))
+
+        assert judgment.score == 1.0
+        assert (judgment.components[NOTE], judgment.components[DUTY], judgment.components[VOLUME]) == (0.0, 0.0, 1.0)
+
     def test_a_silent_conversion_misses_every_written_frame(self, referee: TranscriptionReferee) -> None:
         judgment = _judged(
             referee, written_truth({ChannelName.PULSE1: LEAD}), converted({ChannelName.PULSE1: SILENT_PULSE})

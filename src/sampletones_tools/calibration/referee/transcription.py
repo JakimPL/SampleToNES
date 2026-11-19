@@ -84,7 +84,7 @@ class TranscriptionReferee:
     leaves silent and the conversion sounds counts against it. A counted frame is played as written
     where both sound it and every field the channel takes agrees, the volume within the tolerance.
     The two pulses sound one mix whichever of them carries which line, so each frame pairs them the
-    way that plays more of it as written.
+    way fewer fields disagree.
 
     The score is the share of counted channel-frames played otherwise. The readings behind it are the
     share of written frames left silent (``missed``), the share of played frames the writing leaves
@@ -129,14 +129,19 @@ class TranscriptionReferee:
         first, second = PULSES
         straight = [(written[first][frame], played[first][frame]), (written[second][frame], played[second][frame])]
         crossed = [(written[first][frame], played[second][frame]), (written[second][frame], played[first][frame])]
-        return crossed if self._misses(crossed) < self._misses(straight) else straight
+        return crossed if self._disagreements(crossed) < self._disagreements(straight) else straight
 
-    def _misses(self, pairs: List[Tuple[Frame, Frame]]) -> int:
-        tally = Tally()
+    def _disagreements(self, pairs: List[Tuple[Frame, Frame]]) -> int:
+        """How many fields disagree across the pairs, a frame sounding on one side alone counting one."""
+        count = 0
         for written_frame, played_frame in pairs:
-            tally.add(written_frame, played_frame, volume_tolerance=self._volume_tolerance)
+            if sounds(written_frame) and sounds(played_frame):
+                fields = compared_fields(written_frame, played_frame, volume_tolerance=self._volume_tolerance)
+                count += sum(not agrees for agrees in fields.values())
+            else:
+                count += sounds(written_frame) != sounds(played_frame)
 
-        return tally.wrong
+        return count
 
 
 def compared_fields(written: Frame, played: Frame, *, volume_tolerance: int) -> Dict[str, bool]:
