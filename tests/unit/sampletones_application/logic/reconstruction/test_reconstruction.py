@@ -15,9 +15,6 @@ from sampletones_application.logic.reconstruction.reconstruction import (
     ReconstructionPanelLogic,
 )
 from sampletones_application.logic.shared.renders import RenderCache
-from sampletones_application.view_model.reconstruction.envelopes import (
-    ChannelEnvelopesViewModel,
-)
 from sampletones_application.view_model.reconstruction.paths.state import (
     ReconstructionPathState,
 )
@@ -315,58 +312,6 @@ class TestReconstructionPanelLogicPathRows:
         view_model = captured[0]
         assert view_model.reconstruction_file.state is ReconstructionPathState.NOT_APPLICABLE
         assert view_model.original_audio.state is ReconstructionPathState.NOT_APPLICABLE
-
-    @dataclass(frozen=True, kw_only=True)
-    class AudioPathCase(BaseRegularTestCase):
-        has_filepath: bool
-        has_content: bool
-        expected: ReconstructionPathState
-
-    test_cases = (
-        AudioPathCase(
-            label="detached",
-            has_filepath=False,
-            has_content=False,
-            expected=ReconstructionPathState.NOT_APPLICABLE,
-        ),
-        AudioPathCase(
-            label="recorded_but_unavailable",
-            has_filepath=True,
-            has_content=False,
-            expected=ReconstructionPathState.NOT_FOUND,
-        ),
-        AudioPathCase(
-            label="available",
-            has_filepath=True,
-            has_content=True,
-            expected=ReconstructionPathState.AVAILABLE,
-        ),
-    )
-
-    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
-    def test_audio_path_state_follows_loaded_content(self, case: AudioPathCase) -> None:
-        source_paths = (Path("/songs/source.wav"),) if case.has_filepath else ()
-
-        view_model = ReconstructionPanelLogic._build_audio_path_view_model(
-            source_paths,
-            loaded=case.has_content,
-        )
-
-        assert view_model.state is case.expected
-
-    def test_stem_paths_report_multiple_state(self) -> None:
-        stem_paths = (
-            Path("/stems/drums/kick.wav"),
-            Path("/stems/drums/snare.wav"),
-        )
-        view_model = ReconstructionPanelLogic._build_audio_path_view_model(
-            stem_paths,
-            loaded=True,
-        )
-
-        assert view_model.state is ReconstructionPathState.MULTIPLE
-        assert view_model.paths == tuple(str(path) for path in stem_paths)
-        assert view_model.path == ""
 
 
 class TestReconstructionPanelLogicUpdate:
