@@ -120,7 +120,7 @@ def evaluate_variants(
         item_paths: Written WAV path per corpus item name.
         referees: Referees scoring each reconstruction.
         run_directory: The directory the run writes its renders and recordings into.
-        channels: The channels every variant reconstructs with.
+        channels: The channels every variant reconstructs an item with when the item names none.
 
     Returns:
         One row per (variant, item, referee, reading).
@@ -128,10 +128,12 @@ def evaluate_variants(
     rows: List[CalibrationRow] = []
     for variant in variants:
         ensure_library(variant.config)
-        reconstructor = Reconstructor(variant.config, channels)
+        reconstructors: Dict[FrozenSet[ChannelName], Reconstructor] = {}
         sample_rate = variant.config.library.sample_rate
         for position, item in enumerate(items):
             path = item_paths[item.name]
+            covered = item.channels if item.channels is not None else channels
+            reconstructor = _reconstructor(reconstructors, variant.config, covered)
             reconstruction = reconstructor(path)
             if reconstruction is None:
                 logger.info(f"[{variant.label}] {item.name}: reconstruction unavailable")
@@ -167,6 +169,18 @@ def evaluate_variants(
             logger.info(f"[{variant.label}] {item.name}: scored")
 
     return rows
+
+
+def _reconstructor(
+    reconstructors: Dict[FrozenSet[ChannelName], Reconstructor],
+    config: Config,
+    channels: FrozenSet[ChannelName],
+) -> Reconstructor:
+    """The variant's reconstructor over ``channels``, built the first time an item asks for them."""
+    if channels not in reconstructors:
+        reconstructors[channels] = Reconstructor(config, channels)
+
+    return reconstructors[channels]
 
 
 def _compared_signals(

@@ -1,14 +1,21 @@
 import warnings
-from typing import Final, List
+from pathlib import Path
+from typing import AbstractSet, Final, FrozenSet, List, Optional
 
+import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import SpectrumMethod
-from sampletones_tools.calibration.runner import build_variants
+from sampletones_core.constants.enums import ChannelName, SpectrumMethod
+from sampletones_core.reconstructions import Reconstruction
+from sampletones_shared.types.path import Pathlike
+from sampletones_tools.calibration.corpus.item import CorpusItem
+from sampletones_tools.calibration.runner import build_variants, evaluate_variants
 
 METHODS: Final[List[SpectrumMethod]] = [SpectrumMethod.FFT, SpectrumMethod.CQT]
 EXPONENTS: Final[List[float]] = [1.0]
+RUN_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset({ChannelName.PULSE1})
+ITEM_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(ChannelName.items())
 
 
 class TestBuildVariants:
@@ -32,3 +39,41 @@ class TestBuildVariants:
             warnings.simplefilter("error", UserWarning)
             for variant in variants:
                 variant.config.model_dump()
+
+
+class SilentReconstructor:
+    """A reconstructor that converts nothing."""
+
+    def __call__(self, path: Pathlike) -> Optional[Reconstruction]:
+        return None
+
+
+class RecordedReconstructors:
+    """Builds silent reconstructors, noting the channels each is built over."""
+
+    def __init__(self) -> None:
+        self.built: List[FrozenSet[ChannelName]] = []
+
+    def __call__(self, config: Config, channels: AbstractSet[ChannelName]) -> SilentReconstructor:
+        self.built.append(frozenset(channels))
+        return SilentReconstructor()
+
+
+class TestEvaluateVariants:
+    def test_an_item_naming_channels_is_converted_over_them_and_the_rest_over_the_run_s(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        recorded = RecordedReconstructors()
+        monkeypatch.setattr("sampletones_tools.calibration.runner.ensure_library", lambda config: None)
+        monkeypatch.setattr("sampletones_tools.calibration.runner.Reconstructor", recorded)
+        items = [
+            CorpusItem(name=name, category="tone", audio=np.zeros(1), truth=None, channels=channels)
+            for name, channels in (("a", None), ("b", ITEM_CHANNELS), ("c", None), ("d", ITEM_CHANNELS))
+        ]
+        (variant,) = build_variants(Config(), [SpectrumMethod.FFT], EXPONENTS, [])
+
+        evaluate_variants([variant], items, {item.name: tmp_path for item in items}, [], tmp_path, RUN_CHANNELS)
+
+        assert recorded.built == [RUN_CHANNELS, ITEM_CHANNELS]

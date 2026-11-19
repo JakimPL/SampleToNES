@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 from typing import Final, List, Optional, Sequence
 
@@ -9,8 +10,7 @@ from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.text import parsed_items
 from sampletones_tools.calibration.board.session import BoardRequest, build_board
-from sampletones_tools.calibration.config.corpus import CorpusConfig
-from sampletones_tools.calibration.corpus.synthesis import build_corpus
+from sampletones_tools.calibration.corpus.reference import reference_corpus
 from sampletones_tools.calibration.corpus.writer import write_corpus
 from sampletones_tools.calibration.layout import CORPUS_DIRECTORY, CSV_REPORT, MARKDOWN_REPORT
 from sampletones_tools.calibration.referee.factory import build_referees
@@ -46,6 +46,28 @@ def floats_named(stated: Optional[str], default: Sequence[float]) -> List[float]
     return parsed_items(stated, default, parse=float, refusal=lambda value: f"Not a number: {value!r}.")
 
 
+def categories_named(stated: Optional[str], known: Sequence[str]) -> List[str]:
+    """The categories a run measures: the ones named, comma separated, or every one ``known``.
+
+    Raises:
+        ValueError: If a name is none of the ``known`` categories.
+    """
+    listed = ", ".join(known)
+    return parsed_items(
+        stated,
+        known,
+        parse=partial(_known_category, known),
+        refusal=lambda name: f"Unknown category {name!r}; the categories are {listed}.",
+    )
+
+
+def _known_category(known: Sequence[str], name: str) -> str:
+    if name not in known:
+        raise ValueError(name)
+
+    return name
+
+
 def base_configuration(path: Optional[Path]) -> Config:
     """The configuration a run measures: the file named, or the program's packaged defaults.
 
@@ -75,7 +97,8 @@ class CalibrationRequest(BaseModel):
         perceptual_exponents: The values of ``metric.perceptual_exponent`` evaluated.
         temporal_weights: The values of ``weights.temporal_loss_weight`` evaluated; empty keeps
             the base blend.
-        channels: The channels every variant reconstructs with.
+        channels: The channels every variant reconstructs the synthesized sounds with.
+        categories: The categories of reference sounds measured.
         palette: The name of the palette the run's listening page is drawn in.
     """
 
@@ -87,6 +110,7 @@ class CalibrationRequest(BaseModel):
     perceptual_exponents: List[float] = Field(min_length=1)
     temporal_weights: List[float]
     channels: List[ChannelName] = Field(min_length=1)
+    categories: List[str] = Field(min_length=1)
     palette: str = DEFAULT_PALETTE_NAME
 
 
@@ -113,7 +137,7 @@ def calibrate(request: CalibrationRequest) -> CalibrationOutcome:
     request.output.mkdir(parents=True, exist_ok=True)
 
     sample_rate = request.base.library.sample_rate
-    items = build_corpus(sample_rate, config=CorpusConfig.load())
+    items = [item for item in reference_corpus(request.base) if item.category in request.categories]
     item_paths = write_corpus(items, request.output / CORPUS_DIRECTORY, sample_rate)
     referees = build_referees(sample_rate)
     variants = build_variants(

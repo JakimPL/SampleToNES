@@ -21,8 +21,10 @@ WEIGHTS_HELP: Final[str] = (
     "values of weights.temporal_loss_weight to measure, comma separated; without it, the suite's values"
 )
 CHANNELS_HELP: Final[str] = (
-    "channels every variant reconstructs with, comma separated; without it, the suite's channels"
+    "channels every variant reconstructs the synthesized sounds with, comma separated; without it, the suite's "
+    "channels"
 )
+CATEGORIES_HELP: Final[str] = "categories of reference sounds to measure, comma separated; without it, every one"
 BOARD_HELP: Final[str] = (
     "run directories to compare on one listening page, measuring nothing; without -o the page lands in a "
     "timestamped directory under Documents/SampleToNES/calibration/pages"
@@ -36,6 +38,7 @@ MEASURING_OPTIONS: Final[List[str]] = [
     "--perceptual-exponents",
     "--temporal-weights",
     "--channels",
+    "--categories",
 ]
 
 
@@ -49,6 +52,7 @@ class CalibrationArguments:
     perceptual_exponents: Optional[str]
     temporal_weights: Optional[str]
     channels: Optional[str]
+    categories: Optional[str]
     board: Optional[List[Path]]
     palette: Optional[str]
     open_page: bool
@@ -61,6 +65,7 @@ def configure(parser: ArgumentParser) -> None:
     parser.add_argument("--perceptual-exponents", type=str, default=None, help=EXPONENTS_HELP)
     parser.add_argument("--temporal-weights", type=str, default=None, help=WEIGHTS_HELP)
     parser.add_argument("--channels", type=str, default=None, help=CHANNELS_HELP)
+    parser.add_argument("--categories", type=str, default=None, help=CATEGORIES_HELP)
     parser.add_argument("--board", type=Path, nargs="+", default=None, metavar="RUN", help=BOARD_HELP)
     parser.add_argument("--palette", type=str, default=None, help=PALETTE_HELP)
     parser.add_argument("--no-open", dest="open_page", action="store_false", help=NO_OPEN_HELP)
@@ -80,6 +85,7 @@ def run(arguments: Namespace) -> int:
         perceptual_exponents=arguments.perceptual_exponents,
         temporal_weights=arguments.temporal_weights,
         channels=arguments.channels,
+        categories=arguments.categories,
         board=arguments.board,
         palette=arguments.palette,
         open_page=arguments.open_page,
@@ -93,10 +99,12 @@ def _measure(given: CalibrationArguments) -> int:
     from sampletones_core.headless.conversion.request import channels_named
     from sampletones_shared.utils.validation import describe_failure
     from sampletones_tools.calibration.config.suite import SuiteConfig
+    from sampletones_tools.calibration.corpus.reference import reference_categories
     from sampletones_tools.calibration.session import (
         CalibrationRequest,
         base_configuration,
         calibrate,
+        categories_named,
         default_output,
         floats_named,
         methods_named,
@@ -111,6 +119,7 @@ def _measure(given: CalibrationArguments) -> int:
             perceptual_exponents=floats_named(given.perceptual_exponents, suite.perceptual_exponents),
             temporal_weights=floats_named(given.temporal_weights, suite.temporal_weights),
             channels=channels_named(given.channels) if given.channels is not None else list(suite.channels),
+            categories=categories_named(given.categories, reference_categories()),
             palette=given.palette if given.palette is not None else DEFAULT_PALETTE_NAME,
         )
     except ValueError as error:
@@ -157,6 +166,7 @@ def _refuse_measuring(given: CalibrationArguments) -> None:
         given.perceptual_exponents,
         given.temporal_weights,
         given.channels,
+        given.categories,
     )
     if any(value is not None for value in measuring):
         named = ", ".join(MEASURING_OPTIONS)

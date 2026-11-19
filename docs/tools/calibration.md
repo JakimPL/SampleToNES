@@ -30,7 +30,9 @@ also builds the instruction libraries it needs.
 With no options, the run measures the program's default settings under the packaged suite:
 
 - Every spectrum method: `fft`, `logfft` and `cqt`.
-- The channels pulse 1, triangle and noise.
+- The channels pulse 1, triangle and noise for the synthetic sounds. The sounds written as NES frames
+  are converted over all four channels.
+- Every category of reference sound.
 - Every other setting at its default value.
 
 A *variant* is one configuration the run measured, named after its distinguishing settings. For
@@ -118,7 +120,8 @@ Each option replaces one part of the default run. The rest stays as the suite se
 |---|---|---|
 | `--config FILE` | Measures the settings in a configuration file instead of the defaults | the `config.json` in your [SampleToNES folder](../guide/files.md) holds your saved settings |
 | `--methods LIST` | The spectrum methods measured | `--methods cqt` |
-| `--channels LIST` | The channels every variant reconstructs with | `--channels pulse1,pulse2,triangle,noise` |
+| `--channels LIST` | The channels every variant reconstructs the synthetic sounds with | `--channels pulse1,pulse2,triangle,noise` |
+| `--categories LIST` | The categories of reference sounds measured | `--categories nes-pulse,nes-mix` |
 | `--perceptual-exponents LIST` | The perceptual exponents measured, one variant each | `--perceptual-exponents 0.5,1` |
 | `--temporal-weights LIST` | The temporal loss weights measured, one variant each | `--temporal-weights 0.1,0.3` |
 | `-o DIR`, `--output DIR` | The folder the run writes into | `-o before` |
@@ -154,8 +157,10 @@ for example a `git worktree`, into its own folder.
 
 ### The reference sounds
 
-The reference sounds are short synthetic clips, generated the same way on every run. Each category
-tests one kind of decision:
+The reference sounds are short clips, made the same way on every run. They come in two families.
+
+The synthetic sounds are generated from oscillators, envelopes and noise. Each category tests one kind
+of decision:
 
 | Category | Sounds | What it tests |
 |---|---|---|
@@ -166,6 +171,21 @@ tests one kind of decision:
 | `transient` | a snare, a kick, a plucked tone | attacks and decays |
 | `dynamics` | a crescendo, and a loud burst dropping to a quiet hiss | following the level |
 | `polyphony` | a chord, and a melody over a snare | several voices at once |
+
+The NES sounds are written out frame by frame, as instructions the four channels play, and rendered
+the way the channels play them. Each one is a *round trip*: the program could in principle play it
+back exactly, and the run knows every frame it should find. They use plain notes and volumes, with no
+bends or sweeps.
+
+| Category | Sounds | What it tests |
+|---|---|---|
+| `nes-pulse` | every duty cycle, a volume ladder, a melody from C3 to C6, low notes, plucked notes | the pulse's pitch, duty and volume |
+| `nes-triangle` | a bass line from E1 to E3, and a melody | the triangle's pitch, the bass register above all |
+| `nes-noise` | every period of both modes, and a kick, snare and hat pattern | the noise channel's period, mode and decays |
+| `nes-mix` | a melody over a bass, two pulses in intervals, and a short piece on all four channels | taking sounds that play together apart |
+
+A round trip is converted over all four channels, so the run also hears whether the channels a sound
+leaves out stay silent.
 
 ### The referees
 

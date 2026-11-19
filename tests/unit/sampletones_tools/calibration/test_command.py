@@ -11,6 +11,7 @@ from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_tools.calibration.board.layout import PAGE_FILE
 from sampletones_tools.calibration.board.session import BoardRequest
 from sampletones_tools.calibration.config.suite import SuiteConfig
+from sampletones_tools.calibration.corpus.reference import reference_categories
 from sampletones_tools.calibration.layout import MARKDOWN_REPORT
 from sampletones_tools.calibration.session import (
     BOARD_ROOT,
@@ -76,6 +77,8 @@ class TestCalibration:
                 "0.25",
                 "--channels",
                 "pulse1",
+                "--categories",
+                "nes-mix,tone",
                 "-o",
                 str(tmp_path / "run"),
             ],
@@ -87,6 +90,7 @@ class TestCalibration:
         assert request.perceptual_exponents == [0.5, 1.0]
         assert request.temporal_weights == [0.25]
         assert request.channels == [ChannelName.PULSE1]
+        assert request.categories == ["nes-mix", "tone"]
         assert request.output == tmp_path / "run"
 
     def test_without_options_the_run_measures_the_default_settings_under_the_suite(
@@ -103,6 +107,7 @@ class TestCalibration:
         assert request.perceptual_exponents == list(suite.perceptual_exponents)
         assert request.temporal_weights == list(suite.temporal_weights)
         assert request.channels == list(suite.channels)
+        assert request.categories == reference_categories()
         assert request.output.parent == OUTPUT_ROOT
 
     def test_a_configuration_file_is_measured_in_place_of_the_defaults(
@@ -128,6 +133,12 @@ class TestCalibration:
     def test_a_value_that_is_no_number_is_refused(self, calibration: RecordedCalibration) -> None:
         with pytest.raises(SystemExit, match="Not a number"):
             dispatch(COMMANDS, ["calibration", "--perceptual-exponents", "high"])
+
+        assert calibration.requests == []
+
+    def test_an_unknown_category_is_refused(self, calibration: RecordedCalibration) -> None:
+        with pytest.raises(SystemExit, match="Unknown category"):
+            dispatch(COMMANDS, ["calibration", "--categories", "chord"])
 
         assert calibration.requests == []
 
@@ -180,6 +191,9 @@ class TestBoard:
 
         with pytest.raises(SystemExit, match="measures nothing"):
             dispatch(COMMANDS, ["calibration", "--board", str(run), "--methods", "fft"])
+
+        with pytest.raises(SystemExit, match="measures nothing"):
+            dispatch(COMMANDS, ["calibration", "--board", str(run), "--categories", "tone"])
 
         assert board.requests == []
 

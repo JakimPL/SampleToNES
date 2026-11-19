@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, FrozenSet, List
+from typing import Callable, Dict, Final, FrozenSet, List
 
 import pytest
 
@@ -19,6 +19,7 @@ from sampletones_tools.calibration.session import (
     CalibrationRequest,
     base_configuration,
     calibrate,
+    categories_named,
     default_output,
     default_page_output,
     floats_named,
@@ -28,6 +29,8 @@ from sampletones_tools.runs import BOARD_STAMP, RUN_STAMP
 from tests.unit.sampletones_tools.calibration.runs import write_run
 
 EVALUATE = "sampletones_tools.calibration.session.evaluate_variants"
+CATEGORIES: Final[List[str]] = ["tone"]
+KNOWN_CATEGORIES: Final[List[str]] = ["tone", "nes-pulse"]
 BUILD_BOARD = "sampletones_tools.calibration.session.build_board"
 
 
@@ -54,6 +57,18 @@ class TestFloatsNamed:
     def test_a_value_that_is_no_number_is_refused(self) -> None:
         with pytest.raises(ValueError, match="Not a number: 'high'"):
             floats_named("0.5,high", ())
+
+
+class TestCategoriesNamed:
+    def test_nothing_named_is_every_known_category(self) -> None:
+        assert categories_named(None, KNOWN_CATEGORIES) == KNOWN_CATEGORIES
+
+    def test_names_are_read_in_order(self) -> None:
+        assert categories_named("nes-pulse, tone", KNOWN_CATEGORIES) == ["nes-pulse", "tone"]
+
+    def test_an_unknown_category_is_refused_with_the_known_ones(self) -> None:
+        with pytest.raises(ValueError, match="Unknown category 'chord'; the categories are tone, nes-pulse"):
+            categories_named("tone,chord", KNOWN_CATEGORIES)
 
 
 class TestDefaultOutput:
@@ -97,6 +112,7 @@ class TestCalibrate:
             perceptual_exponents=[1.0],
             temporal_weights=[],
             channels=[ChannelName.PULSE1],
+            categories=CATEGORIES,
         )
 
         outcome = calibrate(request)
@@ -118,6 +134,7 @@ class TestCalibrate:
             perceptual_exponents=[1.0],
             temporal_weights=[],
             channels=[ChannelName.PULSE1],
+            categories=CATEGORIES,
         )
 
         outcome = calibrate(request)
@@ -140,6 +157,7 @@ class TestCalibrate:
             perceptual_exponents=[1.0],
             temporal_weights=[],
             channels=[ChannelName.PULSE1],
+            categories=CATEGORIES,
             palette="light",
         )
 
@@ -162,6 +180,7 @@ class TestCalibrate:
             perceptual_exponents=[1.0],
             temporal_weights=[],
             channels=[ChannelName.PULSE1],
+            categories=CATEGORIES,
         )
 
         calibrate(request)
@@ -182,11 +201,33 @@ class TestCalibrate:
             perceptual_exponents=[1.0],
             temporal_weights=[],
             channels=[ChannelName.PULSE1, ChannelName.NOISE],
+            categories=CATEGORIES,
         )
 
         calibrate(request)
 
         assert asked == [frozenset({ChannelName.PULSE1, ChannelName.NOISE})]
+
+    def test_a_run_measures_the_sounds_of_the_categories_it_is_asked_for(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        measured: List[str] = []
+        monkeypatch.setattr(EVALUATE, _measuring(measured))
+        request = CalibrationRequest(
+            base=Config(),
+            output=tmp_path / "run",
+            methods=[SpectrumMethod.FFT],
+            perceptual_exponents=[1.0],
+            temporal_weights=[],
+            channels=[ChannelName.PULSE1],
+            categories=["nes-pulse", "tone"],
+        )
+
+        calibrate(request)
+
+        assert set(measured) == {"nes-pulse", "tone"}
 
 
 class TestCalibrationRequest:
@@ -199,6 +240,7 @@ class TestCalibrationRequest:
                 perceptual_exponents=[1.0],
                 temporal_weights=[],
                 channels=[ChannelName.PULSE1],
+                categories=CATEGORIES,
             )
 
 
@@ -214,6 +256,24 @@ def _evaluated(asked: List[FrozenSet[ChannelName]]) -> Callable[..., List[Calibr
         channels: FrozenSet[ChannelName],
     ) -> List[CalibrationRow]:
         asked.append(channels)
+        write_run(run_directory, [variant.label for variant in variants], 0.0)
+        return []
+
+    return evaluated
+
+
+def _measuring(measured: List[str]) -> Callable[..., List[CalibrationRow]]:
+    """An evaluation noting the category of every item it is handed."""
+
+    def evaluated(
+        variants: List[CalibrationVariant],
+        items: List[CorpusItem],
+        item_paths: Dict[str, Path],
+        referees: List[Referee],
+        run_directory: Path,
+        channels: FrozenSet[ChannelName],
+    ) -> List[CalibrationRow]:
+        measured.extend(item.category for item in items)
         write_run(run_directory, [variant.label for variant in variants], 0.0)
         return []
 

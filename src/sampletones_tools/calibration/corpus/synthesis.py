@@ -56,7 +56,20 @@ def build_corpus(
         The corpus items, each carrying its category for per-class reporting.
     """
     generator = np.random.default_rng(config.seed)
-    probes: List[Probe] = [
+    return [
+        _item(
+            name,
+            category,
+            voice.render(sample_rate=sample_rate, generator=generator),
+            config,
+        )
+        for name, category, voice in corpus_probes(config)
+    ]
+
+
+def corpus_probes(config: CorpusConfig) -> List[Probe]:
+    """The probes of the corpus, each named and categorized beside the voice it renders, in corpus order."""
+    return [
         *_tone_probes(config),
         *_timbre_probes(config),
         *_noise_probes(config),
@@ -66,15 +79,6 @@ def build_corpus(
         *_polyphony_probes(config),
         _burst_then_hiss_probe(config),
         _bass_hi_hats_probe(config),
-    ]
-    return [
-        _item(
-            name,
-            category,
-            voice.render(sample_rate=sample_rate, generator=generator),
-            config,
-        )
-        for name, category, voice in probes
     ]
 
 
@@ -335,4 +339,6 @@ def _item(
         name=name,
         category=category,
         audio=scaled.astype(np.float32),
+        truth=None,
+        channels=None,
     )

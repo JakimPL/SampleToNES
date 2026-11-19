@@ -1,0 +1,303 @@
+items:
+  - name: nes-pulse-duties
+    category: nes-pulse
+    channels:
+      pulse1:
+        - { count: 30, frame: { "on": true, pitch: 69, volume: 15, duty_cycle: 0 } }
+        - { count: 30, frame: { "on": true, pitch: 69, volume: 15, duty_cycle: 1 } }
+        - { count: 30, frame: { "on": true, pitch: 69, volume: 15, duty_cycle: 2 } }
+        - { count: 30, frame: { "on": true, pitch: 69, volume: 15, duty_cycle: 3 } }
+  - name: nes-pulse-volumes
+    category: nes-pulse
+    channels:
+      pulse1:
+        - { count: 20, frame: { "on": true, pitch: 64, volume: 15, duty_cycle: 2 } }
+        - { count: 20, frame: { "on": true, pitch: 64, volume: 12, duty_cycle: 2 } }
+        - { count: 20, frame: { "on": true, pitch: 64, volume: 9, duty_cycle: 2 } }
+        - { count: 20, frame: { "on": true, pitch: 64, volume: 6, duty_cycle: 2 } }
+        - { count: 20, frame: { "on": true, pitch: 64, volume: 3, duty_cycle: 2 } }
+        - { count: 20, frame: { "on": true, pitch: 64, volume: 1, duty_cycle: 2 } }
+  - name: nes-pulse-melody
+    category: nes-pulse
+    channels:
+      pulse1:
+        - { count: 12, frame: { "on": true, pitch: 48, volume: 12, duty_cycle: 1 } }
+        - { count: 12, frame: { "on": true, pitch: 52, volume: 12, duty_cycle: 1 } }
+        - { count: 12, frame: { "on": true, pitch: 55, volume: 12, duty_cycle: 1 } }
+        - { count: 12, frame: { "on": true, pitch: 60, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": false, pitch: 60, volume: 0, duty_cycle: 1 } }
+        - { count: 12, frame: { "on": true, pitch: 64, volume: 12, duty_cycle: 1 } }
+        - { count: 12, frame: { "on": true, pitch: 67, volume: 12, duty_cycle: 1 } }
+        - { count: 12, frame: { "on": true, pitch: 72, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": false, pitch: 72, volume: 0, duty_cycle: 1 } }
+        - { count: 12, frame: { "on": true, pitch: 76, volume: 12, duty_cycle: 1 } }
+        - { count: 12, frame: { "on": true, pitch: 79, volume: 12, duty_cycle: 1 } }
+        - { count: 18, frame: { "on": true, pitch: 84, volume: 12, duty_cycle: 1 } }
+  - name: nes-pulse-low
+    category: nes-pulse
+    channels:
+      pulse1:
+        - { count: 30, frame: { "on": true, pitch: 33, volume: 15, duty_cycle: 2 } }
+        - { count: 30, frame: { "on": true, pitch: 36, volume: 15, duty_cycle: 2 } }
+        - { count: 30, frame: { "on": true, pitch: 40, volume: 15, duty_cycle: 2 } }
+        - { count: 30, frame: { "on": true, pitch: 45, volume: 15, duty_cycle: 2 } }
+  - name: nes-pulse-plucks
+    category: nes-pulse
+    channels:
+      pulse1:
+        - { count: 3, frame: { "on": true, pitch: 64, volume: 15, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 64, volume: 13, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 64, volume: 11, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 64, volume: 9, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 64, volume: 7, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 64, volume: 5, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 64, volume: 3, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 64, volume: 2, duty_cycle: 2 } }
+        - { count: 6, frame: { "on": false, pitch: 64, volume: 0, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 67, volume: 15, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 67, volume: 13, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 67, volume: 11, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 67, volume: 9, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 67, volume: 7, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 67, volume: 5, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 67, volume: 3, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 67, volume: 2, duty_cycle: 2 } }
+        - { count: 6, frame: { "on": false, pitch: 67, volume: 0, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 71, volume: 15, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 71, volume: 13, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 71, volume: 11, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 71, volume: 9, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 71, volume: 7, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 71, volume: 5, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 71, volume: 3, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 71, volume: 2, duty_cycle: 2 } }
+        - { count: 6, frame: { "on": false, pitch: 71, volume: 0, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 76, volume: 15, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 76, volume: 13, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 76, volume: 11, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 76, volume: 9, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 76, volume: 7, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 76, volume: 5, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 76, volume: 3, duty_cycle: 2 } }
+        - { count: 3, frame: { "on": true, pitch: 76, volume: 2, duty_cycle: 2 } }
+        - { count: 6, frame: { "on": false, pitch: 76, volume: 0, duty_cycle: 2 } }
+  - name: nes-triangle-bass
+    category: nes-triangle
+    channels:
+      triangle:
+        - { count: 15, frame: { "on": true, pitch: 40 } }
+        - { count: 15, frame: { "on": true, pitch: 43 } }
+        - { count: 15, frame: { "on": true, pitch: 45 } }
+        - { count: 15, frame: { "on": true, pitch: 46 } }
+        - { count: 15, frame: { "on": true, pitch: 47 } }
+        - { count: 15, frame: { "on": true, pitch: 50 } }
+        - { count: 15, frame: { "on": true, pitch: 52 } }
+        - { count: 15, frame: { "on": true, pitch: 55 } }
+        - { count: 15, frame: { "on": true, pitch: 57 } }
+        - { count: 15, frame: { "on": true, pitch: 64 } }
+  - name: nes-triangle-melody
+    category: nes-triangle
+    channels:
+      triangle:
+        - { count: 16, frame: { "on": true, pitch: 69 } }
+        - { count: 16, frame: { "on": true, pitch: 72 } }
+        - { count: 16, frame: { "on": true, pitch: 76 } }
+        - { count: 16, frame: { "on": true, pitch: 79 } }
+        - { count: 16, frame: { "on": true, pitch: 76 } }
+        - { count: 16, frame: { "on": true, pitch: 72 } }
+        - { count: 8, frame: { "on": false, pitch: 72 } }
+        - { count: 16, frame: { "on": true, pitch: 81 } }
+  - name: nes-noise-periods
+    category: nes-noise
+    channels:
+      noise:
+        - { count: 8, frame: { "on": true, period: 0, volume: 12, short: false } }
+        - { count: 8, frame: { "on": true, period: 1, volume: 12, short: false } }
+        - { count: 8, frame: { "on": true, period: 2, volume: 12, short: false } }
+        - { count: 8, frame: { "on": true, period: 3, volume: 12, short: false } }
+        - { count: 8, frame: { "on": true, period: 4, volume: 12, short: false } }
+        - { count: 8, frame: { "on": true, period: 5, volume: 12, short: false } }
+        - { count: 8, frame: { "on": true, period: 6, volume: 12, short: false } }
+        - { count: 8, frame: { "on": true, period: 7, volume: 12, short: false } }
+        - { count: 8, frame: { "on": true, period: 8, volume: 12, short: false } }
+        - { count: 8, frame: { "on": true, period: 9, volume: 12, short: false } }
+        - { count: 8, frame: { "on": true, period: 10, volume: 12, short: false } }
+        - { count: 8, frame: { "on": true, period: 11, volume: 12, short: false } }
+        - { count: 8, frame: { "on": true, period: 12, volume: 12, short: false } }
+        - { count: 8, frame: { "on": true, period: 13, volume: 12, short: false } }
+        - { count: 8, frame: { "on": true, period: 14, volume: 12, short: false } }
+        - { count: 8, frame: { "on": true, period: 15, volume: 12, short: false } }
+  - name: nes-noise-short
+    category: nes-noise
+    channels:
+      noise:
+        - { count: 20, frame: { "on": true, period: 0, volume: 12, short: true } }
+        - { count: 20, frame: { "on": true, period: 3, volume: 12, short: true } }
+        - { count: 20, frame: { "on": true, period: 6, volume: 12, short: true } }
+        - { count: 20, frame: { "on": true, period: 9, volume: 12, short: true } }
+        - { count: 20, frame: { "on": true, period: 12, volume: 12, short: true } }
+        - { count: 20, frame: { "on": true, period: 15, volume: 12, short: true } }
+  - name: nes-noise-drums
+    category: nes-noise
+    channels:
+      noise:
+        - { count: 3, frame: { "on": true, period: 12, volume: 15, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 8, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 3, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 2, frame: { "on": true, period: 1, volume: 8, short: false } }
+        - { count: 10, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 14, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 8, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 3, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 2, frame: { "on": true, period: 1, volume: 8, short: false } }
+        - { count: 10, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 15, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 8, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 3, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 15, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 8, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 3, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 14, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 8, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 3, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 2, frame: { "on": true, period: 1, volume: 8, short: false } }
+        - { count: 10, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 15, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 8, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 3, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 2, frame: { "on": true, period: 1, volume: 8, short: false } }
+        - { count: 10, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 14, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 8, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 3, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 2, frame: { "on": true, period: 1, volume: 8, short: false } }
+        - { count: 10, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 15, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 8, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 3, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 15, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 8, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 3, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 14, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 8, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 3, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 2, frame: { "on": true, period: 1, volume: 8, short: false } }
+        - { count: 10, frame: { "on": false, period: 0, volume: 0, short: false } }
+  - name: nes-mix-melody-bass
+    category: nes-mix
+    channels:
+      pulse1:
+        - { count: 24, frame: { "on": true, pitch: 72, volume: 11, duty_cycle: 2 } }
+        - { count: 24, frame: { "on": true, pitch: 76, volume: 11, duty_cycle: 2 } }
+        - { count: 24, frame: { "on": true, pitch: 79, volume: 11, duty_cycle: 2 } }
+        - { count: 24, frame: { "on": true, pitch: 74, volume: 11, duty_cycle: 2 } }
+        - { count: 24, frame: { "on": true, pitch: 72, volume: 11, duty_cycle: 2 } }
+      triangle:
+        - { count: 48, frame: { "on": true, pitch: 48 } }
+        - { count: 24, frame: { "on": true, pitch: 53 } }
+        - { count: 24, frame: { "on": true, pitch: 55 } }
+        - { count: 24, frame: { "on": true, pitch: 48 } }
+  - name: nes-mix-two-pulses
+    category: nes-mix
+    channels:
+      pulse1:
+        - { count: 40, frame: { "on": true, pitch: 64, volume: 12, duty_cycle: 2 } }
+        - { count: 40, frame: { "on": true, pitch: 65, volume: 12, duty_cycle: 2 } }
+        - { count: 40, frame: { "on": true, pitch: 67, volume: 12, duty_cycle: 2 } }
+      pulse2:
+        - { count: 40, frame: { "on": true, pitch: 60, volume: 10, duty_cycle: 1 } }
+        - { count: 40, frame: { "on": true, pitch: 62, volume: 10, duty_cycle: 1 } }
+        - { count: 40, frame: { "on": true, pitch: 64, volume: 10, duty_cycle: 1 } }
+  - name: nes-mix-piece
+    category: nes-mix
+    channels:
+      pulse1:
+        - { count: 12, frame: { "on": true, pitch: 76, volume: 12, duty_cycle: 2 } }
+        - { count: 12, frame: { "on": true, pitch: 76, volume: 12, duty_cycle: 2 } }
+        - { count: 12, frame: { "on": true, pitch: 79, volume: 12, duty_cycle: 2 } }
+        - { count: 12, frame: { "on": false, pitch: 76, volume: 0, duty_cycle: 2 } }
+        - { count: 12, frame: { "on": true, pitch: 81, volume: 12, duty_cycle: 2 } }
+        - { count: 12, frame: { "on": true, pitch: 79, volume: 12, duty_cycle: 2 } }
+        - { count: 12, frame: { "on": true, pitch: 76, volume: 12, duty_cycle: 2 } }
+        - { count: 12, frame: { "on": true, pitch: 74, volume: 12, duty_cycle: 2 } }
+        - { count: 12, frame: { "on": true, pitch: 72, volume: 12, duty_cycle: 2 } }
+        - { count: 12, frame: { "on": true, pitch: 72, volume: 12, duty_cycle: 2 } }
+        - { count: 12, frame: { "on": true, pitch: 74, volume: 12, duty_cycle: 2 } }
+        - { count: 12, frame: { "on": true, pitch: 76, volume: 12, duty_cycle: 2 } }
+        - { count: 12, frame: { "on": true, pitch: 79, volume: 12, duty_cycle: 2 } }
+        - { count: 12, frame: { "on": false, pitch: 76, volume: 0, duty_cycle: 2 } }
+        - { count: 12, frame: { "on": true, pitch: 76, volume: 12, duty_cycle: 2 } }
+        - { count: 12, frame: { "on": false, pitch: 76, volume: 0, duty_cycle: 2 } }
+      pulse2:
+        - { count: 48, frame: { "on": true, pitch: 67, volume: 8, duty_cycle: 1 } }
+        - { count: 48, frame: { "on": true, pitch: 69, volume: 8, duty_cycle: 1 } }
+        - { count: 48, frame: { "on": true, pitch: 64, volume: 8, duty_cycle: 1 } }
+        - { count: 48, frame: { "on": true, pitch: 67, volume: 8, duty_cycle: 1 } }
+      triangle:
+        - { count: 48, frame: { "on": true, pitch: 48 } }
+        - { count: 48, frame: { "on": true, pitch: 45 } }
+        - { count: 48, frame: { "on": true, pitch: 41 } }
+        - { count: 48, frame: { "on": true, pitch: 43 } }
+      noise:
+        - { count: 3, frame: { "on": true, period: 12, volume: 11, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 6, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 2, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 2, frame: { "on": true, period: 1, volume: 6, short: false } }
+        - { count: 10, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 10, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 6, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 2, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 2, frame: { "on": true, period: 1, volume: 6, short: false } }
+        - { count: 10, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 11, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 6, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 2, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 11, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 6, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 2, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 10, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 6, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 2, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 2, frame: { "on": true, period: 1, volume: 6, short: false } }
+        - { count: 10, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 11, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 6, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 2, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 2, frame: { "on": true, period: 1, volume: 6, short: false } }
+        - { count: 10, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 10, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 6, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 2, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 2, frame: { "on": true, period: 1, volume: 6, short: false } }
+        - { count: 10, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 11, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 6, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 2, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 11, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 6, short: false } }
+        - { count: 3, frame: { "on": true, period: 12, volume: 2, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 10, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 6, short: false } }
+        - { count: 3, frame: { "on": true, period: 5, volume: 2, short: false } }
+        - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
+        - { count: 2, frame: { "on": true, period: 1, volume: 6, short: false } }
+        - { count: 10, frame: { "on": false, period: 0, volume: 0, short: false } }
