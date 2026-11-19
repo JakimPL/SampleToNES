@@ -9,6 +9,7 @@ from sampletones_core.project.voices.note_on import NoteOn
 from sampletones_tools.corpus.build import Corpus
 from sampletones_tools.corpus.module import ModuleConfig
 from sampletones_tools.corpus.song import ChannelSpec, RowSpec, SongSpec
+from sampletones_tools.corpus.written import FrameRun
 from sampletones_tools.tracker_playback.corpus import build
 from sampletones_tools.tracker_playback.corpus.build import (
     arrangement_project,
@@ -18,7 +19,6 @@ from sampletones_tools.tracker_playback.corpus.build import (
 from sampletones_tools.tracker_playback.corpus.spec import (
     ArrangementSpec,
     CorpusSpec,
-    FrameRun,
     ProjectSpec,
     SampleSpec,
 )

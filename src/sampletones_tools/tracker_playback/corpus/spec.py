@@ -7,23 +7,8 @@ from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_shared.utils.serialization import load_yaml_model
 from sampletones_tools.corpus.module import ModuleConfig
 from sampletones_tools.corpus.song import SongSpec
+from sampletones_tools.corpus.written import FrameRun
 from sampletones_tools.tracker_playback.paths import CORPUS_PATH
-
-FrameValue = Union[bool, int]
-
-
-class FrameRun(BaseModel):
-    """Frames one channel of a sample plays alike, one after another.
-
-    Attributes:
-        count: How many frames the run lasts.
-        frame: The instruction each of those frames plays, in the fields the channel's instruction takes.
-    """
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    count: int = Field(..., ge=1)
-    frame: Dict[str, FrameValue]
 
 
 class SampleSpec(BaseModel):
