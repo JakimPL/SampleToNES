@@ -7,6 +7,7 @@ import pytest
 
 from sampletones_application.categories.conversion import SkippedRecordingMessages
 from sampletones_application.categories.skipped import ROW_BULLET
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.coordinators.tabs.hooks import MainTabHooks
@@ -565,14 +566,14 @@ class TestReconstructListsWhatItNames:
 
         coordinator.request_reconstruct_file(tmp_path / "a.wav")
 
-        coordinator._session_manager.set_audio_input_path.assert_called_once_with(tmp_path)
+        coordinator._session_manager.remember_folder.assert_called_once_with(LastPath.AUDIO_INPUT, tmp_path)
 
     def test_a_folder_listed_is_left_for_the_next_reconstruct_dialog(self, tmp_path: Path) -> None:
         coordinator = self._coordinator(mixes=False)
 
         coordinator.request_reconstruct_directory(tmp_path)
 
-        coordinator._session_manager.set_audio_input_path.assert_called_once_with(tmp_path)
+        coordinator._session_manager.remember_folder.assert_called_once_with(LastPath.AUDIO_INPUT, tmp_path)
 
     def test_an_empty_mix_gives_way_straight_away(self, tmp_path: Path) -> None:
         coordinator = self._coordinator(mixes=True)

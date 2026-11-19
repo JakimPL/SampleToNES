@@ -8,6 +8,7 @@ import pytest
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.categories.instrument import InstrumentImportMessages
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.constants.playback import FollowMode
 from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
@@ -197,7 +198,7 @@ def instrument_voices() -> SequencerVoices:
     project_controller = MagicMock()
     project_controller.is_open = True
     session_manager = MagicMock()
-    session_manager.get_instrument_path.return_value = INSTRUMENT_FILE.parent
+    session_manager.folder.return_value = INSTRUMENT_FILE.parent
     return _voices(voices_logic, project_controller, session_manager, MagicMock())
 
 
@@ -251,7 +252,9 @@ class TestImportInstrument:
     ) -> None:
         instrument_voices.import_instrument()
 
-        instrument_voices._session_manager.set_instrument_path.assert_called_once_with(INSTRUMENT_FILE.parent)
+        instrument_voices._session_manager.remember_folder.assert_called_once_with(
+            LastPath.INSTRUMENT, INSTRUMENT_FILE.parent
+        )
 
     def test_a_canceled_dialog_leaves_the_pool_as_it_stands(
         self,

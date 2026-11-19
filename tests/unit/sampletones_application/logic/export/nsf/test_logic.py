@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.logic.export.nsf.logic import NSFExportLogic
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
@@ -79,8 +80,7 @@ class NSFExportFixture:
 
         self.directory = directory
         self.session_manager = MagicMock()
-        self.session_manager.get_project_path.return_value = directory
-        self.session_manager.get_instrument_path.return_value = directory
+        self.session_manager.folder.return_value = directory
         self.service = FakeNSFExportService()
         self.backend = nsf_backend()
         self.other = other_backend()
@@ -295,7 +295,7 @@ class TestHandingTheProjectOver:
 
         export.logic.start()
 
-        export.session_manager.set_project_path.assert_not_called()
+        export.session_manager.remember_folder.assert_not_called()
 
     def test_an_export_starts_from_the_open_setup_alone(self, export: NSFExportFixture) -> None:
         export.logic.open_project(ExportFormat.NSF)
@@ -343,4 +343,4 @@ class TestHandingTheSampleOver:
 
         export.logic.start()
 
-        export.session_manager.set_instrument_path.assert_called_once_with(CHOSEN_DESTINATION.parent)
+        export.session_manager.remember_folder.assert_called_once_with(LastPath.INSTRUMENT, CHOSEN_DESTINATION.parent)

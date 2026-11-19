@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.coordinators.export import nsf as nsf_module
 from sampletones_application.coordinators.export.nsf import NSFExportCoordinator
 from sampletones_application.logic.export.nsf.logic import NSFExportLogic
@@ -96,8 +97,10 @@ class NSFExportFixture:
         project_manager.session.mark_loaded(PROJECT_NAME)
         self.controller = ProjectController(project_manager)
         self.session_manager = MagicMock()
-        self.session_manager.get_project_path.return_value = PROJECT_FILE
-        self.session_manager.get_instrument_path.return_value = INSTRUMENT_DIRECTORY
+        self.session_manager.folder.side_effect = {
+            LastPath.PROJECT: PROJECT_FILE,
+            LastPath.INSTRUMENT: INSTRUMENT_DIRECTORY,
+        }.__getitem__
         self.service = FakeNSFExportService()
         self.backend = nsf_backend()
         self.other = other_backend()

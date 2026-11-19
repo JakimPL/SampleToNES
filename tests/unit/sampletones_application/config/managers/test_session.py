@@ -5,6 +5,7 @@ import pytest
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.tags.sequencer import TAG_SEQUENCER_BROWSER_PANEL
 
 
@@ -108,29 +109,13 @@ class TestSessionManagerCurrentState:
 
 
 class TestSessionManagerPaths:
-    def test_set_and_get_config_path(self, session: SessionManager, tmp_path: Path) -> None:
-        session.set_config_path(tmp_path / "config.json")
-        assert isinstance(session.get_config_path(), Path)
+    @pytest.mark.parametrize("kind", list(LastPath))
+    def test_a_remembered_folder_is_the_one_read_back(
+        self, session: SessionManager, tmp_path: Path, kind: LastPath
+    ) -> None:
+        session.remember_folder(kind, tmp_path / kind.value)
 
-    def test_set_and_get_instrument_path(self, session: SessionManager, tmp_path: Path) -> None:
-        session.set_instrument_path(tmp_path / "instr.json")
-        assert isinstance(session.get_instrument_path(), Path)
-
-    def test_set_and_get_reconstruction_path(self, session: SessionManager, tmp_path: Path) -> None:
-        session.set_reconstruction_path(tmp_path / "rec.json")
-        assert isinstance(session.get_reconstruction_path(), Path)
-
-    def test_set_and_get_audio_input_path(self, session: SessionManager, tmp_path: Path) -> None:
-        session.set_audio_input_path(tmp_path / "clip.wav")
-        assert isinstance(session.get_audio_input_path(), Path)
-
-    def test_set_and_get_audio_path(self, session: SessionManager, tmp_path: Path) -> None:
-        session.set_audio_path(tmp_path / "audio.wav")
-        assert isinstance(session.get_audio_path(), Path)
-
-    def test_set_and_get_project_path(self, session: SessionManager, tmp_path: Path) -> None:
-        session.set_project_path(tmp_path / "project.stp")
-        assert isinstance(session.get_project_path(), Path)
+        assert session.folder(kind) == tmp_path / kind.value
 
 
 class TestSessionManagerFavorites:

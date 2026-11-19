@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.coordinators.reconstruction import ReconstructionCoordinator
 from sampletones_application.coordinators.tabs.reconstruction import (
     ReconstructionTabCoordinator,
@@ -80,8 +81,10 @@ def _discard(*readings: object, **named: object) -> None:
 
 def _session_manager() -> MagicMock:
     session_manager = MagicMock()
-    session_manager.get_instrument_path.return_value = Path("/tmp/instruments")
-    session_manager.get_audio_path.return_value = Path("/tmp/audio")
+    session_manager.folder.side_effect = {
+        LastPath.INSTRUMENT: Path("/tmp/instruments"),
+        LastPath.AUDIO: Path("/tmp/audio"),
+    }.__getitem__
     return session_manager
 
 

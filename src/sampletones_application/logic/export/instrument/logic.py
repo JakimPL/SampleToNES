@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Dict, Mapping, Optional, Tuple
 
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.logic.export.instrument.protocol import (
     InstrumentExportServiceProtocol,
 )
@@ -56,7 +57,7 @@ class InstrumentExportLogic:
     @property
     def suggested_directory(self) -> Path:
         """The folder the save dialog opens on, which is where the last instrument landed."""
-        return self._session_manager.get_instrument_path()
+        return self._session_manager.folder(LastPath.INSTRUMENT)
 
     def voice_instruments(self, voice_id: str) -> Tuple[Optional[ChannelName], ...]:
         """What one voice offers to an export, each named by the channel it is stated for.
@@ -106,7 +107,7 @@ class InstrumentExportLogic:
                 extension, which a dialog offering those formats alone never yields.
         """
         export_format = self._format(destination)
-        self._session_manager.set_instrument_path(destination.parent)
+        self._session_manager.remember_folder(LastPath.INSTRUMENT, destination.parent)
         self._export_service.export_instrument(
             destination,
             self._export_backends[export_format],

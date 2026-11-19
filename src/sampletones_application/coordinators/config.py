@@ -15,6 +15,7 @@ from sampletones_application.config.managers.outcome import (
     ConfigRecovered,
 )
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_CONFIG_RECOVERY,
     TAG_GLOBAL_DIALOG_CONFIG_STATUS,
@@ -65,7 +66,7 @@ class ConfigCoordinator:
     def save_dialog(self) -> None:
         filepath = save_file_dialog(
             title=self._language_manager["global.dialog.title.save_config"],
-            initial_directory=self._session_manager.get_config_path(),
+            initial_directory=self._session_manager.folder(LastPath.CONFIG),
             default_filename=DEFAULT_CONFIG_FILENAME,
             filters=self._config_filters(),
         )
@@ -84,12 +85,12 @@ class ConfigCoordinator:
                 self._language_manager["global.dialog.message.config_save_failed"],
             )
 
-        self._session_manager.set_config_path(filepath)
+        self._session_manager.remember_folder(LastPath.CONFIG, filepath.parent)
 
     def load_dialog(self) -> None:
         filepath = open_file_dialog(
             title=self._language_manager["global.dialog.title.load_config"],
-            initial_directory=self._session_manager.get_config_path(),
+            initial_directory=self._session_manager.folder(LastPath.CONFIG),
             filters=self._config_filters(),
         )
 
@@ -117,7 +118,7 @@ class ConfigCoordinator:
                 self._message(GlobalMessageElements.CONFIGURATION_LOAD_ERROR),
             )
 
-        self._session_manager.set_config_path(filepath)
+        self._session_manager.remember_folder(LastPath.CONFIG, filepath.parent)
 
     def present_pending_load_outcomes(self) -> None:
         """

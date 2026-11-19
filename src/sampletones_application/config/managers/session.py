@@ -6,6 +6,7 @@ from sampletones_application.config.managers.application import ApplicationConfi
 from sampletones_application.config.managers.state import ApplicationStateManager
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.config.session.application.config import ApplicationConfig
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.constants.playback import FollowMode
@@ -123,41 +124,13 @@ class SessionManager:
     def load_current_tab(self) -> Tab:
         return self._state_manager.load_current_tab()
 
-    def set_config_path(self, path: Path) -> None:
-        self._state_manager.set_config_path(path)
+    def remember_folder(self, kind: LastPath, folder: Path) -> None:
+        """Opens the next dialog choosing a file of ``kind`` at ``folder``."""
+        self._state_manager.remember_folder(kind, folder)
 
-    def get_config_path(self) -> Path:
-        return self._state_manager.get_config_path()
-
-    def set_instrument_path(self, path: Path) -> None:
-        self._state_manager.set_instrument_path(path)
-
-    def get_instrument_path(self) -> Path:
-        return self._state_manager.get_instrument_path()
-
-    def set_reconstruction_path(self, path: Path) -> None:
-        self._state_manager.set_reconstruction_path(path)
-
-    def get_reconstruction_path(self) -> Path:
-        return self._state_manager.get_reconstruction_path()
-
-    def set_audio_input_path(self, path: Path) -> None:
-        self._state_manager.set_audio_input_path(path)
-
-    def get_audio_input_path(self) -> Path:
-        return self._state_manager.get_audio_input_path()
-
-    def set_audio_path(self, path: Path) -> None:
-        self._state_manager.set_audio_path(path)
-
-    def get_audio_path(self) -> Path:
-        return self._state_manager.get_audio_path()
-
-    def set_project_path(self, path: Path) -> None:
-        self._state_manager.set_project_path(path)
-
-    def get_project_path(self) -> Path:
-        return self._state_manager.get_project_path()
+    def folder(self, kind: LastPath) -> Path:
+        """The folder the last file of ``kind`` was chosen in."""
+        return self._state_manager.folder(kind)
 
     def set_current_reconstruction(self, path: Optional[Path]) -> None:
         self._state_manager.set_current_reconstruction(path)

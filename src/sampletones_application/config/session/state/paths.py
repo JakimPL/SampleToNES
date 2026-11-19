@@ -1,4 +1,6 @@
+from enum import StrEnum
 from pathlib import Path
+from typing import Dict, Self
 
 from pydantic import BaseModel, Field, field_serializer
 
@@ -7,6 +9,17 @@ from sampletones_shared.paths.user import (
     PROJECTS_DIRECTORY,
     RECONSTRUCTIONS_DIRECTORY,
 )
+
+
+class LastPath(StrEnum):
+    """A kind of file whose folder a dialog opens at next time, named as ``LastPaths`` names it."""
+
+    RECONSTRUCTION = "reconstruction"
+    AUDIO_INPUT = "audio_input"
+    CONFIG = "config"
+    INSTRUMENT = "instrument"
+    AUDIO = "audio"
+    PROJECT = "project"
 
 
 class LastPaths(BaseModel):
@@ -45,3 +58,19 @@ class LastPaths(BaseModel):
     )
     def serialize_paths(self, path: Path) -> str:
         return str(path)
+
+    def folder(self, kind: LastPath) -> Path:
+        """The folder the last file of ``kind`` was chosen in."""
+        folders: Dict[LastPath, Path] = {
+            LastPath.RECONSTRUCTION: self.reconstruction,
+            LastPath.AUDIO_INPUT: self.audio_input,
+            LastPath.CONFIG: self.config,
+            LastPath.INSTRUMENT: self.instrument,
+            LastPath.AUDIO: self.audio,
+            LastPath.PROJECT: self.project,
+        }
+        return folders[kind]
+
+    def with_folder(self, kind: LastPath, folder: Path) -> Self:
+        """These folders with the one for ``kind`` replaced by ``folder``."""
+        return self.model_copy(update={kind.value: folder})

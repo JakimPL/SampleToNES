@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.exports import ExportBackends
 from sampletones_application.logic.export.instrument.logic import InstrumentExportLogic
 from sampletones_application.logic.export.instrument.source import (
@@ -48,7 +49,7 @@ UNSUPPORTED_EXTENSIONS: Final[List[str]] = [".xm", EXT_FILE_MODULE, NO_EXTENSION
 @pytest.fixture
 def session_manager() -> MagicMock:
     mock = MagicMock()
-    mock.get_instrument_path.return_value = REMEMBERED_DIRECTORY
+    mock.folder.return_value = REMEMBERED_DIRECTORY
     return mock
 
 
@@ -158,7 +159,7 @@ class TestWritingOneInstrument:
     ) -> None:
         logic.export(tmp_path / f"instrument{EXT_FILE_INSTRUMENT}", _source())
 
-        session_manager.set_instrument_path.assert_called_once_with(tmp_path)
+        session_manager.remember_folder.assert_called_once_with(LastPath.INSTRUMENT, tmp_path)
 
     def test_the_dialog_opens_where_the_last_one_landed(self, logic: InstrumentExportLogic) -> None:
         assert logic.suggested_directory == REMEMBERED_DIRECTORY

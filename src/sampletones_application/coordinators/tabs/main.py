@@ -8,6 +8,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.skipped import PARAGRAPH_BREAK
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.tabs.hooks import MainTabHooks
@@ -429,7 +430,7 @@ class MainTabCoordinator:
     def _choose_recording_to_reconstruct(self) -> None:
         filepath = open_file_dialog(
             title=self._language_manager["global.dialog.title.reconstruct_file"],
-            initial_directory=self._session_manager.get_audio_input_path(),
+            initial_directory=self._session_manager.folder(LastPath.AUDIO_INPUT),
             filters=(
                 FileFilter.for_extensions(
                     self._language_manager["global.dialog.filter.audio"],
@@ -442,7 +443,7 @@ class MainTabCoordinator:
     def _choose_folder_to_reconstruct(self) -> None:
         directory_path = select_directory_dialog(
             title=self._language_manager["global.dialog.title.reconstruct_directory"],
-            initial_directory=self._session_manager.get_audio_input_path(),
+            initial_directory=self._session_manager.folder(LastPath.AUDIO_INPUT),
         )
         self._reconstruct_directory(directory_path)
 
@@ -468,7 +469,7 @@ class MainTabCoordinator:
         """Lists what a Reconstruct named, and keeps ``input_folder`` as the folder the next
         Reconstruct dialog opens at."""
         self._take_up_path(path)
-        self._session_manager.set_audio_input_path(input_folder)
+        self._session_manager.remember_folder(LastPath.AUDIO_INPUT, input_folder)
         self._hooks.on_reconstruct_listed()
 
     def _giving_way_to_one_apiece(self, take_up: VoidCallback) -> None:

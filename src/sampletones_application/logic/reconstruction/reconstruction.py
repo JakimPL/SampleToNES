@@ -18,6 +18,7 @@ from typing import (
 import numpy as np
 
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.constants.sources import SourceKind
 from sampletones_application.logic.export.instrument.source import ExportableInstrument
 from sampletones_application.logic.reconstruction.data import ReconstructionData
@@ -675,7 +676,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting instruments")
 
-        default_path = str(self._session_manager.get_instrument_path())
+        default_path = str(self._session_manager.folder(LastPath.INSTRUMENT))
         extension = self._export_backends[export_format].extension(ExportScope.SAMPLE)
 
         self.call(
@@ -691,7 +692,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             raise AssertionError("Expected reconstruction data to be loaded before exporting to WAV")
 
         default_filename = reconstruction_data.name
-        default_path = str(self._session_manager.get_audio_path())
+        default_path = str(self._session_manager.folder(LastPath.AUDIO))
 
         self.call(
             self.on_open_export_wav_dialog,
@@ -724,7 +725,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         if request is None:
             return
 
-        self._session_manager.set_instrument_path(destination.parent)
+        self._session_manager.remember_folder(LastPath.INSTRUMENT, destination.parent)
         self._export_service.export_sample(
             destination,
             self._export_backends[export_format],
@@ -848,7 +849,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         filepath: Path,
     ) -> None:
         sample_rate = reconstruction_data.reconstruction.config.sample_rate
-        self._session_manager.set_audio_path(filepath)
+        self._session_manager.remember_folder(LastPath.AUDIO, filepath.parent)
         self._export_service.export_wav(filepath, sample_rate, playing)
 
     def handle_locate_original_audio(self) -> None:

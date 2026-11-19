@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.exports import ExportBackends
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.listening import Listening
@@ -81,8 +82,10 @@ UNSUPPORTED_EXTENSIONS: Final[List[str]] = [".xm", EXT_FILE_MODULE, NO_EXTENSION
 @pytest.fixture
 def session_manager() -> MagicMock:
     mock = MagicMock()
-    mock.get_instrument_path.return_value = Path("/tmp/instruments")
-    mock.get_audio_path.return_value = Path("/tmp/audio")
+    mock.folder.side_effect = {
+        LastPath.INSTRUMENT: Path("/tmp/instruments"),
+        LastPath.AUDIO: Path("/tmp/audio"),
+    }.__getitem__
     return mock
 
 

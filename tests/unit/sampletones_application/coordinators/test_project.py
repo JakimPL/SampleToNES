@@ -7,6 +7,7 @@ import pytest
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.skipped import MAX_REPORTED_ROWS
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.coordinators import project as project_module
 from sampletones_application.coordinators.project import ProjectCoordinator
 from sampletones_application.logic.project.controller import ProjectController
@@ -92,7 +93,7 @@ class TestAProjectOpenedAtStart:
         project_manager = ProjectManager()
         session_manager = MagicMock()
         session_manager.current_project = None
-        session_manager.get_project_path.return_value = tmp_path
+        session_manager.folder.return_value = tmp_path
         return ProjectCoordinator(
             ProjectController(project_manager),
             project_manager,
@@ -482,7 +483,7 @@ class TestTheSaveAPromptWaitsOn:
         project_coordinator: ProjectCoordinator,
         tmp_path: Path,
     ) -> ProjectCoordinator:
-        project_coordinator._session_manager.get_project_path.return_value = tmp_path
+        project_coordinator._session_manager.folder.return_value = tmp_path
         return project_coordinator
 
     def test_a_project_with_a_file_is_written_there(

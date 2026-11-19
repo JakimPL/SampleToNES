@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import AbstractSet
 
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.logic.export.nsf.protocol import NSFExportServiceProtocol
 from sampletones_application.view_model.shared.nsf.offer import NSFExportOffer
 from sampletones_core.constants.enums import ChannelName
@@ -57,7 +58,7 @@ class ProjectSource:
 
     def proposed_directory(self, session_manager: SessionManager) -> Path:
         """The folder the project was last opened or saved in."""
-        return get_directory(session_manager.get_project_path())
+        return get_directory(session_manager.folder(LastPath.PROJECT))
 
     def remember_directory(  # pylint: disable=unused-argument
         self,
