@@ -4,7 +4,14 @@ from typing import Final, Tuple
 REPOSITORY_ROOT: Final[Path] = Path(__file__).resolve().parents[2]
 PROJECT_FILE: Final[str] = "pyproject.toml"
 SOURCE_DIRECTORY: Final[str] = "src"
-CHECKED_PATHS: Final[Tuple[str, ...]] = (SOURCE_DIRECTORY, "scripts", "automation", "assets", "hatch_build.py")
+CHECKED_PATHS: Final[Tuple[str, ...]] = (
+    SOURCE_DIRECTORY,
+    "scripts",
+    "automation",
+    "assets",
+    "hatch_build.py",
+    "conftest.py",
+)
 FORMATTED_PATHS: Final[Tuple[str, ...]] = (*CHECKED_PATHS, "tests")
 BENCHMARKS_DIRECTORY: Final[str] = "tests/benchmarks"
 SCREENS_DIRECTORY: Final[str] = "tests/screens"

@@ -184,6 +184,7 @@ files = [
     "automation",
     "assets",
     "hatch_build.py",
+    "conftest.py",
 ]
 exclude = ["tests"]
 disallow_subclassing_any = true

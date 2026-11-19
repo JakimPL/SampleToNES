@@ -36,12 +36,12 @@ def format_code(
 
 
 def formatted_paths(named: Sequence[str]) -> Tuple[str, ...]:
-    """The paths a run formats: the ones named, or the source, test and script trees."""
+    """The paths a run formats: the ones named, or every checked path and the tests."""
     return tuple(named) or FORMATTED_PATHS
 
 
 def main(argv: Sequence[str]) -> int:
-    """Formats the source, test and script trees, or the paths named."""
+    """Formats every checked path and the tests, or the paths named."""
     parser = argparse.ArgumentParser(description="Format the SampleToNES code with isort and black.")
     parser.add_argument("paths", nargs="*", help="files or directories to format in place of the whole trees")
     arguments = parser.parse_args(list(argv))
