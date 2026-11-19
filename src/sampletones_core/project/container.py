@@ -16,8 +16,8 @@ from sampletones_core.project.voices.voice import VoiceUnion, samples
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures import IdentifiedCollection
 from sampletones_shared.constants.project import (
+    ARCHIVE_RECONSTRUCTIONS_FOLDER,
     PROJECT_DOCUMENT_NAME,
-    RECONSTRUCTIONS_DIRECTORY,
 )
 from sampletones_shared.exceptions import (
     DeserializationError,
@@ -64,7 +64,7 @@ class ProjectContainer:
             archive.writestr(PROJECT_DOCUMENT_NAME, payload)
             for key, reconstruction in stored.values():
                 filename = get_filename(key, EXT_FILE_RECONSTRUCTION)
-                name = f"{RECONSTRUCTIONS_DIRECTORY}/{filename}"
+                name = f"{ARCHIVE_RECONSTRUCTIONS_FOLDER}/{filename}"
                 archive.writestr(name, reconstruction.serialize())
 
     @staticmethod
@@ -212,7 +212,7 @@ class ProjectContainer:
     @staticmethod
     def _read_reconstructions(archive: zipfile.ZipFile) -> Dict[str, Reconstruction]:
         reconstructions: Dict[str, Reconstruction] = {}
-        prefix = f"{RECONSTRUCTIONS_DIRECTORY}/"
+        prefix = f"{ARCHIVE_RECONSTRUCTIONS_FOLDER}/"
         for name in archive.namelist():
             if name.startswith(prefix) and name.endswith(EXT_FILE_RECONSTRUCTION):
                 reconstruction_id = Path(name).stem

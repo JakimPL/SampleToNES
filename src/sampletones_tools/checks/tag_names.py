@@ -1,5 +1,4 @@
 import ast
-import sys
 from enum import StrEnum
 from pathlib import Path
 from typing import (
@@ -17,6 +16,7 @@ from typing import (
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key.tag import TagName
 from sampletones_application.tags.compose import TAG_SEPARATOR
+from sampletones_tools.checks.report import report_findings
 from sampletones_tools.checks.source.constants import ModuleConstant, module_constants
 from sampletones_tools.checks.source.modules import (
     SourceModule,
@@ -214,12 +214,8 @@ def check_tags(files: Sequence[Path], everything: bool) -> List[TagFinding]:
 
 def report(findings: Sequence[TagFinding]) -> int:
     """Prints every finding on the standard error stream and answers with the exit status."""
-    if not findings:
-        return 0
-
-    print("Tag name(s) departing from the tag they compose:", file=sys.stderr)
-    for location, message in findings:
-        print(f"  {location}: {message}", file=sys.stderr)
-
-    print(f"\nFound {len(findings)} tag name(s) to fix.", file=sys.stderr)
-    return 1
+    return report_findings(
+        [f"{location}: {message}" for location, message in findings],
+        heading="Tag name(s) departing from the tag they compose:",
+        total="Found {count} tag name(s) to fix.",
+    )

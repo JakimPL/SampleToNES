@@ -1,12 +1,12 @@
 import ast
-import sys
 from pathlib import Path
 from typing import Final, Iterator, List, NamedTuple, Sequence, Tuple, Type
 
-from sampletones_shared.paths.source import REPOSITORY_ROOT
+from sampletones_shared.paths.source import TESTS_ROOT
+from sampletones_tools.checks.report import report_findings
 from sampletones_tools.checks.source.modules import SourceModule, discover_modules
 
-TEST_ROOTS: Final[Tuple[Path, ...]] = (REPOSITORY_ROOT / "tests",)
+TEST_ROOTS: Final[Tuple[Path, ...]] = (TESTS_ROOT,)
 
 EQUALITY_OPERATORS: Final[Tuple[Type[ast.cmpop], ...]] = (ast.Eq, ast.NotEq)
 RENDERING_CALL: Final[str] = "str"
@@ -93,22 +93,9 @@ def check_cases(roots: Sequence[Path]) -> List[Finding]:
 
 def report(found: Sequence[Finding]) -> int:
     """Prints every finding on the standard error stream and answers with the exit status."""
-    if not found:
-        return 0
-
-    print(
-        "Case(s) holding rendered text against a spelled-out literal:",
-        file=sys.stderr,
-    )
-    for location, rendering in found:
-        print(
-            f"  {location}: {rendering} compared with a written-out string",
-            file=sys.stderr,
-        )
-
-    print(
-        f"\nFound {len(found)} such comparison(s). Compare the values rather than their text: "
+    return report_findings(
+        [f"{location}: {rendering} compared with a written-out string" for location, rendering in found],
+        heading="Case(s) holding rendered text against a spelled-out literal:",
+        total="Found {count} such comparison(s). Compare the values rather than their text: "
         "a Path against a Path, a configured value against the configuration it comes from.",
-        file=sys.stderr,
     )
-    return 1

@@ -5,7 +5,6 @@ from typing import Final, Iterator, List, Optional, Sequence, Tuple
 
 from sampletones_player.compression.compressed import CompressedPlanes
 from sampletones_shared.paths.source import REPOSITORY_ROOT
-from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
 from sampletones_shared.utils.tables import Table
 from sampletones_tools.checkout import is_checkout
 from sampletones_tools.codec.study.accounting import rows as accounting
@@ -17,9 +16,9 @@ from sampletones_tools.codec.study.report import rows as songs
 from sampletones_tools.codec.study.report import verdicts
 from sampletones_tools.codec.study.variants.production import BASELINE_NAME
 from sampletones_tools.codec.study.variants.variant import Variant
-from sampletones_tools.runs import stamped_run_directory
+from sampletones_tools.runs import output_root, stamped_run_directory
 
-OUTPUT_ROOT: Final[Path] = USER_PATH_DOCUMENTS / "compression"
+OUTPUT_ROOT: Final[Path] = output_root("compression")
 REPORT_CSV: Final[str] = "report.csv"
 REPORT_MARKDOWN: Final[str] = "report.md"
 ACCOUNTING_CSV: Final[str] = "accounting.csv"

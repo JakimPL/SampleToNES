@@ -21,8 +21,8 @@ from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.application import SAMPLETONES_PROJECT_DATA_VERSION
 from sampletones_shared.constants.project import (
+    ARCHIVE_RECONSTRUCTIONS_FOLDER,
     PROJECT_DOCUMENT_NAME,
-    RECONSTRUCTIONS_DIRECTORY,
 )
 from sampletones_shared.exceptions import (
     IncompatibleProjectVersionError,
@@ -199,7 +199,7 @@ class TestInstrumentsRoundTrip:
         ProjectContainer.save(project, path)
 
         with zipfile.ZipFile(path) as archive:
-            assert [name for name in archive.namelist() if name.startswith(RECONSTRUCTIONS_DIRECTORY)] == []
+            assert [name for name in archive.namelist() if name.startswith(ARCHIVE_RECONSTRUCTIONS_FOLDER)] == []
 
     def test_both_kinds_share_one_pool_in_their_written_order(
         self,
@@ -249,7 +249,7 @@ class TestArchiveLayout:
 
         with zipfile.ZipFile(path, "r") as archive:
             reconstruction_files = [
-                name for name in archive.namelist() if name.startswith(f"{RECONSTRUCTIONS_DIRECTORY}/")
+                name for name in archive.namelist() if name.startswith(f"{ARCHIVE_RECONSTRUCTIONS_FOLDER}/")
             ]
 
         assert len(reconstruction_files) == 1
@@ -265,7 +265,7 @@ class TestArchiveLayout:
 
         with zipfile.ZipFile(path, "r") as archive:
             reconstruction_files = [
-                name for name in archive.namelist() if name.startswith(f"{RECONSTRUCTIONS_DIRECTORY}/")
+                name for name in archive.namelist() if name.startswith(f"{ARCHIVE_RECONSTRUCTIONS_FOLDER}/")
             ]
 
         assert len(reconstruction_files) == 2
@@ -298,7 +298,7 @@ class TestEmptyProject:
         assert set(loaded.song.channels) == set(ChannelName.items())
 
         with zipfile.ZipFile(path, "r") as archive:
-            assert all(not name.startswith(f"{RECONSTRUCTIONS_DIRECTORY}/") for name in archive.namelist())
+            assert all(not name.startswith(f"{ARCHIVE_RECONSTRUCTIONS_FOLDER}/") for name in archive.namelist())
 
 
 class TestLoadRejectsInvalidArchives:
@@ -369,7 +369,7 @@ class TestLoadRejectsInvalidArchives:
         ProjectContainer.save(project, path)
 
         with zipfile.ZipFile(path, "a") as archive:
-            archive.writestr(f"{RECONSTRUCTIONS_DIRECTORY}/corrupt.stn", b"garbage-not-a-flatbuffer")
+            archive.writestr(f"{ARCHIVE_RECONSTRUCTIONS_FOLDER}/corrupt.stn", b"garbage-not-a-flatbuffer")
 
         with pytest.raises(IncorrectReconstructionDataError):
             ProjectContainer.load(path)

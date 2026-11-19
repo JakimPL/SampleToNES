@@ -4,7 +4,7 @@ from sampletones_shared.constants.nes import NTSC_FREQUENCY
 
 # Project archive layout
 PROJECT_DOCUMENT_NAME: Final[str] = "project.json"
-RECONSTRUCTIONS_DIRECTORY: Final[str] = "reconstructions"
+ARCHIVE_RECONSTRUCTIONS_FOLDER: Final[str] = "reconstructions"
 
 # Project info defaults
 DEFAULT_PROJECT_TITLE: Final[str] = ""

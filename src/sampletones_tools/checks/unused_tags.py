@@ -1,10 +1,10 @@
-import sys
 from collections import Counter
 from pathlib import Path
 from typing import Dict, Final, List, NamedTuple, Sequence, Tuple
 
-from sampletones_shared.paths.source import REPOSITORY_ROOT, SOURCE_ROOT
+from sampletones_shared.paths.source import SOURCE_ROOT, TESTS_ROOT
 from sampletones_tools.checks.paths import SCRIPTS_ROOT
+from sampletones_tools.checks.report import report_findings
 from sampletones_tools.checks.source.constants import module_constants
 from sampletones_tools.checks.source.modules import SourceModule, discover_modules
 from sampletones_tools.checks.source.packages import source_package_directory
@@ -13,7 +13,7 @@ from sampletones_tools.checks.source.references import count_identifier_loads
 TAGS_PACKAGE: Final[Path] = source_package_directory("sampletones_application", "tags")
 REFERENCE_ROOTS: Final[Tuple[Path, ...]] = (
     SOURCE_ROOT,
-    REPOSITORY_ROOT / "tests",
+    TESTS_ROOT,
     SCRIPTS_ROOT,
 )
 
@@ -93,12 +93,8 @@ def check_reads(tags: Path, reference_roots: Sequence[Path]) -> List[Fragment]:
 
 def report(unread: Sequence[Fragment]) -> int:
     """Prints every unread fragment on the standard error stream and answers with the exit status."""
-    if not unread:
-        return 0
-
-    print("Tag fragment(s) declared and never read:", file=sys.stderr)
-    for name, location in unread:
-        print(f"  {location}: {name}", file=sys.stderr)
-
-    print(f"\nFound {len(unread)} unread tag fragment(s).", file=sys.stderr)
-    return 1
+    return report_findings(
+        [f"{location}: {name}" for name, location in unread],
+        heading="Tag fragment(s) declared and never read:",
+        total="Found {count} unread tag fragment(s).",
+    )

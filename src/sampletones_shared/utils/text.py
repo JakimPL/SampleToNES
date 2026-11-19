@@ -1,7 +1,8 @@
 import re
-from typing import Final, List, Tuple, TypeAlias
+from typing import Callable, Final, List, Optional, Sequence, Tuple, TypeAlias, TypeVar
 
 NaturalSortKey: TypeAlias = Tuple[Tuple[int, str], ...]
+ItemT = TypeVar("ItemT")
 
 _DIGIT_RUN_PATTERN: Final[re.Pattern[str]] = re.compile(r"(\d+)")
 LIST_SEPARATOR: Final[str] = ","
@@ -51,3 +52,37 @@ def listed_items(stated: str) -> List[str]:
         ['pulse1', 'triangle', 'noise']
     """
     return [item.strip() for item in stated.split(LIST_SEPARATOR) if item.strip()]
+
+
+def parsed_items(
+    stated: Optional[str],
+    default: Sequence[ItemT],
+    parse: Callable[[str], ItemT],
+    refusal: Callable[[str], str],
+) -> List[ItemT]:
+    """
+    Reads the items a command line names, comma separated, or ``default`` where it names none.
+
+    Args:
+        stated: The list as written, or ``None`` where the option was left out.
+        default: The items a run takes where the option was left out.
+        parse: Reads one item, raising ``ValueError`` for one it does not know.
+        refusal: The message naming an item ``parse`` refused, and what it could have been.
+
+    Returns:
+        The items, in the order written.
+
+    Raises:
+        ValueError: If ``parse`` refuses an item, carrying the message ``refusal`` writes.
+    """
+    if stated is None:
+        return list(default)
+
+    items: List[ItemT] = []
+    for item in listed_items(stated):
+        try:
+            items.append(parse(item))
+        except ValueError as error:
+            raise ValueError(refusal(item)) from error
+
+    return items

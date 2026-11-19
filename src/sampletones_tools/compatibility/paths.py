@@ -7,9 +7,9 @@ from sampletones_shared.paths.extensions import (
     EXT_FILE_PROJECT,
     EXT_FILE_RECONSTRUCTION,
 )
-from sampletones_shared.paths.source import REPOSITORY_ROOT
+from sampletones_shared.paths.source import TESTS_ROOT
 
-CORPUS_DIRECTORY: Final[Path] = REPOSITORY_ROOT / "tests" / "data" / "compatibility"
+CORPUS_DIRECTORY: Final[Path] = TESTS_ROOT / "data" / "compatibility"
 CORPUS_EXTENSIONS: Final[Dict[ObjectKind, str]] = {
     ObjectKind.RECONSTRUCTION: EXT_FILE_RECONSTRUCTION,
     ObjectKind.LIBRARY: EXT_FILE_LIBRARY,

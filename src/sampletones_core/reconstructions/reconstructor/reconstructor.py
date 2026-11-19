@@ -444,7 +444,7 @@ class Reconstructor:
         Raises:
             NoLibraryDataError: If no library exists for the configuration and window.
         """
-        library = library or InstructionLibrary(directory=self.config.general.library_directory)
+        library = library or InstructionLibrary.from_config(self.config)
         library_data = library.get(self.config, self.window)
         key = library.create_key(self.config, self.window)
         if not library_data:

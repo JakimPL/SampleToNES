@@ -4,7 +4,7 @@ from tempfile import TemporaryDirectory
 from typing import Final, Self
 
 from sampletones_core.exporters.skipped import BuiltDocument
-from sampletones_core.formats.famitracker.builder import build_module
+from sampletones_core.formats.famitracker.export import write_ftm
 from sampletones_core.formats.famitracker.model.module import FamiTrackerModule
 from sampletones_core.formats.famitracker.module import module_to_ftm_bytes
 from sampletones_core.project.project import Project
@@ -87,9 +87,8 @@ class FamiTrackerTarget:
             FamiTrackerError: If the project exceeds what a module holds, FamiTracker writes no NSF,
                 or its NSF fails to play.
         """
-        built = _built_module(project, name)
         document = directory / f"{name}{EXT_FILE_MODULE}"
-        document.write_bytes(module_to_ftm_bytes(built.document))
+        built = _written_module(document, project, name)
         nsf = directory / f"{name}{EXT_FILE_NSF}"
         self._export_marked(built.document, nsf, name)
         recorded = _played(nsf, built.document)
@@ -113,9 +112,10 @@ class FamiTrackerTarget:
             export_nsf(self.program, marked, nsf, Path(scratch) / f"{name}{EXT_FILE_LOG}")
 
 
-def _built_module(project: Project, name: str) -> BuiltDocument[FamiTrackerModule]:
+def _written_module(document: Path, project: Project, name: str) -> BuiltDocument[FamiTrackerModule]:
+    """Writes the project as the module FamiTracker opens, the way the application exports one."""
     try:
-        return build_module(project)
+        return write_ftm(document, project)
     except ValueError as error:
         raise FamiTrackerError(f"{name} doesn't fit a FamiTracker module: {error}") from error
 

@@ -2,7 +2,7 @@ from typing import List
 
 import pytest
 
-from sampletones_shared.utils.text import LIST_SEPARATOR, listed_items, natural_sort_key
+from sampletones_shared.utils.text import LIST_SEPARATOR, listed_items, natural_sort_key, parsed_items
 
 
 class TestNumbers:
@@ -65,3 +65,33 @@ class TestListedItems:
 
     def test_an_empty_statement_lists_nothing(self) -> None:
         assert listed_items("") == []
+
+
+class TestParsedItems:
+    """A command line names its items comma separated; the ones named are read in order, a run
+    naming none takes the default, and an item that reads as nothing known is refused by name."""
+
+    def test_the_default_stands_where_nothing_is_named(self) -> None:
+        default = [1, 2]
+        parsed = parsed_items(None, default, int, lambda item: f"no {item}")
+        assert parsed == default
+        assert parsed is not default
+
+    def test_the_named_items_are_read_in_order(self) -> None:
+        assert parsed_items(" 3, 1 ,2,", [9], int, lambda item: f"no {item}") == [3, 1, 2]
+
+    def test_an_empty_list_names_no_items(self) -> None:
+        assert parsed_items(" , ", [9], int, lambda item: f"no {item}") == []
+
+    def test_an_item_read_as_nothing_known_is_refused_by_name(self) -> None:
+        with pytest.raises(ValueError, match="^no x$") as raised:
+            parsed_items("1, x, y", [], int, lambda item: f"no {item}")
+
+        assert isinstance(raised.value.__cause__, ValueError)
+
+    def test_a_failure_other_than_a_refusal_is_left_to_run(self) -> None:
+        def parse(item: str) -> int:
+            raise KeyError(item)
+
+        with pytest.raises(KeyError):
+            parsed_items("a", [], parse, lambda item: f"no {item}")

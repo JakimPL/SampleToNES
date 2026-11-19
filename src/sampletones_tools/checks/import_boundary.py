@@ -1,4 +1,3 @@
-import sys
 from pathlib import Path
 from typing import List, Optional, Sequence, Set
 
@@ -7,6 +6,7 @@ from sampletones_tools.checks.boundary.configs.rules import ImportBoundaryRules
 from sampletones_tools.checks.boundary.packages import check_packages
 from sampletones_tools.checks.boundary.standalone import check_standalone
 from sampletones_tools.checks.boundary.violation import Violation
+from sampletones_tools.checks.report import report_findings
 
 
 def check_imports(
@@ -39,12 +39,8 @@ def check_imports(
 
 def report(violations: Sequence[Violation]) -> int:
     """Prints every violation on the standard error stream and answers with the exit status."""
-    if not violations:
-        return 0
-
-    print("Layer boundary violation(s) found:", file=sys.stderr)
-    for kind, location in violations:
-        print(f"  [forbidden: {kind}] {location}", file=sys.stderr)
-
-    print(f"\nFound {len(violations)} violation(s) in total.", file=sys.stderr)
-    return 1
+    return report_findings(
+        [f"[forbidden: {kind}] {location}" for kind, location in violations],
+        heading="Layer boundary violation(s) found:",
+        total="Found {count} violation(s) in total.",
+    )
