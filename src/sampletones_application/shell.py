@@ -13,7 +13,7 @@ from sampletones_application.coordinators.playback.protocol import AudioPlayerPr
 from sampletones_application.coordinators.tabs.instructions import (
     InstructionsTabCoordinator,
 )
-from sampletones_application.coordinators.tabs.main import MainTabCoordinator
+from sampletones_application.coordinators.tabs.main.coordinator import MainTabCoordinator
 from sampletones_application.coordinators.tabs.reconstruction.coordinator import (
     ReconstructionTabCoordinator,
 )

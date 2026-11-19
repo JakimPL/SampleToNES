@@ -5,22 +5,16 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sampletones_application.categories.conversion import SkippedRecordingMessages
-from sampletones_application.categories.skipped import ROW_BULLET
 from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.coordinators.tabs.hooks import MainTabHooks
-from sampletones_application.coordinators.tabs.main import MainTabCoordinator
-from sampletones_application.logic.main.converter.run import ConversionSuccess
+from sampletones_application.coordinators.tabs.main.coordinator import MainTabCoordinator
 from sampletones_application.logic.main.sources.scan import FolderScan
 from sampletones_application.services.folder_scan.service import FolderScanService
 from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION
 from sampletones_application.tags.main import (
-    TAG_MAIN_CONVERTER_DIALOG_CANCEL,
     TAG_MAIN_CONVERTER_DIALOG_CONVERSION_RUNNING,
-    TAG_MAIN_CONVERTER_DIALOG_LOAD,
-    TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET,
 )
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.application import settled
@@ -40,20 +34,10 @@ __all__ = ["held_frames", "standing_window"]
 
 CONVERSION_RUNNING_MESSAGE_KEY: Final[str] = "main.converter.message.conversion_running"
 CONVERSION_RUNNING_TITLE_KEY: Final[str] = "main.converter.title.conversion_running_dialog"
-LOAD_FILE_MESSAGE_KEY: Final[str] = "main.converter.message.load_file_prompt"
-LOAD_BUTTON_KEY: Final[str] = "main.converter.label.load_button"
-OPEN_BUTTON_KEY: Final[str] = "main.converter.label.open_button"
-CLOSE_BUTTON_KEY: Final[str] = "main.converter.label.close_button"
-SKIPPED_HEADING_KEY: Final[str] = "main.converter.message.skipped_recording_heading"
-NOTHING_WRITTEN_KEY: Final[str] = "main.converter.message.nothing_written"
-NOTHING_WRITTEN_TITLE_KEY: Final[str] = "main.converter.title.nothing_written_dialog"
-SKIPPED_RECORDING: Final[Path] = Path("/samples/broken.wav")
-STOP_BUTTON_KEY: Final[str] = "main.converter.label.stop_button"
-CONTINUE_BUTTON_KEY: Final[str] = "main.converter.label.continue_button"
 NOTHING_BELOW_KEY: Final[str] = "main.converter.message.scan_nothing_below"
 EXIT_CONVERSION_MESSAGE_KEY: Final[str] = "global.dialog.message.exit_conversion_in_progress"
 EXIT_LABEL_KEY: Final[str] = "global.dialog.label.exit"
-MAIN_MODULE: Final[str] = "sampletones_application.coordinators.tabs.main"
+MAIN_MODULE: Final[str] = "sampletones_application.coordinators.tabs.main.coordinator"
 
 
 def _hooks(*, operation_active: bool) -> MainTabHooks:
@@ -245,104 +229,8 @@ class TestTheChannelKeys:
         assert coordinator._converter_logic.toggle_channel.called is keys_active
 
 
-def _success_coordinator() -> MainTabCoordinator:
-    coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
-    coordinator._dialogs = dialogs_on_the_line()
-    coordinator._hooks = _hooks(operation_active=False)
-    coordinator._converter_logic = MagicMock()
-    coordinator._converter_panel = MagicMock()
-    coordinator._language_manager = FakeLanguageManager()
-    coordinator._skipped_recording_messages = SkippedRecordingMessages.build(FakeLanguageManager())
-    return coordinator
-
-
-class TestConversionSuccessDialog:
-    """A completed conversion refreshes the reconstruction trees, then offers to load the result;
-    both the load and the dismiss choice return the converter to idle."""
-
-    def test_file_success_refreshes_and_offers_to_load(self) -> None:
-        coordinator = _success_coordinator()
-        output_path = Path("/reconstructions/kick.rcn")
-
-        coordinator._on_conversion_success(ConversionSuccess(written=(output_path,), skipped=()))
-
-        coordinator._hooks.on_refresh_trees.assert_called_once_with()
-        coordinator._dialogs.show_confirmation.assert_called_once()
-        args, kwargs = coordinator._dialogs.show_confirmation.call_args
-        assert args[0] == TAG_MAIN_CONVERTER_DIALOG_LOAD
-        assert args[1] == LOAD_FILE_MESSAGE_KEY
-        assert args[3] == coordinator._converter_logic.handle_load_request
-        assert kwargs["ok_label"] == LOAD_BUTTON_KEY
-        assert kwargs["cancel_label"] == CLOSE_BUTTON_KEY
-        assert kwargs["path"] == output_path
-        assert kwargs["on_cancel"] == coordinator._converter_logic.close
-
-    def test_a_batch_offers_to_open_the_folder(self) -> None:
-        coordinator = _success_coordinator()
-        written = (Path("/reconstructions/kick.rcn"), Path("/reconstructions/snare.rcn"))
-
-        coordinator._on_conversion_success(ConversionSuccess(written=written, skipped=()))
-
-        _, kwargs = coordinator._dialogs.show_confirmation.call_args
-        assert kwargs["ok_label"] == OPEN_BUTTON_KEY
-        assert kwargs["path"] is None
-
-    def test_the_offer_names_the_recordings_the_run_skipped_beneath_it(self) -> None:
-        coordinator = _success_coordinator()
-        written = (Path("/reconstructions/kick.rcn"),)
-
-        coordinator._on_conversion_success(ConversionSuccess(written=written, skipped=(SKIPPED_RECORDING,)))
-
-        args, _ = coordinator._dialogs.show_confirmation.call_args
-        assert args[1] == f"{LOAD_FILE_MESSAGE_KEY}\n\n{SKIPPED_HEADING_KEY}\n{ROW_BULLET}{SKIPPED_RECORDING.name}"
-
-    def test_a_run_that_wrote_nothing_reports_what_it_skipped_and_offers_nothing(self) -> None:
-        coordinator = _success_coordinator()
-
-        coordinator._on_conversion_success(ConversionSuccess(written=(), skipped=(SKIPPED_RECORDING,)))
-
-        coordinator._dialogs.show_confirmation.assert_not_called()
-        coordinator._converter_logic.close.assert_called_once_with()
-        args, kwargs = coordinator._dialogs.show_info.call_args
-        assert args[1] == f"{NOTHING_WRITTEN_KEY}\n\n{SKIPPED_HEADING_KEY}\n{ROW_BULLET}{SKIPPED_RECORDING.name}"
-        assert args[2] == NOTHING_WRITTEN_TITLE_KEY
-        assert kwargs["modal"] is True
-
-    def test_a_run_that_wrote_nothing_and_skipped_nothing_still_offers_the_folder(self) -> None:
-        coordinator = _success_coordinator()
-
-        coordinator._on_conversion_success(ConversionSuccess(written=(), skipped=()))
-
-        coordinator._dialogs.show_info.assert_not_called()
-        _, kwargs = coordinator._dialogs.show_confirmation.call_args
-        assert kwargs["ok_label"] == OPEN_BUTTON_KEY
-
-
-class TestCancelConfirmation:
-    """Canceling is destructive, so the panel's cancel intent asks for confirmation before the
-    conversion is actually stopped."""
-
-    def test_cancel_request_confirms_before_stopping(self) -> None:
-        coordinator = MainTabCoordinator.__new__(MainTabCoordinator)
-        coordinator._dialogs = dialogs_on_the_line()
-        coordinator._converter_logic = MagicMock()
-        coordinator._language_manager = FakeLanguageManager()
-
-        coordinator._request_cancel_confirmation()
-
-        coordinator._converter_logic.cancel.assert_not_called()
-        coordinator._dialogs.show_confirmation.assert_called_once()
-        args, kwargs = coordinator._dialogs.show_confirmation.call_args
-        assert args[0] == TAG_MAIN_CONVERTER_DIALOG_CANCEL
-        assert args[3] == coordinator._converter_logic.cancel
-        assert kwargs["ok_label"] == STOP_BUTTON_KEY
-        assert kwargs["cancel_label"] == CONTINUE_BUTTON_KEY
-
-
 DISCARD_STEMS_PROMPT_KEY: Final[str] = "main.converter.message.discard_stems_prompt"
 SCAN_FAILED_KEY: Final[str] = "main.converter.message.scan_failed"
-DISCARD_STEMS_BUTTON_KEY: Final[str] = "main.converter.label.discard_stems_button"
-KEEP_STEMS_BUTTON_KEY: Final[str] = "main.converter.label.keep_stems_button"
 
 
 def _stems_coordinator(
@@ -492,55 +380,6 @@ class TestFileAdd:
         coordinator._on_file_add_requested(recording)
 
         coordinator._converter_logic.gather_recordings.assert_called_once_with([recording])
-
-
-OVERWRITE_TARGET_PROMPT_KEY: Final[str] = "main.converter.message.overwrite_target_prompt"
-OVERWRITE_TARGET_BUTTON_KEY: Final[str] = "main.converter.label.overwrite_target_button"
-OVERWRITE_TARGETS_PROMPT_KEY: Final[str] = "main.converter.message.overwrite_targets_prompt"
-OVERWRITE_TARGETS_TITLE_KEY: Final[str] = "main.converter.title.overwrite_targets_dialog"
-
-
-class TestOverwritePrompt:
-    """A conversion that would replace a reconstruction already made is put to the reader first."""
-
-    def test_the_prompt_names_the_file_it_would_replace(self, tmp_path: Path) -> None:
-        coordinator = _stems_coordinator()
-        target = tmp_path / "song.stn"
-
-        coordinator._confirm_overwriting_target((target,))
-
-        args, kwargs = coordinator._dialogs.show_confirmation.call_args
-        assert args[0] == TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET
-        assert args[1] == OVERWRITE_TARGET_PROMPT_KEY
-        assert kwargs["ok_label"] == OVERWRITE_TARGET_BUTTON_KEY
-        assert kwargs["path"] == target
-
-    def test_several_standing_reconstructions_are_all_put_to_the_reader(self, tmp_path: Path) -> None:
-        """Confirming writes over every one of them, so the prompt speaks for all of them."""
-        coordinator = _stems_coordinator()
-        targets = tuple(tmp_path / name for name in ("one.stn", "two.stn", "three.stn"))
-
-        coordinator._confirm_overwriting_target(targets)
-
-        args, kwargs = coordinator._dialogs.show_confirmation.call_args
-        assert args[1] == OVERWRITE_TARGETS_PROMPT_KEY
-        assert args[2] == OVERWRITE_TARGETS_TITLE_KEY
-        assert kwargs["path"] is None
-
-    def test_confirming_runs_the_conversion_it_asked_about(self, tmp_path: Path) -> None:
-        coordinator = _stems_coordinator()
-
-        coordinator._confirm_overwriting_target((tmp_path / "song.stn",))
-        coordinator._dialogs.show_confirmation.call_args.args[3]()
-
-        coordinator._converter_logic.start_conversion.assert_called_once_with(confirmed=True)
-
-    def test_declining_converts_nothing(self, tmp_path: Path) -> None:
-        coordinator = _stems_coordinator()
-
-        coordinator._confirm_overwriting_target((tmp_path / "song.stn",))
-
-        coordinator._converter_logic.start_conversion.assert_not_called()
 
 
 class TestReconstructListsWhatItNames:

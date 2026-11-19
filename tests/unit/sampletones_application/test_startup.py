@@ -892,7 +892,7 @@ class TestAGestureOnTheWholeDocumentWaitsForTheEdits:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         exports = MagicMock()
-        monkeypatch.setattr(app._reconstructions_tab, "_instrument_exports", exports)
+        monkeypatch.setattr(app._reconstructions_tab._exports, "_instrument_exports", exports)
 
         app._reconstructions_tab._reconstruction_instruments_panel.on_instrument_export(ChannelName.PULSE1)
         exports.request.assert_not_called()

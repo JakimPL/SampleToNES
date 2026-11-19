@@ -1,11 +1,9 @@
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.conversion import SkippedRecordingMessages
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.categories.skipped import PARAGRAPH_BREAK
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.session.state.paths import LastPath
@@ -13,11 +11,11 @@ from sampletones_application.constants.output import OutputKind
 from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.tabs.columns import persisting_collapse, side_column
 from sampletones_application.coordinators.tabs.hooks import MainTabHooks
+from sampletones_application.coordinators.tabs.main.prompts import ConversionPrompts
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
 )
 from sampletones_application.logic.main.converter.logic import ConverterLogic
-from sampletones_application.logic.main.converter.run import ConversionSuccess
 from sampletones_application.logic.main.explorer_manager import ExplorerManager
 from sampletones_application.logic.main.sources.scan import FolderScan
 from sampletones_application.logic.shared.file_playback import FilePlayback
@@ -42,11 +40,8 @@ from sampletones_application.tags.main import (
     TAG_MAIN_CONFIG_PANEL,
     TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
     TAG_MAIN_CONFIG_TABLE_CONFIG_ROW,
-    TAG_MAIN_CONVERTER_DIALOG_CANCEL,
     TAG_MAIN_CONVERTER_DIALOG_CONVERSION_RUNNING,
     TAG_MAIN_CONVERTER_DIALOG_DISCARD_STEMS,
-    TAG_MAIN_CONVERTER_DIALOG_LOAD,
-    TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET,
     TAG_MAIN_CONVERTER_PANEL,
     TAG_MAIN_EXPLORER_DIALOG_NOTHING_BELOW,
     TAG_MAIN_EXPLORER_PANEL,
@@ -131,8 +126,6 @@ class MainTabCoordinator:
         self._geometry = layout.geometry
         self._side_panel_count: int
         self._config_height = layout.config_height
-        self._ttl_progress = language_manager["main.converter.title.progress_dialog"]
-        self._skipped_recording_messages = SkippedRecordingMessages.build(language_manager)
         self._repaint_priority = layout.scheduling.priorities.gui_action
 
         self._build_explorer(
@@ -323,23 +316,19 @@ class MainTabCoordinator:
         language_manager: LanguageManager,
     ) -> None:
         """What the converter reports and what answers it: the panel, the dialogs, the library."""
-        _msg_converter_error = language_manager["main.converter.message.status_error"]
-        _msg_no_files = language_manager["main.converter.message.status_no_files"]
-        _msg_no_generators = language_manager["main.converter.message.status_no_channels"]
+        prompts = ConversionPrompts(
+            self._converter_logic,
+            notice_tag=self._converter_panel.tag,
+            dialogs=dialogs,
+            language_manager=language_manager,
+            on_written=self._hooks.on_refresh_trees,
+        )
         self._converter_logic.on_view_changed = self._on_converter_view_changed
-        self._converter_logic.on_success = self._on_conversion_success
-        self._converter_logic.on_error = lambda error: dialogs.show_error(error, _msg_converter_error)
-        self._converter_logic.on_no_files_to_process = lambda: dialogs.show_info(
-            self._converter_panel.tag,
-            _msg_no_files,
-            self._ttl_progress,
-        )
-        self._converter_logic.on_no_generators = lambda: dialogs.show_info(
-            self._converter_panel.tag,
-            _msg_no_generators,
-            self._ttl_progress,
-        )
-        self._converter_logic.on_target_exists = self._confirm_overwriting_target
+        self._converter_logic.on_success = prompts.offer_written
+        self._converter_logic.on_error = prompts.report_error
+        self._converter_logic.on_no_files_to_process = prompts.report_no_files
+        self._converter_logic.on_no_generators = prompts.report_no_channels
+        self._converter_logic.on_target_exists = prompts.confirm_overwriting
         self._converter_logic.library_readiness = library_manager.library_readiness
         self._converter_logic.library_state = library_state
         self._converter_logic.cancel_library_generation = library_manager.cancel_generation
@@ -351,7 +340,7 @@ class MainTabCoordinator:
         library_manager.on_generation_progress_extra = conversion_service.forward_library_progress
 
         self._converter_panel.on_convert_requested = self._converter_logic.start_conversion
-        self._converter_panel.on_cancel_requested = self._request_cancel_confirmation
+        self._converter_panel.on_cancel_requested = prompts.confirm_cancel
         self._converter_panel.on_output_changed = self._request_output
         self._converter_panel.on_hierarchy_mode_changed = self._converter_logic.set_hierarchy_mode
         self._converter_panel.on_source_channels_changed = self._converter_logic.set_source_channels
@@ -491,80 +480,6 @@ class MainTabCoordinator:
             on_cancel=self._converter_logic.refresh_view,
         )
 
-    def _confirm_overwriting_target(self, targets: Tuple[Path, ...]) -> None:
-        """Asks before a conversion writes over the reconstructions already standing at its targets.
-
-        Confirming writes over every one of them, so the prompt speaks for all of them: one is
-        named by the path it stands at, and several are counted.
-        """
-        one = len(targets) == 1
-        message = (
-            self._language_manager["main.converter.message.overwrite_target_prompt"]
-            if one
-            else self._language_manager["main.converter.message.overwrite_targets_prompt"]
-        )
-        title = (
-            self._language_manager["main.converter.title.overwrite_target_dialog"]
-            if one
-            else self._language_manager["main.converter.title.overwrite_targets_dialog"]
-        )
-        self._dialogs.show_confirmation(
-            TAG_MAIN_CONVERTER_DIALOG_OVERWRITE_TARGET,
-            message if one else message.format(count=len(targets)),
-            title,
-            lambda: self._converter_logic.start_conversion(confirmed=True),
-            ok_label=self._language_manager["main.converter.label.overwrite_target_button"],
-            path=targets[0] if one else None,
-        )
-
-    def _on_conversion_success(self, success: ConversionSuccess) -> None:
-        """Offers what the run wrote, with the recordings it skipped named beneath the offer.
-
-        A run that skipped every recording it held has nothing to offer, so it reports the recordings
-        it skipped and the converter returns to idle.
-        """
-        self._hooks.on_refresh_trees()
-        if success.skipped and not success.written:
-            self._report_nothing_written(success)
-            return
-
-        if success.is_single:
-            message = self._language_manager["main.converter.message.load_file_prompt"]
-            ok_label = self._language_manager["main.converter.label.load_button"]
-            path: Optional[Path] = success.written[0]
-        else:
-            message = self._language_manager["main.converter.message.load_directory_prompt"]
-            ok_label = self._language_manager["main.converter.label.open_button"]
-            path = None
-
-        self._dialogs.show_confirmation(
-            TAG_MAIN_CONVERTER_DIALOG_LOAD,
-            self._with_skipped(message, success),
-            self._language_manager["main.converter.title.load_dialog"],
-            self._converter_logic.handle_load_request,
-            ok_label=ok_label,
-            cancel_label=self._language_manager["main.converter.label.close_button"],
-            path=path,
-            on_cancel=self._converter_logic.close,
-        )
-
-    def _report_nothing_written(self, success: ConversionSuccess) -> None:
-        self._converter_logic.close()
-        self._dialogs.show_info(
-            self._converter_panel.tag,
-            self._with_skipped(self._language_manager["main.converter.message.nothing_written"], success),
-            self._language_manager["main.converter.title.nothing_written_dialog"],
-            modal=True,
-        )
-
-    def _with_skipped(self, message: str, success: ConversionSuccess) -> str:
-        """``message`` followed by the paragraph naming the recordings the run skipped, where it skipped any."""
-        notice = self._skipped_recording_messages.notice(success.skipped)
-        if notice is None:
-            return message
-
-        return PARAGRAPH_BREAK.join((message, notice))
-
     def _request_output(self, output: OutputKind) -> None:
         """Answers the output switch, asking which recordings to mix where the list overflows one.
 
@@ -664,16 +579,6 @@ class MainTabCoordinator:
             self._answer_mix,
         )
         return True
-
-    def _request_cancel_confirmation(self) -> None:
-        self._dialogs.show_confirmation(
-            TAG_MAIN_CONVERTER_DIALOG_CANCEL,
-            self._language_manager["main.converter.message.cancel_prompt"],
-            self._language_manager["main.converter.title.cancel_dialog"],
-            self._converter_logic.cancel,
-            ok_label=self._language_manager["main.converter.label.stop_button"],
-            cancel_label=self._language_manager["main.converter.label.continue_button"],
-        )
 
     def _update_config_panel_view(self) -> None:
         config = self._config_manager.config
