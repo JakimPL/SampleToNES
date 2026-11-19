@@ -3,6 +3,7 @@ from typing import Final, List, Tuple
 import dearpygui.dearpygui as dpg
 import pytest
 
+from automation.dearpygui.items.types import VISIBLE_HANDLER_TYPE
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_shared.types.callback import VoidCallback
 
@@ -53,9 +54,6 @@ def held_frames(monkeypatch: pytest.MonkeyPatch) -> Frames:
     return frames
 
 
-VISIBLE_HANDLER: Final[str] = "mvAppItemType::mvVisibleHandler"
-
-
 class DrawnFrames:
     """The frames a widget waiting on an item's visible handler is drawn in, rendered by a case.
 
@@ -86,5 +84,5 @@ class DrawnFrames:
         return [
             item
             for item in dpg.get_all_items()
-            if dpg.get_item_type(item) == VISIBLE_HANDLER and dpg.get_item_configuration(item)["show"]
+            if dpg.get_item_type(item) == VISIBLE_HANDLER_TYPE and dpg.get_item_configuration(item)["show"]
         ]

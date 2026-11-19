@@ -7,6 +7,7 @@ from automation.dearpygui.items.colors import read_theme
 from automation.dearpygui.items.types import Item
 from automation.holds.regeneration import RegenerationHold
 from automation.screen import Screen
+from automation.steps.trees import listed_row
 from automation.views.bar_graph import BarGraph
 from automation.vocabulary.graphs import WAVEFORM_RECONSTRUCTION
 from automation.vocabulary.playback import PAUSE, RESUME
@@ -23,7 +24,6 @@ CLICK_INSET: Final[float] = 0.01
 
 APPLICATION_NAME: Final[str] = "global.dialog.title.main_window"
 UNTITLED: Final[str] = "global.dialog.label.untitled"
-BY_CONFIGURATION: Final[str] = "global.browser.label.by_configuration"
 REMOVE_RECONSTRUCTION: Final[str] = "reconstructions.browser.label.context_remove_reconstruction"
 UNSAVED_MARK: Final[str] = "*"
 LOUDEST: Final[int] = 15
@@ -42,36 +42,8 @@ def titled(screen: Screen, *documents: str) -> str:
 
 
 def reconstruction_row(screen: Screen, path: Path) -> Item:
-    """The browser's row of the reconstruction at ``path``, under the heading listing reconstructions by
-    configuration.
-
-    The heading and every row above the reconstruction's are opened where they stand closed, so the row
-    is in reach.
-    """
-    browser = screen.reconstructions.browser
-    heading = screen.expect_item(
-        lambda: browser.heading(screen.words(BY_CONFIGURATION)),
-        description="the heading listing reconstructions by configuration",
-    )
-    if not browser.is_open(heading):
-        browser.open_by_click(heading)
-        screen.expect(
-            lambda: browser.is_open(heading),
-            bool,
-            description="the heading open",
-        )
-
-    row = screen.expect_item(lambda: browser.file_row(path), description=f"the row of {path.name}")
-    for above in browser.rows_above(row):
-        if not browser.is_open(above):
-            browser.open_by_click(above)
-            screen.expect(
-                partial(browser.is_open, above),
-                bool,
-                description=f"{browser.label(above)} open",
-            )
-
-    return row
+    """The Reconstructions browser's row of the reconstruction at ``path``, opened into reach."""
+    return listed_row(screen, screen.reconstructions.browser, path)
 
 
 def load_from_the_browser(screen: Screen, path: Path) -> None:

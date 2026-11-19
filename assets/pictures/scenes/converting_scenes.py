@@ -21,6 +21,7 @@ from automation.steps.main import (
     explorer_row,
     gather,
 )
+from automation.steps.trees import set_open
 from automation.views.prompts import MissingPromptError
 from automation.worlds.home import one_worker_config
 from sampletones_application.constants.output import OutputKind
@@ -47,24 +48,12 @@ LEAD: Final[str] = "Lead"
 
 def open_folder(screen: Screen, path: Path) -> None:
     """Opens the explorer's row of the folder at ``path`` where it stands closed."""
-    set_folder(screen, path, open=True)
+    set_open(screen, screen.explorer, explorer_row(screen, path), opened=True)
 
 
 def close_folder(screen: Screen, path: Path) -> None:
     """Closes the explorer's row of the folder at ``path`` where it stands open."""
-    set_folder(screen, path, open=False)
-
-
-def set_folder(screen: Screen, path: Path, *, open: bool) -> None:
-    """Clicks the explorer's row of the folder at ``path`` where it stands other than ``open`` asks."""
-    row = explorer_row(screen, path)
-    if screen.explorer.is_open(row) != open:
-        screen.explorer.open_by_click(row)
-        screen.expect(
-            partial(screen.explorer.is_open, row),
-            open.__eq__,
-            description=f"{path.name} {'open' if open else 'closed'}",
-        )
+    set_open(screen, screen.explorer, explorer_row(screen, path), opened=False)
 
 
 def gather_the_stems(screen: Screen) -> None:

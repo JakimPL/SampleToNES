@@ -6,6 +6,7 @@ from automation.dearpygui.bridge import ONE_FRAME, Bridge
 from automation.dearpygui.geometry import Point, Rect
 from automation.dearpygui.hand import Hand
 from automation.dearpygui.items.reading import read_item
+from automation.dearpygui.items.types import LINE_SERIES_TYPE
 from automation.dearpygui.plots import settled_plot_pointer
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.graphs import (
@@ -16,7 +17,6 @@ from sampletones_application.tags.graphs import (
     SUF_WAVEFORM_POSITION_INDICATOR,
 )
 
-LINE_SERIES_TYPE: Final[str] = "mvAppItemType::mvLineSeries"
 FIRST_POINT: Final[int] = 0
 Y_VALUES: Final[int] = 1
 MIDDLE: Final[float] = 0.5

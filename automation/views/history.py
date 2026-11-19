@@ -5,7 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from automation.dearpygui.bridge import Bridge
 from automation.dearpygui.hand import Hand
-from automation.dearpygui.items.types import TEXT_TYPE, Item
+from automation.dearpygui.items.types import TABLE_TYPE, TEXT_TYPE, Item
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import SUF_BUTTON
 from sampletones_application.tags.sequencer import (
@@ -14,7 +14,6 @@ from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_HISTORY_WINDOW_LIST,
 )
 
-TABLE_TYPE: Final[str] = "mvAppItemType::mvTable"
 ENTRY_GROUP: Final[int] = 1
 COLOR_KEY: Final[str] = "color"
 

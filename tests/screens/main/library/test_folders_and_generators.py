@@ -155,7 +155,7 @@ class TestGeneratorsUnderALibrary:
                 description="the old library's row",
             )
 
-            library.tree.open_by_click(old)
+            library.tree.click(old)
 
             screen.expect(prompt.is_shown, bool, description="the rebuild question")
             prompt.cancel()

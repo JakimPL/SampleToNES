@@ -8,6 +8,7 @@ import pytest
 from automation.application.startup import Startup
 from automation.boundaries.dialogs import DialogKind
 from automation.screen import Screen
+from automation.steps.trees import BY_CONFIGURATION
 from automation.worlds.home import HomeFile, World
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_core.compatibility.kind import ObjectKind
@@ -18,7 +19,7 @@ from sampletones_shared.exceptions.reconstruction import (
 )
 from sampletones_shared.paths.user import RECONSTRUCTIONS_DIRECTORY
 from tests.screens.application.old_files.cases import STARTUP_CASES, StartupCase
-from tests.screens.application.old_files.constants import ARCHIVED_RECONSTRUCTION, BY_CONFIGURATION, VANISHED
+from tests.screens.application.old_files.constants import ARCHIVED_RECONSTRUCTION, VANISHED
 from tests.screens.application.old_files.steps import (
     damaged_name,
     future_version,
@@ -132,7 +133,7 @@ class TestRefusingABrokenReconstruction:
                 lambda: browser.heading(screen.words(BY_CONFIGURATION)),
                 description="the heading listing reconstructions by configuration",
             )
-            browser.open_by_click(heading)
+            browser.click(heading)
 
         def refuse_each_damage(screen: Screen) -> None:
             for damage in Damage:

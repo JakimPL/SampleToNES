@@ -5,6 +5,7 @@ from unittest.mock import patch
 import dearpygui.dearpygui as dpg
 import pytest
 
+from automation.dearpygui.items.types import DOUBLE_CLICKED_HANDLER_TYPE
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.sources import SourceKind
 from sampletones_application.layout.config import LayoutConfig
@@ -45,7 +46,7 @@ from sampletones_application.view_model.shared.stems import (
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
 from tests.suite.frames import DrawnFrames
-from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
+from tests.suite.gestures import click_row_name
 
 ROOT_TAG = "test_root"
 PREFIX = "test.stems"
@@ -437,7 +438,7 @@ class TestAFolderThatLeaves(BaseTestSuite):
 
 def double_click(row: StemRowViewModel) -> None:
     """Double-click one row's name the way DearPyGui reports the gesture."""
-    click_row_name(TAGS, row.key, kind=DOUBLE_CLICKED, button=dpg.mvMouseButton_Left)
+    click_row_name(TAGS, row.key, kind=DOUBLE_CLICKED_HANDLER_TYPE, button=dpg.mvMouseButton_Left)
 
 
 class TestARecordingThatLeavesAFolder(BaseTestSuite):

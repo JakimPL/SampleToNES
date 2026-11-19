@@ -7,6 +7,7 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 import pytest
 
+from automation.dearpygui.items.types import DOUBLE_CLICKED_HANDLER_TYPE
 from sampletones_application.application import Application
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.application import ApplicationConfigManager
@@ -83,7 +84,7 @@ from sampletones_core.structures.tree import FileSystemNode, NodeType
 from sampletones_shared.paths.extensions import EXT_FILE_PROJECT
 from tests.conftest import ReconstructionFactory
 from tests.suite.application import HeldQueue, held_queue, settled
-from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
+from tests.suite.gestures import click_row_name
 from tests.suite.headless import (
     VIEWPORT_CLIENT_HEIGHT,
     VIEWPORT_CLIENT_WIDTH,
@@ -1126,7 +1127,7 @@ def _ctrl_click_folder(app: Application, directory: Path) -> None:
 
 def _double_click_name(prefix: str, key: str) -> None:
     """Double-click one row's name in a stems list, the way DearPyGui reports the gesture."""
-    click_row_name(StemsTags(prefix=prefix), key, kind=DOUBLE_CLICKED, button=dpg.mvMouseButton_Left)
+    click_row_name(StemsTags(prefix=prefix), key, kind=DOUBLE_CLICKED_HANDLER_TYPE, button=dpg.mvMouseButton_Left)
 
 
 class TestGatheringAFolderIntoAMix:

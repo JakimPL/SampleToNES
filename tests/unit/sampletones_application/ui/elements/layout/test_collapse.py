@@ -3,6 +3,7 @@ from typing import Iterator, List, Tuple
 import dearpygui.dearpygui as dpg
 import pytest
 
+from automation.dearpygui.items.types import HOVER_HANDLER_TYPE
 from sampletones_application.layout.general.collapse import CollapseLayout
 from sampletones_application.layout.general.section_header import SectionHeaderLayout
 from sampletones_application.layout.glyphs.common import CommonGlyphs
@@ -17,6 +18,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.layout.collapse import (
     CollapseAxis,
     CollapseController,
+    CollapseTags,
 )
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.items import ThemeItems
@@ -25,7 +27,7 @@ from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.hover import HOVER_RECHECK_FRAMES
 from tests.suite.frames import Frames
-from tests.suite.gestures import HOVERED, handler_of
+from tests.suite.gestures import handler_of
 
 _EXPANDED_GLYPH = "v"
 _COLLAPSED_GLYPH = ">"
@@ -116,7 +118,7 @@ def _build_card(controller: CollapseController) -> None:
 
 def _report_hover(controller: CollapseController) -> None:
     """Land the report DearPyGui's hover handler makes for a frame the pointer rests on a bar."""
-    dpg.get_item_callback(handler_of(controller.strip_handler_tag, HOVERED))()
+    dpg.get_item_callback(handler_of(controller.strip_handler_tag, HOVER_HANDLER_TYPE))()
 
 
 class TestCollapseControllerAttach:
@@ -385,3 +387,18 @@ class TestHorizontalRailTitle:
         (rail_content,) = dpg.get_item_children(controller.rail_tag, 1)
         rail_texts = [dpg.get_value(item) for item in dpg.get_item_children(rail_content, 1)]
         assert "\n".join(_RAIL_LABEL.upper()) in rail_texts
+
+
+class TestTheTagsACardFoldsThrough:
+    """Automation reaches a card's strip, body and rail by the tags the card itself folds through."""
+
+    @pytest.mark.parametrize("axis", list(CollapseAxis))
+    def test_the_named_tags_are_the_controllers_own(self, axis: CollapseAxis) -> None:
+        controller = _controller(axis)
+        tags = CollapseTags.of(_CARD_TAG)
+
+        assert (tags.strip, tags.body, tags.rail) == (controller.strip_tag, controller.body_tag, controller.rail_tag)
+
+    def test_two_cards_fold_through_tags_of_their_own(self) -> None:
+        first, second = CollapseTags.of(_CARD_TAG), CollapseTags.of(f"{_CARD_TAG}_other")
+        assert not {first.strip, first.body, first.rail} & {second.strip, second.body, second.rail}

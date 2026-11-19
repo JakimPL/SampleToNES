@@ -64,7 +64,7 @@ class TestTheLastReleasesLibrary:
 
         def cancel_leaves_it(screen: Screen) -> None:
             prompt = library.rebuild_prompt
-            library.tree.open_by_click(library_row())
+            library.tree.click(library_row())
             screen.expect(prompt.is_shown, bool, description="the rebuild question")
 
             prompt.cancel()
@@ -72,9 +72,9 @@ class TestTheLastReleasesLibrary:
             screen.expect(prompt.is_shown, operator.not_, description="the question gone")
             row = library_row()
             if library.tree.is_open(row):
-                library.tree.open_by_click(row)
+                library.tree.click(row)
                 screen.expect(lambda: library.tree.is_open(row), operator.not_, description="the row closed")
-            library.tree.open_by_click(row)
+            library.tree.click(row)
             screen.expect(prompt.is_shown, bool, description="the rebuild question asked at the next opening")
             assert path.read_bytes() == archived_bytes
 

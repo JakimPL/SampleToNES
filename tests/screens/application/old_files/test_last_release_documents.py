@@ -5,13 +5,14 @@ import pytest
 from automation.application.startup import Startup
 from automation.boundaries.dialogs import DialogKind
 from automation.screen import Screen
+from automation.steps.trees import BY_CONFIGURATION
 from automation.worlds.home import World, screen_filling_state
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_application.config.session.application.playback import PlaybackConfig
 from sampletones_core.compatibility.kind import ObjectKind
-from tests.screens.application.old_files.constants import ARCHIVED_PROJECT, ARCHIVED_RECONSTRUCTION, BY_CONFIGURATION
+from tests.screens.application.old_files.constants import ARCHIVED_PROJECT, ARCHIVED_RECONSTRUCTION
 from tests.screens.application.old_files.steps import stored_voice_names, world_of
 from tests.suite.screens.seeds.archives import archived_document
 from tests.suite.screens.seeds.recordings import stored_recording
@@ -40,7 +41,7 @@ class TestTheLastReleasesReconstruction:
             lambda: reconstructions.browser.heading(screen.words(BY_CONFIGURATION)),
             description="the heading listing reconstructions by configuration",
         )
-        reconstructions.browser.open_by_click(heading)
+        reconstructions.browser.click(heading)
         row = screen.expect_item(
             lambda: reconstructions.browser.file_row(ARCHIVED_RECONSTRUCTION), description="its row"
         )

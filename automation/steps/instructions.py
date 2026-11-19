@@ -1,9 +1,9 @@
-import operator
 from functools import partial
 from pathlib import Path
 
 from automation.dearpygui.items.types import Item
 from automation.screen import Screen
+from automation.steps.trees import set_open
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_core.configs import Config
 from sampletones_core.fft import Window
@@ -27,15 +27,8 @@ def library_row(screen: Screen, path: Path) -> Item:
 def open_library_row(screen: Screen, row: Item) -> None:
     """Opens a library's row, which is the click that loads it, closing it first where it stands open."""
     tree = screen.instructions.library.tree
-    if tree.is_open(row):
-        tree.open_by_click(row)
-        screen.expect(
-            partial(tree.is_open, row),
-            operator.not_,
-            description="the row closed",
-        )
-
-    tree.open_by_click(row)
+    set_open(screen, tree, row, opened=False)
+    tree.click(row)
 
 
 def load_library(screen: Screen, config: Config) -> Item:

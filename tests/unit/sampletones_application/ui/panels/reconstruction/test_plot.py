@@ -90,7 +90,7 @@ class Harness:
 
     @staticmethod
     def _tag(channel: ChannelName) -> str:
-        return GUIReconstructionPlotPanel._get_generator_checkbox_tag(channel)
+        return GUIReconstructionPlotPanel.channel_checkbox_tag(channel)
 
     def offered(self) -> FrozenSet[ChannelName]:
         return frozenset(channel for channel in ChannelName if self.enabled[self._tag(channel)])

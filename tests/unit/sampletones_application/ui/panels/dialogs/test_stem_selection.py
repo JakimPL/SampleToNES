@@ -4,6 +4,7 @@ from typing import Final, List, Optional, Sequence
 import dearpygui.dearpygui as dpg
 import pytest
 
+from automation.dearpygui.items.types import DOUBLE_CLICKED_HANDLER_TYPE
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.conversion import MAX_STEM_SOURCES
 from sampletones_application.constants.sources import SourceKind
@@ -25,7 +26,7 @@ from sampletones_application.view_model.shared.stems import StemRowViewModel
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
 from tests.suite.frames import Frames
-from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
+from tests.suite.gestures import click_row_name
 from tests.suite.shortcuts import shipped_source
 
 LANGUAGE_MANAGER: Final[LanguageManager] = LanguageManager(LANG_EN)
@@ -129,7 +130,7 @@ def name_of(row: StemRowViewModel) -> str:
 
 def sound(row: StemRowViewModel) -> None:
     """Double-click one row's name the way DearPyGui reports the gesture."""
-    click_row_name(TAGS, row.key, kind=DOUBLE_CLICKED, button=dpg.mvMouseButton_Left)
+    click_row_name(TAGS, row.key, kind=DOUBLE_CLICKED_HANDLER_TYPE, button=dpg.mvMouseButton_Left)
 
 
 def click_name(row: StemRowViewModel, value: bool) -> None:

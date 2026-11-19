@@ -83,13 +83,8 @@ class FileTree:
         """Whether ``row`` stands open onto the rows under it."""
         return bool(self._bridge.ask(lambda: dpg.get_value(row)))
 
-    def open_by_click(self, row: Item) -> None:
-        """Brings ``row`` into view and clicks it, which opens or closes a row of a tree opened by a click."""
-        self._hand.scroll_into_view(row)
-        self._hand.click(row)
-
     def click(self, row: Item) -> None:
-        """Brings ``row`` into view and clicks it."""
+        """Brings ``row`` into view and clicks it, which opens or closes a row of a tree opened by a click."""
         self._hand.scroll_into_view(row)
         self._hand.click(row)
 

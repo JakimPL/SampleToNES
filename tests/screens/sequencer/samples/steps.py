@@ -5,8 +5,9 @@ from pathlib import Path
 from automation.boundaries.dialogs import DialogKind
 from automation.dearpygui.items.types import Item
 from automation.screen import Screen
-from automation.steps.reconstructions import BY_CONFIGURATION, expect_open
+from automation.steps.reconstructions import expect_open
 from automation.steps.sequencer import voice_row
+from automation.steps.trees import listed_row
 from automation.views.browsers import FileTree
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.tags.general import (
@@ -24,28 +25,6 @@ from tests.screens.sequencer.samples.constants import (
     UNEXPECTED_FAILURE,
     UNSOUND_FAILURE,
 )
-
-
-def listed_row(screen: Screen, browser: FileTree, path: Path) -> Item:
-    """The row of ``path`` under the heading listing reconstructions by configuration in ``browser``.
-
-    Every row above it that stands closed is opened with a click, so the row is in reach.
-    """
-    heading = screen.expect_item(
-        partial(browser.heading, screen.words(BY_CONFIGURATION)),
-        description="the heading listing reconstructions by configuration",
-    )
-    if not browser.is_open(heading):
-        browser.open_by_click(heading)
-        screen.expect(partial(browser.is_open, heading), bool, description="the heading open")
-
-    row = screen.expect_item(partial(browser.file_row, path), description=f"the row of {path.name}")
-    for above in browser.rows_above(row):
-        if not browser.is_open(above):
-            browser.open_by_click(above)
-            screen.expect(partial(browser.is_open, above), bool, description=f"the rows above {path.name} open")
-
-    return row
 
 
 def choose_on_the_row(screen: Screen, browser: FileTree, path: Path, label: str) -> None:

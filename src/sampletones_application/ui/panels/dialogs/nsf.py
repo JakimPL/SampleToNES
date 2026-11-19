@@ -223,7 +223,7 @@ class GUINSFExportWindow(GUISeededDialogWindow[NSFExportViewModel]):
         self._install_navigation(
             [
                 *(FocusStop.field(field.input_tag) for field in self._fields),
-                *(FocusStop.field(self._channel_tag(channel)) for channel in ChannelName.items()),
+                *(FocusStop.field(self.channel_tag(channel)) for channel in ChannelName.items()),
                 FocusStop.field(TAG_SETTINGS_NSF_COMBO_REPEAT),
                 FocusStop.field(TAG_SETTINGS_NSF_INPUT_LOOP_FRAME),
                 FocusStop.field(TAG_SETTINGS_NSF_COMBO_SCHEME),
@@ -263,7 +263,7 @@ class GUINSFExportWindow(GUISeededDialogWindow[NSFExportViewModel]):
         """Lays the channels out in one row, each tinted in its own color where the source sounds it."""
         view_model = self.view_model
         for channel in ChannelName.items():
-            tag = self._channel_tag(channel)
+            tag = self.channel_tag(channel)
             dpg.add_checkbox(
                 tag=tag,
                 label=channel_label(self._language_manager, channel),
@@ -405,7 +405,7 @@ class GUINSFExportWindow(GUISeededDialogWindow[NSFExportViewModel]):
 
     def _render_channels(self, view_model: NSFExportViewModel) -> None:
         for channel in ChannelName.items():
-            tag = self._channel_tag(channel)
+            tag = self.channel_tag(channel)
             dpg_configure_item(tag, enabled=view_model.channel_offered(channel))
             dpg_set_value(tag, view_model.channel_sounded(channel))
 
@@ -530,5 +530,6 @@ class GUINSFExportWindow(GUISeededDialogWindow[NSFExportViewModel]):
         return self.view_model.choices
 
     @staticmethod
-    def _channel_tag(channel: ChannelName) -> str:
+    def channel_tag(channel: ChannelName) -> str:
+        """The checkbox that offers ``channel`` to the export."""
         return compose_tag(TAG_SETTINGS_NSF_CHECKBOX_CHANNEL, channel.value)

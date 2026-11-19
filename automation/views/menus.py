@@ -8,7 +8,7 @@ from automation.dearpygui.geometry import Point
 from automation.dearpygui.hand import Hand
 from automation.dearpygui.items.reading import read_item, read_value
 from automation.dearpygui.items.texts import find_labelled, read_label
-from automation.dearpygui.items.types import MENU_ITEM_TYPE, MENU_TYPE, Item
+from automation.dearpygui.items.types import GROUP_TYPE, MENU_ITEM_TYPE, MENU_TYPE, Item
 from automation.dearpygui.items.viewport import read_viewport
 from automation.dearpygui.semantic import invoke
 from automation.frames import changed_box, frame_pixels, settled_frame
@@ -27,7 +27,6 @@ ENTRY_INSET: Final[Point] = Point(x=12, y=8)
 HOVER_SECONDS: Final[float] = 5.0
 ENABLED: Final[str] = "enabled"
 SHORTCUT: Final[str] = "shortcut"
-GROUP_TYPE: Final[str] = "mvAppItemType::mvGroup"
 FAR_END_INSET: Final[int] = 30
 
 
