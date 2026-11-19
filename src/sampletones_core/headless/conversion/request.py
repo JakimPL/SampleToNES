@@ -28,8 +28,8 @@ def channels_named(stated: Optional[str]) -> List[ChannelName]:
     return parsed_items(
         stated,
         DEFAULT_CHANNELS,
-        ChannelName,
-        lambda name: f"Unknown channel {name!r}; the channels are {known}.",
+        parse=ChannelName,
+        refusal=lambda name: f"Unknown channel {name!r}; the channels are {known}.",
     )
 
 

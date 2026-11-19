@@ -57,6 +57,7 @@ def listed_items(stated: str) -> List[str]:
 def parsed_items(
     stated: Optional[str],
     default: Sequence[ItemT],
+    *,
     parse: Callable[[str], ItemT],
     refusal: Callable[[str], str],
 ) -> List[ItemT]:

@@ -32,8 +32,8 @@ def methods_named(stated: Optional[str], default: Sequence[SpectrumMethod]) -> L
     return parsed_items(
         stated,
         default,
-        SpectrumMethod,
-        lambda name: f"Unknown spectrum method {name!r}; the methods are {known}.",
+        parse=SpectrumMethod,
+        refusal=lambda name: f"Unknown spectrum method {name!r}; the methods are {known}.",
     )
 
 
@@ -43,7 +43,7 @@ def floats_named(stated: Optional[str], default: Sequence[float]) -> List[float]
     Raises:
         ValueError: If a value is no number.
     """
-    return parsed_items(stated, default, float, lambda value: f"Not a number: {value!r}.")
+    return parsed_items(stated, default, parse=float, refusal=lambda value: f"Not a number: {value!r}.")
 
 
 def base_configuration(path: Optional[Path]) -> Config:
