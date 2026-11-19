@@ -183,7 +183,7 @@ def calibrate(request: CalibrationRequest) -> CalibrationOutcome:
         ResumeRefusedError: If a run is resumed in a directory holding no run, or another run.
     """
     sample_rate = request.base.library.sample_rate
-    items = [item for item in reference_corpus(request.base) if item.category in request.categories]
+    items = reference_corpus(request.base, request.categories)
     variants = build_variants(
         request.base,
         request.methods,

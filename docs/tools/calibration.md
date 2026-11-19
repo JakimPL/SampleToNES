@@ -178,6 +178,8 @@ report and the page present in this order:
 | Family | Sounds | Played exactly by the channels |
 |---|---|---|
 | `sines` | sine tones | no |
+| `notes` | single notes of every channel, laid on a grid | yes |
+| `chords` | two to four channels held together | yes |
 | `sequences` | melodies, bass lines, drums and pieces written as NES frames | yes |
 | `tones` | single sounds of other shapes: pulse waves, noise, attacks, level changes | no |
 | `composites` | several sounds together | no |
@@ -198,17 +200,34 @@ of decision:
 | `mix` | `composites` | a tone under hiss, and a bass under hi-hat ticks | a tone and noise together |
 | `polyphony` | `composites` | a chord, and a melody over a snare | several voices at once |
 
-The NES sounds form the `sequences` family. They are written out frame by frame, as instructions the four channels play, and rendered
-the way the channels play them. Each one is a *round trip*: the program could in principle play it
-back exactly, and the run knows every frame it should find. They use plain notes and volumes, with no
-bends or sweeps.
+The `notes`, `chords` and `sequences` families are written out frame by frame, as instructions the
+four channels play, and rendered the way the channels play them. Each one is a *round trip*: the
+program could in principle play it back exactly, and the run knows every frame it should find. They use
+plain notes and volumes, with no bends or sweeps.
 
-| Category | Sounds | What it tests |
-|---|---|---|
-| `nes-pulse` | every duty cycle, a volume ladder, a melody from C3 to C6, low notes, plucked notes | the pulse's pitch, duty and volume |
-| `nes-triangle` | a bass line from E1 to E3, and a melody | the triangle's pitch, the bass register above all |
-| `nes-noise` | every period of both modes, and a kick, snare and hat pattern | the noise channel's period, mode and decays |
-| `nes-mix` | a melody over a bass, two pulses in intervals, and a short piece on all four channels | taking sounds that play together apart |
+The single notes are laid on a grid, each held for 36 frames and then silent for 12:
+
+| Category | Notes |
+|---|---|
+| `notes-pulse` | every perfect fourth from note 33 to 118, at volumes 15, 7, 3 and 1, with the 12.5% and 50% duty cycles and one of 25% and 75% in turn |
+| `notes-triangle` | every perfect fourth from note 33 to 118 |
+| `notes-noise` | all 16 periods in both modes, at volumes 15, 7, 3 and 1 |
+
+The page lists the loudest of them at every fourth pitch and every fifth period. `--skip notes` leaves
+the family out, which shortens a run considerably.
+
+| Category | Chords |
+|---|---|
+| `chords-two` | two pulses in a unison, third, fifth and octave; a pulse over a triangle bass; a tone and the noise |
+| `chords-three` | a triad on two pulses and the triangle, loud and quiet; two pulses and hiss |
+| `chords-four` | every channel at once |
+
+| Category | Sequences |
+|---|---|
+| `sequences-melody` | a pulse melody from C3 to C6, plucked notes, a triangle melody, and a fast passage of 6-frame notes |
+| `sequences-bass` | a triangle bass line from E1 to E3 |
+| `sequences-drums` | a kick, snare and hat pattern from the noise channel's decays |
+| `sequences-mixed` | a melody over a bass, two pulses in intervals, a chord progression, and a short piece on all four channels |
 
 A round trip is converted over all four channels, so the run also hears whether the channels a sound
 leaves out stay silent.

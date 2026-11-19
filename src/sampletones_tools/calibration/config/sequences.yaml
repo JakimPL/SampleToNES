@@ -1,24 +1,6 @@
 items:
-  - name: nes-pulse-duties
-    category: nes-pulse
-    channels:
-      pulse1:
-        - { count: 30, frame: { "on": true, pitch: 69, volume: 15, duty_cycle: 0 } }
-        - { count: 30, frame: { "on": true, pitch: 69, volume: 15, duty_cycle: 1 } }
-        - { count: 30, frame: { "on": true, pitch: 69, volume: 15, duty_cycle: 2 } }
-        - { count: 30, frame: { "on": true, pitch: 69, volume: 15, duty_cycle: 3 } }
-  - name: nes-pulse-volumes
-    category: nes-pulse
-    channels:
-      pulse1:
-        - { count: 20, frame: { "on": true, pitch: 64, volume: 15, duty_cycle: 2 } }
-        - { count: 20, frame: { "on": true, pitch: 64, volume: 12, duty_cycle: 2 } }
-        - { count: 20, frame: { "on": true, pitch: 64, volume: 9, duty_cycle: 2 } }
-        - { count: 20, frame: { "on": true, pitch: 64, volume: 6, duty_cycle: 2 } }
-        - { count: 20, frame: { "on": true, pitch: 64, volume: 3, duty_cycle: 2 } }
-        - { count: 20, frame: { "on": true, pitch: 64, volume: 1, duty_cycle: 2 } }
-  - name: nes-pulse-melody
-    category: nes-pulse
+  - name: pulse-melody
+    category: sequences-melody
     channels:
       pulse1:
         - { count: 12, frame: { "on": true, pitch: 48, volume: 12, duty_cycle: 1 } }
@@ -33,16 +15,8 @@ items:
         - { count: 12, frame: { "on": true, pitch: 76, volume: 12, duty_cycle: 1 } }
         - { count: 12, frame: { "on": true, pitch: 79, volume: 12, duty_cycle: 1 } }
         - { count: 18, frame: { "on": true, pitch: 84, volume: 12, duty_cycle: 1 } }
-  - name: nes-pulse-low
-    category: nes-pulse
-    channels:
-      pulse1:
-        - { count: 30, frame: { "on": true, pitch: 33, volume: 15, duty_cycle: 2 } }
-        - { count: 30, frame: { "on": true, pitch: 36, volume: 15, duty_cycle: 2 } }
-        - { count: 30, frame: { "on": true, pitch: 40, volume: 15, duty_cycle: 2 } }
-        - { count: 30, frame: { "on": true, pitch: 45, volume: 15, duty_cycle: 2 } }
-  - name: nes-pulse-plucks
-    category: nes-pulse
+  - name: pulse-plucks
+    category: sequences-melody
     channels:
       pulse1:
         - { count: 3, frame: { "on": true, pitch: 64, volume: 15, duty_cycle: 2 } }
@@ -81,8 +55,48 @@ items:
         - { count: 3, frame: { "on": true, pitch: 76, volume: 3, duty_cycle: 2 } }
         - { count: 3, frame: { "on": true, pitch: 76, volume: 2, duty_cycle: 2 } }
         - { count: 6, frame: { "on": false, pitch: 76, volume: 0, duty_cycle: 2 } }
-  - name: nes-triangle-bass
-    category: nes-triangle
+  - name: triangle-melody
+    category: sequences-melody
+    channels:
+      triangle:
+        - { count: 16, frame: { "on": true, pitch: 69 } }
+        - { count: 16, frame: { "on": true, pitch: 72 } }
+        - { count: 16, frame: { "on": true, pitch: 76 } }
+        - { count: 16, frame: { "on": true, pitch: 79 } }
+        - { count: 16, frame: { "on": true, pitch: 76 } }
+        - { count: 16, frame: { "on": true, pitch: 72 } }
+        - { count: 8, frame: { "on": false, pitch: 72 } }
+        - { count: 16, frame: { "on": true, pitch: 81 } }
+  - name: fast-passage
+    category: sequences-melody
+    channels:
+      pulse1:
+        - { count: 6, frame: { "on": true, pitch: 72, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 74, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 76, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 77, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 79, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 81, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 83, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 84, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 83, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 81, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 79, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 77, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 76, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 74, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 72, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 71, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 69, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 67, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 69, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 71, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 72, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 74, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 76, volume: 12, duty_cycle: 1 } }
+        - { count: 6, frame: { "on": true, pitch: 72, volume: 12, duty_cycle: 1 } }
+  - name: triangle-bass
+    category: sequences-bass
     channels:
       triangle:
         - { count: 15, frame: { "on": true, pitch: 40 } }
@@ -95,50 +109,8 @@ items:
         - { count: 15, frame: { "on": true, pitch: 55 } }
         - { count: 15, frame: { "on": true, pitch: 57 } }
         - { count: 15, frame: { "on": true, pitch: 64 } }
-  - name: nes-triangle-melody
-    category: nes-triangle
-    channels:
-      triangle:
-        - { count: 16, frame: { "on": true, pitch: 69 } }
-        - { count: 16, frame: { "on": true, pitch: 72 } }
-        - { count: 16, frame: { "on": true, pitch: 76 } }
-        - { count: 16, frame: { "on": true, pitch: 79 } }
-        - { count: 16, frame: { "on": true, pitch: 76 } }
-        - { count: 16, frame: { "on": true, pitch: 72 } }
-        - { count: 8, frame: { "on": false, pitch: 72 } }
-        - { count: 16, frame: { "on": true, pitch: 81 } }
-  - name: nes-noise-periods
-    category: nes-noise
-    channels:
-      noise:
-        - { count: 8, frame: { "on": true, period: 0, volume: 12, short: false } }
-        - { count: 8, frame: { "on": true, period: 1, volume: 12, short: false } }
-        - { count: 8, frame: { "on": true, period: 2, volume: 12, short: false } }
-        - { count: 8, frame: { "on": true, period: 3, volume: 12, short: false } }
-        - { count: 8, frame: { "on": true, period: 4, volume: 12, short: false } }
-        - { count: 8, frame: { "on": true, period: 5, volume: 12, short: false } }
-        - { count: 8, frame: { "on": true, period: 6, volume: 12, short: false } }
-        - { count: 8, frame: { "on": true, period: 7, volume: 12, short: false } }
-        - { count: 8, frame: { "on": true, period: 8, volume: 12, short: false } }
-        - { count: 8, frame: { "on": true, period: 9, volume: 12, short: false } }
-        - { count: 8, frame: { "on": true, period: 10, volume: 12, short: false } }
-        - { count: 8, frame: { "on": true, period: 11, volume: 12, short: false } }
-        - { count: 8, frame: { "on": true, period: 12, volume: 12, short: false } }
-        - { count: 8, frame: { "on": true, period: 13, volume: 12, short: false } }
-        - { count: 8, frame: { "on": true, period: 14, volume: 12, short: false } }
-        - { count: 8, frame: { "on": true, period: 15, volume: 12, short: false } }
-  - name: nes-noise-short
-    category: nes-noise
-    channels:
-      noise:
-        - { count: 20, frame: { "on": true, period: 0, volume: 12, short: true } }
-        - { count: 20, frame: { "on": true, period: 3, volume: 12, short: true } }
-        - { count: 20, frame: { "on": true, period: 6, volume: 12, short: true } }
-        - { count: 20, frame: { "on": true, period: 9, volume: 12, short: true } }
-        - { count: 20, frame: { "on": true, period: 12, volume: 12, short: true } }
-        - { count: 20, frame: { "on": true, period: 15, volume: 12, short: true } }
-  - name: nes-noise-drums
-    category: nes-noise
+  - name: noise-drums
+    category: sequences-drums
     channels:
       noise:
         - { count: 3, frame: { "on": true, period: 12, volume: 15, short: false } }
@@ -193,8 +165,8 @@ items:
         - { count: 3, frame: { "on": false, period: 0, volume: 0, short: false } }
         - { count: 2, frame: { "on": true, period: 1, volume: 8, short: false } }
         - { count: 10, frame: { "on": false, period: 0, volume: 0, short: false } }
-  - name: nes-mix-melody-bass
-    category: nes-mix
+  - name: melody-over-bass
+    category: sequences-mixed
     channels:
       pulse1:
         - { count: 24, frame: { "on": true, pitch: 72, volume: 11, duty_cycle: 2 } }
@@ -207,8 +179,8 @@ items:
         - { count: 24, frame: { "on": true, pitch: 53 } }
         - { count: 24, frame: { "on": true, pitch: 55 } }
         - { count: 24, frame: { "on": true, pitch: 48 } }
-  - name: nes-mix-two-pulses
-    category: nes-mix
+  - name: two-pulses
+    category: sequences-mixed
     channels:
       pulse1:
         - { count: 40, frame: { "on": true, pitch: 64, volume: 12, duty_cycle: 2 } }
@@ -218,8 +190,26 @@ items:
         - { count: 40, frame: { "on": true, pitch: 60, volume: 10, duty_cycle: 1 } }
         - { count: 40, frame: { "on": true, pitch: 62, volume: 10, duty_cycle: 1 } }
         - { count: 40, frame: { "on": true, pitch: 64, volume: 10, duty_cycle: 1 } }
-  - name: nes-mix-piece
-    category: nes-mix
+  - name: chord-progression
+    category: sequences-mixed
+    channels:
+      pulse1:
+        - { count: 36, frame: { "on": true, pitch: 60, volume: 10, duty_cycle: 2 } }
+        - { count: 36, frame: { "on": true, pitch: 60, volume: 10, duty_cycle: 2 } }
+        - { count: 36, frame: { "on": true, pitch: 62, volume: 10, duty_cycle: 2 } }
+        - { count: 36, frame: { "on": true, pitch: 60, volume: 10, duty_cycle: 2 } }
+      pulse2:
+        - { count: 36, frame: { "on": true, pitch: 64, volume: 8, duty_cycle: 1 } }
+        - { count: 36, frame: { "on": true, pitch: 65, volume: 8, duty_cycle: 1 } }
+        - { count: 36, frame: { "on": true, pitch: 67, volume: 8, duty_cycle: 1 } }
+        - { count: 36, frame: { "on": true, pitch: 64, volume: 8, duty_cycle: 1 } }
+      triangle:
+        - { count: 36, frame: { "on": true, pitch: 48 } }
+        - { count: 36, frame: { "on": true, pitch: 53 } }
+        - { count: 36, frame: { "on": true, pitch: 55 } }
+        - { count: 36, frame: { "on": true, pitch: 48 } }
+  - name: piece
+    category: sequences-mixed
     channels:
       pulse1:
         - { count: 12, frame: { "on": true, pitch: 76, volume: 12, duty_cycle: 2 } }

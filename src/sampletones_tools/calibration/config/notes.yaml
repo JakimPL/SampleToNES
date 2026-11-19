@@ -1,0 +1,10 @@
+first_pitch: 33
+last_pitch: 118
+pitch_step: 5
+volumes: [15, 7, 3, 1]
+duty_cycles: [0, 2]
+alternating_duty_cycles: [1, 3]
+sounding_frames: 36
+silent_frames: 12
+listed_pitch_stride: 4
+listed_noise_period_stride: 5

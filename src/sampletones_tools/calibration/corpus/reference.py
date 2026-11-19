@@ -1,36 +1,86 @@
-from typing import List, Tuple
+from dataclasses import dataclass
+from typing import Callable, Collection, List, Tuple
 
 from sampletones_core.configs import Config
+from sampletones_tools.calibration.config.chords import ChordsConfig
 from sampletones_tools.calibration.config.corpus import CorpusConfig
-from sampletones_tools.calibration.config.nes import NesCorpusConfig
+from sampletones_tools.calibration.config.notes import NotesConfig
+from sampletones_tools.calibration.config.sequences import SequencesConfig
 
+from .chords import build_chords
 from .families import FAMILY_ORDER, Family
 from .item import CorpusItem
-from .nes import build_nes_corpus
+from .nes import build_sequences
+from .notes import NOTE_CATEGORIES, build_notes
 from .synthesis import PROBE_FAMILIES, build_corpus, corpus_probes
 
+Catalog = List[Tuple[Family, str]]
 
-def reference_corpus(config: Config) -> List[CorpusItem]:
-    """Every reference sound the package ships, family by family in the order a report presents them.
+
+@dataclass(frozen=True)
+class CorpusSource:
+    """One source of reference sounds: the categories it holds, and how its sounds are made.
+
+    Attributes:
+        catalog: Every category the source holds, beside its family, in the order it holds them.
+        build: Makes the source's sounds at a configuration's rates.
+    """
+
+    catalog: Catalog
+    build: Callable[[Config], List[CorpusItem]]
+
+
+def reference_corpus(config: Config, categories: Collection[str]) -> List[CorpusItem]:
+    """The reference sounds of ``categories``, family by family in the order a report presents them.
+
+    A source is made only where it holds a category asked for, so a run of a few categories spends
+    nothing on the rest.
 
     Args:
         config: The configuration the run converts with, whose rates the sounds are made at.
+        categories: The categories asked for.
     """
     items = [
-        *build_corpus(config.library.sample_rate, config=CorpusConfig.load()),
-        *build_nes_corpus(config, corpus=NesCorpusConfig.load()),
+        item
+        for source in _sources()
+        if any(category in categories for _, category in source.catalog)
+        for item in source.build(config)
+        if item.category in categories
     ]
     return sorted(items, key=lambda item: FAMILY_ORDER[item.family])
 
 
-def reference_catalog() -> List[Tuple[Family, str]]:
+def reference_catalog() -> Catalog:
     """Every category the reference sounds fall in, beside its family, in the order the corpus holds them."""
-    probed = [(PROBE_FAMILIES[category], category) for _, category, _ in corpus_probes(CorpusConfig.load())]
-    written = [(Family.SEQUENCES, item.category) for item in NesCorpusConfig.load().items]
-    ordered = sorted(dict.fromkeys([*probed, *written]), key=lambda entry: FAMILY_ORDER[entry[0]])
-    return list(ordered)
+    entries = [entry for source in _sources() for entry in source.catalog]
+    return sorted(dict.fromkeys(entries), key=lambda entry: FAMILY_ORDER[entry[0]])
 
 
 def reference_categories() -> List[str]:
     """The categories of the reference sounds, in the order the corpus first holds each."""
     return [category for _, category in reference_catalog()]
+
+
+def _sources() -> List[CorpusSource]:
+    probes = CorpusConfig.load()
+    sequences = SequencesConfig.load()
+    grid = NotesConfig.load()
+    chords = ChordsConfig.load()
+    return [
+        CorpusSource(
+            catalog=[(PROBE_FAMILIES[category], category) for _, category, _ in corpus_probes(probes)],
+            build=lambda config: build_corpus(config.library.sample_rate, config=probes),
+        ),
+        CorpusSource(
+            catalog=[(Family.NOTES, category) for category in NOTE_CATEGORIES],
+            build=lambda config: build_notes(config, grid=grid),
+        ),
+        CorpusSource(
+            catalog=[(Family.CHORDS, chord.category) for chord in chords.chords],
+            build=lambda config: build_chords(config, corpus=chords),
+        ),
+        CorpusSource(
+            catalog=[(Family.SEQUENCES, item.category) for item in sequences.items],
+            build=lambda config: build_sequences(config, corpus=sequences),
+        ),
+    ]

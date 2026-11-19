@@ -7,17 +7,18 @@ from sampletones_core.audio.mixing import mix
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.generators import render_channels
-from sampletones_tools.calibration.config.nes import NesCorpusConfig
+from sampletones_core.instructions import PulseInstruction
+from sampletones_tools.calibration.config.sequences import SequencesConfig
 from sampletones_tools.calibration.corpus.item import CorpusItem
-from sampletones_tools.calibration.corpus.nes import build_nes_corpus
+from sampletones_tools.calibration.corpus.nes import build_sequences, held
 
 FRAMES: Final[int] = 6
-CORPUS: Final[NesCorpusConfig] = NesCorpusConfig.model_validate(
+CORPUS: Final[SequencesConfig] = SequencesConfig.model_validate(
     {
         "items": [
             {
                 "name": "tune",
-                "category": "nes-mix",
+                "category": "sequences-mixed",
                 "channels": {
                     "pulse1": [
                         {"count": 4, "frame": {"on": True, "pitch": 60, "volume": 15, "duty_cycle": 2}},
@@ -33,7 +34,7 @@ CORPUS: Final[NesCorpusConfig] = NesCorpusConfig.model_validate(
 
 @pytest.fixture(name="item", scope="module")
 def item_fixture() -> CorpusItem:
-    (item,) = build_nes_corpus(Config(), corpus=CORPUS)
+    (item,) = build_sequences(Config(), corpus=CORPUS)
     return item
 
 
@@ -61,3 +62,13 @@ class TestBuildNesCorpus:
 
     def test_a_round_trip_covers_every_channel(self, item: CorpusItem) -> None:
         assert item.channels == frozenset(ChannelName.items())
+
+
+class TestHeld:
+    def test_an_instruction_holds_then_the_channel_falls_silent(self) -> None:
+        tone = PulseInstruction(on=True, pitch=60, volume=9, duty_cycle=1)
+
+        frames = held(ChannelName.PULSE1, tone, sounding=3, silent=2)
+
+        assert frames[:3] == [tone] * 3
+        assert [frame.on for frame in frames[3:]] == [False, False]

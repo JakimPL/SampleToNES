@@ -253,14 +253,14 @@ class TestCalibrate:
             perceptual_exponents=[1.0],
             temporal_weights=[],
             channels=[ChannelName.PULSE1],
-            categories=["nes-pulse", "tone"],
+            categories=["sequences-melody", "tone"],
             workers=1,
             resume=False,
         )
 
         calibrate(request)
 
-        assert set(measured) == {"nes-pulse", "tone"}
+        assert set(measured) == {"sequences-melody", "tone"}
 
 
 class TestResumingARun:

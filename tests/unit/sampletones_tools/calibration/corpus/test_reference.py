@@ -10,7 +10,7 @@ from sampletones_tools.calibration.corpus.reference import reference_catalog, re
 
 @pytest.fixture(name="items", scope="module")
 def items_fixture() -> List[CorpusItem]:
-    return reference_corpus(Config())
+    return reference_corpus(Config(), reference_categories())
 
 
 class TestReferenceCorpus:
@@ -24,6 +24,9 @@ class TestReferenceCorpus:
         positions = [FAMILY_ORDER[item.family] for item in items]
 
         assert positions == sorted(positions)
+
+    def test_a_run_of_a_few_categories_holds_those_alone(self) -> None:
+        assert {item.category for item in reference_corpus(Config(), ["tone", "chords-two"])} == {"tone", "chords-two"}
 
     def test_names_stay_unique_across_the_synthesized_and_written_sounds(self, items: List[CorpusItem]) -> None:
         names = [item.name for item in items]

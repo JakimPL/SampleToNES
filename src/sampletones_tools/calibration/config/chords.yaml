@@ -1,0 +1,100 @@
+sounding_frames: 36
+silent_frames: 12
+chords:
+  - name: chord-pulses-unison
+    category: chords-two
+    listed: true
+    frames:
+      pulse1: { "on": true, pitch: 69, volume: 12, duty_cycle: 2 }
+      pulse2: { "on": true, pitch: 69, volume: 9, duty_cycle: 1 }
+  - name: chord-pulses-third
+    category: chords-two
+    listed: false
+    frames:
+      pulse1: { "on": true, pitch: 64, volume: 12, duty_cycle: 2 }
+      pulse2: { "on": true, pitch: 68, volume: 10, duty_cycle: 2 }
+  - name: chord-pulses-fifth
+    category: chords-two
+    listed: true
+    frames:
+      pulse1: { "on": true, pitch: 60, volume: 12, duty_cycle: 1 }
+      pulse2: { "on": true, pitch: 67, volume: 10, duty_cycle: 2 }
+  - name: chord-pulses-octave
+    category: chords-two
+    listed: false
+    frames:
+      pulse1: { "on": true, pitch: 57, volume: 12, duty_cycle: 2 }
+      pulse2: { "on": true, pitch: 69, volume: 8, duty_cycle: 0 }
+  - name: chord-pulses-low-fifth
+    category: chords-two
+    listed: false
+    frames:
+      pulse1: { "on": true, pitch: 45, volume: 14, duty_cycle: 2 }
+      pulse2: { "on": true, pitch: 52, volume: 10, duty_cycle: 1 }
+  - name: chord-bass-and-lead
+    category: chords-two
+    listed: true
+    frames:
+      pulse1: { "on": true, pitch: 69, volume: 11, duty_cycle: 2 }
+      triangle: { "on": true, pitch: 45 }
+  - name: chord-bass-and-tenth
+    category: chords-two
+    listed: false
+    frames:
+      pulse1: { "on": true, pitch: 64, volume: 10, duty_cycle: 1 }
+      triangle: { "on": true, pitch: 52 }
+  - name: chord-bass-under-pulse
+    category: chords-two
+    listed: true
+    frames:
+      pulse1: { "on": true, pitch: 57, volume: 9, duty_cycle: 2 }
+      triangle: { "on": true, pitch: 57 }
+  - name: chord-tone-and-hiss
+    category: chords-two
+    listed: false
+    frames:
+      pulse1: { "on": true, pitch: 72, volume: 12, duty_cycle: 2 }
+      noise: { "on": true, period: 3, volume: 6, short: false }
+  - name: chord-bass-and-rumble
+    category: chords-two
+    listed: false
+    frames:
+      triangle: { "on": true, pitch: 52 }
+      noise: { "on": true, period: 12, volume: 8, short: false }
+  - name: chord-triad
+    category: chords-three
+    listed: true
+    frames:
+      pulse1: { "on": true, pitch: 64, volume: 11, duty_cycle: 2 }
+      pulse2: { "on": true, pitch: 67, volume: 9, duty_cycle: 1 }
+      triangle: { "on": true, pitch: 60 }
+  - name: chord-triad-quiet
+    category: chords-three
+    listed: false
+    frames:
+      pulse1: { "on": true, pitch: 64, volume: 5, duty_cycle: 2 }
+      pulse2: { "on": true, pitch: 67, volume: 4, duty_cycle: 1 }
+      triangle: { "on": true, pitch: 60 }
+  - name: chord-pulses-and-hiss
+    category: chords-three
+    listed: false
+    frames:
+      pulse1: { "on": true, pitch: 72, volume: 12, duty_cycle: 2 }
+      pulse2: { "on": true, pitch: 76, volume: 9, duty_cycle: 1 }
+      noise: { "on": true, period: 1, volume: 5, short: true }
+  - name: chord-full
+    category: chords-four
+    listed: true
+    frames:
+      pulse1: { "on": true, pitch: 72, volume: 11, duty_cycle: 2 }
+      pulse2: { "on": true, pitch: 67, volume: 8, duty_cycle: 1 }
+      triangle: { "on": true, pitch: 60 }
+      noise: { "on": true, period: 2, volume: 5, short: false }
+  - name: chord-full-loud
+    category: chords-four
+    listed: false
+    frames:
+      pulse1: { "on": true, pitch: 76, volume: 15, duty_cycle: 2 }
+      pulse2: { "on": true, pitch: 72, volume: 15, duty_cycle: 0 }
+      triangle: { "on": true, pitch: 48 }
+      noise: { "on": true, period: 6, volume: 12, short: false }

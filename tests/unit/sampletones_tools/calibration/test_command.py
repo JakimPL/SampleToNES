@@ -78,7 +78,7 @@ class TestCalibration:
                 "--channels",
                 "pulse1",
                 "--categories",
-                "nes-mix,tone",
+                "sequences-mixed,tone",
                 "-o",
                 str(tmp_path / "run"),
             ],
@@ -90,7 +90,7 @@ class TestCalibration:
         assert request.perceptual_exponents == [0.5, 1.0]
         assert request.temporal_weights == [0.25]
         assert request.channels == [ChannelName.PULSE1]
-        assert request.categories == ["nes-mix", "tone"]
+        assert request.categories == ["sequences-mixed", "tone"]
         assert request.output == tmp_path / "run"
 
     def test_without_options_the_run_measures_the_default_settings_under_the_suite(
@@ -139,7 +139,7 @@ class TestCalibration:
     def test_a_skipped_family_is_left_out_of_the_run(self, calibration: RecordedCalibration) -> None:
         assert dispatch(COMMANDS, ["calibration", "--skip", "sequences"]) == 0
 
-        assert "nes-mix" not in calibration.requests[0].categories
+        assert "sequences-mixed" not in calibration.requests[0].categories
         assert "tone" in calibration.requests[0].categories
 
     def test_the_workers_and_the_resume_are_read_from_the_options(

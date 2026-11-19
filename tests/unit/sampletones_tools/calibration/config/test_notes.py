@@ -1,0 +1,36 @@
+from typing import Any, Dict, Final
+
+import pytest
+from pydantic import ValidationError
+
+from sampletones_tools.calibration.config.notes import NotesConfig
+
+FIELDS: Final[Dict[str, Any]] = {
+    "first_pitch": 33,
+    "last_pitch": 45,
+    "pitch_step": 6,
+    "volumes": [15, 3],
+    "duty_cycles": [2],
+    "alternating_duty_cycles": [],
+    "sounding_frames": 4,
+    "silent_frames": 2,
+    "listed_pitch_stride": 2,
+    "listed_noise_period_stride": 4,
+}
+
+
+class TestNotesConfig:
+    def test_the_grid_steps_from_its_first_pitch_up_to_its_last(self) -> None:
+        assert NotesConfig.model_validate(FIELDS).pitches == [33, 39, 45]
+
+    @pytest.mark.parametrize(
+        "changed",
+        [{"last_pitch": 32}, {"volumes": [0]}, {"duty_cycles": [4]}, {"duty_cycles": []}],
+        ids=["last_below_first", "silent_volume", "unknown_duty", "no_duty"],
+    )
+    def test_a_grid_the_channels_cannot_play_is_refused(self, changed: Dict[str, Any]) -> None:
+        with pytest.raises(ValidationError):
+            NotesConfig.model_validate({**FIELDS, **changed})
+
+    def test_the_packaged_grid_reads(self) -> None:
+        assert NotesConfig.load().pitches
