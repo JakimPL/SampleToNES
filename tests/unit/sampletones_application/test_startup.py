@@ -122,9 +122,20 @@ __all__ = ["app", "held_queue"]
 
 
 @contextmanager
+def _portaudio_stood_in() -> Generator[None, None, None]:
+    """PortAudio started and stopped without reaching the machine's audio system, whatever it runs."""
+    with (
+        patch("pyaudio.PyAudio.__init__", return_value=None),
+        patch("pyaudio.PyAudio.terminate"),
+    ):
+        yield
+
+
+@contextmanager
 def _no_audio_devices() -> Generator[None, None, None]:
     """The machine a headless run comes up on: the backend reports no output device at all."""
     with (
+        _portaudio_stood_in(),
         patch("pyaudio.PyAudio.get_device_count", return_value=0),
         patch(
             "pyaudio.PyAudio.get_default_output_device_info",
@@ -149,6 +160,7 @@ def _viewport_geometry() -> Generator[None, None, None]:
 def _one_audio_device() -> Generator[None, None, None]:
     """A machine offering one pair of speakers as its default output."""
     with (
+        _portaudio_stood_in(),
         patch("pyaudio.PyAudio.get_device_count", return_value=1),
         patch("pyaudio.PyAudio.get_device_info_by_index", return_value=SPEAKERS),
         patch("pyaudio.PyAudio.get_default_output_device_info", return_value=SPEAKERS),
