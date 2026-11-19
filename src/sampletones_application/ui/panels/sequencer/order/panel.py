@@ -884,6 +884,7 @@ class GUISequencerOrderPanel(GUIPanel):
 
         self._apply_state(OrderInputState(cursor=cursor))
 
+    # TODO: to abstract
     def _on_cell_held(self, _sender: Sender, app_data: Sender) -> None:
         """Carries the selection to the cell under a held pointer, which is what drags a range out.
 
@@ -1036,15 +1037,18 @@ class GUISequencerOrderPanel(GUIPanel):
 
         self._menu.show_for_channel(self._label_rows[clicked_item])
 
+    # TODO: to abstract
     @property
     def edit_surface(self) -> OrderEditSurface:
         """This table as the menu bar's Edit menu reaches it."""
         return self._surface
 
+    # TODO: to abstract
     def input_state(self) -> OrderInputState:
         """Where the cursor stands and what it has selected, which a target is resolved from."""
         return self._input_state
 
+    # TODO: to abstract
     def owns_keys(self) -> bool:
         """Whether the table owns the next key, which is also what the Edit menu asks."""
         return self._keys_active()
@@ -1081,6 +1085,7 @@ class GUISequencerOrderPanel(GUIPanel):
             card_open=self.card_open,
         )
 
+    # TODO: to extract common parts [_on_key_pressed]
     def _on_key_pressed(self, event: KeyEvent) -> bool:
         """Applies an order key to the active cell, reporting whether the table consumed it.
 
