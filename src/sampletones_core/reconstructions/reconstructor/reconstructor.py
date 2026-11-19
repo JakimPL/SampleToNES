@@ -7,7 +7,6 @@ import numpy as np
 from sampletones_core.audio import (
     active_frame_level,
     common_length,
-    load_audio,
     mix,
     mix_scale,
     read_stems,
@@ -365,10 +364,10 @@ class Reconstructor:
         )
 
     def load_audio(self, path: Path) -> np.ndarray:
-        """Loads and preconditions the audio at ``path`` for reconstruction.
+        """The recording at ``path`` at the level a conversion of it alone matches against.
 
-        Resamples to the library sample rate and applies the configured normalization
-        and quantization.
+        It is read through the very loading a conversion reads its recordings by, so a referee
+        comparing a reconstruction with it hears the level the conversion matched.
 
         Args:
             path: Path to the audio file.
@@ -376,13 +375,8 @@ class Reconstructor:
         Returns:
             np.ndarray: The prepared audio.
         """
-        return load_audio(
-            path,
-            target_sample_rate=self.config.library.sample_rate,
-            normalize=self.config.general.normalize,
-            quantize=self.config.general.quantize,
-            quantization_levels=self.config.general.quantization_levels,
-        )
+        (recording,) = self._load_stem_recordings([path]).recordings
+        return recording
 
     def get_coefficient(
         self,

@@ -3,8 +3,8 @@ from typing import Final, Tuple
 
 import numpy as np
 
-from sampletones_core.audio.io import UNIT_SCALE, load_audio, mix_scale, read_stems, scale_stems, write_wave
-from sampletones_core.audio.processing import quantize
+from sampletones_core.audio.io import UNIT_SCALE, mix_scale, read_recording, read_stems, scale_stems, write_wave
+from sampletones_core.audio.processing import normalize, quantize
 from sampletones_core.configs import Config
 
 SAMPLE_RATE: Final[int] = Config().library.sample_rate
@@ -83,10 +83,7 @@ class TestScaleStems:
 
         (loaded,) = _scaled(recordings, mix_scale(recordings, normalize=True))
 
-        np.testing.assert_allclose(
-            loaded,
-            load_audio(path, target_sample_rate=SAMPLE_RATE, normalize=True, quantize=False),
-        )
+        np.testing.assert_allclose(loaded, normalize(read_recording(path, target_sample_rate=SAMPLE_RATE)))
 
     def test_the_recordings_keep_their_balance(self, tmp_path: Path) -> None:
         louder, quieter = _scaled(

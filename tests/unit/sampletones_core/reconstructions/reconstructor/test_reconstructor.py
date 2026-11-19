@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
+from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
@@ -30,6 +31,10 @@ TRIANGLE_LEVEL: Final[float] = FULL_SCALE_RMS_LEVELS[GeneratorClassName.TRIANGLE
 SINE_FRAMES: Final[int] = 30
 SINE_AMPLITUDE: Final[float] = 0.8
 SINE_CYCLES_PER_FRAME: Final[int] = 4
+OFF_RATE: Final[int] = 48000
+OFF_RATE_ABOVE: Final[int] = 96000
+SQUARE_PEAK: Final[float] = 0.5
+SQUARE_FREQUENCY: Final[float] = 220.0
 
 
 def _make_reconstructor(config: Config, library_data: InstructionLibraryData) -> Reconstructor:
@@ -310,3 +315,46 @@ class TestTheAudioAReconstructionRecords:
                 rendered[channel_name],
                 atol=1e-6,
             )
+
+
+class TestARecordingIsReadAtTheLevelItsConversionMatches:
+    """Calibration compares a reconstruction with the recording it was made from, so the recording
+    is read at the level the conversion matched: scaled after it reaches the library's rate, as the
+    conversion scales it. Resampling a square wave rings above its peak, which a scale taken before
+    resampling would leave standing past full range."""
+
+    @pytest.mark.parametrize("recording_rate", [OFF_RATE, OFF_RATE_ABOVE, Config().library.sample_rate])
+    def test_the_recording_reaches_full_range_at_any_recording_rate(
+        self,
+        tmp_path: Path,
+        config: Config,
+        library_data: InstructionLibraryData,
+        recording_rate: int,
+    ) -> None:
+        unquantized = config.model_copy(
+            update={"general": config.general.model_copy(update={"normalize": True, "quantize": False})}
+        )
+        path = _write_square(tmp_path / "square.wav", recording_rate)
+        reconstructor = _make_reconstructor(unquantized, library_data)
+
+        loaded = reconstructor.load_audio(path)
+
+        assert float(np.max(np.abs(loaded))) == pytest.approx(1.0, rel=1e-6)
+        np.testing.assert_array_equal(loaded, reconstructor._load_stem_recordings([path]).recordings[0])
+
+    def test_a_silent_recording_stays_silent(
+        self, tmp_path: Path, config: Config, library_data: InstructionLibraryData
+    ) -> None:
+        path = tmp_path / "silence.wav"
+        write_wave(path, OFF_RATE, np.zeros(OFF_RATE // 10, dtype=np.float32))
+
+        loaded = _make_reconstructor(config, library_data).load_audio(path)
+
+        assert not np.any(loaded)
+
+
+def _write_square(path: Path, sample_rate: int) -> Path:
+    time = np.arange(sample_rate // 4) / sample_rate
+    square = SQUARE_PEAK * np.sign(np.sin(2 * np.pi * SQUARE_FREQUENCY * time))
+    write_wave(path, sample_rate, square.astype(np.float32))
+    return path

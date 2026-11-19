@@ -53,7 +53,7 @@ listening page.
 | `report.csv` | every score, one per row, for your own analysis |
 | `renders/<variant>/` | each reconstruction as a FLAC file, and a JSON file with its scores and the frames each channel plays |
 | `renders/<variant>/<sound>/` | the same reconstruction cut by channel, one file per combination |
-| `recordings/` | each reference sound, as the run prepared it for reconstruction |
+| `recordings/` | each reference sound, as the run prepared it for reconstruction: at the library's sample rate and the level the conversion matched |
 | `corpus/` | the reference sounds as generated |
 | `page/` | the stylesheet, the script and the palette the page reads |
 
