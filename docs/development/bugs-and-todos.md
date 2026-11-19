@@ -150,6 +150,18 @@ currently out of line. An entry leaves when the code meets the contract again.
 
 ## Bugs
 
+* A library file with an upper-case extension (`….INS`) on a file system that tells cases apart is listed
+  by the Main tab's explorer, which offers to load it, while the Instructions tab's library card passes it
+  by and the load reports the library missing. A library key names its file as `….ins`, so carrying the
+  name on disk through the catalog closes it.
+* A reconstruction or project stored with a range of notes beyond 24–119 refuses to load, since the range
+  joined a library's identity and is held to the notes instructions name. Such a range takes a hand-edited
+  configuration that reused a library built for another range. Clamping a stored range into 24–119 as a
+  document loads closes it.
+* A reconstruction's folder name hashes the library and generation settings, and leaves out the range of
+  notes. Converting one recording under two ranges therefore uses two libraries and writes both results
+  into one folder under one name. Adding the range to `ConfigDirectoryFields.settings_hash` closes it, and
+  renames the folders an earlier build made.
 * A screen scenario that ends within the first frames after the application starts never stops it. Its
   Exit leaves the application drawing, and the run waits until the suite's timeout, which ends the parent
   process and leaves the scenario's own process running at several cores. A scenario whose body is a single
