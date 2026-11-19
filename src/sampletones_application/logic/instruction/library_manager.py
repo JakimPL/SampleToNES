@@ -18,12 +18,11 @@ from sampletones_core.library import (
     InstructionLibraryKey,
     LibraryHeader,
     LibraryState,
-    create_key_from_filename,
     get_display_name_from_key,
     library_state,
 )
 from sampletones_core.library.creator import InstructionsLibraryCreator
-from sampletones_core.library.filename.fields import InstructionsFilenameFields
+from sampletones_core.library.filename.utils import library_key_from_filename
 from sampletones_core.parallelization import TaskProgress, TaskStatus
 from sampletones_core.structures.tree import (
     GeneratorNode,
@@ -32,6 +31,7 @@ from sampletones_core.structures.tree import (
     Tree,
     TreeNode,
 )
+from sampletones_shared.logger import logger
 from sampletones_shared.paths.extensions import EXT_FILE_LIBRARY
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -154,8 +154,15 @@ class InstructionsLibraryManager(CallbackMixin):
         listed: Dict[InstructionLibraryKey, bool] = {}
         if library_directory.exists():
             for filepath in library_directory.iterdir():
-                if filepath.is_file() and filepath.suffix == EXT_FILE_LIBRARY and self._is_library_file(filepath.stem):
-                    listed[create_key_from_filename(filepath)] = library_state(filepath) is LibraryState.OUTDATED
+                if not filepath.is_file() or filepath.suffix != EXT_FILE_LIBRARY:
+                    continue
+
+                library_key = library_key_from_filename(filepath)
+                if library_key is None:
+                    logger.info(f"Skipping a file whose name names no library: {filepath.name}")
+                    continue
+
+                listed[library_key] = library_state(filepath) is LibraryState.OUTDATED
 
         loaded = self._catalog.library.data
         for removed_key in set(loaded) - set(listed):
@@ -339,20 +346,6 @@ class InstructionsLibraryManager(CallbackMixin):
         if self._creator is not None:
             self._creator.shutdown()
             self._creator = None
-
-    def _is_library_file(self, filename: str) -> bool:
-        """Whether ``filename`` parses as a library filename, per the field schema that builds it.
-
-        Delegates to :class:`InstructionsFilenameFields`, the single source of truth for the
-        ``sr_…_nf_…_ws_…_tg_…_ch_…`` layout: a malformed or out-of-range name raises (``ValueError``,
-        which pydantic's ``ValidationError`` subclasses) and is reported as not-a-library-file.
-        """
-        try:
-            InstructionsFilenameFields.create(filename)
-        except ValueError:
-            return False
-
-        return True
 
     def rebuild_tree(self) -> None:
         root = TreeNode(self._language_manager["instructions.library.label.libraries_node"], node_type=NodeType.ROOT)

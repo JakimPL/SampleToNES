@@ -1,6 +1,6 @@
-from typing import AbstractSet, Final, Optional, Self, Tuple
+from typing import AbstractSet, Optional, Self, Tuple
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_core.configs import Config
 from sampletones_core.configs.display import (
@@ -18,8 +18,7 @@ from sampletones_core.constants.enums import (
 )
 from sampletones_core.constants.field_aliases import ALIASES
 from sampletones_shared.utils.hashing import HASH_PATTERN, hash_models
-
-CONFIG_DIRECTORY_SEPARATOR: Final[str] = "_"
+from sampletones_shared.utils.key_value import key_value_name, parse_key_value_name
 
 
 class ConfigDirectoryFields(BaseModel):
@@ -86,32 +85,15 @@ class ConfigDirectoryFields(BaseModel):
         """Parses a directory name, returning ``None`` when it is not a config directory.
 
         Returning ``None`` for non-config names lets callers probe arbitrary filesystem entries
-        (plain folders, audio directories) and leave non-matching names untouched. Pydantic validates
-        the keys, value types, and hash shape, so a missing or unknown key or a malformed value yields
-        ``None``.
+        (plain folders, audio directories) and leave non-matching names untouched. A name parses
+        only where it is the one :attr:`directory_name` writes, so a renamed or malformed folder
+        reads as a plain folder.
         """
-        parts = name.split(CONFIG_DIRECTORY_SEPARATOR)
-        if len(parts) != 2 * len(cls.model_fields):
-            return None
-
-        pairs = dict(zip(parts[::2], parts[1::2]))
-        try:
-            return cls.model_validate(pairs)
-        except ValidationError:
-            return None
+        return parse_key_value_name(name, cls)
 
     @property
     def directory_name(self) -> str:
-        pairs = (
-            CONFIG_DIRECTORY_SEPARATOR.join(
-                [
-                    key,
-                    str(value),
-                ]
-            )
-            for key, value in self.model_dump().items()
-        )
-        return CONFIG_DIRECTORY_SEPARATOR.join(pairs)
+        return key_value_name(self)
 
     @property
     def display_name(self) -> str:

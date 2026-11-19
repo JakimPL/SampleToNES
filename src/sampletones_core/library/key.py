@@ -8,6 +8,7 @@ from sampletones_core.constants.audio import AcceptedSampleRate
 from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.library.filename.fields import InstructionsFilenameFields
+from sampletones_shared.constants.nes import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
 from sampletones_shared.utils.hashing import hash_model
 
 
@@ -17,6 +18,12 @@ class InstructionLibraryKey(BaseModel):
     sample_rate: AcceptedSampleRate = Field(
         ...,
         description="Sample rate of the audio",
+    )
+    nes_frequency: int = Field(
+        ...,
+        ge=MIN_NES_FREQUENCY,
+        le=MAX_NES_FREQUENCY,
+        description="Instruction change rate in Hz the library was built for",
     )
     frame_length: int = Field(..., ge=1, description="Length of a single frame")
     window_size: int = Field(..., ge=1, description="Size of the FFT window")
@@ -39,6 +46,7 @@ class InstructionLibraryKey(BaseModel):
         filename = cls.get_filename(config, window, config_hash)
         return cls(
             sample_rate=config.sample_rate,
+            nes_frequency=config.nes_frequency,
             frame_length=window.frame_length,
             window_size=window.size,
             transformation_gamma=config.transformation_gamma,

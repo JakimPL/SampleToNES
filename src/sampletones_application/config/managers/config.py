@@ -187,7 +187,7 @@ class ConfigManager:
         return self.config.library.model_copy(
             update={
                 "sample_rate": library_key.sample_rate,
-                "nes_frequency": round(library_key.sample_rate / library_key.frame_length),
+                "nes_frequency": library_key.nes_frequency,
                 "spectrum_method": library_key.spectrum_method,
                 "transformation_gamma": library_key.transformation_gamma,
             }

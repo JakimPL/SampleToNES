@@ -18,10 +18,11 @@ from sampletones_application.view_model.main.updates import (
 from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.fft import Window
-from sampletones_core.library import InstructionLibraryKey
+from sampletones_core.library import InstructionLibraryKey, create_key_from_filename
 
 OTHER_TUNING: Final[float] = 432.0
 STORED_GAMMA: Final[int] = 50
+LOSSY_NES_FREQUENCY: Final[int] = 221
 
 
 def _manager(path: Path) -> ConfigManager:
@@ -210,6 +211,23 @@ class TestApplyingTheSettingsOfALibrary:
         manager.apply_library_config(_key_of(named), stored)
 
         assert manager.config.library == named
+
+    @pytest.mark.parametrize("nes_frequency", [LOSSY_NES_FREQUENCY, LOSSY_NES_FREQUENCY - 1])
+    def test_a_library_read_from_its_name_alone_keeps_the_frequency_the_name_states(
+        self,
+        tmp_path: Path,
+        nes_frequency: int,
+    ) -> None:
+        """Two frequencies whose frame lengths round to one value name two libraries; the one named
+        by its file is the one whose settings the configuration takes."""
+        manager = _manager(tmp_path / "missing.json")
+        named = _library_settings(manager).model_copy(update={"nes_frequency": nes_frequency})
+        key = create_key_from_filename(_key_of(named).filename)
+
+        manager.apply_library_config(key, None)
+
+        assert manager.config.library.nes_frequency == nes_frequency
+        assert manager.key.filename == key.filename
 
 
 def _library_settings(manager: ConfigManager) -> InstructionsLibraryConfig:

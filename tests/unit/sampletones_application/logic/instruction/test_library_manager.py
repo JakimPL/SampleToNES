@@ -1,6 +1,6 @@
 import shutil
 from pathlib import Path
-from typing import List
+from typing import Final, List
 from unittest.mock import MagicMock
 
 import pytest
@@ -15,6 +15,7 @@ from sampletones_core.compatibility.kind import ObjectKind
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.library import InstructionLibraryKey, LibraryState
 from sampletones_core.structures.tree import LibraryNode
+from sampletones_shared.paths.extensions import EXT_FILE_LIBRARY
 from tests.suite.compatibility import LIBRARY_VERSION, archived
 from tests.suite.files import requires_symlinks
 from tests.suite.library import (
@@ -24,6 +25,8 @@ from tests.suite.library import (
     aim_library_directory,
     write_empty_library,
 )
+
+STRAY_HASH: Final[str] = "0" * 32
 
 
 @pytest.fixture
@@ -118,6 +121,33 @@ class TestTheLibrariesTheCatalogLists:
             if isinstance(node, LibraryNode)
         }
         assert rows == {earlier_key: (True, 0), config_manager.key: (False, len(GeneratorName))}
+
+    @pytest.mark.parametrize(
+        "stray_stem",
+        [
+            f"sr_4000_nf_60_ws_1024_tg_0_sm_fft_ch_{STRAY_HASH}",
+            f"sr_44100_nf_600_ws_1024_tg_0_sm_fft_ch_{STRAY_HASH}",
+            f"nf_60_sr_44100_ws_1024_tg_0_sm_fft_ch_{STRAY_HASH}",
+            f"sr_044100_nf_60_ws_1024_tg_0_sm_fft_ch_{STRAY_HASH}",
+            "notes",
+        ],
+        ids=["rate below range", "frequency above range", "reordered", "leading zero", "plain name"],
+    )
+    def test_a_stray_file_is_passed_by_and_the_libraries_beside_it_are_listed(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+        stray_stem: str,
+    ) -> None:
+        _create_library_file(library_manager, config_manager.key)
+        (library_manager.library_directory / f"{stray_stem}{EXT_FILE_LIBRARY}").write_bytes(b"")
+
+        library_manager.gather_available_libraries()
+        library_manager.rebuild_tree()
+
+        root = library_manager.tree.get_root()
+        assert root is not None
+        assert [node.library_key for node in root.children if isinstance(node, LibraryNode)] == [config_manager.key]
 
 
 class TestTheDirectoryTheCatalogStandsAt:

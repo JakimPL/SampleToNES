@@ -27,6 +27,7 @@ LIBRARY_FILENAME: Final[str] = "library_abc123"
 def _library_key() -> InstructionLibraryKey:
     return InstructionLibraryKey(
         sample_rate=44100,
+        nes_frequency=30,
         frame_length=1470,
         window_size=2940,
         transformation_gamma=100,

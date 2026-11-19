@@ -53,6 +53,9 @@ sr_44100_nf_60_ws_27157_tg_0_sm_cqt_ch_384e710987cb958adf2b214df1267d10.ins
 | `sm_cqt` | spectrum method (`fft` / `logfft` / `cqt`) |
 | `ch_384e…` | a hash of the library configuration section |
 
+The fragments stand in this order and are written as shown. A file in the library folder named any other
+way is passed over and left as it is.
+
 ## Versioning
 
 Each file records the library data version it was written with, in the metadata that leads the file, so

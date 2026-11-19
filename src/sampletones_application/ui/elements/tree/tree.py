@@ -858,10 +858,9 @@ class GUITreePanel(GUIPanel, ABC):
         self,
         key: InstructionLibraryKey,
     ) -> List[Tuple[str, str]]:
-        nes_frequency = round(key.sample_rate / key.frame_length)
         return [
             (self._lbl_detail_sample_rate, format_sample_rate(key.sample_rate)),
-            (self._lbl_detail_nes_frequency, format_nes_frequency(nes_frequency)),
+            (self._lbl_detail_nes_frequency, format_nes_frequency(key.nes_frequency)),
             (self._lbl_detail_spectrum_method, format_spectrum_method(key.spectrum_method)),
             (self._lbl_detail_transformation_gamma, str(key.transformation_gamma)),
             (self._lbl_detail_window_size, str(key.window_size)),

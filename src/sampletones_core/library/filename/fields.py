@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Final
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -10,13 +10,14 @@ from sampletones_core.constants.field_aliases import ALIASES
 from sampletones_shared.paths.extensions import EXT_FILE_LIBRARY
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.hashing import HASH_PATTERN
+from sampletones_shared.utils.key_value import key_value_name, parse_key_value_name
 from sampletones_shared.utils.system.paths import get_filename
-
-FILENAME_SEPARATOR: Final[str] = "_"
 
 
 class InstructionsFilenameFields(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    """The settings a library file's name spells: ``sr_…_nf_…_ws_…_tg_…_sm_…_ch_…``."""
+
+    model_config = ConfigDict(frozen=True, populate_by_name=True)
 
     sr: int = Field(gt=0, validation_alias=ALIASES["sr"])
     nf: int = Field(gt=0, validation_alias=ALIASES["nf"])
@@ -27,38 +28,14 @@ class InstructionsFilenameFields(BaseModel):
 
     @property
     def stem(self) -> str:
-        pairs = (FILENAME_SEPARATOR.join([key, str(value)]) for key, value in self.model_dump().items())
-        return FILENAME_SEPARATOR.join(pairs)
+        return key_value_name(self)
 
     @property
     def filename(self) -> str:
         return get_filename(self.stem, EXT_FILE_LIBRARY)
 
     @classmethod
-    def create(cls, pathlike: Pathlike) -> InstructionsFilenameFields:
-        dictionary: Dict[str, Any] = {}
-        filename = Path(pathlike).stem
-        parts = filename.removesuffix(EXT_FILE_LIBRARY).split(FILENAME_SEPARATOR)
-
-        expected_parts = 2 * len(InstructionsFilenameFields.model_fields)
-        if len(parts) != expected_parts:
-            raise ValueError(f"Expected {expected_parts} parts separated by '{FILENAME_SEPARATOR}', got {len(parts)}")
-
-        for i, (key, field_info) in enumerate(InstructionsFilenameFields.model_fields.items()):
-            try:
-                part_key, part_value = parts[2 * i : 2 * i + 2]
-            except ValueError as exception:
-                raise ValueError(
-                    f"Expected {expected_parts} parts separated by '{FILENAME_SEPARATOR}', got {len(parts)}"
-                ) from exception
-
-            if key != part_key:
-                raise ValueError(f"Malformed filename, expected key '{key}', got '{part_key}' at position {i}")
-
-            value_type = field_info.annotation
-            if value_type is None:
-                raise SystemError(f"Missing annotated type for key {key}")
-
-            dictionary[key] = value_type(part_value)
-
-        return InstructionsFilenameFields(**dictionary)
+    def parse(cls, pathlike: Pathlike) -> Optional[InstructionsFilenameFields]:
+        """The fields a file's name states, or ``None`` where it is not a name a library is written
+        under: its extension aside, the name must be the one :attr:`stem` writes."""
+        return parse_key_value_name(Path(pathlike).stem, cls)

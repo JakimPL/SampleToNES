@@ -1,4 +1,7 @@
 from pathlib import Path
+from typing import Optional
+
+from pydantic import ValidationError
 
 from sampletones_core.configs.display import (
     DISPLAY_SEPARATOR,
@@ -7,39 +10,52 @@ from sampletones_core.configs.display import (
 )
 from sampletones_core.library.filename.fields import InstructionsFilenameFields
 from sampletones_core.library.key import InstructionLibraryKey
-from sampletones_shared.paths.extensions import EXT_FILE_LIBRARY
 from sampletones_shared.types.path import Pathlike
-from sampletones_shared.utils.system.paths import get_filename
+
+
+def library_key_from_filename(filename: Pathlike) -> Optional[InstructionLibraryKey]:
+    """The key a library file's name states, or ``None`` where the name is not one a library is
+    written under or states settings out of a library's range.
+
+    A library folder may hold any file, so the listing probes every name here and lists the ones
+    that answer.
+    """
+    fields = InstructionsFilenameFields.parse(filename)
+    if fields is None:
+        return None
+
+    try:
+        return InstructionLibraryKey(
+            sample_rate=fields.sr,
+            nes_frequency=fields.nf,
+            frame_length=round(fields.sr / fields.nf),
+            window_size=fields.ws,
+            transformation_gamma=fields.tg,
+            spectrum_method=fields.sm,
+            config_hash=fields.ch,
+            filename=fields.filename,
+        )
+    except ValidationError:
+        return None
 
 
 def create_key_from_filename(filename: Pathlike) -> InstructionLibraryKey:
-    filename = Path(filename).stem
-    fields = InstructionsFilenameFields.create(filename)
+    """The key a library file's name states.
 
-    sample_rate = fields.sr
-    nes_frequency = fields.nf
-    window_size = fields.ws
-    transformation_gamma = fields.tg
-    spectrum_method = fields.sm
-    config_hash = fields.ch
-    frame_length = round(sample_rate / nes_frequency)
+    Raises:
+        ValueError: If the name is not one a library is written under.
+    """
+    key = library_key_from_filename(filename)
+    if key is None:
+        raise ValueError(f"Not a library file name: {Path(filename).name}")
 
-    return InstructionLibraryKey(
-        sample_rate=sample_rate,
-        frame_length=frame_length,
-        window_size=window_size,
-        transformation_gamma=transformation_gamma,
-        spectrum_method=spectrum_method,
-        config_hash=config_hash,
-        filename=get_filename(filename, EXT_FILE_LIBRARY),
-    )
+    return key
 
 
 def get_display_name_from_key(key: InstructionLibraryKey) -> str:
-    nes_frequency = round(key.sample_rate / key.frame_length)
     return DISPLAY_SEPARATOR.join(
         [
-            format_frequencies(key.sample_rate, nes_frequency),
+            format_frequencies(key.sample_rate, key.nes_frequency),
             format_transformation(key.spectrum_method, key.transformation_gamma),
         ]
     )
