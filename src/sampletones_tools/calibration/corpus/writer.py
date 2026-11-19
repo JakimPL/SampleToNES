@@ -1,20 +1,23 @@
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, Final, List, Tuple
 
-from sampletones_core.audio.io import write_wave
+from sampletones_core.audio import write_wave
 from sampletones_shared.paths.extensions import EXT_FILE_WAVE
 from sampletones_shared.utils.system.paths import get_filename
 
 from .item import CorpusItem
+
+STEM_SUFFIX: Final[str] = "-stem"
 
 
 def write_corpus(
     items: List[CorpusItem],
     directory: Path,
     sample_rate: int,
-) -> Dict[str, Path]:
+) -> Dict[str, Tuple[Path, ...]]:
     """
-    Write every corpus item as a WAV file.
+    Write every corpus item as WAV files: one for a sound converted as one recording, one per stem
+    for a sound held as stems.
 
     Args:
         items: Corpus items to write.
@@ -22,13 +25,22 @@ def write_corpus(
         sample_rate: Sampling rate of the items in Hz.
 
     Returns:
-        The written file path per item name.
+        The written file paths per item name, in the order the conversion reads them.
     """
     directory.mkdir(parents=True, exist_ok=True)
-    paths: Dict[str, Path] = {}
+    paths: Dict[str, Tuple[Path, ...]] = {}
     for item in items:
-        path = directory / get_filename(item.name, EXT_FILE_WAVE)
-        write_wave(path, sample_rate, item.audio)
-        paths[item.name] = path
+        recordings = item.stems.sources if item.stems is not None else (item.audio,)
+        names = (
+            [f"{item.name}{STEM_SUFFIX}{index}" for index in range(len(recordings))]
+            if item.stems is not None
+            else [item.name]
+        )
+        written: List[Path] = []
+        for name, audio in zip(names, recordings):
+            path = directory / get_filename(name, EXT_FILE_WAVE)
+            write_wave(path, sample_rate, audio)
+            written.append(path)
+        paths[item.name] = tuple(written)
 
     return paths

@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, Final, FrozenSet, List
+from typing import Callable, Dict, Final, FrozenSet, List, Tuple
 
 import pytest
 
@@ -13,7 +13,7 @@ from sampletones_tools.calibration.corpus.families import Family
 from sampletones_tools.calibration.corpus.item import CorpusItem
 from sampletones_tools.calibration.fingerprint import ResumeRefusedError
 from sampletones_tools.calibration.layout import CSV_REPORT, MARKDOWN_REPORT
-from sampletones_tools.calibration.referee.protocol import Referee, TruthReferee
+from sampletones_tools.calibration.referee.panel import RefereePanel
 from sampletones_tools.calibration.runner import CalibrationRow, CalibrationVariant
 from sampletones_tools.calibration.session import (
     BOARD_ROOT,
@@ -349,9 +349,8 @@ def _evaluated(asked: List[FrozenSet[ChannelName]]) -> Callable[..., List[Calibr
     def evaluated(
         variants: List[CalibrationVariant],
         items: List[CorpusItem],
-        item_paths: Dict[str, Path],
-        referees: List[Referee],
-        truth_referees: List[TruthReferee],
+        item_paths: Dict[str, Tuple[Path, ...]],
+        panel: RefereePanel,
         run_directory: Path,
         channels: FrozenSet[ChannelName],
         *,
@@ -371,9 +370,8 @@ def _measuring(measured: List[str]) -> Callable[..., List[CalibrationRow]]:
     def evaluated(
         variants: List[CalibrationVariant],
         items: List[CorpusItem],
-        item_paths: Dict[str, Path],
-        referees: List[Referee],
-        truth_referees: List[TruthReferee],
+        item_paths: Dict[str, Tuple[Path, ...]],
+        panel: RefereePanel,
         run_directory: Path,
         channels: FrozenSet[ChannelName],
         *,

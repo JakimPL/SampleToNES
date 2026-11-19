@@ -17,7 +17,7 @@ from sampletones_tools.calibration.corpus.writer import write_corpus
 from sampletones_tools.calibration.evaluation import evaluate_variants
 from sampletones_tools.calibration.fingerprint import check_resumable, fingerprint_of, write_fingerprint
 from sampletones_tools.calibration.layout import CORPUS_DIRECTORY, CSV_REPORT, MARKDOWN_REPORT
-from sampletones_tools.calibration.referee.factory import build_referees, build_truth_referees
+from sampletones_tools.calibration.referee.panel import build_panel
 from sampletones_tools.calibration.report import write_csv, write_markdown
 from sampletones_tools.calibration.runner import build_variants
 from sampletones_tools.runs import output_root, stamped_board_directory, stamped_run_directory
@@ -201,18 +201,14 @@ def calibrate(request: CalibrationRequest) -> CalibrationOutcome:
         write_fingerprint(request.output, fingerprint)
 
     item_paths = write_corpus(items, request.output / CORPUS_DIRECTORY, sample_rate)
-    referees = build_referees(sample_rate)
-    truth_referees = build_truth_referees()
+    panel = build_panel(sample_rate)
     channel_names = ", ".join(channel.value for channel in request.channels)
-    logger.info(
-        f"Evaluating {len(variants)} variants x {len(items)} items x {len(referees)} referees on {channel_names}"
-    )
+    logger.info(f"Evaluating {len(variants)} variants x {len(items)} items on {channel_names}")
     rows = evaluate_variants(
         variants,
         items,
         item_paths,
-        referees,
-        truth_referees,
+        panel,
         request.output,
         frozenset(request.channels),
         workers=request.workers,

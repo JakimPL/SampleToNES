@@ -278,6 +278,7 @@ class _Maker:
             audio=(self._config.amplitude * audio / peak).astype(np.float32),
             truth=Truth(instructions={}, pitches={LINE: line}),
             channels=None,
+            stems=None,
         )
 
 

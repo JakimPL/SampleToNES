@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Callable, FrozenSet, List, Sequence, Tuple
+from typing import Callable, FrozenSet, List, Sequence
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
@@ -8,8 +8,7 @@ from sampletones_core.parallelization.processor import TaskProcessor
 from sampletones_core.reconstructions import Reconstructor
 from sampletones_shared.logger import LoggerProtocol
 
-from .referee.factory import build_referees, build_truth_referees
-from .referee.protocol import Referee, TruthReferee
+from .referee.panel import RefereePanel, build_panel
 from .runner import CalibrationRow, Conversion, evaluate_conversion
 
 Answers = List[List[CalibrationRow]]
@@ -45,9 +44,9 @@ class CalibrationProcessor(TaskProcessor[List[CalibrationRow]]):
 
 def convert_in_worker(conversion: Conversion) -> List[CalibrationRow]:
     """Converts and judges one sound with the reconstructor and the referees this worker keeps."""
-    referees, truth_referees = _worker_referees(conversion.variant.config.library.sample_rate)
+    panel = _worker_panel(conversion.variant.config.library.sample_rate)
     reconstructor = _worker_reconstructor(conversion.variant.config.model_dump_json(), conversion.channels)
-    return evaluate_conversion(conversion, reconstructor, list(referees), list(truth_referees))
+    return evaluate_conversion(conversion, reconstructor, panel)
 
 
 @lru_cache(maxsize=None)
@@ -56,5 +55,5 @@ def _worker_reconstructor(config: str, channels: FrozenSet[ChannelName]) -> Reco
 
 
 @lru_cache(maxsize=None)
-def _worker_referees(sample_rate: int) -> Tuple[Tuple[Referee, ...], Tuple[TruthReferee, ...]]:
-    return tuple(build_referees(sample_rate)), tuple(build_truth_referees())
+def _worker_panel(sample_rate: int) -> RefereePanel:
+    return build_panel(sample_rate)

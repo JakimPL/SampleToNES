@@ -57,6 +57,7 @@ def written_item(
         audio=np.asarray(audio, dtype=np.float32),
         truth=Truth(instructions=frames, pitches=pitches),
         channels=ROUND_TRIP_CHANNELS,
+        stems=None,
     )
 
 

@@ -7,8 +7,9 @@ from .balance import BalanceReferee
 from .continuity import ContinuityReferee
 from .contour import ContourReferee
 from .loudness import LoudnessWeightedReferee
+from .ownership import OwnershipReferee
 from .pitch import PitchReferee
-from .protocol import Referee, TruthReferee
+from .protocol import ConversionReferee, Referee, TruthReferee
 from .stability import StabilityReferee
 from .transcription import TranscriptionReferee
 from .zimtohrli import ZimtohrliReferee, zimtohrli_available
@@ -55,3 +56,12 @@ def build_truth_referees() -> List[TruthReferee]:
         BalanceReferee(),
         ContinuityReferee(),
     ]
+
+
+def build_conversion_referees() -> List[ConversionReferee]:
+    """Referees reading a conversion on its own.
+
+    Returns:
+        List[ConversionReferee]: The ownership referee.
+    """
+    return [OwnershipReferee()]

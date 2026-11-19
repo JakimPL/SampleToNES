@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 import numpy as np
 
@@ -6,9 +6,11 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.renders import rendered_mix
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_shared.types.path import Pathlike
 from sampletones_tools.calibration.corpus.families import Family
 from sampletones_tools.calibration.corpus.item import CorpusItem
+from sampletones_tools.calibration.referee.panel import RefereePanel
 from sampletones_tools.calibration.referee.protocol import Judgment
 from sampletones_tools.corpus.written import NO_RECORDINGS, WRITTEN_COEFFICIENT, WRITTEN_SCALE, written_reconstruction
 
@@ -29,7 +31,11 @@ class WrittenReconstructor:
         self.converted.append(path)
         return self.reconstruction
 
-    def load_audio(self, path: Pathlike) -> np.ndarray:
+    def reconstruct(self, paths: Sequence[Pathlike], stems_config: StemsConfig) -> Optional[Reconstruction]:
+        self.converted.extend(paths)
+        return self.reconstruction
+
+    def load_audio(self, paths: Sequence[Pathlike]) -> np.ndarray:
         return np.asarray(rendered_mix(self.reconstruction), dtype=np.float64)
 
 
@@ -54,4 +60,10 @@ def item_named(name: str, *, listed: bool) -> CorpusItem:
         audio=np.zeros(1),
         truth=None,
         channels=None,
+        stems=None,
     )
+
+
+def stub_panel() -> RefereePanel:
+    """A panel of the stub referee alone."""
+    return RefereePanel(audio=(StubReferee(),), truth=(), conversion=())

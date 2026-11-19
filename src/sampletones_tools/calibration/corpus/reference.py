@@ -9,6 +9,7 @@ from sampletones_tools.calibration.config.notes import NotesConfig
 from sampletones_tools.calibration.config.pitched import PitchedConfig
 from sampletones_tools.calibration.config.sequences import SequencesConfig
 
+from .by_channel import BY_CHANNEL_SUFFIX, with_by_channel
 from .chords import build_chords
 from .families import FAMILY_ORDER, Family
 from .item import CorpusItem
@@ -96,12 +97,12 @@ def _sources(manifest: Optional[CorpusManifest]) -> List[CorpusSource]:
             build=lambda config: build_notes(config, grid=grid),
         ),
         CorpusSource(
-            catalog=[(Family.CHORDS, chord.category) for chord in chords.chords],
-            build=lambda config: build_chords(config, corpus=chords),
+            catalog=_with_by_channel([(Family.CHORDS, chord.category) for chord in chords.chords]),
+            build=lambda config: with_by_channel(build_chords(config, corpus=chords), config),
         ),
         CorpusSource(
-            catalog=[(Family.SEQUENCES, item.category) for item in sequences.items],
-            build=lambda config: build_sequences(config, corpus=sequences),
+            catalog=_with_by_channel([(Family.SEQUENCES, item.category) for item in sequences.items]),
+            build=lambda config: with_by_channel(build_sequences(config, corpus=sequences), config),
         ),
         *_manifest_sources(manifest),
     ]
@@ -112,5 +113,13 @@ def _manifest_sources(manifest: Optional[CorpusManifest]) -> List[CorpusSource]:
         return []
 
     return [
-        CorpusSource(catalog=manifest_catalog(manifest), build=lambda config: build_manifest(config, manifest=manifest))
+        CorpusSource(
+            catalog=_with_by_channel(manifest_catalog(manifest)),
+            build=lambda config: with_by_channel(build_manifest(config, manifest=manifest), config),
+        )
     ]
+
+
+def _with_by_channel(catalog: Catalog) -> Catalog:
+    """The categories of written sounds, then each again for the sounds converted channel by channel."""
+    return [*catalog, *((family, f"{category}{BY_CHANNEL_SUFFIX}") for family, category in catalog)]

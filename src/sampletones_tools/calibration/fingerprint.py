@@ -75,7 +75,8 @@ def check_resumable(run_directory: Path, fingerprint: RunFingerprint) -> None:
 
 
 def _item_digest(item: CorpusItem) -> str:
-    described = f"{item.family.value}|{item.category}|{item.listed}".encode()
+    stems = item.stems.config.model_dump_json() if item.stems is not None else ""
+    described = f"{item.family.value}|{item.category}|{item.listed}|{stems}".encode()
     return _digest(described + item.audio.tobytes())
 
 

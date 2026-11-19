@@ -353,7 +353,7 @@ class TestARecordingIsReadAtTheLevelItsConversionMatches:
         path = _write_square(tmp_path / "square.wav", recording_rate)
         reconstructor = _make_reconstructor(unquantized, library_data)
 
-        loaded = reconstructor.load_audio(path)
+        loaded = reconstructor.load_audio([path])
 
         assert float(np.max(np.abs(loaded))) == pytest.approx(1.0, rel=1e-6)
         np.testing.assert_array_equal(loaded, reconstructor._load_stem_recordings([path]).recordings[0])
@@ -364,7 +364,7 @@ class TestARecordingIsReadAtTheLevelItsConversionMatches:
         path = tmp_path / "silence.wav"
         write_wave(path, OFF_RATE, np.zeros(OFF_RATE // 10, dtype=np.float32))
 
-        loaded = _make_reconstructor(config, library_data).load_audio(path)
+        loaded = _make_reconstructor(config, library_data).load_audio([path])
 
         assert not np.any(loaded)
 

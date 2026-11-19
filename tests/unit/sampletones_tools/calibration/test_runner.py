@@ -10,7 +10,7 @@ from sampletones_core.reconstructions import Reconstructor
 from sampletones_tools.calibration.renders import read_record
 from sampletones_tools.calibration.runner import Conversion, build_variants, evaluate_conversion, recorded_rows
 
-from .conversions import StubReferee, WrittenReconstructor, item_named
+from .conversions import WrittenReconstructor, item_named, stub_panel
 
 METHODS: Final[List[SpectrumMethod]] = [SpectrumMethod.FFT, SpectrumMethod.CQT]
 EXPONENTS: Final[List[float]] = [1.0]
@@ -47,12 +47,13 @@ class TestEvaluateConversion:
             variant=variant,
             item=item,
             position=0,
-            path=tmp_path / "a",
+            paths=(tmp_path / "a",),
+            stems=None,
             channels=frozenset({ChannelName.PULSE1}),
             run_directory=tmp_path,
         )
 
-        rows = evaluate_conversion(conversion, cast(Reconstructor, WrittenReconstructor()), [StubReferee()], [])
+        rows = evaluate_conversion(conversion, cast(Reconstructor, WrittenReconstructor()), stub_panel())
 
         record = read_record(tmp_path, variant.label, item.name)
         assert record is not None

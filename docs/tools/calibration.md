@@ -273,6 +273,11 @@ the family out, which shortens a run considerably.
 A round trip is converted over all four channels, so the run also hears whether the channels a sound
 leaves out stay silent.
 
+Every chord and sequence, NES-MDB pieces included, is converted a second time channel by channel: each
+channel's frames become a stem of their own, held to that channel. Those conversions fall in the same
+categories with `-by-channel` added, such as `chords-two-by-channel`. Set beside the first conversion,
+they tell a failure to take the parts apart from a failure to match each part.
+
 ### The referees
 
 Referees score in their own way, separate from the reconstruction's own scoring, so a comparison stays
@@ -288,6 +293,10 @@ time resolutions, and compare the energy in each band in decibels.
   and silent bands barely count. It first brings the reconstruction to the original's level and
   reports the level difference on its own. Silence scores worst, and a clip with the right tone and
   some added noise scores between.
+- **`ownership`** reads a conversion of several stems on its own. It counts how often each channel
+  passes from one stem to another per second. A pause between one stem's stretches counts for
+  nothing. The score is the changes per second over every channel, and each channel's own reading
+  follows. A conversion of one recording has no reading.
 - **`contour`** follows the loudness of the recording over time and over the spectrum. Both are cut
   into frames of 1/60 s, each measured as its level in decibels. Over the frames the recording sounds
   in, the score is how far the render's levels stray from the recording's once a constant offset is

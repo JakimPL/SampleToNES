@@ -366,20 +366,20 @@ class Reconstructor:
             scale=scale,
         )
 
-    def load_audio(self, path: Path) -> np.ndarray:
-        """The recording at ``path`` at the level a conversion of it alone matches against.
+    def load_audio(self, paths: Sequence[Path]) -> np.ndarray:
+        """The recordings at ``paths``, mixed, at the level a conversion of them together matches against.
 
-        It is read through the very loading a conversion reads its recordings by, so a referee
-        comparing a reconstruction with it hears the level the conversion matched.
+        They are read through the very loading a conversion reads its recordings by, so a referee
+        comparing a reconstruction with them hears the level the conversion matched. One path reads
+        that one recording.
 
         Args:
-            path: Path to the audio file.
+            paths: Paths to the audio files.
 
         Returns:
-            np.ndarray: The prepared audio.
+            np.ndarray: The prepared mix.
         """
-        (recording,) = self._load_stem_recordings([path]).recordings
-        return recording
+        return mix(list(self._load_stem_recordings(list(paths)).recordings))
 
     def get_coefficient(
         self,

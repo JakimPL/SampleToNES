@@ -387,4 +387,5 @@ def _item(
         audio=scaled.astype(np.float32),
         truth=truth,
         channels=None,
+        stems=None,
     )

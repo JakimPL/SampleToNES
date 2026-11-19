@@ -10,13 +10,16 @@ from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.paths.extensions import EXT_FILE_FLAC, EXT_FILE_JSON
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.system.paths import get_filename
+from sampletones_tools.calibration.corpus.by_channel import by_channel
+from sampletones_tools.calibration.corpus.chords import build_chords
 from sampletones_tools.calibration.corpus.families import Family
 from sampletones_tools.calibration.corpus.item import CorpusItem
 from sampletones_tools.calibration.evaluation import evaluate_variants
 from sampletones_tools.calibration.layout import RECORDINGS_DIRECTORY, RENDERS_DIRECTORY
 from sampletones_tools.calibration.runner import CalibrationVariant, build_variants
 
-from .conversions import StubReferee, WrittenReconstructor, item_named
+from .conversions import WrittenReconstructor, item_named, stub_panel
+from .corpus.test_by_channel import CHORDS
 
 ENSURE_LIBRARY: Final[str] = "sampletones_tools.calibration.evaluation.ensure_library"
 RECONSTRUCTOR: Final[str] = "sampletones_tools.calibration.evaluation.Reconstructor"
@@ -59,9 +62,8 @@ def _evaluated(
     rows = evaluate_variants(
         [variant],
         items,
-        {item.name: run_directory / item.name for item in items},
-        [StubReferee()],
-        [],
+        {item.name: (run_directory / item.name,) for item in items},
+        stub_panel(),
         run_directory,
         RUN_CHANNELS,
         workers=1,
@@ -88,6 +90,7 @@ class TestEvaluateVariants:
                 audio=np.zeros(1),
                 truth=None,
                 channels=channels,
+                stems=None,
             )
             for name, channels in (("a", None), ("b", ITEM_CHANNELS), ("c", None), ("d", ITEM_CHANNELS))
         ]
@@ -150,3 +153,23 @@ class TestResuming:
         _evaluated(variant, [item_named("a", listed=False)], tmp_path, resume=False)
 
         assert reconstructor.converted == [tmp_path / "a", tmp_path / "a"]
+
+
+class TestStems:
+    def test_a_sound_held_as_stems_is_converted_under_its_setup_from_every_stem(
+        self,
+        variant: CalibrationVariant,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        reconstructor = WrittenReconstructor()
+        monkeypatch.setattr(RECONSTRUCTOR, lambda config, channels: reconstructor)
+        (chord,) = build_chords(Config(), corpus=CHORDS)
+        split = by_channel(chord, Config())
+        paths = (tmp_path / "chord-stem0.wav", tmp_path / "chord-stem1.wav")
+
+        evaluate_variants(
+            [variant], [split], {split.name: paths}, stub_panel(), tmp_path, RUN_CHANNELS, workers=1, resume=False
+        )
+
+        assert reconstructor.converted == list(paths)

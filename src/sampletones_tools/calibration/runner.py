@@ -9,10 +9,12 @@ from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_shared.logger import logger
 
 from .corpus.item import CorpusItem
-from .referee.protocol import Judgment, Referee, TruthReferee
+from .referee.panel import RefereePanel
+from .referee.protocol import Judgment
 from .renders import (
     RenderRecord,
     sounding_timelines,
@@ -112,7 +114,8 @@ class Conversion:
         variant: The configuration the sound is converted under.
         item: The reference sound.
         position: The sound's place in the corpus, which its record keeps.
-        path: The written file the conversion reads.
+        paths: The written files the conversion reads, one per stem of a sound held as stems.
+        stems: The stems setup the files are converted under, or ``None`` for one recording.
         channels: The channels the conversion covers.
         run_directory: The directory the run writes its renders and recordings into.
     """
@@ -120,7 +123,8 @@ class Conversion:
     variant: CalibrationVariant
     item: CorpusItem
     position: int
-    path: Path
+    paths: Tuple[Path, ...]
+    stems: Optional[StemsConfig]
     channels: FrozenSet[ChannelName]
     run_directory: Path
 
@@ -128,8 +132,7 @@ class Conversion:
 def evaluate_conversion(
     conversion: Conversion,
     reconstructor: Reconstructor,
-    referees: List[Referee],
-    truth_referees: List[TruthReferee],
+    panel: RefereePanel,
 ) -> List[CalibrationRow]:
     """
     Reconstruct one sound, score it, and keep what was heard.
@@ -137,28 +140,33 @@ def evaluate_conversion(
     The sound is reconstructed with the variant's configuration and every referee judges the
     approximation against the preprocessed original, both on the common scale set by the
     working-level coefficient. A sound whose truth the corpus knows is also read against it by
-    every truth referee. A listed sound's render, recording and channel parts are written under the
+    every truth referee, and every conversion is read on its own by the conversion referees. A
+    sound held as stems is converted under its setup. A listed sound's render, recording and channel
+    parts are written under the
     run directory, and every sound's record comes last, so a record stands only for a conversion
     written whole.
 
     Args:
         conversion: The sound, the variant and where the record goes.
         reconstructor: The variant's reconstructor over the conversion's channels.
-        referees: Referees scoring the reconstruction.
-        truth_referees: Referees reading the reconstruction against a known truth.
+        panel: The referees judging the reconstruction.
 
     Returns:
         One row per (referee, reading), empty where the reconstruction is unavailable.
     """
     variant, item = conversion.variant, conversion.item
-    reconstruction = reconstructor(conversion.path)
+    reconstruction = (
+        reconstructor.reconstruct(list(conversion.paths), conversion.stems)
+        if conversion.stems is not None
+        else reconstructor(conversion.paths[0])
+    )
     if reconstruction is None:
         logger.info(f"[{variant.label}] {item.name}: reconstruction unavailable")
         return []
 
-    reference, estimate = _compared_signals(reconstructor.load_audio(conversion.path), reconstruction)
-    judgments = _judgments(item, reference, estimate, reconstruction, referees, truth_referees)
-    silence = {referee.name: referee.judge(reference, np.zeros_like(reference)).score for referee in referees}
+    reference, estimate = _compared_signals(reconstructor.load_audio(list(conversion.paths)), reconstruction)
+    judgments = _judgments(item, reference, estimate, reconstruction, panel)
+    silence = {referee.name: referee.judge(reference, np.zeros_like(reference)).score for referee in panel.audio}
     record = RenderRecord(
         variant=variant.label,
         item=item.name,
@@ -222,19 +230,21 @@ def _judgments(
     reference: np.ndarray,
     estimate: np.ndarray,
     reconstruction: Reconstruction,
-    referees: List[Referee],
-    truth_referees: List[TruthReferee],
+    panel: RefereePanel,
 ) -> Dict[str, Judgment]:
     """Every referee's judgment of a render, the audio referees first so a report leads with them."""
-    judgments = {referee.name: referee.judge(reference, estimate) for referee in referees}
+    judgments = {referee.name: referee.judge(reference, estimate) for referee in panel.audio}
     truth = item.truth
-    if truth is None:
-        return judgments
+    if truth is not None:
+        for referee in panel.truth:
+            judged = referee.judge(truth, reconstruction)
+            if judged is not None:
+                judgments[referee.name] = judged
 
-    for referee in truth_referees:
-        judgment = referee.judge(truth, reconstruction)
-        if judgment is not None:
-            judgments[referee.name] = judgment
+    for conversion_referee in panel.conversion:
+        judged = conversion_referee.judge(reconstruction)
+        if judged is not None:
+            judgments[conversion_referee.name] = judged
 
     return judgments
 

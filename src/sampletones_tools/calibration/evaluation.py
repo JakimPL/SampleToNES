@@ -11,7 +11,7 @@ from sampletones_shared.logger import logger
 
 from .corpus.item import CorpusItem
 from .processor import CalibrationProcessor
-from .referee.protocol import Referee, TruthReferee
+from .referee.panel import RefereePanel
 from .renders import read_record
 from .runner import CalibrationRow, CalibrationVariant, Conversion, evaluate_conversion, recorded_rows
 
@@ -22,9 +22,8 @@ PROGRESS_UNIT: Final[str] = "sound"
 def evaluate_variants(
     variants: List[CalibrationVariant],
     items: List[CorpusItem],
-    item_paths: Dict[str, Path],
-    referees: List[Referee],
-    truth_referees: List[TruthReferee],
+    item_paths: Dict[str, Tuple[Path, ...]],
+    panel: RefereePanel,
     run_directory: Path,
     channels: FrozenSet[ChannelName],
     *,
@@ -41,9 +40,8 @@ def evaluate_variants(
     Args:
         variants: Labeled configurations to evaluate.
         items: Corpus items, carrying their family and category.
-        item_paths: Written WAV path per corpus item name.
-        referees: Referees scoring each reconstruction in this process.
-        truth_referees: Referees reading each reconstruction against a known truth in this process.
+        item_paths: The written WAV files per corpus item name, one per stem of a sound held as stems.
+        panel: The referees judging each reconstruction in this process.
         run_directory: The directory the run writes its renders and recordings into.
         channels: The channels a sound is converted over when it names none of its own.
         workers: How many conversions run at once.
@@ -60,7 +58,8 @@ def evaluate_variants(
             variant=variant,
             item=item,
             position=position,
-            path=item_paths[item.name],
+            paths=item_paths[item.name],
+            stems=item.stems.config if item.stems is not None else None,
             channels=item.channels if item.channels is not None else channels,
             run_directory=run_directory,
         )
@@ -71,9 +70,7 @@ def evaluate_variants(
     pending = [conversion for index, conversion in enumerate(conversions) if index not in recorded]
     logger.info(f"Converting {len(pending)} of {len(conversions)} sounds on {workers} worker(s)")
     answers = iter(
-        _convert_here(pending, referees, truth_referees)
-        if workers == IN_PROCESS_WORKERS
-        else _convert_on_pool(pending, workers)
+        _convert_here(pending, panel) if workers == IN_PROCESS_WORKERS else _convert_on_pool(pending, workers)
     )
     rows: List[CalibrationRow] = []
     for index in range(len(conversions)):
@@ -93,11 +90,7 @@ def _recorded(conversions: Sequence[Conversion]) -> Dict[int, List[CalibrationRo
     return recorded
 
 
-def _convert_here(
-    conversions: Sequence[Conversion],
-    referees: List[Referee],
-    truth_referees: List[TruthReferee],
-) -> List[List[CalibrationRow]]:
+def _convert_here(conversions: Sequence[Conversion], panel: RefereePanel) -> List[List[CalibrationRow]]:
     reconstructors: Dict[Tuple[str, FrozenSet[ChannelName]], Reconstructor] = {}
     answers: List[List[CalibrationRow]] = []
     for conversion in tqdm(conversions, desc="Calibrating", unit=PROGRESS_UNIT):
@@ -105,7 +98,7 @@ def _convert_here(
         if key not in reconstructors:
             reconstructors[key] = Reconstructor(conversion.variant.config, conversion.channels)
 
-        answers.append(evaluate_conversion(conversion, reconstructors[key], referees, truth_referees))
+        answers.append(evaluate_conversion(conversion, reconstructors[key], panel))
 
     return answers
 

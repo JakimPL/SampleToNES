@@ -35,6 +35,18 @@ class Referee(Protocol):
     def judge(self, reference: np.ndarray, estimate: np.ndarray) -> Judgment: ...
 
 
+class ConversionReferee(Protocol):
+    """Reads a conversion on its own, from what it recorded: zero for one that holds its decisions steady.
+
+    A referee answers ``None`` for a conversion that holds nothing it reads.
+    """
+
+    @property
+    def name(self) -> str: ...
+
+    def judge(self, reconstruction: Reconstruction) -> Optional[Judgment]: ...
+
+
 class TruthReferee(Protocol):
     """Reads a conversion against what its reference sound plays: zero for one that plays it exactly.
 

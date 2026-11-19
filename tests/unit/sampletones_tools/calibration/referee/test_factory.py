@@ -4,8 +4,13 @@ from sampletones_tools.calibration.referee.auditory import AUDITORY_REFEREE_NAME
 from sampletones_tools.calibration.referee.balance import BALANCE_REFEREE
 from sampletones_tools.calibration.referee.continuity import CONTINUITY_REFEREE
 from sampletones_tools.calibration.referee.contour import CONTOUR_REFEREE
-from sampletones_tools.calibration.referee.factory import build_referees, build_truth_referees
+from sampletones_tools.calibration.referee.factory import (
+    build_conversion_referees,
+    build_referees,
+    build_truth_referees,
+)
 from sampletones_tools.calibration.referee.loudness import LOUDNESS_REFEREE_NAME
+from sampletones_tools.calibration.referee.ownership import OWNERSHIP_REFEREE
 from sampletones_tools.calibration.referee.pitch import PITCH_REFEREE
 from sampletones_tools.calibration.referee.stability import STABILITY_REFEREE
 from sampletones_tools.calibration.referee.transcription import TRANSCRIPTION_REFEREE
@@ -39,3 +44,8 @@ class TestBuildTruthReferees:
             BALANCE_REFEREE,
             CONTINUITY_REFEREE,
         ]
+
+
+class TestBuildConversionReferees:
+    def test_the_ownership_referee_reads_a_conversion_on_its_own(self) -> None:
+        assert [referee.name for referee in build_conversion_referees()] == [OWNERSHIP_REFEREE]
