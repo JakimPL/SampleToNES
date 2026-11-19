@@ -370,7 +370,7 @@ def _remove_a_recording(session: HistorySession) -> None:
 
 
 def _retune_the_project(session: HistorySession) -> None:
-    session.sequencer._nes_frequency_change_acknowledged = True
+    session.sequencer._nes_frequency.acknowledged = True
     _module(session).on_nes_frequency(RETUNED_RATE)
 
 
@@ -379,7 +379,7 @@ def _rate_target(_session: HistorySession) -> Target:
 
 
 def _retune_the_project_again(session: HistorySession) -> None:
-    session.sequencer._nes_frequency_change_acknowledged = True
+    session.sequencer._nes_frequency.acknowledged = True
     _module(session).on_nes_frequency(RETUNED_AGAIN_RATE)
 
 

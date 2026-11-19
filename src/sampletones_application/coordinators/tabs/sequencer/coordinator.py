@@ -26,6 +26,7 @@ from sampletones_application.coordinators.tabs.sequencer.keys import TrackerKeys
 from sampletones_application.coordinators.tabs.sequencer.layout import (
     SequencerTabLayout,
 )
+from sampletones_application.coordinators.tabs.sequencer.nes_frequency import NesFrequencyChange
 from sampletones_application.coordinators.tabs.sequencer.playhead import (
     SequencerPlayhead,
 )
@@ -68,7 +69,6 @@ from sampletones_application.services.song_player.service import SongPlayerServi
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_BROWSER_PANEL,
     TAG_SEQUENCER_HISTORY_PANEL,
-    TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
     TAG_SEQUENCER_MODULE_PANEL,
     TAG_SEQUENCER_ORDER_WINDOW_ORDER_CARD,
     TAG_SEQUENCER_TRACKER_PANEL,
@@ -158,15 +158,10 @@ class SequencerTabCoordinator:
         self._on_favorite_changed = on_favorite_changed
         self._on_sample_reconstruction_replaced = on_sample_reconstruction_replaced
         self._on_tab_switch = on_tab_switch
-        self._on_nes_frequency_changed = on_nes_frequency_changed
         self._on_channels_changed = on_channels_changed
         self._on_audio_state_changed = on_audio_state_changed
         self._after_edits = after_edits
-        self._language_manager = language_manager
-        self._dialogs = dialogs
         self._playback_failures = playback_failures
-
-        self._nes_frequency_change_acknowledged: bool = False
 
         self._browser_logic: BrowserLogic = BrowserLogic(config_manager, browser_manager)
         self._sequencer_browser_logic: SequencerBrowserLogic = SequencerBrowserLogic(project_controller)
@@ -299,6 +294,15 @@ class SequencerTabCoordinator:
             self._sequencer_tracker_logic,
             self._sequencer_voices_logic,
         )
+        self._nes_frequency: NesFrequencyChange = NesFrequencyChange(
+            self._sequencer_tracker_logic,
+            project_controller,
+            history,
+            self._history_detail,
+            dialogs=dialogs,
+            language_manager=language_manager,
+            on_changed=on_nes_frequency_changed,
+        )
         self._voices: SequencerVoices = SequencerVoices(
             self._sequencer_voices_logic,
             history,
@@ -396,7 +400,7 @@ class SequencerTabCoordinator:
         )
 
     def _wire_module_callbacks(self) -> None:
-        self._sequencer_module_panel.on_nes_frequency = gated(self._after_edits, self._request_nes_frequency_change)
+        self._sequencer_module_panel.on_nes_frequency = gated(self._after_edits, self._nes_frequency.request)
         self._sequencer_module_panel.on_rows_per_pattern = self._recorder.undoable(
             HistoryAction.SET_ROWS_PER_PATTERN,
             self._sequencer_tracker_logic.set_rows_per_pattern,
@@ -797,7 +801,7 @@ class SequencerTabCoordinator:
         self.refresh()
 
     def refresh(self) -> None:
-        self._nes_frequency_change_acknowledged = False
+        self._nes_frequency.acknowledged = False
         self._song_player_logic.stop()
         self._sequencer_tracker_logic.refresh()
         self._sequencer_order_logic.refresh()
@@ -924,54 +928,9 @@ class SequencerTabCoordinator:
         self._sequencer_order_panel.deselect_cell()
         self._sequencer_voices_logic.request_autoplay(voice_id)
 
-    def _request_nes_frequency_change(self, nes_frequency: int) -> None:
-        """Applies a NES-frequency change, confirming first when it would re-time existing samples.
-
-        The rate governs how every sample plays back, so changing it on a project that already
-        holds samples prompts once (until acknowledged for the session); an empty or acknowledged
-        project applies silently. Canceling restores the field to the project's current value.
-        """
-        if nes_frequency == self._sequencer_tracker_logic.settings.nes_frequency:
-            return
-
-        if self._nes_frequency_change_acknowledged or not self._project_controller.has_voices:
-            self._perform_nes_frequency_change(nes_frequency)
-            return
-
-        self._dialogs.show_confirmation(
-            tag=TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
-            title=self._language_manager["global.dialog.title.change_nes_frequency"],
-            message=self._language_manager["global.dialog.message.change_nes_frequency"],
-            on_confirm=lambda: self._perform_nes_frequency_change(nes_frequency),
-            ok_label=self._language_manager["global.dialog.label.change_and_retune"],
-            opt_out_label=self._language_manager["global.dialog.label.dont_ask_again"],
-            on_opt_out=self._acknowledge_nes_frequency_changes,
-            on_cancel=self._sequencer_tracker_logic.push_settings,
-        )
-
-    def _perform_nes_frequency_change(self, nes_frequency: int) -> None:
-        """Applies the rate as one undo entry, then requests a retune of the now-stale samples.
-
-        The entry carries a rate-keyed coalesce target so the asynchronous per-sample retune
-        results fold back into this same ``SET_NES_FREQUENCY`` entry: one undo restores both the
-        prior rate and the prior reconstructions, and a later change to a different rate appends
-        a fresh entry.
-        """
-        with self._history.transaction(
-            HistoryAction.SET_NES_FREQUENCY,
-            detail=self._history_detail.value(nes_frequency),
-            coalesce=(nes_frequency,),
-        ):
-            self._sequencer_tracker_logic.set_nes_frequency(nes_frequency)
-
-        self._on_nes_frequency_changed(nes_frequency)
-
     def nes_frequency_detail(self, nes_frequency: int) -> HistoryDetail:
         """The history detail for a NES-frequency change, so the retune can reuse its undo entry."""
         return self._history_detail.value(nes_frequency)
-
-    def _acknowledge_nes_frequency_changes(self) -> None:
-        self._nes_frequency_change_acknowledged = True
 
     def _on_tracker_cell_focused(self) -> None:
         """Drops the order cursor and takes the keyboard from the voices when the tracker takes focus.
