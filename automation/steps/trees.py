@@ -1,3 +1,4 @@
+import operator
 from functools import partial
 from pathlib import Path
 from typing import Final
@@ -17,7 +18,7 @@ def set_open(screen: Screen, tree: FileTree, row: Item, *, opened: bool) -> None
     tree.click(row)
     screen.expect(
         partial(tree.is_open, row),
-        opened.__eq__,
+        partial(operator.eq, opened),
         description=f"{tree.label(row)} {'open' if opened else 'closed'}",
     )
 
