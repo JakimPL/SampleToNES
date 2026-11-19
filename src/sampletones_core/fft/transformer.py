@@ -6,7 +6,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_core.constants.algorithm import MAX_TRANSFORMATION_GAMMA
-from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
+from sampletones_core.constants.audio import AcceptedSampleRate
 from sampletones_core.constants.spectrum import SPECTRUM_FLOOR
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.types.array import (
@@ -56,10 +56,8 @@ class FFTTransformer(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True, use_enum_values=True)
 
     transformation: Transformation = Field(..., description="FFT feature transformations")
-    sample_rate: int = Field(
+    sample_rate: AcceptedSampleRate = Field(
         ...,
-        ge=MIN_SAMPLE_RATE,
-        le=MAX_SAMPLE_RATE,
         description="Sample rate used for FFT calculations.",
     )
     spectrum_method: SpectrumMethod = Field(

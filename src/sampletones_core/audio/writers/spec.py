@@ -2,7 +2,7 @@ from typing import Literal, Self, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
+from sampletones_core.constants.audio import AcceptedSampleRate
 
 from .bitrate import default_mp3_bitrate, mp3_bitrates
 from .capability import FormatCapability, capability_of
@@ -19,10 +19,8 @@ class AudioOutputSpecBase(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     audio_format: AudioFormat = Field(..., description="The container the audio is written into.")
-    sample_rate: int = Field(
+    sample_rate: AcceptedSampleRate = Field(
         ...,
-        ge=MIN_SAMPLE_RATE,
-        le=MAX_SAMPLE_RATE,
         description="The samples the written audio holds each second.",
     )
 

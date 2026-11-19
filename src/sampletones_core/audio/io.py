@@ -31,12 +31,12 @@ def write_wave(path: Pathlike, sample_rate: int, audio: np.ndarray) -> None:
 
     Args:
         path: File path where WAV file will be written.
-        sample_rate: Sample rate in Hz (must be one of the allowed rates).
+        sample_rate: Sample rate in Hz, within ``MIN_SAMPLE_RATE..MAX_SAMPLE_RATE``.
         audio: Audio array to write (can be mono or stereo).
 
     Raises:
         TypeError: If sample_rate is not an integer or audio is not a numpy array.
-        ValueError: If sample_rate is not in allowed sample rates or audio has invalid dimensions.
+        ValueError: If sample_rate lies outside the accepted range or audio has invalid dimensions.
     """
     validate_sample_rate(sample_rate)
     validate_audio_array(audio, allowed_dims=(1, 2))
@@ -54,12 +54,12 @@ def write_flac(path: Pathlike, sample_rate: int, audio: np.ndarray) -> None:
 
     Args:
         path: File path where the FLAC file will be written.
-        sample_rate: Sample rate in Hz (must be one of the allowed rates).
+        sample_rate: Sample rate in Hz, within ``MIN_SAMPLE_RATE..MAX_SAMPLE_RATE``.
         audio: Audio array to write (can be mono or stereo).
 
     Raises:
         TypeError: If sample_rate is not an integer or audio is not a numpy array.
-        ValueError: If sample_rate is not in allowed sample rates or audio has invalid dimensions.
+        ValueError: If sample_rate lies outside the accepted range or audio has invalid dimensions.
     """
     validate_sample_rate(sample_rate)
     validate_audio_array(audio, allowed_dims=(1, 2))
@@ -148,7 +148,7 @@ def load_audio(
 
     Raises:
         TypeError: If target_sample_rate is not an integer.
-        ValueError: If target_sample_rate is not in allowed sample rates.
+        ValueError: If target_sample_rate lies outside the accepted range.
         FileNotFoundError: If the file does not exist.
         IsADirectoryError: If the path points to a directory instead of a file.
         RuntimeError: If the file format is invalid or corrupted.
@@ -195,7 +195,7 @@ def read_stems(
         The recordings in the order given, each one the length of the longest.
 
     Raises:
-        ValueError: If ``target_sample_rate`` is not in the allowed sample rates.
+        ValueError: If ``target_sample_rate`` lies outside the accepted range.
         FileNotFoundError: If a path names no file.
         IsADirectoryError: If a path points at a directory.
     """

@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_core.configs import InstructionsLibraryConfig
 from sampletones_core.constants.algorithm import MAX_TRANSFORMATION_GAMMA
-from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
+from sampletones_core.constants.audio import AcceptedSampleRate
 from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.library.filename.fields import InstructionsFilenameFields
@@ -14,10 +14,8 @@ from sampletones_shared.utils.hashing import hash_model
 class InstructionLibraryKey(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    sample_rate: int = Field(
+    sample_rate: AcceptedSampleRate = Field(
         ...,
-        ge=MIN_SAMPLE_RATE,
-        le=MAX_SAMPLE_RATE,
         description="Sample rate of the audio",
     )
     frame_length: int = Field(..., ge=1, description="Length of a single frame")

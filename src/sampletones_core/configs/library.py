@@ -2,11 +2,7 @@ import numpy as np
 from pydantic import AliasChoices, ConfigDict, Field
 
 from sampletones_core.constants.algorithm import MAX_TRANSFORMATION_GAMMA, TRANSFORMATION_GAMMA
-from sampletones_core.constants.audio import (
-    DEFAULT_SAMPLE_RATE,
-    MAX_SAMPLE_RATE,
-    MIN_SAMPLE_RATE,
-)
+from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE, AcceptedSampleRate
 from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.constants.general import MIN_FREQUENCY
 from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
@@ -33,10 +29,8 @@ class InstructionsLibraryConfig(DataModel):
             "nes_frequency",
         ),
     )
-    sample_rate: int = Field(
+    sample_rate: AcceptedSampleRate = Field(
         default=DEFAULT_SAMPLE_RATE,
-        ge=MIN_SAMPLE_RATE,
-        le=MAX_SAMPLE_RATE,
     )
     transformation_gamma: int = Field(
         default=TRANSFORMATION_GAMMA,

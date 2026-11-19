@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 from pydantic import ConfigDict, Field, field_serializer
 
-from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
+from sampletones_core.constants.audio import AcceptedSampleRate
 from sampletones_core.data import DataModel
 from sampletones_shared.types.data import SerializedData
 from sampletones_shared.utils.serialization import serialize_array
@@ -15,10 +15,8 @@ class CyclicArray(DataModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     array: np.ndarray
-    sample_rate: int = Field(
+    sample_rate: AcceptedSampleRate = Field(
         ...,
-        gt=MIN_SAMPLE_RATE,
-        lt=MAX_SAMPLE_RATE,
         description="Sample rate of the audio data in Hz.",
         frozen=True,
     )
