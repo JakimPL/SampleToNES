@@ -95,6 +95,7 @@ def _row(
 
     return BoardRow(
         item=item,
+        family=held[0][1].family,
         category=held[0][1].category,
         recording=store.href(recording_run, _recording_path(recording_run, item)),
         cells=tuple(_cell(run, store, record) for run, record in held),
@@ -161,7 +162,8 @@ def _record(run: RunReading, item: str, variant: str) -> Optional[RenderRecord]:
 
 
 def _items(run: RunReading) -> Tuple[str, ...]:
-    return tuple(dict.fromkeys(record.item for record in run.records))
+    """The items the run lists, which are the ones it wrote audio for."""
+    return tuple(dict.fromkeys(record.item for record in run.records if record.listed))
 
 
 def _shared_variants(runs: Sequence[RunReading]) -> Tuple[str, ...]:

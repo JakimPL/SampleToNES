@@ -14,7 +14,14 @@ from sampletones_shared.logger import logger
 
 from .corpus.item import CorpusItem
 from .referee.protocol import Judgment, Referee, TruthReferee
-from .renders import RenderRecord, sounding_timelines, write_channel_renders, write_recording, write_render
+from .renders import (
+    RenderRecord,
+    sounding_timelines,
+    write_channel_renders,
+    write_record,
+    write_recording,
+    write_render,
+)
 
 
 @dataclass(frozen=True)
@@ -27,6 +34,7 @@ class CalibrationVariant:
 class CalibrationRow:
     variant: str
     item: str
+    family: str
     category: str
     referee: str
     component: str
@@ -114,7 +122,8 @@ def evaluate_variants(
     common scale set by the working-level coefficient. An item whose truth the corpus
     knows is also read against it by every truth referee. The render, the recording it
     reconstructs and a record of the scores and the sounding frames are written under
-    the run directory, so a render can be heard and read again after the run.
+    the run directory, so a render can be heard and read again after the run. An unlisted item keeps
+    its record alone.
 
     Args:
         variants: Labeled configurations to evaluate.
@@ -146,32 +155,44 @@ def evaluate_variants(
             judgments = _judgments(item, reference, estimate, reconstruction, referees, truth_referees)
             silence = {referee.name: referee.judge(reference, np.zeros_like(reference)).score for referee in referees}
             rows.extend(_rows(variant, item, judgments))
-
-            write_recording(run_directory, item.name, reference * reconstruction.coefficient, sample_rate)
-            write_render(
-                run_directory,
-                RenderRecord(
-                    variant=variant.label,
-                    item=item.name,
-                    position=position,
-                    category=item.category,
-                    timelines=sounding_timelines(_played_instructions(reconstruction)),
-                    judgments={name: judgment.readings() for name, judgment in judgments.items()},
-                    silence=silence,
-                ),
-                estimate * reconstruction.coefficient,
-                sample_rate,
+            record = RenderRecord(
+                variant=variant.label,
+                item=item.name,
+                position=position,
+                family=item.family.value,
+                category=item.category,
+                listed=item.listed,
+                timelines=sounding_timelines(_played_instructions(reconstruction)),
+                judgments={name: judgment.readings() for name, judgment in judgments.items()},
+                silence=silence,
             )
-            write_channel_renders(
-                run_directory,
-                variant.label,
-                item.name,
-                _channel_audio(reconstruction, estimate.shape[0]),
-                sample_rate,
-            )
+            if item.listed:
+                _write_listened(run_directory, record, reference, estimate, reconstruction, sample_rate)
+            else:
+                write_record(run_directory, record)
             logger.info(f"[{variant.label}] {item.name}: scored")
 
     return rows
+
+
+def _write_listened(
+    run_directory: Path,
+    record: RenderRecord,
+    reference: np.ndarray,
+    estimate: np.ndarray,
+    reconstruction: Reconstruction,
+    sample_rate: int,
+) -> None:
+    """Write what the page plays of a listed item: the recording, the render and its channel parts."""
+    write_recording(run_directory, record.item, reference * reconstruction.coefficient, sample_rate)
+    write_render(run_directory, record, estimate * reconstruction.coefficient, sample_rate)
+    write_channel_renders(
+        run_directory,
+        record.variant,
+        record.item,
+        _channel_audio(reconstruction, estimate.shape[0]),
+        sample_rate,
+    )
 
 
 def _reconstructor(
@@ -243,6 +264,7 @@ def _rows(
         CalibrationRow(
             variant=variant.label,
             item=item.name,
+            family=item.family.value,
             category=item.category,
             referee=referee,
             component=component,

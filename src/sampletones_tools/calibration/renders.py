@@ -16,6 +16,8 @@ from .layout import RECORDINGS_DIRECTORY, RENDERS_DIRECTORY, combination_name
 
 SOUNDING_FRAME: Final[str] = "1"
 RESTING_FRAME: Final[str] = "0"
+UNFILED_FAMILY: Final[str] = ""
+LISTED_BY_DEFAULT: Final[bool] = True
 
 
 class RenderRecord(BaseModel):
@@ -29,7 +31,9 @@ class RenderRecord(BaseModel):
         variant: The label of the configuration the render comes from.
         item: The corpus item rendered.
         position: The item's place in the corpus.
+        family: The item's family, empty in a record written before families existed.
         category: The item's corpus category.
+        listed: Whether the page lists the item; an unlisted item's record stands without audio.
         timelines: One character per frame for each channel, ``SOUNDING_FRAME`` where it sounds.
         judgments: Every referee's readings of the render, by referee name.
         silence: Every referee's score for complete silence against the same recording.
@@ -40,7 +44,9 @@ class RenderRecord(BaseModel):
     variant: str
     item: str
     position: int
+    family: str = UNFILED_FAMILY
     category: str
+    listed: bool = LISTED_BY_DEFAULT
     timelines: Dict[str, str]
     judgments: Dict[str, Dict[str, float]]
     silence: Dict[str, float]
@@ -81,6 +87,13 @@ def write_render(
     directory = variant_directory(run_directory, record.variant)
     directory.mkdir(parents=True, exist_ok=True)
     write_flac(directory / get_filename(record.item, EXT_FILE_FLAC), sample_rate, audio.astype(np.float32))
+    write_record(run_directory, record)
+
+
+def write_record(run_directory: Path, record: RenderRecord) -> None:
+    """Write a render's record under the run's renders, in the directory of its variant."""
+    directory = variant_directory(run_directory, record.variant)
+    directory.mkdir(parents=True, exist_ok=True)
     (directory / get_filename(record.item, EXT_FILE_JSON)).write_text(
         record.model_dump_json(indent=1), encoding="utf-8"
     )

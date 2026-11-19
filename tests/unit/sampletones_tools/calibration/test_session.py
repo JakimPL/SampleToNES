@@ -9,6 +9,7 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_tools.calibration.board.layout import PAGE_FILE
 from sampletones_tools.calibration.board.session import BoardRequest
+from sampletones_tools.calibration.corpus.families import Family
 from sampletones_tools.calibration.corpus.item import CorpusItem
 from sampletones_tools.calibration.layout import CSV_REPORT, MARKDOWN_REPORT
 from sampletones_tools.calibration.referee.protocol import Referee, TruthReferee
@@ -23,6 +24,7 @@ from sampletones_tools.calibration.session import (
     default_output,
     default_page_output,
     floats_named,
+    measured_categories,
     methods_named,
 )
 from sampletones_tools.runs import BOARD_STAMP, RUN_STAMP
@@ -69,6 +71,24 @@ class TestCategoriesNamed:
     def test_an_unknown_category_is_refused_with_the_known_ones(self) -> None:
         with pytest.raises(ValueError, match="Unknown category 'chord'; the categories are tone, nes-pulse"):
             categories_named("tone,chord", KNOWN_CATEGORIES)
+
+
+class TestMeasuredCategories:
+    CATALOG: Final = [(Family.SINES, "tone"), (Family.SEQUENCES, "nes-pulse"), (Family.SEQUENCES, "nes-mix")]
+
+    def test_a_skipped_family_leaves_out_every_category_it_holds(self) -> None:
+        assert measured_categories(None, "sequences", self.CATALOG) == ["tone"]
+
+    def test_a_skipped_category_leaves_out_that_category_alone(self) -> None:
+        assert measured_categories(None, "nes-mix", self.CATALOG) == ["tone", "nes-pulse"]
+
+    def test_a_name_that_is_neither_a_family_nor_a_category_is_refused(self) -> None:
+        with pytest.raises(ValueError, match="Unknown family or category 'drums'"):
+            measured_categories(None, "drums", self.CATALOG)
+
+    def test_skipping_everything_named_is_refused(self) -> None:
+        with pytest.raises(ValueError, match="no category to measure"):
+            measured_categories("tone", "sines", self.CATALOG)
 
 
 class TestDefaultOutput:

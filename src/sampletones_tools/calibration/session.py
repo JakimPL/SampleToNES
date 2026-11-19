@@ -1,6 +1,6 @@
 from functools import partial
 from pathlib import Path
-from typing import Final, List, Optional, Sequence
+from typing import Final, List, Optional, Sequence, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -10,6 +10,7 @@ from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.text import parsed_items
 from sampletones_tools.calibration.board.session import BoardRequest, build_board
+from sampletones_tools.calibration.corpus.families import Family
 from sampletones_tools.calibration.corpus.reference import reference_corpus
 from sampletones_tools.calibration.corpus.writer import write_corpus
 from sampletones_tools.calibration.layout import CORPUS_DIRECTORY, CSV_REPORT, MARKDOWN_REPORT
@@ -66,6 +67,41 @@ def _known_category(known: Sequence[str], name: str) -> str:
         raise ValueError(name)
 
     return name
+
+
+def measured_categories(
+    stated: Optional[str],
+    skipped: Optional[str],
+    catalog: Sequence[Tuple[Family, str]],
+) -> List[str]:
+    """The categories a run measures: those named, or every one, less those ``skipped`` leaves out.
+
+    Args:
+        stated: The categories named, comma separated, or ``None`` for every one.
+        skipped: The families and categories to leave out, comma separated, or ``None`` for none.
+        catalog: Every category beside its family, in corpus order.
+
+    Raises:
+        ValueError: If a name is none of the categories, a skipped name none of the families or
+            categories, or nothing is left to measure.
+    """
+    categories = [category for _, category in catalog]
+    families = list(dict.fromkeys(family.value for family, _ in catalog))
+    chosen = categories_named(stated, categories)
+    known = [*families, *categories]
+    listed = ", ".join(known)
+    left_out = parsed_items(
+        skipped,
+        [],
+        parse=partial(_known_category, known),
+        refusal=lambda name: f"Unknown family or category {name!r}; the names are {listed}.",
+    )
+    dropped = {category for family, category in catalog if family.value in left_out or category in left_out}
+    measured = [category for category in chosen if category not in dropped]
+    if not measured:
+        raise ValueError("The options leave no category to measure.")
+
+    return measured
 
 
 def base_configuration(path: Optional[Path]) -> Config:

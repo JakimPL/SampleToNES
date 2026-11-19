@@ -53,8 +53,8 @@ listening page.
 | `index.html` | the listening page, which opens by double-click |
 | `report.md` | the scores, as tables |
 | `report.csv` | every score, one per row, for your own analysis |
-| `renders/<variant>/` | each reconstruction as a FLAC file, and a JSON file with its scores and the frames each channel plays |
-| `renders/<variant>/<sound>/` | the same reconstruction cut by channel, one file per combination |
+| `renders/<variant>/` | a JSON file per reconstruction with its scores and the frames each channel plays, and a FLAC file of each listed one |
+| `renders/<variant>/<sound>/` | each listed reconstruction cut by channel, one file per combination |
 | `recordings/` | each reference sound, as the run prepared it for reconstruction: at the library's sample rate and the level the conversion matched |
 | `corpus/` | the reference sounds as generated |
 | `page/` | the stylesheet, the script and the palette the page reads |
@@ -100,8 +100,10 @@ A render that scores worse than silence is a sign to listen before trusting the 
 A *referee* is a method that scores a reconstruction against its original: zero for identical signals,
 higher for a larger audible difference. [How it judges](#how-it-judges) describes them.
 
-`report.md` has one section per referee. Each section starts with a table: one row per variant, one
-column per category of reference sound, and the overall mean last. Lower is better.
+`report.md` has one section per [family](#the-reference-sounds) of reference sounds, and in it one
+subsection per referee. Each subsection starts with a table: one row per variant, one column per
+category of the family, and the family's mean last. Lower is better. Each family is read on its own
+terms, so a mean spans one family.
 
 The `mr-loudness-dB` section adds a table for each of its readings:
 
@@ -127,6 +129,7 @@ Each option replaces one part of the default run. The rest stays as the suite se
 | `--methods LIST` | The spectrum methods measured | `--methods cqt` |
 | `--channels LIST` | The channels every variant reconstructs the synthetic sounds with | `--channels pulse1,pulse2,triangle,noise` |
 | `--categories LIST` | The categories of reference sounds measured | `--categories nes-pulse,nes-mix` |
+| `--skip LIST` | The families or categories of reference sounds left out | `--skip composites` |
 | `--perceptual-exponents LIST` | The perceptual exponents measured, one variant each | `--perceptual-exponents 0.5,1` |
 | `--temporal-weights LIST` | The temporal loss weights measured, one variant each | `--temporal-weights 0.1,0.3` |
 | `-o DIR`, `--output DIR` | The folder the run writes into | `-o before` |
@@ -162,22 +165,33 @@ for example a `git worktree`, into its own folder.
 
 ### The reference sounds
 
-The reference sounds are short clips, made the same way on every run. They come in two families.
+The reference sounds are short clips, made the same way on every run. They come in families, which the
+report and the page present in this order:
+
+| Family | Sounds | Played exactly by the channels |
+|---|---|---|
+| `sines` | sine tones | no |
+| `sequences` | melodies, bass lines, drums and pieces written as NES frames | yes |
+| `tones` | single sounds of other shapes: pulse waves, noise, attacks, level changes | no |
+| `composites` | several sounds together | no |
+
+The page lists a selection of each family. The run measures every sound, writes the audio of the
+listed ones, and keeps a record of the scores for the rest.
 
 The synthetic sounds are generated from oscillators, envelopes and noise. Each category tests one kind
 of decision:
 
-| Category | Sounds | What it tests |
-|---|---|---|
-| `tone` | sines across the pitch range | pitch |
-| `timbre` | pulse waves of several duty cycles | the shape of a tone |
-| `noise` | white noise, and dark noise | noise without a pitch |
-| `mix` | a tone under hiss, and a bass under hi-hat ticks | a tone and noise together |
-| `transient` | a snare, a kick, a plucked tone | attacks and decays |
-| `dynamics` | a crescendo, and a loud burst dropping to a quiet hiss | following the level |
-| `polyphony` | a chord, and a melody over a snare | several voices at once |
+| Category | Family | Sounds | What it tests |
+|---|---|---|---|
+| `tone` | `sines` | sines across the pitch range | pitch |
+| `timbre` | `tones` | pulse waves of several duty cycles | the shape of a tone |
+| `noise` | `tones` | white noise, and dark noise | noise without a pitch |
+| `transient` | `tones` | a snare, a kick, a plucked tone | attacks and decays |
+| `dynamics` | `tones` | a crescendo, and a loud burst dropping to a quiet hiss | following the level |
+| `mix` | `composites` | a tone under hiss, and a bass under hi-hat ticks | a tone and noise together |
+| `polyphony` | `composites` | a chord, and a melody over a snare | several voices at once |
 
-The NES sounds are written out frame by frame, as instructions the four channels play, and rendered
+The NES sounds form the `sequences` family. They are written out frame by frame, as instructions the four channels play, and rendered
 the way the channels play them. Each one is a *round trip*: the program could in principle play it
 back exactly, and the run knows every frame it should find. They use plain notes and volumes, with no
 bends or sweeps.
@@ -219,7 +233,9 @@ They never listen, so they say *what* went wrong where the audio referees say ho
 - **`transcription`** counts the frames a channel plays as written. A frame counts wherever the
   sound or the reconstruction plays the channel, so a channel the sound leaves silent and the
   reconstruction sounds counts against it. A frame is played as written where both play it and every
-  field agrees: the note, the duty cycle, the noise period and mode, and the volume within one step.
+  field agrees: the note, the duty cycle, the noise period and mode, and the volume within one step. The
+  25% and 75% duty cycles count as one, since one wave is the other turned upside down and sounds the
+  same.
   The two pulses sound the same mix whichever carries which line, so each frame pairs them the way
   that agrees more. The score is the share of counted frames played otherwise. Its readings:
   - `missed`: written frames the reconstruction leaves silent.

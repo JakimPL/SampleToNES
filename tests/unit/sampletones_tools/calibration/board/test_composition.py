@@ -9,6 +9,7 @@ from sampletones_tools.calibration.board.composition import NO_CLIP, compose_pag
 from sampletones_tools.calibration.board.model import BoardPage
 from sampletones_tools.calibration.board.reading import read_runs
 from sampletones_tools.calibration.layout import combination_name
+from sampletones_tools.calibration.renders import RenderRecord, write_record
 from sampletones_tools.web.roles.table import channel_role
 
 TITLE: Final[str] = "Calibration"
@@ -32,6 +33,32 @@ class TestOneRun:
 
         assert [row.item for row in group.rows] == ["tone-a", "mix-a", "chord-a"]
         assert all(len(row.cells) == len(group.columns) for row in group.rows)
+
+    def test_every_row_carries_the_family_its_section_heads(self, run: Path) -> None:
+        group = page_of([run], run).groups[0]
+
+        assert [row.family for row in group.rows] == ["sines", "composites", "composites"]
+
+    def test_an_unlisted_sound_stays_off_the_page(self, run: Path) -> None:
+        for variant in ("cqt-pe1", "fft-pe1"):
+            write_record(
+                run,
+                RenderRecord(
+                    variant=variant,
+                    item="note-a",
+                    position=3,
+                    family="notes",
+                    category="notes-pulse",
+                    listed=False,
+                    timelines={"pulse1": "11"},
+                    judgments={"mr-auditory-dB": {"score": 1.0}},
+                    silence={"mr-auditory-dB": 20.0},
+                ),
+            )
+
+        group = page_of([run], run).groups[0]
+
+        assert "note-a" not in [row.item for row in group.rows]
 
     def test_a_cell_names_the_render_the_run_wrote(self, run: Path) -> None:
         cell = page_of([run], run).groups[0].rows[0].cells[0]

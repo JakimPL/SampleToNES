@@ -112,6 +112,14 @@ function legendNode(group, colors) {
   return legend;
 }
 
+function familyNode(name, span) {
+  const node = element("tr", "family");
+  const heading = element("th", null, name);
+  heading.colSpan = span;
+  node.append(heading);
+  return node;
+}
+
 function groupNode(group, glyph, colors) {
   const card = element("section", "card");
   card.dataset.group = group.name;
@@ -128,7 +136,12 @@ function groupNode(group, glyph, colors) {
   thead.append(head);
   table.append(thead);
   const body = element("tbody");
+  let family = null;
   for (const row of group.rows) {
+    if (row.family && row.family !== family) {
+      body.append(familyNode(row.family, group.columns.length + 3));
+    }
+    family = row.family;
     body.append(rowNode(row, colors));
   }
   table.append(body);

@@ -10,6 +10,7 @@ from sampletones_core.instructions import InstructionUnion
 from sampletones_tools.calibration.config.nes import NesCorpusConfig, NesItemConfig
 from sampletones_tools.corpus.written import channel_frames
 
+from .families import Family
 from .item import CorpusItem
 from .truth import Truth, sounding_pitches
 
@@ -41,7 +42,9 @@ def _written_item(item: NesItemConfig, config: Config) -> CorpusItem:
     pitches = {channel.value: line for channel, line in sounding_pitches(instructions, config).items()}
     return CorpusItem(
         name=item.name,
+        family=Family.SEQUENCES,
         category=item.category,
+        listed=True,
         audio=np.asarray(audio, dtype=np.float32),
         truth=Truth(instructions=instructions, pitches=pitches),
         channels=ROUND_TRIP_CHANNELS,

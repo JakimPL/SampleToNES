@@ -48,6 +48,14 @@
   gap: 4px;
 }
 
+.table tbody tr.family th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--heading);
+  padding-top: var(--item-spacing-y);
+}
+
 .table tbody tr.playing {
   outline: 1px solid var(--heading);
   outline-offset: -1px;

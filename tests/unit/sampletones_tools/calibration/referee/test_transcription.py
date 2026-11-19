@@ -66,6 +66,15 @@ class TestTranscriptionReferee:
         assert judgment.score == 1.0
         assert (judgment.components[NOTE], judgment.components[DUTY], judgment.components[VOLUME]) == (0.0, 0.0, 1.0)
 
+    def test_a_quarter_duty_plays_as_written_where_three_quarters_is_written(
+        self, referee: TranscriptionReferee
+    ) -> None:
+        written = {ChannelName.PULSE1: _pulse(12, 3, 69)}
+
+        judgment = _judged(referee, written_truth(written), converted({ChannelName.PULSE1: _pulse(12, 1, 69)}))
+
+        assert (judgment.score, judgment.components[DUTY]) == (0.0, 0.0)
+
     def test_a_silent_conversion_misses_every_written_frame(self, referee: TranscriptionReferee) -> None:
         judgment = _judged(
             referee, written_truth({ChannelName.PULSE1: LEAD}), converted({ChannelName.PULSE1: SILENT_PULSE})

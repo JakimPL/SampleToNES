@@ -19,6 +19,7 @@ PERIOD: Final[str] = "period"
 MODE: Final[str] = "mode"
 
 PULSES: Final[Tuple[ChannelName, ChannelName]] = (ChannelName.PULSE1, ChannelName.PULSE2)
+INVERTED_DUTY_CYCLES: Final[Dict[int, int]] = {3: 1}
 SOLE_CHANNELS: Final[Tuple[ChannelName, ...]] = (ChannelName.TRIANGLE, ChannelName.NOISE)
 
 
@@ -82,7 +83,8 @@ class TranscriptionReferee:
 
     A channel-frame counts where the writing or the conversion sounds it, so a channel the writing
     leaves silent and the conversion sounds counts against it. A counted frame is played as written
-    where both sound it and every field the channel takes agrees, the volume within the tolerance.
+    where both sound it and every field the channel takes agrees: the volume within the tolerance,
+    and the duty as the timbre it sounds, 25% and 75% being one.
     The two pulses sound one mix whichever of them carries which line, so each frame pairs them the
     way fewer fields disagree.
 
@@ -144,13 +146,18 @@ class TranscriptionReferee:
         return count
 
 
+def timbre_of(duty_cycle: int) -> int:
+    """The timbre a duty cycle sounds: 75% is the 25% wave inverted, which the ear hears as the same."""
+    return INVERTED_DUTY_CYCLES.get(duty_cycle, duty_cycle)
+
+
 def compared_fields(written: Frame, played: Frame, *, volume_tolerance: int) -> Dict[str, bool]:
     """Whether each field the channel takes agrees between two sounding frames of it."""
     match written, played:
         case PulseInstruction(), PulseInstruction():
             return {
                 NOTE: written.pitch == played.pitch,
-                DUTY: written.duty_cycle == played.duty_cycle,
+                DUTY: timbre_of(written.duty_cycle) == timbre_of(played.duty_cycle),
                 VOLUME: abs(written.volume - played.volume) <= volume_tolerance,
             }
         case TriangleInstruction(), TriangleInstruction():

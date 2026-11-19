@@ -136,6 +136,12 @@ class TestCalibration:
 
         assert calibration.requests == []
 
+    def test_a_skipped_family_is_left_out_of_the_run(self, calibration: RecordedCalibration) -> None:
+        assert dispatch(COMMANDS, ["calibration", "--skip", "sequences"]) == 0
+
+        assert "nes-mix" not in calibration.requests[0].categories
+        assert "tone" in calibration.requests[0].categories
+
     def test_an_unknown_category_is_refused(self, calibration: RecordedCalibration) -> None:
         with pytest.raises(SystemExit, match="Unknown category"):
             dispatch(COMMANDS, ["calibration", "--categories", "chord"])
@@ -194,6 +200,9 @@ class TestBoard:
 
         with pytest.raises(SystemExit, match="measures nothing"):
             dispatch(COMMANDS, ["calibration", "--board", str(run), "--categories", "tone"])
+
+        with pytest.raises(SystemExit, match="measures nothing"):
+            dispatch(COMMANDS, ["calibration", "--board", str(run), "--skip", "notes"])
 
         assert board.requests == []
 

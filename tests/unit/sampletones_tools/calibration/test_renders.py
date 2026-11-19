@@ -10,11 +10,13 @@ from sampletones_shared.paths.extensions import EXT_FILE_FLAC, EXT_FILE_JSON
 from sampletones_shared.utils.system.paths import get_filename
 from sampletones_tools.calibration.layout import RENDERS_DIRECTORY, combination_name
 from sampletones_tools.calibration.renders import (
+    UNFILED_FAMILY,
     RenderRecord,
     channel_subsets,
     item_directory,
     sounding_timelines,
     write_channel_renders,
+    write_record,
     write_render,
 )
 
@@ -58,6 +60,36 @@ class TestWriteRender:
         rendered, sample_rate = read_wave(directory / get_filename(record.item, EXT_FILE_FLAC))
         assert sample_rate == SAMPLE_RATE
         assert np.allclose(rendered, audio, atol=QUANTIZATION_TOLERANCE)
+
+
+class TestWriteRecord:
+    def test_a_record_stands_alone_without_audio(self, tmp_path: Path) -> None:
+        record = RenderRecord(
+            variant=VARIANT,
+            item=ITEM,
+            position=0,
+            family="notes",
+            category="notes-pulse",
+            listed=False,
+            timelines={"pulse1": "11"},
+            judgments={"referee": {"score": 1.0}},
+            silence={"referee": 50.0},
+        )
+
+        write_record(tmp_path, record)
+
+        directory = tmp_path / RENDERS_DIRECTORY / VARIANT
+        assert sorted(path.name for path in directory.iterdir()) == [get_filename(ITEM, EXT_FILE_JSON)]
+
+    def test_a_record_written_before_families_reads_as_unfiled_and_listed(self) -> None:
+        older = (
+            '{"variant": "fft-pe1", "item": "tone-a", "position": 0, "category": "tone", '
+            '"timelines": {}, "judgments": {}, "silence": {}}'
+        )
+
+        record = RenderRecord.model_validate_json(older)
+
+        assert (record.family, record.listed) == (UNFILED_FAMILY, True)
 
 
 class TestChannelSubsets:

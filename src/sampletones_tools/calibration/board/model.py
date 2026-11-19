@@ -44,6 +44,7 @@ class BoardRow(BaseModel):
 
     Attributes:
         item: The corpus item's name.
+        family: The family the item belongs to, which the page heads its section with.
         category: The corpus category the item belongs to.
         recording: The page's reference to the recording every cell reconstructs.
         cells: One cell per column, in the columns' order.
@@ -52,6 +53,7 @@ class BoardRow(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     item: str
+    family: str
     category: str
     recording: str
     cells: Tuple[BoardCell, ...]

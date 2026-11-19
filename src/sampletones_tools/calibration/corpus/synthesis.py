@@ -1,4 +1,4 @@
-from typing import Final, List, Tuple
+from typing import Dict, Final, List, Tuple
 
 import numpy as np
 
@@ -23,9 +23,20 @@ from sampletones_tools.synthesis.oscillators.white_noise import WhiteNoiseOscill
 from sampletones_tools.synthesis.voice.layer import Layer
 from sampletones_tools.synthesis.voice.voice import Voice
 
+from .families import Family
 from .item import CorpusItem
 
 Probe = Tuple[str, str, Voice]
+
+PROBE_FAMILIES: Final[Dict[str, Family]] = {
+    "tone": Family.SINES,
+    "timbre": Family.TONES,
+    "noise": Family.TONES,
+    "transient": Family.TONES,
+    "dynamics": Family.TONES,
+    "mix": Family.COMPOSITES,
+    "polyphony": Family.COMPOSITES,
+}
 
 UNIT_GAIN: Final[float] = 1.0
 SQUARE_DUTY_CYCLE: Final[float] = 0.5
@@ -337,7 +348,9 @@ def _item(
     scaled = clip_audio(config.amplitude * audio)
     return CorpusItem(
         name=name,
+        family=PROBE_FAMILIES[category],
         category=category,
+        listed=True,
         audio=scaled.astype(np.float32),
         truth=None,
         channels=None,

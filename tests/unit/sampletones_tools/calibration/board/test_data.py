@@ -10,7 +10,7 @@ PREFIX: Tuple[str, str] = (f"const {DATA_GLOBAL} = ", ";")
 def page() -> BoardPage:
     channel = BoardChannel(name="noise", timeline="1100", solo="a.flac", mute="b.flac")
     cell = BoardCell(render="renders/cqt-pe1/tone-a.flac", score=9.5, silence=20.0, channels=(channel,))
-    row = BoardRow(item="tone-a", category="tone", recording="recordings/tone-a.flac", cells=(cell,))
+    row = BoardRow(item="tone-a", family="sines", category="tone", recording="recordings/tone-a.flac", cells=(cell,))
     group = BoardGroup(name="run-a", columns=("cqt-pe1",), rows=(row,))
     return BoardPage(
         title="Calibration",

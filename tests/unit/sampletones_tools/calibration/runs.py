@@ -22,15 +22,17 @@ SILENCE_SCORE: Final[float] = 20.0
 @dataclass(frozen=True)
 class Probe:
     item: str
+    family: str
     category: str
     channels: Tuple[ChannelName, ...]
 
 
 ITEMS: Final[Tuple[Probe, ...]] = (
-    Probe(item="tone-a", category="tone", channels=(ChannelName.TRIANGLE,)),
-    Probe(item="mix-a", category="mix", channels=(ChannelName.TRIANGLE, ChannelName.NOISE)),
+    Probe(item="tone-a", family="sines", category="tone", channels=(ChannelName.TRIANGLE,)),
+    Probe(item="mix-a", family="composites", category="mix", channels=(ChannelName.TRIANGLE, ChannelName.NOISE)),
     Probe(
         item="chord-a",
+        family="composites",
         category="polyphony",
         channels=(ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE),
     ),
@@ -57,6 +59,7 @@ def write_run(directory: Path, variants: Sequence[str], offset: float) -> Path:
                     variant=variant,
                     item=probe.item,
                     position=position,
+                    family=probe.family,
                     category=probe.category,
                     timelines={channel.value: "1010" for channel in probe.channels},
                     judgments={

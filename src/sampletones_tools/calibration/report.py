@@ -9,8 +9,16 @@ from sampletones_tools.calibration.referee.protocol import SCORE_READING
 from sampletones_tools.calibration.runner import CalibrationRow
 
 VARIANT_COLUMN: Final[str] = "variant"
-CSV_COLUMNS: Final[Tuple[str, ...]] = (VARIANT_COLUMN, "item", "category", "referee", "component", "score")
-OVERALL_COLUMN: Final[str] = "overall"
+CSV_COLUMNS: Final[Tuple[str, ...]] = (
+    VARIANT_COLUMN,
+    "item",
+    "family",
+    "category",
+    "referee",
+    "component",
+    "score",
+)
+MEAN_COLUMN: Final[str] = "mean"
 
 
 def write_csv(rows: List[CalibrationRow], path: Path) -> None:
@@ -24,33 +32,39 @@ def write_csv(rows: List[CalibrationRow], path: Path) -> None:
     Table(
         columns=CSV_COLUMNS,
         rows=tuple(
-            (row.variant, row.item, row.category, row.referee, row.component, f"{row.score:.6f}") for row in rows
+            (row.variant, row.item, row.family, row.category, row.referee, row.component, f"{row.score:.6f}")
+            for row in rows
         ),
     ).write_csv(path)
 
 
 def write_markdown(rows: List[CalibrationRow], path: Path) -> None:
     """
-    Write a per-referee pivot of mean scores: one row per variant, one column per
-    category, with the overall mean last. Lower scores mean closer reconstructions.
+    Write a section per family, and in it a per-referee pivot of mean scores: one row per variant,
+    one column per category of the family, with the family's mean last. Lower scores mean closer
+    reconstructions.
 
-    Each referee's score leads its section, and every further reading it reports follows
-    in a table of its own.
+    Families stand apart, each read on its own terms, so a mean spans one family alone. Each
+    referee's score leads its subsection, and every further reading it reports follows in a table of
+    its own.
 
     Args:
         rows: Scored rows from the runner.
         path: Target markdown path.
     """
     lines: List[str] = ["# Calibration report", ""]
-    for referee in _ordered(row.referee for row in rows):
-        referee_rows = [row for row in rows if row.referee == referee]
-        lines.extend((f"## {referee}", ""))
-        for component in _ordered(row.component for row in referee_rows):
-            component_rows = [row for row in referee_rows if row.component == component]
-            if component != SCORE_READING:
-                lines.extend((f"### {component}", ""))
+    for family in _ordered(row.family for row in rows):
+        family_rows = [row for row in rows if row.family == family]
+        lines.extend((f"## {family}", ""))
+        for referee in _ordered(row.referee for row in family_rows):
+            referee_rows = [row for row in family_rows if row.referee == referee]
+            lines.extend((f"### {referee}", ""))
+            for component in _ordered(row.component for row in referee_rows):
+                component_rows = [row for row in referee_rows if row.component == component]
+                if component != SCORE_READING:
+                    lines.extend((f"#### {component}", ""))
 
-            lines.extend((*_pivot_table(component_rows).markdown_lines(), ""))
+                lines.extend((*_pivot_table(component_rows).markdown_lines(), ""))
 
     path.write_text("\n".join(lines), encoding="utf-8")
 
@@ -61,10 +75,10 @@ def _pivot_table(rows: List[CalibrationRow]) -> Table:
     cells: List[Tuple[str, ...]] = []
     for variant in _ordered(row.variant for row in rows):
         scores = [f"{means.get((variant, category), float('nan')):.3f}" for category in categories]
-        overall = np.mean([row.score for row in rows if row.variant == variant])
-        cells.append((variant, *scores, f"{float(overall):.3f}"))
+        mean = np.mean([row.score for row in rows if row.variant == variant])
+        cells.append((variant, *scores, f"{float(mean):.3f}"))
 
-    return Table(columns=(VARIANT_COLUMN, *categories, OVERALL_COLUMN), rows=tuple(cells))
+    return Table(columns=(VARIANT_COLUMN, *categories, MEAN_COLUMN), rows=tuple(cells))
 
 
 def _mean_scores(rows: List[CalibrationRow]) -> Dict[Tuple[str, str], float]:
