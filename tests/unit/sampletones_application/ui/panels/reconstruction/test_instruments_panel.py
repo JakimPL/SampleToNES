@@ -26,6 +26,7 @@ from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.pitch_stepper import PitchStepperStyle
 from sampletones_application.ui.panels.reconstruction.instruments import instruments as instruments_module
+from sampletones_application.ui.panels.reconstruction.instruments import sequences as sequences_module
 from sampletones_application.ui.panels.reconstruction.instruments.instruments import (
     GUIReconstructionInstrumentsPanel,
 )
@@ -167,6 +168,7 @@ def written(monkeypatch: pytest.MonkeyPatch) -> Dict[str, str]:
     """Records the texts written to items, standing in for the DPG values."""
     values: Dict[str, str] = {}
     monkeypatch.setattr(instruments_module, "dpg_set_value", values.__setitem__)
+    monkeypatch.setattr(sequences_module, "dpg_set_value", values.__setitem__)
     return values
 
 
@@ -221,7 +223,7 @@ class TestSequenceLengthWarning:
         bound_themes: List[str],
         item_count: int,
     ) -> None:
-        panel._show_sequence(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(item_count))
+        panel._sequence_inputs.show(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(item_count))
         assert bound_themes == [TAG_GLOBAL_THEME_DEFAULT]
 
     def test_a_sequence_beyond_the_limit_takes_the_warning_theme(
@@ -229,7 +231,7 @@ class TestSequenceLengthWarning:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._show_sequence(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS + 1))
+        panel._sequence_inputs.show(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS + 1))
         assert bound_themes == [TAG_GLOBAL_THEME_INPUT_WARNING]
 
     def test_a_shortened_sequence_returns_to_the_default_theme(
@@ -237,8 +239,8 @@ class TestSequenceLengthWarning:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._show_sequence(ChannelName.NOISE, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS + 40))
-        panel._show_sequence(ChannelName.NOISE, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS))
+        panel._sequence_inputs.show(ChannelName.NOISE, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS + 40))
+        panel._sequence_inputs.show(ChannelName.NOISE, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS))
         assert bound_themes == [
             TAG_GLOBAL_THEME_INPUT_WARNING,
             TAG_GLOBAL_THEME_DEFAULT,
@@ -249,8 +251,8 @@ class TestSequenceLengthWarning:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._show_sequence(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS + 1))
-        panel._show_sequence(ChannelName.PULSE1, FeatureKey.ARPEGGIO, sequence(8))
+        panel._sequence_inputs.show(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS + 1))
+        panel._sequence_inputs.show(ChannelName.PULSE1, FeatureKey.ARPEGGIO, sequence(8))
         assert bound_themes == [
             TAG_GLOBAL_THEME_INPUT_WARNING,
             TAG_GLOBAL_THEME_DEFAULT,
@@ -346,7 +348,7 @@ class TestEditingASequence:
     ) -> None:
         edited: List[Envelope[int]] = []
         panel.on_envelope_changed = lambda _channel, _key, envelope: edited.append(envelope)
-        panel._show_sequence(ChannelName.PULSE1, FeatureKey.VOLUME, Envelope[int](items=(15, 12, 8)))
+        panel._sequence_inputs.show(ChannelName.PULSE1, FeatureKey.VOLUME, Envelope[int](items=(15, 12, 8)))
 
         panel._on_bar_point_clicked(
             ChannelName.PULSE1,
@@ -362,7 +364,7 @@ class TestEditingASequence:
     ) -> None:
         edited: List[Envelope[int]] = []
         panel.on_envelope_changed = lambda _channel, _key, envelope: edited.append(envelope)
-        panel._show_sequence(
+        panel._sequence_inputs.show(
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             Envelope[int](items=(15, 12, 8), loop_point=1),
@@ -381,7 +383,7 @@ class TestEditingASequence:
         panel: GUIReconstructionInstrumentsPanel,
         written: Dict[str, str],
     ) -> None:
-        panel._show_sequence(
+        panel._sequence_inputs.show(
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             Envelope[int](items=(15, 12, 8), loop_point=1),
@@ -393,7 +395,7 @@ class TestEditingASequence:
             np.array([15, 4, 8], dtype=np.int8),
         )
 
-        field_tag = panel._get_feature_text_tag(ChannelName.PULSE1, FeatureKey.VOLUME)
+        field_tag = sequences_module.sequence_input_tag(ChannelName.PULSE1, FeatureKey.VOLUME)
         assert written[field_tag] == "15 | 4 8"
 
 
@@ -405,13 +407,9 @@ class TestCopyingASequence:
     ) -> None:
         """The button is built while every dimension is still empty, so the press reads the input."""
         copied: List[str] = []
-        monkeypatch.setattr(
-            GUIReconstructionInstrumentsPanel,
-            "_on_copy_button_clicked",
-            lambda _self, text, _tag: copied.append(text),
-        )
-        callback = panel._copy_callback(ChannelName.PULSE1, FeatureKey.VOLUME, "button")
-        panel._show_sequence(
+        monkeypatch.setattr(sequences_module.SequenceInputs, "_copy", lambda _self, text, _tag: copied.append(text))
+        callback = panel._sequence_inputs.copy_callback(ChannelName.PULSE1, FeatureKey.VOLUME, "button")
+        panel._sequence_inputs.show(
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             Envelope[int](items=(15, 12, 8), loop_point=1),
@@ -426,7 +424,7 @@ class TestCopyingASequence:
         panel: GUIReconstructionInstrumentsPanel,
     ) -> None:
         """DearPyGui reads a callback's ``__code__`` to decide how many arguments to pass it."""
-        callback = panel._copy_callback(ChannelName.PULSE1, FeatureKey.VOLUME, "button")
+        callback = panel._sequence_inputs.copy_callback(ChannelName.PULSE1, FeatureKey.VOLUME, "button")
 
         assert callback.__code__.co_argcount == 0
 
@@ -476,12 +474,12 @@ class TestSequenceStatusMessage:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._show_sequence(
+        panel._sequence_inputs.show(
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
             sequence(HEXADECIMAL_BASE),
         )
-        message = panel._sequence_status_message(
+        message = panel._sequence_inputs.status_message(
             ChannelName.PULSE1,
             FeatureKey.VOLUME,
         )
@@ -494,8 +492,8 @@ class TestSequenceStatusMessage:
         panel: GUIReconstructionInstrumentsPanel,
         bound_themes: List[str],
     ) -> None:
-        panel._show_sequence(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(300))
-        message = panel._sequence_status_message(ChannelName.PULSE1, FeatureKey.VOLUME)
+        panel._sequence_inputs.show(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(300))
+        message = panel._sequence_inputs.status_message(ChannelName.PULSE1, FeatureKey.VOLUME)
         assert "300" in message
         assert str(MAX_SEQUENCE_ITEMS) in message
 
@@ -550,9 +548,9 @@ class TestTheExportsASequenceStatusNames(BaseTestSuite):
         test_case: TestCase,
     ) -> None:
         envelope = sequence(test_case.item_count)
-        panel._show_sequence(ChannelName.PULSE1, test_case.feature_key, envelope)
+        panel._sequence_inputs.show(ChannelName.PULSE1, test_case.feature_key, envelope)
 
-        message = panel._sequence_status_message(ChannelName.PULSE1, test_case.feature_key)
+        message = panel._sequence_inputs.status_message(ChannelName.PULSE1, test_case.feature_key)
 
         named = {
             export_format
@@ -842,7 +840,7 @@ class TestTheEnvelopesKeptWhileTheNextAreOnTheirWay:
             else:
                 part.set_enabled.assert_called_once_with(False)
         fields = [
-            panel._get_feature_text_tag(channel_name, feature_key)
+            sequences_module.sequence_input_tag(channel_name, feature_key)
             for channel_name in ChannelName.items()
             for feature_key in panel._generator_features(channel_name)
         ]
