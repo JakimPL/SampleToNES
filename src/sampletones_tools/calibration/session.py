@@ -13,7 +13,7 @@ from sampletones_tools.calibration.board.session import BoardRequest, build_boar
 from sampletones_tools.calibration.corpus.reference import reference_corpus
 from sampletones_tools.calibration.corpus.writer import write_corpus
 from sampletones_tools.calibration.layout import CORPUS_DIRECTORY, CSV_REPORT, MARKDOWN_REPORT
-from sampletones_tools.calibration.referee.factory import build_referees
+from sampletones_tools.calibration.referee.factory import build_referees, build_truth_referees
 from sampletones_tools.calibration.report import write_csv, write_markdown
 from sampletones_tools.calibration.runner import build_variants, evaluate_variants
 from sampletones_tools.runs import output_root, stamped_board_directory, stamped_run_directory
@@ -140,6 +140,7 @@ def calibrate(request: CalibrationRequest) -> CalibrationOutcome:
     items = [item for item in reference_corpus(request.base) if item.category in request.categories]
     item_paths = write_corpus(items, request.output / CORPUS_DIRECTORY, sample_rate)
     referees = build_referees(sample_rate)
+    truth_referees = build_truth_referees()
     variants = build_variants(
         request.base,
         request.methods,
@@ -156,6 +157,7 @@ def calibrate(request: CalibrationRequest) -> CalibrationOutcome:
         items,
         item_paths,
         referees,
+        truth_referees,
         request.output,
         frozenset(request.channels),
     )

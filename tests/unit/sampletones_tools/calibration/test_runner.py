@@ -74,6 +74,6 @@ class TestEvaluateVariants:
         ]
         (variant,) = build_variants(Config(), [SpectrumMethod.FFT], EXPONENTS, [])
 
-        evaluate_variants([variant], items, {item.name: tmp_path for item in items}, [], tmp_path, RUN_CHANNELS)
+        evaluate_variants([variant], items, {item.name: tmp_path for item in items}, [], [], tmp_path, RUN_CHANNELS)
 
         assert recorded.built == [RUN_CHANNELS, ITEM_CHANNELS]

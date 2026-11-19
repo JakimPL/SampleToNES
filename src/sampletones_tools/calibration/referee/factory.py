@@ -4,7 +4,10 @@ from sampletones_tools.calibration.config.referee import RefereeConfig
 
 from .auditory import MultiResolutionAuditoryReferee
 from .loudness import LoudnessWeightedReferee
-from .protocol import Referee
+from .pitch import PitchReferee
+from .protocol import Referee, TruthReferee
+from .stability import StabilityReferee
+from .transcription import TranscriptionReferee
 from .zimtohrli import ZimtohrliReferee, zimtohrli_available
 
 
@@ -30,3 +33,17 @@ def build_referees(sample_rate: int) -> List[Referee]:
         referees.append(ZimtohrliReferee(sample_rate))
 
     return referees
+
+
+def build_truth_referees() -> List[TruthReferee]:
+    """Referees reading a conversion against what its reference sound plays, with the packaged tuning.
+
+    Returns:
+        List[TruthReferee]: The transcription, the pitch and the stability referees.
+    """
+    config = RefereeConfig.load()
+    return [
+        TranscriptionReferee(volume_tolerance=config.volume_tolerance),
+        PitchReferee(),
+        StabilityReferee(),
+    ]

@@ -112,6 +112,11 @@ The `mr-loudness-dB` section adds a table for each of its readings:
 
 The score is `missing` plus `added`. `level` is reported separately.
 
+The `transcription`, `pitch` and `stability` sections read the reconstruction's instructions against
+what a reference sound plays, so they cover only the sounds whose frames or pitches the run knows.
+Their readings are shares of frames, from 0 to 1, except where the
+[referees](#the-truth-referees) say otherwise. Lower is better there too.
+
 ## Custom runs
 
 Each option replaces one part of the default run. The rest stays as the suite sets it.
@@ -204,3 +209,28 @@ time resolutions, and compare the energy in each band in decibels.
   some added noise scores between.
 - **`zimtohrli`** is a model of human hearing from Google. It joins the other two where it is
   installed. See [dependencies](../development/release/dependencies.md#calibration).
+
+### The truth referees
+
+A sound written as NES frames comes with every frame it plays, and its tonal channels give the pitch it
+sounds in every frame. Three more referees read a reconstruction's instructions against that truth.
+They never listen, so they say *what* went wrong where the audio referees say how much it shows.
+
+- **`transcription`** counts the frames a channel plays as written. A frame counts wherever the
+  sound or the reconstruction plays the channel, so a channel the sound leaves silent and the
+  reconstruction sounds counts against it. A frame is played as written where both play it and every
+  field agrees: the note, the duty cycle, the noise period and mode, and the volume within one step.
+  The two pulses sound the same mix whichever carries which line, so each frame pairs them the way
+  that agrees more. The score is the share of counted frames played otherwise. Its readings:
+  - `missed`: written frames the reconstruction leaves silent.
+  - `spurious`: played frames the sound leaves silent.
+  - `note`, `duty`, `volume`, `period`, `mode`: frames both play where that field disagrees.
+- **`pitch`** answers every frame a line of the sound plays with the closest note a tonal channel of
+  the reconstruction sounds then, whichever channel that is. The score is the share of frames not
+  answered within half a semitone. Its readings are the share answered an `octave` off (the right
+  note in another octave), a `semitone` off, by a `wrong` note, or left `silent`, and `cents`: how far
+  the answers on pitch stand from the line, on average, in cents.
+- **`stability`** counts how often channels change: turning on or off (`toggles`), or moving to another
+  note or noise period while sounding (`moves`). The score is how many more changes per second the
+  reconstruction makes than the sound itself, the two readings together. A reconstruction that
+  flickers where the sound holds still scores high.

@@ -13,7 +13,7 @@ from sampletones_core.reconstructions.reconstruction.renders import rendered_cha
 from sampletones_shared.logger import logger
 
 from .corpus.item import CorpusItem
-from .referee.protocol import Judgment, Referee
+from .referee.protocol import Judgment, Referee, TruthReferee
 from .renders import RenderRecord, sounding_timelines, write_channel_renders, write_recording, write_render
 
 
@@ -102,6 +102,7 @@ def evaluate_variants(
     items: List[CorpusItem],
     item_paths: Dict[str, Path],
     referees: List[Referee],
+    truth_referees: List[TruthReferee],
     run_directory: Path,
     channels: FrozenSet[ChannelName],
 ) -> List[CalibrationRow]:
@@ -110,7 +111,8 @@ def evaluate_variants(
 
     Each corpus item is reconstructed with the variant's configuration and every
     referee judges the approximation against the preprocessed original, both on the
-    common scale set by the working-level coefficient. The render, the recording it
+    common scale set by the working-level coefficient. An item whose truth the corpus
+    knows is also read against it by every truth referee. The render, the recording it
     reconstructs and a record of the scores and the sounding frames are written under
     the run directory, so a render can be heard and read again after the run.
 
@@ -119,6 +121,7 @@ def evaluate_variants(
         items: Corpus items, carrying the category used in reports.
         item_paths: Written WAV path per corpus item name.
         referees: Referees scoring each reconstruction.
+        truth_referees: Referees reading each reconstruction of an item with a known truth against it.
         run_directory: The directory the run writes its renders and recordings into.
         channels: The channels every variant reconstructs an item with when the item names none.
 
@@ -140,7 +143,7 @@ def evaluate_variants(
                 continue
 
             reference, estimate = _compared_signals(reconstructor.load_audio(path), reconstruction)
-            judgments = {referee.name: referee.judge(reference, estimate) for referee in referees}
+            judgments = _judgments(item, reference, estimate, reconstruction, referees, truth_referees)
             silence = {referee.name: referee.judge(reference, np.zeros_like(reference)).score for referee in referees}
             rows.extend(_rows(variant, item, judgments))
 
@@ -181,6 +184,28 @@ def _reconstructor(
         reconstructors[channels] = Reconstructor(config, channels)
 
     return reconstructors[channels]
+
+
+def _judgments(
+    item: CorpusItem,
+    reference: np.ndarray,
+    estimate: np.ndarray,
+    reconstruction: Reconstruction,
+    referees: List[Referee],
+    truth_referees: List[TruthReferee],
+) -> Dict[str, Judgment]:
+    """Every referee's judgment of a render, the audio referees first so a report leads with them."""
+    judgments = {referee.name: referee.judge(reference, estimate) for referee in referees}
+    truth = item.truth
+    if truth is None:
+        return judgments
+
+    for referee in truth_referees:
+        judgment = referee.judge(truth, reconstruction)
+        if judgment is not None:
+            judgments[referee.name] = judgment
+
+    return judgments
 
 
 def _compared_signals(

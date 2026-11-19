@@ -1,6 +1,6 @@
 from typing import Self, Tuple
 
-from pydantic import BaseModel, Field, PositiveInt
+from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt
 
 from sampletones_shared.utils.serialization import load_yaml_model
 from sampletones_tools.calibration.paths import REFEREE_CONFIG_PATH
@@ -8,7 +8,8 @@ from sampletones_tools.calibration.paths import REFEREE_CONFIG_PATH
 
 class RefereeConfig(BaseModel, frozen=True):
     """
-    Tuning of the built-in referees, which share one band analysis.
+    Tuning of the built-in referees: the band analysis the audio referees share, and the tolerance the
+    transcription reads frames with.
 
     Values are loaded from the packaged `calibration/referee.yaml`, so referee
     scores stay comparable across calibration runs while remaining adjustable
@@ -48,6 +49,9 @@ class RefereeConfig(BaseModel, frozen=True):
     )
     level_matching: bool = Field(
         description="Whether the loudness-weighted referee matches the estimate's level before comparing shapes.",
+    )
+    volume_tolerance: NonNegativeInt = Field(
+        description="Volume steps a conversion's frame may stand off a written frame by and still play it as written.",
     )
 
     @classmethod

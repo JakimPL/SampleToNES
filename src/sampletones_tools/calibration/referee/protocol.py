@@ -1,7 +1,10 @@
 from dataclasses import dataclass
-from typing import Dict, Final, Mapping, Protocol
+from typing import Dict, Final, Mapping, Optional, Protocol
 
 import numpy as np
+
+from sampletones_core.reconstructions import Reconstruction
+from sampletones_tools.calibration.corpus.truth import Truth
 
 SCORE_READING: Final[str] = "score"
 
@@ -30,3 +33,16 @@ class Referee(Protocol):
     def name(self) -> str: ...
 
     def judge(self, reference: np.ndarray, estimate: np.ndarray) -> Judgment: ...
+
+
+class TruthReferee(Protocol):
+    """Reads a conversion against what its reference sound plays: zero for one that plays it exactly.
+
+    A referee answers ``None`` for a sound whose truth holds nothing it reads, so a report averages
+    only the sounds it judged.
+    """
+
+    @property
+    def name(self) -> str: ...
+
+    def judge(self, truth: Truth, reconstruction: Reconstruction) -> Optional[Judgment]: ...

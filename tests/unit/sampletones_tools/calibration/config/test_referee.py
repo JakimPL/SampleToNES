@@ -17,6 +17,7 @@ VALID_FIELDS: Final[Dict[str, Any]] = {
     "compression_exponent": 0.3,
     "dynamic_range_decibels": 60.0,
     "level_matching": True,
+    "volume_tolerance": 1,
 }
 
 
@@ -76,6 +77,11 @@ class TestRefereeConfig:
             field="dynamic_range_decibels",
             value=0.0,
             label="zero_dynamic_range",
+        ),
+        InvalidFieldCase(
+            field="volume_tolerance",
+            value=-1,
+            label="negative_volume_tolerance",
         ),
     )
 

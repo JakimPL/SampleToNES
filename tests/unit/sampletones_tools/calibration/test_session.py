@@ -11,7 +11,7 @@ from sampletones_tools.calibration.board.layout import PAGE_FILE
 from sampletones_tools.calibration.board.session import BoardRequest
 from sampletones_tools.calibration.corpus.item import CorpusItem
 from sampletones_tools.calibration.layout import CSV_REPORT, MARKDOWN_REPORT
-from sampletones_tools.calibration.referee.protocol import Referee
+from sampletones_tools.calibration.referee.protocol import Referee, TruthReferee
 from sampletones_tools.calibration.runner import CalibrationRow, CalibrationVariant
 from sampletones_tools.calibration.session import (
     BOARD_ROOT,
@@ -252,6 +252,7 @@ def _evaluated(asked: List[FrozenSet[ChannelName]]) -> Callable[..., List[Calibr
         items: List[CorpusItem],
         item_paths: Dict[str, Path],
         referees: List[Referee],
+        truth_referees: List[TruthReferee],
         run_directory: Path,
         channels: FrozenSet[ChannelName],
     ) -> List[CalibrationRow]:
@@ -270,6 +271,7 @@ def _measuring(measured: List[str]) -> Callable[..., List[CalibrationRow]]:
         items: List[CorpusItem],
         item_paths: Dict[str, Path],
         referees: List[Referee],
+        truth_referees: List[TruthReferee],
         run_directory: Path,
         channels: FrozenSet[ChannelName],
     ) -> List[CalibrationRow]:
