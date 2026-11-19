@@ -16,6 +16,7 @@ from sampletones_application.coordinators.playback.failures import (
 )
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
+from sampletones_application.coordinators.tabs.columns import persisting_collapse
 from sampletones_application.coordinators.tabs.sequencer.blocks import SequencerBlocks
 from sampletones_application.coordinators.tabs.sequencer.frames import SequencerFrames
 from sampletones_application.coordinators.tabs.sequencer.history import (
@@ -38,6 +39,7 @@ from sampletones_application.coordinators.tabs.sequencer.voices import Sequencer
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
+from sampletones_application.logic.reconstruction.browser.logic import BrowserLogic
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
 from sampletones_application.logic.sequencer.channels import SequencerChannelsLogic
@@ -89,7 +91,6 @@ from sampletones_application.utils.callbacks.gates import Wait, gated
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.gui.clipboard.selection import select_text_clipboard
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
-from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import PRIORITY_PANEL, ActivePredicate, KeyRouter
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
 from sampletones_application.utils.midi import MidiRouter
@@ -167,11 +168,8 @@ class SequencerTabCoordinator:
 
         self._nes_frequency_change_acknowledged: bool = False
 
-        self._sequencer_browser_logic: SequencerBrowserLogic = SequencerBrowserLogic(
-            config_manager,
-            browser_manager,
-            project_controller,
-        )
+        self._browser_logic: BrowserLogic = BrowserLogic(config_manager, browser_manager)
+        self._sequencer_browser_logic: SequencerBrowserLogic = SequencerBrowserLogic(project_controller)
         self._file_playback: FilePlayback = FilePlayback(preview_player, previews)
         self._sequencer_tree_logic: TreeLogic = TreeLogic(
             session_manager,
@@ -179,7 +177,7 @@ class SequencerTabCoordinator:
             scheduling=layout.scheduling,
         )
         self._sequencer_browser_panel: GUISequencerBrowserPanel = GUISequencerBrowserPanel(
-            self._sequencer_browser_logic.tree,
+            self._browser_logic.tree,
             self._sequencer_tree_logic,
             scheduling=layout.scheduling,
             language_manager=language_manager,
@@ -279,7 +277,6 @@ class SequencerTabCoordinator:
             self._sequencer_voices_panel,
             self._sequencer_history_panel,
             layout=layout,
-            session_manager=session_manager,
             language_manager=language_manager,
         )
         self._playhead: SequencerPlayhead = SequencerPlayhead(
@@ -392,9 +389,11 @@ class SequencerTabCoordinator:
             self._sequencer_tracker_panel,
             self._sequencer_module_panel,
             self._sequencer_voices_panel,
-            self._sequencer_history_panel,
         ):
-            panel.set_collapse_handler(self._layout.on_card_collapse_changed)
+            panel.set_collapse_handler(persisting_collapse(self._session_manager, None))
+        self._sequencer_history_panel.set_collapse_handler(
+            persisting_collapse(self._session_manager, self._layout.sync_voices_height)
+        )
 
     def _wire_module_callbacks(self) -> None:
         self._sequencer_module_panel.on_nes_frequency = gated(self._after_edits, self._request_nes_frequency_change)
@@ -612,7 +611,7 @@ class SequencerTabCoordinator:
     def _wire_voices_callbacks(self) -> None:
         self._sequencer_voices_logic.on_voices_changed = self._on_voices_changed
         self._sequencer_voices_logic.on_edit_voice_requested = self._dispatch_edit_voice
-        self._sequencer_voices_logic.on_autoplay_error = self._on_preview_error
+        self._sequencer_voices_logic.on_autoplay_error = self._playback_failures.present_later
         self._sequencer_voices_panel.voice_footprint = self._sequencer_voices_logic.build_voice_footprint
         self._sequencer_voices_panel.on_voice_selected = self._on_voice_selected
         self._sequencer_voices_panel.on_voice_edit_requested = self._sequencer_voices_logic.request_edit
@@ -647,19 +646,21 @@ class SequencerTabCoordinator:
         )
 
     def _wire_browser_callbacks(self) -> None:
-        self._sequencer_browser_panel.set_collapse_handler(self._layout.on_browser_collapse_changed)
-        self._sequencer_browser_panel.on_favorites_filter_changed = self._layout.on_browser_favorites_filter_changed
+        self._sequencer_browser_panel.set_collapse_handler(
+            persisting_collapse(self._session_manager, self._layout.sync_browser_width)
+        )
+        self._sequencer_browser_panel.on_favorites_filter_changed = self._session_manager.set_favorites_filter_active
         self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction
         self._sequencer_browser_panel.can_add_to_sequencer = self._is_project_open
         self._sequencer_browser_panel.on_replace_in_sequencer = self.replace_reconstruction
         self._sequencer_browser_panel.replace_in_sequencer_label = self._reconstructions.replace_target_label
         self._sequencer_browser_panel.on_locate_original_audio = self._original_audio_locator.locate
-        self._sequencer_browser_panel.on_refresh_tree = self._sequencer_browser_logic.refresh_tree
+        self._sequencer_browser_panel.on_refresh_tree = self._browser_logic.refresh_tree
         self._sequencer_browser_panel.on_recordings_requested = self._on_browser_recordings_requested
         self._sequencer_tree_logic.on_lock_state_changed = self._sequencer_browser_panel.set_tree_enabled
         self._sequencer_tree_logic.on_favorite_changed = self._on_favorite_changed
         self._sequencer_tree_logic.on_search_update_needed = self._sequencer_browser_panel.update_tree_visibility
-        self._file_playback.on_error = self._on_preview_error
+        self._file_playback.on_error = self._playback_failures.present_later
 
     def _wire_playback_callbacks(self) -> None:
         self._song_player_logic.on_position_changed = self._on_player_position_changed
@@ -869,12 +870,9 @@ class SequencerTabCoordinator:
 
         self._playhead.mark()
 
-    def _on_preview_error(self, exception: Exception) -> None:
-        FrameCallbackManager.set_frame_callback(lambda: self._playback_failures.present(exception, message=None))
-
     def _on_browser_recordings_requested(self, path: Path) -> None:
         """Hands the browser what a document names, where it has already been read."""
-        recordings = self._sequencer_browser_logic.recordings(path)
+        recordings = self._browser_logic.recordings(path)
         if recordings is not None:
             self._sequencer_browser_panel.update_recordings(path, recordings)
 

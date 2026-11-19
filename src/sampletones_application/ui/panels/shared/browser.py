@@ -97,6 +97,14 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
         return self._language_manager["global.browser.label.browser"]
 
     @property
+    def refresh_button_label(self) -> str:
+        return self._language_manager["global.browser.label.refresh_button"]
+
+    @property
+    def refresh_status_message(self) -> str:
+        return self._language_manager["global.browser.message.status_refresh"]
+
+    @property
     def section_glyph(self) -> str:
         return self._glyphs.headers.reconstruction
 

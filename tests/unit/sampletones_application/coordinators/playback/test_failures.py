@@ -1,12 +1,14 @@
 from typing import Final, Optional
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
+import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.paths import LANG_EN
 from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_NO_AUDIO_OUTPUT
+from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_shared.exceptions import NoOutputDeviceError, PlaybackError
 
 LANGUAGE_MANAGER: Final[LanguageManager] = LanguageManager(LANG_EN)
@@ -90,3 +92,21 @@ class TestAFailureWhilePlaying:
 
         dialogs.show_info.assert_called_once()
         dialogs.show_error.assert_not_called()
+
+
+class TestAFailureReportedLater:
+    """A preview fails inside the gesture that asked for it, so its report waits for the next frame."""
+
+    def test_the_report_waits_for_the_frame_after(
+        self, presenter: PlaybackFailurePresenter, dialogs: MagicMock
+    ) -> None:
+        FrameCallbackManager.clear()
+        failure = PlaybackError("device refused")
+        with patch.object(dpg, "get_frame_count", lambda: 0), patch.object(dpg, "set_frame_callback"):
+            presenter.present_later(failure)
+            dialogs.show_error.assert_not_called()
+
+            with patch.object(dpg, "get_frame_count", lambda: 1):
+                FrameCallbackManager.process()
+
+        dialogs.show_error.assert_called_once_with(failure, None)

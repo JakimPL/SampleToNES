@@ -1686,6 +1686,7 @@ class TestHistoryDelegation:
             "_history_detail",
             "_voices",
             "_instrument_exports",
+            "_playback_failures",
         ):
             setattr(history_coordinator, name, MagicMock())
         duplicate = history_coordinator._recorder.undoable.return_value

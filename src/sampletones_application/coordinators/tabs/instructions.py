@@ -10,6 +10,7 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
+from sampletones_application.coordinators.tabs.columns import persisting_collapse, side_column
 from sampletones_application.logic.instruction.details import (
     InstructionDetailsPanelLogic,
 )
@@ -33,7 +34,6 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_TAB_INSTRUCTIONS,
     TAG_GLOBAL_TABS,
     TAG_GLOBAL_THEME_PANEL_GROUND,
-    TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_DETAILS_PANEL,
@@ -46,10 +46,7 @@ from sampletones_application.tags.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_PANEL,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
-from sampletones_application.ui.elements.layout.responsive import (
-    expanded_side_width,
-    stacked_graph_height,
-)
+from sampletones_application.ui.elements.layout.responsive import stacked_graph_height
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.instruction.choice import (
     GUIInstructionChoicePanel,
@@ -152,7 +149,7 @@ class InstructionsTabCoordinator:
             colors=layout.tree_colors,
             is_operation_active=is_operation_active,
         )
-        self._library_panel.set_collapse_handler(self._on_library_collapse_changed)
+        self._library_panel.set_collapse_handler(persisting_collapse(self._session_manager, self._sync_library_width))
         self._library_tree_logic.on_lock_state_changed = self._on_library_tree_lock_changed
         self._library_tree_logic.on_favorite_changed = self._repaint_library_favorites
         self._library_tree_logic.on_search_update_needed = self._library_panel.update_tree_visibility
@@ -201,8 +198,8 @@ class InstructionsTabCoordinator:
             language_manager=language_manager,
             status_bar=status_bar,
         )
-        self._waveform_panel.set_collapse_handler(self._on_card_collapse_changed)
-        self._spectrum_panel.set_collapse_handler(self._on_card_collapse_changed)
+        for card in (self._waveform_panel, self._spectrum_panel):
+            card.set_collapse_handler(persisting_collapse(self._session_manager, None))
         self._graph_panels: List[_StackedGraphPanel] = [self._waveform_panel, self._spectrum_panel]
         self._instruction_player_logic.on_position_changed = self._waveform_panel.set_position
         self._waveform_panel.on_position_clicked = self._play_from
@@ -224,8 +221,8 @@ class InstructionsTabCoordinator:
             initial_collapsed=session_manager.is_card_collapsed(TAG_INSTRUCTIONS_DETAILS_WINDOW_PARAMETERS_CARD),
             language_manager=language_manager,
         )
-        self._instruction_choice_panel.set_collapse_handler(self._on_card_collapse_changed)
-        self._instruction_parameters_panel.set_collapse_handler(self._on_card_collapse_changed)
+        for detail_card in (self._instruction_choice_panel, self._instruction_parameters_panel):
+            detail_card.set_collapse_handler(persisting_collapse(self._session_manager, None))
 
         config_manager.add_config_change_callback(self._library_logic.follow_config)
 
@@ -377,10 +374,6 @@ class InstructionsTabCoordinator:
         """Sounds the audio from the sample a click on the waveform pointed at."""
         self._guarded_player.run_guarded(partial(self._instruction_player_logic.play_from, position))
 
-    def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
-        """Persists a center-column card's collapsed state so it restores on the next launch."""
-        self._session_manager.set_card_collapsed(card_tag, collapsed)
-
     def _on_library_tree_lock_changed(self, is_unlocked: bool) -> None:
         """Enables the catalog's tree along with its lock, and loads a folder's remembered library once
         the lock is let go."""
@@ -392,11 +385,6 @@ class InstructionsTabCoordinator:
         """Repaints the row whose star was toggled: the catalog lists a library once, so it is one row."""
         self._library_panel.update_favorite_indicators((node,))
 
-    def _on_library_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
-        """Persists the library panel's collapse, then docks or restores the width of the column it fills."""
-        self._session_manager.set_card_collapsed(card_tag, collapsed)
-        self._sync_library_width()
-
     def sync_responsive_layout(self) -> None:
         """Refits this tab's side column and stacked graphs to the current viewport on each resize."""
         self._sync_library_width()
@@ -404,17 +392,15 @@ class InstructionsTabCoordinator:
 
     def _sync_library_width(self) -> None:
         """Shrinks the library column to the collapse rail when collapsed, else sizes it to the viewport width."""
-        if self._library_panel.collapsed:
-            width = self._geometry.rail_width
-        else:
-            width = expanded_side_width(
-                self._geometry.side_width,
-                dpg.get_viewport_client_width(),
-                self._geometry.baseline_viewport_width,
-                self._side_panel_count,
-                self._geometry.center_weight,
-            )
-        dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
+        dpg_configure_item(
+            _LEFT_COLUMN_TAG,
+            width=self._geometry.side_column_width(
+                collapsed=self._library_panel.collapsed,
+                base_width=self._geometry.side_width,
+                side_panel_count=self._side_panel_count,
+                viewport_width=dpg.get_viewport_client_width(),
+            ),
+        )
 
     def _sync_graph_heights(self) -> None:
         """Grows the stacked graphs to share the viewport's vertical surplus equally, up to their ceiling."""
@@ -454,14 +440,7 @@ class InstructionsTabCoordinator:
             self._side_panel_count = TabColumns.build(
                 panel_gap=self._geometry.panel_gap,
                 columns=[
-                    ColumnSpec(
-                        tag=_LEFT_COLUMN_TAG,
-                        build=self._library_panel.create_panel,
-                        theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
-                        width=self._geometry.side_width,
-                        height=self._geometry.side_height,
-                        no_scrollbar=True,
-                    ),
+                    side_column(self._geometry, tag=_LEFT_COLUMN_TAG, build=self._library_panel.create_panel),
                     ColumnSpec(
                         tag=_CENTER_COLUMN_TAG,
                         build=self._build_display_column,

@@ -11,6 +11,7 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
+from sampletones_application.coordinators.tabs.columns import persisting_collapse, side_column
 from sampletones_application.coordinators.tabs.hooks import MainTabHooks
 from sampletones_application.logic.instruction.library_manager import (
     InstructionsLibraryManager,
@@ -34,7 +35,6 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_TAB_MAIN,
     TAG_GLOBAL_TABS,
     TAG_GLOBAL_THEME_PANEL_GROUND,
-    TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.tags.main import (
     TAG_MAIN_ADVANCED_PANEL,
@@ -53,7 +53,6 @@ from sampletones_application.tags.main import (
     TAG_MAIN_SOURCE_PANEL,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
-from sampletones_application.ui.elements.layout.responsive import expanded_side_width
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.dialogs.scanning import GUIScanWindow
 from sampletones_application.ui.panels.dialogs.stem_selection import GUIStemSelectionWindow
@@ -68,7 +67,6 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
-from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import ActivePredicate, KeyRouter
 from sampletones_application.utils.gui.render_thread import on_render_thread
 from sampletones_application.utils.gui.shortcuts.source import ShortcutSource
@@ -203,7 +201,7 @@ class MainTabCoordinator:
         self._explorer_tree_logic.on_lock_state_changed = self._explorer_panel.set_tree_enabled
         self._explorer_tree_logic.on_favorite_changed = self._repaint_explorer_favorites
         self._explorer_tree_logic.on_search_update_needed = self._explorer_panel.update_tree_visibility
-        self._file_playback.on_error = self._on_explorer_autoplay_error
+        self._file_playback.on_error = self._playback_failures.present_later
 
     def _build_cards(
         self,
@@ -373,9 +371,6 @@ class MainTabCoordinator:
     def _repaint_explorer_favorites(self, node: FileSystemNode) -> None:
         """Repaints the row whose star was toggled: the explorer mirrors the disk, so a path is one row."""
         self._explorer_panel.update_favorite_indicators((node,))
-
-    def _on_explorer_autoplay_error(self, exception: Exception) -> None:
-        FrameCallbackManager.set_frame_callback(lambda: self._playback_failures.present(exception, message=None))
 
     def _on_converter_view_changed(self, view_model: ConverterViewModel) -> None:
         """The converter's own view, and the settings card that follows what it has picked out.
@@ -737,14 +732,7 @@ class MainTabCoordinator:
             self._side_panel_count = TabColumns.build(
                 panel_gap=self._geometry.panel_gap,
                 columns=[
-                    ColumnSpec(
-                        tag=_LEFT_COLUMN_TAG,
-                        build=self._explorer_panel.create_panel,
-                        theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
-                        width=self._geometry.side_width,
-                        height=self._geometry.side_height,
-                        no_scrollbar=True,
-                    ),
+                    side_column(self._geometry, tag=_LEFT_COLUMN_TAG, build=self._explorer_panel.create_panel),
                     ColumnSpec(
                         tag=_CENTER_COLUMN_TAG,
                         build=self._build_center,
@@ -791,20 +779,11 @@ class MainTabCoordinator:
 
     def _wire_collapse_handlers(self) -> None:
         """Routes each Main card's collapse toggle to the handler that persists it and reflows the shared config row."""
-        self._explorer_panel.set_collapse_handler(self._on_explorer_collapse_changed)
-        self._config_panel.set_collapse_handler(self._on_config_row_collapse_changed)
-        self._advanced_settings_panel.set_collapse_handler(self._on_config_row_collapse_changed)
-        self._source_panel.set_collapse_handler(self._on_card_collapse_changed)
-        self._converter_panel.set_collapse_handler(self._on_card_collapse_changed)
-
-    def _on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
-        """Persists a card's collapsed state so it restores on the next launch."""
-        self._session_manager.set_card_collapsed(card_tag, collapsed)
-
-    def _on_explorer_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
-        """Persists the filesystem panel's collapse, then docks or restores the width of the column it fills."""
-        self._session_manager.set_card_collapsed(card_tag, collapsed)
-        self._sync_explorer_width()
+        self._explorer_panel.set_collapse_handler(persisting_collapse(self._session_manager, self._sync_explorer_width))
+        for card in (self._config_panel, self._advanced_settings_panel):
+            card.set_collapse_handler(persisting_collapse(self._session_manager, self._sync_config_row_height))
+        for center_card in (self._source_panel, self._converter_panel):
+            center_card.set_collapse_handler(persisting_collapse(self._session_manager, None))
 
     def sync_responsive_layout(self) -> None:
         """Refits this tab's side column to the current viewport, the entry the resize handler calls."""
@@ -812,23 +791,15 @@ class MainTabCoordinator:
 
     def _sync_explorer_width(self) -> None:
         """Shrinks the filesystem column to the collapse rail when collapsed, else sizes it to the viewport width."""
-        if self._explorer_panel.collapsed:
-            width = self._geometry.rail_width
-        else:
-            width = expanded_side_width(
-                self._geometry.side_width,
-                dpg.get_viewport_client_width(),
-                self._geometry.baseline_viewport_width,
-                self._side_panel_count,
-                self._geometry.center_weight,
-            )
-
-        dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
-
-    def _on_config_row_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
-        """Persists a settings card's collapse, then reflows the row both of them share."""
-        self._session_manager.set_card_collapsed(card_tag, collapsed)
-        self._sync_config_row_height()
+        dpg_configure_item(
+            _LEFT_COLUMN_TAG,
+            width=self._geometry.side_column_width(
+                collapsed=self._explorer_panel.collapsed,
+                base_width=self._geometry.side_width,
+                side_panel_count=self._side_panel_count,
+                viewport_width=dpg.get_viewport_client_width(),
+            ),
+        )
 
     def _sync_config_row_height(self) -> None:
         """Lets the settings row size to its collapsed bars once every card standing in it is collapsed."""

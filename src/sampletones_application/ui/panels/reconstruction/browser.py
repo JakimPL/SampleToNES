@@ -73,14 +73,6 @@ class GUIReconstructionsBrowserPanel(GUIReconstructionBrowserPanel):
         self.on_reconstruction_remove_requested: Optional[PathCallback] = None
         self.on_directory_remove_requested: Optional[PathCallback] = None
 
-    @property
-    def refresh_button_label(self) -> str:
-        return self._language_manager["reconstructions.browser.label.refresh_button"]
-
-    @property
-    def refresh_status_message(self) -> str:
-        return self._language_manager["reconstructions.browser.message.status_refresh"]
-
     def _open_reconstruction(self, node: FileSystemNode) -> None:
         self._load_reconstruction(node)
 

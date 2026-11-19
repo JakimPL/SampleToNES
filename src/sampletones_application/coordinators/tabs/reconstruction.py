@@ -5,8 +5,6 @@ from typing import Callable, Dict, Mapping, Optional, Sequence, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.export import ExportMessages
-from sampletones_application.categories.exports import EXPORT_INSTRUMENT_FILTERS
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.truncation import TruncationMessages
 from sampletones_application.config.managers.config import ConfigManager
@@ -15,10 +13,12 @@ from sampletones_application.coordinators.export.instrument import (
     InstrumentExportCoordinator,
 )
 from sampletones_application.coordinators.export.setup import ExportSetup
+from sampletones_application.coordinators.filters import instrument_filter
 from sampletones_application.coordinators.original_audio import OriginalAudioLocator
 from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
+from sampletones_application.coordinators.tabs.columns import persisting_collapse, side_column
 from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.audition import (
@@ -68,7 +68,6 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_TAB_RECONSTRUCTION,
     TAG_GLOBAL_TABS,
     TAG_GLOBAL_THEME_PANEL_GROUND,
-    TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
 from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_DIRECTORY_CONFIRMATION,
@@ -81,7 +80,6 @@ from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_STEMS,
 )
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
-from sampletones_application.ui.elements.layout.responsive import expanded_side_width
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.reconstruction.audio import (
     GUIReconstructionAudioPanel,
@@ -104,7 +102,6 @@ from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dpg import dpg_configure_item
-from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.keyboard import PRIORITY_PANEL, ActivePredicate, KeyRouter
 from sampletones_application.utils.midi import MidiRouter
 from sampletones_application.view_model.reconstruction.reconstruction import (
@@ -201,15 +198,6 @@ class ReconstructionTabCoordinator:
         self._msg_remove_file_error = language_manager["reconstructions.browser.message.remove_file_error"]
         self._msg_remove_directory_error = language_manager["reconstructions.browser.message.remove_directory_error"]
         self._export_messages = ExportMessages.build(language_manager)
-        self._instrument_filter_names: Dict[ExportFormat, str] = {
-            export_format: language_manager[
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.FILTER,
-                element,
-            ]
-            for export_format, element in EXPORT_INSTRUMENT_FILTERS.items()
-        }
 
         self._browser_logic: BrowserLogic = BrowserLogic(
             config_manager,
@@ -237,9 +225,9 @@ class ReconstructionTabCoordinator:
         self._browser_tree_logic.on_lock_state_changed = self._browser_panel.set_tree_enabled
         self._browser_tree_logic.on_favorite_changed = on_favorite_changed
         self._browser_tree_logic.on_search_update_needed = self._browser_panel.update_tree_visibility
-        self._file_playback.on_error = self._on_preview_error
-        self._browser_panel.set_collapse_handler(self._on_browser_collapse_changed)
-        self._browser_panel.on_favorites_filter_changed = self._on_browser_favorites_filter_changed
+        self._file_playback.on_error = self._playback_failures.present_later
+        self._browser_panel.set_collapse_handler(persisting_collapse(self._session_manager, self._sync_browser_width))
+        self._browser_panel.on_favorites_filter_changed = self._session_manager.set_favorites_filter_active
         self._reconstruction_player_logic = PlayerLogic(
             AudioPlayer(output),
             on_change_audio_state,
@@ -272,9 +260,12 @@ class ReconstructionTabCoordinator:
             status_bar=status_bar,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_STEMS),
         )
-        self._reconstruction_audio_panel.set_collapse_handler(self._on_card_collapse_changed)
-        self._reconstruction_plot_panel.set_collapse_handler(self._on_card_collapse_changed)
-        self._reconstruction_stems_panel.set_collapse_handler(self._on_card_collapse_changed)
+        for card in (
+            self._reconstruction_audio_panel,
+            self._reconstruction_plot_panel,
+            self._reconstruction_stems_panel,
+        ):
+            card.set_collapse_handler(persisting_collapse(self._session_manager, None))
         self._reconstruction_player_logic.on_position_changed = self._reconstruction_plot_panel.set_playback_position
         self._reconstruction_plot_panel.on_position_clicked = self._play_from
         self._reconstruction_panel_logic: ReconstructionPanelLogic = ReconstructionPanelLogic(
@@ -295,7 +286,9 @@ class ReconstructionTabCoordinator:
             tab_active=tab_active,
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL),
         )
-        self._reconstruction_instruments_panel.set_collapse_handler(self._on_instruments_collapse_changed)
+        self._reconstruction_instruments_panel.set_collapse_handler(
+            persisting_collapse(self._session_manager, self._sync_instruments_width)
+        )
         self._reconstruction_instruments_logic: ReconstructionInstrumentsLogic = ReconstructionInstrumentsLogic(
             self._instrument_editor,
             pending_changes,
@@ -504,9 +497,10 @@ class ReconstructionTabCoordinator:
         scope: ExportScope,
     ) -> FileFilter:
         """The type ``export_format`` writes ``scope`` files as, named after that format."""
-        return FileFilter.for_extensions(
-            self._instrument_filter_names[export_format],
-            [self._export_backends[export_format].extension(scope)],
+        return instrument_filter(
+            self._language_manager,
+            export_format,
+            self._export_backends[export_format].extension(scope),
         )
 
     @ignore_none_path
@@ -551,14 +545,7 @@ class ReconstructionTabCoordinator:
             self._side_panel_count = TabColumns.build(
                 panel_gap=self._geometry.panel_gap,
                 columns=[
-                    ColumnSpec(
-                        tag=_LEFT_COLUMN_TAG,
-                        build=self._browser_panel.create_panel,
-                        theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
-                        width=self._geometry.side_width,
-                        height=self._geometry.side_height,
-                        no_scrollbar=True,
-                    ),
+                    side_column(self._geometry, tag=_LEFT_COLUMN_TAG, build=self._browser_panel.create_panel),
                     ColumnSpec(
                         tag=_CENTER_COLUMN_TAG,
                         build=self._build_reconstruction_column,
@@ -592,31 +579,6 @@ class ReconstructionTabCoordinator:
         """Sounds the audio from the sample a click on the waveform pointed at."""
         self._guarded_player.run_guarded(partial(self._reconstruction_player_logic.play_from, position))
 
-    def _on_card_collapse_changed(
-        self,
-        card_tag: str,
-        collapsed: bool,
-    ) -> None:
-        """Persists a card's collapsed state so it restores on the next launch."""
-        self._session_manager.set_card_collapsed(card_tag, collapsed)
-
-    def _on_browser_collapse_changed(
-        self,
-        card_tag: str,
-        collapsed: bool,
-    ) -> None:
-        """Persists the browser panel's collapse, then docks or restores the width of the column it fills."""
-        self._session_manager.set_card_collapsed(card_tag, collapsed)
-        self._sync_browser_width()
-
-    def _on_browser_favorites_filter_changed(
-        self,
-        panel_tag: str,
-        favorites_only: bool,
-    ) -> None:
-        """Persists the browser's favorites filter so it opens in the same mode on the next launch."""
-        self._session_manager.set_favorites_filter_active(panel_tag, favorites_only)
-
     def _on_browser_recordings_requested(self, path: Path) -> None:
         """Hands the browser what a document names, where it has already been read."""
         recordings = self._browser_logic.recordings(path)
@@ -627,15 +589,6 @@ class ReconstructionTabCoordinator:
         """Hands the browser a reading that landed after the row asked for it."""
         self._browser_panel.update_recordings(path, recordings)
 
-    def _on_instruments_collapse_changed(
-        self,
-        card_tag: str,
-        collapsed: bool,
-    ) -> None:
-        """Persists the instruments panel's collapse, then docks or restores the width of the column it fills."""
-        self._session_manager.set_card_collapsed(card_tag, collapsed)
-        self._sync_instruments_width()
-
     def sync_responsive_layout(self) -> None:
         """Refits both side columns to the current viewport, the entry the resize handler calls."""
         self._sync_browser_width()
@@ -643,33 +596,27 @@ class ReconstructionTabCoordinator:
 
     def _sync_browser_width(self) -> None:
         """Shrinks the browser column to the collapse rail when collapsed, else sizes it to the viewport width."""
-        if self._browser_panel.collapsed:
-            width = self._geometry.rail_width
-        else:
-            width = expanded_side_width(
-                self._geometry.side_width,
-                dpg.get_viewport_client_width(),
-                self._geometry.baseline_viewport_width,
-                self._side_panel_count,
-                self._geometry.center_weight,
-            )
-
-        dpg_configure_item(_LEFT_COLUMN_TAG, width=width)
+        dpg_configure_item(
+            _LEFT_COLUMN_TAG,
+            width=self._geometry.side_column_width(
+                collapsed=self._browser_panel.collapsed,
+                base_width=self._geometry.side_width,
+                side_panel_count=self._side_panel_count,
+                viewport_width=dpg.get_viewport_client_width(),
+            ),
+        )
 
     def _sync_instruments_width(self) -> None:
         """Shrinks the instruments column to the collapse rail when collapsed, else sizes it to the viewport width."""
-        if self._reconstruction_instruments_panel.collapsed:
-            width = self._geometry.rail_width
-        else:
-            width = expanded_side_width(
-                self._instruments_width,
-                dpg.get_viewport_client_width(),
-                self._geometry.baseline_viewport_width,
-                self._side_panel_count,
-                self._geometry.center_weight,
-            )
-
-        dpg_configure_item(_RIGHT_COLUMN_TAG, width=width)
+        dpg_configure_item(
+            _RIGHT_COLUMN_TAG,
+            width=self._geometry.side_column_width(
+                collapsed=self._reconstruction_instruments_panel.collapsed,
+                base_width=self._instruments_width,
+                side_panel_count=self._side_panel_count,
+                viewport_width=dpg.get_viewport_client_width(),
+            ),
+        )
 
     def lock(self) -> None:
         self._browser_panel.lock()
@@ -901,14 +848,6 @@ class ReconstructionTabCoordinator:
     def _follow_key(self, position: Optional[int]) -> None:
         """Marks where the note a key struck stands on the plot card, taking the mark off once it ends."""
         self._reconstruction_plot_panel.set_playback_position(START_OF_AUDIO if position is None else position)
-
-    def _on_preview_error(self, exception: Exception) -> None:
-        """Reports a preview the audio device refused, which a browser autoplay asks for on demand.
-
-        It reports on the frame after the one that failed, which leaves the gesture that started it
-        finished before a dialog is raised.
-        """
-        FrameCallbackManager.set_frame_callback(lambda: self._playback_failures.present(exception, message=None))
 
     def _on_audio_data_changed(self, audio_data: Optional[AudioData]) -> None:
         if audio_data is None:
