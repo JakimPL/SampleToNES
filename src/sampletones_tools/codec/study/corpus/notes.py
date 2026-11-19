@@ -37,7 +37,7 @@ def channel_notes(
     volumes: List[int]
     match channel:
         case ChannelName.PULSE1 | ChannelName.PULSE2:
-            _, pitches, volumes, _ = PulseExporter.extract_data(channel_instructions(instructions, PulseInstruction))
+            _, pitches, volumes = PulseExporter.extract_data(channel_instructions(instructions, PulseInstruction))
         case ChannelName.TRIANGLE:
             _, pitches, volumes = TriangleExporter.extract_data(channel_instructions(instructions, TriangleInstruction))
         case _:

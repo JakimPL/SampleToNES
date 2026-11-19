@@ -38,24 +38,6 @@ class Instruction(DataModel, ABC):
         """
 
     @abstractmethod
-    def distance(self, other: Self) -> float:
-        """A dissimilarity score between this instruction and another of the same type.
-
-        The score is symmetric and lies in ``[0, 1]``: it reaches ``0`` for two
-        instructions that sound identical and grows as their parameters diverge. Two
-        silent instructions score ``0``.
-
-        Args:
-            other: Another instruction of the same concrete type.
-
-        Returns:
-            float: The dissimilarity in ``[0, 1]``.
-
-        Raises:
-            TypeError: If ``other`` is a different instruction type.
-        """
-
-    @abstractmethod
     def __lt__(self, other: Self) -> bool:
         """Orders instructions of the same type for sorting.
 

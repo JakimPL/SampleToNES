@@ -48,7 +48,8 @@ class PulseRegisters(ToneRegisters):
         Returns:
             List[PulseRegisters]: One register set per tick, including the closing release tick.
         """
-        _, pitches, volumes, duty_cycles = PulseExporter.extract_data(instructions)
+        _, pitches, volumes = PulseExporter.extract_data(instructions)
+        duty_cycles = PulseExporter.read_duty_cycles(instructions)
         dividers = bent_dividers(pitches, PulseExporter.read_timer_offsets(instructions), timer_table)
         anchors = anchored_pitches(pitches, dividers, timer_table)
 

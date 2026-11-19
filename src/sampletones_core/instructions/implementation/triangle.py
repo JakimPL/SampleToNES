@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from sampletones_core.constants.enums import InstructionClassName
-from sampletones_core.constants.general import MIN_PITCH, PITCH_RANGE
+from sampletones_core.constants.general import MIN_PITCH
 from sampletones_core.utils.frequencies import pitch_to_name
 
 from ..instruction import Instruction
@@ -19,23 +19,6 @@ class TriangleInstruction(TonalInstruction):
             raise TypeError("Cannot compare TriangleInstruction with different type")
 
         return self.pitch < other.pitch
-
-    def distance(self, other: Instruction) -> float:
-        if not isinstance(other, TriangleInstruction):
-            raise TypeError("Cannot compute distance between different instruction types")
-
-        both_silent = not self.on and not other.on
-        one_silent = (not self.on) != (not other.on)
-
-        if both_silent:
-            return 0.0
-
-        if one_silent:
-            return 0.5
-
-        pitch1 = self.pitch
-        pitch2 = other.pitch
-        return abs(pitch1 - pitch2) / PITCH_RANGE
 
     @classmethod
     def null_instruction(cls) -> TriangleInstruction:

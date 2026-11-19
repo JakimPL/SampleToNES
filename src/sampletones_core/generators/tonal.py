@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Dict, Tuple, TypeVar
+from typing import ClassVar, Dict, Tuple, TypeVar
 
 from sampletones_core.configs import Config
 from sampletones_core.instructions import TonalInstruction
@@ -25,6 +25,12 @@ class TonalGenerator(Generator[TonalInstructionT, PhaseTimer], ABC):
         super().__init__(config, name)
         self.timer_table: Dict[int, int] = get_timer_table(config.library.tuning, config.general.pitch_range.pitches)
         self.played_timer_table: Dict[int, int] = get_timer_table(config.library.tuning)
+
+    sounding_timer_floor: ClassVar[int]
+
+    def sounds(self) -> bool:
+        """Whether the divider just loaded is one the channel's waveform runs at."""
+        return self.timer.timer >= self.sounding_timer_floor
 
     def set_timer(self, instruction: TonalInstructionT) -> None:
         if instruction.on:

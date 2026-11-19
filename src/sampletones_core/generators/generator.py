@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, Generic, List, Optional, Tuple
 
 import numpy as np
 
+from sampletones_core.audio.processing import silence
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import MIN_SAMPLE_LENGTH
 from sampletones_core.constants.enums import GeneratorClassName
@@ -26,6 +27,8 @@ class Generator(ABC, Generic[InstructionT, TimerT]):
     `save_state` carries oscillator continuity from one frame into the next, so a held
     note stays phase-continuous across frames until `reset` clears that history.
     """
+
+    instruction_type: ClassVar[InstructionTypeUnion]
 
     def __init__(self, config: Config, name: str) -> None:
         """Builds a generator bound to a configuration and channel name.
@@ -53,7 +56,6 @@ class Generator(ABC, Generic[InstructionT, TimerT]):
 
         self.timer: TimerT
 
-    @abstractmethod
     def __call__(
         self,
         instruction: InstructionT,
@@ -69,9 +71,33 @@ class Generator(ABC, Generic[InstructionT, TimerT]):
                 from it.
 
         Returns:
-            np.ndarray: One frame of float32 samples; a silent instruction yields a zero
-                frame.
+            np.ndarray: One frame of float32 samples; a silent instruction, or a frame the
+                channel does not sound at, yields a zero frame.
+
+        Raises:
+            TypeError: If the instruction is of another channel's type.
         """
+        if not isinstance(instruction, self.instruction_type):
+            raise TypeError(f"instruction must be an instance of {self.instruction_type.__name__}")
+
+        self.validate(initials)
+        if not instruction.on:
+            return silence(self.frame_length)
+
+        output = self.generate(instruction, initials=initials, save=save)
+        self.save_state(save, instruction)
+        if not self.sounds():
+            return silence(self.frame_length)
+
+        return output
+
+    def sounds(self) -> bool:
+        """Whether the channel sounds the frame its timer was just set for.
+
+        A channel whose every setting reaches its output sounds every frame; a tone channel
+        silences itself below the divider its waveform stops at.
+        """
+        return True
 
     def generate(
         self,

@@ -1,7 +1,8 @@
-from typing import ClassVar, Dict, List, Tuple, Union
+from typing import ClassVar, Dict, List, Sequence, Tuple, Union
 
 from sampletones_core.constants.enums import FeatureKey
-from sampletones_core.exporters.implementation.utils import center_pitch
+from sampletones_core.exporters.implementation.utils import held_across_rests
+from sampletones_core.features import CHANNEL_FEATURE_DEFAULTS
 from sampletones_core.generators import GeneratorTypeUnion, PulseGenerator
 from sampletones_core.instructions import (
     InstructionFields,
@@ -23,28 +24,18 @@ class PulseExporter(TonalExporter[PulseInstruction]):
     }
 
     @classmethod
-    def extract_data(cls, instructions: List[PulseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
-        initial_pitch, pitches = cls.read_pitches(instructions)
-        volume = 0
-        duty_cycle = 0
-        volumes: List[int] = []
-        duty_cycles: List[int] = []
-
-        for instruction in instructions:
-            volume = instruction.volume if instruction.on else 0
-            duty_cycle = instruction.duty_cycle if instruction.on else duty_cycle
-            volumes.append(volume)
-            duty_cycles.append(duty_cycle)
-
-        if volume > 0:
-            volumes.append(0)
-
-        return initial_pitch, pitches, volumes, duty_cycles
+    def volume_of(cls, instruction: PulseInstruction) -> int:
+        return instruction.volume
 
     @classmethod
-    def derive_initial_pitch(cls, instructions: List[PulseInstruction]) -> int:
-        first_pitch, pitches, _, _ = cls.extract_data(instructions)
-        return center_pitch(first_pitch, pitches)
+    def read_duty_cycles(cls, instructions: Sequence[PulseInstruction]) -> Tuple[int, ...]:
+        """The duty cycle each frame carries, read the way a contour is: a rest holds the duty the
+        last sounding frame stated, and the rests before the first take its duty."""
+        return held_across_rests(
+            instructions,
+            lambda instruction: instruction.duty_cycle,
+            CHANNEL_FEATURE_DEFAULTS[FeatureKey.DUTY_CYCLE],
+        )
 
     @classmethod
     def read_envelopes(
@@ -52,13 +43,9 @@ class PulseExporter(TonalExporter[PulseInstruction]):
         instructions: List[PulseInstruction],
         initial_pitch: int,
     ) -> Dict[FeatureKey, Tuple[int, ...]]:
-        _, pitches, volumes, duty_cycles = cls.extract_data(instructions)
-
         return {
-            FeatureKey.VOLUME: tuple(volumes),
-            FeatureKey.ARPEGGIO: tuple(pitch - initial_pitch for pitch in pitches),
-            FeatureKey.DUTY_CYCLE: tuple(duty_cycles),
-            **cls.read_bends(instructions),
+            **super().read_envelopes(instructions, initial_pitch),
+            FeatureKey.DUTY_CYCLE: cls.read_duty_cycles(instructions),
         }
 
     @classmethod

@@ -105,7 +105,7 @@ class TestReadingTheOffsetAChannelSounds:
             PulseInstruction.null_instruction(),
         ]
 
-        _, pitches, _, _ = PulseExporter.extract_data(instructions)
+        _, pitches, _ = PulseExporter.extract_data(instructions)
 
         assert len(PulseExporter.read_timer_offsets(instructions)) == len(pitches)
 

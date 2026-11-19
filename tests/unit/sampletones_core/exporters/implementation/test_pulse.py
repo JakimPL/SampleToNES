@@ -3,6 +3,7 @@ import numpy as np
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.constants.general import MAX_PITCH, MIN_PITCH, MIN_PLAYED_PITCH
 from sampletones_core.exporters.implementation.pulse import PulseExporter
+from sampletones_core.features import CHANNEL_FEATURE_DEFAULTS
 from sampletones_core.generators import PulseGenerator
 from sampletones_core.instructions.implementation.pulse import PulseInstruction
 
@@ -17,40 +18,68 @@ def _off() -> PulseInstruction:
 
 class TestPulseExporterExtractData:
     def test_initial_pitch_from_first_on_instruction(self) -> None:
-        initial_pitch, _, _, _ = PulseExporter.extract_data([_pulse(pitch=70)])
+        initial_pitch, _, _ = PulseExporter.extract_data([_pulse(pitch=70)])
         assert initial_pitch == 70
 
     def test_all_off_instructions_initial_pitch_is_min_pitch(self) -> None:
-        initial_pitch, _, _, _ = PulseExporter.extract_data([_off(), _off()])
+        initial_pitch, _, _ = PulseExporter.extract_data([_off(), _off()])
         assert initial_pitch == MIN_PITCH
 
     def test_off_instruction_produces_zero_volume(self) -> None:
-        _, _, volumes, _ = PulseExporter.extract_data([_pulse(pitch=60), _off()])
+        _, _, volumes = PulseExporter.extract_data([_pulse(pitch=60), _off()])
         assert volumes[1] == 0
 
     def test_on_instruction_carries_its_volume(self) -> None:
-        _, _, volumes, _ = PulseExporter.extract_data([_pulse(pitch=60, volume=12)])
+        _, _, volumes = PulseExporter.extract_data([_pulse(pitch=60, volume=12)])
         assert volumes[0] == 12
 
     def test_trailing_nonzero_volume_appends_extra_zero(self) -> None:
-        _, _, volumes, _ = PulseExporter.extract_data([_pulse(pitch=60)])
+        _, _, volumes = PulseExporter.extract_data([_pulse(pitch=60)])
         assert volumes[-1] == 0
         assert len(volumes) == 2
 
     def test_off_instructions_before_on_get_backfilled(self) -> None:
-        _, pitches, _, _ = PulseExporter.extract_data([_off(), _pulse(pitch=55)])
+        _, pitches, _ = PulseExporter.extract_data([_off(), _pulse(pitch=55)])
         assert pitches[0] == 55
 
-    def test_duty_cycle_tracks_the_instruction(self) -> None:
-        _, _, _, duty_cycles = PulseExporter.extract_data([_pulse(pitch=60, duty_cycle=2)])
-        assert duty_cycles[0] == 2
-
     def test_empty_instruction_list_returns_min_pitch(self) -> None:
-        initial_pitch, pitches, volumes, duty_cycles = PulseExporter.extract_data([])
+        initial_pitch, pitches, volumes = PulseExporter.extract_data([])
         assert initial_pitch == MIN_PITCH
         assert pitches == []
         assert volumes == []
-        assert duty_cycles == []
+
+
+class TestPulseExporterDutyCycles:
+    """A rest carries the duty the channel last sounded, and the rests before the first sounding frame
+    take that frame's duty, the rule pitch and bends are read by: a voice opening with rests writes
+    one duty value where it sounds one, the shape a hand-written FTI or BTP instrument takes."""
+
+    def test_duty_cycle_tracks_the_instruction(self) -> None:
+        assert PulseExporter.read_duty_cycles([_pulse(pitch=60, duty_cycle=2)]) == (2,)
+
+    def test_leading_rests_take_the_first_sounding_duty(self) -> None:
+        assert PulseExporter.read_duty_cycles([_off(), _off(), _pulse(duty_cycle=2)]) == (2, 2, 2)
+
+    def test_a_rest_holds_the_last_sounding_duty(self) -> None:
+        instructions = [_pulse(duty_cycle=1), _off(), _pulse(duty_cycle=3), _off()]
+        assert PulseExporter.read_duty_cycles(instructions) == (1, 1, 3, 3)
+
+    def test_a_channel_that_never_sounds_holds_the_channels_default_duty(self) -> None:
+        default = CHANNEL_FEATURE_DEFAULTS[FeatureKey.DUTY_CYCLE]
+        assert PulseExporter.read_duty_cycles([_off(), _off()]) == (default, default)
+
+    def test_no_frames_hold_no_duty(self) -> None:
+        assert PulseExporter.read_duty_cycles([]) == ()
+
+    def test_a_voice_opening_with_rests_writes_one_duty_value(self) -> None:
+        """The envelope keeps one instance of a value that never changes."""
+        features = PulseExporter.to_features([_off(), _off(), _pulse(duty_cycle=2)], 60, ())
+        assert features.envelope(FeatureKey.DUTY_CYCLE).items == (2,)
+
+    def test_the_duty_envelope_is_the_duty_read(self) -> None:
+        instructions = [_off(), _pulse(duty_cycle=1), _pulse(duty_cycle=2)]
+        envelopes = PulseExporter.read_envelopes(instructions, 60)
+        assert envelopes[FeatureKey.DUTY_CYCLE] == PulseExporter.read_duty_cycles(instructions)
 
 
 class TestPulseExporterDeriveInitialPitch:
