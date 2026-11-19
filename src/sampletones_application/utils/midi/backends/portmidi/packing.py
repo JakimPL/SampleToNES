@@ -1,12 +1,17 @@
 from typing import Final, FrozenSet, Optional, Sequence
 
-STATUS_FLAG: Final[int] = 0x80
-COMMAND_MASK: Final[int] = 0xF0
-SYSTEM_EXCLUSIVE_BYTES: Final[FrozenSet[int]] = frozenset({0xF0, 0xF7})
+from sampletones_application.utils.midi.messages import (
+    COMMAND_MASK,
+    END_OF_EXCLUSIVE,
+    STATUS_FLAG,
+    SYSTEM_COMMAND,
+    SYSTEM_EXCLUSIVE,
+)
+
+SYSTEM_EXCLUSIVE_BYTES: Final[FrozenSet[int]] = frozenset({SYSTEM_EXCLUSIVE, END_OF_EXCLUSIVE})
 SHORT_COMMANDS: Final[FrozenSet[int]] = frozenset({0xC0, 0xD0})
 SHORT_SYSTEM_MESSAGES: Final[FrozenSet[int]] = frozenset({0xF1, 0xF3})
 SONG_POSITION: Final[int] = 0xF2
-SYSTEM_COMMAND: Final[int] = 0xF0
 FULL_LENGTH: Final[int] = 3
 SHORT_LENGTH: Final[int] = 2
 SINGLE_LENGTH: Final[int] = 1

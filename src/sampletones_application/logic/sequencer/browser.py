@@ -1,38 +1,17 @@
 from pathlib import Path
-from typing import Optional, Tuple
 
-from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.logic.project.controller import ProjectController
-from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
-from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_core.structures.tree import Tree
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
 class SequencerBrowserLogic(CallbackMixin):
-    def __init__(
-        self,
-        config_manager: ConfigManager,
-        browser_manager: BrowserManager,
-        project_controller: ProjectController,
-    ) -> None:
-        self._config_manager = config_manager
-        self._browser_manager = browser_manager
+    """What the sequencer does with a reconstruction its browser offers: reads it and takes it into
+    the song as a sample, beside the browsing every reconstruction browser shares."""
+
+    def __init__(self, project_controller: ProjectController) -> None:
         self._controller = project_controller
-
-    @property
-    def tree(self) -> Tree:
-        return self._browser_manager.tree
-
-    def refresh_tree(self) -> None:
-        reconstructions_directory = self._config_manager.get_reconstructions_directory()
-        self._browser_manager.set_reconstructions_directory(reconstructions_directory)
-
-    def recordings(self, path: Path) -> Optional[Tuple[NamedRecordingViewModel, ...]]:
-        """The recordings the reconstruction at ``path`` names, and None until it has been read."""
-        return self._browser_manager.recordings(path)
 
     def load_reconstruction(self, path: Path) -> Reconstruction:
         """Loads a reconstruction file for inspection before adding.

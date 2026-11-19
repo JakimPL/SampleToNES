@@ -97,7 +97,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
         arrives as it was left, so the boxes report what plays without overruling a choice.
         """
         for channel_name in ChannelName:
-            tag = self._get_generator_checkbox_tag(channel_name)
+            tag = self.channel_checkbox_tag(channel_name)
             is_playing = channel_name in view_model.playing_channels
             is_selected = channel_name in view_model.selected_channels
             dpg_configure_item(
@@ -235,7 +235,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
             horizontal=True,
         ):
             for channel_name, label in generator_labels.items():
-                tag = self._get_generator_checkbox_tag(channel_name)
+                tag = self.channel_checkbox_tag(channel_name)
                 dpg.add_checkbox(
                     label=label,
                     tag=tag,
@@ -259,10 +259,10 @@ class GUIReconstructionPlotPanel(GUIPanel):
         self,
         channel_name: ChannelName,
     ) -> MessageCallback:
-        tag = self._get_generator_checkbox_tag(channel_name)
-        name = channel_name.capitalized
+        tag = self.channel_checkbox_tag(channel_name)
 
         def message_function(*_args: Any, **_kwargs: Any) -> str:
+            name = channel_label(self._language_manager, channel_name)
             if not dpg.is_item_enabled(tag):
                 return self._language_manager[
                     "reconstructions.instruments.message.status_channel_not_available"
@@ -280,13 +280,14 @@ class GUIReconstructionPlotPanel(GUIPanel):
         return message_function
 
     @staticmethod
-    def _get_generator_checkbox_tag(channel_name: ChannelName) -> str:
+    def channel_checkbox_tag(channel_name: ChannelName) -> str:
+        """The checkbox above the waveform that shows or hides ``channel_name``."""
         return compose_tag(PRE_RECONSTRUCTION_CHANNEL, channel_name.value)
 
     def _read_selected_generators(self) -> List[ChannelName]:
         selected_channels: List[ChannelName] = []
         for channel_name in ChannelName:
-            if dpg.get_value(self._get_generator_checkbox_tag(channel_name)):
+            if dpg.get_value(self.channel_checkbox_tag(channel_name)):
                 selected_channels.append(channel_name)
 
         return selected_channels
@@ -298,7 +299,7 @@ class GUIReconstructionPlotPanel(GUIPanel):
         channel answers to. A channel the loaded reconstruction holds none of keeps the
         checkbox its disabled state already shows.
         """
-        tag = self._get_generator_checkbox_tag(channel_name)
+        tag = self.channel_checkbox_tag(channel_name)
         if not dpg.is_item_enabled(tag):
             return
 

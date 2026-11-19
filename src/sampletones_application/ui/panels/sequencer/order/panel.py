@@ -2,6 +2,7 @@ from typing import Dict, Final, FrozenSet, Optional, Set, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.elements.sequencer import SequencerOrderElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
@@ -242,10 +243,7 @@ class GUISequencerOrderPanel(GUIPanel):
         """Reads the name each row carries, which its label and its menu title show."""
         self._row_labels: Dict[Optional[ChannelName], str] = {
             None: self._label(language_manager, SequencerOrderElements.ROW_MASTER),
-            ChannelName.PULSE1: self._label(language_manager, SequencerOrderElements.ROW_PULSE_1),
-            ChannelName.PULSE2: self._label(language_manager, SequencerOrderElements.ROW_PULSE_2),
-            ChannelName.TRIANGLE: self._label(language_manager, SequencerOrderElements.ROW_TRIANGLE),
-            ChannelName.NOISE: self._label(language_manager, SequencerOrderElements.ROW_NOISE),
+            **{channel: channel_label(language_manager, channel) for channel in ChannelName.items()},
         }
 
     def _load_label_tooltips(self, language_manager: LanguageManager) -> None:

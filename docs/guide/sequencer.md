@@ -248,12 +248,14 @@ timing](../concepts/timing.md) has the details.
 
 ## Exporting the song
 
-**File ▸ Export** writes the song in three formats:
+**File ▸ Export** writes the song in four formats:
 
 - **FamiTracker module...** saves an `.ftm` file. See [FamiTracker
   export](../formats/famitracker.md) for its contents and limits.
 - **Bitphase project...** saves a `.btp` file.
 - **NSF program...** saves an `.nsf` file, which the NES or an NSF player plays directly.
+- **NES ROM...** saves a `.nes` cartridge, which an emulator or a flash cartridge runs. It plays the
+  song and shows it on a player screen.
 
 A voice plays only on the channels it covers. If a row places it on another channel, the
 FamiTracker and Bitphase files cut the note there, and the export dialog lists those rows.
@@ -280,6 +282,11 @@ anything to save the whole song, repeating from the start.
 | **Channels** | The channels the program plays. A channel you clear stays silent. Select at least one |
 | **Repeat** | **Play once** stops at the end. **From the start** plays the song again. **From a frame** goes back to the order frame you type in **Frame** |
 | **Level** | How much the song is compressed. **None** exports fastest and makes the largest file. **Full search** is the slowest and makes the smallest file |
+
+**NES ROM...** opens the same window as **Export NES ROM**. The cartridge shows the title and the
+artist with up to 20 characters each and the copyright with up to 28, and writes letters such as `ż` as
+`z`. The song has about 30 KB. On the console, **START** pauses and resumes and **SELECT** starts the
+song over. See [NES ROM export](../formats/rom.md).
 
 ## Rendering to audio
 

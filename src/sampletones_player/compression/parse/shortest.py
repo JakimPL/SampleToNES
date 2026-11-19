@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Final, List, Optional, Tuple
-
-from sampletones_player.compression.tokens.types import TokenUnion
+from typing import Final, Generic, List, Optional, Tuple, TypeVar
 
 UNREACHED: Final[int] = -1
 
+Token = TypeVar("Token")
+
 
 @dataclass
-class Shortest:
-    """The cheapest way found so far of reaching each tick of a plane.
+class Shortest(Generic[Token]):
+    """The cheapest way found so far of reaching each tick of a plane, over whichever tokens a grammar offers.
 
     Every token is an edge from the tick it starts on to the tick after the ones it covers, and
     its cost is the bytes it takes, so the cheapest path across the plane is its encoding. Each
@@ -25,10 +25,10 @@ class Shortest:
 
     costs: List[int]
     origins: List[int]
-    tokens: List[Optional[TokenUnion]]
+    tokens: List[Optional[Token]]
 
     @classmethod
-    def across(cls, ticks: int) -> Shortest:
+    def across(cls, ticks: int) -> Shortest[Token]:
         """Opens a search over a plane of ``ticks`` ticks, its first tick free to reach."""
         return cls(
             costs=[0] + [UNREACHED] * ticks,
@@ -45,7 +45,7 @@ class Shortest:
         start: int,
         end: int,
         cost: int,
-        token: TokenUnion,
+        token: Token,
     ) -> None:
         """Takes a token as the way to reach ``end`` where it is the cheapest one found.
 
@@ -62,19 +62,19 @@ class Shortest:
         self.origins[end] = start
         self.tokens[end] = token
 
-    def walk(self, ticks: int) -> Tuple[TokenUnion, ...]:
+    def walk(self, ticks: int) -> Tuple[Token, ...]:
         """Reads the tokens of the cheapest path back from ``ticks`` to the plane's first tick.
 
         Args:
             ticks: The tick the path ends at, which is the ticks the plane covers.
 
         Returns:
-            Tuple[TokenUnion, ...]: The tokens, in the order they are read.
+            Tuple[Token, ...]: The tokens, in the order they are read.
 
         Raises:
             ValueError: If a tick along the path was never reached.
         """
-        read: List[TokenUnion] = []
+        read: List[Token] = []
         position = ticks
         while position > 0:
             token = self.tokens[position]

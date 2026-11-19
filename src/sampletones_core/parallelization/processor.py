@@ -77,6 +77,11 @@ class TaskProcessor(ABC, CallbackMixin, Generic[T]):
         self.on_canceled: Optional[VoidCallback] = None
 
     def start(self) -> None:
+        """Runs the tasks on a monitor thread of their own; a run already under way goes on alone."""
+        if self.running:
+            self.logger.warning(f"{type(self).__name__} is already running")
+            return
+
         self._reset_status()
         self.monitor_thread = threading.Thread(
             target=self._run_tasks,

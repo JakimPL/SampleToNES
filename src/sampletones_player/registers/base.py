@@ -22,3 +22,11 @@ class ChannelRegisters(BaseModel, ABC):
         Returns:
             Tuple[int, ...]: One value per register the channel writes each tick.
         """
+
+    @property
+    def written(self) -> Tuple[int, ...]:
+        """The values the driver writes for the tick: the leading registers of :attr:`values`.
+
+        A channel writes every register it owns unless its own rule leaves the later ones standing.
+        """
+        return self.values

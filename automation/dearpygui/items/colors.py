@@ -2,9 +2,8 @@ from typing import Dict, Final, List, Optional, Sequence, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from automation.dearpygui.items.types import Item
+from automation.dearpygui.items.types import THEME_COLOR_TYPE, Item
 
-THEME_COLOR_TYPE: Final[str] = "mvAppItemType::mvThemeColor"
 COLOR_ATTRIBUTES: Final[Tuple[str, ...]] = ("color", "fill")
 THEME_COLOR_VALUE: Final[str] = "value"
 THEME_TARGET: Final[str] = "target"

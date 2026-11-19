@@ -7,15 +7,12 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_player.specification.registers import (
     APU_FRAME_COUNTER,
     APU_STATUS,
+    CHANNEL_STATUS_BITS,
     FIRST_CHANNEL_REGISTER,
     MAX_REGISTER_VALUE,
 )
 from sampletones_tools.player.trace.write import RegisterWrite
-from sampletones_tools.tracker_playback.trace.decode import (
-    CHANNEL_STATUS_BITS,
-    DMC_STATUS_BIT,
-    song_trace,
-)
+from sampletones_tools.tracker_playback.trace.decode import DMC_STATUS_BIT, song_trace
 from sampletones_tools.tracker_playback.trace.registers import ChipRegisters
 from sampletones_tools.tracker_playback.trace.sound import SongTrace, TickPosition
 

@@ -101,7 +101,7 @@ class RenderFixture:
         project_manager.session.mark_loaded(PROJECT_NAME)
         self.controller = ProjectController(project_manager)
         self.session_manager = MagicMock()
-        self.session_manager.get_audio_path.return_value = AUDIO_DIRECTORY
+        self.session_manager.folder.return_value = AUDIO_DIRECTORY
         self.service = FakeRenderService()
         self.logic = SongRenderLogic(
             self.controller,
@@ -231,7 +231,7 @@ class TestAskingForTheDestination:
         render.browse()
 
         assert render.window.view.destination == CHOSEN
-        render.session_manager.set_audio_path.assert_called_once_with(CHOSEN)
+        render.session_manager.remember_folder.assert_not_called()
 
     def test_a_dismissed_dialog_leaves_the_file_alone(self, render: RenderFixture) -> None:
         render.open()

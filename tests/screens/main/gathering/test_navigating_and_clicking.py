@@ -27,7 +27,7 @@ class TestNavigatingGathersNothing:
             for folder in (home_path(TAKES), home_path(TAKES) / INNER, home_path(LOOPS)):
                 row = explorer_row(screen, folder)
 
-                screen.explorer.open_by_click(row)
+                screen.explorer.click(row)
 
                 screen.expect(partial(screen.explorer.is_open, row), bool, description=f"{folder.name} open")
 

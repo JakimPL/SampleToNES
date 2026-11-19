@@ -98,6 +98,11 @@ class TestConfigDirectoryFields:
             f"sr_44100_nf_30_sm_fft_tg_0_gn_XYZ_ch_{HASH}",
             f"sr_44100_nf_30_sm_fft_tg_0_gn__ch_{HASH}",
             "sr_44100_nf_30_sm_fft_tg_0_gn_PTN_ch_short",
+            f"nf_30_sr_44100_sm_fft_tg_0_gn_PTN_ch_{HASH}",
+            f"sr_044100_nf_30_sm_fft_tg_0_gn_PTN_ch_{HASH}",
+            f"sr_44100_nf_30_sm_FFT_tg_0_gn_PTN_ch_{HASH}",
+            f"sr_44100_nf_30_sm_fft_tg_0_gn_PTN_ch_{HASH}_",
+            "",
         ],
     )
     def test_malformed_names_return_none(self, name: str) -> None:

@@ -12,7 +12,7 @@ from sampletones_application.utils.parallelization.background import stop_backgr
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.configs import Config
 from sampletones_shared.documentation.site import DocumentationSite
-from sampletones_shared.paths.user import CONFIG_PATH, LIBRARY_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
+from sampletones_shared.paths.user import CONFIG_PATH
 
 DISPLAY_FUNCTIONS: Final[Tuple[str, ...]] = (
     "create_context",
@@ -75,15 +75,8 @@ def settings_in(directory: Path) -> Path:
     A startup lists the reconstructions and loads the library from the directories its settings
     name, so a run reads only the files a test places beside it.
     """
-    config = Config()
-    general = config.general.model_copy(
-        update={
-            "library_directory": str(directory / LIBRARY_DIRECTORY.name),
-            "reconstructions_directory": str(directory / RECONSTRUCTIONS_DIRECTORY.name),
-        }
-    )
     path = directory / CONFIG_PATH.name
-    config.model_copy(update={"general": general}).save(path)
+    Config.rooted_at(directory).save(path)
     return path
 
 

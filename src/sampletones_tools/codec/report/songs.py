@@ -1,15 +1,8 @@
 from typing import Final
 
 from sampletones_core.project.project import Project
-from sampletones_player.driver.image import DriverImage
-from sampletones_player.specification.nsf import PROGRAM_SIZE
 
 RECORD_BYTES_PER_TICK: Final[int] = 11
-
-
-def available_bytes(driver_image: DriverImage) -> int:
-    """The program area the song block is written into, behind the driver."""
-    return PROGRAM_SIZE - len(driver_image.code)
 
 
 def lengthened(project: Project, frames: int) -> Project:

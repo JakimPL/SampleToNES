@@ -126,10 +126,10 @@ class TestPlayingAProject:
         documents: Path,
         project: Project,
     ) -> None:
-        def build_module(refused: Project) -> None:
+        def write_ftm(document: Path, refused: Project) -> None:
             raise ValueError("Order length 129 exceeds the FamiTracker limit of 128 frames")
 
-        monkeypatch.setattr(target_module, "build_module", build_module)
+        monkeypatch.setattr(target_module, "write_ftm", write_ftm)
 
         with pytest.raises(FamiTrackerError, match="129"):
             FamiTrackerTarget(program=_program(tmp_path, marking_nsf())).play(project, documents, NAME)

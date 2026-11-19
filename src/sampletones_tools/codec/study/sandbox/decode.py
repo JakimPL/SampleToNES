@@ -3,6 +3,7 @@ from typing import Sequence
 from sampletones_player.compression.dictionary.table import PhraseTable
 from sampletones_player.specification.binary import BYTE_VALUES
 from sampletones_player.specification.compression import INITIAL_PLANE_VALUE
+from sampletones_shared.utils.sequences import hold
 from sampletones_tools.codec.study.sandbox.tokens import Hold, Literal, Play, SetHold, StudyToken, WideHold
 
 
@@ -11,8 +12,7 @@ def _played(
     table: PhraseTable,
 ) -> bytes:
     body = table[token.phrase_id].body
-    last = len(body) - 1
-    return bytes((body[min(offset, last)] + token.transpose) % BYTE_VALUES for offset in range(token.ticks))
+    return bytes((hold(body, offset) + token.transpose) % BYTE_VALUES for offset in range(token.ticks))
 
 
 def play_tokens(

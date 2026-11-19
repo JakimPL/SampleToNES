@@ -2,6 +2,7 @@ from typing import Final, List
 
 import numpy as np
 
+from sampletones_core.audio.processing import power_to_decibels
 from sampletones_tools.calibration.config.referee import RefereeConfig
 
 from .bands import BandAnalyzer
@@ -62,8 +63,8 @@ class MultiResolutionAuditoryReferee:
                 reference_energy,
                 range_decibels=self.config.audibility_range_decibels,
             )
-            reference_bands = 10.0 * np.log10(reference_energy + floor)
-            estimate_bands = 10.0 * np.log10(estimate_energy + floor)
+            reference_bands = power_to_decibels(reference_energy + floor)
+            estimate_bands = power_to_decibels(estimate_energy + floor)
             distances.append(float(np.mean(np.abs(reference_bands - estimate_bands))))
 
         return Judgment(score=float(np.mean(distances)), components={})

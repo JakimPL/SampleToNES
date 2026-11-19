@@ -1,3 +1,5 @@
+from functools import partial
+
 from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
 from sampletones_application.logic.shared.previews import DocumentPreviews
@@ -49,6 +51,12 @@ class GuardedPlayer:
 
     def is_loaded(self) -> bool:
         return self._player.is_loaded()
+
+    def can_step(self) -> bool:
+        return self._player.can_step()
+
+    def step(self, ticks: int) -> None:
+        self.run_guarded(partial(self._player.step, ticks))
 
     def run_guarded(self, command: VoidCallback) -> None:
         """Runs a playback command, showing the reader a failure to start the audio.

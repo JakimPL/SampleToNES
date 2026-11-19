@@ -4,6 +4,8 @@ from typing import Callable, Optional
 from sampletones_application.categories.instrument import InstrumentImportMessages
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.config.session.state.paths import LastPath
+from sampletones_application.coordinators.filters import reconstruction_filter
 from sampletones_application.coordinators.tabs.sequencer.project import OpenProjectRequirement
 from sampletones_application.logic.history.action import HistoryAction
 from sampletones_application.logic.history.manager import HistoryManager
@@ -21,7 +23,7 @@ from sampletones_core.formats.famitracker.voice import ImportedVoice
 from sampletones_core.utils.display import display_id
 from sampletones_shared.exceptions import LoadInstrumentError
 from sampletones_shared.logger import logger
-from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_RECONSTRUCTION
+from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT
 
 
 class SequencerVoices:
@@ -119,20 +121,15 @@ class SequencerVoices:
 
         filepath = open_file_dialog(
             title=self._language_manager["sequencer.voices.title.add_sample_dialog"],
-            initial_directory=self._session_manager.get_reconstruction_path(),
-            filters=(
-                FileFilter.for_extensions(
-                    self._language_manager["global.dialog.filter.reconstruction"],
-                    [EXT_FILE_RECONSTRUCTION],
-                ),
-            ),
+            initial_directory=self._session_manager.folder(LastPath.RECONSTRUCTION),
+            filters=(reconstruction_filter(self._language_manager),),
         )
 
         self._import_located_reconstruction(filepath)
 
     @ignore_none_path
     def _import_located_reconstruction(self, filepath: Path) -> None:
-        self._session_manager.set_reconstruction_path(filepath.parent)
+        self._session_manager.remember_folder(LastPath.RECONSTRUCTION, filepath.parent)
         self._import_reconstruction(filepath)
 
     def import_instrument(self) -> None:
@@ -147,7 +144,7 @@ class SequencerVoices:
 
         filepath = open_file_dialog(
             title=self._language_manager["sequencer.voices.title.import_instrument_dialog"],
-            initial_directory=self._session_manager.get_instrument_path(),
+            initial_directory=self._session_manager.folder(LastPath.INSTRUMENT),
             filters=(
                 FileFilter.for_extensions(
                     self._language_manager["global.dialog.filter.famitracker_instrument"],
@@ -165,7 +162,7 @@ class SequencerVoices:
         The file is read before the pool is touched, so a file the reader cannot use leaves the
         project as it stands and the history without an entry.
         """
-        self._session_manager.set_instrument_path(filepath.parent)
+        self._session_manager.remember_folder(LastPath.INSTRUMENT, filepath.parent)
         imported = self._read_instrument(filepath)
         if imported is None:
             return

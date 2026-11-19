@@ -42,7 +42,9 @@ def output() -> FakeAudioOutput:
 @pytest.fixture
 def player(output: FakeAudioOutput) -> AudioPlayer:
     player = AudioPlayer(output)
-    player.load_audio_data(AudioData.from_array(np.zeros(AUDIO_LENGTH, dtype=np.float32), DEFAULT_SAMPLE_RATE))
+    player.load_audio_data(
+        AudioData.from_array(np.zeros(AUDIO_LENGTH, dtype=np.float32), DEFAULT_SAMPLE_RATE, tick_length=None)
+    )
     return player
 
 
@@ -109,7 +111,9 @@ class TestPlay:
 
     def test_the_sound_plays_at_the_rate_its_audio_was_made_at(self, output: FakeAudioOutput) -> None:
         player = AudioPlayer(output)
-        player.load_audio_data(AudioData.from_array(np.zeros(AUDIO_LENGTH, dtype=np.float32), FILE_RATE))
+        player.load_audio_data(
+            AudioData.from_array(np.zeros(AUDIO_LENGTH, dtype=np.float32), FILE_RATE, tick_length=None)
+        )
         player.play(start=START_OF_AUDIO)
         source = _source(output)
         source.begin(DEFAULT_SAMPLE_RATE, _unexpected)
@@ -276,7 +280,9 @@ class TestReplace:
     ) -> None:
         player.play(start=STARTED_AT)
 
-        player.load_audio_data(AudioData.from_array(np.ones(AUDIO_LENGTH, dtype=np.float32), DEFAULT_SAMPLE_RATE))
+        player.load_audio_data(
+            AudioData.from_array(np.ones(AUDIO_LENGTH, dtype=np.float32), DEFAULT_SAMPLE_RATE, tick_length=None)
+        )
         source = _source(output)
         source.begin(DEFAULT_SAMPLE_RATE, _unexpected)
         block = np.zeros(AUDIO_LENGTH, dtype=np.float32)

@@ -1,7 +1,7 @@
 from typing import Iterable, Protocol
 
+from sampletones_player.compression.parse.shortest import Shortest
 from sampletones_tools.codec.study.sandbox.context import PlaneContext
-from sampletones_tools.codec.study.sandbox.shortest import Shortest
 from sampletones_tools.codec.study.sandbox.tokens import StudyToken
 
 

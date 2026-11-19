@@ -1,5 +1,4 @@
 import ast
-import sys
 from pathlib import Path
 from typing import (
     AbstractSet,
@@ -27,6 +26,7 @@ from sampletones_application.utils.gui.shortcuts.ids import (
     ShortcutCategory,
     ShortcutId,
 )
+from sampletones_tools.checks.report import report_findings
 from sampletones_tools.checks.source.modules import SourceModule, parse_module
 from sampletones_tools.checks.source.packages import source_package_directory
 
@@ -210,15 +210,8 @@ def check() -> List[Finding]:
 
 def report(findings: Sequence[Finding]) -> int:
     """Prints every finding on the standard error stream and answers with the exit status."""
-    if not findings:
-        return 0
-
-    print("Action(s) declared only part of the way:", file=sys.stderr)
-    for kind, location, message in findings:
-        print(f"  {kind} | {location}: {message}", file=sys.stderr)
-
-    print(
-        f"\nFound {len(findings)} incomplete action declaration(s).",
-        file=sys.stderr,
+    return report_findings(
+        [f"{kind} | {location}: {message}" for kind, location, message in findings],
+        heading="Action(s) declared only part of the way:",
+        total="Found {count} incomplete action declaration(s).",
     )
-    return 1

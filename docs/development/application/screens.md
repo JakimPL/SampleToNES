@@ -32,7 +32,9 @@ one, which keeps the scenario independent of how the code is arranged inside.
 
 Every scenario runs in a fresh process started in a home directory of its own, so settings, session state
 and the documents folder hold only what the scenario put there. The process ends with the scenario, so the
-exit and its teardown are part of what the scenario proves, and a crash on the way out fails it. A worker
+exit and its teardown are part of what the scenario proves, and a crash on the way out fails it. The
+process lives for the tier's deadline, `CHILD_TIMEOUT_SECONDS`; an item that needs longer, such as a
+maker's scene filming many frames, names its own with `@pytest.mark.screen_timeout(seconds)`. A worker
 draws on an X server of its own, so its scenarios take only its own input.
 
 The `world` fixture says what the home holds before the first frame: the session a previous run left, the
@@ -192,14 +194,18 @@ how a menu popup's width is measured.
   on the disk, as a native dialog's does, and a save may pick one of the file types the dialog offers by
   its name.
 - **Audio.** The default output device plays into silence in real time, so playback runs and nothing is
-  heard. It is the one device the application finds on every machine: the scenario's ALSA reads a
-  configuration of its own, which keeps the machine's sound cards and sound server outside the run, and a
-  clock returns each write and each stop when a device would. JACK looks for a server no one runs and
-  starts none, so a JACK server on the machine stays outside the run too. A scenario can start on a
-  machine offering no device at all, or on one whose device refuses every stream, with the same
-  configuration in place. The device records every stream the application opens, with its rate, the frames
-  written to it and whether it closed, so a scenario reads a sound's length and a teardown's closing where
-  the sound ends up.
+  heard. It is the first device the application finds on every machine, and its default: the scenario's
+  ALSA reads a configuration of its own, a null sink behind the plug converter, which keeps the machine's
+  sound cards and sound server outside the run, and a clock returns each write and each stop when a device
+  would. JACK looks for a server no one runs and
+  starts none, so a JACK server on the machine stays outside the run too. PulseAudio reaches a server
+  of the worker's own, started with its first scenario, whose one sink is a null sink: a PortAudio
+  built with a PulseAudio host API refuses to start where that host API reaches no server, and the
+  worker's server keeps the machine's own outside the run as well. A scenario can start on a machine
+  offering no device at all, on one whose device refuses every stream, or on one whose audio system
+  refuses to start, with the same configuration in place. The device records every stream the application
+  opens, with its rate, the frames written to it and whether it closed, so a scenario reads a sound's
+  length and a teardown's closing where the sound ends up.
 - **MIDI.** A scripted MIDI library stands where the platform's would, so a scenario reaches no keyboard of
   the machine it runs on. The keyboards a scenario's machine offers are the `midi_keyboards` fixture, none
   by default. `screen.play_midi()` plays a message on one of them, and `screen.midi_ports_opened()` reads
@@ -317,7 +323,9 @@ sentences.
 on the processor, so CI runs two of them, which leaves each application more of a small runner's processors
 for its frames. `make system-deps`
 installs Xvfb with the other development packages on Linux, and a missing server is named when the run
-starts. The scenarios run on Linux, and [the ledger](../bugs-and-todos.md) holds the other platforms.
+starts. The worker's sound server runs PulseAudio, which `make system-deps` installs beside Xvfb, and a
+missing one is named the same way. The scenarios run on Linux, and [the ledger](../bugs-and-todos.md)
+holds the other platforms.
 
 To follow a scenario as it plays, draw on Xephyr, which opens its screen as a window on the desktop:
 

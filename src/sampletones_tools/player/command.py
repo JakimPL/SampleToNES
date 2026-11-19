@@ -6,8 +6,8 @@ from typing import Final, Optional
 from sampletones_shared.command import Command
 
 NAME: Final[str] = "driver"
-HELP: Final[str] = "assemble the NES player driver with cc65"
-OUTPUT_HELP: Final[str] = "the directory receiving the assembled driver; without it, the driver the package ships"
+HELP: Final[str] = "assemble the NES player driver and the cartridge shell with cc65"
+OUTPUT_HELP: Final[str] = "the directory receiving the assembled images; without it, the ones the package ships"
 
 
 @dataclass(frozen=True)
@@ -22,9 +22,9 @@ def configure(parser: ArgumentParser) -> None:
 
 
 def run(arguments: Namespace) -> int:
-    """Assembles the driver and prints the layout the build produced.
+    """Assembles the driver, then the shell around it, and prints the layout the build produced.
 
-    Writing the driver the package ships needs a checkout, since that is where the package is.
+    Writing the images the package ships needs a checkout, since that is where the package is.
 
     Raises:
         SystemExit: If the build runs outside a checkout without an output of its own, or fails.
@@ -38,15 +38,17 @@ def run(arguments: Namespace) -> int:
 
     from sampletones_shared.exceptions.player import DriverBuildError
     from sampletones_tools.player.assembler.builder import build_driver
-    from sampletones_tools.player.assembler.layout import BINARY_DIRECTORY
-    from sampletones_tools.player.assembler.report import layout_lines
+    from sampletones_tools.player.assembler.layout import BINARY_DIRECTORY, SHELL_DIRECTORY
+    from sampletones_tools.player.assembler.report import layout_lines, shell_lines
+    from sampletones_tools.player.assembler.shell import build_shell
 
     try:
         image = build_driver(given.output if given.output is not None else BINARY_DIRECTORY)
+        shell = build_shell(given.output if given.output is not None else SHELL_DIRECTORY, image)
     except DriverBuildError as error:
         raise SystemExit(str(error)) from error
 
-    for line in layout_lines(image):
+    for line in [*layout_lines(image), *shell_lines(shell)]:
         print(line)
 
     return 0

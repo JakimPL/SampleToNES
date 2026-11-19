@@ -1,6 +1,5 @@
 import importlib
 import inspect
-import sys
 from enum import Enum, EnumMeta
 from pathlib import Path
 from types import ModuleType
@@ -22,6 +21,7 @@ from sampletones_application.categories import hierarchy
 from sampletones_application.categories.abstract import AbstractElement
 from sampletones_application.tags.compose import TAG_SEPARATOR
 from sampletones_shared.paths.source import SOURCE_ROOT
+from sampletones_tools.checks.report import report_findings
 from sampletones_tools.checks.source.classes import declared_subclasses
 from sampletones_tools.checks.source.index import source_index
 from sampletones_tools.checks.source.lookups import LookupSite, tree_lookups
@@ -271,12 +271,8 @@ def check_language_keys(source: Path, language_file: Path) -> List[Finding]:
 
 def report(findings: Sequence[Finding]) -> int:
     """Prints every finding on the standard error stream and answers with the exit status."""
-    if not findings:
-        return 0
-
-    print("Language key finding(s):", file=sys.stderr)
-    for kind, location, message in findings:
-        print(f"  [{kind}] {location}: {message}", file=sys.stderr)
-
-    print(f"\nFound {len(findings)} language key finding(s).", file=sys.stderr)
-    return 1
+    return report_findings(
+        [f"[{kind}] {location}: {message}" for kind, location, message in findings],
+        heading="Language key finding(s):",
+        total="Found {count} language key finding(s).",
+    )

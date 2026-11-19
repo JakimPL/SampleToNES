@@ -12,7 +12,7 @@ from sampletones_core.audio.output import Ending, Playback
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import PlaybackError, SampleToNESError
 from sampletones_shared.logger import logger
-from sampletones_shared.paths import extensions
+from sampletones_shared.paths.extensions import FileKind, file_kind
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
@@ -42,8 +42,7 @@ class FilePlayback(CallbackMixin):
     @staticmethod
     def plays(path: Path) -> bool:
         """Whether this is a file the player knows how to sound."""
-        suffix = path.suffix.lower()
-        return suffix == extensions.EXT_FILE_RECONSTRUCTION or suffix in extensions.EXT_FILES_AUDIO
+        return file_kind(path) in (FileKind.RECONSTRUCTION, FileKind.AUDIO)
 
     def play(self, path: Path) -> None:
         """Play a file on demand, preempting the auxiliary preview and the players.
@@ -55,10 +54,10 @@ class FilePlayback(CallbackMixin):
 
     def play_at(self, path: Path, priority: PlaybackPriority) -> None:
         """Play a file at the priority the gesture asking for it carries."""
-        match path.suffix.lower():
-            case extensions.EXT_FILE_RECONSTRUCTION:
+        match file_kind(path):
+            case FileKind.RECONSTRUCTION:
                 self._play_reconstruction(path, priority)
-            case suffix if suffix in extensions.EXT_FILES_AUDIO:
+            case FileKind.AUDIO:
                 self._play_audio(path, priority)
 
     def positioned(self, _playback: Playback[int], _report: int) -> None:

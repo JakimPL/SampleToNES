@@ -4,9 +4,10 @@ import pytest
 
 from sampletones_core.formats.bitphase.specification.channels import CHANNEL_LABELS
 from sampletones_player.specification.nsf import ARTIST_OFFSET, NSF_MAGIC, STRING_FIELD_SIZE
-from sampletones_shared.paths.extensions import EXT_FILE_NSF
+from sampletones_player.specification.rom import ROM_MAGIC
+from sampletones_shared.paths.extensions import EXT_FILE_NSF, EXT_FILE_ROM
 from sampletones_tools.corpus.build import Corpus
-from sampletones_tools.samples import bitphase, emit, famitracker, nsf
+from sampletones_tools.samples import bitphase, emit, famitracker, nsf, rom
 from sampletones_tools.samples.emit import emit_samples
 from tests.suite.bitphase import parse_btp
 from tests.suite.famitracker import parse_ftm
@@ -35,6 +36,17 @@ class TestTheEmittersWriteTheCorpus:
         ]
         assert all(path.read_bytes()[: len(NSF_MAGIC)] == NSF_MAGIC for path in written)
         assert all(_artist(path.read_bytes()) == corpus.project.info.author for path in written)
+
+    def test_the_cartridge_emitter_writes_every_sample_then_the_arrangement(
+        self, corpus: Corpus, tmp_path: Path
+    ) -> None:
+        written = emit_samples(tmp_path, rom.write_samples)
+
+        assert [path.name for path in written] == [
+            *(f"{name}{EXT_FILE_ROM}" for name in corpus.catalog),
+            f"{nsf.SONG_NAME}{EXT_FILE_ROM}",
+        ]
+        assert all(path.read_bytes()[: len(ROM_MAGIC)] == ROM_MAGIC for path in written)
 
     def test_the_famitracker_emitter_writes_one_module(self, corpus: Corpus, tmp_path: Path) -> None:
         written = emit_samples(tmp_path, famitracker.write_samples)

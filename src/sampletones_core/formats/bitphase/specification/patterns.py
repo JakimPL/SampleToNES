@@ -1,7 +1,9 @@
 from enum import IntEnum
 from typing import Final
 
+from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.formats.bitphase.specification.chip import TUNING_TABLE_LENGTH
+from sampletones_shared.constants.music import OCTAVE_SEMITONES
 
 
 class NoteName(IntEnum):
@@ -17,7 +19,7 @@ class NoteName(IntEnum):
     B = 13
 
 
-NOTE_RANGE: Final[int] = 12
+NOTE_RANGE: Final[int] = OCTAVE_SEMITONES
 FIRST_OCTAVE: Final[int] = 1
 EMPTY_OCTAVE: Final[int] = 0
 
@@ -36,7 +38,7 @@ TABLE_COLUMN_OFFSET: Final[int] = 1
 
 NO_VOLUME_CHANGE: Final[int] = 0
 VOLUME_OFF: Final[int] = -1
-FULL_VOLUME: Final[int] = 15
+FULL_VOLUME: Final[int] = MAX_VOLUME
 
 MIN_PATTERN_LENGTH: Final[int] = 1
 MAX_PATTERN_LENGTH: Final[int] = 256

@@ -1,7 +1,7 @@
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.coordinators.tabs.columns import fit_side_column, side_column
 from sampletones_application.parameters.sequencer import SequencerTabParameters
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
@@ -12,11 +12,8 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_TABS,
     TAG_GLOBAL_THEME_DEFAULT,
     TAG_GLOBAL_THEME_PANEL_GROUND,
-    TAG_GLOBAL_THEME_PANEL_SURFACE,
 )
-from sampletones_application.tags.sequencer import TAG_SEQUENCER_HISTORY_PANEL
 from sampletones_application.ui.elements.layout.columns import ColumnSpec, TabColumns
-from sampletones_application.ui.elements.layout.responsive import expanded_side_width
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.sequencer.history import GUISequencerHistoryPanel
 from sampletones_application.ui.panels.sequencer.module import GUISequencerModulePanel
@@ -24,7 +21,6 @@ from sampletones_application.ui.panels.sequencer.order.panel import GUISequencer
 from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
 from sampletones_application.ui.panels.sequencer.voices.panel import GUISequencerVoicesPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.dpg import dpg_configure_item
 
 LEFT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_SEQUENCER, SUF_PANEL_LEFT)
 CENTER_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_SEQUENCER, SUF_PANEL_CENTER)
@@ -37,9 +33,6 @@ class SequencerTabLayout:
     The browser fills the left column, the two grids stack down the center, and the module,
     samples and history cards stack down the right. A column keeps its share of the viewport as
     the window is resized, and a card that collapses hands its space back to the card above it.
-
-    Each collapse is written to the session as it happens, so the tab opens next launch showing
-    exactly the cards it was left showing.
     """
 
     def __init__(
@@ -52,7 +45,6 @@ class SequencerTabLayout:
         history_panel: GUISequencerHistoryPanel,
         *,
         layout: SequencerTabParameters,
-        session_manager: SessionManager,
         language_manager: LanguageManager,
     ) -> None:
         self._browser_panel = browser_panel
@@ -61,7 +53,6 @@ class SequencerTabLayout:
         self._module_panel = module_panel
         self._voices_panel = voices_panel
         self._history_panel = history_panel
-        self._session_manager = session_manager
         self._language_manager = language_manager
         self._geometry = layout.geometry
         self._side_panel_count: int
@@ -81,14 +72,7 @@ class SequencerTabLayout:
             self._side_panel_count = TabColumns.build(
                 panel_gap=self._geometry.panel_gap,
                 columns=[
-                    ColumnSpec(
-                        tag=LEFT_COLUMN_TAG,
-                        build=self._browser_panel.create_panel,
-                        theme=TAG_GLOBAL_THEME_PANEL_SURFACE,
-                        width=self._geometry.side_width,
-                        height=self._geometry.side_height,
-                        no_scrollbar=True,
-                    ),
+                    side_column(self._geometry, tag=LEFT_COLUMN_TAG, build=self._browser_panel.create_panel),
                     ColumnSpec(
                         tag=CENTER_COLUMN_TAG,
                         build=self._build_center_column,
@@ -107,26 +91,11 @@ class SequencerTabLayout:
                 ],
             )
 
-        self._sync_browser_width()
+        self.sync_browser_width()
 
     def sync_responsive_layout(self) -> None:
         """Refits this tab's side column to the current viewport, the entry the resize handler calls."""
-        self._sync_browser_width()
-
-    def on_card_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
-        """Persists a card's collapsed state so it restores on the next launch."""
-        self._session_manager.set_card_collapsed(card_tag, collapsed)
-        if card_tag == TAG_SEQUENCER_HISTORY_PANEL:
-            self._sync_voices_height()
-
-    def on_browser_collapse_changed(self, card_tag: str, collapsed: bool) -> None:
-        """Persists the browser panel's collapse, then docks or restores the width of the column it fills."""
-        self._session_manager.set_card_collapsed(card_tag, collapsed)
-        self._sync_browser_width()
-
-    def on_browser_favorites_filter_changed(self, panel_tag: str, favorites_only: bool) -> None:
-        """Persists the browser's favorites filter so it opens in the same mode on the next launch."""
-        self._session_manager.set_favorites_filter_active(panel_tag, favorites_only)
+        self.sync_browser_width()
 
     def _build_center_column(self, parent: str) -> None:
         """Stacks the order table and tracker tracker down the center column."""
@@ -141,22 +110,17 @@ class SequencerTabLayout:
         self._voices_panel.create_panel(parent)
         dpg.add_spacer(height=self._geometry.panel_gap)
         self._history_panel.create_panel(parent)
-        self._sync_voices_height()
+        self.sync_voices_height()
 
-    def _sync_browser_width(self) -> None:
+    def sync_browser_width(self) -> None:
         """Shrinks the browser column to the collapse rail when collapsed, else sizes it to the viewport width."""
-        if self._browser_panel.collapsed:
-            width = self._geometry.rail_width
-        else:
-            width = expanded_side_width(
-                self._geometry.side_width,
-                dpg.get_viewport_client_width(),
-                self._geometry.baseline_viewport_width,
-                self._side_panel_count,
-                self._geometry.center_weight,
-            )
-
-        dpg_configure_item(LEFT_COLUMN_TAG, width=width)
+        fit_side_column(
+            self._geometry,
+            LEFT_COLUMN_TAG,
+            collapsed=self._browser_panel.collapsed,
+            base_width=self._geometry.side_width,
+            side_panel_count=self._side_panel_count,
+        )
 
     def _stacked_card_gap(self) -> int:
         """The rendered vertical gap between two cards stacked in the right column.
@@ -173,7 +137,7 @@ class SequencerTabLayout:
         spacing_y = int(spacing[1]) if spacing is not None else 0
         return self._geometry.panel_gap + 2 * spacing_y
 
-    def _sync_voices_height(self) -> None:
+    def sync_voices_height(self) -> None:
         """Reserves the bottom space the history card and its inter-card gap occupy, so samples fills the rest.
 
         The samples card fills the right column above the history card by reserving that footprint below

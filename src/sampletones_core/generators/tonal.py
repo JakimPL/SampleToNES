@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Dict, Tuple, TypeVar
+from typing import ClassVar, Dict, Tuple, TypeVar
 
 from sampletones_core.configs import Config
 from sampletones_core.instructions import TonalInstruction
@@ -23,13 +23,14 @@ class TonalGenerator(Generator[TonalInstructionT, PhaseTimer], ABC):
 
     def __init__(self, config: Config, name: str) -> None:
         super().__init__(config, name)
-        self.timer_table: Dict[int, int] = {
-            pitch: frequency_to_timer(frequency) for pitch, frequency in self.frequency_table.items()
-        }
-        self.played_timer_table: Dict[int, int] = {
-            **get_timer_table(config.library.tuning),
-            **self.timer_table,
-        }
+        self.timer_table: Dict[int, int] = get_timer_table(config.library.tuning, config.general.pitch_range.pitches)
+        self.played_timer_table: Dict[int, int] = get_timer_table(config.library.tuning)
+
+    sounding_timer_floor: ClassVar[int]
+
+    def sounds(self) -> bool:
+        """Whether the divider just loaded is one the channel's waveform runs at."""
+        return self.timer.timer >= self.sounding_timer_floor
 
     def set_timer(self, instruction: TonalInstructionT) -> None:
         if instruction.on:
@@ -74,10 +75,11 @@ class TonalGenerator(Generator[TonalInstructionT, PhaseTimer], ABC):
     def bend_toward(self, pitch: int, frequency: float) -> int:
         """The bend that lands this note nearest a frequency, held inside the note's own room.
 
-        A note owns half the dividers between itself and each neighbor, which is what tiles the
-        whole divider range across the notes with none of it out of reach and none of it claimed
-        twice. A frequency past that room takes the nearest bend the note offers, and the note
-        beside it is the one that reaches further.
+        A note owns half the dividers between itself and each neighbor, the one halfway to a higher
+        neighbor going to that neighbor, which is the rule ``nearest_pitch`` names a divider by.
+        That tiles the divider range between the library's notes with none of it claimed twice. A
+        frequency past that room takes the nearest bend the note offers, and the note beside it is
+        the one that reaches further.
 
         Args:
             pitch: The note the frame names.
@@ -96,6 +98,9 @@ class TonalGenerator(Generator[TonalInstructionT, PhaseTimer], ABC):
     def bend_range(self, pitch: int) -> Tuple[int, int]:
         """The divider steps a bend may move a note, half the gap to each neighboring note.
 
+        A divider standing exactly halfway to the higher neighbor is that neighbor's, the smaller
+        divider taking a tie as ``nearest_pitch`` gives it, so the bend up stops one short of it.
+
         Args:
             pitch: The note the frame names.
 
@@ -105,7 +110,7 @@ class TonalGenerator(Generator[TonalInstructionT, PhaseTimer], ABC):
         divider = self.timer_table[pitch]
         below = self.timer_table.get(pitch - 1, divider + self._gap(pitch, pitch + 1))
         above = self.timer_table.get(pitch + 1, divider - self._gap(pitch - 1, pitch))
-        return -((divider - above) // 2), (below - divider) // 2
+        return -(max(divider - above - 1, 0) // 2), (below - divider) // 2
 
     def _gap(self, lower: int, higher: int) -> int:
         """The dividers between two neighboring notes, where the table reaches both."""

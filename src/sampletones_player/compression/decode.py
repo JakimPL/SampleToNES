@@ -22,6 +22,7 @@ from sampletones_player.specification.planes import (
     PlaneRole,
     plane_index,
 )
+from sampletones_shared.utils.sequences import hold
 
 
 def _phrase_values(
@@ -49,8 +50,7 @@ def _phrase_values(
         position += 1
 
     body = table[phrase_id].body
-    last = len(body) - 1
-    played = bytes((body[min(offset, last)] + transpose) % BYTE_VALUES for offset in range(ticks))
+    played = bytes((hold(body, offset) + transpose) % BYTE_VALUES for offset in range(ticks))
     return played, position
 
 

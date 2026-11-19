@@ -7,7 +7,6 @@
 .export nsf_play
 .export song_data
 
-.import clock_reset
 .import clock_advance
 .import clock_step
 .import channels_reset
@@ -26,22 +25,6 @@ nsf_init:
 nsf_play:
     jmp advance_song
 
-start_song:
-    jsr silence_channels
-    lda #CHANNELS_ENABLED
-    sta APU_STATUS
-    lda #FRAME_COUNTER_SEQUENCE
-    sta APU_FRAME_COUNTER
-    lda #SWEEP_DISABLED
-    sta PULSE1_SWEEP
-    sta PULSE2_SWEEP
-    lda #NOISE_LENGTH_COUNTER_LOAD
-    sta NOISE_LENGTH_COUNTER
-    jsr clock_reset
-    jsr channels_reset
-    jsr channels_advance
-    jmp channels_write
-
 ; Advances the streams by the ticks this call is due and writes the tick they land on. A call
 ; crossing the song's end either brings the planes back to where the song repeats and plays on,
 ; or leaves the console holding what the final tick wrote.
@@ -52,8 +35,8 @@ advance_song:
 @next:
     jsr clock_step
     beq @held
-    cmp #TICK_REPEATED
-    bne @plays
+    lsr a
+    bcs @plays
     jsr channels_rewind
 @plays:
     jsr channels_advance
@@ -63,16 +46,33 @@ advance_song:
 @held:
     rts
 
-silence_channels:
+; Silences every channel, switches the channels on and plays the song's first tick. The driver's
+; memory starts cleared, as an NSF player and the cartridge both leave it, so the clock starts on
+; the song's first tick.
+start_song:
     lda #SILENCED_REGISTER
-    ldx #$00
-@next:
+    tax
+@silencing:
     sta FIRST_CHANNEL_REGISTER,x
     inx
     cpx #CHANNEL_REGISTER_COUNT
-    bne @next
-    rts
+    bne @silencing
+    lda #CHANNELS_ENABLED
+    sta APU_STATUS
+    lda #FRAME_COUNTER_SEQUENCE
+    sta APU_FRAME_COUNTER
+    lda #SWEEP_DISABLED
+    sta PULSE1_SWEEP
+    sta PULSE2_SWEEP
+    lda #NOISE_LENGTH_COUNTER_LOAD
+    sta NOISE_LENGTH_COUNTER
+    jsr channels_reset
+    jsr channels_advance
+    jmp channels_write
 
 .segment "SONG"
 
 song_data:
+
+.assert SILENCED_REGISTER = 0, error, "the silenced value doubles as the first register's index"
+.assert TICK_FINISHED = 0 && TICK_PLAYS = 1 && TICK_REPEATED = 2, error, "a step's outcome is read from its two lowest bits"

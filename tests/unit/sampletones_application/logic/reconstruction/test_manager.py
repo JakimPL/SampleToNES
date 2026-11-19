@@ -15,7 +15,6 @@ from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstruction.stems.hearing import hearing_carried_onto
-from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
@@ -24,6 +23,7 @@ from sampletones_shared.exceptions import LoadReconstructionError
 from tests.conftest import RENDER_BUDGET
 from tests.suite.envelopes import exported, land_envelopes
 from tests.suite.errors import DIRECTORY_READ_ERRORS
+from tests.suite.files import requires_symlinks
 from tests.suite.stems import RECORDED_SCALE, single_entry_stems_data
 
 SAMPLE_VOICE_ID: Final[str] = "lead-id"
@@ -250,6 +250,84 @@ class TestTheFileADocumentIsBackedBy:
         )
 
         assert not reconstruction_manager.is_backed_by(tmp_path / "Sample.stn")
+
+
+class TestWhatARemovalTakesFromTheOpenDocument:
+    """Removing a file or a folder from the browser takes the open document's file with it wherever the
+    file lies at or beneath it, so the manager tells so however either path is spelled."""
+
+    @pytest.fixture(name="opened")
+    def opened_fixture(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> Path:
+        path = tmp_path / "songs" / "song.stn"
+        path.parent.mkdir()
+        reconstruction_factory().save(path)
+        reconstruction_manager.load_reconstruction(path)
+        return path
+
+    def test_the_folder_it_was_loaded_from(self, reconstruction_manager: ReconstructionManager, opened: Path) -> None:
+        assert reconstruction_manager.is_taken_by_removing(opened.parent)
+
+    def test_the_folder_spelled_through_a_detour(
+        self, reconstruction_manager: ReconstructionManager, opened: Path, tmp_path: Path
+    ) -> None:
+        (tmp_path / "other").mkdir()
+
+        assert reconstruction_manager.is_taken_by_removing(tmp_path / "other" / ".." / "songs")
+
+    @requires_symlinks
+    def test_the_document_opened_through_a_link_to_the_folder(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "songs").mkdir()
+        (tmp_path / "link").symlink_to(tmp_path / "songs", target_is_directory=True)
+        reconstruction_factory().save(tmp_path / "songs" / "song.stn")
+        reconstruction_manager.load_reconstruction(tmp_path / "link" / "song.stn")
+
+        assert reconstruction_manager.is_taken_by_removing(tmp_path / "songs")
+
+    @requires_symlinks
+    def test_a_link_to_the_folder_goes_alone(
+        self, reconstruction_manager: ReconstructionManager, opened: Path, tmp_path: Path
+    ) -> None:
+        """Removing a link leaves the folder it names, so the document opened from that folder stays on its file."""
+        (tmp_path / "link").symlink_to(opened.parent, target_is_directory=True)
+
+        assert not reconstruction_manager.is_taken_by_removing(tmp_path / "link")
+
+    def test_its_own_file(self, reconstruction_manager: ReconstructionManager, opened: Path) -> None:
+        assert reconstruction_manager.is_taken_by_removing(opened)
+
+    def test_a_sibling_folder(
+        self, reconstruction_manager: ReconstructionManager, opened: Path, tmp_path: Path
+    ) -> None:
+        (tmp_path / "songs2").mkdir()
+
+        assert not reconstruction_manager.is_taken_by_removing(tmp_path / "songs2")
+
+    def test_nothing_open(self, reconstruction_manager: ReconstructionManager, tmp_path: Path) -> None:
+        assert not reconstruction_manager.is_taken_by_removing(tmp_path)
+
+    def test_a_document_held_in_memory(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        reconstruction_factory: Callable[[], Reconstruction],
+        tmp_path: Path,
+    ) -> None:
+        reconstruction_manager.load_reconstruction_object(
+            reconstruction_factory(),
+            name="Sample",
+            voice_id=SAMPLE_VOICE_ID,
+        )
+
+        assert not reconstruction_manager.is_taken_by_removing(tmp_path)
 
 
 class TestReconstructionManagerSaveReconstructionAs:

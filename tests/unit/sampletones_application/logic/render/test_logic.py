@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.render.logic import SongRenderLogic
@@ -40,7 +41,7 @@ class RenderFixture:
         project_manager.session.mark_loaded(PROJECT_NAME)
         self.controller = ProjectController(project_manager)
         self.session_manager = MagicMock()
-        self.session_manager.get_audio_path.return_value = AUDIO_DIRECTORY
+        self.session_manager.folder.return_value = AUDIO_DIRECTORY
         self.service = FakeRenderService(accepts=accepts)
         self.views: List[SongRenderViewModel] = []
         self.logic = SongRenderLogic(
@@ -127,17 +128,31 @@ class TestTheDestinationFollowsTheFormat:
 
         assert render.view.destination == AUDIO_DIRECTORY / f"{PROJECT_NAME}.mp3"
 
-    def test_a_chosen_destination_is_remembered_for_the_next_render(
+    def test_a_chosen_destination_is_remembered_once_the_render_starts(
         self,
         render: RenderFixture,
     ) -> None:
+        """Every export opens the next one where it wrote, from the moment it is handed over."""
         render.configure()
         chosen = Path("/home/user/renders/take one.wav")
 
         render.logic.set_destination(chosen)
 
         assert render.view.destination == chosen
-        render.session_manager.set_audio_path.assert_called_once_with(chosen)
+        render.session_manager.remember_folder.assert_not_called()
+
+        render.logic.start()
+
+        render.session_manager.remember_folder.assert_called_once_with(LastPath.AUDIO, chosen.parent)
+
+    def test_a_render_the_service_refuses_leaves_the_folder_as_it_was(self) -> None:
+        render = RenderFixture(accepts=False)
+        render.configure()
+        render.logic.set_destination(Path("/home/user/renders/take one.wav"))
+
+        render.logic.start()
+
+        render.session_manager.remember_folder.assert_not_called()
 
     def test_the_destination_is_asked_for_from_where_it_stands(self, render: RenderFixture) -> None:
         render.configure()

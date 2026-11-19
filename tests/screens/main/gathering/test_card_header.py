@@ -1,11 +1,10 @@
 from automation.screen import Screen
-from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
-    SUF_COLLAPSE_STRIP,
     TAG_GLOBAL_THEME_COLLAPSE_HEADER,
     TAG_GLOBAL_THEME_COLLAPSE_HEADER_HOVERED,
 )
 from sampletones_application.tags.main import TAG_MAIN_CONVERTER_PANEL, TAG_MAIN_SOURCE_PANEL
+from sampletones_application.ui.elements.layout.collapse import CollapseTags
 
 
 class TestACardHeaderUnderThePointer:
@@ -16,8 +15,8 @@ class TestACardHeaderUnderThePointer:
     """
 
     def test_the_bar_lights_and_settles(self, screen: Screen) -> None:
-        strip = compose_tag(TAG_MAIN_CONVERTER_PANEL, SUF_COLLAPSE_STRIP)
-        elsewhere = compose_tag(TAG_MAIN_SOURCE_PANEL, SUF_COLLAPSE_STRIP)
+        strip = CollapseTags.of(TAG_MAIN_CONVERTER_PANEL).strip
+        elsewhere = CollapseTags.of(TAG_MAIN_SOURCE_PANEL).strip
 
         def rest_on_the_bar(screen: Screen) -> None:
             screen.hand.hover(strip)

@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable, Dict, Final, List, Optional
+from typing import Callable, Dict, Final, List
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,6 +8,7 @@ import pytest
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.categories.instrument import InstrumentImportMessages
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.constants.playback import FollowMode
 from sampletones_application.constants.sequencer import CHANNEL_AXIS
 from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
@@ -22,7 +23,6 @@ from sampletones_application.coordinators.tabs.sequencer.project import OpenProj
 from sampletones_application.coordinators.tabs.sequencer.reconstructions import SequencerReconstructions
 from sampletones_application.coordinators.tabs.sequencer.voices import SequencerVoices
 from sampletones_application.logic.history.action import HistoryAction
-from sampletones_application.logic.history.manager import HistoryManager
 from sampletones_application.logic.history.snapshot import HistoryEntry
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
@@ -197,7 +197,7 @@ def instrument_voices() -> SequencerVoices:
     project_controller = MagicMock()
     project_controller.is_open = True
     session_manager = MagicMock()
-    session_manager.get_instrument_path.return_value = INSTRUMENT_FILE.parent
+    session_manager.folder.return_value = INSTRUMENT_FILE.parent
     return _voices(voices_logic, project_controller, session_manager, MagicMock())
 
 
@@ -251,7 +251,9 @@ class TestImportInstrument:
     ) -> None:
         instrument_voices.import_instrument()
 
-        instrument_voices._session_manager.set_instrument_path.assert_called_once_with(INSTRUMENT_FILE.parent)
+        instrument_voices._session_manager.remember_folder.assert_called_once_with(
+            LastPath.INSTRUMENT, INSTRUMENT_FILE.parent
+        )
 
     def test_a_canceled_dialog_leaves_the_pool_as_it_stands(
         self,
@@ -527,102 +529,6 @@ class TestSubmitRename:
         samples_voices.submit_rename("abc", "   ")
 
         samples_voices._voices_logic.rename_voice.assert_not_called()
-
-
-@pytest.fixture
-def nes_frequency_coordinator() -> SequencerTabCoordinator:
-    """A coordinator with only the collaborators the NES-frequency change handler touches."""
-    instance = object.__new__(SequencerTabCoordinator)
-    instance._history = MagicMock()
-    instance._history_detail = MagicMock()
-    instance._sequencer_tracker_logic = MagicMock()
-    instance._sequencer_tracker_logic.settings.nes_frequency = 60
-    instance._project_controller = MagicMock()
-    instance._project_controller.has_voices = True
-    instance._dialogs = MagicMock()
-    instance._on_nes_frequency_changed = MagicMock()
-    instance._nes_frequency_change_acknowledged = False
-    instance._language_manager = FakeLanguageManager(TEXTS)
-    return instance
-
-
-class TestRequestNesFrequencyChange:
-    def test_unchanged_value_does_nothing(
-        self,
-        nes_frequency_coordinator: SequencerTabCoordinator,
-    ) -> None:
-        nes_frequency_coordinator._request_nes_frequency_change(60)
-
-        nes_frequency_coordinator._sequencer_tracker_logic.set_nes_frequency.assert_not_called()
-        nes_frequency_coordinator._dialogs.show_confirmation.assert_not_called()
-
-    def test_applies_without_confirmation_when_no_samples(
-        self,
-        nes_frequency_coordinator: SequencerTabCoordinator,
-    ) -> None:
-        nes_frequency_coordinator._project_controller.has_voices = False
-
-        nes_frequency_coordinator._request_nes_frequency_change(30)
-
-        nes_frequency_coordinator._sequencer_tracker_logic.set_nes_frequency.assert_called_once_with(30)
-        nes_frequency_coordinator._dialogs.show_confirmation.assert_not_called()
-
-    def test_applies_without_confirmation_once_acknowledged(
-        self,
-        nes_frequency_coordinator: SequencerTabCoordinator,
-    ) -> None:
-        nes_frequency_coordinator._nes_frequency_change_acknowledged = True
-
-        nes_frequency_coordinator._request_nes_frequency_change(30)
-
-        nes_frequency_coordinator._sequencer_tracker_logic.set_nes_frequency.assert_called_once_with(30)
-        nes_frequency_coordinator._dialogs.show_confirmation.assert_not_called()
-
-    def test_prompts_before_applying_when_samples_exist(
-        self,
-        nes_frequency_coordinator: SequencerTabCoordinator,
-    ) -> None:
-        nes_frequency_coordinator._request_nes_frequency_change(30)
-
-        nes_frequency_coordinator._dialogs.show_confirmation.assert_called_once()
-        nes_frequency_coordinator._sequencer_tracker_logic.set_nes_frequency.assert_not_called()
-
-        confirmation = nes_frequency_coordinator._dialogs.show_confirmation.call_args.kwargs
-        confirmation["on_confirm"]()
-        nes_frequency_coordinator._sequencer_tracker_logic.set_nes_frequency.assert_called_once_with(30)
-
-    def test_applying_requests_a_retune_of_the_samples(
-        self,
-        nes_frequency_coordinator: SequencerTabCoordinator,
-    ) -> None:
-        nes_frequency_coordinator._request_nes_frequency_change(30)
-
-        confirmation = nes_frequency_coordinator._dialogs.show_confirmation.call_args.kwargs
-        confirmation["on_confirm"]()
-
-        nes_frequency_coordinator._on_nes_frequency_changed.assert_called_once_with(30)
-
-    def test_opt_out_acknowledges_for_the_session(
-        self,
-        nes_frequency_coordinator: SequencerTabCoordinator,
-    ) -> None:
-        nes_frequency_coordinator._request_nes_frequency_change(30)
-
-        confirmation = nes_frequency_coordinator._dialogs.show_confirmation.call_args.kwargs
-        confirmation["on_opt_out"]()
-
-        assert nes_frequency_coordinator._nes_frequency_change_acknowledged is True
-
-    def test_cancel_restores_the_field(
-        self,
-        nes_frequency_coordinator: SequencerTabCoordinator,
-    ) -> None:
-        nes_frequency_coordinator._request_nes_frequency_change(30)
-
-        confirmation = nes_frequency_coordinator._dialogs.show_confirmation.call_args.kwargs
-        confirmation["on_cancel"]()
-
-        nes_frequency_coordinator._sequencer_tracker_logic.push_settings.assert_called_once()
 
 
 SOUNDING_ROW: Final[int] = 7
@@ -1683,6 +1589,7 @@ class TestHistoryDelegation:
             "_history_detail",
             "_voices",
             "_instrument_exports",
+            "_playback_failures",
         ):
             setattr(history_coordinator, name, MagicMock())
         duplicate = history_coordinator._recorder.undoable.return_value
@@ -1712,14 +1619,14 @@ class TestHistoryDelegation:
         history_coordinator._recorder = MagicMock()
         history_coordinator._sequencer_tracker_logic = MagicMock()
         history_coordinator._history_detail = MagicMock()
-        with patch.object(history_coordinator, "_request_nes_frequency_change") as request:
-            history_coordinator._wire_module_callbacks()
-            history_coordinator._sequencer_module_panel.on_nes_frequency(50)
-            request.assert_not_called()
+        history_coordinator._nes_frequency = MagicMock()
+        history_coordinator._wire_module_callbacks()
+        history_coordinator._sequencer_module_panel.on_nes_frequency(50)
+        history_coordinator._nes_frequency.request.assert_not_called()
 
-            held_gate.release()
+        held_gate.release()
 
-            request.assert_called_once_with(50)
+        history_coordinator._nes_frequency.request.assert_called_once_with(50)
 
 
 class TestUndoableWrapper:

@@ -15,7 +15,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.config import 
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_shared.paths.extensions import EXT_FILES_AUDIO, is_audio_file
 from sampletones_shared.utils.serialization import load_json
-from sampletones_shared.utils.text import listed_items
+from sampletones_shared.utils.text import parsed_items
 
 
 def channels_named(stated: Optional[str]) -> List[ChannelName]:
@@ -24,18 +24,13 @@ def channels_named(stated: Optional[str]) -> List[ChannelName]:
     Raises:
         ValueError: If a name is none of the channels the hardware has.
     """
-    if stated is None:
-        return list(DEFAULT_CHANNELS)
-
-    channels: List[ChannelName] = []
-    for name in listed_items(stated):
-        try:
-            channels.append(ChannelName(name))
-        except ValueError as error:
-            known = ", ".join(channel.value for channel in ChannelName)
-            raise ValueError(f"Unknown channel {name!r}; the channels are {known}.") from error
-
-    return channels
+    known = ", ".join(channel.value for channel in ChannelName)
+    return parsed_items(
+        stated,
+        DEFAULT_CHANNELS,
+        parse=ChannelName,
+        refusal=lambda name: f"Unknown channel {name!r}; the channels are {known}.",
+    )
 
 
 def classic_setup(channels: Sequence[ChannelName]) -> StemsConfig:

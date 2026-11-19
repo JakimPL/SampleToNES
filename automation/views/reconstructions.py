@@ -20,7 +20,6 @@ from sampletones_application.tags.general import (
     TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
 )
 from sampletones_application.tags.reconstructions import (
-    PRE_RECONSTRUCTION_CHANNEL,
     TAG_RECONSTRUCTIONS_BROWSER_DIALOG_REMOVE_RECONSTRUCTION_CONFIRMATION,
     TAG_RECONSTRUCTIONS_BROWSER_TREE,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_INPUT_NES_FREQUENCY,
@@ -29,6 +28,7 @@ from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_TOOLTIP_NES_FREQUENCY_LOCKED,
 )
+from sampletones_application.ui.panels.reconstruction.plot import GUIReconstructionPlotPanel
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.constants.enums import ChannelName
 
@@ -155,12 +155,8 @@ class Reconstructions:
 
     def channel_ticked(self, channel: ChannelName) -> bool:
         """Whether the box of ``channel`` above the waveform stands ticked."""
-        return bool(self._bridge.ask(lambda: read_value(_channel_box(channel))))
+        return bool(self._bridge.ask(lambda: read_value(GUIReconstructionPlotPanel.channel_checkbox_tag(channel))))
 
     def tick_channel(self, channel: ChannelName) -> None:
         """Clicks the box of ``channel`` above the waveform, which flips its tick."""
-        self._hand.click(_channel_box(channel))
-
-
-def _channel_box(channel: ChannelName) -> str:
-    return compose_tag(PRE_RECONSTRUCTION_CHANNEL, channel.value)
+        self._hand.click(GUIReconstructionPlotPanel.channel_checkbox_tag(channel))

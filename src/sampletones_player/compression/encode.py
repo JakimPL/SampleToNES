@@ -1,6 +1,5 @@
-from collections import Counter
 from dataclasses import replace
-from typing import Dict, Final, FrozenSet, Iterable, List, Sequence, Tuple
+from typing import Dict, Final, FrozenSet, Iterable, Sequence, Tuple
 
 from sampletones_player.compression.admit import admit_seeds
 from sampletones_player.compression.budget import (
@@ -8,6 +7,7 @@ from sampletones_player.compression.budget import (
     SearchBudget,
 )
 from sampletones_player.compression.compressed import CompressedPlanes
+from sampletones_player.compression.dictionary.defaults import modal_counts
 from sampletones_player.compression.dictionary.phrase import Phrase
 from sampletones_player.compression.dictionary.prune import prune
 from sampletones_player.compression.dictionary.table import (
@@ -37,7 +37,6 @@ from sampletones_player.compression.tokens.phrase import PhraseToken
 from sampletones_player.compression.tokens.types import TokenUnion
 from sampletones_player.specification.compression import (
     DEFAULT_COUNT_FLAG,
-    NO_DEFAULT_COUNT,
     PHRASE_ID_ESCAPE,
     TokenTag,
 )
@@ -109,23 +108,12 @@ def _savings(
     return savings
 
 
-def _modal(played: Counter[int]) -> int:
-    """The count a phrase's tokens play it at most often, the shortest breaking a tie."""
-    if not played:
-        return NO_DEFAULT_COUNT
-
-    return min(played, key=lambda ticks: (-played[ticks], ticks))
-
-
 def _counts(parses: Iterable[Parse], phrases: int) -> Dict[int, int]:
     """The count each phrase's tokens play it at most often, the shortest breaking a tie."""
-    played: List[Counter[int]] = [Counter() for _ in range(phrases)]
-    for parse in parses:
-        for token in parse.tokens:
-            if isinstance(token, PhraseToken):
-                played[token.phrase_id][token.ticks] += 1
-
-    return {phrase_id: _modal(counter) for phrase_id, counter in enumerate(played)}
+    plays = (
+        (token.phrase_id, token.ticks) for parse in parses for token in parse.tokens if isinstance(token, PhraseToken)
+    )
+    return dict(enumerate(modal_counts(plays, phrases)))
 
 
 def _settle(

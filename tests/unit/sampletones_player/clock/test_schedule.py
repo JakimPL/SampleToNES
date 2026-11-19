@@ -13,6 +13,7 @@ from sampletones_player.specification.clock import (
     FIXED_POINT_SCALE,
     MAX_STEP_WHOLE,
     NTSC_FRAME_RATE,
+    NTSC_NOMINAL_FRAME_RATE,
 )
 from sampletones_shared.constants.nes import (
     MAX_NES_FREQUENCY,
@@ -22,23 +23,11 @@ from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
 
 LONG_RUN_PLAY_CALLS: Final[int] = 36000
-NES_FREQUENCIES: Final[Tuple[int, ...]] = (
-    15,
-    24,
-    25,
-    30,
-    50,
-    60,
-    100,
-    120,
-    200,
-    299,
-    300,
-)
-
-
-def exact_rate(nes_frequency: int) -> Fraction:
-    return Fraction(nes_frequency) / NTSC_FRAME_RATE
+DIVIDING_FREQUENCIES: Final[Tuple[int, ...]] = (15, 20, 30, 60)
+MULTIPLE_FREQUENCIES: Final[Tuple[int, ...]] = (60, 120, 300)
+EVEN_FREQUENCIES: Final[Tuple[int, ...]] = (15, 20, 30, 60, 120, 300)
+UNEVEN_FREQUENCIES: Final[Tuple[int, ...]] = (24, 25, 41, 50, 100, 200, 299)
+NES_FREQUENCIES: Final[Tuple[int, ...]] = tuple(sorted(EVEN_FREQUENCIES + UNEVEN_FREQUENCIES))
 
 
 class TestPlaySchedule(BaseTestSuite):
@@ -58,14 +47,15 @@ class TestPlaySchedule(BaseTestSuite):
             return PlaySchedule.from_parameters(self.nes_frequency)
 
     test_cases = (
-        TestCase(nes_frequency=60, expected=(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)),
-        TestCase(nes_frequency=30, expected=(0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0)),
+        TestCase(nes_frequency=60, expected=(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)),
+        TestCase(nes_frequency=30, expected=(0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1)),
         TestCase(nes_frequency=24, expected=(0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0)),
-        TestCase(nes_frequency=15, expected=(0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)),
+        TestCase(nes_frequency=20, expected=(0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0)),
+        TestCase(nes_frequency=15, expected=(0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1)),
         TestCase(nes_frequency=50, expected=(0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0)),
         TestCase(nes_frequency=100, expected=(1, 2, 1, 2, 2, 1, 2, 2, 1, 2, 2, 1)),
-        TestCase(nes_frequency=120, expected=(1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2)),
-        TestCase(nes_frequency=300, expected=(4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5)),
+        TestCase(nes_frequency=120, expected=(2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2)),
+        TestCase(nes_frequency=300, expected=(5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5)),
     )
 
     @pytest.mark.parametrize(
@@ -110,20 +100,41 @@ class TestPlaySchedule(BaseTestSuite):
 
 
 class TestTheScheduleHoldsTheRate(BaseTestSuite):
-    """The rate a stream is read at, and the advances a rate dividing the play period produces."""
+    """The rate a stream is read at, and the advances a rate meeting the frames evenly produces."""
 
-    @pytest.mark.parametrize("nes_frequency", NES_FREQUENCIES)
-    def test_the_rate_is_the_stream_measured_against_the_frame_rate(self, nes_frequency: int) -> None:
+    @pytest.mark.parametrize("nes_frequency", EVEN_FREQUENCIES)
+    def test_a_rate_meeting_the_nominal_rate_evenly_is_measured_against_it(self, nes_frequency: int) -> None:
         schedule = PlaySchedule.from_parameters(nes_frequency)
-        assert schedule.ticks_per_play_call == exact_rate(nes_frequency)
+        assert schedule.play_rate == NTSC_NOMINAL_FRAME_RATE
+        assert schedule.ticks_per_play_call == Fraction(nes_frequency, NTSC_NOMINAL_FRAME_RATE)
+
+    @pytest.mark.parametrize("nes_frequency", UNEVEN_FREQUENCIES)
+    def test_every_other_rate_is_measured_against_the_frame_rate(self, nes_frequency: int) -> None:
+        schedule = PlaySchedule.from_parameters(nes_frequency)
+        assert schedule.play_rate == NTSC_FRAME_RATE
+        assert schedule.ticks_per_play_call == Fraction(nes_frequency) / NTSC_FRAME_RATE
+
+    @pytest.mark.parametrize("nes_frequency", MULTIPLE_FREQUENCIES)
+    def test_a_multiple_of_the_nominal_rate_advances_the_same_ticks_every_call(self, nes_frequency: int) -> None:
+        schedule = PlaySchedule.from_parameters(nes_frequency)
+        advances = {schedule.advance_at(play_call) for play_call in range(LONG_RUN_PLAY_CALLS)}
+        assert advances == {nes_frequency // NTSC_NOMINAL_FRAME_RATE}
+
+    @pytest.mark.parametrize("nes_frequency", DIVIDING_FREQUENCIES)
+    def test_a_divisor_of_the_nominal_rate_holds_every_tick_for_the_same_calls(self, nes_frequency: int) -> None:
+        """Ten minutes of calls, through which no tick is held a call longer than the others."""
+        schedule = PlaySchedule.from_parameters(nes_frequency)
+        moving = [play_call for play_call in range(LONG_RUN_PLAY_CALLS) if schedule.advance_at(play_call)]
+        held = {later - earlier for earlier, later in zip(moving, moving[1:])}
+        assert held == {NTSC_NOMINAL_FRAME_RATE // nes_frequency}
 
     def test_a_stream_at_the_play_rate_advances_a_tick_a_call(self) -> None:
         """A stream built at the rate the console calls at lands a whole tick on every call."""
-        schedule = PlaySchedule(ticks_per_play_call=Fraction(1))
+        schedule = PlaySchedule(ticks_per_play_call=Fraction(1), play_rate=NTSC_FRAME_RATE)
         assert all(schedule.advance_at(play_call) == 1 for play_call in range(LONG_RUN_PLAY_CALLS))
 
     def test_a_stream_at_half_the_play_rate_alternates(self) -> None:
-        schedule = PlaySchedule(ticks_per_play_call=Fraction(1, 2))
+        schedule = PlaySchedule(ticks_per_play_call=Fraction(1, 2), play_rate=NTSC_FRAME_RATE)
         advances = tuple(schedule.advance_at(play_call) for play_call in range(8))
         assert advances == (0, 1, 0, 1, 0, 1, 0, 1)
 
@@ -141,15 +152,16 @@ class TestFixedPointStep(BaseTestSuite):
             return f"{self.nes_frequency}hz"
 
     test_cases = (
-        TestCase(nes_frequency=15, expected=(0, 16357)),
+        TestCase(nes_frequency=15, expected=(0, 16384)),
+        TestCase(nes_frequency=20, expected=(0, 21845)),
         TestCase(nes_frequency=24, expected=(0, 26171)),
-        TestCase(nes_frequency=30, expected=(0, 32714)),
+        TestCase(nes_frequency=30, expected=(0, 32768)),
         TestCase(nes_frequency=50, expected=(0, 54524)),
-        TestCase(nes_frequency=60, expected=(0, 65428)),
+        TestCase(nes_frequency=60, expected=(1, 0)),
         TestCase(nes_frequency=100, expected=(1, 43511)),
-        TestCase(nes_frequency=120, expected=(1, 65320)),
+        TestCase(nes_frequency=120, expected=(2, 0)),
         TestCase(nes_frequency=200, expected=(3, 21486)),
-        TestCase(nes_frequency=300, expected=(4, 64997)),
+        TestCase(nes_frequency=300, expected=(5, 0)),
     )
 
     @pytest.mark.parametrize(
@@ -206,7 +218,7 @@ class TestFixedPointStep(BaseTestSuite):
             assert advance == schedule.advance_at(play_call)
 
     def test_a_whole_step_needs_no_fraction(self) -> None:
-        step = PlaySchedule(ticks_per_play_call=Fraction(3)).fixed_point_step
+        step = PlaySchedule(ticks_per_play_call=Fraction(3), play_rate=NTSC_FRAME_RATE).fixed_point_step
         assert (step.whole, step.fraction, step.value) == (
             3,
             0,
@@ -218,7 +230,7 @@ class TestFixedPointStep(BaseTestSuite):
     ) -> None:
         """Rounding the fraction up spills into the whole byte, keeping both fields in range."""
         rate = Fraction(2) - Fraction(1, 10 * FIXED_POINT_SCALE)
-        step = PlaySchedule(ticks_per_play_call=rate).fixed_point_step
+        step = PlaySchedule(ticks_per_play_call=rate, play_rate=NTSC_FRAME_RATE).fixed_point_step
         assert (step.whole, step.fraction) == (2, 0)
 
     def test_the_step_is_derived_once_and_held(self) -> None:
@@ -248,11 +260,16 @@ class TestPlayScheduleBounds(BaseTestSuite):
     @pytest.mark.parametrize("ticks_per_play_call", (Fraction(0), Fraction(-1, 2)))
     def test_a_stream_that_never_advances_is_rejected(self, ticks_per_play_call: Fraction) -> None:
         with pytest.raises(ValidationError, match="ticks_per_play_call"):
-            PlaySchedule(ticks_per_play_call=ticks_per_play_call)
+            PlaySchedule(ticks_per_play_call=ticks_per_play_call, play_rate=NTSC_FRAME_RATE)
+
+    @pytest.mark.parametrize("play_rate", (Fraction(0), Fraction(-60)))
+    def test_a_console_that_never_calls_is_rejected(self, play_rate: Fraction) -> None:
+        with pytest.raises(ValidationError, match="play_rate"):
+            PlaySchedule(ticks_per_play_call=Fraction(1), play_rate=play_rate)
 
     def test_a_step_past_the_whole_byte_is_rejected(self) -> None:
         with pytest.raises(ValidationError, match="ticks_per_play_call"):
-            PlaySchedule(ticks_per_play_call=Fraction(MAX_STEP_WHOLE + 1))
+            PlaySchedule(ticks_per_play_call=Fraction(MAX_STEP_WHOLE + 1), play_rate=NTSC_FRAME_RATE)
 
     def test_a_negative_call_count_is_rejected(self) -> None:
         schedule = PlaySchedule.from_parameters(60)

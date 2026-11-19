@@ -7,6 +7,7 @@ import yaml
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.state import ApplicationStateManager
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_application.tags.reconstructions import TAG_RECONSTRUCTIONS_BROWSER_PANEL
 from sampletones_application.tags.sequencer import TAG_SEQUENCER_BROWSER_PANEL
@@ -46,7 +47,7 @@ class TestApplicationStateManagerRecovery:
 
         manager = ApplicationStateManager(path)
 
-        assert manager.get_project_path() == tmp_path
+        assert manager.folder(LastPath.PROJECT) == tmp_path
 
     def test_the_next_save_drops_a_retired_last_path(self, tmp_path: Path) -> None:
         path = tmp_path / "state.yaml"
@@ -203,69 +204,45 @@ class TestApplicationStateManagerCurrentPaths:
 
 
 class TestApplicationStateManagerLastPaths:
-    def test_set_config_path_stores_directory(
-        self,
-        manager: ApplicationStateManager,
-        tmp_path: Path,
+    """Each kind of file opens its next dialog at the folder its last one was chosen in, apart from
+    every other kind, and the folder survives a save and a fresh read."""
+
+    @pytest.mark.parametrize("kind", list(LastPath))
+    def test_a_remembered_folder_is_the_one_read_back(
+        self, manager: ApplicationStateManager, tmp_path: Path, kind: LastPath
     ) -> None:
-        manager.set_config_path(tmp_path / "config.json")
-        assert isinstance(manager.get_config_path(), Path)
+        folder = tmp_path / kind.value
+        manager.remember_folder(kind, folder)
 
-    def test_set_instrument_path_stores_directory(
-        self,
-        manager: ApplicationStateManager,
-        tmp_path: Path,
+        assert manager.folder(kind) == folder
+
+    @pytest.mark.parametrize("kind", list(LastPath))
+    def test_remembering_one_kind_leaves_every_other_kind_as_it_was(
+        self, manager: ApplicationStateManager, tmp_path: Path, kind: LastPath
     ) -> None:
-        manager.set_instrument_path(tmp_path / "instr.json")
-        assert isinstance(manager.get_instrument_path(), Path)
+        before = {other: manager.folder(other) for other in LastPath if other is not kind}
 
-    def test_set_reconstruction_path_stores_directory(
-        self,
-        manager: ApplicationStateManager,
-        tmp_path: Path,
+        manager.remember_folder(kind, tmp_path / "chosen")
+
+        assert {other: manager.folder(other) for other in LastPath if other is not kind} == before
+
+    def test_a_folder_not_yet_made_is_kept_as_it_was_named(
+        self, manager: ApplicationStateManager, tmp_path: Path
     ) -> None:
-        manager.set_reconstruction_path(tmp_path / "rec.json")
-        assert isinstance(manager.get_reconstruction_path(), Path)
+        """The folder is the caller's to state, so one standing nowhere yet is kept rather than its parent."""
+        folder = tmp_path / "new" / "renders"
+        manager.remember_folder(LastPath.AUDIO, folder)
 
-    def test_set_audio_input_path_stores_directory(
-        self,
-        manager: ApplicationStateManager,
-        tmp_path: Path,
-    ) -> None:
-        manager.set_audio_input_path(tmp_path / "clip.wav")
-        assert isinstance(manager.get_audio_input_path(), Path)
+        assert manager.folder(LastPath.AUDIO) == folder
 
-    def test_audio_input_and_reconstruction_paths_are_independent(
-        self,
-        manager: ApplicationStateManager,
-        tmp_path: Path,
-    ) -> None:
-        reconstruction_directory = tmp_path / "reconstructions"
-        audio_directory = tmp_path / "audio"
-        reconstruction_directory.mkdir()
-        audio_directory.mkdir()
+    @pytest.mark.parametrize("kind", list(LastPath))
+    def test_a_remembered_folder_survives_a_save(self, tmp_path: Path, kind: LastPath) -> None:
+        path = tmp_path / "state.yaml"
+        manager = ApplicationStateManager(path)
+        manager.remember_folder(kind, tmp_path / kind.value)
+        manager.save()
 
-        manager.set_reconstruction_path(reconstruction_directory / "rec.stn")
-        manager.set_audio_input_path(audio_directory / "clip.wav")
-
-        assert manager.get_reconstruction_path() == reconstruction_directory
-        assert manager.get_audio_input_path() == audio_directory
-
-    def test_set_audio_path_stores_directory(
-        self,
-        manager: ApplicationStateManager,
-        tmp_path: Path,
-    ) -> None:
-        manager.set_audio_path(tmp_path / "audio.wav")
-        assert isinstance(manager.get_audio_path(), Path)
-
-    def test_set_project_path_stores_directory(
-        self,
-        manager: ApplicationStateManager,
-        tmp_path: Path,
-    ) -> None:
-        manager.set_project_path(tmp_path / "project.stp")
-        assert isinstance(manager.get_project_path(), Path)
+        assert ApplicationStateManager(path).folder(kind) == tmp_path / kind.value
 
 
 class TestApplicationStateManagerSave:

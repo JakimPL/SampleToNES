@@ -1,14 +1,12 @@
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Optional, Tuple
 
-from sampletones_application.categories.elements.global_ import FileFilterElements
 from sampletones_application.categories.export import ExportMessages
 from sampletones_application.categories.exports import (
-    EXPORT_INSTRUMENT_FILTERS,
     INSTRUMENT_EXPORT_FORMATS,
 )
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.coordinators.filters import instrument_filter
 from sampletones_application.logic.export.instrument.logic import InstrumentExportLogic
 from sampletones_application.utils.file_dialogs.api import save_file_dialog
 from sampletones_application.utils.file_dialogs.filter import FileFilter
@@ -47,10 +45,7 @@ class InstrumentExportCoordinator:
         self._dialogs = dialogs
         self._messages = messages
         self._title = language_manager["reconstructions.instruments.title.export_instrument_dialog"]
-        self._filter_names: Dict[ExportFormat, str] = {
-            export_format: self._filter_name(language_manager, element)
-            for export_format, element in EXPORT_INSTRUMENT_FILTERS.items()
-        }
+        self._language_manager = language_manager
 
     def voice_instruments(self, voice_id: str) -> Tuple[Optional[ChannelName], ...]:
         """What one voice offers to an export, each named by the channel it is stated for.
@@ -127,19 +122,8 @@ class InstrumentExportCoordinator:
         return tuple(self._filter(export_format) for export_format in INSTRUMENT_EXPORT_FORMATS)
 
     def _filter(self, export_format: ExportFormat) -> FileFilter:
-        return FileFilter.for_extensions(
-            self._filter_names[export_format],
-            [self._logic.backends[export_format].extension(ExportScope.INSTRUMENT)],
+        return instrument_filter(
+            self._language_manager,
+            export_format,
+            self._logic.backends[export_format].extension(ExportScope.INSTRUMENT),
         )
-
-    @staticmethod
-    def _filter_name(
-        language_manager: LanguageManager,
-        element: FileFilterElements,
-    ) -> str:
-        return language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.FILTER,
-            element,
-        ]

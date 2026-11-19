@@ -7,23 +7,22 @@ from sampletones_core.formats.famitracker.specification.parameters import (
     Machine,
 )
 from sampletones_core.formats.famitracker.specification.patterns import (
-    FT_MAX_PITCH,
-    FT_MIN_PITCH,
     NOTE_RANGE,
     PITCH_OCTAVE_OFFSET,
 )
+from sampletones_core.utils.frequencies import played_pitch
 from sampletones_shared.constants.nes import NTSC_FREQUENCY, PAL_FREQUENCY
 
 
 def pitch_to_note_cell(pitch: int) -> NoteCell:
     """Converts an absolute pitch to a FamiTracker note cell.
 
-    The pitch is clamped to the representable C-0..B-7 range so extreme
-    transpositions land on the nearest playable note.
+    The pitch is held to the notes a channel plays, C-0..B-7, which are the notes a cell names, so
+    an extreme transposition lands on the nearest playable note.
     """
-    clamped = max(FT_MIN_PITCH, min(FT_MAX_PITCH, pitch))
-    note = clamped % NOTE_RANGE + 1
-    octave = clamped // NOTE_RANGE - PITCH_OCTAVE_OFFSET
+    played = played_pitch(pitch)
+    note = played % NOTE_RANGE + 1
+    octave = played // NOTE_RANGE - PITCH_OCTAVE_OFFSET
     return NoteCell(note=note, octave=octave)
 
 

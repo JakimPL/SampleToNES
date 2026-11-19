@@ -8,8 +8,8 @@ from sampletones_core.exporters.slices import InstrumentSlot, InstrumentTable
 from sampletones_core.formats.famitracker.model.instrument import Instrument2A03
 from sampletones_core.formats.famitracker.model.pattern import NoteCell
 from sampletones_core.formats.famitracker.notes import period_to_note_cell, pitch_to_note_cell
-from sampletones_core.formats.famitracker.specification.patterns import FT_MAX_PITCH, FT_MIN_PITCH
 from sampletones_core.formats.famitracker.specification.sequences import SequenceKind
+from sampletones_core.utils.frequencies import played_pitch
 
 
 @dataclass(frozen=True)
@@ -43,7 +43,7 @@ class RowTarget:
         if channel_name == ChannelName.NOISE:
             return pitch % NUM_PERIODS
 
-        return max(FT_MIN_PITCH, min(FT_MAX_PITCH, written_pitch(pitch, self.contour_top)))
+        return played_pitch(written_pitch(pitch, self.contour_top))
 
     def note_cell(self, transpose: int, channel_name: ChannelName) -> NoteCell:
         """The note column a row triggering the instrument at ``transpose`` writes."""

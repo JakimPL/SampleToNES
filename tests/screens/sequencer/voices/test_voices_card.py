@@ -8,8 +8,8 @@ from automation.dearpygui.items.regions import enclosing_regions, read_region_vi
 from automation.dearpygui.items.types import Item
 from automation.keyboard import press_combination
 from automation.screen import Screen
-from automation.steps.reconstructions import BY_CONFIGURATION
 from automation.steps.sequencer import leave_letting_the_project_go
+from automation.steps.trees import BY_CONFIGURATION
 from automation.views.menus import MenuEntry
 from automation.vocabulary.playback import PAUSE, PLAY_VOICE
 from sampletones_application.categories.elements.global_ import MenuElements
@@ -280,7 +280,7 @@ class TestASampleAddedFromTheBrowser:
                 partial(browser.heading, screen.words(BY_CONFIGURATION)), description="the heading"
             )
             if not browser.is_open(heading):
-                browser.open_by_click(heading)
+                browser.click(heading)
             row = screen.expect_item(partial(browser.file_row, SHORT_RECONSTRUCTION), description="its row")
 
             browser.double_click(row)

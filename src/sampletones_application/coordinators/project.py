@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Dict, List, Mapping, Optional, Tuple
 
+from sampletones_application.categories.dialog import dialog_title, filter_name
 from sampletones_application.categories.elements.global_ import (
     DialogElements,
     FileFilterElements,
@@ -13,6 +14,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.categories.skipped import SkippedRowMessages
 from sampletones_application.categories.truncation import TruncationMessages
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.coordinators.export.setup import ExportSetup
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
@@ -237,7 +239,7 @@ class ProjectCoordinator:
         return self._write(filepath)
 
     def _write_to_chosen_file(self) -> SaveOutcome:
-        path = self._session_manager.get_project_path()
+        path = self._session_manager.folder(LastPath.PROJECT)
         filename = path.name if path.is_file() else DEFAULT_PROJECT_FILENAME
         directory = get_directory(path)
         filepath = save_file_dialog(
@@ -287,13 +289,13 @@ class ProjectCoordinator:
             return
 
         if export_format in self._format_setups:
-            self._format_setups[export_format].open_project()
+            self._format_setups[export_format].open_project(export_format)
             return
 
         backend = self._export_backends[export_format]
         elements = EXPORT_PROJECT_ELEMENTS[export_format]
         extension = backend.extension(ExportScope.PROJECT)
-        path = self._session_manager.get_project_path()
+        path = self._session_manager.folder(LastPath.PROJECT)
         filepath = save_file_dialog(
             title=self._title(elements.dialog_title),
             initial_directory=get_directory(path),
@@ -311,7 +313,7 @@ class ProjectCoordinator:
     def _open_dialog(self) -> None:
         filepath = open_file_dialog(
             title=self._title(GlobalDialogTitleElements.OPEN_UNSAVED_PROJECT),
-            initial_directory=self._session_manager.get_project_path(),
+            initial_directory=self._session_manager.folder(LastPath.PROJECT),
             filters=self._project_filters(),
         )
 
@@ -319,12 +321,12 @@ class ProjectCoordinator:
 
     @ignore_none_path
     def _handle_open(self, filepath: Path) -> None:
-        self._session_manager.set_project_path(filepath.parent)
+        self._session_manager.remember_folder(LastPath.PROJECT, filepath.parent)
         self._load(filepath)
 
     @ignore_none_path(default=SaveOutcome.CALLED_OFF)
     def _handle_save_as(self, filepath: Path) -> SaveOutcome:
-        self._session_manager.set_project_path(filepath.parent)
+        self._session_manager.remember_folder(LastPath.PROJECT, filepath.parent)
         return self._write(filepath)
 
     @ignore_none_path
@@ -467,12 +469,7 @@ class ProjectCoordinator:
             )
 
     def _title(self, element: GlobalDialogTitleElements) -> str:
-        return self._language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.TITLE,
-            element,
-        ]
+        return dialog_title(self._language_manager, element)
 
     def _message(self, element: GlobalMessageElements) -> str:
         return self._language_manager[
@@ -491,9 +488,4 @@ class ProjectCoordinator:
         ]
 
     def _filter_name(self, element: FileFilterElements) -> str:
-        return self._language_manager[
-            Page.GLOBAL,
-            Panel.DIALOG,
-            TextType.FILTER,
-            element,
-        ]
+        return filter_name(self._language_manager, element)

@@ -5,6 +5,7 @@ from sampletones_application.categories.estimate import time_estimation
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.playback.synthesizer import (
     RowSynthesizer,
@@ -147,9 +148,8 @@ class SongRenderLogic(CallbackMixin):
         )
 
     def set_destination(self, destination: Path) -> None:
-        """Writes the render to ``destination``, remembering its directory for the next one."""
+        """Writes the render to ``destination``."""
         self._destination = destination
-        self._session_manager.set_audio_path(destination)
         self._emit_view()
 
     def start(self) -> None:
@@ -157,7 +157,7 @@ class SongRenderLogic(CallbackMixin):
 
         The kernel is built here, over a snapshot of the document and at the rate the chosen
         format is written at, so the worker reads a project that stands still while the editing
-        carries on.
+        carries on. A render handed over opens the next one at its folder, as every export does.
         """
         if self._phase != RenderPhase.CONFIGURING:
             return
@@ -177,6 +177,7 @@ class SongRenderLogic(CallbackMixin):
         if not started:
             return
 
+        self._session_manager.remember_folder(LastPath.AUDIO, self._require_destination().parent)
         self._phase = RenderPhase.RENDERING
         self._status_text = self._stage_messages[RenderStage.SYNTHESIS]
         self._progress = 0.0
@@ -274,7 +275,7 @@ class SongRenderLogic(CallbackMixin):
     def _proposed_destination(self) -> Path:
         """The file the dialog opens on: the project's name, where audio was last written."""
         name = self._project_controller.name or DEFAULT_EXPORT_NAME
-        return self._session_manager.get_audio_path() / get_filename(name, self._settings.spec.extension)
+        return self._session_manager.folder(LastPath.AUDIO) / get_filename(name, self._settings.spec.extension)
 
     def _require_destination(self) -> Path:
         """The file the open dialog writes to.

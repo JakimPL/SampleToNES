@@ -8,7 +8,7 @@ from automation.dearpygui.geometry import Point
 from automation.dearpygui.hand import Hand
 from automation.dearpygui.items.reading import read_item, read_value
 from automation.dearpygui.items.texts import find_labelled, read_label
-from automation.dearpygui.items.types import MENU_ITEM_TYPE, MENU_TYPE, Item
+from automation.dearpygui.items.types import GROUP_TYPE, MENU_ITEM_TYPE, MENU_TYPE, Item
 from automation.dearpygui.items.viewport import read_viewport
 from automation.dearpygui.semantic import invoke
 from automation.frames import changed_box, frame_pixels, settled_frame
@@ -27,7 +27,6 @@ ENTRY_INSET: Final[Point] = Point(x=12, y=8)
 HOVER_SECONDS: Final[float] = 5.0
 ENABLED: Final[str] = "enabled"
 SHORTCUT: Final[str] = "shortcut"
-GROUP_TYPE: Final[str] = "mvAppItemType::mvGroup"
 FAR_END_INSET: Final[int] = 30
 
 
@@ -141,12 +140,20 @@ class MenuBar:
 
     def close(self) -> None:
         """Clicks the bare far end of the tab bar, clear of every menu's popup, which puts an open menu away."""
+        self._hand.click_at(self.bare_spot())
+
+    def bare_spot(self) -> Point:
+        """The bare far end of the tab bar, where the pointer lights nothing and clears every menu's popup.
+
+        Raises:
+            LookupError: If the last tab reports no box to stand beside.
+        """
         last_tab = self._bridge.ask(lambda: read_item(TAG_GLOBAL_TAB_INSTRUCTIONS).rect)
         viewport = self._bridge.ask(read_viewport)
         if last_tab is None:
-            raise LookupError("The last tab reports no box to click beside")
+            raise LookupError("The last tab reports no box to stand beside")
 
-        self._hand.click_at(Point(x=round(viewport.width) - FAR_END_INSET, y=last_tab.center.y))
+        return Point(x=round(viewport.width) - FAR_END_INSET, y=last_tab.center.y)
 
     def entries(self, group: MenuElements) -> List[MenuEntry]:
         """The entries of the menu ``group``, in order: their words, whether they answer, and the keys printed."""

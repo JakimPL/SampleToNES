@@ -4,6 +4,7 @@ from typing import Final
 
 import pytest
 
+from automation.boundaries.sound_server import PULSE_SERVER_VARIABLE
 from automation.environment import (
     HOMES_VARIABLE,
     SHARD_VARIABLE,
@@ -17,6 +18,7 @@ from automation.environment import (
 
 NODEID: Final[str] = "tests/screens/test_case.py::TestCase::test_it"
 DISPLAY: Final[str] = ":9"
+SOUND_SERVER: Final[str] = "unix:/tmp/homes/sound/native"
 
 
 class TestWhereTheHomesGo:
@@ -33,7 +35,7 @@ class TestTheScenarioProcessEnvironment:
     def test_the_temporary_folder_is_the_machine_s(self, tmp_path: Path) -> None:
         folders = ScenarioFolders.of(NODEID, homes=tmp_path / "homes", kept=tmp_path / "kept")
 
-        environment = child_environment({"TMPDIR": "/tmp"}, folders, display=DISPLAY)
+        environment = child_environment({"TMPDIR": "/tmp"}, folders, display=DISPLAY, sound_server=SOUND_SERVER)
 
         assert environment["TMPDIR"] == "/tmp"
         assert environment["HOME"] == str(folders.home)
@@ -41,9 +43,28 @@ class TestTheScenarioProcessEnvironment:
     def test_a_process_told_no_temporary_folder_is_told_none(self, tmp_path: Path) -> None:
         folders = ScenarioFolders.of(NODEID, homes=tmp_path / "homes", kept=tmp_path / "kept")
 
-        environment = child_environment({}, folders, display=DISPLAY)
+        environment = child_environment({}, folders, display=DISPLAY, sound_server=SOUND_SERVER)
 
         assert "TMPDIR" not in environment
+
+    def test_pulseaudio_reaches_the_worker_s_server(self, tmp_path: Path) -> None:
+        folders = ScenarioFolders.of(NODEID, homes=tmp_path / "homes", kept=tmp_path / "kept")
+
+        environment = child_environment(
+            {PULSE_SERVER_VARIABLE: "unix:/run/user/1000/pulse/native"},
+            folders,
+            display=DISPLAY,
+            sound_server=SOUND_SERVER,
+        )
+
+        assert environment[PULSE_SERVER_VARIABLE] == SOUND_SERVER
+
+    def test_a_worker_without_a_server_leaves_pulseaudio_as_the_machine_names_it(self, tmp_path: Path) -> None:
+        folders = ScenarioFolders.of(NODEID, homes=tmp_path / "homes", kept=tmp_path / "kept")
+
+        environment = child_environment({}, folders, display=DISPLAY, sound_server=None)
+
+        assert PULSE_SERVER_VARIABLE not in environment
 
 
 class TestTheShard:

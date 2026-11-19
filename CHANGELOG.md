@@ -3,8 +3,9 @@
 ## v0.3.3
 
 * Added MIDI keyboard support.
+* Added stepping the playback position frame by frame on the Reconstructions and Instructions tabs.
 * [?] Added Polish application language.
-* [?] Added NES binary player.
+* Added NES ROM export.
 
 ## v0.3.2 [2026-10-13]
 

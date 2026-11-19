@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from sampletones_application.coordinators.reconstruction import ReconstructionCoordinator
-from sampletones_application.coordinators.tabs.reconstruction import ReconstructionTabCoordinator
+from sampletones_application.coordinators.tabs.reconstruction.coordinator import ReconstructionTabCoordinator
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.rewrites.queue import ReconstructionRewrites

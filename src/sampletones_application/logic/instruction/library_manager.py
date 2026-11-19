@@ -4,11 +4,12 @@ from functools import partial
 from pathlib import Path
 from typing import Callable, Dict, Optional, Tuple
 
+from sampletones_application.categories.context import generator_label
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.logic.instruction.readiness import LibraryReadiness
 from sampletones_application.view_model.instruction.data import InstructionPanelData
-from sampletones_core.configs import Config, InstructionsLibraryConfig
+from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.fft import Window
 from sampletones_core.instructions.types import InstructionUnion
@@ -18,12 +19,12 @@ from sampletones_core.library import (
     InstructionLibraryKey,
     LibraryHeader,
     LibraryState,
-    create_key_from_filename,
     get_display_name_from_key,
     library_state,
 )
 from sampletones_core.library.creator import InstructionsLibraryCreator
-from sampletones_core.library.filename.fields import InstructionsFilenameFields
+from sampletones_core.library.filename.utils import library_key_from_filename
+from sampletones_core.library.settings import LibrarySettings
 from sampletones_core.parallelization import TaskProgress, TaskStatus
 from sampletones_core.structures.tree import (
     GeneratorNode,
@@ -32,7 +33,8 @@ from sampletones_core.structures.tree import (
     Tree,
     TreeNode,
 )
-from sampletones_shared.paths.extensions import EXT_FILE_LIBRARY
+from sampletones_shared.logger import logger
+from sampletones_shared.paths.extensions import FileKind, file_kind
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import to_path
@@ -154,8 +156,9 @@ class InstructionsLibraryManager(CallbackMixin):
         listed: Dict[InstructionLibraryKey, bool] = {}
         if library_directory.exists():
             for filepath in library_directory.iterdir():
-                if filepath.is_file() and filepath.suffix == EXT_FILE_LIBRARY and self._is_library_file(filepath.stem):
-                    listed[create_key_from_filename(filepath)] = library_state(filepath) is LibraryState.OUTDATED
+                library_key = self._listed_key(filepath)
+                if library_key is not None:
+                    listed[library_key] = library_state(filepath) is LibraryState.OUTDATED
 
         loaded = self._catalog.library.data
         for removed_key in set(loaded) - set(listed):
@@ -175,13 +178,15 @@ class InstructionsLibraryManager(CallbackMixin):
         """Where the library ``library_key`` names stands in the catalog for this build."""
         return self._catalog.library.state(library_key)
 
-    def stored_config(self, library_key: InstructionLibraryKey) -> Optional[InstructionsLibraryConfig]:
+    def stored_settings(self, library_key: InstructionLibraryKey) -> Optional[LibrarySettings]:
         """The settings the library ``library_key`` names states it was built for, where its file
         states them in a form this build reads."""
         try:
-            return LibraryHeader.read(self.get_path(library_key)).config
+            header = LibraryHeader.read(self.get_path(library_key))
         except FileNotFoundError:
             return None
+
+        return header.settings_within(self._config_manager.config.general.pitch_range)
 
     def load_library(self, library_key: InstructionLibraryKey) -> InstructionLibraryData:
         """Takes up the library ``library_key`` names as the current one, reading it from its file
@@ -340,19 +345,21 @@ class InstructionsLibraryManager(CallbackMixin):
             self._creator.shutdown()
             self._creator = None
 
-    def _is_library_file(self, filename: str) -> bool:
-        """Whether ``filename`` parses as a library filename, per the field schema that builds it.
+    def _listed_key(self, filepath: Path) -> Optional[InstructionLibraryKey]:
+        """The library a file in the library folder holds, where the library reads it by its key.
 
-        Delegates to :class:`InstructionsFilenameFields`, the single source of truth for the
-        ``sr_…_nf_…_ws_…_tg_…_ch_…`` layout: a malformed or out-of-range name raises (``ValueError``,
-        which pydantic's ``ValidationError`` subclasses) and is reported as not-a-library-file.
+        A key names its file in the form the library writes, so a file named otherwise, an
+        upper-case extension on a file system that tells cases apart among them, is passed by.
         """
-        try:
-            InstructionsFilenameFields.create(filename)
-        except ValueError:
-            return False
+        if file_kind(filepath) is not FileKind.LIBRARY:
+            return None
 
-        return True
+        library_key = library_key_from_filename(filepath)
+        if library_key is None or not self.get_path(library_key).is_file():
+            logger.info(f"Skipping a file the library reads no library from: {filepath.name}")
+            return None
+
+        return library_key
 
     def rebuild_tree(self) -> None:
         root = TreeNode(self._language_manager["instructions.library.label.libraries_node"], node_type=NodeType.ROOT)
@@ -381,7 +388,7 @@ class InstructionsLibraryManager(CallbackMixin):
     def _build_generator_nodes(self, parent: TreeNode) -> None:
         for generator_name in GeneratorName:
             GeneratorNode(
-                generator_name.value.capitalize(),
+                generator_label(self._language_manager, generator_name),
                 generator_name=generator_name,
                 parent=parent,
             )

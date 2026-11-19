@@ -19,6 +19,7 @@ from typing import (
 
 from sampletones_application.logic.reconstruction.browser.manager import BrowserManager
 from sampletones_application.ui.elements.tree.colors import TreeColors
+from sampletones_application.ui.elements.tree.details import NodeDetails
 from sampletones_application.ui.elements.tree.expansion import RowExpansionMemory
 from sampletones_application.ui.elements.tree.filter import TreeFilter
 from sampletones_application.ui.elements.tree.handler import NodeHandler
@@ -456,13 +457,7 @@ def build_browser_panel(
 
 def _state_detail_labels(panel: GUITreePanel) -> None:
     """States the labels a row's details read under, which a configuration row asks for by name."""
-    panel._lbl_detail_sample_rate = "sample_rate"
-    panel._lbl_detail_nes_frequency = "nes_frequency"
-    panel._lbl_detail_spectrum_method = "spectrum_method"
-    panel._lbl_detail_transformation_gamma = "transformation_gamma"
-    panel._lbl_detail_window_size = "window_size"
-    panel._lbl_detail_channels = "channels"
-    panel._lbl_detail_configuration = "configuration"
+    panel._details = NodeDetails(panel._language_manager)
 
 
 def collect_specs(panel: GUITreePanel) -> List[NodeSpec]:

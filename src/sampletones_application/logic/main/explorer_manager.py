@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import AbstractSet, List, Optional, Set
+from typing import AbstractSet, Final, FrozenSet, List, Optional, Set
 
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
@@ -11,12 +11,10 @@ from sampletones_core.structures.tree import (
     TreeNode,
     create_directory_node,
 )
-from sampletones_shared.paths.extensions import (
-    EXT_FILE_LIBRARY,
-    EXT_FILE_RECONSTRUCTION,
-    EXT_FILES_AUDIO,
-)
+from sampletones_shared.paths.extensions import FileKind, file_kind
 from sampletones_shared.utils.system.system import System
+
+LISTED_KINDS: Final[FrozenSet[FileKind]] = frozenset({FileKind.AUDIO, FileKind.RECONSTRUCTION, FileKind.LIBRARY})
 
 
 class ExplorerManager:
@@ -132,11 +130,7 @@ class ExplorerManager:
                             level=level + 1,
                         )
                 elif entry_path.is_file():
-                    if entry_path.suffix.lower() in [
-                        *EXT_FILES_AUDIO,
-                        EXT_FILE_LIBRARY,
-                        EXT_FILE_RECONSTRUCTION,
-                    ]:
+                    if self._lists(entry_path):
                         FileSystemNode(
                             name=entry_path.name,
                             filepath=entry_path,
@@ -158,16 +152,17 @@ class ExplorerManager:
                 if entry_path.is_dir():
                     return True
 
-                if entry_path.is_file() and entry_path.suffix.lower() in [
-                    *EXT_FILES_AUDIO,
-                    EXT_FILE_LIBRARY,
-                    EXT_FILE_RECONSTRUCTION,
-                ]:
+                if entry_path.is_file() and self._lists(entry_path):
                     return True
         except (PermissionError, OSError):
             return False
 
         return False
+
+    @staticmethod
+    def _lists(path: Path) -> bool:
+        """Whether the explorer shows a file: a recording, a reconstruction or a library."""
+        return file_kind(path) in LISTED_KINDS
 
     def collapse_all(self) -> None:
         """Folds every folder away and drops what was read, so opening one lists it as it stands."""

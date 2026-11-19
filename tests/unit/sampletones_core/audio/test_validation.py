@@ -9,6 +9,7 @@ from sampletones_core.audio.validation import (
     validate_buffer_size,
     validate_sample_rate,
 )
+from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE, SAMPLE_RATES
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import expect_error
@@ -125,43 +126,33 @@ class TestValidateSampleRate(BaseTestSuite):
 
     test_cases = (
         TestCase(
-            label="valid_8000",
-            sample_rate=8000,
+            label="lowest_accepted_rate",
+            sample_rate=MIN_SAMPLE_RATE,
             expected=None,
         ),
         TestCase(
-            label="valid_16000",
-            sample_rate=16000,
+            label="highest_accepted_rate",
+            sample_rate=MAX_SAMPLE_RATE,
             expected=None,
         ),
         TestCase(
-            label="valid_22050",
-            sample_rate=22050,
+            label="rate_missing_from_the_offered_list_is_accepted",
+            sample_rate=11025,
             expected=None,
         ),
         TestCase(
-            label="valid_44100",
-            sample_rate=44100,
-            expected=None,
-        ),
-        TestCase(
-            label="valid_48000",
-            sample_rate=48000,
-            expected=None,
-        ),
-        TestCase(
-            label="valid_96000",
-            sample_rate=96000,
-            expected=None,
-        ),
-        TestCase(
-            label="valid_192000",
-            sample_rate=192000,
-            expected=None,
-        ),
-        TestCase(
-            label="invalid_rate_raises_value_error",
+            label="arbitrary_rate_within_range_is_accepted",
             sample_rate=12345,
+            expected=None,
+        ),
+        TestCase(
+            label="just_below_range_raises_value_error",
+            sample_rate=MIN_SAMPLE_RATE - 1,
+            expected=ValueError,
+        ),
+        TestCase(
+            label="just_above_range_raises_value_error",
+            sample_rate=MAX_SAMPLE_RATE + 1,
             expected=ValueError,
         ),
         TestCase(
@@ -210,6 +201,10 @@ class TestValidateSampleRate(BaseTestSuite):
             return
 
         validate_sample_rate(test_case.sample_rate)
+
+    @pytest.mark.parametrize("sample_rate", SAMPLE_RATES)
+    def test_every_offered_rate_is_accepted(self, sample_rate: int) -> None:
+        validate_sample_rate(sample_rate)
 
 
 class TestValidateBufferSize(BaseTestSuite):

@@ -92,7 +92,7 @@ class TestAProjectOpenedAtStart:
         project_manager = ProjectManager()
         session_manager = MagicMock()
         session_manager.current_project = None
-        session_manager.get_project_path.return_value = tmp_path
+        session_manager.folder.return_value = tmp_path
         return ProjectCoordinator(
             ProjectController(project_manager),
             project_manager,
@@ -289,7 +289,7 @@ class TestAFormatWithASetupOpensIt:
     ) -> None:
         coordinator.export_project_dialog(ExportFormat.NSF)
 
-        setup.open_project.assert_called_once_with()
+        setup.open_project.assert_called_once_with(ExportFormat.NSF)
         save_dialog.assert_not_called()
 
     def test_a_format_asking_for_the_file_alone_opens_the_save_dialog(
@@ -482,7 +482,7 @@ class TestTheSaveAPromptWaitsOn:
         project_coordinator: ProjectCoordinator,
         tmp_path: Path,
     ) -> ProjectCoordinator:
-        project_coordinator._session_manager.get_project_path.return_value = tmp_path
+        project_coordinator._session_manager.folder.return_value = tmp_path
         return project_coordinator
 
     def test_a_project_with_a_file_is_written_there(

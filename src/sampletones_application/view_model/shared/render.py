@@ -4,6 +4,7 @@ from typing import Final, FrozenSet, Optional, Self, Tuple
 
 from pydantic import BaseModel
 
+from sampletones_application.view_model.shared.audio_settings import rate_label
 from sampletones_application.view_model.shared.nearest import nearest_offered
 from sampletones_application.view_model.shared.percent import format_percent
 from sampletones_core.audio.writers import (
@@ -228,11 +229,11 @@ class SongRenderViewModel(BaseModel, frozen=True):
 
     def sample_rate_labels(self, template: str) -> Tuple[str, ...]:
         """The rates on offer, each as ``template`` states it."""
-        return tuple(template.format(rate=sample_rate) for sample_rate in self.sample_rates)
+        return tuple(rate_label(sample_rate, template) for sample_rate in self.sample_rates)
 
     def sample_rate_label(self, template: str) -> str:
         """The chosen rate, as ``template`` states it."""
-        return template.format(rate=self.spec.sample_rate)
+        return rate_label(self.spec.sample_rate, template)
 
     def bitrate_labels(self, template: str) -> Tuple[str, ...]:
         """The bitrates on offer, each as ``template`` states it."""

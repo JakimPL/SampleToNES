@@ -7,6 +7,7 @@ import pytest
 from sampletones_player.compression.decode import decode_planes
 from sampletones_player.compression.planes.rebuild import streams_from_planes
 from sampletones_player.driver.image import DriverImage
+from sampletones_player.nsf.file import song_room
 from sampletones_player.specification.compression import MAX_LITERAL_BYTES
 from sampletones_player.specification.song import SONG_HEADER_SIZE
 from sampletones_shared.utils.tables import Table
@@ -22,7 +23,6 @@ from sampletones_tools.codec.report.encoding import (
     Encoding,
 )
 from sampletones_tools.codec.report.session import CompressionReport, run_report
-from sampletones_tools.codec.report.songs import available_bytes
 from sampletones_tools.corpus.build import Corpus
 
 
@@ -88,7 +88,7 @@ class TestTheProgramAreaHoldsAWholeSong:
             encoding for encoding in encodings if encoding.entry.name == LONG_ARRANGEMENT and encoding.variant == SEARCH
         ]
         assert searched
-        assert SONG_HEADER_SIZE + searched[0].size <= available_bytes(driver_image)
+        assert SONG_HEADER_SIZE + searched[0].size <= song_room(driver_image)
 
     def test_every_layer_undercuts_a_record_per_tick(
         self,

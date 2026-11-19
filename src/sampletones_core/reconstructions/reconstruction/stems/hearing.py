@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import AbstractSet, Dict, FrozenSet, List, Mapping, Optional, Set
+from typing import AbstractSet, Dict, FrozenSet, List, Mapping, Optional, Set, Tuple
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
@@ -258,6 +258,31 @@ class HeardRenders:
 
     mix: np.ndarray
     playing: np.ndarray
+
+
+def recordings_heard(
+    stems_data: StemsData,
+    selection: StemSelection,
+    recordings: Mapping[int, np.ndarray],
+) -> Tuple[np.ndarray, ...]:
+    """The recordings ``selection`` hears on any channel, in the record's entry order, those not loaded left out.
+
+    The original a reader hears is the mix of these, so the worker, the open document and a maker's
+    soundtrack read the same recordings in the same order. Each array comes back as it was given, so a
+    cache keyed by the identity of the recordings finds them again.
+
+    Args:
+        stems_data: The record naming the recordings in their order.
+        selection: Which recordings the reader hears, channel by channel.
+        recordings: The recordings loaded, by the id of the entry each was loaded for.
+
+    Returns:
+        Tuple[np.ndarray, ...]: The recordings heard, in record order.
+    """
+    heard = selection.any_channel()
+    return tuple(
+        recordings[entry.id] for entry in stems_data.config.entries if entry.id in heard and entry.id in recordings
+    )
 
 
 def heard_renders(

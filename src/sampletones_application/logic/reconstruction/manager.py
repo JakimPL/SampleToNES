@@ -21,6 +21,7 @@ from sampletones_core.reconstructions.reconstruction.stems.selection import Stem
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
+from sampletones_shared.utils.system.filesystem import removal_takes
 from sampletones_shared.utils.system.paths import first_missing, is_same_path
 from sampletones_shared.utils.system.reveal.selection import open_paths_in_explorer
 
@@ -386,6 +387,11 @@ class ReconstructionManager(CallbackMixin):
         """
         filepath = self.filepath
         return filepath is not None and is_same_path(filepath, path)
+
+    def is_taken_by_removing(self, removed: Path) -> bool:
+        """Whether removing ``removed`` from the browser takes the open document's own file away with it."""
+        filepath = self.filepath
+        return filepath is not None and removal_takes(removed, filepath)
 
     @property
     def source_paths(self) -> Tuple[Path, ...]:

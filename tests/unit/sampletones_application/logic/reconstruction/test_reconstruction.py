@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.exports import ExportBackends
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.listening import Listening
@@ -14,9 +15,6 @@ from sampletones_application.logic.reconstruction.reconstruction import (
     ReconstructionPanelLogic,
 )
 from sampletones_application.logic.shared.renders import RenderCache
-from sampletones_application.view_model.reconstruction.envelopes import (
-    ChannelEnvelopesViewModel,
-)
 from sampletones_application.view_model.reconstruction.paths.state import (
     ReconstructionPathState,
 )
@@ -51,6 +49,7 @@ from sampletones_shared.paths.extensions import (
     EXT_FILE_JSON,
     EXT_FILE_MODULE,
     EXT_FILE_NSF,
+    EXT_FILE_WAVE,
 )
 from tests.conftest import RENDER_BUDGET
 from tests.suite.case import BaseRegularTestCase
@@ -81,8 +80,10 @@ UNSUPPORTED_EXTENSIONS: Final[List[str]] = [".xm", EXT_FILE_MODULE, NO_EXTENSION
 @pytest.fixture
 def session_manager() -> MagicMock:
     mock = MagicMock()
-    mock.get_instrument_path.return_value = Path("/tmp/instruments")
-    mock.get_audio_path.return_value = Path("/tmp/audio")
+    mock.folder.side_effect = {
+        LastPath.INSTRUMENT: Path("/tmp/instruments"),
+        LastPath.AUDIO: Path("/tmp/audio"),
+    }.__getitem__
     return mock
 
 
@@ -311,58 +312,6 @@ class TestReconstructionPanelLogicPathRows:
         view_model = captured[0]
         assert view_model.reconstruction_file.state is ReconstructionPathState.NOT_APPLICABLE
         assert view_model.original_audio.state is ReconstructionPathState.NOT_APPLICABLE
-
-    @dataclass(frozen=True, kw_only=True)
-    class AudioPathCase(BaseRegularTestCase):
-        has_filepath: bool
-        has_content: bool
-        expected: ReconstructionPathState
-
-    test_cases = (
-        AudioPathCase(
-            label="detached",
-            has_filepath=False,
-            has_content=False,
-            expected=ReconstructionPathState.NOT_APPLICABLE,
-        ),
-        AudioPathCase(
-            label="recorded_but_unavailable",
-            has_filepath=True,
-            has_content=False,
-            expected=ReconstructionPathState.NOT_FOUND,
-        ),
-        AudioPathCase(
-            label="available",
-            has_filepath=True,
-            has_content=True,
-            expected=ReconstructionPathState.AVAILABLE,
-        ),
-    )
-
-    @pytest.mark.parametrize("case", test_cases, ids=lambda case: case.label)
-    def test_audio_path_state_follows_loaded_content(self, case: AudioPathCase) -> None:
-        source_paths = (Path("/songs/source.wav"),) if case.has_filepath else ()
-
-        view_model = ReconstructionPanelLogic._build_audio_path_view_model(
-            source_paths,
-            loaded=case.has_content,
-        )
-
-        assert view_model.state is case.expected
-
-    def test_stem_paths_report_multiple_state(self) -> None:
-        stem_paths = (
-            Path("/stems/drums/kick.wav"),
-            Path("/stems/drums/snare.wav"),
-        )
-        view_model = ReconstructionPanelLogic._build_audio_path_view_model(
-            stem_paths,
-            loaded=True,
-        )
-
-        assert view_model.state is ReconstructionPathState.MULTIPLE
-        assert view_model.paths == tuple(str(path) for path in stem_paths)
-        assert view_model.path == ""
 
 
 class TestReconstructionPanelLogicUpdate:
@@ -1496,6 +1445,22 @@ class TestReconstructionPanelLogicExportWav:
         panel_logic.on_open_export_wav_dialog = callback
         panel_logic.request_export_wav_dialog()
         callback.assert_called_once()
+
+    def test_the_wav_dialog_is_prefilled_with_a_name_ending_as_the_file_will(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        """Every export prefills its dialog with the file name it writes, extension included."""
+        _open(mock_reconstruction_manager, loaded_data)
+        callback = MagicMock()
+        panel_logic.on_open_export_wav_dialog = callback
+
+        panel_logic.request_export_wav_dialog()
+
+        default_filename, _ = callback.call_args.args
+        assert default_filename == f"{loaded_data.name}{EXT_FILE_WAVE}"
 
     def test_handle_export_wav_confirmed_with_no_data_is_no_op(
         self,

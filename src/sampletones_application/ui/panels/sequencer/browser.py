@@ -27,14 +27,6 @@ class GUISequencerBrowserPanel(GUIReconstructionBrowserPanel):
         button_refresh=TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
     )
 
-    @property
-    def refresh_button_label(self) -> str:
-        return self._language_manager["sequencer.browser.label.refresh_button"]
-
-    @property
-    def refresh_status_message(self) -> str:
-        return self._language_manager["sequencer.browser.message.status_refresh"]
-
     def _open_reconstruction(self, node: FileSystemNode) -> None:
         self.call(self.on_add_to_sequencer, node.filepath)
 

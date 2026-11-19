@@ -25,7 +25,7 @@ def frequency_to_timer(frequency: float) -> int:
         return 0
 
     timer = round(APU_CLOCK / (TIMER_CYCLE_DIVIDER * frequency)) - 1
-    return max(0, min(timer, MAX_TIMER))
+    return clamp(timer, 0, MAX_TIMER)
 
 
 def get_timer_ticks(timer: int) -> int:

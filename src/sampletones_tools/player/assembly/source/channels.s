@@ -7,12 +7,16 @@
 .export channels_rewind
 .export channels_advance
 .export channels_write
+.exportzp plane_state
 
 .import song_data
 
 SHADOW_UNWRITTEN = $FF
 ABSENT_PAGE      = $00
-LOWEST_PITCH_INDEX = $00
+PULSE1_BEND_BIT  = 1 << (PULSE1_BEND_PLANE / PLANE_STATE_SIZE)
+PULSE2_BEND_BIT  = 1 << (PULSE2_BEND_PLANE / PLANE_STATE_SIZE)
+TRIANGLE_BEND_BIT = 1 << (TRIANGLE_BEND_PLANE / PLANE_STATE_SIZE)
+BEND_PLANES      = PULSE1_BEND_BIT | PULSE2_BEND_BIT | TRIANGLE_BEND_BIT
 
 .segment "ZEROPAGE"
 
@@ -24,7 +28,7 @@ timer_low_table:        .res 2
 timer_high_table:       .res 2
 bend:                   .res 1
 bend_sign:              .res 1
-triangle_pitch:         .res 1
+bend_planes:            .res 1
 plane_state:            .res PLANE_STATE_BYTES
 timer_high_shadows:     .res TRIANGLE_REGISTERS + 1
 
@@ -40,14 +44,13 @@ timer_high_shadows:     .res TRIANGLE_REGISTERS + 1
 .assert PITCH_COUNT <= BEND_FLAG, error, "every pitch index fits below the flag"
 .assert SILENT_PITCH_INDEX >= PITCH_COUNT, error, "the index standing for silence sounds no pitch"
 .assert SILENT_PITCH_INDEX < BEND_FLAG, error, "the index standing for silence bends nowhere"
+.assert (TRIANGLE_COUNTER | TRIANGLE_SOUNDING) <> 0, error, "a sounding triangle's counter clears the zero flag"
 .assert COUNT_STEP = 1 << COUNT_SHIFT, error, "a repeat count steps from the bit it is shifted down by"
 .assert PLANE_STATE_BYTES + PLANE_PHRASE < $100, error, "a plane's phrase pointer is reached in page zero"
 
-; Readies the tables the planes read through and points every plane at its own first token.
+; Readies the tables the planes read through and points every plane at its own first token. Every
+; table lies inside the program, so no sum here carries out of its high byte.
 channels_reset:
-    lda #LOWEST_PITCH_INDEX
-    sta triangle_pitch
-
     lda #SHADOW_UNWRITTEN
     sta timer_high_shadows + PULSE1_REGISTERS
     sta timer_high_shadows + PULSE2_REGISTERS
@@ -61,7 +64,6 @@ channels_reset:
     adc #>song_data
     sta timer_low_table + 1
 
-    clc
     lda timer_low_table
     adc #PITCH_COUNT
     sta timer_high_table
@@ -69,7 +71,6 @@ channels_reset:
     adc #$00
     sta timer_high_table + 1
 
-    clc
     lda song_data + PHRASE_TABLE_OFFSET
     adc #<(song_data + PHRASE_TABLE_COUNT_SIZE)
     sta phrase_table
@@ -77,55 +78,46 @@ channels_reset:
     adc #>(song_data + PHRASE_TABLE_COUNT_SIZE)
     sta phrase_table + 1
 
-    lda #<(song_data + STREAM_OFFSETS_OFFSET)
-    sta pointer
-    lda #>(song_data + STREAM_OFFSETS_OFFSET)
-    sta pointer + 1
-    jmp seed_planes
+    ldy #$00
+    beq seed_planes
 
 ; Brings every plane back to the token its stream is re-entered at, which is the whole of what a
 ; song coming round restores: the token the loop tick starts is one the plane reads outright.
 channels_rewind:
-    lda #<(song_data + LOOP_ENTRIES_OFFSET)
-    sta pointer
-    lda #>(song_data + LOOP_ENTRIES_OFFSET)
-    sta pointer + 1
-    jmp seed_planes
+    ldy #LOOP_ENTRIES_OFFSET - STREAM_OFFSETS_OFFSET
 
-; Points each plane at the offset the header holds for it at (pointer), and empties what it plays.
-; A plane the block leaves out states ABSENT_STREAM, and its source lands in page zero, which no
-; song occupies: that page is what marks it absent, and its value stays at zero throughout.
+; Points each plane at the offset the header holds for it in the table Y starts in, and empties what
+; it plays. A plane the block leaves out states ABSENT_STREAM, and its source lands in page zero,
+; which no song occupies: that page is what marks it absent, and its value stays at zero
+; throughout. The fields every token sets for itself are left to the token the plane reads next.
 seed_planes:
     ldx #$00
-    ldy #$00
 @next:
-    lda (pointer),y
+    lda song_data + STREAM_OFFSETS_OFFSET,y
     iny
-    and (pointer),y
+    and song_data + STREAM_OFFSETS_OFFSET,y
     cmp #<ABSENT_STREAM
     bne @present
+    iny
     lda #ABSENT_PAGE
     sta plane_state + PLANE_SOURCE + 1,x
-    iny
-    jmp @empty
+    beq @empty
 @present:
     dey
     clc
-    lda (pointer),y
+    lda song_data + STREAM_OFFSETS_OFFSET,y
     adc #<song_data
     sta plane_state + PLANE_SOURCE,x
     iny
-    lda (pointer),y
+    lda song_data + STREAM_OFFSETS_OFFSET,y
     adc #>song_data
     sta plane_state + PLANE_SOURCE + 1,x
     iny
 
 @empty:
     lda #$00
-    sta plane_state + PLANE_PHRASE_TICKS,x
     sta plane_state + PLANE_TOKEN_TICKS,x
     sta plane_state + PLANE_VALUE,x
-    sta plane_state + PLANE_SHIFT,x
     sta plane_state + PLANE_REPEATS,x
 
     txa
@@ -151,44 +143,28 @@ plane_forms:
     rts
 
 ; Advances every plane the block holds by one tick of the song. A bend plane advances only on a
-; tick its channel's new value flags, since it holds a value for those ticks alone.
+; tick its channel's new value flags, since it holds a value for those ticks alone; a bit of
+; `bend_planes` marks each bend plane, its value plane standing right before it.
 channels_advance:
-    ldx #PULSE1_CONTROL_PLANE
-    jsr plane_step
-    ldx #PULSE1_VALUE_PLANE
-    jsr plane_step
-    bit plane_state + PULSE1_VALUE_PLANE + PLANE_VALUE
-    bpl @pulse2
-    ldx #PULSE1_BEND_PLANE
-    jsr plane_step
-@pulse2:
-    ldx #PULSE2_CONTROL_PLANE
-    jsr plane_step
-    ldx #PULSE2_VALUE_PLANE
-    jsr plane_step
-    bit plane_state + PULSE2_VALUE_PLANE + PLANE_VALUE
-    bpl @triangle
-    ldx #PULSE2_BEND_PLANE
-    jsr plane_step
-@triangle:
-    ldx #TRIANGLE_VALUE_PLANE
-    jsr plane_step
-    bit plane_state + TRIANGLE_VALUE_PLANE + PLANE_VALUE
-    bpl @noise
-    ldx #TRIANGLE_BEND_PLANE
-    jsr plane_step
-@noise:
-    ldx #NOISE_CONTROL_PLANE
-    jsr plane_step
-    ldx #NOISE_VALUE_PLANE
-    jmp plane_step
-
-; Advances the plane at X by one tick where the block holds it, an absent plane standing still.
-plane_step:
+    lda #BEND_PLANES
+    sta bend_planes
+    ldx #$00
+@plane:
+    lsr bend_planes
+    bcc @step
+    lda plane_state + PLANE_VALUE - PLANE_STATE_SIZE,x
+    bpl @next
+@step:
     lda plane_state + PLANE_SOURCE + 1,x
-    beq @absent
-    jmp plane_advance
-@absent:
+    beq @next
+    jsr plane_advance
+@next:
+    txa
+    clc
+    adc #PLANE_STATE_SIZE
+    tax
+    cpx #PLANE_STATE_BYTES
+    bne @plane
     rts
 
 ; Advances the plane whose state lies at X by one tick, leaving the value it plays in that state.
@@ -197,7 +173,8 @@ plane_step:
 ;
 ; The values a tick plays come from wherever the token put them: a phrase body, the bytes spelled
 ; out behind a literal, or the value the plane already reached. A body played out holds its last
-; value onward, which is what carries a note whose envelope has finished.
+; value onward, which is what carries a note whose envelope has finished. The phrase pointer stands
+; one before the next value, so a tick steps it on and reads.
 plane_advance:
     lda plane_state + PLANE_REPEATS,x
     beq @symbol
@@ -205,23 +182,20 @@ plane_advance:
     rts
 @symbol:
     lda plane_state + PLANE_TOKEN_TICKS,x
-    bne @within
-    jsr fetch_token
-    jmp @plays
-@within:
+    beq @fetch
     dec plane_state + PLANE_TOKEN_TICKS,x
 @plays:
     lda plane_state + PLANE_PHRASE_TICKS,x
     beq @held
+    inc plane_state + PLANE_PHRASE,x
+    bne @reading
+    inc plane_state + PLANE_PHRASE + 1,x
+@reading:
     lda (plane_state + PLANE_PHRASE,x)
     clc
     adc plane_state + PLANE_SHIFT,x
     sta plane_state + PLANE_VALUE,x
     dec plane_state + PLANE_PHRASE_TICKS,x
-    beq @held
-    inc plane_state + PLANE_PHRASE,x
-    bne @held
-    inc plane_state + PLANE_PHRASE + 1,x
 @held:
     lda plane_state + PLANE_VALUE,x
     and plane_state + PLANE_COUNT_MASK,x
@@ -232,8 +206,8 @@ plane_advance:
     sta plane_state + PLANE_REPEATS,x
     rts
 
-; Reads the token the plane at X stands on into that plane's own state.
-fetch_token:
+; Reads the token the plane at X stands on into that plane's own state, then plays from it.
+@fetch:
     lda plane_state + PLANE_SOURCE,x
     sta pointer
     lda plane_state + PLANE_SOURCE + 1,x
@@ -247,18 +221,8 @@ fetch_token:
     and #TOKEN_TAG_MASK
     beq @holds
     cmp #TAG_LITERAL
-    beq @spells
-    jmp @plays_phrase
+    bne @plays_phrase
 
-@holds:
-    lda opcode
-    and #TOKEN_OPERAND_MASK
-    sta plane_state + PLANE_TOKEN_TICKS,x
-    lda #$00
-    sta plane_state + PLANE_PHRASE_TICKS,x
-    jmp advance_source
-
-@spells:
     lda opcode
     and #TOKEN_OPERAND_MASK
     sta plane_state + PLANE_TOKEN_TICKS,x
@@ -269,19 +233,24 @@ fetch_token:
     lda #$00
     sta plane_state + PLANE_SHIFT,x
 
-    clc
     lda pointer
-    adc #OPCODE_SIZE
     sta plane_state + PLANE_PHRASE,x
     lda pointer + 1
-    adc #$00
     sta plane_state + PLANE_PHRASE + 1,x
 
     clc
     tya
     adc plane_state + PLANE_PHRASE_TICKS,x
     tay
-    jmp advance_source
+    bne @advance_source
+
+@holds:
+    lda opcode
+    and #TOKEN_OPERAND_MASK
+    sta plane_state + PLANE_TOKEN_TICKS,x
+    lda #$00
+    sta plane_state + PLANE_PHRASE_TICKS,x
+    beq @advance_source
 
 @plays_phrase:
     lda opcode
@@ -290,54 +259,18 @@ fetch_token:
     bne @named
     lda (pointer),y
     iny
+; The doubled id's ninth bit carries into the page of the table entry.
 @named:
-    jsr set_phrase
-    lda opcode
-    and #DEFAULT_COUNT_FLAG
-    bne @shifts
-    lda (pointer),y
-    iny
-    sta plane_state + PLANE_TOKEN_TICKS,x
-@shifts:
-    lda #$00
-    sta plane_state + PLANE_SHIFT,x
-    bit opcode
-    bvc advance_source
-    lda (pointer),y
-    iny
-    sta plane_state + PLANE_SHIFT,x
-
-; Moves the plane's source on by the Y bytes its token took.
-advance_source:
-    clc
-    tya
-    adc plane_state + PLANE_SOURCE,x
-    sta plane_state + PLANE_SOURCE,x
-    bcc @done
-    inc plane_state + PLANE_SOURCE + 1,x
-@done:
-    rts
-
-; Points the plane at X at the body of the phrase whose id lies in A, and states how many of that
-; body's own values are left to play.
-set_phrase:
     asl
     sta entry
-    lda #$00
-    rol
-    sta entry + 1
-
-    clc
-    lda entry
-    adc phrase_table
-    sta entry
-    lda entry + 1
-    adc phrase_table + 1
-    sta entry + 1
-
     tya
     pha
-    ldy #$00
+    lda phrase_table + 1
+    adc #$00
+    sta entry + 1
+    lda phrase_table
+    ldy entry
+    sta entry
     clc
     lda (entry),y
     adc #<song_data
@@ -347,77 +280,92 @@ set_phrase:
     adc #>song_data
     sta plane_state + PLANE_PHRASE + 1,x
 
-    lda plane_state + PLANE_PHRASE,x
-    sta entry
-    lda plane_state + PLANE_PHRASE + 1,x
-    sta entry + 1
-    ldy #$00
-    lda (entry),y
+; The phrase opens with its length and its default count, which leaves the pointer one before the
+; body.
+    lda (plane_state + PLANE_PHRASE,x)
     sta plane_state + PLANE_PHRASE_TICKS,x
-    iny
-    lda (entry),y
-    sta plane_state + PLANE_TOKEN_TICKS,x
-
-    clc
-    lda plane_state + PLANE_PHRASE,x
-    adc #(PHRASE_LENGTH_SIZE + PHRASE_DEFAULT_SIZE)
-    sta plane_state + PLANE_PHRASE,x
-    bcc @body
+    inc plane_state + PLANE_PHRASE,x
+    bne @length_read
     inc plane_state + PLANE_PHRASE + 1,x
-@body:
+@length_read:
+    lda (plane_state + PLANE_PHRASE,x)
+    sta plane_state + PLANE_TOKEN_TICKS,x
     pla
     tay
-    rts
+
+    lda opcode
+    and #DEFAULT_COUNT_FLAG
+    bne @shifts
+    lda (pointer),y
+    iny
+    sta plane_state + PLANE_TOKEN_TICKS,x
+@shifts:
+    lda #$00
+    bit opcode
+    bvc @shift
+    lda (pointer),y
+    iny
+@shift:
+    sta plane_state + PLANE_SHIFT,x
+
+; Moves the plane's source on by the Y bytes its token took.
+@advance_source:
+    clc
+    tya
+    adc plane_state + PLANE_SOURCE,x
+    sta plane_state + PLANE_SOURCE,x
+    bcc @source_moved
+    inc plane_state + PLANE_SOURCE + 1,x
+@source_moved:
+    jmp @plays
 
 ; Writes what every plane last played to the registers its channel owns. The triangle names its
 ; silence in the pitch its value plane carries: the index standing above every pitch the table
-; holds silences the linear counter and leaves the divider where the channel last sounded.
+; holds writes the silenced linear counter alone, so the divider stays where the channel last
+; sounded. The comparison's zero flag survives the counter's store and tells the rest apart.
 channels_write:
-    lda plane_state + PULSE1_CONTROL_PLANE + PLANE_VALUE
-    and #PULSE_CONTROL_MASK
-    ora #PULSE_CONTROL_FIXED
-    sta CHANNEL_CONTROL + PULSE1_REGISTERS
-    lda plane_state + PULSE1_BEND_PLANE + PLANE_VALUE
-    sta bend
     ldx #PULSE1_REGISTERS
-    lda plane_state + PULSE1_VALUE_PLANE + PLANE_VALUE
-    jsr write_timer
-
-    lda plane_state + PULSE2_CONTROL_PLANE + PLANE_VALUE
-    and #PULSE_CONTROL_MASK
-    ora #PULSE_CONTROL_FIXED
-    sta CHANNEL_CONTROL + PULSE2_REGISTERS
-    lda plane_state + PULSE2_BEND_PLANE + PLANE_VALUE
-    sta bend
+    ldy #PULSE1_CONTROL_PLANE
+    jsr write_pulse
     ldx #PULSE2_REGISTERS
-    lda plane_state + PULSE2_VALUE_PLANE + PLANE_VALUE
-    jsr write_timer
+    ldy #PULSE2_CONTROL_PLANE
+    jsr write_pulse
 
     lda plane_state + TRIANGLE_VALUE_PLANE + PLANE_VALUE
+    ldy #TRIANGLE_COUNTER | TRIANGLE_SILENT
     cmp #SILENT_PITCH_INDEX
-    beq @resting
-    sta triangle_pitch
-    lda #TRIANGLE_COUNTER | TRIANGLE_SOUNDING
-    bne @counter
-@resting:
-    lda #TRIANGLE_COUNTER | TRIANGLE_SILENT
+    beq @counter
+    ldy #TRIANGLE_COUNTER | TRIANGLE_SOUNDING
 @counter:
-    sta CHANNEL_CONTROL + TRIANGLE_REGISTERS
-    lda plane_state + TRIANGLE_BEND_PLANE + PLANE_VALUE
-    sta bend
+    sty CHANNEL_CONTROL + TRIANGLE_REGISTERS
+    beq @noise
+    ldy plane_state + TRIANGLE_BEND_PLANE + PLANE_VALUE
+    sty bend
     ldx #TRIANGLE_REGISTERS
-    lda triangle_pitch
     jsr write_timer
 
+@noise:
     lda plane_state + NOISE_CONTROL_PLANE + PLANE_VALUE
     and #NOISE_CONTROL_MASK
     ora #NOISE_CONTROL_FIXED
     sta CHANNEL_CONTROL + NOISE_REGISTERS
     lda plane_state + NOISE_VALUE_PLANE + PLANE_VALUE
     and #NOISE_VALUE_MASK
+    .if NOISE_VALUE_FIXED <> 0
     ora #NOISE_VALUE_FIXED
+    .endif
     sta CHANNEL_TIMER_LOW + NOISE_REGISTERS
     rts
+
+; Writes the pulse whose register base lies in X and whose control plane lies at Y.
+write_pulse:
+    lda plane_state + PLANE_VALUE,y
+    and #PULSE_CONTROL_MASK
+    ora #PULSE_CONTROL_FIXED
+    sta CHANNEL_CONTROL,x
+    lda plane_state + 2 * PLANE_STATE_SIZE + PLANE_VALUE,y
+    sta bend
+    lda plane_state + PLANE_STATE_SIZE + PLANE_VALUE,y
 
 ; Writes the timer the value byte in A names to the channel whose register base lies in X, the
 ; byte loaded last so its sign stands in N. The low seven bits index the pitch table, and the top
@@ -427,14 +375,12 @@ channels_write:
 ; it differs from the last one written, since storing it restarts a pulse waveform and reloads
 ; the triangle's counter.
 write_timer:
-    bmi @bent
-    ldy #$00
-    sty bend
-    tay
-    jmp @indexed
-@bent:
+    cmp #BEND_FLAG
     and #PITCH_INDEX_MASK
     tay
+    bcs @indexed
+    lda #$00
+    sta bend
 @indexed:
     lda #$00
     bit bend
@@ -455,3 +401,12 @@ write_timer:
     sta CHANNEL_TIMER_HIGH,x
 @held:
     rts
+
+.assert TRIANGLE_BEND_PLANE / PLANE_STATE_SIZE < 8, error, "every bend plane has a bit in one byte"
+.assert PULSE1_BEND_PLANE = PULSE1_VALUE_PLANE + PLANE_STATE_SIZE, error, "a bend plane follows its value plane"
+.assert PULSE2_BEND_PLANE = PULSE2_VALUE_PLANE + PLANE_STATE_SIZE, error, "a bend plane follows its value plane"
+.assert TRIANGLE_BEND_PLANE = TRIANGLE_VALUE_PLANE + PLANE_STATE_SIZE, error, "a bend plane follows its value plane"
+.assert PULSE1_VALUE_PLANE = PULSE1_CONTROL_PLANE + PLANE_STATE_SIZE, error, "a pulse's value plane follows its control plane"
+.assert PULSE2_VALUE_PLANE = PULSE2_CONTROL_PLANE + PLANE_STATE_SIZE, error, "a pulse's value plane follows its control plane"
+.assert PHRASE_LENGTH_SIZE = 1 && PHRASE_DEFAULT_SIZE = 1, error, "a phrase body follows its length and its default count"
+.assert ABSENT_PAGE = 0, error, "an absent plane's page reads as zero"

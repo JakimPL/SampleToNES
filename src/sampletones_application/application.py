@@ -17,7 +17,12 @@ from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.profile import UserProfile
 from sampletones_application.constants.midi import MIDI_SETTLE_SECONDS
-from sampletones_application.constants.playback import AUDIO_TEARDOWN_SECONDS, LIVE_LINGER_SECONDS, FollowMode
+from sampletones_application.constants.playback import (
+    AUDIO_TEARDOWN_SECONDS,
+    LIVE_LINGER_SECONDS,
+    STEP_TICKS,
+    FollowMode,
+)
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.display import DisplayCoordinator
 from sampletones_application.coordinators.documentation import DocumentationCoordinator
@@ -44,8 +49,8 @@ from sampletones_application.coordinators.tabs.hooks import MainTabHooks
 from sampletones_application.coordinators.tabs.instructions import (
     InstructionsTabCoordinator,
 )
-from sampletones_application.coordinators.tabs.main import MainTabCoordinator
-from sampletones_application.coordinators.tabs.reconstruction import (
+from sampletones_application.coordinators.tabs.main.coordinator import MainTabCoordinator
+from sampletones_application.coordinators.tabs.reconstruction.coordinator import (
     ReconstructionTabCoordinator,
 )
 from sampletones_application.coordinators.tabs.sequencer.coordinator import SequencerTabCoordinator
@@ -191,7 +196,7 @@ from sampletones_application.view_model.shared.project_properties import (
 from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager, DeviceCatalog
-from sampletones_core.audio.driver.portaudio import PyAudioDriver
+from sampletones_core.audio.driver.portaudio import start_portaudio
 from sampletones_core.audio.output import AudioOutput
 from sampletones_core.constants.audio import BufferSize, SampleRate
 from sampletones_core.constants.enums import ChannelName, FeatureKey
@@ -201,7 +206,7 @@ from sampletones_core.exports.stage import ExportStage
 from sampletones_core.project.voices.sample import Sample
 from sampletones_core.project.voices.voice import samples
 from sampletones_core.structures.tree import FileSystemNode
-from sampletones_player.export.backend import NSFBackend
+from sampletones_player.export.backend import ProgramBackend
 from sampletones_shared.application import (
     SAMPLETONES_AUTHOR,
     SAMPLETONES_GROUP,
@@ -283,7 +288,7 @@ class Application:
             language_manager=self.language_manager,
         )
         UnhandledFailures.attach(self._unhandled_failures.present, post=CallbackQueue.add)
-        self.audio_output: AudioOutput = AudioOutput(PyAudioDriver, post=CallbackQueue.add)
+        self.audio_output: AudioOutput = AudioOutput(start_portaudio, post=CallbackQueue.add)
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager(self.audio_output.catalog)
         self.preview_player: PreviewPlayer = PreviewPlayer(self.audio_output)
         self.config_manager = ConfigManager(config_path)
@@ -318,7 +323,7 @@ class Application:
         self.retune_service.subscribe(self._on_retune_result)
 
         backends = ExportBackends.build()
-        self.nsf_backend: NSFBackend = backends.nsf
+        self.program_backends: Dict[ExportFormat, ProgramBackend] = backends.programs
         self.export_backends: Dict[ExportFormat, ExportBackend] = backends.by_format
 
         self.project_manager: ProjectManager = ProjectManager()
@@ -497,7 +502,7 @@ class Application:
                 self.project_controller,
                 self.session_manager,
                 self.export_service,
-                self.nsf_backend,
+                self.program_backends,
                 is_operation_active=self._is_operation_active,
             ),
             window=self.nsf_export_window,
@@ -505,7 +510,7 @@ class Application:
             on_activity_changed=self._on_dialog_activity_changed,
         )
         self._format_setups: Dict[ExportFormat, ExportSetup] = {
-            ExportFormat.NSF: self._nsf_exports,
+            export_format: self._nsf_exports for export_format in self.program_backends
         }
 
         self._project_coordinator = ProjectCoordinator(
@@ -869,6 +874,8 @@ class Application:
             play_from_start=self._play_from_start,
             play_from_frame=self._play_from_frame,
             stop=self._stop,
+            step_backward=self._step_backward,
+            step_forward=self._step_forward,
             toggle_autoplay=self._toggle_autoplay,
             set_follow_mode=self._set_follow_mode,
             toggle_loop_song=self._toggle_loop_song,
@@ -1022,6 +1029,7 @@ class Application:
             pause_enabled=False,
             player_paused=False,
             stop_enabled=False,
+            step_enabled=False,
             autoplay=self.session_manager.autoplay,
             follow_mode=self.session_manager.follow_mode,
             loop_song=self.session_manager.loop_song,
@@ -1079,6 +1087,7 @@ class Application:
             pause_enabled=self._playback_router.is_pause_enabled,
             player_paused=self._playback_router.is_paused,
             stop_enabled=self._playback_router.is_stop_enabled,
+            step_enabled=self._playback_router.is_step_enabled,
             autoplay=self.session_manager.autoplay,
             follow_mode=self.session_manager.follow_mode,
             loop_song=self.session_manager.loop_song,
@@ -1666,6 +1675,12 @@ class Application:
 
     def _play(self) -> None:
         self._playback_router.play()
+
+    def _step_backward(self) -> None:
+        self._playback_router.step(-STEP_TICKS)
+
+    def _step_forward(self) -> None:
+        self._playback_router.step(STEP_TICKS)
 
     def _play_from_frame(self) -> None:
         """Plays from the current order frame; available only in the Sequencer tab."""

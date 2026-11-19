@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Final, List, Optional
 from unittest.mock import MagicMock, patch
 
+import msgpack
 import pytest
 
 from sampletones_application.categories.manager import LanguageManager
@@ -21,7 +22,14 @@ from sampletones_application.view_model.instruction.library import (
 from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.constants.enums import GeneratorName, SpectrumMethod
 from sampletones_core.fft import Window
-from sampletones_core.library import InstructionLibraryData, InstructionLibraryKey, LibraryState
+from sampletones_core.library import (
+    InstructionLibraryData,
+    InstructionLibraryKey,
+    LibraryState,
+    create_key_from_filename,
+)
+from sampletones_core.library.settings import LibrarySettings
+from sampletones_core.library.state import PITCH_RANGE_FIELD
 from sampletones_core.parallelization import TaskProgress, TaskStatus
 from sampletones_shared.application import SAMPLETONES_LIBRARY_DATA_VERSION
 from sampletones_shared.exceptions import (
@@ -51,6 +59,7 @@ INCOMPATIBLE_VERSION_KEY: Final[str] = "instructions.library.template.incompatib
 GENERATION_CANCELED_KEY: Final[str] = "instructions.library.message.status_generation_canceled"
 GENERATED_INSTRUCTIONS: Final[int] = 8
 EARLIER_VERSION: Final[str] = "2.0"
+LAST_RELEASE_VERSION: Final[str] = "2.1"
 OTHER_GAMMA: Final[int] = 50
 OTHER_TUNING: Final[float] = 432.0
 EARLIER_WINDOW_SIZE: Final[int] = 13579
@@ -472,12 +481,29 @@ def _write_library(
     """Writes an empty library built for ``library_config`` under ``directory``, stated at
     ``library_data_version``, its window ``window_size`` samples long where that is given and the one
     this build derives otherwise."""
-    key = InstructionLibraryKey.create(library_config, Window.from_config(library_config, custom_size=window_size))
-    library = InstructionLibraryData.create(Config().model_copy(update={"library": library_config}), {})
+    config = Config().model_copy(update={"library": library_config})
+    key = InstructionLibraryKey.create(
+        LibrarySettings.of(config), Window.from_config(library_config, custom_size=window_size)
+    )
+    library = InstructionLibraryData.create(config, {})
     stated = library.metadata.model_copy(update={"library_data_version": library_data_version})
     directory.mkdir(parents=True, exist_ok=True)
     library.model_copy(update={"metadata": stated}).save(directory / key.filename)
     return key
+
+
+def _write_last_release_library(directory: Path, library_config: InstructionsLibraryConfig) -> InstructionLibraryKey:
+    """Writes an empty library as the last release wrote one: at library data version 2.1, stating its
+    library section alone, under the name that section alone hashes to."""
+    config = Config().model_copy(update={"library": library_config})
+    library = InstructionLibraryData.create(config, {})
+    stated = library.metadata.model_copy(update={"library_data_version": LAST_RELEASE_VERSION})
+    payload = msgpack.unpackb(library.model_copy(update={"metadata": stated}).serialize(), raw=False)
+    del payload[PITCH_RANGE_FIELD]
+    filename = InstructionLibraryKey.library_only_filename(library_config, Window.from_config(library_config))
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / filename).write_bytes(msgpack.packb(payload, use_bin_type=True))
+    return create_key_from_filename(filename)
 
 
 def _opened_library(catalog: Catalog) -> InstructionLibraryKey:
@@ -804,9 +830,10 @@ class TestTheCatalogFollowingTheConfiguration:
         key = _opened_library(catalog)
         aim_library_directory(catalog.config_manager, tmp_path / OTHER_LIBRARIES)
         settings = _other_settings(catalog)
+        stated = LibrarySettings(library=settings, pitch_range=Config().general.pitch_range)
         catalog.config_manager.apply_library_config(
-            InstructionLibraryKey.create(settings, Window.from_config(settings)),
-            settings,
+            InstructionLibraryKey.create(stated, Window.from_config(settings)),
+            stated,
         )
 
         aim_library_directory(catalog.config_manager, ours)
@@ -1003,6 +1030,23 @@ class TestRebuildingALibrary:
         catalog.queue.drain()
 
         assert replaced.exists()
+
+    def test_a_library_the_last_release_wrote_keeps_its_tuning_under_the_name_this_build_gives(
+        self, catalog: Catalog
+    ) -> None:
+        """The last release named a library by its library section alone, so its rebuild applies that
+        section whole, tuning included, and the folder then holds the rebuilt file alone."""
+        library_config = _other_settings(catalog)
+        key = _write_last_release_library(catalog.manager.library_directory, library_config)
+        replaced = catalog.manager.get_path(key)
+
+        catalog.logic.rebuild_library(key)
+        _rebuild(catalog)
+        catalog.write_library()
+        catalog.queue.drain()
+
+        assert catalog.config_manager.config.library == library_config
+        assert (replaced.exists(), catalog.manager.get_path(catalog.config_manager.key).exists()) == (False, True)
 
     def test_a_rebuild_during_another_operation_changes_nothing(self, catalog: Catalog) -> None:
         settings = catalog.config_manager.config

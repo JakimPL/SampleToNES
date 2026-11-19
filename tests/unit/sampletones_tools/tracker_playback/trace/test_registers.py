@@ -29,3 +29,27 @@ class TestChipRegisters:
 
         assert (later.value(PULSE1_CONTROL), later.value(APU_STATUS)) == (FIRST_VALUE, SECOND_VALUE)
         assert earlier.value(APU_STATUS) == POWER_UP_VALUE
+
+
+class TestARunFoldedTickByTick:
+    """Each tick plays the registers the setup and every tick before it left, its own writes over them."""
+
+    def test_each_tick_carries_what_the_ticks_before_left(self) -> None:
+        setup = (RegisterWrite(APU_STATUS, FIRST_VALUE),)
+        ticks = ((RegisterWrite(PULSE1_CONTROL, FIRST_VALUE),), (), (RegisterWrite(PULSE1_CONTROL, SECOND_VALUE),))
+
+        folded = ChipRegisters.fold(setup, ticks)
+
+        assert [registers.value(PULSE1_CONTROL) for registers in folded] == [FIRST_VALUE, FIRST_VALUE, SECOND_VALUE]
+        assert all(registers.value(APU_STATUS) == FIRST_VALUE for registers in folded)
+
+    def test_a_run_of_no_ticks_folds_to_none(self) -> None:
+        assert ChipRegisters.fold((RegisterWrite(APU_STATUS, FIRST_VALUE),), ()) == ()
+
+    def test_the_ticks_may_be_read_once(self) -> None:
+        folded = ChipRegisters.fold((), iter([(RegisterWrite(APU_STATUS, SECOND_VALUE),)]))
+        assert folded[0].value(APU_STATUS) == SECOND_VALUE
+
+    def test_a_tick_writing_one_register_twice_keeps_the_later_value(self) -> None:
+        tick = (RegisterWrite(PULSE1_CONTROL, FIRST_VALUE), RegisterWrite(PULSE1_CONTROL, SECOND_VALUE))
+        assert ChipRegisters.fold((), (tick,))[0].value(PULSE1_CONTROL) == SECOND_VALUE

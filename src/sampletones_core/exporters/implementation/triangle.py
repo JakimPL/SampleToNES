@@ -1,8 +1,7 @@
-from typing import ClassVar, Dict, List, Tuple, Union
+from typing import ClassVar, Dict, Union
 
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.constants.general import MAX_VOLUME
-from sampletones_core.exporters.implementation.utils import center_pitch
 from sampletones_core.generators import GeneratorTypeUnion, TriangleGenerator
 from sampletones_core.instructions import (
     InstructionFields,
@@ -23,35 +22,9 @@ class TriangleExporter(TonalExporter[TriangleInstruction]):
     }
 
     @classmethod
-    def extract_data(cls, instructions: List[TriangleInstruction]) -> Tuple[int, List[int], List[int]]:
-        initial_pitch, pitches = cls.read_pitches(instructions)
-        volumes = [MAX_VOLUME if instruction.on else 0 for instruction in instructions]
-        if volumes and volumes[-1] > 0:
-            volumes.append(0)
-
-        return initial_pitch, pitches, volumes
-
-    @classmethod
-    def derive_initial_pitch(
-        cls,
-        instructions: List[TriangleInstruction],
-    ) -> int:
-        first_pitch, pitches, _ = cls.extract_data(instructions)
-        return center_pitch(first_pitch, pitches)
-
-    @classmethod
-    def read_envelopes(
-        cls,
-        instructions: List[TriangleInstruction],
-        initial_pitch: int,
-    ) -> Dict[FeatureKey, Tuple[int, ...]]:
-        _, pitches, volumes = cls.extract_data(instructions)
-
-        return {
-            FeatureKey.VOLUME: tuple(volumes),
-            FeatureKey.ARPEGGIO: tuple(pitch - initial_pitch for pitch in pitches),
-            **cls.read_bends(instructions),
-        }
+    def volume_of(cls, instruction: TriangleInstruction) -> int:
+        """A sounding triangle plays at the one level its channel has."""
+        return MAX_VOLUME
 
     @classmethod
     def _features_dictionary_to_instruction(

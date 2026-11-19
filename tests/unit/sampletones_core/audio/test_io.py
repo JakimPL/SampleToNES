@@ -2,9 +2,11 @@ from pathlib import Path
 from typing import Final, Tuple
 
 import numpy as np
+import pytest
+from soundfile import write as write_sound
 
-from sampletones_core.audio.io import UNIT_SCALE, load_audio, mix_scale, read_stems, scale_stems, write_wave
-from sampletones_core.audio.processing import quantize
+from sampletones_core.audio.io import UNIT_SCALE, mix_scale, read_recording, read_stems, scale_stems, write_wave
+from sampletones_core.audio.processing import normalize, quantize
 from sampletones_core.configs import Config
 
 SAMPLE_RATE: Final[int] = Config().library.sample_rate
@@ -17,6 +19,13 @@ HALF_SCALE: Final[float] = 0.5
 
 def _write(path: Path, level: float, samples: int = SAMPLES) -> Path:
     write_wave(path, SAMPLE_RATE, np.full(samples, level, dtype=np.float32))
+    return path
+
+
+def _write_stereo(path: Path, left: float, right: float, sample_rate: int = SAMPLE_RATE) -> Path:
+    write_sound(
+        path, np.column_stack([np.full(SAMPLES, left), np.full(SAMPLES, right)]).astype(np.float32), sample_rate
+    )
     return path
 
 
@@ -48,6 +57,35 @@ class TestReadStems:
 
     def test_no_paths_reach_no_recordings(self) -> None:
         assert _read() == ()
+
+
+class TestAStereoRecording:
+    """A recording of several channels is read as their average, the one channel a conversion matches."""
+
+    @pytest.mark.parametrize("sample_rate", [SAMPLE_RATE, SAMPLE_RATE * 2], ids=["same-rate", "resampled"])
+    def test_it_is_read_as_one_channel_averaging_both(self, tmp_path: Path, sample_rate: int) -> None:
+        recording = read_recording(
+            _write_stereo(tmp_path / "stereo.wav", LOUD_LEVEL, QUIET_LEVEL, sample_rate),
+            target_sample_rate=SAMPLE_RATE,
+        )
+
+        assert recording.ndim == 1
+        np.testing.assert_allclose(np.median(recording), (LOUD_LEVEL + QUIET_LEVEL) / 2, rtol=1e-3)
+
+    def test_channels_in_opposite_phase_read_as_silence(self, tmp_path: Path) -> None:
+        recording = read_recording(
+            _write_stereo(tmp_path / "wide.wav", HALF_SCALE, -HALF_SCALE), target_sample_rate=SAMPLE_RATE
+        )
+
+        np.testing.assert_allclose(recording, np.zeros(SAMPLES, dtype=np.float32), atol=1e-6)
+
+    def test_a_set_mixing_stereo_and_mono_reads_one_channel_each(self, tmp_path: Path) -> None:
+        stereo, mono = _read(
+            _write_stereo(tmp_path / "stereo.wav", LOUD_LEVEL, QUIET_LEVEL),
+            _write(tmp_path / "mono.wav", QUIET_LEVEL),
+        )
+
+        assert (stereo.shape, mono.shape) == ((SAMPLES,), (SAMPLES,))
 
 
 class TestMixScale:
@@ -83,10 +121,7 @@ class TestScaleStems:
 
         (loaded,) = _scaled(recordings, mix_scale(recordings, normalize=True))
 
-        np.testing.assert_allclose(
-            loaded,
-            load_audio(path, target_sample_rate=SAMPLE_RATE, normalize=True, quantize=False),
-        )
+        np.testing.assert_allclose(loaded, normalize(read_recording(path, target_sample_rate=SAMPLE_RATE)))
 
     def test_the_recordings_keep_their_balance(self, tmp_path: Path) -> None:
         louder, quieter = _scaled(

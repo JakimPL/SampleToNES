@@ -78,15 +78,12 @@ class DriverTrace(BaseModel):
         Returns:
             SongTrace: The pass.
         """
-        registers = ChipRegisters.power_up().written(_register_writes(self.initialization))
-        per_tick: List[ChipRegisters] = []
-        for tick in self.ticks:
-            registers = registers.written(_register_writes(tick.writes))
-            per_tick.append(registers)
-
         return song_trace(
             tuple(TickPosition(frame=tick.frame, row=tick.row) for tick in self.ticks),
-            per_tick,
+            ChipRegisters.fold(
+                _register_writes(self.initialization),
+                (_register_writes(tick.writes) for tick in self.ticks),
+            ),
         )
 
 

@@ -20,6 +20,8 @@ IMGUI_ESCAPE: Final[int] = 526
 IMGUI_LEFT_CTRL: Final[int] = 527
 IMGUI_LEFT_SHIFT: Final[int] = 528
 IMGUI_LEFT_ALT: Final[int] = 529
+IMGUI_COMMA: Final[int] = 597
+IMGUI_PERIOD: Final[int] = 599
 IMGUI_DIGIT_ZERO: Final[int] = 536
 IMGUI_LETTER_A: Final[int] = 546
 IMGUI_F1: Final[int] = 572
@@ -46,6 +48,8 @@ NAMED_KEYSYMS: Final[Dict[int, str]] = {
     IMGUI_LEFT_CTRL: "Control_L",
     IMGUI_LEFT_SHIFT: "Shift_L",
     IMGUI_LEFT_ALT: "Alt_L",
+    IMGUI_COMMA: "comma",
+    IMGUI_PERIOD: "period",
 }
 
 DIGIT_KEYSYMS: Final[Dict[int, str]] = {IMGUI_DIGIT_ZERO + offset: str(offset) for offset in range(DIGIT_COUNT)}

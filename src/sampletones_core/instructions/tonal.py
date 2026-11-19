@@ -4,10 +4,9 @@ from pydantic import Field
 
 from sampletones_core.constants.general import (
     HI_PITCH_FACTOR,
-    MAX_PITCH,
-    MIN_PLAYED_PITCH,
     PITCH_BEND_MAX,
     PITCH_BEND_MIN,
+    PlayedPitch,
 )
 
 from .instruction import Instruction
@@ -42,7 +41,7 @@ class TonalInstruction(Instruction, ABC):
         coarse_detune: Timer steps the frame is bent by, sixteen steps per unit.
     """
 
-    pitch: int = Field(..., ge=MIN_PLAYED_PITCH, le=MAX_PITCH, description="The note the frame names")
+    pitch: PlayedPitch = Field(..., description="The note the frame names")
     detune: int = Field(
         default=0,
         ge=PITCH_BEND_MIN,

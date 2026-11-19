@@ -2,7 +2,9 @@ from typing import Final, Tuple
 
 import numpy as np
 import pytest
+from pydantic import ValidationError
 
+from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.fft.window.cyclic import CyclicArray
@@ -37,3 +39,16 @@ class TestAFrameIsTheMiddleOfItsWindow:
         expected = window.get_frame_from_window(sample.get_windowed_fragment(shift, window))
 
         np.testing.assert_array_equal(sample.get_frame(shift, window), expected)
+
+
+class TestASampleIsBuiltAtEveryAcceptedRate:
+    """A library builds its samples at the very rates its settings accept, both bounds included."""
+
+    @pytest.mark.parametrize("sample_rate", (MIN_SAMPLE_RATE, MAX_SAMPLE_RATE))
+    def test_a_bound_rate_is_accepted(self, sample_rate: int) -> None:
+        assert CyclicArray(array=np.zeros(1, dtype=np.float32), sample_rate=sample_rate).sample_rate == sample_rate
+
+    @pytest.mark.parametrize("sample_rate", (MIN_SAMPLE_RATE - 1, MAX_SAMPLE_RATE + 1))
+    def test_a_rate_past_a_bound_is_refused(self, sample_rate: int) -> None:
+        with pytest.raises(ValidationError):
+            CyclicArray(array=np.zeros(1, dtype=np.float32), sample_rate=sample_rate)

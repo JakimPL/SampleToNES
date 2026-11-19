@@ -6,6 +6,7 @@ from automation.dearpygui.bridge import ONE_FRAME, Bridge
 from automation.dearpygui.geometry import Point, Rect
 from automation.dearpygui.hand import Hand
 from automation.dearpygui.items.reading import read_item
+from automation.dearpygui.items.types import LINE_SERIES_TYPE
 from automation.dearpygui.plots import settled_plot_pointer
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.graphs import (
@@ -16,10 +17,11 @@ from sampletones_application.tags.graphs import (
     SUF_WAVEFORM_POSITION_INDICATOR,
 )
 
-LINE_SERIES_TYPE: Final[str] = "mvAppItemType::mvLineSeries"
 FIRST_POINT: Final[int] = 0
 Y_VALUES: Final[int] = 1
 MIDDLE: Final[float] = 0.5
+NEAR_QUARTER: Final[float] = 0.25
+FAR_QUARTER: Final[float] = 0.75
 SETTLING_SECONDS: Final[float] = 10.0
 
 
@@ -66,6 +68,15 @@ class Waveform:
         self._hand.move_to(self.point(fraction))
         sample, _ = settled_plot_pointer(self._bridge, self.plot, timeout=SETTLING_SECONDS)
         return sample
+
+    def fraction_at(self, sample: float) -> float:
+        """The fraction of the plot's width ``sample`` lies at, from the samples the plot puts under two points of it.
+
+        The plot's width takes in its axes, so where a sample stands is read off the plot itself.
+        """
+        near = self.sample_under(NEAR_QUARTER)
+        far = self.sample_under(FAR_QUARTER)
+        return NEAR_QUARTER + (sample - near) / (far - near) * (FAR_QUARTER - NEAR_QUARTER)
 
     def cursor(self) -> Optional[float]:
         """The sample the cursor marks, or ``None`` while no cursor stands on the plot."""

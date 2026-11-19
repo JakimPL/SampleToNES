@@ -788,6 +788,18 @@ TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP = TagName(
     Widget.MENU,
     "item_playback_stop",
 )
+TAG_GLOBAL_MENU_ITEM_PLAYBACK_STEP_BACKWARD = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_playback_step_backward",
+)
+TAG_GLOBAL_MENU_ITEM_PLAYBACK_STEP_FORWARD = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_playback_step_forward",
+)
 TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

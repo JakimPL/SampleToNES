@@ -1,4 +1,4 @@
-from typing import List
+from typing import ClassVar, List, Type
 
 import numpy as np
 
@@ -11,12 +11,13 @@ from sampletones_core.constants.general import (
 )
 from sampletones_core.instructions import InstructionTypeUnion, NoiseInstruction
 from sampletones_core.timers import LFSRTimer
-from sampletones_shared.types.data import Initials
 
 from ..generator import Generator
 
 
 class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
+    instruction_type: ClassVar[Type[NoiseInstruction]] = NoiseInstruction
+
     def __init__(
         self,
         config: Config,
@@ -28,29 +29,6 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
             nes_frequency=config.library.nes_frequency,
             reset_phase=config.generation.reset_phase,
         )
-
-    def __call__(
-        self,
-        noise_instruction: NoiseInstruction,
-        initials: Initials = None,
-        save: bool = False,
-    ) -> np.ndarray:
-        if not isinstance(noise_instruction, NoiseInstruction):
-            raise TypeError("instruction must be an instance of NoiseInstruction")
-
-        self.validate(initials)
-        if not noise_instruction.on:
-            return np.zeros(self.frame_length, dtype=np.float32)
-
-        output = self.generate(
-            noise_instruction,
-            initials=initials,
-            save=save,
-        )
-
-        self.save_state(save, noise_instruction)
-
-        return output
 
     def set_timer(self, instruction: NoiseInstruction) -> None:
         if instruction.on:

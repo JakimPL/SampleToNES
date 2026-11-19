@@ -29,7 +29,7 @@ class TestAGestureChangingNothingRecordsNothing:
         assert len(session.history.entries) == 2
 
     def test_the_rate_the_project_runs_at(self, session: HistorySession) -> None:
-        session.sequencer._nes_frequency_change_acknowledged = True
+        session.sequencer._nes_frequency.acknowledged = True
 
         session.audit.refused(
             lambda: session.sequencer._sequencer_module_panel.on_nes_frequency(

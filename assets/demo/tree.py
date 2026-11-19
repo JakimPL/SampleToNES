@@ -5,10 +5,10 @@ import numpy as np
 
 from assets.demo.paths import (
     CONFIG_FILE,
-    LIBRARY_FOLDER,
-    PROJECTS_FOLDER,
-    RECONSTRUCTIONS_FOLDER,
     RECORDINGS_FOLDER,
+    hit_recording_path,
+    project_path,
+    stem_recording_path,
 )
 from assets.demo.render import leveled, render_stem
 from assets.demo.specification import (
@@ -43,7 +43,6 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy impo
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import (
     StemSettings,
 )
-from sampletones_shared.paths.extensions import EXT_FILE_PROJECT, EXT_FILE_WAVE
 from sampletones_tools.corpus.build import build_project
 
 
@@ -93,7 +92,7 @@ def _write_recordings(
     paths: Dict[str, Path] = {}
     for hit in recordings.hits:
         audio = voices[hit.voice].render(sample_rate=recordings.sample_rate, generator=generator)
-        paths[hit.name] = _write_recording(folder / f"{hit.name}{EXT_FILE_WAVE}", audio, recordings)
+        paths[hit.name] = _write_recording(hit_recording_path(folder, hit.name), audio, recordings)
 
     piece = recordings.piece
     for stem in piece.stems:
@@ -106,7 +105,7 @@ def _write_recordings(
             generator=generator,
         )
         paths[stem.name] = _write_recording(
-            folder / piece.name / f"{stem.name}{EXT_FILE_WAVE}",
+            stem_recording_path(folder, piece.name, stem.name),
             audio,
             recordings,
         )
@@ -123,14 +122,7 @@ def _write_recording(path: Path, audio: np.ndarray, recordings: RecordingsSpec) 
 
 def _write_config(root: Path, written: List[Path]) -> Config:
     """Writes the default configuration pointed at the tree's own library and reconstructions folders."""
-    config = Config()
-    general = config.general.model_copy(
-        update={
-            "library_directory": str(root / LIBRARY_FOLDER),
-            "reconstructions_directory": str(root / RECONSTRUCTIONS_FOLDER),
-        }
-    )
-    config = config.model_copy(update={"general": general})
+    config = Config.rooted_at(root)
     path = root / CONFIG_FILE
     config.save(path)
     written.append(path)
@@ -208,7 +200,7 @@ def _write_project(
     project = build_project(catalog, module, specification.project.song)
     project.info.created = specification.project.created
     project.info.modified = specification.project.created
-    path = root / PROJECTS_FOLDER / f"{module.title}{EXT_FILE_PROJECT}"
+    path = project_path(root, module.title)
     path.parent.mkdir(parents=True, exist_ok=True)
     ProjectContainer.save(project, path)
     return path

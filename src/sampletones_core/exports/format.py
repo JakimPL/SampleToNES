@@ -8,3 +8,4 @@ class ExportFormat(StrEnum):
     BITPHASE = "bitphase"
     BITPHASE_PRESET = "bitphase_preset"
     NSF = "nsf"
+    ROM = "rom"

@@ -145,6 +145,19 @@ def resting_streams(pulse1: Sequence[PulseRegisters]) -> ChannelStreams:
     )
 
 
+def triangle_streams(
+    pulse1: Sequence[PulseRegisters],
+    triangle: Sequence[TriangleRegisters],
+) -> ChannelStreams:
+    """Streams where one pulse channel and the triangle carry the song and the other two rest on a single tick."""
+    return player_streams(
+        pulse1=pulse1,
+        pulse2=(pulse_tick(PLAYER_SILENT_VOLUME, 0, PLAYER_REFERENCE_TIMER),),
+        triangle=triangle,
+        noise=(noise_tick(PLAYER_SILENT_VOLUME, 0, PLAYER_REFERENCE_PERIOD),),
+    )
+
+
 def player_song(
     streams: ChannelStreams,
     nes_frequency: int,

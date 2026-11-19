@@ -2,13 +2,13 @@ import threading
 from typing import Final, Optional
 
 from sampletones_application.utils.midi.backends.protocol import MidiSink
+from sampletones_application.utils.midi.messages import is_system_exclusive
 from sampletones_shared.exceptions import MidiPortError
 from sampletones_shared.logger import logger
 
 from .library import Address, SequencerBytes, SequencerConnection, SequencerCut, SequencerLeft, SequencerLibrary
 
 READER_NAME: Final[str] = "MidiReader"
-SYSTEM_EXCLUSIVE: Final[int] = 0xF0
 JOIN_SECONDS: Final[float] = 2.0
 
 
@@ -82,7 +82,7 @@ class AlsaReader:
                 return
 
             match event:
-                case SequencerBytes(data=data) if data and data[0] != SYSTEM_EXCLUSIVE:
+                case SequencerBytes(data=data) if data and not is_system_exclusive(data):
                     self._sink.received(data)
                 case SequencerLeft(client=client, port=port) if self._names_source(client, port):
                     self._lose()

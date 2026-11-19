@@ -53,43 +53,6 @@ class TestPulseInstructionOrdering:
             _ = _pulse() < TriangleInstruction(on=True, pitch=60)
 
 
-class TestPulseInstructionDistance:
-    def test_both_silent_returns_zero(self) -> None:
-        a = _pulse(on=False)
-        b = _pulse(on=False)
-        assert a.distance(b) == 0.0
-
-    def test_one_silent_returns_partial_penalty(self) -> None:
-        audible = _pulse(volume=MAX_VOLUME, on=True)
-        silent = _pulse(on=False)
-        distance = audible.distance(silent)
-        assert 0.0 < distance <= 0.5
-
-    def test_same_pitch_nonzero_volumes_returns_volume_diff_only(self) -> None:
-        a = _pulse(pitch=60, volume=15)
-        b = _pulse(pitch=60, volume=8)
-        distance = a.distance(b)
-        assert distance > 0.0
-
-    def test_identical_instructions_distance_is_zero(self) -> None:
-        instruction = _pulse(pitch=60, volume=15, duty_cycle=0)
-        assert instruction.distance(instruction) == 0.0
-
-    def test_different_pitches_positive_distance(self) -> None:
-        a = _pulse(pitch=33)
-        b = _pulse(pitch=119)
-        assert a.distance(b) > 0.0
-
-    def test_distance_is_symmetric(self) -> None:
-        a = _pulse(pitch=40, volume=10)
-        b = _pulse(pitch=70, volume=5)
-        assert abs(a.distance(b) - b.distance(a)) < 1e-9
-
-    def test_wrong_type_raises_type_error(self) -> None:
-        with pytest.raises(TypeError):
-            _pulse().distance(TriangleInstruction(on=True, pitch=60))
-
-
 class TestPulseInstructionClassMethods:
     def test_null_instruction_is_off(self) -> None:
         assert PulseInstruction.null_instruction().on is False

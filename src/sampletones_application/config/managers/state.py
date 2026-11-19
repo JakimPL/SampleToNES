@@ -2,10 +2,11 @@ from pathlib import Path
 from typing import Optional, Set
 
 from sampletones_application.categories.hierarchy import Tab
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.serialization import load_yaml, save_yaml_atomic
-from sampletones_shared.utils.system.paths import get_directory, to_path
+from sampletones_shared.utils.system.paths import to_path
 from sampletones_shared.utils.validation import flatten_location, validate_with_recovery
 
 
@@ -124,41 +125,12 @@ class ApplicationStateManager:
     def set_current_project(self, path: Optional[Path]) -> None:
         self.state.current.project = path
 
-    def set_config_path(self, path: Path) -> None:
-        self.state.last_paths.config = get_directory(path)
+    def remember_folder(self, kind: LastPath, folder: Path) -> None:
+        """Opens the next dialog choosing a file of ``kind`` at ``folder``."""
+        self.state.last_paths = self.state.last_paths.with_folder(kind, folder)
 
-    def get_config_path(self) -> Path:
-        return self.state.last_paths.config
-
-    def set_instrument_path(self, path: Path) -> None:
-        self.state.last_paths.instrument = get_directory(path)
-
-    def get_instrument_path(self) -> Path:
-        return self.state.last_paths.instrument
-
-    def set_reconstruction_path(self, path: Path) -> None:
-        self.state.last_paths.reconstruction = get_directory(path)
-
-    def get_reconstruction_path(self) -> Path:
-        return self.state.last_paths.reconstruction
-
-    def set_audio_input_path(self, path: Path) -> None:
-        self.state.last_paths.audio_input = get_directory(path)
-
-    def get_audio_input_path(self) -> Path:
-        return self.state.last_paths.audio_input
-
-    def set_audio_path(self, path: Path) -> None:
-        self.state.last_paths.audio = get_directory(path)
-
-    def get_audio_path(self) -> Path:
-        return self.state.last_paths.audio
-
-    def set_project_path(self, path: Path) -> None:
-        self.state.last_paths.project = get_directory(path)
-
-    def get_project_path(self) -> Path:
-        return self.state.last_paths.project
+    def folder(self, kind: LastPath) -> Path:
+        return self.state.last_paths.folder(kind)
 
     @property
     def current_tab(self) -> Tab:

@@ -7,6 +7,7 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 import pytest
 
+from automation.dearpygui.items.types import DOUBLE_CLICKED_HANDLER_TYPE
 from sampletones_application.application import Application
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.application import ApplicationConfigManager
@@ -83,7 +84,7 @@ from sampletones_core.structures.tree import FileSystemNode, NodeType
 from sampletones_shared.paths.extensions import EXT_FILE_PROJECT
 from tests.conftest import ReconstructionFactory
 from tests.suite.application import HeldQueue, held_queue, settled
-from tests.suite.gestures import DOUBLE_CLICKED, click_row_name
+from tests.suite.gestures import click_row_name
 from tests.suite.headless import (
     VIEWPORT_CLIENT_HEIGHT,
     VIEWPORT_CLIENT_WIDTH,
@@ -122,9 +123,20 @@ __all__ = ["app", "held_queue"]
 
 
 @contextmanager
+def _portaudio_stood_in() -> Generator[None, None, None]:
+    """PortAudio started and stopped without reaching the machine's audio system, whatever it runs."""
+    with (
+        patch("pyaudio.PyAudio.__init__", return_value=None),
+        patch("pyaudio.PyAudio.terminate"),
+    ):
+        yield
+
+
+@contextmanager
 def _no_audio_devices() -> Generator[None, None, None]:
     """The machine a headless run comes up on: the backend reports no output device at all."""
     with (
+        _portaudio_stood_in(),
         patch("pyaudio.PyAudio.get_device_count", return_value=0),
         patch(
             "pyaudio.PyAudio.get_default_output_device_info",
@@ -149,6 +161,7 @@ def _viewport_geometry() -> Generator[None, None, None]:
 def _one_audio_device() -> Generator[None, None, None]:
     """A machine offering one pair of speakers as its default output."""
     with (
+        _portaudio_stood_in(),
         patch("pyaudio.PyAudio.get_device_count", return_value=1),
         patch("pyaudio.PyAudio.get_device_info_by_index", return_value=SPEAKERS),
         patch("pyaudio.PyAudio.get_default_output_device_info", return_value=SPEAKERS),
@@ -879,7 +892,7 @@ class TestAGestureOnTheWholeDocumentWaitsForTheEdits:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         exports = MagicMock()
-        monkeypatch.setattr(app._reconstructions_tab, "_instrument_exports", exports)
+        monkeypatch.setattr(app._reconstructions_tab._exports, "_instrument_exports", exports)
 
         app._reconstructions_tab._reconstruction_instruments_panel.on_instrument_export(ChannelName.PULSE1)
         exports.request.assert_not_called()
@@ -1114,7 +1127,7 @@ def _ctrl_click_folder(app: Application, directory: Path) -> None:
 
 def _double_click_name(prefix: str, key: str) -> None:
     """Double-click one row's name in a stems list, the way DearPyGui reports the gesture."""
-    click_row_name(StemsTags(prefix=prefix), key, kind=DOUBLE_CLICKED, button=dpg.mvMouseButton_Left)
+    click_row_name(StemsTags(prefix=prefix), key, kind=DOUBLE_CLICKED_HANDLER_TYPE, button=dpg.mvMouseButton_Left)
 
 
 class TestGatheringAFolderIntoAMix:

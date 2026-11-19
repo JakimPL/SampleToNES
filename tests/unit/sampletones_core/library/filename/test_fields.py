@@ -1,16 +1,12 @@
 from dataclasses import dataclass
-from typing import Type, Union
+from typing import Optional
 
 import pytest
 
-from sampletones_core.library.filename.fields import (
-    FILENAME_SEPARATOR,
-    InstructionsFilenameFields,
-)
+from sampletones_core.library.filename.fields import InstructionsFilenameFields
 from sampletones_shared.paths.extensions import EXT_FILE_LIBRARY
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
-from tests.suite.errors import expect_error
 
 VALID_HASH: str = "a" * 32
 
@@ -107,12 +103,11 @@ class TestFilename(BaseTestSuite):
         assert test_case.fields.filename == test_case.expected
 
 
-class TestCreate(BaseTestSuite):
+class TestParse(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
         pathlike: str
-        expected: Union[InstructionsFilenameFields, Type[Exception]]
-        match: str = ""
+        expected: Optional[InstructionsFilenameFields]
 
     test_cases = (
         TestCase(
@@ -138,53 +133,78 @@ class TestCreate(BaseTestSuite):
         TestCase(
             label="too_few_parts",
             pathlike=f"sr_44100_nf_60",
-            expected=ValueError,
+            expected=None,
         ),
         TestCase(
             label="too_many_parts",
             pathlike=_stem() + "_extra_field",
-            expected=ValueError,
+            expected=None,
         ),
         TestCase(
             label="wrong_key_at_nf_position",
             pathlike=f"sr_44100_cr_60_ws_2048_tg_0_sm_fft_ch_{VALID_HASH}",
-            expected=ValueError,
-            match="expected key 'nf', got 'cr'",
+            expected=None,
         ),
         TestCase(
             label="wrong_key_at_tg_position",
             pathlike=f"sr_44100_nf_60_ws_2048_gamma_0_sm_fft_ch_{VALID_HASH}",
-            expected=ValueError,
-            match="expected key 'tg'",
+            expected=None,
         ),
         TestCase(
             label="invalid_sr_not_integer",
             pathlike=f"sr_notanint_nf_60_ws_2048_tg_0_sm_fft_ch_{VALID_HASH}",
-            expected=ValueError,
+            expected=None,
         ),
         TestCase(
             label="hash_too_short",
             pathlike=f"sr_44100_nf_60_ws_2048_tg_0_sm_fft_ch_abc",
-            expected=ValueError,
+            expected=None,
+        ),
+        TestCase(
+            label="keys_out_of_their_declared_order",
+            pathlike=f"nf_60_sr_44100_ws_2048_tg_0_sm_fft_ch_{VALID_HASH}",
+            expected=None,
+        ),
+        TestCase(
+            label="leading_zero_in_a_value",
+            pathlike=f"sr_044100_nf_60_ws_2048_tg_0_sm_fft_ch_{VALID_HASH}",
+            expected=None,
+        ),
+        TestCase(
+            label="signed_value",
+            pathlike=f"sr_+44100_nf_60_ws_2048_tg_0_sm_fft_ch_{VALID_HASH}",
+            expected=None,
+        ),
+        TestCase(
+            label="upper_case_spectrum_method",
+            pathlike=_stem(sm="FFT"),
+            expected=None,
+        ),
+        TestCase(
+            label="upper_case_hash",
+            pathlike=_stem(ch="A" * 32),
+            expected=None,
+        ),
+        TestCase(
+            label="zero_nes_frequency",
+            pathlike=_stem(nf=0),
+            expected=None,
+        ),
+        TestCase(
+            label="empty_value",
+            pathlike=f"sr__nf_60_ws_2048_tg_0_sm_fft_ch_{VALID_HASH}",
+            expected=None,
+        ),
+        TestCase(
+            label="empty_name",
+            pathlike="",
+            expected=None,
         ),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.label)
-    def test_create(self, test_case: TestCase) -> None:
-        if not expect_error(
-            InstructionsFilenameFields.create,
-            test_case.expected,
-            test_case.pathlike,
-            match=test_case.match or None,
-        ):
-            result = InstructionsFilenameFields.create(test_case.pathlike)
-            assert isinstance(test_case.expected, InstructionsFilenameFields)
-            assert result.sr == test_case.expected.sr
-            assert result.nf == test_case.expected.nf
-            assert result.ws == test_case.expected.ws
-            assert result.tg == test_case.expected.tg
-            assert result.sm == test_case.expected.sm
-            assert result.ch == test_case.expected.ch
+    def test_parse(self, test_case: TestCase) -> None:
+        assert InstructionsFilenameFields.parse(test_case.pathlike) == test_case.expected
 
 
 class TestRoundTrip(BaseTestSuite):
@@ -213,5 +233,6 @@ class TestRoundTrip(BaseTestSuite):
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.label)
     def test_round_trip(self, test_case: TestCase) -> None:
-        recovered = InstructionsFilenameFields.create(test_case.fields.stem)
+        recovered = InstructionsFilenameFields.parse(test_case.fields.stem)
+        assert recovered is not None
         assert recovered.stem == test_case.expected

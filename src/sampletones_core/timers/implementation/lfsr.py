@@ -203,9 +203,9 @@ class LFSRTimer(Timer):
     def validate(self, initials: Initials) -> None:
         initial_lfsr, initial_clock = initials if initials is not None else (None, None)
         if initial_lfsr is not None and (
-            not isinstance(initial_lfsr, int) or (initial_lfsr < 1 or initial_lfsr > 0x7FFF)
+            not isinstance(initial_lfsr, int) or (initial_lfsr < 1 or initial_lfsr > MAX_LFSR)
         ):
-            raise ValueError("Initial LFSR for LFSRTimer must be between 1 and 0x7FFF")
+            raise ValueError(f"Initial LFSR for LFSRTimer must be between 1 and {MAX_LFSR:#x}")
 
         if initial_clock is not None and (
             not isinstance(initial_clock, float) or (initial_clock < 0.0 or initial_clock >= 1.0)
@@ -221,7 +221,7 @@ class LFSRTimer(Timer):
             return
 
         lfsr, clock = value
-        assert isinstance(lfsr, int) and (1 <= lfsr <= 0x7FFF), "LFSR value must be between 1 and 0x7FFF"
+        assert isinstance(lfsr, int) and (1 <= lfsr <= MAX_LFSR), f"LFSR value must be between 1 and {MAX_LFSR:#x}"
         assert isinstance(clock, float) and (0.0 <= clock < 1.0), "Clock value must be between 0.0 and 1.0"
         self.lfsr = lfsr
         self.clock = clock

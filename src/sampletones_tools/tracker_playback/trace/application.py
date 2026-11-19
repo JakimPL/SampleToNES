@@ -60,13 +60,7 @@ def driver_registers(
     Returns:
         Tuple[ChipRegisters, ...]: The registers on each tick, one per tick.
     """
-    registers = ChipRegisters.power_up().written(setup_writes())
-    per_tick: List[ChipRegisters] = []
-    for tick in range(ticks):
-        registers = registers.written(channel_writes(streams.at(tick)))
-        per_tick.append(registers)
-
-    return tuple(per_tick)
+    return ChipRegisters.fold(setup_writes(), (channel_writes(streams.at(tick)) for tick in range(ticks)))
 
 
 def song_positions(

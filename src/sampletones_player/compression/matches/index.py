@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from itertools import pairwise
 from typing import List, Tuple
 
-from sampletones_player.specification.binary import BYTE_VALUES
+from sampletones_player.specification.binary import byte_steps
 
 
 @dataclass(frozen=True)
@@ -36,7 +35,7 @@ class PlaneIndex:
         Returns:
             PlaneIndex: The plane, its steps and its runs.
         """
-        differences = bytes((following - value) % BYTE_VALUES for value, following in pairwise(plane))
+        differences = byte_steps(plane)
         runs: List[int] = [1] * len(plane)
         for position in range(len(plane) - 2, -1, -1):
             if plane[position] == plane[position + 1]:

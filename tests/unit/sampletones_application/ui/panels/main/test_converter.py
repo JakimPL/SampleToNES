@@ -5,6 +5,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 import dearpygui.dearpygui as dpg
 import pytest
 
+from automation.dearpygui.items.types import CLICKED_HANDLER_TYPE
 from sampletones_application.categories.elements.main import ConverterStemMoveElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
@@ -53,7 +54,7 @@ from sampletones_core.constants.algorithm import DEFAULT_STEMS_HIERARCHY_MODE
 from sampletones_core.constants.enums import ChannelName
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
-from tests.suite.gestures import CLICKED, click_row_name
+from tests.suite.gestures import click_row_name
 from tests.suite.shortcuts import rebound_source, shipped_source
 
 ROOT_TAG = "test_root"
@@ -217,7 +218,7 @@ def registered(monkeypatch: pytest.MonkeyPatch) -> List[Dict[str, Any]]:
 
 def right_click(panel: GUIConverterPanel, entry: StemRowViewModel) -> None:
     """Land a right-click on the row's name, which is what puts that row's menu up."""
-    click_row_name(panel.stems_list.tags, entry.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
+    click_row_name(panel.stems_list.tags, entry.key, kind=CLICKED_HANDLER_TYPE, button=dpg.mvMouseButton_Right)
 
 
 def shows(tag: str) -> bool:
@@ -593,7 +594,7 @@ class TestTheMenuARightClickPutsUp:
         kick = row("kick")
         panel.update_view(view(kick, row("snare")))
 
-        click_row_name(panel.stems_list.tags, kick.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
+        click_row_name(panel.stems_list.tags, kick.key, kind=CLICKED_HANDLER_TYPE, button=dpg.mvMouseButton_Right)
 
         assert LANGUAGE_MANAGER["main.converter.label.context_remove_stem"] in [item["label"] for item in registered]
 
@@ -647,7 +648,7 @@ class TestTheMenuARightClickPutsUp:
         kick, snare = row("kick"), row("snare")
         panel.update_view(view(kick, snare, selected_key=kick.key))
 
-        click_row_name(panel.stems_list.tags, snare.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
+        click_row_name(panel.stems_list.tags, snare.key, kind=CLICKED_HANDLER_TYPE, button=dpg.mvMouseButton_Right)
 
         assert selected == [(snare.path, SourceKind.RECORDING)]
 
@@ -661,7 +662,7 @@ class TestTheMenuARightClickPutsUp:
         sources = folder("sources", holds=3)
         panel.update_view(view(sources))
 
-        click_row_name(panel.stems_list.tags, sources.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
+        click_row_name(panel.stems_list.tags, sources.key, kind=CLICKED_HANDLER_TYPE, button=dpg.mvMouseButton_Right)
 
         labels = [item["label"] for item in registered]
         assert LANGUAGE_MANAGER["main.converter.label.context_open_folder"] in labels
@@ -679,7 +680,7 @@ class TestTheMenuARightClickPutsUp:
         panel.update_view(view(sources))
         panel.stems_list.toggle_folder(sources.key)
 
-        click_row_name(panel.stems_list.tags, sources.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
+        click_row_name(panel.stems_list.tags, sources.key, kind=CLICKED_HANDLER_TYPE, button=dpg.mvMouseButton_Right)
 
         assert LANGUAGE_MANAGER["main.converter.label.context_close_folder"] in [item["label"] for item in registered]
 
@@ -695,7 +696,7 @@ class TestTheMenuARightClickPutsUp:
         sources = folder("sources", holds=3)
         panel.update_view(view(sources))
 
-        click_row_name(panel.stems_list.tags, sources.key, kind=CLICKED, button=dpg.mvMouseButton_Right)
+        click_row_name(panel.stems_list.tags, sources.key, kind=CLICKED_HANDLER_TYPE, button=dpg.mvMouseButton_Right)
         removal = next(
             item
             for item in registered

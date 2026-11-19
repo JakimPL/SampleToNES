@@ -3,6 +3,7 @@ from typing import Optional
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.tags.general import TAG_GLOBAL_DIALOG_NO_AUDIO_OUTPUT
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
+from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_shared.exceptions import NoOutputDeviceError
 
 
@@ -47,6 +48,14 @@ class PlaybackFailurePresenter:
                 )
             case _:
                 self._dialogs.show_error(exception, message)
+
+    def present_later(self, exception: Exception) -> None:
+        """Shows the reader what stopped a playback on the frame after the one that failed.
+
+        A preview or an autoplay fails inside the gesture that asked for it, so the report waits for
+        that gesture to finish before a dialog is raised.
+        """
+        FrameCallbackManager.set_frame_callback(lambda: self.present(exception, message=None))
 
     def present_playing_failure(self, exception: Exception) -> None:
         """Shows the reader what stopped a playback they asked for, such as a stream the device refused.

@@ -1,5 +1,5 @@
 import math
-from typing import Tuple, cast
+from typing import Tuple, Union, cast, overload
 
 import librosa
 import numpy as np
@@ -82,6 +82,30 @@ def amplitude_to_decibels(amplitude: float) -> float:
         return float("-inf")
 
     return 20.0 * math.log10(amplitude)
+
+
+@overload
+def power_to_decibels(power: float) -> float: ...
+
+
+@overload
+def power_to_decibels(power: np.ndarray) -> np.ndarray: ...
+
+
+def power_to_decibels(power: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    """Convert linear power ratios to decibels (``10·log10``); a zero power reads as negative infinity."""
+    decibels = 10.0 * np.log10(power)
+    return float(decibels) if isinstance(power, float) else decibels
+
+
+def decibels_to_power(decibels: float) -> float:
+    """The linear power ratio a level in decibels stands for, ``10 ** (decibels / 10)``."""
+    return float(10.0 ** (decibels / 10.0))
+
+
+def decibels_to_amplitude(decibels: float) -> float:
+    """The linear amplitude ratio a level in decibels stands for, ``10 ** (decibels / 20)``."""
+    return float(10.0 ** (decibels / 20.0))
 
 
 def to_mono(audio: np.ndarray) -> np.ndarray:

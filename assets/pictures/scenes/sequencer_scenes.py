@@ -1,8 +1,8 @@
 from typing import Final
 
-from assets.pictures.demo import project_document
 from assets.pictures.paths import guide_picture
 from assets.pictures.writer import Pictures
+from assets.stage.demo import project_document
 from automation.boundaries.dialogs import DialogKind
 from automation.screen import Screen
 from automation.steps.project import leave_letting_the_project_go

@@ -4,7 +4,7 @@ from functools import cached_property
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from sampletones_player.specification.binary import BYTE_VALUES
+from sampletones_player.specification.binary import byte_steps
 from sampletones_player.specification.compression import (
     MAX_PHRASE_LENGTH,
     NO_DEFAULT_COUNT,
@@ -64,7 +64,7 @@ class Phrase(BaseModel):
         A phrase is read for its shape every time a table is indexed, and a table is indexed once
         per parse, so the shape is derived once and the phrase carries it thereafter.
         """
-        return bytes((following - value) % BYTE_VALUES for value, following in zip(self.body, self.body[1:]))
+        return byte_steps(self.body)
 
     @property
     def size(self) -> int:

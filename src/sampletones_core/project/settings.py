@@ -1,11 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.audio import (
-    DEFAULT_SAMPLE_RATE,
-    MAX_SAMPLE_RATE,
-    MIN_SAMPLE_RATE,
-)
+from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE, AcceptedSampleRate
 from sampletones_shared.constants.nes import (
     DEFAULT_NES_FREQUENCY,
     MAX_NES_FREQUENCY,
@@ -34,10 +30,8 @@ class ProjectSettings(BaseModel):
         le=MAX_NES_FREQUENCY,
         description="NES engine refresh rate in Hz (NTSC is 60).",
     )
-    sample_rate: int = Field(
+    sample_rate: AcceptedSampleRate = Field(
         default=DEFAULT_SAMPLE_RATE,
-        ge=MIN_SAMPLE_RATE,
-        le=MAX_SAMPLE_RATE,
         description="Audio engine sample rate in Hz.",
     )
     tempo: int = Field(

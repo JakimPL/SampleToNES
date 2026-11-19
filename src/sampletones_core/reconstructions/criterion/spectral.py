@@ -1,5 +1,6 @@
 from typing import Tuple
 
+from sampletones_core.audio.processing import decibels_to_power
 from sampletones_core.constants.enums import SpectralDistance
 from sampletones_shared.array import xp
 
@@ -84,7 +85,7 @@ def spectral_floor(reference: xp.ndarray, *, metric: SpectralMetric) -> xp.ndarr
         The floor, as a scalar on the active array backend.
     """
     loudest = xp.maximum(xp.max(reference), metric.silence_floor)
-    return loudest * 10.0 ** (-metric.dynamic_range_decibels / 10.0)
+    return loudest * decibels_to_power(-metric.dynamic_range_decibels)
 
 
 def weighted_reference_energy(

@@ -1,4 +1,4 @@
-from typing import List
+from typing import ClassVar, List, Type
 
 import numpy as np
 
@@ -16,7 +16,6 @@ from sampletones_core.instructions import (
     TriangleInstruction,
 )
 from sampletones_core.timers import PhaseTimer
-from sampletones_shared.types.data import Initials
 
 from ..tonal import TonalGenerator
 
@@ -27,6 +26,9 @@ class TriangleGenerator(TonalGenerator[TriangleInstruction]):
     A timer below ``MIN_SOUNDING_TRIANGLE_TIMER`` renders the middle of the wave while the timer runs
     on. The sequencer steps above hearing there, and the console's output settles at its mean level.
     """
+
+    instruction_type: ClassVar[Type[TriangleInstruction]] = TriangleInstruction
+    sounding_timer_floor: ClassVar[int] = MIN_SOUNDING_TRIANGLE_TIMER
 
     def __init__(
         self,
@@ -40,32 +42,6 @@ class TriangleGenerator(TonalGenerator[TriangleInstruction]):
             reset_phase=config.generation.reset_phase,
             phase_increment=TRIANGLE_PHASE_INCREMENT,
         )
-
-    def __call__(
-        self,
-        triangle_instruction: TriangleInstruction,
-        initials: Initials = None,
-        save: bool = False,
-    ) -> np.ndarray:
-        if not isinstance(triangle_instruction, TriangleInstruction):
-            raise TypeError("instruction must be an instance of TriangleInstruction")
-
-        self.validate(initials)
-        if not triangle_instruction.on:
-            return np.zeros(self.frame_length, dtype=np.float32)
-
-        output = self.generate(
-            triangle_instruction,
-            initials=initials,
-            save=save,
-        )
-
-        self.save_state(save, triangle_instruction)
-
-        if self.timer.timer < MIN_SOUNDING_TRIANGLE_TIMER:
-            return np.zeros(self.frame_length, dtype=np.float32)
-
-        return output
 
     def apply(self, output: np.ndarray, instruction: TriangleInstruction) -> np.ndarray:
         triangle = 1.0 - np.round(np.abs(((output + TRIANGLE_OFFSET) % 1.0) - 0.5) * 30.0) / 7.5

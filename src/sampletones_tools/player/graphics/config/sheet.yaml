@@ -1,0 +1,122 @@
+background:
+  - name: chrome
+    first: 0x00
+    ink: 1
+    paper: 0
+    shapes: [blank, strip_left, strip_right, edge_left, edge_right, foot_left, foot, foot_right]
+  - name: logo
+    first: 0x08
+    ink: 3
+    paper: 0
+    shapes: [logo_top_left, logo_top_right, logo_bottom_left, logo_bottom_right]
+  - name: keys
+    first: 0x0C
+    ink: 3
+    paper: 0
+    shapes: [key_c, key_e, key_g]
+  - name: progress
+    first: 0x0F
+    ink: 2
+    paper: 0
+    shapes:
+      - progress_0
+      - progress_1
+      - progress_2
+      - progress_3
+      - progress_4
+      - progress_5
+      - progress_6
+      - progress_7
+      - progress_8
+  - name: plain
+    first: 0x20
+    ink: 3
+    paper: 0
+    characters: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+  - name: header
+    first: 0x80
+    ink: 2
+    paper: 1
+    characters: " ABCDEGHKLMNOPRSY"
+    shapes: [note, notes, grid]
+  - name: bar
+    first: 0x94
+    ink: 3
+    paper: 1
+    characters: " 0123456789:/ENSTaelmop"
+    shapes: [play, pause, stop]
+  - name: label_pulse
+    first: 0xB6
+    ink: 1
+    paper: 0
+    characters: " PULSE12"
+  - name: label_other
+    first: 0xBE
+    ink: 2
+    paper: 0
+    characters: "TRIANGLEOS"
+  - name: wave_pulse
+    first: 0xC8
+    ink: 1
+    paper: 0
+    shapes:
+      - spike_top
+      - spike_bottom
+      - quarter_top
+      - quarter_bottom
+      - crest_top
+      - stem_bottom
+      - half_top
+      - half_bottom
+      - late_top
+      - late_bottom
+      - floor
+      - rest_top
+      - rest_bottom
+  - name: wave_other
+    first: 0xD5
+    ink: 2
+    paper: 0
+    shapes:
+      - rise_top
+      - rise_bottom
+      - fall_top
+      - fall_bottom
+      - hiss_a
+      - hiss_b
+      - buzz_a
+      - buzz_b
+      - rest_top
+      - rest_bottom
+  - name: meter_pulse
+    first: 0xDF
+    ink: 1
+    paper: 0
+    shapes: [meter_both, meter_first, meter_none, meter_last_lit, meter_last_dim]
+  - name: meter_other
+    first: 0xE4
+    ink: 2
+    paper: 0
+    shapes: [meter_both, meter_first, meter_none, meter_last_lit, meter_last_dim]
+
+sprites:
+  - name: hidden
+    first: 0x00
+    ink: 1
+    paper: 0
+    shapes: [blank]
+  - name: pin_first
+    first: 0x01
+    ink: 1
+    paper: 0
+    shapes: [pin_high, pin_low]
+  - name: pin_second
+    first: 0x03
+    ink: 2
+    paper: 0
+    shapes: [pin_middle]
+  - name: label
+    first: 0x04
+    ink: 1
+    paper: 0
+    characters: "Title:Auhor"

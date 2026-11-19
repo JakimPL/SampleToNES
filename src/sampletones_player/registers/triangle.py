@@ -10,7 +10,6 @@ from sampletones_player.registers.dividers import (
     anchored_pitches,
     bent_dividers,
 )
-from sampletones_player.registers.hold import hold
 from sampletones_player.registers.tone import ToneRegisters
 from sampletones_player.specification.registers import (
     MAX_REGISTER_VALUE,
@@ -20,6 +19,7 @@ from sampletones_player.specification.registers import (
     TRIANGLE_SOUNDING_RELOAD,
 )
 from sampletones_shared.constants.music import LIMIT_MIN_PITCH
+from sampletones_shared.utils.sequences import hold
 
 
 class TriangleRegisters(ToneRegisters):
@@ -28,6 +28,20 @@ class TriangleRegisters(ToneRegisters):
     @property
     def values(self) -> Tuple[int, ...]:
         return (self.linear_counter, self.timer_low, self.timer_high)
+
+    @property
+    def sounding(self) -> bool:
+        """Whether the tick's counter reload lets the channel sound."""
+        return self.linear_counter != TRIANGLE_COUNTER_CONTROL | TRIANGLE_SILENT_RELOAD
+
+    @property
+    def written(self) -> Tuple[int, ...]:
+        """A sounding tick writes the counter and the timer, and a resting one the silenced counter alone.
+
+        The counter holds the channel silent through a rest, so the timer stands where the channel last
+        sounded and the next sounding tick states its own.
+        """
+        return self.values if self.sounding else (self.linear_counter,)
 
     @classmethod
     def from_instructions(

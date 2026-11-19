@@ -37,6 +37,8 @@ type in a field.
 On the waveform:
 
 - Click to play from that point, or to move the playback position while paused.
+- Press `.` or `,` to move the playback position one frame forward or back, as **Playback ▸ Step
+  forward** and **Step back** do. Playback pauses at the start of that frame.
 - Drag to move the view.
 - Double-click to show the whole waveform.
 - Scroll to zoom. Hold **Alt** and scroll to move sideways, or **Alt** and **Shift** to move up and
@@ -117,6 +119,8 @@ You export a reconstruction from the **Reconstruction** menu:
 - **Export instruments ▸ NSF program...** opens the **Export NSF program** window and writes a single
   `.nsf` file that plays the whole reconstruction on a NES. The window is described [in the
   sequencer guide](sequencer.md#exporting-the-song).
+- **Export instruments ▸ NES ROM...** writes the reconstruction as a `.nes` cartridge with a player
+  screen, through the same window.
 - **Export to WAV...** renders the audio using the channel and recording checkboxes you have set.
 
 <div align="center">

@@ -99,8 +99,10 @@ playing the song then turns ticks into its own time once:
   tick to tick.
 - **The NSF** runs on the console's own call, about 60.1 times a second on NTSC. Its driver adds the song's
   rate, measured in calls, to a counter on every call and plays the ticks that fall out. A 30 Hz song
-  moves on every other call, a 41 Hz song holds about one call in three, and a 300 Hz song moves up to
-  five ticks a call. Any rate the settings allow therefore plays at its own speed.
+  moves on every other call, a 41 Hz song holds about one call in three, and a 300 Hz song moves five
+  ticks a call. A rate that divides 60 or is a multiple of it is measured against 60 calls a second, so
+  its ticks land evenly on the frames and it runs 0.16% fast on a console. Every other rate is measured
+  against the console's own rate and plays at its own speed.
 
 Each clock carries its own remainder, so neither adds up over a song. A bar line the console plays lands
 within half a tick of its exact moment plus one call. Planning the rows in ticks also keeps the NSF on the

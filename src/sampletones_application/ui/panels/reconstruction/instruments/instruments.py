@@ -1,10 +1,11 @@
 from functools import partial
-from typing import Any, Callable, Dict, Final, List, Optional, Tuple
+from typing import Callable, Dict, Final, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 import numpy as np
 
 from sampletones_application.categories.context import (
+    byte_size_label,
     channel_label,
     context_label,
     context_text,
@@ -23,21 +24,15 @@ from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
-    SUF_BUTTON_COPY,
     SUF_GROUP,
     SUF_HANDLER_REGISTRY,
-    SUF_TEXT,
     SUF_TOOLTIP,
-    TAG_GLOBAL_THEME_DEFAULT,
-    TAG_GLOBAL_THEME_INPUT_INVALID,
-    TAG_GLOBAL_THEME_INPUT_WARNING,
     TAG_GLOBAL_THEME_INSTRUMENT_TABS,
     TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
     TAG_GLOBAL_THEME_PANEL_INSTRUMENT,
 )
 from sampletones_application.tags.graphs import (
     SUF_GRAPH,
-    SUF_GRAPH_RAW_DATA,
 )
 from sampletones_application.tags.reconstructions import (
     SUF_RECONSTRUCTIONS_INSTRUMENTS_INSTRUMENT_SIZE,
@@ -55,7 +50,6 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.bar import GUIBarGraph
 from sampletones_application.ui.elements.graphs.ownership import OwnershipRuns
-from sampletones_application.ui.elements.graphs.utils import extend_y_range
 from sampletones_application.ui.elements.layout.card import card
 from sampletones_application.ui.elements.layout.collapse import CollapseAxis
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -68,8 +62,9 @@ from sampletones_application.ui.panels.reconstruction.instruments.config import 
     FeaturePlotConfig,
     make_feature_plot_configs,
 )
+from sampletones_application.ui.panels.reconstruction.instruments.plots import plot_limits, plotted_items
+from sampletones_application.ui.panels.reconstruction.instruments.sequences import SequenceInputs, sequence_input_tag
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.clipboard.copy_button import copy_to_clipboard
 from sampletones_application.utils.gui.dpg import (
     dpg_configure_item,
     dpg_set_value,
@@ -99,25 +94,19 @@ from sampletones_core.constants.enums import (
     GeneratorName,
 )
 from sampletones_core.exporters import Features
-from sampletones_core.exports.ceilings import FormatShortening, format_shortenings
-from sampletones_core.exports.format import ExportFormat
 from sampletones_core.features import (
-    BEND_FEATURES,
     CHANNEL_GENERATOR_KIND,
     resting_reference,
     supported_features,
 )
 from sampletones_core.features.envelope import Envelope
-from sampletones_core.features.text import format_envelope, parse_envelope
 from sampletones_core.utils.pitch_kind import (
     PERIOD_VALUE_KIND,
     PITCH_VALUE_KIND,
     PitchValueKind,
 )
-from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
-from sampletones_shared.utils.arrays import clamp
 
 ONE_SLOT_PER_FRAME: Final[float] = 1.0
 
@@ -125,11 +114,6 @@ OnInstrumentExportCallback = Callable[[ChannelName], None]
 PianoKeyCallback = Callable[[int, int], None]
 KeyLiftCallback = Callable[[int], None]
 OnReconstructionInstrumentHoveredCallback = Callable[[Optional[int]], None]
-
-
-def _plotted_items(envelope: Envelope[int]) -> np.ndarray:
-    """The values a dimension writes, as the bar plot draws them."""
-    return np.array(envelope.items, dtype=np.int8)
 
 
 class GUIReconstructionInstrumentsPanel(GUIPanel):
@@ -165,11 +149,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.audition_group_tag = compose_tag(self.audition_tag, SUF_GROUP)
 
         self._graphs: Dict[str, GUIBarGraph] = {}
-        self._sequences: Dict[Tuple[ChannelName, FeatureKey], Envelope[int]] = {}
         self._audition_open: bool = False
         self._voice_shown: bool = False
         self._pitch_stepper_style = pitch_stepper_style
-        self._copy_width = copy_width
         self._layout_graphs = layout_graphs
         self._ownership = OwnershipRuns(stem_colors)
         self._feature_plot_configs = make_feature_plot_configs(
@@ -177,9 +159,12 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             language_manager,
         )
 
-        self.theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
-        self.invalid_input_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_INPUT_INVALID)
-        self.warning_input_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_INPUT_WARNING)
+        self._sequence_inputs = SequenceInputs(
+            copy_width=copy_width,
+            language_manager=language_manager,
+            status_bar=status_bar,
+        )
+        self._sequence_inputs.on_typed = self._on_sequence_typed
 
         self.on_instrument_export: Optional[OnInstrumentExportCallback] = None
         self.on_reconstruction_instrument_hovered: Optional[OnReconstructionInstrumentHoveredCallback] = None
@@ -190,12 +175,10 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self.on_audition_generator_changed: Optional[Callable[[GeneratorName], None]] = None
         self.on_envelope_changed: Optional[Callable[[ChannelName, FeatureKey, Envelope[int]], None]] = None
 
-        self._lbl_copy = language_manager["reconstructions.instruments.label.copy_button"]
         self._msg_nothing_loaded = language_manager["global.dialog.message.reconstruction_no_data"]
         self._msg_preparing = language_manager["reconstructions.instruments.message.preparing"]
         self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
         self._lbl_instrument_size = context_label(language_manager, ContextElements.INSTRUMENT_SIZE)
-        self._tpl_size_bytes = context_text(language_manager, TextType.TEMPLATE, ContextElements.SIZE_BYTES)
         self._tip_size_bytes = context_text(language_manager, TextType.TOOLTIP, ContextElements.SIZE_BYTES)
         self._pitch_tooltips = PitchTooltips.build(
             language_manager,
@@ -314,20 +297,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         feature_key: FeatureKey,
     ) -> str:
         return compose_tag(self.tab_bar_tag, channel_name, feature_key, SUF_GROUP)
-
-    def _get_feature_text_group_tag(
-        self,
-        channel_name: ChannelName,
-        feature_key: FeatureKey,
-    ) -> str:
-        return compose_tag(self.tab_bar_tag, channel_name, feature_key, SUF_GRAPH_RAW_DATA)
-
-    def _get_feature_text_tag(
-        self,
-        channel_name: ChannelName,
-        feature_key: FeatureKey,
-    ) -> str:
-        return compose_tag(self._get_feature_text_group_tag(channel_name, feature_key), SUF_TEXT)
 
     def _get_feature_plot_tag(
         self,
@@ -452,7 +421,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             plot = self._create_feature_display(
                 channel_name,
                 feature_key,
-                Envelope[int](),
                 feature_group_tag,
             )
             self.channel_plots[channel_name][feature_key] = plot
@@ -488,18 +456,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             config,
             data,
         )
-
-    def _update_raw_data_text(
-        self,
-        channel_name: ChannelName,
-        feature_key: FeatureKey,
-        envelope: Envelope[int],
-    ) -> None:
-        dpg_set_value(
-            self._get_feature_text_tag(channel_name, feature_key),
-            format_envelope(envelope),
-        )
-        self._show_sequence(channel_name, feature_key, envelope)
 
     def update_view(
         self,
@@ -559,7 +515,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         for channel_name, plots in self.channel_plots.items():
             for feature_key, plot in plots.items():
                 plot.set_locked(locked)
-                dpg_configure_item(self._get_feature_text_tag(channel_name, feature_key), enabled=not locked)
+                dpg_configure_item(sequence_input_tag(channel_name, feature_key), enabled=not locked)
 
         for stepper in self._pitch_steppers.values():
             stepper.set_enabled(not locked)
@@ -684,7 +640,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         if footprint is None:
             return
 
-        dpg_set_value(self.sample_size_tag, self._format_size(footprint.total_bytes))
+        dpg_set_value(self.sample_size_tag, byte_size_label(self._language_manager, footprint.total_bytes))
         for channel_name in ChannelName.items():
             instrument_bytes = footprint.bytes_for(channel_name)
             if shows_one_instrument and channel_name is INSTRUMENT_CHANNEL:
@@ -692,11 +648,8 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
             dpg_set_value(
                 self._get_instrument_size_tag(channel_name),
-                self._format_size(instrument_bytes if instrument_bytes is not None else 0),
+                byte_size_label(self._language_manager, instrument_bytes if instrument_bytes is not None else 0),
             )
-
-    def _format_size(self, byte_count: int) -> str:
-        return self._tpl_size_bytes.format(bytes=byte_count)
 
     def update_feature_data(
         self,
@@ -741,9 +694,9 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         lane: OwnershipLaneViewModel,
     ) -> None:
         envelope = self._feature_envelope(generator_features, feature_key)
-        items = _plotted_items(envelope)
+        items = plotted_items(envelope)
         self._update_generator_plot(channel_name, feature_key, items)
-        self._update_raw_data_text(channel_name, feature_key, envelope)
+        self._sequence_inputs.write(channel_name, feature_key, envelope)
         self._paint_ownership(channel_name, feature_key, lane, len(items))
 
     def _paint_ownership(
@@ -840,52 +793,18 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self,
         channel_name: ChannelName,
         feature_key: FeatureKey,
-        envelope: Envelope[int],
         parent: str,
     ) -> GUIBarGraph:
         config = self._feature_plot_config(channel_name, feature_key)
         plot = self._add_bar_plot(
             parent,
             config,
-            _plotted_items(envelope),
+            plotted_items(Envelope[int]()),
             channel_name,
             feature_key,
         )
-        self._add_raw_data_text(
-            parent,
-            channel_name,
-            feature_key,
-            config,
-            plot,
-            envelope,
-        )
+        self._sequence_inputs.create(parent, channel_name, feature_key, config.data_range)
         return plot
-
-    def _calculate_plot_limits(
-        self,
-        config: FeaturePlotConfig,
-        data: np.ndarray,
-    ) -> Tuple[int, int, Optional[Tuple[int, ...]]]:
-        """The bounds and the ticks one dimension is drawn between.
-
-        A dimension reading around zero takes bounds from the widest value it writes, so an
-        envelope describing no frame stands at the floor the empty reading gives it and the
-        plot keeps a grid to draw on.
-        """
-        y_min = config.y_min
-        y_max = config.y_max
-        y_ticks = config.y_ticks
-        if y_min == -1.0 and y_max == -1.0:
-            max_abs_value = float(np.max(np.abs(data))) if data.size else 0.0
-            y_min = -max_abs_value
-            y_max = max_abs_value
-
-            step = max(1, int(np.ceil(max_abs_value / 4)))
-            max_tick = step * 4
-            y_ticks = tuple(range(-max_tick, max_tick + 1, step))
-
-        y_min, y_max = extend_y_range(y_min, y_max)
-        return y_min, y_max, y_ticks
 
     def _add_bar_plot(
         self,
@@ -896,7 +815,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         feature_key: FeatureKey,
     ) -> GUIBarGraph:
         plot_tag = self._get_feature_plot_tag(channel_name, feature_key)
-        y_min, y_max, _ = self._calculate_plot_limits(config, data)
+        y_min, y_max, _ = plot_limits(config, data)
         plot = GUIBarGraph(
             tag=plot_tag,
             parent=parent,
@@ -945,9 +864,19 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         feature_key: FeatureKey,
         data: np.ndarray,
     ) -> None:
-        envelope = self._standing_sequence(channel_name, feature_key).with_items(tuple(int(value) for value in data))
-        self._update_raw_data_text(channel_name, feature_key, envelope)
+        envelope = self._sequence_inputs.standing(channel_name, feature_key).with_items(
+            tuple(int(value) for value in data)
+        )
+        self._sequence_inputs.write(channel_name, feature_key, envelope)
         self.call(self.on_envelope_changed, channel_name, feature_key, envelope)
+
+    def _on_sequence_typed(self, channel_name: ChannelName, feature_key: FeatureKey, envelope: Envelope[int]) -> None:
+        """Takes a typed sequence as the dimension's edit, and redraws its bars."""
+        self.call(self.on_envelope_changed, channel_name, feature_key, envelope)
+        plot = self.channel_plots.get(channel_name, {}).get(feature_key)
+        if plot is not None:
+            config = self._feature_plot_config(channel_name, feature_key)
+            self._load_plot_data(plot, channel_name, feature_key, config, plotted_items(envelope))
 
     def _on_bar_point_hovered(
         self,
@@ -962,161 +891,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
                 )
             )
 
-    def _add_raw_data_text(
-        self,
-        parent: str,
-        channel_name: ChannelName,
-        feature_key: FeatureKey,
-        config: FeaturePlotConfig,
-        plot: GUIBarGraph,
-        envelope: Envelope[int],
-    ) -> None:
-        text_group_tag = self._get_feature_text_group_tag(
-            channel_name,
-            feature_key,
-        )
-        raw_data_text = format_envelope(envelope)
-        raw_data_tag = self._get_feature_text_tag(channel_name, feature_key)
-        copy_button_tag = compose_tag(text_group_tag, SUF_BUTTON_COPY)
-
-        with dpg.group(tag=text_group_tag, parent=parent, horizontal=True):
-            GUIButton(
-                tag=copy_button_tag,
-                label=self._lbl_copy,
-                width=self._copy_width,
-                callback=self._copy_callback(
-                    channel_name,
-                    feature_key,
-                    copy_button_tag,
-                ),
-            )
-
-            dpg.add_input_text(
-                tag=raw_data_tag,
-                default_value=raw_data_text,
-                width=-1,
-                multiline=False,
-                on_enter=True,
-                decimal=False,
-                callback=self._parse_raw_data_input,
-                user_data=(
-                    channel_name,
-                    feature_key,
-                    config,
-                    plot,
-                ),
-            )
-            FontRegistry.bind_to_item(raw_data_tag, Font.MONO)
-
-        self._status_bar.bind_to_item(
-            copy_button_tag,
-            self._language_manager["reconstructions.instruments.message.status_copy_sequence"],
-        )
-        self._status_bar.bind_to_item(
-            raw_data_tag,
-            partial(self._sequence_status_message, channel_name, feature_key),
-        )
-        self._explain_bend(raw_data_tag, feature_key)
-
-    def _explain_bend(self, raw_data_tag: str, feature_key: FeatureKey) -> None:
-        """Says what one item of a bend dimension is worth, since that follows the note it bends.
-
-        A divider step spans well under a cent at the lowest notes and a whole semitone at the
-        highest, so the axis a bend is drawn on states the range a sequence stores rather than the
-        distance a value covers.
-        """
-        if feature_key not in BEND_FEATURES:
-            return
-
-        show_tooltip(
-            raw_data_tag,
-            self._language_manager[
-                (
-                    "reconstructions.instruments.tooltip.hi_pitch_bend"
-                    if feature_key is FeatureKey.HI_PITCH
-                    else "reconstructions.instruments.tooltip.pitch_bend"
-                )
-            ],
-        )
-
-    def _sequence_status_message(
-        self,
-        channel_name: ChannelName,
-        feature_key: FeatureKey,
-        *_args: Any,
-        **_kwargs: Any,
-    ) -> str:
-        """Describes the sequence input, naming what each tracker export keeps of an over-long one."""
-        envelope = self._standing_sequence(channel_name, feature_key)
-        shortenings = format_shortenings(feature_key, envelope)
-        if shortenings:
-            separator = self._language_manager["reconstructions.instruments.template.kept_separator"]
-            return self._language_manager["reconstructions.instruments.message.status_sequence_too_long"].format(
-                instrument_feature=feature_key.capitalized,
-                items=len(envelope.items),
-                kept=separator.join(self._kept_by(shortening) for shortening in shortenings),
-            )
-
-        return self._language_manager["reconstructions.instruments.message.status_sequence"].format(
-            instrument_feature=feature_key.capitalized
-        )
-
-    def _kept_by(self, shortening: FormatShortening) -> str:
-        """Names one tracker export beside the items it keeps of a dimension."""
-        match shortening.export_format:
-            case ExportFormat.FAMITRACKER:
-                template = self._language_manager["reconstructions.instruments.template.kept_famitracker"]
-            case ExportFormat.BITPHASE:
-                template = self._language_manager["reconstructions.instruments.template.kept_bitphase"]
-            case ExportFormat.BITPHASE_PRESET:
-                template = self._language_manager["reconstructions.instruments.template.kept_bitphase_preset"]
-
-        return template.format(limit=shortening.kept)
-
-    def _standing_sequence(
-        self,
-        channel_name: ChannelName,
-        feature_key: FeatureKey,
-    ) -> Envelope[int]:
-        """The dimension this input shows, which is what an edit of its values starts from."""
-        return self._sequences.get((channel_name, feature_key), Envelope[int]())
-
-    def _show_sequence(
-        self,
-        channel_name: ChannelName,
-        feature_key: FeatureKey,
-        envelope: Envelope[int],
-    ) -> None:
-        """Holds the dimension the input now shows, colored by how the tracker exports treat its length.
-
-        A sequence any tracker export holds only part of carries the warning color, so which
-        dimensions reach every file whole is visible before an export.
-        """
-        self._sequences[(channel_name, feature_key)] = envelope
-        raw_data_tag = self._get_feature_text_tag(channel_name, feature_key)
-        theme = self.warning_input_theme if format_shortenings(feature_key, envelope) else self.theme
-        theme.bind_to_item(raw_data_tag)
-
-    def _parse_raw_data_input(
-        self,
-        sender: Sender,
-        app_data: str,
-        user_data: Tuple[ChannelName, FeatureKey, FeaturePlotConfig, GUIBarGraph],
-    ) -> None:
-        channel_name, feature_key, config, plot = user_data
-        try:
-            typed = parse_envelope(app_data)
-        except ValueError:
-            logger.error(f"Invalid {channel_name.name} data input for {feature_key.name}: {app_data}")
-            self.invalid_input_theme.bind_to_item(sender)
-            return
-
-        envelope = typed.with_items(tuple(clamp(item, *config.data_range) for item in typed.items))
-        self._show_sequence(channel_name, feature_key, envelope)
-        dpg.set_value(sender, format_envelope(envelope))
-        self.call(self.on_envelope_changed, channel_name, feature_key, envelope)
-        self._load_plot_data(plot, channel_name, feature_key, config, _plotted_items(envelope))
-
     def _load_plot_data(
         self,
         plot: GUIBarGraph,
@@ -1125,35 +899,11 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         config: FeaturePlotConfig,
         data: np.ndarray,
     ) -> None:
-        _, _, y_ticks = self._calculate_plot_limits(config, data)
-        name = f"{channel_name.capitalize()}: {feature_key.capitalized}"
+        _, _, y_ticks = plot_limits(config, data)
+        name = f"{self._channel_labels[channel_name]}: {feature_key.capitalized}"
         plot.load_data(
             data=data,
             name=name,
             color=config.color,
             y_ticks=y_ticks,
-        )
-
-    def _copy_callback(
-        self,
-        channel_name: ChannelName,
-        feature_key: FeatureKey,
-        button_tag: str,
-    ) -> VoidCallback:
-        """The press handler for one dimension's copy button.
-
-        The button stands beside its input from the moment the tab is built, so the press reads
-        the dimension the input shows then, written out as a reader would type it.
-        """
-        return lambda: self._on_copy_button_clicked(
-            format_envelope(self._standing_sequence(channel_name, feature_key)),
-            button_tag,
-        )
-
-    def _on_copy_button_clicked(self, text: str, button_tag: str) -> None:
-        copy_to_clipboard(
-            text,
-            self._lbl_copy,
-            button_tag,
-            copied_label=self._language_manager["global.dialog.label.copied"],
         )

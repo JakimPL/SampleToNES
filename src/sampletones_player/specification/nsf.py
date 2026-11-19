@@ -1,13 +1,6 @@
 from typing import Final
 
 from sampletones_player.specification.binary import WORD_SIZE
-from sampletones_player.specification.clock import (
-    MICROSECONDS_PER_SECOND,
-    NTSC_FRAME_RATE,
-)
-
-PROGRAM_START: Final[int] = 0x8000
-PROGRAM_SIZE: Final[int] = 0x8000
 
 NSF_MAGIC: Final[bytes] = b"NESM\x1a"
 NSF_VERSION: Final[int] = 1
@@ -17,6 +10,7 @@ FIRST_SONG: Final[int] = 1
 STRING_FIELD_SIZE: Final[int] = 32
 STRING_TERMINATOR_SIZE: Final[int] = 1
 STRING_TEXT_SIZE: Final[int] = STRING_FIELD_SIZE - STRING_TERMINATOR_SIZE
+STRING_ENCODING: Final[str] = "utf-8"
 BANKSWITCH_SIZE: Final[int] = 8
 NSF2_LENGTH_SIZE: Final[int] = 3
 
@@ -39,7 +33,6 @@ NSF2_FEATURES_OFFSET: Final[int] = EXPANSION_OFFSET + 1
 NSF2_LENGTH_OFFSET: Final[int] = NSF2_FEATURES_OFFSET + 1
 HEADER_SIZE: Final[int] = NSF2_LENGTH_OFFSET + NSF2_LENGTH_SIZE
 
-NTSC_PLAY_PERIOD_MICROSECONDS: Final[int] = round(MICROSECONDS_PER_SECOND / NTSC_FRAME_RATE)
 PAL_PLAY_PERIOD_MICROSECONDS: Final[int] = 20000
 NTSC_REGION: Final[int] = 0x00
 PAL_REGION_FLAG: Final[int] = 0x01

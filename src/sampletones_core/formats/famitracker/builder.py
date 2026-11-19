@@ -35,8 +35,6 @@ from sampletones_core.formats.famitracker.specification.instruments import (
     MAX_INSTRUMENTS,
 )
 from sampletones_core.formats.famitracker.specification.parameters import (
-    DEFAULT_HIGHLIGHT_FIRST,
-    DEFAULT_HIGHLIGHT_SECOND,
     DEFAULT_SPEED_SPLIT_POINT,
     DEFAULT_VIBRATO_STYLE,
     EXPANSION_NONE,
@@ -336,8 +334,8 @@ def build_module(project: Project) -> BuiltDocument[FamiTrackerModule]:
         machine=machine,
         engine_speed=engine_speed,
         vibrato_style=DEFAULT_VIBRATO_STYLE,
-        highlight_first=DEFAULT_HIGHLIGHT_FIRST,
-        highlight_second=DEFAULT_HIGHLIGHT_SECOND,
+        highlight_first=settings.first_highlight,
+        highlight_second=settings.second_highlight,
         speed_split_point=DEFAULT_SPEED_SPLIT_POINT,
     )
     information = ModuleInformation(

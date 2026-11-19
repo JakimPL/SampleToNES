@@ -5,6 +5,7 @@ from unittest.mock import patch
 import dearpygui.dearpygui as dpg
 import pytest
 
+from automation.dearpygui.items.types import CLICKED_HANDLER_TYPE, DOUBLE_CLICKED_HANDLER_TYPE, HOVER_HANDLER_TYPE
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.sources import SourceKind
 from sampletones_application.layout.config import LayoutConfig
@@ -52,7 +53,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.types.callback import Callback
 from tests.suite.base import BaseTestSuite
 from tests.suite.frames import DrawnFrames
-from tests.suite.gestures import CLICKED, DOUBLE_CLICKED, HOVERED, click_row_name, handler_of
+from tests.suite.gestures import click_row_name, handler_of
 
 ROOT_TAG = "test_root"
 PREFIX = "test.stems"
@@ -199,7 +200,7 @@ def channel_tag(entry: StemRowViewModel, channel_name: ChannelName) -> str:
 
 def hover_handler(suffix: str) -> Callback:
     """The hover callback a row widget of that kind shares, as DearPyGui would call it."""
-    return dpg.get_item_callback(handler_of(TAGS.handlers(suffix), HOVERED))
+    return dpg.get_item_callback(handler_of(TAGS.handlers(suffix), HOVER_HANDLER_TYPE))
 
 
 def click_on(entry: StemRowViewModel, kind: str, button: int) -> None:
@@ -682,7 +683,7 @@ class TestVanishedWidgets(BaseTestSuite):
         clicked = dpg.get_alias_id(row_tag(bass, SUF_TEXT))
         stems_list.update_view(view())
 
-        callback = dpg.get_item_callback(handler_of(TAGS.handlers(SUF_TEXT), CLICKED))
+        callback = dpg.get_item_callback(handler_of(TAGS.handlers(SUF_TEXT), CLICKED_HANDLER_TYPE))
         callback(row_tag(bass, SUF_TEXT), (dpg.mvMouseButton_Right, clicked))
 
         assert reported == []
@@ -983,7 +984,7 @@ class TestActivation(BaseTestSuite):
         lead = row("lead")
         stems_list.update_view(view(bass, lead, selected_key=bass.key))
 
-        click_on(lead, CLICKED, dpg.mvMouseButton_Right)
+        click_on(lead, CLICKED_HANDLER_TYPE, dpg.mvMouseButton_Right)
 
         assert activated == [lead.key]
         assert asked == [lead.key]
@@ -1097,7 +1098,7 @@ class TestGesturesTheOwnerLeavesUnanswered(BaseTestSuite):
         stems_list.update_view(view(bass))
 
         with patch.object(stems_list, "call") as handed_on:
-            click_on(bass, CLICKED, dpg.mvMouseButton_Right)
+            click_on(bass, CLICKED_HANDLER_TYPE, dpg.mvMouseButton_Right)
 
         assert stems_list.has_menu is False
         handed_on.assert_not_called()
@@ -1113,7 +1114,7 @@ class TestGesturesTheOwnerLeavesUnanswered(BaseTestSuite):
         bass = row("bass")
         stems_list.update_view(view(bass))
 
-        click_on(bass, CLICKED, dpg.mvMouseButton_Right)
+        click_on(bass, CLICKED_HANDLER_TYPE, dpg.mvMouseButton_Right)
 
         assert asked == [bass.key]
 
@@ -1127,7 +1128,7 @@ class TestGesturesTheOwnerLeavesUnanswered(BaseTestSuite):
         stems_list.update_view(view(bass))
 
         with patch.object(stems_list, "call") as handed_on:
-            click_on(bass, DOUBLE_CLICKED, dpg.mvMouseButton_Left)
+            click_on(bass, DOUBLE_CLICKED_HANDLER_TYPE, dpg.mvMouseButton_Left)
 
         assert stems_list.playable is False
         handed_on.assert_not_called()
@@ -1143,7 +1144,7 @@ class TestGesturesTheOwnerLeavesUnanswered(BaseTestSuite):
         bass = row("bass")
         stems_list.update_view(view(bass))
 
-        click_on(bass, DOUBLE_CLICKED, dpg.mvMouseButton_Left)
+        click_on(bass, DOUBLE_CLICKED_HANDLER_TYPE, dpg.mvMouseButton_Left)
 
         assert opened == [bass.key]
 
@@ -1158,7 +1159,7 @@ class TestEachGestureAnswersItsOwnButton(BaseTestSuite):
         bass = row("bass")
         stems_list.update_view(view(bass))
 
-        click_on(bass, CLICKED, dpg.mvMouseButton_Left)
+        click_on(bass, CLICKED_HANDLER_TYPE, dpg.mvMouseButton_Left)
 
         assert asked == []
 
@@ -1169,7 +1170,7 @@ class TestEachGestureAnswersItsOwnButton(BaseTestSuite):
         bass = row("bass")
         stems_list.update_view(view(bass))
 
-        click_on(bass, DOUBLE_CLICKED, dpg.mvMouseButton_Right)
+        click_on(bass, DOUBLE_CLICKED_HANDLER_TYPE, dpg.mvMouseButton_Right)
 
         assert opened == []
 

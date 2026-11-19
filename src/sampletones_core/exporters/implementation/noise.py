@@ -11,8 +11,10 @@ from sampletones_core.instructions import (
 )
 
 from ..exporter import Exporter
+from .utils import held_across_rests, released
 
 SHORT_MODE_BIT: Final[int] = 0x01
+SILENT_PERIOD: Final[int] = 0
 
 
 class NoiseExporter(Exporter[NoiseInstruction]):
@@ -25,37 +27,29 @@ class NoiseExporter(Exporter[NoiseInstruction]):
 
     @classmethod
     def extract_data(cls, instructions: List[NoiseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
-        initial_period = None
+        """The first period sounded, and each frame's period, volume and mode.
 
-        period = 0
-        volume = 0
-        duty_cycle = 0
+        A rest holds the period and the mode the last sounding frame stated, and the rests before
+        the first take its period and mode, the rule a tone channel reads its notes by. The volumes
+        carry one silent tick after the frames where the channel still sounds at its end.
 
-        periods: List[int] = []
-        volumes: List[int] = []
-        duty_cycles: List[int] = []
+        Args:
+            instructions: The channel's per-frame instructions.
 
-        for instruction in instructions:
-            if instruction.on:
-                if initial_period is None:
-                    initial_period = instruction.period
-                    periods = [initial_period for _ in range(len(periods))]
-
-                period = instruction.period
-                volume = instruction.volume
-                duty_cycle = instruction.short
-            else:
-                volume = 0
-
-            periods.append(period)
-            volumes.append(volume)
-            duty_cycles.append(duty_cycle)
-
-        if volume > 0:
-            volumes.append(0)
-
-        initial_period = initial_period if initial_period is not None else 0
-        return initial_period, periods, volumes, duty_cycles
+        Returns:
+            Tuple[int, List[int], List[int], List[int]]: The first period, and one period, volume
+                and mode per frame.
+        """
+        periods = list(held_across_rests(instructions, lambda instruction: instruction.period, SILENT_PERIOD))
+        modes = list(
+            held_across_rests(
+                instructions,
+                lambda instruction: instruction.short,
+                CHANNEL_FEATURE_DEFAULTS[FeatureKey.DUTY_CYCLE],
+            )
+        )
+        volumes = released([instruction.volume if instruction.on else 0 for instruction in instructions])
+        return (periods[0] if periods else SILENT_PERIOD), periods, volumes, modes
 
     @classmethod
     def derive_initial_pitch(

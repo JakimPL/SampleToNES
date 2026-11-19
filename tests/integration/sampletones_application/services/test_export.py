@@ -11,6 +11,7 @@ from sampletones_application.services.result import ServiceProgress
 from sampletones_core.audio import read_wave
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.exporters import Features
+from sampletones_core.exports.format import ExportFormat
 from sampletones_core.exports.implementation.famitracker import FamiTrackerBackend
 from sampletones_core.exports.request import (
     InstrumentExport,
@@ -20,8 +21,10 @@ from sampletones_core.exports.request import (
 from sampletones_core.exports.stage import ExportStage
 from sampletones_core.project.project import Project
 from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
-from sampletones_player.export.backend import NSFBackend
-from sampletones_player.specification.nsf import NSF_MAGIC, PROGRAM_SIZE
+from sampletones_player.export.backend import ProgramBackend
+from sampletones_player.export.backends import program_backends
+from sampletones_player.specification.memory import PROGRAM_SIZE
+from sampletones_player.specification.nsf import NSF_MAGIC
 from sampletones_shared.music import Tuning
 from tests.suite.performance import (
     make_pulse_reconstruction,
@@ -47,8 +50,8 @@ def backend_fixture() -> FamiTrackerBackend:
 
 
 @pytest.fixture(name="console_backend")
-def console_backend_fixture() -> NSFBackend:
-    return NSFBackend.stated()
+def console_backend_fixture() -> ProgramBackend:
+    return program_backends()[ExportFormat.NSF]
 
 
 def overlong_features(initial_pitch: int) -> Features:

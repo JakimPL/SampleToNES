@@ -2,7 +2,7 @@ from typing import Iterable, Optional
 
 import numpy as np
 
-from sampletones_core.constants.audio import BUFFER_SIZES, SAMPLE_RATES
+from sampletones_core.constants.audio import BUFFER_SIZES, MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 
 
 def validate_audio_array(
@@ -38,21 +38,23 @@ def validate_audio_array(
 
 def validate_sample_rate(sample_rate: int) -> None:
     """
-    Validate that sample rate is an allowed value.
+    Validate that a sample rate lies in the range every library, conversion and writer accepts.
+
+    The range is the one the settings field and the library models hold a rate to, so a rate a
+    library is built at is one its conversions read and write at.
 
     Args:
         sample_rate: Sample rate in Hz to validate.
 
     Raises:
         TypeError: If sample_rate is not an integer.
-        ValueError: If sample_rate is not in allowed sample rates.
+        ValueError: If sample_rate lies outside ``MIN_SAMPLE_RATE..MAX_SAMPLE_RATE``.
     """
     if not isinstance(sample_rate, int):
         raise TypeError(f"sample_rate must be an integer, got {type(sample_rate)}")
 
-    if sample_rate not in SAMPLE_RATES:
-        allowed_rates = ", ".join(str(rate) for rate in SAMPLE_RATES)
-        raise ValueError(f"sample_rate must be one of [{allowed_rates}], got {sample_rate}")
+    if not MIN_SAMPLE_RATE <= sample_rate <= MAX_SAMPLE_RATE:
+        raise ValueError(f"sample_rate must lie in [{MIN_SAMPLE_RATE}, {MAX_SAMPLE_RATE}], got {sample_rate}")
 
 
 def validate_buffer_size(buffer_size: int) -> None:

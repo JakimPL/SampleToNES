@@ -3,12 +3,12 @@ from pathlib import Path
 from typing import Final, Sequence, Tuple
 
 from sampletones_player.driver.image import DriverImage
+from sampletones_player.nsf.file import song_room
 from sampletones_player.specification.compression import PLANE_STATE_SIZE
 from sampletones_player.specification.planes import PLANE_COUNT
 from sampletones_tools.codec.report.corpus import CorpusEntry, corpus_entries
 from sampletones_tools.codec.report.encoding import Encoding, encode_corpus, report_rows
 from sampletones_tools.codec.report.rows import report_table, write_markdown
-from sampletones_tools.codec.report.songs import available_bytes
 from sampletones_tools.corpus.build import build_synthetic_corpus
 
 CSV_FILENAME: Final[str] = "report.csv"
@@ -70,7 +70,7 @@ def run_report(output: Path) -> CompressionReport:
     corpus = build_synthetic_corpus()
     entries = corpus_entries(corpus.catalog, corpus.project)
     encodings = encode_corpus(entries)
-    csv_path, markdown_path = write_report(entries, encodings, available_bytes(DriverImage.load()), output)
+    csv_path, markdown_path = write_report(entries, encodings, song_room(DriverImage.load()), output)
     return CompressionReport(
         entries=entries,
         encodings=encodings,

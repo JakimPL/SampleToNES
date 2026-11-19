@@ -75,6 +75,17 @@ dimension the import starts carrying.
 
 ### Technical
 
+* A cartridge for songs over 30 KB. A board with bank switching (UNROM or MMC1) needs the driver and the
+  song block to read across banks.
+* Channel mute on the cartridge's controller, about 180 bytes of shell.
+* Several songs on one cartridge, with a song list on the screen.
+* A scrolling piano roll on the cartridge's screen. It needs a raster split and a second pattern table.
+* Running the cartridge on a real console, and on Mesen beside FCEUX for an accuracy check. The video
+  model under `sampletones_tools/console/rom/` leaves out the odd-frame dot skip, the sprite-zero and
+  overflow flags and PAL timing.
+* Renaming the program export setup's `nsf` names (`NSFExportLogic`, `ui/panels/dialogs/nsf.py`, the
+  `settings.nsf` keys) now that the setup serves the cartridge as well.
+
 * Screen scenarios on Windows and macOS. They run on Linux alone, and whether DearPyGui opens its window on
   GitHub's Windows and macOS runners is unverified.
 * An upgrade path for the configuration and the session state. A file an older build left behind is read
@@ -139,6 +150,21 @@ currently out of line. An entry leaves when the code meets the contract again.
 
 ## Bugs
 
+* `tests/screens/reconstructions/instruments/test_note_keys.py` reads whether a key sounded within a fixed
+  count of frames, so on a loaded machine a key's sound lands after the count and the case fails, at any of
+  its steps. Waiting on the sound itself, with a time limit, closes it.
+* A library file with an upper-case extension (`….INS`) on a file system that tells cases apart is listed
+  by the Main tab's explorer, which offers to load it, while the Instructions tab's library card passes it
+  by and the load reports the library missing. A library key names its file as `….ins`, so carrying the
+  name on disk through the catalog closes it.
+* A reconstruction or project stored with a range of notes beyond 24–119 refuses to load, since the range
+  joined a library's identity and is held to the notes instructions name. Such a range takes a hand-edited
+  configuration that reused a library built for another range. Clamping a stored range into 24–119 as a
+  document loads closes it.
+* A reconstruction's folder name hashes the library and generation settings, and leaves out the range of
+  notes. Converting one recording under two ranges therefore uses two libraries and writes both results
+  into one folder under one name. Adding the range to `ConfigDirectoryFields.settings_hash` closes it, and
+  renames the folders an earlier build made.
 * A screen scenario that ends within the first frames after the application starts never stops it. Its
   Exit leaves the application drawing, and the run waits until the suite's timeout, which ends the parent
   process and leaves the scenario's own process running at several cores. A scenario whose body is a single

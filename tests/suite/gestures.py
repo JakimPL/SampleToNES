@@ -1,13 +1,7 @@
-from typing import Final
-
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.tags.general import SUF_TEXT
 from sampletones_application.ui.elements.stems.tags import StemsTags
-
-CLICKED: Final[str] = "mvAppItemType::mvClickedHandler"
-DOUBLE_CLICKED: Final[str] = "mvAppItemType::mvDoubleClickedHandler"
-HOVERED: Final[str] = "mvAppItemType::mvHoverHandler"
 
 
 def handler_of(registry: str, kind: str) -> int:

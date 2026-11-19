@@ -1,4 +1,4 @@
-from typing import Final, Optional
+from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -6,7 +6,7 @@ from automation.dearpygui.bridge import Bridge
 from automation.dearpygui.hand import Hand
 from automation.dearpygui.items.reading import read_value
 from automation.dearpygui.items.texts import read_label
-from automation.dearpygui.items.types import Item
+from automation.dearpygui.items.types import BAR_SERIES_TYPE, Item
 from automation.views.browsers import FileTree
 from automation.views.notices import Notice
 from automation.views.prompts import Prompt
@@ -29,7 +29,6 @@ from sampletones_application.tags.instructions import (
 GENERATE_BUTTON = compose_tag(TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY, SUF_BUTTON)
 CANCEL_GENERATION_BUTTON = compose_tag(TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION, SUF_BUTTON)
 SPECTRUM_BANDS = compose_tag(TAG_INSTRUCTIONS_INSTRUCTION_PANEL_INSTRUCTION_SPECTRUM, SUF_GRAPH_Y_AXIS)
-BAR_SERIES_TYPE: Final[str] = "mvAppItemType::mvBarSeries"
 
 
 class Library:

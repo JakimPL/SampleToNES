@@ -14,6 +14,7 @@ from sampletones_core.reconstructions.reconstruction.renders import rendered_len
 from sampletones_core.reconstructions.reconstruction.stems.hearing import (
     HeardRenders,
     Hearing,
+    recordings_heard,
 )
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 from sampletones_shared.logger import logger
@@ -184,8 +185,7 @@ class ReconstructionData:
 
     def recordings_heard(self, selection: StemSelection) -> Tuple[np.ndarray, ...]:
         """The loaded recordings ``selection`` hears anywhere, in record order."""
-        heard = selection.any_channel()
-        return tuple(recording for stem_id, recording in self.recordings_by_stem.items() if stem_id in heard)
+        return recordings_heard(self.reconstruction.stems_data, selection, self.recordings_by_stem)
 
     def waveform_data(
         self,

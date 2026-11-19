@@ -97,6 +97,14 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
         return self._language_manager["global.browser.label.browser"]
 
     @property
+    def refresh_button_label(self) -> str:
+        return self._language_manager["global.browser.label.refresh_button"]
+
+    @property
+    def refresh_status_message(self) -> str:
+        return self._language_manager["global.browser.message.status_refresh"]
+
+    @property
     def section_glyph(self) -> str:
         return self._glyphs.headers.reconstruction
 
@@ -151,7 +159,7 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
         if configuration is None:
             return []
 
-        return self._reconstruction_detail_items(configuration)
+        return self._details.reconstruction(configuration)
 
     def _node_detail_recordings(self, node: TreeNode) -> Tuple[DetailSwatch, ...]:
         """The recordings the hovered document is made of, asked for as the pointer reaches its row.

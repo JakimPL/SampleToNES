@@ -1,6 +1,6 @@
 from sampletones_core.exports.request import SampleExport
 from sampletones_core.project.project import Project
-from sampletones_player.export.program import NSFProgram
+from sampletones_player.export.program import Program
 
 
 class ChosenProgram:
@@ -10,11 +10,11 @@ class ChosenProgram:
         program: The program the run writes.
     """
 
-    def __init__(self, program: NSFProgram) -> None:
+    def __init__(self, program: Program) -> None:
         self.program = program
 
-    def for_sample(self, request: SampleExport) -> NSFProgram:  # pylint: disable=unused-argument
+    def for_sample(self, request: SampleExport) -> Program:  # pylint: disable=unused-argument
         return self.program
 
-    def for_project(self, project: Project) -> NSFProgram:  # pylint: disable=unused-argument
+    def for_project(self, project: Project) -> Program:  # pylint: disable=unused-argument
         return self.program

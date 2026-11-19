@@ -2,8 +2,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
 
+from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
+
 RUN_STAMP: Final[str] = "run-%Y%m%d-%H%M%S"
 BOARD_STAMP: Final[str] = "page-%Y%m%d-%H%M%S"
+
+
+def output_root(name: str) -> Path:
+    """The folder a measurement tool writes its runs into, standing among the user's documents."""
+    return USER_PATH_DOCUMENTS / name
 
 
 def stamped_run_directory(root: Path) -> Path:

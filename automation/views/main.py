@@ -13,19 +13,17 @@ from sampletones_application.constants.output import OutputKind
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
     SUF_BUTTON,
-    SUF_COLLAPSE_BODY,
-    SUF_COLLAPSE_RAIL,
-    SUF_COLLAPSE_STRIP,
     SUF_TOOLTIP,
     TAG_GLOBAL_THEME_STEP_BUTTON_LIT,
 )
 from sampletones_application.tags.main import (
-    PRE_MAIN_SOURCE_STEP,
     TAG_MAIN_ADVANCED_BUTTON_SELECT_LIBRARY_DIRECTORY,
     TAG_MAIN_ADVANCED_PANEL,
     TAG_MAIN_ADVANCED_PATH_LIBRARY_DIRECTORY_DISPLAY,
     TAG_MAIN_CONVERTER_RADIO_MODE,
 )
+from sampletones_application.ui.elements.layout.collapse import CollapseTags
+from sampletones_application.ui.panels.main.source.steps import ChannelCapSteps
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.main.source import CHANNEL_CAP_STEPS
 
@@ -54,11 +52,11 @@ class Card:
 
     def is_collapsed(self) -> bool:
         """Whether the card stands folded into its bar, its body put away."""
-        return not self._bridge.ask(lambda: read_item(compose_tag(self.tag, SUF_COLLAPSE_BODY))).shown
+        return not self._bridge.ask(lambda: read_item(CollapseTags.of(self.tag).body)).shown
 
     def toggle(self) -> None:
         """Clicks the card's header bar, which folds an open card and opens a folded one."""
-        strip = compose_tag(self.tag, SUF_COLLAPSE_STRIP)
+        strip = CollapseTags.of(self.tag).strip
         self._hand.scroll_into_view(strip)
         self._hand.click(strip)
 
@@ -69,12 +67,12 @@ class Card:
     @property
     def rail(self) -> str:
         """The rail a sideways card folds into, which a click unfolds."""
-        return compose_tag(self.tag, SUF_COLLAPSE_RAIL)
+        return CollapseTags.of(self.tag).rail
 
     @property
     def strip(self) -> str:
         """The header bar a click folds the card on."""
-        return compose_tag(self.tag, SUF_COLLAPSE_STRIP)
+        return CollapseTags.of(self.tag).strip
 
     def unfold_from_the_rail(self) -> None:
         """Clicks the rail a sideways card stands folded into, which unfolds it."""
@@ -117,15 +115,15 @@ class Main:
 
     def choose_channels_at_once(self, count: int) -> None:
         """Clicks the step naming ``count`` channels at once."""
-        self._hand.scroll_into_view(_step_tag(count))
-        self._hand.click(_step_tag(count))
+        self._hand.scroll_into_view(ChannelCapSteps.step_tag(count))
+        self._hand.click(ChannelCapSteps.step_tag(count))
 
     def lit_channels_at_once(self) -> Optional[int]:
         """The step of Channels at once that stands lit, if one does."""
 
         def read() -> Optional[int]:
             for step in CHANNEL_CAP_STEPS:
-                if read_theme(_step_tag(step)) == TAG_GLOBAL_THEME_STEP_BUTTON_LIT:
+                if read_theme(ChannelCapSteps.step_tag(step)) == TAG_GLOBAL_THEME_STEP_BUTTON_LIT:
                     return step
 
             return None
@@ -142,7 +140,3 @@ class Main:
         """The whole path of the library folder, as the hover over its shortened path shows it."""
         tooltip = compose_tag(TAG_MAIN_ADVANCED_PATH_LIBRARY_DIRECTORY_DISPLAY, SUF_TOOLTIP)
         return " ".join(self._bridge.ask(lambda: read_texts(tooltip)))
-
-
-def _step_tag(step: int) -> str:
-    return compose_tag(PRE_MAIN_SOURCE_STEP, str(step), SUF_BUTTON)

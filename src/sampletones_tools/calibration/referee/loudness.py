@@ -3,6 +3,7 @@ from typing import Final, List
 
 import numpy as np
 
+from sampletones_core.audio.processing import power_to_decibels
 from sampletones_tools.calibration.config.referee import RefereeConfig
 
 from .bands import BandAnalyzer
@@ -105,7 +106,7 @@ class LoudnessWeightedReferee:
             reference_energy,
             range_decibels=self.config.dynamic_range_decibels,
         )
-        deviation = 10.0 * np.log10((reference_energy + floor) / (estimate_energy + floor))
+        deviation = power_to_decibels((reference_energy + floor) / (estimate_energy + floor))
         weights = np.maximum(reference_energy, estimate_energy) / loudest
         weights = weights**self.config.compression_exponent
         total = float(np.sum(weights))

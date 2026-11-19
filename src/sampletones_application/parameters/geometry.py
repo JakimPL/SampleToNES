@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from sampletones_application.layout.config import LayoutConfig
+from sampletones_application.ui.elements.layout.responsive import expanded_side_width
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,37 @@ class TabGeometry:
     baseline_viewport_width: int
     rail_width: int
     panel_gap: int
+
+    def side_column_width(
+        self,
+        *,
+        collapsed: bool,
+        base_width: int,
+        side_panel_count: int,
+        viewport_width: int,
+    ) -> int:
+        """The width a tab's side column takes: the rail it docks to while its card is collapsed,
+        and otherwise its base width widened as the viewport grows past the design baseline.
+
+        Args:
+            collapsed: Whether the card filling the column is collapsed.
+            base_width: The column's width at the baseline viewport.
+            side_panel_count: The side columns the tab shares the surplus width with.
+            viewport_width: The viewport's current client width.
+
+        Returns:
+            int: The column's width in pixels.
+        """
+        if collapsed:
+            return self.rail_width
+
+        return expanded_side_width(
+            base_width,
+            viewport_width,
+            self.baseline_viewport_width,
+            side_panel_count,
+            self.center_weight,
+        )
 
     @classmethod
     def from_config(cls, config: LayoutConfig) -> TabGeometry:

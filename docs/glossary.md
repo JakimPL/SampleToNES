@@ -355,4 +355,5 @@ sounds.
 | `.ftm` | FamiTracker module ([export](formats/famitracker.md)). |
 | `.btp` | Bitphase document ([export](formats/bitphase.md)). |
 | `.nsf` | [NSF program](formats/nsf.md) — a song and the driver that plays it. |
+| `.nes` | [NES ROM](formats/rom.md) — a cartridge image playing a song on a player screen. |
 | `.json` | Bitphase instrument preset ([export](formats/bitphase.md)), or the [configuration file](formats/configuration.md). |

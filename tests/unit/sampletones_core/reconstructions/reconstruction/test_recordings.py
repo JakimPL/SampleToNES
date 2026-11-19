@@ -3,7 +3,8 @@ from typing import Final, Optional, Tuple
 
 import numpy as np
 
-from sampletones_core.audio import load_audio, mix_scale, read_stems, scale_stems, write_wave
+from sampletones_core.audio import mix_scale, read_recording, read_stems, scale_stems, write_wave
+from sampletones_core.audio.processing import normalize, quantize
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import PulseInstruction
@@ -81,16 +82,11 @@ class TestLoadingADocumentsRecordings:
 
         (recording,) = load_recordings(_document((path,), None))
 
-        np.testing.assert_allclose(
-            recording,
-            load_audio(
-                path,
-                target_sample_rate=config.library.sample_rate,
-                normalize=config.general.normalize,
-                quantize=config.general.quantize,
-                quantization_levels=config.general.quantization_levels,
-            ),
+        normalized = normalize(read_recording(path, target_sample_rate=config.library.sample_rate))
+        expected = (
+            quantize(normalized, levels=config.general.quantization_levels) if config.general.quantize else normalized
         )
+        np.testing.assert_allclose(recording, expected)
 
     def test_a_detached_document_loads_no_recording(self, tmp_path: Path) -> None:
         document = _document(_written(tmp_path, LEVELS), MEASURED_SCALE)

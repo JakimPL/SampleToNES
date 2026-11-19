@@ -112,6 +112,7 @@ The transport's verbs are reached identically from the Playback menu, the toolba
 | Play from this frame | Sequencer: plays the song from the first row of the frame the tracker shows. |
 | Play from here | Sequencer panels: plays the song from the cursor's row. |
 | Stop | Silences everything, the engaged source and any preview, from any tab. |
+| Step back / Step forward | Moves the engaged target's playhead to the previous or next tick boundary and holds it paused there, pausing a sounding target first. A target whose audio lies on no tick grid, such as the song, takes no step. |
 
 Each verb is an action, so the combination it answers to is the shipped scheme's (`sampletones_config/keybindings/`) and every surface prints what the scheme says.
 
@@ -197,6 +198,7 @@ The backend is terminated once every writer has ended. A writer still inside a d
 |---------|-------|
 | The devices the backend lists, and the device, rate and buffer size the reader chose | `DeviceCatalog` and `AudioDeviceManager` (`sampletones_core/audio/`) |
 | The audio backend: the devices it lists and the streams it opens | `AudioDriverProtocol` and `PyAudioDriver` (`sampletones_core/audio/driver/`) |
+| Starting the backend, and the one listing no device where the audio system refuses to start | `start_portaudio` and `UnstartedDriver` (`sampletones_core/audio/driver/`) |
 | The one output every sound plays through: its claims, its stream, its writer and its threads | `AudioOutput` (`sampletones_core/audio/output/`) |
 | One sound as its owner holds it, and what the owner hears of it | `Playback` and `PlaybackListener` (`sampletones_core/audio/output/playback/`) |
 | Every decision the output makes, as state machines a model check covers | `SessionCore` (`sampletones_core/audio/output/session/`) and the lifecycles (`sampletones_core/audio/output/lifecycle/`) |

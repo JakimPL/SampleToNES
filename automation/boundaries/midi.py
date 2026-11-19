@@ -6,10 +6,10 @@ import pytest
 
 import sampletones_application.application as application_module
 from sampletones_application.utils.midi.backends import MidiPort, MidiSink
+from sampletones_application.utils.midi.messages import is_system_exclusive
 from sampletones_shared.exceptions import MidiPortError
 
 THREAD_NAME: Final[str] = "FakeMidi"
-SYSTEM_EXCLUSIVE: Final[int] = 0xF0
 BACKEND_FAILURE: Final[str] = "The fake MIDI library failed"
 
 Delivery = Union[bytes, "_Lost", "_Stop"]
@@ -110,7 +110,7 @@ class ScriptedMidiInput:
             delivery = deliveries.get()
             try:
                 match delivery:
-                    case bytes() if delivery[:1] != bytes((SYSTEM_EXCLUSIVE,)):
+                    case bytes() if not is_system_exclusive(delivery):
                         sink.received(delivery)
                     case _Lost():
                         sink.lost()

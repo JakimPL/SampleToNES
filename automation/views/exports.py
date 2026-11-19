@@ -21,7 +21,6 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_NSF_BUTTON_BROWSE,
     TAG_SETTINGS_NSF_BUTTON_CANCEL,
     TAG_SETTINGS_NSF_BUTTON_EXPORT,
-    TAG_SETTINGS_NSF_CHECKBOX_CHANNEL,
     TAG_SETTINGS_NSF_COMBO_REPEAT,
     TAG_SETTINGS_NSF_COMBO_SCHEME,
     TAG_SETTINGS_NSF_INPUT_LOOP_FRAME,
@@ -31,6 +30,7 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_RENDER_BUTTON_CLOSE,
     TAG_SETTINGS_RENDER_WINDOW,
 )
+from sampletones_application.ui.panels.dialogs.nsf import GUINSFExportWindow
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.constants.enums import ChannelName
 
@@ -82,19 +82,19 @@ class NSFWindow:
 
     def offers(self, channel: ChannelName) -> bool:
         """Whether ``channel``'s box answers a press, which it does for a channel the source sounds."""
-        return self._bridge.ask(lambda: read_item(_channel_box(channel))).enabled
+        return self._bridge.ask(lambda: read_item(GUINSFExportWindow.channel_tag(channel))).enabled
 
     def is_ticked(self, channel: ChannelName) -> bool:
         """Whether ``channel``'s box stands ticked."""
-        return bool(self._bridge.ask(lambda: read_value(_channel_box(channel))))
+        return bool(self._bridge.ask(lambda: read_value(GUINSFExportWindow.channel_tag(channel))))
 
     def tick(self, channel: ChannelName) -> None:
         """Clicks ``channel``'s box, which ticks it or lets it go."""
-        self._hand.click(_channel_box(channel))
+        self._hand.click(GUINSFExportWindow.channel_tag(channel))
 
     def press_on(self, channel: ChannelName) -> None:
         """Clicks where ``channel``'s box stands, whether or not the box answers."""
-        rect = self._bridge.ask(lambda: read_item(_channel_box(channel))).rect
+        rect = self._bridge.ask(lambda: read_item(GUINSFExportWindow.channel_tag(channel))).rect
         if rect is None:
             raise MissingControlError(f"The box of {channel} stands nowhere")
 
@@ -214,10 +214,6 @@ class Exports:
     def export_reconstruction(self, item: MenuElements) -> None:
         """Chooses Reconstruction ▸ Export instruments ▸ ``item``."""
         self._menu.choose(MenuElements.GROUP_RECONSTRUCTION, item)
-
-
-def _channel_box(channel: ChannelName) -> str:
-    return compose_tag(TAG_SETTINGS_NSF_CHECKBOX_CHANNEL, channel.value)
 
 
 def _export_button() -> str:

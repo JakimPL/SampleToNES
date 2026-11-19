@@ -3,8 +3,10 @@ from typing import Any, Dict, Final, List
 
 import pytest
 
+import hatch_build
 from assets.documentation.build import SiteRequest
 from assets.documentation.paths import DOCS_DIRECTORY, PROJECT_FILE
+from bootstrap import layout
 from hatch_build import (
     DEPLOYMENT_DESTINATION,
     DEVELOPMENT_WHEEL,
@@ -140,3 +142,25 @@ class TestDistributionBuildHook:
         assert len(builds.requests) == 1
         assert not site.exists()
         assert not deployment.parent.exists()
+
+
+class TestTheBuildHookStatesTheLayoutTheScriptsState:
+    """The build hook runs inside the build backend, out of the scripts' import reach, so it states
+    the repository's layout again; each figure it states is the one the scripts hold."""
+
+    def test_the_figures_agree(self) -> None:
+        assert (
+            hatch_build.SOURCE_DIRECTORY,
+            SITE_DESTINATION,
+            DEPLOYMENT_DESTINATION,
+            RELEASE_DEPLOYMENT,
+            DEVELOPMENT_WHEEL,
+            DEVELOPMENT_WHEEL_ENABLED,
+        ) == (
+            layout.SOURCE_DIRECTORY,
+            layout.DOCUMENTATION_PACKAGE_PATH,
+            layout.DEPLOYMENT_PACKAGE_PATH,
+            layout.RELEASE_DEPLOYMENT,
+            layout.DEVELOPMENT_WHEEL,
+            layout.DEVELOPMENT_WHEEL_ENABLED,
+        )

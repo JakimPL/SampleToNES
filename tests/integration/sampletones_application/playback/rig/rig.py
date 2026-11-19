@@ -90,7 +90,7 @@ class PlaybackRig:
         with self._gesture():
             match sound:
                 case Sound.RECONSTRUCTION | Sound.INSTRUCTION:
-                    self.stack.player(sound).load_audio_data(AudioData.from_array(audio, sample_rate))
+                    self.stack.player(sound).load_audio_data(AudioData.from_array(audio, sample_rate, tick_length=None))
                 case Sound.FILE:
                     self.stack.file = self._write_file(audio, sample_rate)
                 case _:

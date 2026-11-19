@@ -1,13 +1,13 @@
 import ast
 import logging
 import re
-import sys
 from collections.abc import Iterator, Sequence
 from itertools import chain
 from pathlib import Path
 from typing import Final, List, NamedTuple, Tuple, Union
 
 from sampletones_shared.logger import logger
+from sampletones_tools.checks.report import report_findings
 from sampletones_tools.checks.source.modules import SourceModule, discover_modules
 from sampletones_tools.checks.source.nodes import terminal_name
 from sampletones_tools.checks.source.packages import source_package_directory
@@ -202,15 +202,8 @@ def check_colors(package: Path, config: Path, palettes: Path) -> List[ColorFindi
 
 def report(findings: Sequence[ColorFinding]) -> int:
     """Prints every finding on the standard error stream and answers with the exit status."""
-    if not findings:
-        return 0
-
-    print("Color(s) that stop following the active palette:", file=sys.stderr)
-    for location, message in findings:
-        print(f"  {location}: {message}", file=sys.stderr)
-
-    print(
-        f"\nFound {len(findings)} color(s) detached from the palette.",
-        file=sys.stderr,
+    return report_findings(
+        [f"{location}: {message}" for location, message in findings],
+        heading="Color(s) that stop following the active palette:",
+        total="Found {count} color(s) detached from the palette.",
     )
-    return 1

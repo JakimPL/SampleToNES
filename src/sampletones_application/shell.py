@@ -13,8 +13,8 @@ from sampletones_application.coordinators.playback.protocol import AudioPlayerPr
 from sampletones_application.coordinators.tabs.instructions import (
     InstructionsTabCoordinator,
 )
-from sampletones_application.coordinators.tabs.main import MainTabCoordinator
-from sampletones_application.coordinators.tabs.reconstruction import (
+from sampletones_application.coordinators.tabs.main.coordinator import MainTabCoordinator
+from sampletones_application.coordinators.tabs.reconstruction.coordinator import (
     ReconstructionTabCoordinator,
 )
 from sampletones_application.coordinators.tabs.sequencer.coordinator import SequencerTabCoordinator
@@ -100,6 +100,8 @@ class ShortcutBindings:
     play_from_start: Callback
     play_from_frame: Callback
     stop: Callback
+    step_backward: Callback
+    step_forward: Callback
     toggle_autoplay: Callback
     set_follow_mode: Callable[[FollowMode], None]
     toggle_loop_song: Callback
@@ -272,6 +274,8 @@ class ApplicationShell:
             ShortcutId.PLAY_FROM_START: bindings.play_from_start,
             ShortcutId.PLAY_FROM_FRAME: bindings.play_from_frame,
             ShortcutId.STOP: bindings.stop,
+            ShortcutId.STEP_BACKWARD: bindings.step_backward,
+            ShortcutId.STEP_FORWARD: bindings.step_forward,
             ShortcutId.TOGGLE_AUTOPLAY: bindings.toggle_autoplay,
             ShortcutId.TOGGLE_LOOP_SONG: bindings.toggle_loop_song,
             ShortcutId.AUDIO_SETTINGS: bindings.audio_settings,

@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Dict, List, Tuple, TypeVar, Union
 
 from sampletones_core.constants.enums import FeatureKey
@@ -8,7 +8,7 @@ from sampletones_core.instructions import TonalInstruction
 from sampletones_core.instructions.tonal import bend_steps
 
 from .exporter import Exporter
-from .implementation.utils import held_across_rests
+from .implementation.utils import center_pitch, held_across_rests, released
 
 TonalInstructionT = TypeVar("TonalInstructionT", bound=TonalInstruction)
 
@@ -20,6 +20,46 @@ class TonalExporter(Exporter[TonalInstructionT], ABC):
     it sounds. Both dimensions are read the way a contour is read — a rest carries what the last
     sounding frame stated — so a bend survives a rest exactly as a pitch does.
     """
+
+    @classmethod
+    @abstractmethod
+    def volume_of(cls, instruction: TonalInstructionT) -> int:
+        """The volume one sounding frame plays at."""
+
+    @classmethod
+    def extract_data(cls, instructions: List[TonalInstructionT]) -> Tuple[int, List[int], List[int]]:
+        """The first note sounded, the note each frame stands at, and the volume of each frame.
+
+        The volumes carry one silent tick after the frames where the channel still sounds at its
+        end, so a sample ends quiet.
+
+        Args:
+            instructions: The channel's per-frame instructions.
+
+        Returns:
+            Tuple[int, List[int], List[int]]: The first note, one note per frame, and the volumes.
+        """
+        initial_pitch, pitches = cls.read_pitches(instructions)
+        volumes = released([cls.volume_of(instruction) if instruction.on else 0 for instruction in instructions])
+        return initial_pitch, pitches, volumes
+
+    @classmethod
+    def derive_initial_pitch(cls, instructions: List[TonalInstructionT]) -> int:
+        first_pitch, pitches = cls.read_pitches(instructions)
+        return center_pitch(first_pitch, pitches)
+
+    @classmethod
+    def read_envelopes(
+        cls,
+        instructions: List[TonalInstructionT],
+        initial_pitch: int,
+    ) -> Dict[FeatureKey, Tuple[int, ...]]:
+        _, pitches, volumes = cls.extract_data(instructions)
+        return {
+            FeatureKey.VOLUME: tuple(volumes),
+            FeatureKey.ARPEGGIO: tuple(pitch - initial_pitch for pitch in pitches),
+            **cls.read_bends(instructions),
+        }
 
     @classmethod
     def read_pitches(cls, instructions: List[TonalInstructionT]) -> Tuple[int, List[int]]:

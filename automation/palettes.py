@@ -1,6 +1,8 @@
 from typing import Final, FrozenSet, Sequence, Tuple
 
 from automation.dearpygui.items.colors import rounded_color
+from automation.worlds.home import World
+from sampletones_application.config.session.application.config import ApplicationConfig
 from sampletones_application.paths import PALETTES_DIRECTORY
 from sampletones_application.utils.palette.catalog import PaletteCatalog
 from sampletones_application.utils.palette.palette import Palette
@@ -12,6 +14,14 @@ FULL_STEP: Final[float] = 255.0
 def shipped_palettes() -> PaletteCatalog:
     """The palettes this build ships, the ones Display settings offers."""
     return PaletteCatalog.load(PALETTES_DIRECTORY)
+
+
+def worn_palette(world: World) -> Palette:
+    """The palette the application wears in ``world``: the one its settings name, or the default where the home
+    holds no settings.
+    """
+    config = world.application_config or ApplicationConfig()
+    return shipped_palettes().get(config.display.palette)
 
 
 def token_color(palette: Palette, token: str) -> Color:

@@ -2,7 +2,7 @@ from typing import Final, Tuple
 
 from py65.memory import ObservableMemory
 
-from sampletones_player.specification.nsf import PROGRAM_START
+from sampletones_player.specification.memory import PROGRAM_START
 from sampletones_tools.console.cartridge import BANK_SIZE, EMPTY_BYTE, FIRST_BANK_REGISTER, Cartridge
 from sampletones_tools.console.header import NSFHeader
 from tests.unit.sampletones_tools.console.files import NSFFile, bank_offset

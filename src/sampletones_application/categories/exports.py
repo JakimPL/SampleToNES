@@ -49,28 +49,38 @@ EXPORT_PROJECT_ELEMENTS: Final[Dict[ExportFormat, ExportProjectElements]] = {
         exported_message=GlobalMessageElements.NSF_PROJECT_EXPORTED_SUCCESSFULLY,
         export_failed_message=GlobalMessageElements.NSF_PROJECT_EXPORT_FAILED,
     ),
+    ExportFormat.ROM: ExportProjectElements(
+        dialog_title=GlobalDialogTitleElements.EXPORT_ROM_PROJECT,
+        filter_name=FileFilterElements.ROM,
+        exported_message=GlobalMessageElements.ROM_PROJECT_EXPORTED_SUCCESSFULLY,
+        export_failed_message=GlobalMessageElements.ROM_PROJECT_EXPORT_FAILED,
+    ),
 }
 
 EXPORT_PROJECT_MENU_LABELS: Final[Dict[ExportFormat, MenuElements]] = {
     ExportFormat.FAMITRACKER: MenuElements.ITEM_FILE_EXPORT_FAMITRACKER,
     ExportFormat.BITPHASE: MenuElements.ITEM_FILE_EXPORT_BITPHASE,
     ExportFormat.NSF: MenuElements.ITEM_FILE_EXPORT_NSF,
+    ExportFormat.ROM: MenuElements.ITEM_FILE_EXPORT_ROM,
 }
 
 INSTRUMENT_EXPORT_FORMATS: Final[Tuple[ExportFormat, ...]] = (
     ExportFormat.FAMITRACKER,
     ExportFormat.BITPHASE_PRESET,
     ExportFormat.NSF,
+    ExportFormat.ROM,
 )
 
 EXPORT_INSTRUMENT_FILTERS: Final[Dict[ExportFormat, FileFilterElements]] = {
     ExportFormat.FAMITRACKER: FileFilterElements.FAMITRACKER_INSTRUMENT,
     ExportFormat.BITPHASE_PRESET: FileFilterElements.BITPHASE_PRESET,
     ExportFormat.NSF: FileFilterElements.NSF,
+    ExportFormat.ROM: FileFilterElements.ROM,
 }
 
 EXPORT_SAMPLE_MENU_LABELS: Final[Dict[ExportFormat, MenuElements]] = {
     ExportFormat.FAMITRACKER: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_FAMITRACKER,
     ExportFormat.BITPHASE_PRESET: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_BITPHASE_PRESET,
     ExportFormat.NSF: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_NSF,
+    ExportFormat.ROM: MenuElements.ITEM_RECONSTRUCTION_EXPORT_INSTRUMENTS_ROM,
 }

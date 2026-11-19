@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.fft import erb_bandwidth, k_weighting
-from sampletones_core.fft.fft import calculate_weights_from_edges
+from sampletones_core.fft.fft import calculate_weights_from_edges, erb_rate
 
 OCTAVE_EDGES: Final[np.ndarray] = np.geomspace(55.0, 14080.0, 8 * 12 + 1)
 
@@ -69,3 +69,21 @@ class TestEdgeWeightDensity:
         edges = np.arange(40.0, 121.0, 10.0)
         weights = calculate_weights_from_edges(edges, perceptual_exponent=0.0)
         assert float(np.max(weights) / np.min(weights)) < 1.35
+
+
+class TestErbRate:
+    """The ERB-rate scale counts auditory filters: it starts at zero, rises with frequency, and its
+    slope is the reciprocal of the filter bandwidth there, so bands even on it span one filter each."""
+
+    def test_zero_hertz_is_the_start_of_the_scale(self) -> None:
+        assert erb_rate(np.array([0.0]))[0] == 0.0
+
+    def test_the_scale_rises_with_frequency(self) -> None:
+        rates = erb_rate(np.geomspace(20.0, 20000.0, 64))
+        assert np.all(np.diff(rates) > 0.0)
+
+    @pytest.mark.parametrize("frequency", [100.0, 1000.0, 8000.0])
+    def test_the_slope_is_one_filter_per_bandwidth(self, frequency: float) -> None:
+        step = 1e-3
+        slope = (erb_rate(np.array([frequency + step]))[0] - erb_rate(np.array([frequency - step]))[0]) / (2 * step)
+        assert slope == pytest.approx(1.0 / erb_bandwidth(np.array([frequency]))[0], rel=1e-2)

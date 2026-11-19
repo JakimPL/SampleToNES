@@ -21,14 +21,16 @@ from sampletones_core.timing import SONG_TICK_BOUNDS, SongTiming
 from sampletones_player.builder import SONG_START
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.driver.image import DriverImage
-from sampletones_player.export.backend import NSFBackend
-from sampletones_player.export.program import NSFProgram
-from sampletones_player.nsf.information import NSFInformation
+from sampletones_player.export.backend import ProgramBackend
+from sampletones_player.export.backends import program_backends
+from sampletones_player.export.program import Program
+from sampletones_player.information import ProgramInformation
+from sampletones_player.nsf.header import HEADER_TEXT
+from sampletones_player.specification.memory import PROGRAM_SIZE
 from sampletones_player.specification.nsf import (
     ARTIST_OFFSET,
     COPYRIGHT_OFFSET,
     HEADER_SIZE,
-    PROGRAM_SIZE,
     STRING_FIELD_SIZE,
     TITLE_OFFSET,
 )
@@ -124,28 +126,35 @@ def read_field(data: bytes, offset: int) -> str:
 
 
 @pytest.fixture(name="backend")
-def backend_fixture() -> NSFBackend:
-    return NSFBackend.stated()
+def backend_fixture() -> ProgramBackend:
+    return program_backends()[ExportFormat.NSF]
 
 
 class TestSeam:
     """What the backend answers the export seam with."""
 
-    def test_the_backend_writes_the_nsf_format(self, backend: NSFBackend) -> None:
+    def test_the_backend_writes_the_nsf_format(self, backend: ProgramBackend) -> None:
         assert backend.export_format == ExportFormat.NSF
 
-    def test_a_program_plays_every_scope_the_application_exports(self, backend: NSFBackend) -> None:
+    def test_a_program_plays_every_scope_the_application_exports(self, backend: ProgramBackend) -> None:
         assert backend.supported_scopes == frozenset(ExportScope)
 
     @pytest.mark.parametrize("scope", list(ExportScope))
     def test_every_scope_the_backend_writes_carries_the_nsf_extension(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         scope: ExportScope,
     ) -> None:
         assert backend.extension(scope) == EXT_FILE_NSF
 
-    def test_the_backend_stands_where_the_seam_expects_one(self, backend: NSFBackend) -> None:
+    def test_the_text_has_the_room_the_container_gives_it(self, backend: ProgramBackend) -> None:
+        assert backend.text == HEADER_TEXT
+
+    def test_a_chosen_program_is_written_into_the_same_kind_of_file(self, backend: ProgramBackend) -> None:
+        chosen = backend.choosing(Program.for_project(Project.create(title=PROJECT_TITLE, author=PROJECT_AUTHOR)))
+        assert (chosen.export_format, chosen.text) == (backend.export_format, backend.text)
+
+    def test_the_backend_stands_where_the_seam_expects_one(self, backend: ProgramBackend) -> None:
         export_backend: ExportBackend = backend
         assert export_backend.export_format == ExportFormat.NSF
 
@@ -153,7 +162,7 @@ class TestSeam:
 class TestWriteSample:
     """A reconstruction written as one program playing every slice together."""
 
-    def test_the_run_writes_the_destination_alone(self, backend: NSFBackend, tmp_path: Path) -> None:
+    def test_the_run_writes_the_destination_alone(self, backend: ProgramBackend, tmp_path: Path) -> None:
         destination = tmp_path / FILENAME
         request = player_sample(
             SAMPLE_NAME,
@@ -166,7 +175,7 @@ class TestWriteSample:
         artifact = backend.write_sample(destination, request)
         assert artifact.paths == (destination,)
 
-    def test_the_program_carries_its_driver(self, backend: NSFBackend, tmp_path: Path) -> None:
+    def test_the_program_carries_its_driver(self, backend: ProgramBackend, tmp_path: Path) -> None:
         destination = tmp_path / FILENAME
         request = player_sample(
             SAMPLE_NAME,
@@ -176,7 +185,7 @@ class TestWriteSample:
         backend.write_sample(destination, request)
         assert len(destination.read_bytes()) > HEADER_SIZE
 
-    def test_the_reconstructions_name_lists_the_program(self, backend: NSFBackend, tmp_path: Path) -> None:
+    def test_the_reconstructions_name_lists_the_program(self, backend: ProgramBackend, tmp_path: Path) -> None:
         destination = tmp_path / FILENAME
         request = player_sample(
             SAMPLE_NAME,
@@ -186,7 +195,7 @@ class TestWriteSample:
         backend.write_sample(destination, request)
         assert read_field(destination.read_bytes(), TITLE_OFFSET) == SAMPLE_NAME
 
-    def test_an_export_is_credited_to_nobody(self, backend: NSFBackend, tmp_path: Path) -> None:
+    def test_an_export_is_credited_to_nobody(self, backend: ProgramBackend, tmp_path: Path) -> None:
         """A reconstruction names no artist, so the field reaches the file empty and a player
         listing the file leaves the line blank.
         """
@@ -199,7 +208,7 @@ class TestWriteSample:
         backend.write_sample(destination, request)
         assert read_field(destination.read_bytes(), ARTIST_OFFSET) == ""
 
-    def test_the_envelopes_cross_over_whole(self, backend: NSFBackend, tmp_path: Path) -> None:
+    def test_the_envelopes_cross_over_whole(self, backend: ProgramBackend, tmp_path: Path) -> None:
         destination = tmp_path / FILENAME
         request = player_sample(
             SAMPLE_NAME,
@@ -208,7 +217,7 @@ class TestWriteSample:
         )
         assert backend.write_sample(destination, request).truncation is None
 
-    def test_a_destination_reaches_a_directory_the_run_creates(self, backend: NSFBackend, tmp_path: Path) -> None:
+    def test_a_destination_reaches_a_directory_the_run_creates(self, backend: ProgramBackend, tmp_path: Path) -> None:
         destination = tmp_path / "exports" / FILENAME
         request = player_sample(
             SAMPLE_NAME,
@@ -220,7 +229,7 @@ class TestWriteSample:
 
     def test_a_reconstruction_outgrowing_the_program_area_reports_its_size(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         tmp_path: Path,
     ) -> None:
         destination = tmp_path / FILENAME
@@ -231,12 +240,12 @@ class TestWriteSample:
 class TestWriteInstrument:
     """One channel slice written as a program sounding it alone."""
 
-    def test_the_slice_is_listed_under_its_own_name(self, backend: NSFBackend, tmp_path: Path) -> None:
+    def test_the_slice_is_listed_under_its_own_name(self, backend: ProgramBackend, tmp_path: Path) -> None:
         destination = tmp_path / FILENAME
         backend.write_instrument(destination, lead_slice("lead", SOUNDING_TICKS))
         assert read_field(destination.read_bytes(), TITLE_OFFSET) == "lead"
 
-    def test_a_slice_plays_the_program_its_reconstruction_would(self, backend: NSFBackend, tmp_path: Path) -> None:
+    def test_a_slice_plays_the_program_its_reconstruction_would(self, backend: ProgramBackend, tmp_path: Path) -> None:
         """A slice sounds on its own channel and the other three rest, which is the reconstruction
         it belongs to with every other slice standing by.
         """
@@ -274,14 +283,14 @@ def drum_project() -> Project:
 class TestWriteProject:
     """A whole composition written as one program the console plays."""
 
-    def test_the_file_is_written(self, backend: NSFBackend, tmp_path: Path) -> None:
+    def test_the_file_is_written(self, backend: ProgramBackend, tmp_path: Path) -> None:
         destination = tmp_path / FILENAME
         backend.write_project(destination, ProjectExport(project=drum_project()))
         assert destination.is_file()
 
     def test_the_program_is_listed_under_the_projects_own_title(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         tmp_path: Path,
     ) -> None:
         destination = tmp_path / FILENAME
@@ -290,7 +299,7 @@ class TestWriteProject:
 
     def test_the_program_is_credited_to_the_projects_author(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         tmp_path: Path,
     ) -> None:
         destination = tmp_path / FILENAME
@@ -299,7 +308,7 @@ class TestWriteProject:
 
     def test_the_program_plays_the_song_the_project_arranges(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         tmp_path: Path,
     ) -> None:
         """What reaches the file is the arrangement, so it lasts the ticks the groove gives it."""
@@ -311,7 +320,7 @@ class TestWriteProject:
 
     def test_the_program_repeats_from_its_first_tick(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         tmp_path: Path,
     ) -> None:
         """A piece of music is listened to over and over, so the file comes round where the
@@ -322,7 +331,7 @@ class TestWriteProject:
 
     def test_a_destination_reaches_a_directory_the_run_creates(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         tmp_path: Path,
     ) -> None:
         destination = tmp_path / "exports" / FILENAME
@@ -335,7 +344,7 @@ class TestWhatAProjectRunSaysAboutItself:
 
     def test_the_run_names_each_stage_in_the_order_it_reaches_it(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         tmp_path: Path,
     ) -> None:
         reporter: RecordingReporter[ExportProgress] = RecordingReporter()
@@ -348,7 +357,7 @@ class TestWhatAProjectRunSaysAboutItself:
 
     def test_the_walk_counts_the_ticks_the_song_lasts(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         tmp_path: Path,
     ) -> None:
         """The groove states the length before a row is played, so the stage travels toward it."""
@@ -364,7 +373,7 @@ class TestWhatAProjectRunSaysAboutItself:
 
     def test_a_withdrawn_walk_leaves_no_file(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         tmp_path: Path,
     ) -> None:
         destination = tmp_path / FILENAME
@@ -381,7 +390,7 @@ class TestWhatARunSaysAboutItself:
 
     def test_the_run_names_each_stage_in_the_order_it_reaches_it(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         tmp_path: Path,
     ) -> None:
         reporter: RecordingReporter[ExportProgress] = RecordingReporter()
@@ -399,7 +408,7 @@ class TestWhatARunSaysAboutItself:
 
     def test_the_compression_reports_the_bytes_it_has_laid_down(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         tmp_path: Path,
     ) -> None:
         """A search ends where the song runs out of phrases that pay, so it counts bytes alone."""
@@ -415,7 +424,7 @@ class TestWhatARunSaysAboutItself:
 
     def test_a_slice_reports_the_program_its_reconstruction_would(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         tmp_path: Path,
     ) -> None:
         alone: RecordingReporter[ExportProgress] = RecordingReporter()
@@ -426,7 +435,7 @@ class TestWhatARunSaysAboutItself:
 class TestWithdrawingARun:
     """A caller that stops wanting the program is left with no file to open."""
 
-    def test_a_withdrawn_run_writes_nothing(self, backend: NSFBackend, tmp_path: Path) -> None:
+    def test_a_withdrawn_run_writes_nothing(self, backend: ProgramBackend, tmp_path: Path) -> None:
         destination = tmp_path / FILENAME
         reporter: RecordingReporter[ExportProgress] = RecordingReporter(withdraw_at=WITHDRAWN_WHILE_WALKING)
         request = player_sample(
@@ -441,7 +450,7 @@ class TestWithdrawingARun:
 
     def test_a_run_withdrawn_mid_compression_writes_nothing(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         tmp_path: Path,
     ) -> None:
         destination = tmp_path / FILENAME
@@ -463,9 +472,9 @@ def chosen_program(
     channels: FrozenSet[ChannelName],
     loop_tick: Optional[int],
     scheme: CompressionScheme,
-) -> NSFProgram:
-    return NSFProgram(
-        information=NSFInformation(
+) -> Program:
+    return Program(
+        information=ProgramInformation(
             title=CHOSEN_TITLE,
             artist=CHOSEN_ARTIST,
             copyright=CHOSEN_COPYRIGHT,
@@ -502,7 +511,7 @@ class TestAChosenProgram:
     )
     def test_the_file_is_listed_under_the_chosen_text(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         tmp_path: Path,
         offset: int,
         expected: str,
@@ -516,7 +525,7 @@ class TestAChosenProgram:
         backend.choosing(program).write_project(destination, ProjectExport(project=drum_project()))
         assert read_field(destination.read_bytes(), offset) == expected
 
-    def test_a_song_chosen_to_play_once_stops_at_its_end(self, backend: NSFBackend, tmp_path: Path) -> None:
+    def test_a_song_chosen_to_play_once_stops_at_its_end(self, backend: ProgramBackend, tmp_path: Path) -> None:
         destination = tmp_path / FILENAME
         program = chosen_program(
             channels=ALL_CHANNELS,
@@ -526,7 +535,7 @@ class TestAChosenProgram:
         backend.choosing(program).write_project(destination, ProjectExport(project=drum_project()))
         assert written_loop_tick(destination.read_bytes()) == NO_LOOP
 
-    def test_a_reconstruction_repeats_where_the_program_says(self, backend: NSFBackend, tmp_path: Path) -> None:
+    def test_a_reconstruction_repeats_where_the_program_says(self, backend: ProgramBackend, tmp_path: Path) -> None:
         """The slices play once, and the program asks for them to come round all the same."""
         destination = tmp_path / FILENAME
         program = chosen_program(
@@ -537,7 +546,7 @@ class TestAChosenProgram:
         backend.choosing(program).write_sample(destination, repeated_sample())
         assert written_loop_tick(destination.read_bytes()) == SONG_START
 
-    def test_a_lighter_scheme_writes_a_larger_file(self, backend: NSFBackend, tmp_path: Path) -> None:
+    def test_a_lighter_scheme_writes_a_larger_file(self, backend: ProgramBackend, tmp_path: Path) -> None:
         spelled_out = tmp_path / "none.nsf"
         runs = tmp_path / "runs.nsf"
         for destination, scheme in (
@@ -551,7 +560,7 @@ class TestAChosenProgram:
 
     def test_choosing_a_program_leaves_the_backend_it_came_from_as_it_was(
         self,
-        backend: NSFBackend,
+        backend: ProgramBackend,
         tmp_path: Path,
     ) -> None:
         destination = tmp_path / FILENAME

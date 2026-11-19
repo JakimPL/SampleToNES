@@ -30,6 +30,7 @@ With it you can:
   * [_FamiTracker_](http://famitracker.com/)
   * [_Bitphase_](https://bitphase.app/)
   * `.nsf` program
+  * `.nes` ROM, a cartridge with a player screen
   * audio `.wav` file
 
 ## Installation

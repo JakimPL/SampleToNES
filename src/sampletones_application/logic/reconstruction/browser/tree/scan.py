@@ -12,7 +12,7 @@ from sampletones_application.logic.reconstruction.browser.tree.entries.scan impo
     ReconstructionScan,
 )
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
-from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
+from sampletones_shared.paths.extensions import FileKind, file_kind
 
 
 def scan_reconstructions(directory: Path) -> ReconstructionScan:
@@ -43,7 +43,7 @@ def _scan_path(path: Path) -> Optional[ScanEntry]:
             entries=_scan_entries(path),
         )
 
-    if path.suffix == EXT_FILE_RECONSTRUCTION:
+    if file_kind(path) is FileKind.RECONSTRUCTION:
         return ReconstructionEntry(path=path)
 
     return None

@@ -19,9 +19,9 @@ from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.data.metadata import Metadata
 from sampletones_core.fft import Window
 from sampletones_core.library import InstructionLibraryKey
-from sampletones_shared.constants.project import RECONSTRUCTIONS_DIRECTORY
+from sampletones_core.library.settings import LibrarySettings
 from sampletones_shared.logger import logger
-from sampletones_shared.paths.user import CONFIG_PATH, LIBRARY_DIRECTORY
+from sampletones_shared.paths.user import CONFIG_PATH
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.serialization import load_json
 from sampletones_shared.utils.validation import validate_with_recovery
@@ -132,14 +132,14 @@ class ConfigManager:
         self.update_gui()
 
     def get_library_directory(self) -> Path:
-        return Path(self.config.general.library_directory if self.config else LIBRARY_DIRECTORY)
+        return Path(self.config.general.library_directory)
 
     def get_reconstructions_directory(self) -> Path:
-        return Path(self.config.general.reconstructions_directory if self.config else RECONSTRUCTIONS_DIRECTORY)
+        return Path(self.config.general.reconstructions_directory)
 
     @property
     def key(self) -> InstructionLibraryKey:
-        return InstructionLibraryKey.create(self.config.library, self.window)
+        return InstructionLibraryKey.create(LibrarySettings.of(self.config), self.window)
 
     def add_config_change_callback(self, callback: VoidCallback) -> None:
         self.config_change_callbacks.append(callback)
@@ -151,43 +151,49 @@ class ConfigManager:
     def apply_library_config(
         self,
         library_key: InstructionLibraryKey,
-        stored_config: Optional[InstructionsLibraryConfig],
+        stored_settings: Optional[LibrarySettings],
     ) -> None:
         """Makes the settings the library ``library_key`` names was built for the configuration's.
 
-        The settings the library states are applied whole where they name the library's own file,
-        tuning included. Otherwise the settings its filename carries are applied over the current
-        tuning.
+        The settings the library states, its range of notes and tuning included, are applied whole
+        where they name the library's own file. Otherwise the settings its filename carries are
+        applied over the current tuning and range of notes.
 
         Args:
             library_key: The library whose settings are applied.
-            stored_config: The settings the library's file states, or ``None`` where it states none
-                this build reads.
+            stored_settings: The settings the library's file states, or ``None`` where it states
+                none this build reads.
         """
-        if stored_config is None or not self._names_library(stored_config, library_key):
-            stored_config = self._filename_library_config(library_key)
+        if stored_settings is None or not self._names_library(stored_settings, library_key):
+            stored_settings = LibrarySettings(
+                library=self._filename_library_config(library_key),
+                pitch_range=self.config.general.pitch_range,
+            )
 
-        self.config = self.config.model_copy(
-            update={"library": stored_config},
+        pitch_range = stored_settings.pitch_range
+        general = self.config.general.model_copy(
+            update={"min_pitch": pitch_range.min_pitch, "max_pitch": pitch_range.max_pitch}
         )
+        self.config = self.config.model_copy(update={"library": stored_settings.library, "general": general})
         self.window = Window.from_config(self.config)
         self.update_gui()
 
     @staticmethod
-    def _names_library(
-        library_config: InstructionsLibraryConfig,
-        library_key: InstructionLibraryKey,
-    ) -> bool:
-        """Whether ``library_config`` names the file of the library ``library_key`` names."""
-        named = InstructionLibraryKey.create(library_config, Window.from_config(library_config))
-        return named.filename == library_key.filename
+    def _names_library(settings: LibrarySettings, library_key: InstructionLibraryKey) -> bool:
+        """Whether ``settings`` name the file of the library ``library_key`` names, under the name a
+        library takes now or the one a release before library data version 2.2 gave it."""
+        window = Window.from_config(settings.library)
+        return library_key.filename in (
+            InstructionLibraryKey.create(settings, window).filename,
+            InstructionLibraryKey.library_only_filename(settings.library, window),
+        )
 
     def _filename_library_config(self, library_key: InstructionLibraryKey) -> InstructionsLibraryConfig:
         """The current library settings under the ones the filename of ``library_key`` carries."""
         return self.config.library.model_copy(
             update={
                 "sample_rate": library_key.sample_rate,
-                "nes_frequency": round(library_key.sample_rate / library_key.frame_length),
+                "nes_frequency": library_key.nes_frequency,
                 "spectrum_method": library_key.spectrum_method,
                 "transformation_gamma": library_key.transformation_gamma,
             }

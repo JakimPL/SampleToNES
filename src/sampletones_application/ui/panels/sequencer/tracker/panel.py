@@ -4,6 +4,7 @@ from typing import Callable, Dict, Final, FrozenSet, Iterator, Mapping, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.elements.sequencer import (
     SequencerTrackerElements,
 )
@@ -339,10 +340,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._lbl_col_row = self._label(language_manager, SequencerTrackerElements.COLUMN_ROW)
         self._column_labels: Dict[Optional[ChannelName], str] = {
             None: self._label(language_manager, SequencerTrackerElements.COLUMN_SAMPLE),
-            ChannelName.PULSE1: self._label(language_manager, SequencerTrackerElements.COLUMN_PULSE_1),
-            ChannelName.PULSE2: self._label(language_manager, SequencerTrackerElements.COLUMN_PULSE_2),
-            ChannelName.TRIANGLE: self._label(language_manager, SequencerTrackerElements.COLUMN_TRIANGLE),
-            ChannelName.NOISE: self._label(language_manager, SequencerTrackerElements.COLUMN_NOISE),
+            **{channel: channel_label(language_manager, channel) for channel in ChannelName.items()},
         }
 
     @staticmethod

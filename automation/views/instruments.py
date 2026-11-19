@@ -17,9 +17,8 @@ from sampletones_application.tags.general import (
     SUF_BUTTON,
     SUF_GROUP,
     SUF_TABLE,
-    SUF_TEXT,
 )
-from sampletones_application.tags.graphs import SUF_GRAPH, SUF_GRAPH_RAW_DATA
+from sampletones_application.tags.graphs import SUF_GRAPH
 from sampletones_application.tags.reconstructions import (
     SUF_RECONSTRUCTIONS_INSTRUMENTS_INSTRUMENT_SIZE,
     SUF_RECONSTRUCTIONS_INSTRUMENTS_MESSAGE,
@@ -28,6 +27,7 @@ from sampletones_application.tags.reconstructions import (
     TAG_RECONSTRUCTIONS_INSTRUMENTS_RADIO_AUDITION,
     TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR,
 )
+from sampletones_application.ui.panels.reconstruction.instruments.sequences import sequence_input_tag
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 
@@ -92,7 +92,7 @@ class Instruments:
 
     def field(self, channel: ChannelName, feature: FeatureKey) -> str:
         """The name of the field holding the sequence of ``channel``'s ``feature`` envelope."""
-        return sequence_field(channel, feature)
+        return sequence_input_tag(channel, feature)
 
     def takes_edits(self, channel: ChannelName, feature: FeatureKey) -> bool:
         """Whether ``channel``'s ``feature`` field takes a typed sequence, which it holds while the envelopes are on
@@ -184,20 +184,9 @@ class Instruments:
         self._hand.click(export_button(channel))
 
 
-def sequence_field(channel: ChannelName, feature: FeatureKey) -> str:
-    """The name of the field holding the sequence of ``channel``'s ``feature`` envelope."""
-    return compose_tag(
-        TAG_RECONSTRUCTIONS_INSTRUMENTS_TABS_BAR,
-        channel,
-        feature,
-        SUF_GRAPH_RAW_DATA,
-        SUF_TEXT,
-    )
-
-
 def read_takes_edits(channel: ChannelName, feature: FeatureKey) -> bool:
     """Whether ``channel``'s ``feature`` field takes a typed sequence. Runs on the render thread."""
-    return read_item(sequence_field(channel, feature)).enabled
+    return read_item(sequence_input_tag(channel, feature)).enabled
 
 
 def read_words() -> Optional[str]:

@@ -2,6 +2,7 @@ from typing import Callable, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.context import sample_rate_template
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors.path import PathColors
 from sampletones_application.layout.settings import SettingsLayout
@@ -37,6 +38,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.path import GUIDestinationPathText
 from sampletones_application.ui.elements.seeded import GUISeededDialogWindow
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.panels.dialogs.destination import DestinationRow, DestinationStyle, destination_row
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import table_wrapper
 from sampletones_application.utils.gui.dialog_navigation import FocusStop
@@ -94,7 +96,7 @@ class GUIRenderWindow(GUISeededDialogWindow[SongRenderViewModel]):
         self._depths_by_label: Dict[str, AudioDepth] = {}
         self._bitrates_by_label: Dict[str, int] = {}
 
-        self._fmt_sample_rate = language_manager["settings.render.template.sample_rate"]
+        self._fmt_sample_rate = sample_rate_template(language_manager)
         self._fmt_bitrate = language_manager["settings.render.template.bitrate"]
         self._msg_destination = language_manager["global.status.message.destination"]
         self._format_labels: Dict[AudioFormat, str] = {
@@ -236,32 +238,19 @@ class GUIRenderWindow(GUISeededDialogWindow[SongRenderViewModel]):
             FontRegistry.bind_to_item(TAG_SETTINGS_RENDER_TEXT_DURATION, Font.MONO)
 
     def _create_destination(self) -> None:
-        """Lays out the file a render writes, with the browse button beside the path it stands at.
-
-        The button leads the row so it holds its place whatever the path reads, and the path
-        follows it as the answer to what the button asks.
-        """
-        with labeled_field(
-            self._language_manager["settings.render.label.destination"],
-            self._layout.label_width,
-        ):
-            dpg.add_group(horizontal=True, tag=TAG_SETTINGS_RENDER_GROUP_DESTINATION)
-
-        GUIButton(
-            tag=TAG_SETTINGS_RENDER_BUTTON_BROWSE,
-            label=self._language_manager["settings.render.label.browse_button"],
-            parent=TAG_SETTINGS_RENDER_GROUP_DESTINATION,
-            callback=self._request_destination,
-        )
-        self._destination_text = GUIDestinationPathText(
-            tag=TAG_SETTINGS_RENDER_PATH_DESTINATION,
+        self._destination_text = destination_row(
+            DestinationRow(
+                on_browse=self._request_destination,
+                label=self._language_manager["settings.render.label.destination"],
+                browse_label=self._language_manager["settings.render.label.browse_button"],
+                group_tag=TAG_SETTINGS_RENDER_GROUP_DESTINATION,
+                button_tag=TAG_SETTINGS_RENDER_BUTTON_BROWSE,
+                path_tag=TAG_SETTINGS_RENDER_PATH_DESTINATION,
+            ),
             path=self.view_model.destination,
-            parent=TAG_SETTINGS_RENDER_GROUP_DESTINATION,
-            color=self._path_colors.default,
-            hover_color=self._path_colors.hover,
-            status_message=self._msg_destination,
-            font=Font.REGULAR_SMALL,
-            status_bar=self._status_bar,
+            style=DestinationStyle(
+                self._layout.label_width, self._path_colors, self._msg_destination, self._status_bar
+            ),
         )
 
     @table_wrapper(columns=2)

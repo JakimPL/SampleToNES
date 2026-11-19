@@ -2,9 +2,9 @@ from .catalog import DeviceCatalog
 from .device import AudioDevice, CurrentDevice
 from .io import (
     UNIT_SCALE,
-    load_audio,
     mix_scale,
     read_mono,
+    read_recording,
     read_stems,
     read_wave,
     scale_stems,
@@ -45,7 +45,7 @@ __all__ = [
     "clip_audio_inplace",
     "common_length",
     "interpolate",
-    "load_audio",
+    "read_recording",
     "minmax_decimate",
     "mix",
     "mix_scale",

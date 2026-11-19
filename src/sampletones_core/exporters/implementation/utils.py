@@ -2,7 +2,7 @@ from typing import Callable, List, Sequence, Tuple
 
 import numpy as np
 
-from sampletones_core.instructions import TonalInstruction
+from sampletones_core.instructions import InstructionT
 
 
 def center_pitch(
@@ -34,9 +34,18 @@ def center_pitch(
     return int(initial_pitch + mean_value)
 
 
+def released(volumes: List[int]) -> List[int]:
+    """A channel's volumes, one silent tick appended where the channel still sounds at its end.
+
+    The release tick is what lets a sample end quiet, so a stream that already ends silent
+    carries none.
+    """
+    return [*volumes, 0] if volumes and volumes[-1] > 0 else volumes
+
+
 def held_across_rests(
-    instructions: Sequence[TonalInstruction],
-    read: Callable[[TonalInstruction], int],
+    instructions: Sequence[InstructionT],
+    read: Callable[[InstructionT], int],
     default: int,
 ) -> Tuple[int, ...]:
     """One value per frame, holding what the last sounding frame stated across the rests.

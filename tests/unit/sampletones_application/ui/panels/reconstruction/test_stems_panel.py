@@ -4,6 +4,7 @@ from typing import Any, Dict, FrozenSet, Iterator, List, Tuple
 import dearpygui.dearpygui as dpg
 import pytest
 
+from automation.dearpygui.items.types import CLICKED_HANDLER_TYPE
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.sources import SourceKind
 from sampletones_application.layout.config import LayoutConfig
@@ -40,7 +41,7 @@ from sampletones_application.view_model.shared.stems import (
     StemsListViewModel,
 )
 from sampletones_core.constants.enums import ChannelName, HierarchyMode
-from tests.suite.gestures import CLICKED, click_row_name
+from tests.suite.gestures import click_row_name
 
 ROOT_TAG = "test_root"
 SEPARATOR = "separator"
@@ -346,7 +347,7 @@ def registered(monkeypatch: pytest.MonkeyPatch) -> List[Dict[str, Any]]:
 
 
 def right_click(panel: GUIReconstructionStemsPanel, stem_id: int) -> None:
-    click_row_name(panel.stems_list.tags, str(stem_id), kind=CLICKED, button=dpg.mvMouseButton_Right)
+    click_row_name(panel.stems_list.tags, str(stem_id), kind=CLICKED_HANDLER_TYPE, button=dpg.mvMouseButton_Right)
 
 
 def item(registered: List[Dict[str, Any]], key: str) -> Dict[str, Any]:

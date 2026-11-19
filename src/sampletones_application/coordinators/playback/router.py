@@ -51,6 +51,12 @@ class PlaybackRouter:
         if active_source is not None:
             active_source.play()
 
+    def step(self, ticks: int) -> None:
+        """Moves the target's playhead ``ticks`` ticks, back for a negative count, holding it paused there."""
+        target = self._target()
+        if target is not None and target.can_step():
+            target.step(ticks)
+
     def stop(self) -> None:
         """Silence everything: the engaged source, any sounding preview, and a preview still on its way.
 
@@ -90,6 +96,12 @@ class PlaybackRouter:
         """Whether an engaged source is available to pause or resume."""
         target = self._target()
         return target is not None and target.is_engaged()
+
+    @property
+    def is_step_enabled(self) -> bool:
+        """Whether the target holds the output on a tick grid its playhead can step along."""
+        target = self._target()
+        return target is not None and target.can_step()
 
     @property
     def is_paused(self) -> bool:

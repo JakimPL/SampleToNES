@@ -1,4 +1,4 @@
-from typing import List
+from typing import ClassVar, List, Type
 
 import numpy as np
 
@@ -13,7 +13,6 @@ from sampletones_core.constants.general import (
 )
 from sampletones_core.instructions import InstructionTypeUnion, PulseInstruction
 from sampletones_core.timers import PhaseTimer
-from sampletones_shared.types.data import Initials
 
 from ..tonal import TonalGenerator
 
@@ -24,6 +23,9 @@ class PulseGenerator(TonalGenerator[PulseInstruction]):
     A timer below ``MIN_SOUNDING_PULSE_TIMER`` renders silence while the timer runs on. The sweep unit
     mutes the channel there whatever the sweep's own setting, and the waveform keeps stepping.
     """
+
+    instruction_type: ClassVar[Type[PulseInstruction]] = PulseInstruction
+    sounding_timer_floor: ClassVar[int] = MIN_SOUNDING_PULSE_TIMER
 
     def __init__(
         self,
@@ -37,32 +39,6 @@ class PulseGenerator(TonalGenerator[PulseInstruction]):
             reset_phase=config.generation.reset_phase,
             phase_increment=1.0,
         )
-
-    def __call__(
-        self,
-        pulse_instruction: PulseInstruction,
-        initials: Initials = None,
-        save: bool = False,
-    ) -> np.ndarray:
-        if not isinstance(pulse_instruction, PulseInstruction):
-            raise TypeError("instruction must be an instance of PulseInstruction")
-
-        self.validate(initials)
-        if not pulse_instruction.on:
-            return np.zeros(self.frame_length, dtype=np.float32)
-
-        output = self.generate(
-            pulse_instruction,
-            initials=initials,
-            save=save,
-        )
-
-        self.save_state(save, pulse_instruction)
-
-        if self.timer.timer < MIN_SOUNDING_PULSE_TIMER:
-            return np.zeros(self.frame_length, dtype=np.float32)
-
-        return output
 
     def apply(self, output: np.ndarray, instruction: PulseInstruction) -> np.ndarray:
         duty_cycle = DUTY_CYCLES[instruction.duty_cycle]

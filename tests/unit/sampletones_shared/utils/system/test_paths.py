@@ -13,6 +13,7 @@ from sampletones_shared.utils.system.paths import (
     get_directory,
     get_filename,
     is_same_path,
+    is_within,
     nearest_directory,
     open_directory_in_explorer_linux,
     open_file_in_explorer_linux,
@@ -27,6 +28,7 @@ from sampletones_shared.utils.system.system import System
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 from tests.suite.errors import expect_error
+from tests.suite.files import requires_symlinks
 
 PROGRAM_ENVIRONMENT: Final[Dict[str, str]] = {"PATH": "/usr/bin"}
 
@@ -77,6 +79,44 @@ class TestIsSamePath:
 
     def test_two_files_are_different(self, tmp_path: Path) -> None:
         assert not is_same_path(tmp_path / "song.stn", tmp_path / "other.stn")
+
+
+class TestIsWithin:
+    """A folder holds what lies beneath it under any spelling of either path, which is what tells
+    whether removing a folder takes the open document's file with it."""
+
+    def test_a_file_in_a_folder_lies_within_it(self, tmp_path: Path) -> None:
+        assert is_within(tmp_path / "songs" / "song.stn", tmp_path / "songs")
+
+    def test_a_file_nested_deeper_lies_within_it(self, tmp_path: Path) -> None:
+        assert is_within(tmp_path / "songs" / "takes" / "song.stn", tmp_path / "songs")
+
+    def test_a_folder_lies_within_itself(self, tmp_path: Path) -> None:
+        assert is_within(tmp_path / "songs", tmp_path / "songs")
+
+    def test_a_detour_through_a_parent_reaches_the_folder(self, tmp_path: Path) -> None:
+        (tmp_path / "other").mkdir()
+
+        assert is_within(tmp_path / "songs" / "song.stn", tmp_path / "other" / ".." / "songs")
+
+    def test_a_relative_spelling_reaches_the_folder(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.chdir(tmp_path)
+
+        assert is_within(tmp_path / "songs" / "song.stn", Path("songs"))
+
+    @requires_symlinks
+    def test_a_link_to_the_folder_holds_what_the_folder_holds(self, tmp_path: Path) -> None:
+        (tmp_path / "songs").mkdir()
+        (tmp_path / "link").symlink_to(tmp_path / "songs", target_is_directory=True)
+
+        assert is_within(tmp_path / "link" / "song.stn", tmp_path / "songs")
+        assert is_within(tmp_path / "songs" / "song.stn", tmp_path / "link")
+
+    def test_a_sibling_sharing_the_folders_name_as_a_prefix_lies_outside(self, tmp_path: Path) -> None:
+        assert not is_within(tmp_path / "songs2" / "song.stn", tmp_path / "songs")
+
+    def test_the_parent_lies_outside_its_child(self, tmp_path: Path) -> None:
+        assert not is_within(tmp_path, tmp_path / "songs")
 
 
 class TestNearestDirectory:

@@ -1,8 +1,8 @@
 from typing import Final
 
 from sampletones_player.driver.image import DriverImage
+from sampletones_player.information import ProgramInformation
 from sampletones_player.nsf.file import nsf_to_bytes
-from sampletones_player.nsf.information import NSFInformation
 from sampletones_player.song import Song
 from sampletones_tools.console.machine import Console
 from sampletones_tools.player.trace.trace import RegisterTrace
@@ -83,7 +83,7 @@ def captured_run(data: bytes, play_calls: int) -> RegisterTrace:
     return Console(data).trace(play_calls)
 
 
-def captured_trace(song: Song, information: NSFInformation) -> RegisterTrace:
+def captured_trace(song: Song, information: ProgramInformation) -> RegisterTrace:
     """Exports a song, runs the file on a 6502 and answers with every APU write it made.
 
     Args:
@@ -98,7 +98,7 @@ def captured_trace(song: Song, information: NSFInformation) -> RegisterTrace:
 
 def captured_trace_over(
     song: Song,
-    information: NSFInformation,
+    information: ProgramInformation,
     play_calls: int,
 ) -> RegisterTrace:
     """Exports a song and runs the file for ``play_calls`` calls, a repeating song included.

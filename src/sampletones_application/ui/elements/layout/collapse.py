@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Callable, Optional
 
@@ -23,6 +26,29 @@ from sampletones_application.utils.gui.dpg import (
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.utils.gui.hover import HoverWatch
 from sampletones_shared.utils.callbacks import CallbackMixin
+
+
+@dataclass(frozen=True)
+class CollapseTags:
+    """The widgets a collapsible card folds through, named after the card.
+
+    Attributes:
+        strip: The header bar a click folds the card on.
+        body: The card's content, put away while it stands folded.
+        rail: The rail a sideways card folds into.
+    """
+
+    strip: str
+    body: str
+    rail: str
+
+    @classmethod
+    def of(cls, card_tag: str) -> CollapseTags:
+        return cls(
+            strip=compose_tag(card_tag, SUF_COLLAPSE_STRIP),
+            body=compose_tag(card_tag, SUF_COLLAPSE_BODY),
+            rail=compose_tag(card_tag, SUF_COLLAPSE_RAIL),
+        )
 
 
 class CollapseAxis(Enum):
@@ -67,9 +93,10 @@ class CollapseController(CallbackMixin):
         self._auto_height = auto_height
         self._fill = fill
 
-        self.strip_tag = compose_tag(card_tag, SUF_COLLAPSE_STRIP)
-        self.body_tag = compose_tag(card_tag, SUF_COLLAPSE_BODY)
-        self.rail_tag = compose_tag(card_tag, SUF_COLLAPSE_RAIL)
+        tags = CollapseTags.of(card_tag)
+        self.strip_tag = tags.strip
+        self.body_tag = tags.body
+        self.rail_tag = tags.rail
         self.chevron_tag = compose_tag(card_tag, SUF_COLLAPSE_CHEVRON)
         self.strip_handler_tag = compose_tag(self.strip_tag, SUF_HANDLER_REGISTRY)
         self.click_handler_tag = compose_tag(self.strip_tag, "click", SUF_HANDLER_REGISTRY)

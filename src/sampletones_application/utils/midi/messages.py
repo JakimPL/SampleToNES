@@ -3,6 +3,9 @@ from typing import Final, FrozenSet, Optional, Union
 
 STATUS_FLAG: Final[int] = 0x80
 COMMAND_MASK: Final[int] = 0xF0
+SYSTEM_COMMAND: Final[int] = 0xF0
+SYSTEM_EXCLUSIVE: Final[int] = 0xF0
+END_OF_EXCLUSIVE: Final[int] = 0xF7
 NOTE_OFF: Final[int] = 0x80
 NOTE_ON: Final[int] = 0x90
 CONTROL_CHANGE: Final[int] = 0xB0
@@ -93,7 +96,7 @@ def _is_channel_message(message: bytes) -> bool:
     return (
         len(message) == CHANNEL_MESSAGE_LENGTH
         and message[0] & STATUS_FLAG != 0
-        and message[0] & COMMAND_MASK != COMMAND_MASK
+        and message[0] & COMMAND_MASK != SYSTEM_COMMAND
         and all(data & STATUS_FLAG == 0 for data in message[1:])
     )
 
@@ -109,3 +112,8 @@ def _controller(controller: int, value: int) -> Optional[MidiMessage]:
         return MidiAllNotesOff()
 
     return None
+
+
+def is_system_exclusive(message: bytes) -> bool:
+    """Whether ``message`` opens a system exclusive message, a device's own data the keyboard reading sets aside."""
+    return message[:1] == bytes((SYSTEM_EXCLUSIVE,))

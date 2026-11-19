@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Dict, List, Mapping, Optional, Tuple, cast
+from typing import Dict, List, Mapping, Optional, cast
 
 import numpy as np
 
@@ -23,6 +23,7 @@ from sampletones_core.reconstructions.reconstruction.stems.hearing import (
     Hearing,
     heard_renders,
     hearing_carried_onto,
+    recordings_heard,
 )
 from sampletones_core.reconstructions.reconstruction.stems.selection import StemSelection
 
@@ -164,12 +165,7 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         """The recordings ``selection`` hears anywhere mixed into one waveform, in ``document``'s record order, or
         ``None`` where none is heard or none loaded.
         """
-        heard = selection.any_channel()
-        mixed_from: Tuple[np.ndarray, ...] = tuple(
-            recordings[entry.id]
-            for entry in document.stems_data.config.entries
-            if entry.id in heard and entry.id in recordings
-        )
+        mixed_from = recordings_heard(document.stems_data, selection, recordings)
         if not mixed_from:
             return None
 

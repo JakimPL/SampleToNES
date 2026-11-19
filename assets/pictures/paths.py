@@ -2,15 +2,13 @@ from pathlib import Path
 from typing import Final
 
 from sampletones_shared.paths.package import package_directory
-from sampletones_shared.paths.source import REPOSITORY_ROOT
+from sampletones_shared.paths.source import BUILD_ROOT, REPOSITORY_ROOT
 
 PICTURE_SUFFIX: Final[str] = ".webp"
 IMAGES_DIRECTORY: Final[Path] = REPOSITORY_ROOT / "docs" / "images"
 GUIDE_DIRECTORY: Final[Path] = IMAGES_DIRECTORY / "guide"
 README_PICTURE: Final[Path] = IMAGES_DIRECTORY / f"sampletones{PICTURE_SUFFIX}"
-DEMO_DIRECTORY: Final[Path] = REPOSITORY_ROOT / "build" / "demo"
-KEPT_DIRECTORY: Final[Path] = REPOSITORY_ROOT / "build" / "pictures"
-HOMES_DIRECTORY: Final[Path] = REPOSITORY_ROOT / "build" / "worlds" / "homes"
+KEPT_DIRECTORY: Final[Path] = BUILD_ROOT / "pictures"
 SCENES_DIRECTORY: Final[Path] = package_directory("assets.pictures.scenes")
 
 

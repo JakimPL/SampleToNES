@@ -7,26 +7,18 @@ from automation.application.startup import Startup
 from automation.screen import Screen
 from automation.steps.reconstructions import expect_open
 from automation.views.waveform import Waveform
-from automation.vocabulary.playback import PAUSE, PLAY
+from automation.vocabulary.playback import PAUSE, PLAY, RESUME
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
-from tests.screens.reconstructions.player.steps import advancing, entry, expect_entry
+from tests.screens.reconstructions.player.constants import STILL_FRAMES
+from tests.screens.reconstructions.player.steps import advancing, cursor, entry, expect_entry, held_still
 from tests.suite.screens.worlds.recordings import PLAYABLE_RECONSTRUCTION
 
 SAMPLE_RATE: Final[int] = 44100
 PLAYING_WINDOW_SECONDS: Final[float] = 3.0
-STILL_FRAMES: Final[int] = 20
 ZOOM_NOTCHES: Final[int] = 3
 WIDTH_TOLERANCE: Final[float] = 0.01
 SPACE_BURST: Final[int] = 5
 PAST_THE_EDGE: Final[float] = 1.4
-RESUME: Final[str] = "global.menu.label.item_playback_resume"
-
-
-def cursor(waveform: Waveform) -> float:
-    """The cursor's sample on the waveform, which must be drawn."""
-    found = waveform.cursor()
-    assert found is not None, "no cursor stands on the waveform"
-    return found
 
 
 def playing_from(screen: Screen, waveform: Waveform, sample: float) -> float:
@@ -37,14 +29,6 @@ def playing_from(screen: Screen, waveform: Waveform, sample: float) -> float:
         lambda reading: sample <= reading < sample + window,
         description=f"the cursor playing on from sample {sample:.0f}",
     )
-
-
-def held_still(screen: Screen, waveform: Waveform) -> float:
-    """The cursor's sample, read twice some frames apart and found the same."""
-    standing = cursor(waveform)
-    screen.frames(STILL_FRAMES)
-    assert waveform.cursor() == standing
-    return standing
 
 
 def width(limits: Tuple[float, float]) -> float:

@@ -22,11 +22,13 @@ from sampletones_application.tags.settings import (
     TAG_SETTINGS_NSF_INPUT_LOOP_FRAME,
     TAG_SETTINGS_NSF_INPUT_TITLE,
     TAG_SETTINGS_NSF_PATH_DESTINATION,
+    TAG_SETTINGS_NSF_TEXT_ARTIST_SIZE,
     TAG_SETTINGS_NSF_TEXT_FRAME_COUNT,
     TAG_SETTINGS_NSF_TEXT_LENGTH,
     TAG_SETTINGS_NSF_TEXT_NO_CHANNEL,
     TAG_SETTINGS_NSF_TEXT_SCHEME_DESCRIPTION,
     TAG_SETTINGS_NSF_TEXT_TITLE_SIZE,
+    TAG_SETTINGS_NSF_WINDOW,
 )
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.dialogs.nsf import GUINSFExportWindow
@@ -36,11 +38,22 @@ from sampletones_application.view_model.shared.nsf.offer import NSFExportOffer
 from sampletones_application.view_model.shared.nsf.repeat import NSFRepeat
 from sampletones_application.view_model.shared.nsf.view import NSFExportViewModel
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.exports.format import ExportFormat
 from sampletones_player.compression.scheme import CompressionScheme
-from sampletones_player.nsf.information import fit_field
+from sampletones_player.nsf.header import HEADER_LINE, HEADER_TEXT
 from sampletones_player.specification.nsf import STRING_TEXT_SIZE
+from sampletones_shared.paths.extensions import EXT_FILE_NSF
 from sampletones_shared.utils.system.paths import shorten_path
-from tests.suite.nsf import PROGRAM_ARTIST, PROGRAM_TITLE, project_offer, sample_offer, standing_choices
+from tests.suite.nsf import (
+    NARROW_TEXT,
+    OTHER_EXTENSION,
+    OTHER_FORMAT,
+    PROGRAM_ARTIST,
+    PROGRAM_TITLE,
+    project_offer,
+    sample_offer,
+    standing_choices,
+)
 from tests.suite.shortcuts import shipped_source
 
 LANGUAGE_MANAGER: Final[LanguageManager] = LanguageManager(LANG_EN)
@@ -53,6 +66,9 @@ OVERLONG_TITLE: Final[str] = "Überraschungsmelodie für Konsolen"
 
 def export_view(offer: NSFExportOffer, choices: NSFExportChoices) -> NSFExportViewModel:
     return NSFExportViewModel(
+        export_format=ExportFormat.NSF,
+        extension=EXT_FILE_NSF,
+        text=HEADER_TEXT,
         offer=offer,
         choices=choices,
         destination=DESTINATION,
@@ -104,6 +120,57 @@ def edit(tag: str, value: object) -> None:
         dpg.get_item_callback(tag)(tag, value, user_data)
 
 
+def draw_other_format(window: GUINSFExportWindow) -> NSFExportViewModel:
+    """Draws the window as it opens for a second kind of program file, with narrow lines of text."""
+    offer = project_offer()
+    view_model = NSFExportViewModel(
+        export_format=OTHER_FORMAT,
+        extension=OTHER_EXTENSION,
+        text=NARROW_TEXT,
+        offer=offer,
+        choices=standing_choices(offer),
+        destination=DESTINATION,
+        ticks=SONG_TICKS,
+        nes_frequency=NES_FREQUENCY,
+    )
+    draw(window, view_model)
+    return view_model
+
+
+class TestTheFormatTheWindowWasOpenedFor:
+    def test_the_window_is_titled_by_its_format(self, window: GUINSFExportWindow) -> None:
+        draw_project(window)
+
+        assert dpg.get_item_label(TAG_SETTINGS_NSF_WINDOW) == LANGUAGE_MANAGER["global.dialog.title.export_nsf_project"]
+
+    def test_another_format_titles_the_window_its_own_way(self, window: GUINSFExportWindow) -> None:
+        draw_other_format(window)
+
+        assert (
+            dpg.get_item_label(TAG_SETTINGS_NSF_WINDOW)
+            == LANGUAGE_MANAGER["global.dialog.title.export_bitphase_project"]
+        )
+
+    def test_a_typed_title_is_cut_to_the_room_its_line_has(self, window: GUINSFExportWindow) -> None:
+        reported: List[NSFExportChoices] = []
+        window.on_choices_changed = reported.append
+        draw_other_format(window)
+
+        edit(TAG_SETTINGS_NSF_INPUT_TITLE, OVERLONG_TITLE)
+
+        assert reported[-1].information.title == NARROW_TEXT.title.fit(OVERLONG_TITLE)
+
+    def test_each_field_states_the_room_its_own_line_has(self, window: GUINSFExportWindow) -> None:
+        view_model = draw_other_format(window)
+
+        expected = view_model.text_size_label(
+            view_model.choices.information.artist,
+            NARROW_TEXT.artist,
+            LANGUAGE_MANAGER["settings.nsf.template.text_size"],
+        )
+        assert dpg.get_value(TAG_SETTINGS_NSF_TEXT_ARTIST_SIZE) == expected
+
+
 class TestTheProgramText:
     def test_each_field_shows_its_text(self, window: GUINSFExportWindow) -> None:
         draw_project(window)
@@ -114,7 +181,11 @@ class TestTheProgramText:
     def test_each_field_states_the_bytes_its_text_takes(self, window: GUINSFExportWindow) -> None:
         view_model = draw_project(window)
 
-        expected = view_model.text_size_label(PROGRAM_TITLE, LANGUAGE_MANAGER["settings.nsf.template.text_size"])
+        expected = view_model.text_size_label(
+            PROGRAM_TITLE,
+            view_model.text.title,
+            LANGUAGE_MANAGER["settings.nsf.template.text_size"],
+        )
         assert dpg.get_value(TAG_SETTINGS_NSF_TEXT_TITLE_SIZE) == expected
 
     def test_a_typed_title_is_reported_as_the_header_holds_it(self, window: GUINSFExportWindow) -> None:
@@ -124,7 +195,7 @@ class TestTheProgramText:
 
         edit(TAG_SETTINGS_NSF_INPUT_TITLE, OVERLONG_TITLE * 2)
 
-        assert reported[-1].information.title == fit_field(OVERLONG_TITLE * 2)
+        assert reported[-1].information.title == HEADER_LINE.fit(OVERLONG_TITLE * 2)
         assert len(reported[-1].information.title.encode()) <= STRING_TEXT_SIZE
 
 

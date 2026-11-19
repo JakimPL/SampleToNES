@@ -4,10 +4,12 @@ from .protocol import (
     AudioDriverProtocol,
     OutputStreamProtocol,
 )
+from .unstarted import UnstartedDriver
 
 __all__ = [
     "AudioDriverFactory",
     "AudioDriverProtocol",
     "DriverDevice",
     "OutputStreamProtocol",
+    "UnstartedDriver",
 ]

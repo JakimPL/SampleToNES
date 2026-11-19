@@ -13,6 +13,7 @@ from sampletones_shared.logger import logger as default_logger
 from ..data import InstructionLibraryData
 from ..fragment import InstructionLibraryFragment
 from ..key import InstructionLibraryKey
+from ..settings import LibrarySettings
 from .creation import generate_single_instruction_task
 
 
@@ -30,13 +31,6 @@ class InstructionsLibraryCreator(TaskProcessor[Tuple[InstructionLibraryKey, Inst
 
         self.total_instructions = 0
         self.completed_instructions = 0
-
-    def start(self) -> None:
-        if self.running:
-            self.logger.warning("Library creation is already running")
-            return
-
-        super().start()
 
     def _create_tasks(
         self,
@@ -66,7 +60,7 @@ class InstructionsLibraryCreator(TaskProcessor[Tuple[InstructionLibraryKey, Inst
         data: Dict[InstructionUnion, InstructionLibraryFragment[Any]] = dict(completed.results)
         library_data = InstructionLibraryData.create(self.config, data)
 
-        key = InstructionLibraryKey.create(self.config.library, self.window)
+        key = InstructionLibraryKey.create(LibrarySettings.of(self.config), self.window)
         return key, library_data
 
     def _notify_progress(self) -> None:

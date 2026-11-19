@@ -1,8 +1,7 @@
-import numpy as np
-
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.constants.general import NUM_PERIODS
 from sampletones_core.exporters.implementation.noise import NoiseExporter
+from sampletones_core.features import CHANNEL_FEATURE_DEFAULTS
 from sampletones_core.generators import NoiseGenerator
 from sampletones_core.instructions.implementation.noise import NoiseInstruction
 
@@ -59,6 +58,28 @@ class TestNoiseExporterExtractData:
         instructions = [_noise(period=0, volume=10, short=True)]
         _, _, _, duty_cycles = NoiseExporter.extract_data(instructions)
         assert duty_cycles[0] is True
+
+    def test_leading_rests_take_the_first_sounding_mode(self) -> None:
+        """The mode is read by the rule the period is: a voice opening with rests writes its mode once."""
+        _, _, _, modes = NoiseExporter.extract_data([_off(), _off(), _noise(period=2, short=True)])
+        assert modes == [True, True, True]
+
+    def test_a_rest_holds_the_last_sounding_mode_and_period(self) -> None:
+        instructions = [_noise(period=4, short=True), _off(), _noise(period=9, short=False), _off()]
+        _, periods, _, modes = NoiseExporter.extract_data(instructions)
+        assert periods == [4, 4, 9, 9]
+        assert modes == [True, True, False, False]
+
+    def test_a_channel_that_never_sounds_holds_the_channels_default_mode(self) -> None:
+        _, _, volumes, modes = NoiseExporter.extract_data([_off(), _off()])
+        assert modes == [CHANNEL_FEATURE_DEFAULTS[FeatureKey.DUTY_CYCLE]] * 2
+        assert volumes == [0, 0]
+
+    def test_a_voice_opening_with_rests_writes_its_mode_once(self) -> None:
+        features = NoiseExporter.to_features(
+            [_off(), _noise(period=2, short=True), _noise(period=2, short=True)], 2, ()
+        )
+        assert features.envelope(FeatureKey.DUTY_CYCLE).items == (True,)
 
     def test_empty_instruction_list(self) -> None:
         initial, periods, volumes, duty_cycles = NoiseExporter.extract_data([])

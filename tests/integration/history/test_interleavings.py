@@ -194,7 +194,7 @@ class TestARateChangeAndTheRetuneAfterIt:
 
     @pytest.mark.xfail(strict=True, reason=LATE_RETUNE)
     def test_a_tracker_edit_before_the_retune_lands(self, session: HistorySession) -> None:
-        session.sequencer._nes_frequency_change_acknowledged = True
+        session.sequencer._nes_frequency.acknowledged = True
 
         with held_reports(session) as queue:
             session.audit.perform(

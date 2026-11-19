@@ -1,7 +1,9 @@
 from enum import IntEnum
 from typing import Final
 
-NOTE_RANGE: Final[int] = 12
+from sampletones_shared.constants.music import OCTAVE_OFFSET, OCTAVE_SEMITONES
+
+NOTE_RANGE: Final[int] = OCTAVE_SEMITONES
 OCTAVE_RANGE: Final[int] = 8
 
 
@@ -47,7 +49,7 @@ DEFAULT_EFFECT_COLUMNS: Final[int] = 1
 
 MIN_OCTAVE: Final[int] = 0
 MAX_OCTAVE: Final[int] = 7
-PITCH_OCTAVE_OFFSET: Final[int] = 2
+PITCH_OCTAVE_OFFSET: Final[int] = OCTAVE_OFFSET
 FT_MIN_PITCH: Final[int] = (MIN_OCTAVE + PITCH_OCTAVE_OFFSET) * NOTE_RANGE
 FT_MAX_PITCH: Final[int] = (MAX_OCTAVE + PITCH_OCTAVE_OFFSET) * NOTE_RANGE + (NOTE_RANGE - 1)
 

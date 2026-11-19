@@ -1,11 +1,13 @@
 from functools import partial
 from pathlib import Path
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.coordinators.tabs.reconstruction import (
+from sampletones_application.config.session.state.paths import LastPath
+from sampletones_application.coordinators.filters import reconstruction_filter
+from sampletones_application.coordinators.tabs.reconstruction.coordinator import (
     ReconstructionTabCoordinator,
 )
 from sampletones_application.logic.history.manager import HistoryManager
@@ -35,7 +37,6 @@ from sampletones_application.utils.file_dialogs.api import (
     open_file_dialog,
     save_file_dialog,
 )
-from sampletones_application.utils.file_dialogs.filter import FileFilter
 from sampletones_application.utils.file_dialogs.result import ignore_none_path
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
 from sampletones_application.utils.gui.dialogs.outcome import SaveOutcome
@@ -179,13 +180,13 @@ class ReconstructionCoordinator:
             default_path = str(filepath.parent)
         else:
             default_filename = get_filename(reconstruction_data.name, EXT_FILE_RECONSTRUCTION)
-            default_path = str(self._session_manager.get_reconstruction_path())
+            default_path = str(self._session_manager.folder(LastPath.RECONSTRUCTION))
 
         chosen = save_file_dialog(
             title=self._language_manager["global.dialog.title.save_reconstruction"],
             initial_directory=default_path,
             default_filename=default_filename,
-            filters=self._reconstruction_filters(),
+            filters=(reconstruction_filter(self._language_manager),),
         )
         if chosen is None:
             return SaveOutcome.CALLED_OFF
@@ -196,25 +197,16 @@ class ReconstructionCoordinator:
             self._report_save_failure(exception, chosen)
             return SaveOutcome.FAILED
 
-        self._session_manager.set_reconstruction_path(chosen.parent)
+        self._session_manager.remember_folder(LastPath.RECONSTRUCTION, chosen.parent)
         self._session_manager.set_current_reconstruction(chosen)
         self._tab.display_reconstruction()
         return SaveOutcome.WRITTEN
 
-    def _reconstruction_filters(self) -> Tuple[FileFilter, ...]:
-        """The single type a reconstruction is written as and read from."""
-        return (
-            FileFilter.for_extensions(
-                self._language_manager["global.dialog.filter.reconstruction"],
-                [EXT_FILE_RECONSTRUCTION],
-            ),
-        )
-
     def _load_dialog(self) -> None:
         filepath = open_file_dialog(
             title=self._language_manager["reconstructions.browser.title.load_reconstruction_dialog"],
-            initial_directory=self._session_manager.get_reconstruction_path(),
-            filters=self._reconstruction_filters(),
+            initial_directory=self._session_manager.folder(LastPath.RECONSTRUCTION),
+            filters=(reconstruction_filter(self._language_manager),),
         )
 
         self._handle_load(filepath)
@@ -320,7 +312,7 @@ class ReconstructionCoordinator:
 
     @ignore_none_path
     def _handle_load(self, filepath: Path) -> None:
-        self._session_manager.set_reconstruction_path(filepath.parent)
+        self._session_manager.remember_folder(LastPath.RECONSTRUCTION, filepath.parent)
         self._tab.load_reconstruction(filepath)
 
     def save(self, filepath: Optional[Path] = None) -> SaveOutcome:

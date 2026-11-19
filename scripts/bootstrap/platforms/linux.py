@@ -27,6 +27,7 @@ SYSTEM_PACKAGES: Final[Tuple[str, ...]] = (
     "libxxf86vm1",
     "libgl1-mesa-dri",
     "xvfb",
+    "pulseaudio",
 )
 BUNDLING: Final[Bundling] = Bundling(
     icon=PNG_ICON,

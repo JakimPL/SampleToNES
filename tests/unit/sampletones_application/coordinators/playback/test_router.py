@@ -26,8 +26,9 @@ class FakeSource:
     single fact the router reads to decide what a command controls.
     """
 
-    def __init__(self, *, loaded: bool = False, state: str = IDLE) -> None:
+    def __init__(self, *, loaded: bool = False, state: str = IDLE, on_a_grid: bool = True) -> None:
         self._loaded = loaded
+        self._on_a_grid = on_a_grid
         self.state = state
         self.calls: List[str] = []
 
@@ -59,6 +60,12 @@ class FakeSource:
 
     def is_loaded(self) -> bool:
         return self._loaded
+
+    def can_step(self) -> bool:
+        return self._on_a_grid and self.is_engaged()
+
+    def step(self, ticks: int) -> None:
+        self.calls.append(f"step {ticks}")
 
 
 class FakeDevice:
@@ -180,6 +187,43 @@ class TestTransportCommands:
         router.stop()
 
         previews.cancel.assert_called_once_with()
+
+
+class TestStep:
+    def test_a_step_moves_the_engaged_active_source(self) -> None:
+        active = FakeSource(loaded=True, state=PAUSED)
+        router = _router(active=active, sources=[active], device=FakeDevice())
+
+        router.step(-1)
+
+        assert router.is_step_enabled is True
+        assert active.calls == ["step -1"]
+
+    def test_a_step_moves_the_engaged_source_from_a_sourceless_tab(self) -> None:
+        background = FakeSource(loaded=True, state=PLAYING)
+        router = _router(active=None, sources=[background], device=FakeDevice())
+
+        router.step(1)
+
+        assert background.calls == ["step 1"]
+
+    def test_a_source_laid_on_no_tick_grid_takes_no_step(self) -> None:
+        active = FakeSource(loaded=True, state=PAUSED, on_a_grid=False)
+        router = _router(active=active, sources=[active], device=FakeDevice())
+
+        router.step(1)
+
+        assert router.is_step_enabled is False
+        assert active.calls == []
+
+    def test_an_idle_target_takes_no_step(self) -> None:
+        active = FakeSource(loaded=True, state=IDLE)
+        router = _router(active=active, sources=[active], device=FakeDevice())
+
+        router.step(1)
+
+        assert router.is_step_enabled is False
+        assert active.calls == []
 
 
 class TestTransportState(BaseTestSuite):

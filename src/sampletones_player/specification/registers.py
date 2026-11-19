@@ -1,5 +1,6 @@
-from typing import Final, FrozenSet
+from typing import Dict, Final, FrozenSet
 
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_TIMER
 
 PULSE1_CONTROL: Final[int] = 0x4000
@@ -37,6 +38,12 @@ TRIANGLE_SILENT_RELOAD: Final[int] = 0x00
 NOISE_MODE_SHIFT: Final[int] = 7
 NOISE_LENGTH_COUNTER_LOAD: Final[int] = 0x00
 
+CHANNEL_STATUS_BITS: Final[Dict[ChannelName, int]] = {
+    ChannelName.PULSE1: 0x01,
+    ChannelName.PULSE2: 0x02,
+    ChannelName.TRIANGLE: 0x04,
+    ChannelName.NOISE: 0x08,
+}
 CHANNELS_ENABLED: Final[int] = 0x0F
 FRAME_COUNTER_SEQUENCE: Final[int] = 0x40
 
@@ -51,3 +58,9 @@ REGISTERS_WRITTEN_ON_CHANGE: Final[FrozenSet[int]] = frozenset(
         TRIANGLE_TIMER_HIGH,
     }
 )
+
+
+def divider(high: int, low: int) -> int:
+    """The 11-bit divider a tone channel's two timer bytes carry together, from the high byte's
+    timer bits and the low byte."""
+    return (high << TIMER_HIGH_SHIFT) | low

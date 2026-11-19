@@ -3,7 +3,7 @@ from typing import Final, Optional, Tuple, cast
 import numpy as np
 from scipy.fft import rfft, rfftfreq
 
-from sampletones_core.constants.spectrum import ERB_FREQUENCY_FACTOR, ERB_MINIMUM_BANDWIDTH
+from sampletones_core.constants.spectrum import ERB_FREQUENCY_FACTOR, ERB_MINIMUM_BANDWIDTH, ERB_RATE_SCALE
 
 K_WEIGHTING_SAMPLE_RATE: Final[float] = 48000.0
 K_SHELF_NUMERATOR: Final[Tuple[float, float, float]] = (1.53512485958697, -2.69169618940638, 1.19839281085285)
@@ -86,6 +86,24 @@ def erb_bandwidth(frequencies: np.ndarray) -> np.ndarray:
         (2,)
     """
     return ERB_MINIMUM_BANDWIDTH * (1.0 + ERB_FREQUENCY_FACTOR * np.asarray(frequencies, dtype=np.float64))
+
+
+def erb_rate(frequencies: np.ndarray) -> np.ndarray:
+    """
+    The position of each frequency on the ERB-rate scale, counted in auditory filter bandwidths.
+
+    Follows the Glasberg-Moore form `21.4 * log10(1 + 4.37 * f / 1000)`, the integral of
+    :func:`erb_bandwidth`'s reciprocal, so bands spaced evenly on it each span one filter's
+    share of the ear's resolution.
+
+    Args:
+        frequencies: Array of frequency values in Hz.
+
+    Returns:
+        The ERB rate of each frequency, shape matching the input.
+    """
+    rates: np.ndarray = ERB_RATE_SCALE * np.log10(1.0 + ERB_FREQUENCY_FACTOR * frequencies)
+    return rates
 
 
 def _biquad_power_response(

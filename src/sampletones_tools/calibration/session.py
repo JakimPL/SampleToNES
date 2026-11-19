@@ -7,8 +7,7 @@ from sampletones_application.utils.palette.catalog import DEFAULT_PALETTE_NAME
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_shared.logger import logger
-from sampletones_shared.paths.user import USER_PATH_DOCUMENTS
-from sampletones_shared.utils.text import listed_items
+from sampletones_shared.utils.text import parsed_items
 from sampletones_tools.calibration.board.session import BoardRequest, build_board
 from sampletones_tools.calibration.config.corpus import CorpusConfig
 from sampletones_tools.calibration.corpus.synthesis import build_corpus
@@ -17,9 +16,9 @@ from sampletones_tools.calibration.layout import CORPUS_DIRECTORY, CSV_REPORT, M
 from sampletones_tools.calibration.referee.factory import build_referees
 from sampletones_tools.calibration.report import write_csv, write_markdown
 from sampletones_tools.calibration.runner import build_variants, evaluate_variants
-from sampletones_tools.runs import stamped_board_directory, stamped_run_directory
+from sampletones_tools.runs import output_root, stamped_board_directory, stamped_run_directory
 
-OUTPUT_ROOT: Final[Path] = USER_PATH_DOCUMENTS / "calibration"
+OUTPUT_ROOT: Final[Path] = output_root("calibration")
 BOARD_ROOT: Final[Path] = OUTPUT_ROOT / "pages"
 
 
@@ -29,18 +28,13 @@ def methods_named(stated: Optional[str], default: Sequence[SpectrumMethod]) -> L
     Raises:
         ValueError: If a name is none of the spectrum methods.
     """
-    if stated is None:
-        return list(default)
-
-    methods: List[SpectrumMethod] = []
-    for name in listed_items(stated):
-        try:
-            methods.append(SpectrumMethod(name))
-        except ValueError as error:
-            known = ", ".join(method.value for method in SpectrumMethod)
-            raise ValueError(f"Unknown spectrum method {name!r}; the methods are {known}.") from error
-
-    return methods
+    known = ", ".join(method.value for method in SpectrumMethod)
+    return parsed_items(
+        stated,
+        default,
+        parse=SpectrumMethod,
+        refusal=lambda name: f"Unknown spectrum method {name!r}; the methods are {known}.",
+    )
 
 
 def floats_named(stated: Optional[str], default: Sequence[float]) -> List[float]:
@@ -49,17 +43,7 @@ def floats_named(stated: Optional[str], default: Sequence[float]) -> List[float]
     Raises:
         ValueError: If a value is no number.
     """
-    if stated is None:
-        return list(default)
-
-    values: List[float] = []
-    for value in listed_items(stated):
-        try:
-            values.append(float(value))
-        except ValueError as error:
-            raise ValueError(f"Not a number: {value!r}.") from error
-
-    return values
+    return parsed_items(stated, default, parse=float, refusal=lambda value: f"Not a number: {value!r}.")
 
 
 def base_configuration(path: Optional[Path]) -> Config:

@@ -7,11 +7,13 @@ ASSETS_PACKAGE: Final[str] = "sampletones_assets"
 CONFIG_DIRECTORY: Final[Path] = package_directory("sampletones_config")
 
 ICON_DIRECTORY: Final[str] = "icons"
+ICONS_PACKAGE: Final[str] = f"{ASSETS_PACKAGE}.{ICON_DIRECTORY}"
 ICON_WIN_FILENAME: Final[str] = "sampletones.ico"
 ICON_UNIX_FILENAME: Final[str] = "sampletones.png"
 ICON_VECTOR_FILENAME: Final[str] = "sampletones.svg"
 
 FONT_DIRECTORY: Final[str] = "fonts"
+FONTS_PACKAGE: Final[str] = f"{ASSETS_PACKAGE}.{FONT_DIRECTORY}"
 FONT_SANS_REGULAR: Final[str] = "SourceSans3-Regular.ttf"
 FONT_SANS_BOLD: Final[str] = "SourceSans3-Bold.ttf"
 FONT_SANS_ITALIC: Final[str] = "SourceSans3-Italic.ttf"

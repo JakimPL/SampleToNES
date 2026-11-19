@@ -3,7 +3,7 @@ from __future__ import annotations
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Final, List, Sequence
+from typing import Dict, Final, List, Optional, Sequence
 
 from sampletones_shared.exceptions import DriverBuildError, ToolchainMissingError
 from sampletones_shared.utils.system.programs import (
@@ -15,6 +15,7 @@ from sampletones_shared.utils.system.system import System
 ASSEMBLER: Final[str] = "ca65"
 LINKER: Final[str] = "ld65"
 TARGET_CPU: Final[str] = "6502"
+CONFIGURED_START: Final[None] = None
 ASSEMBLY_PURPOSE: Final[str] = "the player driver is assembled with cc65"
 
 INSTALL_HINTS: Final[Dict[System, str]] = {
@@ -101,8 +102,10 @@ class Toolchain:
         objects: Sequence[Path],
         destination: Path,
         labels: Path,
+        *,
+        start: Optional[int] = CONFIGURED_START,
     ) -> None:
-        """Lays the object files out into the driver image.
+        """Lays the object files out into an image.
 
         The line names our own configuration and our own object files alone, which is what keeps
         the image entirely ours to ship: reaching for a cc65 target or library would place that
@@ -111,17 +114,20 @@ class Toolchain:
         Args:
             configuration: The linker configuration stating the memory layout.
             objects: The object files, in the order they take in the image.
-            destination: The driver image the linker writes.
+            destination: The image the linker writes.
             labels: The label file the linker writes, holding each symbol's address.
+            start: The address a configuration reads as its start address, where it asks for one.
 
         Raises:
             DriverBuildError: If the linker reports a failure.
         """
+        placed = [] if start is None else ["--start-addr", str(start)]
         self.run(
             [
                 str(self.linker),
                 "--config",
                 str(configuration),
+                *placed,
                 "-Ln",
                 str(labels),
                 "-o",

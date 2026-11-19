@@ -12,7 +12,7 @@ from tests.screens.application.audio.steps import play_the_looping_song, play_th
 from tests.suite.screens.worlds.songs import ARRANGED_PROJECT, sequencer_world
 
 CHOSEN_RATE: Final[int] = 48000
-RATE_LABEL: Final[str] = "settings.audio.template.sample_rate_label"
+RATE_LABEL: Final[str] = "global.context.template.sample_rate"
 
 
 @pytest.fixture

@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import AbstractSet, Final
 
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.logic.export.nsf.protocol import NSFExportServiceProtocol
 from sampletones_application.view_model.shared.nsf.offer import NO_FRAMES, NSFExportOffer
 from sampletones_core.constants.enums import ChannelName
@@ -10,7 +11,7 @@ from sampletones_core.exports.backend import ExportBackend
 from sampletones_core.exports.request import SampleExport
 from sampletones_core.exports.scope import ExportScope
 from sampletones_player.compression.scheme import offered_schemes
-from sampletones_player.export.program import NSFProgram
+from sampletones_player.export.program import Program
 
 NO_TICKS: Final[int] = 0
 
@@ -46,8 +47,8 @@ class SampleSource:
             schemes=offered_schemes(seeded=False),
         )
 
-    def program(self) -> NSFProgram:
-        return NSFProgram.for_sample(self.request)
+    def program(self) -> Program:
+        return Program.for_sample(self.request)
 
     def ticks(self, channels: AbstractSet[ChannelName]) -> int:
         """The ticks the longest slice on ``channels`` runs for, which is how long the song lasts."""
@@ -71,11 +72,11 @@ class SampleSource:
 
     def proposed_directory(self, session_manager: SessionManager) -> Path:
         """The folder the last instrument was exported to."""
-        return session_manager.get_instrument_path()
+        return session_manager.folder(LastPath.INSTRUMENT)
 
     def remember_directory(self, session_manager: SessionManager, directory: Path) -> None:
         """Opens the next instrument export where this one was written."""
-        session_manager.set_instrument_path(directory)
+        session_manager.remember_folder(LastPath.INSTRUMENT, directory)
 
     def submit(
         self,

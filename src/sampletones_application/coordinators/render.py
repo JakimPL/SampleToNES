@@ -1,7 +1,8 @@
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.coordinators.export.modal import ModalWindowCoordinator
 from sampletones_application.logic.render.logic import SongRenderLogic
 from sampletones_application.ui.panels.dialogs.render import GUIRenderWindow
 from sampletones_application.utils.file_dialogs.api import save_file_dialog
@@ -13,7 +14,7 @@ from sampletones_core.audio.writers import AudioFormat, capability_of
 from sampletones_shared.types.callback import VoidCallback
 
 
-class SongRenderCoordinator:
+class SongRenderCoordinator(ModalWindowCoordinator[SongRenderViewModel]):
     """Owns writing the song to an audio file from the reader's side: the dialog, the destination
     it is asked for, and the report a finished render makes.
 
@@ -35,12 +36,10 @@ class SongRenderCoordinator:
         language_manager: LanguageManager,
         on_activity_changed: VoidCallback,
     ) -> None:
+        super().__init__(window, flow="render")
         self._logic = render_logic
-        self._window = window
         self._dialogs = dialogs
         self._on_activity_changed = on_activity_changed
-        self._view_model: Optional[SongRenderViewModel] = None
-        self._window_open = False
 
         self._title_destination = language_manager["settings.render.title.destination_dialog"]
         self._title_rendered = language_manager["settings.render.title.rendered"]
@@ -57,11 +56,11 @@ class SongRenderCoordinator:
         self._logic.on_error = self._on_error
         self._logic.on_canceled = self._on_canceled
 
-        self._window.on_settings_changed = self._logic.apply
-        self._window.on_browse = self._logic.request_destination
-        self._window.on_render = self._logic.start
-        self._window.on_cancel = self._logic.cancel
-        self._window.on_close = self._close
+        window.on_settings_changed = self._logic.apply
+        window.on_browse = self._logic.request_destination
+        window.on_render = self._logic.start
+        window.on_cancel = self._logic.cancel
+        window.on_close = self._close
 
     @property
     def is_active(self) -> bool:
@@ -73,19 +72,12 @@ class SongRenderCoordinator:
         if not self._logic.open():
             return
 
-        self._window_open = True
-        self._window.open(self._require_view_model())
+        self._show()
         self._on_activity_changed()
 
     def cleanup(self) -> None:
         """Winds a running render down for application exit."""
         self._logic.cleanup()
-
-    def _on_view_changed(self, view_model: SongRenderViewModel) -> None:
-        """Keeps the open window standing at where the render has got to."""
-        self._view_model = view_model
-        if self._window_open:
-            self._window.update_view(view_model)
 
     def _choose_destination(
         self,
@@ -139,19 +131,6 @@ class SongRenderCoordinator:
 
     def _close(self) -> None:
         """Takes the dialog off screen and hands the application back."""
-        self._window_open = False
-        self._view_model = None
-        self._window.hide()
+        self._take_off_screen()
         self._logic.close()
         self._on_activity_changed()
-
-    def _require_view_model(self) -> SongRenderViewModel:
-        """The render the dialog opens on.
-
-        Raises:
-            SystemError: when the window is raised before the logic offers a view.
-        """
-        if self._view_model is None:
-            raise SystemError("The render window is opened over the view the logic emits")
-
-        return self._view_model

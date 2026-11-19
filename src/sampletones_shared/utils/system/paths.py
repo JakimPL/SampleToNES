@@ -67,6 +67,24 @@ def is_same_path(first: Path, second: Path) -> bool:
     return first.resolve() == second.resolve()
 
 
+def is_within(path: Path, directory: Path) -> bool:
+    """
+    Whether a path lies inside a folder, or is the folder itself, however each of them is spelled.
+
+    Both sides resolve to their absolute locations first, the rule :func:`is_same_path` compares
+    by, so a folder reached through a link or a detour through a parent holds what it holds under
+    any spelling. Either may be absent.
+
+    Args:
+        path (Path): The location asked about.
+        directory (Path): The folder it may lie in.
+
+    Returns:
+        bool: Whether ``path`` resolves to ``directory`` or to a location beneath it.
+    """
+    return path.resolve().is_relative_to(directory.resolve())
+
+
 def get_filename(name: str, extension: str) -> str:
     """
     Composes a file name from the name a thing is known by and its extension.

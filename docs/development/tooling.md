@@ -73,7 +73,7 @@ The Makefile is the developer's index, one line per target. A target names the s
 and passes its flag. The `run` and `calibration` targets name the `sampletones` command they start with no
 options, and the `tracker-playback` target passes the inputs its command takes: the Bitphase source folder
 its `BITPHASE` variable names, the `FamiTracker.exe` its `FAMITRACKER` variable names, and the project
-files in `PROJECT`, if any. The `icons`, `docs` and `demo` targets run makers of the assets unit. It runs each target it is
+files in `PROJECT`, if any. The `icons`, `docs`, `demo`, `pictures` and `footage` targets run makers of the assets unit. It runs each target it is
 given. `install.sh` and `install.bat` at the root
 exist for the double-click path and call the same bundle script.
 
@@ -86,8 +86,8 @@ each one reaches files the same way in all of them:
 - *Outputs* go where `--output` (`-o`) names. A measurement given no `-o` writes a timestamped directory
   under the user's Documents. `codec report` and the sample emitters always take `-o`.
 - *The repository* is reached through the checkout guard. A command that reads or writes the repository,
-  or needs a development dependency, runs from a checkout. `driver` rewrites the files the package ships
-  from a checkout, and a measurement runs anywhere. What exists only to make the repository's own content
+  or needs a development dependency, runs from a checkout. `driver` and `tiles` rewrite the files the
+  package ships from a checkout, and a measurement runs anywhere. What exists only to make the repository's own content
   is a checkout unit rather than a command ([assets](assets.md)).
 - *Package data* is read from the package it ships in, which holds in a checkout, in the wheel and in the
   bundle.

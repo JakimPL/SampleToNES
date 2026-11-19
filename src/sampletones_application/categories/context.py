@@ -94,3 +94,13 @@ def generator_label(
     the same thing wherever it is offered.
     """
     return context_label(language_manager, GENERATOR_ELEMENTS[generator_name])
+
+
+def byte_size_label(language_manager: LanguageManager, byte_count: int) -> str:
+    """A byte figure, as every surface stating what a sample or an instrument takes prints it."""
+    return context_text(language_manager, TextType.TEMPLATE, ContextElements.SIZE_BYTES).format(bytes=byte_count)
+
+
+def sample_rate_template(language_manager: LanguageManager) -> str:
+    """The template a sample rate is printed in, wherever a list of rates is offered."""
+    return language_manager["global.context.template.sample_rate"]
