@@ -111,7 +111,7 @@ class TestCalibration:
         tmp_path: Path,
     ) -> None:
         defaults = Config()
-        saved = defaults.model_copy(update={"general": defaults.general.model_copy(update={"max_workers": 2})})
+        saved = defaults.with_workers(2)
         path = tmp_path / "config.json"
         saved.save(path)
 

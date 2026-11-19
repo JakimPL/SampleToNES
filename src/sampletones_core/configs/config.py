@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Optional, Self
+from typing import Dict, Optional, Self, Union
 
 from pydantic import ConfigDict, Field
 
@@ -11,7 +11,7 @@ from sampletones_core.configs.library import InstructionsLibraryConfig
 from sampletones_core.data import DataModel
 from sampletones_core.data.metadata import Metadata
 from sampletones_shared.music import Tuning
-from sampletones_shared.paths.user import CONFIG_PATH
+from sampletones_shared.paths.user import CONFIG_PATH, LIBRARY_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import load_json, save_json
 from sampletones_shared.utils.system.paths import to_path
@@ -92,6 +92,36 @@ class Config(DataModel):
             updates["sample_rate"] = sample_rate
 
         return self.model_copy(update={"library": self.library.model_copy(update=updates)})
+
+    def with_directories(self, *, library: Path, reconstructions: Path) -> Self:
+        """A copy reading its instruction libraries from ``library`` and writing its reconstructions
+        to ``reconstructions``, keeping every other setting."""
+        return self._with_general(
+            {"library_directory": str(library), "reconstructions_directory": str(reconstructions)}
+        )
+
+    def with_workers(self, count: int) -> Self:
+        """A copy converting on ``count`` worker processes, keeping every other setting.
+
+        Raises:
+            ValidationError: If ``count`` is below one.
+        """
+        return self._with_general({"max_workers": count})
+
+    def _with_general(self, update: Dict[str, Union[int, str]]) -> Self:
+        """A copy whose general section takes ``update``, held to the bounds the section states."""
+        general = GeneralConfig.model_validate({**self.general.model_dump(), **update})
+        return self.model_copy(update={"general": general})
+
+    @classmethod
+    def rooted_at(cls, root: Path) -> Self:
+        """The default settings with the library and reconstructions folders standing under ``root``,
+        named as the user's own folders are, which is how a tree a test or a maker builds holds its
+        files apart from the user's."""
+        return cls().with_directories(
+            library=root / LIBRARY_DIRECTORY.name,
+            reconstructions=root / RECONSTRUCTIONS_DIRECTORY.name,
+        )
 
     @property
     def max_workers(self) -> int:

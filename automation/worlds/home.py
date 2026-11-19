@@ -92,6 +92,4 @@ def one_worker_config() -> Config:
     """Reconstruction settings running one job at a time, which keeps a scenario's run on a worker of its
     own.
     """
-    config = Config()
-    general = config.general.model_copy(update={"max_workers": 1})
-    return config.model_copy(update={"general": general})
+    return Config().with_workers(1)

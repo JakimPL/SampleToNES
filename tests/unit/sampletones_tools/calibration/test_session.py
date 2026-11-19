@@ -76,7 +76,7 @@ class TestBaseConfiguration:
 
     def test_a_file_is_read_as_it_stands(self, tmp_path: Path) -> None:
         defaults = Config()
-        saved = defaults.model_copy(update={"general": defaults.general.model_copy(update={"max_workers": 3})})
+        saved = defaults.with_workers(3)
         path = tmp_path / "config.json"
         saved.save(path)
 

@@ -5,8 +5,6 @@ import numpy as np
 
 from assets.demo.paths import (
     CONFIG_FILE,
-    LIBRARY_FOLDER,
-    RECONSTRUCTIONS_FOLDER,
     RECORDINGS_FOLDER,
     hit_recording_path,
     project_path,
@@ -124,14 +122,7 @@ def _write_recording(path: Path, audio: np.ndarray, recordings: RecordingsSpec) 
 
 def _write_config(root: Path, written: List[Path]) -> Config:
     """Writes the default configuration pointed at the tree's own library and reconstructions folders."""
-    config = Config()
-    general = config.general.model_copy(
-        update={
-            "library_directory": str(root / LIBRARY_FOLDER),
-            "reconstructions_directory": str(root / RECONSTRUCTIONS_FOLDER),
-        }
-    )
-    config = config.model_copy(update={"general": general})
+    config = Config.rooted_at(root)
     path = root / CONFIG_FILE
     config.save(path)
     written.append(path)
