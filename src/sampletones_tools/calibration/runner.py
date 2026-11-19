@@ -1,12 +1,11 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, FrozenSet, List, Mapping, Optional, Tuple
+from typing import Dict, FrozenSet, List, Optional, Tuple
 
 import numpy as np
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
-from sampletones_core.headless.library import ensure_library
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
@@ -105,74 +104,97 @@ def build_variants(
     return variants
 
 
-def evaluate_variants(
-    variants: List[CalibrationVariant],
-    items: List[CorpusItem],
-    item_paths: Dict[str, Path],
+@dataclass(frozen=True)
+class Conversion:
+    """One reference sound a run converts under one variant, and where its record goes.
+
+    Attributes:
+        variant: The configuration the sound is converted under.
+        item: The reference sound.
+        position: The sound's place in the corpus, which its record keeps.
+        path: The written file the conversion reads.
+        channels: The channels the conversion covers.
+        run_directory: The directory the run writes its renders and recordings into.
+    """
+
+    variant: CalibrationVariant
+    item: CorpusItem
+    position: int
+    path: Path
+    channels: FrozenSet[ChannelName]
+    run_directory: Path
+
+
+def evaluate_conversion(
+    conversion: Conversion,
+    reconstructor: Reconstructor,
     referees: List[Referee],
     truth_referees: List[TruthReferee],
-    run_directory: Path,
-    channels: FrozenSet[ChannelName],
 ) -> List[CalibrationRow]:
     """
-    Reconstruct the corpus under every variant, score the results and keep what was heard.
+    Reconstruct one sound, score it, and keep what was heard.
 
-    Each corpus item is reconstructed with the variant's configuration and every
-    referee judges the approximation against the preprocessed original, both on the
-    common scale set by the working-level coefficient. An item whose truth the corpus
-    knows is also read against it by every truth referee. The render, the recording it
-    reconstructs and a record of the scores and the sounding frames are written under
-    the run directory, so a render can be heard and read again after the run. An unlisted item keeps
-    its record alone.
+    The sound is reconstructed with the variant's configuration and every referee judges the
+    approximation against the preprocessed original, both on the common scale set by the
+    working-level coefficient. A sound whose truth the corpus knows is also read against it by
+    every truth referee. A listed sound's render, recording and channel parts are written under the
+    run directory, and every sound's record comes last, so a record stands only for a conversion
+    written whole.
 
     Args:
-        variants: Labeled configurations to evaluate.
-        items: Corpus items, carrying the category used in reports.
-        item_paths: Written WAV path per corpus item name.
-        referees: Referees scoring each reconstruction.
-        truth_referees: Referees reading each reconstruction of an item with a known truth against it.
-        run_directory: The directory the run writes its renders and recordings into.
-        channels: The channels every variant reconstructs an item with when the item names none.
+        conversion: The sound, the variant and where the record goes.
+        reconstructor: The variant's reconstructor over the conversion's channels.
+        referees: Referees scoring the reconstruction.
+        truth_referees: Referees reading the reconstruction against a known truth.
 
     Returns:
-        One row per (variant, item, referee, reading).
+        One row per (referee, reading), empty where the reconstruction is unavailable.
     """
-    rows: List[CalibrationRow] = []
-    for variant in variants:
-        ensure_library(variant.config)
-        reconstructors: Dict[FrozenSet[ChannelName], Reconstructor] = {}
-        sample_rate = variant.config.library.sample_rate
-        for position, item in enumerate(items):
-            path = item_paths[item.name]
-            covered = item.channels if item.channels is not None else channels
-            reconstructor = _reconstructor(reconstructors, variant.config, covered)
-            reconstruction = reconstructor(path)
-            if reconstruction is None:
-                logger.info(f"[{variant.label}] {item.name}: reconstruction unavailable")
-                continue
+    variant, item = conversion.variant, conversion.item
+    reconstruction = reconstructor(conversion.path)
+    if reconstruction is None:
+        logger.info(f"[{variant.label}] {item.name}: reconstruction unavailable")
+        return []
 
-            reference, estimate = _compared_signals(reconstructor.load_audio(path), reconstruction)
-            judgments = _judgments(item, reference, estimate, reconstruction, referees, truth_referees)
-            silence = {referee.name: referee.judge(reference, np.zeros_like(reference)).score for referee in referees}
-            rows.extend(_rows(variant, item, judgments))
-            record = RenderRecord(
-                variant=variant.label,
-                item=item.name,
-                position=position,
-                family=item.family.value,
-                category=item.category,
-                listed=item.listed,
-                timelines=sounding_timelines(_played_instructions(reconstruction)),
-                judgments={name: judgment.readings() for name, judgment in judgments.items()},
-                silence=silence,
-            )
-            if item.listed:
-                _write_listened(run_directory, record, reference, estimate, reconstruction, sample_rate)
-            else:
-                write_record(run_directory, record)
-            logger.info(f"[{variant.label}] {item.name}: scored")
+    reference, estimate = _compared_signals(reconstructor.load_audio(conversion.path), reconstruction)
+    judgments = _judgments(item, reference, estimate, reconstruction, referees, truth_referees)
+    silence = {referee.name: referee.judge(reference, np.zeros_like(reference)).score for referee in referees}
+    record = RenderRecord(
+        variant=variant.label,
+        item=item.name,
+        position=conversion.position,
+        family=item.family.value,
+        category=item.category,
+        listed=item.listed,
+        timelines=sounding_timelines(_played_instructions(reconstruction)),
+        judgments={name: judgment.readings() for name, judgment in judgments.items()},
+        silence=silence,
+    )
+    sample_rate = variant.config.library.sample_rate
+    if item.listed:
+        _write_listened(conversion.run_directory, record, reference, estimate, reconstruction, sample_rate)
+    else:
+        write_record(conversion.run_directory, record)
 
-    return rows
+    logger.debug(f"[{variant.label}] {item.name}: scored")
+    return recorded_rows(record)
+
+
+def recorded_rows(record: RenderRecord) -> List[CalibrationRow]:
+    """The rows a record holds, one per (referee, reading), as the conversion that wrote it scored them."""
+    return [
+        CalibrationRow(
+            variant=record.variant,
+            item=record.item,
+            family=record.family,
+            category=record.category,
+            referee=referee,
+            component=component,
+            score=value,
+        )
+        for referee, readings in record.judgments.items()
+        for component, value in readings.items()
+    ]
 
 
 def _write_listened(
@@ -183,9 +205,8 @@ def _write_listened(
     reconstruction: Reconstruction,
     sample_rate: int,
 ) -> None:
-    """Write what the page plays of a listed item: the recording, the render and its channel parts."""
+    """Write what the page plays of a listed item: the recording, the channel parts, then the render and its record."""
     write_recording(run_directory, record.item, reference * reconstruction.coefficient, sample_rate)
-    write_render(run_directory, record, estimate * reconstruction.coefficient, sample_rate)
     write_channel_renders(
         run_directory,
         record.variant,
@@ -193,18 +214,7 @@ def _write_listened(
         _channel_audio(reconstruction, estimate.shape[0]),
         sample_rate,
     )
-
-
-def _reconstructor(
-    reconstructors: Dict[FrozenSet[ChannelName], Reconstructor],
-    config: Config,
-    channels: FrozenSet[ChannelName],
-) -> Reconstructor:
-    """The variant's reconstructor over ``channels``, built the first time an item asks for them."""
-    if channels not in reconstructors:
-        reconstructors[channels] = Reconstructor(config, channels)
-
-    return reconstructors[channels]
+    write_render(run_directory, record, estimate * reconstruction.coefficient, sample_rate)
 
 
 def _judgments(
@@ -253,23 +263,3 @@ def _channel_audio(reconstruction: Reconstruction, length: int) -> Dict[ChannelN
 def _played_instructions(reconstruction: Reconstruction) -> Dict[ChannelName, List[InstructionUnion]]:
     instructions = reconstruction.instructions
     return {channel_name: instructions[channel_name] for channel_name in reconstruction.playing_channels}
-
-
-def _rows(
-    variant: CalibrationVariant,
-    item: CorpusItem,
-    judgments: Mapping[str, Judgment],
-) -> List[CalibrationRow]:
-    return [
-        CalibrationRow(
-            variant=variant.label,
-            item=item.name,
-            family=item.family.value,
-            category=item.category,
-            referee=referee,
-            component=component,
-            score=value,
-        )
-        for referee, judgment in judgments.items()
-        for component, value in judgment.readings().items()
-    ]

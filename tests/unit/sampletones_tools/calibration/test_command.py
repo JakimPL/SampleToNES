@@ -142,6 +142,21 @@ class TestCalibration:
         assert "nes-mix" not in calibration.requests[0].categories
         assert "tone" in calibration.requests[0].categories
 
+    def test_the_workers_and_the_resume_are_read_from_the_options(
+        self,
+        calibration: RecordedCalibration,
+        tmp_path: Path,
+    ) -> None:
+        assert dispatch(COMMANDS, ["calibration", "--workers", "3", "--resume", "-o", str(tmp_path)]) == 0
+
+        assert (calibration.requests[0].workers, calibration.requests[0].resume) == (3, True)
+
+    def test_without_workers_the_run_takes_the_configuration_s_own(self, calibration: RecordedCalibration) -> None:
+        assert dispatch(COMMANDS, ["calibration"]) == 0
+
+        assert calibration.requests[0].workers == Config().general.max_workers
+        assert not calibration.requests[0].resume
+
     def test_an_unknown_category_is_refused(self, calibration: RecordedCalibration) -> None:
         with pytest.raises(SystemExit, match="Unknown category"):
             dispatch(COMMANDS, ["calibration", "--categories", "chord"])
@@ -203,6 +218,9 @@ class TestBoard:
 
         with pytest.raises(SystemExit, match="measures nothing"):
             dispatch(COMMANDS, ["calibration", "--board", str(run), "--skip", "notes"])
+
+        with pytest.raises(SystemExit, match="measures nothing"):
+            dispatch(COMMANDS, ["calibration", "--board", str(run), "--resume"])
 
         assert board.requests == []
 

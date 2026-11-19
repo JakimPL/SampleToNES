@@ -26,6 +26,8 @@ CHANNELS_HELP: Final[str] = (
 )
 CATEGORIES_HELP: Final[str] = "categories of reference sounds to measure, comma separated; without it, every one"
 SKIP_HELP: Final[str] = "families or categories of reference sounds to leave out, comma separated, e.g. notes"
+WORKERS_HELP: Final[str] = "how many conversions run at once; without it, the configuration's general.max_workers"
+RESUME_HELP: Final[str] = "take up the run in --output where it stopped, converting only the sounds it has no record of"
 BOARD_HELP: Final[str] = (
     "run directories to compare on one listening page, measuring nothing; without -o the page lands in a "
     "timestamped directory under Documents/SampleToNES/calibration/pages"
@@ -41,6 +43,8 @@ MEASURING_OPTIONS: Final[List[str]] = [
     "--channels",
     "--categories",
     "--skip",
+    "--workers",
+    "--resume",
 ]
 
 
@@ -56,6 +60,8 @@ class CalibrationArguments:
     channels: Optional[str]
     categories: Optional[str]
     skip: Optional[str]
+    workers: Optional[int]
+    resume: bool
     board: Optional[List[Path]]
     palette: Optional[str]
     open_page: bool
@@ -70,6 +76,8 @@ def configure(parser: ArgumentParser) -> None:
     parser.add_argument("--channels", type=str, default=None, help=CHANNELS_HELP)
     parser.add_argument("--categories", type=str, default=None, help=CATEGORIES_HELP)
     parser.add_argument("--skip", type=str, default=None, help=SKIP_HELP)
+    parser.add_argument("--workers", type=int, default=None, help=WORKERS_HELP)
+    parser.add_argument("--resume", action="store_true", help=RESUME_HELP)
     parser.add_argument("--board", type=Path, nargs="+", default=None, metavar="RUN", help=BOARD_HELP)
     parser.add_argument("--palette", type=str, default=None, help=PALETTE_HELP)
     parser.add_argument("--no-open", dest="open_page", action="store_false", help=NO_OPEN_HELP)
@@ -79,7 +87,8 @@ def run(arguments: Namespace) -> int:
     """Runs the calibration the options describe, or builds a page over the runs they name.
 
     Raises:
-        SystemExit: If a method, a value, a channel or a palette is unknown, a run directory holds
+        SystemExit: If a method, a value, a channel or a palette is unknown, a run cannot be resumed,
+            a run directory holds
             no renders, or a page is asked for beside the options that measure.
     """
     given = CalibrationArguments(
@@ -91,6 +100,8 @@ def run(arguments: Namespace) -> int:
         channels=arguments.channels,
         categories=arguments.categories,
         skip=arguments.skip,
+        workers=arguments.workers,
+        resume=arguments.resume,
         board=arguments.board,
         palette=arguments.palette,
         open_page=arguments.open_page,
@@ -105,6 +116,7 @@ def _measure(given: CalibrationArguments) -> int:
     from sampletones_shared.utils.validation import describe_failure
     from sampletones_tools.calibration.config.suite import SuiteConfig
     from sampletones_tools.calibration.corpus.reference import reference_catalog
+    from sampletones_tools.calibration.fingerprint import ResumeRefusedError
     from sampletones_tools.calibration.session import (
         CalibrationRequest,
         base_configuration,
@@ -117,20 +129,27 @@ def _measure(given: CalibrationArguments) -> int:
 
     suite = SuiteConfig.load()
     try:
+        base = base_configuration(given.config)
         request = CalibrationRequest(
-            base=base_configuration(given.config),
+            base=base,
             output=given.output if given.output is not None else default_output(),
             methods=methods_named(given.methods, suite.methods),
             perceptual_exponents=floats_named(given.perceptual_exponents, suite.perceptual_exponents),
             temporal_weights=floats_named(given.temporal_weights, suite.temporal_weights),
             channels=channels_named(given.channels) if given.channels is not None else list(suite.channels),
             categories=measured_categories(given.categories, given.skip, reference_catalog()),
+            workers=given.workers if given.workers is not None else base.general.max_workers,
+            resume=given.resume,
             palette=given.palette if given.palette is not None else DEFAULT_PALETTE_NAME,
         )
     except ValueError as error:
         raise SystemExit(describe_failure(error)) from error
 
-    outcome = calibrate(request)
+    try:
+        outcome = calibrate(request)
+    except ResumeRefusedError as error:
+        raise SystemExit(str(error)) from error
+
     print(f"Report: {outcome.report.resolve().as_uri()}")
     return _show(outcome.page, given.open_page)
 
@@ -173,8 +192,9 @@ def _refuse_measuring(given: CalibrationArguments) -> None:
         given.channels,
         given.categories,
         given.skip,
+        given.workers,
     )
-    if any(value is not None for value in measuring):
+    if any(value is not None for value in measuring) or given.resume:
         named = ", ".join(MEASURING_OPTIONS)
         raise SystemExit(f"--board reads finished runs and measures nothing; it takes none of {named}.")
 

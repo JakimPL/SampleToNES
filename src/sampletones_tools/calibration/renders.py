@@ -1,6 +1,6 @@
 from itertools import combinations
 from pathlib import Path
-from typing import Dict, Final, List, Mapping, Sequence, Tuple
+from typing import Dict, Final, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
@@ -97,6 +97,15 @@ def write_record(run_directory: Path, record: RenderRecord) -> None:
     (directory / get_filename(record.item, EXT_FILE_JSON)).write_text(
         record.model_dump_json(indent=1), encoding="utf-8"
     )
+
+
+def read_record(run_directory: Path, variant: str, item: str) -> Optional[RenderRecord]:
+    """The record a run wrote for ``item`` under ``variant``, or ``None`` where it wrote none."""
+    path = variant_directory(run_directory, variant) / get_filename(item, EXT_FILE_JSON)
+    if not path.is_file():
+        return None
+
+    return RenderRecord.model_validate_json(path.read_text(encoding="utf-8"))
 
 
 def write_channel_renders(

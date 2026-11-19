@@ -11,6 +11,7 @@ from sampletones_tools.calibration.board.layout import PAGE_FILE
 from sampletones_tools.calibration.board.session import BoardRequest
 from sampletones_tools.calibration.corpus.families import Family
 from sampletones_tools.calibration.corpus.item import CorpusItem
+from sampletones_tools.calibration.fingerprint import ResumeRefusedError
 from sampletones_tools.calibration.layout import CSV_REPORT, MARKDOWN_REPORT
 from sampletones_tools.calibration.referee.protocol import Referee, TruthReferee
 from sampletones_tools.calibration.runner import CalibrationRow, CalibrationVariant
@@ -133,6 +134,8 @@ class TestCalibrate:
             temporal_weights=[],
             channels=[ChannelName.PULSE1],
             categories=CATEGORIES,
+            workers=1,
+            resume=False,
         )
 
         outcome = calibrate(request)
@@ -155,6 +158,8 @@ class TestCalibrate:
             temporal_weights=[],
             channels=[ChannelName.PULSE1],
             categories=CATEGORIES,
+            workers=1,
+            resume=False,
         )
 
         outcome = calibrate(request)
@@ -178,6 +183,8 @@ class TestCalibrate:
             temporal_weights=[],
             channels=[ChannelName.PULSE1],
             categories=CATEGORIES,
+            workers=1,
+            resume=False,
             palette="light",
         )
 
@@ -201,6 +208,8 @@ class TestCalibrate:
             temporal_weights=[],
             channels=[ChannelName.PULSE1],
             categories=CATEGORIES,
+            workers=1,
+            resume=False,
         )
 
         calibrate(request)
@@ -222,6 +231,8 @@ class TestCalibrate:
             temporal_weights=[],
             channels=[ChannelName.PULSE1, ChannelName.NOISE],
             categories=CATEGORIES,
+            workers=1,
+            resume=False,
         )
 
         calibrate(request)
@@ -243,11 +254,67 @@ class TestCalibrate:
             temporal_weights=[],
             channels=[ChannelName.PULSE1],
             categories=["nes-pulse", "tone"],
+            workers=1,
+            resume=False,
         )
 
         calibrate(request)
 
         assert set(measured) == {"nes-pulse", "tone"}
+
+
+class TestResumingARun:
+    def test_a_folder_holding_no_run_is_refused(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(EVALUATE, _evaluated([]))
+        request = CalibrationRequest(
+            base=Config(),
+            output=tmp_path / "empty",
+            methods=[SpectrumMethod.FFT],
+            perceptual_exponents=[1.0],
+            temporal_weights=[],
+            channels=[ChannelName.PULSE1],
+            categories=CATEGORIES,
+            workers=1,
+            resume=True,
+        )
+
+        with pytest.raises(ResumeRefusedError, match="holds no run"):
+            calibrate(request)
+
+    def test_a_run_resumes_the_run_it_left(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(EVALUATE, _evaluated([]))
+        first = CalibrationRequest(
+            base=Config(),
+            output=tmp_path / "run",
+            methods=[SpectrumMethod.FFT],
+            perceptual_exponents=[1.0],
+            temporal_weights=[],
+            channels=[ChannelName.PULSE1],
+            categories=CATEGORIES,
+            workers=1,
+            resume=False,
+        )
+        calibrate(first)
+
+        assert calibrate(first.model_copy(update={"resume": True})).report.is_file()
+
+    def test_a_run_measured_otherwise_is_refused(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(EVALUATE, _evaluated([]))
+        first = CalibrationRequest(
+            base=Config(),
+            output=tmp_path / "run",
+            methods=[SpectrumMethod.FFT],
+            perceptual_exponents=[1.0],
+            temporal_weights=[],
+            channels=[ChannelName.PULSE1],
+            categories=CATEGORIES,
+            workers=1,
+            resume=False,
+        )
+        calibrate(first)
+
+        with pytest.raises(ResumeRefusedError, match="measured other variants"):
+            calibrate(first.model_copy(update={"resume": True, "methods": [SpectrumMethod.CQT]}))
 
 
 class TestCalibrationRequest:
@@ -261,6 +328,8 @@ class TestCalibrationRequest:
                 temporal_weights=[],
                 channels=[ChannelName.PULSE1],
                 categories=CATEGORIES,
+                workers=1,
+                resume=False,
             )
 
 
@@ -275,6 +344,9 @@ def _evaluated(asked: List[FrozenSet[ChannelName]]) -> Callable[..., List[Calibr
         truth_referees: List[TruthReferee],
         run_directory: Path,
         channels: FrozenSet[ChannelName],
+        *,
+        workers: int,
+        resume: bool,
     ) -> List[CalibrationRow]:
         asked.append(channels)
         write_run(run_directory, [variant.label for variant in variants], 0.0)
@@ -294,6 +366,9 @@ def _measuring(measured: List[str]) -> Callable[..., List[CalibrationRow]]:
         truth_referees: List[TruthReferee],
         run_directory: Path,
         channels: FrozenSet[ChannelName],
+        *,
+        workers: int,
+        resume: bool,
     ) -> List[CalibrationRow]:
         measured.extend(item.category for item in items)
         write_run(run_directory, [variant.label for variant in variants], 0.0)

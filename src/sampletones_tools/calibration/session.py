@@ -13,10 +13,12 @@ from sampletones_tools.calibration.board.session import BoardRequest, build_boar
 from sampletones_tools.calibration.corpus.families import Family
 from sampletones_tools.calibration.corpus.reference import reference_corpus
 from sampletones_tools.calibration.corpus.writer import write_corpus
+from sampletones_tools.calibration.evaluation import evaluate_variants
+from sampletones_tools.calibration.fingerprint import check_resumable, fingerprint_of, write_fingerprint
 from sampletones_tools.calibration.layout import CORPUS_DIRECTORY, CSV_REPORT, MARKDOWN_REPORT
 from sampletones_tools.calibration.referee.factory import build_referees, build_truth_referees
 from sampletones_tools.calibration.report import write_csv, write_markdown
-from sampletones_tools.calibration.runner import build_variants, evaluate_variants
+from sampletones_tools.calibration.runner import build_variants
 from sampletones_tools.runs import output_root, stamped_board_directory, stamped_run_directory
 
 OUTPUT_ROOT: Final[Path] = output_root("calibration")
@@ -135,6 +137,8 @@ class CalibrationRequest(BaseModel):
             the base blend.
         channels: The channels every variant reconstructs the synthesized sounds with.
         categories: The categories of reference sounds measured.
+        workers: How many conversions run at once.
+        resume: Whether the run takes up a run already in ``output`` where it stopped.
         palette: The name of the palette the run's listening page is drawn in.
     """
 
@@ -147,6 +151,8 @@ class CalibrationRequest(BaseModel):
     temporal_weights: List[float]
     channels: List[ChannelName] = Field(min_length=1)
     categories: List[str] = Field(min_length=1)
+    workers: int = Field(ge=1)
+    resume: bool
     palette: str = DEFAULT_PALETTE_NAME
 
 
@@ -167,23 +173,32 @@ class CalibrationOutcome(BaseModel):
 def calibrate(request: CalibrationRequest) -> CalibrationOutcome:
     """Reconstructs the corpus under every variant, scores it, and writes the renders, reports and page.
 
+    A run leaves a fingerprint of what it measures, so a resumed run confirms it measures the same
+    before it takes up the records already written.
+
     Returns:
         CalibrationOutcome: The report and the listening page the run wrote.
-    """
-    request.output.mkdir(parents=True, exist_ok=True)
 
+    Raises:
+        ResumeRefusedError: If a run is resumed in a directory holding no run, or another run.
+    """
     sample_rate = request.base.library.sample_rate
     items = [item for item in reference_corpus(request.base) if item.category in request.categories]
-    item_paths = write_corpus(items, request.output / CORPUS_DIRECTORY, sample_rate)
-    referees = build_referees(sample_rate)
-    truth_referees = build_truth_referees()
     variants = build_variants(
         request.base,
         request.methods,
         request.perceptual_exponents,
         request.temporal_weights,
     )
+    fingerprint = fingerprint_of(variants, items, request.channels)
+    if request.resume:
+        check_resumable(request.output, fingerprint)
+    else:
+        write_fingerprint(request.output, fingerprint)
 
+    item_paths = write_corpus(items, request.output / CORPUS_DIRECTORY, sample_rate)
+    referees = build_referees(sample_rate)
+    truth_referees = build_truth_referees()
     channel_names = ", ".join(channel.value for channel in request.channels)
     logger.info(
         f"Evaluating {len(variants)} variants x {len(items)} items x {len(referees)} referees on {channel_names}"
@@ -196,6 +211,8 @@ def calibrate(request: CalibrationRequest) -> CalibrationOutcome:
         truth_referees,
         request.output,
         frozenset(request.channels),
+        workers=request.workers,
+        resume=request.resume,
     )
 
     write_csv(rows, request.output / CSV_REPORT)

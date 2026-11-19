@@ -130,11 +130,18 @@ Each option replaces one part of the default run. The rest stays as the suite se
 | `--channels LIST` | The channels every variant reconstructs the synthetic sounds with | `--channels pulse1,pulse2,triangle,noise` |
 | `--categories LIST` | The categories of reference sounds measured | `--categories nes-pulse,nes-mix` |
 | `--skip LIST` | The families or categories of reference sounds left out | `--skip composites` |
+| `--workers N` | How many sounds are converted at once; without it, the `general.max_workers` of the configuration | `--workers 3` |
+| `--resume` | Takes up the run in `-o` where it stopped | `-o before --resume` |
 | `--perceptual-exponents LIST` | The perceptual exponents measured, one variant each | `--perceptual-exponents 0.5,1` |
 | `--temporal-weights LIST` | The temporal loss weights measured, one variant each | `--temporal-weights 0.1,0.3` |
 | `-o DIR`, `--output DIR` | The folder the run writes into | `-o before` |
 | `--palette NAME` | The palette the listening page is drawn in | `--palette light` |
 | `--no-open` | Leaves the page closed | `--no-open` |
+
+A run writes `run.json` beside its report: what it measures, as fingerprints of its variants, its
+channels and its sounds. With `--resume`, a run in the same folder measuring the same converts only the
+sounds it has no record of yet, so a run stopped halfway goes on from there. A folder holding a run
+measured otherwise is refused, with what differs.
 
 Lists are comma separated. Several lists multiply: `--methods fft,cqt --perceptual-exponents
 0.5,1` measures four variants, and the run takes about four times as long as one variant.
