@@ -6,12 +6,13 @@ from automation.boundaries.dialogs import DialogKind
 from automation.dearpygui.items.texts import EntryReading
 from automation.screen import Screen
 from automation.steps.sequencer import leave_letting_the_project_go, open_voice, open_voice_menu
-from automation.vocabulary.exports import EXPORT_INSTRUMENT, NSF_TYPE
+from automation.vocabulary.exports import EXPORT_INSTRUMENT, NSF_TYPE, ROM_TYPE
 from sampletones_application.utils.gui.shortcuts.ids import ShortcutId
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.formats.famitracker.instrument import read_fti
 from sampletones_player.specification.nsf import NSF_MAGIC
-from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_JSON, EXT_FILE_NSF
+from sampletones_player.specification.rom import ROM_MAGIC
+from sampletones_shared.paths.extensions import EXT_FILE_INSTRUMENT, EXT_FILE_JSON, EXT_FILE_NSF, EXT_FILE_ROM
 from tests.suite.screens.worlds.songs import BASS_VOICE, LINE, PAD
 
 EXPORT_TITLE: Final[str] = "reconstructions.instruments.title.export_instrument_dialog"
@@ -175,7 +176,7 @@ class TestEveryDoorWritesTheSameBytes:
 
 
 class TestOneDialogOffersEveryType:
-    """One save dialog offers the three instrument types: the type picked decides the format, and the name
+    """One save dialog offers every type a voice is saved as: the type picked decides the format, and the name
     the instrument inside.
 
     The voice is exported from its menu with each type picked in turn, then with a new file name. Each
@@ -184,8 +185,8 @@ class TestOneDialogOffersEveryType:
     """
 
     def test_the_picked_type_decides_the_format(self, screen: Screen) -> None:
-        """Each type writes its own format, and the dialog lists the three types."""
-        types = (FAMITRACKER_TYPE, BITPHASE_PRESET_TYPE, NSF_TYPE)
+        """Each type writes its own format, and the dialog lists the four types."""
+        types = (FAMITRACKER_TYPE, BITPHASE_PRESET_TYPE, NSF_TYPE, ROM_TYPE)
         offered: List[Tuple[str, ...]] = []
 
         def export_picking(screen: Screen, type_key: str, extension: str) -> Path:
@@ -207,6 +208,11 @@ class TestOneDialogOffersEveryType:
 
             assert path.read_bytes().startswith(NSF_MAGIC)
             assert offered[0] == tuple(screen.words(key) for key in types)
+
+        def the_rom_type_writes_a_cartridge(screen: Screen) -> None:
+            path = export_picking(screen, ROM_TYPE, EXT_FILE_ROM)
+
+            assert path.read_bytes().startswith(ROM_MAGIC)
 
         def the_bitphase_type_writes_a_preset(screen: Screen) -> None:
             path = export_picking(screen, BITPHASE_PRESET_TYPE, EXT_FILE_JSON)
@@ -230,6 +236,7 @@ class TestOneDialogOffersEveryType:
 
         screen.scenario(
             the_nsf_type_writes_a_program,
+            the_rom_type_writes_a_cartridge,
             the_bitphase_type_writes_a_preset,
             the_famitracker_type_writes_an_instrument_named_after_the_file,
             a_file_renamed_in_the_dialog_renames_the_instrument,
