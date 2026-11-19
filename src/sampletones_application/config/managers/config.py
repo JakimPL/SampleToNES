@@ -180,9 +180,13 @@ class ConfigManager:
 
     @staticmethod
     def _names_library(settings: LibrarySettings, library_key: InstructionLibraryKey) -> bool:
-        """Whether ``settings`` name the file of the library ``library_key`` names."""
-        named = InstructionLibraryKey.create(settings, Window.from_config(settings.library))
-        return named.filename == library_key.filename
+        """Whether ``settings`` name the file of the library ``library_key`` names, under the name a
+        library takes now or the one a release before library data version 2.2 gave it."""
+        window = Window.from_config(settings.library)
+        return library_key.filename in (
+            InstructionLibraryKey.create(settings, window).filename,
+            InstructionLibraryKey.library_only_filename(settings.library, window),
+        )
 
     def _filename_library_config(self, library_key: InstructionLibraryKey) -> InstructionsLibraryConfig:
         """The current library settings under the ones the filename of ``library_key`` carries."""

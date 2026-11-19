@@ -69,14 +69,17 @@ class LibraryHeader:
             pitch_range=cls._stored(PitchRange, fields.get(PITCH_RANGE_FIELD)),
         )
 
-    @property
-    def settings(self) -> Optional[LibrarySettings]:
-        """The settings the library was built under, where the file states both in a form this
-        build reads."""
-        if self.config is None or self.pitch_range is None:
+    def settings_within(self, pitch_range: PitchRange) -> Optional[LibrarySettings]:
+        """The settings the library was built under, where the file states its library section in a
+        form this build reads.
+
+        A file written before the range of notes joined a library's settings states its library
+        section alone, so it reads as built for ``pitch_range``.
+        """
+        if self.config is None:
             return None
 
-        return LibrarySettings(library=self.config, pitch_range=self.pitch_range)
+        return LibrarySettings(library=self.config, pitch_range=self.pitch_range or pitch_range)
 
     @property
     def is_current(self) -> bool:

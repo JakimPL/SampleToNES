@@ -18,7 +18,7 @@ from sampletones_shared.application import SAMPLETONES_LIBRARY_DATA_VERSION
 from sampletones_shared.paths.user import LIBRARY_DIRECTORY
 from tests.screens.application.old_files.steps import world_of
 from tests.suite.compatibility import ARCHIVED_VERSIONS, archived, stored_document, stored_version
-from tests.suite.screens.seeds.archives import archived_document
+from tests.suite.screens.seeds.archives import archived_document, archived_library_name
 
 CONFIG_FIELD: Final[str] = "config"
 OUTDATED_ROW: Final[str] = "instructions.library.template.library_node_outdated_template"
@@ -26,9 +26,18 @@ REBUILD_TIMEOUT_SECONDS: Final[float] = 300.0
 
 
 def archived_library_path() -> Path:
-    """Where the archived library lies in the library folder, named as its settings name a library file."""
+    """Where the archived library lies in the library folder, under the name its release gave it."""
+    return LIBRARY_DIRECTORY / archived_library_name()
+
+
+def archived_library_config() -> InstructionsLibraryConfig:
     document = stored_document(archived(ObjectKind.LIBRARY, ARCHIVED_VERSIONS[ObjectKind.LIBRARY]))
-    config = Config(library=InstructionsLibraryConfig.model_validate(document[CONFIG_FIELD]))
+    return InstructionsLibraryConfig.model_validate(document[CONFIG_FIELD])
+
+
+def rebuilt_library_path() -> Path:
+    """Where the rebuild writes the archived library: under the name this build gives its settings."""
+    config = Config(library=archived_library_config())
     key = InstructionLibraryKey.create(LibrarySettings.of(config), Window.from_config(config))
     return LIBRARY_DIRECTORY / key.filename
 
@@ -38,8 +47,9 @@ class TestTheLastReleasesLibrary:
     it.
 
     The Instructions tab marks the library as outdated. Opening it asks about a rebuild; Cancel keeps the
-    file as it was, and the next opening asks again. Confirming rebuilds the library in place: the row
-    loses its mark, the file holds the current data version, and the folder holds that file alone.
+    file as it was, and the next opening asks again. Confirming rebuilds the library under the name this
+    build gives it: the row loses its mark, the file holds the current data version and the settings the
+    release built it for, and the folder holds that file alone.
     """
 
     @pytest.fixture
@@ -78,8 +88,9 @@ class TestTheLastReleasesLibrary:
             screen.expect(prompt.is_shown, bool, description="the rebuild question asked at the next opening")
             assert path.read_bytes() == archived_bytes
 
-        def rebuild_replaces_it_in_place(screen: Screen) -> None:
+        def rebuild_replaces_it(screen: Screen) -> None:
             name = library.tree.label(library_row()).removeprefix(outdated_mark)
+            rebuilt = rebuilt_library_path()
 
             library.rebuild_prompt.confirm()
 
@@ -89,8 +100,10 @@ class TestTheLastReleasesLibrary:
                 description="the rebuilt library loaded",
                 timeout=REBUILD_TIMEOUT_SECONDS,
             )
-            assert library.tree.label(library_row()) == name
-            assert stored_version(ObjectKind.LIBRARY, path) == SAMPLETONES_LIBRARY_DATA_VERSION
-            assert sorted(LIBRARY_DIRECTORY.glob(f"*{path.suffix}")) == [path]
+            row = screen.expect_item(lambda: library.row(rebuilt.name), description="the rebuilt library's row")
+            assert library.tree.label(row) == name
+            assert stored_version(ObjectKind.LIBRARY, rebuilt) == SAMPLETONES_LIBRARY_DATA_VERSION
+            assert stored_document(rebuilt)[CONFIG_FIELD] == archived_library_config().model_dump(mode="json")
+            assert sorted(LIBRARY_DIRECTORY.glob(f"*{path.suffix}")) == [rebuilt]
 
-        screen.scenario(reads_out_of_date, cancel_leaves_it, rebuild_replaces_it_in_place).run()
+        screen.scenario(reads_out_of_date, cancel_leaves_it, rebuild_replaces_it).run()

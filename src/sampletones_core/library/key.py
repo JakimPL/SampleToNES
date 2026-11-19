@@ -10,7 +10,7 @@ from sampletones_core.fft import Window
 from sampletones_core.library.filename.fields import InstructionsFilenameFields
 from sampletones_core.library.settings import LibrarySettings
 from sampletones_shared.constants.nes import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
-from sampletones_shared.utils.hashing import hash_models
+from sampletones_shared.utils.hashing import hash_model, hash_models
 
 
 class InstructionLibraryKey(BaseModel):
@@ -61,6 +61,12 @@ class InstructionLibraryKey(BaseModel):
             config_hash=config_hash,
             filename=filename,
         )
+
+    @classmethod
+    def library_only_filename(cls, config: InstructionsLibraryConfig, window: Window) -> str:
+        """The filename a library built under ``config`` was written as before library data version 2.2,
+        whose hash covers the library section alone."""
+        return cls.get_filename(config, window, hash_model(config))
 
     @staticmethod
     def get_filename(config: InstructionsLibraryConfig, window: Window, config_hash: str) -> str:

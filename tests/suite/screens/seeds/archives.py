@@ -5,10 +5,9 @@ from pathlib import Path
 from typing import Final
 
 from sampletones_core.compatibility.kind import ObjectKind
-from sampletones_core.configs import Config, InstructionsLibraryConfig
+from sampletones_core.configs import InstructionsLibraryConfig
 from sampletones_core.fft import Window
 from sampletones_core.library.key import InstructionLibraryKey
-from sampletones_core.library.settings import LibrarySettings
 from tests.suite.compatibility import ARCHIVED_VERSIONS, archived, restated_document, stored_document
 
 FOREIGN_BYTES: Final[bytes] = b"These bytes were written by another program and belong to no SampleToNES document.\n"
@@ -62,11 +61,16 @@ def archived_document(kind: ObjectKind, destination: Path) -> CopiedFile:
 
 
 def archived_library(folder: Path) -> CopiedFile:
-    """The library a release built, laid in ``folder`` under the name its settings give a library file."""
+    """The library a release built, laid in ``folder`` under the name that release gave it."""
     source = archived(ObjectKind.LIBRARY, ARCHIVED_VERSIONS[ObjectKind.LIBRARY])
-    config = Config(library=InstructionsLibraryConfig.model_validate(stored_document(source)[CONFIG_FIELD]))
-    key = InstructionLibraryKey.create(LibrarySettings.of(config), Window.from_config(config))
-    return CopiedFile(source=source, destination=folder / key.filename)
+    return CopiedFile(source=source, destination=folder / archived_library_name())
+
+
+def archived_library_name() -> str:
+    """The name the release that built the archived library gave its file, hashing its library section alone."""
+    source = archived(ObjectKind.LIBRARY, ARCHIVED_VERSIONS[ObjectKind.LIBRARY])
+    library = InstructionsLibraryConfig.model_validate(stored_document(source)[CONFIG_FIELD])
+    return InstructionLibraryKey.library_only_filename(library, Window.from_config(library))
 
 
 def damaged_document(

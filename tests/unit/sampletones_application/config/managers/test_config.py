@@ -258,6 +258,48 @@ class TestApplyingTheSettingsOfALibrary:
         assert (manager.config.library, manager.config.general.pitch_range) == (named, current)
 
 
+class TestApplyingALibraryWrittenBeforeTheRangeJoinedItsSettings:
+    """A release before library data version 2.2 named a library by its library section alone, so the
+    section it states, tuning included, is applied whole to the range of notes in place."""
+
+    @staticmethod
+    def _legacy_key(library_config: InstructionsLibraryConfig) -> InstructionLibraryKey:
+        filename = InstructionLibraryKey.library_only_filename(library_config, Window.from_config(library_config))
+        return create_key_from_filename(filename)
+
+    def test_its_tuning_is_applied_with_the_rest_of_its_section(self, tmp_path: Path) -> None:
+        manager = _manager(tmp_path / "missing.json")
+        current = manager.config.general.pitch_range
+        stored = _library_settings(manager).model_copy(update={"a4_frequency": OTHER_TUNING})
+
+        manager.apply_library_config(self._legacy_key(stored), LibrarySettings(library=stored, pitch_range=current))
+
+        assert (manager.config.library, manager.config.general.pitch_range) == (stored, current)
+
+    def test_a_section_naming_another_legacy_file_gives_way_to_the_filename(self, tmp_path: Path) -> None:
+        manager = _manager(tmp_path / "missing.json")
+        named = _library_settings(manager)
+        stored = named.model_copy(update={"a4_frequency": OTHER_TUNING, "transformation_gamma": STORED_GAMMA + 1})
+
+        manager.apply_library_config(
+            self._legacy_key(named), LibrarySettings(library=stored, pitch_range=manager.config.general.pitch_range)
+        )
+
+        assert manager.config.library == named
+
+    def test_the_rebuilt_library_takes_the_name_a_library_takes_now(self, tmp_path: Path) -> None:
+        manager = _manager(tmp_path / "missing.json")
+        stored = _library_settings(manager).model_copy(update={"a4_frequency": OTHER_TUNING})
+        legacy = self._legacy_key(stored)
+
+        manager.apply_library_config(
+            legacy, LibrarySettings(library=stored, pitch_range=manager.config.general.pitch_range)
+        )
+
+        assert manager.key.filename != legacy.filename
+        assert manager.key == _key_of(stored)
+
+
 def _stated(library_config: InstructionsLibraryConfig) -> LibrarySettings:
     return LibrarySettings(library=library_config, pitch_range=Config().general.pitch_range)
 

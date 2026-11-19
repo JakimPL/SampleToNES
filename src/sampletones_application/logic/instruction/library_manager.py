@@ -182,9 +182,11 @@ class InstructionsLibraryManager(CallbackMixin):
         """The settings the library ``library_key`` names states it was built for, where its file
         states them in a form this build reads."""
         try:
-            return LibraryHeader.read(self.get_path(library_key)).settings
+            header = LibraryHeader.read(self.get_path(library_key))
         except FileNotFoundError:
             return None
+
+        return header.settings_within(self._config_manager.config.general.pitch_range)
 
     def load_library(self, library_key: InstructionLibraryKey) -> InstructionLibraryData:
         """Takes up the library ``library_key`` names as the current one, reading it from its file
