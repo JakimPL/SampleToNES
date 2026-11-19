@@ -38,8 +38,8 @@ on a NES, and a `.nes` runs in an emulator or from a flash cartridge.
 ## Naming exported files
 
 The save dialog lists the file types that fit your export, and adds the extension of the type you
-pick. When you export one channel, the dialog lists all three instrument types, so you can choose the
-program the file is for.
+pick. When you export one channel, the dialog lists every type the channel can be saved as, so you can
+choose the program the file is for.
 
 The name you type also names the instrument in the tracker. What the app saves depends on the export:
 

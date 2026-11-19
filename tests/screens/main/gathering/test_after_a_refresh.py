@@ -1,3 +1,6 @@
+import operator
+from functools import partial
+
 from automation.screen import Screen
 from automation.steps.main import explorer_row, gather, home_path
 from sampletones_application.tags.compose import compose_tag
@@ -24,7 +27,9 @@ class TestGatheringARowRefreshBuiltAnew:
 
             screen.hand.click(compose_tag(TAG_MAIN_EXPLORER_BUTTON_REFRESH))
 
-            screen.expect(lambda: explorer.file_row(kick), lambda row: row != before, description="the row taken down")
+            screen.expect(
+                lambda: explorer.file_row(kick), partial(operator.ne, before), description="the row taken down"
+            )
 
         def ctrl_click_the_row_it_brought_back(screen: Screen) -> None:
             gather(screen, kick)
