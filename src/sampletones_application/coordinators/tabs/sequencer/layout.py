@@ -1,7 +1,7 @@
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.coordinators.tabs.columns import side_column
+from sampletones_application.coordinators.tabs.columns import fit_side_column, side_column
 from sampletones_application.parameters.sequencer import SequencerTabParameters
 from sampletones_application.tags.compose import compose_tag
 from sampletones_application.tags.general import (
@@ -21,7 +21,6 @@ from sampletones_application.ui.panels.sequencer.order.panel import GUISequencer
 from sampletones_application.ui.panels.sequencer.tracker.panel import GUISequencerTrackerPanel
 from sampletones_application.ui.panels.sequencer.voices.panel import GUISequencerVoicesPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
-from sampletones_application.utils.gui.dpg import dpg_configure_item
 
 LEFT_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_SEQUENCER, SUF_PANEL_LEFT)
 CENTER_COLUMN_TAG = compose_tag(TAG_GLOBAL_TAB_SEQUENCER, SUF_PANEL_CENTER)
@@ -115,14 +114,12 @@ class SequencerTabLayout:
 
     def sync_browser_width(self) -> None:
         """Shrinks the browser column to the collapse rail when collapsed, else sizes it to the viewport width."""
-        dpg_configure_item(
+        fit_side_column(
+            self._geometry,
             LEFT_COLUMN_TAG,
-            width=self._geometry.side_column_width(
-                collapsed=self._browser_panel.collapsed,
-                base_width=self._geometry.side_width,
-                side_panel_count=self._side_panel_count,
-                viewport_width=dpg.get_viewport_client_width(),
-            ),
+            collapsed=self._browser_panel.collapsed,
+            base_width=self._geometry.side_width,
+            side_panel_count=self._side_panel_count,
         )
 
     def _stacked_card_gap(self) -> int:

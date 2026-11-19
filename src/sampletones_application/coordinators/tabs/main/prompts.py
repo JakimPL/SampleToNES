@@ -16,8 +16,8 @@ from sampletones_shared.types.callback import VoidCallback
 
 
 class ConversionPrompts:
-    """What a conversion puts to the reader: why it cannot start, what it would write over, whether to stop
-    it, and what it wrote.
+    """What a conversion puts to the reader: what it needs before it starts, what it would write over,
+    whether to stop it, and what it wrote.
     """
 
     def __init__(
@@ -76,7 +76,7 @@ class ConversionPrompts:
         )
 
     def confirm_cancel(self) -> None:
-        """Asks before a running conversion stops, which drops what it has not written yet."""
+        """Asks before a running conversion stops, which drops the recordings still on their way."""
         self._dialogs.show_confirmation(
             TAG_MAIN_CONVERTER_DIALOG_CANCEL,
             self._language_manager["main.converter.message.cancel_prompt"],

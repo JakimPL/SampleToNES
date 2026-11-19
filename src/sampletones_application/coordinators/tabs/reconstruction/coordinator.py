@@ -15,7 +15,7 @@ from sampletones_application.coordinators.original_audio import OriginalAudioLoc
 from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
-from sampletones_application.coordinators.tabs.columns import persisting_collapse, side_column
+from sampletones_application.coordinators.tabs.columns import fit_side_column, persisting_collapse, side_column
 from sampletones_application.coordinators.tabs.reconstruction.exports import ReconstructionExports
 from sampletones_application.coordinators.tabs.reconstruction.loading import ReconstructionLoading
 from sampletones_application.coordinators.tabs.reconstruction.removals import ReconstructionRemovals
@@ -90,7 +90,6 @@ from sampletones_application.ui.panels.reconstruction.stems import (
 )
 from sampletones_application.utils.callbacks.gates import Wait, gated
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
-from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.keyboard import PRIORITY_PANEL, ActivePredicate, KeyRouter
 from sampletones_application.utils.midi import MidiRouter
 from sampletones_application.view_model.reconstruction.reconstruction import (
@@ -197,7 +196,9 @@ class ReconstructionTabCoordinator:
         self._browser_tree_logic.on_favorite_changed = on_favorite_changed
         self._browser_tree_logic.on_search_update_needed = self._browser_panel.update_tree_visibility
         self._file_playback.on_error = self._playback_failures.present_later
-        self._browser_panel.set_collapse_handler(persisting_collapse(self._session_manager, self._sync_browser_width))
+        self._browser_panel.set_collapse_handler(
+            persisting_collapse(self._session_manager, then=self._sync_browser_width)
+        )
         self._browser_panel.on_favorites_filter_changed = self._session_manager.set_favorites_filter_active
         self._reconstruction_player_logic = PlayerLogic(
             AudioPlayer(output),
@@ -236,7 +237,7 @@ class ReconstructionTabCoordinator:
             self._reconstruction_plot_panel,
             self._reconstruction_stems_panel,
         ):
-            card.set_collapse_handler(persisting_collapse(self._session_manager, None))
+            card.set_collapse_handler(persisting_collapse(self._session_manager, then=None))
         self._reconstruction_player_logic.on_position_changed = self._reconstruction_plot_panel.set_playback_position
         self._reconstruction_plot_panel.on_position_clicked = self._play_from
         self._reconstruction_panel_logic: ReconstructionPanelLogic = ReconstructionPanelLogic(
@@ -277,7 +278,7 @@ class ReconstructionTabCoordinator:
             initial_collapsed=session_manager.is_card_collapsed(TAG_RECONSTRUCTIONS_INSTRUMENTS_PANEL),
         )
         self._reconstruction_instruments_panel.set_collapse_handler(
-            persisting_collapse(self._session_manager, self._sync_instruments_width)
+            persisting_collapse(self._session_manager, then=self._sync_instruments_width)
         )
         self._reconstruction_instruments_logic: ReconstructionInstrumentsLogic = ReconstructionInstrumentsLogic(
             self._instrument_editor,
@@ -438,26 +439,22 @@ class ReconstructionTabCoordinator:
 
     def _sync_browser_width(self) -> None:
         """Shrinks the browser column to the collapse rail when collapsed, else sizes it to the viewport width."""
-        dpg_configure_item(
+        fit_side_column(
+            self._geometry,
             _LEFT_COLUMN_TAG,
-            width=self._geometry.side_column_width(
-                collapsed=self._browser_panel.collapsed,
-                base_width=self._geometry.side_width,
-                side_panel_count=self._side_panel_count,
-                viewport_width=dpg.get_viewport_client_width(),
-            ),
+            collapsed=self._browser_panel.collapsed,
+            base_width=self._geometry.side_width,
+            side_panel_count=self._side_panel_count,
         )
 
     def _sync_instruments_width(self) -> None:
         """Shrinks the instruments column to the collapse rail when collapsed, else sizes it to the viewport width."""
-        dpg_configure_item(
+        fit_side_column(
+            self._geometry,
             _RIGHT_COLUMN_TAG,
-            width=self._geometry.side_column_width(
-                collapsed=self._reconstruction_instruments_panel.collapsed,
-                base_width=self._instruments_width,
-                side_panel_count=self._side_panel_count,
-                viewport_width=dpg.get_viewport_client_width(),
-            ),
+            collapsed=self._reconstruction_instruments_panel.collapsed,
+            base_width=self._instruments_width,
+            side_panel_count=self._side_panel_count,
         )
 
     def lock(self) -> None:

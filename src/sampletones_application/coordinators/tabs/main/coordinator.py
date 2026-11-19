@@ -9,7 +9,7 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.constants.output import OutputKind
 from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
-from sampletones_application.coordinators.tabs.columns import persisting_collapse, side_column
+from sampletones_application.coordinators.tabs.columns import fit_side_column, persisting_collapse, side_column
 from sampletones_application.coordinators.tabs.hooks import MainTabHooks
 from sampletones_application.coordinators.tabs.main.prompts import ConversionPrompts
 from sampletones_application.logic.instruction.library_manager import (
@@ -684,11 +684,13 @@ class MainTabCoordinator:
 
     def _wire_collapse_handlers(self) -> None:
         """Routes each Main card's collapse toggle to the handler that persists it and reflows the shared config row."""
-        self._explorer_panel.set_collapse_handler(persisting_collapse(self._session_manager, self._sync_explorer_width))
+        self._explorer_panel.set_collapse_handler(
+            persisting_collapse(self._session_manager, then=self._sync_explorer_width)
+        )
         for card in (self._config_panel, self._advanced_settings_panel):
-            card.set_collapse_handler(persisting_collapse(self._session_manager, self._sync_config_row_height))
+            card.set_collapse_handler(persisting_collapse(self._session_manager, then=self._sync_config_row_height))
         for center_card in (self._source_panel, self._converter_panel):
-            center_card.set_collapse_handler(persisting_collapse(self._session_manager, None))
+            center_card.set_collapse_handler(persisting_collapse(self._session_manager, then=None))
 
     def sync_responsive_layout(self) -> None:
         """Refits this tab's side column to the current viewport, the entry the resize handler calls."""
@@ -696,14 +698,12 @@ class MainTabCoordinator:
 
     def _sync_explorer_width(self) -> None:
         """Shrinks the filesystem column to the collapse rail when collapsed, else sizes it to the viewport width."""
-        dpg_configure_item(
+        fit_side_column(
+            self._geometry,
             _LEFT_COLUMN_TAG,
-            width=self._geometry.side_column_width(
-                collapsed=self._explorer_panel.collapsed,
-                base_width=self._geometry.side_width,
-                side_panel_count=self._side_panel_count,
-                viewport_width=dpg.get_viewport_client_width(),
-            ),
+            collapsed=self._explorer_panel.collapsed,
+            base_width=self._geometry.side_width,
+            side_panel_count=self._side_panel_count,
         )
 
     def _sync_config_row_height(self) -> None:

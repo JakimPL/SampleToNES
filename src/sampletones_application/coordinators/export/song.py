@@ -22,13 +22,12 @@ class SongExportCoordinator(ModalWindowCoordinator[SongExportViewModel]):
     ) -> None:
         super().__init__(window, flow="export")
         self._logic = export_logic
-        self._cancel_window = window
 
         self._logic.on_view_changed = self._on_view_changed
         self._logic.on_started = self._show
         self._logic.on_finished = self._take_off_screen
 
-        self._cancel_window.on_cancel = self._logic.cancel
+        window.on_cancel = self._logic.cancel
 
     @property
     def is_active(self) -> bool:

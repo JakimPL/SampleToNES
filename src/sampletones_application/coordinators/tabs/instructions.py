@@ -10,7 +10,7 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.coordinators.playback.failures import PlaybackFailurePresenter
 from sampletones_application.coordinators.playback.guard import GuardedPlayer
 from sampletones_application.coordinators.playback.protocol import AudioPlayerProtocol
-from sampletones_application.coordinators.tabs.columns import persisting_collapse, side_column
+from sampletones_application.coordinators.tabs.columns import fit_side_column, persisting_collapse, side_column
 from sampletones_application.logic.instruction.details import (
     InstructionDetailsPanelLogic,
 )
@@ -65,7 +65,6 @@ from sampletones_application.ui.panels.instruction.waveform import (
 )
 from sampletones_application.utils.callbacks.gates import asking
 from sampletones_application.utils.gui.dialogs import DialogsRenderer
-from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_application.utils.gui.frame import FrameCallbackManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_application.view_model.instruction.details import (
@@ -149,7 +148,9 @@ class InstructionsTabCoordinator:
             colors=layout.tree_colors,
             is_operation_active=is_operation_active,
         )
-        self._library_panel.set_collapse_handler(persisting_collapse(self._session_manager, self._sync_library_width))
+        self._library_panel.set_collapse_handler(
+            persisting_collapse(self._session_manager, then=self._sync_library_width)
+        )
         self._library_tree_logic.on_lock_state_changed = self._on_library_tree_lock_changed
         self._library_tree_logic.on_favorite_changed = self._repaint_library_favorites
         self._library_tree_logic.on_search_update_needed = self._library_panel.update_tree_visibility
@@ -199,7 +200,7 @@ class InstructionsTabCoordinator:
             status_bar=status_bar,
         )
         for card in (self._waveform_panel, self._spectrum_panel):
-            card.set_collapse_handler(persisting_collapse(self._session_manager, None))
+            card.set_collapse_handler(persisting_collapse(self._session_manager, then=None))
         self._graph_panels: List[_StackedGraphPanel] = [self._waveform_panel, self._spectrum_panel]
         self._instruction_player_logic.on_position_changed = self._waveform_panel.set_position
         self._waveform_panel.on_position_clicked = self._play_from
@@ -222,7 +223,7 @@ class InstructionsTabCoordinator:
             language_manager=language_manager,
         )
         for detail_card in (self._instruction_choice_panel, self._instruction_parameters_panel):
-            detail_card.set_collapse_handler(persisting_collapse(self._session_manager, None))
+            detail_card.set_collapse_handler(persisting_collapse(self._session_manager, then=None))
 
         config_manager.add_config_change_callback(self._library_logic.follow_config)
 
@@ -392,14 +393,12 @@ class InstructionsTabCoordinator:
 
     def _sync_library_width(self) -> None:
         """Shrinks the library column to the collapse rail when collapsed, else sizes it to the viewport width."""
-        dpg_configure_item(
+        fit_side_column(
+            self._geometry,
             _LEFT_COLUMN_TAG,
-            width=self._geometry.side_column_width(
-                collapsed=self._library_panel.collapsed,
-                base_width=self._geometry.side_width,
-                side_panel_count=self._side_panel_count,
-                viewport_width=dpg.get_viewport_client_width(),
-            ),
+            collapsed=self._library_panel.collapsed,
+            base_width=self._geometry.side_width,
+            side_panel_count=self._side_panel_count,
         )
 
     def _sync_graph_heights(self) -> None:

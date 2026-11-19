@@ -1,6 +1,6 @@
 import threading
 from functools import partial
-from typing import TypeVar
+from typing import Final, TypeVar
 
 from sampletones_application.services.base import ServiceBase
 from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
@@ -8,6 +8,7 @@ from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 
 ResultT = TypeVar("ResultT")
+DEFAULT_PRIORITY: Final[int] = 0
 
 
 class CancellableJobService(ServiceBase[ResultT]):
@@ -18,7 +19,7 @@ class CancellableJobService(ServiceBase[ResultT]):
     way it ends.
     """
 
-    def __init__(self, priority: int) -> None:
+    def __init__(self, priority: int = DEFAULT_PRIORITY) -> None:
         super().__init__(priority)
         self._executor = SingleThreadExecutor()
         self._cancel_event = threading.Event()

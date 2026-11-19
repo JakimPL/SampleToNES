@@ -394,9 +394,9 @@ class SequencerTabCoordinator:
             self._sequencer_module_panel,
             self._sequencer_voices_panel,
         ):
-            panel.set_collapse_handler(persisting_collapse(self._session_manager, None))
+            panel.set_collapse_handler(persisting_collapse(self._session_manager, then=None))
         self._sequencer_history_panel.set_collapse_handler(
-            persisting_collapse(self._session_manager, self._layout.sync_voices_height)
+            persisting_collapse(self._session_manager, then=self._layout.sync_voices_height)
         )
 
     def _wire_module_callbacks(self) -> None:
@@ -651,7 +651,7 @@ class SequencerTabCoordinator:
 
     def _wire_browser_callbacks(self) -> None:
         self._sequencer_browser_panel.set_collapse_handler(
-            persisting_collapse(self._session_manager, self._layout.sync_browser_width)
+            persisting_collapse(self._session_manager, then=self._layout.sync_browser_width)
         )
         self._sequencer_browser_panel.on_favorites_filter_changed = self._session_manager.set_favorites_filter_active
         self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction

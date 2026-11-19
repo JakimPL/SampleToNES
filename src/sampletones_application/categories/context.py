@@ -103,4 +103,4 @@ def byte_size_label(language_manager: LanguageManager, byte_count: int) -> str:
 
 def sample_rate_template(language_manager: LanguageManager) -> str:
     """The template a sample rate is printed in, wherever a list of rates is offered."""
-    return context_text(language_manager, TextType.TEMPLATE, ContextElements.SAMPLE_RATE)
+    return language_manager["global.context.template.sample_rate"]

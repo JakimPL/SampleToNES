@@ -41,7 +41,6 @@ class NSFExportCoordinator(ModalWindowCoordinator[NSFExportViewModel]):
     ) -> None:
         super().__init__(window, flow="program export")
         self._logic = nsf_logic
-        self._setup_window = window
         self._on_activity_changed = on_activity_changed
 
         self._language_manager = language_manager
@@ -49,10 +48,10 @@ class NSFExportCoordinator(ModalWindowCoordinator[NSFExportViewModel]):
         self._logic.on_view_changed = self._on_view_changed
         self._logic.on_choose_destination = self._choose_destination
 
-        self._setup_window.on_choices_changed = self._logic.apply
-        self._setup_window.on_browse = self._logic.request_destination
-        self._setup_window.on_export = self._export
-        self._setup_window.on_close = self._close
+        window.on_choices_changed = self._logic.apply
+        window.on_browse = self._logic.request_destination
+        window.on_export = self._export
+        window.on_close = self._close
 
     @property
     def is_active(self) -> bool:

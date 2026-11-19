@@ -34,9 +34,6 @@ class SongRenderService(CancellableJobService[RenderResult]):
     where a finished file stands.
     """
 
-    def __init__(self, priority: int = 0) -> None:
-        super().__init__(priority)
-
     def start(
         self,
         *,

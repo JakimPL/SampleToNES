@@ -38,7 +38,6 @@ class SongRenderCoordinator(ModalWindowCoordinator[SongRenderViewModel]):
     ) -> None:
         super().__init__(window, flow="render")
         self._logic = render_logic
-        self._render_window = window
         self._dialogs = dialogs
         self._on_activity_changed = on_activity_changed
 
@@ -57,11 +56,11 @@ class SongRenderCoordinator(ModalWindowCoordinator[SongRenderViewModel]):
         self._logic.on_error = self._on_error
         self._logic.on_canceled = self._on_canceled
 
-        self._render_window.on_settings_changed = self._logic.apply
-        self._render_window.on_browse = self._logic.request_destination
-        self._render_window.on_render = self._logic.start
-        self._render_window.on_cancel = self._logic.cancel
-        self._render_window.on_close = self._close
+        window.on_settings_changed = self._logic.apply
+        window.on_browse = self._logic.request_destination
+        window.on_render = self._logic.start
+        window.on_cancel = self._logic.cancel
+        window.on_close = self._close
 
     @property
     def is_active(self) -> bool:

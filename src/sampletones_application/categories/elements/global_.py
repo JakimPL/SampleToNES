@@ -40,7 +40,6 @@ class ContextElements(AbstractElement):
     SAMPLE_SIZE = "sample_size"
     INSTRUMENT_SIZE = "instrument_size"
     SIZE_BYTES = "size_bytes"
-    SAMPLE_RATE = "sample_rate"
 
 
 class MenuElements(AbstractElement):

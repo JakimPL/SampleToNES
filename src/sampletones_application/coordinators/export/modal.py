@@ -19,8 +19,7 @@ class ModalWindowCoordinator(Generic[ViewModelT]):
 
     A render, a program export's setup and a running export each open their window on the view
     their logic has emitted, follow each view after it while the window stands, and forget it once
-    the window leaves the screen, so a window opens on the flow as it stands and never on a stale
-    one.
+    the window leaves the screen, so a window opens on the flow as it stands now.
     """
 
     def __init__(self, window: ModalWindowProtocol[ViewModelT], *, flow: str) -> None:

@@ -556,10 +556,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         Args:
             export_format: The format the slices are written in.
         """
-        reconstruction_data = self._reconstruction_data
-        if not reconstruction_data:
-            raise AssertionError("Expected reconstruction data to be loaded before exporting instruments")
-
+        reconstruction_data = self._loaded()
         default_path = str(self._session_manager.folder(LastPath.INSTRUMENT))
         extension = self._export_backends[export_format].extension(ExportScope.SAMPLE)
 
@@ -571,10 +568,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         )
 
     def request_export_wav_dialog(self) -> None:
-        reconstruction_data = self._reconstruction_data
-        if not reconstruction_data:
-            raise AssertionError("Expected reconstruction data to be loaded before exporting to WAV")
-
+        reconstruction_data = self._loaded()
         default_filename = get_filename(reconstruction_data.name, EXT_FILE_WAVE)
         default_path = str(self._session_manager.folder(LastPath.AUDIO))
 
@@ -626,11 +620,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         Raises:
             AssertionError: If no reconstruction is loaded.
         """
-        reconstruction_data = self._reconstruction_data
-        if not reconstruction_data:
-            raise AssertionError("Expected reconstruction data to be loaded before exporting instruments")
-
-        return self._sample_request(reconstruction_data.name)
+        return self._sample_request(self._loaded().name)
 
     def _sample_request(self, name: str) -> Optional[SampleExport]:
         """The slice of every playing channel of the reconstruction as one export named ``name``, or ``None``

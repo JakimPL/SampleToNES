@@ -640,7 +640,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         if footprint is None:
             return
 
-        dpg_set_value(self.sample_size_tag, self._format_size(footprint.total_bytes))
+        dpg_set_value(self.sample_size_tag, byte_size_label(self._language_manager, footprint.total_bytes))
         for channel_name in ChannelName.items():
             instrument_bytes = footprint.bytes_for(channel_name)
             if shows_one_instrument and channel_name is INSTRUMENT_CHANNEL:
@@ -648,11 +648,8 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
 
             dpg_set_value(
                 self._get_instrument_size_tag(channel_name),
-                self._format_size(instrument_bytes if instrument_bytes is not None else 0),
+                byte_size_label(self._language_manager, instrument_bytes if instrument_bytes is not None else 0),
             )
-
-    def _format_size(self, byte_count: int) -> str:
-        return byte_size_label(self._language_manager, byte_count)
 
     def update_feature_data(
         self,

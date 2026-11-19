@@ -43,9 +43,6 @@ class ExportService(CancellableJobService[ExportResult]):
     a time, and a request arriving while one is in flight is declined.
     """
 
-    def __init__(self, priority: int = 0) -> None:
-        super().__init__(priority)
-
     def export_wav(
         self,
         filepath: Path,

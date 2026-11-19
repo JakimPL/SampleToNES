@@ -1,15 +1,18 @@
 from typing import Callable, Optional
 
+import dearpygui.dearpygui as dpg
+
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.parameters.geometry import TabGeometry
 from sampletones_application.tags.general import TAG_GLOBAL_THEME_PANEL_SURFACE
 from sampletones_application.ui.elements.layout.columns import ColumnSpec
+from sampletones_application.utils.gui.dpg import dpg_configure_item
 from sampletones_shared.types.callback import StringCallback, VoidCallback
 
 CollapseHandler = Callable[[str, bool], None]
 
 
-def persisting_collapse(session_manager: SessionManager, then: Optional[VoidCallback]) -> CollapseHandler:
+def persisting_collapse(session_manager: SessionManager, *, then: Optional[VoidCallback]) -> CollapseHandler:
     """A card's collapse handler: it keeps the card's collapsed state for the next launch, then runs
     ``then`` where collapsing the card reflows what stands around it.
 
@@ -47,4 +50,25 @@ def side_column(geometry: TabGeometry, *, tag: str, build: StringCallback) -> Co
         width=geometry.side_width,
         height=geometry.side_height,
         no_scrollbar=True,
+    )
+
+
+def fit_side_column(
+    geometry: TabGeometry,
+    tag: str,
+    *,
+    collapsed: bool,
+    base_width: int,
+    side_panel_count: int,
+) -> None:
+    """Shrinks a side column to the collapse rail while its card stands collapsed, and sizes it to the
+    viewport's width otherwise."""
+    dpg_configure_item(
+        tag,
+        width=geometry.side_column_width(
+            collapsed=collapsed,
+            base_width=base_width,
+            side_panel_count=side_panel_count,
+            viewport_width=dpg.get_viewport_client_width(),
+        ),
     )

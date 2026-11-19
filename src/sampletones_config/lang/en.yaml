@@ -599,10 +599,6 @@ reconstructions.instruments.tooltip.audition: "Play this instrument with the not
 reconstructions.instruments.template.initial_pitch_tooltip_template: "Enter the initial {} by name (e.g. {}) or value ({})."
 
 # =============================================================================
-# Sequencer tab — Browser
-# =============================================================================
-
-# =============================================================================
 # Sequencer tab — Module
 # =============================================================================
 sequencer.module.label.module_options: "Module options"
