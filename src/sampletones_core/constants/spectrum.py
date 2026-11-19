@@ -16,3 +16,4 @@ CQT_REFERENCE_COLUMNS: Final[int] = 8
 
 ERB_MINIMUM_BANDWIDTH: Final[float] = 24.7
 ERB_FREQUENCY_FACTOR: Final[float] = 4.37e-3
+ERB_RATE_SCALE: Final[float] = 21.4

@@ -9,9 +9,12 @@ from sampletones_core.audio.processing import (
     amplitude_to_decibels,
     clip_audio,
     clip_audio_inplace,
+    decibels_to_amplitude,
+    decibels_to_power,
     interpolate,
     minmax_decimate,
     normalize,
+    power_to_decibels,
     quantize,
     resample,
     to_mono,
@@ -837,3 +840,32 @@ class TestQuantize(BaseTestSuite):
         assert isinstance(test_case.expected, np.ndarray)
         result = quantize(test_case.audio, levels=test_case.levels)
         np.testing.assert_allclose(result, test_case.expected, rtol=1e-5)
+
+
+class TestDecibelConversions:
+    """A level in decibels and the ratio it stands for convert both ways, power at ten decibels a
+    decade and amplitude at twenty."""
+
+    @pytest.mark.parametrize("decibels", [-120.0, -60.0, -3.0, 0.0, 6.0, 40.0])
+    def test_a_power_level_round_trips(self, decibels: float) -> None:
+        assert power_to_decibels(decibels_to_power(decibels)) == pytest.approx(decibels, abs=1e-9)
+
+    @pytest.mark.parametrize("decibels", [-120.0, -6.0206, 0.0, 6.0206])
+    def test_an_amplitude_level_round_trips(self, decibels: float) -> None:
+        assert amplitude_to_decibels(decibels_to_amplitude(decibels)) == pytest.approx(decibels, abs=1e-9)
+
+    def test_the_same_level_is_the_square_of_the_amplitude_in_power(self) -> None:
+        assert decibels_to_power(-12.0) == pytest.approx(decibels_to_amplitude(-12.0) ** 2)
+
+    def test_ten_decibels_is_a_tenfold_power(self) -> None:
+        assert (decibels_to_power(10.0), decibels_to_power(-10.0)) == pytest.approx((10.0, 0.1))
+
+    def test_an_array_of_powers_converts_element_by_element(self) -> None:
+        np.testing.assert_allclose(power_to_decibels(np.array([1.0, 10.0, 0.01])), [0.0, 10.0, -20.0])
+
+    def test_a_scalar_power_converts_to_a_plain_float(self) -> None:
+        assert isinstance(power_to_decibels(100.0), float)
+
+    def test_zero_power_reads_as_negative_infinity(self) -> None:
+        with np.errstate(divide="ignore"):
+            assert power_to_decibels(np.array([0.0]))[0] == -np.inf

@@ -1,12 +1,11 @@
-from typing import Dict, Final, Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 from scipy.signal import stft
 
+from sampletones_core.audio.processing import decibels_to_power
+from sampletones_core.fft.fft import calculate_fft_frequencies, erb_rate
 from sampletones_tools.calibration.config.referee import RefereeConfig
-
-ERB_RATE_SCALE: Final[float] = 21.4
-ERB_RATE_FACTOR: Final[float] = 4.37e-3
 
 
 class BandAnalyzer:
@@ -60,7 +59,7 @@ class BandAnalyzer:
         The configured energy floor keeps a silent reference's floor finite.
         """
         loudest = max(float(np.max(reference_energy)), self.config.energy_floor)
-        return float(loudest * 10.0 ** (-range_decibels / 10.0))
+        return float(loudest * decibels_to_power(-range_decibels))
 
     @classmethod
     def _band_matrix(
@@ -76,14 +75,14 @@ class BandAnalyzer:
         the Nyquist frequency; each STFT bin contributes its full energy to the band
         containing its center, and bins below the low-frequency bound join the first band.
         """
-        frequencies = np.fft.rfftfreq(window_size, 1.0 / sample_rate)
+        frequencies = calculate_fft_frequencies(window_size, sample_rate)
         nyquist = sample_rate / 2.0
         edges_rate = np.linspace(
-            cls._erb_rate(np.array([config.low_frequency]))[0],
-            cls._erb_rate(np.array([nyquist]))[0],
+            erb_rate(np.array([config.low_frequency]))[0],
+            erb_rate(np.array([nyquist]))[0],
             config.band_count + 1,
         )
-        bin_rates = cls._erb_rate(frequencies)
+        bin_rates = erb_rate(frequencies)
         band_indices = np.clip(
             np.searchsorted(edges_rate, bin_rates, side="right") - 1,
             0,
@@ -93,7 +92,3 @@ class BandAnalyzer:
         matrix = np.zeros((config.band_count, frequencies.shape[0]))
         matrix[band_indices, np.arange(frequencies.shape[0])] = 1.0
         return matrix
-
-    @staticmethod
-    def _erb_rate(frequencies: np.ndarray) -> np.ndarray:
-        return ERB_RATE_SCALE * np.log10(1.0 + ERB_RATE_FACTOR * frequencies)
