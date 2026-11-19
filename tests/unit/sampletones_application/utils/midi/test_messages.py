@@ -9,6 +9,7 @@ from sampletones_application.utils.midi import (
     MidiPedal,
     parse_message,
 )
+from sampletones_application.utils.midi.messages import is_system_exclusive
 
 MIDDLE_C: Final[int] = 60
 VELOCITY: Final[int] = 100
@@ -85,3 +86,36 @@ class TestWhatPlaysNothing:
     )
     def test_broken_bytes_read_as_nothing(self, message: bytes) -> None:
         assert parse_message(message) is None
+
+
+class TestSystemExclusive:
+    """A system exclusive message is told by its opening byte alone, whatever follows it."""
+
+    @pytest.mark.parametrize(
+        ("message", "exclusive"),
+        [
+            (bytes((0xF0, 0x7E, 0x7F, 0xF7)), True),
+            (bytes((0xF0,)), True),
+            (bytes((0xF0, 0x90, MIDDLE_C, VELOCITY)), True),
+            (b"", False),
+            (bytes((0xF7,)), False),
+            (bytes((0xF1, 0x10)), False),
+            (bytes((0x90, 0xF0, VELOCITY)), False),
+            (bytes((0x7E, 0x7F, 0xF7)), False),
+        ],
+        ids=[
+            "whole",
+            "opening-only",
+            "channel-bytes-inside",
+            "empty",
+            "closing-only",
+            "time-code",
+            "later-byte",
+            "tail",
+        ],
+    )
+    def test_the_opening_byte_decides(self, message: bytes, exclusive: bool) -> None:
+        assert is_system_exclusive(message) is exclusive
+
+    def test_a_system_exclusive_message_plays_nothing(self) -> None:
+        assert parse_message(bytes((0xF0, 0x90, MIDDLE_C))) is None
