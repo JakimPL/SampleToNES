@@ -260,9 +260,9 @@ class GUIReconstructionPlotPanel(GUIPanel):
         channel_name: ChannelName,
     ) -> MessageCallback:
         tag = self._get_generator_checkbox_tag(channel_name)
-        name = channel_name.capitalized
 
         def message_function(*_args: Any, **_kwargs: Any) -> str:
+            name = channel_label(self._language_manager, channel_name)
             if not dpg.is_item_enabled(tag):
                 return self._language_manager[
                     "reconstructions.instruments.message.status_channel_not_available"

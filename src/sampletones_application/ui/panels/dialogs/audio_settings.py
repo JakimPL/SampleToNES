@@ -3,6 +3,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.context import sample_rate_template
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.settings import SettingsLayout
 from sampletones_application.tags.settings import (
@@ -65,7 +66,7 @@ class GUIAudioSettingsWindow(GUIDialogWindow):
         self._master_gain: float = DEFAULT_MASTER_GAIN
 
         self._fmt_device_label = language_manager["settings.audio.template.device_label"]
-        self._fmt_sample_rate = language_manager["settings.audio.template.sample_rate_label"]
+        self._fmt_sample_rate = sample_rate_template(language_manager)
 
         super().__init__(
             tag=TAG_SETTINGS_AUDIO_WINDOW,

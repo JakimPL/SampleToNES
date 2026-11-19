@@ -4,6 +4,7 @@ from typing import Callable, Dict, Final, FrozenSet, Iterator, Mapping, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.elements.sequencer import (
     SequencerTrackerElements,
 )
@@ -339,10 +340,7 @@ class GUISequencerTrackerPanel(GUIPanel):
         self._lbl_col_row = self._label(language_manager, SequencerTrackerElements.COLUMN_ROW)
         self._column_labels: Dict[Optional[ChannelName], str] = {
             None: self._label(language_manager, SequencerTrackerElements.COLUMN_SAMPLE),
-            ChannelName.PULSE1: self._label(language_manager, SequencerTrackerElements.COLUMN_PULSE_1),
-            ChannelName.PULSE2: self._label(language_manager, SequencerTrackerElements.COLUMN_PULSE_2),
-            ChannelName.TRIANGLE: self._label(language_manager, SequencerTrackerElements.COLUMN_TRIANGLE),
-            ChannelName.NOISE: self._label(language_manager, SequencerTrackerElements.COLUMN_NOISE),
+            **{channel: channel_label(language_manager, channel) for channel in ChannelName.items()},
         }
 
     @staticmethod
@@ -1436,7 +1434,6 @@ class GUISequencerTrackerPanel(GUIPanel):
         voices = self._current_samples.voices if self._current_samples is not None else ()
         self._status_bar.set(self._status_text.describe(row, channel, subcolumn, voices))
 
-    # TODO: to abstract [_on_cell_held]
     def _on_cell_held(self, _sender: Sender, app_data: Sender) -> None:
         """Carries the selection to the cell under a held pointer, which is what drags a range out.
 
@@ -1581,18 +1578,15 @@ class GUISequencerTrackerPanel(GUIPanel):
         row_index, channel, subcolumn = key
         self._menu.show_for_cell(row_index, channel, subcolumn)
 
-    # TODO: to abstract
     @property
     def edit_surface(self) -> TrackerEditSurface:
         """This grid as the menu bar's Edit menu reaches it."""
         return self._surface
 
-    # TODO: to abstract
     def input_state(self) -> TrackerInputState:
         """Where the cursor stands and what it has selected, which a target is resolved from."""
         return self._input_state
 
-    # TODO: to abstract
     def owns_keys(self) -> bool:
         """Whether the grid owns the next key, which is also what the Edit menu asks."""
         return self._keys_active()
@@ -1678,7 +1672,6 @@ class GUISequencerTrackerPanel(GUIPanel):
             card_open=self.card_open,
         )
 
-    # TODO: to extract common parts [_on_key_pressed]
     def _on_key_pressed(self, event: KeyEvent) -> bool:
         """Applies a tracker key to the active cell, reporting whether the grid consumed it.
 

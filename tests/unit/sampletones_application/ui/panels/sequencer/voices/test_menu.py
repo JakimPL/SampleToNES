@@ -6,6 +6,7 @@ import pytest
 
 from sampletones_application.categories.elements.global_ import ContextElements
 from sampletones_application.categories.elements.sequencer import SequencerVoicesElements
+from sampletones_application.categories.hierarchy import TextType
 from sampletones_application.tags.sequencer import (
     TAG_SEQUENCER_VOICES_BUTTON_NEW_INSTRUMENT,
     TAG_SEQUENCER_VOICES_PANEL,
@@ -199,16 +200,19 @@ def _panel(
         detail_color=DETAIL_COLOR,
     )
     menu._footprint_text._lbl_sample_size = SAMPLE_SIZE_LABEL
-    menu._footprint_text._tpl_size_bytes = SIZE_TEMPLATE
     menu._tip_size_bytes = SIZE_TOOLTIP
     panel._menu = menu
     return VoicesPanelFixture(panel=panel, menu=menu, requests=requests)
 
 
 class _Labels:
-    """A language manager printing each key's own element, so an item reads as the action it names."""
+    """A language manager printing each key's own element, so an item reads as the action it names,
+    and a byte figure through the template the sizes are printed in."""
 
     def __getitem__(self, key: Tuple[Any, ...]) -> str:
+        if key[-2] is TextType.TEMPLATE and key[-1] is ContextElements.SIZE_BYTES:
+            return SIZE_TEMPLATE
+
         return str(key[-1].value)
 
 

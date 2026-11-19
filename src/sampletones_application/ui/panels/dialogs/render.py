@@ -2,6 +2,7 @@ from typing import Callable, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.context import sample_rate_template
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.general.colors.path import PathColors
 from sampletones_application.layout.settings import SettingsLayout
@@ -94,7 +95,7 @@ class GUIRenderWindow(GUISeededDialogWindow[SongRenderViewModel]):
         self._depths_by_label: Dict[str, AudioDepth] = {}
         self._bitrates_by_label: Dict[str, int] = {}
 
-        self._fmt_sample_rate = language_manager["settings.render.template.sample_rate"]
+        self._fmt_sample_rate = sample_rate_template(language_manager)
         self._fmt_bitrate = language_manager["settings.render.template.bitrate"]
         self._msg_destination = language_manager["global.status.message.destination"]
         self._format_labels: Dict[AudioFormat, str] = {

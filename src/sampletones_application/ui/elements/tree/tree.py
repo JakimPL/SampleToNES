@@ -18,6 +18,7 @@ from typing import (
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.behavior.scheduling.scheduling import (
     SchedulingBehavior,
@@ -87,12 +88,13 @@ from sampletones_application.utils.parallelization.thread import (
     SingleThreadExecutor,
 )
 from sampletones_core.configs.display import (
-    format_channels,
+    GENERATOR_SEPARATOR,
     format_nes_frequency,
     format_sample_rate,
     format_spectrum_method,
     short_hash,
 )
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree import (
@@ -867,6 +869,10 @@ class GUITreePanel(GUIPanel, ABC):
             (self._lbl_detail_configuration, short_hash(key.config_hash)),
         ]
 
+    def _channel_names(self, channels: Sequence[ChannelName]) -> str:
+        """The channels a reconstruction was built with, named as every display names them."""
+        return GENERATOR_SEPARATOR.join(channel_label(self._language_manager, channel) for channel in channels)
+
     def _reconstruction_detail_items(
         self,
         fields: ConfigDirectoryFields,
@@ -876,7 +882,7 @@ class GUITreePanel(GUIPanel, ABC):
             (self._lbl_detail_nes_frequency, format_nes_frequency(fields.nf)),
             (self._lbl_detail_spectrum_method, format_spectrum_method(fields.sm)),
             (self._lbl_detail_transformation_gamma, str(fields.tg)),
-            (self._lbl_detail_channels, format_channels(fields.channels)),
+            (self._lbl_detail_channels, self._channel_names(fields.channels)),
             (self._lbl_detail_configuration, short_hash(fields.ch)),
         ]
 

@@ -21,7 +21,7 @@ DEVICE_RATE: Final[int] = 48000
 SILENT_DEVICE_INDEX: Final[int] = 0
 SILENT_HOST_API: Final[int] = 0
 LENGTH_TOLERANCE: Final[float] = 0.01
-RATE_LABEL: Final[str] = "settings.audio.template.sample_rate_label"
+RATE_LABEL: Final[str] = "global.context.template.sample_rate"
 
 
 @pytest.fixture

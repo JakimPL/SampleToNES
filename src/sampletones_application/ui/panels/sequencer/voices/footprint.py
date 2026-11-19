@@ -1,12 +1,11 @@
 from typing import List, Optional, Tuple
 
 from sampletones_application.categories.context import (
+    byte_size_label,
     channel_label,
     context_label,
-    context_text,
 )
 from sampletones_application.categories.elements.global_ import ContextElements
-from sampletones_application.categories.hierarchy import TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.view_model.shared.footprint import VoiceFootprintViewModel
 from sampletones_core.constants.enums import ChannelName
@@ -23,11 +22,10 @@ class VoiceFootprintText:
     def __init__(self, language_manager: LanguageManager) -> None:
         self._language_manager = language_manager
         self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
-        self._tpl_size_bytes = context_text(language_manager, TextType.TEMPLATE, ContextElements.SIZE_BYTES)
 
     def size(self, byte_count: int) -> str:
         """One byte figure, as every surface prints it."""
-        return self._tpl_size_bytes.format(bytes=byte_count)
+        return byte_size_label(self._language_manager, byte_count)
 
     def items(
         self,

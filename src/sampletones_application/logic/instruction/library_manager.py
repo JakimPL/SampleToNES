@@ -4,6 +4,7 @@ from functools import partial
 from pathlib import Path
 from typing import Callable, Dict, Optional, Tuple
 
+from sampletones_application.categories.context import generator_label
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.logic.instruction.readiness import LibraryReadiness
@@ -385,7 +386,7 @@ class InstructionsLibraryManager(CallbackMixin):
     def _build_generator_nodes(self, parent: TreeNode) -> None:
         for generator_name in GeneratorName:
             GeneratorNode(
-                generator_name.value.capitalize(),
+                generator_label(self._language_manager, generator_name),
                 generator_name=generator_name,
                 parent=parent,
             )

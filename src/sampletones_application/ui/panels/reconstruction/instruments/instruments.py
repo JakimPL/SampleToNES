@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from sampletones_application.categories.context import (
+    byte_size_label,
     channel_label,
     context_label,
     context_text,
@@ -195,7 +196,6 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         self._msg_preparing = language_manager["reconstructions.instruments.message.preparing"]
         self._lbl_sample_size = context_label(language_manager, ContextElements.SAMPLE_SIZE)
         self._lbl_instrument_size = context_label(language_manager, ContextElements.INSTRUMENT_SIZE)
-        self._tpl_size_bytes = context_text(language_manager, TextType.TEMPLATE, ContextElements.SIZE_BYTES)
         self._tip_size_bytes = context_text(language_manager, TextType.TOOLTIP, ContextElements.SIZE_BYTES)
         self._pitch_tooltips = PitchTooltips.build(
             language_manager,
@@ -696,7 +696,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
             )
 
     def _format_size(self, byte_count: int) -> str:
-        return self._tpl_size_bytes.format(bytes=byte_count)
+        return byte_size_label(self._language_manager, byte_count)
 
     def update_feature_data(
         self,
@@ -1126,7 +1126,7 @@ class GUIReconstructionInstrumentsPanel(GUIPanel):
         data: np.ndarray,
     ) -> None:
         _, _, y_ticks = self._calculate_plot_limits(config, data)
-        name = f"{channel_name.capitalize()}: {feature_key.capitalized}"
+        name = f"{self._channel_labels[channel_name]}: {feature_key.capitalized}"
         plot.load_data(
             data=data,
             name=name,

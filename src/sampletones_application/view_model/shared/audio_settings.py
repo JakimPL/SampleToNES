@@ -13,8 +13,9 @@ from sampletones_shared.utils.arrays import clamp
 BUFFER_SIZE_ITEMS: Final[Dict[str, BufferSize]] = {str(size): size for size in BUFFER_SIZES}
 
 
-def format_sample_rate(sample_rate: SampleRate, sample_rate_format: str) -> str:
-    return sample_rate_format.format(rate=sample_rate)
+def rate_label(sample_rate: int, template: str) -> str:
+    """A sample rate as ``template`` states it, the one way every list of rates prints one."""
+    return template.format(rate=sample_rate)
 
 
 class MasterGainReadout(BaseModel, frozen=True):
@@ -55,10 +56,10 @@ class AudioDeviceItem(BaseModel, frozen=True):
         return device_label_format.format(index=self.device_index, name=self.name)
 
     def sample_rate_labels(self, sample_rate_format: str) -> Tuple[str, ...]:
-        return tuple(format_sample_rate(sample_rate, sample_rate_format) for sample_rate in self.sample_rates)
+        return tuple(rate_label(sample_rate, sample_rate_format) for sample_rate in self.sample_rates)
 
     def default_sample_rate_label(self, sample_rate_format: str) -> str:
-        return format_sample_rate(self.default_sample_rate, sample_rate_format)
+        return rate_label(self.default_sample_rate, sample_rate_format)
 
 
 class AudioSettingsViewModel(BaseModel, frozen=True):
@@ -113,7 +114,7 @@ class AudioSettingsViewModel(BaseModel, frozen=True):
         if self.current_sample_rate is None:
             return ""
 
-        return format_sample_rate(self.current_sample_rate, sample_rate_format)
+        return rate_label(self.current_sample_rate, sample_rate_format)
 
     @property
     def buffer_size_label(self) -> str:
