@@ -1,4 +1,6 @@
-from typing import Dict, Final, List, Tuple
+import math
+from dataclasses import dataclass
+from typing import Dict, Final, List, Optional, Tuple
 
 import numpy as np
 
@@ -25,8 +27,29 @@ from sampletones_tools.synthesis.voice.voice import Voice
 
 from .families import Family
 from .item import CorpusItem
+from .truth import Truth
 
-Probe = Tuple[str, str, Voice]
+LINE: Final[str] = "line"
+
+ProbeSpec = Tuple[str, str, Voice]
+
+
+@dataclass(frozen=True)
+class Probe:
+    """A probe of the corpus: its name and category, the voice it renders, and the pitch it holds.
+
+    Attributes:
+        name: The name its files are written under.
+        category: The kind of decision it tests.
+        voice: What it renders.
+        frequency: The pitch in Hz it holds throughout, or ``None`` for a probe of no steady pitch.
+    """
+
+    name: str
+    category: str
+    voice: Voice
+    frequency: Optional[float]
+
 
 PROBE_FAMILIES: Final[Dict[str, Family]] = {
     "tone": Family.SINES,
@@ -45,6 +68,7 @@ FIRST_STRIKE_SECONDS: Final[float] = 0.0
 
 def build_corpus(
     sample_rate: int,
+    frame_rate: int,
     *,
     config: CorpusConfig,
 ) -> List[CorpusItem]:
@@ -57,10 +81,12 @@ def build_corpus(
     (a crescendo and a burst dropping to a hiss), and voices sounding together.
     Probes render in a fixed order from
     one seeded generator, so every item is deterministic for a fixed sample
-    rate and configuration and referee scores are reproducible across runs.
+    rate and configuration and referee scores are reproducible across runs. A
+    probe holding one pitch throughout carries it as its pitch line.
 
     Args:
         sample_rate: Sampling rate of the synthesized items in Hz.
+        frame_rate: The frames per second a pitch line is written at.
         config: Corpus tuning holding the probe parameters per signal class.
 
     Returns:
@@ -69,20 +95,18 @@ def build_corpus(
     generator = np.random.default_rng(config.seed)
     return [
         _item(
-            name,
-            category,
-            voice.render(sample_rate=sample_rate, generator=generator),
+            probe,
+            probe.voice.render(sample_rate=sample_rate, generator=generator),
+            frame_rate,
             config,
         )
-        for name, category, voice in corpus_probes(config)
+        for probe in corpus_probes(config)
     ]
 
 
 def corpus_probes(config: CorpusConfig) -> List[Probe]:
     """The probes of the corpus, each named and categorized beside the voice it renders, in corpus order."""
-    return [
-        *_tone_probes(config),
-        *_timbre_probes(config),
+    unpitched: List[ProbeSpec] = [
         *_noise_probes(config),
         *_mix_probes(config),
         *_transient_probes(config),
@@ -91,14 +115,19 @@ def corpus_probes(config: CorpusConfig) -> List[Probe]:
         _burst_then_hiss_probe(config),
         _bass_hi_hats_probe(config),
     ]
+    return [
+        *_tone_probes(config),
+        *_timbre_probes(config),
+        *(Probe(name=name, category=category, voice=voice, frequency=None) for name, category, voice in unpitched),
+    ]
 
 
 def _tone_probes(config: CorpusConfig) -> List[Probe]:
     return [
-        (
-            f"tone-{frequency:g}hz",
-            "tone",
-            _voice(
+        Probe(
+            name=f"tone-{frequency:g}hz",
+            category="tone",
+            voice=_voice(
                 config,
                 _layer(
                     SineOscillator(
@@ -107,6 +136,7 @@ def _tone_probes(config: CorpusConfig) -> List[Probe]:
                     )
                 ),
             ),
+            frequency=frequency,
         )
         for frequency in config.tone.frequencies
     ]
@@ -114,10 +144,10 @@ def _tone_probes(config: CorpusConfig) -> List[Probe]:
 
 def _timbre_probes(config: CorpusConfig) -> List[Probe]:
     return [
-        (
-            f"pulse-duty{duty_cycle:g}",
-            "timbre",
-            _voice(
+        Probe(
+            name=f"pulse-duty{duty_cycle:g}",
+            category="timbre",
+            voice=_voice(
                 config,
                 _layer(
                     PulseOscillator(
@@ -127,12 +157,13 @@ def _timbre_probes(config: CorpusConfig) -> List[Probe]:
                     )
                 ),
             ),
+            frequency=config.timbre.frequency,
         )
         for duty_cycle in config.timbre.duty_cycles
     ]
 
 
-def _noise_probes(config: CorpusConfig) -> List[Probe]:
+def _noise_probes(config: CorpusConfig) -> List[ProbeSpec]:
     return [
         (
             "noise-white",
@@ -160,7 +191,7 @@ def _noise_probes(config: CorpusConfig) -> List[Probe]:
     ]
 
 
-def _mix_probes(config: CorpusConfig) -> List[Probe]:
+def _mix_probes(config: CorpusConfig) -> List[ProbeSpec]:
     return [
         (
             f"mix-noise{noise_level:g}",
@@ -183,7 +214,7 @@ def _mix_probes(config: CorpusConfig) -> List[Probe]:
     ]
 
 
-def _transient_probes(config: CorpusConfig) -> List[Probe]:
+def _transient_probes(config: CorpusConfig) -> List[ProbeSpec]:
     transient = config.transient
     sweep_start, sweep_end = transient.kick_sweep_frequencies
     snare_decay = ExponentialDecayEnvelope(
@@ -231,7 +262,7 @@ def _transient_probes(config: CorpusConfig) -> List[Probe]:
     ]
 
 
-def _crescendo_probe(config: CorpusConfig) -> Probe:
+def _crescendo_probe(config: CorpusConfig) -> ProbeSpec:
     return (
         "dynamics-crescendo",
         "dynamics",
@@ -245,7 +276,7 @@ def _crescendo_probe(config: CorpusConfig) -> Probe:
     )
 
 
-def _polyphony_probes(config: CorpusConfig) -> List[Probe]:
+def _polyphony_probes(config: CorpusConfig) -> List[ProbeSpec]:
     polyphony = config.polyphony
     chord_gain = UNIT_GAIN / len(polyphony.chord_frequencies)
     chord = [
@@ -286,7 +317,7 @@ def _polyphony_probes(config: CorpusConfig) -> List[Probe]:
     ]
 
 
-def _burst_then_hiss_probe(config: CorpusConfig) -> Probe:
+def _burst_then_hiss_probe(config: CorpusConfig) -> ProbeSpec:
     dynamics = config.dynamics
     burst = _layer(
         WhiteNoiseOscillator(kind="white_noise"),
@@ -301,7 +332,7 @@ def _burst_then_hiss_probe(config: CorpusConfig) -> Probe:
     return ("dynamics-burst-then-hiss", "dynamics", _voice(config, burst, hiss))
 
 
-def _bass_hi_hats_probe(config: CorpusConfig) -> Probe:
+def _bass_hi_hats_probe(config: CorpusConfig) -> ProbeSpec:
     mix = config.mix
     bass = _layer(SineOscillator(kind="sine", frequency=mix.bass_frequency))
     hats = _layer(
@@ -334,9 +365,9 @@ def _voice(config: CorpusConfig, *layers: Layer) -> Voice:
 
 
 def _item(
-    name: str,
-    category: str,
+    probe: Probe,
     audio: np.ndarray,
+    frame_rate: int,
     config: CorpusConfig,
 ) -> CorpusItem:
     """
@@ -346,12 +377,14 @@ def _item(
     range, and stored as float32, so every item shares one loudness convention.
     """
     scaled = clip_audio(config.amplitude * audio)
+    frames = math.ceil(config.item_seconds * frame_rate)
+    truth = None if probe.frequency is None else Truth(instructions={}, pitches={LINE: (probe.frequency,) * frames})
     return CorpusItem(
-        name=name,
-        family=PROBE_FAMILIES[category],
-        category=category,
+        name=probe.name,
+        family=PROBE_FAMILIES[probe.category],
+        category=probe.category,
         listed=True,
         audio=scaled.astype(np.float32),
-        truth=None,
+        truth=truth,
         channels=None,
     )

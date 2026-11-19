@@ -6,6 +6,7 @@ from sampletones_tools.calibration.config.chords import ChordsConfig
 from sampletones_tools.calibration.config.corpus import CorpusConfig
 from sampletones_tools.calibration.config.manifest import CorpusManifest
 from sampletones_tools.calibration.config.notes import NotesConfig
+from sampletones_tools.calibration.config.pitched import PitchedConfig
 from sampletones_tools.calibration.config.sequences import SequencesConfig
 
 from .chords import build_chords
@@ -14,6 +15,7 @@ from .item import CorpusItem
 from .manifest import build_manifest, manifest_catalog
 from .nes import build_sequences
 from .notes import NOTE_CATEGORIES, build_notes
+from .pitched import PITCHED_CATALOG, build_pitched
 from .synthesis import PROBE_FAMILIES, build_corpus, corpus_probes
 
 Catalog = List[Tuple[Family, str]]
@@ -74,13 +76,20 @@ def reference_categories(manifest: Optional[CorpusManifest]) -> List[str]:
 
 def _sources(manifest: Optional[CorpusManifest]) -> List[CorpusSource]:
     probes = CorpusConfig.load()
+    pitched = PitchedConfig.load()
     sequences = SequencesConfig.load()
     grid = NotesConfig.load()
     chords = ChordsConfig.load()
     return [
         CorpusSource(
-            catalog=[(PROBE_FAMILIES[category], category) for _, category, _ in corpus_probes(probes)],
-            build=lambda config: build_corpus(config.library.sample_rate, config=probes),
+            catalog=[(PROBE_FAMILIES[probe.category], probe.category) for probe in corpus_probes(probes)],
+            build=lambda config: build_corpus(config.library.sample_rate, config.library.nes_frequency, config=probes),
+        ),
+        CorpusSource(
+            catalog=PITCHED_CATALOG,
+            build=lambda config: build_pitched(
+                config.library.sample_rate, config.library.nes_frequency, config=pitched
+            ),
         ),
         CorpusSource(
             catalog=[(Family.NOTES, category) for category in NOTE_CATEGORIES],

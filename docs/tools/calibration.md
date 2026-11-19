@@ -116,7 +116,9 @@ The score is `missing` plus `added`. `level` is reported separately.
 
 The `transcription`, `pitch`, `stability`, `balance` and `continuity` sections read the reconstruction's
 instructions against what a reference sound plays, so they cover only the sounds whose frames or
-pitches the run knows.
+pitches the run knows. A synthesized sound of a known pitch carries it as a line, frame by frame: the
+sines, the pulse waves, and the pitched `sines-` and `tones-` sounds. A decaying sound counts as
+sounding its pitch while it stays within 40 dB of its start.
 Their readings are shares of frames, from 0 to 1, except where the
 [referees](#the-truth-referees) say otherwise. Lower is better there too.
 
@@ -209,11 +211,11 @@ report and the page present in this order:
 
 | Family | Sounds | Played exactly by the channels |
 |---|---|---|
-| `sines` | sine tones | no |
+| `sines` | sine tones: steady, decaying, swinging in pitch, and a bass line | no |
 | `notes` | single notes of every channel, laid on a grid | yes |
 | `chords` | two to four channels held together | yes |
 | `sequences` | melodies, bass lines, drums and pieces written as NES frames | yes |
-| `tones` | single sounds of other shapes: pulse waves, noise, attacks, level changes | no |
+| `tones` | sounds of other shapes: pulse waves, sawtooths, a vowel, plucks, noise, attacks, level changes | no |
 | `composites` | several sounds together | no |
 
 The page lists a selection of each family. The run measures every sound, writes the audio of the
@@ -225,7 +227,14 @@ of decision:
 | Category | Family | Sounds | What it tests |
 |---|---|---|---|
 | `tone` | `sines` | sines across the pitch range | pitch |
-| `timbre` | `tones` | pulse waves of several duty cycles | the shape of a tone |
+| `sines-decaying` | `sines` | sines at 110, 220, 440 and 880 Hz, struck once and left to decay at three speeds | holding one shape through a decay |
+| `sines-vibrato` | `sines` | sines at 110 and 440 Hz swinging 25, 50 and 100 cents, 5.5 times a second | following a vibrato |
+| `sines-line` | `sines` | a bass line from E1 to E3 of separated sine notes | a bass line, the lowest notes above all |
+| `timbre` | `tones` | pulse waves of several duty cycles, 33% among them | the shape of a tone |
+| `tones-line` | `tones` | the same bass line on a sawtooth | a bass line of a rich tone |
+| `tones-voice` | `tones` | a melody on a vowel-like tone, its pitch swinging slightly | a sung line |
+| `tones-pluck` | `tones` | plucked tones at 110 and 220 Hz | a decay whose timbre changes |
+| `tones-vibrato` | `tones` | a sawtooth at 220 Hz swinging 25, 50 and 100 cents | a vibrato on a rich tone |
 | `noise` | `tones` | white noise, and dark noise | noise without a pitch |
 | `transient` | `tones` | a snare, a kick, a plucked tone | attacks and decays |
 | `dynamics` | `tones` | a crescendo, and a loud burst dropping to a quiet hiss | following the level |

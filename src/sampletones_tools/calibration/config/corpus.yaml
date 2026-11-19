@@ -5,7 +5,7 @@ reference_frequency: 440.0
 tone:
   frequencies: [55.0, 110.0, 220.0, 440.0, 880.0, 1760.0]
 timbre:
-  duty_cycles: [0.125, 0.25, 0.5]
+  duty_cycles: [0.125, 0.25, 0.333, 0.5]
   frequency: 220.0
 noise:
   white_level: 0.5

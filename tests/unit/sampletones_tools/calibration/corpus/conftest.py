@@ -7,6 +7,7 @@ from sampletones_tools.calibration.corpus.item import CorpusItem
 from sampletones_tools.calibration.corpus.synthesis import build_corpus
 
 SAMPLE_RATE: Final[int] = 22050
+FRAME_RATE: Final[int] = 60
 
 
 @pytest.fixture(scope="session")
@@ -21,4 +22,4 @@ def corpus_config() -> CorpusConfig:
 
 @pytest.fixture(scope="session")
 def corpus_items(corpus_config: CorpusConfig, sample_rate: int) -> List[CorpusItem]:
-    return build_corpus(sample_rate, config=corpus_config)
+    return build_corpus(sample_rate, FRAME_RATE, config=corpus_config)
