@@ -7,7 +7,7 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.coordinators.filters import reconstruction_filter
-from sampletones_application.coordinators.tabs.reconstruction import (
+from sampletones_application.coordinators.tabs.reconstruction.coordinator import (
     ReconstructionTabCoordinator,
 )
 from sampletones_application.logic.history.manager import HistoryManager

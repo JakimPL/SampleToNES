@@ -50,7 +50,7 @@ from sampletones_application.coordinators.tabs.instructions import (
     InstructionsTabCoordinator,
 )
 from sampletones_application.coordinators.tabs.main import MainTabCoordinator
-from sampletones_application.coordinators.tabs.reconstruction import (
+from sampletones_application.coordinators.tabs.reconstruction.coordinator import (
     ReconstructionTabCoordinator,
 )
 from sampletones_application.coordinators.tabs.sequencer.coordinator import SequencerTabCoordinator

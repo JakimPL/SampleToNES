@@ -10,7 +10,7 @@ import pytest
 
 from sampletones_application.config.session.state.paths import LastPath
 from sampletones_application.coordinators.reconstruction import ReconstructionCoordinator
-from sampletones_application.coordinators.tabs.reconstruction import (
+from sampletones_application.coordinators.tabs.reconstruction.coordinator import (
     ReconstructionTabCoordinator,
 )
 from sampletones_application.layout.behavior.scheduling.scheduling import (

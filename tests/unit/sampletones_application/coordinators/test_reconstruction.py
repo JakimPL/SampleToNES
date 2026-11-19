@@ -10,7 +10,7 @@ import pytest
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.coordinators import reconstruction as reconstruction_module
 from sampletones_application.coordinators.reconstruction import ReconstructionCoordinator
-from sampletones_application.coordinators.tabs.reconstruction import (
+from sampletones_application.coordinators.tabs.reconstruction.coordinator import (
     ReconstructionTabCoordinator,
 )
 from sampletones_application.layout.behavior.scheduling.scheduling import SchedulingBehavior
