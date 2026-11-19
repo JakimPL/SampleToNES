@@ -159,7 +159,7 @@ class GUIReconstructionBrowserPanel(GUIFileBrowserPanel):
         if configuration is None:
             return []
 
-        return self._reconstruction_detail_items(configuration)
+        return self._details.reconstruction(configuration)
 
     def _node_detail_recordings(self, node: TreeNode) -> Tuple[DetailSwatch, ...]:
         """The recordings the hovered document is made of, asked for as the pointer reaches its row.

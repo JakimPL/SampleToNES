@@ -5,6 +5,8 @@ import pytest
 
 from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.ui.elements.fonts.font import Font
+from sampletones_application.ui.elements.tree.details import NodeDetails
+from sampletones_application.ui.elements.tree.tooltip import DetailTooltip
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.utils.palette.colors.literal import LiteralColor
 from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
@@ -27,16 +29,9 @@ CONFIG_FIELDS: Final[ConfigDirectoryFields] = ConfigDirectoryFields.from_config(
 CONFIG_DIRECTORY: Final[Path] = Path("/reconstructions") / CONFIG_FIELDS.directory_name
 RECONSTRUCTION_PATH: Final[Path] = CONFIG_DIRECTORY / f"song{EXT_FILE_RECONSTRUCTION}"
 
-DETAIL_LABELS: Final[List[str]] = [
-    "sample_rate",
-    "nes_frequency",
-    "spectrum_method",
-    "transformation_gamma",
-    "window_size",
-    "channels",
-    "configuration",
-    "stems",
-]
+SAMPLE_RATE_LABEL: Final[str] = "global.context.label.detail_sample_rate"
+CONFIGURATION_LABEL: Final[str] = "global.context.label.detail_configuration"
+PANEL_TAG: Final[str] = "browser"
 
 RECORDING_COLORS: Final[Tuple[ColorRGBA, ...]] = (
     (200, 80, 40, 255),
@@ -77,10 +72,11 @@ def panel(stem_colors: StemColors) -> GUISequencerBrowserPanel:
     instance._stem_colors = stem_colors
     instance._detail_document = None
     instance._detail_recordings = ()
-    instance._detail_tooltip_owner_tag = None
     instance.on_recordings_requested = None
-    for label in DETAIL_LABELS:
-        setattr(instance, f"_lbl_detail_{label}", label)
+    instance._details = NodeDetails(instance._language_manager)
+    instance._detail_tooltip = DetailTooltip(
+        PANEL_TAG, instance._node_detail, swatch_label=instance._details.stems_label
+    )
 
     return instance
 
@@ -134,8 +130,8 @@ class TestConfigDetailItems:
         panel: GUISequencerBrowserPanel,
     ) -> None:
         items = dict(panel._node_detail_items(config_directory_node()))
-        assert items["sample_rate"] == format_sample_rate(CONFIG_FIELDS.sr)
-        assert items["configuration"] == short_hash(CONFIG_FIELDS.ch)
+        assert items[SAMPLE_RATE_LABEL] == format_sample_rate(CONFIG_FIELDS.sr)
+        assert items[CONFIGURATION_LABEL] == short_hash(CONFIG_FIELDS.ch)
 
     def test_config_variant_leaf_states_the_same_configuration(
         self,
