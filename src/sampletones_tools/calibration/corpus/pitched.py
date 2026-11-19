@@ -4,21 +4,30 @@ from typing import Callable, Final, List, Sequence, Tuple
 
 import numpy as np
 
+from sampletones_core.constants.enums import ChannelName
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
+from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_tools.calibration.config.pitched import PitchedConfig, VoiceConfig
 from sampletones_tools.synthesis.envelopes.exponential_decay import ExponentialDecayEnvelope
 from sampletones_tools.synthesis.envelopes.gate import GateEnvelope
+from sampletones_tools.synthesis.envelopes.periodic_decay import PeriodicDecayEnvelope
 from sampletones_tools.synthesis.envelopes.types import EnvelopeUnion
 from sampletones_tools.synthesis.frequency import resolve_frequency
 from sampletones_tools.synthesis.oscillators.sine import SineOscillator
 from sampletones_tools.synthesis.oscillators.vibrato import CENTS_PER_OCTAVE, VibratoOscillator
+from sampletones_tools.synthesis.oscillators.white_noise import WhiteNoiseOscillator
 from sampletones_tools.synthesis.voice.layer import Layer
 from sampletones_tools.synthesis.voice.voice import Voice
 
 from .families import Family
-from .item import CorpusItem
+from .item import CorpusItem, StemsSources
 from .truth import PitchLine, Truth
 
 LINE: Final[str] = "line"
+BASS_LINE: Final[str] = "bass"
+VOICE_LINE: Final[str] = "voice"
 FRAME_CENTER: Final[float] = 0.5
 DECIBELS_PER_AMPLITUDE_DECADE: Final[float] = 20.0
 NYQUIST_SHARE: Final[float] = 0.5
@@ -32,6 +41,7 @@ PITCHED_CATALOG: Final[List[Tuple[Family, str]]] = [
     (Family.TONES, "tones-voice"),
     (Family.TONES, "tones-pluck"),
     (Family.TONES, "tones-vibrato"),
+    (Family.COMPOSITES, "composites-band"),
 ]
 
 FrequencyAt = Callable[[np.ndarray], np.ndarray]
@@ -42,8 +52,9 @@ def build_pitched(sample_rate: int, frame_rate: int, *, config: PitchedConfig) -
 
     Sines that decay or swing in pitch, and a bass line, form the ``sines`` family. The same bass
     line as a sawtooth, a vowel-like melody, plucked tones and swinging sawtooths form the ``tones``
-    family. A sound counts as sounding its pitch while its level stays within the audible range of
-    its start, so a decay's quiet tail is left out of the reading.
+    family. The sawtooth bass, the melody and a drum pattern together, each a stem of its own, form
+    the ``composites`` family's band. A sound counts as sounding its pitch while its level stays
+    within the audible range of its start, so a decay's quiet tail is left out of the reading.
 
     Args:
         sample_rate: The rate the sounds are synthesized at.
@@ -54,14 +65,16 @@ def build_pitched(sample_rate: int, frame_rate: int, *, config: PitchedConfig) -
         List[CorpusItem]: Every sound, the sines first.
     """
     maker = _Maker(sample_rate, frame_rate, config)
+    bass, voice = maker.line(sawtooth=True), maker.voice()
     return [
         *maker.decaying(),
         *maker.vibrato_sines(),
         maker.line(sawtooth=False),
-        maker.line(sawtooth=True),
-        maker.voice(),
+        bass,
+        voice,
         *maker.plucks(),
         *maker.vibrato_sawtooths(),
+        maker.band(bass, voice),
     ]
 
 
@@ -229,6 +242,58 @@ class _Maker:
             )
         return items
 
+    def band(self, bass: CorpusItem, voice: CorpusItem) -> CorpusItem:
+        """The sawtooth bass line, the vowel melody and a drum pattern together, each a stem of its own.
+
+        The stems keep the balance their levels set, and are scaled together so their mix peaks at the
+        corpus amplitude.
+        """
+        spec = self._config.band
+        length = max(len(bass.audio), len(voice.audio))
+        seconds = length / self._sample_rate
+        drums = Voice(
+            duration_seconds=seconds,
+            layers=tuple(
+                Layer(
+                    oscillator=WhiteNoiseOscillator(kind="white_noise"),
+                    envelopes=(
+                        PeriodicDecayEnvelope(
+                            kind="periodic_decay",
+                            period_seconds=hit.period_seconds,
+                            time_constant_seconds=hit.decay_seconds,
+                            delay_seconds=hit.delay_seconds,
+                        ),
+                    ),
+                    gain=hit.level,
+                )
+                for hit in spec.hits
+            ),
+            filters=(),
+        )
+        beat = drums.render(sample_rate=self._sample_rate, generator=np.random.default_rng(SILENT_SEED))
+        parts = [
+            _padded(audio * level, length)
+            for audio, level in (
+                (bass.audio, spec.bass_level),
+                (voice.audio, spec.voice_level),
+                (beat, spec.drums_level),
+            )
+        ]
+        peak = float(np.max(np.abs(np.sum(parts, axis=0)))) or 1.0
+        sources = tuple((self._config.amplitude * part / peak).astype(np.float32) for part in parts)
+        frames = math.ceil(seconds * self._frame_rate)
+        lines = {name: _padded_line(item, frames) for name, item in ((BASS_LINE, bass), (VOICE_LINE, voice))}
+        return CorpusItem(
+            name="band",
+            family=Family.COMPOSITES,
+            category="composites-band",
+            listed=True,
+            audio=np.sum(sources, axis=0).astype(np.float32),
+            truth=Truth(instructions={}, pitches=lines),
+            channels=frozenset(ChannelName.items()),
+            stems=StemsSources(sources=sources, config=_band_stems()),
+        )
+
     def _vibrato(self, frequency: float, depth: float, *, harmonic: int) -> VibratoOscillator:
         spec = self._config.vibrato
         return VibratoOscillator(
@@ -280,6 +345,38 @@ class _Maker:
             channels=None,
             stems=None,
         )
+
+
+def _padded(audio: np.ndarray, length: int) -> np.ndarray:
+    padded = np.zeros(length, dtype=np.float64)
+    padded[: len(audio)] = audio[:length]
+    return padded
+
+
+def _padded_line(item: CorpusItem, frames: int) -> PitchLine:
+    """The item's pitch line, run on in silence to ``frames`` frames.
+
+    Raises:
+        ValueError: If the item carries no pitch line.
+    """
+    truth = item.truth
+    if truth is None:
+        raise ValueError(f"{item.name!r} carries no pitch line")
+
+    line = truth.pitches[LINE]
+    return tuple([*line[:frames], *([None] * (frames - len(line)))])
+
+
+def _band_stems() -> StemsConfig:
+    """The band's setup: the bass on the triangle, the melody on either pulse, the drums on the noise."""
+    parts = ([ChannelName.TRIANGLE], [ChannelName.PULSE1, ChannelName.PULSE2], [ChannelName.NOISE])
+    return StemsConfig(
+        entries=tuple(
+            StemEntry(id=index, settings=StemSettings.covering(channels).model_copy(update={"channel_cap": 1}))
+            for index, channels in enumerate(parts)
+        ),
+        hierarchy=StemsHierarchy(levels=((0, 1, 2),)),
+    )
 
 
 def _steady(frequency: float, times: np.ndarray) -> np.ndarray:

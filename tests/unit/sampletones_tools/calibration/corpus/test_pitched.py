@@ -33,6 +33,12 @@ CONFIG: Final[PitchedConfig] = PitchedConfig.model_validate(
             "depth_cents": 20.0,
         },
         "pluck": {"frequencies": [220.0], "time_constant_seconds": 0.3, "harmonics": 6, "seconds": 0.5},
+        "band": {
+            "bass_level": 0.6,
+            "voice_level": 0.5,
+            "drums_level": 0.6,
+            "hits": [{"period_seconds": 0.25, "decay_seconds": 0.05, "delay_seconds": 0.0, "level": 1.0}],
+        },
     }
 )
 
@@ -74,3 +80,15 @@ class TestBuildPitched:
     def test_every_sound_peaks_at_the_amplitude(self, items: Dict[str, CorpusItem]) -> None:
         for item in items.values():
             assert float(abs(item.audio).max()) == pytest.approx(CONFIG.amplitude, rel=1e-3)
+
+
+class TestBand:
+    def test_the_band_holds_the_bass_the_melody_and_the_drums_as_stems_with_two_lines(
+        self,
+        items: Dict[str, CorpusItem],
+    ) -> None:
+        band = items["band"]
+
+        assert band.stems is not None and len(band.stems.sources) == 3
+        assert band.truth is not None and set(band.truth.pitches) == {"bass", "voice"}
+        assert all(len(line) == len(band.truth.pitches["bass"]) for line in band.truth.pitches.values())

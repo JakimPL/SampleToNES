@@ -158,9 +158,28 @@ A manifest names reference sounds kept on your own machine, which join the packa
 `--corpus FILE`. It is a YAML file with a list of `items`. Every path in it is read from the
 manifest's own folder.
 
-Today a manifest names pieces of [NES-MDB](https://github.com/chrisdonahue/nesmdb), a collection of
-NES game music transcribed from what the console's sound chip played. Download its MIDI archive
-yourself; the pieces are read straight out of it.
+A manifest names two kinds of sound.
+
+**Recordings** are audio files of your own, one recording or several stems under a stems setup in the
+format `sampletones convert --stems` reads:
+
+```yaml
+items:
+  - kind: recording
+    name: song
+    family: composites
+    category: song
+    listed: true
+    sources: [stems/Vocals.wav, stems/Drums.wav, stems/Bass.wav, stems/Others.wav]
+    stems: stems/setup.json
+```
+
+`family` is `composites` for stems and `samples` for a single recording kept to listen to. A
+single recording leaves out `stems` and is converted over the run's channels.
+
+**NES-MDB pieces** come from [NES-MDB](https://github.com/chrisdonahue/nesmdb), a collection of NES game music
+transcribed from what the console's sound chip played. Download its MIDI archive yourself; the pieces
+are read straight out of it.
 
 ```yaml
 items:
@@ -240,6 +259,8 @@ of decision:
 | `dynamics` | `tones` | a crescendo, and a loud burst dropping to a quiet hiss | following the level |
 | `mix` | `composites` | a tone under hiss, and a bass under hi-hat ticks | a tone and noise together |
 | `polyphony` | `composites` | a chord, and a melody over a snare | several voices at once |
+| `mix-stems`, `polyphony-stems` | `composites` | the same composites, the tone and the noise each a stem | each part matched on the channels it may take |
+| `composites-band` | `composites` | the sawtooth bass, the vowel melody and a drum pattern, each a stem: the bass on the triangle, the melody on either pulse, the drums on the noise | a small band converted as stems |
 
 The `notes`, `chords` and `sequences` families are written out frame by frame, as instructions the
 four channels play, and rendered the way the channels play them. Each one is a *round trip*: the

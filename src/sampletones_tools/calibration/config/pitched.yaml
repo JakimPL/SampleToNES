@@ -30,3 +30,11 @@ pluck:
   time_constant_seconds: 0.6
   harmonics: 20
   seconds: 1.5
+band:
+  bass_level: 0.6
+  voice_level: 0.5
+  drums_level: 0.6
+  hits:
+    - { period_seconds: 0.6, decay_seconds: 0.08, delay_seconds: 0.0, level: 1.0 }
+    - { period_seconds: 0.6, decay_seconds: 0.05, delay_seconds: 0.3, level: 0.7 }
+    - { period_seconds: 0.15, decay_seconds: 0.01, delay_seconds: 0.0, level: 0.3 }

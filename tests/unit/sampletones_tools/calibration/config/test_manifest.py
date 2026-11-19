@@ -30,3 +30,21 @@ class TestCorpusManifest:
     def test_two_sounds_of_one_name_are_refused(self) -> None:
         with pytest.raises(ValidationError, match="name of its own"):
             CorpusManifest.model_validate({"items": [PIECE, PIECE]})
+
+
+class TestRecordingItem:
+    RECORDING = {"kind": "recording", "name": "song", "family": "composites", "category": "song", "listed": True}
+
+    def test_every_recording_and_its_setup_are_found_beside_the_manifest(self, tmp_path: Path) -> None:
+        path = tmp_path / "manifest.yaml"
+        item = {**self.RECORDING, "sources": ["a.wav", "b.wav"], "stems": "setup.json"}
+        path.write_text(yaml.safe_dump({"items": [item]}), encoding="utf-8")
+
+        (recording,) = CorpusManifest.read(path).recordings
+
+        assert recording.sources == [tmp_path / "a.wav", tmp_path / "b.wav"]
+        assert recording.stems == tmp_path / "setup.json"
+
+    def test_several_recordings_without_a_setup_are_refused(self) -> None:
+        with pytest.raises(ValidationError, match="no stems setup"):
+            CorpusManifest.model_validate({"items": [{**self.RECORDING, "sources": ["a.wav", "b.wav"], "stems": None}]})

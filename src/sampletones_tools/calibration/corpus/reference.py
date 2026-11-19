@@ -11,9 +11,10 @@ from sampletones_tools.calibration.config.sequences import SequencesConfig
 
 from .by_channel import BY_CHANNEL_SUFFIX, with_by_channel
 from .chords import build_chords
+from .composites import composite_stems, composite_stems_catalog
 from .families import FAMILY_ORDER, Family
 from .item import CorpusItem
-from .manifest import build_manifest, manifest_catalog
+from .manifest import build_pieces, build_recordings, pieces_catalog, recordings_catalog
 from .nes import build_sequences
 from .notes import NOTE_CATEGORIES, build_notes
 from .pitched import PITCHED_CATALOG, build_pitched
@@ -87,6 +88,10 @@ def _sources(manifest: Optional[CorpusManifest]) -> List[CorpusSource]:
             build=lambda config: build_corpus(config.library.sample_rate, config.library.nes_frequency, config=probes),
         ),
         CorpusSource(
+            catalog=composite_stems_catalog(probes),
+            build=lambda config: composite_stems(config.library.sample_rate, config=probes),
+        ),
+        CorpusSource(
             catalog=PITCHED_CATALOG,
             build=lambda config: build_pitched(
                 config.library.sample_rate, config.library.nes_frequency, config=pitched
@@ -114,9 +119,13 @@ def _manifest_sources(manifest: Optional[CorpusManifest]) -> List[CorpusSource]:
 
     return [
         CorpusSource(
-            catalog=_with_by_channel(manifest_catalog(manifest)),
-            build=lambda config: with_by_channel(build_manifest(config, manifest=manifest), config),
-        )
+            catalog=_with_by_channel(pieces_catalog(manifest)),
+            build=lambda config: with_by_channel(build_pieces(config, manifest=manifest), config),
+        ),
+        CorpusSource(
+            catalog=recordings_catalog(manifest),
+            build=lambda config: build_recordings(config, manifest=manifest),
+        ),
     ]
 
 

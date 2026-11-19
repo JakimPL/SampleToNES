@@ -71,6 +71,28 @@ class PluckConfig(BaseModel):
     seconds: float = Field(gt=0.0)
 
 
+class HitConfig(BaseModel):
+    """A drum hit of noise repeating on a beat."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    period_seconds: float = Field(gt=0.0)
+    decay_seconds: float = Field(gt=0.0)
+    delay_seconds: float = Field(ge=0.0)
+    level: float = Field(gt=0.0)
+
+
+class BandConfig(BaseModel):
+    """The bass line, the melody and a drum pattern together, each a stem of its own."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    bass_level: float = Field(gt=0.0)
+    voice_level: float = Field(gt=0.0)
+    drums_level: float = Field(gt=0.0)
+    hits: List[HitConfig] = Field(min_length=1)
+
+
 class PitchedConfig(BaseModel):
     """Synthesized sounds of a known pitch at every moment, whose conversions are read against that pitch.
 
@@ -88,6 +110,7 @@ class PitchedConfig(BaseModel):
     line: LineConfig
     voice: VoiceConfig
     pluck: PluckConfig
+    band: BandConfig
 
     @classmethod
     def load(cls) -> Self:
