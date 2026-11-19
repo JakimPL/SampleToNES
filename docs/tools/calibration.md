@@ -114,8 +114,9 @@ The `mr-loudness-dB` section adds a table for each of its readings:
 
 The score is `missing` plus `added`. `level` is reported separately.
 
-The `transcription`, `pitch`, `stability` and `balance` sections read the reconstruction's instructions against
-what a reference sound plays, so they cover only the sounds whose frames or pitches the run knows.
+The `transcription`, `pitch`, `stability`, `balance` and `continuity` sections read the reconstruction's
+instructions against what a reference sound plays, so they cover only the sounds whose frames or
+pitches the run knows.
 Their readings are shares of frames, from 0 to 1, except where the
 [referees](#the-truth-referees) say otherwise. Lower is better there too.
 
@@ -278,6 +279,16 @@ time resolutions, and compare the energy in each band in decibels.
   and silent bands barely count. It first brings the reconstruction to the original's level and
   reports the level difference on its own. Silence scores worst, and a clip with the right tone and
   some added noise scores between.
+- **`contour`** follows the loudness of the recording over time and over the spectrum. Both are cut
+  into frames of 1/60 s, each measured as its level in decibels. Over the frames the recording sounds
+  in, the score is how far the render's levels stray from the recording's once a constant offset is
+  set aside, in decibels. Its readings:
+  - `spread`: the range of the render's levels less the recording's. Flattened dynamics read below
+    zero.
+  - `onset`: how much louder the render plays than the recording in the first three frames after a
+    silence. An overshooting attack reads above zero.
+  - `band-63` to `band-8000`: the render's energy less the recording's in each octave band the
+    recording fills, in decibels. Read across, they draw any equalization the reconstruction adds.
 - **`zimtohrli`** is a model of human hearing from Google. It joins the other two where it is
   installed. See [dependencies](../development/release/dependencies.md#calibration).
 
@@ -306,7 +317,14 @@ They never listen, so they say *what* went wrong where the audio referees say ho
 - **`stability`** counts how often channels change: turning on or off (`toggles`), or moving to another
   note or noise period while sounding (`moves`). The score is how many more changes per second the
   reconstruction makes than the sound itself, the two readings together. A reconstruction that
-  flickers where the sound holds still scores high.
+  flickers where the sound holds still scores high. Three more readings measure how far the sounding
+  channels move per second, beyond the sound's own motion:
+  - `pitch-motion`: semitones the sounding pitch travels, bends included, so a vibrato the
+    reconstruction follows counts as the sound's own.
+  - `level-motion`: decibels the volume of a sounding pulse or noise channel travels.
+  - `duty-switches`: changes of a sounding pulse's timbre, 25% and 75% being one.
+
+  The last two need the sound's own frames.
 - **`balance`** compares how the channels share the sound out. A part's share is its energy over
   the energy of every part, the two pulses one part. The score is the share that would have to move
   between parts to match the sound, from 0 to 1. Its readings:
@@ -316,3 +334,10 @@ They never listen, so they say *what* went wrong where the audio referees say ho
     while the triangle plays another or none.
   - `scale`: how much the reconstruction scaled the sound before matching it. A round trip matched
     at the level the channels play it reads 1.
+- **`continuity`** asks whether each note of the sound comes back as one continuous sound. A note
+  is a run of frames a line holds one pitch through. In each of its frames the note is answered by
+  the tonal channel sounding closest to it, or by none. The score is the extra events per note:
+  - `handovers`: changes of the answering channel, such as a triangle note a pulse takes over
+    halfway.
+  - `fragments`: separate sounding runs per note. A note heard whole has one; a dropout in the
+    middle makes two.

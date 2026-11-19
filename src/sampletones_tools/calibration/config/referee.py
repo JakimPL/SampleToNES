@@ -8,8 +8,8 @@ from sampletones_tools.calibration.paths import REFEREE_CONFIG_PATH
 
 class RefereeConfig(BaseModel, frozen=True):
     """
-    Tuning of the built-in referees: the band analysis the audio referees share, and the tolerance the
-    transcription reads frames with.
+    Tuning of the built-in referees: the band analysis the audio referees share, the frames and bands
+    the contour referee reads, and the tolerance the transcription reads frames with.
 
     Values are loaded from the packaged `calibration/referee.yaml`, so referee
     scores stay comparable across calibration runs while remaining adjustable
@@ -49,6 +49,24 @@ class RefereeConfig(BaseModel, frozen=True):
     )
     level_matching: bool = Field(
         description="Whether the loudness-weighted referee matches the estimate's level before comparing shapes.",
+    )
+    contour_frame_rate: PositiveInt = Field(
+        description="Frames per second the contour referee measures levels over.",
+    )
+    contour_audible_decibels: float = Field(
+        gt=0.0,
+        description="Range below the recording's loudest frame the contour referee reads.",
+    )
+    contour_onset_frames: PositiveInt = Field(
+        description="Frames after a silence the contour referee reads an onset over.",
+    )
+    contour_band_centers: Tuple[float, ...] = Field(
+        min_length=1,
+        description="Centers in Hz of the octave bands the contour referee balances.",
+    )
+    contour_band_floor_decibels: float = Field(
+        gt=0.0,
+        description="Range below the recording's fullest band the contour referee reads a band within.",
     )
     volume_tolerance: NonNegativeInt = Field(
         description="Volume steps a conversion's frame may stand off a written frame by and still play it as written.",

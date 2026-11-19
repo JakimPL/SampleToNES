@@ -17,6 +17,11 @@ VALID_FIELDS: Final[Dict[str, Any]] = {
     "compression_exponent": 0.3,
     "dynamic_range_decibels": 60.0,
     "level_matching": True,
+    "contour_frame_rate": 60,
+    "contour_audible_decibels": 40.0,
+    "contour_onset_frames": 3,
+    "contour_band_centers": (125.0, 1000.0),
+    "contour_band_floor_decibels": 60.0,
     "volume_tolerance": 1,
 }
 

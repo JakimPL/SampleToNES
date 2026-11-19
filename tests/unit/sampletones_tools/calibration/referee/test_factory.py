@@ -2,6 +2,8 @@ import pytest
 
 from sampletones_tools.calibration.referee.auditory import AUDITORY_REFEREE_NAME
 from sampletones_tools.calibration.referee.balance import BALANCE_REFEREE
+from sampletones_tools.calibration.referee.continuity import CONTINUITY_REFEREE
+from sampletones_tools.calibration.referee.contour import CONTOUR_REFEREE
 from sampletones_tools.calibration.referee.factory import build_referees, build_truth_referees
 from sampletones_tools.calibration.referee.loudness import LOUDNESS_REFEREE_NAME
 from sampletones_tools.calibration.referee.pitch import PITCH_REFEREE
@@ -20,6 +22,7 @@ class TestBuildReferees:
         assert [referee.name for referee in build_referees(SAMPLE_RATE)] == [
             AUDITORY_REFEREE_NAME,
             LOUDNESS_REFEREE_NAME,
+            CONTOUR_REFEREE,
         ]
 
     @pytest.mark.skipif(not zimtohrli_available(), reason="the calibration dependency group provides the model")
@@ -28,10 +31,11 @@ class TestBuildReferees:
 
 
 class TestBuildTruthReferees:
-    def test_the_transcription_leads_the_pitch_the_stability_and_the_balance(self) -> None:
+    def test_the_transcription_leads_the_rest_of_the_truth_referees(self) -> None:
         assert [referee.name for referee in build_truth_referees()] == [
             TRANSCRIPTION_REFEREE,
             PITCH_REFEREE,
             STABILITY_REFEREE,
             BALANCE_REFEREE,
+            CONTINUITY_REFEREE,
         ]

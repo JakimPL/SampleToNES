@@ -7,4 +7,9 @@ audibility_range_decibels: 60.0
 compression_exponent: 0.3
 dynamic_range_decibels: 60.0
 level_matching: true
+contour_frame_rate: 60
+contour_audible_decibels: 40.0
+contour_onset_frames: 3
+contour_band_centers: [63.0, 125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0]
+contour_band_floor_decibels: 60.0
 volume_tolerance: 1

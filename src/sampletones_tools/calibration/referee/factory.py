@@ -4,6 +4,8 @@ from sampletones_tools.calibration.config.referee import RefereeConfig
 
 from .auditory import MultiResolutionAuditoryReferee
 from .balance import BalanceReferee
+from .continuity import ContinuityReferee
+from .contour import ContourReferee
 from .loudness import LoudnessWeightedReferee
 from .pitch import PitchReferee
 from .protocol import Referee, TruthReferee
@@ -23,12 +25,14 @@ def build_referees(sample_rate: int) -> List[Referee]:
         sample_rate: Sampling rate of the signals under evaluation in Hz.
 
     Returns:
-        List[Referee]: The built-in referees with the packaged tuning, then Zimtohrli when available.
+        List[Referee]: The built-in referees with the packaged tuning (auditory, loudness, contour),
+            then Zimtohrli when available.
     """
     config = RefereeConfig.load()
     referees: List[Referee] = [
         MultiResolutionAuditoryReferee(sample_rate, config=config),
         LoudnessWeightedReferee(sample_rate, config=config),
+        ContourReferee(sample_rate, config=config),
     ]
     if zimtohrli_available():
         referees.append(ZimtohrliReferee(sample_rate))
@@ -40,7 +44,8 @@ def build_truth_referees() -> List[TruthReferee]:
     """Referees reading a conversion against what its reference sound plays, with the packaged tuning.
 
     Returns:
-        List[TruthReferee]: The transcription, the pitch, the stability and the balance referees.
+        List[TruthReferee]: The transcription, the pitch, the stability, the balance and the continuity
+            referees.
     """
     config = RefereeConfig.load()
     return [
@@ -48,4 +53,5 @@ def build_truth_referees() -> List[TruthReferee]:
         PitchReferee(),
         StabilityReferee(),
         BalanceReferee(),
+        ContinuityReferee(),
     ]

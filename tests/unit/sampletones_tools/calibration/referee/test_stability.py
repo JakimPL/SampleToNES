@@ -4,11 +4,18 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.instructions import InstructionUnion, TriangleInstruction
+from sampletones_core.instructions import InstructionUnion, PulseInstruction, TriangleInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_tools.calibration.corpus.truth import Truth
 from sampletones_tools.calibration.referee.protocol import Judgment
-from sampletones_tools.calibration.referee.stability import MOVES, TOGGLES, StabilityReferee
+from sampletones_tools.calibration.referee.stability import (
+    DUTY_SWITCHES,
+    LEVEL_MOTION,
+    MOVES,
+    PITCH_MOTION,
+    TOGGLES,
+    StabilityReferee,
+)
 
 from .truths import converted, judged, written_truth
 
@@ -53,3 +60,32 @@ class TestStabilityReferee:
         )
 
         assert _judged(truth, converted({ChannelName.TRIANGLE: stream})).score == 0.0
+
+
+class TestMotionReadings:
+    def test_a_bend_the_sound_itself_makes_counts_as_the_sound_s_own(self) -> None:
+        wobbling = [TriangleInstruction(on=True, pitch=45, detune=offset) for offset in (0, 1, 0, -1) * (FRAMES // 4)]
+
+        judgment = _judged(written_truth({ChannelName.TRIANGLE: wobbling}), converted({ChannelName.TRIANGLE: wobbling}))
+
+        assert judgment.components[PITCH_MOTION] == 0.0
+
+    def test_a_volume_that_flutters_where_the_sound_holds_reads_as_level_motion(self) -> None:
+        held = [PulseInstruction(on=True, pitch=69, volume=8, duty_cycle=2)] * FRAMES
+        fluttering = [
+            PulseInstruction(on=True, pitch=69, volume=8 + frame % 2, duty_cycle=2) for frame in range(FRAMES)
+        ]
+
+        judgment = _judged(written_truth({ChannelName.PULSE1: held}), converted({ChannelName.PULSE1: fluttering}))
+
+        assert judgment.components[LEVEL_MOTION] > 0.0
+
+    def test_a_pulse_switching_between_a_quarter_and_three_quarters_keeps_its_timbre(self) -> None:
+        held = [PulseInstruction(on=True, pitch=69, volume=8, duty_cycle=1)] * FRAMES
+        switching = [
+            PulseInstruction(on=True, pitch=69, volume=8, duty_cycle=1 + 2 * (frame % 2)) for frame in range(FRAMES)
+        ]
+
+        judgment = _judged(written_truth({ChannelName.PULSE1: held}), converted({ChannelName.PULSE1: switching}))
+
+        assert judgment.components[DUTY_SWITCHES] == 0.0
