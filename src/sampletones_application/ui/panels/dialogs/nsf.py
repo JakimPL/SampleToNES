@@ -42,6 +42,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.path import GUIDestinationPathText
 from sampletones_application.ui.elements.seeded import GUISeededDialogWindow
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.panels.dialogs.destination import DestinationRow, DestinationStyle, destination_row
 from sampletones_application.ui.themes.channels import CHANNEL_THEME_TAGS
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.gui.align import table_wrapper
@@ -340,31 +341,19 @@ class GUINSFExportWindow(GUISeededDialogWindow[NSFExportViewModel]):
         )
 
     def _create_destination(self) -> None:
-        """Lays out the file the export writes, with the browse button leading the path it stands at."""
-        with labeled_field(
-            self._language_manager["settings.nsf.label.destination"],
-            self._layout.label_width,
-        ):
-            dpg.add_group(
-                horizontal=True,
-                tag=TAG_SETTINGS_NSF_GROUP_DESTINATION,
-            )
-
-        GUIButton(
-            tag=TAG_SETTINGS_NSF_BUTTON_BROWSE,
-            label=self._language_manager["settings.nsf.label.browse_button"],
-            parent=TAG_SETTINGS_NSF_GROUP_DESTINATION,
-            callback=self._request_destination,
-        )
-        self._destination_text = GUIDestinationPathText(
-            tag=TAG_SETTINGS_NSF_PATH_DESTINATION,
+        self._destination_text = destination_row(
+            DestinationRow(
+                on_browse=self._request_destination,
+                label=self._language_manager["settings.nsf.label.destination"],
+                browse_label=self._language_manager["settings.nsf.label.browse_button"],
+                group_tag=TAG_SETTINGS_NSF_GROUP_DESTINATION,
+                button_tag=TAG_SETTINGS_NSF_BUTTON_BROWSE,
+                path_tag=TAG_SETTINGS_NSF_PATH_DESTINATION,
+            ),
             path=self.view_model.destination,
-            parent=TAG_SETTINGS_NSF_GROUP_DESTINATION,
-            color=self._path_colors.default,
-            hover_color=self._path_colors.hover,
-            status_message=self._msg_destination,
-            font=Font.REGULAR_SMALL,
-            status_bar=self._status_bar,
+            style=DestinationStyle(
+                self._layout.label_width, self._path_colors, self._msg_destination, self._status_bar
+            ),
         )
 
     @table_wrapper(columns=2)

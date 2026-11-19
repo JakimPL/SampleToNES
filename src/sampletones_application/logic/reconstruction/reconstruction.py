@@ -68,6 +68,7 @@ from sampletones_core.reconstructions.reconstruction.stems.selection import (
 )
 from sampletones_shared.logger import logger
 from sampletones_shared.music import Tuning
+from sampletones_shared.paths.extensions import EXT_FILE_WAVE
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import (
@@ -691,7 +692,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting to WAV")
 
-        default_filename = reconstruction_data.name
+        default_filename = get_filename(reconstruction_data.name, EXT_FILE_WAVE)
         default_path = str(self._session_manager.folder(LastPath.AUDIO))
 
         self.call(

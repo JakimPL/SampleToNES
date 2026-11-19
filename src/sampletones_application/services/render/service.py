@@ -1,8 +1,7 @@
-import threading
 from functools import partial
 from pathlib import Path
 
-from sampletones_application.services.base import ServiceBase
+from sampletones_application.services.cancellable import CancellableJobService
 from sampletones_application.services.progress import StageProgress
 from sampletones_application.services.render.result import RenderResult, RenderStage
 from sampletones_application.services.render.sink import (
@@ -17,12 +16,11 @@ from sampletones_application.services.result import (
     ServiceSuccess,
 )
 from sampletones_application.services.synthesis.protocol import RowSynthesizerProtocol
-from sampletones_application.utils.parallelization.thread import SingleThreadExecutor
 from sampletones_core.audio.writers import AudioOutputSpec
 from sampletones_shared.logger import logger
 
 
-class SongRenderService(ServiceBase[RenderResult]):
+class SongRenderService(CancellableJobService[RenderResult]):
     """Renders a whole song to a file on a background thread, reporting each pass as it runs.
 
     The synthesizer arrives per call, so the service holds no opinion on what a song sounds
@@ -38,9 +36,6 @@ class SongRenderService(ServiceBase[RenderResult]):
 
     def __init__(self, priority: int = 0) -> None:
         super().__init__(priority)
-        self._executor = SingleThreadExecutor()
-        self._cancel_event = threading.Event()
-        self._running = threading.Event()
 
     def start(
         self,
@@ -63,36 +58,8 @@ class SongRenderService(ServiceBase[RenderResult]):
         Returns:
             bool: Whether a render started; a request arriving while one runs is declined.
         """
-        if self.is_running():
-            logger.warning(f"{self.class_name}: a render is already running; start ignored")
-            return False
-
-        self._cancel_event.clear()
-        self._running.set()
         sink = build_render_sink(destination, spec, normalize=normalize)
-        started = self._executor.execute(
-            partial(self._run, synthesizer, sink, total_samples),
-            wait=False,
-        )
-        if not started:
-            self._running.clear()
-
-        return started
-
-    def cancel(self) -> None:
-        """Asks a running render to stop at its next row or block."""
-        self._cancel_event.set()
-
-    def is_running(self) -> bool:
-        return self._running.is_set()
-
-    def shutdown(self) -> None:
-        """Winds a running render down for application exit.
-
-        The worker runs on a :class:`SingleThreadExecutor`, so the teardown that joins every
-        background worker reaches this one; asking it to stop first is what keeps that join short.
-        """
-        self._cancel_event.set()
+        return self._start_job(partial(self._run, synthesizer, sink, total_samples))
 
     def _run(
         self,
@@ -107,8 +74,6 @@ class SongRenderService(ServiceBase[RenderResult]):
             logger.error_with_traceback(exception, f"{self.class_name}: failed to render to {sink.destination}")
             sink.discard()
             self._emit(ServiceError(exception=exception))
-        finally:
-            self._running.clear()
 
     def _render(
         self,

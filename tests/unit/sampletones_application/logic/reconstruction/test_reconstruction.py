@@ -52,6 +52,7 @@ from sampletones_shared.paths.extensions import (
     EXT_FILE_JSON,
     EXT_FILE_MODULE,
     EXT_FILE_NSF,
+    EXT_FILE_WAVE,
 )
 from tests.conftest import RENDER_BUDGET
 from tests.suite.case import BaseRegularTestCase
@@ -1499,6 +1500,22 @@ class TestReconstructionPanelLogicExportWav:
         panel_logic.on_open_export_wav_dialog = callback
         panel_logic.request_export_wav_dialog()
         callback.assert_called_once()
+
+    def test_the_wav_dialog_is_prefilled_with_a_name_ending_as_the_file_will(
+        self,
+        panel_logic: ReconstructionPanelLogic,
+        mock_reconstruction_manager: MagicMock,
+        loaded_data: ReconstructionData,
+    ) -> None:
+        """Every export prefills its dialog with the file name it writes, extension included."""
+        _open(mock_reconstruction_manager, loaded_data)
+        callback = MagicMock()
+        panel_logic.on_open_export_wav_dialog = callback
+
+        panel_logic.request_export_wav_dialog()
+
+        default_filename, _ = callback.call_args.args
+        assert default_filename == f"{loaded_data.name}{EXT_FILE_WAVE}"
 
     def test_handle_export_wav_confirmed_with_no_data_is_no_op(
         self,

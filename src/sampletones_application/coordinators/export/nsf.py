@@ -1,9 +1,9 @@
 from pathlib import Path
-from typing import Optional
 
 from sampletones_application.categories.dialog import dialog_title, filter_name
 from sampletones_application.categories.exports import EXPORT_PROJECT_ELEMENTS
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.coordinators.export.modal import ModalWindowCoordinator
 from sampletones_application.logic.export.nsf.logic import NSFExportLogic
 from sampletones_application.ui.panels.dialogs.nsf import GUINSFExportWindow
 from sampletones_application.utils.file_dialogs.api import save_file_dialog
@@ -15,7 +15,7 @@ from sampletones_core.exports.request import SampleExport
 from sampletones_shared.types.callback import VoidCallback
 
 
-class NSFExportCoordinator:
+class NSFExportCoordinator(ModalWindowCoordinator[NSFExportViewModel]):
     """Owns setting a program export up from the reader's side: the dialog, the file it asks for,
     and the hand-over to the run.
 
@@ -39,21 +39,20 @@ class NSFExportCoordinator:
         language_manager: LanguageManager,
         on_activity_changed: VoidCallback,
     ) -> None:
+        super().__init__(window, flow="program export")
         self._logic = nsf_logic
-        self._window = window
+        self._setup_window = window
         self._on_activity_changed = on_activity_changed
-        self._view_model: Optional[NSFExportViewModel] = None
-        self._window_open = False
 
         self._language_manager = language_manager
 
         self._logic.on_view_changed = self._on_view_changed
         self._logic.on_choose_destination = self._choose_destination
 
-        self._window.on_choices_changed = self._logic.apply
-        self._window.on_browse = self._logic.request_destination
-        self._window.on_export = self._export
-        self._window.on_close = self._close
+        self._setup_window.on_choices_changed = self._logic.apply
+        self._setup_window.on_browse = self._logic.request_destination
+        self._setup_window.on_export = self._export
+        self._setup_window.on_close = self._close
 
     @property
     def is_active(self) -> bool:
@@ -72,15 +71,8 @@ class NSFExportCoordinator:
         if not opened:
             return
 
-        self._window_open = True
-        self._window.open(self._require_view_model())
+        self._show()
         self._on_activity_changed()
-
-    def _on_view_changed(self, view_model: NSFExportViewModel) -> None:
-        """Keeps the open window standing at the choices the export stands at."""
-        self._view_model = view_model
-        if self._window_open:
-            self._window.update_view(view_model)
 
     def _choose_destination(self, destination: Path) -> None:
         """Asks for the file the export writes, starting from the one the dialog stands at."""
@@ -115,22 +107,6 @@ class NSFExportCoordinator:
         self._take_off_screen()
         self._release()
 
-    def _take_off_screen(self) -> None:
-        self._window_open = False
-        self._view_model = None
-        self._window.hide()
-
     def _release(self) -> None:
         self._logic.close()
         self._on_activity_changed()
-
-    def _require_view_model(self) -> NSFExportViewModel:
-        """The export the dialog opens on.
-
-        Raises:
-            SystemError: when the window is raised before the logic offers a view.
-        """
-        if self._view_model is None:
-            raise SystemError("The program export window is opened over the view the logic emits")
-
-        return self._view_model
