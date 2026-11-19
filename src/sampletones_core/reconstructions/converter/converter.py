@@ -40,13 +40,6 @@ class ReconstructionConverter(TaskProcessor[Path]):
         self.plan: ConversionPlan = plan
         self.jobs: List[ConversionJob] = []
 
-    def start(self) -> None:
-        if self.running:
-            self.logger.warning("Reconstruction is already running")
-            return
-
-        super().start()
-
     @property
     def skips_failed_tasks(self) -> bool:
         """A run holding several jobs goes on past a job that fails."""

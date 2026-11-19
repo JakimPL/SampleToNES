@@ -12,6 +12,7 @@ from sampletones_core.formats.bitphase.specification.chip import (
 )
 from sampletones_core.formats.bitphase.specification.patterns import NOTE_INDEX_PITCH_OFFSET, NOTE_RANGE
 from sampletones_shared.music import Tuning
+from sampletones_shared.utils.arrays import clamp
 
 
 def generate_tuning_table(
@@ -39,7 +40,7 @@ def generate_tuning_table(
     for index in range(TUNING_TABLE_LENGTH):
         frequency = a4_tuning * 2 ** ((index - TUNING_A4_INDEX) / NOTE_RANGE)
         period = math.floor(chip_frequency / TUNING_PERIOD_DIVISOR / frequency + 0.5)
-        periods.append(max(MIN_TUNING_PERIOD, min(max_period, period)))
+        periods.append(clamp(period, MIN_TUNING_PERIOD, max_period))
 
     return tuple(periods)
 

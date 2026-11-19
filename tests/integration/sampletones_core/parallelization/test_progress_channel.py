@@ -138,3 +138,20 @@ class TestAWithdrawalReachesTheTasks:
 
             assert recorder.last_of(TaskStatus.CANCELING) is not None
             assert not processor.is_running()
+
+
+class TestASecondStartLeavesTheRunAlone:
+    """A run under way is the only one its processor holds: starting it again goes on with that run
+    rather than raising a second monitor over a pool already taken."""
+
+    def test_the_run_started_first_is_the_one_that_ends(self, release_path: Path) -> None:
+        with counting_run(ONE_TASK, release_path, LONE_WORKER) as (processor, recorder):
+            assert recorder.wait_for(stands_partway, READING_TIMEOUT)
+            monitor = processor.monitor_thread
+
+            processor.start()
+
+            assert processor.monitor_thread is monitor
+            release_path.touch()
+            processor.wait(POOL_TIMEOUT)
+            assert recorder.last_of(TaskStatus.COMPLETED) is not None

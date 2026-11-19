@@ -30,6 +30,7 @@ from sampletones_player.compression.planes.song import SongPlanes
 from sampletones_player.compression.scheme import CompressionScheme
 from sampletones_player.compression.seeds import phrases_from_project
 from sampletones_player.song import Song
+from sampletones_shared.constants.nes import DEFAULT_NES_FREQUENCY
 from sampletones_shared.music import Tuning
 from sampletones_tools.codec.report.songs import RECORD_BYTES_PER_TICK, lengthened
 
@@ -38,7 +39,6 @@ LONG_ARRANGEMENT: Final[str] = "arrangement, three minutes"
 TARGET_SECONDS: Final[int] = 180
 RECONSTRUCTION: Final[str] = "reconstruction, one minute"
 RECONSTRUCTION_SECONDS: Final[int] = 60
-RECONSTRUCTION_FREQUENCY: Final[int] = 60
 RECONSTRUCTION_SEED: Final[int] = 20260822
 LOWEST_SOUNDED_PITCH: Final[int] = 40
 HIGHEST_SOUNDED_PITCH: Final[int] = 100
@@ -223,11 +223,11 @@ def reconstruction_entry(name: str, seconds: int) -> CorpusEntry:
         name=name,
         song=Song.from_streams(
             streams=streams_from_instructions(
-                _sounded_instructions(seconds * RECONSTRUCTION_FREQUENCY),
+                _sounded_instructions(seconds * DEFAULT_NES_FREQUENCY),
                 get_timer_table(tuning),
             ),
             pitches=PitchTable.from_tuning(tuning),
-            schedule=PlaySchedule.from_parameters(RECONSTRUCTION_FREQUENCY),
+            schedule=PlaySchedule.from_parameters(DEFAULT_NES_FREQUENCY),
             loop_tick=None,
             seeds=NO_SEEDS,
             scheme=CompressionScheme.NONE,

@@ -32,13 +32,6 @@ class InstructionsLibraryCreator(TaskProcessor[Tuple[InstructionLibraryKey, Inst
         self.total_instructions = 0
         self.completed_instructions = 0
 
-    def start(self) -> None:
-        if self.running:
-            self.logger.warning("Library creation is already running")
-            return
-
-        super().start()
-
     def _create_tasks(
         self,
     ) -> List[Tuple[Tuple[GeneratorClassName, InstructionUnion], Config, Window]]:

@@ -2,6 +2,7 @@ from enum import IntEnum
 from typing import Dict, Final, Tuple
 
 from sampletones_core.constants.enums import FeatureKey
+from sampletones_core.constants.general import HI_PITCH_FACTOR
 
 
 class SequenceKind(IntEnum):
@@ -19,7 +20,7 @@ BEND_SEQUENCE_KINDS: Final[Tuple[SequenceKind, ...]] = (
     SequenceKind.HI_PITCH,
 )
 
-HI_PITCH_SEQUENCE_FACTOR: Final[int] = 16
+HI_PITCH_SEQUENCE_FACTOR: Final[int] = HI_PITCH_FACTOR
 
 SEQUENCE_COUNT_2A03: Final[int] = 5
 MAX_SEQUENCES_PER_TYPE: Final[int] = 128

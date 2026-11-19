@@ -1,6 +1,7 @@
 from typing import Final, Iterable
 
 from sampletones_core.constants.general import MAX_PITCH, MIN_PLAYED_PITCH
+from sampletones_shared.utils.arrays import clamp
 
 FLAT_CONTOUR_STEP: Final[int] = 0
 
@@ -37,4 +38,4 @@ def written_pitch(pitch: int, contour_top: int) -> int:
     Returns:
         int: The pitch the cell writes.
     """
-    return min(MAX_PITCH, max(pitch, MIN_PLAYED_PITCH - contour_top))
+    return clamp(pitch, MIN_PLAYED_PITCH - contour_top, MAX_PITCH)
