@@ -86,7 +86,7 @@ class ReconstructionRemovals:
 
     def _remove_reconstruction(self, filepath: Path) -> None:
         """Deletes a reconstruction file, keeping the open document once the file it stood on is gone."""
-        stood_on_it = self._reconstruction_manager.is_backed_by(filepath)
+        stood_on_it = self._reconstruction_manager.is_taken_by_removing(filepath)
         try:
             self._browser_logic.remove_path(filepath)
         except OSError as exception:
@@ -101,7 +101,7 @@ class ReconstructionRemovals:
 
     def _remove_directory(self, directory: Path) -> None:
         """Deletes a folder, keeping the open document once the file it stood on inside it is gone."""
-        stood_in_it = self._reconstruction_manager.lies_within(directory)
+        stood_in_it = self._reconstruction_manager.is_taken_by_removing(directory)
         try:
             self._browser_logic.remove_path(directory)
         except OSError as exception:

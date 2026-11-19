@@ -252,9 +252,9 @@ class TestTheFileADocumentIsBackedBy:
         assert not reconstruction_manager.is_backed_by(tmp_path / "Sample.stn")
 
 
-class TestTheFolderADocumentsFileLiesIn:
-    """Removing a folder from the browser takes the open document's file with it wherever the file
-    lies beneath it, so the manager tells so however either path is spelled."""
+class TestWhatARemovalTakesFromTheOpenDocument:
+    """Removing a file or a folder from the browser takes the open document's file with it wherever the
+    file lies at or beneath it, so the manager tells so however either path is spelled."""
 
     @pytest.fixture(name="opened")
     def opened_fixture(
@@ -270,14 +270,14 @@ class TestTheFolderADocumentsFileLiesIn:
         return path
 
     def test_the_folder_it_was_loaded_from(self, reconstruction_manager: ReconstructionManager, opened: Path) -> None:
-        assert reconstruction_manager.lies_within(opened.parent)
+        assert reconstruction_manager.is_taken_by_removing(opened.parent)
 
     def test_the_folder_spelled_through_a_detour(
         self, reconstruction_manager: ReconstructionManager, opened: Path, tmp_path: Path
     ) -> None:
         (tmp_path / "other").mkdir()
 
-        assert reconstruction_manager.lies_within(tmp_path / "other" / ".." / "songs")
+        assert reconstruction_manager.is_taken_by_removing(tmp_path / "other" / ".." / "songs")
 
     @requires_symlinks
     def test_the_document_opened_through_a_link_to_the_folder(
@@ -291,17 +291,29 @@ class TestTheFolderADocumentsFileLiesIn:
         reconstruction_factory().save(tmp_path / "songs" / "song.stn")
         reconstruction_manager.load_reconstruction(tmp_path / "link" / "song.stn")
 
-        assert reconstruction_manager.lies_within(tmp_path / "songs")
+        assert reconstruction_manager.is_taken_by_removing(tmp_path / "songs")
+
+    @requires_symlinks
+    def test_a_link_to_the_folder_goes_alone(
+        self, reconstruction_manager: ReconstructionManager, opened: Path, tmp_path: Path
+    ) -> None:
+        """Removing a link leaves the folder it names, so the document opened from that folder stays on its file."""
+        (tmp_path / "link").symlink_to(opened.parent, target_is_directory=True)
+
+        assert not reconstruction_manager.is_taken_by_removing(tmp_path / "link")
+
+    def test_its_own_file(self, reconstruction_manager: ReconstructionManager, opened: Path) -> None:
+        assert reconstruction_manager.is_taken_by_removing(opened)
 
     def test_a_sibling_folder(
         self, reconstruction_manager: ReconstructionManager, opened: Path, tmp_path: Path
     ) -> None:
         (tmp_path / "songs2").mkdir()
 
-        assert not reconstruction_manager.lies_within(tmp_path / "songs2")
+        assert not reconstruction_manager.is_taken_by_removing(tmp_path / "songs2")
 
     def test_nothing_open(self, reconstruction_manager: ReconstructionManager, tmp_path: Path) -> None:
-        assert not reconstruction_manager.lies_within(tmp_path)
+        assert not reconstruction_manager.is_taken_by_removing(tmp_path)
 
     def test_a_document_held_in_memory(
         self,
@@ -315,7 +327,7 @@ class TestTheFolderADocumentsFileLiesIn:
             voice_id=SAMPLE_VOICE_ID,
         )
 
-        assert not reconstruction_manager.lies_within(tmp_path)
+        assert not reconstruction_manager.is_taken_by_removing(tmp_path)
 
 
 class TestReconstructionManagerSaveReconstructionAs:

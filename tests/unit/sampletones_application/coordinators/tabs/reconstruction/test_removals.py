@@ -138,11 +138,11 @@ class TestRemoveTreeEntries:
         detached: MagicMock,
     ) -> None:
         """The document stays open as unsaved changes, and is shown without the file it lost."""
-        manager.is_backed_by.return_value = True
+        manager.is_taken_by_removing.return_value = True
 
         removals._remove_reconstruction(OPEN_FILE)
 
-        manager.is_backed_by.assert_called_once_with(OPEN_FILE)
+        manager.is_taken_by_removing.assert_called_once_with(OPEN_FILE)
         manager.detach_current_reconstruction.assert_called_once_with()
         manager.mark_updated.assert_called_once_with()
         detached.assert_called_once_with()
@@ -157,13 +157,13 @@ class TestRemoveTreeEntries:
     ) -> None:
         """A file that is gone backs nothing, so whether it backed the document is read first."""
         order = MagicMock()
-        order.attach_mock(manager.is_backed_by, "is_backed_by")
+        order.attach_mock(manager.is_taken_by_removing, "is_taken_by_removing")
         order.attach_mock(browser_logic.remove_path, "remove_path")
 
         removals._remove_reconstruction(OPEN_FILE)
 
-        steps = [name for name, _args, _kwargs in order.mock_calls if name in ("is_backed_by", "remove_path")]
-        assert steps == ["is_backed_by", "remove_path"]
+        steps = [name for name, _args, _kwargs in order.mock_calls if name in ("is_taken_by_removing", "remove_path")]
+        assert steps == ["is_taken_by_removing", "remove_path"]
 
     def test_a_file_that_stays_keeps_the_open_document_on_it(
         self,
@@ -174,7 +174,7 @@ class TestRemoveTreeEntries:
         dialogs: MagicMock,
         detached: MagicMock,
     ) -> None:
-        manager.is_backed_by.return_value = True
+        manager.is_taken_by_removing.return_value = True
         browser_logic.remove_path.side_effect = OSError("busy")
 
         removals._remove_reconstruction(OPEN_FILE)
@@ -192,7 +192,7 @@ class TestRemoveTreeEntries:
         browser_logic: MagicMock,
         detached: MagicMock,
     ) -> None:
-        manager.is_backed_by.return_value = False
+        manager.is_taken_by_removing.return_value = False
 
         removals._remove_reconstruction(Path("other.strec"))
 
@@ -208,11 +208,11 @@ class TestRemoveTreeEntries:
         browser_panel: MagicMock,
         detached: MagicMock,
     ) -> None:
-        manager.lies_within.return_value = True
+        manager.is_taken_by_removing.return_value = True
 
         removals._remove_directory(OPEN_FOLDER)
 
-        manager.lies_within.assert_called_once_with(OPEN_FOLDER)
+        manager.is_taken_by_removing.assert_called_once_with(OPEN_FOLDER)
         manager.detach_current_reconstruction.assert_called_once_with()
         manager.mark_updated.assert_called_once_with()
         detached.assert_called_once_with()
@@ -225,7 +225,7 @@ class TestRemoveTreeEntries:
         manager: MagicMock,
         browser_logic: MagicMock,
     ) -> None:
-        manager.lies_within.return_value = False
+        manager.is_taken_by_removing.return_value = False
 
         removals._remove_directory(Path("other"))
 
@@ -240,7 +240,7 @@ class TestRemoveTreeEntries:
         dialogs: MagicMock,
         detached: MagicMock,
     ) -> None:
-        manager.lies_within.return_value = True
+        manager.is_taken_by_removing.return_value = True
         browser_logic.remove_path.side_effect = OSError("busy")
 
         removals._remove_directory(OPEN_FOLDER)
