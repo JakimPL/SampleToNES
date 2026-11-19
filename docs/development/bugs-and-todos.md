@@ -150,6 +150,9 @@ currently out of line. An entry leaves when the code meets the contract again.
 
 ## Bugs
 
+* `tests/screens/reconstructions/instruments/test_note_keys.py` reads whether a key sounded within a fixed
+  count of frames, so on a loaded machine a key's sound lands after the count and the case fails, at any of
+  its steps. Waiting on the sound itself, with a time limit, closes it.
 * A library file with an upper-case extension (`….INS`) on a file system that tells cases apart is listed
   by the Main tab's explorer, which offers to load it, while the Instructions tab's library card passes it
   by and the load reports the library missing. A library key names its file as `….ins`, so carrying the
