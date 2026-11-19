@@ -7,7 +7,9 @@ from sampletones_tools.calibration.config.corpus import CorpusConfig
 from sampletones_tools.calibration.config.manifest import CorpusManifest
 from sampletones_tools.calibration.config.notes import NotesConfig
 from sampletones_tools.calibration.config.pitched import PitchedConfig
+from sampletones_tools.calibration.config.samples import SamplesConfig
 from sampletones_tools.calibration.config.sequences import SequencesConfig
+from sampletones_tools.calibration.samples import SAMPLES_DIRECTORY
 
 from .by_channel import BY_CHANNEL_SUFFIX, with_by_channel
 from .chords import build_chords
@@ -18,6 +20,7 @@ from .manifest import build_pieces, build_recordings, pieces_catalog, recordings
 from .nes import build_sequences
 from .notes import NOTE_CATEGORIES, build_notes
 from .pitched import PITCHED_CATALOG, build_pitched
+from .samples import SAMPLES_CATALOG, build_samples
 from .synthesis import PROBE_FAMILIES, build_corpus, corpus_probes
 
 Catalog = List[Tuple[Family, str]]
@@ -82,6 +85,7 @@ def _sources(manifest: Optional[CorpusManifest]) -> List[CorpusSource]:
     sequences = SequencesConfig.load()
     grid = NotesConfig.load()
     chords = ChordsConfig.load()
+    samples = SamplesConfig.load()
     return [
         CorpusSource(
             catalog=[(PROBE_FAMILIES[probe.category], probe.category) for probe in corpus_probes(probes)],
@@ -108,6 +112,10 @@ def _sources(manifest: Optional[CorpusManifest]) -> List[CorpusSource]:
         CorpusSource(
             catalog=_with_by_channel([(Family.SEQUENCES, item.category) for item in sequences.items]),
             build=lambda config: with_by_channel(build_sequences(config, corpus=sequences), config),
+        ),
+        CorpusSource(
+            catalog=SAMPLES_CATALOG,
+            build=lambda config: build_samples(config, references=samples, directory=SAMPLES_DIRECTORY),
         ),
         *_manifest_sources(manifest),
     ]

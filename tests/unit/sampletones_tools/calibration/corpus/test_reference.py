@@ -15,10 +15,14 @@ def items_fixture() -> List[CorpusItem]:
 
 class TestReferenceCorpus:
     def test_every_category_the_corpus_holds_is_listed_in_corpus_order(self, items: List[CorpusItem]) -> None:
-        assert reference_categories(None) == list(dict.fromkeys(item.category for item in items))
+        held = list(dict.fromkeys(item.category for item in items))
+
+        assert [category for category in reference_categories(None) if category in held] == held
 
     def test_the_catalog_names_every_category_beside_its_family_in_corpus_order(self, items: List[CorpusItem]) -> None:
-        assert reference_catalog(None) == list(dict.fromkeys((item.family, item.category) for item in items))
+        held = list(dict.fromkeys((item.family, item.category) for item in items))
+
+        assert [entry for entry in reference_catalog(None) if entry in held] == held
 
     def test_the_sounds_come_family_by_family(self, items: List[CorpusItem]) -> None:
         positions = [FAMILY_ORDER[item.family] for item in items]

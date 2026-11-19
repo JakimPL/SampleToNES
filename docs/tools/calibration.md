@@ -136,6 +136,7 @@ Each option replaces one part of the default run. The rest stays as the suite se
 | `--workers N` | How many sounds are converted at once; without it, the `general.max_workers` of the configuration | `--workers 3` |
 | `--resume` | Takes up the run in `-o` where it stopped | `-o before --resume` |
 | `--corpus FILE` | Adds the sounds a manifest names to the packaged ones; see [your own sounds](#your-own-sounds) | `--corpus nesmdb.yaml` |
+| `--fetch-samples` | Downloads the [listening samples](#listening-samples) and measures nothing | `--fetch-samples` |
 | `--perceptual-exponents LIST` | The perceptual exponents measured, one variant each | `--perceptual-exponents 0.5,1` |
 | `--temporal-weights LIST` | The temporal loss weights measured, one variant each | `--temporal-weights 0.1,0.3` |
 | `-o DIR`, `--output DIR` | The folder the run writes into | `-o before` |
@@ -151,6 +152,27 @@ Lists are comma separated. Several lists multiply: `--methods fft,cqt --perceptu
 0.5,1` measures four variants, and the run takes about four times as long as one variant.
 
 From a copy of the source code, put `uv run` in front: `uv run sampletones calibration --methods cqt`.
+
+## Listening samples
+
+The `samples` family holds short recordings of real sound, kept to listen to: how a reconstruction
+sounds on music beyond the corpus. The package names each one by where it is published, its checksum,
+the window heard, its license and the credit it asks for. The recordings themselves stay with their
+publishers:
+
+```
+sampletones calibration --fetch-samples
+```
+
+downloads every recording missing from the `calibration/samples` folder of your
+[SampleToNES folder](../guide/files.md), and checks each against its checksum. `make setup` runs it
+too, and goes on with a note where the network is out of reach. A run measures the recordings
+fetched, and notes any it lacks.
+
+| Sample | Recording | License |
+|---|---|---|
+| `sample-break` | "133BPM BREAKBEAT (Live Acoustic Kit) Loop 01" by djericmark, Freesound 724939, two bars | CC0 1.0 |
+| `sample-blackbird` | a common blackbird's song, xeno-canto XC815302 by steve, one phrase | CC BY-SA 4.0 |
 
 ## Your own sounds
 
@@ -236,6 +258,7 @@ report and the page present in this order:
 | `sequences` | melodies, bass lines, drums and pieces written as NES frames | yes |
 | `tones` | sounds of other shapes: pulse waves, sawtooths, a vowel, plucks, noise, attacks, level changes | no |
 | `composites` | several sounds together | no |
+| `samples` | recordings of real sound, kept to listen to | no |
 
 The page lists a selection of each family. The run measures every sound, writes the audio of the
 listed ones, and keeps a record of the scores for the rest.

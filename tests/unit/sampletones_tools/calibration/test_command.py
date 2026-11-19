@@ -14,6 +14,7 @@ from sampletones_tools.calibration.board.session import BoardRequest
 from sampletones_tools.calibration.config.suite import SuiteConfig
 from sampletones_tools.calibration.corpus.reference import reference_categories
 from sampletones_tools.calibration.layout import MARKDOWN_REPORT
+from sampletones_tools.calibration.samples import SAMPLES_DIRECTORY
 from sampletones_tools.calibration.session import (
     BOARD_ROOT,
     OUTPUT_ROOT,
@@ -302,3 +303,21 @@ class TestPrintedLinks:
         assert dispatch(COMMANDS, ["calibration", "-o", str(tmp_path / "quiet"), "--no-open"]) == 0
 
         assert opened == [tmp_path / "shown" / PAGE_FILE]
+
+
+class TestFetchingSamples:
+    def test_the_samples_are_fetched_into_the_calibration_folder_and_nothing_is_measured(
+        self,
+        calibration: RecordedCalibration,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        fetched: List[Path] = []
+        monkeypatch.setattr(
+            "sampletones_tools.calibration.samples.fetch_samples",
+            lambda config, directory: fetched.append(directory) or [],
+        )
+
+        assert dispatch(COMMANDS, ["calibration", "--fetch-samples"]) == 0
+
+        assert fetched == [SAMPLES_DIRECTORY]
+        assert calibration.requests == []

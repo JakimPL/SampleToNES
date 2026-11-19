@@ -35,6 +35,9 @@ BOARD_HELP: Final[str] = (
 )
 PALETTE_HELP: Final[str] = "the palette the listening page is drawn in; without it, the application's own"
 NO_OPEN_HELP: Final[str] = "leave the listening page closed, printing its link alone"
+FETCH_SAMPLES_HELP: Final[str] = (
+    "download the recordings the benchmark keeps for listening, each checked against its checksum, measuring nothing"
+)
 
 MEASURING_OPTIONS: Final[List[str]] = [
     "--config",
@@ -68,6 +71,7 @@ class CalibrationArguments:
     board: Optional[List[Path]]
     palette: Optional[str]
     open_page: bool
+    fetch_samples: bool
 
 
 def configure(parser: ArgumentParser) -> None:
@@ -85,6 +89,7 @@ def configure(parser: ArgumentParser) -> None:
     parser.add_argument("--board", type=Path, nargs="+", default=None, metavar="RUN", help=BOARD_HELP)
     parser.add_argument("--palette", type=str, default=None, help=PALETTE_HELP)
     parser.add_argument("--no-open", dest="open_page", action="store_false", help=NO_OPEN_HELP)
+    parser.add_argument("--fetch-samples", action="store_true", help=FETCH_SAMPLES_HELP)
 
 
 def run(arguments: Namespace) -> int:
@@ -110,7 +115,11 @@ def run(arguments: Namespace) -> int:
         board=arguments.board,
         palette=arguments.palette,
         open_page=arguments.open_page,
+        fetch_samples=arguments.fetch_samples,
     )
+
+    if given.fetch_samples:
+        return _fetch()
 
     return _compare(given) if given.board is not None else _measure(given)
 
@@ -181,6 +190,21 @@ def _compare(given: CalibrationArguments) -> int:
         raise SystemExit(str(error)) from error
 
     return _show(page, given.open_page)
+
+
+def _fetch() -> int:
+    from urllib.error import URLError
+
+    from sampletones_tools.calibration.config.samples import SamplesConfig
+    from sampletones_tools.calibration.samples import SAMPLES_DIRECTORY, SampleChecksumError, fetch_samples
+
+    try:
+        fetched = fetch_samples(SamplesConfig.load(), SAMPLES_DIRECTORY)
+    except (URLError, SampleChecksumError) as error:
+        raise SystemExit(f"The samples could not be fetched: {error}") from error
+
+    print(f"Samples: {len(fetched)} in {SAMPLES_DIRECTORY}")
+    return 0
 
 
 def _show(page: Path, wanted: bool) -> int:

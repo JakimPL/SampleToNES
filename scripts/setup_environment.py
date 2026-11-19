@@ -3,7 +3,7 @@ import os
 import platform as running
 import sys
 from pathlib import Path
-from typing import List, Mapping, Optional, Sequence
+from typing import Final, List, Mapping, Optional, Sequence
 
 from bootstrap.cuda import DEFAULT_GPU, GPU_CHOICES, gpu_extra
 from bootstrap.layout import repository_root
@@ -41,6 +41,13 @@ def setup_commands(
     ]
 
 
+FETCH_SAMPLES: Final[List[str]] = ["uv", "run", "sampletones", "calibration", "--fetch-samples"]
+UNFETCHED_SAMPLES: Final[str] = (
+    "The calibration's listening samples are left unfetched; `uv run sampletones calibration --fetch-samples` "
+    "fetches them once the publishers can be reached."
+)
+
+
 def set_up_environment(
     root: Path,
     name: str,
@@ -51,7 +58,10 @@ def set_up_environment(
     runner: Runner,
     environment: Mapping[str, str],
 ) -> None:
-    """Synchronizes the development environment and installs the global ``sampletones`` command.
+    """Synchronizes the development environment, installs the global ``sampletones`` command, and
+    fetches the recordings the calibration keeps for listening.
+
+    The fetch needs the network, so where it fails the setup notes it and goes on.
 
     Args:
         root: The repository.
@@ -68,6 +78,9 @@ def set_up_environment(
     variables = platform.setup_variables(environment, machine=machine)
     for command in setup_commands(name, extra):
         expect_success(runner, command, cwd=root, environment=variables)
+
+    if runner(FETCH_SAMPLES, cwd=root, environment=variables, quiet=False):
+        print(UNFETCHED_SAMPLES)
 
 
 def main(argv: Sequence[str]) -> int:
