@@ -262,6 +262,22 @@ class TestReconstructorCall:
         result = reconstructor(audio_path)
         assert isinstance(result, Reconstruction)
 
+    def test_a_relative_path_is_recorded_from_the_folder_it_was_given_in(
+        self,
+        config: Config,
+        library_data: InstructionLibraryData,
+        synthetic_fragment: Fragment,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        write_wave(tmp_path / "tone.wav", config.library.sample_rate, np.tile(synthetic_fragment.audio, 3))
+        monkeypatch.chdir(tmp_path)
+
+        reconstruction = _make_reconstructor(config, library_data)(Path("tone.wav"))
+
+        assert reconstruction is not None
+        assert reconstruction.audio_filepath == (tmp_path / "tone.wav",)
+
 
 class TestTheAudioAReconstructionRecords:
     """A frame records its instruction rendered afresh, which is the audio the channel plays."""

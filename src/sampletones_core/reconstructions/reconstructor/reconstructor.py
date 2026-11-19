@@ -209,7 +209,10 @@ class Reconstructor:
         paths: Sequence[Pathlike],
         stems_config: StemsConfig,
     ) -> List[Path]:
-        """Validates the stem paths against the entries and converts them to ``Path``.
+        """Validates the stem paths against the entries and converts them to absolute ``Path`` objects.
+
+        An absolute path keeps the recording reachable from any working directory the
+        reconstruction is later opened in.
 
         Raises:
             ValueError: If the entries count differently than ``paths``.
@@ -223,7 +226,7 @@ class Reconstructor:
             if not isinstance(path, (str, Path)):
                 raise TypeError("Input must be a path to an audio file")
 
-            checked_paths.append(to_path(path))
+            checked_paths.append(to_path(path).absolute())
 
         return checked_paths
 
