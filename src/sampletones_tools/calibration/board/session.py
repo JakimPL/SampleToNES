@@ -12,6 +12,7 @@ from .clips import clip_store
 from .composition import compose_page
 from .data import data_script
 from .layout import DATA_FILE, PAGE_DIRECTORY
+from .model import BoardGlyphs
 from .reading import read_runs
 
 PAGE_TITLE: Final[str] = "Calibration"
@@ -58,6 +59,12 @@ def build_board(request: BoardRequest) -> Path:
     runs = read_runs(request.runs)
     design = ApplicationDesign.load(request.palette)
     request.output.mkdir(parents=True, exist_ok=True)
-    page = compose_page(runs, clip_store(runs, request.output), request.title, design.glyphs.headers.reconstruction)
+    glyphs = BoardGlyphs(
+        header=design.glyphs.headers.reconstruction,
+        expanded=design.glyphs.common.expanded,
+        collapsed=design.glyphs.common.collapsed,
+        play=design.glyphs.player.play,
+    )
+    page = compose_page(runs, clip_store(runs, request.output), request.title, glyphs)
     write_layout(request.output / PAGE_DIRECTORY, design)
     return write_assets(request.output, {DATA_FILE: data_script(page)})

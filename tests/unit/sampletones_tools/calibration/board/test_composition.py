@@ -6,19 +6,19 @@ import pytest
 from sampletones_core.constants.enums import ChannelName
 from sampletones_tools.calibration.board.clips import InPlaceClips, clip_store
 from sampletones_tools.calibration.board.composition import NO_CLIP, compose_page
-from sampletones_tools.calibration.board.model import BoardPage
+from sampletones_tools.calibration.board.model import BoardGlyphs, BoardPage
 from sampletones_tools.calibration.board.reading import read_runs
 from sampletones_tools.calibration.layout import combination_name
 from sampletones_tools.calibration.renders import RenderRecord, write_record
 from sampletones_tools.web.roles.table import channel_role
 
 TITLE: Final[str] = "Calibration"
-GLYPH: Final[str] = "≈"
+GLYPHS: Final[BoardGlyphs] = BoardGlyphs(header="≈", expanded="▾", collapsed="▸", play="▶")
 
 
 def page_of(directories: List[Path], output: Path) -> BoardPage:
     runs = read_runs(directories)
-    return compose_page(runs, clip_store(runs, output), TITLE, GLYPH)
+    return compose_page(runs, clip_store(runs, output), TITLE, GLYPHS)
 
 
 class TestOneRun:
@@ -70,7 +70,7 @@ class TestOneRun:
         page = page_of([run], run)
 
         assert page.referee == "mr-auditory-dB"
-        assert page.glyph == GLYPH
+        assert page.glyphs == GLYPHS
         assert page.colors == {channel.value: channel_role(channel.value) for channel in ChannelName}
 
 
@@ -113,4 +113,4 @@ class TestSeveralRuns:
 class TestNoRun:
     def test_a_page_without_a_run_is_refused(self) -> None:
         with pytest.raises(ValueError, match="at least one run"):
-            compose_page([], InPlaceClips(), TITLE, GLYPH)
+            compose_page([], InPlaceClips(), TITLE, GLYPHS)

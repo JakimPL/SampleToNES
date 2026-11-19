@@ -60,10 +60,12 @@ class BoardRow(BaseModel):
 
 
 class BoardGroup(BaseModel):
-    """One table of the page: the columns it holds side by side, and the sounds they reconstruct.
+    """One tab of the page: the columns it holds side by side, and the sounds they reconstruct.
+
+    The page lays the rows out in one card per family, in the order the rows first name them.
 
     Attributes:
-        name: What the group is called on its tab; empty where the page holds one group.
+        name: What the group is called on its tab.
         columns: The column headings, in the order the cells follow.
         rows: One row per reference sound.
     """
@@ -75,13 +77,31 @@ class BoardGroup(BaseModel):
     rows: Tuple[BoardRow, ...]
 
 
+class BoardGlyphs(BaseModel):
+    """The application's glyphs the page draws with.
+
+    Attributes:
+        header: The purpose glyph leading each family's card header.
+        expanded: The chevron of an open card.
+        collapsed: The chevron of a closed card.
+        play: The glyph on the button that plays a render.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    header: str
+    expanded: str
+    collapsed: str
+    play: str
+
+
 class BoardPage(BaseModel):
     """Everything the page draws, ready to be written as the data file it reads.
 
     Attributes:
         title: The heading the page carries.
         referee: The name of the referee whose scores the cells report.
-        glyph: The purpose glyph each table's card header carries.
+        glyphs: The application's glyphs the page draws with.
         colors: The role each channel's color stands under, by channel name.
         groups: The tables the page holds, one per tab.
     """
@@ -90,6 +110,6 @@ class BoardPage(BaseModel):
 
     title: str
     referee: str
-    glyph: str
+    glyphs: BoardGlyphs
     colors: Dict[str, str]
     groups: Tuple[BoardGroup, ...]

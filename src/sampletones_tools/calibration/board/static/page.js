@@ -1,3 +1,20 @@
+const MESSAGES = {
+  lead: (referee) => `Scored by ${referee}; lower is closer to the recording.`,
+  heading: (title, run) => `${title}: ${run}`,
+  sounds: (count) => (count === 1 ? "1 sound" : `${count} sounds`),
+  sound: "sound",
+  recording: "recording",
+  change: "change",
+  play: "play",
+  solo: "S",
+  mute: "M",
+  silent: "—",
+  pastSilence: "past silence",
+  closed: (percent) => `${percent}% of the gap`,
+  openAll: "Open all",
+  closeAll: "Close all",
+};
+
 const player = new Audio();
 let playing = null;
 
@@ -13,6 +30,16 @@ function clip(label, source, className) {
   button.dataset.source = source;
   button.setAttribute("aria-pressed", "false");
   return button;
+}
+
+function breakable(name) {
+  const node = element("b");
+  name.split("-").forEach((piece, index, pieces) => {
+    node.append(index < pieces.length - 1 ? `${piece}-` : piece);
+    if (index < pieces.length - 1) { node.append(element("wbr")); }
+  });
+  node.title = name;
+  return node;
 }
 
 function gradient(timeline, color) {
@@ -36,8 +63,8 @@ function channelRow(channel, color) {
   swatch.style.background = `var(--${color})`;
   swatch.title = channel.name;
   row.append(swatch);
-  if (channel.solo) { row.append(clip("S", channel.solo, "button secondary compact clip part")); }
-  if (channel.mute) { row.append(clip("M", channel.mute, "button secondary compact clip part")); }
+  if (channel.solo) { row.append(clip(MESSAGES.solo, channel.solo, "button secondary compact clip part")); }
+  if (channel.mute) { row.append(clip(MESSAGES.mute, channel.mute, "button secondary compact clip part")); }
   const bar = element("div", "bar");
   bar.style.backgroundImage = gradient(channel.timeline, color);
   bar.title = channel.name;
@@ -46,41 +73,26 @@ function channelRow(channel, color) {
 }
 
 function closed(cell) {
-  if (cell.silence <= 0) { return "—"; }
-  if (cell.score >= cell.silence) { return "past silence"; }
-  return `${Math.round(100 * (1 - cell.score / cell.silence))}% of the gap`;
+  if (cell.silence <= 0) { return MESSAGES.silent; }
+  if (cell.score >= cell.silence) { return MESSAGES.pastSilence; }
+  return MESSAGES.closed(Math.round(100 * (1 - cell.score / cell.silence)));
 }
 
-function cellNode(cell, colors) {
+function cellNode(cell, board) {
   const node = element("div", "cell");
-  node.append(clip("play", cell.render, "button clip"));
+  const render = clip(board.glyphs.play, cell.render, "button clip glyph-button");
+  render.title = MESSAGES.play;
+  render.setAttribute("aria-label", MESSAGES.play);
+  node.append(render);
   const reading = element("div", "reading");
   reading.append(element("b", null, cell.score.toFixed(2)));
   reading.append(element("span", null, closed(cell)));
   node.append(reading);
   const channels = element("div", "channels");
   for (const channel of cell.channels) {
-    channels.append(channelRow(channel, colors[channel.name]));
+    channels.append(channelRow(channel, board.colors[channel.name]));
   }
   node.append(channels);
-  return node;
-}
-
-function rowNode(row, colors) {
-  const node = element("tr");
-  const sound = element("td", "sound");
-  sound.append(element("b", null, row.item));
-  sound.append(element("span", null, row.category));
-  node.append(sound);
-  const recording = element("td");
-  recording.append(clip("recording", row.recording, "button clip"));
-  node.append(recording);
-  for (const cell of row.cells) {
-    const holder = element("td");
-    holder.append(cellNode(cell, colors));
-    node.append(holder);
-  }
-  node.append(changeNode(row));
   return node;
 }
 
@@ -94,9 +106,35 @@ function changeNode(row) {
   return node;
 }
 
-function legendNode(group, colors) {
+function rowNode(row, board) {
+  const node = element("tr", "sound-row");
+  const sound = element("td", "sound");
+  sound.append(breakable(row.item));
+  node.append(sound);
+  const recording = element("td", "recording");
+  recording.append(clip(MESSAGES.recording, row.recording, "button clip"));
+  node.append(recording);
+  for (const cell of row.cells) {
+    const holder = element("td");
+    holder.append(cellNode(cell, board));
+    node.append(holder);
+  }
+  node.append(changeNode(row));
+  return node;
+}
+
+function categoryNode(name, span) {
+  const node = element("tr", "category");
+  const heading = element("th", null, name);
+  heading.colSpan = span;
+  heading.scope = "colgroup";
+  node.append(heading);
+  return node;
+}
+
+function legendNode(rows, colors) {
   const sounding = new Set();
-  for (const row of group.rows) {
+  for (const row of rows) {
     for (const cell of row.cells) {
       for (const channel of cell.channels) { sounding.add(channel.name); }
     }
@@ -112,46 +150,84 @@ function legendNode(group, colors) {
   return legend;
 }
 
-function familyNode(name, span) {
-  const node = element("tr", "family");
-  const heading = element("th", null, name);
-  heading.colSpan = span;
-  node.append(heading);
-  return node;
-}
-
-function groupNode(group, glyph, colors) {
-  const card = element("section", "card");
-  card.dataset.group = group.name;
-  const header = element("div", "card-header");
-  header.append(element("span", "card-glyph", glyph), element("span", "card-title", group.name), legendNode(group, colors));
-  card.append(header);
-  const scroll = element("div", "table-scroll");
-  const table = element("table", "table");
+function tableNode(columns, rows, board) {
+  const table = element("table", "table sounds");
+  table.style.setProperty("--columns", String(columns.length));
+  const widths = element("colgroup");
+  for (const className of ["sound", "recording", ...columns.map(() => "version"), "change"]) {
+    widths.append(element("col", className));
+  }
+  table.append(widths);
   const head = element("tr");
-  for (const heading of ["sound", "recording", ...group.columns, "change"]) {
-    head.append(element("th", null, heading));
+  for (const heading of [MESSAGES.sound, MESSAGES.recording, ...columns, MESSAGES.change]) {
+    const cell = element("th", null, heading);
+    cell.scope = "col";
+    head.append(cell);
   }
   const thead = element("thead");
   thead.append(head);
   table.append(thead);
   const body = element("tbody");
-  let family = null;
-  for (const row of group.rows) {
-    if (row.family && row.family !== family) {
-      body.append(familyNode(row.family, group.columns.length + 3));
-    }
-    family = row.family;
-    body.append(rowNode(row, colors));
+  let category = null;
+  for (const row of rows) {
+    if (row.category !== category) { body.append(categoryNode(row.category, columns.length + 3)); }
+    category = row.category;
+    body.append(rowNode(row, board));
   }
   table.append(body);
-  scroll.append(table);
+  return table;
+}
+
+function chevron(card, glyphs) {
+  card.querySelector(".card-chevron").textContent = card.open ? glyphs.expanded : glyphs.collapsed;
+}
+
+function familyNode(family, rows, columns, board, open) {
+  const card = element("details", "card family");
+  card.open = open;
+  const header = element("summary", "card-header");
+  header.append(
+    element("span", "card-glyph", board.glyphs.header),
+    element("span", "card-title", family),
+    element("span", "count", MESSAGES.sounds(rows.length)),
+    legendNode(rows, board.colors),
+    element("span", "card-chevron"),
+  );
+  card.append(header);
+  const scroll = element("div", "table-scroll");
+  scroll.append(tableNode(columns, rows, board));
   card.append(scroll);
+  card.addEventListener("toggle", () => chevron(card, board.glyphs));
+  chevron(card, board.glyphs);
   return card;
 }
 
-function buttons() {
-  return Array.from(document.querySelectorAll("section.card:not([hidden]) button.clip"));
+function families(rows) {
+  const held = new Map();
+  for (const row of rows) {
+    if (!held.has(row.family)) { held.set(row.family, []); }
+    held.get(row.family).push(row);
+  }
+  return held;
+}
+
+function groupNode(group, board) {
+  const panel = element("section", "group");
+  panel.dataset.group = group.name;
+  let first = true;
+  for (const [family, rows] of families(group.rows)) {
+    panel.append(familyNode(family, rows, group.columns, board, first));
+    first = false;
+  }
+  return panel;
+}
+
+function shownRows() {
+  return Array.from(document.querySelectorAll("section.group:not([hidden]) details[open] tr.sound-row"));
+}
+
+function inRow(row) {
+  return Array.from(row.querySelectorAll("button.clip"));
 }
 
 function mark(button) {
@@ -175,63 +251,79 @@ function play(button) {
   player.currentTime = 0;
   player.play().catch(() => mark(null));
   mark(button);
-}
-
-function rows() {
-  return Array.from(document.querySelectorAll("section.card:not([hidden]) tbody tr"));
-}
-
-function inRow(row) {
-  return Array.from(row.querySelectorAll("button.clip"));
+  button.closest("tr").scrollIntoView({ block: "nearest" });
 }
 
 function stepAcross(offset) {
-  const row = playing ? inRow(playing.closest("tr")) : buttons();
+  const all = shownRows();
+  const row = playing ? inRow(playing.closest("tr")) : all.length ? inRow(all[0]) : [];
   if (!row.length) { return; }
   const place = playing ? row.indexOf(playing) : -1;
   play(row[(place + offset + row.length) % row.length]);
 }
 
 function stepDown(offset) {
-  const all = rows();
+  const all = shownRows();
   if (!all.length) { return; }
-  if (!playing) { play(inRow(all[0])[0]); return; }
-  const current = playing.closest("tr");
+  const current = playing ? playing.closest("tr") : null;
+  const index = all.indexOf(current);
+  if (index < 0) { play(inRow(all[0])[0]); return; }
   const place = inRow(current).indexOf(playing);
-  const next = inRow(all[(all.indexOf(current) + offset + all.length) % all.length]);
+  const next = inRow(all[(index + offset + all.length) % all.length]);
   play(next[Math.min(place, next.length - 1)]);
+}
+
+function openAll(open) {
+  for (const card of document.querySelectorAll("section.group:not([hidden]) details.family")) {
+    card.open = open;
+  }
+}
+
+function toolbarNode() {
+  const toolbar = element("div", "toolbar");
+  const opening = element("button", "button secondary", MESSAGES.openAll);
+  opening.addEventListener("click", () => openAll(true));
+  const closing = element("button", "button secondary", MESSAGES.closeAll);
+  closing.addEventListener("click", () => openAll(false));
+  toolbar.append(opening, closing);
+  return toolbar;
 }
 
 function selectGroup(name) {
   for (const tab of document.querySelectorAll("#tabs button")) {
     tab.setAttribute("aria-selected", String(tab.dataset.group === name));
   }
-  for (const card of document.querySelectorAll("section.card")) {
-    card.hidden = card.dataset.group !== name;
+  for (const panel of document.querySelectorAll("section.group")) {
+    panel.hidden = panel.dataset.group !== name;
   }
   player.pause();
   mark(null);
 }
 
+function tabsNode(groups) {
+  const tabs = document.getElementById("tabs");
+  tabs.hidden = false;
+  for (const group of groups) {
+    const tab = element("button", "tab", group.name);
+    tab.setAttribute("role", "tab");
+    tab.dataset.group = group.name;
+    tab.addEventListener("click", () => selectGroup(group.name));
+    tabs.append(tab);
+  }
+}
+
 function build(board) {
-  document.title = board.title;
-  document.getElementById("title").textContent = board.title;
-  document.getElementById("lead").textContent =
-    `Scored by ${board.referee}; lower is closer to the recording.`;
+  const title = board.groups.length === 1 ? MESSAGES.heading(board.title, board.groups[0].name) : board.title;
+  document.title = title;
+  document.getElementById("title").textContent = title;
+  document.getElementById("lead").textContent = MESSAGES.lead(board.referee);
+  document.querySelector(".masthead").append(toolbarNode());
   const groups = document.getElementById("groups");
   for (const group of board.groups) {
-    groups.append(groupNode(group, board.glyph, board.colors));
+    groups.append(groupNode(group, board));
   }
   if (board.groups.length > 1) {
-    const tabs = document.getElementById("tabs");
-    tabs.hidden = false;
-    for (const group of board.groups) {
-      const tab = element("button", "tab", group.name);
-      tab.setAttribute("role", "tab");
-      tab.dataset.group = group.name;
-      tab.addEventListener("click", () => selectGroup(group.name));
-      tabs.append(tab);
-    }
+    tabsNode(board.groups);
     selectGroup(board.groups[0].name);
   }
 }

@@ -9,7 +9,7 @@ from sampletones_tools.calibration.renders import RenderRecord, item_directory, 
 from sampletones_tools.web.roles.table import channel_role
 
 from .clips import ClipStore
-from .model import BoardCell, BoardChannel, BoardGroup, BoardPage, BoardRow
+from .model import BoardCell, BoardChannel, BoardGlyphs, BoardGroup, BoardPage, BoardRow
 from .reading import RunReading
 
 NO_CLIP: Final[str] = ""
@@ -19,7 +19,7 @@ def compose_page(
     runs: Sequence[RunReading],
     store: ClipStore,
     title: str,
-    glyph: str,
+    glyphs: BoardGlyphs,
 ) -> BoardPage:
     """
     Assemble everything a page draws from the runs it reports.
@@ -32,7 +32,7 @@ def compose_page(
         runs: The runs the page reports, in the order the page holds them.
         store: Where the page finds each clip it plays.
         title: The heading the page carries.
-        glyph: The purpose glyph each table's card header carries.
+        glyphs: The application's glyphs the page draws with.
 
     Returns:
         The page, ready to be written.
@@ -47,7 +47,7 @@ def compose_page(
     return BoardPage(
         title=title,
         referee=runs[0].referee,
-        glyph=glyph,
+        glyphs=glyphs,
         colors={channel.value: channel_role(channel.value) for channel in ChannelName},
         groups=groups,
     )

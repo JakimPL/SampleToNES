@@ -2,7 +2,14 @@ import json
 from typing import Tuple
 
 from sampletones_tools.calibration.board.data import DATA_GLOBAL, data_script
-from sampletones_tools.calibration.board.model import BoardCell, BoardChannel, BoardGroup, BoardPage, BoardRow
+from sampletones_tools.calibration.board.model import (
+    BoardCell,
+    BoardChannel,
+    BoardGlyphs,
+    BoardGroup,
+    BoardPage,
+    BoardRow,
+)
 
 PREFIX: Tuple[str, str] = (f"const {DATA_GLOBAL} = ", ";")
 
@@ -15,7 +22,7 @@ def page() -> BoardPage:
     return BoardPage(
         title="Calibration",
         referee="mr-auditory-dB",
-        glyph="≈",
+        glyphs=BoardGlyphs(header="≈", expanded="▾", collapsed="▸", play="▶"),
         colors={"noise": "channel-noise"},
         groups=(group,),
     )

@@ -65,21 +65,28 @@ channels is cut into fourteen combinations and one of three channels into six.
 
 ## Listen on the page
 
-Every run writes `index.html` and opens it when it ends. The page has one row per reference sound and
-one column per variant. Each cell has:
+Every run writes `index.html` and opens it when it ends. The page has one card per
+[family](#the-reference-sounds), and clicking a card's heading opens or closes it. The first family
+starts open, and **Open all** and **Close all** open or close every card at once. A card's heading also
+says how many sounds the family lists and which channels play them.
 
-- **play**, which sounds the whole reconstruction from its beginning.
-- The score under it. The line below the score says how much of the distance between silence and the
+Inside a card, each category of sounds has its own heading. Each row is one reference sound, with a
+**recording** button that plays the original, and each column is one variant. Each cell has:
+
+- **▶**, which plays the whole reconstruction from its beginning.
+- The score beside it. The line below the score says how much of the distance between silence and the
   recording the reconstruction covers, or **past silence** where silence scores closer than the
   reconstruction does.
 - One bar per channel, showing the frames that channel plays, in the channel's own color.
+
+The last column shows the change in score from the first column to the last.
 
 Beside each bar, **S** plays that channel alone and **M** plays every other channel. You hear what one
 channel contributes and what the rest sound like without it. Both are separate recordings the run wrote,
 so switching between them is exact.
 
 <kbd>Space</kbd> pauses and resumes, <kbd>&larr;</kbd> and <kbd>&rarr;</kbd> move across one
-sound's versions, and <kbd>&uarr;</kbd> and <kbd>&darr;</kbd> move to another sound.
+sound's versions, and <kbd>&uarr;</kbd> and <kbd>&darr;</kbd> move to another sound in the open cards.
 
 The page is drawn in the program's own colors. `--palette NAME` draws it in another of the
 program's palettes, and `--no-open` leaves it closed and prints its link alone.
