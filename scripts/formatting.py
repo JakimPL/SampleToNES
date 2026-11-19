@@ -4,10 +4,9 @@ import sys
 from pathlib import Path
 from typing import Final, Mapping, Sequence, Tuple
 
-from bootstrap.layout import SOURCE_DIRECTORY, repository_root
+from bootstrap.layout import FORMATTED_PATHS, repository_root
 from bootstrap.processes import Runner, expect_success, run
 
-FORMATTED_TREES: Final[Tuple[str, ...]] = (SOURCE_DIRECTORY, "tests", "scripts")
 ISORT: Final[Tuple[str, ...]] = ("uv", "run", "python", "-m", "isort")
 BLACK: Final[Tuple[str, ...]] = ("uv", "run", "python", "-m", "black")
 
@@ -38,7 +37,7 @@ def format_code(
 
 def formatted_paths(named: Sequence[str]) -> Tuple[str, ...]:
     """The paths a run formats: the ones named, or the source, test and script trees."""
-    return tuple(named) or FORMATTED_TREES
+    return tuple(named) or FORMATTED_PATHS
 
 
 def main(argv: Sequence[str]) -> int:

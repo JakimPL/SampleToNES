@@ -4,20 +4,19 @@ import sys
 from pathlib import Path
 from typing import Final, Mapping, Sequence, Set, Tuple
 
-from bootstrap.layout import SOURCE_DIRECTORY, repository_root
+from bootstrap.layout import CHECKED_PATHS, repository_root
 from bootstrap.passes import Pass, run_passes
 from bootstrap.processes import Runner, run
 
 MYPY: Final[str] = "mypy"
 PYLINT: Final[str] = "pylint"
-LINTED_TREES: Final[Tuple[str, ...]] = (SOURCE_DIRECTORY, "scripts")
 
 
 def linters(paths: Sequence[str]) -> Tuple[Pass, ...]:
     """Mypy and pylint, in that order, over ``paths``.
 
-    Without paths, mypy reads the files ``pyproject.toml`` configures and pylint sweeps the
-    source and script trees.
+    Without paths, mypy reads the files ``pyproject.toml`` configures and pylint sweeps the same
+    paths, which are the ones the pre-commit hooks check.
     """
     return (
         Pass(
@@ -28,7 +27,7 @@ def linters(paths: Sequence[str]) -> Tuple[Pass, ...]:
         Pass(
             PYLINT,
             "Running linting with pylint...",
-            ("uv", "run", "python", "-m", PYLINT, *(paths or LINTED_TREES)),
+            ("uv", "run", "python", "-m", PYLINT, *(paths or CHECKED_PATHS)),
         ),
     )
 

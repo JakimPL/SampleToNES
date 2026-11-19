@@ -139,7 +139,8 @@ class SoundServer:
             if time.monotonic() > deadline:
                 self.stop()
                 raise SoundServerStartError(
-                    f"{PULSEAUDIO} opened no socket within {READY_SECONDS} seconds; its log is {self._folder / LOG_FILE}"
+                    f"{PULSEAUDIO} opened no socket within {READY_SECONDS} seconds; "
+                    f"its log is {self._folder / LOG_FILE}"
                 )
 
             time.sleep(POLL_SECONDS)

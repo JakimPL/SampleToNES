@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from bootstrap.layout import CHECKED_PATHS
 from tests.suite.bootstrap import RecordingRunner
 from tests.suite.scripts import load_script
 
@@ -13,7 +14,7 @@ class TestLinters:
         mypy, pylint = lint.linters(())
 
         assert mypy.command == ("uv", "run", "python", "-m", lint.MYPY)
-        assert pylint.command == ("uv", "run", "python", "-m", lint.PYLINT, *lint.LINTED_TREES)
+        assert pylint.command == ("uv", "run", "python", "-m", lint.PYLINT, *CHECKED_PATHS)
 
     def test_named_paths_reach_both(self) -> None:
         mypy, pylint = lint.linters(("scripts/lint.py",))
