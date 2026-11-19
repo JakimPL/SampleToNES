@@ -1,8 +1,9 @@
 from pathlib import Path
-from typing import Final, List, Tuple
+from typing import Final, FrozenSet, List, Tuple
 
 import pytest
 
+from sampletones_application.categories.context import channel_label
 from sampletones_application.layout.general.colors.stem import StemColors
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.tree.details import NodeDetails
@@ -11,8 +12,8 @@ from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrow
 from sampletones_application.utils.palette.colors.literal import LiteralColor
 from sampletones_application.view_model.shared.recording import NamedRecordingViewModel
 from sampletones_core.configs import Config
-from sampletones_core.configs.display import format_frequencies, format_sample_rate, short_hash
-from sampletones_core.constants.enums import DEFAULT_CHANNELS
+from sampletones_core.configs.display import GENERATOR_SEPARATOR, format_frequencies, format_sample_rate, short_hash
+from sampletones_core.constants.enums import DEFAULT_CHANNELS, ChannelName
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree.node import (
     ConfigGroupNode,
@@ -31,6 +32,7 @@ RECONSTRUCTION_PATH: Final[Path] = CONFIG_DIRECTORY / f"song{EXT_FILE_RECONSTRUC
 
 SAMPLE_RATE_LABEL: Final[str] = "global.context.label.detail_sample_rate"
 CONFIGURATION_LABEL: Final[str] = "global.context.label.detail_configuration"
+CHANNELS_LABEL: Final[str] = "global.context.label.detail_channels"
 PANEL_TAG: Final[str] = "browser"
 
 RECORDING_COLORS: Final[Tuple[ColorRGBA, ...]] = (
@@ -122,6 +124,29 @@ def reconstruction_file_node(parent: TreeNode) -> FileSystemNode:
         filepath=RECONSTRUCTION_PATH,
         parent=parent,
     )
+
+
+class TestTheChannelsARowNames:
+    """A configuration row names its channels as every display names them, in the order its folder states."""
+
+    @pytest.mark.parametrize(
+        "channels",
+        [
+            frozenset(DEFAULT_CHANNELS),
+            frozenset({ChannelName.NOISE, ChannelName.PULSE1}),
+            frozenset({ChannelName.TRIANGLE}),
+        ],
+        ids=["every channel", "two channels", "one channel"],
+    )
+    def test_each_channel_reads_as_its_own_label(self, channels: FrozenSet[ChannelName]) -> None:
+        language_manager = FakeLanguageManager()
+        fields = ConfigDirectoryFields.from_config(Config(), channels)
+
+        items = dict(NodeDetails(language_manager).reconstruction(fields))
+
+        expected = GENERATOR_SEPARATOR.join(channel_label(language_manager, channel) for channel in fields.channels)
+        assert items[CHANNELS_LABEL] == expected
+        assert len(fields.channels) == len(channels)
 
 
 class TestConfigDetailItems:

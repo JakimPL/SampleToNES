@@ -17,7 +17,7 @@ class TestACollapseHandlerPersistsTheCard:
         session_manager = MagicMock()
         session_manager.set_card_collapsed.side_effect = lambda tag, collapsed: events.append(f"{tag}:{collapsed}")
 
-        handler = persisting_collapse(session_manager, lambda: events.append("reflowed"))
+        handler = persisting_collapse(session_manager, then=lambda: events.append("reflowed"))
         handler(CARD_TAG, True)
         handler(CARD_TAG, False)
 
@@ -26,7 +26,7 @@ class TestACollapseHandlerPersistsTheCard:
     def test_a_card_with_no_reflow_is_kept_alone(self) -> None:
         session_manager = MagicMock()
 
-        persisting_collapse(session_manager, None)(CARD_TAG, True)
+        persisting_collapse(session_manager, then=None)(CARD_TAG, True)
 
         session_manager.set_card_collapsed.assert_called_once_with(CARD_TAG, True)
 

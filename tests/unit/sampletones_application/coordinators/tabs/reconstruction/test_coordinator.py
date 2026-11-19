@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Final, List, Optional, Tuple
 from unittest.mock import MagicMock
 
@@ -50,8 +51,37 @@ HISTORY_BUDGET: Final[int] = 16
 TYPED_VOLUME: Final[Tuple[int, ...]] = (6, 6)
 RETIMED_FREQUENCY: Final[int] = 50
 OPEN_VOICE_ID: Final[str] = "lead-id"
+SAMPLE: Final[Path] = Path("sample.stn")
 
 __all__ = ["taking_turns"]
+
+
+class TestTheBrowserAroundALoad:
+    """The browser takes no gesture while a document loads, and takes them again however the load ends."""
+
+    @staticmethod
+    def _coordinator(failure: Optional[Exception]) -> Tuple[ReconstructionTabCoordinator, MagicMock]:
+        instance = object.__new__(ReconstructionTabCoordinator)
+        steps = MagicMock()
+        instance._browser_panel = steps.browser
+        instance._loading = steps.loading
+        steps.loading.load.side_effect = failure
+        return instance, steps
+
+    def test_a_load_runs_between_the_lock_and_the_unlock(self) -> None:
+        coordinator, steps = self._coordinator(None)
+
+        coordinator.load_reconstruction(SAMPLE)
+
+        assert [name for name, _args, _kwargs in steps.mock_calls] == ["browser.lock", "loading.load", "browser.unlock"]
+
+    def test_a_load_failing_outside_its_contract_unlocks_and_propagates(self) -> None:
+        coordinator, steps = self._coordinator(RuntimeError("bug"))
+
+        with pytest.raises(RuntimeError):
+            coordinator.load_reconstruction(SAMPLE)
+
+        assert [name for name, _args, _kwargs in steps.mock_calls] == ["browser.lock", "loading.load", "browser.unlock"]
 
 
 class TestAudioDataChanged:

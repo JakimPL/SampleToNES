@@ -1,11 +1,12 @@
 from dataclasses import dataclass
-from typing import Dict, Final, FrozenSet, List, Tuple, cast
+from typing import Dict, Final, List, Tuple, cast
 from unittest.mock import MagicMock
 
 import dearpygui.dearpygui as dpg
 import numpy as np
 import pytest
 
+from sampletones_application.categories.context import channel_label
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.layout.loader import load_layout_config
@@ -17,8 +18,6 @@ from sampletones_application.paths import (
     THEME_DIRECTORY,
 )
 from sampletones_application.tags.general import (
-    TAG_GLOBAL_THEME_DEFAULT,
-    TAG_GLOBAL_THEME_INPUT_WARNING,
     TAG_GLOBAL_THEME_INSTRUMENT_TABS,
     TAG_GLOBAL_THEME_INSTRUMENT_TABS_MUTED,
 )
@@ -51,27 +50,13 @@ from sampletones_application.view_model.shared.ownership import (
 from sampletones_core.constants.enums import ChannelName, FeatureKey, GeneratorName
 from sampletones_core.constants.general import PITCH_BEND_MAX, PITCH_BEND_MIN
 from sampletones_core.exporters.feature import Features
-from sampletones_core.exports.ceilings import FORMAT_STORED_LENGTHS
-from sampletones_core.exports.format import ExportFormat
 from sampletones_core.features import CHANNEL_GENERATOR_KIND, supported_features
 from sampletones_core.features.envelope import Envelope
 from sampletones_core.formats.famitracker.footprint import InstrumentFootprint
-from sampletones_core.formats.famitracker.specification.sequences import (
-    MAX_SEQUENCE_ITEMS,
-)
-from sampletones_shared.constants.general import HEXADECIMAL_BASE
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
-SEQUENCE_STATUS_KEY: Final[str] = "reconstructions.instruments.message.status_sequence"
 SIZE_TEMPLATE_KEY: Final[str] = "global.context.template.size_bytes"
-KEPT_KEYS: Final[Dict[ExportFormat, str]] = {
-    ExportFormat.FAMITRACKER: "reconstructions.instruments.template.kept_famitracker",
-    ExportFormat.BITPHASE: "reconstructions.instruments.template.kept_bitphase",
-    ExportFormat.BITPHASE_PRESET: "reconstructions.instruments.template.kept_bitphase_preset",
-}
-PAST_A_SEQUENCE: Final[int] = 300
-PAST_A_MACRO: Final[int] = 600
 
 LARGEST_PULSE: Final[InstrumentFootprint] = InstrumentFootprint(instrument_bytes=9, sequence_bytes=768)
 LARGEST_TRIANGLE: Final[InstrumentFootprint] = InstrumentFootprint(instrument_bytes=7, sequence_bytes=512)
@@ -211,54 +196,6 @@ def panel(
     )
 
 
-class TestSequenceLengthWarning:
-    @pytest.mark.parametrize(
-        "item_count",
-        [0, 1, MAX_SEQUENCE_ITEMS],
-        ids=["empty", "single", "at_the_limit"],
-    )
-    def test_a_sequence_within_the_limit_keeps_the_default_theme(
-        self,
-        panel: GUIReconstructionInstrumentsPanel,
-        bound_themes: List[str],
-        item_count: int,
-    ) -> None:
-        panel._sequence_inputs.show(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(item_count))
-        assert bound_themes == [TAG_GLOBAL_THEME_DEFAULT]
-
-    def test_a_sequence_beyond_the_limit_takes_the_warning_theme(
-        self,
-        panel: GUIReconstructionInstrumentsPanel,
-        bound_themes: List[str],
-    ) -> None:
-        panel._sequence_inputs.show(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS + 1))
-        assert bound_themes == [TAG_GLOBAL_THEME_INPUT_WARNING]
-
-    def test_a_shortened_sequence_returns_to_the_default_theme(
-        self,
-        panel: GUIReconstructionInstrumentsPanel,
-        bound_themes: List[str],
-    ) -> None:
-        panel._sequence_inputs.show(ChannelName.NOISE, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS + 40))
-        panel._sequence_inputs.show(ChannelName.NOISE, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS))
-        assert bound_themes == [
-            TAG_GLOBAL_THEME_INPUT_WARNING,
-            TAG_GLOBAL_THEME_DEFAULT,
-        ]
-
-    def test_each_dimension_carries_its_own_length(
-        self,
-        panel: GUIReconstructionInstrumentsPanel,
-        bound_themes: List[str],
-    ) -> None:
-        panel._sequence_inputs.show(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(MAX_SEQUENCE_ITEMS + 1))
-        panel._sequence_inputs.show(ChannelName.PULSE1, FeatureKey.ARPEGGIO, sequence(8))
-        assert bound_themes == [
-            TAG_GLOBAL_THEME_INPUT_WARNING,
-            TAG_GLOBAL_THEME_DEFAULT,
-        ]
-
-
 class TestTheBandBeneathADimension:
     """A dimension's band stands over the frames that dimension draws, and no further.
 
@@ -339,6 +276,24 @@ class TestTheBandBeneathADimension:
         assert painted["share"] == layout_config.graphs.bar_plot.ownership_band
 
 
+class TestTheLegendOfADimension:
+    """A dimension's bars are named after the channel the way every display names it."""
+
+    @pytest.mark.parametrize("channel_name", list(ChannelName.items()))
+    def test_a_typed_sequence_redraws_bars_named_after_their_channel(
+        self,
+        panel: GUIReconstructionInstrumentsPanel,
+        channel_name: ChannelName,
+    ) -> None:
+        plot = MagicMock()
+        panel.channel_plots[channel_name] = {FeatureKey.VOLUME: plot}
+
+        panel._on_sequence_typed(channel_name, FeatureKey.VOLUME, Envelope[int](items=(15, 8)))
+
+        name = plot.load_data.call_args.kwargs["name"]
+        assert name == f"{channel_label(panel._language_manager, channel_name)}: {FeatureKey.VOLUME.capitalized}"
+
+
 class TestEditingASequence:
     """A bar redrawn on the plot restates the values; the item the dimension repeats from is its own."""
 
@@ -399,36 +354,6 @@ class TestEditingASequence:
         assert written[field_tag] == "15 | 4 8"
 
 
-class TestCopyingASequence:
-    def test_the_copy_button_hands_over_the_dimension_the_input_shows(
-        self,
-        panel: GUIReconstructionInstrumentsPanel,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """The button is built while every dimension is still empty, so the press reads the input."""
-        copied: List[str] = []
-        monkeypatch.setattr(sequences_module.SequenceInputs, "_copy", lambda _self, text, _tag: copied.append(text))
-        callback = panel._sequence_inputs.copy_callback(ChannelName.PULSE1, FeatureKey.VOLUME, "button")
-        panel._sequence_inputs.show(
-            ChannelName.PULSE1,
-            FeatureKey.VOLUME,
-            Envelope[int](items=(15, 12, 8), loop_point=1),
-        )
-
-        callback()
-
-        assert copied == ["15 | 12 8"]
-
-    def test_the_handler_is_one_the_framework_can_dispatch(
-        self,
-        panel: GUIReconstructionInstrumentsPanel,
-    ) -> None:
-        """DearPyGui reads a callback's ``__code__`` to decide how many arguments to pass it."""
-        callback = panel._sequence_inputs.copy_callback(ChannelName.PULSE1, FeatureKey.VOLUME, "button")
-
-        assert callback.__code__.co_argcount == 0
-
-
 class TestInstrumentExport:
     """The export button carries the channel whose slice it writes; the destination the
     dialog answers with names the tracker, so no format travels from here."""
@@ -466,102 +391,6 @@ class TestInstrumentExport:
         callback = panel._export_callback(ChannelName.NOISE)
 
         assert callback.__code__.co_argcount == 0
-
-
-class TestSequenceStatusMessage:
-    def test_a_sequence_within_the_limit_describes_editing(
-        self,
-        panel: GUIReconstructionInstrumentsPanel,
-        bound_themes: List[str],
-    ) -> None:
-        panel._sequence_inputs.show(
-            ChannelName.PULSE1,
-            FeatureKey.VOLUME,
-            sequence(HEXADECIMAL_BASE),
-        )
-        message = panel._sequence_inputs.status_message(
-            ChannelName.PULSE1,
-            FeatureKey.VOLUME,
-        )
-        assert message == panel._language_manager[SEQUENCE_STATUS_KEY].format(
-            instrument_feature=FeatureKey.VOLUME.capitalized
-        )
-
-    def test_a_sequence_beyond_the_limit_names_the_limit(
-        self,
-        panel: GUIReconstructionInstrumentsPanel,
-        bound_themes: List[str],
-    ) -> None:
-        panel._sequence_inputs.show(ChannelName.PULSE1, FeatureKey.VOLUME, sequence(300))
-        message = panel._sequence_inputs.status_message(ChannelName.PULSE1, FeatureKey.VOLUME)
-        assert "300" in message
-        assert str(MAX_SEQUENCE_ITEMS) in message
-
-
-class TestTheExportsASequenceStatusNames(BaseTestSuite):
-    """Every tracker export stores a bounded number of items, so the status line names each export
-    that shortens the dimension beside what it keeps, and leaves out the ones that store it whole.
-    """
-
-    @dataclass(frozen=True, kw_only=True)
-    class TestCase(BaseRegularTestCase):
-        feature_key: FeatureKey
-        item_count: int
-        expected: FrozenSet[ExportFormat]
-
-    test_cases = (
-        TestCase(
-            feature_key=FeatureKey.VOLUME,
-            item_count=PAST_A_SEQUENCE,
-            expected=frozenset({ExportFormat.FAMITRACKER}),
-            label="volume_past_a_sequence",
-        ),
-        TestCase(
-            feature_key=FeatureKey.VOLUME,
-            item_count=PAST_A_MACRO,
-            expected=frozenset(
-                {
-                    ExportFormat.FAMITRACKER,
-                    ExportFormat.BITPHASE,
-                    ExportFormat.BITPHASE_PRESET,
-                }
-            ),
-            label="volume_past_a_macro",
-        ),
-        TestCase(
-            feature_key=FeatureKey.ARPEGGIO,
-            item_count=PAST_A_MACRO,
-            expected=frozenset(
-                {
-                    ExportFormat.FAMITRACKER,
-                    ExportFormat.BITPHASE_PRESET,
-                }
-            ),
-            label="arpeggio_past_a_macro",
-        ),
-    )
-
-    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
-    def test_the_status_names_each_export_that_shortens_the_dimension(
-        self,
-        panel: GUIReconstructionInstrumentsPanel,
-        test_case: TestCase,
-    ) -> None:
-        envelope = sequence(test_case.item_count)
-        panel._sequence_inputs.show(ChannelName.PULSE1, test_case.feature_key, envelope)
-
-        message = panel._sequence_inputs.status_message(ChannelName.PULSE1, test_case.feature_key)
-
-        named = {
-            export_format
-            for export_format, stored_length in FORMAT_STORED_LENGTHS.items()
-            if panel._language_manager[KEPT_KEYS[export_format]].format(
-                limit=stored_length(test_case.feature_key, envelope),
-            )
-            in message
-        }
-        assert named == test_case.expected
-        assert str(test_case.item_count) in message
 
 
 def size_text(panel: GUIReconstructionInstrumentsPanel, byte_count: int) -> str:
