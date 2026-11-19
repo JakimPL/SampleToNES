@@ -132,7 +132,7 @@ def expect_the_playhead_at(screen: Screen, sample: int) -> None:
     """Waits until the waveform's cursor marks ``sample``."""
     screen.expect(
         screen.reconstructions.waveform.cursor,
-        lambda reading: reading == sample,
+        partial(operator.eq, sample),
         description=f"the playhead at sample {sample}",
     )
 
