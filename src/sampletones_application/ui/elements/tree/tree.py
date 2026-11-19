@@ -105,7 +105,7 @@ from sampletones_core.structures.tree import (
     TreeVisibility,
     resolve_visibility,
 )
-from sampletones_shared.paths import extensions
+from sampletones_shared.paths.extensions import FileKind, file_kind
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import (
     Callback,
@@ -1231,12 +1231,12 @@ class GUITreePanel(GUIPanel, ABC):
         if self._logic.is_node_favorite(node):
             return TAG_GLOBAL_THEME_FAVORITE
 
-        match node.filepath.suffix.lower():
-            case extensions.EXT_FILE_RECONSTRUCTION:
+        match file_kind(node.filepath):
+            case FileKind.RECONSTRUCTION:
                 return TAG_GLOBAL_THEME_FILE_RECONSTRUCTION
-            case extensions.EXT_FILE_LIBRARY:
+            case FileKind.LIBRARY:
                 return TAG_GLOBAL_THEME_FILE_LIBRARY
-            case suffix if suffix in extensions.EXT_FILES_AUDIO:
+            case FileKind.AUDIO:
                 return TAG_GLOBAL_THEME_FILE_WAVE
             case _:
                 if has_favorite_ancestor:

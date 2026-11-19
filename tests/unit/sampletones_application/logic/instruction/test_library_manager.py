@@ -149,6 +149,27 @@ class TestTheLibrariesTheCatalogLists:
         assert root is not None
         assert [node.library_key for node in root.children if isinstance(node, LibraryNode)] == [config_manager.key]
 
+    def test_an_upper_case_extension_is_listed_where_the_library_reads_the_file_by_its_key(
+        self,
+        config_manager: ConfigManager,
+        library_manager: InstructionsLibraryManager,
+    ) -> None:
+        """A key names its file in the form the library writes. Where the file system tells cases
+        apart, the library cannot read an upper-case name by its key, and the listing passes it by."""
+        key = config_manager.key
+        written = library_manager.get_path(key)
+        write_empty_library(written)
+        upper = written.with_suffix(EXT_FILE_LIBRARY.upper())
+        written.rename(upper)
+
+        library_manager.gather_available_libraries()
+        library_manager.rebuild_tree()
+
+        root = library_manager.tree.get_root()
+        assert root is not None
+        listed = [node.library_key for node in root.children if isinstance(node, LibraryNode)]
+        assert listed == ([key] if library_manager.get_path(key).is_file() else [])
+
 
 class TestTheDirectoryTheCatalogStandsAt:
     """The folder the catalog stands at keeps the libraries it loaded. A folder left lets them go and keeps

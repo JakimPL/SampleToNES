@@ -1,6 +1,7 @@
 import os
+from enum import StrEnum
 from pathlib import Path
-from typing import Final, Tuple
+from typing import Dict, Final, Optional, Tuple
 
 EXT_FILE_JSON: Final[str] = ".json"
 EXT_FILE_YAML: Final[str] = ".yaml"
@@ -28,6 +29,30 @@ EXT_FILES_AUDIO: Final[Tuple[str, ...]] = (
     EXT_FILE_AIFF,
     EXT_FILE_AU,
 )
+
+
+class FileKind(StrEnum):
+    AUDIO = "audio"
+    RECONSTRUCTION = "reconstruction"
+    LIBRARY = "library"
+    PROJECT = "project"
+
+
+FILE_KINDS: Final[Dict[str, FileKind]] = {
+    **{extension: FileKind.AUDIO for extension in EXT_FILES_AUDIO},
+    EXT_FILE_RECONSTRUCTION: FileKind.RECONSTRUCTION,
+    EXT_FILE_LIBRARY: FileKind.LIBRARY,
+    EXT_FILE_PROJECT: FileKind.PROJECT,
+}
+
+
+def file_kind(path: Path) -> Optional[FileKind]:
+    """The kind of document a path names by its extension, written in any letter case.
+
+    Every surface that lists, plays or opens a file asks here, so a file reads as one kind
+    everywhere. The answer comes from the name alone; whether the file exists is the caller's to ask.
+    """
+    return FILE_KINDS.get(path.suffix.lower())
 
 
 def is_audio_file(path: Path, extensions: Tuple[str, ...] = EXT_FILES_AUDIO) -> bool:

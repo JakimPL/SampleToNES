@@ -34,7 +34,7 @@ from sampletones_core.structures.tree import (
     TreeTraversal,
     traverse,
 )
-from sampletones_shared.paths import extensions
+from sampletones_shared.paths.extensions import FileKind, file_kind
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback, PathCallback
 
@@ -236,28 +236,27 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
             **kwargs: Any,
         ) -> str:
             node, _ = user_data
-            suffix = node.filepath.suffix.lower()
-            match suffix:
-                case extensions.EXT_FILE_RECONSTRUCTION:
+            match file_kind(node.filepath):
+                case FileKind.RECONSTRUCTION:
                     return reconstruction_message_function(
                         *args,
                         user_data=user_data,
                         **kwargs,
                     )
-                case extensions.EXT_FILE_LIBRARY:
+                case FileKind.LIBRARY:
                     return library_message_function(
                         *args,
                         user_data=user_data,
                         **kwargs,
                     )
-                case suffix if suffix in extensions.EXT_FILES_AUDIO:
+                case FileKind.AUDIO:
                     return audio_message_function(
                         *args,
                         user_data=user_data,
                         **kwargs,
                     )
                 case _:
-                    raise ValueError(f"Unsupported file type {suffix} for status bar message function.")
+                    raise ValueError(f"Unsupported file type {node.filepath.suffix} for status bar message function.")
 
         return message_function
 
@@ -270,10 +269,10 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         mouse_button, _ = app_data
         node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            match node.filepath.suffix.lower():
-                case extensions.EXT_FILE_RECONSTRUCTION:
+            match file_kind(node.filepath):
+                case FileKind.RECONSTRUCTION:
                     return self._logic.request_autoplay(node)
-                case suffix if suffix in extensions.EXT_FILES_AUDIO:
+                case FileKind.AUDIO:
                     return self._audio_node_clicked(node)
 
         if mouse_button == dpg.mvMouseButton_Right:
@@ -308,12 +307,12 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
         mouse_button, _ = app_data
         node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            match node.filepath.suffix.lower():
-                case extensions.EXT_FILE_RECONSTRUCTION:
+            match file_kind(node.filepath):
+                case FileKind.RECONSTRUCTION:
                     self._load_reconstruction(node)
-                case suffix if suffix in extensions.EXT_FILES_AUDIO:
+                case FileKind.AUDIO:
                     self._gather_audio_node(node)
-                case extensions.EXT_FILE_LIBRARY:
+                case FileKind.LIBRARY:
                     return self._load_library(node)
 
         return None
@@ -410,19 +409,18 @@ class GUIExplorerPanel(GUIFileBrowserPanel):
 
     def _add_context_menu_file_actions(self, node: FileSystemNode) -> None:
         dpg.add_separator()
-        suffix = node.filepath.suffix.lower()
-        match suffix:
-            case extensions.EXT_FILE_RECONSTRUCTION:
+        match file_kind(node.filepath):
+            case FileKind.RECONSTRUCTION:
                 dpg.add_menu_item(
                     label=self._language_manager["main.explorer.label.context_load_reconstruction"],
                     callback=lambda: self._load_reconstruction(node),
                 )
-            case extensions.EXT_FILE_LIBRARY:
+            case FileKind.LIBRARY:
                 dpg.add_menu_item(
                     label=self._language_manager["main.explorer.label.context_load_library"],
                     callback=lambda: self._load_library(node),
                 )
-            case suffix if suffix in extensions.EXT_FILES_AUDIO:
+            case FileKind.AUDIO:
                 dpg.add_menu_item(
                     label=self._language_manager["main.explorer.label.context_reconstruct_file"],
                     callback=lambda: self._context_reconstruct_file(node),

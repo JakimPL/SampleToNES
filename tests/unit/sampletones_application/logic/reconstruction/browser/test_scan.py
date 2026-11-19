@@ -9,6 +9,7 @@ from sampletones_application.logic.reconstruction.browser.tree.entries.reconstru
 from sampletones_application.logic.reconstruction.browser.tree.scan import (
     scan_reconstructions,
 )
+from sampletones_shared.paths.extensions import EXT_FILE_RECONSTRUCTION
 
 from .conftest import config_directory, config_fields, write_reconstruction
 
@@ -29,6 +30,15 @@ class TestScanEntries:
         scan = scan_reconstructions(tmp_path)
 
         assert [entry.path.name for entry in scan.entries] == ["song.stn"]
+
+    def test_a_reconstruction_with_an_upper_case_extension_is_listed(self, tmp_path: Path) -> None:
+        """The explorer plays such a file, so the browser lists it alike."""
+        path = tmp_path / f"take{EXT_FILE_RECONSTRUCTION.upper()}"
+        write_reconstruction(tmp_path, "song").rename(path)
+
+        scan = scan_reconstructions(tmp_path)
+
+        assert scan.entries == (ReconstructionEntry(path=path),)
 
     def test_entries_follow_the_sorted_order_of_the_folder(self, tmp_path: Path) -> None:
         for name in ("charlie", "alpha", "bravo"):

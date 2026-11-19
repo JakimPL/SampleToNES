@@ -39,6 +39,8 @@ def run(arguments: Namespace) -> int:
         EXT_FILE_LIBRARY,
         EXT_FILE_PROJECT,
         EXT_FILE_RECONSTRUCTION,
+        FileKind,
+        file_kind,
         is_audio_file,
     )
 
@@ -48,8 +50,8 @@ def run(arguments: Namespace) -> int:
     if is_audio_file(given.path):
         raise SystemExit(f"{given.path} is a recording; run: sampletones convert {given.path}")
 
-    suffix = given.path.suffix.lower()
-    if suffix not in (EXT_FILE_PROJECT, EXT_FILE_RECONSTRUCTION, EXT_FILE_LIBRARY):
+    kind = file_kind(given.path)
+    if kind not in (FileKind.PROJECT, FileKind.RECONSTRUCTION, FileKind.LIBRARY):
         raise SystemExit(
             f"{given.path} is neither a {EXT_FILE_PROJECT} project, a {EXT_FILE_RECONSTRUCTION} "
             f"reconstruction nor an {EXT_FILE_LIBRARY} library."
@@ -62,9 +64,9 @@ def run(arguments: Namespace) -> int:
     opened = given.path.resolve()
     run_application(
         given.config,
-        project_path=opened if suffix == EXT_FILE_PROJECT else None,
-        reconstruction_path=opened if suffix == EXT_FILE_RECONSTRUCTION else None,
-        library_path=opened if suffix == EXT_FILE_LIBRARY else None,
+        project_path=opened if kind is FileKind.PROJECT else None,
+        reconstruction_path=opened if kind is FileKind.RECONSTRUCTION else None,
+        library_path=opened if kind is FileKind.LIBRARY else None,
     )
     return 0
 

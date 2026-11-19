@@ -28,7 +28,14 @@ except SystemExit:
 class TestOpen:
     @pytest.mark.parametrize(
         ("name", "field"),
-        [("song.stp", "project"), ("song.stn", "reconstruction"), ("library.ins", "library")],
+        [
+            ("song.stp", "project"),
+            ("song.stn", "reconstruction"),
+            ("library.ins", "library"),
+            ("SONG.STP", "project"),
+            ("song.Stn", "reconstruction"),
+            ("library.INS", "library"),
+        ],
     )
     def test_a_file_is_loaded_by_its_kind(
         self,

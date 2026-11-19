@@ -32,7 +32,7 @@ from sampletones_core.structures.tree import (
     TreeNode,
 )
 from sampletones_shared.logger import logger
-from sampletones_shared.paths.extensions import EXT_FILE_LIBRARY
+from sampletones_shared.paths.extensions import FileKind, file_kind
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import to_path
@@ -154,15 +154,9 @@ class InstructionsLibraryManager(CallbackMixin):
         listed: Dict[InstructionLibraryKey, bool] = {}
         if library_directory.exists():
             for filepath in library_directory.iterdir():
-                if not filepath.is_file() or filepath.suffix != EXT_FILE_LIBRARY:
-                    continue
-
-                library_key = library_key_from_filename(filepath)
-                if library_key is None:
-                    logger.info(f"Skipping a file whose name names no library: {filepath.name}")
-                    continue
-
-                listed[library_key] = library_state(filepath) is LibraryState.OUTDATED
+                library_key = self._listed_key(filepath)
+                if library_key is not None:
+                    listed[library_key] = library_state(filepath) is LibraryState.OUTDATED
 
         loaded = self._catalog.library.data
         for removed_key in set(loaded) - set(listed):
@@ -346,6 +340,22 @@ class InstructionsLibraryManager(CallbackMixin):
         if self._creator is not None:
             self._creator.shutdown()
             self._creator = None
+
+    def _listed_key(self, filepath: Path) -> Optional[InstructionLibraryKey]:
+        """The library a file in the library folder holds, where the library reads it by its key.
+
+        A key names its file in the form the library writes, so a file named otherwise, an
+        upper-case extension on a file system that tells cases apart among them, is passed by.
+        """
+        if file_kind(filepath) is not FileKind.LIBRARY:
+            return None
+
+        library_key = library_key_from_filename(filepath)
+        if library_key is None or not self.get_path(library_key).is_file():
+            logger.info(f"Skipping a file the library reads no library from: {filepath.name}")
+            return None
+
+        return library_key
 
     def rebuild_tree(self) -> None:
         root = TreeNode(self._language_manager["instructions.library.label.libraries_node"], node_type=NodeType.ROOT)
