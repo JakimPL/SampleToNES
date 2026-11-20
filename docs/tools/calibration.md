@@ -74,14 +74,16 @@ Inside a card, each category of sounds has its own heading. Each row is one refe
 **recording** button that plays the original, and each column is one variant. Each cell has:
 
 - **▶**, which plays the whole reconstruction from its beginning.
-- The score beside it. The line below the score says how far the reconstruction stands from silence
+- The score beside it, with its sign turned, so higher is closer to the recording and zero is exact.
+  The line below the score says how far the reconstruction stands from silence
   toward the recording, in nats: the natural logarithm of silence's score over the reconstruction's.
   Zero is as close as silence, each nat brings the reconstruction about 2.7 times closer to the
   recording, and a value below zero stands farther from it than silence does. An exact reconstruction
   reads **exact**.
 - One bar per channel, showing the frames that channel plays, in the channel's own color.
 
-The last column shows the change in score from the first column to the last.
+The last column shows the change from the first column to the last. A rise means the last variant is
+closer to the recording.
 
 Beside each bar, **S** plays that channel alone and **M** plays every other channel. You hear what one
 channel contributes and what the rest sound like without it. Both are separate recordings the run wrote,

@@ -1,5 +1,5 @@
 const MESSAGES = {
-  lead: (referee) => `Scored by ${referee}; lower is closer to the recording.`,
+  lead: (referee) => `Scored by ${referee}; higher is closer to the recording, and zero is exact.`,
   heading: (title, run) => `${title}: ${run}`,
   sounds: (count) => (count === 1 ? "1 sound" : `${count} sounds`),
   sound: "sound",
@@ -72,6 +72,11 @@ function channelRow(channel, color) {
   return row;
 }
 
+function signed(value) {
+  const shown = value.toFixed(2);
+  return Number(shown) === 0 ? (0).toFixed(2) : shown;
+}
+
 function closed(cell) {
   if (cell.silence <= 0) { return MESSAGES.silent; }
   if (cell.score <= 0) { return MESSAGES.exact; }
@@ -85,7 +90,7 @@ function cellNode(cell, board) {
   render.setAttribute("aria-label", MESSAGES.play);
   node.append(render);
   const reading = element("div", "reading");
-  reading.append(element("b", null, cell.score.toFixed(2)));
+  reading.append(element("b", null, signed(-cell.score)));
   reading.append(element("span", null, closed(cell)));
   node.append(reading);
   const channels = element("div", "channels");
@@ -99,10 +104,10 @@ function cellNode(cell, board) {
 function changeNode(row) {
   const node = element("td", "change");
   if (row.cells.length < 2) { return node; }
-  const change = row.cells[row.cells.length - 1].score - row.cells[0].score;
-  const shown = change.toFixed(2);
-  if (Number(shown) !== 0) { node.classList.add(change < 0 ? "better" : "worse"); }
-  node.textContent = `${change >= 0 ? "+" : ""}${shown}`;
+  const change = row.cells[0].score - row.cells[row.cells.length - 1].score;
+  const shown = signed(change);
+  if (Number(shown) !== 0) { node.classList.add(change > 0 ? "better" : "worse"); }
+  node.textContent = `${Number(shown) >= 0 ? "+" : ""}${shown}`;
   return node;
 }
 
