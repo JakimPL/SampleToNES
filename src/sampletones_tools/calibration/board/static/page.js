@@ -9,8 +9,8 @@ const MESSAGES = {
   solo: "S",
   mute: "M",
   silent: "—",
-  pastSilence: "past silence",
-  closed: (percent) => `${percent}% of the gap`,
+  exact: "exact",
+  closed: (nats) => `${nats} nats`,
   openAll: "Open all",
   closeAll: "Close all",
 };
@@ -74,8 +74,8 @@ function channelRow(channel, color) {
 
 function closed(cell) {
   if (cell.silence <= 0) { return MESSAGES.silent; }
-  if (cell.score >= cell.silence) { return MESSAGES.pastSilence; }
-  return MESSAGES.closed(Math.round(100 * (1 - cell.score / cell.silence)));
+  if (cell.score <= 0) { return MESSAGES.exact; }
+  return MESSAGES.closed(Math.log(cell.silence / cell.score).toFixed(2));
 }
 
 function cellNode(cell, board) {

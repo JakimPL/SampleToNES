@@ -74,9 +74,11 @@ Inside a card, each category of sounds has its own heading. Each row is one refe
 **recording** button that plays the original, and each column is one variant. Each cell has:
 
 - **▶**, which plays the whole reconstruction from its beginning.
-- The score beside it. The line below the score says how much of the distance between silence and the
-  recording the reconstruction covers, or **past silence** where silence scores closer than the
-  reconstruction does.
+- The score beside it. The line below the score says how far the reconstruction stands from silence
+  toward the recording, in nats: the natural logarithm of silence's score over the reconstruction's.
+  Zero is as close as silence, each nat brings the reconstruction about 2.7 times closer to the
+  recording, and a value below zero stands farther from it than silence does. An exact reconstruction
+  reads **exact**.
 - One bar per channel, showing the frames that channel plays, in the channel's own color.
 
 The last column shows the change in score from the first column to the last.
@@ -122,7 +124,7 @@ The `mr-loudness-dB` section adds a table for each of its readings:
 The score is `missing` plus `added`. `level` is reported separately.
 
 Every audio referee also has a `log-gap` table: the natural logarithm of the score over the score of
-silence. Zero means the render scores as silence does, and every step of one below it closes the
+silence, the nats the page shows with their sign turned, so lower is better here too. Zero means the render scores as silence does, and every step of one below it closes the
 remaining distance to the original by a factor of about 2.7. Its family mean weighs every sound by
 how far it closes the distance in proportion, so a few sounds far worse than silence move it no more
 than they differ.
