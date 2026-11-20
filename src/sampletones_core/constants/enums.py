@@ -68,6 +68,11 @@ class PhaseAlignerName(StrEnum):
     CROSS_CORRELATION = "cross_correlation"
 
 
+class AssignmentMethod(StrEnum):
+    PICKS = "picks"
+    JOINT = "joint"
+
+
 class SelectorName(StrEnum):
     GREEDY = "greedy"
     VITERBI = "viterbi"

@@ -176,7 +176,12 @@ From a copy of the source code, put `uv run` in front: `uv run sampletones calib
 shape of the configuration file and holding only the values it changes. `--settings greedy` measures
 the base configuration and the base with the `greedy` set written over it, so every variant appears
 twice, once with `-greedy` at the end of its name. A set naming a setting the configuration lacks is
-refused before the run starts.
+refused before the run starts. The packaged sets:
+
+- `greedy`: the greedy decoder in place of the Viterbi one.
+- `range30`: the criterion read 30 dB under each frame's loudest bin.
+- `joint`: the [joint assignment](../concepts/reconstruction.md#52-assigning-channels-jointly), which fits
+  every note at once and compares whole combinations of channels.
 
 `--levels true` matches every sound at the level its file holds. For a sound written as NES frames
 that is the level the channels play its frames at, where the written frames fit exactly, so a reading

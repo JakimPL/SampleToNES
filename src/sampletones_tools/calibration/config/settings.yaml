@@ -7,3 +7,7 @@ settings:
     generation:
       metric:
         dynamic_range_decibels: 30.0
+  joint:
+    generation:
+      assignment:
+        method: joint

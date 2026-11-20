@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Final, List, Mapping, Optional, Sequence
+from typing import Any, Dict, Final, FrozenSet, List, Mapping, Optional, Sequence
 
 import numpy as np
 import pytest
@@ -7,12 +7,12 @@ import pytest
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import SINGLE_STATE_LATTICE_WIDTH, UNIT_DRIVE
 from sampletones_core.constants.enums import ChannelName, GeneratorClassName
-from sampletones_core.fft import Fragment
+from sampletones_core.fft import Fragment, Window
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion, get_generators_by_channels
 from sampletones_core.generators.render import render_instructions
-from sampletones_core.instructions import InstructionUnion
-from sampletones_core.library import InstructionLibraryData
+from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
+from sampletones_core.library import InstructionLibraryData, InstructionLibraryFragment
 from sampletones_core.reconstructions.reconstructor.contribution import Contribution
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher, ScoredCandidate
 from sampletones_core.reconstructions.reconstructor.mix import FrameMix
@@ -20,6 +20,13 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.config import 
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 
 RENDERED_FRAMES: Final[int] = 5
+JOINT_PULSE_PITCHES: Final[FrozenSet[int]] = frozenset({48, 57, 60, 64, 67})
+JOINT_PULSE_VOLUMES: Final[FrozenSet[int]] = frozenset({4, 8, 11, 12, 15})
+JOINT_DUTY_CYCLES: Final[FrozenSet[int]] = frozenset({1, 2})
+JOINT_TRIANGLE_PITCHES: Final[FrozenSet[int]] = frozenset({45, 48, 57, 60})
+JOINT_NOISE_PERIODS: Final[FrozenSet[int]] = frozenset({4, 8})
+JOINT_NOISE_VOLUMES: Final[FrozenSet[int]] = frozenset({8, 15})
+JOINT_SIGNAL_LENGTH: Final[int] = 1 << 20
 
 
 @pytest.fixture(scope="module")
@@ -170,3 +177,63 @@ def shared_frames(fragment: Fragment, stems_config: StemsConfig) -> Dict[int, Fr
     things deciding the frame, which is what a case using this states.
     """
     return {entry.id: fragment for entry in stems_config.entries}
+
+
+def _in_joint_library(instruction: InstructionUnion) -> bool:
+    """Whether the joint search's test library holds ``instruction``: a few notes at a spread of volumes."""
+    if not instruction.on:
+        return True
+
+    match instruction:
+        case PulseInstruction():
+            return (
+                instruction.pitch in JOINT_PULSE_PITCHES
+                and instruction.volume in JOINT_PULSE_VOLUMES
+                and instruction.duty_cycle in JOINT_DUTY_CYCLES
+            )
+        case TriangleInstruction():
+            return instruction.pitch in JOINT_TRIANGLE_PITCHES
+        case NoiseInstruction():
+            return (
+                instruction.period in JOINT_NOISE_PERIODS
+                and instruction.volume in JOINT_NOISE_VOLUMES
+                and not instruction.short
+            )
+        case _:
+            return False
+
+
+@pytest.fixture(scope="module")
+def joint_library(
+    config: Config,
+    extractor: FeatureExtractor,
+    all_channels: Dict[ChannelName, GeneratorUnion],
+) -> InstructionLibraryData:
+    """A few pulse, triangle and noise notes at several volumes, which chords of those notes are drawn from."""
+    data: Dict[InstructionUnion, InstructionLibraryFragment[Any]] = {}
+    generators: Dict[GeneratorClassName, GeneratorUnion] = {}
+    for generator in all_channels.values():
+        generators.setdefault(generator.class_name(), generator)
+    for generator in generators.values():
+        for instruction in generator.get_possible_instructions():
+            if _in_joint_library(instruction):
+                data[instruction] = InstructionLibraryFragment.create(generator, instruction, extractor)
+
+    return InstructionLibraryData.create(config, data)
+
+
+@pytest.fixture(scope="module")
+def joint_matcher(
+    config: Config,
+    window: Window,
+    all_channels: Dict[ChannelName, GeneratorUnion],
+    joint_library: InstructionLibraryData,
+) -> FrameMatcher:
+    """The matcher of the joint search's test library, over every channel."""
+    return ReconstructorWorker(
+        config=config,
+        window=window,
+        channels=all_channels,
+        library_data=joint_library,
+        signal_length=JOINT_SIGNAL_LENGTH,
+    ).matcher

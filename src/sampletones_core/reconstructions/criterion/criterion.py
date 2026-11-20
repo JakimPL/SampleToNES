@@ -1,12 +1,13 @@
 from typing import Tuple, Union
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import SpectralDistance
 from sampletones_core.fft import Window
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.array import xp
 
 from .metric import SpectralMetric
-from .spectral import calculate_spectral_loss, weighted_reference_energy
+from .spectral import calculate_spectral_loss, spectral_terms, weighted_reference_energy
 from .temporal import calculate_expected_temporal_loss, calculate_temporal_loss
 from .weights import calculate_spectral_weights
 
@@ -52,6 +53,37 @@ class Criterion:
             self.weights,
             metric=self.metric,
         )
+
+    def shortfall_weighted_loss(
+        self,
+        feature: Union[xp.ndarray, Histogram],
+        approximation_feature: Union[xp.ndarray, Histogram],
+        shortfall_weight: float,
+    ) -> xp.ndarray:
+        """
+        The spectral distance with every bin a candidate falls short in counted at ``shortfall_weight``.
+
+        A candidate meant to sound beside other channels leaves sound those channels may cover, so
+        what it falls short of counts lightly and what it adds beyond the target counts in full. A
+        weight of one reads the spectral loss itself.
+
+        Args:
+            feature: Target feature, as a histogram or its values.
+            approximation_feature: Candidate features, as a histogram or stacked values.
+            shortfall_weight: The share of its usual cost a bin the candidate falls short in counts.
+
+        Returns:
+            One loss per candidate.
+        """
+        reference = _feature_values(feature)
+        candidates = _feature_values(approximation_feature)
+        terms, scale = spectral_terms(reference, candidates, self.weights, metric=self.metric)
+        counted = xp.where(candidates > reference, terms, shortfall_weight * terms)
+        summed = xp.sum(counted, axis=-1)
+        if self.metric.distance == SpectralDistance.SQUARED:
+            summed = xp.sqrt(summed)
+
+        return summed / scale
 
     def reference_energy(self, feature: Union[xp.ndarray, Histogram]) -> xp.ndarray:
         """

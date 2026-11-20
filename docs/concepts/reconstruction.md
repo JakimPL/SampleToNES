@@ -256,13 +256,45 @@ count of channels sounding at once are the general case, described in [Stems rec
 There each mix answers one source's own sound, so the channel a source wins carries that source's
 material.
 
-### 5.2 Greedy decoding
+### 5.2 Assigning channels jointly
+
+`generation.assignment.method: joint` decides a frame by comparing whole combinations of channels. It is
+an opt-in setting while the calibration benchmark judges it. A pick scores each candidate on its own
+against the whole frame, and the criterion pays far more for sound left uncovered than for sound added.
+So the first pick of a chord is often a loud low pulse or loud noise that touches every bin. The joint
+assignment reads the frame in four steps:
+
+1. **Fit every note at once.** The levels of every note the source's channels may sound, in every duty
+   cycle, are fitted to the frame together. The fit lowers the criterion's own divergence with
+   multiplicative updates, each level held under what its channels can play. A note the frame holds
+   takes its level. A note that would only cover other notes' partials is left with little, because the
+   true notes explain the same bins with nothing left over. The strongest notes of each kind become the
+   frame's proposals: eight pulse notes, four triangle notes and three noise shapes.
+2. **Fit every combination.** Every combination of the proposals the source may sound together is fitted
+   the same way: the pulse and noise levels free, the triangle at its one level. The combinations fitting
+   best move onto the library's rows, one channel at a time over every volume and duty cycle of its note.
+3. **Let the full criterion choose.** The cheapest combinations are scored with the full criterion, each
+   channel phased against what the louder ones leave of the waveform. The spectral ranking favors a quiet
+   extra channel that fills a little of the frame's power, and the full criterion often charges more for
+   it than it gains. So the choice then silences its channels one at a time for as long as the full
+   criterion falls, each channel left also tried at the volumes that take up the silenced one's sound.
+   Each pulse then tries the duty cycle sharing its spectrum (25% and 75%), and the others the spectral
+   term hears alike, and keeps the one the full criterion prefers.
+4. **Hand the decoder its columns.** Each channel's column holds what the chosen combination plays on it,
+   the same note at its nearest volumes, the best rows of the other proposed notes and its silence, each
+   scored with the other channels playing the choice.
+
+The two pulses go to the channels that keep each nearest the note it played a frame before, so a held
+line stays on its channel. Every source is solved on its own channels, so the joint assignment needs
+each channel held by one source.
+
+### 5.3 Greedy decoding
 
 The greedy decoder plays each frame's best candidate, reading one candidate per column. Each frame is
 decided by its own cost alone, which is fast and simple. The instruction streams follow each frame's match
 wherever it leads. That is audible as jitter even where every individual frame is well matched.
 
-### 5.3 Viterbi decoding
+### 5.4 Viterbi decoding
 
 The Viterbi decoder weighs a frame's candidates against the frames around them. It reads `top_k`
 candidates per column, with the channel's silence among them, and forms a lattice of states over time. Per

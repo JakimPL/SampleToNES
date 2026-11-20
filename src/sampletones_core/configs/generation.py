@@ -2,6 +2,7 @@ from pydantic import ConfigDict, Field
 
 from sampletones_core.configs.defaults import generation_default
 from sampletones_core.constants.enums import (
+    AssignmentMethod,
     PhaseAlignerName,
     SelectorName,
     SpectralDistance,
@@ -48,6 +49,20 @@ class MetricConfig(DataModel):
     dynamic_range_decibels: float = Field(default=generation_default("metric", "dynamic_range_decibels"), gt=0.0)
 
 
+class AssignmentConfig(DataModel):
+    """How a frame's channels are given their candidates before the decoder reads them.
+
+    Attributes:
+        method: ``picks`` takes one channel at a time, each candidate ranked alone against what the
+            earlier picks leave of the frame. ``joint`` fits every note to the frame at once and
+            chooses among complete combinations of channels; it needs every channel held by one stem.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True, validate_default=True)
+
+    method: AssignmentMethod = Field(default=generation_default("assignment", "method"))
+
+
 class DecoderConfig(DataModel):
     model_config = ConfigDict(extra="forbid", frozen=True, validate_default=True)
 
@@ -91,5 +106,6 @@ class GenerationConfig(DataModel):
     calculation: CalculationConfig = Field(default_factory=CalculationConfig)
     weights: WeightsConfig = Field(default_factory=WeightsConfig)
     metric: MetricConfig = Field(default_factory=MetricConfig)
+    assignment: AssignmentConfig = Field(default_factory=AssignmentConfig)
     decoder: DecoderConfig = Field(default_factory=DecoderConfig)
     refinement: RefinementConfig = Field(default_factory=RefinementConfig)

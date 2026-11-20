@@ -65,6 +65,7 @@ class CandidateProvider:
 
     _cached_powers: CachedPowers = field(init=False)
     _moments: Dict[InstructionUnion, Tuple[float, float]] = field(init=False, default_factory=dict)
+    _classes: Dict[Tuple[GeneratorClassName, ...], ClassCandidates] = field(init=False, default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "_cached_powers", self._build_cached_powers())
@@ -76,11 +77,17 @@ class CandidateProvider:
         return np.asarray(np.diff(feature.edges), dtype=np.float64)
 
     def candidates(self, generator_classes: Dict[GeneratorClassName, GeneratorUnion]) -> ClassCandidates:
-        """Every candidate of ``generator_classes``, with the power its library sample plays at."""
-        instructions = tuple(self.library_data.filter(tuple(generator_classes)).keys())
-        return ClassCandidates(
-            instructions=instructions, powers=self._cached_powers(serialize_instructions(instructions))
-        )
+        """Every candidate of ``generator_classes`` with the power its library sample plays at, gathered once."""
+        names = tuple(generator_classes)
+        gathered = self._classes.get(names)
+        if gathered is None:
+            instructions = tuple(self.library_data.filter(names).keys())
+            gathered = ClassCandidates(
+                instructions=instructions, powers=self._cached_powers(serialize_instructions(instructions))
+            )
+            self._classes[names] = gathered
+
+        return gathered
 
     def features_of(self, powers: xp.ndarray) -> xp.ndarray:
         """The feature values of power densities, for one row of them or a stack."""

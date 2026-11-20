@@ -1,0 +1,178 @@
+import itertools
+from dataclasses import replace
+from typing import Dict, Final, List, Optional, Sequence, Tuple
+
+import numpy as np
+
+from sampletones_core.constants.enums import ChannelName, GeneratorClassName
+from sampletones_core.fft import Fragment
+from sampletones_core.generators import GeneratorUnion
+from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
+from sampletones_core.reconstructions.reconstructor.stems.assignment.rests import resting, sounding_stems
+from sampletones_core.reconstructions.reconstructor.stems.assignment.validation import validate_stems_config
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
+from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
+from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
+from sampletones_shared.array import to_numpy
+
+from .catalog import KindCatalog
+from .choice import CombinationJudge, ScoredCombination
+from .columns import channel_columns
+from .combinations import CombinationSearch
+from .fit import FitTarget
+from .layout import StemLayout, separate_layouts
+from .proposals import NoteDictionary, proposed_rows
+
+UNVOICED_DISTANCE: Final[float] = 24.0
+
+PulseNotes = Tuple[Optional[int], ...]
+
+
+class JointAssigner:
+    """Assigns a recording's frames by fitting every note at once and choosing among complete combinations.
+
+    Each sounding stem's frame is read on its own channels:
+
+    1. Every note the stem's channels may sound is fitted to the frame at once, and the strongest
+       notes of each kind become the frame's proposals.
+    2. Every combination of the proposals the stem may sound together is fitted, the pulse and noise
+       levels free and the triangle at its one level, and the best are moved onto the library's
+       rows one channel at a time.
+    3. The full criterion chooses among the cheapest, and each channel's column lists its
+       alternatives with the other channels playing the choice, which is what the decoder reads.
+
+    Every decision between notes compares complete mixes, so a note that only covers other notes'
+    partials loses to the notes themselves. The two pulses are handed to the channels that keep each
+    nearest the note it played the frame before, so a held line stays on its channel.
+    """
+
+    def __init__(
+        self,
+        stems_config: StemsConfig,
+        channels: Dict[ChannelName, GeneratorUnion],
+        matcher: FrameMatcher,
+        lattice_width: int,
+    ) -> None:
+        """Builds the assigner for one recording.
+
+        Raises:
+            ValueError: If a stem allows a channel the run has no generator for, or two stems may
+                occupy the same channel.
+        """
+        validate_stems_config(stems_config, channels)
+        self.layouts = separate_layouts(stems_config, channels)
+        self.channels = channels
+        self.matcher = matcher
+        self.width = lattice_width
+        generators: Dict[GeneratorClassName, GeneratorUnion] = {}
+        for layout in self.layouts:
+            for slot in layout.slots:
+                generators.setdefault(slot.kind, channels[slot.channel_name])
+        self.catalogs = {
+            kind: KindCatalog.build(matcher.candidate_provider, generator) for kind, generator in generators.items()
+        }
+        self.dictionaries = {layout.stem_id: NoteDictionary.of(layout, self.catalogs) for layout in self.layouts}
+        self.weights = np.asarray(to_numpy(matcher.scorer.criterion.weights), dtype=np.float64).reshape(-1)
+        self.previous: Dict[int, Optional[PulseNotes]] = {layout.stem_id: None for layout in self.layouts}
+
+    def assign(self, fragments: Dict[int, Fragment]) -> StemFrameAssignment:
+        """Assigns one frame: every sounding stem's channels from its own frame, the rest resting.
+
+        Args:
+            fragments: This frame of every stem, keyed by stem id.
+
+        Returns:
+            The channels each stem holds and the channels left resting.
+        """
+        sounding = sounding_stems(fragments)
+        choices: List[StemChoice] = []
+        rested: List[ChannelName] = []
+        for layout in self.layouts:
+            if layout.stem_id in sounding and layout.slots:
+                held, idle = self._stem_frame(layout, fragments[layout.stem_id])
+                choices.extend(held)
+                rested.extend(idle)
+            else:
+                self.previous[layout.stem_id] = None
+                rested.extend(slot.channel_name for slot in layout.slots)
+
+        ordered = [name for name in ChannelName.items() if name in rested]
+        return StemFrameAssignment(
+            choices=tuple(choices),
+            rests=resting(ordered, self.channels, next(iter(fragments.values()))) if ordered else (),
+        )
+
+    def _stem_frame(self, layout: StemLayout, fragment: Fragment) -> Tuple[List[StemChoice], List[ChannelName]]:
+        """One stem's channels in one frame: those it holds, each with its column, and those left resting."""
+        target = FitTarget.of(fragment, self.matcher.scorer.criterion)
+        proposals = proposed_rows(
+            fragment, target, layout, self.dictionaries[layout.stem_id], self.catalogs, self.matcher
+        )
+        search = CombinationSearch(fragment, target, layout, self.catalogs, self.matcher)
+        refined = search.refined(search.fitted(proposals))
+        judge = CombinationJudge(fragment, layout, self.catalogs, self.matcher, self.weights)
+        winner = self._ordered(layout, judge.best(search, [combination.rows for combination in refined]))
+
+        held = self._held(layout, winner)
+        columns = channel_columns(fragment, layout, held, winner, proposals, self.catalogs, self.matcher, self.width)
+        choices = [
+            StemChoice(stem_id=layout.stem_id, channel_name=layout.slots[index].channel_name, column=column)
+            for index, column in zip(held, columns)
+        ]
+        idle = [slot.channel_name for index, slot in enumerate(layout.slots) if index not in held]
+        return choices, idle
+
+    def _held(self, layout: StemLayout, winner: ScoredCombination) -> List[int]:
+        """The channels the stem holds: those the winner sounds, then silent ones up to the stem's count."""
+        sounding = [
+            index
+            for index, (slot, row) in enumerate(zip(layout.slots, winner.rows))
+            if self.catalogs[slot.kind].sounding(row)
+        ]
+        silent = [index for index in range(len(layout.slots)) if index not in sounding]
+        return sorted([*sounding, *silent[: max(layout.cap - len(sounding), 0)]])
+
+    def _ordered(self, layout: StemLayout, winner: ScoredCombination) -> ScoredCombination:
+        """The winner with its pulses on the channels that keep each nearest the note it played a frame before.
+
+        Pulses the stem drives alike sound the same on either channel, so they are free to swap; with
+        no frame before, the sounding pulses come first.
+        """
+        pulses = [index for index, slot in enumerate(layout.slots) if slot.kind == GeneratorClassName.PULSE_GENERATOR]
+        catalog = self.catalogs.get(GeneratorClassName.PULSE_GENERATOR)
+        if catalog is None or not pulses:
+            return winner
+
+        if len({layout.slots[index].drive for index in pulses}) == 1:
+            previous = self.previous[layout.stem_id]
+            winner = min(
+                (self._permuted(winner, pulses, order) for order in itertools.permutations(pulses)),
+                key=lambda arranged: _distance([catalog.note_name(arranged.rows[index]) for index in pulses], previous),
+            )
+
+        self.previous[layout.stem_id] = tuple(catalog.note_name(winner.rows[index]) for index in pulses)
+        return winner
+
+    @staticmethod
+    def _permuted(winner: ScoredCombination, pulses: Sequence[int], order: Sequence[int]) -> ScoredCombination:
+        rows = list(winner.rows)
+        contributions = list(winner.contributions)
+        for target, source in zip(pulses, order):
+            rows[target] = winner.rows[source]
+            contributions[target] = winner.contributions[source]
+
+        return replace(winner, rows=tuple(rows), contributions=tuple(contributions))
+
+
+def _distance(notes: Sequence[Optional[int]], previous: Optional[PulseNotes]) -> float:
+    """How far pulses playing ``notes`` move from ``previous``; with nothing before, a later sounding pulse costs."""
+    if previous is None:
+        return float(sum(position for position, note in enumerate(notes) if note is not None))
+
+    total = 0.0
+    for now, before in zip(notes, previous):
+        if now is None and before is None:
+            continue
+        total += UNVOICED_DISTANCE if now is None or before is None else abs(now - before)
+
+    return total

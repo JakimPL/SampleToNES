@@ -41,7 +41,7 @@ from sampletones_core.reconstructions.reconstructor.decoder.base import Streams
 from sampletones_core.reconstructions.reconstructor.observer import SILENT_OBSERVER, ReconstructionObserver
 from sampletones_core.reconstructions.reconstructor.refinement import PitchRefiner
 from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
-from sampletones_core.reconstructions.reconstructor.stems.assignment.frame import assign_frame
+from sampletones_core.reconstructions.reconstructor.stems.assignment.assigners import frame_assigner
 from sampletones_core.reconstructions.reconstructor.stems.assignment.track import TrackAssignment
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
@@ -317,17 +317,18 @@ class Reconstructor:
         stay parallel to the frames, and stem id ``i`` names frame ``i`` of its channel.
         """
         assignment = TrackAssignment(self.state.channel_names)
+        assigner = frame_assigner(
+            self.config.generation.assignment.method,
+            stems_config,
+            self.channels,
+            worker.matcher,
+            worker.decoder.lattice_width,
+        )
         frames = self._stem_frame_count(stem_frames)
         for fragment_id in range(frames):
             announce(report, ReconstructionStage.MATCHING, fragment_id, frames)
             assignment.add(
-                assign_frame(
-                    {stem_id: fragments[fragment_id] for stem_id, fragments in stem_frames.items()},
-                    stems_config,
-                    self.channels,
-                    worker.matcher,
-                    worker.decoder.lattice_width,
-                )
+                assigner.assign({stem_id: fragments[fragment_id] for stem_id, fragments in stem_frames.items()})
             )
 
         announce(report, ReconstructionStage.MATCHING, frames, frames)

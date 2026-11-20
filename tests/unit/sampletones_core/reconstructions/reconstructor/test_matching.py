@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Final, List
+from typing import Any, Dict, Final, List, Tuple
 
 import numpy as np
 import pytest
@@ -15,7 +15,7 @@ from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction
 from sampletones_core.library import InstructionLibraryData, InstructionLibraryFragment
 from sampletones_core.reconstructions.reconstructor.contribution import Contribution
-from sampletones_core.reconstructions.reconstructor.matching import ScoredCandidate, column_of
+from sampletones_core.reconstructions.reconstructor.matching import RowsRequest, ScoredCandidate, column_of
 from sampletones_core.reconstructions.reconstructor.mix import FrameMix
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 from sampletones_shared.array import to_numpy, xp
@@ -34,6 +34,7 @@ LADDER_DUTY_CYCLE: Final[int] = 0
 LADDER_STEP: Final[int] = 2
 QUIET_RUNG: Final[int] = 3
 MIDDLE_RUNG: Final[int] = 7
+REQUESTED_ROWS: Final[int] = 4
 
 
 def _long_noise(library_data: InstructionLibraryData) -> NoiseInstruction:
@@ -217,6 +218,56 @@ class TestScoreColumn:
                 FrameMix.empty(synthetic_fragment),
                 drive=UNIT_DRIVE,
             )
+
+
+class TestScoringTogether:
+    """Several channels' rows, or several mixes, scored in one pass cost what each costs scored alone."""
+
+    def _requests(self, worker: ReconstructorWorker, target: Fragment) -> List[RowsRequest]:
+        first, second = _kinds(worker)[:2]
+        held = worker.matcher.score_column(target, first, FrameMix.empty(target), drive=UNIT_DRIVE)[0]
+        return [
+            RowsRequest(generator=first, mix=FrameMix.empty(target), rows=self._rows(worker, first), drive=UNIT_DRIVE),
+            RowsRequest(
+                generator=second,
+                mix=FrameMix.of(target, [held.contribution]),
+                rows=self._rows(worker, second),
+                drive=DRIVE,
+            ),
+        ]
+
+    @staticmethod
+    def _rows(worker: ReconstructorWorker, generator: GeneratorUnion) -> Tuple[int, ...]:
+        """The first few candidates of the generator's class, as many as it holds up to ``REQUESTED_ROWS``."""
+        held = len(worker.matcher.candidate_provider.candidates({generator.class_name(): generator}).instructions)
+        return tuple(range(min(REQUESTED_ROWS, held)))
+
+    def test_rows_scored_together_cost_what_each_channel_s_rows_cost_alone(
+        self,
+        worker: ReconstructorWorker,
+        synthetic_fragment: Fragment,
+    ) -> None:
+        requests = self._requests(worker, synthetic_fragment)
+
+        together = worker.matcher.score_requests(synthetic_fragment, requests)
+
+        for request, column in zip(requests, together):
+            alone = worker.matcher.score_rows(
+                synthetic_fragment, request.generator, request.mix, request.rows, drive=request.drive
+            )
+            assert [candidate.instruction for candidate in column] == [candidate.instruction for candidate in alone]
+            assert [candidate.cost for candidate in column] == pytest.approx([candidate.cost for candidate in alone])
+
+    def test_mixes_scored_together_cost_what_each_costs_alone(
+        self,
+        worker: ReconstructorWorker,
+        synthetic_fragment: Fragment,
+    ) -> None:
+        mixes = [request.mix for request in self._requests(worker, synthetic_fragment)]
+
+        together = worker.matcher.mix_costs(synthetic_fragment, mixes)
+
+        assert list(together) == pytest.approx([worker.matcher.mix_cost(synthetic_fragment, mix) for mix in mixes])
 
 
 class TestHowACandidateIsMeasured(BaseTestSuite):

@@ -80,6 +80,12 @@ records them.
 | `silence_floor` | the power a frame is measured from when its own bins all lie under it, so a silent frame's score stays finite | > 0 |
 | `dynamic_range_decibels` | how far under a frame's loudest bin the comparison reaches | > 0 |
 
+### `generation.assignment`
+
+| Key | Meaning | Values |
+| --- | --- | --- |
+| `method` | how a frame's channels get their candidates: one channel at a time, or every note fitted at once with whole combinations compared; `joint` needs each channel held by one stem | `picks` / `joint` |
+
 ### `generation.decoder`
 
 | Key | Meaning | Values |

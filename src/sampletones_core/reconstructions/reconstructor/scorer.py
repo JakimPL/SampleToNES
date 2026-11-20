@@ -44,6 +44,29 @@ class Scorer:
             if CUPY_AVAILABLE:
                 xp.get_default_memory_pool().free_all_blocks()
 
+    def shortfall_weighted_costs(self, target: Fragment, features: xp.ndarray, shortfall_weight: float) -> np.ndarray:
+        """
+        The spectral cost of every mixed feature, with what each falls short of counted at ``shortfall_weight``.
+
+        Args:
+            target: Target fragment to match.
+            features: Feature values of the mixes, one mix per row.
+            shortfall_weight: The share of its usual cost a bin a mix falls short in counts.
+
+        Returns:
+            One cost per mix.
+        """
+        errors = None
+        target_values = None
+        try:
+            target_values = xp.asarray(target.feature.values)
+            errors = self.criterion.shortfall_weighted_loss(target_values, features, shortfall_weight)
+            return np.asarray(to_numpy(errors), dtype=np.float64)
+        finally:
+            del errors, target_values
+            if CUPY_AVAILABLE:
+                xp.get_default_memory_pool().free_all_blocks()
+
     def frame_costs(
         self,
         target: Fragment,
