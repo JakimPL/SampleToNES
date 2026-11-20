@@ -1,7 +1,7 @@
 [project]
 name = "sampletones"
 version = "0.3.3"
-description = "Approximate audio samples with the NES 2A03 oscillators and export them as FamiTracker instruments"
+description = "Approximate audio recordings with the NES 2A03 pulse, triangle and noise channels, arrange them into songs in a tracker, and export to FamiTracker, Bitphase, NSF or an NES ROM"
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [{ name = "Jakim (Stage Magician)", email = "jakimpl@gmail.com" }]
