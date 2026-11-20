@@ -10,7 +10,9 @@ from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.text import parsed_items
 from sampletones_tools.calibration.board.session import BoardRequest, build_board
+from sampletones_tools.calibration.config.level import WorkingLevel
 from sampletones_tools.calibration.config.manifest import CorpusManifest
+from sampletones_tools.calibration.config.settings import SettingsConfig
 from sampletones_tools.calibration.corpus.families import Family
 from sampletones_tools.calibration.corpus.reference import reference_corpus
 from sampletones_tools.calibration.corpus.writer import write_corpus
@@ -62,6 +64,36 @@ def categories_named(stated: Optional[str], known: Sequence[str]) -> List[str]:
         known,
         parse=partial(_known_category, known),
         refusal=lambda name: f"Unknown category {name!r}; the categories are {listed}.",
+    )
+
+
+def settings_named(stated: Optional[str], default: Sequence[str], known: Sequence[str]) -> List[str]:
+    """The named sets of settings a run measures beside the base: the ones named, comma separated, or ``default``.
+
+    Raises:
+        ValueError: If a name is none of the ``known`` sets.
+    """
+    listed = ", ".join(known)
+    return parsed_items(
+        stated,
+        default,
+        parse=partial(_known_category, known),
+        refusal=lambda name: f"Unknown set of settings {name!r}; the sets are {listed}.",
+    )
+
+
+def levels_named(stated: Optional[str], default: Sequence[WorkingLevel]) -> List[WorkingLevel]:
+    """The levels a run matches its sounds at: the ones named, comma separated, or ``default``.
+
+    Raises:
+        ValueError: If a name is none of the levels.
+    """
+    known = ", ".join(level.value for level in WorkingLevel)
+    return parsed_items(
+        stated,
+        default,
+        parse=WorkingLevel,
+        refusal=lambda name: f"Unknown level {name!r}; the levels are {known}.",
     )
 
 
@@ -137,6 +169,8 @@ class CalibrationRequest(BaseModel):
         temporal_weights: The values of ``weights.temporal_loss_weight`` evaluated; empty keeps
             the base blend.
         channels: The channels every variant reconstructs the synthesized sounds with.
+        settings: The named sets of settings measured beside the base.
+        levels: The levels the sounds are matched at.
         categories: The categories of reference sounds measured.
         workers: How many conversions run at once.
         resume: Whether the run takes up a run already in ``output`` where it stopped.
@@ -152,6 +186,8 @@ class CalibrationRequest(BaseModel):
     perceptual_exponents: List[float] = Field(min_length=1)
     temporal_weights: List[float]
     channels: List[ChannelName] = Field(min_length=1)
+    settings: List[str]
+    levels: List[WorkingLevel] = Field(min_length=1)
     categories: List[str] = Field(min_length=1)
     workers: int = Field(ge=1)
     resume: bool
@@ -188,11 +224,14 @@ def calibrate(request: CalibrationRequest) -> CalibrationOutcome:
     sample_rate = request.base.library.sample_rate
     manifest = CorpusManifest.read(request.corpus) if request.corpus is not None else None
     items = reference_corpus(request.base, request.categories, manifest)
+    catalog = SettingsConfig.load().settings
     variants = build_variants(
         request.base,
         request.methods,
         request.perceptual_exponents,
         request.temporal_weights,
+        settings={name: catalog[name] for name in request.settings},
+        levels=request.levels,
     )
     fingerprint = fingerprint_of(variants, items, request.channels)
     if request.resume:

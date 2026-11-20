@@ -38,6 +38,7 @@ from sampletones_core.reconstructions.reconstruction.reconstruction import Recon
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstructor.decoder.base import Streams
+from sampletones_core.reconstructions.reconstructor.observer import SILENT_OBSERVER, ReconstructionObserver
 from sampletones_core.reconstructions.reconstructor.refinement import PitchRefiner
 from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
 from sampletones_core.reconstructions.reconstructor.stems.assignment.frame import assign_frame
@@ -126,7 +127,12 @@ class Reconstructor:
         self.window: Window = Window.from_config(self.config)
         self.library_data: InstructionLibraryData = self.load_library(library)
 
-    def __call__(self, path: Pathlike) -> Optional[Reconstruction]:
+    def __call__(
+        self,
+        path: Pathlike,
+        *,
+        observe: ReconstructionObserver = SILENT_OBSERVER,
+    ) -> Optional[Reconstruction]:
         """Reconstructs an audio file into a :class:`Reconstruction`.
 
         The classic run is the stems pipeline's single-stem case: one stem covering
@@ -135,6 +141,7 @@ class Reconstructor:
 
         Args:
             path: Path to the audio file to reconstruct.
+            observe: Hears the columns the assignment offered and the streams decoded from them.
 
         Returns:
             Optional[Reconstruction]: The reconstruction built from the file.
@@ -143,7 +150,7 @@ class Reconstructor:
             TypeError: If ``path`` is not a string or ``Path``.
         """
         stems_config = StemsConfig.single_entry(StemSettings.covering(list(self.channel_names)))
-        return self.reconstruct([path], stems_config)
+        return self.reconstruct([path], stems_config, observe=observe)
 
     def reconstruct(
         self,
@@ -151,6 +158,7 @@ class Reconstructor:
         stems_config: StemsConfig,
         *,
         report: ReconstructionReporter = silent_reporter,
+        observe: ReconstructionObserver = SILENT_OBSERVER,
     ) -> Optional[Reconstruction]:
         """Reconstructs one or more stem audio files into one reconstruction.
 
@@ -169,6 +177,7 @@ class Reconstructor:
                 the entries with what each recording is converted with, and the
                 precedence hierarchy.
             report: Hears each stage of the run and answers whether it is still wanted.
+            observe: Hears the columns the assignment offered and the streams decoded from them.
 
         Returns:
             Optional[Reconstruction]: The reconstruction built from the stems.
@@ -186,8 +195,10 @@ class Reconstructor:
         announce(report, ReconstructionStage.LOADING, FRAMES_PREPARED, PREPARATIONS)
         worker = self._build_worker(common_length(loaded.recordings))
         assignment = self._assign_stem_frames(prepared.frames, stems_config, worker, report)
+        observe.assigned(assignment.lattices)
         announce(report, ReconstructionStage.DECODING, STAGE_BEGUN, WHOLE_STAGE)
         streams = worker.decoder.decode(assignment.lattices)
+        observe.decoded(streams)
         assignment.release_silent(streams)
         streams = self._refiner(stems_config).refine(streams, assignment.stem_ids, prepared.recordings)
         announce(report, ReconstructionStage.DECODING, WHOLE_STAGE, WHOLE_STAGE)

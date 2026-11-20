@@ -1,0 +1,9 @@
+settings:
+  greedy:
+    generation:
+      decoder:
+        selector: greedy
+  range30:
+    generation:
+      metric:
+        dynamic_range_decibels: 30.0

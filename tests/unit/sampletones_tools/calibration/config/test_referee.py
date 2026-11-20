@@ -23,6 +23,7 @@ VALID_FIELDS: Final[Dict[str, Any]] = {
     "contour_band_centers": (125.0, 1000.0),
     "contour_band_floor_decibels": 60.0,
     "volume_tolerance": 1,
+    "misplaced_weight": 0.75,
 }
 
 
@@ -87,6 +88,11 @@ class TestRefereeConfig:
             field="volume_tolerance",
             value=-1,
             label="negative_volume_tolerance",
+        ),
+        InvalidFieldCase(
+            field="misplaced_weight",
+            value=1.5,
+            label="misplaced_note_outweighing_a_wrong_one",
         ),
     )
 

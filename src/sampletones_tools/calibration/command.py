@@ -24,6 +24,12 @@ CHANNELS_HELP: Final[str] = (
     "channels every variant reconstructs the synthesized sounds with, comma separated; without it, the suite's "
     "channels"
 )
+SETTINGS_HELP: Final[str] = (
+    "named sets of settings from settings.yaml to measure beside the base configuration, comma separated, e.g. greedy"
+)
+LEVELS_HELP: Final[str] = (
+    "levels to match the sounds at, comma separated: default, or true for the level a written sound's frames play at"
+)
 CATEGORIES_HELP: Final[str] = "categories of reference sounds to measure, comma separated; without it, every one"
 SKIP_HELP: Final[str] = "families or categories of reference sounds to leave out, comma separated, e.g. notes"
 WORKERS_HELP: Final[str] = "how many conversions run at once; without it, the configuration's general.max_workers"
@@ -45,6 +51,8 @@ MEASURING_OPTIONS: Final[List[str]] = [
     "--perceptual-exponents",
     "--temporal-weights",
     "--channels",
+    "--settings",
+    "--levels",
     "--categories",
     "--skip",
     "--workers",
@@ -63,6 +71,8 @@ class CalibrationArguments:
     perceptual_exponents: Optional[str]
     temporal_weights: Optional[str]
     channels: Optional[str]
+    settings: Optional[str]
+    levels: Optional[str]
     categories: Optional[str]
     skip: Optional[str]
     workers: Optional[int]
@@ -81,6 +91,8 @@ def configure(parser: ArgumentParser) -> None:
     parser.add_argument("--perceptual-exponents", type=str, default=None, help=EXPONENTS_HELP)
     parser.add_argument("--temporal-weights", type=str, default=None, help=WEIGHTS_HELP)
     parser.add_argument("--channels", type=str, default=None, help=CHANNELS_HELP)
+    parser.add_argument("--settings", type=str, default=None, help=SETTINGS_HELP)
+    parser.add_argument("--levels", type=str, default=None, help=LEVELS_HELP)
     parser.add_argument("--categories", type=str, default=None, help=CATEGORIES_HELP)
     parser.add_argument("--skip", type=str, default=None, help=SKIP_HELP)
     parser.add_argument("--workers", type=int, default=None, help=WORKERS_HELP)
@@ -107,6 +119,8 @@ def run(arguments: Namespace) -> int:
         perceptual_exponents=arguments.perceptual_exponents,
         temporal_weights=arguments.temporal_weights,
         channels=arguments.channels,
+        settings=arguments.settings,
+        levels=arguments.levels,
         categories=arguments.categories,
         skip=arguments.skip,
         workers=arguments.workers,
@@ -129,6 +143,7 @@ def _measure(given: CalibrationArguments) -> int:
     from sampletones_core.headless.conversion.request import channels_named
     from sampletones_shared.utils.validation import describe_failure
     from sampletones_tools.calibration.config.manifest import CorpusManifest
+    from sampletones_tools.calibration.config.settings import SettingsConfig
     from sampletones_tools.calibration.config.suite import SuiteConfig
     from sampletones_tools.calibration.corpus.reference import reference_catalog
     from sampletones_tools.calibration.fingerprint import ResumeRefusedError
@@ -138,8 +153,10 @@ def _measure(given: CalibrationArguments) -> int:
         calibrate,
         default_output,
         floats_named,
+        levels_named,
         measured_categories,
         methods_named,
+        settings_named,
     )
 
     suite = SuiteConfig.load()
@@ -153,6 +170,8 @@ def _measure(given: CalibrationArguments) -> int:
             perceptual_exponents=floats_named(given.perceptual_exponents, suite.perceptual_exponents),
             temporal_weights=floats_named(given.temporal_weights, suite.temporal_weights),
             channels=channels_named(given.channels) if given.channels is not None else list(suite.channels),
+            settings=settings_named(given.settings, suite.settings, list(SettingsConfig.load().settings)),
+            levels=levels_named(given.levels, suite.levels),
             categories=measured_categories(given.categories, given.skip, reference_catalog(manifest)),
             workers=given.workers if given.workers is not None else base.general.max_workers,
             resume=given.resume,
@@ -224,6 +243,8 @@ def _refuse_measuring(given: CalibrationArguments) -> None:
         given.perceptual_exponents,
         given.temporal_weights,
         given.channels,
+        given.settings,
+        given.levels,
         given.categories,
         given.skip,
         given.workers,

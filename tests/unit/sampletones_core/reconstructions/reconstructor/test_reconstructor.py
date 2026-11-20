@@ -20,6 +20,7 @@ from sampletones_core.generators import FULL_SCALE_RMS_LEVELS
 from sampletones_core.generators.render import render_channels
 from sampletones_core.library import InstructionLibraryData
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels
+from sampletones_core.reconstructions.reconstructor.decoder.base import Lattices, Streams
 from sampletones_core.reconstructions.reconstructor.reconstructor import Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
@@ -277,6 +278,66 @@ class TestReconstructorCall:
 
         assert reconstruction is not None
         assert reconstruction.audio_filepath == (tmp_path / "tone.wav",)
+
+
+class RecordingObserver:
+    """Keeps what a run's observer hears, one hearing per stage."""
+
+    def __init__(self) -> None:
+        self.lattices: List[Lattices] = []
+        self.streams: List[Streams] = []
+
+    def assigned(self, lattices: Lattices) -> None:
+        self.lattices.append(lattices)
+
+    def decoded(self, streams: Streams) -> None:
+        self.streams.append(streams)
+
+
+class TestTheObserver:
+    """An observer hears the columns a run offered and the streams it decoded, once each."""
+
+    def _observed(
+        self,
+        config: Config,
+        library_data: InstructionLibraryData,
+        synthetic_fragment: Fragment,
+        tmp_path: Path,
+    ) -> RecordingObserver:
+        audio_path = tmp_path / "tone.wav"
+        write_wave(audio_path, config.library.sample_rate, np.tile(synthetic_fragment.audio, 3).astype(np.float32))
+        observer = RecordingObserver()
+        reconstruction = _make_reconstructor(config, library_data)(audio_path, observe=observer)
+        assert reconstruction is not None
+        return observer
+
+    def test_every_channel_in_play_is_heard_with_a_column_and_a_decoded_candidate_per_frame(
+        self,
+        config: Config,
+        library_data: InstructionLibraryData,
+        synthetic_fragment: Fragment,
+        tmp_path: Path,
+    ) -> None:
+        observer = self._observed(config, library_data, synthetic_fragment, tmp_path)
+
+        (lattices,), (streams,) = observer.lattices, observer.streams
+        assert set(lattices) == set(streams)
+        for channel_name, lattice in lattices.items():
+            assert len(lattice) == len(streams[channel_name])
+
+    def test_each_decoded_candidate_is_one_its_frame_s_column_offered(
+        self,
+        config: Config,
+        library_data: InstructionLibraryData,
+        synthetic_fragment: Fragment,
+        tmp_path: Path,
+    ) -> None:
+        observer = self._observed(config, library_data, synthetic_fragment, tmp_path)
+
+        (lattices,), (streams,) = observer.lattices, observer.streams
+        for channel_name, stream in streams.items():
+            for column, candidate in zip(lattices[channel_name], stream):
+                assert candidate.instruction in [offered.instruction for offered in column]
 
 
 class TestTheAudioAReconstructionRecords:

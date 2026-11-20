@@ -5,6 +5,7 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
+from sampletones_tools.calibration.config.level import WorkingLevel
 from sampletones_tools.calibration.fingerprint import (
     ResumeRefusedError,
     check_resumable,
@@ -19,7 +20,7 @@ CHANNELS: Final[List[ChannelName]] = [ChannelName.PULSE1]
 
 
 def _variants(method: SpectrumMethod) -> List[CalibrationVariant]:
-    return build_variants(Config(), [method], [1.0], [])
+    return build_variants(Config(), [method], [1.0], [], settings={}, levels=[WorkingLevel.DEFAULT])
 
 
 class TestCheckResumable:

@@ -9,7 +9,8 @@ from .contour import ContourReferee
 from .loudness import LoudnessWeightedReferee
 from .ownership import OwnershipReferee
 from .pitch import PitchReferee
-from .protocol import ConversionReferee, Referee, TruthReferee
+from .protocol import ConversionReferee, Referee, TraceReferee, TruthReferee
+from .search import SearchReferee
 from .stability import StabilityReferee
 from .transcription import TranscriptionReferee
 from .zimtohrli import ZimtohrliReferee, zimtohrli_available
@@ -50,12 +51,21 @@ def build_truth_referees() -> List[TruthReferee]:
     """
     config = RefereeConfig.load()
     return [
-        TranscriptionReferee(volume_tolerance=config.volume_tolerance),
+        TranscriptionReferee(volume_tolerance=config.volume_tolerance, misplaced_weight=config.misplaced_weight),
         PitchReferee(),
         StabilityReferee(),
         BalanceReferee(),
         ContinuityReferee(),
     ]
+
+
+def build_trace_referees() -> List[TraceReferee]:
+    """Referees reading a conversion's search against what its reference sound plays.
+
+    Returns:
+        List[TraceReferee]: The search referee.
+    """
+    return [SearchReferee()]
 
 
 def build_conversion_referees() -> List[ConversionReferee]:

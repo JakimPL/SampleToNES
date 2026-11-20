@@ -6,6 +6,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.renders import rendered_mix
+from sampletones_core.reconstructions.reconstructor.observer import SILENT_OBSERVER, ReconstructionObserver
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_shared.types.path import Pathlike
 from sampletones_tools.calibration.corpus.families import Family
@@ -27,11 +28,19 @@ class WrittenReconstructor:
             audio_filepath=NO_RECORDINGS,
         )
 
-    def __call__(self, path: Pathlike) -> Optional[Reconstruction]:
+    def __call__(
+        self, path: Pathlike, *, observe: ReconstructionObserver = SILENT_OBSERVER
+    ) -> Optional[Reconstruction]:
         self.converted.append(path)
         return self.reconstruction
 
-    def reconstruct(self, paths: Sequence[Pathlike], stems_config: StemsConfig) -> Optional[Reconstruction]:
+    def reconstruct(
+        self,
+        paths: Sequence[Pathlike],
+        stems_config: StemsConfig,
+        *,
+        observe: ReconstructionObserver = SILENT_OBSERVER,
+    ) -> Optional[Reconstruction]:
         self.converted.extend(paths)
         return self.reconstruction
 
@@ -66,4 +75,4 @@ def item_named(name: str, *, listed: bool) -> CorpusItem:
 
 def stub_panel() -> RefereePanel:
     """A panel of the stub referee alone."""
-    return RefereePanel(audio=(StubReferee(),), truth=(), conversion=())
+    return RefereePanel(audio=(StubReferee(),), truth=(), trace=(), conversion=())

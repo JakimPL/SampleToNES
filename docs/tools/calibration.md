@@ -121,8 +121,14 @@ The `mr-loudness-dB` section adds a table for each of its readings:
 
 The score is `missing` plus `added`. `level` is reported separately.
 
-The `transcription`, `pitch`, `stability`, `balance` and `continuity` sections read the reconstruction's
-instructions against what a reference sound plays, so they cover only the sounds whose frames or
+Every audio referee also has a `log-gap` table: the natural logarithm of the score over the score of
+silence. Zero means the render scores as silence does, and every step of one below it closes the
+remaining distance to the original by a factor of about 2.7. Its family mean weighs every sound by
+how far it closes the distance in proportion, so a few sounds far worse than silence move it no more
+than they differ.
+
+The `transcription`, `search`, `pitch`, `stability`, `balance` and `continuity` sections read the
+reconstruction's instructions against what a reference sound plays, so they cover only the sounds whose frames or
 pitches the run knows. A synthesized sound of a known pitch carries it as a line, frame by frame: the
 sines, the pulse waves, and the pitched `sines-` and `tones-` sounds. A decaying sound counts as
 sounding its pitch while it stays within 40 dB of its start.
@@ -138,6 +144,8 @@ Each option replaces one part of the default run. The rest stays as the suite se
 | `--config FILE` | Measures the settings in a configuration file instead of the defaults | the `config.json` in your [SampleToNES folder](../guide/files.md) holds your saved settings |
 | `--methods LIST` | The spectrum methods measured | `--methods cqt` |
 | `--channels LIST` | The channels every variant reconstructs the synthetic sounds with | `--channels pulse1,pulse2,triangle,noise` |
+| `--settings LIST` | Named sets of settings measured beside the base configuration, one variant each; see [settings](#measure-a-setting) | `--settings greedy` |
+| `--levels LIST` | The levels the sounds are matched at: `default`, or `true` for the level a written sound's frames play at | `--levels default,true` |
 | `--categories LIST` | The categories of reference sounds measured | `--categories nes-pulse,nes-mix` |
 | `--skip LIST` | The families or categories of reference sounds left out | `--skip composites` |
 | `--workers N` | How many sounds are converted at once; without it, the `general.max_workers` of the configuration | `--workers 3` |
@@ -159,6 +167,20 @@ Lists are comma separated. Several lists multiply: `--methods fft,cqt --perceptu
 0.5,1` measures four variants, and the run takes about four times as long as one variant.
 
 From a copy of the source code, put `uv run` in front: `uv run sampletones calibration --methods cqt`.
+
+### Measure a setting
+
+`src/sampletones_tools/calibration/config/settings.yaml` names sets of settings, each written in the
+shape of the configuration file and holding only the values it changes. `--settings greedy` measures
+the base configuration and the base with the `greedy` set written over it, so every variant appears
+twice, once with `-greedy` at the end of its name. A set naming a setting the configuration lacks is
+refused before the run starts.
+
+`--levels true` matches every sound at the level its file holds. For a sound written as NES frames
+that is the level the channels play its frames at, where the written frames fit exactly, so a reading
+taken there leaves the working level out: what remains is the search. Its variants end in `-true`.
+The level is meant for written sounds; a synthesized sound at its file's level is simply quieter or
+louder than a conversion would make it.
 
 ## Listening samples
 
@@ -364,20 +386,39 @@ time resolutions, and compare the energy in each band in decibels.
 ### The truth referees
 
 A sound written as NES frames comes with every frame it plays, and its tonal channels give the pitch it
-sounds in every frame. Three more referees read a reconstruction's instructions against that truth.
+sounds in every frame. More referees read a reconstruction's instructions against that truth.
 They never listen, so they say *what* went wrong where the audio referees say how much it shows.
 
 - **`transcription`** counts the frames a channel plays as written. A frame counts wherever the
   sound or the reconstruction plays the channel, so a channel the sound leaves silent and the
   reconstruction sounds counts against it. A frame is played as written where both play it and every
   field agrees: the note, the duty cycle, the noise period and mode, and the volume within one step. The
-  25% and 75% duty cycles count as one, since one wave is the other turned upside down and sounds the
-  same.
+  volume is read at the sound's own level, the played volume times the `scale` the
+  [`balance`](#the-truth-referees) reading reports, so a reconstruction at another working level is
+  judged on its level once, there. The 25% and 75% duty cycles count as one, since one wave is the
+  other turned upside down and sounds the same.
   The two pulses sound the same mix whichever carries which line, so each frame pairs them the way
-  that agrees more. The score is the share of counted frames played otherwise. Its readings:
+  that agrees more. A written note played at its pitch on another kind of channel, such as a bass on a
+  pulse, is one mistake weighing less than a wrong note, as `misplaced_weight` in `referee.yaml` sets:
+  the channel leaving it off and the channel playing it count it once between them. The score is the weighted share of counted frames
+  played otherwise. Its readings:
   - `missed`: written frames the reconstruction leaves silent.
+  - `misplaced`: written frames whose note another kind of channel plays.
   - `spurious`: played frames the sound leaves silent.
   - `note`, `duty`, `volume`, `period`, `mode`: frames both play where that field disagrees.
+- **`search`** reads where the reconstruction lost the notes a frame plays, before any note is bent. A
+  frame counts wherever the sound plays a channel. It is right where the decoded frame sounds the
+  written notes on the written kinds of channel: the two pulses one kind, two pulses in unison one note,
+  the noise left to `transcription`. Each frame the reconstruction gets wrong is lost at the first
+  stage that could no longer reach its notes. The score is the share of counted frames decoded wrong.
+  Its readings:
+  - `columns`: no choice of one candidate per channel forms the written notes. The right answer was
+    gone before any combination was built.
+  - `assignment`: the candidates could form them, and the picks the assignment made did not.
+  - `decoder`: the picks had them, and the decoder moved away.
+  - `gains`: frames the picks had wrong and the decoder put right.
+  - `misplaced`: wrong frames whose decoded pitches are the written ones, on another kind of channel.
+  - `unreached`: written notes no candidate offers on their kind of channel.
 - **`pitch`** answers every frame a line of the sound plays with the closest note a tonal channel of
   the reconstruction sounds then, whichever channel that is. The score is the share of frames not
   answered within half a semitone. Its readings are the share answered an `octave` off (the right

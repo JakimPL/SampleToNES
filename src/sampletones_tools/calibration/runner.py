@@ -1,6 +1,8 @@
+import itertools
+import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, FrozenSet, List, Optional, Tuple
+from typing import Dict, Final, FrozenSet, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -12,9 +14,12 @@ from sampletones_core.reconstructions.reconstruction.renders import rendered_cha
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_shared.logger import logger
 
+from .config.level import WorkingLevel
+from .config.settings import Overrides, overridden
 from .corpus.item import CorpusItem
+from .levels import level_config
 from .referee.panel import RefereePanel
-from .referee.protocol import Judgment
+from .referee.protocol import SCORE_READING, Judgment
 from .renders import (
     RenderRecord,
     sounding_timelines,
@@ -23,12 +28,24 @@ from .renders import (
     write_recording,
     write_render,
 )
+from .trace import SearchTrace, TraceRecorder
+
+LOG_GAP: Final[str] = "log-gap"
 
 
 @dataclass(frozen=True)
 class CalibrationVariant:
+    """One configuration a run measures, and the level it matches the sounds at.
+
+    Attributes:
+        label: The name its rows and renders carry, spelling out what it departs from the base by.
+        config: The configuration the sounds are converted under.
+        level: The level the sounds are matched at.
+    """
+
     label: str
     config: Config
+    level: WorkingLevel
 
 
 @dataclass(frozen=True)
@@ -47,13 +64,18 @@ def build_variants(
     methods: List[SpectrumMethod],
     perceptual_exponents: List[float],
     temporal_weights: List[float],
+    *,
+    settings: Mapping[str, Overrides],
+    levels: Sequence[WorkingLevel],
 ) -> List[CalibrationVariant]:
     """
-    Cartesian sweep of spectrum methods and criterion knobs over a base configuration.
+    Cartesian sweep of spectrum methods, criterion knobs, named settings and levels over a base configuration.
 
     Each variant keeps the base configuration and overrides the spectrum method, the
-    perceptual exponent, and (when swept) the temporal loss weight; the label encodes
-    the overridden values so report rows stay self-describing.
+    perceptual exponent, and (when swept) the temporal loss weight. Every named set of settings is
+    measured beside the base, written over it, and every level beside the others. The label encodes
+    the overridden values, the set's name and a level other than the default, so report rows stay
+    self-describing.
 
     Args:
         base: Configuration providing every value the sweep leaves untouched.
@@ -61,49 +83,64 @@ def build_variants(
         perceptual_exponents: Values of `metric.perceptual_exponent` to evaluate.
         temporal_weights: Values of `weights.temporal_loss_weight` to evaluate;
             an empty list keeps the base blend.
+        settings: Named sets of settings to measure beside the base, by name.
+        levels: The levels the sounds are matched at.
 
     Returns:
         One labeled variant per sweep combination.
+
+    Raises:
+        ValidationError: If a set of settings names a setting the configuration lacks.
     """
-    variants: List[CalibrationVariant] = []
     swept_temporal: List[Optional[float]] = list(temporal_weights) if temporal_weights else [None]
-
-    for method in methods:
-        for exponent in perceptual_exponents:
-            for temporal_weight in swept_temporal:
-                label = f"{method.value}-pe{exponent:g}"
-                generation = base.generation.model_copy(
-                    update={
-                        "metric": base.generation.metric.model_copy(update={"perceptual_exponent": exponent}),
-                    }
-                )
-                if temporal_weight is not None:
-                    label = f"{label}-tw{temporal_weight:g}"
-                    generation = generation.model_copy(
-                        update={
-                            "weights": generation.weights.model_copy(
-                                update={
-                                    "temporal_loss_weight": temporal_weight,
-                                    "spectral_loss_weight": 1.0 - temporal_weight,
-                                }
-                            )
-                        }
-                    )
-
-                config = base.model_copy(
-                    update={
-                        "library": base.library.model_copy(update={"spectrum_method": method}),
-                        "generation": generation,
-                    }
-                )
-                variants.append(
-                    CalibrationVariant(
-                        label=label,
-                        config=config,
-                    )
-                )
+    swept_settings: List[Optional[str]] = [None, *settings]
+    variants: List[CalibrationVariant] = []
+    for method, exponent, temporal_weight, name, level in itertools.product(
+        methods, perceptual_exponents, swept_temporal, swept_settings, levels
+    ):
+        label, config = _swept(base, method, exponent, temporal_weight)
+        if name is not None:
+            label, config = f"{label}-{name}", overridden(config, settings[name])
+        if level != WorkingLevel.DEFAULT:
+            label = f"{label}-{level.value}"
+        variants.append(CalibrationVariant(label=label, config=level_config(config, level), level=level))
 
     return variants
+
+
+def _swept(
+    base: Config,
+    method: SpectrumMethod,
+    exponent: float,
+    temporal_weight: Optional[float],
+) -> Tuple[str, Config]:
+    """The label and configuration of one point of the method and criterion sweep."""
+    label = f"{method.value}-pe{exponent:g}"
+    generation = base.generation.model_copy(
+        update={
+            "metric": base.generation.metric.model_copy(update={"perceptual_exponent": exponent}),
+        }
+    )
+    if temporal_weight is not None:
+        label = f"{label}-tw{temporal_weight:g}"
+        generation = generation.model_copy(
+            update={
+                "weights": generation.weights.model_copy(
+                    update={
+                        "temporal_loss_weight": temporal_weight,
+                        "spectral_loss_weight": 1.0 - temporal_weight,
+                    }
+                )
+            }
+        )
+
+    config = base.model_copy(
+        update={
+            "library": base.library.model_copy(update={"spectrum_method": method}),
+            "generation": generation,
+        }
+    )
+    return label, config
 
 
 @dataclass(frozen=True)
@@ -140,7 +177,8 @@ def evaluate_conversion(
     The sound is reconstructed with the variant's configuration and every referee judges the
     approximation against the preprocessed original, both on the common scale set by the
     working-level coefficient. A sound whose truth the corpus knows is also read against it by
-    every truth referee, and every conversion is read on its own by the conversion referees. A
+    every truth referee, and its search by every trace referee, and every conversion is read on its own
+    by the conversion referees. A
     sound held as stems is converted under its setup. A listed sound's render, recording and channel
     parts are written under the
     run directory, and every sound's record comes last, so a record stands only for a conversion
@@ -155,17 +193,18 @@ def evaluate_conversion(
         One row per (referee, reading), empty where the reconstruction is unavailable.
     """
     variant, item = conversion.variant, conversion.item
+    recorder = TraceRecorder()
     reconstruction = (
-        reconstructor.reconstruct(list(conversion.paths), conversion.stems)
+        reconstructor.reconstruct(list(conversion.paths), conversion.stems, observe=recorder)
         if conversion.stems is not None
-        else reconstructor(conversion.paths[0])
+        else reconstructor(conversion.paths[0], observe=recorder)
     )
     if reconstruction is None:
         logger.info(f"[{variant.label}] {item.name}: reconstruction unavailable")
         return []
 
     reference, estimate = _compared_signals(reconstructor.load_audio(list(conversion.paths)), reconstruction)
-    judgments = _judgments(item, reference, estimate, reconstruction, panel)
+    judgments = _judgments(item, reference, estimate, reconstruction, recorder.trace, panel)
     silence = {referee.name: referee.judge(reference, np.zeros_like(reference)).score for referee in panel.audio}
     record = RenderRecord(
         variant=variant.label,
@@ -189,7 +228,18 @@ def evaluate_conversion(
 
 
 def recorded_rows(record: RenderRecord) -> List[CalibrationRow]:
-    """The rows a record holds, one per (referee, reading), as the conversion that wrote it scored them."""
+    """The rows a record holds, one per (referee, reading), as the conversion that wrote it scored them.
+
+    Every audio referee's score also reads as its log gap, the natural logarithm of the score over
+    silence's, where both are positive. A mean of log gaps is the gap a family closes in ratio, so a
+    few sounds far past silence weigh in it as much as they differ in kind.
+    """
+    readings = {referee: dict(values) for referee, values in record.judgments.items()}
+    for referee, silence in record.silence.items():
+        score = readings.get(referee, {}).get(SCORE_READING)
+        if score is not None and score > 0.0 and silence > 0.0:
+            readings[referee][LOG_GAP] = math.log(score / silence)
+
     return [
         CalibrationRow(
             variant=record.variant,
@@ -200,8 +250,8 @@ def recorded_rows(record: RenderRecord) -> List[CalibrationRow]:
             component=component,
             score=value,
         )
-        for referee, readings in record.judgments.items()
-        for component, value in readings.items()
+        for referee, values in readings.items()
+        for component, value in values.items()
     ]
 
 
@@ -230,6 +280,7 @@ def _judgments(
     reference: np.ndarray,
     estimate: np.ndarray,
     reconstruction: Reconstruction,
+    trace: Optional[SearchTrace],
     panel: RefereePanel,
 ) -> Dict[str, Judgment]:
     """Every referee's judgment of a render, the audio referees first so a report leads with them."""
@@ -240,6 +291,11 @@ def _judgments(
             judged = referee.judge(truth, reconstruction)
             if judged is not None:
                 judgments[referee.name] = judged
+        if trace is not None:
+            for trace_referee in panel.trace:
+                traced = trace_referee.judge(truth, trace, reconstruction)
+                if traced is not None:
+                    judgments[trace_referee.name] = traced
 
     for conversion_referee in panel.conversion:
         judged = conversion_referee.judge(reconstruction)

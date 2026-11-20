@@ -5,6 +5,7 @@ import numpy as np
 
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_tools.calibration.corpus.truth import Truth
+from sampletones_tools.calibration.trace import SearchTrace
 
 SCORE_READING: Final[str] = "score"
 
@@ -58,3 +59,15 @@ class TruthReferee(Protocol):
     def name(self) -> str: ...
 
     def judge(self, truth: Truth, reconstruction: Reconstruction) -> Optional[Judgment]: ...
+
+
+class TraceReferee(Protocol):
+    """Reads a conversion's search against what its reference sound plays: zero for a search that found it.
+
+    A referee answers ``None`` for a sound whose truth holds nothing it reads.
+    """
+
+    @property
+    def name(self) -> str: ...
+
+    def judge(self, truth: Truth, trace: SearchTrace, reconstruction: Reconstruction) -> Optional[Judgment]: ...

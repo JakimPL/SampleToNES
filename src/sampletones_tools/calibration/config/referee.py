@@ -9,7 +9,7 @@ from sampletones_tools.calibration.paths import REFEREE_CONFIG_PATH
 class RefereeConfig(BaseModel, frozen=True):
     """
     Tuning of the built-in referees: the band analysis the audio referees share, the frames and bands
-    the contour referee reads, and the tolerance the transcription reads frames with.
+    the contour referee reads, and the tolerance and the misplaced-note weight the transcription reads frames with.
 
     Values are loaded from the packaged `calibration/referee.yaml`, so referee
     scores stay comparable across calibration runs while remaining adjustable
@@ -70,6 +70,11 @@ class RefereeConfig(BaseModel, frozen=True):
     )
     volume_tolerance: NonNegativeInt = Field(
         description="Volume steps a conversion's frame may stand off a written frame by and still play it as written.",
+    )
+    misplaced_weight: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="What a written note played at its pitch on another channel kind weighs; a wrong frame weighs one.",
     )
 
     @classmethod

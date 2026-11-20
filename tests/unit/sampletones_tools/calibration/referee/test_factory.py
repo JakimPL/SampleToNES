@@ -7,11 +7,13 @@ from sampletones_tools.calibration.referee.contour import CONTOUR_REFEREE
 from sampletones_tools.calibration.referee.factory import (
     build_conversion_referees,
     build_referees,
+    build_trace_referees,
     build_truth_referees,
 )
 from sampletones_tools.calibration.referee.loudness import LOUDNESS_REFEREE_NAME
 from sampletones_tools.calibration.referee.ownership import OWNERSHIP_REFEREE
 from sampletones_tools.calibration.referee.pitch import PITCH_REFEREE
+from sampletones_tools.calibration.referee.search import SEARCH_REFEREE
 from sampletones_tools.calibration.referee.stability import STABILITY_REFEREE
 from sampletones_tools.calibration.referee.transcription import TRANSCRIPTION_REFEREE
 from sampletones_tools.calibration.referee.zimtohrli import ZIMTOHRLI_REFEREE_NAME, zimtohrli_available
@@ -44,6 +46,11 @@ class TestBuildTruthReferees:
             BALANCE_REFEREE,
             CONTINUITY_REFEREE,
         ]
+
+
+class TestBuildTraceReferees:
+    def test_the_search_referee_reads_a_conversion_s_search(self) -> None:
+        assert [referee.name for referee in build_trace_referees()] == [SEARCH_REFEREE]
 
 
 class TestBuildConversionReferees:

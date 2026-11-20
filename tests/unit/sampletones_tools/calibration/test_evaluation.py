@@ -7,22 +7,25 @@ import pytest
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.reconstructions.reconstructor.observer import SILENT_OBSERVER, ReconstructionObserver
 from sampletones_shared.paths.extensions import EXT_FILE_FLAC, EXT_FILE_JSON
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.system.paths import get_filename
+from sampletones_tools.calibration.config.level import WorkingLevel
 from sampletones_tools.calibration.corpus.by_channel import by_channel
 from sampletones_tools.calibration.corpus.chords import build_chords
 from sampletones_tools.calibration.corpus.families import Family
 from sampletones_tools.calibration.corpus.item import CorpusItem
 from sampletones_tools.calibration.evaluation import evaluate_variants
 from sampletones_tools.calibration.layout import RECORDINGS_DIRECTORY, RENDERS_DIRECTORY
+from sampletones_tools.calibration.referee.protocol import SCORE_READING
 from sampletones_tools.calibration.runner import CalibrationVariant, build_variants
 
 from .conversions import WrittenReconstructor, item_named, stub_panel
 from .corpus.test_by_channel import CHORDS
 
 ENSURE_LIBRARY: Final[str] = "sampletones_tools.calibration.evaluation.ensure_library"
-RECONSTRUCTOR: Final[str] = "sampletones_tools.calibration.evaluation.Reconstructor"
+RECONSTRUCTOR: Final[str] = "sampletones_tools.calibration.evaluation.level_reconstructor"
 RUN_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset({ChannelName.PULSE1})
 ITEM_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(ChannelName.items())
 
@@ -30,7 +33,9 @@ ITEM_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset(ChannelName.items())
 class SilentReconstructor:
     """A reconstructor that converts nothing."""
 
-    def __call__(self, path: Pathlike) -> Optional[Reconstruction]:
+    def __call__(
+        self, path: Pathlike, *, observe: ReconstructionObserver = SILENT_OBSERVER
+    ) -> Optional[Reconstruction]:
         return None
 
 
@@ -40,7 +45,7 @@ class RecordedReconstructors:
     def __init__(self) -> None:
         self.built: List[FrozenSet[ChannelName]] = []
 
-    def __call__(self, config: Config, channels: AbstractSet[ChannelName]) -> SilentReconstructor:
+    def __call__(self, config: Config, channels: AbstractSet[ChannelName], level: WorkingLevel) -> SilentReconstructor:
         self.built.append(frozenset(channels))
         return SilentReconstructor()
 
@@ -48,7 +53,7 @@ class RecordedReconstructors:
 @pytest.fixture(name="variant")
 def variant_fixture(monkeypatch: pytest.MonkeyPatch) -> CalibrationVariant:
     monkeypatch.setattr(ENSURE_LIBRARY, lambda config: None)
-    (variant,) = build_variants(Config(), [SpectrumMethod.FFT], [1.0], [])
+    (variant,) = build_variants(Config(), [SpectrumMethod.FFT], [1.0], [], settings={}, levels=[WorkingLevel.DEFAULT])
     return variant
 
 
@@ -69,7 +74,7 @@ def _evaluated(
         workers=1,
         resume=resume,
     )
-    return [row.item for row in rows]
+    return [row.item for row in rows if row.component == SCORE_READING]
 
 
 class TestEvaluateVariants:
@@ -105,7 +110,7 @@ class TestEvaluateVariants:
         monkeypatch: pytest.MonkeyPatch,
         tmp_path: Path,
     ) -> None:
-        monkeypatch.setattr(RECONSTRUCTOR, lambda config, channels: WrittenReconstructor())
+        monkeypatch.setattr(RECONSTRUCTOR, lambda config, channels, level: WrittenReconstructor())
 
         _evaluated(
             variant, [item_named("shown", listed=True), item_named("measured", listed=False)], tmp_path, resume=False
@@ -127,10 +132,10 @@ class TestResuming:
         tmp_path: Path,
     ) -> None:
         first = WrittenReconstructor()
-        monkeypatch.setattr(RECONSTRUCTOR, lambda config, channels: first)
+        monkeypatch.setattr(RECONSTRUCTOR, lambda config, channels, level: first)
         whole = _evaluated(variant, [item_named("a", listed=False)], tmp_path, resume=False)
         second = WrittenReconstructor()
-        monkeypatch.setattr(RECONSTRUCTOR, lambda config, channels: second)
+        monkeypatch.setattr(RECONSTRUCTOR, lambda config, channels, level: second)
 
         resumed = _evaluated(
             variant, [item_named("a", listed=False), item_named("b", listed=False)], tmp_path, resume=True
@@ -147,7 +152,7 @@ class TestResuming:
         tmp_path: Path,
     ) -> None:
         reconstructor = WrittenReconstructor()
-        monkeypatch.setattr(RECONSTRUCTOR, lambda config, channels: reconstructor)
+        monkeypatch.setattr(RECONSTRUCTOR, lambda config, channels, level: reconstructor)
         _evaluated(variant, [item_named("a", listed=False)], tmp_path, resume=False)
 
         _evaluated(variant, [item_named("a", listed=False)], tmp_path, resume=False)
@@ -163,7 +168,7 @@ class TestStems:
         tmp_path: Path,
     ) -> None:
         reconstructor = WrittenReconstructor()
-        monkeypatch.setattr(RECONSTRUCTOR, lambda config, channels: reconstructor)
+        monkeypatch.setattr(RECONSTRUCTOR, lambda config, channels, level: reconstructor)
         (chord,) = build_chords(Config(), corpus=CHORDS)
         split = by_channel(chord, Config())
         paths = (tmp_path / "chord-stem0.wav", tmp_path / "chord-stem1.wav")

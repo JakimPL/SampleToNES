@@ -10,6 +10,7 @@ from sampletones_core.reconstructions import Reconstructor
 from sampletones_shared.logger import logger
 
 from .corpus.item import CorpusItem
+from .levels import level_reconstructor
 from .processor import CalibrationProcessor
 from .referee.panel import RefereePanel
 from .renders import read_record
@@ -96,7 +97,11 @@ def _convert_here(conversions: Sequence[Conversion], panel: RefereePanel) -> Lis
     for conversion in tqdm(conversions, desc="Calibrating", unit=PROGRESS_UNIT):
         key = (conversion.variant.label, conversion.channels)
         if key not in reconstructors:
-            reconstructors[key] = Reconstructor(conversion.variant.config, conversion.channels)
+            reconstructors[key] = level_reconstructor(
+                conversion.variant.config,
+                conversion.channels,
+                conversion.variant.level,
+            )
 
         answers.append(evaluate_conversion(conversion, reconstructors[key], panel))
 

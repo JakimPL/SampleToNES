@@ -12,6 +12,7 @@ from sampletones_tools.calibration.corpus.truth import PitchLine, Truth, soundin
 from .frames import common_length
 from .pitch import SEMITONES_PER_OCTAVE
 from .protocol import Judgment
+from .scale import effective_scale
 
 BALANCE_REFEREE: Final[str] = "balance"
 PULSES: Final[str] = "pulses"
@@ -19,7 +20,6 @@ TRIANGLE: Final[str] = "triangle"
 NOISE: Final[str] = "noise"
 BASS_ON_A_PULSE: Final[str] = "bass-on-pulse"
 SCALE: Final[str] = "scale"
-UNIT_SCALE: Final[float] = 1.0
 
 PARTS: Final[Dict[str, Sequence[ChannelName]]] = {
     PULSES: (ChannelName.PULSE1, ChannelName.PULSE2),
@@ -64,7 +64,7 @@ class BalanceReferee:
                 sounding_pitches(truth.instructions, reconstruction.config),
                 sounding_pitches(reconstruction.instructions, reconstruction.config),
             ),
-            SCALE: reconstruction.coefficient * (reconstruction.stems_data.scale or UNIT_SCALE),
+            SCALE: effective_scale(reconstruction),
         }
         return Judgment(score=sum(abs(value) for value in differences.values()) / 2, components=components)
 

@@ -8,6 +8,8 @@ from sampletones_core.parallelization.processor import TaskProcessor
 from sampletones_core.reconstructions import Reconstructor
 from sampletones_shared.logger import LoggerProtocol
 
+from .config.level import WorkingLevel
+from .levels import level_reconstructor
 from .referee.panel import RefereePanel, build_panel
 from .runner import CalibrationRow, Conversion, evaluate_conversion
 
@@ -45,13 +47,14 @@ class CalibrationProcessor(TaskProcessor[List[CalibrationRow]]):
 def convert_in_worker(conversion: Conversion) -> List[CalibrationRow]:
     """Converts and judges one sound with the reconstructor and the referees this worker keeps."""
     panel = _worker_panel(conversion.variant.config.library.sample_rate)
-    reconstructor = _worker_reconstructor(conversion.variant.config.model_dump_json(), conversion.channels)
+    variant = conversion.variant
+    reconstructor = _worker_reconstructor(variant.config.model_dump_json(), conversion.channels, variant.level)
     return evaluate_conversion(conversion, reconstructor, panel)
 
 
 @lru_cache(maxsize=None)
-def _worker_reconstructor(config: str, channels: FrozenSet[ChannelName]) -> Reconstructor:
-    return Reconstructor(Config.model_validate_json(config), channels)
+def _worker_reconstructor(config: str, channels: FrozenSet[ChannelName], level: WorkingLevel) -> Reconstructor:
+    return level_reconstructor(Config.model_validate_json(config), channels, level)
 
 
 @lru_cache(maxsize=None)
