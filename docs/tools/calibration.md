@@ -184,6 +184,9 @@ refused before the run starts. The packaged sets:
 - `range30`: the criterion read 30 dB under each frame's loudest bin.
 - `joint`: the [joint assignment](../concepts/reconstruction.md#52-assigning-channels-jointly), which fits
   every note at once and compares whole combinations of channels.
+- `joint-price005`, `joint-price01`, `joint-price02`: the joint assignment with every sounding channel
+  charged 0.005, 0.01 or 0.02 of the frame's sound
+  ([`channel_price`](../concepts/reconstruction.md#4-scoring-a-candidate-the-criterion)).
 
 `--levels true` matches every sound at the level its file holds. For a sound written as NES frames
 that is the level the channels play its frames at, where the written frames fit exactly, so a reading

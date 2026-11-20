@@ -11,3 +11,21 @@ settings:
     generation:
       assignment:
         method: joint
+  joint-price005:
+    generation:
+      assignment:
+        method: joint
+      weights:
+        channel_price: 0.005
+  joint-price01:
+    generation:
+      assignment:
+        method: joint
+      weights:
+        channel_price: 0.01
+  joint-price02:
+    generation:
+      assignment:
+        method: joint
+      weights:
+        channel_price: 0.02

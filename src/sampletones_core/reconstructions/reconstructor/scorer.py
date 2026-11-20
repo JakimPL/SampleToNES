@@ -13,11 +13,13 @@ class Scorer:
 
     `spectral_costs` ranks a stack of mixed features by the phase-independent spectral term,
     producing the shortlist. `frame_costs` completes the criterion for shortlisted mixes with the
-    temporal term their expected waveforms measure.
+    temporal term their expected waveforms measure, and charges each channel a mix sounds the
+    configured price.
     """
 
     def __init__(self, config: Config, window: Window, signal_length: int) -> None:
         self.criterion = Criterion(config, window, signal_length)
+        self.channel_price = config.generation.weights.channel_price
 
     def spectral_costs(self, target: Fragment, features: xp.ndarray) -> np.ndarray:
         """
@@ -73,18 +75,23 @@ class Scorer:
         spectral_costs: np.ndarray,
         expectations: np.ndarray,
         variances: np.ndarray,
+        sounding: np.ndarray,
     ) -> np.ndarray:
         """
         Full criterion cost of every mix, with the temporal term its expected waveform measures.
+
+        The criterion is relative to the frame's own sound, so the price of a sounding channel is a
+        share of that sound as well.
 
         Args:
             target: Target fragment to match.
             spectral_costs: The mixes' spectral costs from `spectral_costs`.
             expectations: The waveform each mix is expected to render, one mix per row.
             variances: The per-sample variance of each mix about its expected waveform.
+            sounding: How many channels each mix sounds.
 
         Returns:
-            One blended criterion cost per mix.
+            One blended criterion cost per mix, the price of its sounding channels included.
         """
         temporal = self.criterion.expected_temporal_loss(
             xp.asarray(target.audio, dtype=xp.float64),
@@ -92,7 +99,8 @@ class Scorer:
             xp.asarray(variances),
         )
         combined = self.criterion.combine_losses(xp.asarray(spectral_costs), temporal)
-        return np.asarray(to_numpy(combined), dtype=np.float64).reshape(-1)
+        priced = np.asarray(to_numpy(combined), dtype=np.float64).reshape(-1)
+        return priced + self.channel_price * np.asarray(sounding, dtype=np.float64).reshape(-1)
 
     def reference_energy(self, target: Fragment) -> float:
         """

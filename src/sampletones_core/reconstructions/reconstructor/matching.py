@@ -216,6 +216,7 @@ class FrameMatcher:
             spectral_costs,
             np.stack([mix.expectation for mix in mixes]),
             np.array([mix.variance for mix in mixes]),
+            np.array([mix.sounding for mix in mixes]),
         )
 
     def reference_energy(self, fragment: Fragment) -> float:
@@ -253,6 +254,7 @@ class FrameMatcher:
                 power=power,
                 expectation=np.full(residual.shape[0], mean / drive),
                 variance=variance / drive**2,
+                sounding=instruction.on,
             )
 
         if self.config.generation.calculation.find_best_phase:
@@ -260,13 +262,14 @@ class FrameMatcher:
         else:
             waveform = self.candidate_provider.library_waveform(instruction) / drive
 
-        return Contribution(power=power, expectation=waveform, variance=0.0)
+        return Contribution(power=power, expectation=waveform, variance=0.0, sounding=instruction.on)
 
     def _scored(self, target: Fragment, shortlists: Sequence[_Shortlist], spectral_costs: np.ndarray) -> List[Column]:
         """Each shortlist's rows with the full cost of the frame each reaches beside its mix, best first."""
         contributions: List[Contribution] = []
         expectations: List[np.ndarray] = []
         variances: List[float] = []
+        sounding: List[int] = []
         for shortlist in shortlists:
             residual = shortlist.mix.residual_waveform(target)
             for index, power in zip(shortlist.rows, shortlist.powers):
@@ -274,8 +277,11 @@ class FrameMatcher:
                 contributions.append(contribution)
                 expectations.append(shortlist.mix.expectation + contribution.expectation)
                 variances.append(shortlist.mix.variance + contribution.variance)
+                sounding.append(shortlist.mix.sounding + int(contribution.sounding))
 
-        costs = self.scorer.frame_costs(target, spectral_costs, np.stack(expectations), np.array(variances))
+        costs = self.scorer.frame_costs(
+            target, spectral_costs, np.stack(expectations), np.array(variances), np.array(sounding)
+        )
         columns: List[Column] = []
         start = 0
         for shortlist in shortlists:

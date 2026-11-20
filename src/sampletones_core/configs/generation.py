@@ -18,10 +18,20 @@ class CalculationConfig(DataModel):
 
 
 class WeightsConfig(DataModel):
+    """How a frame's cost is composed.
+
+    Attributes:
+        spectral_loss_weight: The share of the cost the spectral term carries, before the blend is normalized.
+        temporal_loss_weight: The share of the cost the temporal term carries, before the blend is normalized.
+        channel_price: What each sounding channel adds to a frame's cost, on the scale of the frame's own
+            sound, so a channel sounds only where it lowers the criterion by more.
+    """
+
     model_config = ConfigDict(extra="forbid", frozen=True, validate_default=True)
 
     spectral_loss_weight: float = Field(default=generation_default("weights", "spectral_loss_weight"), ge=0.0)
     temporal_loss_weight: float = Field(default=generation_default("weights", "temporal_loss_weight"), ge=0.0)
+    channel_price: float = Field(default=generation_default("weights", "channel_price"), ge=0.0)
 
 
 class MetricConfig(DataModel):

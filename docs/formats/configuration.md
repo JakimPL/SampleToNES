@@ -68,6 +68,7 @@ records them.
 | --- | --- | --- |
 | `spectral_loss_weight` | weight of the spectral term in the [criterion](../concepts/reconstruction.md) | ≥ 0 |
 | `temporal_loss_weight` | weight of the temporal term | ≥ 0 |
+| `channel_price` | what each sounding channel adds to a frame's cost, as a share of the frame's sound; a channel sounds only where it lowers the criterion by more | ≥ 0 |
 
 ### `generation.metric`
 

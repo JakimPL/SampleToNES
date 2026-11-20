@@ -189,6 +189,12 @@ cost = α · spectral + β · temporal
   a spread about it. For waveforms expected to sum to `E` with a per-sample variance `V`,
   `E mean((t − x)²) = mean((t − E)²) + V`, whose root normalizes as above.
 
+A frame's cost also charges each channel it sounds `generation.weights.channel_price`, which is zero by
+default and an opt-in setting while the calibration benchmark judges it. Both terms are relative to the
+frame's own sound, so the price is a share of that sound as well. A channel then sounds only where it
+lowers the criterion by more than the price, which keeps a quiet extra note from covering a little of
+the frame. The price reaches the assignment and the decoder alike through the costs of the columns.
+
 A lower cost is a better match. The criterion scores many candidates at once, and runs on the graphics
 card where the machine has one.
 

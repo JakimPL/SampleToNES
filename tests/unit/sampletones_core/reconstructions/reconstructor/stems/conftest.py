@@ -160,6 +160,7 @@ def _scored_alone(
         spectral,
         (mix.expectation + contribution.expectation)[None, :],
         np.array([mix.variance + contribution.variance]),
+        np.array([mix.sounding + int(contribution.sounding)]),
     )[0]
     return ScoredCandidate(instruction=instruction, cost=float(cost), contribution=contribution)
 

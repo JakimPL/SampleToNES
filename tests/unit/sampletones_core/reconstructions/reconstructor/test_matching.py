@@ -35,6 +35,7 @@ LADDER_STEP: Final[int] = 2
 QUIET_RUNG: Final[int] = 3
 MIDDLE_RUNG: Final[int] = 7
 REQUESTED_ROWS: Final[int] = 4
+CHANNEL_PRICE: Final[float] = 0.01
 
 
 def _long_noise(library_data: InstructionLibraryData) -> NoiseInstruction:
@@ -189,6 +190,38 @@ class TestScoreColumn:
         )
 
         assert not column[0].instruction.on
+
+    def test_a_priced_column_charges_each_sounding_candidate_the_price_and_its_silence_nothing(
+        self,
+        worker: ReconstructorWorker,
+        config: Config,
+        window: Window,
+        channels: Dict[ChannelName, GeneratorUnion],
+        library_data: InstructionLibraryData,
+        synthetic_fragment: Fragment,
+    ) -> None:
+        weights = config.generation.weights.model_copy(update={"channel_price": CHANNEL_PRICE})
+        priced = ReconstructorWorker(
+            config=config.model_copy(update={"generation": config.generation.model_copy(update={"weights": weights})}),
+            window=window,
+            channels=channels,
+            library_data=library_data,
+            signal_length=WORKER_SIGNAL_LENGTH,
+        )
+        for generator in _kinds(worker):
+            plain = worker.matcher.score_column(
+                synthetic_fragment, generator, FrameMix.empty(synthetic_fragment), drive=UNIT_DRIVE
+            )
+            charged = priced.matcher.score_column(
+                synthetic_fragment, generator, FrameMix.empty(synthetic_fragment), drive=UNIT_DRIVE
+            )
+
+            costs = {candidate.instruction: candidate.cost for candidate in plain}
+            assert {candidate.instruction for candidate in charged} == set(costs)
+            for candidate in charged:
+                assert candidate.cost == pytest.approx(
+                    costs[candidate.instruction] + CHANNEL_PRICE * candidate.instruction.on
+                )
 
     def test_a_library_without_the_class_s_silence_is_refused(
         self,

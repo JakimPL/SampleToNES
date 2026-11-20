@@ -7,6 +7,7 @@ calculation:
 weights:
   spectral_loss_weight: 0.8
   temporal_loss_weight: 0.2
+  channel_price: 0.0
 
 metric:
   spectral_distance: beta_divergence

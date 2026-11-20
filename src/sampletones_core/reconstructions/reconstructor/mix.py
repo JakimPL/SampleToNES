@@ -22,17 +22,24 @@ class FrameMix:
         power: The summed power density per bin.
         expectation: The summed expected waveform.
         variance: The summed per-sample variance.
+        sounding: How many of the picks sound a note.
     """
 
     power: np.ndarray
     expectation: np.ndarray
     variance: float
+    sounding: int
 
     @classmethod
     def empty(cls, target: Fragment) -> Self:
         """The mix of no picks, shaped to the frame it is scored against."""
         silence = Contribution.silence(len(target.feature.values), target.audio.shape[0])
-        return cls(power=silence.power, expectation=silence.expectation, variance=silence.variance)
+        return cls(
+            power=silence.power,
+            expectation=silence.expectation,
+            variance=silence.variance,
+            sounding=int(silence.sounding),
+        )
 
     @classmethod
     def of(cls, target: Fragment, contributions: Sequence[Contribution]) -> Self:
@@ -49,6 +56,7 @@ class FrameMix:
             power=self.power + contribution.power,
             expectation=self.expectation + contribution.expectation,
             variance=self.variance + contribution.variance,
+            sounding=self.sounding + int(contribution.sounding),
         )
 
     def residual_waveform(self, target: Fragment) -> np.ndarray:
