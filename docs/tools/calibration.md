@@ -187,6 +187,9 @@ refused before the run starts. The packaged sets:
 - `joint-price005`, `joint-price01`, `joint-price02`: the joint assignment with every sounding channel
   charged 0.005, 0.01 or 0.02 of the frame's sound
   ([`channel_price`](../concepts/reconstruction.md#4-scoring-a-candidate-the-criterion)).
+- `fitted`, `joint-fitted`: the working level read from a triangle line the frames hold
+  ([`level: fitted`](../concepts/reconstruction.md#34-the-working-level-coefficient)), with today's
+  assignment or the joint one.
 
 `--levels true` matches every sound at the level its file holds. For a sound written as NES frames
 that is the level the channels play its frames at, where the written frames fit exactly, so a reading

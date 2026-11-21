@@ -14,10 +14,12 @@ from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
     ChannelName,
     GeneratorClassName,
+    LevelMethod,
 )
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.generators import FULL_SCALE_RMS_LEVELS
 from sampletones_core.generators.render import render_channels
+from sampletones_core.instructions import PulseInstruction, TriangleInstruction
 from sampletones_core.library import InstructionLibraryData
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels
 from sampletones_core.reconstructions.reconstructor.decoder.base import Lattices, Streams
@@ -28,6 +30,8 @@ from sampletones_shared.exceptions import NoLibraryDataError
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
+from .conftest import rendered_audio
+
 TRIANGLE_LEVEL: Final[float] = FULL_SCALE_RMS_LEVELS[GeneratorClassName.TRIANGLE_GENERATOR]
 SINE_FRAMES: Final[int] = 30
 SINE_AMPLITUDE: Final[float] = 0.8
@@ -36,6 +40,11 @@ OFF_RATE: Final[int] = 48000
 OFF_RATE_ABOVE: Final[int] = 96000
 SQUARE_PEAK: Final[float] = 0.5
 SQUARE_FREQUENCY: Final[float] = 220.0
+BASS: Final[TriangleInstruction] = TriangleInstruction(on=True, pitch=48)
+LEAD: Final[PulseInstruction] = PulseInstruction(on=True, pitch=64, volume=12, duty_cycle=2)
+HELD_FRAMES: Final[int] = 32
+LEVEL_TOLERANCE: Final[float] = 0.05
+TRUE_LEVEL: Final[float] = 1.0
 
 
 def _make_reconstructor(config: Config, library_data: InstructionLibraryData) -> Reconstructor:
@@ -428,6 +437,43 @@ class TestARecordingIsReadAtTheLevelItsConversionMatches:
         loaded = _make_reconstructor(config, library_data).load_audio([path])
 
         assert not np.any(loaded)
+
+
+class TestTheFittedWorkingLevel:
+    """Under ``fitted`` a bass line on the triangle sets the working level, so the triangle plays it at its one level."""
+
+    @staticmethod
+    def _unnormalized(config: Config, level: LevelMethod) -> Config:
+        return config.model_copy(
+            update={"general": config.general.model_copy(update={"normalize": False, "level": level})}
+        )
+
+    @staticmethod
+    def _bass_under_a_lead(tmp_path: Path, config: Config) -> Path:
+        path = tmp_path / "bass.wav"
+        audio = rendered_audio(config, {ChannelName.TRIANGLE: BASS, ChannelName.PULSE1: LEAD}, HELD_FRAMES)
+        write_wave(path, config.library.sample_rate, audio.astype(np.float32))
+        return path
+
+    def test_a_held_bass_brings_the_level_to_the_one_its_frames_were_played_at(
+        self, tmp_path: Path, config: Config, joint_library: InstructionLibraryData
+    ) -> None:
+        fitted = self._unnormalized(config, LevelMethod.FITTED)
+
+        reconstruction = _make_reconstructor(fitted, joint_library)(self._bass_under_a_lead(tmp_path, fitted))
+
+        assert reconstruction is not None
+        assert reconstruction.coefficient == pytest.approx(TRUE_LEVEL, rel=LEVEL_TOLERANCE)
+
+    def test_the_coefficient_method_sets_the_level_by_the_frames_loudness(
+        self, tmp_path: Path, config: Config, joint_library: InstructionLibraryData
+    ) -> None:
+        plain = self._unnormalized(config, LevelMethod.COEFFICIENT)
+
+        reconstruction = _make_reconstructor(plain, joint_library)(self._bass_under_a_lead(tmp_path, plain))
+
+        assert reconstruction is not None
+        assert reconstruction.coefficient != pytest.approx(TRUE_LEVEL, rel=LEVEL_TOLERANCE)
 
 
 def _write_square(path: Path, sample_rate: int) -> Path:

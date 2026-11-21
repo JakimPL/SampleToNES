@@ -22,7 +22,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy impo
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
 
-from .conftest import rendered_fragment
+from ..conftest import rendered_fragment
 
 LATTICE_WIDTH: Final[int] = 8
 LEAD: Final[PulseInstruction] = PulseInstruction(on=True, pitch=64, volume=12, duty_cycle=2)

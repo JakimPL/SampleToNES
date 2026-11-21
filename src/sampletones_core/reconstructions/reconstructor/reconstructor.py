@@ -17,6 +17,7 @@ from sampletones_core.constants.algorithm import MINIMUM_AUDIO_LEVEL
 from sampletones_core.constants.enums import (
     TONE_CHANNELS,
     ChannelName,
+    LevelMethod,
     ordered_channels,
 )
 from sampletones_core.fft import FragmentedAudio, Window
@@ -38,6 +39,8 @@ from sampletones_core.reconstructions.reconstruction.reconstruction import Recon
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstructor.decoder.base import Streams
+from sampletones_core.reconstructions.reconstructor.level import LevelFitter
+from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
 from sampletones_core.reconstructions.reconstructor.observer import SILENT_OBSERVER, ReconstructionObserver
 from sampletones_core.reconstructions.reconstructor.refinement import PitchRefiner
 from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
@@ -191,9 +194,9 @@ class Reconstructor:
         announce(report, ReconstructionStage.LOADING, STAGE_BEGUN, PREPARATIONS)
         loaded = self._load_stem_recordings(checked_paths)
         announce(report, ReconstructionStage.LOADING, RECORDINGS_LOADED, PREPARATIONS)
-        prepared = self._prepare_stem_frames(loaded.recordings, stems_config)
-        announce(report, ReconstructionStage.LOADING, FRAMES_PREPARED, PREPARATIONS)
         worker = self._build_worker(common_length(loaded.recordings))
+        prepared = self._prepare_stem_frames(loaded.recordings, stems_config, worker.matcher)
+        announce(report, ReconstructionStage.LOADING, FRAMES_PREPARED, PREPARATIONS)
         assignment = self._assign_stem_frames(prepared.frames, stems_config, worker, report)
         observe.assigned(assignment.lattices)
         announce(report, ReconstructionStage.DECODING, STAGE_BEGUN, WHOLE_STAGE)
@@ -265,6 +268,7 @@ class Reconstructor:
         self,
         recordings: Sequence[np.ndarray],
         stems_config: StemsConfig,
+        matcher: FrameMatcher,
     ) -> PreparedStems:
         """Scales the recordings to the working level and frames each of them.
 
@@ -276,12 +280,13 @@ class Reconstructor:
         Args:
             recordings: The loaded stem recordings, in entry order.
             stems_config: The stems setup the run is made under.
+            matcher: The matching machinery a fitted working level is read with.
 
         Returns:
             PreparedStems: The scaled recordings and their frames, keyed by stem id, together
                 with the coefficient they were scaled by.
         """
-        coefficient = self.get_coefficient(mix(list(recordings)), stems_config)
+        coefficient = self._working_coefficient(recordings, stems_config, matcher)
         self.reset_generators()
         covered = stems_config.covered_channels
         self.state = ReconstructionState.create([name for name in ChannelName.items() if name in covered])
@@ -427,6 +432,30 @@ class Reconstructor:
             MINIMUM_AUDIO_LEVEL,
         )
         return float(level / self._working_level(stems_config))
+
+    def _working_coefficient(
+        self,
+        recordings: Sequence[np.ndarray],
+        stems_config: StemsConfig,
+        matcher: FrameMatcher,
+    ) -> float:
+        """The coefficient the recordings are divided by, moved onto their triangle line under ``fitted``.
+
+        Under the ``coefficient`` level method the working level is :meth:`get_coefficient`'s. Under
+        ``fitted`` it moves by the factor that brings a triangle line the recordings hold onto the
+        triangle's one level (:class:`LevelFitter`), and stays where they hold none.
+        """
+        coefficient = self.get_coefficient(mix(list(recordings)), stems_config)
+        match self.config.general.level:
+            case LevelMethod.COEFFICIENT:
+                return coefficient
+            case LevelMethod.FITTED:
+                fitter = LevelFitter(stems_config, self.channels, matcher, self.config, self.window)
+                factor = fitter.factor(
+                    {entry.id: recording for entry, recording in zip(stems_config.entries, recordings)},
+                    coefficient,
+                )
+                return coefficient * factor if factor is not None else coefficient
 
     def _working_level(self, stems_config: StemsConfig) -> float:
         """The full-scale RMS level of the quietest covered tone channel, or covered channel without one."""

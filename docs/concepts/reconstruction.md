@@ -154,6 +154,28 @@ when no triangle is covered, and the noise channel does for a noise-only setup. 
 what a single tone channel renders whole, so one channel can answer it, and louder frames call on more
 channels.
 
+The triangle has one level, so a working level set by the frames' RMS can leave a triangle bass line
+louder or quieter than the triangle plays, and a pulse then takes the bass. With `general.level: fitted`
+the level is read from the bass line itself, for material written for the NES or close to it:
+
+1. Every frame that a recording which may sound the triangle sounds through, two frames on either
+   side, is fitted with every note at once, as the joint assignment's first step does, the triangle
+   free to sound at any level. A low note is read over a window several frames long, and a note a
+   rest cuts short reads quieter than it plays. The lowest run of neighboring triangle notes holding a
+   fair share of the fitted power is the frame's bass, and the square root of its level says how loud
+   the bass stands against the triangle.
+2. Where a bass stands on at least half of those frames and their readings agree, the reading most of
+   the others lie near is the level the bass plays at. A bass resting between notes or changing note
+   within a frame's window reads quieter than it plays, and a pulse sharing its note reads louder,
+   while the frames that hold the line read alike.
+3. The joint assignment chooses a sample of the frames at the first level and at the one read. The new
+   level holds where the triangle then plays the bass the frames were read on in most of them, and
+   where the frames as chosen cost less than at the first level. A triangle note fitting a pulse's
+   fundamental reads a level too, and there the choice gives that note back to the pulse, or the pulse
+   falls short of what it then has to play.
+
+Elsewhere, as for a recording, whose level is a choice, the coefficient stays as above.
+
 ## 4. Scoring a candidate: the criterion
 
 The **criterion** scores a candidate against the target frame as a weighted sum of a spectral and a

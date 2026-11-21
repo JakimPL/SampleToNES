@@ -29,3 +29,12 @@ settings:
         method: joint
       weights:
         channel_price: 0.02
+  fitted:
+    general:
+      level: fitted
+  joint-fitted:
+    general:
+      level: fitted
+    generation:
+      assignment:
+        method: joint

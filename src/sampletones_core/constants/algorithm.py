@@ -1,6 +1,6 @@
 from typing import Final
 
-from sampletones_core.constants.enums import ChannelName, HierarchyMode
+from sampletones_core.constants.enums import ChannelName, HierarchyMode, LevelMethod
 from sampletones_core.constants.general import (
     MIXER_NOISE,
     MIXER_PULSE,
@@ -16,6 +16,7 @@ QUANTIZATION_LEVELS: Final[int] = 32
 
 # Working level
 
+LEVEL_METHOD: Final[LevelMethod] = LevelMethod.COEFFICIENT
 COEFFICIENT_PERCENTILE: Final[float] = 90.0
 COEFFICIENT_AUDIBILITY_FLOOR: Final[float] = 1e-3
 MINIMUM_AUDIO_LEVEL: Final[float] = 1e-12

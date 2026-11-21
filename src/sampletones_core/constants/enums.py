@@ -73,6 +73,11 @@ class AssignmentMethod(StrEnum):
     JOINT = "joint"
 
 
+class LevelMethod(StrEnum):
+    COEFFICIENT = "coefficient"
+    FITTED = "fitted"
+
+
 class SelectorName(StrEnum):
     GREEDY = "greedy"
     VITERBI = "viterbi"

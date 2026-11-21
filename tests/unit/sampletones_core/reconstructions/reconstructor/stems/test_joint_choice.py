@@ -25,7 +25,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.settings impor
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 from sampletones_shared.array import to_numpy
 
-from .conftest import JOINT_SIGNAL_LENGTH, rendered_fragment
+from ..conftest import JOINT_SIGNAL_LENGTH, rendered_fragment
 
 PULSES: Final[List[ChannelName]] = [ChannelName.PULSE1, ChannelName.PULSE2]
 PITCHES: Final[FrozenSet[int]] = frozenset({64, 67})
