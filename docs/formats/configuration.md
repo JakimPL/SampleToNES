@@ -92,7 +92,7 @@ records them.
 
 | Key | Meaning | Values |
 | --- | --- | --- |
-| `selector` | search strategy | `greedy` / `viterbi` |
+| `selector` | search strategy; `combinations` decodes whole combinations of channels and needs `joint` | `greedy` / `viterbi` / `combinations` |
 | `top_k` | candidates kept per channel per frame | integer ≥ 1 |
 | `pitch_weight`, `volume_weight`, `timbre_weight`, `on_off_weight` | Viterbi transition costs for changing each dimension | ≥ 0 |
 

@@ -7,7 +7,8 @@ from sampletones_core.configs import Config
 from sampletones_core.instructions import InstructionUnion
 
 from ..matching import ScoredCandidate
-from .base import ChannelLattice, Decoder, Lattices, Streams
+from .base import Alternatives, ChannelLattice, Decoder, Streams
+from .transition import TransitionWeights, transition_cost
 
 
 class ViterbiDecoder(Decoder):
@@ -22,18 +23,14 @@ class ViterbiDecoder(Decoder):
 
     def __init__(self, config: Config) -> None:
         super().__init__(config)
-        decoder = config.generation.decoder
-        self.pitch_weight = decoder.pitch_weight
-        self.volume_weight = decoder.volume_weight
-        self.timbre_weight = decoder.timbre_weight
-        self.on_off_weight = decoder.on_off_weight
+        self.weights = TransitionWeights.of(config)
 
     @property
     def lattice_width(self) -> int:
         return self.config.generation.decoder.top_k
 
-    def decode(self, lattices: Lattices) -> Streams:
-        return {channel_name: self._decode_channel(frames) for channel_name, frames in lattices.items()}
+    def decode(self, alternatives: Alternatives) -> Streams:
+        return {channel_name: self._decode_channel(frames) for channel_name, frames in alternatives.lattices.items()}
 
     def _decode_channel(self, frames: ChannelLattice) -> List[ScoredCandidate]:
         path = self._decode(frames)
@@ -72,7 +69,7 @@ class ViterbiDecoder(Decoder):
         best_index = 0
         best_cost = float("inf")
         for index, previous_state in enumerate(previous_states):
-            total = previous_costs[index] + self._transition_cost(previous_state.instruction, instruction)
+            total = previous_costs[index] + transition_cost(previous_state.instruction, instruction, self.weights)
             if total < best_cost:
                 best_cost = total
                 best_index = index
@@ -88,36 +85,3 @@ class ViterbiDecoder(Decoder):
 
         path.reverse()
         return path
-
-    def _transition_cost(self, previous: InstructionUnion, current: InstructionUnion) -> float:
-        if not previous.on and not current.on:
-            return 0.0
-
-        if previous.on != current.on:
-            return self.on_off_weight
-
-        cost = 0.0
-        cost += self.pitch_weight * self._distance(previous, current, "pitch")
-        cost += self.pitch_weight * self._distance(previous, current, "period")
-        cost += self.volume_weight * self._distance(previous, current, "volume")
-        cost += self.timbre_weight * self._mismatch(previous, current, "duty_cycle")
-        cost += self.timbre_weight * self._mismatch(previous, current, "short")
-        return cost
-
-    @staticmethod
-    def _distance(previous: InstructionUnion, current: InstructionUnion, field: str) -> float:
-        previous_value = getattr(previous, field, None)
-        current_value = getattr(current, field, None)
-        if previous_value is None or current_value is None:
-            return 0.0
-
-        return float(abs(int(previous_value) - int(current_value)))
-
-    @staticmethod
-    def _mismatch(previous: InstructionUnion, current: InstructionUnion, field: str) -> float:
-        previous_value = getattr(previous, field, None)
-        current_value = getattr(current, field, None)
-        if previous_value is None or current_value is None:
-            return 0.0
-
-        return 0.0 if previous_value == current_value else 1.0

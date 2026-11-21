@@ -12,11 +12,12 @@ from sampletones_tools.calibration.referee.search import (
     DECODER,
     GAINS,
     MISPLACED,
+    POOLED,
     UNREACHED,
     SearchReferee,
     formable,
 )
-from sampletones_tools.calibration.trace import InstructionColumn, SearchTrace
+from sampletones_tools.calibration.trace import InstructionColumn, PoolTrace, SearchTrace
 
 from .truths import converted, judged, written_truth
 
@@ -56,11 +57,24 @@ def _trace(
     decoded: Mapping[ChannelName, InstructionUnion],
 ) -> SearchTrace:
     """A search offering the same column and decoding the same frame on every frame of each channel."""
+    return _pooled_trace(columns, decoded, {})
+
+
+def _pooled_trace(
+    columns: Mapping[ChannelName, Sequence[InstructionUnion]],
+    decoded: Mapping[ChannelName, InstructionUnion],
+    pools: Mapping[Tuple[ChannelName, ...], Sequence[Tuple[InstructionUnion, ...]]],
+) -> SearchTrace:
+    """A search as ``_trace`` reads it that also pools the same combinations on every frame, one stem per entry."""
     held: Dict[ChannelName, Tuple[InstructionColumn, ...]] = {
         channel: (tuple(column),) * FRAMES for channel, column in columns.items()
     }
     return SearchTrace(
         columns=held,
+        pools={
+            stem_id: PoolTrace(channel_names=channel_names, frames=(tuple(combinations),) * FRAMES)
+            for stem_id, (channel_names, combinations) in enumerate(pools.items())
+        },
         decoded={channel: (instruction,) * FRAMES for channel, instruction in decoded.items()},
     )
 
@@ -154,6 +168,7 @@ class TestSearchReferee:
         columns = {ChannelName.PULSE1: [LEAD, SILENT_PULSE]}
         trace = SearchTrace(
             columns={ChannelName.PULSE1: (tuple(columns[ChannelName.PULSE1]),) * (2 * FRAMES)},
+            pools={},
             decoded={ChannelName.PULSE1: (LEAD,) * FRAMES + (FILLER,) * FRAMES},
         )
 
@@ -163,6 +178,59 @@ class TestSearchReferee:
         truth = Truth(instructions={}, pitches={"bass": (110.0,) * FRAMES})
 
         assert referee.judge(truth, _trace({}, {}), converted(_held(CHORD))) is None
+
+
+class TestThePooledReading:
+    """The pooled reading counts frames whose pools can sound the written notes, one combination per stem."""
+
+    MISSED: Final[Dict[ChannelName, InstructionUnion]] = {
+        ChannelName.PULSE1: LEAD,
+        ChannelName.PULSE2: FILLER,
+        ChannelName.TRIANGLE: SILENT_TRIANGLE,
+    }
+    COLUMNS: Final[Dict[ChannelName, List[InstructionUnion]]] = {
+        channel: [frame, SILENCES[channel]] for channel, frame in MISSED.items()
+    }
+    TONAL: Final[Tuple[ChannelName, ...]] = (ChannelName.PULSE1, ChannelName.PULSE2, ChannelName.TRIANGLE)
+
+    def test_a_pool_holding_the_written_notes_reads_as_pooled(self, referee: SearchReferee) -> None:
+        pools = {self.TONAL: [(LEAD, FILLER, SILENT_TRIANGLE), (HARMONY, LEAD, BASS)]}
+
+        readings = _judged(referee, CHORD_TRUTH, _pooled_trace(self.COLUMNS, self.MISSED, pools))
+
+        assert (readings["score"], readings[POOLED]) == (1.0, 1.0)
+
+    def test_a_pool_missing_the_written_notes_reads_as_unpooled(self, referee: SearchReferee) -> None:
+        pools = {self.TONAL: [(LEAD, FILLER, SILENT_TRIANGLE), (LEAD, HARMONY, SILENT_TRIANGLE)]}
+
+        readings = _judged(referee, CHORD_TRUTH, _pooled_trace(self.COLUMNS, self.MISSED, pools))
+
+        assert readings[POOLED] == 0.0
+
+    @pytest.mark.parametrize(
+        "bass_pool, pooled",
+        [([(BASS,), (SILENT_TRIANGLE,)], 1.0), ([(SILENT_TRIANGLE,)], 0.0)],
+        ids=["each stem holds its part", "a stem lacks its part"],
+    )
+    def test_the_stems_pools_sound_the_written_notes_together(
+        self,
+        referee: SearchReferee,
+        bass_pool: List[Tuple[InstructionUnion, ...]],
+        pooled: float,
+    ) -> None:
+        pools = {
+            (ChannelName.PULSE1, ChannelName.PULSE2): [(LEAD, HARMONY), (FILLER, SILENT_PULSE)],
+            (ChannelName.TRIANGLE,): bass_pool,
+        }
+
+        readings = _judged(referee, CHORD_TRUTH, _pooled_trace(self.COLUMNS, self.MISSED, pools))
+
+        assert readings[POOLED] == pooled
+
+    def test_a_search_pooling_nothing_has_no_pooled_reading(self, referee: SearchReferee) -> None:
+        readings = _judged(referee, CHORD_TRUTH, _trace(self.COLUMNS, self.MISSED))
+
+        assert POOLED not in readings
 
 
 class TestFormable:

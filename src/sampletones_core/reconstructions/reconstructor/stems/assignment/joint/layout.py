@@ -56,6 +56,21 @@ class StemLayout:
         """The stem's channels of one kind, in channel order."""
         return tuple(slot for slot in self.slots if slot.kind == kind)
 
+    @property
+    def interchangeable_pulses(self) -> Tuple[int, ...]:
+        """The places of the stem's pulses where it holds two or more and drives them alike, empty otherwise.
+
+        Pulses driven alike sound a note the same on either channel, so a combination sounds the same
+        with their rows in any order.
+        """
+        pulses = tuple(
+            index for index, slot in enumerate(self.slots) if slot.kind == GeneratorClassName.PULSE_GENERATOR
+        )
+        if len(pulses) < 2 or len({self.slots[index].drive for index in pulses}) != 1:
+            return ()
+
+        return pulses
+
 
 def separate_layouts(stems_config: StemsConfig, channels: Dict[ChannelName, GeneratorUnion]) -> Tuple[StemLayout, ...]:
     """Every stem's layout, each channel held by one stem alone.

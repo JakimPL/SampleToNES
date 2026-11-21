@@ -1,6 +1,6 @@
 import itertools
 from dataclasses import dataclass
-from typing import Dict, Final, FrozenSet, Mapping, Optional, Sequence, Set, Tuple
+from typing import Dict, Final, FrozenSet, List, Mapping, Optional, Sequence, Set, Tuple
 
 from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName, ordered_channels
 from sampletones_core.reconstructions import Reconstruction
@@ -18,10 +18,12 @@ ASSIGNMENT: Final[str] = "assignment"
 DECODER: Final[str] = "decoder"
 GAINS: Final[str] = "gains"
 MISPLACED: Final[str] = "misplaced"
+POOLED: Final[str] = "pooled"
 
 TONAL_CHANNELS: Final[Tuple[ChannelName, ...]] = tuple(ordered_channels(TONE_CHANNELS))
 
 NoteOptions = FrozenSet[Optional[Note]]
+PoolNotes = FrozenSet[FrozenSet[Note]]
 
 
 @dataclass
@@ -37,6 +39,8 @@ class SearchTally:
     misplaced: int = 0
     written_notes: int = 0
     unreached_notes: int = 0
+    pool_frames: int = 0
+    pooled: int = 0
 
     def add(
         self,
@@ -44,9 +48,17 @@ class SearchTally:
         options: Mapping[ChannelName, NoteOptions],
         heads: FrozenSet[Note],
         decoded: FrozenSet[Note],
+        pools: Optional[Sequence[PoolNotes]],
     ) -> None:
-        """Counts one sounding frame by where its written notes were lost, if they were."""
+        """Counts one sounding frame by where its written notes were lost, if they were.
+
+        ``pools`` holds the note sets each stem's pool offers the frame, or ``None`` where the search
+        pooled no combinations.
+        """
         self.sounding += 1
+        if pools is not None:
+            self.pool_frames += 1
+            self.pooled += poolable(target, pools)
         offered: Set[Optional[Note]] = set().union(*options.values())
         self.written_notes += len(target)
         self.unreached_notes += sum(note not in offered for note in target)
@@ -81,6 +93,8 @@ class SearchTally:
         }
         if self.written_notes:
             components[UNREACHED] = self.unreached_notes / self.written_notes
+        if self.pool_frames:
+            components[POOLED] = self.pooled / self.pool_frames
 
         return Judgment(score=1.0 - self.right / self.sounding, components=components)
 
@@ -98,7 +112,9 @@ class SearchReferee:
     The score is the share of counted frames decoded wrong. The readings behind it are the share lost
     at each stage, the share the decoder put right after the picks had it wrong (``gains``), the share
     whose decoded pitches are the written ones on another channel kind (``misplaced``), and the share
-    of written notes no column offers on their channel kind (``unreached``).
+    of written notes no column offers on their channel kind (``unreached``). Where the search pooled
+    whole combinations, ``pooled`` is the share of counted frames whose pools can sound the written
+    notes, one combination per stem.
     """
 
     @property
@@ -129,6 +145,7 @@ class SearchReferee:
                 options,
                 _heads(reader, trace, frame),
                 reader.notes({channel: decoded[channel][frame] for channel in TONAL_CHANNELS}),
+                _pool_notes(reader, trace, frame),
             )
 
         return tally.judgment()
@@ -142,6 +159,32 @@ def formable(target: FrozenSet[Note], options: Mapping[ChannelName, NoteOptions]
             return True
 
     return False
+
+
+def poolable(target: FrozenSet[Note], pools: Sequence[PoolNotes]) -> bool:
+    """Whether one combination from every stem's pool sounds exactly ``target`` together.
+
+    A stem's combination joins a match only where it sounds part of ``target``, so each pool is
+    narrowed to those before the stems' choices are crossed.
+    """
+    within = [[notes for notes in pool if notes <= target] for pool in pools]
+    for chosen in itertools.product(*within):
+        if frozenset().union(*chosen) == target:
+            return True
+
+    return False
+
+
+def _pool_notes(reader: NoteReader, trace: SearchTrace, frame: int) -> Optional[List[PoolNotes]]:
+    """The note sets each stem's pool offers at ``frame``, or ``None`` where the trace holds no pools."""
+    if not trace.pools:
+        return None
+
+    return [
+        frozenset(reader.notes(dict(zip(pool.channel_names, combination))) for combination in pool.frames[frame])
+        for pool in trace.pools.values()
+        if frame < len(pool.frames)
+    ]
 
 
 def _column(trace: SearchTrace, channel: ChannelName, frame: int) -> Tuple[Frame, ...]:

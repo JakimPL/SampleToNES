@@ -105,7 +105,7 @@ class _Judging:
         return self.catalog.instructions.index(instruction)
 
     def best(self, candidates: List[Rows]) -> ScoredCombination:
-        return self.judge.best(self.search, candidates)
+        return self.judge.best(self.search, self.judge.finalists(candidates))
 
     def sounding(self, combination: ScoredCombination) -> Set[Tuple[int, int, int]]:
         """The pitch, volume and duty cycle of every pulse the combination sounds."""

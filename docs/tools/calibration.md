@@ -190,6 +190,9 @@ refused before the run starts. The packaged sets:
 - `fitted`, `joint-fitted`: the working level read from a triangle line the frames hold
   ([`level: fitted`](../concepts/reconstruction.md#34-the-working-level-coefficient)), with today's
   assignment or the joint one.
+- `joint-combinations`, `joint-fitted-combinations`: the joint assignment decoded over
+  [whole combinations](../concepts/reconstruction.md#55-decoding-whole-combinations), at the working level
+  of today or the fitted one.
 
 `--levels true` matches every sound at the level its file holds. For a sound written as NES frames
 that is the level the channels play its frames at, where the written frames fit exactly, so a reading
@@ -434,6 +437,9 @@ They never listen, so they say *what* went wrong where the audio referees say ho
   - `gains`: frames the picks had wrong and the decoder put right.
   - `misplaced`: wrong frames whose decoded pitches are the written ones, on another kind of channel.
   - `unreached`: written notes no candidate offers on their kind of channel.
+  - `pooled`: frames whose pools of whole combinations can sound the written notes, one combination per
+    source. The [joint assignment](../concepts/reconstruction.md#52-assigning-channels-jointly) pools
+    them, and other assignments have no reading.
 - **`pitch`** answers every frame a line of the sound plays with the closest note a tonal channel of
   the reconstruction sounds then, whichever channel that is. The score is the share of frames not
   answered within half a semitone. Its readings are the share answered an `octave` off (the right

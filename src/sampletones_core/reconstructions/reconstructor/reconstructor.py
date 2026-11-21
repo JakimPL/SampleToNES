@@ -198,9 +198,10 @@ class Reconstructor:
         prepared = self._prepare_stem_frames(loaded.recordings, stems_config, worker.matcher)
         announce(report, ReconstructionStage.LOADING, FRAMES_PREPARED, PREPARATIONS)
         assignment = self._assign_stem_frames(prepared.frames, stems_config, worker, report)
-        observe.assigned(assignment.lattices)
+        alternatives = assignment.alternatives
+        observe.assigned(alternatives)
         announce(report, ReconstructionStage.DECODING, STAGE_BEGUN, WHOLE_STAGE)
-        streams = worker.decoder.decode(assignment.lattices)
+        streams = worker.decoder.decode(alternatives)
         observe.decoded(streams)
         assignment.release_silent(streams)
         streams = self._refiner(stems_config).refine(streams, assignment.stem_ids, prepared.recordings)

@@ -1,5 +1,4 @@
 import itertools
-from dataclasses import replace
 from typing import Dict, Final, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -13,14 +12,16 @@ from sampletones_core.reconstructions.reconstructor.stems.assignment.validation 
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
+from sampletones_core.reconstructions.reconstructor.stems.models.pool import StemPool
 from sampletones_shared.array import to_numpy
 
 from .catalog import KindCatalog
-from .choice import CombinationJudge, ScoredCombination
+from .choice import CombinationJudge, ScoredCombination, rearranged
 from .columns import channel_columns
-from .combinations import CombinationSearch
+from .combinations import CombinationSearch, Rows
 from .fit import FitTarget
 from .layout import StemLayout, separate_layouts
+from .pool import resting_pool, sounding_pool
 from .proposals import NoteDictionary, proposed_rows
 
 UNVOICED_DISTANCE: Final[float] = 24.0
@@ -39,7 +40,10 @@ class JointAssigner:
        levels free and the triangle at its one level, and the best are moved onto the library's
        rows one channel at a time.
     3. The full criterion chooses among the cheapest, and each channel's column lists its
-       alternatives with the other channels playing the choice, which is what the decoder reads.
+       alternatives with the other channels playing the choice, which is what a decoder of one channel
+       at a time reads. The stem's pool holds the choice with every set of its channels silenced, the
+       cheapest with one channel silenced, the choice with one channel moved to each alternative of its
+       column and the choice of the frame before, which is what a decoder over combinations reads.
 
     Every decision between notes compares complete mixes, so a note that only covers other notes'
     partials loses to the notes themselves. The two pulses are handed to the channels that keep each
@@ -74,6 +78,7 @@ class JointAssigner:
         self.dictionaries = {layout.stem_id: NoteDictionary.of(layout, self.catalogs) for layout in self.layouts}
         self.weights = np.asarray(to_numpy(matcher.scorer.criterion.weights), dtype=np.float64).reshape(-1)
         self.previous: Dict[int, Optional[PulseNotes]] = {layout.stem_id: None for layout in self.layouts}
+        self.previous_rows: Dict[int, Optional[Rows]] = {layout.stem_id: None for layout in self.layouts}
 
     def assign(self, fragments: Dict[int, Fragment]) -> StemFrameAssignment:
         """Assigns one frame: every sounding stem's channels from its own frame, the rest resting.
@@ -82,28 +87,39 @@ class JointAssigner:
             fragments: This frame of every stem, keyed by stem id.
 
         Returns:
-            The channels each stem holds and the channels left resting.
+            The channels each stem holds, the channels left resting and every stem's pool.
         """
         sounding = sounding_stems(fragments)
         choices: List[StemChoice] = []
         rested: List[ChannelName] = []
+        pools: List[StemPool] = []
         for layout in self.layouts:
-            if layout.stem_id in sounding and layout.slots:
-                held, idle = self._stem_frame(layout, fragments[layout.stem_id])
+            if not layout.slots:
+                continue
+
+            fragment = fragments[layout.stem_id]
+            if layout.stem_id in sounding:
+                held, idle, pool = self._stem_frame(layout, fragment)
                 choices.extend(held)
                 rested.extend(idle)
             else:
                 self.previous[layout.stem_id] = None
+                self.previous_rows[layout.stem_id] = None
                 rested.extend(slot.channel_name for slot in layout.slots)
+                pool = resting_pool(fragment, layout, self.channels)
+            pools.append(pool)
 
         ordered = [name for name in ChannelName.items() if name in rested]
         return StemFrameAssignment(
             choices=tuple(choices),
             rests=resting(ordered, self.channels, next(iter(fragments.values()))) if ordered else (),
+            pools=tuple(pools),
         )
 
-    def _stem_frame(self, layout: StemLayout, fragment: Fragment) -> Tuple[List[StemChoice], List[ChannelName]]:
-        """One stem's channels in one frame: those it holds, each with its column, and those left resting."""
+    def _stem_frame(
+        self, layout: StemLayout, fragment: Fragment
+    ) -> Tuple[List[StemChoice], List[ChannelName], StemPool]:
+        """One stem's channels in one frame: those it holds, each with its column, those left resting and its pool."""
         target = FitTarget.of(fragment, self.matcher.scorer.criterion)
         proposals = proposed_rows(
             fragment, target, layout, self.dictionaries[layout.stem_id], self.catalogs, self.matcher
@@ -111,7 +127,10 @@ class JointAssigner:
         search = CombinationSearch(fragment, target, layout, self.catalogs, self.matcher)
         refined = search.refined(search.fitted(proposals))
         judge = CombinationJudge(fragment, layout, self.catalogs, self.matcher, self.weights)
-        winner = self._ordered(layout, judge.best(search, [combination.rows for combination in refined]))
+        finalists = judge.finalists([combination.rows for combination in refined])
+        winner = self._ordered(layout, judge.best(search, finalists))
+        pooled = judge.pooled(search, finalists, winner, self.previous_rows[layout.stem_id])
+        self.previous_rows[layout.stem_id] = winner.rows
 
         held = self._held(layout, winner)
         columns = channel_columns(fragment, layout, held, winner, proposals, self.catalogs, self.matcher, self.width)
@@ -120,7 +139,8 @@ class JointAssigner:
             for index, column in zip(held, columns)
         ]
         idle = [slot.channel_name for index, slot in enumerate(layout.slots) if index not in held]
-        return choices, idle
+        pool = sounding_pool(fragment, layout, pooled, dict(zip(held, columns)), self.catalogs)
+        return choices, idle, pool
 
     def _held(self, layout: StemLayout, winner: ScoredCombination) -> List[int]:
         """The channels the stem holds: those the winner sounds, then silent ones up to the stem's count."""
@@ -143,25 +163,16 @@ class JointAssigner:
         if catalog is None or not pulses:
             return winner
 
-        if len({layout.slots[index].drive for index in pulses}) == 1:
+        interchangeable = layout.interchangeable_pulses
+        if interchangeable:
             previous = self.previous[layout.stem_id]
             winner = min(
-                (self._permuted(winner, pulses, order) for order in itertools.permutations(pulses)),
+                (rearranged(winner, interchangeable, order) for order in itertools.permutations(interchangeable)),
                 key=lambda arranged: _distance([catalog.note_name(arranged.rows[index]) for index in pulses], previous),
             )
 
         self.previous[layout.stem_id] = tuple(catalog.note_name(winner.rows[index]) for index in pulses)
         return winner
-
-    @staticmethod
-    def _permuted(winner: ScoredCombination, pulses: Sequence[int], order: Sequence[int]) -> ScoredCombination:
-        rows = list(winner.rows)
-        contributions = list(winner.contributions)
-        for target, source in zip(pulses, order):
-            rows[target] = winner.rows[source]
-            contributions[target] = winner.contributions[source]
-
-        return replace(winner, rows=tuple(rows), contributions=tuple(contributions))
 
 
 def _distance(notes: Sequence[Optional[int]], previous: Optional[PulseNotes]) -> float:

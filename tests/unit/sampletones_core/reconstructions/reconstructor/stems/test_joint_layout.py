@@ -54,3 +54,27 @@ class TestStemLayout:
 
         with pytest.raises(ValueError, match="one stem"):
             separate_layouts(stems, all_channels)
+
+    def test_pulses_driven_alike_are_interchangeable(self, all_channels: Dict[ChannelName, GeneratorUnion]) -> None:
+        stems = _stems({0: [ChannelName.PULSE1, ChannelName.PULSE2, ChannelName.TRIANGLE]}, channel_cap=3)
+
+        (layout,) = separate_layouts(stems, all_channels)
+
+        assert layout.interchangeable_pulses == (0, 1)
+
+    def test_pulses_driven_apart_or_alone_are_not_interchangeable(
+        self, all_channels: Dict[ChannelName, GeneratorUnion]
+    ) -> None:
+        apart = StemEntry(
+            id=0,
+            settings=StemSettings(
+                channels=[ChannelName.PULSE1, ChannelName.PULSE2],
+                bends=[],
+                drives={ChannelName.PULSE1: 1.0, ChannelName.PULSE2: 2.0},
+                channel_cap=2,
+            ),
+        )
+        alone = _stems({0: [ChannelName.PULSE1, ChannelName.TRIANGLE]}, channel_cap=2).entries[0]
+
+        assert StemLayout.of(apart, all_channels).interchangeable_pulses == ()
+        assert StemLayout.of(alone, all_channels).interchangeable_pulses == ()

@@ -81,6 +81,7 @@ class LevelMethod(StrEnum):
 class SelectorName(StrEnum):
     GREEDY = "greedy"
     VITERBI = "viterbi"
+    COMBINATIONS = "combinations"
 
 
 class HierarchyMode(StrEnum):

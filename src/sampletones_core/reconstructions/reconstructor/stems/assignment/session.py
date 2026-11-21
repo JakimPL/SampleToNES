@@ -139,6 +139,7 @@ class AssignmentSession:
                 for scored in self.choices
             ),
             rests=self._rests(),
+            pools=(),
         )
 
     def _round_robin(self) -> None:

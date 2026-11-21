@@ -10,11 +10,14 @@ import pytest
 
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
+from sampletones_core.configs.generation import AssignmentConfig
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
+    AssignmentMethod,
     ChannelName,
     GeneratorClassName,
     LevelMethod,
+    SelectorName,
 )
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.generators import FULL_SCALE_RMS_LEVELS
@@ -22,7 +25,7 @@ from sampletones_core.generators.render import render_channels
 from sampletones_core.instructions import PulseInstruction, TriangleInstruction
 from sampletones_core.library import InstructionLibraryData
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels
-from sampletones_core.reconstructions.reconstructor.decoder.base import Lattices, Streams
+from sampletones_core.reconstructions.reconstructor.decoder.base import Alternatives, Streams
 from sampletones_core.reconstructions.reconstructor.reconstructor import Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
@@ -293,11 +296,11 @@ class RecordingObserver:
     """Keeps what a run's observer hears, one hearing per stage."""
 
     def __init__(self) -> None:
-        self.lattices: List[Lattices] = []
+        self.alternatives: List[Alternatives] = []
         self.streams: List[Streams] = []
 
-    def assigned(self, lattices: Lattices) -> None:
-        self.lattices.append(lattices)
+    def assigned(self, alternatives: Alternatives) -> None:
+        self.alternatives.append(alternatives)
 
     def decoded(self, streams: Streams) -> None:
         self.streams.append(streams)
@@ -329,7 +332,8 @@ class TestTheObserver:
     ) -> None:
         observer = self._observed(config, library_data, synthetic_fragment, tmp_path)
 
-        (lattices,), (streams,) = observer.lattices, observer.streams
+        (alternatives,), (streams,) = observer.alternatives, observer.streams
+        lattices = alternatives.lattices
         assert set(lattices) == set(streams)
         for channel_name, lattice in lattices.items():
             assert len(lattice) == len(streams[channel_name])
@@ -343,10 +347,41 @@ class TestTheObserver:
     ) -> None:
         observer = self._observed(config, library_data, synthetic_fragment, tmp_path)
 
-        (lattices,), (streams,) = observer.lattices, observer.streams
+        (alternatives,), (streams,) = observer.alternatives, observer.streams
+        lattices = alternatives.lattices
         for channel_name, stream in streams.items():
             for column, candidate in zip(lattices[channel_name], stream):
                 assert candidate.instruction in [offered.instruction for offered in column]
+
+
+class TestDecodingWholeCombinations:
+    """Under the combinations decoder every decoded frame is one whole combination its stem pooled."""
+
+    def test_every_decoded_frame_is_a_combination_its_stem_pooled(
+        self, tmp_path: Path, config: Config, joint_library: InstructionLibraryData
+    ) -> None:
+        generation = config.generation.model_copy(
+            update={
+                "assignment": AssignmentConfig(method=AssignmentMethod.JOINT),
+                "decoder": config.generation.decoder.model_copy(update={"selector": SelectorName.COMBINATIONS}),
+            }
+        )
+        combined = config.model_copy(update={"generation": generation})
+        path = tmp_path / "chord.wav"
+        audio = rendered_audio(combined, {ChannelName.TRIANGLE: BASS, ChannelName.PULSE1: LEAD}, HELD_FRAMES)
+        write_wave(path, combined.library.sample_rate, audio.astype(np.float32))
+        observer = RecordingObserver()
+
+        reconstruction = _make_reconstructor(combined, joint_library)(path, observe=observer)
+
+        assert reconstruction is not None
+        (alternatives,), (streams,) = observer.alternatives, observer.streams
+        assert alternatives.pools
+        for stem_pools in alternatives.pools.values():
+            for frame, pool in enumerate(stem_pools.frames):
+                decoded = tuple(streams[name][frame].instruction for name in stem_pools.channel_names)
+                offered = [tuple(candidate.instruction for candidate in combination.candidates) for combination in pool]
+                assert decoded in offered
 
 
 class TestTheAudioAReconstructionRecords:

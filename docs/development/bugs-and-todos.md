@@ -113,6 +113,15 @@ dimension the import starts carrying.
   choice across stems, ordered by the hierarchy, closes it.
 * The joint assignment's speed against the picks is measured on the calibration benchmark alone. A case in
   `tests/benchmarks/` needs the full library, which an installation builds once.
+* The combinations decoder moves two channels at once only within its pool: the choice with channels
+  silenced, the finalists and the choice of the frame before. The Viterbi decoder may take two column
+  alternatives on two channels together, which keeps it ahead on some pieces, such as Super Mario Bros. at
+  the true level.
+* The combinations decoder holds a quiet pulse through a noise note. The criterion prices a pulse on a
+  partial of the noise 0.05 to 0.14 per frame below the noise alone, and the pool offers one such pulse in
+  every frame of the note, so the path keeps it. The per-channel decoder reads a different pulse in each
+  frame's column and stays silent. Single noise notes fall from 82% to 60% right and the drum sequence from
+  98% to 86%. A criterion that prices the pulse above the partial it explains closes it.
 
 ## Architecture
 

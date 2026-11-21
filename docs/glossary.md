@@ -197,7 +197,8 @@ See [Reconstructions](formats/reconstructions.md#instructions_data).
 The strategy that reads a channel's per-frame candidates into the stream it plays. The setting is
 `generation.decoder.selector`. The **greedy** decoder plays each frame's best candidate. The **Viterbi**
 decoder, the default, favors continuity: it changes a channel only when the gain in match quality
-outweighs the cost of the change.
+outweighs the cost of the change. The **combinations** decoder, an opt-in, does the same for whole
+combinations of a source's channels, which the joint assignment pools.
 
 ### Calibration
 

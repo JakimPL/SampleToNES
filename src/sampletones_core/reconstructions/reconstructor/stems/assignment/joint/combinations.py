@@ -178,10 +178,8 @@ class CombinationSearch:
 
     def canonical(self, rows: Rows) -> Rows:
         """The rows with the pulses in one order wherever the two are driven alike, so one sound reads once."""
-        pulses = [
-            index for index, slot in enumerate(self.layout.slots) if slot.kind == GeneratorClassName.PULSE_GENERATOR
-        ]
-        if len(pulses) != 2 or len({self.layout.slots[index].drive for index in pulses}) != 1:
+        pulses = self.layout.interchangeable_pulses
+        if len(pulses) != 2:
             return rows
 
         ordered = list(rows)

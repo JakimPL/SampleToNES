@@ -316,6 +316,13 @@ The two pulses go to the channels that keep each nearest the note it played a fr
 line stays on its channel. Every source is solved on its own channels, so the joint assignment needs
 each channel held by one source.
 
+The joint assignment also hands every source a **pool** of whole combinations per frame, which the
+[combinations decoder](#55-decoding-whole-combinations) reads. The pool holds the choice with every set of
+its sounding channels silenced, the cheapest combinations of step 3, each again with one channel
+silenced, and the choice of the frame before, scored in this frame. It also holds the choice with one channel moved to each alternative of its
+column, which the column has already scored. A frame the source leaves silent pools its one combination:
+every channel resting.
+
 ### 5.3 Greedy decoding
 
 The greedy decoder plays each frame's best candidate, reading one candidate per column. Each frame is
@@ -340,6 +347,31 @@ A resting frame reaches the decoder as a column of one, so a channel that no sou
 as the off state it is. Coming back on costs what any other on/off change costs. A frame the decoder
 settles on a silent instruction is released to the resting stem, so the resting stem id and the silence
 name the same frames. A channel decoded silent throughout is [standing by](../glossary.md#standing-by).
+
+### 5.5 Decoding whole combinations
+
+`generation.decoder.selector: combinations` decodes one path per source through the pools of the
+[joint assignment](#52-assigning-channels-jointly), which it needs. It is an opt-in setting while the
+calibration benchmark judges it. The Viterbi decoder weighs one channel's candidates with the source's
+other channels playing the frame's choice. At a note change, the frame's analysis window still holds the
+note before, and the frame's cheapest combination may move a pulse to the octave of a note it shares.
+Keeping the line takes several channels changing together, which no single channel's path can choose.
+
+Here a state is a whole combination of the source's channels, with its two pulses in either order where
+the source drives them alike. The path cost combines:
+
+- the frame's cost with the combination sounding, counted once, and
+- the transition cost of the Viterbi decoder, charged to every channel for its own change.
+
+A move of one channel then trades the frame's cost against its change as the Viterbi decoder trades it.
+A move of several channels together is weighed by the cost the frame reaches with all of them moved.
+
+The silenced combinations let a path turn any of the choice's channels off together where the frames
+around ask for it, as the Viterbi decoder can, and the moves along a column let it take every step the
+Viterbi decoder can take on one channel. The previous frame's choice lets a path hold a combination
+through a change. The
+chosen combination's channels become the channels' streams, and the refinement reads them as it reads
+the Viterbi decoder's.
 
 ## 6. Refining the pitch
 

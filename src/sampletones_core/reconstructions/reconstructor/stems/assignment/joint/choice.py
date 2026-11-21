@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+import itertools
+from dataclasses import dataclass, replace
 from typing import Dict, Final, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
@@ -95,8 +96,12 @@ class CombinationJudge:
 
         return tuple(contributions), mix
 
-    def best(self, search: CombinationSearch, candidates: Sequence[Rows]) -> ScoredCombination:
-        """The cheapest of ``candidates`` under the full criterion, thinned and with its pulses' duty cycles settled.
+    def finalists(self, candidates: Sequence[Rows]) -> List[ScoredCombination]:
+        """The first ``FINALISTS`` of ``candidates``, the spectral ranking's cheapest, under the full criterion."""
+        return self.scored(candidates[:FINALISTS])
+
+    def best(self, search: CombinationSearch, finalists: Sequence[ScoredCombination]) -> ScoredCombination:
+        """The cheapest of ``finalists``, thinned and with its pulses' duty cycles settled.
 
         The spectral ranking that orders the candidates favors a quiet extra channel that fills a
         little of the frame's power, which the full criterion can charge more for than it gains, so
@@ -108,18 +113,78 @@ class CombinationJudge:
         volume whose spectral cost stays within ``TIMBRE_TOLERANCE`` of its own, and keeps the one the
         full criterion prefers.
         """
-        winner = _cheapest(self.scored(candidates[:FINALISTS]))
+        winner = _cheapest(finalists)
         winner = self._thinned(search, self._timbres_settled(search, winner))
         return self._timbres_settled(search, winner)
+
+    def pooled(
+        self,
+        search: CombinationSearch,
+        finalists: Sequence[ScoredCombination],
+        winner: ScoredCombination,
+        previous: Optional[Rows],
+    ) -> List[ScoredCombination]:
+        """The combinations a decoder over whole combinations chooses among in the frame, the winner first.
+
+        The pool holds the winner with every set of its sounding channels silenced, so a path can let
+        any of its channels fall silent together where the frames around ask for it, as decoders of one
+        channel at a time can. It holds the finalists, each also with one of its channels silenced, and
+        the previous frame's winner, so a path can hold the combination the frame before sounded through
+        a change. Every combination is scored under the full criterion and reads once, whatever order
+        its pulses stand in.
+
+        Args:
+            search: The frame's combination search, which knows the stem's interchangeable pulses.
+            finalists: The frame's finalists, scored.
+            winner: The combination the frame's search chose.
+            previous: The combination the stem's previous frame chose, or ``None`` after a rest.
+
+        Returns:
+            The pooled combinations, each once.
+        """
+        pool: Dict[Rows, ScoredCombination] = {}
+        for combination in [winner, *finalists]:
+            pool.setdefault(search.canonical(combination.rows), combination)
+
+        trials = [
+            *self._quieted(winner.rows),
+            *(rows for combination in finalists for rows in self._silenced(combination.rows)),
+        ]
+        if previous is not None:
+            trials.append(previous)
+        fresh = list(dict.fromkeys(rows for rows in map(search.canonical, trials) if rows not in pool))
+        if fresh:
+            pool.update((combination.rows, combination) for combination in self.scored(fresh))
+
+        return list(pool.values())
+
+    def _silenced(self, rows: Rows) -> List[Rows]:
+        """``rows`` with each of its sounding channels silenced in turn."""
+        return [
+            _replaced(rows, index, self.catalogs[slot.kind].silence)
+            for index, slot in enumerate(self.layout.slots)
+            if self.catalogs[slot.kind].sounding(rows[index])
+        ]
+
+    def _quieted(self, rows: Rows) -> List[Rows]:
+        """``rows`` with every set of its sounding channels silenced, one channel before two."""
+        sounding = [
+            index for index, slot in enumerate(self.layout.slots) if self.catalogs[slot.kind].sounding(rows[index])
+        ]
+        quieted: List[Rows] = []
+        for count in range(1, len(sounding) + 1):
+            for silenced in itertools.combinations(sounding, count):
+                quiet = rows
+                for index in silenced:
+                    quiet = _replaced(quiet, index, self.catalogs[self.layout.slots[index].kind].silence)
+                quieted.append(quiet)
+
+        return quieted
 
     def _thinned(self, search: CombinationSearch, winner: ScoredCombination) -> ScoredCombination:
         """``winner`` with the channels silenced whose silence the full criterion prefers, one at a time."""
         while True:
-            silenced = [
-                _replaced(winner.rows, index, self.catalogs[slot.kind].silence)
-                for index, slot in enumerate(self.layout.slots)
-                if self.catalogs[slot.kind].sounding(winner.rows[index])
-            ]
+            silenced = self._silenced(winner.rows)
             if not silenced:
                 return winner
 
@@ -190,6 +255,17 @@ class CombinationJudge:
             return winner
 
         return _cheapest([winner, *self.scored(kept)])
+
+
+def rearranged(combination: ScoredCombination, places: Sequence[int], order: Sequence[int]) -> ScoredCombination:
+    """``combination`` with the rows and contributions at ``places`` taken from ``order``, one for one."""
+    rows = list(combination.rows)
+    contributions = list(combination.contributions)
+    for target, source in zip(places, order):
+        rows[target] = combination.rows[source]
+        contributions[target] = combination.contributions[source]
+
+    return replace(combination, rows=tuple(rows), contributions=tuple(contributions))
 
 
 def _replaced(rows: Rows, index: int, row: int) -> Rows:

@@ -4,10 +4,10 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import SINGLE_STATE_LATTICE_WIDTH
 from sampletones_core.constants.enums import ChannelName, SelectorName
 from sampletones_core.reconstructions.reconstructor.decoder import DECODERS
-from sampletones_core.reconstructions.reconstructor.decoder.base import ChannelLattice, Lattices
+from sampletones_core.reconstructions.reconstructor.decoder.base import Alternatives, ChannelLattice, Lattices
 from sampletones_core.reconstructions.reconstructor.decoder.greedy import GreedyDecoder
 
-from .conftest import JUMPED, STEADY, per_frame_best, state
+from .conftest import JUMPED, STEADY, heads_pooled, per_frame_best, state
 
 
 class TestDecoderCatalog:
@@ -39,7 +39,7 @@ class TestDecodedShape:
     ) -> None:
         lattices = self._lattices()
 
-        streams = DECODERS[selector_name](config).decode(lattices)
+        streams = DECODERS[selector_name](config).decode(heads_pooled(lattices))
 
         assert set(streams) == set(lattices)
         assert {name: len(stream) for name, stream in streams.items()} == {
@@ -52,7 +52,9 @@ class TestDecodedShape:
         selector_name: SelectorName,
         config: Config,
     ) -> None:
-        assert DECODERS[selector_name](config).decode({ChannelName.PULSE1: []}) == {ChannelName.PULSE1: []}
+        assert DECODERS[selector_name](config).decode(heads_pooled({ChannelName.PULSE1: []})) == {
+            ChannelName.PULSE1: []
+        }
 
 
 class TestGreedyDecoder:
@@ -66,7 +68,7 @@ class TestGreedyDecoder:
             (state(JUMPED, 0.00), state(STEADY, 0.05)),
         ]
 
-        streams = greedy_decoder.decode({ChannelName.PULSE1: frames})
+        streams = greedy_decoder.decode(Alternatives(lattices={ChannelName.PULSE1: frames}, pools={}))
 
         assert [candidate.instruction for candidate in streams[ChannelName.PULSE1]] == per_frame_best(frames)
         assert [candidate.instruction for candidate in streams[ChannelName.PULSE1]] == [STEADY, JUMPED]

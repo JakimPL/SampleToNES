@@ -1,4 +1,6 @@
-from pydantic import ConfigDict, Field
+from typing import Self
+
+from pydantic import ConfigDict, Field, model_validator
 
 from sampletones_core.configs.defaults import generation_default
 from sampletones_core.constants.enums import (
@@ -109,6 +111,12 @@ class RefinementConfig(DataModel):
 
 
 class GenerationConfig(DataModel):
+    """How a conversion chooses what every channel plays.
+
+    The ``combinations`` decoder reads the whole combinations the ``joint`` assignment pools, so it
+    runs with that assignment alone.
+    """
+
     model_config = ConfigDict(extra="forbid", frozen=True, validate_default=True)
 
     reset_phase: bool = Field(default=generation_default("reset_phase"))
@@ -119,3 +127,10 @@ class GenerationConfig(DataModel):
     assignment: AssignmentConfig = Field(default_factory=AssignmentConfig)
     decoder: DecoderConfig = Field(default_factory=DecoderConfig)
     refinement: RefinementConfig = Field(default_factory=RefinementConfig)
+
+    @model_validator(mode="after")
+    def _check_decoder_reads_the_assignment(self) -> Self:
+        if self.decoder.selector == SelectorName.COMBINATIONS and self.assignment.method != AssignmentMethod.JOINT:
+            raise ValueError("The combinations decoder needs the joint assignment, which pools whole combinations")
+
+        return self

@@ -38,3 +38,17 @@ settings:
     generation:
       assignment:
         method: joint
+  joint-combinations:
+    generation:
+      assignment:
+        method: joint
+      decoder:
+        selector: combinations
+  joint-fitted-combinations:
+    general:
+      level: fitted
+    generation:
+      assignment:
+        method: joint
+      decoder:
+        selector: combinations
