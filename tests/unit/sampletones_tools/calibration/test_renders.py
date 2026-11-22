@@ -14,6 +14,7 @@ from sampletones_tools.calibration.renders import (
     RenderRecord,
     channel_subsets,
     item_directory,
+    read_record,
     sounding_timelines,
     write_channel_renders,
     write_record,
@@ -90,6 +91,27 @@ class TestWriteRecord:
         record = RenderRecord.model_validate_json(older)
 
         assert (record.family, record.listed) == (UNFILED_FAMILY, True)
+
+
+class TestReadRecord:
+    def test_a_record_written_reads_back_unchanged(self, tmp_path: Path) -> None:
+        record = RenderRecord(
+            variant=VARIANT,
+            item=ITEM,
+            position=2,
+            family="notes",
+            category="notes-pulse",
+            listed=False,
+            timelines={"pulse1": "10"},
+            judgments={"referee": {"score": 1.0, "level": -0.5}},
+            silence={"referee": 50.0},
+        )
+        write_record(tmp_path, record)
+
+        assert read_record(tmp_path, VARIANT, ITEM) == record
+
+    def test_a_record_never_written_reads_as_none(self, tmp_path: Path) -> None:
+        assert read_record(tmp_path, VARIANT, ITEM) is None
 
 
 class TestChannelSubsets:

@@ -84,9 +84,8 @@ def write_render(
         audio: The render on the scale of the recording it reconstructs.
         sample_rate: Sampling rate of the render in Hz.
     """
-    directory = variant_directory(run_directory, record.variant)
-    directory.mkdir(parents=True, exist_ok=True)
-    write_flac(directory / get_filename(record.item, EXT_FILE_FLAC), sample_rate, audio.astype(np.float32))
+    path = variant_directory(run_directory, record.variant) / get_filename(record.item, EXT_FILE_FLAC)
+    _write_clip(path, audio, sample_rate)
     write_record(run_directory, record)
 
 
@@ -137,11 +136,9 @@ def write_channel_renders(
         return []
 
     directory = item_directory(run_directory, variant, item)
-    directory.mkdir(parents=True, exist_ok=True)
     for subset in subsets:
         audio = mix([approximations[channel] for channel in subset])
-        path = directory / get_filename(combination_name(subset), EXT_FILE_FLAC)
-        write_flac(path, sample_rate, audio.astype(np.float32))
+        _write_clip(directory / get_filename(combination_name(subset), EXT_FILE_FLAC), audio, sample_rate)
 
     return subsets
 
@@ -153,9 +150,7 @@ def write_recording(
     sample_rate: int,
 ) -> None:
     """Write the recording a run reconstructs an item from, as the reconstructor prepared it."""
-    directory = run_directory / RECORDINGS_DIRECTORY
-    directory.mkdir(parents=True, exist_ok=True)
-    write_flac(directory / get_filename(item, EXT_FILE_FLAC), sample_rate, audio.astype(np.float32))
+    _write_clip(run_directory / RECORDINGS_DIRECTORY / get_filename(item, EXT_FILE_FLAC), audio, sample_rate)
 
 
 def variant_directory(run_directory: Path, variant: str) -> Path:
@@ -166,3 +161,9 @@ def variant_directory(run_directory: Path, variant: str) -> Path:
 def item_directory(run_directory: Path, variant: str, item: str) -> Path:
     """The directory an item's per-channel clips lie in, beside the render they are parts of."""
     return variant_directory(run_directory, variant) / item
+
+
+def _write_clip(path: Path, audio: np.ndarray, sample_rate: int) -> None:
+    """Write a clip the page plays, as single-precision FLAC, its directory made first."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_flac(path, sample_rate, audio.astype(np.float32))

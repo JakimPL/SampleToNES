@@ -1,9 +1,15 @@
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
+from typing import Dict, Iterable, Optional, Self, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import InstructionUnion
-from sampletones_core.reconstructions.reconstructor.decoder.base import Alternatives, Streams
+from sampletones_core.reconstructions.reconstructor.decoder.base import (
+    Alternatives,
+    ChannelLattice,
+    StemPools,
+    Streams,
+)
+from sampletones_core.reconstructions.reconstructor.matching import ScoredCandidate
 
 InstructionColumn = Tuple[InstructionUnion, ...]
 InstructionCombination = Tuple[InstructionUnion, ...]
@@ -20,6 +26,12 @@ class PoolTrace:
 
     channel_names: Tuple[ChannelName, ...]
     frames: Tuple[Tuple[InstructionCombination, ...], ...]
+
+    @classmethod
+    def of(cls, pools: StemPools) -> Self:
+        """The instructions of a stem's pools, frame by frame and combination by combination."""
+        frames = tuple(tuple(_instructions(combination.candidates) for combination in pool) for pool in pools.frames)
+        return cls(channel_names=pools.channel_names, frames=frames)
 
 
 @dataclass(frozen=True)
@@ -51,25 +63,13 @@ class TraceRecorder:
         self._decoded: Optional[Dict[ChannelName, Tuple[InstructionUnion, ...]]] = None
 
     def assigned(self, alternatives: Alternatives) -> None:
-        self._columns = {
-            channel: tuple(tuple(candidate.instruction for candidate in column) for column in lattice)
-            for channel, lattice in alternatives.lattices.items()
-        }
-        self._pools = {
-            stem_id: PoolTrace(
-                channel_names=stem_pools.channel_names,
-                frames=tuple(
-                    tuple(tuple(candidate.instruction for candidate in combination.candidates) for combination in pool)
-                    for pool in stem_pools.frames
-                ),
-            )
-            for stem_id, stem_pools in alternatives.pools.items()
-        }
+        """Keeps what the assignment left the decoder: every channel's columns and every stem's pools."""
+        self._columns = {channel: _lattice_instructions(lattice) for channel, lattice in alternatives.lattices.items()}
+        self._pools = {stem_id: PoolTrace.of(stem_pools) for stem_id, stem_pools in alternatives.pools.items()}
 
     def decoded(self, streams: Streams) -> None:
-        self._decoded = {
-            channel: tuple(candidate.instruction for candidate in stream) for channel, stream in streams.items()
-        }
+        """Keeps what the decoder chose for every channel, frame by frame."""
+        self._decoded = {channel: _instructions(stream) for channel, stream in streams.items()}
 
     @property
     def trace(self) -> Optional[SearchTrace]:
@@ -78,3 +78,13 @@ class TraceRecorder:
             return None
 
         return SearchTrace(columns=self._columns, pools=self._pools, decoded=self._decoded)
+
+
+def _lattice_instructions(lattice: ChannelLattice) -> Tuple[InstructionColumn, ...]:
+    """A channel's columns as their candidates' instructions, frame by frame."""
+    return tuple(_instructions(column) for column in lattice)
+
+
+def _instructions(candidates: Iterable[ScoredCandidate]) -> Tuple[InstructionUnion, ...]:
+    """The instructions of scored candidates, in their order."""
+    return tuple(candidate.instruction for candidate in candidates)

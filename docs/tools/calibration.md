@@ -53,6 +53,7 @@ listening page.
 | `index.html` | the listening page, which opens by double-click |
 | `report.md` | the scores, as tables |
 | `report.csv` | every score, one per row, for your own analysis |
+| `run.json` | what the run measures, which `--resume` checks before it goes on |
 | `renders/<variant>/` | a JSON file per reconstruction with its scores and the frames each channel plays, and a FLAC file of each listed one |
 | `renders/<variant>/<sound>/` | each listed reconstruction cut by channel, one file per combination |
 | `recordings/` | each reference sound, as the run prepared it for reconstruction: at the library's sample rate and the level the conversion matched |
@@ -126,10 +127,10 @@ The `mr-loudness-dB` section adds a table for each of its readings:
 The score is `missing` plus `added`. `level` is reported separately.
 
 Every audio referee also has a `log-gap` table: the natural logarithm of the score over the score of
-silence, the nats the page shows with their sign turned, so lower is better here too. Zero means the render scores as silence does, and every step of one below it closes the
-remaining distance to the original by a factor of about 2.7. Its family mean weighs every sound by
-how far it closes the distance in proportion, so a few sounds far worse than silence move it no more
-than they differ.
+silence, the nats the page shows with their sign turned, so lower is better here too. Zero means the
+render scores as silence does, and every step of one below it closes the remaining distance to the
+original by a factor of about 2.7. Its family mean weighs every sound by how far it closes the
+distance in proportion, so a few sounds far worse than silence move it no more than they differ.
 
 The `transcription`, `search`, `pitch`, `stability`, `balance` and `continuity` sections read the
 reconstruction's instructions against what a reference sound plays, so they cover only the sounds whose frames or

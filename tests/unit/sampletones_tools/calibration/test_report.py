@@ -3,8 +3,15 @@ from pathlib import Path
 from typing import Final, List
 
 from sampletones_shared.utils.tables import Table
-from sampletones_tools.calibration.report import CSV_COLUMNS, MEAN_COLUMN, VARIANT_COLUMN, write_csv, write_markdown
-from sampletones_tools.calibration.runner import CalibrationRow
+from sampletones_tools.calibration.report import (
+    CSV_COLUMNS,
+    MEAN_COLUMN,
+    REPORT_TITLE,
+    VARIANT_COLUMN,
+    write_csv,
+    write_markdown,
+)
+from sampletones_tools.calibration.rows import CalibrationRow
 
 ROWS: Final[List[CalibrationRow]] = [
     CalibrationRow(
@@ -75,7 +82,7 @@ class TestWriteMarkdown:
         envelope = Table(columns=(VARIANT_COLUMN, "tones", MEAN_COLUMN), rows=(("fft", "2.000", "2.000"),))
         added = Table(columns=(VARIANT_COLUMN, "tones", MEAN_COLUMN), rows=(("fft", "1.500", "1.500"),))
         assert lines == [
-            "# Calibration report",
+            REPORT_TITLE,
             "",
             "## sines",
             "",
@@ -98,3 +105,53 @@ class TestWriteMarkdown:
             *tones.markdown_lines(),
             "",
         ]
+
+
+def _row(variant: str, item: str, category: str, score: float) -> CalibrationRow:
+    return CalibrationRow(
+        variant=variant,
+        item=item,
+        family="sines",
+        category=category,
+        referee="spectral",
+        component="score",
+        score=score,
+    )
+
+
+def _table_lines(rows: List[CalibrationRow], tmp_path: Path) -> List[str]:
+    """The lines of the one table a family of one referee's score reports."""
+    path = tmp_path / "report.md"
+    write_markdown(rows, path)
+    lines = path.read_text(encoding="utf-8").split("\n")
+    return lines[6:-1]
+
+
+class TestPivot:
+    def test_the_mean_weighs_every_sound_alike_whatever_its_category(self, tmp_path: Path) -> None:
+        rows = [*(_row("fft", f"tone-{index}", "tones", 1.0) for index in range(3)), _row("fft", "hiss", "noise", 5.0)]
+
+        table = Table(
+            columns=(VARIANT_COLUMN, "tones", "noise", MEAN_COLUMN), rows=(("fft", "1.000", "5.000", "2.000"),)
+        )
+        assert _table_lines(rows, tmp_path) == table.markdown_lines()
+
+    def test_a_variant_holding_no_sound_of_a_category_reads_nan_there(self, tmp_path: Path) -> None:
+        rows = [
+            _row("fft", "tone-a", "tones", 1.0),
+            _row("fft", "hiss", "noise", 3.0),
+            _row("cqt", "tone-a", "tones", 2.0),
+        ]
+
+        table = Table(
+            columns=(VARIANT_COLUMN, "tones", "noise", MEAN_COLUMN),
+            rows=(("fft", "1.000", "3.000", "2.000"), ("cqt", "2.000", "nan", "2.000")),
+        )
+        assert _table_lines(rows, tmp_path) == table.markdown_lines()
+
+    def test_no_row_leaves_the_title_alone(self, tmp_path: Path) -> None:
+        path = tmp_path / "report.md"
+
+        write_markdown([], path)
+
+        assert path.read_text(encoding="utf-8") == f"{REPORT_TITLE}\n"

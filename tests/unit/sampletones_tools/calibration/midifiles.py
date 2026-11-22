@@ -11,11 +11,13 @@ Message = Tuple[int, bytes]
 
 
 def _length(value: int) -> bytes:
+    """``value`` as a MIDI variable-length quantity: seven bits a byte, the first bytes flagged as continuing."""
     groups = [value & 0x7F]
     value >>= 7
     while value:
         groups.append((value & 0x7F) | 0x80)
         value >>= 7
+
     return bytes(reversed(groups))
 
 
@@ -24,8 +26,10 @@ def track(name: str, messages: Sequence[Message], *, tempo: bool = False) -> byt
     body = b"\x00\xff\x03" + _length(len(name)) + name.encode()
     if tempo:
         body += b"\x00\xff\x51\x03" + TEMPO.to_bytes(3, "big")
+
     for delta, data in messages:
         body += _length(delta) + data
+
     body += b"\x00\xff\x2f\x00"
     return b"MTrk" + len(body).to_bytes(4, "big") + body
 
@@ -37,6 +41,7 @@ def midi_file(tracks: List[bytes]) -> bytes:
 
 
 def ticks(seconds: float) -> int:
+    """The ticks ``seconds`` last at the tempo every track keeps."""
     return round(seconds / SECONDS_PER_TICK)
 
 
@@ -65,4 +70,5 @@ def nesmdb_archive(directory: Path, member: str) -> Path:
         info = tarfile.TarInfo(member)
         info.size = len(data)
         archive.addfile(info, io.BytesIO(data))
+
     return path

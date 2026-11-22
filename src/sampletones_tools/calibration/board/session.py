@@ -42,9 +42,9 @@ def build_board(request: BoardRequest) -> Path:
 
     Everything the page needs travels with it: the web layout drawn from the application's own
     configuration in the requested palette, the application's faces inside a stylesheet, and the
-    run's contents as data. A page written into the run it
-    reports plays that run's clips where they lie; anywhere else it carries copies, so either page
-    opens straight from the folder it was written into.
+    run's contents as data. A page written into the run it reports plays that run's clips where they
+    lie; anywhere else it carries copies, so either page opens straight from the folder it was
+    written into.
 
     Args:
         request: The runs the page reports, where it goes, and the palette it is drawn in.
@@ -59,12 +59,16 @@ def build_board(request: BoardRequest) -> Path:
     runs = read_runs(request.runs)
     design = ApplicationDesign.load(request.palette)
     request.output.mkdir(parents=True, exist_ok=True)
-    glyphs = BoardGlyphs(
+    page = compose_page(runs, clip_store(runs, request.output), request.title, _page_glyphs(design))
+    write_layout(request.output / PAGE_DIRECTORY, design)
+    return write_assets(request.output, {DATA_FILE: data_script(page)})
+
+
+def _page_glyphs(design: ApplicationDesign) -> BoardGlyphs:
+    """The application's own glyphs for the page: the reconstruction header, the card chevrons and play."""
+    return BoardGlyphs(
         header=design.glyphs.headers.reconstruction,
         expanded=design.glyphs.common.expanded,
         collapsed=design.glyphs.common.collapsed,
         play=design.glyphs.player.play,
     )
-    page = compose_page(runs, clip_store(runs, request.output), request.title, glyphs)
-    write_layout(request.output / PAGE_DIRECTORY, design)
-    return write_assets(request.output, {DATA_FILE: data_script(page)})

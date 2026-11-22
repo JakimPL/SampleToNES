@@ -44,6 +44,7 @@ def overridden(base: Config, overrides: Mapping[str, JsonValue]) -> Config:
 
 
 def _merged(base: Mapping[str, JsonValue], overrides: Mapping[str, JsonValue]) -> Dict[str, JsonValue]:
+    """``base`` with ``overrides`` written over it: a section both hold merges in turn, any other value is replaced."""
     merged: Dict[str, JsonValue] = dict(base)
     for key, value in overrides.items():
         current = merged.get(key)

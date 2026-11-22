@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import Final, List
 
 import pytest
 import yaml
@@ -11,8 +11,10 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_tools.calibration.board.layout import PAGE_FILE
 from sampletones_tools.calibration.board.session import BoardRequest
+from sampletones_tools.calibration.config.level import WorkingLevel
 from sampletones_tools.calibration.config.suite import SuiteConfig
 from sampletones_tools.calibration.corpus.reference import reference_categories
+from sampletones_tools.calibration.fingerprint import ResumeRefusedError
 from sampletones_tools.calibration.layout import MARKDOWN_REPORT
 from sampletones_tools.calibration.samples import SAMPLES_DIRECTORY
 from sampletones_tools.calibration.session import (
@@ -25,6 +27,20 @@ from tests.unit.sampletones_tools.calibration.midifiles import nesmdb_archive
 from tests.unit.sampletones_tools.calibration.runs import write_run
 
 CALIBRATE = "sampletones_tools.calibration.session.calibrate"
+MEASURING_OPTIONS: Final[List[List[str]]] = [
+    ["--config", "config.json"],
+    ["--methods", "fft"],
+    ["--perceptual-exponents", "1"],
+    ["--temporal-weights", "0.5"],
+    ["--channels", "pulse1"],
+    ["--settings", "greedy"],
+    ["--levels", "true"],
+    ["--categories", "tone"],
+    ["--skip", "notes"],
+    ["--workers", "2"],
+    ["--resume"],
+    ["--corpus", "manifest.yaml"],
+]
 BUILD_BOARD = "sampletones_tools.calibration.board.session.build_board"
 OPEN_PAGE = "sampletones_tools.calibration.board.browser.open_page"
 
@@ -128,6 +144,8 @@ class TestCalibration:
         assert request.perceptual_exponents == list(suite.perceptual_exponents)
         assert request.temporal_weights == list(suite.temporal_weights)
         assert request.channels == list(suite.channels)
+        assert request.settings == list(suite.settings)
+        assert request.levels == list(suite.levels)
         assert request.categories == reference_categories(None)
         assert request.output.parent == OUTPUT_ROOT
 
@@ -171,6 +189,27 @@ class TestCalibration:
         assert dispatch(COMMANDS, ["calibration", "--workers", "3", "--resume", "-o", str(tmp_path)]) == 0
 
         assert (calibration.requests[0].workers, calibration.requests[0].resume) == (3, True)
+
+    def test_the_settings_and_the_levels_are_read_from_the_options(self, calibration: RecordedCalibration) -> None:
+        assert dispatch(COMMANDS, ["calibration", "--settings", "greedy", "--levels", "default,true"]) == 0
+
+        assert calibration.requests[0].settings == ["greedy"]
+        assert calibration.requests[0].levels == [WorkingLevel.DEFAULT, WorkingLevel.TRUE]
+
+    def test_an_unknown_set_of_settings_is_refused(self, calibration: RecordedCalibration) -> None:
+        with pytest.raises(SystemExit, match="Unknown set of settings"):
+            dispatch(COMMANDS, ["calibration", "--settings", "gredy"])
+
+        assert calibration.requests == []
+
+    def test_a_run_refused_its_resume_exits_naming_why(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        def refused(request: CalibrationRequest) -> CalibrationOutcome:
+            raise ResumeRefusedError("measured other sounds")
+
+        monkeypatch.setattr(CALIBRATE, refused)
+
+        with pytest.raises(SystemExit, match="measured other sounds"):
+            dispatch(COMMANDS, ["calibration", "--resume", "-o", str(tmp_path)])
 
     def test_without_workers_the_run_takes_the_configuration_s_own(self, calibration: RecordedCalibration) -> None:
         assert dispatch(COMMANDS, ["calibration"]) == 0
@@ -240,24 +279,18 @@ class TestBoard:
 
         assert board.requests[0].output.parent == BOARD_ROOT
 
+    @pytest.mark.parametrize("option", MEASURING_OPTIONS, ids=lambda option: option[0])
     def test_a_page_measures_nothing_so_it_takes_no_measuring_option(
         self,
         board: RecordedBoard,
         tmp_path: Path,
+        option: List[str],
     ) -> None:
         run = write_run(tmp_path / "before", ["cqt-pe1"], 0.0)
+        named = ", ".join(given[0] for given in MEASURING_OPTIONS)
 
-        with pytest.raises(SystemExit, match="measures nothing"):
-            dispatch(COMMANDS, ["calibration", "--board", str(run), "--methods", "fft"])
-
-        with pytest.raises(SystemExit, match="measures nothing"):
-            dispatch(COMMANDS, ["calibration", "--board", str(run), "--categories", "tone"])
-
-        with pytest.raises(SystemExit, match="measures nothing"):
-            dispatch(COMMANDS, ["calibration", "--board", str(run), "--skip", "notes"])
-
-        with pytest.raises(SystemExit, match="measures nothing"):
-            dispatch(COMMANDS, ["calibration", "--board", str(run), "--resume"])
+        with pytest.raises(SystemExit, match=f"measures nothing; it takes none of {named}."):
+            dispatch(COMMANDS, ["calibration", "--board", str(run), *option])
 
         assert board.requests == []
 
@@ -321,3 +354,18 @@ class TestFetchingSamples:
 
         assert fetched == [SAMPLES_DIRECTORY]
         assert calibration.requests == []
+
+    def test_fetching_the_samples_measures_nothing_whatever_else_is_named(
+        self,
+        calibration: RecordedCalibration,
+        board: RecordedBoard,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        monkeypatch.setattr("sampletones_tools.calibration.samples.fetch_samples", lambda config, directory: [])
+
+        assert dispatch(COMMANDS, ["calibration", "--fetch-samples", "--methods", "fft"]) == 0
+        assert dispatch(COMMANDS, ["calibration", "--fetch-samples", "--board", str(tmp_path)]) == 0
+
+        assert calibration.requests == []
+        assert board.requests == []

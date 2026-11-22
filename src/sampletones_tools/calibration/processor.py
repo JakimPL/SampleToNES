@@ -11,7 +11,8 @@ from sampletones_shared.logger import LoggerProtocol
 from .config.level import WorkingLevel
 from .levels import level_reconstructor
 from .referee.panel import RefereePanel, build_panel
-from .runner import CalibrationRow, Conversion, evaluate_conversion
+from .rows import CalibrationRow
+from .runner import Conversion, evaluate_conversion
 
 Answers = List[List[CalibrationRow]]
 
@@ -54,9 +55,15 @@ def convert_in_worker(conversion: Conversion) -> List[CalibrationRow]:
 
 @lru_cache(maxsize=None)
 def _worker_reconstructor(config: str, channels: FrozenSet[ChannelName], level: WorkingLevel) -> Reconstructor:
+    """The worker's reconstructor for a variant over ``channels``, built on first use and kept.
+
+    The configuration arrives as its JSON, so the cache keys a variant by the values of its
+    configuration.
+    """
     return level_reconstructor(Config.model_validate_json(config), channels, level)
 
 
 @lru_cache(maxsize=None)
 def _worker_panel(sample_rate: int) -> RefereePanel:
+    """The worker's referees for ``sample_rate``, built on first use and kept, since a panel stays in its worker."""
     return build_panel(sample_rate)

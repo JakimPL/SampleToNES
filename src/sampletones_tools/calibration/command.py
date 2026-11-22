@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, List, Optional
+from typing import TYPE_CHECKING, Dict, Final, List, Optional, Self
 
 from sampletones_shared.command import Command
+
+if TYPE_CHECKING:
+    from sampletones_tools.calibration.session import CalibrationRequest
 
 NAME: Final[str] = "calibration"
 HELP: Final[str] = (
@@ -45,25 +50,15 @@ FETCH_SAMPLES_HELP: Final[str] = (
     "download the recordings the benchmark keeps for listening, each checked against its checksum, measuring nothing"
 )
 
-MEASURING_OPTIONS: Final[List[str]] = [
-    "--config",
-    "--methods",
-    "--perceptual-exponents",
-    "--temporal-weights",
-    "--channels",
-    "--settings",
-    "--levels",
-    "--categories",
-    "--skip",
-    "--workers",
-    "--resume",
-    "--corpus",
-]
-
 
 @dataclass(frozen=True)
 class CalibrationArguments:
-    """What a calibration run is given, as written on the command line."""
+    """What a calibration run is given, as written on the command line.
+
+    A run does one of three things: it fetches the listening samples, builds a page over finished
+    runs, or measures. The options that measure shape a measurement alone, so a page over finished
+    runs takes none of them.
+    """
 
     config: Optional[Path]
     output: Optional[Path]
@@ -82,6 +77,47 @@ class CalibrationArguments:
     palette: Optional[str]
     open_page: bool
     fetch_samples: bool
+
+    @classmethod
+    def read(cls, arguments: Namespace) -> Self:
+        """The arguments as the parser ``configure`` sets up read them."""
+        return cls(
+            config=arguments.config,
+            output=arguments.output,
+            methods=arguments.methods,
+            perceptual_exponents=arguments.perceptual_exponents,
+            temporal_weights=arguments.temporal_weights,
+            channels=arguments.channels,
+            settings=arguments.settings,
+            levels=arguments.levels,
+            categories=arguments.categories,
+            skip=arguments.skip,
+            workers=arguments.workers,
+            resume=arguments.resume,
+            corpus=arguments.corpus,
+            board=arguments.board,
+            palette=arguments.palette,
+            open_page=arguments.open_page,
+            fetch_samples=arguments.fetch_samples,
+        )
+
+    @property
+    def measuring(self) -> Dict[str, bool]:
+        """Every option that measures, by its flag, beside whether the command line gave it."""
+        return {
+            "--config": self.config is not None,
+            "--methods": self.methods is not None,
+            "--perceptual-exponents": self.perceptual_exponents is not None,
+            "--temporal-weights": self.temporal_weights is not None,
+            "--channels": self.channels is not None,
+            "--settings": self.settings is not None,
+            "--levels": self.levels is not None,
+            "--categories": self.categories is not None,
+            "--skip": self.skip is not None,
+            "--workers": self.workers is not None,
+            "--resume": self.resume,
+            "--corpus": self.corpus is not None,
+        }
 
 
 def configure(parser: ArgumentParser) -> None:
@@ -112,26 +148,7 @@ def run(arguments: Namespace) -> int:
             a manifest is malformed, a run cannot be resumed, a run directory holds no renders, or a
             page is asked for beside the options that measure.
     """
-    given = CalibrationArguments(
-        config=arguments.config,
-        output=arguments.output,
-        methods=arguments.methods,
-        perceptual_exponents=arguments.perceptual_exponents,
-        temporal_weights=arguments.temporal_weights,
-        channels=arguments.channels,
-        settings=arguments.settings,
-        levels=arguments.levels,
-        categories=arguments.categories,
-        skip=arguments.skip,
-        workers=arguments.workers,
-        resume=arguments.resume,
-        corpus=arguments.corpus,
-        board=arguments.board,
-        palette=arguments.palette,
-        open_page=arguments.open_page,
-        fetch_samples=arguments.fetch_samples,
-    )
-
+    given = CalibrationArguments.read(arguments)
     if given.fetch_samples:
         return _fetch()
 
@@ -139,6 +156,25 @@ def run(arguments: Namespace) -> int:
 
 
 def _measure(given: CalibrationArguments) -> int:
+    from sampletones_tools.calibration.fingerprint import ResumeRefusedError
+    from sampletones_tools.calibration.session import calibrate
+
+    request = _request(given)
+    try:
+        outcome = calibrate(request)
+    except ResumeRefusedError as error:
+        raise SystemExit(str(error)) from error
+
+    print(f"Report: {outcome.report.resolve().as_uri()}")
+    return _show(outcome.page, given.open_page)
+
+
+def _request(given: CalibrationArguments) -> CalibrationRequest:
+    """The run the options ask for, the packaged suite filling every part of the sweep they leave out.
+
+    Raises:
+        SystemExit: If a name or a value is unknown, a file named is missing, or a manifest is malformed.
+    """
     from sampletones_application.utils.palette.catalog import DEFAULT_PALETTE_NAME
     from sampletones_core.headless.conversion.request import channels_named
     from sampletones_shared.utils.validation import describe_failure
@@ -146,24 +182,20 @@ def _measure(given: CalibrationArguments) -> int:
     from sampletones_tools.calibration.config.settings import SettingsConfig
     from sampletones_tools.calibration.config.suite import SuiteConfig
     from sampletones_tools.calibration.corpus.reference import reference_catalog
-    from sampletones_tools.calibration.fingerprint import ResumeRefusedError
-    from sampletones_tools.calibration.session import (
-        CalibrationRequest,
-        base_configuration,
-        calibrate,
-        default_output,
+    from sampletones_tools.calibration.options import (
         floats_named,
         levels_named,
         measured_categories,
         methods_named,
         settings_named,
     )
+    from sampletones_tools.calibration.session import CalibrationRequest, base_configuration, default_output
 
     suite = SuiteConfig.load()
     try:
         manifest = CorpusManifest.read(given.corpus) if given.corpus is not None else None
         base = base_configuration(given.config)
-        request = CalibrationRequest(
+        return CalibrationRequest(
             base=base,
             output=given.output if given.output is not None else default_output(),
             methods=methods_named(given.methods, suite.methods),
@@ -182,14 +214,6 @@ def _measure(given: CalibrationArguments) -> int:
         raise SystemExit(describe_failure(error)) from error
     except FileNotFoundError as error:
         raise SystemExit(str(error)) from error
-
-    try:
-        outcome = calibrate(request)
-    except ResumeRefusedError as error:
-        raise SystemExit(str(error)) from error
-
-    print(f"Report: {outcome.report.resolve().as_uri()}")
-    return _show(outcome.page, given.open_page)
 
 
 def _compare(given: CalibrationArguments) -> int:
@@ -237,21 +261,14 @@ def _show(page: Path, wanted: bool) -> int:
 
 
 def _refuse_measuring(given: CalibrationArguments) -> None:
-    measuring = (
-        given.config,
-        given.methods,
-        given.perceptual_exponents,
-        given.temporal_weights,
-        given.channels,
-        given.settings,
-        given.levels,
-        given.categories,
-        given.skip,
-        given.workers,
-        given.corpus,
-    )
-    if any(value is not None for value in measuring) or given.resume:
-        named = ", ".join(MEASURING_OPTIONS)
+    """Refuse a page over finished runs that is given an option that measures, naming every such option.
+
+    Raises:
+        SystemExit: If any option that measures is given.
+    """
+    measuring = given.measuring
+    if any(measuring.values()):
+        named = ", ".join(measuring)
         raise SystemExit(f"--board reads finished runs and measures nothing; it takes none of {named}.")
 
 
