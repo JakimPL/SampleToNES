@@ -1,12 +1,14 @@
 from enum import StrEnum
-from typing import Dict, Final
+from typing import Dict, Final, List, Tuple
 
 
 class Family(StrEnum):
     """A family of reference sounds, in the order a report and the page present them.
 
-    The first four are sounds the channels play exactly, so the run knows every frame of them. The
-    rest are sounds the channels approximate, the last of them kept for listening alone.
+    ``NOTES``, ``CHORDS`` and ``SEQUENCES`` are written as NES frames, so the channels play them
+    exactly and the run knows every frame of them. ``SINES`` and ``TONES`` are synthesized, the
+    channels approximate them, and the run knows the pitch of those holding one. ``COMPOSITES`` hold
+    several sounds together, and ``SAMPLES`` are recordings kept for listening alone.
     """
 
     SINES = "sines"
@@ -19,3 +21,5 @@ class Family(StrEnum):
 
 
 FAMILY_ORDER: Final[Dict[Family, int]] = {family: position for position, family in enumerate(Family)}
+
+Catalog = List[Tuple[Family, str]]

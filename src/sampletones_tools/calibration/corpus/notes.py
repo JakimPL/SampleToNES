@@ -22,8 +22,10 @@ def build_notes(config: Config, *, grid: NotesConfig) -> List[CorpusItem]:
 
     A pulse note sounds at every pitch, volume and duty cycle of the grid, with one of the
     alternating duty cycles joining each pitch in turn. A triangle note sounds at every pitch. A
-    noise note sounds at every period, in both modes, at every volume. Each is held, then silent,
-    so a conversion answers both its sound and its end.
+    noise note sounds at every period, in the long mode and then the short, at every volume. Each is
+    held, then silent, so a conversion answers both its sound and its end. The page lists the loudest
+    notes at every stride of pitches or periods; a triangle note sounds at its one level, so it is
+    listed at every stride.
 
     Args:
         config: The configuration the notes are rendered at, the one the run converts with.
@@ -47,7 +49,7 @@ def _pulse_notes(config: Config, grid: NotesConfig) -> List[CorpusItem]:
                         f"note-pulse-p{pitch}-d{duty_cycle}-v{volume}",
                         Family.NOTES,
                         PULSE_CATEGORY,
-                        listed=volume == loudest and index % grid.listed_pitch_stride == 0,
+                        listed=_listed(index, grid.listed_pitch_stride, loudest=volume == loudest),
                         instructions={ChannelName.PULSE1: _held(ChannelName.PULSE1, instruction, grid)},
                         config=config,
                     )
@@ -62,7 +64,7 @@ def _triangle_notes(config: Config, grid: NotesConfig) -> List[CorpusItem]:
             f"note-triangle-p{pitch}",
             Family.NOTES,
             TRIANGLE_CATEGORY,
-            listed=index % grid.listed_pitch_stride == 0,
+            listed=_listed(index, grid.listed_pitch_stride, loudest=True),
             instructions={
                 ChannelName.TRIANGLE: _held(ChannelName.TRIANGLE, TriangleInstruction(on=True, pitch=pitch), grid)
             },
@@ -84,7 +86,7 @@ def _noise_notes(config: Config, grid: NotesConfig) -> List[CorpusItem]:
                         f"note-noise-{'short' if short else 'long'}-p{period}-v{volume}",
                         Family.NOTES,
                         NOISE_CATEGORY,
-                        listed=volume == loudest and period % grid.listed_noise_period_stride == 0,
+                        listed=_listed(period, grid.listed_noise_period_stride, loudest=volume == loudest),
                         instructions={ChannelName.NOISE: _held(ChannelName.NOISE, instruction, grid)},
                         config=config,
                     )
@@ -94,11 +96,20 @@ def _noise_notes(config: Config, grid: NotesConfig) -> List[CorpusItem]:
 
 
 def _alternating(grid: NotesConfig, index: int) -> List[int]:
-    """The alternating duty cycle the pitch at ``index`` takes, in turn with its neighbors."""
+    """The alternating duty cycle the pitch at ``index`` takes, in turn with its neighbors.
+
+    The alternating duty cycles are timbres the ear hears alike, so each pitch takes one of them,
+    which covers both across the grid at the cost of one.
+    """
     if not grid.alternating_duty_cycles:
         return []
 
     return [grid.alternating_duty_cycles[index % len(grid.alternating_duty_cycles)]]
+
+
+def _listed(step: int, stride: int, *, loudest: bool) -> bool:
+    """Whether the page lists a note at ``step`` of its grid: the loudest, at every ``stride`` steps."""
+    return loudest and step % stride == 0
 
 
 def _held(channel: ChannelName, instruction: InstructionUnion, grid: NotesConfig) -> List[InstructionUnion]:

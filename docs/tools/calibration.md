@@ -336,7 +336,7 @@ of decision:
 | `dynamics` | `tones` | a crescendo, and a loud burst dropping to a quiet hiss | following the level |
 | `mix` | `composites` | a tone under hiss, and a bass under hi-hat ticks | a tone and noise together |
 | `polyphony` | `composites` | a chord, and a melody over a snare | several voices at once |
-| `mix-stems`, `polyphony-stems` | `composites` | the same composites, the tone and the noise each a stem | each part matched on the channels it may take |
+| `mix-stems`, `polyphony-stems` | `composites` | the same composites, the tone and the noise each a stem, the noise drawn afresh | each part matched on the channels it may take |
 | `composites-band` | `composites` | the sawtooth bass, the vowel melody and a drum pattern, each a stem: the bass on the triangle, the melody on either pulse, the drums on the noise | a small band converted as stems |
 
 The `notes`, `chords` and `sequences` families are written out frame by frame, as instructions the

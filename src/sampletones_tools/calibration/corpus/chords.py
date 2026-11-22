@@ -1,8 +1,8 @@
 from typing import List
 
 from sampletones_core.configs import Config
-from sampletones_core.exporters.maps import CHANNEL_TO_EXPORTER_MAP
 from sampletones_tools.calibration.config.chords import ChordsConfig
+from sampletones_tools.corpus.written import channel_frame
 
 from .families import Family
 from .item import CorpusItem
@@ -31,7 +31,7 @@ def build_chords(config: Config, *, corpus: ChordsConfig) -> List[CorpusItem]:
             instructions={
                 channel: held(
                     channel,
-                    CHANNEL_TO_EXPORTER_MAP[channel].get_instruction_type().model_validate(frame),
+                    channel_frame(channel, frame),
                     sounding=corpus.sounding_frames,
                     silent=corpus.silent_frames,
                 )

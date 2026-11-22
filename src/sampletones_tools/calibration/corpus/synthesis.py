@@ -1,6 +1,5 @@
-import math
 from dataclasses import dataclass
-from typing import Dict, Final, List, Optional, Tuple
+from typing import Dict, Final, List, Optional
 
 import numpy as np
 
@@ -27,11 +26,29 @@ from sampletones_tools.synthesis.voice.voice import Voice
 
 from .families import Family
 from .item import CorpusItem
-from .truth import Truth
+from .truth import LINE, PitchLine, Truth, frames_covering
 
-LINE: Final[str] = "line"
+TONE_CATEGORY: Final[str] = "tone"
+TIMBRE_CATEGORY: Final[str] = "timbre"
+NOISE_CATEGORY: Final[str] = "noise"
+TRANSIENT_CATEGORY: Final[str] = "transient"
+DYNAMICS_CATEGORY: Final[str] = "dynamics"
+MIX_CATEGORY: Final[str] = "mix"
+POLYPHONY_CATEGORY: Final[str] = "polyphony"
 
-ProbeSpec = Tuple[str, str, Voice]
+PROBE_FAMILIES: Final[Dict[str, Family]] = {
+    TONE_CATEGORY: Family.SINES,
+    TIMBRE_CATEGORY: Family.TONES,
+    NOISE_CATEGORY: Family.TONES,
+    TRANSIENT_CATEGORY: Family.TONES,
+    DYNAMICS_CATEGORY: Family.TONES,
+    MIX_CATEGORY: Family.COMPOSITES,
+    POLYPHONY_CATEGORY: Family.COMPOSITES,
+}
+
+UNIT_GAIN: Final[float] = 1.0
+SQUARE_DUTY_CYCLE: Final[float] = 0.5
+FIRST_STRIKE_SECONDS: Final[float] = 0.0
 
 
 @dataclass(frozen=True)
@@ -42,7 +59,8 @@ class Probe:
         name: The name its files are written under.
         category: The kind of decision it tests.
         voice: What it renders.
-        frequency: The pitch in Hz it holds throughout, or ``None`` for a probe of no steady pitch.
+        frequency: The pitch in Hz it holds throughout, or ``None`` for a probe whose pitch the corpus
+            leaves unstated.
     """
 
     name: str
@@ -50,20 +68,10 @@ class Probe:
     voice: Voice
     frequency: Optional[float]
 
-
-PROBE_FAMILIES: Final[Dict[str, Family]] = {
-    "tone": Family.SINES,
-    "timbre": Family.TONES,
-    "noise": Family.TONES,
-    "transient": Family.TONES,
-    "dynamics": Family.TONES,
-    "mix": Family.COMPOSITES,
-    "polyphony": Family.COMPOSITES,
-}
-
-UNIT_GAIN: Final[float] = 1.0
-SQUARE_DUTY_CYCLE: Final[float] = 0.5
-FIRST_STRIKE_SECONDS: Final[float] = 0.0
+    @property
+    def family(self) -> Family:
+        """The family the probe's category belongs to."""
+        return PROBE_FAMILIES[self.category]
 
 
 def build_corpus(
@@ -81,8 +89,9 @@ def build_corpus(
     (a crescendo and a burst dropping to a hiss), and voices sounding together.
     Probes render in a fixed order from
     one seeded generator, so every item is deterministic for a fixed sample
-    rate and configuration and referee scores are reproducible across runs. A
-    probe holding one pitch throughout carries it as its pitch line.
+    rate and configuration and referee scores are reproducible across runs.
+    The sine tones and the pulse waves hold one pitch throughout, and carry it
+    as their truth; the other probes' truth is ``None``.
 
     Args:
         sample_rate: Sampling rate of the synthesized items in Hz.
@@ -105,8 +114,10 @@ def build_corpus(
 
 
 def corpus_probes(config: CorpusConfig) -> List[Probe]:
-    """The probes of the corpus, each named and categorized beside the voice it renders, in corpus order."""
-    unpitched: List[ProbeSpec] = [
+    """The probes of the corpus, in the order they render from the corpus generator."""
+    return [
+        *_tone_probes(config),
+        *_timbre_probes(config),
         *_noise_probes(config),
         *_mix_probes(config),
         *_transient_probes(config),
@@ -115,18 +126,13 @@ def corpus_probes(config: CorpusConfig) -> List[Probe]:
         _burst_then_hiss_probe(config),
         _bass_hi_hats_probe(config),
     ]
-    return [
-        *_tone_probes(config),
-        *_timbre_probes(config),
-        *(Probe(name=name, category=category, voice=voice, frequency=None) for name, category, voice in unpitched),
-    ]
 
 
 def _tone_probes(config: CorpusConfig) -> List[Probe]:
     return [
         Probe(
             name=f"tone-{frequency:g}hz",
-            category="tone",
+            category=TONE_CATEGORY,
             voice=_voice(
                 config,
                 _layer(
@@ -146,7 +152,7 @@ def _timbre_probes(config: CorpusConfig) -> List[Probe]:
     return [
         Probe(
             name=f"pulse-duty{duty_cycle:g}",
-            category="timbre",
+            category=TIMBRE_CATEGORY,
             voice=_voice(
                 config,
                 _layer(
@@ -163,11 +169,11 @@ def _timbre_probes(config: CorpusConfig) -> List[Probe]:
     ]
 
 
-def _noise_probes(config: CorpusConfig) -> List[ProbeSpec]:
+def _noise_probes(config: CorpusConfig) -> List[Probe]:
     return [
-        (
+        _unpitched(
             "noise-white",
-            "noise",
+            NOISE_CATEGORY,
             _voice(
                 config,
                 _layer(
@@ -176,9 +182,9 @@ def _noise_probes(config: CorpusConfig) -> List[ProbeSpec]:
                 ),
             ),
         ),
-        (
+        _unpitched(
             "noise-dark",
-            "noise",
+            NOISE_CATEGORY,
             _voice(
                 config,
                 _layer(
@@ -191,11 +197,11 @@ def _noise_probes(config: CorpusConfig) -> List[ProbeSpec]:
     ]
 
 
-def _mix_probes(config: CorpusConfig) -> List[ProbeSpec]:
+def _mix_probes(config: CorpusConfig) -> List[Probe]:
     return [
-        (
+        _unpitched(
             f"mix-noise{noise_level:g}",
-            "mix",
+            MIX_CATEGORY,
             _voice(
                 config,
                 _layer(
@@ -214,7 +220,7 @@ def _mix_probes(config: CorpusConfig) -> List[ProbeSpec]:
     ]
 
 
-def _transient_probes(config: CorpusConfig) -> List[ProbeSpec]:
+def _transient_probes(config: CorpusConfig) -> List[Probe]:
     transient = config.transient
     sweep_start, sweep_end = transient.kick_sweep_frequencies
     snare_decay = ExponentialDecayEnvelope(
@@ -244,28 +250,28 @@ def _transient_probes(config: CorpusConfig) -> List[ProbeSpec]:
         frequency=config.reference_frequency,
     )
     return [
-        (
+        _unpitched(
             "transient-snare",
-            "transient",
+            TRANSIENT_CATEGORY,
             _voice(config, _layer(WhiteNoiseOscillator(kind="white_noise"), snare_decay)),
         ),
-        (
+        _unpitched(
             "transient-kick",
-            "transient",
+            TRANSIENT_CATEGORY,
             _voice(config, _layer(kick_glide, kick_decay)),
         ),
-        (
+        _unpitched(
             "transient-pluck",
-            "transient",
+            TRANSIENT_CATEGORY,
             _voice(config, _layer(reference_tone, pluck_attack, pluck_decay)),
         ),
     ]
 
 
-def _crescendo_probe(config: CorpusConfig) -> ProbeSpec:
-    return (
+def _crescendo_probe(config: CorpusConfig) -> Probe:
+    return _unpitched(
         "dynamics-crescendo",
-        "dynamics",
+        DYNAMICS_CATEGORY,
         _voice(
             config,
             _layer(
@@ -276,7 +282,7 @@ def _crescendo_probe(config: CorpusConfig) -> ProbeSpec:
     )
 
 
-def _polyphony_probes(config: CorpusConfig) -> List[ProbeSpec]:
+def _polyphony_probes(config: CorpusConfig) -> List[Probe]:
     polyphony = config.polyphony
     chord_gain = UNIT_GAIN / len(polyphony.chord_frequencies)
     chord = [
@@ -312,12 +318,12 @@ def _polyphony_probes(config: CorpusConfig) -> List[ProbeSpec]:
         gain=polyphony.snare_level,
     )
     return [
-        ("polyphony-chord", "polyphony", _voice(config, *chord)),
-        ("polyphony-melody-snare", "polyphony", _voice(config, *melody, snare)),
+        _unpitched("polyphony-chord", POLYPHONY_CATEGORY, _voice(config, *chord)),
+        _unpitched("polyphony-melody-snare", POLYPHONY_CATEGORY, _voice(config, *melody, snare)),
     ]
 
 
-def _burst_then_hiss_probe(config: CorpusConfig) -> ProbeSpec:
+def _burst_then_hiss_probe(config: CorpusConfig) -> Probe:
     dynamics = config.dynamics
     burst = _layer(
         WhiteNoiseOscillator(kind="white_noise"),
@@ -329,10 +335,10 @@ def _burst_then_hiss_probe(config: CorpusConfig) -> ProbeSpec:
         GateEnvelope(kind="gate", start_seconds=dynamics.burst_seconds, end_seconds=config.item_seconds),
         gain=config.noise.white_level * dynamics.hiss_level,
     )
-    return ("dynamics-burst-then-hiss", "dynamics", _voice(config, burst, hiss))
+    return _unpitched("dynamics-burst-then-hiss", DYNAMICS_CATEGORY, _voice(config, burst, hiss))
 
 
-def _bass_hi_hats_probe(config: CorpusConfig) -> ProbeSpec:
+def _bass_hi_hats_probe(config: CorpusConfig) -> Probe:
     mix = config.mix
     bass = _layer(SineOscillator(kind="sine", frequency=mix.bass_frequency))
     hats = _layer(
@@ -345,7 +351,12 @@ def _bass_hi_hats_probe(config: CorpusConfig) -> ProbeSpec:
         ),
         gain=mix.hat_level,
     )
-    return ("mix-bass-hi-hats", "mix", _voice(config, bass, hats))
+    return _unpitched("mix-bass-hi-hats", MIX_CATEGORY, _voice(config, bass, hats))
+
+
+def _unpitched(name: str, category: str, voice: Voice) -> Probe:
+    """A probe whose pitch the corpus leaves unstated."""
+    return Probe(name=name, category=category, voice=voice, frequency=None)
 
 
 def _layer(
@@ -377,15 +388,22 @@ def _item(
     range, and stored as float32, so every item shares one loudness convention.
     """
     scaled = clip_audio(config.amplitude * audio)
-    frames = math.ceil(config.item_seconds * frame_rate)
-    truth = None if probe.frequency is None else Truth(instructions={}, pitches={LINE: (probe.frequency,) * frames})
     return CorpusItem(
         name=probe.name,
-        family=PROBE_FAMILIES[probe.category],
+        family=probe.family,
         category=probe.category,
         listed=True,
         audio=scaled.astype(np.float32),
-        truth=truth,
+        truth=_steady_truth(probe, frames_covering(config.item_seconds, frame_rate)),
         channels=None,
         stems=None,
     )
+
+
+def _steady_truth(probe: Probe, frames: int) -> Optional[Truth]:
+    """The probe's one line, holding its pitch in each of ``frames`` frames, where it holds one."""
+    if probe.frequency is None:
+        return None
+
+    line: PitchLine = (probe.frequency,) * frames
+    return Truth(instructions={}, pitches={LINE: line})

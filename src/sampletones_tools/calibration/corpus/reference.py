@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, Collection, List, Optional, Tuple
+from typing import Callable, Collection, List, Optional
 
 from sampletones_core.configs import Config
 from sampletones_tools.calibration.config.chords import ChordsConfig
@@ -11,19 +11,17 @@ from sampletones_tools.calibration.config.samples import SamplesConfig
 from sampletones_tools.calibration.config.sequences import SequencesConfig
 from sampletones_tools.calibration.samples import SAMPLES_DIRECTORY
 
-from .by_channel import BY_CHANNEL_SUFFIX, with_by_channel
+from .by_channel import with_by_channel, with_by_channel_catalog
 from .chords import build_chords
 from .composites import composite_stems, composite_stems_catalog
-from .families import FAMILY_ORDER, Family
+from .families import FAMILY_ORDER, Catalog, Family
 from .item import CorpusItem
 from .manifest import build_pieces, build_recordings, pieces_catalog, recordings_catalog
 from .nes import build_sequences
 from .notes import NOTE_CATEGORIES, build_notes
 from .pitched import PITCHED_CATALOG, build_pitched
 from .samples import SAMPLES_CATALOG, build_samples
-from .synthesis import PROBE_FAMILIES, build_corpus, corpus_probes
-
-Catalog = List[Tuple[Family, str]]
+from .synthesis import build_corpus, corpus_probes
 
 
 @dataclass(frozen=True)
@@ -38,6 +36,14 @@ class CorpusSource:
     catalog: Catalog
     build: Callable[[Config], List[CorpusItem]]
 
+    def holds_any(self, categories: Collection[str]) -> bool:
+        """Whether the source holds any of ``categories``."""
+        return any(category in categories for _, category in self.catalog)
+
+    def sounds(self, config: Config, categories: Collection[str]) -> List[CorpusItem]:
+        """The source's sounds of ``categories``, made at the rates of ``config``."""
+        return [item for item in self.build(config) if item.category in categories]
+
 
 def reference_corpus(
     config: Config,
@@ -46,8 +52,8 @@ def reference_corpus(
 ) -> List[CorpusItem]:
     """The reference sounds of ``categories``, family by family in the order a report presents them.
 
-    A source is made only where it holds a category asked for, so a run of a few categories spends
-    nothing on the rest.
+    A source is made only where it holds a category asked for, so a run of a few categories makes
+    the sources holding them alone. Within a family the sounds keep the order of their sources.
 
     Args:
         config: The configuration the run converts with, whose rates the sounds are made at.
@@ -57,9 +63,8 @@ def reference_corpus(
     items = [
         item
         for source in _sources(manifest)
-        if any(category in categories for _, category in source.catalog)
-        for item in source.build(config)
-        if item.category in categories
+        if source.holds_any(categories)
+        for item in source.sounds(config, categories)
     ]
     return sorted(items, key=lambda item: FAMILY_ORDER[item.family])
 
@@ -80,6 +85,11 @@ def reference_categories(manifest: Optional[CorpusManifest]) -> List[str]:
 
 
 def _sources(manifest: Optional[CorpusManifest]) -> List[CorpusSource]:
+    """Every source of reference sounds: the packaged ones, then those of ``manifest``.
+
+    Every written source is converted once more channel by channel, so its catalog holds each
+    category twice.
+    """
     probes = CorpusConfig.load()
     pitched = PitchedConfig.load()
     sequences = SequencesConfig.load()
@@ -88,7 +98,7 @@ def _sources(manifest: Optional[CorpusManifest]) -> List[CorpusSource]:
     samples = SamplesConfig.load()
     return [
         CorpusSource(
-            catalog=[(PROBE_FAMILIES[probe.category], probe.category) for probe in corpus_probes(probes)],
+            catalog=[(probe.family, probe.category) for probe in corpus_probes(probes)],
             build=lambda config: build_corpus(config.library.sample_rate, config.library.nes_frequency, config=probes),
         ),
         CorpusSource(
@@ -106,11 +116,11 @@ def _sources(manifest: Optional[CorpusManifest]) -> List[CorpusSource]:
             build=lambda config: build_notes(config, grid=grid),
         ),
         CorpusSource(
-            catalog=_with_by_channel([(Family.CHORDS, chord.category) for chord in chords.chords]),
+            catalog=with_by_channel_catalog([(Family.CHORDS, chord.category) for chord in chords.chords]),
             build=lambda config: with_by_channel(build_chords(config, corpus=chords), config),
         ),
         CorpusSource(
-            catalog=_with_by_channel([(Family.SEQUENCES, item.category) for item in sequences.items]),
+            catalog=with_by_channel_catalog([(Family.SEQUENCES, item.category) for item in sequences.items]),
             build=lambda config: with_by_channel(build_sequences(config, corpus=sequences), config),
         ),
         CorpusSource(
@@ -122,12 +132,13 @@ def _sources(manifest: Optional[CorpusManifest]) -> List[CorpusSource]:
 
 
 def _manifest_sources(manifest: Optional[CorpusManifest]) -> List[CorpusSource]:
+    """The sources of the manifest's NES-MDB pieces and recordings, an empty list for ``None``."""
     if manifest is None:
         return []
 
     return [
         CorpusSource(
-            catalog=_with_by_channel(pieces_catalog(manifest)),
+            catalog=with_by_channel_catalog(pieces_catalog(manifest)),
             build=lambda config: with_by_channel(build_pieces(config, manifest=manifest), config),
         ),
         CorpusSource(
@@ -135,8 +146,3 @@ def _manifest_sources(manifest: Optional[CorpusManifest]) -> List[CorpusSource]:
             build=lambda config: build_recordings(config, manifest=manifest),
         ),
     ]
-
-
-def _with_by_channel(catalog: Catalog) -> Catalog:
-    """The categories of written sounds, then each again for the sounds converted channel by channel."""
-    return [*catalog, *((family, f"{category}{BY_CHANNEL_SUFFIX}") for family, category in catalog)]

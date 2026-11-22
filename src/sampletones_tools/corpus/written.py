@@ -51,13 +51,21 @@ def channel_frames(
     Raises:
         ValidationError: If a run's frame is no instruction the channel takes.
     """
-    instruction_type = CHANNEL_TO_EXPORTER_MAP[channel].get_instruction_type()
     frames: List[InstructionUnion] = []
     for run in runs:
-        frame = instruction_type.model_validate(run.frame)
+        frame = channel_frame(channel, run.frame)
         frames.extend(frame for _ in range(run.count))
 
     return frames
+
+
+def channel_frame(channel: ChannelName, fields: Mapping[str, FrameValue]) -> InstructionUnion:
+    """The instruction ``channel`` plays for a frame written out as the fields of that instruction.
+
+    Raises:
+        ValidationError: If the fields are no instruction the channel takes.
+    """
+    return CHANNEL_TO_EXPORTER_MAP[channel].get_instruction_type().model_validate(fields)
 
 
 def single_recording_record(

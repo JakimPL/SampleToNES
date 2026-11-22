@@ -10,7 +10,13 @@ Pitch = int
 
 
 class DecayingConfig(BaseModel):
-    """Sines struck once and left to decay."""
+    """Sines struck once and left to decay.
+
+    Attributes:
+        frequencies: The sines' frequencies.
+        time_constants_seconds: How fast each one decays, as time constants.
+        seconds: How long each sound lasts.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -22,7 +28,16 @@ class DecayingConfig(BaseModel):
 
 
 class VibratoConfig(BaseModel):
-    """Tones whose pitch swings: sines at several frequencies, and a sawtooth, at every depth."""
+    """Tones whose pitch swings: sines at several frequencies, and a sawtooth, at every depth.
+
+    Attributes:
+        frequencies: The sines' frequencies.
+        sawtooth_frequency: The sawtooth's frequency.
+        rate_hertz: How many times a second the pitch swings.
+        depths_cents: How far the pitch swings each way, one sound per depth.
+        harmonics: The partials the sawtooth is built of, those below the Nyquist limit.
+        seconds: How long each sound lasts.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -35,7 +50,14 @@ class VibratoConfig(BaseModel):
 
 
 class LineConfig(BaseModel):
-    """A bass line of separated notes, played as sines and again as a sawtooth."""
+    """A bass line of separated notes, played as sines and again as a sawtooth.
+
+    Attributes:
+        pitches: The notes, as MIDI note numbers.
+        note_seconds: The time each note is given.
+        sounding_share: The share of each note's time it sounds for.
+        harmonics: The partials the sawtooth is built of, those below the Nyquist limit.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -46,7 +68,18 @@ class LineConfig(BaseModel):
 
 
 class VoiceConfig(BaseModel):
-    """A melody on a vowel-like tone: harmonics shaped by formants, its pitch swinging slightly."""
+    """A melody on a vowel-like tone: harmonics shaped by formants, its pitch swinging slightly.
+
+    Attributes:
+        pitches: The notes, as MIDI note numbers.
+        note_seconds: The time each note is given.
+        sounding_share: The share of each note's time it sounds for.
+        harmonics: The partials each note is built of, those below the Nyquist limit.
+        formants: Each formant's center and width, in Hz.
+        formant_floor: The level every harmonic keeps outside the formants.
+        rate_hertz: How many times a second the pitch swings.
+        depth_cents: How far the pitch swings each way.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -61,7 +94,14 @@ class VoiceConfig(BaseModel):
 
 
 class PluckConfig(BaseModel):
-    """Plucked tones: harmonic partials, the higher ones dying away faster."""
+    """Plucked tones: harmonic partials, the higher ones dying away faster.
+
+    Attributes:
+        frequencies: The tones' frequencies.
+        time_constant_seconds: How fast the fundamental decays.
+        harmonics: The partials each tone is built of, those below the Nyquist limit.
+        seconds: How long each sound lasts.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -72,7 +112,14 @@ class PluckConfig(BaseModel):
 
 
 class HitConfig(BaseModel):
-    """A drum hit of noise repeating on a beat."""
+    """A drum hit of noise repeating on a beat.
+
+    Attributes:
+        period_seconds: The time between two strikes.
+        decay_seconds: How fast each strike decays, as a time constant.
+        delay_seconds: When the first strike falls.
+        level: The hit's level within the drums.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -83,7 +130,14 @@ class HitConfig(BaseModel):
 
 
 class BandConfig(BaseModel):
-    """The bass line, the melody and a drum pattern together, each a stem of its own."""
+    """The bass line, the melody and a drum pattern together, each a stem of its own.
+
+    Attributes:
+        bass_level: The bass line's level in the band.
+        voice_level: The melody's level in the band.
+        drums_level: The drums' level in the band.
+        hits: The drum hits.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -99,6 +153,12 @@ class PitchedConfig(BaseModel):
     Attributes:
         amplitude: The peak every sound is brought to.
         audible_decibels: How far below its start a decaying sound still counts as sounding its pitch.
+        decaying: The decaying sines.
+        vibrato: The swinging sines and sawtooths.
+        line: The bass line.
+        voice: The vowel melody.
+        pluck: The plucked tones.
+        band: The band of bass, melody and drums.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")

@@ -1,10 +1,12 @@
-from typing import List, Self
+from typing import Final, List, Self
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt, model_validator
 
-from sampletones_core.constants.general import MAX_DUTY_CYCLE, MAX_PITCH, MAX_VOLUME, MIN_PITCH
+from sampletones_core.constants.general import MAX_DUTY_CYCLE, MAX_PITCH, MAX_VOLUME, MIN_PITCH, MIN_VOLUME
 from sampletones_shared.utils.serialization import load_yaml_model
 from sampletones_tools.calibration.paths import NOTES_CONFIG_PATH
+
+MIN_DUTY_CYCLE: Final[int] = 0
 
 Volume = int
 DutyCycle = int
@@ -12,6 +14,8 @@ DutyCycle = int
 
 class NotesConfig(BaseModel):
     """The single notes the channels play, laid on a grid: one held note per sound, then silence.
+
+    Every note sounds, so its volumes start at the quietest that sounds.
 
     Attributes:
         first_pitch: The lowest note of the pulse and triangle grid.
@@ -42,13 +46,25 @@ class NotesConfig(BaseModel):
     listed_noise_period_stride: PositiveInt
 
     @model_validator(mode="after")
-    def _validate_grid(self) -> Self:
+    def _validate_pitches(self) -> Self:
         if self.last_pitch < self.first_pitch:
             raise ValueError("The grid's last pitch must be at least its first")
-        if any(not 1 <= volume <= MAX_VOLUME for volume in self.volumes):
-            raise ValueError(f"Every volume must lie between 1 and {MAX_VOLUME}")
-        if any(not 0 <= duty <= MAX_DUTY_CYCLE for duty in [*self.duty_cycles, *self.alternating_duty_cycles]):
-            raise ValueError(f"Every duty cycle must lie between 0 and {MAX_DUTY_CYCLE}")
+
+        return self
+
+    @model_validator(mode="after")
+    def _validate_volumes(self) -> Self:
+        if any(not MIN_VOLUME <= volume <= MAX_VOLUME for volume in self.volumes):
+            raise ValueError(f"Every volume must lie between {MIN_VOLUME} and {MAX_VOLUME}")
+
+        return self
+
+    @model_validator(mode="after")
+    def _validate_duty_cycles(self) -> Self:
+        if any(
+            not MIN_DUTY_CYCLE <= duty <= MAX_DUTY_CYCLE for duty in [*self.duty_cycles, *self.alternating_duty_cycles]
+        ):
+            raise ValueError(f"Every duty cycle must lie between {MIN_DUTY_CYCLE} and {MAX_DUTY_CYCLE}")
         if not self.duty_cycles and not self.alternating_duty_cycles:
             raise ValueError("A pulse note needs a duty cycle to sound with")
 

@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import Dict, Final, List, Tuple
 
+import numpy as np
+
 from sampletones_core.audio import write_wave
 from sampletones_shared.paths.extensions import EXT_FILE_WAVE
 from sampletones_shared.utils.system.paths import get_filename
@@ -30,17 +32,20 @@ def write_corpus(
     directory.mkdir(parents=True, exist_ok=True)
     paths: Dict[str, Tuple[Path, ...]] = {}
     for item in items:
-        recordings = item.stems.sources if item.stems is not None else (item.audio,)
-        names = (
-            [f"{item.name}{STEM_SUFFIX}{index}" for index in range(len(recordings))]
-            if item.stems is not None
-            else [item.name]
-        )
         written: List[Path] = []
-        for name, audio in zip(names, recordings):
+        for name, audio in _recordings(item):
             path = directory / get_filename(name, EXT_FILE_WAVE)
             write_wave(path, sample_rate, audio)
             written.append(path)
+
         paths[item.name] = tuple(written)
 
     return paths
+
+
+def _recordings(item: CorpusItem) -> List[Tuple[str, np.ndarray]]:
+    """What a conversion of ``item`` reads, each beside the name it is written under: its stems, or its audio."""
+    if item.stems is None:
+        return [(item.name, item.audio)]
+
+    return [(f"{item.name}{STEM_SUFFIX}{index}", source) for index, source in enumerate(item.stems.sources)]

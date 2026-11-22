@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sampletones_tools.synthesis.frequency import FrequencySpec, resolve_frequency
 
 CENTS_PER_OCTAVE: Final[float] = 1200.0
+MINIMUM_STEP_SAMPLES: Final[int] = 2
 
 
 class VibratoOscillator(BaseModel):
@@ -25,7 +26,10 @@ class VibratoOscillator(BaseModel):
     harmonic: int = Field(ge=1, description="The partial of the swinging fundamental sounded.")
 
     def frequency_at(self, time: np.ndarray) -> np.ndarray:
-        """The fundamental's instantaneous frequency in Hz at each time."""
+        """The fundamental's instantaneous frequency in Hz at each time.
+
+        The swing starts upward from ``frequency`` at time zero.
+        """
         swing = self.depth_cents / CENTS_PER_OCTAVE * np.sin(2.0 * np.pi * self.rate_hertz * time)
         return resolve_frequency(self.frequency) * np.power(2.0, swing)
 
@@ -38,7 +42,11 @@ class VibratoOscillator(BaseModel):
         """
         Render the swinging harmonic over the time axis.
 
-        Produces identical output for every generator state.
+        The phase is the running sum of the fundamental's frequency over the axis's step, zero at the
+        first sample, and the harmonic turns that phase as many times faster as its number. A swing in
+        cents is an exponential of a sine, whose integral the sum approximates step by step. An axis of
+        fewer than two samples renders silence, since a step takes two. Produces identical output for
+        every generator state.
 
         Args:
             time: Sample times in seconds, float64, evenly spaced.
@@ -47,7 +55,7 @@ class VibratoOscillator(BaseModel):
         Returns:
             The waveform as float64 in [-1, 1].
         """
-        if time.size < 2:
+        if time.size < MINIMUM_STEP_SAMPLES:
             return np.zeros_like(time)
 
         step = float(time[1] - time[0])

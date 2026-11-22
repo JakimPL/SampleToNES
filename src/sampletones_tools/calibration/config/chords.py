@@ -7,6 +7,8 @@ from sampletones_shared.utils.serialization import load_yaml_model
 from sampletones_tools.calibration.paths import CHORDS_CONFIG_PATH
 from sampletones_tools.corpus.written import FrameValue
 
+from .names import require_unique_names
+
 CHORD_SIZE: Final[int] = 2
 
 
@@ -45,10 +47,7 @@ class ChordsConfig(BaseModel):
 
     @model_validator(mode="after")
     def _validate_unique_names(self) -> Self:
-        names = [chord.name for chord in self.chords]
-        if len(set(names)) != len(names):
-            raise ValueError("Every chord must have a name of its own")
-
+        require_unique_names([chord.name for chord in self.chords], "chord")
         return self
 
     @classmethod

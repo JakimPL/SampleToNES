@@ -22,10 +22,15 @@ class StemsSources:
     sources: Tuple[np.ndarray, ...]
     config: StemsConfig
 
+    @property
+    def channels(self) -> FrozenSet[ChannelName]:
+        """The channels the stems may take between them, which a conversion of the sound covers."""
+        return self.config.covered_channels
+
 
 @dataclass(frozen=True)
 class CorpusItem:
-    """A reference sound a calibration run reconstructs.
+    """A reference sound a calibration run reconstructs, with what the corpus knows of it.
 
     Attributes:
         name: The name its files are written under.
@@ -34,7 +39,8 @@ class CorpusItem:
         listed: Whether the page lists it, and so whether the run writes its audio.
         audio: The sound itself.
         truth: What the sound plays, frame by frame, where the corpus knows it.
-        channels: The channels a conversion of the sound covers, or ``None`` for the run's own.
+        channels: The channels a conversion of the sound covers, or ``None`` for the run's own. A
+            sound held as stems covers the channels its stems may take.
         stems: The stems the sound is held as, or ``None`` for a sound converted as one recording.
             The audio is then their mix.
     """

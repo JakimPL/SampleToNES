@@ -4,7 +4,8 @@ import numpy as np
 
 from sampletones_tools.calibration.config.corpus import CorpusConfig
 from sampletones_tools.calibration.corpus.item import CorpusItem
-from sampletones_tools.calibration.corpus.synthesis import LINE, build_corpus
+from sampletones_tools.calibration.corpus.synthesis import build_corpus
+from sampletones_tools.calibration.corpus.truth import LINE
 
 from .conftest import FRAME_RATE
 

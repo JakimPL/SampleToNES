@@ -1,19 +1,20 @@
 import tarfile
 from pathlib import Path
-from typing import Dict, Final, List, Tuple
+from typing import Dict, Final, List, Optional, Tuple
 
 import numpy as np
 
 from sampletones_core.audio.io import read_stems
 from sampletones_core.configs import Config
 from sampletones_core.headless.conversion.request import load_stems
-from sampletones_tools.calibration.config.manifest import CorpusManifest, NesmdbPiece, Split
+from sampletones_tools.calibration.config.manifest import CorpusManifest, NesmdbPiece, RecordingItem, Split
 
-from .families import Family
+from .families import Catalog, Family
 from .item import CorpusItem, StemsSources
 from .midi import read_midi
 from .nes import written_item
 from .nesmdb import nesmdb_frames
+from .stems import mixed
 
 NESMDB_CATEGORY_PREFIX: Final[str] = "nesmdb"
 
@@ -27,12 +28,12 @@ def nesmdb_category(split: Split) -> str:
     return f"{NESMDB_CATEGORY_PREFIX}-{split.value}"
 
 
-def pieces_catalog(manifest: CorpusManifest) -> List[Tuple[Family, str]]:
+def pieces_catalog(manifest: CorpusManifest) -> Catalog:
     """Every category the manifest's NES-MDB pieces fall in, beside its family, in the order it holds them."""
     return list(dict.fromkeys((Family.SEQUENCES, nesmdb_category(item.split)) for item in manifest.pieces))
 
 
-def recordings_catalog(manifest: CorpusManifest) -> List[Tuple[Family, str]]:
+def recordings_catalog(manifest: CorpusManifest) -> Catalog:
     """Every category the manifest's recordings fall in, beside its family, in the order it holds them."""
     return list(dict.fromkeys((Family(item.family), item.category) for item in manifest.recordings))
 
@@ -40,8 +41,8 @@ def recordings_catalog(manifest: CorpusManifest) -> List[Tuple[Family, str]]:
 def build_recordings(config: Config, *, manifest: CorpusManifest) -> List[CorpusItem]:
     """The manifest's recordings, each read at the run's rate and at the level it was captured.
 
-    Recordings under a stems setup are held as stems, converted under that setup; a single
-    recording is converted over the run's channels.
+    Recordings under a stems setup are held as stems, converted under that setup over the channels
+    it covers; a single recording is converted over the run's channels. A recording's truth is ``None``.
 
     Args:
         config: The configuration the run converts with.
@@ -55,37 +56,15 @@ def build_recordings(config: Config, *, manifest: CorpusManifest) -> List[Corpus
             holds no stems setup.
         FileNotFoundError: If a recording is missing.
     """
-    items: List[CorpusItem] = []
-    for item in manifest.recordings:
-        recordings = tuple(
-            np.asarray(audio, dtype=np.float32)
-            for audio in read_stems(item.sources, target_sample_rate=config.library.sample_rate)
-        )
-        stems = None if item.stems is None else load_stems(item.stems)
-        if stems is not None and len(stems.entries) != len(recordings):
-            raise ValueError(f"{item.name!r} names {len(recordings)} recordings for {len(stems.entries)} stems")
-
-        items.append(
-            CorpusItem(
-                name=item.name,
-                family=Family(item.family),
-                category=item.category,
-                listed=item.listed,
-                audio=np.sum(recordings, axis=0).astype(np.float32),
-                truth=None,
-                channels=None if stems is None else frozenset(stems.covered_channels),
-                stems=None if stems is None else StemsSources(sources=recordings, config=stems),
-            )
-        )
-
-    return items
+    return [_recording(item, config.library.sample_rate) for item in manifest.recordings]
 
 
 def build_pieces(config: Config, *, manifest: CorpusManifest) -> List[CorpusItem]:
     """The manifest's NES-MDB pieces: each window rendered through the channels from the frames it writes.
 
-    A review piece is listed, so the page plays it. A held-out piece keeps its record alone, which
-    keeps it out of listening while the review pieces are tuned on.
+    A piece is a written sound: the frames read from its MIDI file are both what it renders and its
+    truth. A review piece is listed, so the page plays it. A held-out piece keeps its record alone,
+    which keeps it out of listening while the review pieces are tuned on.
 
     Args:
         config: The configuration the frames are rendered at, the one the run converts with.
@@ -117,8 +96,50 @@ def build_pieces(config: Config, *, manifest: CorpusManifest) -> List[CorpusItem
     ]
 
 
+def _recording(item: RecordingItem, sample_rate: int) -> CorpusItem:
+    """One recording entry: its recordings read at ``sample_rate``, as stems where it names a setup.
+
+    Raises:
+        ValueError: If the setup names a different number of entries than the recordings.
+    """
+    recordings = tuple(
+        np.asarray(audio, dtype=np.float32) for audio in read_stems(item.sources, target_sample_rate=sample_rate)
+    )
+    stems = _stems(item, recordings)
+    return CorpusItem(
+        name=item.name,
+        family=Family(item.family),
+        category=item.category,
+        listed=item.listed,
+        audio=mixed(recordings),
+        truth=None,
+        channels=None if stems is None else stems.channels,
+        stems=stems,
+    )
+
+
+def _stems(item: RecordingItem, recordings: Tuple[np.ndarray, ...]) -> Optional[StemsSources]:
+    """The recordings held as the stems of the entry's setup, ``None`` for an entry naming no setup.
+
+    Raises:
+        ValueError: If the setup names a different number of entries than the recordings.
+    """
+    if item.stems is None:
+        return None
+
+    setup = load_stems(item.stems)
+    if len(setup.entries) != len(recordings):
+        raise ValueError(f"{item.name!r} names {len(recordings)} recordings for {len(setup.entries)} stems")
+
+    return StemsSources(sources=recordings, config=setup)
+
+
 def _read_pieces(items: List[NesmdbPiece]) -> Dict[Tuple[Path, str], bytes]:
-    """The bytes of every piece the items name, each archive opened once and read member by member."""
+    """The bytes of every piece the items name, each archive opened once and read member by member.
+
+    Raises:
+        MissingPieceError: If an archive holds no piece of a name an item gives.
+    """
     wanted: Dict[Path, List[str]] = {}
     for item in items:
         wanted.setdefault(item.archive, []).append(item.member)
@@ -131,6 +152,7 @@ def _read_pieces(items: List[NesmdbPiece]) -> Dict[Tuple[Path, str], bytes]:
                 handle = tar.extractfile(member) if member in names else None
                 if handle is None:
                     raise MissingPieceError(f"'{archive}' holds no piece '{member}'")
+
                 pieces[(archive, member)] = handle.read()
 
     return pieces

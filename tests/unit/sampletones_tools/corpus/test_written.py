@@ -10,6 +10,7 @@ from sampletones_tools.corpus.written import (
     SINGLE_STEM_ID,
     WRITTEN_COEFFICIENT,
     FrameRun,
+    channel_frame,
     channel_frames,
     single_recording_record,
     written_reconstruction,
@@ -51,6 +52,15 @@ class TestChannelFrames:
     def test_a_frame_the_channel_cannot_play_is_refused(self) -> None:
         with pytest.raises(ValidationError):
             channel_frames(ChannelName.NOISE, [FrameRun(count=1, frame=PULSE_FRAME.model_dump())])
+
+
+class TestChannelFrame:
+    def test_the_fields_are_read_as_the_channel_s_instruction(self) -> None:
+        assert channel_frame(ChannelName.PULSE2, PULSE_FRAME.model_dump()) == PULSE_FRAME
+
+    def test_fields_the_channel_cannot_play_are_refused(self) -> None:
+        with pytest.raises(ValidationError):
+            channel_frame(ChannelName.TRIANGLE, {"on": True, "period": 3, "volume": 9, "short": True})
 
 
 class TestSingleRecordingRecord:

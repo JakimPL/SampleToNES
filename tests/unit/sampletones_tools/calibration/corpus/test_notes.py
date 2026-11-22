@@ -76,3 +76,25 @@ class TestBuildNotes:
         names = [item.name for item in notes]
 
         assert len(names) == len(set(names))
+
+    def test_the_page_lists_a_triangle_note_at_every_stride(self, notes: List[CorpusItem]) -> None:
+        listed = [item.name for item in notes if item.category == TRIANGLE_CATEGORY and item.listed]
+
+        assert listed == [f"note-triangle-p{pitch}" for pitch in GRID.pitches[:: GRID.listed_pitch_stride]]
+
+    def test_the_noise_sounds_its_long_mode_first(self, notes: List[CorpusItem]) -> None:
+        modes = [item.name.split("-")[2] for item in notes if item.category == NOISE_CATEGORY]
+
+        assert modes == ["long"] * (len(modes) // 2) + ["short"] * (len(modes) // 2)
+
+
+class TestFixedDutyCyclesAlone:
+    def test_a_grid_of_no_alternating_duty_cycles_sounds_its_fixed_ones_alone(self) -> None:
+        grid = GRID.model_copy(update={"duty_cycles": [0, 2], "alternating_duty_cycles": []})
+
+        pulses = [_pulse(item) for item in build_notes(Config(), grid=grid) if item.category == PULSE_CATEGORY]
+
+        assert Counter(frame.duty_cycle for frame in pulses) == {
+            0: len(GRID.pitches) * len(GRID.volumes),
+            2: len(GRID.pitches) * len(GRID.volumes),
+        }

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Final, List, Tuple
+from typing import Final, List
 
 import numpy as np
 
@@ -9,17 +9,18 @@ from sampletones_shared.logger import logger
 from sampletones_tools.calibration.config.samples import SamplesConfig
 from sampletones_tools.calibration.samples import is_fetched
 
-from .families import Family
+from .families import Catalog, Family
 from .item import CorpusItem
 
 SAMPLES_CATEGORY: Final[str] = "samples"
-SAMPLES_CATALOG: Final[List[Tuple[Family, str]]] = [(Family.SAMPLES, SAMPLES_CATEGORY)]
+SAMPLES_CATALOG: Final[Catalog] = [(Family.SAMPLES, SAMPLES_CATEGORY)]
 
 
 def build_samples(config: Config, *, references: SamplesConfig, directory: Path) -> List[CorpusItem]:
     """The fetched recordings kept for listening, each cut to the window its reference names.
 
-    A recording not fetched yet is left out, with a note on how to fetch it.
+    A recording not fetched yet is left out, with a note on how to fetch it. A recording carries no
+    truth, and is converted over the run's channels.
 
     Args:
         config: The configuration the run converts with, whose rate the recordings are read at.

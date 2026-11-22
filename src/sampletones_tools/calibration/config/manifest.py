@@ -6,6 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, PositiveInt, 
 
 from sampletones_shared.utils.serialization import load_yaml_model
 
+from .names import require_unique_names
+
 
 class Split(StrEnum):
     """Which part of a local corpus a sound belongs to.
@@ -91,10 +93,7 @@ class CorpusManifest(BaseModel):
 
     @model_validator(mode="after")
     def _validate_unique_names(self) -> Self:
-        names = [item.name for item in self.items]
-        if len(set(names)) != len(names):
-            raise ValueError("Every sound of a manifest must have a name of its own")
-
+        require_unique_names([item.name for item in self.items], "sound of a manifest")
         return self
 
     @classmethod

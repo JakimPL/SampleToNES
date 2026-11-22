@@ -2,9 +2,11 @@ from bisect import bisect_right
 from typing import Dict, Final, List, Mapping, Optional, Tuple
 
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.constants.general import NUM_PERIODS
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
 
 from .midi import Note, Track
+from .truth import frame_middles
 
 VOICE_CHANNELS: Final[Dict[str, ChannelName]] = {
     "p1": ChannelName.PULSE1,
@@ -15,10 +17,8 @@ VOICE_CHANNELS: Final[Dict[str, ChannelName]] = {
 VOLUME_CONTROLLER: Final[int] = 11
 TIMBRE_CONTROLLER: Final[int] = 12
 TRIANGLE_OCTAVE: Final[int] = 12
-NOISE_PITCHES: Final[int] = 16
 SHORT_MODE: Final[int] = 1
-FIRST_DUTY_CYCLE: Final[int] = 2
-FRAME_CENTER: Final[float] = 0.5
+INITIAL_DUTY_CYCLE: Final[int] = 2
 
 Events = List[Tuple[float, int]]
 
@@ -30,12 +30,13 @@ def nesmdb_frames(
     frames: int,
     rate: int,
 ) -> Dict[ChannelName, List[InstructionUnion]]:
-    """The frames an NES-MDB piece plays over a window, read at the middle of each frame.
+    """The frames an NES-MDB piece plays over a window, each read at its middle.
 
-    NES-MDB writes each channel as a named track. A note's velocity is the volume it starts at,
-    controller 11 moves the volume while it sounds, and controller 12 sets the pulse's duty cycle or
-    the noise channel's mode. The triangle's note names the pitch it sounds, an octave below the
-    note it is played on, and the noise channel's note counts its sixteen periods from the lowest.
+    NES-MDB writes each channel as a named track, and a track of another name is left out. A note's
+    velocity is the volume it starts at, controller 11 moves the volume while it sounds, and
+    controller 12 sets the pulse's duty cycle or the noise channel's mode. The triangle's note names
+    the pitch it sounds, an octave below the note it is played on, and the noise channel's note counts
+    its sixteen periods from the lowest.
 
     Args:
         tracks: The piece's tracks by name.
@@ -49,46 +50,58 @@ def nesmdb_frames(
     Raises:
         ValidationError: If a note lies outside the range its channel's instruction takes.
     """
+    times: List[float] = frame_middles(start_frame, frames, rate).tolist()
     streams: Dict[ChannelName, List[InstructionUnion]] = {}
     for name, track in tracks.items():
         channel = VOICE_CHANNELS.get(name)
-        if channel is None:
-            continue
-
-        times = [(start_frame + frame + FRAME_CENTER) / rate for frame in range(frames)]
-        streams[channel] = [_frame(channel, track, time) for time in times]
+        if channel is not None:
+            streams[channel] = [_frame(channel, track, time) for time in times]
 
     return streams
 
 
 def _frame(channel: ChannelName, track: Track, time: float) -> InstructionUnion:
+    """What ``channel`` plays at ``time``: the note sounding then, at the volume and timbre the track holds."""
     note = _sounding(track.notes, time)
-    timbres = track.controllers.get(TIMBRE_CONTROLLER, [])
     match channel:
         case ChannelName.TRIANGLE:
-            if note is None:
-                return TriangleInstruction.null_instruction()
-            return TriangleInstruction(on=True, pitch=note.pitch + TRIANGLE_OCTAVE)
+            return _triangle_frame(note)
         case ChannelName.NOISE:
-            volume = _volume(track, note, time)
-            if note is None or not volume:
-                return NoiseInstruction.null_instruction()
-            short = _latest(timbres, time) == SHORT_MODE
-            return NoiseInstruction(on=True, period=NOISE_PITCHES - note.pitch, volume=volume, short=short)
+            return _noise_frame(note, _volume(track, note, time), _timbre(track, time))
         case _:
-            volume = _volume(track, note, time)
-            if note is None or not volume:
-                return PulseInstruction.null_instruction()
-            duty = _latest(timbres, time)
-            return PulseInstruction(
-                on=True,
-                pitch=note.pitch,
-                volume=volume,
-                duty_cycle=FIRST_DUTY_CYCLE if duty is None else duty,
-            )
+            return _pulse_frame(note, _volume(track, note, time), _timbre(track, time))
+
+
+def _triangle_frame(note: Optional[Note]) -> TriangleInstruction:
+    """The triangle sounding ``note``, played an octave above it at the one level the triangle has."""
+    if note is None:
+        return TriangleInstruction.null_instruction()
+
+    return TriangleInstruction(on=True, pitch=note.pitch + TRIANGLE_OCTAVE)
+
+
+def _noise_frame(note: Optional[Note], volume: int, timbre: Optional[int]) -> NoiseInstruction:
+    """The noise sounding ``note`` at ``volume``, short where the timbre sets the short mode; silent at volume 0."""
+    if note is None or not volume:
+        return NoiseInstruction.null_instruction()
+
+    return NoiseInstruction(on=True, period=NUM_PERIODS - note.pitch, volume=volume, short=timbre == SHORT_MODE)
+
+
+def _pulse_frame(note: Optional[Note], volume: int, timbre: Optional[int]) -> PulseInstruction:
+    """A pulse sounding ``note`` at ``volume`` with the duty cycle the timbre sets; silent at volume 0.
+
+    Before the piece sets a duty cycle, a pulse plays at ``INITIAL_DUTY_CYCLE``.
+    """
+    if note is None or not volume:
+        return PulseInstruction.null_instruction()
+
+    duty_cycle = INITIAL_DUTY_CYCLE if timbre is None else timbre
+    return PulseInstruction(on=True, pitch=note.pitch, volume=volume, duty_cycle=duty_cycle)
 
 
 def _sounding(notes: List[Note], time: float) -> Optional[Note]:
+    """The note sounding at ``time``: the last to start by then, ``None`` before the first or once it ends."""
     index = bisect_right([note.start for note in notes], time) - 1
     if index < 0 or notes[index].end <= time:
         return None
@@ -97,7 +110,7 @@ def _sounding(notes: List[Note], time: float) -> Optional[Note]:
 
 
 def _volume(track: Track, note: Optional[Note], time: float) -> int:
-    """The volume at ``time``: the note's velocity, then whatever controller 11 last set while it sounds."""
+    """The volume at ``time``: the note's velocity, then whatever controller 11 last set since it started."""
     if note is None:
         return 0
 
@@ -108,6 +121,12 @@ def _volume(track: Track, note: Optional[Note], time: float) -> int:
     return note.velocity if changed is None else changed
 
 
+def _timbre(track: Track, time: float) -> Optional[int]:
+    """The value controller 12 last set by ``time``, ``None`` before the piece sets one."""
+    return _latest(track.controllers.get(TIMBRE_CONTROLLER, []), time)
+
+
 def _latest(events: Events, time: float) -> Optional[int]:
+    """The value of the last of ``events`` at or before ``time``, ``None`` before the first."""
     index = bisect_right([moment for moment, _ in events], time) - 1
     return events[index][1] if index >= 0 else None

@@ -29,9 +29,10 @@ def written_item(
 ) -> CorpusItem:
     """A reference sound written out as NES frames, rendered the way the channels play it.
 
-    The sound carries the frames it was written as, so its conversion is measured against what it
-    plays, and it is converted over every channel, so a round trip also answers which channels stay
-    silent.
+    The sound is exactly what its frames render to, so it carries them as its truth, and its
+    conversion is measured against what it plays: every frame, and the pitch each tonal channel's
+    generator sounds them at. It is converted over every channel, so a round trip also answers which
+    channels stay silent.
 
     Args:
         name: The name its files are written under.
@@ -62,7 +63,10 @@ def written_item(
 
 
 def held(channel: ChannelName, instruction: InstructionUnion, *, sounding: int, silent: int) -> List[InstructionUnion]:
-    """An instruction held for ``sounding`` frames, then ``silent`` frames of the channel's silence."""
+    """An instruction held for ``sounding`` frames, then ``silent`` frames of the channel's silence.
+
+    The silence after a note lets a conversion answer its end as well as its sound.
+    """
     silence = CHANNEL_TO_EXPORTER_MAP[channel].get_instruction_type().null_instruction()
     return [instruction] * sounding + [silence] * silent
 

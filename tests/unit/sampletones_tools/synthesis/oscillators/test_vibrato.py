@@ -40,3 +40,20 @@ class TestVibratoOscillator:
         peak = np.fft.rfftfreq(audio.shape[0], 1.0 / sample_rate)[np.argmax(spectrum)]
 
         assert peak == pytest.approx(3 * FREQUENCY, abs=1.0)
+
+    def test_the_swing_starts_upward_from_the_frequency(self, time_axis: np.ndarray) -> None:
+        frequency = _vibrato(DEPTH, 1).frequency_at(time_axis[:2])
+
+        assert frequency[0] == pytest.approx(FREQUENCY)
+        assert frequency[1] > FREQUENCY
+
+    def test_the_phase_starts_at_zero(self, time_axis: np.ndarray, generator: np.random.Generator) -> None:
+        assert _vibrato(DEPTH, 3).render(time_axis, generator=generator)[0] == 0.0
+
+    @pytest.mark.parametrize("samples", [0, 1], ids=["no_samples", "one_sample"])
+    def test_an_axis_of_no_step_renders_silence(
+        self, samples: int, time_axis: np.ndarray, generator: np.random.Generator
+    ) -> None:
+        audio = _vibrato(DEPTH, 1).render(time_axis[:samples], generator=generator)
+
+        assert audio.shape == (samples,) and not np.any(audio)

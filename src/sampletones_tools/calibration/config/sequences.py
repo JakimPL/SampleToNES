@@ -7,6 +7,8 @@ from sampletones_shared.utils.serialization import load_yaml_model
 from sampletones_tools.calibration.paths import SEQUENCES_CONFIG_PATH
 from sampletones_tools.corpus.written import FrameRun
 
+from .names import require_unique_names
+
 
 class SequenceConfig(BaseModel):
     """A sequence written out as NES frames: what each channel plays, frame by frame.
@@ -34,7 +36,11 @@ class SequenceConfig(BaseModel):
 
 
 class SequencesConfig(BaseModel):
-    """The sequences written out as NES frames, whose conversions are measured against them."""
+    """The sequences written out as NES frames, whose conversions are measured against them.
+
+    Attributes:
+        items: The sequences, in the order the corpus holds them.
+    """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -42,10 +48,7 @@ class SequencesConfig(BaseModel):
 
     @model_validator(mode="after")
     def _validate_unique_names(self) -> Self:
-        names = [item.name for item in self.items]
-        if len(set(names)) != len(names):
-            raise ValueError("Every written sequence must have a name of its own")
-
+        require_unique_names([item.name for item in self.items], "written sequence")
         return self
 
     @classmethod
