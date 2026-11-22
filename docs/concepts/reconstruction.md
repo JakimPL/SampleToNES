@@ -405,6 +405,17 @@ frames' tail. Every step of the joint assignment reads the frame this way: the f
 over the leak, a fitted level reads its note at the level of the note it extends, and the full criterion
 scores each combination with the leak in its mix.
 
+A low bin's window averages a channel over many frames, so a channel switched on and off from frame to
+frame reads there as a level between the two: a triangle quieter than its one volume, or a noise quieter
+than its quietest step. The model hears that as a close match, and the ear hears it as flicker. With a
+channel's `generation.assignment.inertia` above zero, a frame's choice in the pass also pays that many
+times the decoder's charges for the channel changing from what the frame before plays and to what the
+frame after plays. Each channel has its own value, so a bass on the triangle can hold steady while the
+noise stays free for short drum hits, and a stem's channels follow the values of the channels it holds.
+The combinations the two neighbors play join the frame's finalists, so it may hold through them, and
+the columns and pools the decoder reads carry the same charge. It is an opt-in setting while the
+calibration benchmark judges it.
+
 ## 6. Refining the pitch
 
 The catalog is built on the equal-tempered grid, so the matching places a frame no closer than the nearest

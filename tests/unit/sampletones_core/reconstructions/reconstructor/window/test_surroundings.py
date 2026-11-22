@@ -3,6 +3,7 @@ from typing import Final, List, Optional
 import numpy as np
 import pytest
 
+from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions.reconstructor.window.profiles import FrameProfiles
 from sampletones_core.reconstructions.reconstructor.window.surroundings import (
     ChannelLine,
@@ -14,6 +15,8 @@ HELD: Final[NoteKey] = (57, 0)
 NEXT: Final[NoteKey] = (60, 0)
 OTHER: Final[NoteKey] = (64, 0)
 POWER: Final[np.ndarray] = np.array([4.0, 1.0])
+HELD_NOTE: Final[PulseInstruction] = PulseInstruction(on=True, pitch=57, volume=12, duty_cycle=0)
+QUIET: Final[PulseInstruction] = PulseInstruction.null_instruction()
 FRAMES: Final[int] = 9
 MIDDLE: Final[int] = 4
 SPREAD: Final[np.ndarray] = np.array([0.1, 0.2, 0.4, 0.2, 0.1])
@@ -30,7 +33,8 @@ def _run(key: Optional[NoteKey], frames: int) -> List[Optional[NoteKey]]:
 
 def _line(keys: List[Optional[NoteKey]], *, coherent: bool = True) -> ChannelLine:
     powers = np.stack([POWER if key is not None else np.zeros_like(POWER) for key in keys])
-    return ChannelLine(keys=list(keys), powers=powers, coherent=coherent)
+    instructions = [HELD_NOTE if key is not None else QUIET for key in keys]
+    return ChannelLine(keys=list(keys), powers=powers, instructions=list(instructions), coherent=coherent)
 
 
 class TestAHeldNote:
@@ -106,8 +110,9 @@ class TestSettlingAFrame:
     def test_a_settled_frame_is_heard_by_the_frames_after_it(self) -> None:
         line = _line(_run(HELD, MIDDLE) + _run(None, FRAMES - MIDDLE))
 
-        line.settle(MIDDLE, HELD, POWER)
+        line.settle(MIDDLE, HELD, POWER, HELD_NOTE)
 
         around = surroundings(line, MIDDLE + 1, PROFILES)
         assert around.before is not None and around.before.key == HELD
         assert around.extends(HELD)
+        assert line.instructions[MIDDLE] == HELD_NOTE

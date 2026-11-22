@@ -12,12 +12,28 @@ from sampletones_core.reconstructions.reconstructor.mix import FrameMix
 
 from .catalog import KindCatalog, alike_timbres
 from .combinations import CombinationSearch, Rows
+from .continuity import StemContinuity
 from .hearing import FrameHearing
 from .layout import StemLayout
 
 FINALISTS: Final[int] = 6
 TIMBRE_TOLERANCE: Final[float] = 0.02
 LEVEL_STEPS: Final[int] = 2
+
+Phasing = Tuple[Tuple[int, int], ...]
+
+
+@dataclass(frozen=True)
+class DutyTrial:
+    """A combination with one pulse moved to another duty cycle of its note and volume.
+
+    Attributes:
+        rows: The combination with the pulse moved.
+        shares_spectrum: Whether the new duty cycle sounds the same spectrum as the pulse's own.
+    """
+
+    rows: Rows
+    shares_spectrum: bool
 
 
 @dataclass(frozen=True)
@@ -28,11 +44,18 @@ class ScoredCombination:
         rows: The row each of the stem's channels plays, in the layout's channel order.
         cost: The full criterion of the frame with the rows sounding together.
         contributions: What each channel adds to the frame, ``None`` for a silent one.
+        charge: What the frame's choice pays for the combination breaking with the frames beside it.
     """
 
     rows: Rows
     cost: float
     contributions: Tuple[Optional[Contribution], ...]
+    charge: float
+
+    @property
+    def weighed(self) -> float:
+        """What the frame's choice and the decoders weigh the combination by: its full cost and its charge."""
+        return self.cost + self.charge
 
 
 class CombinationJudge:
@@ -42,7 +65,8 @@ class CombinationJudge:
     the frame's waveform, at the drive the stem gives it, and the frame is then scored with all of
     them sounding, exactly as a column scores one candidate beside a mix. A channel phased once
     behind the same louder rows keeps its phase for every combination of the frame sharing them.
-    Each row adds its power as the frame's hearing reads it.
+    Each row adds its power as the frame's hearing reads it. The frame's choice weighs each
+    combination by its cost and what it pays for breaking with the frames beside it.
     """
 
     def __init__(
@@ -53,6 +77,7 @@ class CombinationJudge:
         matcher: FrameMatcher,
         weights: np.ndarray,
         hearing: FrameHearing,
+        continuity: StemContinuity,
     ) -> None:
         self.fragment = fragment
         self.layout = layout
@@ -60,49 +85,80 @@ class CombinationJudge:
         self.matcher = matcher
         self.weights = weights
         self.hearing = hearing
-        self._phased: Dict[Tuple[Tuple[int, int], ...], Contribution] = {}
+        self.continuity = continuity
+        self._phasings: Dict[Phasing, Contribution] = {}
 
     def scored(self, combinations: Sequence[Rows]) -> List[ScoredCombination]:
         """The full cost of the frame with each combination's rows sounding together, scored in one pass."""
         built = [self._contributions(rows) for rows in combinations]
         costs = self.matcher.mix_costs(self.fragment, [mix for _, mix in built])
         return [
-            ScoredCombination(rows=rows, cost=float(cost), contributions=contributions)
+            ScoredCombination(
+                rows=rows,
+                cost=float(cost),
+                contributions=contributions,
+                charge=self.continuity.charge(self.layout, self.catalogs, rows),
+            )
             for rows, (contributions, _), cost in zip(combinations, built, costs)
         ]
 
     def _contributions(self, rows: Rows) -> Tuple[Tuple[Optional[Contribution], ...], FrameMix]:
-        """What each of ``rows`` adds to the frame, phased loudest first, and the mix they sound."""
-        loudness = [
-            float(self.catalogs[slot.kind].features[row] @ self.weights) / slot.drive**2
-            for slot, row in zip(self.layout.slots, rows)
-        ]
+        """What each of ``rows`` adds to the frame, phased loudest first, and the mix they sound together."""
         contributions: List[Optional[Contribution]] = [None] * len(rows)
         mix = self.hearing.empty_mix(self.fragment)
-        phased: Tuple[Tuple[int, int], ...] = ()
-        for index in sorted(range(len(rows)), key=lambda position: -loudness[position]):
-            slot, row = self.layout.slots[index], rows[index]
-            catalog = self.catalogs[slot.kind]
-            if not catalog.sounding(row):
-                continue
-            phased = (*phased, (index, row))
-            contribution = self._phased.get(phased)
-            if contribution is None:
-                contribution = self.matcher.contribution(
-                    catalog.instructions[row],
-                    mix.residual_waveform(self.fragment),
-                    self.hearing.powers(index, [row])[0],
-                    drive=slot.drive,
-                )
-                self._phased[phased] = contribution
+        louder: Phasing = ()
+        for index in self._loudest_first(rows):
+            louder = (*louder, (index, rows[index]))
+            contribution = self._phased(louder, mix)
             contributions[index] = contribution
             mix = mix.added(contribution)
 
         return tuple(contributions), mix
 
+    def _loudest_first(self, rows: Rows) -> List[int]:
+        """The places of the channels ``rows`` sounds, loudest first by the criterion's weighting.
+
+        Each channel is phased against what the louder ones leave of the frame's waveform, since the
+        louder channels shape that residual most.
+        """
+        loudness = {index: self._loudness(index, rows[index]) for index in self._sounding(rows)}
+        return sorted(loudness, key=loudness.__getitem__, reverse=True)
+
+    def _loudness(self, index: int, row: int) -> float:
+        """How loud the channel at ``index`` plays ``row`` at its drive, as the criterion weighs the bins."""
+        slot = self.layout.slots[index]
+        return float(self.catalogs[slot.kind].features[row] @ self.weights) / slot.drive**2
+
+    def _phased(self, phasing: Phasing, mix: FrameMix) -> Contribution:
+        """What the last channel of ``phasing`` adds, phased against what ``mix`` leaves of the frame's waveform.
+
+        The channels before it in ``phasing``, with their rows, make ``mix`` what it is, so a
+        contribution phased once serves every combination of the frame sharing them.
+        """
+        cached = self._phasings.get(phasing)
+        if cached is not None:
+            return cached
+
+        index, row = phasing[-1]
+        slot = self.layout.slots[index]
+        contribution = self.matcher.contribution(
+            self.catalogs[slot.kind].instructions[row],
+            mix.residual_waveform(self.fragment),
+            self.hearing.powers(index, [row])[0],
+            drive=slot.drive,
+        )
+        self._phasings[phasing] = contribution
+        return contribution
+
     def finalists(self, candidates: Sequence[Rows]) -> List[ScoredCombination]:
-        """The first ``FINALISTS`` of ``candidates``, the spectral ranking's cheapest, under the full criterion."""
-        return self.scored(candidates[:FINALISTS])
+        """The first ``FINALISTS`` of ``candidates``, the spectral ranking's cheapest, under the full criterion.
+
+        Where the frame's choice keeps to the frames beside it, the combinations they play join the
+        finalists, so the frame may hold through what its neighbors play.
+        """
+        cheapest = list(candidates[:FINALISTS])
+        held = [rows for rows in self.continuity.beside(self.layout, self.catalogs) if rows not in cheapest]
+        return self.scored([*cheapest, *held])
 
     def best(self, search: CombinationSearch, finalists: Sequence[ScoredCombination]) -> ScoredCombination:
         """The cheapest of ``finalists``, thinned and with its pulses' duty cycles settled.
@@ -150,40 +206,54 @@ class CombinationJudge:
         for combination in [winner, *finalists]:
             pool.setdefault(search.canonical(combination.rows), combination)
 
-        trials = [
-            *self._quieted(winner.rows),
-            *(rows for combination in finalists for rows in self._silenced(combination.rows)),
-        ]
-        if previous is not None:
-            trials.append(previous)
-        fresh = list(dict.fromkeys(rows for rows in map(search.canonical, trials) if rows not in pool))
+        fresh = _unpooled(search, self._variations(finalists, winner, previous), pool)
         if fresh:
             pool.update((combination.rows, combination) for combination in self.scored(fresh))
 
         return list(pool.values())
 
+    def _variations(
+        self, finalists: Sequence[ScoredCombination], winner: ScoredCombination, previous: Optional[Rows]
+    ) -> List[Rows]:
+        """The combinations a path may take beside the scored ones.
+
+        These are the winner with every set of its channels silenced, each finalist with one channel
+        silenced, and the previous frame's winner.
+        """
+        variations = [*self._quieted(winner.rows)]
+        for combination in finalists:
+            variations.extend(self._silenced(combination.rows))
+
+        if previous is not None:
+            variations.append(previous)
+
+        return variations
+
+    def _sounding(self, rows: Rows) -> List[int]:
+        """The places of the channels ``rows`` sounds, in the layout's order."""
+        return [index for index, slot in enumerate(self.layout.slots) if self.catalogs[slot.kind].sounding(rows[index])]
+
     def _silenced(self, rows: Rows) -> List[Rows]:
         """``rows`` with each of its sounding channels silenced in turn."""
-        return [
-            _replaced(rows, index, self.catalogs[slot.kind].silence)
-            for index, slot in enumerate(self.layout.slots)
-            if self.catalogs[slot.kind].sounding(rows[index])
-        ]
+        return [self._silent_at(rows, [index]) for index in self._sounding(rows)]
 
     def _quieted(self, rows: Rows) -> List[Rows]:
         """``rows`` with every set of its sounding channels silenced, one channel before two."""
-        sounding = [
-            index for index, slot in enumerate(self.layout.slots) if self.catalogs[slot.kind].sounding(rows[index])
-        ]
+        sounding = self._sounding(rows)
         quieted: List[Rows] = []
         for count in range(1, len(sounding) + 1):
             for silenced in itertools.combinations(sounding, count):
-                quiet = rows
-                for index in silenced:
-                    quiet = _replaced(quiet, index, self.catalogs[self.layout.slots[index].kind].silence)
-                quieted.append(quiet)
+                quieted.append(self._silent_at(rows, silenced))
 
         return quieted
+
+    def _silent_at(self, rows: Rows, places: Sequence[int]) -> Rows:
+        """``rows`` with the channels at ``places`` silenced."""
+        silent = rows
+        for index in places:
+            silent = _replaced(silent, index, self.catalogs[self.layout.slots[index].kind].silence)
+
+        return silent
 
     def _thinned(self, search: CombinationSearch, winner: ScoredCombination) -> ScoredCombination:
         """``winner`` with the channels silenced whose silence the full criterion prefers, one at a time."""
@@ -194,7 +264,7 @@ class CombinationJudge:
 
             trials = list(dict.fromkeys([*silenced, *self._releveled(search, silenced)]))
             trimmed = _cheapest(self.scored(trials))
-            if trimmed.cost >= winner.cost:
+            if trimmed.weighed >= winner.weighed:
                 return winner
 
             winner = trimmed
@@ -232,33 +302,50 @@ class CombinationJudge:
 
     def _timbres_settled(self, search: CombinationSearch, winner: ScoredCombination) -> ScoredCombination:
         """``winner`` with one pulse on the other duty cycle of its note and volume the full criterion prefers."""
-        trials: List[Rows] = []
-        alike: List[bool] = []
+        trials = self._duty_trials(winner.rows)
+        if not trials:
+            return winner
+
+        kept = self._told_apart_by_waveform(search, winner.rows, trials)
+        if not kept:
+            return winner
+
+        return _cheapest([winner, *self.scored(kept)])
+
+    def _duty_trials(self, rows: Rows) -> List[DutyTrial]:
+        """Each sounding pulse of ``rows`` moved to every other duty cycle of its note and volume."""
+        trials: List[DutyTrial] = []
         for index, slot in enumerate(self.layout.slots):
             catalog = self.catalogs[slot.kind]
-            row = winner.rows[index]
+            row = rows[index]
             if slot.kind != GeneratorClassName.PULSE_GENERATOR or not catalog.sounding(row):
                 continue
 
             shared = alike_timbres(int(catalog.timbres[row]))
             for other in catalog.rows_of(int(catalog.notes[row])):
                 if catalog.volumes[other] == catalog.volumes[row] and int(other) != row:
-                    trials.append(_replaced(winner.rows, index, int(other)))
-                    alike.append(int(catalog.timbres[other]) in shared)
+                    trials.append(
+                        DutyTrial(
+                            rows=_replaced(rows, index, int(other)),
+                            shares_spectrum=int(catalog.timbres[other]) in shared,
+                        )
+                    )
 
-        if not trials:
-            return winner
+        return trials
 
-        spectral = search.spectral_costs([winner.rows, *trials])
-        kept = [
-            trial
-            for trial, shares, cost in zip(trials, alike, spectral[1:])
-            if shares or abs(float(cost) - float(spectral[0])) <= TIMBRE_TOLERANCE
+    @staticmethod
+    def _told_apart_by_waveform(search: CombinationSearch, rows: Rows, trials: Sequence[DutyTrial]) -> List[Rows]:
+        """The duty trials the spectrum leaves to the waveform to tell from ``rows``.
+
+        A duty cycle sharing the pulse's spectrum always is, and another one where its spectral cost
+        stays within ``TIMBRE_TOLERANCE`` of the cost of ``rows``.
+        """
+        spectral = search.spectral_costs([rows, *(trial.rows for trial in trials)])
+        return [
+            trial.rows
+            for trial, cost in zip(trials, spectral[1:])
+            if trial.shares_spectrum or abs(float(cost) - float(spectral[0])) <= TIMBRE_TOLERANCE
         ]
-        if not kept:
-            return winner
-
-        return _cheapest([winner, *self.scored(kept)])
 
 
 def rearranged(combination: ScoredCombination, places: Sequence[int], order: Sequence[int]) -> ScoredCombination:
@@ -277,6 +364,11 @@ def _replaced(rows: Rows, index: int, row: int) -> Rows:
     return tuple(row if position == index else kept for position, kept in enumerate(rows))
 
 
+def _unpooled(search: CombinationSearch, trials: Sequence[Rows], pool: Mapping[Rows, ScoredCombination]) -> List[Rows]:
+    """``trials`` in the order of their pulses that reads once, each once, leaving those ``pool`` already holds."""
+    return list(dict.fromkeys(rows for rows in map(search.canonical, trials) if rows not in pool))
+
+
 def _cheapest(combinations: Sequence[ScoredCombination]) -> ScoredCombination:
-    """The combination of the lowest full cost, the first of equal ones."""
-    return min(combinations, key=lambda combination: combination.cost)
+    """The combination the frame's choice weighs lowest, the first of equal ones."""
+    return min(combinations, key=lambda combination: combination.weighed)

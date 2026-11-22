@@ -88,6 +88,7 @@ records them.
 | --- | --- | --- |
 | `method` | how a frame's channels get their candidates: one channel at a time, or every note fitted at once with whole combinations compared; `joint` needs each channel held by one stem | `picks` / `joint` |
 | `neighbors` | how many times every frame is assigned again after a decode, among the notes its neighbors play, each pass decoded anew; needs `joint` | integer ≥ 0 |
+| `inertia` | per channel (`pulse1`, `pulse2`, `triangle`, `noise`): how many times the decoder's charges for changing from the frame before and to the frame after a frame's choice pays on that channel in the neighbor pass; `0` leaves the channel free, as short drum hits need; needs `neighbors` above `0` | number ≥ 0 each |
 
 ### `generation.decoder`
 

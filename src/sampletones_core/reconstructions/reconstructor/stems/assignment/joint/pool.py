@@ -102,18 +102,18 @@ def _pooled(
     catalogs: Mapping[GeneratorClassName, KindCatalog],
     silence: Contribution,
 ) -> PooledCombination:
-    """``combination`` as each channel's candidate, every one scored at the combination's cost."""
+    """``combination`` as each channel's candidate, every one at what the frame's choice weighs it by."""
     candidates: List[ScoredCandidate] = []
     for slot, row, contribution in zip(layout.slots, combination.rows, combination.contributions):
         candidates.append(
             ScoredCandidate(
                 instruction=catalogs[slot.kind].instructions[row],
-                cost=combination.cost,
+                cost=combination.weighed,
                 contribution=silence if contribution is None else contribution,
             )
         )
 
-    return PooledCombination(candidates=tuple(candidates), cost=combination.cost)
+    return PooledCombination(candidates=tuple(candidates), cost=combination.weighed)
 
 
 def _played(combination: PooledCombination) -> Tuple[InstructionUnion, ...]:

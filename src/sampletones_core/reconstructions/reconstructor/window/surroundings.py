@@ -3,6 +3,8 @@ from typing import Iterator, List, Optional, Sequence, Tuple
 
 import numpy as np
 
+from sampletones_core.instructions import InstructionUnion
+
 from .profiles import FrameProfiles
 
 NoteKey = Tuple[int, int]
@@ -19,18 +21,21 @@ class ChannelLine:
         keys: The note and timbre each frame sounds, ``None`` where the channel is silent. Frames in a
             row sounding one key hold one note.
         powers: Each frame's power per bin at the drive the channel is played at, one row per frame.
+        instructions: What the channel plays in each frame.
         coherent: Whether a held note keeps its phase from frame to frame, as a tonal channel's does.
             The noise's frames add in power.
     """
 
     keys: List[Optional[NoteKey]]
     powers: np.ndarray
+    instructions: List[InstructionUnion]
     coherent: bool
 
-    def settle(self, frame: int, key: Optional[NoteKey], power: np.ndarray) -> None:
-        """Settles ``frame`` on playing ``key`` at ``power``."""
+    def settle(self, frame: int, key: Optional[NoteKey], power: np.ndarray, instruction: InstructionUnion) -> None:
+        """Settles ``frame`` on playing ``instruction``, which sounds ``key`` at ``power``."""
         self.keys[frame] = key
         self.powers[frame] = power
+        self.instructions[frame] = instruction
 
 
 @dataclass(frozen=True)

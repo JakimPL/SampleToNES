@@ -20,6 +20,11 @@ metric:
 assignment:
   method: picks
   neighbors: 0
+  inertia:
+    pulse1: 0.0
+    pulse2: 0.0
+    triangle: 0.0
+    noise: 0.0
 
 decoder:
   selector: viterbi

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import AbstractSet, Dict, List, Optional, Sequence, Tuple
+from typing import AbstractSet, Dict, Iterator, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -20,7 +20,7 @@ from sampletones_core.constants.enums import (
     LevelMethod,
     ordered_channels,
 )
-from sampletones_core.fft import FragmentedAudio, Window
+from sampletones_core.fft import Fragment, FragmentedAudio, Window
 from sampletones_core.generators import (
     FULL_SCALE_RMS_LEVELS,
     get_generators_by_channels,
@@ -35,22 +35,46 @@ from sampletones_core.reconstructions.progress import (
     ReconstructionReporter,
     announce,
 )
-from sampletones_core.reconstructions.reconstruction.reconstruction import Reconstruction
-from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
+from sampletones_core.reconstructions.reconstruction.reconstruction import (
+    Reconstruction,
+)
+from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import (
+    ChannelAssignment,
+)
 from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstructor.decoder.base import Streams
+from sampletones_core.reconstructions.reconstructor.decoder.transition import (
+    TransitionWeights,
+)
 from sampletones_core.reconstructions.reconstructor.level import LevelFitter
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
-from sampletones_core.reconstructions.reconstructor.observer import SILENT_OBSERVER, ReconstructionObserver
+from sampletones_core.reconstructions.reconstructor.observer import (
+    SILENT_OBSERVER,
+    ReconstructionObserver,
+)
 from sampletones_core.reconstructions.reconstructor.refinement import PitchRefiner
 from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
-from sampletones_core.reconstructions.reconstructor.stems.assignment.assigners import frame_assigner
-from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.assigner import JointAssigner
-from sampletones_core.reconstructions.reconstructor.stems.assignment.track import TrackAssignment
-from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
-from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
-from sampletones_core.reconstructions.reconstructor.window.profiles import frame_profiles
-from sampletones_core.reconstructions.reconstructor.window.surroundings import surroundings
+from sampletones_core.reconstructions.reconstructor.stems.assignment.assigners import (
+    frame_assigner,
+)
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.assigner import (
+    JointAssigner,
+)
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.neighbors import (
+    NeighborPass,
+)
+from sampletones_core.reconstructions.reconstructor.stems.assignment.track import (
+    TrackAssignment,
+)
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import (
+    StemsConfig,
+)
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import (
+    StemSettings,
+)
+from sampletones_core.reconstructions.reconstructor.window.profiles import (
+    frame_profiles,
+)
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 from sampletones_core.reconstructions.stage import ReconstructionStage
 from sampletones_shared.exceptions import NoLibraryDataError
@@ -172,10 +196,9 @@ class Reconstructor:
         against the library on its own, and assigns each frame's channels to the stems
         following the configured hierarchy and each stem's own count. A stem takes a channel where
         its own recording sounds, so what the channel carries is that recording, at the drive that
-        stem's settings give the channel. The
-        assignment leaves every channel in play a column of candidates per frame, which
-        the configured decoder reads into the stream that channel plays. The per-frame
-        assignment is recorded in the reconstruction's stems data.
+        stem's settings give the channel. The assignment leaves every channel in play a column of
+        candidates per frame, which the configured decoder reads into the stream that channel plays.
+        The per-frame assignment is recorded in the reconstruction's stems data.
 
         Args:
             paths: Paths to the stem audio files, one per stems entry.
@@ -194,24 +217,11 @@ class Reconstructor:
             OperationCanceled: If the run is withdrawn while it is under way.
         """
         checked_paths = self._check_stem_paths(paths, stems_config)
-        announce(report, ReconstructionStage.LOADING, STAGE_BEGUN, PREPARATIONS)
-        loaded = self._load_stem_recordings(checked_paths)
-        announce(report, ReconstructionStage.LOADING, RECORDINGS_LOADED, PREPARATIONS)
-        worker = self._build_worker(common_length(loaded.recordings))
-        prepared = self._prepare_stem_frames(loaded.recordings, stems_config, worker.matcher)
-        announce(report, ReconstructionStage.LOADING, FRAMES_PREPARED, PREPARATIONS)
-        assignment = self._assign_stem_frames(prepared.frames, stems_config, worker, report)
-        announce(report, ReconstructionStage.DECODING, STAGE_BEGUN, WHOLE_STAGE)
-        streams = worker.decoder.decode(assignment.alternatives)
-        for _ in range(self.config.generation.assignment.neighbors):
-            assignment = self._assign_beside_neighbors(prepared.frames, stems_config, worker, streams, report)
-            streams = worker.decoder.decode(assignment.alternatives)
+        loaded, prepared, worker = self._prepare_run(checked_paths, stems_config, report)
+        assignment, streams = self._decide(prepared.frames, stems_config, worker, report)
         observe.assigned(assignment.alternatives)
         observe.decoded(streams)
-        assignment.release_silent(streams)
-        streams = self._refiner(stems_config).refine(streams, assignment.stem_ids, prepared.recordings)
-        announce(report, ReconstructionStage.DECODING, WHOLE_STAGE, WHOLE_STAGE)
-        self._record_streams(streams, report)
+        self._play(assignment, streams, stems_config, prepared.recordings, report)
         return Reconstruction.from_state(
             self.state,
             self.config,
@@ -219,6 +229,61 @@ class Reconstructor:
             tuple(checked_paths),
             stems_data=self._build_stems_data(stems_config, assignment.stem_ids, loaded.scale),
         )
+
+    def _prepare_run(
+        self,
+        checked_paths: List[Path],
+        stems_config: StemsConfig,
+        report: ReconstructionReporter,
+    ) -> Tuple[LoadedStems, PreparedStems, ReconstructorWorker]:
+        """Loads the recordings, builds the matching machinery for their length and frames them at the working level.
+
+        Returns:
+            The loaded recordings, their frames at the working level and the machinery they are matched with.
+        """
+        announce(report, ReconstructionStage.LOADING, STAGE_BEGUN, PREPARATIONS)
+        loaded = self._load_stem_recordings(checked_paths)
+        announce(report, ReconstructionStage.LOADING, RECORDINGS_LOADED, PREPARATIONS)
+        worker = self._build_worker(common_length(loaded.recordings))
+        prepared = self._prepare_stem_frames(loaded.recordings, stems_config, worker.matcher)
+        announce(report, ReconstructionStage.LOADING, FRAMES_PREPARED, PREPARATIONS)
+        return loaded, prepared, worker
+
+    def _decide(
+        self,
+        stem_frames: Dict[int, FragmentedAudio],
+        stems_config: StemsConfig,
+        worker: ReconstructorWorker,
+        report: ReconstructionReporter,
+    ) -> Tuple[TrackAssignment, Streams]:
+        """The frames' assignment and the streams decoded from it.
+
+        Every frame is first assigned heard alone and the recording decoded. Each configured neighbor
+        pass then assigns every frame again among what that decode plays around it, and the recording
+        is decoded anew, so the assignment returned is the one its streams were decoded from.
+        """
+        assignment = self._assign_stem_frames(stem_frames, stems_config, worker, report)
+        announce(report, ReconstructionStage.DECODING, STAGE_BEGUN, WHOLE_STAGE)
+        streams = worker.decoder.decode(assignment.alternatives)
+        for _ in range(self.config.generation.assignment.neighbors):
+            assignment = self._assign_beside_neighbors(stem_frames, stems_config, worker, streams, report)
+            streams = worker.decoder.decode(assignment.alternatives)
+
+        return assignment, streams
+
+    def _play(
+        self,
+        assignment: TrackAssignment,
+        streams: Streams,
+        stems_config: StemsConfig,
+        recordings: Dict[int, np.ndarray],
+        report: ReconstructionReporter,
+    ) -> None:
+        """Hands the frames the decode left silent back to rest, refines every note's pitch and records the streams."""
+        assignment.release_silent(streams)
+        refined = self._refiner(stems_config).refine(streams, assignment.stem_ids, recordings)
+        announce(report, ReconstructionStage.DECODING, WHOLE_STAGE, WHOLE_STAGE)
+        self._record_streams(refined, report)
 
     def _refiner(self, stems_config: StemsConfig) -> PitchRefiner:
         """The pass that carries each chosen note toward the fundamental the recording sounds."""
@@ -320,7 +385,7 @@ class Reconstructor:
         worker: ReconstructorWorker,
         report: ReconstructionReporter,
     ) -> TrackAssignment:
-        """Assigns every frame's channels to the stems and gathers the outcome per channel.
+        """Assigns every frame's channels to the stems, each frame heard alone, and gathers the outcome per channel.
 
         Every stem hands the assignment the same frame of its own recording, so a pick is
         judged against what that stem sounds there. Each frame answers every channel in play
@@ -335,14 +400,9 @@ class Reconstructor:
             worker.matcher,
             worker.decoder.lattice_width,
         )
-        frames = self._stem_frame_count(stem_frames)
-        for fragment_id in range(frames):
-            announce(report, ReconstructionStage.MATCHING, fragment_id, frames)
-            assignment.add(
-                assigner.assign({stem_id: fragments[fragment_id] for stem_id, fragments in stem_frames.items()})
-            )
+        for frame in self._frames_announced(stem_frames, report):
+            assignment.add(assigner.assign(self._frames_at(stem_frames, frame)))
 
-        announce(report, ReconstructionStage.MATCHING, frames, frames)
         return assignment
 
     def _assign_beside_neighbors(
@@ -353,32 +413,43 @@ class Reconstructor:
         streams: Streams,
         report: ReconstructionReporter,
     ) -> TrackAssignment:
-        """Assigns every frame again, in turn, among the notes its neighbors play.
+        """Assigns every frame again, in turn, among the notes ``streams`` plays around it.
 
         A frame's analysis window reads its neighbors too, so what they play is a fixed part of the
-        frame's reading, and a note extending a neighbor's note adds to it as one note held across
-        the frames. The frames before a frame play what the pass settled them on, and the frames
-        after it what ``streams`` decoded, so each frame is decided among the latest choices around it.
+        frame's reading, as a :class:`NeighborPass` hears it.
         """
         assignment = TrackAssignment(self.state.channel_names)
-        assigner = JointAssigner(stems_config, self.channels, worker.matcher, worker.decoder.lattice_width)
-        lines = assigner.lines(streams)
-        frames = self._stem_frame_count(stem_frames)
-        if not frames:
+        if not self._stem_frame_count(stem_frames):
             return assignment
 
         bins = len(next(iter(stem_frames.values()))[0].feature.values)
-        profiles = frame_profiles(self.config, self.window, bins)
-        for fragment_id in range(frames):
-            announce(report, ReconstructionStage.MATCHING, fragment_id, frames)
-            heard = {channel_name: surroundings(line, fragment_id, profiles) for channel_name, line in lines.items()}
-            fragments = {stem_id: stem_fragments[fragment_id] for stem_id, stem_fragments in stem_frames.items()}
-            frame_assignment = assigner.assign_beside(fragments, heard)
-            assigner.settle(lines, fragment_id, frame_assignment)
-            assignment.add(frame_assignment)
+        neighbor_pass = NeighborPass.over(
+            JointAssigner(stems_config, self.channels, worker.matcher, worker.decoder.lattice_width),
+            streams,
+            frame_profiles(self.config, self.window, bins),
+            TransitionWeights.of(self.config),
+            self.config.generation.assignment.inertia,
+        )
+        for frame in self._frames_announced(stem_frames, report):
+            assignment.add(neighbor_pass.assign(frame, self._frames_at(stem_frames, frame)))
+
+        return assignment
+
+    def _frames_announced(
+        self, stem_frames: Dict[int, FragmentedAudio], report: ReconstructionReporter
+    ) -> Iterator[int]:
+        """Every frame the recordings share, in order, announced as the matching reaches it and at the end."""
+        frames = self._stem_frame_count(stem_frames)
+        for frame in range(frames):
+            announce(report, ReconstructionStage.MATCHING, frame, frames)
+            yield frame
 
         announce(report, ReconstructionStage.MATCHING, frames, frames)
-        return assignment
+
+    @staticmethod
+    def _frames_at(stem_frames: Dict[int, FragmentedAudio], frame: int) -> Dict[int, Fragment]:
+        """Frame ``frame`` of every stem's recording, keyed by stem id."""
+        return {stem_id: fragments[frame] for stem_id, fragments in stem_frames.items()}
 
     @staticmethod
     def _stem_frame_count(stem_frames: Dict[int, FragmentedAudio]) -> int:

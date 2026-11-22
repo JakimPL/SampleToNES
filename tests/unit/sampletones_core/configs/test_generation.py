@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from sampletones_core.configs.generation import AssignmentConfig, DecoderConfig, GenerationConfig
-from sampletones_core.constants.enums import AssignmentMethod, SelectorName
+from sampletones_core.configs.generation import AssignmentConfig, ChannelInertia, DecoderConfig, GenerationConfig
+from sampletones_core.constants.enums import AssignmentMethod, ChannelName, SelectorName
 
 
 class TestTheDecoderReadsWhatTheAssignmentOffers:
@@ -46,3 +46,33 @@ class TestFramesHeardAmongTheirNeighbors:
     def test_picks_heard_among_neighbors_are_refused(self) -> None:
         with pytest.raises(ValidationError, match="joint assignment"):
             GenerationConfig(assignment=AssignmentConfig(method=AssignmentMethod.PICKS, neighbors=1))
+
+
+class TestInertiaKeepsTheNeighborPass:
+    """Inertia keeps a frame's choice to its neighbors in the neighbor pass, so it runs with that pass."""
+
+    def test_inertia_runs_with_the_neighbor_pass(self) -> None:
+        assignment = AssignmentConfig(method=AssignmentMethod.JOINT, neighbors=1, inertia=ChannelInertia(triangle=0.5))
+
+        assert GenerationConfig(assignment=assignment).assignment.inertia.of(ChannelName.TRIANGLE) == 0.5
+
+    def test_inertia_without_the_neighbor_pass_is_refused(self) -> None:
+        assignment = AssignmentConfig(
+            method=AssignmentMethod.JOINT, neighbors=0, inertia=ChannelInertia(pulse1=0.0, noise=0.5)
+        )
+
+        with pytest.raises(ValidationError, match="neighbor pass"):
+            GenerationConfig(assignment=assignment)
+
+    def test_a_negative_inertia_is_refused(self) -> None:
+        with pytest.raises(ValidationError):
+            ChannelInertia(pulse1=-0.5)
+
+    @pytest.mark.parametrize("channel_name", ChannelName.items())
+    def test_each_channel_keeps_its_own_inertia(self, channel_name: ChannelName) -> None:
+        inertia = ChannelInertia.model_validate(
+            {other.value: 0.75 if other == channel_name else 0.0 for other in ChannelName.items()}
+        )
+
+        assert inertia.of(channel_name) == 0.75
+        assert all(inertia.of(other) == 0.0 for other in ChannelName.items() if other != channel_name)

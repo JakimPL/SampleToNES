@@ -19,9 +19,11 @@ from sampletones_core.generators.render import render_instructions
 from sampletones_core.instructions import InstructionUnion, PulseInstruction, TonalInstruction, TriangleInstruction
 from sampletones_core.reconstructions.reconstructor.contribution import Contribution
 from sampletones_core.reconstructions.reconstructor.decoder.base import PooledCombination, Streams
+from sampletones_core.reconstructions.reconstructor.decoder.transition import TransitionWeights
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher, ScoredCandidate
 from sampletones_core.reconstructions.reconstructor.stems.assignment.assigners import PicksAssigner, frame_assigner
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.assigner import JointAssigner
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.continuity import ChannelContinuity
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
@@ -29,7 +31,10 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.settings impor
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
 from sampletones_core.reconstructions.reconstructor.stems.models.pool import StemPool
 from sampletones_core.reconstructions.reconstructor.window.profiles import frame_profiles
-from sampletones_core.reconstructions.reconstructor.window.surroundings import surroundings
+from sampletones_core.reconstructions.reconstructor.window.surroundings import (
+    ChannelLine,
+    surroundings,
+)
 
 from ..conftest import rendered_fragment
 
@@ -82,6 +87,7 @@ def _notes(heads: Dict[ChannelName, InstructionUnion]) -> Set[Tuple[str, int]]:
             case TonalInstruction(on=True):
                 kind = "triangle" if channel_name == ChannelName.TRIANGLE else "pulse"
                 notes.add((kind, instruction.pitch))
+
     return notes
 
 
@@ -326,6 +332,9 @@ def _pulse_pitches(heads: Dict[ChannelName, InstructionUnion]) -> Tuple[Optional
 SEQUENCE_FRAMES: Final[int] = 12
 BASS_FRAMES: Final[int] = 6
 SILENT_BASS: Final[TriangleInstruction] = TriangleInstruction.null_instruction()
+JUMP: Final[PulseInstruction] = PulseInstruction(on=True, pitch=67, volume=12, duty_cycle=2)
+NO_INERTIA: Final[float] = 0.0
+STRONG_INERTIA: Final[float] = 100.0
 
 
 def _sequence(config: Config, lines: Mapping[ChannelName, Sequence[InstructionUnion]]) -> np.ndarray:
@@ -352,6 +361,13 @@ def _decoded(
     return streams
 
 
+def _kept(
+    config: Config, lines: Mapping[ChannelName, ChannelLine], frame: int, inertia: float
+) -> Dict[ChannelName, ChannelContinuity]:
+    weights = TransitionWeights.of(config)
+    return {channel_name: ChannelContinuity.of(line, frame, weights, inertia) for channel_name, line in lines.items()}
+
+
 class TestAssigningBesideTheNeighbors:
     """A frame assigned again among the notes its neighbors play reads only its own notes in its window."""
 
@@ -372,14 +388,18 @@ class TestAssigningBesideTheNeighbors:
         assigner: JointAssigner,
         lines: Mapping[ChannelName, Sequence[InstructionUnion]],
         frame: int,
+        *,
+        played: Optional[Mapping[ChannelName, Sequence[InstructionUnion]]] = None,
+        inertia: float = NO_INERTIA,
     ) -> StemFrameAssignment:
-        fragments = extractor.extract(_sequence(config, lines))
+        """Assigns ``frame`` of ``played`` (``lines`` where unnamed) among neighbors decoded to play ``lines``."""
+        fragments = extractor.extract(_sequence(config, lines if played is None else played))
         bins = len(fragments[frame].feature.values)
         profiles = frame_profiles(config, window, bins)
         silence = Contribution.silence(bins, config.library.frame_length)
         decoded = assigner.lines(_decoded(lines, assigner.channels, silence))
         heard = {channel_name: surroundings(line, frame, profiles) for channel_name, line in decoded.items()}
-        return assigner.assign_beside({0: fragments[frame]}, heard)
+        return assigner.assign_beside({0: fragments[frame]}, heard, _kept(config, decoded, frame, inertia))
 
     def test_the_frame_after_a_bass_stops_hears_the_bass_s_tail_as_its_neighbors(
         self,
@@ -422,8 +442,55 @@ class TestAssigningBesideTheNeighbors:
         profiles = frame_profiles(config, window, len(fragments[frame].feature.values))
         heard = {channel_name: surroundings(line, frame, profiles) for channel_name, line in lines.items()}
 
-        assignment = every_channel_assigner.assign_beside({0: fragments[frame]}, heard)
+        assignment = every_channel_assigner.assign_beside(
+            {0: fragments[frame]}, heard, _kept(config, lines, frame, NO_INERTIA)
+        )
         every_channel_assigner.settle(lines, frame, assignment)
 
         lead = surroundings(lines[ChannelName.PULSE1], frame + 1, profiles)
         assert lead.before is not None and lead.before.key == (LEAD.pitch, LEAD.duty_cycle)
+
+    @pytest.fixture(name="jump")
+    def jump_fixture(self) -> Dict[ChannelName, List[InstructionUnion]]:
+        """A lead held throughout but for one frame a minor third above it."""
+        middle = SEQUENCE_FRAMES // 2
+        return {ChannelName.PULSE1: [JUMP if frame == middle else LEAD for frame in range(SEQUENCE_FRAMES)]}
+
+    def test_a_frame_free_of_its_neighbors_follows_a_one_frame_jump(
+        self,
+        config: Config,
+        window: Window,
+        extractor: FeatureExtractor,
+        every_channel_assigner: JointAssigner,
+        jump: Dict[ChannelName, List[InstructionUnion]],
+    ) -> None:
+        held = {ChannelName.PULSE1: [LEAD] * SEQUENCE_FRAMES}
+
+        assignment = self._beside(
+            config, window, extractor, every_channel_assigner, held, SEQUENCE_FRAMES // 2, played=jump
+        )
+
+        assert _notes(_heads(assignment)) == {("pulse", JUMP.pitch)}
+
+    def test_a_strong_inertia_holds_a_one_frame_jump_to_the_line_beside_it(
+        self,
+        config: Config,
+        window: Window,
+        extractor: FeatureExtractor,
+        every_channel_assigner: JointAssigner,
+        jump: Dict[ChannelName, List[InstructionUnion]],
+    ) -> None:
+        held = {ChannelName.PULSE1: [LEAD] * SEQUENCE_FRAMES}
+
+        assignment = self._beside(
+            config,
+            window,
+            extractor,
+            every_channel_assigner,
+            held,
+            SEQUENCE_FRAMES // 2,
+            played=jump,
+            inertia=STRONG_INERTIA,
+        )
+
+        assert _notes(_heads(assignment)) == {("pulse", LEAD.pitch)}

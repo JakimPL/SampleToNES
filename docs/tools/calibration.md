@@ -196,6 +196,9 @@ refused before the run starts. The packaged sets:
 - `joint-neighbors1`, `joint-neighbors2`, `joint-fitted-combinations-neighbors1`,
   `joint-fitted-combinations-neighbors2`: every frame assigned again once or twice
   [among its neighbors](../concepts/reconstruction.md#56-hearing-a-frame-among-its-neighbors).
+- `joint-fitted-combinations-neighbors1-tonal-inertia05`, `-tonal-inertia1`: the pass with the pulses and
+  the triangle kept to their neighbors at an inertia of 0.5 and 1, the noise free;
+  `joint-fitted-combinations-neighbors1-inertia05` keeps every channel at 0.5.
 
 `--levels true` matches every sound at the level its file holds. For a sound written as NES frames
 that is the level the channels play its frames at, where the written frames fit exactly, so a reading
