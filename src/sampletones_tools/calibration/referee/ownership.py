@@ -1,3 +1,4 @@
+from itertools import pairwise
 from typing import Dict, Final, Optional, Sequence
 
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
@@ -13,8 +14,12 @@ class OwnershipReferee:
     """Reads how often the channels of a stems conversion pass from one stem to another.
 
     A channel changes owner where the stem holding it gives way to another, a rest in between
-    counting for nothing, so a stem picking its channel back up after a pause keeps it. The score is
-    the owner changes per second over every channel, and each channel's own reading follows it.
+    counting for nothing, so a stem picking its channel back up after a pause keeps it. A conversion of
+    one stem has no owner to change, so it holds nothing to read.
+
+    The score is the owner changes per second summed over every channel, zero for a conversion whose
+    every channel keeps its stem. Each channel's own changes per second is a reading of its own, named
+    by the channel.
     """
 
     @property
@@ -25,7 +30,7 @@ class OwnershipReferee:
         """The owner changes per second of ``reconstruction``'s channels.
 
         Returns:
-            Optional[Judgment]: The judgment, or ``None`` for a conversion of one stem.
+            Optional[Judgment]: The judgment, or ``None`` for a conversion of one stem or of no frame.
         """
         stems_data = reconstruction.stems_data
         if len(stems_data.config.entries) <= SINGLE_STEM:
@@ -46,4 +51,4 @@ class OwnershipReferee:
 def owner_changes(owners: Sequence[int]) -> int:
     """How many times the frames pass from one stem to another, rests set aside."""
     held = [owner for owner in owners if owner != RESTING_STEM_ID]
-    return sum(previous != current for previous, current in zip(held, held[1:]))
+    return sum(previous != current for previous, current in pairwise(held))

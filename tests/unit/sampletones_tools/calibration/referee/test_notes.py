@@ -1,10 +1,17 @@
+from typing import Final
+
 import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.instructions import NoiseInstruction, PulseInstruction, TriangleInstruction
 from sampletones_shared.constants.music import OCTAVE_SEMITONES
-from sampletones_tools.calibration.referee.notes import Note, NoteReader, pitches_of
+from sampletones_tools.calibration.referee.notes import Note, NoteReader, pitches_of, timbre_of
+
+EIGHTH_DUTY: Final[int] = 0
+QUARTER_DUTY: Final[int] = 1
+HALF_DUTY: Final[int] = 2
+THREE_QUARTERS_DUTY: Final[int] = 3
 
 
 @pytest.fixture(name="reader", scope="module")
@@ -49,3 +56,16 @@ class TestNoteReader:
 
         assert on_triangle != on_pulse
         assert pitches_of(on_triangle) == pitches_of(on_pulse)
+
+    def test_a_frame_of_no_channel_sounds_no_note(self, reader: NoteReader) -> None:
+        assert reader.notes({}) == frozenset()
+
+
+class TestTimbreOf:
+    def test_three_quarters_sounds_as_a_quarter(self) -> None:
+        assert timbre_of(QUARTER_DUTY) == timbre_of(THREE_QUARTERS_DUTY)
+
+    def test_every_other_duty_keeps_a_timbre_of_its_own(self) -> None:
+        timbres = [timbre_of(duty_cycle) for duty_cycle in (EIGHTH_DUTY, QUARTER_DUTY, HALF_DUTY)]
+
+        assert len(set(timbres)) == len(timbres)

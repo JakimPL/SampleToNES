@@ -451,11 +451,12 @@ They never listen, so they say *what* went wrong where the audio referees say ho
     written note change (a tonal channel starts, stops or moves between the frame and the one beside
     it), one frame from one, and further. A frame's analysis window reads its neighbors, so these say
     where the window's reach costs notes.
-- **`pitch`** answers every frame a line of the sound plays with the closest note a tonal channel of
-  the reconstruction sounds then, whichever channel that is. The score is the share of frames not
-  answered within half a semitone. Its readings are the share answered an `octave` off (the right
-  note in another octave), a `semitone` off, by a `wrong` note, or left `silent`, and `cents`: how far
-  the answers on pitch stand from the line, on average, in cents.
+- **`pitch`** answers every frame a line of the sound plays with the best answer the tonal channels of
+  the reconstruction give then, whichever channel gives it. A note within half a semitone is on pitch.
+  It beats the right note in another octave, which beats a note a semitone off, which beats any other
+  note. The score is the share of frames not answered on pitch. Its readings are the share answered an
+  `octave` off (the right note in another octave), a `semitone` off, by a `wrong` note, or left
+  `silent`, and `cents`: how far the answers on pitch stand from the line, on average, in cents.
 - **`stability`** counts how often channels change: turning on or off (`toggles`), or moving to another
   note or noise period while sounding (`moves`). The score is how many more changes per second the
   reconstruction makes than the sound itself, the two readings together. A reconstruction that

@@ -19,9 +19,16 @@ def written_truth(instructions: Mapping[ChannelName, Sequence[InstructionUnion]]
 
 def converted(instructions: Mapping[ChannelName, Sequence[InstructionUnion]]) -> Reconstruction:
     """A conversion that chose ``instructions``."""
+    return scaled_conversion(instructions, WRITTEN_COEFFICIENT)
+
+
+def scaled_conversion(
+    instructions: Mapping[ChannelName, Sequence[InstructionUnion]], coefficient: float
+) -> Reconstruction:
+    """A conversion that chose ``instructions`` after scaling its sound down by ``coefficient``."""
     return written_reconstruction(
         {channel: list(stream) for channel, stream in instructions.items()},
-        coefficient=WRITTEN_COEFFICIENT,
+        coefficient=coefficient,
         scale=WRITTEN_SCALE,
         audio_filepath=NO_RECORDINGS,
     )

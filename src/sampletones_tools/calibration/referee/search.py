@@ -1,14 +1,14 @@
 import itertools
 from dataclasses import dataclass, field
-from typing import Dict, Final, FrozenSet, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import Dict, Final, FrozenSet, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
-from sampletones_core.constants.enums import TONE_CHANNELS, ChannelName, ordered_channels
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_tools.calibration.corpus.truth import Truth
-from sampletones_tools.calibration.trace import SearchTrace
+from sampletones_tools.calibration.trace import PoolTrace, SearchTrace
 
 from .frames import Frame, channel_streams, common_length, sounds
-from .notes import Note, NoteReader, pitches_of
+from .notes import TONAL_CHANNELS, Note, NoteReader, pitches_of
 from .protocol import Judgment
 
 SEARCH_REFEREE: Final[str] = "search"
@@ -22,12 +22,97 @@ POOLED: Final[str] = "pooled"
 AT_CHANGE: Final[str] = "at-change"
 NEXT_TO_CHANGE: Final[str] = "next-to-change"
 AWAY_FROM_CHANGE: Final[str] = "away-from-change"
+STAGES: Final[Tuple[str, ...]] = (COLUMNS, ASSIGNMENT, DECODER)
 CHANGE_READINGS: Final[Tuple[str, ...]] = (AT_CHANGE, NEXT_TO_CHANGE, AWAY_FROM_CHANGE)
-
-TONAL_CHANNELS: Final[Tuple[ChannelName, ...]] = tuple(ordered_channels(TONE_CHANNELS))
+AT_CHANGE_DISTANCE: Final[int] = 0
+NEXT_TO_CHANGE_DISTANCE: Final[int] = 1
 
 NoteOptions = FrozenSet[Optional[Note]]
 PoolNotes = FrozenSet[FrozenSet[Note]]
+Streams = Dict[ChannelName, Tuple[Frame, ...]]
+
+
+@dataclass(frozen=True)
+class SearchFrame:
+    """What a search held of one frame the writing sounds, stage by stage, read as the notes each sounds.
+
+    The search narrows a frame in stages: the columns offer candidates per channel, the assignment picks
+    one per channel (each column's head), and the decoder settles the frame. The written notes are lost
+    at the first stage that can no longer sound them.
+
+    Attributes:
+        target: The notes the writing sounds.
+        options: The notes each tonal channel's column offers, ``None`` for a silent candidate.
+        heads: The notes the columns' heads sound together, which is what the assignment picked.
+        decoded: The notes the decoded frame sounds.
+        pools: The note sets each stem's pool offers, ``None`` where the search pooled no combinations.
+        change_distance: How many frames the frame stands from the nearest frame at a written note change.
+    """
+
+    target: FrozenSet[Note]
+    options: Mapping[ChannelName, NoteOptions]
+    heads: FrozenSet[Note]
+    decoded: FrozenSet[Note]
+    pools: Optional[Sequence[PoolNotes]]
+    change_distance: int
+
+    @property
+    def right(self) -> bool:
+        """Whether the decoded frame sounds the written notes, each on its written channel kind."""
+        return self.decoded == self.target
+
+    @property
+    def lost_at(self) -> Optional[str]:
+        """The first stage that could no longer sound the written notes, ``None`` for a right frame.
+
+        The columns lose them where no choice of one candidate per channel forms them; the assignment,
+        where the columns could and the picks do not; the decoder, where the picks had them.
+        """
+        if self.right:
+            return None
+
+        if not formable(self.target, self.options):
+            return COLUMNS
+
+        if self.heads != self.target:
+            return ASSIGNMENT
+
+        return DECODER
+
+    @property
+    def gained(self) -> bool:
+        """Whether the decoder put right a frame the picks had wrong."""
+        return self.right and self.heads != self.target
+
+    @property
+    def misplaced(self) -> bool:
+        """Whether a wrong frame sounds the written pitches as a set, on other channel kinds."""
+        return not self.right and pitches_of(self.decoded) == pitches_of(self.target)
+
+    @property
+    def unreached(self) -> int:
+        """How many written notes no column offers on their channel kind."""
+        offered: Set[Optional[Note]] = set().union(*self.options.values())
+        return sum(note not in offered for note in self.target)
+
+    @property
+    def pooled(self) -> Optional[bool]:
+        """Whether the stems' pools can sound the written notes, ``None`` where the search pooled none."""
+        if self.pools is None:
+            return None
+
+        return poolable(self.target, self.pools)
+
+    @property
+    def change_reading(self) -> str:
+        """The change reading the frame counts in: at a written note change, next to one, or further."""
+        if self.change_distance == AT_CHANGE_DISTANCE:
+            return AT_CHANGE
+
+        if self.change_distance == NEXT_TO_CHANGE_DISTANCE:
+            return NEXT_TO_CHANGE
+
+        return AWAY_FROM_CHANGE
 
 
 @dataclass
@@ -36,9 +121,7 @@ class SearchTally:
 
     sounding: int = 0
     right: int = 0
-    columns: int = 0
-    assignment: int = 0
-    decoder: int = 0
+    lost: Dict[str, int] = field(default_factory=lambda: dict.fromkeys(STAGES, 0))
     gains: int = 0
     misplaced: int = 0
     written_notes: int = 0
@@ -48,43 +131,21 @@ class SearchTally:
     by_change: Dict[str, int] = field(default_factory=lambda: dict.fromkeys(CHANGE_READINGS, 0))
     wrong_by_change: Dict[str, int] = field(default_factory=lambda: dict.fromkeys(CHANGE_READINGS, 0))
 
-    def add(
-        self,
-        target: FrozenSet[Note],
-        options: Mapping[ChannelName, NoteOptions],
-        heads: FrozenSet[Note],
-        decoded: FrozenSet[Note],
-        pools: Optional[Sequence[PoolNotes]],
-        change_distance: int,
-    ) -> None:
-        """Counts one sounding frame by where its written notes were lost, if they were.
-
-        ``pools`` holds the note sets each stem's pool offers the frame, or ``None`` where the search
-        pooled no combinations. ``change_distance`` is how many frames the frame stands from the
-        nearest frame at a written note change.
-        """
+    def add(self, frame: SearchFrame) -> None:
+        """Counts one sounding frame by where its written notes were lost, if they were."""
         self.sounding += 1
-        near = _change_reading(change_distance)
-        self.by_change[near] += 1
-        self.wrong_by_change[near] += decoded != target
-        if pools is not None:
-            self.pool_frames += 1
-            self.pooled += poolable(target, pools)
-        offered: Set[Optional[Note]] = set().union(*options.values())
-        self.written_notes += len(target)
-        self.unreached_notes += sum(note not in offered for note in target)
-        if decoded == target:
+        self._count_change(frame)
+        self._count_pool(frame)
+        self.written_notes += len(frame.target)
+        self.unreached_notes += frame.unreached
+        stage = frame.lost_at
+        if stage is None:
             self.right += 1
-            self.gains += heads != target
+            self.gains += frame.gained
             return
 
-        self.misplaced += pitches_of(decoded) == pitches_of(target)
-        if not formable(target, options):
-            self.columns += 1
-        elif heads != target:
-            self.assignment += 1
-        else:
-            self.decoder += 1
+        self.misplaced += frame.misplaced
+        self.lost[stage] += 1
 
     def judgment(self) -> Optional[Judgment]:
         """The share of sounding frames decoded with other notes than written, and where they were lost.
@@ -95,22 +156,78 @@ class SearchTally:
         if not self.sounding:
             return None
 
-        components: Dict[str, float] = {
-            COLUMNS: self.columns / self.sounding,
-            ASSIGNMENT: self.assignment / self.sounding,
-            DECODER: self.decoder / self.sounding,
-            GAINS: self.gains / self.sounding,
-            MISPLACED: self.misplaced / self.sounding,
-        }
+        components: Dict[str, float] = {stage: self.lost[stage] / self.sounding for stage in STAGES}
+        components[GAINS] = self.gains / self.sounding
+        components[MISPLACED] = self.misplaced / self.sounding
         if self.written_notes:
             components[UNREACHED] = self.unreached_notes / self.written_notes
+
         if self.pool_frames:
             components[POOLED] = self.pooled / self.pool_frames
+
         for reading in CHANGE_READINGS:
             if self.by_change[reading]:
                 components[reading] = self.wrong_by_change[reading] / self.by_change[reading]
 
         return Judgment(score=1.0 - self.right / self.sounding, components=components)
+
+    def _count_change(self, frame: SearchFrame) -> None:
+        reading = frame.change_reading
+        self.by_change[reading] += 1
+        self.wrong_by_change[reading] += not frame.right
+
+    def _count_pool(self, frame: SearchFrame) -> None:
+        pooled = frame.pooled
+        if pooled is not None:
+            self.pool_frames += 1
+            self.pooled += pooled
+
+
+@dataclass(frozen=True)
+class TraceNotes:
+    """A search trace read as notes: what each frame's columns, picks and pools offered.
+
+    A channel the conversion leaves out offers silence alone.
+
+    Attributes:
+        reader: Reads the notes the candidates sound.
+        trace: What the search offered and chose, frame by frame.
+    """
+
+    reader: NoteReader
+    trace: SearchTrace
+
+    def options(self, frame: int) -> Dict[ChannelName, NoteOptions]:
+        """The notes each tonal channel's column offers at ``frame``, ``None`` for a silent candidate."""
+        return {
+            channel: frozenset(self.reader.note(channel, candidate) for candidate in self._column(channel, frame))
+            for channel in TONAL_CHANNELS
+        }
+
+    def heads(self, frame: int) -> FrozenSet[Note]:
+        """The notes the columns' heads sound together at ``frame``, which is what the assignment picked."""
+        return self.reader.notes({channel: self._column(channel, frame)[0] for channel in TONAL_CHANNELS})
+
+    def pools(self, frame: int) -> Optional[List[PoolNotes]]:
+        """The note sets each stem's pool offers at ``frame``, or ``None`` where the trace holds no pools.
+
+        A pool shorter than the frame offers nothing there and is left out.
+        """
+        if not self.trace.pools:
+            return None
+
+        return [self._pool_notes(pool, frame) for pool in self.trace.pools.values() if frame < len(pool.frames)]
+
+    def _pool_notes(self, pool: PoolTrace, frame: int) -> PoolNotes:
+        """The note sets the combinations of ``pool`` sound at ``frame``."""
+        return frozenset(
+            self.reader.notes(dict(zip(pool.channel_names, combination))) for combination in pool.frames[frame]
+        )
+
+    def _column(self, channel: ChannelName, frame: int) -> Tuple[Frame, ...]:
+        """The candidates a channel's column offers at ``frame``, the assignment's pick first."""
+        columns = self.trace.columns.get(channel, ())
+        return columns[frame] if frame < len(columns) else (None,)
 
 
 class SearchReferee:
@@ -119,19 +236,23 @@ class SearchReferee:
     A frame counts where the writing sounds any channel, and it is right where the decoded frame sounds
     the written notes on the written channel kinds: the two pulses one kind, a unison one note, the
     noise left to the transcription. A wrong frame is lost at the first stage that could no longer
-    reach the written notes: the columns, where no choice of one candidate per channel forms them; the
-    assignment, where the columns could and the picks heading them do not; or the decoder, where the
-    picks had them and the decoded frame moved away.
+    reach the written notes (see ``SearchFrame.lost_at``).
 
-    The score is the share of counted frames decoded wrong. The readings behind it are the share lost
-    at each stage, the share the decoder put right after the picks had it wrong (``gains``), the share
-    whose decoded pitches are the written ones on another channel kind (``misplaced``), and the share
-    of written notes no column offers on their channel kind (``unreached``). Where the search pooled
-    whole combinations, ``pooled`` is the share of counted frames whose pools can sound the written
-    notes, one combination per stem. A frame's analysis window reads its neighbors, so the share
-    decoded wrong is also read by how near the frame stands to a written note change: at one, where a
-    tonal channel starts, stops or moves between the frame and the one beside it (``at-change``),
-    one frame further (``next-to-change``), or further still (``away-from-change``).
+    The score is the share of counted frames decoded wrong, zero being closest. Its readings, each a
+    share where zero is closest unless named otherwise:
+
+    - ``columns``, ``assignment``, ``decoder``: the counted frames lost at each stage;
+    - ``gains``: the counted frames the decoder put right after the picks had them wrong, higher being
+      better for the decoder;
+    - ``misplaced``: the counted frames decoded wrong whose decoded pitches are the written ones, on
+      other channel kinds;
+    - ``unreached``: the written notes no column offers on their channel kind;
+    - ``pooled``: where the search pooled whole combinations, the counted frames whose pools can sound
+      the written notes, one combination per stem, higher being closer;
+    - ``at-change``, ``next-to-change``, ``away-from-change``: the share decoded wrong among the frames
+      at a written note change, where a tonal channel starts, stops or moves between the frame and the
+      one beside it, among those one frame from one, and among those further. A frame's analysis window
+      reads its neighbors, so these readings say where the window's reach costs notes.
     """
 
     @property
@@ -151,25 +272,22 @@ class SearchReferee:
         length = common_length(*truth.instructions.values(), *trace.decoded.values())
         written = channel_streams(truth.instructions, length)
         decoded = channel_streams(trace.decoded, length)
-        distances = change_distances(
-            [
-                tuple(reader.note(channel, written[channel][frame]) for channel in TONAL_CHANNELS)
-                for frame in range(length)
-            ]
-        )
+        distances = change_distances([_channel_notes(reader, written, frame) for frame in range(length)])
+        offered = TraceNotes(reader=reader, trace=trace)
         tally = SearchTally()
         for frame in range(length):
             if not any(sounds(stream[frame]) for stream in written.values()):
                 continue
 
-            options = {channel: _options(reader, channel, trace, frame) for channel in TONAL_CHANNELS}
             tally.add(
-                reader.notes({channel: written[channel][frame] for channel in TONAL_CHANNELS}),
-                options,
-                _heads(reader, trace, frame),
-                reader.notes({channel: decoded[channel][frame] for channel in TONAL_CHANNELS}),
-                _pool_notes(reader, trace, frame),
-                distances[frame],
+                SearchFrame(
+                    target=reader.notes(_tonal_frames(written, frame)),
+                    options=offered.options(frame),
+                    heads=offered.heads(frame),
+                    decoded=reader.notes(_tonal_frames(decoded, frame)),
+                    pools=offered.pools(frame),
+                    change_distance=distances[frame],
+                )
             )
 
         return tally.judgment()
@@ -187,41 +305,12 @@ def change_distances(notes: Sequence[Tuple[Optional[Note], ...]]) -> List[int]:
     Returns:
         One distance per frame.
     """
-    length = len(notes)
-    at_change = [False] * length
-    for frame in range(1, length):
-        if notes[frame] != notes[frame - 1]:
-            at_change[frame - 1] = at_change[frame] = True
-
-    distances = [length] * length
-    for frame in range(length):
-        if at_change[frame]:
-            distances[frame] = 0
-        elif frame:
-            distances[frame] = min(distances[frame - 1] + 1, length)
-    for frame in reversed(range(length - 1)):
-        distances[frame] = min(distances[frame], distances[frame + 1] + 1)
-
-    return distances
-
-
-def _change_reading(distance: int) -> str:
-    """The change reading a frame ``distance`` frames from a note change counts in."""
-    if distance == 0:
-        return AT_CHANGE
-    if distance == 1:
-        return NEXT_TO_CHANGE
-    return AWAY_FROM_CHANGE
+    return _distances_to(_frames_at_change(notes))
 
 
 def formable(target: FrozenSet[Note], options: Mapping[ChannelName, NoteOptions]) -> bool:
     """Whether one option per channel sounds exactly ``target``, a channel's silence one of its options."""
-    choices: Sequence[NoteOptions] = list(options.values())
-    for chosen in itertools.product(*choices):
-        if frozenset(note for note in chosen if note is not None) == target:
-            return True
-
-    return False
+    return any(_sounded(chosen) == target for chosen in itertools.product(*options.values()))
 
 
 def poolable(target: FrozenSet[Note], pools: Sequence[PoolNotes]) -> bool:
@@ -231,35 +320,48 @@ def poolable(target: FrozenSet[Note], pools: Sequence[PoolNotes]) -> bool:
     narrowed to those before the stems' choices are crossed.
     """
     within = [[notes for notes in pool if notes <= target] for pool in pools]
-    for chosen in itertools.product(*within):
-        if frozenset().union(*chosen) == target:
-            return True
-
-    return False
+    return any(frozenset().union(*chosen) == target for chosen in itertools.product(*within))
 
 
-def _pool_notes(reader: NoteReader, trace: SearchTrace, frame: int) -> Optional[List[PoolNotes]]:
-    """The note sets each stem's pool offers at ``frame``, or ``None`` where the trace holds no pools."""
-    if not trace.pools:
-        return None
+def _frames_at_change(notes: Sequence[Tuple[Optional[Note], ...]]) -> List[bool]:
+    """Which frames stand at a note change: both frames on either side of one."""
+    at_change = [False] * len(notes)
+    for frame in range(1, len(notes)):
+        if notes[frame] != notes[frame - 1]:
+            at_change[frame - 1] = at_change[frame] = True
 
-    return [
-        frozenset(reader.notes(dict(zip(pool.channel_names, combination))) for combination in pool.frames[frame])
-        for pool in trace.pools.values()
-        if frame < len(pool.frames)
-    ]
+    return at_change
 
 
-def _column(trace: SearchTrace, channel: ChannelName, frame: int) -> Tuple[Frame, ...]:
-    """The candidates a channel's column offers at ``frame``; a channel the conversion leaves out offers silence."""
-    columns = trace.columns.get(channel, ())
-    return columns[frame] if frame < len(columns) else (None,)
+def _distances_to(marked: Sequence[bool]) -> List[int]:
+    """How far each frame stands from the nearest marked frame, as many frames as there are where none is marked.
+
+    The distance is carried forward from each marked frame, then back, so each frame keeps the nearer.
+    """
+    length = len(marked)
+    distances = [length] * length
+    for frame in range(length):
+        if marked[frame]:
+            distances[frame] = 0
+        elif frame:
+            distances[frame] = min(distances[frame - 1] + 1, length)
+
+    for frame in reversed(range(length - 1)):
+        distances[frame] = min(distances[frame], distances[frame + 1] + 1)
+
+    return distances
 
 
-def _options(reader: NoteReader, channel: ChannelName, trace: SearchTrace, frame: int) -> NoteOptions:
-    return frozenset(reader.note(channel, candidate) for candidate in _column(trace, channel, frame))
+def _sounded(chosen: Iterable[Optional[Note]]) -> FrozenSet[Note]:
+    """The notes a choice of one option per channel sounds together."""
+    return frozenset(note for note in chosen if note is not None)
 
 
-def _heads(reader: NoteReader, trace: SearchTrace, frame: int) -> FrozenSet[Note]:
-    """The notes the columns' heads sound together, which is what the assignment picked."""
-    return reader.notes({channel: _column(trace, channel, frame)[0] for channel in TONAL_CHANNELS})
+def _tonal_frames(streams: Streams, frame: int) -> Dict[ChannelName, Frame]:
+    """Every tonal channel's frame ``frame``."""
+    return {channel: streams[channel][frame] for channel in TONAL_CHANNELS}
+
+
+def _channel_notes(reader: NoteReader, written: Streams, frame: int) -> Tuple[Optional[Note], ...]:
+    """The note each tonal channel sounds in frame ``frame``, ``None`` where it is silent."""
+    return tuple(reader.note(channel, instruction) for channel, instruction in _tonal_frames(written, frame).items())

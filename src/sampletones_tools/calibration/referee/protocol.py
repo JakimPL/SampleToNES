@@ -12,10 +12,13 @@ SCORE_READING: Final[str] = "score"
 
 @dataclass(frozen=True)
 class Judgment:
-    """A referee's reading of one estimate: the score it ranks by and the parts that score breaks into.
+    """A referee's reading of one conversion: the score it ranks by and the readings that score breaks into.
+
+    A lower score is closer, and zero is a conversion the referee finds no fault with. Each referee
+    states the unit and the direction of its score and of every reading it declares.
 
     Attributes:
-        score: The distance a report ranks by; zero for identical signals.
+        score: The distance a report ranks by; zero where the referee finds no fault.
         components: Named readings behind the score, keyed by the constants the referee declares.
     """
 

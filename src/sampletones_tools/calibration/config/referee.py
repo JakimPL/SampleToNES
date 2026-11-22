@@ -74,7 +74,10 @@ class RefereeConfig(BaseModel, frozen=True):
     misplaced_weight: float = Field(
         ge=0.0,
         le=1.0,
-        description="What a written note played at its pitch on another channel kind weighs; a wrong frame weighs one.",
+        description=(
+            "What a written note played at its pitch on another channel kind weighs, a wrong frame weighing one: "
+            "such a note is wrong, though milder than a wrong note."
+        ),
     )
 
     @classmethod

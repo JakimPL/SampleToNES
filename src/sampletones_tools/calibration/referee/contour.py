@@ -1,5 +1,5 @@
 import math
-from typing import Dict, Final, List
+from typing import Dict, Final, List, Tuple
 
 import numpy as np
 
@@ -16,22 +16,33 @@ DECIBELS_PER_POWER_DECADE: Final[float] = 10.0
 LOW_PERCENTILE: Final[float] = 10.0
 HIGH_PERCENTILE: Final[float] = 90.0
 OCTAVE_HALF_WIDTH: Final[float] = math.sqrt(2.0)
+NO_SPREAD: Final[float] = 0.0
+NO_ONSET: Final[float] = 0.0
+
+BandEnergies = Tuple[float, float]
 
 
 class ContourReferee:
     """Reads whether a render follows its recording's loudness over time and over the bands of the spectrum.
 
-    Both signals are cut into short frames, each measured as its level in decibels. Over the frames
-    the recording sounds in, the score is how far the render's levels stray from the recording's
-    once their difference is centered: zero for a render that rises and falls exactly as the
-    recording does, at any constant offset. The readings behind it:
+    Both signals are cut into frames of ``contour_frame_rate`` per second, each measured as its level in
+    decibels: its mean power with ``LEVEL_FLOOR`` added, so a silent frame reads a finite level. A frame
+    is audible where the recording plays it within ``contour_audible_decibels`` of its loudest frame.
 
-    - ``spread``: the range of the render's levels less the recording's, the 10th to 90th percentile,
-      so a render whose dynamics flatten reads below zero;
-    - ``onset``: how much louder the render plays than the recording in the first frames after each
-      silence, so a render that overshoots its attacks reads above zero;
+    The score is the standard deviation, in decibels, of the render's level less the recording's over
+    the audible frames: zero for a render that rises and falls exactly as the recording does, at any
+    constant offset, so it reads the contour apart from the level. Its readings, each in decibels and
+    closest at zero:
+
+    - ``spread``: the range of the render's audible levels less the recording's, each read from the
+      ``LOW_PERCENTILE``-th to the ``HIGH_PERCENTILE``-th percentile, so a render whose dynamics flatten
+      reads below zero;
+    - ``onset``: how much louder the render plays than the recording over the ``contour_onset_frames``
+      frames from where each audible run starts, averaged over the runs, so a render that overshoots its
+      attacks reads above zero;
     - ``band-F``: the render's energy less the recording's in the octave band centered on ``F`` hertz,
-      over the bands the recording fills, so an implied equalization reads as a curve.
+      over the bands the recording fills within ``contour_band_floor_decibels`` of its fullest band, so
+      an implied equalization reads as a curve across the bands.
     """
 
     def __init__(self, sample_rate: int, *, config: RefereeConfig) -> None:
@@ -59,15 +70,17 @@ class ContourReferee:
         return Judgment(score=float(np.std(difference)), components=components)
 
     def _levels(self, audio: np.ndarray) -> np.ndarray:
+        """Each whole frame's level in decibels, the frame's mean power with the floor added."""
         frames = len(audio) // self._frame_length
         cut = np.asarray(audio[: frames * self._frame_length], dtype=np.float64).reshape(frames, self._frame_length)
         levels = DECIBELS_PER_POWER_DECADE * np.log10(np.mean(np.square(cut), axis=1) + LEVEL_FLOOR)
         return np.asarray(levels, dtype=np.float64)
 
     def _onset(self, written: np.ndarray, played: np.ndarray, audible: np.ndarray) -> float:
-        starts = [frame for frame in range(len(audible)) if audible[frame] and (frame == 0 or not audible[frame - 1])]
+        """The render's level less the recording's over the first frames of each audible run, averaged over the runs."""
+        starts = _run_starts(audible)
         if not starts:
-            return 0.0
+            return NO_ONSET
 
         rises: List[float] = []
         for start in starts:
@@ -77,14 +90,8 @@ class ContourReferee:
         return float(np.mean(rises))
 
     def _band_balance(self, reference: np.ndarray, estimate: np.ndarray) -> Dict[str, float]:
-        frequencies = np.fft.rfftfreq(len(reference), d=1.0 / self._sample_rate)
-        written = np.abs(np.fft.rfft(reference)) ** 2
-        played = np.abs(np.fft.rfft(estimate[: len(reference)], n=len(reference))) ** 2
-        energies = {
-            center: (float(np.sum(written[band])), float(np.sum(played[band])))
-            for center in self._bands
-            if np.any(band := (frequencies >= center / OCTAVE_HALF_WIDTH) & (frequencies < center * OCTAVE_HALF_WIDTH))
-        }
+        """The render's energy less the recording's in decibels, for each octave band the recording fills."""
+        energies = self._band_energies(reference, estimate)
         fullest = max((energy for energy, _ in energies.values()), default=0.0)
         floor = fullest * 10 ** (-self._band_floor_decibels / DECIBELS_PER_POWER_DECADE)
         return {
@@ -94,9 +101,33 @@ class ContourReferee:
             if written_energy > floor and written_energy > 0.0
         }
 
+    def _band_energies(self, reference: np.ndarray, estimate: np.ndarray) -> Dict[float, BandEnergies]:
+        """The recording's and the render's spectral energy in each octave band holding a bin of the spectrum."""
+        frequencies = np.fft.rfftfreq(len(reference), d=1.0 / self._sample_rate)
+        written = np.abs(np.fft.rfft(reference)) ** 2
+        played = np.abs(np.fft.rfft(estimate[: len(reference)], n=len(reference))) ** 2
+        energies: Dict[float, BandEnergies] = {}
+        for center in self._bands:
+            band = _octave_band(frequencies, center)
+            if np.any(band):
+                energies[center] = (float(np.sum(written[band])), float(np.sum(played[band])))
+
+        return energies
+
+
+def _octave_band(frequencies: np.ndarray, center: float) -> np.ndarray:
+    """Which ``frequencies`` lie in the octave centered on ``center``, half an octave to either side of it."""
+    return np.asarray((frequencies >= center / OCTAVE_HALF_WIDTH) & (frequencies < center * OCTAVE_HALF_WIDTH))
+
+
+def _run_starts(audible: np.ndarray) -> List[int]:
+    """The frames where a run of audible frames starts, the first frame included where it is audible."""
+    return [frame for frame in range(len(audible)) if audible[frame] and (frame == 0 or not audible[frame - 1])]
+
 
 def _spread(levels: np.ndarray) -> float:
+    """The range of ``levels`` between the low and the high percentile, zero for no level."""
     if not levels.size:
-        return 0.0
+        return NO_SPREAD
 
     return float(np.percentile(levels, HIGH_PERCENTILE) - np.percentile(levels, LOW_PERCENTILE))

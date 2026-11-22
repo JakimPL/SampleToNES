@@ -1,4 +1,3 @@
-import math
 from typing import Dict, Final, Mapping, Optional, Sequence
 
 import numpy as np
@@ -10,7 +9,7 @@ from sampletones_core.reconstructions.reconstruction.renders import rendered_cha
 from sampletones_tools.calibration.corpus.truth import PitchLine, Truth, sounding_pitches
 
 from .frames import common_length
-from .pitch import SEMITONES_PER_OCTAVE
+from .intervals import same_pitch_class
 from .protocol import Judgment
 from .scale import effective_scale
 
@@ -20,6 +19,7 @@ TRIANGLE: Final[str] = "triangle"
 NOISE: Final[str] = "noise"
 BASS_ON_A_PULSE: Final[str] = "bass-on-pulse"
 SCALE: Final[str] = "scale"
+SILENT_SHARE: Final[float] = 0.0
 
 PARTS: Final[Dict[str, Sequence[ChannelName]]] = {
     PULSES: (ChannelName.PULSE1, ChannelName.PULSE2),
@@ -31,15 +31,18 @@ PARTS: Final[Dict[str, Sequence[ChannelName]]] = {
 class BalanceReferee:
     """Reads how a conversion shares the sound out among the channels, against how the sound itself does.
 
-    Each part's share is its energy over the energy of every part, the two pulses one part since they
-    sound the same mix whichever carries which line. The score is the share that would have to move
-    between parts to match the sound, half the summed differences. The readings behind it are:
+    Each part's share is its energy over the energy of every part, each side read over its whole render.
+    The two pulses are one part, since they sound the same mix whichever carries which line. The score
+    is the share that would have to move between parts to match the sound, half the summed
+    differences: zero where the parts share the sound as written, one where they share none of it
+    alike. The readings behind it are:
 
-    - each part's share played less its share written, so a starved triangle reads below zero;
-    - ``bass-on-pulse``: the share of the triangle's sounding frames whose note a pulse plays, in any
-      octave, while the triangle plays another or none;
-    - ``scale``: how much the conversion scaled the sound before matching it, one where it matched
-      the sound at the level the channels play it.
+    - ``pulses``, ``triangle``, ``noise``: each part's share played less its share written, zero being
+      closest, so a starved triangle reads below zero;
+    - ``bass-on-pulse``: the share of the written triangle's sounding frames whose note a pulse plays in
+      any octave while the triangle plays another or none, zero being closest;
+    - ``scale``: the working-level scale the conversion matched the sound at (see ``effective_scale``),
+      one being closest, where it matched the sound at the level the channels play it.
     """
 
     @property
@@ -55,8 +58,8 @@ class BalanceReferee:
         if not truth.instructions:
             return None
 
-        written = _shares(render_channels(truth.instructions, reconstruction.config))
-        played = _shares(rendered_channels(reconstruction))
+        written = part_shares(render_channels(truth.instructions, reconstruction.config))
+        played = part_shares(rendered_channels(reconstruction))
         differences = {part: played[part] - written[part] for part in PARTS}
         components = {
             **differences,
@@ -92,25 +95,29 @@ def bass_on_pulse(
     taken = 0
     for frame in sounding:
         target = bass[frame]
-        if triangle and _same_note_class(triangle[frame], target):
+        if triangle and _sounds_pitch_class(triangle[frame], target):
             continue
-        taken += any(_same_note_class(line[frame], target) for line in pulses)
+
+        taken += any(_sounds_pitch_class(line[frame], target) for line in pulses)
 
     return taken / len(sounding)
 
 
-def _same_note_class(frequency: Optional[float], target: Optional[float]) -> bool:
+def part_shares(channel_audio: Mapping[ChannelName, np.ndarray]) -> Dict[str, float]:
+    """Each part's share of the energy the channels render together, every share zero for a silent render."""
+    energies = {part: _part_energy(channel_audio, channels) for part, channels in PARTS.items()}
+    total = sum(energies.values())
+    return {part: energy / total if total else SILENT_SHARE for part, energy in energies.items()}
+
+
+def _part_energy(channel_audio: Mapping[ChannelName, np.ndarray], channels: Sequence[ChannelName]) -> float:
+    """The energy a part's channels render, summed over those that render."""
+    return sum(float(np.sum(np.square(channel_audio[channel]))) for channel in channels if channel in channel_audio)
+
+
+def _sounds_pitch_class(frequency: Optional[float], target: Optional[float]) -> bool:
+    """Whether a frame sounds ``target``'s note in some octave, both sides sounding."""
     if frequency is None or target is None:
         return False
 
-    return round(SEMITONES_PER_OCTAVE * math.log2(frequency / target)) % SEMITONES_PER_OCTAVE == 0
-
-
-def _shares(channel_audio: Mapping[ChannelName, np.ndarray]) -> Dict[str, float]:
-    """Each part's share of the energy the channels render together."""
-    energies = {
-        part: sum(float(np.sum(np.square(channel_audio[channel]))) for channel in channels if channel in channel_audio)
-        for part, channels in PARTS.items()
-    }
-    total = sum(energies.values())
-    return {part: energy / total if total else 0.0 for part, energy in energies.items()}
+    return same_pitch_class(frequency, target)
