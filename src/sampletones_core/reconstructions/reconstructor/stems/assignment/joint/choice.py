@@ -12,6 +12,7 @@ from sampletones_core.reconstructions.reconstructor.mix import FrameMix
 
 from .catalog import KindCatalog, alike_timbres
 from .combinations import CombinationSearch, Rows
+from .hearing import FrameHearing
 from .layout import StemLayout
 
 FINALISTS: Final[int] = 6
@@ -41,6 +42,7 @@ class CombinationJudge:
     the frame's waveform, at the drive the stem gives it, and the frame is then scored with all of
     them sounding, exactly as a column scores one candidate beside a mix. A channel phased once
     behind the same louder rows keeps its phase for every combination of the frame sharing them.
+    Each row adds its power as the frame's hearing reads it.
     """
 
     def __init__(
@@ -50,12 +52,14 @@ class CombinationJudge:
         catalogs: Mapping[GeneratorClassName, KindCatalog],
         matcher: FrameMatcher,
         weights: np.ndarray,
+        hearing: FrameHearing,
     ) -> None:
         self.fragment = fragment
         self.layout = layout
         self.catalogs = catalogs
         self.matcher = matcher
         self.weights = weights
+        self.hearing = hearing
         self._phased: Dict[Tuple[Tuple[int, int], ...], Contribution] = {}
 
     def scored(self, combinations: Sequence[Rows]) -> List[ScoredCombination]:
@@ -74,7 +78,7 @@ class CombinationJudge:
             for slot, row in zip(self.layout.slots, rows)
         ]
         contributions: List[Optional[Contribution]] = [None] * len(rows)
-        mix = FrameMix.empty(self.fragment)
+        mix = self.hearing.empty_mix(self.fragment)
         phased: Tuple[Tuple[int, int], ...] = ()
         for index in sorted(range(len(rows)), key=lambda position: -loudness[position]):
             slot, row = self.layout.slots[index], rows[index]
@@ -87,7 +91,7 @@ class CombinationJudge:
                 contribution = self.matcher.contribution(
                     catalog.instructions[row],
                     mix.residual_waveform(self.fragment),
-                    catalog.powers[row] / slot.drive**2,
+                    self.hearing.powers(index, [row])[0],
                     drive=slot.drive,
                 )
                 self._phased[phased] = contribution

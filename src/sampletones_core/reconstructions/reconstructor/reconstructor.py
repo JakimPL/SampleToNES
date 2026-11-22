@@ -45,9 +45,12 @@ from sampletones_core.reconstructions.reconstructor.observer import SILENT_OBSER
 from sampletones_core.reconstructions.reconstructor.refinement import PitchRefiner
 from sampletones_core.reconstructions.reconstructor.state import ReconstructionState
 from sampletones_core.reconstructions.reconstructor.stems.assignment.assigners import frame_assigner
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.assigner import JointAssigner
 from sampletones_core.reconstructions.reconstructor.stems.assignment.track import TrackAssignment
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from sampletones_core.reconstructions.reconstructor.window.profiles import frame_profiles
+from sampletones_core.reconstructions.reconstructor.window.surroundings import surroundings
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 from sampletones_core.reconstructions.stage import ReconstructionStage
 from sampletones_shared.exceptions import NoLibraryDataError
@@ -198,10 +201,12 @@ class Reconstructor:
         prepared = self._prepare_stem_frames(loaded.recordings, stems_config, worker.matcher)
         announce(report, ReconstructionStage.LOADING, FRAMES_PREPARED, PREPARATIONS)
         assignment = self._assign_stem_frames(prepared.frames, stems_config, worker, report)
-        alternatives = assignment.alternatives
-        observe.assigned(alternatives)
         announce(report, ReconstructionStage.DECODING, STAGE_BEGUN, WHOLE_STAGE)
-        streams = worker.decoder.decode(alternatives)
+        streams = worker.decoder.decode(assignment.alternatives)
+        for _ in range(self.config.generation.assignment.neighbors):
+            assignment = self._assign_beside_neighbors(prepared.frames, stems_config, worker, streams, report)
+            streams = worker.decoder.decode(assignment.alternatives)
+        observe.assigned(assignment.alternatives)
         observe.decoded(streams)
         assignment.release_silent(streams)
         streams = self._refiner(stems_config).refine(streams, assignment.stem_ids, prepared.recordings)
@@ -336,6 +341,41 @@ class Reconstructor:
             assignment.add(
                 assigner.assign({stem_id: fragments[fragment_id] for stem_id, fragments in stem_frames.items()})
             )
+
+        announce(report, ReconstructionStage.MATCHING, frames, frames)
+        return assignment
+
+    def _assign_beside_neighbors(
+        self,
+        stem_frames: Dict[int, FragmentedAudio],
+        stems_config: StemsConfig,
+        worker: ReconstructorWorker,
+        streams: Streams,
+        report: ReconstructionReporter,
+    ) -> TrackAssignment:
+        """Assigns every frame again, in turn, among the notes its neighbors play.
+
+        A frame's analysis window reads its neighbors too, so what they play is a fixed part of the
+        frame's reading, and a note extending a neighbor's note adds to it as one note held across
+        the frames. The frames before a frame play what the pass settled them on, and the frames
+        after it what ``streams`` decoded, so each frame is decided among the latest choices around it.
+        """
+        assignment = TrackAssignment(self.state.channel_names)
+        assigner = JointAssigner(stems_config, self.channels, worker.matcher, worker.decoder.lattice_width)
+        lines = assigner.lines(streams)
+        frames = self._stem_frame_count(stem_frames)
+        if not frames:
+            return assignment
+
+        bins = len(next(iter(stem_frames.values()))[0].feature.values)
+        profiles = frame_profiles(self.config, self.window, bins)
+        for fragment_id in range(frames):
+            announce(report, ReconstructionStage.MATCHING, fragment_id, frames)
+            heard = {channel_name: surroundings(line, fragment_id, profiles) for channel_name, line in lines.items()}
+            fragments = {stem_id: stem_fragments[fragment_id] for stem_id, stem_fragments in stem_frames.items()}
+            frame_assignment = assigner.assign_beside(fragments, heard)
+            assigner.settle(lines, fragment_id, frame_assignment)
+            assignment.add(frame_assignment)
 
         announce(report, ReconstructionStage.MATCHING, frames, frames)
         return assignment

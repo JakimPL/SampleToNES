@@ -19,6 +19,7 @@ metric:
 
 assignment:
   method: picks
+  neighbors: 0
 
 decoder:
   selector: viterbi

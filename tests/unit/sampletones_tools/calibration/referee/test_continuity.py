@@ -1,10 +1,19 @@
 from typing import Final, List
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.instructions import InstructionUnion, PulseInstruction, TriangleInstruction
+from sampletones_core.instructions import (
+    InstructionUnion,
+    PulseInstruction,
+    TriangleInstruction,
+)
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_tools.calibration.corpus.truth import Truth
-from sampletones_tools.calibration.referee.continuity import FRAGMENTS, HANDOVERS, ContinuityReferee, note_spans
+from sampletones_tools.calibration.referee.continuity import (
+    FRAGMENTS,
+    HANDOVERS,
+    ContinuityReferee,
+    note_spans,
+)
 from sampletones_tools.calibration.referee.protocol import Judgment
 
 from .truths import converted, judged, written_truth
@@ -14,6 +23,12 @@ BASS: Final[List[InstructionUnion]] = [TriangleInstruction(on=True, pitch=57)] *
 SILENT_TRIANGLE: Final[InstructionUnion] = TriangleInstruction.null_instruction()
 PULSE_BASS: Final[InstructionUnion] = PulseInstruction(on=True, pitch=45, volume=10, duty_cycle=2)
 SILENT_PULSE: Final[InstructionUnion] = PulseInstruction.null_instruction()
+LOWER: Final[InstructionUnion] = PulseInstruction(on=True, pitch=60, volume=10, duty_cycle=2)
+UPPER: Final[InstructionUnion] = PulseInstruction(on=True, pitch=64, volume=10, duty_cycle=2)
+INTERVAL: Final[dict[ChannelName, List[InstructionUnion]]] = {
+    ChannelName.PULSE1: [LOWER] * FRAMES,
+    ChannelName.PULSE2: [UPPER] * FRAMES,
+}
 
 
 def _judged(truth: Truth, reconstruction: Reconstruction) -> Judgment:
@@ -53,6 +68,26 @@ class TestContinuityReferee:
 
         assert judgment.components[FRAGMENTS] == 2.0
         assert judgment.score == 1.0
+
+    def test_two_pulses_holding_each_other_s_lines_throughout_score_zero(self) -> None:
+        played = {ChannelName.PULSE1: [UPPER] * FRAMES, ChannelName.PULSE2: [LOWER] * FRAMES}
+
+        judgment = _judged(written_truth(INTERVAL), converted(played))
+
+        assert judgment.score == 0.0
+
+    def test_two_pulses_trading_their_lines_count_a_handover_at_each_trade(self) -> None:
+        """Pulses playing C E E C and E C C E hand each note over twice."""
+        quarter = FRAMES // 4
+        played = {
+            ChannelName.PULSE1: [LOWER] * quarter + [UPPER] * 2 * quarter + [LOWER] * quarter,
+            ChannelName.PULSE2: [UPPER] * quarter + [LOWER] * 2 * quarter + [UPPER] * quarter,
+        }
+
+        judgment = _judged(written_truth(INTERVAL), converted(played))
+
+        assert judgment.components[HANDOVERS] == 2.0
+        assert judgment.score == 2.0
 
     def test_a_sound_of_no_note_is_left_unjudged(self) -> None:
         truth = Truth(instructions={}, pitches={})

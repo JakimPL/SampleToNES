@@ -7,6 +7,7 @@ from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
 from sampletones_core.reconstructions.reconstructor.candidates import CandidateProvider
+from sampletones_core.reconstructions.reconstructor.window.surroundings import NoteKey
 from sampletones_shared.array import to_numpy
 
 SILENT_NOTE: Final[int] = -1
@@ -34,6 +35,7 @@ class KindCatalog:
         timbres: Each row's timbre within its note.
         volumes: Each row's volume; the triangle's one level reads as full volume.
         silence: The silent row.
+        rows_by_instruction: Each instruction's row.
     """
 
     kind: GeneratorClassName
@@ -45,6 +47,7 @@ class KindCatalog:
     timbres: np.ndarray
     volumes: np.ndarray
     silence: int
+    rows_by_instruction: Dict[InstructionUnion, int]
 
     @classmethod
     def build(cls, provider: CandidateProvider, generator: GeneratorUnion) -> Self:
@@ -69,6 +72,7 @@ class KindCatalog:
             timbres=np.array([timbre for _, timbre, _ in described], dtype=np.int64),
             volumes=np.array([volume for _, _, volume in described], dtype=np.int64),
             silence=candidates.instructions.index(silence),
+            rows_by_instruction={instruction: row for row, instruction in enumerate(candidates.instructions)},
         )
 
     def rows_of(self, note: int) -> np.ndarray:
@@ -109,6 +113,10 @@ class KindCatalog:
     def sounding(self, row: int) -> bool:
         """Whether ``row`` sounds a note."""
         return bool(self.notes[row] != SILENT_NOTE)
+
+    def key(self, row: int) -> Optional[NoteKey]:
+        """The note and timbre ``row`` sounds, or ``None`` for silence."""
+        return (int(self.notes[row]), int(self.timbres[row])) if self.sounding(row) else None
 
     def note_name(self, row: int) -> Optional[int]:
         """The note ``row`` sounds, or ``None`` for silence."""

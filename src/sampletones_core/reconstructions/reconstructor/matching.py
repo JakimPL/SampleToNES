@@ -45,12 +45,14 @@ class RowsRequest:
         generator: The generator whose class the rows belong to.
         mix: What the stem's other channels sound in the frame.
         rows: The candidates, by their place in the class's candidates.
+        powers: The power each candidate adds to the frame, read at ``drive``, one row per candidate.
         drive: The level the channel reaches for, which every candidate is read against.
     """
 
     generator: GeneratorUnion
     mix: FrameMix
     rows: Tuple[int, ...]
+    powers: np.ndarray
     drive: float
 
 
@@ -162,9 +164,10 @@ class FrameMatcher:
         Returns:
             The candidates with their frame costs, best first, silence ahead of an equal cost.
         """
-        return self.score_requests(target, [RowsRequest(generator=generator, mix=mix, rows=tuple(rows), drive=drive)])[
-            0
-        ]
+        candidates = self.candidate_provider.candidates({generator.class_name(): generator})
+        powers = np.asarray(to_numpy(_at_unit_drive(candidates.powers, drive)[xp.asarray(list(rows))]))
+        request = RowsRequest(generator=generator, mix=mix, rows=tuple(rows), powers=powers, drive=drive)
+        return self.score_requests(target, [request])[0]
 
     def score_requests(self, target: Fragment, requests: Sequence[RowsRequest]) -> List[Column]:
         """
@@ -172,34 +175,25 @@ class FrameMatcher:
 
         Args:
             target: Target fragment to match.
-            requests: Each channel's class, mix, rows and drive.
+            requests: Each channel's class, mix, rows, their powers and drive.
 
         Returns:
             One column per request, in request order, each best first, silence ahead of an equal cost.
         """
-        selected = []
-        for request in requests:
-            candidates = self.candidate_provider.candidates({request.generator.class_name(): request.generator})
-            selected.append(
-                (
-                    candidates.instructions,
-                    _at_unit_drive(candidates.powers, request.drive)[xp.asarray(list(request.rows))],
-                )
-            )
         mixed = self.candidate_provider.features_of(
-            xp.concatenate([powers + xp.asarray(request.mix.power) for (_, powers), request in zip(selected, requests)])
+            xp.concatenate([xp.asarray(request.powers) + xp.asarray(request.mix.power) for request in requests])
         )
-        powers = np.asarray(to_numpy(xp.concatenate([powers for _, powers in selected])), dtype=np.float64)
-        bounds = np.cumsum([0, *[len(request.rows) for request in requests]])
         shortlists = [
             _Shortlist(
-                instructions=instructions,
+                instructions=self.candidate_provider.candidates(
+                    {request.generator.class_name(): request.generator}
+                ).instructions,
                 rows=list(request.rows),
-                powers=powers[bounds[position] : bounds[position + 1]],
+                powers=np.asarray(request.powers, dtype=np.float64),
                 mix=request.mix,
                 drive=request.drive,
             )
-            for position, ((instructions, _), request) in enumerate(zip(selected, requests))
+            for request in requests
         ]
         return self._scored(target, shortlists, self.scorer.spectral_costs(target, mixed))
 

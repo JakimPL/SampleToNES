@@ -260,14 +260,28 @@ class TestScoringTogether:
         first, second = _kinds(worker)[:2]
         held = worker.matcher.score_column(target, first, FrameMix.empty(target), drive=UNIT_DRIVE)[0]
         return [
-            RowsRequest(generator=first, mix=FrameMix.empty(target), rows=self._rows(worker, first), drive=UNIT_DRIVE),
+            RowsRequest(
+                generator=first,
+                mix=FrameMix.empty(target),
+                rows=self._rows(worker, first),
+                powers=self._powers(worker, first, UNIT_DRIVE),
+                drive=UNIT_DRIVE,
+            ),
             RowsRequest(
                 generator=second,
                 mix=FrameMix.of(target, [held.contribution]),
                 rows=self._rows(worker, second),
+                powers=self._powers(worker, second, DRIVE),
                 drive=DRIVE,
             ),
         ]
+
+    @classmethod
+    def _powers(cls, worker: ReconstructorWorker, generator: GeneratorUnion, drive: float) -> np.ndarray:
+        """The library powers of ``_rows``, read at ``drive``."""
+        candidates = worker.matcher.candidate_provider.candidates({generator.class_name(): generator})
+        powers = np.asarray(to_numpy(candidates.powers), dtype=np.float64)
+        return np.asarray(powers[list(cls._rows(worker, generator))] / drive**2)
 
     @staticmethod
     def _rows(worker: ReconstructorWorker, generator: GeneratorUnion) -> Tuple[int, ...]:

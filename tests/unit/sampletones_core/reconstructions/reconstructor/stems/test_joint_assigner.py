@@ -1,6 +1,7 @@
 import itertools
-from typing import Dict, Final, List, Optional, Set, Tuple
+from typing import Dict, Final, List, Mapping, Optional, Sequence, Set, Tuple
 
+import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
@@ -11,12 +12,14 @@ from sampletones_core.constants.enums import (
     HierarchyMode,
     bending_channels,
 )
-from sampletones_core.fft import Fragment
+from sampletones_core.fft import Fragment, Window
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
+from sampletones_core.generators.render import render_instructions
 from sampletones_core.instructions import InstructionUnion, PulseInstruction, TonalInstruction, TriangleInstruction
-from sampletones_core.reconstructions.reconstructor.decoder.base import PooledCombination
-from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
+from sampletones_core.reconstructions.reconstructor.contribution import Contribution
+from sampletones_core.reconstructions.reconstructor.decoder.base import PooledCombination, Streams
+from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher, ScoredCandidate
 from sampletones_core.reconstructions.reconstructor.stems.assignment.assigners import PicksAssigner, frame_assigner
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.assigner import JointAssigner
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
@@ -25,6 +28,8 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy impo
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
 from sampletones_core.reconstructions.reconstructor.stems.models.pool import StemPool
+from sampletones_core.reconstructions.reconstructor.window.profiles import frame_profiles
+from sampletones_core.reconstructions.reconstructor.window.surroundings import surroundings
 
 from ..conftest import rendered_fragment
 
@@ -316,3 +321,109 @@ def _pulse_pitches(heads: Dict[ChannelName, InstructionUnion]) -> Tuple[Optional
                 return None
 
     return pitch(ChannelName.PULSE1), pitch(ChannelName.PULSE2)
+
+
+SEQUENCE_FRAMES: Final[int] = 12
+BASS_FRAMES: Final[int] = 6
+SILENT_BASS: Final[TriangleInstruction] = TriangleInstruction.null_instruction()
+
+
+def _sequence(config: Config, lines: Mapping[ChannelName, Sequence[InstructionUnion]]) -> np.ndarray:
+    """The channels playing their lines of instructions together, one instruction a frame."""
+    return sum(
+        (render_instructions(list(line), channel_name, config) for channel_name, line in lines.items()),
+        start=np.zeros(SEQUENCE_FRAMES * config.library.frame_length, dtype=np.float32),
+    )
+
+
+def _decoded(
+    lines: Mapping[ChannelName, Sequence[InstructionUnion]],
+    channels: Mapping[ChannelName, GeneratorUnion],
+    silence: Contribution,
+) -> Streams:
+    """Streams decoded to play ``lines``, every other channel of ``channels`` silent throughout."""
+    streams: Streams = {}
+    for channel_name, generator in channels.items():
+        line = lines.get(channel_name, [generator.get_instruction_type().null_instruction()] * SEQUENCE_FRAMES)
+        streams[channel_name] = [
+            ScoredCandidate(instruction=instruction, cost=0.0, contribution=silence) for instruction in line
+        ]
+
+    return streams
+
+
+class TestAssigningBesideTheNeighbors:
+    """A frame assigned again among the notes its neighbors play reads only its own notes in its window."""
+
+    @pytest.fixture(name="staccato")
+    def staccato_fixture(self) -> Dict[ChannelName, List[InstructionUnion]]:
+        """A bass stopping halfway under a lead held throughout."""
+        lead: List[InstructionUnion] = [LEAD for _ in range(SEQUENCE_FRAMES)]
+        bass: List[InstructionUnion] = [
+            BASS if frame < BASS_FRAMES else SILENT_BASS for frame in range(SEQUENCE_FRAMES)
+        ]
+        return {ChannelName.PULSE1: lead, ChannelName.TRIANGLE: bass}
+
+    def _beside(
+        self,
+        config: Config,
+        window: Window,
+        extractor: FeatureExtractor,
+        assigner: JointAssigner,
+        lines: Mapping[ChannelName, Sequence[InstructionUnion]],
+        frame: int,
+    ) -> StemFrameAssignment:
+        fragments = extractor.extract(_sequence(config, lines))
+        bins = len(fragments[frame].feature.values)
+        profiles = frame_profiles(config, window, bins)
+        silence = Contribution.silence(bins, config.library.frame_length)
+        decoded = assigner.lines(_decoded(lines, assigner.channels, silence))
+        heard = {channel_name: surroundings(line, frame, profiles) for channel_name, line in decoded.items()}
+        return assigner.assign_beside({0: fragments[frame]}, heard)
+
+    def test_the_frame_after_a_bass_stops_hears_the_bass_s_tail_as_its_neighbors(
+        self,
+        config: Config,
+        window: Window,
+        extractor: FeatureExtractor,
+        every_channel_assigner: JointAssigner,
+        staccato: Dict[ChannelName, List[InstructionUnion]],
+    ) -> None:
+        assignment = self._beside(config, window, extractor, every_channel_assigner, staccato, BASS_FRAMES)
+
+        assert _notes(_heads(assignment)) == {("pulse", LEAD.pitch)}
+
+    def test_a_frame_inside_a_held_chord_keeps_the_chord(
+        self,
+        config: Config,
+        window: Window,
+        extractor: FeatureExtractor,
+        every_channel_assigner: JointAssigner,
+    ) -> None:
+        held = {channel_name: [instruction] * SEQUENCE_FRAMES for channel_name, instruction in CHORD.items()}
+
+        assignment = self._beside(config, window, extractor, every_channel_assigner, held, SEQUENCE_FRAMES // 2)
+
+        assert _notes(_heads(assignment)) == _notes(dict(CHORD))
+
+    def test_settling_a_frame_hands_the_frames_after_it_the_frame_s_choice(
+        self,
+        config: Config,
+        window: Window,
+        extractor: FeatureExtractor,
+        every_channel_assigner: JointAssigner,
+        staccato: Dict[ChannelName, List[InstructionUnion]],
+    ) -> None:
+        fragments = extractor.extract(_sequence(config, staccato))
+        silence = Contribution.silence(len(fragments[0].feature.values), config.library.frame_length)
+        silent_lead = {**staccato, ChannelName.PULSE1: [PulseInstruction.null_instruction()] * SEQUENCE_FRAMES}
+        lines = every_channel_assigner.lines(_decoded(silent_lead, every_channel_assigner.channels, silence))
+        frame = BASS_FRAMES
+        profiles = frame_profiles(config, window, len(fragments[frame].feature.values))
+        heard = {channel_name: surroundings(line, frame, profiles) for channel_name, line in lines.items()}
+
+        assignment = every_channel_assigner.assign_beside({0: fragments[frame]}, heard)
+        every_channel_assigner.settle(lines, frame, assignment)
+
+        lead = surroundings(lines[ChannelName.PULSE1], frame + 1, profiles)
+        assert lead.before is not None and lead.before.key == (LEAD.pitch, LEAD.duty_cycle)

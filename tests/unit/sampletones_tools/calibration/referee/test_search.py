@@ -8,13 +8,17 @@ from sampletones_tools.calibration.corpus.truth import Truth
 from sampletones_tools.calibration.referee.notes import Note
 from sampletones_tools.calibration.referee.search import (
     ASSIGNMENT,
+    AT_CHANGE,
+    AWAY_FROM_CHANGE,
     COLUMNS,
     DECODER,
     GAINS,
     MISPLACED,
+    NEXT_TO_CHANGE,
     POOLED,
     UNREACHED,
     SearchReferee,
+    change_distances,
     formable,
 )
 from sampletones_tools.calibration.trace import InstructionColumn, PoolTrace, SearchTrace
@@ -36,6 +40,8 @@ CHORD: Final[Dict[ChannelName, InstructionUnion]] = {
     ChannelName.PULSE2: HARMONY,
     ChannelName.TRIANGLE: BASS,
 }
+LEAD_NOTE: Final[Note] = Note(kind=GeneratorClassName.PULSE_GENERATOR, semitone=64)
+HARMONY_NOTE: Final[Note] = Note(kind=GeneratorClassName.PULSE_GENERATOR, semitone=67)
 SILENCES: Final[Dict[ChannelName, InstructionUnion]] = {
     ChannelName.PULSE1: SILENT_PULSE,
     ChannelName.PULSE2: SILENT_PULSE,
@@ -252,3 +258,34 @@ class TestFormable:
         }
 
         assert not formable(frozenset({self.PULSE_NOTE}), options)
+
+
+class TestTheChangeReadings:
+    """A frame's analysis window reads its neighbors, so the frames near a written note change are read apart."""
+
+    def test_a_frame_stands_as_far_from_a_change_as_the_nearest_frame_beside_one(self) -> None:
+        lead, harmony = (LEAD_NOTE,), (HARMONY_NOTE,)
+
+        distances = change_distances([lead, lead, lead, harmony, harmony, harmony, harmony])
+
+        assert distances == [2, 1, 0, 0, 1, 2, 3]
+
+    def test_a_writing_without_a_change_stands_away_from_one_throughout(self) -> None:
+        assert change_distances([(LEAD_NOTE,)] * FRAMES) == [FRAMES] * FRAMES
+
+    def test_a_held_line_decoded_through_a_change_is_wrong_on_the_changed_side(self, referee: SearchReferee) -> None:
+        truth = written_truth({ChannelName.PULSE1: [LEAD, LEAD, HARMONY, HARMONY]})
+        trace = _trace({ChannelName.PULSE1: [LEAD, HARMONY, SILENT_PULSE]}, {ChannelName.PULSE1: LEAD})
+
+        readings = _judged(referee, truth, trace)
+
+        assert (readings[AT_CHANGE], readings[NEXT_TO_CHANGE]) == (0.5, 0.5)
+        assert AWAY_FROM_CHANGE not in readings
+
+    def test_a_held_chord_is_read_away_from_any_change(self, referee: SearchReferee) -> None:
+        trace = _trace({channel: [frame, SILENCES[channel]] for channel, frame in CHORD.items()}, CHORD)
+
+        readings = _judged(referee, CHORD_TRUTH, trace)
+
+        assert readings[AWAY_FROM_CHANGE] == 0.0
+        assert AT_CHANGE not in readings

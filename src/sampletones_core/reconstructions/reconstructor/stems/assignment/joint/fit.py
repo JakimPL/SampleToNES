@@ -73,19 +73,22 @@ def fitted_levels(
     atoms: np.ndarray,
     caps: np.ndarray,
     *,
+    base: np.ndarray,
     start: float,
     updates: int,
 ) -> np.ndarray:
     """How strongly each atom sounds when every atom is fitted to the frame at once.
 
     The levels of all the atoms are fitted together, each held under the most its channels can
-    play. A note the frame holds takes its level, and a note that would only cover other notes'
-    partials is left with little, since the true notes explain the same bins with nothing over.
+    play, over a fixed part the frame holds whatever the atoms play. A note the frame holds takes
+    its level, and a note that would only cover other notes' partials is left with little, since the
+    true notes explain the same bins with nothing over.
 
     Args:
         target: The frame.
         atoms: One atom per row, in feature values.
         caps: The highest level each atom may reach.
+        base: The fixed part, in feature values.
         start: The level every atom starts from.
         updates: How many updates the fit runs.
 
@@ -94,7 +97,7 @@ def fitted_levels(
     """
     levels = np.full(atoms.shape[0], start)
     for _ in range(updates):
-        mixed = levels @ atoms + target.floor
+        mixed = levels @ atoms + base + target.floor
         levels = np.minimum(target.updated(levels, atoms, mixed), caps)
 
     return levels

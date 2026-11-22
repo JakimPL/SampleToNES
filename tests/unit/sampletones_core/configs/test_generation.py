@@ -33,3 +33,16 @@ class TestTheDecoderReadsWhatTheAssignmentOffers:
         )
 
         assert (generation.assignment.method, generation.decoder.selector) == (method, selector)
+
+
+class TestFramesHeardAmongTheirNeighbors:
+    """A frame is assigned again among its neighbors by the joint assignment alone."""
+
+    def test_the_joint_assignment_hears_its_neighbors(self) -> None:
+        assignment = AssignmentConfig(method=AssignmentMethod.JOINT, neighbors=2)
+
+        assert GenerationConfig(assignment=assignment).assignment.neighbors == 2
+
+    def test_picks_heard_among_neighbors_are_refused(self) -> None:
+        with pytest.raises(ValidationError, match="joint assignment"):
+            GenerationConfig(assignment=AssignmentConfig(method=AssignmentMethod.PICKS, neighbors=1))

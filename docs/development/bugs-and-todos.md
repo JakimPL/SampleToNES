@@ -122,6 +122,15 @@ dimension the import starts carrying.
   every frame of the note, so the path keeps it. The per-channel decoder reads a different pulse in each
   frame's column and stays silent. Single noise notes fall from 82% to 60% right and the drum sequence from
   98% to 86%. A criterion that prices the pulse above the partial it explains closes it.
+* A frame heard among its neighbors loses short drum hits. The first pass holds a quiet noise under a
+  staccato bass's tail, and the pass removes it, so a hit of one to three frames stands alone: its frame
+  prefers quiet low pulses beside the noise, its decay prefers silence, and the decoder's on/off toll
+  outweighs what the hit saves. On Castlevania the written noise frames left silent rise from 12 to 154,
+  and a toll of 0.05 brings back 24 of them. A criterion that prices the pulses above the noise they
+  cover, together with a toll a hit can pay, closes it. On a recording the same choices break the noise
+  and the triangle into short runs: Can't Stop as a whole mix sounds its noise in 49 runs where the
+  first pass held 7, the triangle in 52 where it held 18, and its channels change from 17 to 31 times a
+  second, while the readings in nats hold.
 
 ## Architecture
 

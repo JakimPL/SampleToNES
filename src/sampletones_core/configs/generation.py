@@ -68,11 +68,15 @@ class AssignmentConfig(DataModel):
         method: ``picks`` takes one channel at a time, each candidate ranked alone against what the
             earlier picks leave of the frame. ``joint`` fits every note to the frame at once and
             chooses among complete combinations of channels; it needs every channel held by one stem.
+        neighbors: How many times every frame is assigned again after a decode, among the notes
+            its neighbors were decoded to play, each time decoded anew. The ``joint`` assignment
+            alone hears its neighbors.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True, validate_default=True)
 
     method: AssignmentMethod = Field(default=generation_default("assignment", "method"))
+    neighbors: int = Field(default=generation_default("assignment", "neighbors"), ge=0)
 
 
 class DecoderConfig(DataModel):
@@ -113,8 +117,8 @@ class RefinementConfig(DataModel):
 class GenerationConfig(DataModel):
     """How a conversion chooses what every channel plays.
 
-    The ``combinations`` decoder reads the whole combinations the ``joint`` assignment pools, so it
-    runs with that assignment alone.
+    The ``combinations`` decoder reads the whole combinations the ``joint`` assignment pools, and a
+    frame is heard among its neighbors by that assignment, so both run with it alone.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True, validate_default=True)
@@ -132,5 +136,12 @@ class GenerationConfig(DataModel):
     def _check_decoder_reads_the_assignment(self) -> Self:
         if self.decoder.selector == SelectorName.COMBINATIONS and self.assignment.method != AssignmentMethod.JOINT:
             raise ValueError("The combinations decoder needs the joint assignment, which pools whole combinations")
+
+        return self
+
+    @model_validator(mode="after")
+    def _check_neighbors_are_heard(self) -> Self:
+        if self.assignment.neighbors > 0 and self.assignment.method != AssignmentMethod.JOINT:
+            raise ValueError("Assigning frames among their neighbors needs the joint assignment")
 
         return self

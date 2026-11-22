@@ -10,6 +10,7 @@ from sampletones_shared.array import xp
 
 from .catalog import FULL_VOLUME, KindCatalog, alike_timbres, strongest_rows
 from .fit import FitTarget, fitted_levels
+from .hearing import FrameHearing
 from .layout import StemLayout
 
 FREE_FIT_START: Final[float] = 0.05
@@ -81,15 +82,17 @@ def proposed_rows(
     dictionary: NoteDictionary,
     catalogs: Mapping[GeneratorClassName, KindCatalog],
     matcher: FrameMatcher,
+    hearing: FrameHearing,
 ) -> Dict[GeneratorClassName, List[int]]:
     """The rows a frame's search starts from: the strongest notes of each kind, each on its best row.
 
-    The notes are the ones sounding strongest when every note is fitted to the frame at once, their
-    strength the power each is fitted to sound, unweighted, so a bass counts for what it plays where
-    the criterion's weights are light. A pulse or noise note is then proposed on the row of its own
-    that fits the frame best alone with what it falls short of counted lightly, which settles its
-    duty cycle and a first volume. With two pulses, the two strongest pulse notes are proposed on a
-    second duty cycle too, so two pulses may sound one note.
+    The notes are the ones sounding strongest when every note is fitted to the frame at once, over
+    what the frame holds before its rows sound, their strength the power each is fitted to sound,
+    unweighted, so a bass counts for what it plays where the criterion's weights are light. A pulse
+    or noise note is then proposed on the row of its own that fits the frame best alone with what it
+    falls short of counted lightly, which settles its duty cycle and a first volume. With two pulses,
+    the two strongest pulse notes are proposed on a second duty cycle too, so two pulses may sound
+    one note.
 
     Returns:
         The proposed rows of each kind the stem plays, strongest note first.
@@ -98,6 +101,7 @@ def proposed_rows(
         target,
         dictionary.features,
         dictionary.caps,
+        base=hearing.leak_features,
         start=FREE_FIT_START,
         updates=FREE_FIT_UPDATES,
     )
@@ -111,7 +115,7 @@ def proposed_rows(
         notes = [
             note for note in _ranked_notes(strengths, kind)[: PROPOSED_NOTES[kind]] if strengths[(kind, note)] > 0.0
         ]
-        proposals[kind] = _note_rows(fragment, catalogs[kind], notes, layout, kind, matcher)
+        proposals[kind] = _note_rows(fragment, catalogs[kind], notes, layout, kind, matcher, hearing)
 
     return proposals
 
@@ -128,15 +132,15 @@ def _note_rows(
     layout: StemLayout,
     kind: GeneratorClassName,
     matcher: FrameMatcher,
+    hearing: FrameHearing,
 ) -> List[int]:
     """Each note's best row alone, and a second duty cycle for the strongest pulse notes where two pulses play."""
     if not notes:
         return []
 
-    drive = layout.of_kind(kind)[0].drive
     rows_by_note = [catalog.rows_of(note) for note in notes]
     stacked = np.concatenate(rows_by_note)
-    powers = xp.asarray(catalog.powers[stacked] / drive**2)
+    powers = xp.asarray(hearing.leak + _heard(hearing, kind, stacked))
     costs = matcher.scorer.shortfall_weighted_costs(
         fragment, matcher.candidate_provider.features_of(powers), SHORTFALL_WEIGHT
     )
@@ -157,3 +161,14 @@ def _note_rows(
                 chosen.append(int(rows[unlike][int(np.argmin(note_costs[unlike]))]))
 
     return chosen
+
+
+def _heard(hearing: FrameHearing, kind: GeneratorClassName, rows: np.ndarray) -> np.ndarray:
+    """What each row of ``kind`` adds to the frame, on the channel of its kind that hears it as a proposal."""
+    places = np.array([hearing.place_of(kind, int(row)) for row in rows])
+    heard = np.zeros((rows.shape[0], hearing.leak.shape[0]))
+    for place in np.unique(places):
+        chosen = places == place
+        heard[chosen] = hearing.powers(int(place), [int(row) for row in rows[chosen]])
+
+    return heard

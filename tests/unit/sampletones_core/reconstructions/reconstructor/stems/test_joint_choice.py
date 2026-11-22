@@ -19,6 +19,7 @@ from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.choic
 )
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.combinations import CombinationSearch, Rows
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.fit import FitTarget
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.hearing import SteadyHearing
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import StemLayout, separate_layouts
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
@@ -98,8 +99,9 @@ class _Judging:
         catalogs = {GeneratorClassName.PULSE_GENERATOR: self.catalog}
         weights = np.asarray(to_numpy(matcher.scorer.criterion.weights), dtype=np.float64).reshape(-1)
         target = FitTarget.of(self.fragment, matcher.scorer.criterion)
-        self.search = CombinationSearch(self.fragment, target, self.layout, catalogs, matcher)
-        self.judge = CombinationJudge(self.fragment, self.layout, catalogs, matcher, weights)
+        hearing = SteadyHearing(layout=self.layout, catalogs=catalogs, bins=len(self.fragment.feature.values))
+        self.search = CombinationSearch(self.fragment, target, self.layout, catalogs, matcher, hearing)
+        self.judge = CombinationJudge(self.fragment, self.layout, catalogs, matcher, weights, hearing)
 
     def row(self, instruction: PulseInstruction) -> int:
         return self.catalog.instructions.index(instruction)

@@ -12,7 +12,7 @@ from .frequencies import calculate_cqt_frequencies
 from .geometry import calculate_wavelet_lengths
 
 
-def _window_envelope(window: CQTWindow, length: int) -> np.ndarray:
+def window_envelope(window: CQTWindow, length: int) -> np.ndarray:
     """Real analysis envelope of ``length`` samples.
 
     The rectangular envelope is uniform; the Hann envelope uses the periodic form
@@ -77,7 +77,7 @@ def build_cqt_kernel(
     for index in range(n_bins):
         length = int(lengths[index])
         start = (frame_length - length) // 2
-        envelope = _window_envelope(window, length)
+        envelope = window_envelope(window, length)
         centered = np.arange(length) - (length - 1) / 2.0
         wavelet = envelope * np.exp(-2j * np.pi * frequencies[index] * centered / sample_rate)
         matrix[index, start : start + length] = wavelet / envelope.sum() * np.sqrt(length)

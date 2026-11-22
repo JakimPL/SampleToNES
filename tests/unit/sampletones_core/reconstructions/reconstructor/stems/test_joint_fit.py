@@ -32,14 +32,16 @@ class TestFittedLevels:
     def test_every_atom_is_fitted_to_the_level_the_frame_holds_it_at(self, beta: float) -> None:
         target = _target(LEVELS @ ATOMS, beta)
 
-        levels = fitted_levels(target, ATOMS, np.full(3, 10.0), start=0.05, updates=UPDATES)
+        levels = fitted_levels(target, ATOMS, np.full(3, 10.0), base=np.zeros(BINS), start=0.05, updates=UPDATES)
 
         assert levels == pytest.approx(LEVELS, abs=LEVEL_TOLERANCE)
 
     def test_a_level_stays_under_the_most_its_channels_play(self) -> None:
         target = _target(LEVELS @ ATOMS, 1.0)
 
-        levels = fitted_levels(target, ATOMS, np.array([0.3, 10.0, 10.0]), start=0.05, updates=UPDATES)
+        levels = fitted_levels(
+            target, ATOMS, np.array([0.3, 10.0, 10.0]), base=np.zeros(BINS), start=0.05, updates=UPDATES
+        )
 
         assert levels[0] <= 0.3
 

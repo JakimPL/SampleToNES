@@ -193,6 +193,9 @@ refused before the run starts. The packaged sets:
 - `joint-combinations`, `joint-fitted-combinations`: the joint assignment decoded over
   [whole combinations](../concepts/reconstruction.md#55-decoding-whole-combinations), at the working level
   of today or the fitted one.
+- `joint-neighbors1`, `joint-neighbors2`, `joint-fitted-combinations-neighbors1`,
+  `joint-fitted-combinations-neighbors2`: every frame assigned again once or twice
+  [among its neighbors](../concepts/reconstruction.md#56-hearing-a-frame-among-its-neighbors).
 
 `--levels true` matches every sound at the level its file holds. For a sound written as NES frames
 that is the level the channels play its frames at, where the written frames fit exactly, so a reading
@@ -440,6 +443,10 @@ They never listen, so they say *what* went wrong where the audio referees say ho
   - `pooled`: frames whose pools of whole combinations can sound the written notes, one combination per
     source. The [joint assignment](../concepts/reconstruction.md#52-assigning-channels-jointly) pools
     them, and other assignments have no reading.
+  - `at-change`, `next-to-change`, `away-from-change`: the share decoded wrong among the frames at a
+    written note change (a tonal channel starts, stops or moves between the frame and the one beside
+    it), one frame from one, and further. A frame's analysis window reads its neighbors, so these say
+    where the window's reach costs notes.
 - **`pitch`** answers every frame a line of the sound plays with the closest note a tonal channel of
   the reconstruction sounds then, whichever channel that is. The score is the share of frames not
   answered within half a semitone. Its readings are the share answered an `octave` off (the right

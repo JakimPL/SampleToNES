@@ -92,7 +92,12 @@ class TriangleReader:
         """Where one frame's bass stands against the triangle's level, or ``None`` where no triangle run holds it."""
         target = FitTarget.of(fragment, self.matcher.scorer.criterion)
         levels = fitted_levels(
-            target, self.dictionary.features, self.caps, start=FREE_FIT_START, updates=READING_UPDATES
+            target,
+            self.dictionary.features,
+            self.caps,
+            base=np.zeros_like(target.reference),
+            start=FREE_FIT_START,
+            updates=READING_UPDATES,
         )
         strengths = levels * self.dictionary.powers
         total = float(strengths.sum())

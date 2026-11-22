@@ -11,6 +11,7 @@ from sampletones_shared.array import xp
 
 from .catalog import FULL_VOLUME, KindCatalog
 from .fit import FitTarget, fitted_combinations
+from .hearing import FrameHearing
 from .layout import Slot, StemLayout
 
 FIRST_UPDATES: Final[int] = 5
@@ -73,7 +74,8 @@ class CombinationSearch:
     Every combination of the proposals the stem's channels may sound together is fitted at once,
     each pulse and noise channel's level free and the triangle at its one level. The combinations
     fitting best are moved onto the library's rows, one channel at a time over every row of its note,
-    and every comparison between them is made on complete mixes under the spectral term.
+    and every comparison between them is made on complete mixes under the spectral term, each mix
+    as the frame's hearing adds its rows up.
     """
 
     def __init__(
@@ -83,12 +85,14 @@ class CombinationSearch:
         layout: StemLayout,
         catalogs: Mapping[GeneratorClassName, KindCatalog],
         matcher: FrameMatcher,
+        hearing: FrameHearing,
     ) -> None:
         self.fragment = fragment
         self.target = target
         self.layout = layout
         self.catalogs = catalogs
         self.matcher = matcher
+        self.hearing = hearing
 
     def fitted(self, proposals: Mapping[GeneratorClassName, Sequence[int]]) -> List[Combination]:
         """The distinct combinations fitting the frame best, on the rows nearest their fitted levels.
@@ -165,10 +169,10 @@ class CombinationSearch:
         return sorted(found.values(), key=lambda combination: combination.cost)
 
     def power_of(self, rows: Rows) -> np.ndarray:
-        """The power the rows sound together, each at the drive the stem gives its channel."""
-        total = np.zeros(self.target.reference.shape[0])
-        for slot, row in zip(self.layout.slots, rows):
-            total = total + self._row_power(slot, row)
+        """The power the frame holds with the rows sounding together, each at the drive the stem gives its channel."""
+        total = self.hearing.leak
+        for index, row in enumerate(rows):
+            total = total + self._row_power(index, row)
 
         return total
 
@@ -217,12 +221,11 @@ class CombinationSearch:
         bins = self.target.reference.shape[0]
         loudest = [catalog.loudest(int(catalog.notes[row]), int(catalog.timbres[row])) for row in offered]
         volumes = [max(int(catalog.volumes[row]), 1) for row in loudest]
-        squared_drive = slot.drive**2
         return UnitTable(
             positions=np.array([SILENT_ENTRY if row is None else entries[row] for row in (c[index] for c in choices)]),
             entries=entries,
-            features=np.stack([np.zeros(bins), *(catalog.features[row] / squared_drive for row in loudest)]),
-            powers=np.stack([np.zeros(bins), *(catalog.powers[row] / squared_drive for row in loudest)]),
+            features=np.concatenate([np.zeros((1, bins)), self.hearing.unit_features(index, loudest)]),
+            powers=np.concatenate([np.zeros((1, bins)), self.hearing.unit_powers(index, loudest)]),
             caps=np.array([0.0, *((FULL_VOLUME / volume) ** 2 for volume in volumes)]),
             starts=np.array(
                 [0.0, *((max(int(catalog.volumes[row]), 1) / volume) ** 2 for row, volume in zip(offered, volumes))]
@@ -232,19 +235,18 @@ class CombinationSearch:
         )
 
     def _fixed(self, choices: Sequence[Choice]) -> Tuple[np.ndarray, np.ndarray]:
-        """The part of every combination played at one level, in feature values and in power."""
+        """The part of every combination played at one level, what the frame holds before its rows included."""
         bins = self.target.reference.shape[0]
-        features = np.zeros((len(choices), bins))
-        powers = np.zeros((len(choices), bins))
+        features = np.zeros((len(choices), bins)) + self.hearing.leak_features
+        powers = np.zeros((len(choices), bins)) + self.hearing.leak
         for index, slot in enumerate(self.layout.slots):
             if _fitted_level(slot):
                 continue
-            catalog = self.catalogs[slot.kind]
             for position, choice in enumerate(choices):
                 row = choice[index]
                 if row is not None:
-                    features[position] += catalog.features[row] / slot.drive**2
-                    powers[position] += catalog.powers[row] / slot.drive**2
+                    features[position] += self.hearing.features(index, [row])[0]
+                    powers[position] += self.hearing.powers(index, [row])[0]
 
         return features, powers
 
@@ -264,20 +266,19 @@ class CombinationSearch:
 
         return tuple(rows)
 
-    def _row_power(self, slot: Slot, row: int) -> np.ndarray:
-        return np.asarray(self.catalogs[slot.kind].powers[row] / slot.drive**2)
+    def _row_power(self, index: int, row: int) -> np.ndarray:
+        return np.asarray(self.hearing.powers(index, [row])[0])
 
     def _moved(self, current: List[List[int]], index: int, slot: Slot) -> None:
         """Every combination's channel moved to the row of its note, or its silence, that fits best with the rest."""
-        catalog = self.catalogs[slot.kind]
         stacks: List[np.ndarray] = []
         owners: List[Tuple[int, np.ndarray]] = []
         for position, rows in enumerate(current):
             options = self._options(slot, rows, index)
             if options is None:
                 continue
-            others = self.power_of(tuple(rows)) - self._row_power(slot, rows[index])
-            stacks.append(others[None, :] + catalog.powers[options] / slot.drive**2)
+            others = self.power_of(tuple(rows)) - self._row_power(index, rows[index])
+            stacks.append(others[None, :] + self.hearing.powers(index, options))
             owners.append((position, options))
 
         if not stacks:

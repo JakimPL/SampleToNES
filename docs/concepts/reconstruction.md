@@ -373,6 +373,38 @@ through a change. The
 chosen combination's channels become the channels' streams, and the refinement reads them as it reads
 the Viterbi decoder's.
 
+### 5.6 Hearing a frame among its neighbors
+
+`generation.assignment.neighbors` assigns every frame again after a decode, among the notes its
+neighbors were decoded to play, and decodes the new columns and pools anew. A count of two repeats the
+pass. It needs the [joint assignment](#52-assigning-channels-jointly) and is an opt-in setting while the
+calibration benchmark judges it.
+
+A frame's analysis window reads the frames around it. Under `cqt` a bin reads a Hann wavelet of
+`Q · sample_rate / f` samples centered on the frame, so a 110 Hz bin spans about nine frames and holds a
+fifth of its weight in its own, and a bin above about 880 Hz reads its own frame alone. The first
+assignment hears every frame alone, each note as if held through the whole window. At a note change the
+window holds the note before and the note after, and the frame is asked to explain both.
+
+The pass reads a frame through a forward model of its window:
+
+- Each bin weighs every frame around it by the share of its window's weight that frame holds: the
+  wavelet's under `cqt`, the tapered window's under `fft` and `logfft`.
+- A note held over a run of frames keeps its phase, so the run reaches the bin in amplitude: each frame's
+  share times its amplitude, summed over the run, then squared.
+- Different notes and different channels add in power, and the noise adds in power by the shares of the
+  window's squared weight.
+
+The frames are assigned in turn. A frame hears the choices the frames before it took in the pass and the
+notes the frames after it were decoded to play, so each frame is decided among the latest choices around
+it. What the neighbors play is a fixed part of every mix the frame's assignment compares, its **leak**. A
+row the frame plays adds its own share of its power. A row sounding the note held up to the frame, or
+the note held from it, extends that note, and the two add in amplitude. A note held through the frame
+then reaches it as a note heard alone does, and a note that stopped two frames before is heard as its
+frames' tail. Every step of the joint assignment reads the frame this way: the fit of every note stands
+over the leak, a fitted level reads its note at the level of the note it extends, and the full criterion
+scores each combination with the leak in its mix.
+
 ## 6. Refining the pitch
 
 The catalog is built on the equal-tempered grid, so the matching places a frame no closer than the nearest

@@ -87,6 +87,7 @@ records them.
 | Key | Meaning | Values |
 | --- | --- | --- |
 | `method` | how a frame's channels get their candidates: one channel at a time, or every note fitted at once with whole combinations compared; `joint` needs each channel held by one stem | `picks` / `joint` |
+| `neighbors` | how many times every frame is assigned again after a decode, among the notes its neighbors play, each pass decoded anew; needs `joint` | integer ≥ 0 |
 
 ### `generation.decoder`
 

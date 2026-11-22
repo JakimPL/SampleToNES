@@ -1,11 +1,12 @@
 import itertools
-from typing import Dict, Final, List, Optional, Sequence, Tuple
+from typing import Dict, Final, List, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
 from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.fft import Fragment
 from sampletones_core.generators import GeneratorUnion
+from sampletones_core.reconstructions.reconstructor.decoder.base import Streams
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
 from sampletones_core.reconstructions.reconstructor.stems.assignment.rests import resting, sounding_stems
 from sampletones_core.reconstructions.reconstructor.stems.assignment.validation import validate_stems_config
@@ -13,6 +14,7 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.config import 
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
 from sampletones_core.reconstructions.reconstructor.stems.models.pool import StemPool
+from sampletones_core.reconstructions.reconstructor.window.surroundings import ChannelLine, ChannelSurroundings
 from sampletones_shared.array import to_numpy
 
 from .catalog import KindCatalog
@@ -20,6 +22,7 @@ from .choice import CombinationJudge, ScoredCombination, rearranged
 from .columns import channel_columns
 from .combinations import CombinationSearch, Rows
 from .fit import FitTarget
+from .hearing import FrameHearing, SequenceHearing, SteadyHearing
 from .layout import StemLayout, separate_layouts
 from .pool import resting_pool, sounding_pool
 from .proposals import NoteDictionary, proposed_rows
@@ -48,6 +51,11 @@ class JointAssigner:
     Every decision between notes compares complete mixes, so a note that only covers other notes'
     partials loses to the notes themselves. The two pulses are handed to the channels that keep each
     nearest the note it played the frame before, so a held line stays on its channel.
+
+    A frame is first heard alone, each note as if held through the whole analysis window. Once the
+    recording is decoded, a frame may be assigned again among the notes its neighbors play: what
+    they leave in its window is a fixed part of every mix, and a note extending a neighbor's note
+    adds to it as one note held across the frames.
     """
 
     def __init__(
@@ -81,7 +89,7 @@ class JointAssigner:
         self.previous_rows: Dict[int, Optional[Rows]] = {layout.stem_id: None for layout in self.layouts}
 
     def assign(self, fragments: Dict[int, Fragment]) -> StemFrameAssignment:
-        """Assigns one frame: every sounding stem's channels from its own frame, the rest resting.
+        """Assigns one frame heard alone: every sounding stem's channels from its own frame, the rest resting.
 
         Args:
             fragments: This frame of every stem, keyed by stem id.
@@ -89,6 +97,79 @@ class JointAssigner:
         Returns:
             The channels each stem holds, the channels left resting and every stem's pool.
         """
+        bins = len(next(iter(fragments.values())).feature.values)
+        return self._assigned(
+            fragments,
+            {
+                layout.stem_id: SteadyHearing(layout=layout, catalogs=self.catalogs, bins=bins)
+                for layout in self.layouts
+            },
+        )
+
+    def assign_beside(
+        self,
+        fragments: Dict[int, Fragment],
+        surroundings: Mapping[ChannelName, ChannelSurroundings],
+    ) -> StemFrameAssignment:
+        """Assigns one frame among the notes its neighbors were decoded to play.
+
+        Args:
+            fragments: This frame of every stem, keyed by stem id.
+            surroundings: What every channel holds around the frame.
+
+        Returns:
+            The channels each stem holds, the channels left resting and every stem's pool.
+        """
+        provider = self.matcher.candidate_provider
+        hearings: Dict[int, FrameHearing] = {
+            layout.stem_id: SequenceHearing.of(
+                layout, self.catalogs, [surroundings[slot.channel_name] for slot in layout.slots], provider
+            )
+            for layout in self.layouts
+            if layout.slots
+        }
+        return self._assigned(fragments, hearings)
+
+    def lines(self, streams: Streams) -> Dict[ChannelName, ChannelLine]:
+        """Every stem channel's decoded frames as the analysis hears them, at the drive the stem gives it.
+
+        Args:
+            streams: The decoded streams of the channels in play.
+
+        Returns:
+            Each channel's line, keyed by channel name.
+        """
+        lines: Dict[ChannelName, ChannelLine] = {}
+        for layout in self.layouts:
+            for slot in layout.slots:
+                catalog = self.catalogs[slot.kind]
+                rows = [catalog.rows_by_instruction[candidate.instruction] for candidate in streams[slot.channel_name]]
+                lines[slot.channel_name] = ChannelLine(
+                    keys=[catalog.key(row) for row in rows],
+                    powers=catalog.powers[rows] / slot.drive**2,
+                    coherent=slot.kind != GeneratorClassName.NOISE_GENERATOR,
+                )
+
+        return lines
+
+    def settle(self, lines: Mapping[ChannelName, ChannelLine], frame: int, assignment: StemFrameAssignment) -> None:
+        """Settles every stem channel's line at ``frame`` on what ``assignment`` heads it with, silence where it rests.
+
+        Args:
+            lines: Every stem channel's line, keyed by channel name.
+            frame: The frame ``assignment`` assigns.
+            assignment: The frame's assignment.
+        """
+        heads = {choice.channel_name: choice.instruction for choice in assignment.choices}
+        for layout in self.layouts:
+            for slot in layout.slots:
+                catalog = self.catalogs[slot.kind]
+                head = heads.get(slot.channel_name)
+                row = catalog.silence if head is None else catalog.rows_by_instruction[head]
+                lines[slot.channel_name].settle(frame, catalog.key(row), catalog.powers[row] / slot.drive**2)
+
+    def _assigned(self, fragments: Dict[int, Fragment], hearings: Mapping[int, FrameHearing]) -> StemFrameAssignment:
+        """Assigns one frame, each sounding stem's frame heard as ``hearings`` hears it."""
         sounding = sounding_stems(fragments)
         choices: List[StemChoice] = []
         rested: List[ChannelName] = []
@@ -99,7 +180,7 @@ class JointAssigner:
 
             fragment = fragments[layout.stem_id]
             if layout.stem_id in sounding:
-                held, idle, pool = self._stem_frame(layout, fragment)
+                held, idle, pool = self._stem_frame(layout, fragment, hearings[layout.stem_id])
                 choices.extend(held)
                 rested.extend(idle)
             else:
@@ -117,23 +198,25 @@ class JointAssigner:
         )
 
     def _stem_frame(
-        self, layout: StemLayout, fragment: Fragment
+        self, layout: StemLayout, fragment: Fragment, hearing: FrameHearing
     ) -> Tuple[List[StemChoice], List[ChannelName], StemPool]:
         """One stem's channels in one frame: those it holds, each with its column, those left resting and its pool."""
         target = FitTarget.of(fragment, self.matcher.scorer.criterion)
         proposals = proposed_rows(
-            fragment, target, layout, self.dictionaries[layout.stem_id], self.catalogs, self.matcher
+            fragment, target, layout, self.dictionaries[layout.stem_id], self.catalogs, self.matcher, hearing
         )
-        search = CombinationSearch(fragment, target, layout, self.catalogs, self.matcher)
+        search = CombinationSearch(fragment, target, layout, self.catalogs, self.matcher, hearing)
         refined = search.refined(search.fitted(proposals))
-        judge = CombinationJudge(fragment, layout, self.catalogs, self.matcher, self.weights)
+        judge = CombinationJudge(fragment, layout, self.catalogs, self.matcher, self.weights, hearing)
         finalists = judge.finalists([combination.rows for combination in refined])
         winner = self._ordered(layout, judge.best(search, finalists))
         pooled = judge.pooled(search, finalists, winner, self.previous_rows[layout.stem_id])
         self.previous_rows[layout.stem_id] = winner.rows
 
         held = self._held(layout, winner)
-        columns = channel_columns(fragment, layout, held, winner, proposals, self.catalogs, self.matcher, self.width)
+        columns = channel_columns(
+            fragment, layout, held, winner, proposals, self.catalogs, self.matcher, self.width, hearing
+        )
         choices = [
             StemChoice(stem_id=layout.stem_id, channel_name=layout.slots[index].channel_name, column=column)
             for index, column in zip(held, columns)
