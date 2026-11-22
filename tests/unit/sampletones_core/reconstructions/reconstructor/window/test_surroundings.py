@@ -7,7 +7,9 @@ from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions.reconstructor.window.profiles import FrameProfiles
 from sampletones_core.reconstructions.reconstructor.window.surroundings import (
     ChannelLine,
+    NoiseSurroundings,
     NoteKey,
+    TonalSurroundings,
     surroundings,
 )
 
@@ -97,7 +99,8 @@ class TestNoise:
         heard = around.heard([HELD], POWER[None, :])[0]
 
         assert around.leak + heard == pytest.approx(POWER)
-        assert around.before is None and around.after is None
+        assert isinstance(around, NoiseSurroundings)
+        assert not around.extends(HELD)
 
     def test_a_noise_row_reaches_the_frame_by_its_share_of_squared_weight(self) -> None:
         around = surroundings(_line(_run(None, FRAMES), coherent=False), MIDDLE, PROFILES)
@@ -112,7 +115,7 @@ class TestSettlingAFrame:
 
         line.settle(MIDDLE, HELD, POWER, HELD_NOTE)
 
-        around = surroundings(line, MIDDLE + 1, PROFILES)
-        assert around.before is not None and around.before.key == HELD
+        around = TonalSurroundings.around(line, MIDDLE + 1, PROFILES)
+        assert around.before.key == HELD
         assert around.extends(HELD)
         assert line.instructions[MIDDLE] == HELD_NOTE

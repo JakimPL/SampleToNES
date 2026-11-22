@@ -33,6 +33,7 @@ from sampletones_core.reconstructions.reconstructor.stems.models.pool import Ste
 from sampletones_core.reconstructions.reconstructor.window.profiles import frame_profiles
 from sampletones_core.reconstructions.reconstructor.window.surroundings import (
     ChannelLine,
+    TonalSurroundings,
     surroundings,
 )
 
@@ -447,8 +448,8 @@ class TestAssigningBesideTheNeighbors:
         )
         every_channel_assigner.settle(lines, frame, assignment)
 
-        lead = surroundings(lines[ChannelName.PULSE1], frame + 1, profiles)
-        assert lead.before is not None and lead.before.key == (LEAD.pitch, LEAD.duty_cycle)
+        lead = TonalSurroundings.around(lines[ChannelName.PULSE1], frame + 1, profiles)
+        assert lead.before.key == (LEAD.pitch, LEAD.duty_cycle)
 
     @pytest.fixture(name="jump")
     def jump_fixture(self) -> Dict[ChannelName, List[InstructionUnion]]:

@@ -17,7 +17,7 @@ from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.heari
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import StemLayout, separate_layouts
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
-from sampletones_core.reconstructions.reconstructor.window.surroundings import ChannelSurroundings, Neighbor
+from sampletones_core.reconstructions.reconstructor.window.surroundings import HeldNote, TonalSurroundings
 
 from ..conftest import rendered_fragment
 
@@ -40,12 +40,17 @@ def pulse_catalogs_fixture(
     return {GeneratorClassName.PULSE_GENERATOR: catalog}
 
 
-def _alone(bins: int, *, leak: float = 0.0, held: bool = False) -> ChannelSurroundings:
+def _alone(bins: int, *, leak: float = 0.0, held: bool = False) -> TonalSurroundings:
     """A channel whose frame reads its own frame alone, ``leak`` in every bin, a held note before it when asked."""
-    before = (
-        Neighbor(key=(HELD.pitch, HELD.duty_cycle), amplitude=np.ones(bins), share=np.zeros(bins)) if held else None
+    held_note = HeldNote(
+        key=(HELD.pitch, HELD.duty_cycle), frames=range(0, 1), amplitude=np.ones(bins), share=np.zeros(bins)
     )
-    return ChannelSurroundings(leak=np.full(bins, leak), before=before, after=None, own=np.ones(bins), coherent=True)
+    return TonalSurroundings(
+        leak=np.full(bins, leak),
+        before=held_note if held else HeldNote.silence(bins),
+        after=HeldNote.silence(bins),
+        own=np.ones(bins),
+    )
 
 
 class TestHowAFrameHearsItsRows:
