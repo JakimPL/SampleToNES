@@ -1,16 +1,62 @@
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import List, Tuple, assert_never
+from typing import Final, Self, Sequence, Tuple, assert_never
 
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import CQTWindow, SpectrumMethod
+from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
 from sampletones_core.fft import Window
 from sampletones_core.fft.cqt.frequencies import calculate_cqt_frequencies
 from sampletones_core.fft.cqt.geometry import calculate_wavelet_lengths
 from sampletones_core.fft.cqt.kernel import window_envelope
+from sampletones_core.fft.cqt.transform import FRAMES_WINDOW
+
+CACHED_PROFILES: Final[int] = 4
+
+
+@dataclass(frozen=True)
+class BinWindow:
+    """One bin's analysis window laid over the frames around the frame it reads.
+
+    A channel holds what it plays for a whole frame, so each sample the window weighs sounds what
+    the frame it falls within plays. That frame's offset from the frame read is the floor of the
+    sample's position over the frame length, the position counted in samples from the start of the
+    frame read, which holds the positions from zero to one short of the frame length.
+
+    The window's shares stand on the frames from ``-reach`` to ``reach`` for any reach at least its
+    own, so bins whose windows reach differently fill one table.
+
+    Attributes:
+        offsets: The offset of the frame each sample falls within, from the frame read.
+        weights: The window's weight on each sample.
+    """
+
+    offsets: np.ndarray
+    weights: np.ndarray
+
+    @classmethod
+    def placed(cls, positions: np.ndarray, weights: np.ndarray, frame_length: int) -> Self:
+        """The window weighing its samples by ``weights``, its samples at ``positions`` from the frame's start."""
+        return cls(offsets=np.floor(positions / frame_length).astype(np.int64), weights=weights)
+
+    @property
+    def reach(self) -> int:
+        """The farthest frame the window reaches, in frames on either side."""
+        return int(np.abs(self.offsets).max())
+
+    def amplitude_shares(self, reach: int) -> np.ndarray:
+        """The share of the window's weight on each frame from ``-reach`` to ``reach``."""
+        return self._shares(self.weights, reach)
+
+    def energy_shares(self, reach: int) -> np.ndarray:
+        """The share of the window's squared weight on each frame from ``-reach`` to ``reach``."""
+        return self._shares(np.square(self.weights), reach)
+
+    def _shares(self, weights: np.ndarray, reach: int) -> np.ndarray:
+        """The share of the summed ``weights`` the samples of each frame from ``-reach`` to ``reach`` hold."""
+        return np.asarray(np.bincount(self.offsets + reach, weights=weights, minlength=2 * reach + 1) / weights.sum())
 
 
 @dataclass(frozen=True)
@@ -32,6 +78,22 @@ class FrameProfiles:
     amplitude: np.ndarray
     energy: np.ndarray
     reach: int
+
+    @classmethod
+    def of(cls, windows: Sequence[BinWindow]) -> Self:
+        """The profiles of bins reading through ``windows``, one window per bin.
+
+        Every bin's shares stand on the offsets the farthest-reaching window spans, so a bin whose
+        window reaches less holds zero on the frames beyond it.
+        """
+        reach = max(window.reach for window in windows)
+        amplitude = np.zeros((2 * reach + 1, len(windows)))
+        energy = np.zeros_like(amplitude)
+        for index, window in enumerate(windows):
+            amplitude[:, index] = window.amplitude_shares(reach)
+            energy[:, index] = window.energy_shares(reach)
+
+        return cls(amplitude=amplitude, energy=energy, reach=reach)
 
     @property
     def own_amplitude(self) -> np.ndarray:
@@ -55,7 +117,7 @@ class FrameProfiles:
 def frame_profiles(config: Config, window: Window, bins: int) -> FrameProfiles:
     """The frame profiles of the feature ``config`` analyzes with.
 
-    The constant-Q feature reads each bin through a Hann wavelet of its own length centered on the
+    The constant-Q feature reads each bin through a wavelet of its own length centered on the
     middle of the frame. The windowed features read every bin through one tapered window starting
     where ``window`` places it.
 
@@ -72,43 +134,40 @@ def frame_profiles(config: Config, window: Window, bins: int) -> FrameProfiles:
         case SpectrumMethod.CQT:
             return _constant_q_profiles(config.library.sample_rate, window.frame_length, bins)
         case SpectrumMethod.FFT | SpectrumMethod.LOG_SPACED_FFT:
-            return _windowed_profiles(
-                tuple(float(weight) for weight in window.envelope), window.left_offset, window.frame_length, bins
-            )
+            envelope = tuple(float(weight) for weight in window.envelope)
+            return _windowed_profiles(envelope, window.left_offset, window.frame_length, bins)
         case _:
             assert_never(method)
 
 
-@lru_cache(maxsize=4)
+@lru_cache(maxsize=CACHED_PROFILES)
 def _constant_q_profiles(sample_rate: int, frame_length: int, bins: int) -> FrameProfiles:
-    """Each bin's wavelet weighed over the frames, the wavelet centered on the middle of the frame."""
+    """Each bin's wavelet weighed over the frames, on the bins the constant-Q feature reads.
+
+    The profiles depend on the configuration alone, so a process builds them once for each
+    configuration it converts with.
+    """
     frequencies = calculate_cqt_frequencies(bins, CQT_CUTOFF_FREQUENCY, BINS_PER_OCTAVE)
     lengths = calculate_wavelet_lengths(frequencies, sample_rate, BINS_PER_OCTAVE).astype(int)
-    placements: List[Tuple[np.ndarray, np.ndarray]] = []
-    for length in lengths:
-        centered = np.arange(length) - (length - 1) / 2.0
-        offsets = np.floor((centered + frame_length / 2.0) / frame_length).astype(np.int64)
-        placements.append((offsets, window_envelope(CQTWindow.HANN, int(length))))
-
-    return _profiles(placements)
+    return FrameProfiles.of([_wavelet(int(length), frame_length) for length in lengths])
 
 
-@lru_cache(maxsize=4)
+def _wavelet(length: int, frame_length: int) -> BinWindow:
+    """A bin's wavelet of ``length`` samples centered on the middle of the frame it reads.
+
+    The wavelet's envelope is the one the constant-Q transform weighs each frame's column by.
+    """
+    centered = np.arange(length) - (length - 1) / 2.0
+    return BinWindow.placed(centered + frame_length / 2.0, window_envelope(FRAMES_WINDOW, length), frame_length)
+
+
+@lru_cache(maxsize=CACHED_PROFILES)
 def _windowed_profiles(envelope: Tuple[float, ...], left_offset: int, frame_length: int, bins: int) -> FrameProfiles:
-    """One tapered window weighed over the frames, shared by every bin."""
+    """One tapered window weighed over the frames, shared by every bin.
+
+    The window's ``envelope`` arrives as a tuple so the cache can key on it. Its first sample lies
+    ``left_offset`` samples from the frame's start.
+    """
     weights = np.asarray(envelope, dtype=np.float64)
-    offsets = np.floor_divide(left_offset + np.arange(weights.shape[0]), frame_length).astype(np.int64)
-    return _profiles([(offsets, weights)] * bins)
-
-
-def _profiles(placements: List[Tuple[np.ndarray, np.ndarray]]) -> FrameProfiles:
-    """The profiles of bins whose windows place ``weights`` on the frames ``offsets`` name."""
-    reach = max(int(np.abs(offsets).max()) for offsets, _ in placements)
-    amplitude = np.zeros((2 * reach + 1, len(placements)))
-    energy = np.zeros_like(amplitude)
-    for index, (offsets, weights) in enumerate(placements):
-        amplitude[:, index] = np.bincount(offsets + reach, weights=weights, minlength=2 * reach + 1) / weights.sum()
-        squared = np.square(weights)
-        energy[:, index] = np.bincount(offsets + reach, weights=squared, minlength=2 * reach + 1) / squared.sum()
-
-    return FrameProfiles(amplitude=amplitude, energy=energy, reach=reach)
+    tapered = BinWindow.placed(left_offset + np.arange(weights.shape[0]), weights, frame_length)
+    return FrameProfiles.of([tapered] * bins)

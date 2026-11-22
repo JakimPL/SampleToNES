@@ -14,6 +14,7 @@ from ..utils import calculate_n_bins
 from .kernel import CQTKernel, build_cqt_kernel
 
 MAX_GATHERED_SAMPLES: Final[int] = 1 << 24
+FRAMES_WINDOW: Final[CQTWindow] = CQTWindow.HANN
 
 
 def _padded_signal(audio: np.ndarray, frame_length: int) -> Array:
@@ -124,5 +125,5 @@ def calculate_cqt_frames(
         Complex CQT coefficients, shape (n_bins, n_frames).
     """
     n_bins = n_bins or calculate_n_bins(sample_rate, cutoff, bins_per_octave)
-    kernel = build_cqt_kernel(sample_rate, n_bins, cutoff, bins_per_octave, CQTWindow.HANN)
+    kernel = build_cqt_kernel(sample_rate, n_bins, cutoff, bins_per_octave, FRAMES_WINDOW)
     return _transform(audio, kernel, hop_length)
