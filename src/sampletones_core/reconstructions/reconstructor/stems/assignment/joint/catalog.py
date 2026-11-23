@@ -1,15 +1,17 @@
 from dataclasses import dataclass
-from typing import Dict, Final, FrozenSet, List, Optional, Self, Tuple
+from typing import Dict, Final, FrozenSet, List, Mapping, Optional, Self, Sequence, Tuple
 
 import numpy as np
 
-from sampletones_core.constants.enums import GeneratorClassName
+from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.constants.general import MAX_VOLUME, MIN_VOLUME
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
 from sampletones_core.reconstructions.reconstructor.candidates import CandidateProvider
 from sampletones_core.reconstructions.reconstructor.window.surroundings import NoteKey
 from sampletones_shared.array import to_numpy
+
+from .layout import StemLayout
 
 SILENT_NOTE: Final[int] = -1
 NO_TIMBRE: Final[int] = 0
@@ -229,6 +231,21 @@ class KindCatalog:
     def _unit(self, row: int) -> UnitRow:
         """``row`` as the unit of its note and timbre."""
         return UnitRow(row=row, volume=self.sounding_volume(row))
+
+
+def kind_catalogs(
+    layouts: Sequence[StemLayout], channels: Mapping[ChannelName, GeneratorUnion], provider: CandidateProvider
+) -> Dict[GeneratorClassName, KindCatalog]:
+    """The rows of every kind ``layouts`` may sound, each read from the first channel of the kind a stem holds.
+
+    A catalog holds the rows of its kind, which every channel of the kind shares, so one serves them all.
+    """
+    generators: Dict[GeneratorClassName, GeneratorUnion] = {}
+    for layout in layouts:
+        for slot in layout.slots:
+            generators.setdefault(slot.kind, channels[slot.channel_name])
+
+    return {kind: KindCatalog.build(provider, generator) for kind, generator in generators.items()}
 
 
 def alike_timbres(timbre: int) -> FrozenSet[int]:

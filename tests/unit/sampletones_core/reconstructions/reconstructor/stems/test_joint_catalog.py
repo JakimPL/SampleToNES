@@ -21,7 +21,11 @@ from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.catal
     RowSound,
     UnitRow,
     alike_timbres,
+    kind_catalogs,
 )
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import StemLayout
+from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
+from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -245,6 +249,28 @@ class TestBuildingACatalog(BaseTestSuite):
     ) -> None:
         with pytest.raises(ValueError, match="silent instruction"):
             KindCatalog.build(silenceless_matcher.candidate_provider, all_channels[ChannelName.PULSE1])
+
+
+class TestTheCatalogsOfSeveralStems:
+    def test_each_kind_any_stem_sounds_has_one_catalog_read_from_the_first_channel_of_the_kind(
+        self, joint_matcher: FrameMatcher, all_channels: Dict[ChannelName, GeneratorUnion]
+    ) -> None:
+        stems = [
+            StemEntry(id=0, settings=StemSettings.covering([ChannelName.PULSE2])),
+            StemEntry(id=1, settings=StemSettings.covering([ChannelName.PULSE1, ChannelName.TRIANGLE])),
+        ]
+        layouts = [StemLayout.of(entry, all_channels) for entry in stems]
+
+        catalogs = kind_catalogs(layouts, all_channels, joint_matcher.candidate_provider)
+
+        assert set(catalogs) == {GeneratorClassName.PULSE_GENERATOR, GeneratorClassName.TRIANGLE_GENERATOR}
+        assert catalogs[GeneratorClassName.PULSE_GENERATOR].generator is all_channels[ChannelName.PULSE2]
+        assert catalogs[GeneratorClassName.TRIANGLE_GENERATOR].generator is all_channels[ChannelName.TRIANGLE]
+
+    def test_stems_holding_no_channel_have_no_catalog(
+        self, joint_matcher: FrameMatcher, all_channels: Dict[ChannelName, GeneratorUnion]
+    ) -> None:
+        assert kind_catalogs([], all_channels, joint_matcher.candidate_provider) == {}
 
 
 class TestAlikeTimbres(BaseTestSuite):

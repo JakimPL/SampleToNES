@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, List
+from typing import Final, List, Mapping
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -22,7 +22,7 @@ from sampletones_core.constants.enums import (
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.generators import FULL_SCALE_RMS_LEVELS
 from sampletones_core.generators.render import render_channels
-from sampletones_core.instructions import PulseInstruction, TriangleInstruction
+from sampletones_core.instructions import InstructionUnion, PulseInstruction, TriangleInstruction
 from sampletones_core.library import InstructionLibraryData
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels
 from sampletones_core.reconstructions.reconstructor.decoder.base import Alternatives, Streams
@@ -485,8 +485,13 @@ class TestTheFittedWorkingLevel:
 
     @staticmethod
     def _bass_under_a_lead(tmp_path: Path, config: Config) -> Path:
-        path = tmp_path / "bass.wav"
-        audio = rendered_audio(config, {ChannelName.TRIANGLE: BASS, ChannelName.PULSE1: LEAD}, HELD_FRAMES)
+        return TestTheFittedWorkingLevel._written(
+            tmp_path / "bass.wav", config, {ChannelName.TRIANGLE: BASS, ChannelName.PULSE1: LEAD}
+        )
+
+    @staticmethod
+    def _written(path: Path, config: Config, notes: Mapping[ChannelName, InstructionUnion]) -> Path:
+        audio = rendered_audio(config, notes, HELD_FRAMES)
         write_wave(path, config.library.sample_rate, audio.astype(np.float32))
         return path
 
@@ -509,6 +514,20 @@ class TestTheFittedWorkingLevel:
 
         assert reconstruction is not None
         assert reconstruction.coefficient != pytest.approx(TRUE_LEVEL, rel=LEVEL_TOLERANCE)
+
+    def test_a_recording_holding_no_triangle_line_keeps_the_coefficient_under_fitted(
+        self, tmp_path: Path, config: Config, joint_library: InstructionLibraryData
+    ) -> None:
+        fitted = self._unnormalized(config, LevelMethod.FITTED)
+        reconstructor = _make_reconstructor(fitted, joint_library)
+        path = self._written(tmp_path / "lead.wav", fitted, {ChannelName.PULSE1: LEAD})
+
+        reconstruction = reconstructor(path)
+
+        assert reconstruction is not None
+        assert reconstruction.coefficient == reconstructor.get_coefficient(
+            reconstructor.load_audio([path]), _full_setup(fitted)
+        )
 
 
 def _write_square(path: Path, sample_rate: int) -> Path:

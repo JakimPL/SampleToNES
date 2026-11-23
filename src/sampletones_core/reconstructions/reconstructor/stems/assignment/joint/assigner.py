@@ -6,7 +6,6 @@ import numpy as np
 from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.fft import Fragment
 from sampletones_core.generators import GeneratorUnion
-from sampletones_core.reconstructions.reconstructor.candidates import CandidateProvider
 from sampletones_core.reconstructions.reconstructor.decoder.base import Streams
 from sampletones_core.reconstructions.reconstructor.matching import Column, FrameMatcher
 from sampletones_core.reconstructions.reconstructor.stems.assignment.rests import resting, sounding_stems
@@ -18,7 +17,7 @@ from sampletones_core.reconstructions.reconstructor.stems.models.pool import Ste
 from sampletones_core.reconstructions.reconstructor.window.surroundings import ChannelLine, ChannelSurroundings
 from sampletones_shared.array import to_numpy
 
-from .catalog import KindCatalog
+from .catalog import KindCatalog, kind_catalogs
 from .choice import CombinationJudge, ScoredCombination
 from .columns import ChannelColumns
 from .combinations import CombinationSearch, Rows
@@ -152,7 +151,7 @@ class JointAssigner:
         self.channels = channels
         self.matcher = matcher
         self.width = lattice_width
-        self.catalogs = self._kind_catalogs(self.layouts, channels, matcher.candidate_provider)
+        self.catalogs = kind_catalogs(self.layouts, channels, matcher.candidate_provider)
         self.dictionaries = {layout.stem_id: NoteDictionary.of(layout, self.catalogs) for layout in self.layouts}
         self.weights = np.asarray(to_numpy(matcher.scorer.criterion.weights), dtype=np.float64).reshape(-1)
         self.previous: Dict[int, Optional[Rows]] = {layout.stem_id: None for layout in self.layouts}
@@ -247,18 +246,6 @@ class JointAssigner:
                     library_powers(layout, self.catalogs, place, [row])[0],
                     catalog.instructions[row],
                 )
-
-    @staticmethod
-    def _kind_catalogs(
-        layouts: Sequence[StemLayout], channels: Dict[ChannelName, GeneratorUnion], provider: CandidateProvider
-    ) -> Dict[GeneratorClassName, KindCatalog]:
-        """The rows of every kind a stem may sound, each read from the first channel of the kind a stem holds."""
-        generators: Dict[GeneratorClassName, GeneratorUnion] = {}
-        for layout in layouts:
-            for slot in layout.slots:
-                generators.setdefault(slot.kind, channels[slot.channel_name])
-
-        return {kind: KindCatalog.build(provider, generator) for kind, generator in generators.items()}
 
     def _assigned(
         self,

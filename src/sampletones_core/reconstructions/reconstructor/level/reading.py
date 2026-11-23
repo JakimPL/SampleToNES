@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Dict, Final, List, Mapping, Optional, Self, Tuple
+from operator import attrgetter
+from typing import Final, List, Mapping, Optional, Self, Sequence, Tuple
 
 import numpy as np
 
@@ -17,6 +18,7 @@ from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.propo
 READING_UPDATES: Final[int] = 60
 FREE_TRIANGLE_REACH: Final[float] = 64.0
 RUN_SHARE: Final[float] = 0.02
+RUN_STEP: Final[int] = 1
 STANDING_SHARE: Final[float] = 0.3
 TRIANGLE: Final[GeneratorClassName] = GeneratorClassName.TRIANGLE_GENERATOR
 
@@ -27,7 +29,7 @@ class FrameReading:
 
     Attributes:
         level: How loud the bass sounds against the level the stem plays the triangle at, as an
-            amplitude.
+            amplitude. It is the factor the working level moves by to bring the bass onto the triangle.
         note: The triangle note the bass is centered on.
     """
 
@@ -36,22 +38,106 @@ class FrameReading:
 
 
 @dataclass(frozen=True)
+class TriangleNote:
+    """One triangle note as a frame's fit of every note sounds it.
+
+    Attributes:
+        note: The note.
+        level: Its fitted level, against its row at unit drive.
+        strength: The power its fitted level sounds, unweighted.
+    """
+
+    note: int
+    level: float
+    strength: float
+
+
+@dataclass(frozen=True)
+class TriangleRun:
+    """Neighboring triangle notes a frame's fit sounds, read as the one note a bass plays.
+
+    A note sliding or detuned between two of the library's notes spreads over its neighbors, so
+    notes at most ``RUN_STEP`` semitones apart join one run. The run sounds its notes' levels and
+    strengths together, and is centered on its strongest note.
+
+    Attributes:
+        notes: The run's notes, ascending.
+    """
+
+    notes: Tuple[TriangleNote, ...]
+
+    @classmethod
+    def bass(cls, notes: Sequence[TriangleNote], total: float) -> Optional[Self]:
+        """The bass among the triangle ``notes`` of a fit sounding ``total``, ``None`` where no run holds it.
+
+        The fit leaves every atom some level, so only the notes each holding at least ``RUN_SHARE`` of
+        ``total`` form the runs, and a note the fit barely sounds leaves a gap between the notes beside
+        it. A triangle line plays the bass, so the lowest run holding at least ``STANDING_SHARE`` of
+        ``total`` is read as the bass, and a run holding less leaves it to the runs above.
+
+        Args:
+            notes: The triangle notes, ascending.
+            total: The strength the fit sounds over every note of every kind.
+        """
+        held = [note for note in notes if note.strength >= RUN_SHARE * total]
+        for run in cls.split(held):
+            if run.strength >= STANDING_SHARE * total:
+                return run
+
+        return None
+
+    @classmethod
+    def split(cls, notes: Sequence[TriangleNote]) -> List[Self]:
+        """``notes``, ascending, split into runs wherever two of them lie more than ``RUN_STEP`` semitones apart."""
+        runs: List[List[TriangleNote]] = []
+        for note in notes:
+            if runs and note.note - runs[-1][-1].note <= RUN_STEP:
+                runs[-1].append(note)
+            else:
+                runs.append([note])
+
+        return [cls(notes=tuple(run)) for run in runs]
+
+    @property
+    def level(self) -> float:
+        """The level the run's notes sound together."""
+        return sum(note.level for note in self.notes)
+
+    @property
+    def strength(self) -> float:
+        """The power the run's notes sound together."""
+        return sum(note.strength for note in self.notes)
+
+    @property
+    def center(self) -> int:
+        """The run's strongest note, the lowest of notes equally strong."""
+        return max(self.notes, key=attrgetter("strength")).note
+
+    def reading(self, natural: float) -> FrameReading:
+        """The run as a frame's bass, against the level ``natural`` a stem plays the triangle at.
+
+        Levels read in power, so the square root of their ratio reads the bass in amplitude.
+        """
+        return FrameReading(level=float(np.sqrt(self.level / natural)), note=self.center)
+
+
+@dataclass(frozen=True)
 class TriangleReader:
     """Reads a stem's frames for the level a triangle line in them stands at.
 
-    Every note the stem's channels may sound is fitted to a frame at once, as the joint assignment's
-    first step does, with the triangle free to sound at up to ``FREE_TRIANGLE_REACH`` times its own
-    level. A triangle line then takes the level it stands at in the recording. A note sliding or
-    detuned between two of the library's notes spreads over its neighbors, so neighboring triangle
-    notes each holding at least ``RUN_SHARE`` of the fitted power form one run. The lowest run holding
-    at least ``STANDING_SHARE`` of it is the bass, and the square root of its summed level, against
-    the level the stem drives the triangle at, is the frame's reading.
+    All the notes the stem's channels may sound are fitted to a frame at once, the frame heard
+    alone, as the joint assignment's first step fits it (``fitted_levels``), for
+    ``READING_UPDATES`` updates. The triangle is free to sound at up to ``FREE_TRIANGLE_REACH``
+    times its own level, so a triangle line takes the level it stands at in the recording. The
+    triangle notes the fit sounds give the frame's bass (``TriangleRun.bass``), and the bass gives
+    the frame's reading (``TriangleRun.reading``).
 
     Attributes:
         dictionary: The atoms of every note the stem may sound.
         caps: Each atom's highest level, the triangle's raised.
         triangle: Which atoms are triangle notes.
-        natural: The level the stem plays the triangle at, as an atom level.
+        natural: The level the stem plays the triangle at, as an atom level: what every triangle
+            channel of the stem sounds at its drive (``StemLayout.gain``).
         matcher: The matching machinery whose criterion the fit measures with.
     """
 
@@ -73,13 +159,12 @@ class TriangleReader:
         Raises:
             ValueError: If the stem plays no triangle.
         """
-        slots = layout.of_kind(TRIANGLE)
-        if not slots:
+        if not layout.of_kind(TRIANGLE):
             raise ValueError(f"Stem {layout.stem_id} plays no triangle to read a level from")
 
         dictionary = NoteDictionary.of(layout, catalogs)
         triangle = np.array([kind == TRIANGLE for kind in dictionary.kinds], dtype=bool)
-        natural = sum(1.0 / slot.drive**2 for slot in slots)
+        natural = layout.gain(TRIANGLE)
         return cls(
             dictionary=dictionary,
             caps=np.where(triangle, FREE_TRIANGLE_REACH * natural, dictionary.caps),
@@ -89,9 +174,26 @@ class TriangleReader:
         )
 
     def read(self, fragment: Fragment) -> Optional[FrameReading]:
-        """Where one frame's bass stands against the triangle's level, or ``None`` where no triangle run holds it."""
+        """Where one frame's bass stands against the triangle's level, ``None`` where no triangle run holds it.
+
+        A fit sounding nothing holds no bass.
+        """
+        levels = self._fitted(fragment)
+        strengths = levels * self.dictionary.powers
+        total = float(strengths.sum())
+        if total <= 0.0:
+            return None
+
+        bass = TriangleRun.bass(self._triangle_notes(levels, strengths), total)
+        if bass is None:
+            return None
+
+        return bass.reading(self.natural)
+
+    def _fitted(self, fragment: Fragment) -> np.ndarray:
+        """Every atom's level fitted to ``fragment`` heard alone, which holds nothing before the atoms sound."""
         target = FitTarget.of(fragment, self.matcher.scorer.criterion)
-        levels = fitted_levels(
+        return fitted_levels(
             target,
             self.dictionary.features,
             self.caps,
@@ -99,40 +201,16 @@ class TriangleReader:
             start=FREE_FIT_START,
             updates=READING_UPDATES,
         )
-        strengths = levels * self.dictionary.powers
-        total = float(strengths.sum())
-        if total <= 0.0:
-            return None
 
-        notes = self._triangle_notes(levels, strengths)
-        for run in _runs([note for note, (_, strength) in sorted(notes.items()) if strength >= RUN_SHARE * total]):
-            if sum(notes[note][1] for note in run) >= STANDING_SHARE * total:
-                level = sum(notes[note][0] for note in run)
-                return FrameReading(
-                    level=float(np.sqrt(level / self.natural)),
-                    note=max(run, key=lambda note: notes[note][1]),
-                )
+    def _triangle_notes(self, levels: np.ndarray, strengths: np.ndarray) -> List[TriangleNote]:
+        """Each triangle note at its fitted level and strength, ascending.
 
-        return None
-
-    def _triangle_notes(self, levels: np.ndarray, strengths: np.ndarray) -> Dict[int, Tuple[float, float]]:
-        """Each triangle note's fitted level and power."""
-        notes: Dict[int, Tuple[float, float]] = {}
-        for atom in np.flatnonzero(self.triangle):
-            note = int(self.dictionary.notes[atom])
-            level, strength = notes.get(note, (0.0, 0.0))
-            notes[note] = (level + float(levels[atom]), strength + float(strengths[atom]))
-
-        return notes
-
-
-def _runs(notes: List[int]) -> List[List[int]]:
-    """``notes``, ascending, split where two of them lie more than a semitone apart."""
-    runs: List[List[int]] = []
-    for note in notes:
-        if runs and note - runs[-1][-1] <= 1:
-            runs[-1].append(note)
-        else:
-            runs.append([note])
-
-    return runs
+        The triangle sounds one timbre, so each of its notes is one atom, and the dictionary holds
+        a kind's notes ascending.
+        """
+        return [
+            TriangleNote(
+                note=int(self.dictionary.notes[atom]), level=float(levels[atom]), strength=float(strengths[atom])
+            )
+            for atom in np.flatnonzero(self.triangle)
+        ]

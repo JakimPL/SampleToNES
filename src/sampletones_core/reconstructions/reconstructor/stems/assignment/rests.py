@@ -13,19 +13,23 @@ from sampletones_shared.array import to_numpy
 
 
 def sounding_stems(fragments: Dict[int, Fragment]) -> FrozenSet[int]:
-    """The stems whose own frame reaches a level a channel can render.
+    """The stems whose own frame reaches a level a channel can render (``frame_sounds``).
+
+    A stem whose frame is quieter stands aside, so the channel goes to a stem that does sound
+    there or rests, and a recording silent through a passage keeps that passage silent on the
+    channels it holds.
+    """
+    return frozenset(stem_id for stem_id, fragment in fragments.items() if frame_sounds(fragment))
+
+
+def frame_sounds(fragment: Fragment) -> bool:
+    """Whether a frame reaches a level a channel can render.
 
     A frame quieter than the quietest note the hardware plays, measured against the working
-    level, holds nothing for a channel to sound. Its stem stands aside, so the channel goes
-    to a stem that does sound there or rests, and a recording silent through a passage keeps
-    that passage silent on the channels it holds. A frame whose peak reaches
+    level, holds nothing for a channel to sound. A frame whose peak reaches
     ``STEM_ACTIVITY_FLOOR`` exactly sounds.
     """
-    return frozenset(
-        stem_id
-        for stem_id, fragment in fragments.items()
-        if float(np.max(np.abs(to_numpy(fragment.audio)), initial=0.0)) >= STEM_ACTIVITY_FLOOR
-    )
+    return float(np.max(np.abs(to_numpy(fragment.audio)), initial=0.0)) >= STEM_ACTIVITY_FLOOR
 
 
 def resting(

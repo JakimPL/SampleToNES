@@ -551,11 +551,11 @@ class Reconstructor:
         stems_config: StemsConfig,
         matcher: FrameMatcher,
     ) -> float:
-        """The coefficient the recordings are divided by, moved onto their triangle line under ``fitted``.
+        """The coefficient the recordings are divided by, set by the configured level method.
 
-        Under the ``coefficient`` level method the working level is :meth:`get_coefficient`'s. Under
-        ``fitted`` it moves by the factor that brings a triangle line the recordings hold onto the
-        triangle's one level (:class:`LevelFitter`), and stays where they hold none.
+        Under ``coefficient`` it is :meth:`get_coefficient`'s, measured on the recordings' mix. Under
+        ``fitted`` that coefficient moves by the factor bringing a triangle line the recordings hold
+        onto the triangle's one level (:class:`LevelFitter`), and stays where the fitter finds none.
         """
         coefficient = self.get_coefficient(mix(list(recordings)), stems_config)
         match self.config.general.level:
@@ -563,11 +563,9 @@ class Reconstructor:
                 return coefficient
             case LevelMethod.FITTED:
                 fitter = LevelFitter(stems_config, self.channels, matcher, self.config, self.window)
-                factor = fitter.factor(
-                    {entry.id: recording for entry, recording in zip(stems_config.entries, recordings)},
-                    coefficient,
-                )
-                return coefficient * factor if factor is not None else coefficient
+                by_stem = {entry.id: recording for entry, recording in zip(stems_config.entries, recordings)}
+                factor = fitter.factor(by_stem, coefficient)
+                return coefficient if factor is None else coefficient * factor
 
     def _working_level(self, stems_config: StemsConfig) -> float:
         """The full-scale RMS level of the quietest covered tone channel, or covered channel without one."""

@@ -74,6 +74,8 @@ class AssignmentMethod(StrEnum):
 
 
 class LevelMethod(StrEnum):
+    """How the working level is set: by the frames' loudness, or moved onto a triangle line the frames hold."""
+
     COEFFICIENT = "coefficient"
     FITTED = "fitted"
 

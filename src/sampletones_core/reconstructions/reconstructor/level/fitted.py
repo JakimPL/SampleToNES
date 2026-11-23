@@ -1,111 +1,57 @@
-from dataclasses import dataclass
-from typing import Dict, Final, List, Mapping, Optional, Tuple
+from typing import Dict, Final, List, Mapping, Optional, Sequence
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import STEM_ACTIVITY_FLOOR
-from sampletones_core.constants.enums import ChannelName, GeneratorClassName
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.fft import FragmentedAudio, Window
 from sampletones_core.generators import GeneratorUnion
-from sampletones_core.instructions import InstructionUnion, TriangleInstruction
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.assigner import JointAssigner
-from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.catalog import KindCatalog
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.catalog import kind_catalogs
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import StemLayout
+from sampletones_core.reconstructions.reconstructor.stems.assignment.rests import frame_sounds
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
-from sampletones_shared.array import to_numpy
 
-from .reading import TRIANGLE, FrameReading, TriangleReader
+from .judgment import ChosenFrame, Judgment
+from .line import LevelReading, StandingFrame
+from .reading import TRIANGLE, TriangleReader
 
 SOUNDING_REACH: Final[int] = 2
-LEAST_STANDING_FRAMES: Final[int] = 4
-LEAST_STANDING_SHARE: Final[float] = 0.5
-MOST_SPREAD: Final[float] = 0.5
-READING_WIDTH: Final[float] = 0.03
-LOWER_QUARTILE: Final[float] = 25.0
-UPPER_QUARTILE: Final[float] = 75.0
 JUDGED_FRAMES: Final[int] = 64
 JUDGING_WIDTH: Final[int] = 1
-BASS_DISTANCE: Final[int] = 1
-LEAST_CONFIRMED_SHARE: Final[float] = 0.6
-
-
-@dataclass(frozen=True)
-class StandingFrame:
-    """A frame read with a triangle line holding its bass.
-
-    Attributes:
-        stem_id: The stem whose recording the frame is of.
-        index: The frame's place in that recording.
-        reading: Where its bass stands.
-    """
-
-    stem_id: int
-    index: int
-    reading: FrameReading
-
-
-@dataclass(frozen=True)
-class LevelReading:
-    """What a recording's sampled frames say about the level its triangle line stands at.
-
-    Attributes:
-        sampled: How many frames were read.
-        standing: The frames read whose bass a triangle line holds.
-    """
-
-    sampled: int
-    standing: Tuple[StandingFrame, ...]
-
-    @property
-    def level(self) -> Optional[float]:
-        """The level the frames agree the bass stands at, if they agree on one.
-
-        A triangle line must hold the bass of at least ``LEAST_STANDING_SHARE`` of the frames read,
-        and of ``LEAST_STANDING_FRAMES`` at least, and their readings must agree within ``MOST_SPREAD``
-        of their median between the quartiles. A bass that rests between its notes or changes note
-        within a frame's window reads quieter than it plays, and a pulse sharing its note lifts a
-        frame's reading, while the frames that hold the line read alike. The level is the reading
-        that the most others lie near, ``READING_WIDTH`` apart in log level counting as near.
-        """
-        if len(self.standing) < LEAST_STANDING_FRAMES or len(self.standing) < LEAST_STANDING_SHARE * self.sampled:
-            return None
-
-        levels = np.array([frame.reading.level for frame in self.standing])
-        middle = float(np.median(levels))
-        lower, upper = np.percentile(levels, [LOWER_QUARTILE, UPPER_QUARTILE])
-        if middle <= 0.0 or upper - lower > MOST_SPREAD * middle:
-            return None
-
-        return _densest(levels)
-
-
-@dataclass(frozen=True)
-class Judgment:
-    """How the joint assignment chooses a sample of a recording's frames at one working level.
-
-    Attributes:
-        cost: The median full cost of the frames as chosen.
-        confirmed: The share of the frames whose triangle plays the bass they were read on.
-    """
-
-    cost: float
-    confirmed: float
 
 
 class LevelFitter:
-    """Finds the working level at which a recording's triangle line plays on the triangle's one level.
+    """Finds the factor that moves the working level onto the triangle line a recording holds.
 
-    The frames of every stem that may sound the triangle are read at the level the input is first
-    matched at (:class:`TriangleReader`). Where their readings agree on a level, the joint assignment
-    chooses a sample of the frames at both levels. The new level holds where the triangle then plays
-    the bass the frames were read on, within ``BASS_DISTANCE``, on at least ``LEAST_CONFIRMED_SHARE`` of
-    them, and where the frames as chosen cost less than at the first level. A triangle note fitting
-    a pulse's fundamental reads a level too, and at that level the choice gives the note back to the
-    pulse, or the pulse falls short of what it then has to play.
+    The triangle plays one level, so a bass line fits it only where the working level brings the
+    line there. The factor is found in three steps, on the recordings of the stems that may sound
+    the triangle:
+
+    1. Each frame its stem sounds through, ``SOUNDING_REACH`` frames on either side, is read at the
+       first working level (:class:`TriangleReader`). A low note is read over a window several
+       frames long, so a note a rest cuts short reads quieter than it plays.
+    2. The readings give the level a triangle line stands at, where one stands and they agree
+       (:class:`LevelReading`).
+    3. The joint assignment chooses at most ``JUDGED_FRAMES`` of the standing frames, spread over
+       them, at the first level and at the level read, each stem on its own channels
+       (:class:`Judgment`). The sample bounds the judgment's cost however long the recording, and
+       the judgment reads the choice alone, so every column is ``JUDGING_WIDTH`` wide. The level
+       read holds where the triangle then plays the bass the frames were read on, and the frames
+       cost less. A triangle note fitting a pulse's fundamental reads a level too, and at that
+       level the choice gives the note back to the pulse, or the pulse falls short of what it then
+       has to play.
+
+    Attributes:
+        channels: The run's channels.
+        entries: The stems that may sound the triangle, in setup order.
+        layouts: Each of those stems' layout, keyed by stem id.
+        matcher: The matching machinery the frames are read and chosen with.
+        config: The configuration the recordings are framed under.
+        window: The analysis window the recordings are framed with.
     """
 
     def __init__(
@@ -117,133 +63,102 @@ class LevelFitter:
         window: Window,
     ) -> None:
         self.channels = dict(channels)
-        self.entries: List[StemEntry] = [
-            entry for entry in stems_config.entries if StemLayout.of(entry, self.channels).of_kind(TRIANGLE)
-        ]
+        layouts = {entry.id: StemLayout.of(entry, self.channels) for entry in stems_config.entries}
+        self.entries: List[StemEntry] = [entry for entry in stems_config.entries if layouts[entry.id].of_kind(TRIANGLE)]
+        self.layouts: Dict[int, StemLayout] = {entry.id: layouts[entry.id] for entry in self.entries}
         self.matcher = matcher
         self.config = config
         self.window = window
 
     def factor(self, recordings: Mapping[int, np.ndarray], coefficient: float) -> Optional[float]:
-        """The factor the working level moves by, or ``None`` where the recordings hold no triangle line.
+        """The factor the working level moves by.
 
         Args:
             recordings: Every stem's loaded recording, keyed by stem id.
             coefficient: The working level the recordings are first matched at.
+
+        Returns:
+            The level the triangle line stands at, ``None`` where no stem may sound the triangle,
+            no line stands, its readings disagree or the joint choice refuses the level.
         """
         if not self.entries:
             return None
 
-        reading = self.read({entry.id: self._frames(recordings[entry.id], coefficient) for entry in self.entries})
+        framed = self._framed(recordings, coefficient)
+        reading = self.read(framed)
         level = reading.level
         if level is None:
             return None
 
-        sample = _spread_sample(list(reading.standing), JUDGED_FRAMES)
-        first = self.judged(
-            sample, {entry.id: self._frames(recordings[entry.id], coefficient) for entry in self.entries}
-        )
-        moved = self.judged(
-            sample, {entry.id: self._frames(recordings[entry.id], coefficient * level) for entry in self.entries}
-        )
-        holds = moved.confirmed >= LEAST_CONFIRMED_SHARE and moved.cost < first.cost
-        return level if holds else None
+        sample = reading.sample(JUDGED_FRAMES)
+        first = self.judged(sample, framed)
+        moved = self.judged(sample, self._framed(recordings, coefficient * level))
+        return level if moved.holds_over(first) else None
 
     def read(self, frames: Mapping[int, FragmentedAudio]) -> LevelReading:
-        """Reads every frame each stem that may sound the triangle sounds through.
+        """Reads every frame each stem that may sound the triangle sounds through, the stems in setup order.
 
-        A frame is read where its stem sounds for ``SOUNDING_REACH`` frames on either side of it. A low
-        note is read over a window several frames long, so a note a rest cuts short reads quieter than
-        it plays.
+        Args:
+            frames: Each of those stems' frames, keyed by stem id.
         """
-        catalogs = self._catalogs()
-        sampled = 0
-        standing: List[StandingFrame] = []
+        catalogs = kind_catalogs(list(self.layouts.values()), self.channels, self.matcher.candidate_provider)
+        readings: List[LevelReading] = []
         for entry in self.entries:
-            reader = TriangleReader.of(StemLayout.of(entry, self.channels), catalogs, self.matcher)
-            fragments = frames[entry.id]
-            for index in _sounded_through(fragments):
-                sampled += 1
-                reading = reader.read(fragments[index])
-                if reading is not None:
-                    standing.append(StandingFrame(stem_id=entry.id, index=index, reading=reading))
+            reader = TriangleReader.of(self.layouts[entry.id], catalogs, self.matcher)
+            readings.append(self._stem_reading(entry.id, frames[entry.id], reader))
 
-        return LevelReading(sampled=sampled, standing=tuple(standing))
+        return LevelReading.pooled(readings)
 
-    def judged(self, sample: List[StandingFrame], frames: Mapping[int, FragmentedAudio]) -> Judgment:
-        """How the joint assignment chooses the ``sample`` of ``frames``, each stem on its own channels."""
-        assigners = {
-            entry.id: JointAssigner(
-                StemsConfig.single_entry(entry.settings), self.channels, self.matcher, JUDGING_WIDTH
-            )
+    def judged(self, sample: Sequence[StandingFrame], frames: Mapping[int, FragmentedAudio]) -> Judgment:
+        """How the joint assignment chooses the ``sample`` of ``frames``, each stem on its own channels.
+
+        One assigner serves each stem through the sample, so it hands each frame's pulses over from
+        the stem's choice in the frame sampled before it (``PulseHandover``).
+
+        Args:
+            sample: The standing frames to choose.
+            frames: Each stem's frames, keyed by stem id.
+        """
+        assigners = {entry.id: self._lone_assigner(entry) for entry in self.entries}
+        return Judgment.of([self._chosen(assigners[frame.stem_id], frame, frames[frame.stem_id]) for frame in sample])
+
+    def _framed(self, recordings: Mapping[int, np.ndarray], coefficient: float) -> Dict[int, FragmentedAudio]:
+        """Each stem's recording at the working level ``coefficient``, framed as the reconstructor frames it."""
+        return {
+            entry.id: FragmentedAudio.create(recordings[entry.id] / coefficient, self.config, self.window)
             for entry in self.entries
         }
-        costs: List[float] = []
-        confirmed = 0
-        for frame in sample:
-            choices = assigners[frame.stem_id].assign({0: frames[frame.stem_id][frame.index]}).choices
-            if choices:
-                costs.append(min(choice.cost for choice in choices))
-            confirmed += any(
-                self._plays_bass(choice.channel_name, choice.instruction, frame.reading.note) for choice in choices
-            )
 
-        return Judgment(
-            cost=float(np.median(costs)) if costs else float("inf"),
-            confirmed=confirmed / len(sample) if sample else 0.0,
-        )
+    def _lone_assigner(self, entry: StemEntry) -> JointAssigner:
+        """The joint assignment of ``entry``'s stem alone, on its own channels."""
+        return JointAssigner(StemsConfig.single_entry(entry.settings), self.channels, self.matcher, JUDGING_WIDTH)
 
-    def _plays_bass(self, channel_name: ChannelName, instruction: InstructionUnion, note: int) -> bool:
-        """Whether a channel plays ``note`` on the triangle, within ``BASS_DISTANCE``."""
-        return (
-            self.channels[channel_name].class_name() == TRIANGLE
-            and isinstance(instruction, TriangleInstruction)
-            and instruction.on
-            and abs(instruction.pitch - note) <= BASS_DISTANCE
-        )
+    @staticmethod
+    def _chosen(assigner: JointAssigner, frame: StandingFrame, fragments: FragmentedAudio) -> ChosenFrame:
+        """``frame`` of ``fragments`` as ``assigner`` chooses it, its one stem sounding the frame."""
+        (layout,) = assigner.layouts
+        assignment = assigner.assign({layout.stem_id: fragments[frame.index]})
+        return ChosenFrame(choices=assignment.choices, note=frame.reading.note)
 
-    def _catalogs(self) -> Dict[GeneratorClassName, KindCatalog]:
-        catalogs: Dict[GeneratorClassName, KindCatalog] = {}
-        for entry in self.entries:
-            for slot in StemLayout.of(entry, self.channels).slots:
-                if slot.kind not in catalogs:
-                    catalogs[slot.kind] = KindCatalog.build(
-                        self.matcher.candidate_provider, self.channels[slot.channel_name]
-                    )
+    @staticmethod
+    def _stem_reading(stem_id: int, fragments: FragmentedAudio, reader: TriangleReader) -> LevelReading:
+        """The reading of one stem's frames: every frame it sounds through read, the standing ones kept."""
+        read = LevelFitter._sounded_through(fragments)
+        standing: List[StandingFrame] = []
+        for index in read:
+            reading = reader.read(fragments[index])
+            if reading is not None:
+                standing.append(StandingFrame(stem_id=stem_id, index=index, reading=reading))
 
-        return catalogs
+        return LevelReading(sampled=len(read), standing=tuple(standing))
 
-    def _frames(self, recording: np.ndarray, coefficient: float) -> FragmentedAudio:
-        return FragmentedAudio.create(recording / coefficient, self.config, self.window)
+    @staticmethod
+    def _sounded_through(fragments: FragmentedAudio) -> List[int]:
+        """The frames that sound (``frame_sounds``) with ``SOUNDING_REACH`` frames on either side sounding too."""
+        sounding = np.array([frame_sounds(fragments[index]) for index in range(len(fragments))], dtype=bool)
+        span = 2 * SOUNDING_REACH + 1
+        if len(sounding) < span:
+            return []
 
-
-def _sounded_through(fragments: FragmentedAudio) -> List[int]:
-    """The frames that, with ``SOUNDING_REACH`` frames on either side, are loud enough for a channel to render."""
-    sounding = np.array(
-        [
-            float(np.max(np.abs(to_numpy(fragments[index].audio)), initial=0.0)) >= STEM_ACTIVITY_FLOOR
-            for index in range(len(fragments))
-        ],
-        dtype=bool,
-    )
-    span = 2 * SOUNDING_REACH + 1
-    if len(sounding) < span:
-        return []
-
-    through = sliding_window_view(sounding, span).all(axis=1)
-    return [int(start) + SOUNDING_REACH for start in np.flatnonzero(through)]
-
-
-def _densest(levels: np.ndarray) -> float:
-    """The level of ``levels`` the most others lie near, each weighed by a Gaussian ``READING_WIDTH`` wide in log level."""
-    logs = np.log(levels)
-    nearness = np.exp(-0.5 * ((logs[:, None] - logs[None, :]) / READING_WIDTH) ** 2).sum(axis=1)
-    return float(levels[int(np.argmax(nearness))])
-
-
-def _spread_sample(frames: List[StandingFrame], count: int) -> List[StandingFrame]:
-    """At most ``count`` of ``frames``, spread evenly over them."""
-    if len(frames) <= count:
-        return frames
-
-    return [frames[int(position)] for position in np.linspace(0, len(frames) - 1, count)]
+        through = sliding_window_view(sounding, span).all(axis=1)
+        return [int(start) + SOUNDING_REACH for start in np.flatnonzero(through)]
