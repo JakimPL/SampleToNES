@@ -18,11 +18,13 @@ from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.catal
     KindCatalog,
     alike_timbres,
 )
-from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.fit import FitTarget
-from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.hearing import SequenceHearing, SteadyHearing
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.fit import FitTarget, fitted_levels
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.hearing import SequenceHearing
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import Slot, StemLayout
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.proposals import (
     DOUBLED_NOTES,
+    FREE_FIT_START,
+    FREE_FIT_UPDATES,
     PROPOSED_NOTES,
     NoteDictionary,
     NoteStrengths,
@@ -40,6 +42,7 @@ from ..conftest import (
     JOINT_TRIANGLE_PITCHES,
     rendered_fragment,
 )
+from .conftest import heard_alone, library_matcher
 
 PULSE: Final[GeneratorClassName] = GeneratorClassName.PULSE_GENERATOR
 TRIANGLE: Final[GeneratorClassName] = GeneratorClassName.TRIANGLE_GENERATOR
@@ -137,6 +140,20 @@ def alike_matcher_fixture(config: Config, window: Window, extractor: FeatureExtr
     ).matcher
 
 
+@pytest.fixture(name="mute_matcher", scope="module")
+def mute_matcher_fixture(config: Config) -> FrameMatcher:
+    """The matcher of a library holding the pulse's silence alone."""
+    return library_matcher(config, ChannelName.PULSE1, [PulseInstruction.null_instruction()])
+
+
+@pytest.fixture(name="mute_catalogs", scope="module")
+def mute_catalogs_fixture(
+    mute_matcher: FrameMatcher, all_channels: Dict[ChannelName, GeneratorUnion]
+) -> Dict[GeneratorClassName, KindCatalog]:
+    """A pulse catalog sounding no note: its silent row alone."""
+    return {PULSE: KindCatalog.build(mute_matcher.candidate_provider, all_channels[ChannelName.PULSE1])}
+
+
 @pytest.fixture(name="chord", scope="module")
 def chord_fixture(config: Config, extractor: FeatureExtractor) -> Fragment:
     return rendered_fragment(config, extractor, CHORD)
@@ -148,7 +165,7 @@ def _proposed(
     catalogs: Dict[GeneratorClassName, KindCatalog],
     matcher: FrameMatcher,
 ) -> Dict[GeneratorClassName, List[int]]:
-    hearing = SteadyHearing(layout=layout, catalogs=catalogs, bins=len(fragment.feature.values))
+    hearing = heard_alone(layout, catalogs, matcher.candidate_provider, len(fragment.feature.values))
     return proposed_rows(
         fragment,
         FitTarget.of(fragment, matcher.scorer.criterion),
@@ -223,6 +240,38 @@ class TestTheNoteDictionary(BaseTestSuite):
         assert len(atoms) == len(JOINT_DUTY_CYCLES)
         assert strengths[(PULSE, note)] == pytest.approx(sum(levels[atom] * dictionary.powers[atom] for atom in atoms))
 
+    def test_a_stem_whose_kinds_sound_no_note_has_no_atom_over_the_bins(
+        self, one_pulse: StemLayout, mute_catalogs: Dict[GeneratorClassName, KindCatalog]
+    ) -> None:
+        dictionary = NoteDictionary.of(one_pulse, mute_catalogs)
+
+        assert dictionary.features.shape == (0, mute_catalogs[PULSE].features.shape[1])
+        assert not dictionary.kinds
+        assert not dictionary.caps.size
+        assert not dictionary.powers.size
+
+    def test_the_fit_of_no_atom_gives_no_levels(
+        self,
+        lead: Fragment,
+        one_pulse: StemLayout,
+        mute_catalogs: Dict[GeneratorClassName, KindCatalog],
+        mute_matcher: FrameMatcher,
+    ) -> None:
+        dictionary = NoteDictionary.of(one_pulse, mute_catalogs)
+        target = FitTarget.of(lead, mute_matcher.scorer.criterion)
+
+        levels = fitted_levels(
+            target,
+            dictionary.features,
+            dictionary.caps,
+            base=np.zeros_like(target.reference),
+            start=FREE_FIT_START,
+            updates=FREE_FIT_UPDATES,
+        )
+
+        assert levels.shape == (0,)
+        assert not dictionary.strengths(levels).strengths
+
 
 class TestNoteStrengths(BaseTestSuite):
     """A kind's notes ranked by strength, the lower of equally strong notes first, notes of no strength left out."""
@@ -254,6 +303,15 @@ class TestNoteStrengths(BaseTestSuite):
 
 class TestProposedRows(BaseTestSuite):
     """A frame's strongest notes of each kind, each on its best row alone."""
+
+    def test_a_stem_whose_kinds_sound_no_note_proposes_nothing(
+        self,
+        lead: Fragment,
+        one_pulse: StemLayout,
+        mute_catalogs: Dict[GeneratorClassName, KindCatalog],
+        mute_matcher: FrameMatcher,
+    ) -> None:
+        assert _proposed(lead, one_pulse, mute_catalogs, mute_matcher) == {PULSE: []}
 
     def test_a_chord_s_notes_are_proposed_on_their_own_kinds(
         self,

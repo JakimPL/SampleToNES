@@ -11,7 +11,7 @@ from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
 from .batches import cheapest_row, split_by_group
 from .catalog import KindCatalog, UnitRow
 from .fit import FitTarget, fitted_combinations
-from .hearing import FrameHearing
+from .hearing import FrameHearing, heard_features
 from .layout import StemLayout
 
 FIRST_UPDATES: Final[int] = 5
@@ -251,7 +251,7 @@ class CombinationSearch:
             for place, slot in enumerate(self.layout.slots)
             if slot.plays_levels
         ]
-        survivors = self._survivors(channels, *self._fixed_parts(choices))
+        survivors = self._survivors(channels, *self.fixed_parts(choices))
         found: Dict[Rows, Rows] = {}
         for position in np.argsort(survivors.costs, kind="stable")[:SCANNED_COMBINATIONS]:
             levels = [level[position] for level in survivors.levels]
@@ -304,6 +304,24 @@ class CombinationSearch:
         ordered[pulses[0]], ordered[pulses[1]] = sorted(rows[place] for place in pulses)
         return tuple(ordered)
 
+    def fixed_parts(self, choices: Sequence[Choice]) -> Tuple[np.ndarray, np.ndarray]:
+        """Every choice's fixed part, in feature values and in power: the leak and its one-level channels' rows.
+
+        The powers add up, and every choice's sum is transformed in one batch, so a fixed part reads
+        the feature values of the power it holds.
+        """
+        powers = np.zeros((len(choices), self._bins)) + self.hearing.leak
+        for place, slot in enumerate(self.layout.slots):
+            if slot.plays_levels:
+                continue
+
+            for position, choice in enumerate(choices):
+                row = choice[place]
+                if row is not None:
+                    powers[position] += self.hearing.powers(place, [row])[0]
+
+        return heard_features(self.matcher.candidate_provider, powers), powers
+
     def _survivors(self, channels: Sequence[ChannelUnits], base: np.ndarray, base_powers: np.ndarray) -> Survivors:
         """The choices surviving the short fit, fitted further, every channel starting at its proposal's volume."""
         fits = ChoiceFits.of(channels, base, base_powers)
@@ -320,22 +338,6 @@ class CombinationSearch:
     def _bins(self) -> int:
         """How many bins the frame's feature holds."""
         return int(self.target.reference.shape[0])
-
-    def _fixed_parts(self, choices: Sequence[Choice]) -> Tuple[np.ndarray, np.ndarray]:
-        """Every choice's fixed part, in feature values and in power: the leak and its one-level channels' rows."""
-        features = np.zeros((len(choices), self._bins)) + self.hearing.leak_features
-        powers = np.zeros((len(choices), self._bins)) + self.hearing.leak
-        for place, slot in enumerate(self.layout.slots):
-            if slot.plays_levels:
-                continue
-
-            for position, choice in enumerate(choices):
-                row = choice[place]
-                if row is not None:
-                    features[position] += self.hearing.features(place, [row])[0]
-                    powers[position] += self.hearing.powers(place, [row])[0]
-
-        return features, powers
 
     def _rows(self, choice: Choice, channels: Sequence[ChannelUnits], levels: Sequence[float]) -> Rows:
         """The rows ``choice`` plays at its fitted ``levels``: each fitted channel on the row of its unit's volume.

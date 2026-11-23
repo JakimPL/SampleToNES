@@ -116,6 +116,8 @@ dimension the import starts carrying.
 * A `contour` reading of the render where the recording falls silent. Its readings over time cover the
   recording's audible frames, so a render ringing on after a short hit reaches it through the band
   readings alone.
+* The joint assignment's fits (`fitted_levels`, `fitted_combinations`) scale and add feature values, so they
+  read a frame's power exactly at a transformation gamma of zero alone.
 * The combinations decoder moves two channels at once only within its pool: the choice with channels
   silenced, the finalists and the choice of the frame before. The Viterbi decoder may take two column
   alternatives on two channels together, which keeps it ahead on some pieces, such as Super Mario Bros. at

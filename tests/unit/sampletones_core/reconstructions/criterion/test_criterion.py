@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Final, Tuple
+from typing import Final, Tuple, Union
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -13,6 +13,7 @@ from sampletones_core.fft import CyclicArray, Window
 from sampletones_core.reconstructions.criterion import Criterion
 from sampletones_core.reconstructions.criterion.metric import SpectralMetric
 from sampletones_core.reconstructions.criterion.spectral import spectral_floor, weighted_reference_energy
+from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.array import to_numpy, xp
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -380,6 +381,22 @@ class TestTheShortfallWeightedLoss(BaseTestSuite):
         full_silent, full_overshooting = to_numpy(criterion.spectral_loss(reference, candidates))
         assert silent == pytest.approx(test_case.silent_share * full_silent)
         assert overshooting == pytest.approx(full_overshooting)
+
+    @pytest.mark.parametrize("as_histogram", [False, True], ids=["host_arrays", "histogram"])
+    def test_host_values_score_as_values_on_the_array_backend_do(
+        self, as_histogram: bool, criterion: Criterion, bins: int
+    ) -> None:
+        """The loss takes a histogram or its values wherever they are held, as the spectral loss does."""
+        reference = to_numpy(self._reference(bins))
+        candidates = to_numpy(self._candidates(xp.asarray(reference)))
+        target: Union[np.ndarray, Histogram] = reference
+        if as_histogram:
+            target = Histogram(edges=np.arange(bins + 1, dtype=reference.dtype), values=reference)
+
+        held = to_numpy(criterion.shortfall_weighted_loss(target, candidates, SHORTFALL_WEIGHT))
+
+        on_backend = criterion.shortfall_weighted_loss(xp.asarray(reference), xp.asarray(candidates), SHORTFALL_WEIGHT)
+        assert list(held) == pytest.approx(list(to_numpy(on_backend)))
 
 
 class TestCriterionBetaDivergenceAtTheFloor(BaseTestSuite):

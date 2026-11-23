@@ -24,15 +24,18 @@ from sampletones_core.generators import FULL_SCALE_RMS_LEVELS
 from sampletones_core.generators.render import render_channels
 from sampletones_core.instructions import InstructionUnion, PulseInstruction, TriangleInstruction
 from sampletones_core.library import InstructionLibraryData
+from sampletones_core.reconstructions.progress import ReconstructionProgress
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels
 from sampletones_core.reconstructions.reconstructor.decoder.base import Alternatives, Streams
 from sampletones_core.reconstructions.reconstructor.decoder.viterbi import ViterbiDecoder
 from sampletones_core.reconstructions.reconstructor.reconstructor import Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
+from sampletones_core.reconstructions.stage import ReconstructionStage
 from sampletones_shared.exceptions import NoLibraryDataError
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.progress import RecordingReporter
 
 from .conftest import rendered_audio
 
@@ -407,8 +410,28 @@ def decodes_fixture(monkeypatch: pytest.MonkeyPatch) -> List[Decode]:
 class TestDecidingAmongNeighbors:
     """A run decodes its first assignment, then assigns and decodes again once per neighbor pass.
 
-    The observer hears the last assignment and the streams decoded from it, which the run plays.
+    The observer hears the last assignment and the streams decoded from it, which the run plays. The
+    progress the run reports counts every pass within matching, so it only moves forward.
     """
+
+    @staticmethod
+    def _passing(config: Config, neighbors: int) -> Config:
+        """``config`` assigning jointly through ``neighbors`` neighbor passes, decoded by the Viterbi decoder."""
+        generation = config.generation.model_copy(
+            update={
+                "assignment": AssignmentConfig(method=AssignmentMethod.JOINT, neighbors=neighbors, inertia=NO_INERTIA),
+                "decoder": config.generation.decoder.model_copy(update={"selector": SelectorName.VITERBI}),
+            }
+        )
+        return config.model_copy(update={"generation": generation})
+
+    @staticmethod
+    def _chord(tmp_path: Path, config: Config) -> Path:
+        """A held bass under a lead, written where ``tmp_path`` points."""
+        path = tmp_path / "chord.wav"
+        audio = rendered_audio(config, {ChannelName.TRIANGLE: BASS, ChannelName.PULSE1: LEAD}, PASSED_FRAMES)
+        write_wave(path, config.library.sample_rate, audio.astype(np.float32))
+        return path
 
     @pytest.mark.parametrize("neighbors", [0, 2], ids=["no_pass", "two_passes"])
     def test_each_pass_decodes_anew_and_the_last_decode_is_the_one_played(
@@ -419,19 +442,10 @@ class TestDecidingAmongNeighbors:
         decodes: List[Decode],
         neighbors: int,
     ) -> None:
-        generation = config.generation.model_copy(
-            update={
-                "assignment": AssignmentConfig(method=AssignmentMethod.JOINT, neighbors=neighbors, inertia=NO_INERTIA),
-                "decoder": config.generation.decoder.model_copy(update={"selector": SelectorName.VITERBI}),
-            }
-        )
-        passing = config.model_copy(update={"generation": generation})
-        path = tmp_path / "chord.wav"
-        audio = rendered_audio(passing, {ChannelName.TRIANGLE: BASS, ChannelName.PULSE1: LEAD}, PASSED_FRAMES)
-        write_wave(path, passing.library.sample_rate, audio.astype(np.float32))
+        passing = self._passing(config, neighbors)
         observer = RecordingObserver()
 
-        reconstruction = _make_reconstructor(passing, joint_library)(path, observe=observer)
+        reconstruction = _make_reconstructor(passing, joint_library)(self._chord(tmp_path, passing), observe=observer)
 
         assert reconstruction is not None
         assert len(decodes) == 1 + neighbors
@@ -440,6 +454,29 @@ class TestDecidingAmongNeighbors:
         assert heard.lattices is read.lattices
         assert decoded is answered
         assert len({id(alternatives.lattices) for alternatives, _ in decodes}) == len(decodes)
+
+    @pytest.mark.parametrize("neighbors", [0, 2], ids=["no_pass", "two_passes"])
+    def test_the_progress_only_rises_and_matching_counts_the_frames_of_every_pass(
+        self,
+        tmp_path: Path,
+        config: Config,
+        joint_library: InstructionLibraryData,
+        neighbors: int,
+    ) -> None:
+        passing = self._passing(config, neighbors)
+        reconstructor = _make_reconstructor(passing, joint_library)
+        stems_config = StemsConfig.single_entry(StemSettings.covering(list(reconstructor.channel_names)))
+        reporter: RecordingReporter[ReconstructionProgress] = RecordingReporter()
+
+        reconstruction = reconstructor.reconstruct([self._chord(tmp_path, passing)], stems_config, report=reporter)
+
+        assert reconstruction is not None
+        fractions = [progress.fraction for progress in reporter.reports]
+        frames = len(next(iter(reconstruction.instructions.values())))
+        matching = [progress for progress in reporter.reports if progress.stage == ReconstructionStage.MATCHING]
+        assert fractions == sorted(fractions)
+        assert {progress.total for progress in matching} == {frames * (1 + neighbors)}
+        assert matching[-1].completed == matching[-1].total
 
 
 class TestTheAudioAReconstructionRecords:

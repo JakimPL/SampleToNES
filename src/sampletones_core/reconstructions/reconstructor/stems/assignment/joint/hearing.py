@@ -1,5 +1,5 @@
 from dataclasses import dataclass, replace
-from typing import List, Mapping, Optional, Protocol, Self, Sequence, Tuple, Union
+from typing import Dict, List, Mapping, Optional, Protocol, Self, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -14,6 +14,7 @@ from .catalog import KindCatalog
 from .layout import Slot, StemLayout
 
 RowSet = Union[Sequence[int], np.ndarray]
+DriveKey = Tuple[GeneratorClassName, float]
 
 
 class FrameHearing(Protocol):
@@ -21,9 +22,11 @@ class FrameHearing(Protocol):
 
     Every comparison the joint assignment makes adds its channels' rows into the frame's reading.
     A hearing answers what the frame holds before any of its rows sound, its leak, and what each
-    row adds when a channel plays it, at the drive the stem gives the channel. The joint assignment
-    adds feature values as it adds powers, which holds where the features read power linearly, at a
-    transformation gamma of zero.
+    row adds when a channel plays it, at the drive the stem gives the channel. A reading adds the
+    rows' powers and transforms their sum (``heard_features``), so its feature values are those of
+    the power the frame holds at every transformation gamma. A fit of levels scales and adds feature
+    values, which matches that reading where the features read power linearly, at a transformation
+    gamma of zero.
     """
 
     @property
@@ -36,9 +39,6 @@ class FrameHearing(Protocol):
 
     def powers(self, place: int, rows: RowSet) -> np.ndarray:
         """The power each of ``rows`` adds when the channel at ``place`` in the layout plays it, one row per row."""
-
-    def features(self, place: int, rows: RowSet) -> np.ndarray:
-        """The feature values of what each of ``rows`` adds, one row per row."""
 
     def unit_powers(self, place: int, rows: RowSet) -> np.ndarray:
         """What each of ``rows`` adds as a fit of its level reads it: a scale of the row's power."""
@@ -54,21 +54,60 @@ class FrameHearing(Protocol):
 
 
 @dataclass(frozen=True)
+class DrivenFeatures:
+    """Each kind's library rows in feature values, at every drive the stems give the kind's channels.
+
+    A row played at a drive adds its library power read at that drive (``library_powers``), and its
+    feature values are the transform of that power (``heard_features``). A run transforms every row
+    of a kind once at each drive its stems hold, so a frame heard alone reads them by row.
+
+    Attributes:
+        features: Each kind's rows in feature values, keyed by the kind and the drive.
+    """
+
+    features: Dict[DriveKey, np.ndarray]
+
+    @classmethod
+    def of(
+        cls,
+        layouts: Sequence[StemLayout],
+        catalogs: Mapping[GeneratorClassName, KindCatalog],
+        provider: CandidateProvider,
+    ) -> Self:
+        """The rows of every kind ``layouts`` sound, at every drive their channels of the kind take."""
+        features: Dict[DriveKey, np.ndarray] = {}
+        for layout in layouts:
+            for slot in layout.slots:
+                key = (slot.kind, slot.drive)
+                if key not in features:
+                    features[key] = heard_features(provider, _driven(catalogs[slot.kind].powers, slot.drive))
+
+        return cls(features=features)
+
+    def at(self, slot: Slot, rows: RowSet) -> np.ndarray:
+        """The feature values of ``rows`` played on the channel of ``slot``, one row per row."""
+        return np.asarray(self.features[(slot.kind, slot.drive)][list(rows)])
+
+
+@dataclass(frozen=True)
 class SteadyHearing:
     """A frame heard alone, every row as a note held through the whole analysis window.
 
     This is how the frames are first assigned, before any neighbor is known. A note held through
     the whole window reaches the frame whole, so a row adds its library power at the channel's
-    drive, and a fit reads it at that power. The frame holds nothing before its rows sound.
+    drive, and a fit reads it at that power, in the feature values its transform reads. The frame
+    holds nothing before its rows sound.
 
     Attributes:
         layout: The stem's channels.
         catalogs: Each kind's rows.
+        driven: Each kind's rows in feature values, at the drives the stems give its channels.
         bins: How many bins the frame's feature holds.
     """
 
     layout: StemLayout
     catalogs: Mapping[GeneratorClassName, KindCatalog]
+    driven: DrivenFeatures
     bins: int
 
     @property
@@ -82,20 +121,11 @@ class SteadyHearing:
     def powers(self, place: int, rows: RowSet) -> np.ndarray:
         return library_powers(self.layout, self.catalogs, place, rows)
 
-    def features(self, place: int, rows: RowSet) -> np.ndarray:
-        """Each row's library feature values at the channel's drive, scaled as its power is.
-
-        These are the feature values of the row's power at the drive where the features read power
-        linearly, at a transformation gamma of zero.
-        """
-        slot = self.layout.slots[place]
-        return _at_drive(self.catalogs[slot.kind].features, rows, slot)
-
     def unit_powers(self, place: int, rows: RowSet) -> np.ndarray:
         return self.powers(place, rows)
 
     def unit_features(self, place: int, rows: RowSet) -> np.ndarray:
-        return self.features(place, rows)
+        return self.driven.at(self.layout.slots[place], rows)
 
     def place_of(self, kind: GeneratorClassName, row: int) -> int:  # pylint: disable=unused-argument
         """The first channel of ``kind``: a frame heard alone joins no held note, so it hears every row there."""
@@ -152,22 +182,19 @@ class SequenceHearing:
             surroundings=tuple(surroundings),
             provider=provider,
             leak=leak,
-            leak_features=cls._features(provider, leak[None, :])[0],
+            leak_features=heard_features(provider, leak[None, :])[0],
         )
 
     def powers(self, place: int, rows: RowSet) -> np.ndarray:
         steady_powers = library_powers(self.layout, self.catalogs, place, rows)
         return self.surroundings[place].heard(self._keys(place, rows), steady_powers)
 
-    def features(self, place: int, rows: RowSet) -> np.ndarray:
-        return self._features(self.provider, self.powers(place, rows))
-
     def unit_powers(self, place: int, rows: RowSet) -> np.ndarray:
         gains = self.surroundings[place].gains(self._keys(place, rows))
         return np.asarray(gains * library_powers(self.layout, self.catalogs, place, rows))
 
     def unit_features(self, place: int, rows: RowSet) -> np.ndarray:
-        return self._features(self.provider, self.unit_powers(place, rows))
+        return heard_features(self.provider, self.unit_powers(place, rows))
 
     def place_of(self, kind: GeneratorClassName, row: int) -> int:
         """The channel of ``kind`` whose held note ``row`` extends, the first of the kind where none does.
@@ -193,14 +220,16 @@ class SequenceHearing:
         catalog = self.catalogs[self.layout.slots[place].kind]
         return [catalog.key(int(row)) for row in rows]
 
-    @staticmethod
-    def _features(provider: CandidateProvider, powers: np.ndarray) -> np.ndarray:
-        """The feature values of a stack of powers, as host arrays in double precision.
 
-        The provider transforms powers on the active array backend, and the joint assignment reads
-        every feature value as a NumPy array of doubles.
-        """
-        return np.asarray(to_numpy(provider.features_of(xp.asarray(powers))), dtype=np.float64)
+def heard_features(provider: CandidateProvider, powers: np.ndarray) -> np.ndarray:
+    """The feature values of a stack of powers, as host arrays in double precision.
+
+    A frame's reading is the transform of the power it holds, so every feature value the joint
+    assignment reads of added powers is the transform of their sum. The provider transforms powers
+    on the active array backend, and the joint assignment reads every feature value as a NumPy array
+    of doubles.
+    """
+    return np.asarray(to_numpy(provider.features_of(xp.asarray(powers))), dtype=np.float64)
 
 
 def library_powers(
@@ -208,18 +237,18 @@ def library_powers(
 ) -> np.ndarray:
     """Each row's library power at the drive of the channel at ``place``, as a note held through the window."""
     slot = layout.slots[place]
-    return _at_drive(catalogs[slot.kind].powers, rows, slot)
+    return _driven(catalogs[slot.kind].powers[list(rows)], slot.drive)
 
 
-def _at_drive(values: np.ndarray, rows: RowSet, slot: Slot) -> np.ndarray:
-    """The library values of ``rows``, one per row and read at unit drive, as the channel of ``slot`` reads them.
+def _driven(powers: np.ndarray, drive: float) -> np.ndarray:
+    """Library powers, read at unit drive, as a channel at ``drive`` reads them.
 
     A drive ``d`` asks the channel to play its part of the stem's audio ``d`` times louder. The stem's
     audio is one target for all its channels, each at its own drive, so the rows are scaled instead:
     each is read at ``1 / d`` of its library amplitude, its power divided by ``d²``, and the row
     matching the audio is the one ``d`` times louder.
     """
-    return np.asarray(values[list(rows)] / slot.drive**2)
+    return np.asarray(powers / drive**2)
 
 
 def _places(layout: StemLayout, kind: GeneratorClassName) -> List[int]:

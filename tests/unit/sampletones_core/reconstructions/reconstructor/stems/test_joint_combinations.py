@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
+from sampletones_core.configs.library import InstructionsLibraryConfig
 from sampletones_core.constants.algorithm import UNIT_DRIVE
 from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.fft import Fragment
@@ -24,16 +25,21 @@ from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.combi
     searched_choices,
 )
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.fit import FitTarget
-from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.hearing import SteadyHearing
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.hearing import (
+    SequenceHearing,
+    heard_features,
+)
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import Slot, StemLayout
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.proposals import (
     NoteDictionary,
     proposed_rows,
 )
+from sampletones_core.reconstructions.reconstructor.window.surroundings import HeldNote, TonalSurroundings
 from sampletones_shared.array import xp
 from tests.suite.base import BaseTestSuite
 
 from ..conftest import rendered_fragment
+from .conftest import heard_alone, library_matcher
 
 PULSE: Final[GeneratorClassName] = GeneratorClassName.PULSE_GENERATOR
 TRIANGLE: Final[GeneratorClassName] = GeneratorClassName.TRIANGLE_GENERATOR
@@ -65,6 +71,9 @@ OFFERED: Final[Dict[GeneratorClassName, List[int]]] = {
 }
 LOUDER_DRIVE: Final[float] = 2.0
 COST_ROUNDING: Final[float] = 1e-9
+LINEAR_GAMMA: Final[int] = 0
+CURVED_GAMMA: Final[int] = 50
+LEAK_SHARE: Final[float] = 0.5
 
 
 def _layout(channels: List[ChannelName], cap: int) -> StemLayout:
@@ -119,7 +128,7 @@ def _search(
     fragment: Fragment, layout: StemLayout, catalogs: Dict[GeneratorClassName, KindCatalog], matcher: FrameMatcher
 ) -> CombinationSearch:
     """The search of ``fragment`` heard alone on ``layout``'s channels."""
-    hearing = SteadyHearing(layout=layout, catalogs=catalogs, bins=len(fragment.feature.values))
+    hearing = heard_alone(layout, catalogs, matcher.candidate_provider, len(fragment.feature.values))
     target = FitTarget.of(fragment, matcher.scorer.criterion)
     return CombinationSearch(fragment, target, layout, catalogs, matcher, hearing)
 
@@ -127,7 +136,7 @@ def _search(
 def _proposed(
     fragment: Fragment, layout: StemLayout, catalogs: Dict[GeneratorClassName, KindCatalog], matcher: FrameMatcher
 ) -> Dict[GeneratorClassName, List[int]]:
-    hearing = SteadyHearing(layout=layout, catalogs=catalogs, bins=len(fragment.feature.values))
+    hearing = heard_alone(layout, catalogs, matcher.candidate_provider, len(fragment.feature.values))
     target = FitTarget.of(fragment, matcher.scorer.criterion)
     return proposed_rows(fragment, target, layout, NoteDictionary.of(layout, catalogs), catalogs, matcher, hearing)
 
@@ -239,10 +248,12 @@ class TestChannelUnits(BaseTestSuite):
     QUIET: Final[PulseInstruction] = PulseInstruction(on=True, pitch=64, volume=8, duty_cycle=2)
 
     @pytest.fixture(name="units")
-    def units_fixture(self, lead: Fragment, catalogs: Dict[GeneratorClassName, KindCatalog]) -> ChannelUnits:
+    def units_fixture(
+        self, lead: Fragment, catalogs: Dict[GeneratorClassName, KindCatalog], joint_matcher: FrameMatcher
+    ) -> ChannelUnits:
         pulses = catalogs[PULSE]
         layout = _layout([ChannelName.PULSE1], cap=1)
-        hearing = SteadyHearing(layout=layout, catalogs=catalogs, bins=len(lead.feature.values))
+        hearing = heard_alone(layout, catalogs, joint_matcher.candidate_provider, len(lead.feature.values))
         choices: List[Choice] = [
             (None,),
             (pulses.rows_by_instruction[self.QUIET],),
@@ -279,10 +290,14 @@ class TestChannelUnits(BaseTestSuite):
         assert units.caps[entry] == pytest.approx(unit.full_level)
 
     def test_a_proposal_s_unit_is_heard_as_the_frame_s_fit_reads_it(
-        self, units: ChannelUnits, lead: Fragment, catalogs: Dict[GeneratorClassName, KindCatalog]
+        self,
+        units: ChannelUnits,
+        lead: Fragment,
+        catalogs: Dict[GeneratorClassName, KindCatalog],
+        joint_matcher: FrameMatcher,
     ) -> None:
         layout = _layout([ChannelName.PULSE1], cap=1)
-        hearing = SteadyHearing(layout=layout, catalogs=catalogs, bins=len(lead.feature.values))
+        hearing = heard_alone(layout, catalogs, joint_matcher.candidate_provider, len(lead.feature.values))
         quiet = catalogs[PULSE].rows_by_instruction[self.QUIET]
         entry = int(units.entries[1])
 
@@ -293,6 +308,46 @@ class TestChannelUnits(BaseTestSuite):
         assert not units.features[SILENT_ENTRY].any()
         assert not units.powers[SILENT_ENTRY].any()
         assert (units.caps[SILENT_ENTRY], units.starts[SILENT_ENTRY]) == (0.0, 0.0)
+
+
+@pytest.fixture(name="curved", scope="module", params=[LINEAR_GAMMA, CURVED_GAMMA], ids=["gamma_0", "gamma_50"])
+def curved_fixture(request: pytest.FixtureRequest) -> FrameMatcher:
+    """The matcher of a library of the bass and its silence, its features read at the gamma given."""
+    config = Config(library=InstructionsLibraryConfig(transformation_gamma=request.param))
+    return library_matcher(config, ChannelName.TRIANGLE, [TriangleInstruction.null_instruction(), BASS])
+
+
+class TestTheFixedParts(BaseTestSuite):
+    """Every choice's fixed part: the leak and its one-level channels' rows, added in power.
+
+    A fixed part reads the transform of the power it holds, as the frame reads its sum, at a
+    transformation gamma of zero, which reads power linearly, and at fifty, which reads it through a
+    curve. The case's frame stands beside neighbors leaving part of the bass's power in its window.
+    """
+
+    def test_a_fixed_part_reads_the_transform_of_the_power_it_holds(
+        self, curved: FrameMatcher, all_channels: Dict[ChannelName, GeneratorUnion]
+    ) -> None:
+        provider = curved.candidate_provider
+        catalogs = {TRIANGLE: KindCatalog.build(provider, all_channels[ChannelName.TRIANGLE])}
+        layout = _layout([ChannelName.TRIANGLE], cap=1)
+        bass = catalogs[TRIANGLE].rows_by_instruction[BASS]
+        bins = int(catalogs[TRIANGLE].powers.shape[1])
+        leak = LEAK_SHARE * catalogs[TRIANGLE].powers[bass]
+        beside = TonalSurroundings(
+            leak=leak, before=HeldNote.silence(bins), after=HeldNote.silence(bins), own=np.ones(bins)
+        )
+        hearing = SequenceHearing.of(layout, catalogs, [beside], provider)
+        frame = rendered_fragment(provider.config, provider.extractor, {ChannelName.TRIANGLE: BASS})
+        search = CombinationSearch(
+            frame, FitTarget.of(frame, curved.scorer.criterion), layout, catalogs, curved, hearing
+        )
+
+        features, powers = search.fixed_parts([(None,), (bass,)])
+
+        held = np.stack([leak, leak + hearing.powers(0, [bass])[0]])
+        assert powers == pytest.approx(held)
+        assert features == pytest.approx(heard_features(provider, held))
 
 
 class TestFittingTheChoices(BaseTestSuite):
@@ -499,7 +554,7 @@ class TestScoringCombinations(BaseTestSuite):
         self, chord: Fragment, catalogs: Dict[GeneratorClassName, KindCatalog], joint_matcher: FrameMatcher
     ) -> None:
         layout = _layout(EVERY_CHANNEL, cap=4)
-        hearing = SteadyHearing(layout=layout, catalogs=catalogs, bins=len(chord.feature.values))
+        hearing = heard_alone(layout, catalogs, joint_matcher.candidate_provider, len(chord.feature.values))
         rows = _played(layout, catalogs, CHORD)
 
         cost = _search(chord, layout, catalogs, joint_matcher).spectral_costs([rows])[0]

@@ -6,7 +6,7 @@ from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.array import xp
 
 from .metric import SpectralMetric
-from .spectral import calculate_spectral_loss, spectral_terms, summed_terms, weighted_reference_energy
+from .spectral import calculate_shortfall_weighted_loss, calculate_spectral_loss, weighted_reference_energy
 from .temporal import calculate_expected_temporal_loss, calculate_temporal_loss
 from .weights import calculate_spectral_weights
 
@@ -74,11 +74,13 @@ class Criterion:
         Returns:
             One loss per candidate.
         """
-        reference = _feature_values(feature)
-        candidates = _feature_values(approximation_feature)
-        terms, scale = spectral_terms(reference, candidates, self.weights, metric=self.metric)
-        counted = xp.where(candidates > reference, terms, shortfall_weight * terms)
-        return summed_terms(counted, distance=self.metric.distance) / scale
+        return calculate_shortfall_weighted_loss(
+            _feature_values(feature),
+            _feature_values(approximation_feature),
+            self.weights,
+            shortfall_weight,
+            metric=self.metric,
+        )
 
     def reference_energy(self, feature: Union[xp.ndarray, Histogram]) -> xp.ndarray:
         """

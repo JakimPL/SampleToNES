@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 import numpy as np
 import pytest
@@ -7,17 +7,24 @@ import pytest
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import SINGLE_STATE_LATTICE_WIDTH, UNIT_DRIVE
 from sampletones_core.constants.enums import ChannelName, GeneratorClassName
-from sampletones_core.fft import Fragment
-from sampletones_core.generators import GeneratorUnion
+from sampletones_core.fft import Fragment, Window
+from sampletones_core.fft.features import get_feature_extractor
+from sampletones_core.generators import GeneratorUnion, get_generators_by_channels
 from sampletones_core.generators.render import render_instructions
 from sampletones_core.instructions import InstructionUnion
-from sampletones_core.library import InstructionLibraryData
+from sampletones_core.library import InstructionLibraryData, InstructionLibraryFragment
+from sampletones_core.reconstructions.reconstructor.candidates import CandidateProvider
 from sampletones_core.reconstructions.reconstructor.contribution import Contribution
 from sampletones_core.reconstructions.reconstructor.decoder.base import Streams
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher, ScoredCandidate
 from sampletones_core.reconstructions.reconstructor.mix import FrameMix
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.catalog import KindCatalog
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.hearing import DrivenFeatures, SteadyHearing
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import StemLayout
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
+
+from ..conftest import JOINT_SIGNAL_LENGTH
 
 
 @pytest.fixture(scope="module")
@@ -173,3 +180,36 @@ def decoded_lines(
         ]
 
     return streams
+
+
+def heard_alone(
+    layout: StemLayout,
+    catalogs: Mapping[GeneratorClassName, KindCatalog],
+    provider: CandidateProvider,
+    bins: int,
+) -> SteadyHearing:
+    """A frame of ``layout``'s stem heard alone, each row's feature values read at its channel's drive."""
+    return SteadyHearing(
+        layout=layout, catalogs=catalogs, driven=DrivenFeatures.of([layout], catalogs, provider), bins=bins
+    )
+
+
+def library_matcher(
+    config: Config, channel_name: ChannelName, instructions: Sequence[InstructionUnion]
+) -> FrameMatcher:
+    """The matcher of a library holding ``instructions`` alone, played on ``channel_name`` and read under ``config``."""
+    window = Window.from_config(config)
+    extractor = get_feature_extractor(config, window)
+    channels = get_generators_by_channels(config, [channel_name])
+    generator = channels[channel_name]
+    data: Dict[InstructionUnion, InstructionLibraryFragment[Any]] = {
+        instruction: InstructionLibraryFragment.create(generator, instruction, extractor)
+        for instruction in instructions
+    }
+    return ReconstructorWorker(
+        config=config,
+        window=window,
+        channels=channels,
+        library_data=InstructionLibraryData.create(config, data),
+        signal_length=JOINT_SIGNAL_LENGTH,
+    ).matcher

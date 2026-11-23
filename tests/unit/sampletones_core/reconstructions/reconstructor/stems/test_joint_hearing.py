@@ -15,10 +15,7 @@ from sampletones_core.reconstructions.reconstructor.candidates import CandidateP
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
 from sampletones_core.reconstructions.reconstructor.mix import FrameMix
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.catalog import KindCatalog
-from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.hearing import (
-    SequenceHearing,
-    SteadyHearing,
-)
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.hearing import SequenceHearing
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import Slot, StemLayout
 from sampletones_core.reconstructions.reconstructor.window.profiles import FrameProfiles, frame_profiles
 from sampletones_core.reconstructions.reconstructor.window.surroundings import (
@@ -35,6 +32,7 @@ from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
 from ..conftest import rendered_fragment
+from .conftest import heard_alone, library_matcher
 
 PULSE: Final[GeneratorClassName] = GeneratorClassName.PULSE_GENERATOR
 NOISE: Final[GeneratorClassName] = GeneratorClassName.NOISE_GENERATOR
@@ -50,6 +48,8 @@ HALF_SHARE: Final[float] = 0.5
 FRAMES: Final[int] = 9
 MIDDLE: Final[int] = 4
 WINDOW_METHODS: Final[List[SpectrumMethod]] = [SpectrumMethod.CQT, SpectrumMethod.FFT]
+LINEAR_GAMMA: Final[int] = 0
+CURVED_GAMMA: Final[int] = 50
 
 
 @pytest.fixture(name="catalogs", scope="module")
@@ -140,17 +140,6 @@ class TestAFrameHeardAlone(BaseTestSuite):
 
     @pytest.mark.parametrize("place", [0, 1], ids=["first", "second"])
     def test_a_row_adds_its_library_power_at_its_channel_s_drive(
-        self, place: int, pulses: StemLayout, catalogs: Dict[GeneratorClassName, KindCatalog], bins: int
-    ) -> None:
-        rows = _rows(catalogs[PULSE], [HELD, OTHER])
-        hearing = SteadyHearing(layout=pulses, catalogs=catalogs, bins=bins)
-
-        assert np.array_equal(
-            hearing.powers(place, rows), catalogs[PULSE].powers[rows] / pulses.slots[place].drive ** 2
-        )
-
-    @pytest.mark.parametrize("place", [0, 1], ids=["first", "second"])
-    def test_a_row_s_feature_values_are_those_of_its_power(
         self,
         place: int,
         pulses: StemLayout,
@@ -158,25 +147,37 @@ class TestAFrameHeardAlone(BaseTestSuite):
         bins: int,
         provider: CandidateProvider,
     ) -> None:
-        """The joint assignment adds feature values as it adds power, which the configuration's linear features allow."""
         rows = _rows(catalogs[PULSE], [HELD, OTHER])
-        hearing = SteadyHearing(layout=pulses, catalogs=catalogs, bins=bins)
+        hearing = heard_alone(pulses, catalogs, provider, bins)
 
-        assert hearing.features(place, rows) == pytest.approx(_features(provider, hearing.powers(place, rows)))
+        assert np.array_equal(
+            hearing.powers(place, rows), catalogs[PULSE].powers[rows] / pulses.slots[place].drive ** 2
+        )
 
-    def test_a_fit_reads_a_row_at_its_power(
-        self, pulses: StemLayout, catalogs: Dict[GeneratorClassName, KindCatalog], bins: int
+    @pytest.mark.parametrize("place", [0, 1], ids=["first", "second"])
+    def test_a_fit_reads_a_row_in_the_feature_values_of_its_power(
+        self,
+        place: int,
+        pulses: StemLayout,
+        catalogs: Dict[GeneratorClassName, KindCatalog],
+        bins: int,
+        provider: CandidateProvider,
     ) -> None:
         rows = _rows(catalogs[PULSE], [HELD, OTHER, QUIET])
-        hearing = SteadyHearing(layout=pulses, catalogs=catalogs, bins=bins)
+        hearing = heard_alone(pulses, catalogs, provider, bins)
 
-        assert np.array_equal(hearing.unit_powers(1, rows), hearing.powers(1, rows))
-        assert np.array_equal(hearing.unit_features(1, rows), hearing.features(1, rows))
+        assert np.array_equal(hearing.unit_powers(place, rows), hearing.powers(place, rows))
+        assert hearing.unit_features(place, rows) == pytest.approx(_features(provider, hearing.powers(place, rows)))
 
     def test_the_frame_holds_nothing_before_its_rows_sound(
-        self, pulses: StemLayout, catalogs: Dict[GeneratorClassName, KindCatalog], bins: int, fragment: Fragment
+        self,
+        pulses: StemLayout,
+        catalogs: Dict[GeneratorClassName, KindCatalog],
+        bins: int,
+        provider: CandidateProvider,
+        fragment: Fragment,
     ) -> None:
-        hearing = SteadyHearing(layout=pulses, catalogs=catalogs, bins=bins)
+        hearing = heard_alone(pulses, catalogs, provider, bins)
 
         mix = hearing.empty_mix(fragment)
 
@@ -186,12 +187,46 @@ class TestAFrameHeardAlone(BaseTestSuite):
         assert (mix.variance, mix.sounding) == (0.0, 0)
 
     def test_every_proposal_is_heard_on_the_first_channel_of_its_kind(
-        self, pulse_and_noise: StemLayout, catalogs: Dict[GeneratorClassName, KindCatalog], bins: int
+        self,
+        pulse_and_noise: StemLayout,
+        catalogs: Dict[GeneratorClassName, KindCatalog],
+        bins: int,
+        provider: CandidateProvider,
     ) -> None:
-        hearing = SteadyHearing(layout=pulse_and_noise, catalogs=catalogs, bins=bins)
+        hearing = heard_alone(pulse_and_noise, catalogs, provider, bins)
 
         assert hearing.place_of(PULSE, catalogs[PULSE].rows_by_instruction[HELD]) == 0
         assert hearing.place_of(NOISE, catalogs[NOISE].rows_by_instruction[HIT]) == 1
+
+
+@pytest.fixture(name="curved", scope="module", params=[LINEAR_GAMMA, CURVED_GAMMA], ids=["gamma_0", "gamma_50"])
+def curved_fixture(request: pytest.FixtureRequest) -> CandidateProvider:
+    """The provider of a library of the cases' pulse rows, its features read at the gamma given."""
+    config = Config(library=InstructionsLibraryConfig(transformation_gamma=request.param))
+    return library_matcher(config, ChannelName.PULSE1, [QUIET, HELD, OTHER]).candidate_provider
+
+
+class TestAFrameHeardAloneAtEveryGamma(BaseTestSuite):
+    """A frame heard alone reads each row's feature values as a frame among silent neighbors reads them.
+
+    The frame among its neighbors holds the whole of every bin's window as its own share, so it hears
+    each row whole, and a row's feature values are the transform of the power it adds at its channel's
+    drive. A transformation gamma of zero reads power linearly, and fifty reads it through a curve.
+    """
+
+    @pytest.mark.parametrize("place", [0, 1], ids=["first", "second"])
+    def test_a_row_reads_as_the_frame_among_silent_neighbors_reads_it(
+        self, place: int, pulses: StemLayout, all_channels: Dict[ChannelName, GeneratorUnion], curved: CandidateProvider
+    ) -> None:
+        catalogs = {PULSE: KindCatalog.build(curved, all_channels[ChannelName.PULSE1])}
+        bins = int(catalogs[PULSE].powers.shape[1])
+        rows = _rows(catalogs[PULSE], [HELD, OTHER, QUIET])
+        silent = [_tonal(bins, leak=0.0, own=1.0, held=None), _tonal(bins, leak=0.0, own=1.0, held=None)]
+
+        alone = heard_alone(pulses, catalogs, curved, bins)
+
+        among = SequenceHearing.of(pulses, catalogs, silent, curved)
+        assert alone.unit_features(place, rows) == pytest.approx(among.unit_features(place, rows))
 
 
 class TestAFrameHeardAmongItsNeighbors(BaseTestSuite):
@@ -259,7 +294,6 @@ class TestAFrameHeardAmongItsNeighbors(BaseTestSuite):
 
         assert hearing.powers(place, rows) == pytest.approx(around[place].heard(keys, library))
         assert hearing.unit_powers(place, rows) == pytest.approx(around[place].gains(keys) * library)
-        assert hearing.features(place, rows) == pytest.approx(_features(provider, hearing.powers(place, rows)))
         assert hearing.unit_features(place, rows) == pytest.approx(
             _features(provider, hearing.unit_powers(place, rows))
         )
@@ -355,7 +389,7 @@ class TestHearingAFrameOfALine(BaseTestSuite):
             _line(catalog, [HELD] * frames, FIRST_DRIVE, coherent=True),
             _line(catalog, [QUIET] * frames, SECOND_DRIVE, coherent=True),
         ]
-        steady = SteadyHearing(layout=pulses, catalogs=catalogs, bins=bins)
+        steady = heard_alone(pulses, catalogs, provider, bins)
         rows = _rows(catalog, [HELD])
 
         hearing = self._hearing(pulses, catalogs, lines, frames // 2, self._profiles(method, bins), provider)
@@ -377,7 +411,7 @@ class TestHearingAFrameOfALine(BaseTestSuite):
             _line(catalog, [HELD] * FRAMES, FIRST_DRIVE, coherent=True),
             _line(catalog, [QUIET] * FRAMES, SECOND_DRIVE, coherent=True),
         ]
-        steady = SteadyHearing(layout=pulses, catalogs=catalogs, bins=bins)
+        steady = heard_alone(pulses, catalogs, provider, bins)
         rows = _rows(catalog, [HELD])
 
         hearing = self._hearing(pulses, catalogs, lines, 0, profiles, provider)
@@ -401,7 +435,7 @@ class TestHearingAFrameOfALine(BaseTestSuite):
             _line(catalog, [HELD] * MIDDLE + [QUIET] * (FRAMES - MIDDLE), FIRST_DRIVE, coherent=True),
             _line(catalog, [QUIET] * FRAMES, SECOND_DRIVE, coherent=True),
         ]
-        steady = SteadyHearing(layout=pulses, catalogs=catalogs, bins=bins)
+        steady = heard_alone(pulses, catalogs, provider, bins)
 
         hearing = self._hearing(pulses, catalogs, lines, MIDDLE, profiles, provider)
 
@@ -427,7 +461,7 @@ class TestHearingAFrameOfALine(BaseTestSuite):
             _line(catalogs[PULSE], [QUIET], FIRST_DRIVE, coherent=True),
             _line(catalogs[NOISE], [NoiseInstruction.null_instruction()], SECOND_DRIVE, coherent=False),
         ]
-        steady = SteadyHearing(layout=pulse_and_noise, catalogs=catalogs, bins=bins)
+        steady = heard_alone(pulse_and_noise, catalogs, provider, bins)
         pulse_rows = _rows(catalogs[PULSE], [HELD])
         noise_rows = _rows(catalogs[NOISE], [HIT])
 

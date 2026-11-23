@@ -30,6 +30,7 @@ from sampletones_shared.array import to_numpy, xp
 from tests.suite.base import BaseTestSuite
 
 from ..conftest import rendered_fragment
+from .conftest import heard_alone
 
 PULSE: Final[GeneratorClassName] = GeneratorClassName.PULSE_GENERATOR
 TRIANGLE: Final[GeneratorClassName] = GeneratorClassName.TRIANGLE_GENERATOR
@@ -87,7 +88,7 @@ def _columns_of(
         slot.kind: KindCatalog.build(joint_matcher.candidate_provider, all_channels[slot.channel_name])
         for slot in layout.slots
     }
-    hearing = SteadyHearing(layout=layout, catalogs=catalogs, bins=len(fragment.feature.values))
+    hearing = heard_alone(layout, catalogs, joint_matcher.candidate_provider, len(fragment.feature.values))
     weights = np.asarray(to_numpy(joint_matcher.scorer.criterion.weights), dtype=np.float64).reshape(-1)
     judge = CombinationJudge(
         fragment, layout, catalogs, joint_matcher, weights, hearing, StemContinuity.free(layout, catalogs)

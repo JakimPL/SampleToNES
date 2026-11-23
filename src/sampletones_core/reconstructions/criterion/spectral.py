@@ -36,11 +36,50 @@ def calculate_spectral_loss(
         ValueError: If the candidate width departs from the reference length.
         ValueError: If the spectral distance is unsupported.
     """
-    terms, scale = spectral_terms(reference, candidates, weights, metric=metric)
+    reference, candidates, weights = _prepare(reference, candidates, weights)
+    terms, scale = _aligned_terms(reference, candidates, weights, metric=metric)
     return summed_terms(terms, distance=metric.distance) / scale
 
 
-def spectral_terms(
+def calculate_shortfall_weighted_loss(
+    reference: xp.ndarray,
+    candidates: xp.ndarray,
+    weights: xp.ndarray,
+    shortfall_weight: float,
+    *,
+    metric: SpectralMetric,
+) -> xp.ndarray:
+    """
+    The spectral distance with every bin a candidate falls short in counted at ``shortfall_weight``.
+
+    A candidate meant to sound beside other channels leaves sound those channels may cover, so what
+    it falls short of counts lightly and what it adds beyond the target counts in full. A bin equal to
+    the target counts at the weight. A weight of one reads the spectral loss itself. Both sides are
+    compared on the active array backend, as the terms are measured, so host values score as values
+    on the graphics card do.
+
+    Args:
+        reference: Target feature values, one dimension.
+        candidates: Candidate feature values, one candidate per row.
+        weights: Per-bin weights of the configuration.
+        shortfall_weight: The share of its usual cost a bin the candidate falls short in counts.
+        metric: The distance family and the scale bins are measured on.
+
+    Returns:
+        One loss per candidate.
+
+    Raises:
+        ValueError: If the reference has more than one dimension.
+        ValueError: If the candidate width departs from the reference length.
+        ValueError: If the spectral distance is unsupported.
+    """
+    reference, candidates, weights = _prepare(reference, candidates, weights)
+    terms, scale = _aligned_terms(reference, candidates, weights, metric=metric)
+    counted = xp.where(candidates > reference, terms, shortfall_weight * terms)
+    return summed_terms(counted, distance=metric.distance) / scale
+
+
+def _aligned_terms(
     reference: xp.ndarray,
     candidates: xp.ndarray,
     weights: xp.ndarray,
@@ -50,27 +89,18 @@ def spectral_terms(
     """
     What every bin adds to the spectral distance of each candidate, and the scale the sum is read on.
 
-    A bin's term is the weighted distance of the floored candidate from the floored target, so the
-    loss is the terms' sum over the scale (its square root first, for the squared distance). A
-    ranking that counts some bins differently reads them here: a bin where a candidate falls short
-    of the target holds sound other channels may still cover.
-
-    Args:
-        reference: Target feature values, one dimension.
-        candidates: Candidate feature values, one candidate per row.
-        weights: Per-bin weights of the configuration.
-        metric: The distance family and the scale bins are measured on.
+    The sides come aligned (``_prepare``). A bin's term is the weighted distance of the floored
+    candidate from the floored target, so the loss is the terms' sum over the scale (its square root
+    first, for the squared distance). A ranking that counts some bins differently reads them here: a
+    bin where a candidate falls short of the target holds sound other channels may still cover.
 
     Returns:
         The per-bin terms, one row per candidate, and the scale: the target's weighted energy plus
         its floor.
 
     Raises:
-        ValueError: If the reference has more than one dimension.
-        ValueError: If the candidate width departs from the reference length.
         ValueError: If the spectral distance is unsupported.
     """
-    reference, candidates, weights = _prepare(reference, candidates, weights)
     floor = spectral_floor(reference, metric=metric)
     terms = _bin_terms(reference, candidates, weights, floor, metric=metric)
     return terms, weighted_reference_energy(reference, weights, distance=metric.distance) + floor
@@ -184,6 +214,10 @@ def _prepare(
     candidates: xp.ndarray,
     weights: xp.ndarray,
 ) -> Tuple[xp.ndarray, xp.ndarray, xp.ndarray]:
+    """The target as one row and the candidates as a stack of rows, on the active array backend.
+
+    The weights stand as one row, which every candidate's bins read.
+    """
     reference, candidates = align_candidates(reference, candidates)
     if weights.ndim == 1:
         weights = weights.reshape((1, -1))

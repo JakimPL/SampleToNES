@@ -1,4 +1,4 @@
-from typing import Self, assert_never
+from typing import Final, Self, assert_never
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -11,6 +11,8 @@ from sampletones_core.constants.enums import (
     SpectralDistance,
 )
 from sampletones_core.data import DataModel
+
+PASSES_HEARD_ALONE: Final[int] = 1
 
 
 class CalculationConfig(DataModel):
@@ -120,6 +122,11 @@ class AssignmentConfig(DataModel):
     method: AssignmentMethod = Field(default=generation_default("assignment", "method"))
     neighbors: int = Field(default=generation_default("assignment", "neighbors"), ge=0)
     inertia: ChannelInertia = Field(default_factory=ChannelInertia)
+
+    @property
+    def passes(self) -> int:
+        """How many times a run assigns every frame: once heard alone, then once in each neighbor pass."""
+        return PASSES_HEARD_ALONE + self.neighbors
 
 
 class DecoderConfig(DataModel):

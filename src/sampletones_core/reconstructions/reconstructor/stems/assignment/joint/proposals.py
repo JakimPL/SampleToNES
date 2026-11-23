@@ -75,7 +75,12 @@ class NoteDictionary:
 
     @classmethod
     def of(cls, layout: StemLayout, catalogs: Mapping[GeneratorClassName, KindCatalog]) -> Self:
-        """The dictionary of every note ``layout``'s channels may sound."""
+        """The dictionary of every note ``layout``'s channels may sound.
+
+        ``layout`` must hold at least one channel. The atoms' features are rows of their kinds'
+        catalogs, so they span the bins at every count of atoms: a stem whose kinds sound no note
+        has a dictionary of no atom over the bins.
+        """
         kinds: List[GeneratorClassName] = []
         notes: List[int] = []
         features: List[np.ndarray] = []
@@ -84,18 +89,21 @@ class NoteDictionary:
         for kind in sorted(layout.kinds):
             catalog = catalogs[kind]
             gain = layout.gain(kind)
+            rows: List[int] = []
             for note in catalog.sounded_notes:
                 for unit in catalog.units_of(note):
                     kinds.append(kind)
                     notes.append(note)
-                    features.append(catalog.features[unit.row])
+                    rows.append(unit.row)
                     caps.append(gain * unit.full_level)
                     powers.append(float(catalog.powers[unit.row].sum()))
+
+            features.append(catalog.features[np.array(rows, dtype=np.int64)])
 
         return cls(
             kinds=tuple(kinds),
             notes=np.array(notes, dtype=np.int64),
-            features=np.stack(features) if features else np.zeros((0, 0)),
+            features=np.concatenate(features),
             caps=np.array(caps),
             powers=np.array(powers),
         )

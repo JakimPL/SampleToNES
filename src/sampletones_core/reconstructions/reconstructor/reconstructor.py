@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import AbstractSet, Dict, Iterator, List, Optional, Sequence, Tuple
+from typing import AbstractSet, Dict, Final, Iterator, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -13,6 +13,7 @@ from sampletones_core.audio import (
     scale_stems,
 )
 from sampletones_core.configs import Config
+from sampletones_core.configs.generation import PASSES_HEARD_ALONE
 from sampletones_core.constants.algorithm import MINIMUM_AUDIO_LEVEL
 from sampletones_core.constants.enums import (
     TONE_CHANNELS,
@@ -81,6 +82,8 @@ from sampletones_shared.exceptions import NoLibraryDataError
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.progress import silent_reporter
 from sampletones_shared.utils.system.paths import to_path
+
+HEARD_ALONE_PASS: Final[int] = 0
 
 
 @dataclass(frozen=True)
@@ -258,18 +261,19 @@ class Reconstructor:
     ) -> Tuple[TrackAssignment, Streams]:
         """The frames' assignment and the streams decoded from it.
 
-        Every frame is first assigned heard alone and the recording decoded. Each configured neighbor
-        pass then assigns every frame again among what that decode plays around it, and the recording
-        is decoded anew, so the assignment returned is the one its streams were decoded from.
+        Every frame is first assigned heard alone. Each configured neighbor pass decodes the assignment
+        before it and assigns every frame again among what that decode plays around it. The last
+        assignment is decoded into the streams the run plays, so the assignment returned is the one its
+        streams were decoded from. The decodes between the passes run within matching's span, and
+        decoding begins with the last decode, so the progress a run reports only moves forward.
         """
         assignment = self._assign_stem_frames(stem_frames, stems_config, worker, report)
-        announce(report, ReconstructionStage.DECODING, STAGE_BEGUN, WHOLE_STAGE)
-        streams = worker.decoder.decode(assignment.alternatives)
-        for _ in range(self.config.generation.assignment.neighbors):
-            assignment = self._assign_beside_neighbors(stem_frames, stems_config, worker, streams, report)
+        for pass_index in range(PASSES_HEARD_ALONE, self.config.generation.assignment.passes):
             streams = worker.decoder.decode(assignment.alternatives)
+            assignment = self._assign_beside_neighbors(stem_frames, stems_config, worker, streams, pass_index, report)
 
-        return assignment, streams
+        announce(report, ReconstructionStage.DECODING, STAGE_BEGUN, WHOLE_STAGE)
+        return assignment, worker.decoder.decode(assignment.alternatives)
 
     def _play(
         self,
@@ -400,7 +404,7 @@ class Reconstructor:
             worker.matcher,
             worker.decoder.lattice_width,
         )
-        for frame in self._frames_announced(stem_frames, report):
+        for frame in self._frames_announced(stem_frames, HEARD_ALONE_PASS, report):
             assignment.add(assigner.assign(self._frames_at(stem_frames, frame)))
 
         return assignment
@@ -411,9 +415,10 @@ class Reconstructor:
         stems_config: StemsConfig,
         worker: ReconstructorWorker,
         streams: Streams,
+        pass_index: int,
         report: ReconstructionReporter,
     ) -> TrackAssignment:
-        """Assigns every frame again, in turn, among the notes ``streams`` plays around it.
+        """Assigns every frame again, in turn, among the notes ``streams`` plays around it, in pass ``pass_index``.
 
         A frame's analysis window reads its neighbors too, so what they play is a fixed part of the
         frame's reading, as a :class:`NeighborPass` hears it. A recording of no frames assigns none.
@@ -429,21 +434,27 @@ class Reconstructor:
             TransitionWeights.of(self.config),
             self.config.generation.assignment.inertia,
         )
-        for frame in self._frames_announced(stem_frames, report):
+        for frame in self._frames_announced(stem_frames, pass_index, report):
             assignment.add(neighbor_pass.assign(frame, self._frames_at(stem_frames, frame)))
 
         return assignment
 
     def _frames_announced(
-        self, stem_frames: Dict[int, FragmentedAudio], report: ReconstructionReporter
+        self, stem_frames: Dict[int, FragmentedAudio], pass_index: int, report: ReconstructionReporter
     ) -> Iterator[int]:
-        """Every frame the recordings share, in order, announced as the matching reaches it and at the end."""
+        """Every frame the recordings share, in order, announced as pass ``pass_index`` reaches it and at its end.
+
+        Matching counts the frames of every pass the run makes, so a pass counts on from the frames of
+        the passes before it, and the count rises through the whole of matching.
+        """
         frames = self._stem_frame_count(stem_frames)
+        matched = pass_index * frames
+        total = self.config.generation.assignment.passes * frames
         for frame in range(frames):
-            announce(report, ReconstructionStage.MATCHING, frame, frames)
+            announce(report, ReconstructionStage.MATCHING, matched + frame, total)
             yield frame
 
-        announce(report, ReconstructionStage.MATCHING, frames, frames)
+        announce(report, ReconstructionStage.MATCHING, matched + frames, total)
 
     @staticmethod
     def _bins(stem_frames: Dict[int, FragmentedAudio]) -> int:

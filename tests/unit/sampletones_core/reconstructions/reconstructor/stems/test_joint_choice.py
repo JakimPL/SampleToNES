@@ -27,7 +27,6 @@ from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.conti
     StemContinuity,
 )
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.fit import FitTarget
-from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.hearing import SteadyHearing
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import StemLayout, separate_layouts
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
@@ -36,7 +35,8 @@ from sampletones_shared.array import to_numpy
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
-from ..conftest import JOINT_SIGNAL_LENGTH, rendered_fragment
+from ..conftest import JOINT_PULSE_VOLUMES, JOINT_SIGNAL_LENGTH, rendered_fragment
+from .conftest import heard_alone, played_lines
 
 PULSES: Final[List[ChannelName]] = [ChannelName.PULSE1, ChannelName.PULSE2]
 PITCHES: Final[FrozenSet[int]] = frozenset({64, 67})
@@ -52,6 +52,9 @@ MIRRORED_DUTY: Final[int] = 3
 EXACT_TOLERANCE: Final[float] = 0.0
 STRONG_INERTIA: Final[float] = 100.0
 OWN_COST: Final[float] = 0.0
+ONSET_DUTY: Final[int] = 2
+RESTS: Final[int] = 6
+HELD_FRAMES: Final[int] = 6
 
 
 def _pulse(pitch: int, volume: int, duty_cycle: int) -> PulseInstruction:
@@ -114,7 +117,7 @@ class _Judging:
         self.catalog = KindCatalog.build(matcher.candidate_provider, channels[ChannelName.PULSE1])
         self.catalogs = {GeneratorClassName.PULSE_GENERATOR: self.catalog}
         self.weights = np.asarray(to_numpy(matcher.scorer.criterion.weights), dtype=np.float64).reshape(-1)
-        self.hearing = SteadyHearing(layout=self.layout, catalogs=self.catalogs, bins=len(fragment.feature.values))
+        self.hearing = heard_alone(self.layout, self.catalogs, matcher.candidate_provider, len(fragment.feature.values))
         target = FitTarget.of(fragment, matcher.scorer.criterion)
         self.search = CombinationSearch(fragment, target, self.layout, self.catalogs, matcher, self.hearing)
         self.judge = self.judged(StemContinuity.free(self.layout, self.catalogs))
@@ -176,6 +179,20 @@ def duet_fixture(
     """A frame of two pulse notes."""
     fragment = rendered_fragment(config, extractor, {ChannelName.PULSE1: LEAD, ChannelName.PULSE2: HARMONY})
     return _Judging(config, fragment, pulse_channels, duty_matcher)
+
+
+@pytest.fixture(name="onset", scope="module")
+def onset_fixture(
+    config: Config,
+    extractor: FeatureExtractor,
+    pulse_channels: Dict[ChannelName, GeneratorUnion],
+    joint_matcher: FrameMatcher,
+) -> _Judging:
+    """The first frame of a pulse note after rests, judged among the joint library's volumes."""
+    played = _pulse(PITCH, LOUD, ONSET_DUTY)
+    line = [SILENT] * RESTS + [played] * HELD_FRAMES
+    audio = played_lines(config, {ChannelName.PULSE1: line}, len(line))
+    return _Judging(config, extractor.extract(audio)[RESTS], pulse_channels, joint_matcher)
 
 
 class TestScoringACombination(BaseTestSuite):
@@ -265,6 +282,25 @@ class TestTheChoice(BaseTestSuite):
 
         assert judging.sounding(best.rows) == {(PITCH, LOUD, WRITTEN_DUTY)}
         assert sum(judging.catalog.sounding(row) for row in best.rows) == 1
+
+    def test_a_channel_left_after_a_silence_tries_the_volumes_beside_the_one_the_spectral_term_prefers(
+        self, onset: _Judging
+    ) -> None:
+        """The first frame of a note after rests reads a window reaching back into the silence.
+
+        So the spectral term prefers a volume quieter than the note plays, while the waveform hears the
+        played one. Thinning the note split over both pulses leaves one pulse, which the releveling
+        offers the volumes nearest the spectral term's, the played one among them.
+        """
+        volumes = sorted(JOINT_PULSE_VOLUMES)
+        alone = [onset.rows(_pulse(PITCH, volume, ONSET_DUTY), SILENT) for volume in volumes]
+        preferred = volumes[int(np.argmin(onset.search.spectral_costs(alone)))]
+        split = onset.row(_pulse(PITCH, HALF, ONSET_DUTY))
+
+        best = onset.best([(split, split)])
+
+        assert preferred < LOUD
+        assert onset.sounding(best.rows) == {(PITCH, LOUD, ONSET_DUTY)}
 
     def test_a_pulse_tries_the_duty_cycle_sharing_its_spectrum_however_far_the_spectral_term_sets_them(
         self, judging: _Judging, monkeypatch: pytest.MonkeyPatch

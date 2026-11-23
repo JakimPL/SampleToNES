@@ -23,7 +23,7 @@ from .columns import ChannelColumns
 from .combinations import CombinationSearch, Rows
 from .continuity import ChannelContinuity, StemContinuity
 from .fit import FitTarget
-from .hearing import FrameHearing, SequenceHearing, SteadyHearing, library_powers
+from .hearing import DrivenFeatures, FrameHearing, SequenceHearing, SteadyHearing, library_powers
 from .layout import StemLayout, separate_layouts
 from .pool import resting_pool, sounding_pool
 from .proposals import NoteDictionary, proposed_rows
@@ -142,6 +142,10 @@ class JointAssigner:
     ) -> None:
         """Builds the assigner for one recording.
 
+        Each kind's rows are read once for the recording: as the joint assignment names them, and in
+        feature values at every drive the stems give the kind's channels. Each stem holding a channel
+        has its note dictionary.
+
         Raises:
             ValueError: If a stem allows a channel the run has no generator for, or two stems may
                 occupy the same channel.
@@ -152,7 +156,10 @@ class JointAssigner:
         self.matcher = matcher
         self.width = lattice_width
         self.catalogs = kind_catalogs(self.layouts, channels, matcher.candidate_provider)
-        self.dictionaries = {layout.stem_id: NoteDictionary.of(layout, self.catalogs) for layout in self.layouts}
+        self.driven = DrivenFeatures.of(self.layouts, self.catalogs, matcher.candidate_provider)
+        self.dictionaries = {
+            layout.stem_id: NoteDictionary.of(layout, self.catalogs) for layout in self.layouts if layout.slots
+        }
         self.weights = np.asarray(to_numpy(matcher.scorer.criterion.weights), dtype=np.float64).reshape(-1)
         self.previous: Dict[int, Optional[Rows]] = {layout.stem_id: None for layout in self.layouts}
 
@@ -169,7 +176,7 @@ class JointAssigner:
         return self._assigned(
             fragments,
             {
-                layout.stem_id: SteadyHearing(layout=layout, catalogs=self.catalogs, bins=bins)
+                layout.stem_id: SteadyHearing(layout=layout, catalogs=self.catalogs, driven=self.driven, bins=bins)
                 for layout in self.layouts
             },
             {layout.stem_id: StemContinuity.free(layout, self.catalogs) for layout in self.layouts},
