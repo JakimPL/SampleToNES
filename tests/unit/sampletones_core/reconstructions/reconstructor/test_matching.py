@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Dict, Final, List, Tuple
 
@@ -7,6 +8,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
+from sampletones_core.configs.generation import GenerationConfig
 from sampletones_core.constants.algorithm import MAX_DRIVE, UNIT_DRIVE
 from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.fft import Fragment, Window
@@ -36,6 +38,9 @@ QUIET_RUNG: Final[int] = 3
 MIDDLE_RUNG: Final[int] = 7
 REQUESTED_ROWS: Final[int] = 4
 CHANNEL_PRICE: Final[float] = 0.01
+UNPRICED: Final[float] = 0.0
+SINGLE_SHORTLIST: Final[int] = 1
+MUTE: Final[PulseInstruction] = PulseInstruction(on=True, pitch=LADDER_PITCH, volume=0, duty_cycle=LADDER_DUTY_CYCLE)
 
 
 def _long_noise(library_data: InstructionLibraryData) -> NoiseInstruction:
@@ -78,6 +83,42 @@ def _kinds(worker: ReconstructorWorker) -> List[GeneratorUnion]:
 def _generator_of(worker: ReconstructorWorker, instruction: InstructionUnion) -> GeneratorUnion:
     """The generator of the kind the instruction belongs to."""
     return next(generator for generator in _kinds(worker) if generator.get_instruction_type() is type(instruction))
+
+
+def _rebuilt(worker: ReconstructorWorker, generation: GenerationConfig) -> ReconstructorWorker:
+    """``worker`` built again under ``generation``."""
+    return ReconstructorWorker(
+        config=worker.config.model_copy(update={"generation": generation}),
+        window=worker.window,
+        channels=worker.channels,
+        library_data=worker.library_data,
+        signal_length=WORKER_SIGNAL_LENGTH,
+    )
+
+
+def _shortlisting(worker: ReconstructorWorker, top_k: int) -> ReconstructorWorker:
+    """``worker`` with a shortlist ``top_k`` long."""
+    generation = worker.config.generation
+    decoder = generation.decoder.model_copy(update={"top_k": top_k})
+    return _rebuilt(worker, generation.model_copy(update={"decoder": decoder}))
+
+
+def _priced(worker: ReconstructorWorker, channel_price: float) -> ReconstructorWorker:
+    """``worker`` charging ``channel_price`` for each channel a frame sounds."""
+    generation = worker.config.generation
+    weights = generation.weights.model_copy(update={"channel_price": channel_price})
+    return _rebuilt(worker, generation.model_copy(update={"weights": weights}))
+
+
+def _instructions(worker: ReconstructorWorker, generator: GeneratorUnion) -> Tuple[InstructionUnion, ...]:
+    return worker.matcher.candidate_provider.candidates({generator.class_name(): generator}).instructions
+
+
+def _sounding(worker: ReconstructorWorker, target: Fragment, instruction: InstructionUnion) -> Contribution:
+    """What ``instruction`` adds to ``target``, phased against it."""
+    residual = np.asarray(target.audio, dtype=np.float64)
+    power = worker.candidate_provider.power_of(instruction)
+    return worker.matcher.contribution(instruction, residual, power, drive=UNIT_DRIVE)
 
 
 def _temporal_loss(worker: ReconstructorWorker, target: Fragment, contribution: Contribution) -> float:
@@ -223,6 +264,41 @@ class TestScoreColumn:
                     costs[candidate.instruction] + CHANNEL_PRICE * candidate.instruction.on
                 )
 
+    def test_a_shortlist_reaching_past_the_class_holds_every_candidate_once(
+        self,
+        worker: ReconstructorWorker,
+        synthetic_fragment: Fragment,
+    ) -> None:
+        """The silence joins the shortlist only where the spectral ranking left it out."""
+        generator = _kinds(worker)[0]
+        covering = _shortlisting(worker, len(_instructions(worker, generator)) + 1)
+
+        column = covering.matcher.score_column(
+            synthetic_fragment, generator, FrameMix.empty(synthetic_fragment), drive=UNIT_DRIVE
+        )
+
+        assert Counter(candidate.instruction for candidate in column) == Counter(_instructions(worker, generator))
+
+    def test_a_shortlist_of_one_holds_the_best_row_and_the_silence(
+        self,
+        worker: ReconstructorWorker,
+        library_data: InstructionLibraryData,
+        audible_instruction: InstructionUnion,
+        config: Config,
+        window: Window,
+    ) -> None:
+        target = library_data[audible_instruction].get_fragment(0, config, window)
+        single = _shortlisting(worker, SINGLE_SHORTLIST)
+
+        column = single.matcher.score_column(
+            target, _generator_of(worker, audible_instruction), FrameMix.empty(target), drive=UNIT_DRIVE
+        )
+
+        assert [candidate.instruction for candidate in column] == [
+            audible_instruction,
+            type(audible_instruction).null_instruction(),
+        ]
+
     def test_a_library_without_the_class_s_silence_is_refused(
         self,
         config: Config,
@@ -305,6 +381,22 @@ class TestScoringTogether:
             assert [candidate.instruction for candidate in column] == [candidate.instruction for candidate in alone]
             assert [candidate.cost for candidate in column] == pytest.approx([candidate.cost for candidate in alone])
 
+    def test_rows_a_column_shortlisted_cost_what_the_column_gives_them_beside_the_same_mix(
+        self,
+        worker: ReconstructorWorker,
+        audible_instruction: InstructionUnion,
+        synthetic_fragment: Fragment,
+    ) -> None:
+        mix = FrameMix.of(synthetic_fragment, [_sounding(worker, synthetic_fragment, audible_instruction)])
+        generator = _kinds(worker)[-1]
+        column = worker.matcher.score_column(synthetic_fragment, generator, mix, drive=DRIVE)
+        rows = [_instructions(worker, generator).index(candidate.instruction) for candidate in column]
+
+        again = worker.matcher.score_rows(synthetic_fragment, generator, mix, rows, drive=DRIVE)
+
+        assert [candidate.instruction for candidate in again] == [candidate.instruction for candidate in column]
+        assert [candidate.cost for candidate in again] == pytest.approx([candidate.cost for candidate in column])
+
     def test_mixes_scored_together_cost_what_each_costs_alone(
         self,
         worker: ReconstructorWorker,
@@ -315,6 +407,103 @@ class TestScoringTogether:
         together = worker.matcher.mix_costs(synthetic_fragment, mixes)
 
         assert list(together) == pytest.approx([worker.matcher.mix_cost(synthetic_fragment, mix) for mix in mixes])
+
+
+class TestTheSpectralCostOfMixes:
+    """The spectral cost of the frame with each row of a stack sounding, the first stage of every cost."""
+
+    def test_a_stack_of_mixes_costs_what_each_mix_costs_alone(
+        self,
+        worker: ReconstructorWorker,
+        audible_instruction: InstructionUnion,
+        synthetic_fragment: Fragment,
+    ) -> None:
+        power = worker.candidate_provider.power_of(audible_instruction)
+        powers = np.stack([power, np.zeros_like(power), 2.0 * power])
+
+        together = worker.matcher.spectral_costs(synthetic_fragment, powers)
+
+        alone = [float(worker.matcher.spectral_costs(synthetic_fragment, row[None, :])[0]) for row in powers]
+        assert list(together) == pytest.approx(alone)
+
+    def test_the_frame_s_own_sound_costs_nothing_and_its_silence_costs_more(
+        self,
+        worker: ReconstructorWorker,
+        library_data: InstructionLibraryData,
+        audible_instruction: InstructionUnion,
+        config: Config,
+        window: Window,
+    ) -> None:
+        target = library_data[audible_instruction].get_fragment(0, config, window)
+        power = worker.candidate_provider.power_of(audible_instruction)
+
+        own, silent = worker.matcher.spectral_costs(target, np.stack([power, np.zeros_like(power)]))
+
+        assert own == pytest.approx(0.0, abs=1e-5)
+        assert silent > own
+
+    def test_a_mix_alone_pays_the_price_of_each_channel_it_sounds(
+        self,
+        worker: ReconstructorWorker,
+        audible_instruction: InstructionUnion,
+        synthetic_fragment: Fragment,
+    ) -> None:
+        sounding = _sounding(worker, synthetic_fragment, audible_instruction)
+        mixes = [FrameMix.of(synthetic_fragment, [sounding] * count) for count in range(3)]
+        priced = _priced(worker, CHANNEL_PRICE)
+        unpriced = _priced(worker, UNPRICED)
+
+        charged = priced.matcher.mix_costs(synthetic_fragment, mixes) - unpriced.matcher.mix_costs(
+            synthetic_fragment, mixes
+        )
+
+        assert list(charged) == pytest.approx([0.0, CHANNEL_PRICE, 2 * CHANNEL_PRICE])
+
+
+@pytest.fixture(name="mute_worker", scope="module")
+def mute_worker_fixture(
+    config: Config,
+    window: Window,
+    extractor: FeatureExtractor,
+    channels: Dict[ChannelName, GeneratorUnion],
+) -> ReconstructorWorker:
+    """A pulse sounding at volume zero beside its silence, which every frame scores alike, at no price."""
+    generator = channels[ChannelName.PULSE1]
+    data: Dict[InstructionUnion, InstructionLibraryFragment[Any]] = {
+        instruction: InstructionLibraryFragment.create(generator, instruction, extractor)
+        for instruction in (generator.get_instruction_type().null_instruction(), MUTE)
+    }
+    weights = config.generation.weights.model_copy(update={"channel_price": UNPRICED})
+    return ReconstructorWorker(
+        config=config.model_copy(update={"generation": config.generation.model_copy(update={"weights": weights})}),
+        window=window,
+        channels={ChannelName.PULSE1: generator},
+        library_data=InstructionLibraryData.create(config, data),
+        signal_length=WORKER_SIGNAL_LENGTH,
+    )
+
+
+class TestATieInAColumn:
+    """A column lists the channel's silence ahead of a sounding row costing the same, in whichever order they came."""
+
+    @pytest.mark.parametrize("muted_first", [True, False], ids=["the_mute_given_first", "the_silence_given_first"])
+    def test_the_silence_stands_ahead_of_a_row_costing_the_same(
+        self, mute_worker: ReconstructorWorker, synthetic_fragment: Fragment, muted_first: bool
+    ) -> None:
+        generator = mute_worker.channels[ChannelName.PULSE1]
+        instructions = _instructions(mute_worker, generator)
+        rows = [instructions.index(MUTE), instructions.index(generator.get_instruction_type().null_instruction())]
+
+        column = mute_worker.matcher.score_rows(
+            synthetic_fragment,
+            generator,
+            FrameMix.empty(synthetic_fragment),
+            rows if muted_first else rows[::-1],
+            drive=UNIT_DRIVE,
+        )
+
+        assert column[0].cost == column[1].cost
+        assert [candidate.instruction.on for candidate in column] == [False, True]
 
 
 class TestHowACandidateIsMeasured(BaseTestSuite):

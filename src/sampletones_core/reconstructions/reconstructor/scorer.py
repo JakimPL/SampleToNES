@@ -1,3 +1,6 @@
+from functools import partial
+from typing import Callable
+
 import numpy as np
 
 from sampletones_core.configs import Config
@@ -12,9 +15,10 @@ class Scorer:
     Scores what a frame sounds like against the target fragment, in two stages.
 
     `spectral_costs` ranks a stack of mixed features by the phase-independent spectral term,
-    producing the shortlist. `frame_costs` completes the criterion for shortlisted mixes with the
-    temporal term their expected waveforms measure, and charges each channel a mix sounds the
-    configured price.
+    producing the shortlist, and `shortfall_weighted_costs` ranks them with the bins a mix falls short
+    in counted lightly, for a row meant to sound beside others. `frame_costs` completes the criterion
+    for shortlisted mixes with the temporal term their expected waveforms measure, and charges each
+    channel a mix sounds the configured price.
     """
 
     def __init__(self, config: Config, window: Window, signal_length: int) -> None:
@@ -35,16 +39,7 @@ class Scorer:
         Returns:
             One spectral cost per mix.
         """
-        errors = None
-        target_values = None
-        try:
-            target_values = xp.asarray(target.feature.values)
-            errors = self.criterion.spectral_loss(target_values, features)
-            return np.asarray(to_numpy(errors), dtype=np.float64)
-        finally:
-            del errors, target_values
-            if CUPY_AVAILABLE:
-                xp.get_default_memory_pool().free_all_blocks()
+        return self._read(target, partial(self.criterion.spectral_loss, approximation_feature=features))
 
     def shortfall_weighted_costs(self, target: Fragment, features: xp.ndarray, shortfall_weight: float) -> np.ndarray:
         """
@@ -58,16 +53,14 @@ class Scorer:
         Returns:
             One cost per mix.
         """
-        errors = None
-        target_values = None
-        try:
-            target_values = xp.asarray(target.feature.values)
-            errors = self.criterion.shortfall_weighted_loss(target_values, features, shortfall_weight)
-            return np.asarray(to_numpy(errors), dtype=np.float64)
-        finally:
-            del errors, target_values
-            if CUPY_AVAILABLE:
-                xp.get_default_memory_pool().free_all_blocks()
+        return self._read(
+            target,
+            partial(
+                self.criterion.shortfall_weighted_loss,
+                approximation_feature=features,
+                shortfall_weight=shortfall_weight,
+            ),
+        )
 
     def frame_costs(
         self,
@@ -117,6 +110,24 @@ class Scorer:
         """
         energy = self.criterion.reference_energy(xp.asarray(target.feature.values))
         return float(to_numpy(energy).reshape(-1)[0])
+
+    @staticmethod
+    def _read(target: Fragment, loss: Callable[[xp.ndarray], xp.ndarray]) -> np.ndarray:
+        """The costs ``loss`` reads off the target's feature, brought to the host in double precision.
+
+        A loss runs on the active array backend. Once its costs are read, every block of device memory
+        the backend's pool holds unused is released.
+        """
+        errors = None
+        target_values = None
+        try:
+            target_values = xp.asarray(target.feature.values)
+            errors = loss(target_values)
+            return np.asarray(to_numpy(errors), dtype=np.float64)
+        finally:
+            del errors, target_values
+            if CUPY_AVAILABLE:
+                xp.get_default_memory_pool().free_all_blocks()
 
     @staticmethod
     def top_k(costs: np.ndarray, k: int) -> np.ndarray:

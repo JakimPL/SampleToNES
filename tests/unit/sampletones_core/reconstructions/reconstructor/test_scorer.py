@@ -16,6 +16,9 @@ from sampletones_core.reconstructions.reconstructor.worker import ReconstructorW
 from .conftest import WORKER_SIGNAL_LENGTH
 
 CHANNEL_PRICE: Final[float] = 0.01
+SHORTFALL_WEIGHT: Final[float] = 0.25
+FULL_WEIGHT: Final[float] = 1.0
+LOUDER: Final[float] = 4.0
 
 
 def _candidates(worker: ReconstructorWorker) -> ClassCandidates:
@@ -61,6 +64,48 @@ class TestSpectralCosts:
         costs = worker.scorer.spectral_costs(target, features)
         shifted_costs = worker.scorer.spectral_costs(shifted_target, features)
         np.testing.assert_allclose(shifted_costs, costs, rtol=1e-6)
+
+
+class TestShortfallWeightedCosts:
+    """A mix's bins short of the target count at the weight given, and its bins beyond the target in full."""
+
+    @staticmethod
+    def _features(worker: ReconstructorWorker, instruction: InstructionUnion) -> np.ndarray:
+        """The features of the frame silent, and of the instruction's own sound played louder."""
+        power = worker.candidate_provider.power_of(instruction)
+        return worker.candidate_provider.features_of(np.stack([np.zeros_like(power), LOUDER * power]))
+
+    def test_a_full_weight_reads_the_spectral_cost(
+        self,
+        worker: ReconstructorWorker,
+        library_data: InstructionLibraryData,
+        audible_instruction: InstructionUnion,
+        config: Config,
+        window: Window,
+    ) -> None:
+        target = library_data[audible_instruction].get_fragment(0, config, window)
+        features = self._features(worker, audible_instruction)
+
+        weighted = worker.scorer.shortfall_weighted_costs(target, features, FULL_WEIGHT)
+
+        assert list(weighted) == pytest.approx(list(worker.scorer.spectral_costs(target, features)))
+
+    def test_silence_falls_short_by_the_weight_and_a_louder_sound_overshoots_in_full(
+        self,
+        worker: ReconstructorWorker,
+        library_data: InstructionLibraryData,
+        audible_instruction: InstructionUnion,
+        config: Config,
+        window: Window,
+    ) -> None:
+        target = library_data[audible_instruction].get_fragment(0, config, window)
+        features = self._features(worker, audible_instruction)
+
+        silent, louder = worker.scorer.shortfall_weighted_costs(target, features, SHORTFALL_WEIGHT)
+
+        full_silent, full_louder = worker.scorer.spectral_costs(target, features)
+        assert silent == pytest.approx(SHORTFALL_WEIGHT * full_silent)
+        assert louder == pytest.approx(full_louder)
 
 
 class TestFrameCosts:

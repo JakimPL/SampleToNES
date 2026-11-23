@@ -1,13 +1,12 @@
 import itertools
 from typing import List, Tuple
 
-import numpy as np
-
 from sampletones_core.configs import Config
 from sampletones_core.instructions import InstructionUnion
 
 from ..matching import ScoredCandidate
 from .base import Alternatives, ChannelLattice, Decoder, Streams
+from .path import traced_back
 from .transition import TransitionWeights, transition_cost
 
 
@@ -19,6 +18,10 @@ class ViterbiDecoder(Decoder):
     candidate's own cost, moving between two candidates costs what changes between their
     instructions — pitch, volume, timbre, and turning a channel on or off. The path that
     minimizes the total holds a steady note where per-frame costs alone would flicker.
+
+    A tie goes to the earlier candidate of a column: a candidate is reached from the earliest of
+    equally cheap predecessors, and the path ends on the earliest of equally cheap last candidates.
+    A column lists a channel's silence ahead of an equal cost, so the silence takes such a tie.
     """
 
     def __init__(self, config: Config) -> None:
@@ -41,7 +44,7 @@ class ViterbiDecoder(Decoder):
             return []
 
         backpointers, final_costs = self._forward_pass(frames)
-        return self._backtrack(backpointers, final_costs)
+        return traced_back(backpointers, final_costs)
 
     def _forward_pass(self, frames: ChannelLattice) -> Tuple[List[List[int]], List[float]]:
         costs = [state.cost for state in frames[0]]
@@ -75,13 +78,3 @@ class ViterbiDecoder(Decoder):
                 best_index = index
 
         return best_index, best_cost
-
-    def _backtrack(self, backpointers: List[List[int]], final_costs: List[float]) -> List[int]:
-        last = int(np.argmin(final_costs))
-        path = [last]
-        for layer in reversed(backpointers):
-            last = layer[last]
-            path.append(last)
-
-        path.reverse()
-        return path

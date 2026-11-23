@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Final, List, Sequence, Tuple
 
 import pytest
@@ -13,11 +14,15 @@ from sampletones_core.reconstructions.reconstructor.decoder.base import (
     StemPools,
     Streams,
 )
+from sampletones_core.reconstructions.reconstructor.decoder.combinations import CombinationsDecoder
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
-from .conftest import JUMPED, STEADY, combination, combinations_decoder
+from .conftest import JUMPED, RAISED, SEMITONE, STEADY, combination, combinations_decoder, priced_by_the_semitone
 
 PULSES: Final[Tuple[ChannelName, ChannelName]] = (ChannelName.PULSE1, ChannelName.PULSE2)
-NEIGHBOR: Final[PulseInstruction] = PulseInstruction(on=True, pitch=STEADY.pitch + 1, volume=10, duty_cycle=0)
+NEIGHBOR: Final[PulseInstruction] = RAISED
+JUMPED_RAISED: Final[PulseInstruction] = PulseInstruction(on=True, pitch=JUMPED.pitch + 1, volume=10, duty_cycle=0)
 HELD: Final[Tuple[PulseInstruction, PulseInstruction]] = (STEADY, JUMPED)
 UNISON: Final[Tuple[PulseInstruction, PulseInstruction]] = (STEADY, STEADY)
 SWAPPED: Final[Tuple[PulseInstruction, PulseInstruction]] = (JUMPED, STEADY)
@@ -44,6 +49,11 @@ def _cheapest(frames: Sequence[Pool]) -> List[Tuple[InstructionUnion, ...]]:
         tuple(candidate.instruction for candidate in min(pool, key=lambda pooled: pooled.cost).candidates)
         for pool in frames
     ]
+
+
+@pytest.fixture(name="semitone_decoder")
+def semitone_decoder_fixture(config: Config) -> CombinationsDecoder:
+    return CombinationsDecoder(priced_by_the_semitone(config))
 
 
 @pytest.fixture(name="flipping_frames")
@@ -100,7 +110,7 @@ class TestCombinationsContinuity:
     @pytest.mark.parametrize("saving, moved", [(0.1, False), (0.2, True)], ids=["saves less", "saves more"])
     def test_a_move_pays_where_the_frame_saves_more_than_the_change_costs(
         self,
-        config: Config,
+        semitone_decoder: CombinationsDecoder,
         saving: float,
         moved: bool,
     ) -> None:
@@ -109,13 +119,86 @@ class TestCombinationsContinuity:
             (combination([STEADY], 0.0),),
             (combination([STEADY], saving), combination([NEIGHBOR], 0.0)),
         ]
-        decoder = combinations_decoder(
-            config, pitch_weight=0.15, volume_weight=0.0, timbre_weight=0.0, on_off_weight=0.0
-        )
 
-        streams = decoder.decode(_alternatives((ChannelName.PULSE1,), frames))
+        streams = semitone_decoder.decode(_alternatives((ChannelName.PULSE1,), frames))
 
         assert _played(streams, ChannelName.PULSE1)[-1] == (NEIGHBOR if moved else STEADY)
+
+
+class TestWhatAPathCosts(BaseTestSuite):
+    """A path pays each frame's cost once, whatever the channels it sounds, and each channel's own change.
+
+    Both pulses play in every frame, and the last frame's cheaper combination moves one or both of them
+    a semitone, which the last frame pays once per channel moved.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        moved_to: Tuple[PulseInstruction, PulseInstruction]
+        saving: float
+        moved: bool
+
+    test_cases = (
+        TestCase(
+            label="a_frame_saving_less_than_one_change_counted_once",
+            moved_to=(RAISED, JUMPED),
+            saving=0.7 * SEMITONE,
+            moved=False,
+        ),
+        TestCase(
+            label="the_second_channel_moving_alone_pays_its_change",
+            moved_to=(STEADY, JUMPED_RAISED),
+            saving=1.5 * SEMITONE,
+            moved=True,
+        ),
+        TestCase(
+            label="both_channels_moving_pay_both_changes",
+            moved_to=(RAISED, JUMPED_RAISED),
+            saving=1.5 * SEMITONE,
+            moved=False,
+        ),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_move_pays_where_the_frame_saves_more_than_its_changes(
+        self, test_case: TestCase, semitone_decoder: CombinationsDecoder
+    ) -> None:
+        frames: List[Pool] = [
+            (combination(HELD, 0.0),),
+            (combination(HELD, test_case.saving), combination(test_case.moved_to, 0.0)),
+        ]
+
+        streams = semitone_decoder.decode(_alternatives(PULSES, frames))
+
+        played = (_played(streams, ChannelName.PULSE1)[-1], _played(streams, ChannelName.PULSE2)[-1])
+        assert played == (test_case.moved_to if test_case.moved else HELD)
+
+
+class TestWhatAPathReads:
+    """The pools carry what a path chooses among, and the lattices name the channels in play and their order."""
+
+    def test_the_path_follows_the_pools_whatever_the_columns_offer(self, semitone_decoder: CombinationsDecoder) -> None:
+        frames: List[Pool] = [(combination([STEADY], 0.0), combination([RAISED], 0.5)) for _ in range(3)]
+        columns: ChannelLattice = [(combination([JUMPED], 0.0).candidates[0],) for _ in frames]
+
+        streams = semitone_decoder.decode(
+            Alternatives(
+                lattices={ChannelName.PULSE1: columns},
+                pools={0: StemPools(channel_names=(ChannelName.PULSE1,), frames=frames)},
+            )
+        )
+
+        assert _played(streams, ChannelName.PULSE1) == [STEADY] * len(frames)
+
+    def test_a_pool_of_one_combination_in_every_frame_is_played_whatever_it_costs(
+        self, semitone_decoder: CombinationsDecoder
+    ) -> None:
+        frames: List[Pool] = [(combination(HELD, 0.0),), (combination(SWAPPED, 1.0),), (combination(HELD, 0.0),)]
+
+        streams = semitone_decoder.decode(_alternatives(PULSES, frames))
+
+        assert _played(streams, ChannelName.PULSE1) == [STEADY, JUMPED, STEADY]
+        assert _played(streams, ChannelName.PULSE2) == [JUMPED, STEADY, JUMPED]
 
 
 class TestCombinationsCoverage:

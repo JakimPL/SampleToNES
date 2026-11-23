@@ -7,6 +7,7 @@ from sampletones_core.reconstructions.reconstructor.decoder.transition import Tr
 from .conftest import STEADY
 
 WEIGHTS = TransitionWeights(pitch=0.1, volume=0.01, timbre=0.05, on_off=0.25)
+FREE = TransitionWeights(pitch=0.0, volume=0.0, timbre=0.0, on_off=0.0)
 
 
 class TestTransitionWeights:
@@ -66,6 +67,32 @@ class TestTransitionCost:
         assert transition_cost(before, after, WEIGHTS) == pytest.approx(
             3 * WEIGHTS.pitch + 2 * WEIGHTS.volume + WEIGHTS.timbre
         )
+
+    def test_two_silent_frames_cost_nothing_whatever_their_fields_hold(self) -> None:
+        """A silent instruction sounds nothing, so the note, volume and timbre it carries go unheard."""
+        low = PulseInstruction(on=False, pitch=40, volume=0, duty_cycle=0)
+        high = PulseInstruction(on=False, pitch=80, volume=12, duty_cycle=3)
+
+        assert transition_cost(low, high, WEIGHTS) == 0.0
+
+    def test_a_channel_starting_pays_the_on_off_weight_alone_however_far_its_silence_lies(self) -> None:
+        far_silence = PulseInstruction(on=False, pitch=STEADY.pitch + 24, volume=0, duty_cycle=3)
+
+        assert transition_cost(far_silence, STEADY, WEIGHTS) == WEIGHTS.on_off
+        assert transition_cost(STEADY, far_silence, WEIGHTS) == WEIGHTS.on_off
+
+    @pytest.mark.parametrize("duty_cycle", [1, 3], ids=["the_next_duty_cycle", "the_farthest_duty_cycle"])
+    def test_a_change_of_timbre_costs_the_timbre_weight_however_far_it_goes(self, duty_cycle: int) -> None:
+        changed = PulseInstruction(on=True, pitch=STEADY.pitch, volume=STEADY.volume, duty_cycle=duty_cycle)
+
+        assert transition_cost(STEADY, changed, WEIGHTS) == WEIGHTS.timbre
+
+    def test_free_weights_charge_no_change(self) -> None:
+        moved = PulseInstruction(on=True, pitch=STEADY.pitch + 12, volume=STEADY.volume - 5, duty_cycle=3)
+        silence = PulseInstruction.null_instruction()
+
+        assert transition_cost(STEADY, moved, FREE) == 0.0
+        assert transition_cost(STEADY, silence, FREE) == 0.0
 
     def test_instructions_of_two_kinds_of_channel_are_refused(self) -> None:
         with pytest.raises(TypeError, match="one kind"):

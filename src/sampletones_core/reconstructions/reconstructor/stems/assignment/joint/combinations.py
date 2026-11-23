@@ -7,7 +7,6 @@ import numpy as np
 from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.fft import Fragment
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
-from sampletones_shared.array import xp
 
 from .batches import cheapest_row, split_by_group
 from .catalog import KindCatalog, UnitRow
@@ -292,7 +291,8 @@ class CombinationSearch:
 
     def spectral_costs(self, combinations: Sequence[Rows]) -> np.ndarray:
         """The spectral cost of the frame with each combination's rows sounding together."""
-        return self._spectral_costs(np.stack([self._power_of(rows) for rows in combinations]))
+        powers = np.stack([self._power_of(rows) for rows in combinations])
+        return self.matcher.spectral_costs(self.fragment, powers)
 
     def canonical(self, rows: Rows) -> Rows:
         """The rows with the pulses in one order wherever the two are driven alike, so one sound reads once."""
@@ -308,10 +308,13 @@ class CombinationSearch:
         """The choices surviving the short fit, fitted further, every channel starting at its proposal's volume."""
         fits = ChoiceFits.of(channels, base, base_powers)
         levels = fits.fitted(self.target, [channel.starts[channel.entries] for channel in channels], FIRST_UPDATES)
-        cheapest = np.argsort(self._spectral_costs(fits.powers(levels)), kind="stable")[:SURVIVORS]
+        costs = self.matcher.spectral_costs(self.fragment, fits.powers(levels))
+        cheapest = np.argsort(costs, kind="stable")[:SURVIVORS]
         kept = fits.kept(cheapest)
         levels = kept.fitted(self.target, [level[cheapest] for level in levels], FURTHER_UPDATES)
-        return Survivors(choices=cheapest, levels=levels, costs=self._spectral_costs(kept.powers(levels)))
+        return Survivors(
+            choices=cheapest, levels=levels, costs=self.matcher.spectral_costs(self.fragment, kept.powers(levels))
+        )
 
     @property
     def _bins(self) -> int:
@@ -373,7 +376,9 @@ class CombinationSearch:
             self._without(place, current[position])[None, :] + self.hearing.powers(place, options)
             for position, options in movable
         ]
-        costs = split_by_group(self._spectral_costs(np.concatenate(stacks)), [options for _, options in movable])
+        costs = split_by_group(
+            self.matcher.spectral_costs(self.fragment, np.concatenate(stacks)), [options for _, options in movable]
+        )
         for (position, options), option_costs in zip(movable, costs):
             current[position][place] = cheapest_row(options, option_costs)
 
@@ -409,11 +414,6 @@ class CombinationSearch:
     def _row_power(self, place: int, row: int) -> np.ndarray:
         """The power ``row`` adds to the frame on the channel at ``place``."""
         return np.asarray(self.hearing.powers(place, [row])[0])
-
-    def _spectral_costs(self, powers: np.ndarray) -> np.ndarray:
-        """The spectral cost of the frame with each row of ``powers`` sounding."""
-        features = self.matcher.candidate_provider.features_of(xp.asarray(powers))
-        return self.matcher.scorer.spectral_costs(self.fragment, features)
 
 
 def _cost_of(combination: Combination) -> float:

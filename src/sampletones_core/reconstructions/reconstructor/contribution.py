@@ -3,6 +3,8 @@ from typing import Self
 
 import numpy as np
 
+from sampletones_core.fft import Fragment
+
 
 @dataclass(frozen=True)
 class Contribution:
@@ -36,3 +38,8 @@ class Contribution:
             variance=0.0,
             sounding=False,
         )
+
+    @classmethod
+    def silence_of(cls, fragment: Fragment) -> Self:
+        """The contribution of a channel sounding nothing in ``fragment``, over its bins and its samples."""
+        return cls.silence(len(fragment.feature.values), fragment.audio.shape[0])

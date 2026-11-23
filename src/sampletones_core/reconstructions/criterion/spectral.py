@@ -36,17 +36,8 @@ def calculate_spectral_loss(
         ValueError: If the candidate width departs from the reference length.
         ValueError: If the spectral distance is unsupported.
     """
-    reference, candidates, weights = _prepare(reference, candidates, weights)
-    floor = spectral_floor(reference, metric=metric)
-    terms = _bin_terms(reference, candidates, weights, floor, metric=metric)
-    match metric.distance:
-        case SpectralDistance.SQUARED:
-            numerator = xp.sqrt(xp.sum(terms, axis=-1))
-        case _:
-            numerator = xp.sum(terms, axis=-1)
-
-    denominator = weighted_reference_energy(reference, weights, distance=metric.distance)
-    return numerator / (denominator + floor)
+    terms, scale = spectral_terms(reference, candidates, weights, metric=metric)
+    return summed_terms(terms, distance=metric.distance) / scale
 
 
 def spectral_terms(
@@ -85,6 +76,28 @@ def spectral_terms(
     return terms, weighted_reference_energy(reference, weights, distance=metric.distance) + floor
 
 
+def summed_terms(terms: xp.ndarray, *, distance: SpectralDistance) -> xp.ndarray:
+    """
+    The distance each candidate's bin terms add up to, before it is read on the target's scale.
+
+    A squared distance is the root of its terms' sum, as a Euclidean length is; every other family's
+    terms add up to the distance themselves.
+
+    Args:
+        terms: The per-bin terms, one row per candidate.
+        distance: The family the terms belong to.
+
+    Returns:
+        One distance per candidate.
+    """
+    summed = xp.sum(terms, axis=-1)
+    match distance:
+        case SpectralDistance.SQUARED:
+            return xp.sqrt(summed)
+        case _:
+            return summed
+
+
 def _bin_terms(
     reference: xp.ndarray,
     candidates: xp.ndarray,
@@ -93,6 +106,14 @@ def _bin_terms(
     *,
     metric: SpectralMetric,
 ) -> xp.ndarray:
+    """The weighted distance of every candidate from the target in every bin, both measured above ``floor``.
+
+    Adding the floor to both sides leaves a squared or an absolute difference as it is, so the
+    beta-divergence alone reads the floored spectra.
+
+    Raises:
+        ValueError: If the spectral distance is unsupported.
+    """
     match metric.distance:
         case SpectralDistance.SQUARED:
             return weights * (candidates - reference) ** 2

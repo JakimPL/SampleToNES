@@ -33,7 +33,7 @@ class FrameMix:
     @classmethod
     def empty(cls, target: Fragment) -> Self:
         """The mix of no picks, shaped to the frame it is scored against."""
-        silence = Contribution.silence(len(target.feature.values), target.audio.shape[0])
+        silence = Contribution.silence_of(target)
         return cls(
             power=silence.power,
             expectation=silence.expectation,

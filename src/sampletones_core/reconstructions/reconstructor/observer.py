@@ -8,7 +8,9 @@ class ReconstructionObserver(Protocol):
 
     A run hands its observer the alternatives the assignment offered, every channel's columns and
     every stem's pools, and the streams the decoder read from them, before refinement bends any note.
-    The observer reads them as they are and leaves the run's own state to the run.
+    A run assigning its frames again among their neighbors hands over the last pass's alternatives,
+    which its streams were decoded from. The observer reads them as they are and leaves the run's
+    own state to the run.
     """
 
     def assigned(self, alternatives: Alternatives) -> None:

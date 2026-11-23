@@ -1,13 +1,12 @@
 from typing import Tuple, Union
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import SpectralDistance
 from sampletones_core.fft import Window
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.array import xp
 
 from .metric import SpectralMetric
-from .spectral import calculate_spectral_loss, spectral_terms, weighted_reference_energy
+from .spectral import calculate_spectral_loss, spectral_terms, summed_terms, weighted_reference_energy
 from .temporal import calculate_expected_temporal_loss, calculate_temporal_loss
 from .weights import calculate_spectral_weights
 
@@ -79,11 +78,7 @@ class Criterion:
         candidates = _feature_values(approximation_feature)
         terms, scale = spectral_terms(reference, candidates, self.weights, metric=self.metric)
         counted = xp.where(candidates > reference, terms, shortfall_weight * terms)
-        summed = xp.sum(counted, axis=-1)
-        if self.metric.distance == SpectralDistance.SQUARED:
-            summed = xp.sqrt(summed)
-
-        return summed / scale
+        return summed_terms(counted, distance=self.metric.distance) / scale
 
     def reference_energy(self, feature: Union[xp.ndarray, Histogram]) -> xp.ndarray:
         """

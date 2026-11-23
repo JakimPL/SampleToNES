@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, List, Mapping
+from typing import Final, List, Mapping, Tuple
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -10,7 +10,7 @@ import pytest
 
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
-from sampletones_core.configs.generation import AssignmentConfig
+from sampletones_core.configs.generation import AssignmentConfig, ChannelInertia
 from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
     AssignmentMethod,
@@ -26,6 +26,7 @@ from sampletones_core.instructions import InstructionUnion, PulseInstruction, Tr
 from sampletones_core.library import InstructionLibraryData
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels
 from sampletones_core.reconstructions.reconstructor.decoder.base import Alternatives, Streams
+from sampletones_core.reconstructions.reconstructor.decoder.viterbi import ViterbiDecoder
 from sampletones_core.reconstructions.reconstructor.reconstructor import Reconstructor
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
@@ -48,6 +49,10 @@ LEAD: Final[PulseInstruction] = PulseInstruction(on=True, pitch=64, volume=12, d
 HELD_FRAMES: Final[int] = 32
 LEVEL_TOLERANCE: Final[float] = 0.05
 TRUE_LEVEL: Final[float] = 1.0
+PASSED_FRAMES: Final[int] = 8
+NO_INERTIA: Final[ChannelInertia] = ChannelInertia(pulse1=0.0, pulse2=0.0, triangle=0.0, noise=0.0)
+
+Decode = Tuple[Alternatives, Streams]
 
 
 def _make_reconstructor(config: Config, library_data: InstructionLibraryData) -> Reconstructor:
@@ -382,6 +387,59 @@ class TestDecodingWholeCombinations:
                 decoded = tuple(streams[name][frame].instruction for name in stem_pools.channel_names)
                 offered = [tuple(candidate.instruction for candidate in combination.candidates) for combination in pool]
                 assert decoded in offered
+
+
+@pytest.fixture(name="decodes")
+def decodes_fixture(monkeypatch: pytest.MonkeyPatch) -> List[Decode]:
+    """Every decode the Viterbi decoder makes in the case: the alternatives it read and the streams it answered."""
+    decodes: List[Decode] = []
+    decode = ViterbiDecoder.decode
+
+    def recorded(decoder: ViterbiDecoder, alternatives: Alternatives) -> Streams:
+        streams = decode(decoder, alternatives)
+        decodes.append((alternatives, streams))
+        return streams
+
+    monkeypatch.setattr(ViterbiDecoder, "decode", recorded)
+    return decodes
+
+
+class TestDecidingAmongNeighbors:
+    """A run decodes its first assignment, then assigns and decodes again once per neighbor pass.
+
+    The observer hears the last assignment and the streams decoded from it, which the run plays.
+    """
+
+    @pytest.mark.parametrize("neighbors", [0, 2], ids=["no_pass", "two_passes"])
+    def test_each_pass_decodes_anew_and_the_last_decode_is_the_one_played(
+        self,
+        tmp_path: Path,
+        config: Config,
+        joint_library: InstructionLibraryData,
+        decodes: List[Decode],
+        neighbors: int,
+    ) -> None:
+        generation = config.generation.model_copy(
+            update={
+                "assignment": AssignmentConfig(method=AssignmentMethod.JOINT, neighbors=neighbors, inertia=NO_INERTIA),
+                "decoder": config.generation.decoder.model_copy(update={"selector": SelectorName.VITERBI}),
+            }
+        )
+        passing = config.model_copy(update={"generation": generation})
+        path = tmp_path / "chord.wav"
+        audio = rendered_audio(passing, {ChannelName.TRIANGLE: BASS, ChannelName.PULSE1: LEAD}, PASSED_FRAMES)
+        write_wave(path, passing.library.sample_rate, audio.astype(np.float32))
+        observer = RecordingObserver()
+
+        reconstruction = _make_reconstructor(passing, joint_library)(path, observe=observer)
+
+        assert reconstruction is not None
+        assert len(decodes) == 1 + neighbors
+        read, answered = decodes[-1]
+        (heard,), (decoded,) = observer.alternatives, observer.streams
+        assert heard.lattices is read.lattices
+        assert decoded is answered
+        assert len({id(alternatives.lattices) for alternatives, _ in decodes}) == len(decodes)
 
 
 class TestTheAudioAReconstructionRecords:

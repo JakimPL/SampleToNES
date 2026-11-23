@@ -66,10 +66,12 @@ class ChannelInertia(DataModel):
     """How strongly each channel keeps to what the frames beside a frame play in the neighbor pass.
 
     A frame's choice pays this many times the decoder's charges for a channel changing from the frame
-    before and to the frame after. The analysis window averages a channel over several frames, so a
-    channel switched on and off from frame to frame reads as a level between the two, which the ear
-    hears as flicker. A channel at ``0`` chooses freely of its neighbors, as short drum hits need.
-    Each channel belongs to one stem, so a stem's channels take their own values.
+    before and to the frame after. The columns and pools the decoder reads carry the same charge, on
+    top of which the decoder charges its own changes between frames. The analysis window averages a
+    channel over several frames, so a channel switched on and off from frame to frame reads as a
+    level between the two, which the ear hears as flicker. A channel at ``0`` chooses freely of its
+    neighbors, as short drum hits need. Each channel belongs to one stem, so a stem's channels take
+    their own values.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True, validate_default=True)

@@ -69,6 +69,8 @@ class PhaseAlignerName(StrEnum):
 
 
 class AssignmentMethod(StrEnum):
+    """How a frame's channels are given their candidates: one pick at a time, or whole combinations at once."""
+
     PICKS = "picks"
     JOINT = "joint"
 
@@ -81,6 +83,8 @@ class LevelMethod(StrEnum):
 
 
 class SelectorName(StrEnum):
+    """How a decoder reads the frames' alternatives: each frame alone, one path per channel, or one per stem."""
+
     GREEDY = "greedy"
     VITERBI = "viterbi"
     COMBINATIONS = "combinations"

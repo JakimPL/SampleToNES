@@ -171,7 +171,7 @@ class Reconstructor:
 
         Args:
             path: Path to the audio file to reconstruct.
-            observe: Hears the columns the assignment offered and the streams decoded from them.
+            observe: Hears the columns and pools the last assignment offered and the streams decoded from them.
 
         Returns:
             Optional[Reconstruction]: The reconstruction built from the file.
@@ -206,7 +206,7 @@ class Reconstructor:
                 the entries with what each recording is converted with, and the
                 precedence hierarchy.
             report: Hears each stage of the run and answers whether it is still wanted.
-            observe: Hears the columns the assignment offered and the streams decoded from them.
+            observe: Hears the columns and pools the last assignment offered and the streams decoded from them.
 
         Returns:
             Optional[Reconstruction]: The reconstruction built from the stems.
@@ -416,17 +416,16 @@ class Reconstructor:
         """Assigns every frame again, in turn, among the notes ``streams`` plays around it.
 
         A frame's analysis window reads its neighbors too, so what they play is a fixed part of the
-        frame's reading, as a :class:`NeighborPass` hears it.
+        frame's reading, as a :class:`NeighborPass` hears it. A recording of no frames assigns none.
         """
         assignment = TrackAssignment(self.state.channel_names)
         if not self._stem_frame_count(stem_frames):
             return assignment
 
-        bins = len(next(iter(stem_frames.values()))[0].feature.values)
         neighbor_pass = NeighborPass.over(
             JointAssigner(stems_config, self.channels, worker.matcher, worker.decoder.lattice_width),
             streams,
-            frame_profiles(self.config, self.window, bins),
+            frame_profiles(self.config, self.window, self._bins(stem_frames)),
             TransitionWeights.of(self.config),
             self.config.generation.assignment.inertia,
         )
@@ -445,6 +444,11 @@ class Reconstructor:
             yield frame
 
         announce(report, ReconstructionStage.MATCHING, frames, frames)
+
+    @staticmethod
+    def _bins(stem_frames: Dict[int, FragmentedAudio]) -> int:
+        """The bins every frame's feature holds, which the first stem's first frame shows."""
+        return len(next(iter(stem_frames.values()))[0].feature.values)
 
     @staticmethod
     def _frames_at(stem_frames: Dict[int, FragmentedAudio], frame: int) -> Dict[int, Fragment]:

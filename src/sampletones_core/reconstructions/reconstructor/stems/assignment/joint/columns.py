@@ -7,7 +7,6 @@ from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.fft import Fragment
 from sampletones_core.reconstructions.reconstructor.matching import Column, FrameMatcher, RowsRequest, column_of
 from sampletones_core.reconstructions.reconstructor.mix import FrameMix
-from sampletones_shared.array import xp
 
 from .batches import cheapest_row, split_by_group
 from .catalog import KindCatalog
@@ -171,7 +170,8 @@ class ChannelColumns:
             for draft, note_rows in zip(drafts, rows_by_draft)
             for rows in note_rows
         ]
-        costs = iter(split_by_group(self._spectral_costs(np.concatenate(stacks)), every_note))
+        spectral_costs = self.matcher.spectral_costs(self.fragment, np.concatenate(stacks))
+        costs = iter(split_by_group(spectral_costs, every_note))
         alternates: List[List[int]] = []
         for note_rows in rows_by_draft:
             best: List[Tuple[float, int]] = []
@@ -187,11 +187,6 @@ class ChannelColumns:
         """Every row of each note left to the channel, note by note."""
         catalog = self.catalogs[self.layout.slots[draft.place].kind]
         return [catalog.rows_of(note) for note in draft.notes]
-
-    def _spectral_costs(self, powers: np.ndarray) -> np.ndarray:
-        """The spectral cost of the frame with each row of ``powers`` sounding."""
-        features = self.matcher.candidate_provider.features_of(xp.asarray(powers))
-        return self.matcher.scorer.spectral_costs(self.fragment, features)
 
     def _request(self, draft: ChannelDraft, alternates: Sequence[int]) -> RowsRequest:
         """The channel's rows to score beside its mix: its options and alternates cut to the width, and its silence."""

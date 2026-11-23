@@ -7,6 +7,7 @@ from sampletones_core.configs import Config
 from sampletones_core.instructions import InstructionUnion
 
 from .base import Alternatives, Decoder, Pool, StemPools, Streams
+from .path import traced_back
 from .transition import TransitionWeights, transition_cost
 
 
@@ -15,15 +16,21 @@ class CombinationsDecoder(Decoder):
     Plays the cheapest path through each stem's whole combinations, cost and continuity together.
 
     A path per channel weighs each of the channel's alternatives with the stem's other channels playing
-    the frame's pick, so it cannot hold a line where only several channels changing together keep the
-    frame cheap. Here a state is a whole combination of the stem's channels, its pulses in either order,
-    and one path runs through the combinations the joint assignment pooled for every frame. A frame's
-    cost counts once, as the criterion reads the frame, and a change between two frames costs what each
-    channel pays for its own change. A move of one channel then trades the frame's cost against its
-    change as a decoder of one channel at a time trades it, and a move of several channels together is
-    weighed by the cost the frame reaches with all of them moved. A pulse holding its note through a note
-    change, where the frame's cheapest combination would move it to another octave, then stays on its
-    note.
+    the frame's pick, so it holds a line only where one channel changing alone keeps the frame cheap.
+    Here a state is a whole combination of the stem's channels, its pulses in either order, and one
+    path runs through the combinations the joint assignment pooled for every frame. A path costs:
+
+    - each frame's cost with its combination sounding, counted once, as the criterion reads the frame;
+    - between two frames, what each channel pays for its own change, as the Viterbi decoder charges it.
+
+    A move of one channel then trades the frame's cost against its change as a decoder of one channel
+    at a time trades it, and a move of several channels together is weighed by the cost the frame
+    reaches with all of them moved. A pulse holding its note through a note change, where the frame's
+    cheapest combination would move it to another octave, then stays on its note. A tie goes to the
+    earlier combination of a pool, as the Viterbi decoder's goes to the earlier candidate of a column.
+
+    The pools name the channels each stem's path decides, and the lattices name the channels in play
+    and the order the streams follow.
     """
 
     def __init__(self, config: Config) -> None:
@@ -64,51 +71,67 @@ class CombinationsDecoder(Decoder):
         if not frames:
             return []
 
-        costs = _emissions(frames[0])
-        backpointers: List[np.ndarray] = []
+        costs = self._emissions(frames[0])
+        backpointers: List[List[int]] = []
         for previous, current in itertools.pairwise(frames):
-            totals = costs[:, np.newaxis] + self._transitions(previous, current)
-            best = np.argmin(totals, axis=0)
-            costs = totals[best, np.arange(len(current))] + _emissions(current)
+            costs, best = self._step(costs, previous, current)
             backpointers.append(best)
 
-        last = int(np.argmin(costs))
-        path = [last]
-        for layer in reversed(backpointers):
-            last = int(layer[last])
-            path.append(last)
+        return traced_back(backpointers, costs.tolist())
 
-        path.reverse()
-        return path
+    def _step(self, costs: np.ndarray, previous: Pool, current: Pool) -> Tuple[np.ndarray, List[int]]:
+        """The cheapest path to each combination of ``current``, and the combination of ``previous`` it comes from.
+
+        Args:
+            costs: What the cheapest path to each combination of ``previous`` costs.
+            previous: The pool of the frame before.
+            current: The pool of the frame.
+
+        Returns:
+            What the cheapest path to each combination of ``current`` costs, its own frame's cost
+            included, and the place in ``previous`` of the combination it comes from, the earliest of
+            equally cheap ones.
+        """
+        totals = costs[:, np.newaxis] + self._transitions(previous, current)
+        best = np.argmin(totals, axis=0)
+        return totals[best, np.arange(len(current))] + self._emissions(current), best.tolist()
 
     def _transitions(self, previous: Pool, current: Pool) -> np.ndarray:
-        """What moving from each combination of ``previous`` to each of ``current`` costs, channel by channel.
-
-        A pool repeats a channel's few instructions across many combinations, so each channel's costs
-        are reckoned once per pair of distinct instructions and spread over the combinations.
-        """
+        """What moving from each combination of ``previous`` to each of ``current`` costs, summed over the channels."""
         totals = np.zeros((len(previous), len(current)), dtype=np.float64)
         for position in range(len(current[0].candidates)):
-            before, before_places = _distinct(
-                [combination.candidates[position].instruction for combination in previous]
-            )
-            after, after_places = _distinct([combination.candidates[position].instruction for combination in current])
-            costs = np.array(
-                [[transition_cost(origin, destination, self.weights) for destination in after] for origin in before],
-                dtype=np.float64,
-            )
-            totals += costs[np.ix_(before_places, after_places)]
+            totals += self._channel_transitions(previous, current, position)
 
         return totals
 
+    def _channel_transitions(self, previous: Pool, current: Pool, position: int) -> np.ndarray:
+        """What the channel at ``position`` pays to move from each combination of ``previous`` to each of ``current``.
 
-def _emissions(pool: Pool) -> np.ndarray:
-    """Each combination's frame cost."""
-    return np.array([combination.cost for combination in pool], dtype=np.float64)
+        A pool repeats a channel's few instructions across many combinations, so the channel's costs
+        are reckoned once per pair of distinct instructions and spread over the combinations.
+        """
+        before, before_places = self._distinct(self._played(previous, position))
+        after, after_places = self._distinct(self._played(current, position))
+        costs = np.array(
+            [[transition_cost(origin, destination, self.weights) for destination in after] for origin in before],
+            dtype=np.float64,
+        )
+        spread: np.ndarray = costs[np.ix_(before_places, after_places)]
+        return spread
 
+    @staticmethod
+    def _emissions(pool: Pool) -> np.ndarray:
+        """Each combination's frame cost, which the frame counts once whatever the channels it sounds."""
+        return np.array([combination.cost for combination in pool], dtype=np.float64)
 
-def _distinct(instructions: Sequence[InstructionUnion]) -> Tuple[List[InstructionUnion], np.ndarray]:
-    """The distinct instructions in first-seen order, and the place of each of ``instructions`` among them."""
-    places: Dict[InstructionUnion, int] = {}
-    indices = [places.setdefault(instruction, len(places)) for instruction in instructions]
-    return list(places), np.array(indices, dtype=np.int64)
+    @staticmethod
+    def _played(pool: Pool, position: int) -> List[InstructionUnion]:
+        """What the channel at ``position`` plays in each combination of ``pool``."""
+        return [combination.candidates[position].instruction for combination in pool]
+
+    @staticmethod
+    def _distinct(instructions: Sequence[InstructionUnion]) -> Tuple[List[InstructionUnion], np.ndarray]:
+        """The distinct instructions in first-seen order, and the place of each of ``instructions`` among them."""
+        places: Dict[InstructionUnion, int] = {}
+        indices = [places.setdefault(instruction, len(places)) for instruction in instructions]
+        return list(places), np.array(indices, dtype=np.int64)

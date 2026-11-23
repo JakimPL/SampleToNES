@@ -1,8 +1,9 @@
-from typing import Any, List, Sequence
+from typing import Any, Final, List, Sequence
 
 import pytest
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions.reconstructor.contribution import Contribution
 from sampletones_core.reconstructions.reconstructor.decoder.base import (
@@ -20,6 +21,8 @@ from sampletones_core.reconstructions.reconstructor.matching import ScoredCandid
 
 STEADY = PulseInstruction(on=True, pitch=60, volume=10, duty_cycle=0)
 JUMPED = PulseInstruction(on=True, pitch=72, volume=10, duty_cycle=0)
+RAISED: Final[PulseInstruction] = PulseInstruction(on=True, pitch=STEADY.pitch + 1, volume=10, duty_cycle=0)
+SEMITONE: Final[float] = 0.15
 
 
 def state(instruction: PulseInstruction, cost: float) -> ScoredCandidate:
@@ -45,17 +48,22 @@ def greedy_decoder(config: Config) -> GreedyDecoder:
     return GreedyDecoder(config)
 
 
-def _configured(config: Config, **decoder_overrides: Any) -> Config:
+def configured(config: Config, **decoder_overrides: Any) -> Config:
     decoder = config.generation.decoder.model_copy(update=decoder_overrides)
     return config.model_copy(update={"generation": config.generation.model_copy(update={"decoder": decoder})})
 
 
+def priced_by_the_semitone(config: Config) -> Config:
+    """The configuration with a decoder charging ``SEMITONE`` for each semitone a channel moves, and nothing else."""
+    return configured(config, pitch_weight=SEMITONE, volume_weight=0.0, timbre_weight=0.0, on_off_weight=0.0)
+
+
 def viterbi_decoder(config: Config, **decoder_overrides: Any) -> ViterbiDecoder:
-    return ViterbiDecoder(_configured(config, **decoder_overrides))
+    return ViterbiDecoder(configured(config, **decoder_overrides))
 
 
 def combinations_decoder(config: Config, **decoder_overrides: Any) -> CombinationsDecoder:
-    return CombinationsDecoder(_configured(config, **decoder_overrides))
+    return CombinationsDecoder(configured(config, **decoder_overrides))
 
 
 def combination(instructions: Sequence[PulseInstruction], cost: float) -> PooledCombination:
@@ -78,4 +86,20 @@ def heads_pooled(lattices: Lattices) -> Alternatives:
     return Alternatives(
         lattices=lattices,
         pools={0: StemPools(channel_names=channel_names, frames=frames)},
+    )
+
+
+def alone_in_a_stem(lattice: ChannelLattice) -> Alternatives:
+    """One pulse's lattice, and a stem holding that pulse alone, pooling each candidate of its columns.
+
+    A decoder of one channel at a time reads the lattice and the combinations decoder the pools, so
+    both decode the same alternatives.
+    """
+    frames: List[Pool] = [
+        tuple(PooledCombination(candidates=(candidate,), cost=candidate.cost) for candidate in column)
+        for column in lattice
+    ]
+    return Alternatives(
+        lattices={ChannelName.PULSE1: lattice},
+        pools={0: StemPools(channel_names=(ChannelName.PULSE1,), frames=frames)},
     )

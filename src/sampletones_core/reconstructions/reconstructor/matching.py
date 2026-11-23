@@ -24,7 +24,8 @@ class ScoredCandidate:
 
     Attributes:
         instruction: What the channel plays.
-        cost: The frame's cost with this alternative sounding beside the stem's other picks.
+        cost: The frame's cost with this alternative sounding beside the stem's other picks, and the
+            charge for breaking with the frames beside it where a neighbor pass charges one.
         contribution: What this alternative adds to the frame.
     """
 
@@ -55,16 +56,10 @@ class RowsRequest:
     powers: np.ndarray
     drive: float
 
-
-@dataclass(frozen=True)
-class _Shortlist:
-    """Candidates of one class with their powers at unit drive, scored beside one mix."""
-
-    instructions: Tuple[InstructionUnion, ...]
-    rows: List[int]
-    powers: np.ndarray
-    mix: FrameMix
-    drive: float
+    @property
+    def mixed_powers(self) -> xp.ndarray:
+        """The power of the frame with each row sounding beside the mix, one row per candidate."""
+        return xp.asarray(self.powers) + xp.asarray(self.mix.power)
 
 
 @dataclass(frozen=True)
@@ -78,6 +73,11 @@ class FrameMatcher:
     ownership and the decoder into a stream. A drive lifts what a channel reaches for: every
     candidate is read at unit drive, so the row fitting the target is the one sounding it at the
     drive, and a channel is answered at the level its own recording is given.
+
+    A search settling its own shortlist hands the rows it kept (``score_rows``), and the rows of
+    several channels are scored in one pass of the criterion (``score_requests``), each request
+    reading its own stretch of the costs back. ``spectral_costs`` reads the first stage alone, which
+    a search ranks its stacks of mixes by, and ``mix_costs`` the full cost of mixes sounding alone.
     """
 
     config: Config
@@ -126,17 +126,16 @@ class FrameMatcher:
         """
         candidates = self.candidate_provider.candidates({generator.class_name(): generator})
         unit_powers = _at_unit_drive(candidates.powers, drive)
-        mixed = self.candidate_provider.features_of(unit_powers + xp.asarray(mix.power))
-        spectral_costs = self.scorer.spectral_costs(target, mixed)
+        spectral_costs = self.spectral_costs(target, unit_powers + xp.asarray(mix.power))
         shortlist = self._shortlist(spectral_costs, candidates, generator)
-        scored = _Shortlist(
-            instructions=candidates.instructions,
-            rows=shortlist,
-            powers=np.asarray(to_numpy(unit_powers[xp.asarray(shortlist)]), dtype=np.float64),
+        request = RowsRequest(
+            generator=generator,
             mix=mix,
+            rows=tuple(shortlist),
+            powers=np.asarray(to_numpy(unit_powers[xp.asarray(shortlist)]), dtype=np.float64),
             drive=drive,
         )
-        return self._scored(target, [scored], spectral_costs[shortlist])[0]
+        return self._scored(target, [request], spectral_costs[shortlist])[0]
 
     def score_rows(
         self,
@@ -180,22 +179,24 @@ class FrameMatcher:
         Returns:
             One column per request, in request order, each best first, silence ahead of an equal cost.
         """
-        mixed = self.candidate_provider.features_of(
-            xp.concatenate([xp.asarray(request.powers) + xp.asarray(request.mix.power) for request in requests])
-        )
-        shortlists = [
-            _Shortlist(
-                instructions=self.candidate_provider.candidates(
-                    {request.generator.class_name(): request.generator}
-                ).instructions,
-                rows=list(request.rows),
-                powers=np.asarray(request.powers, dtype=np.float64),
-                mix=request.mix,
-                drive=request.drive,
-            )
-            for request in requests
-        ]
-        return self._scored(target, shortlists, self.scorer.spectral_costs(target, mixed))
+        spectral_costs = self.spectral_costs(target, xp.concatenate([request.mixed_powers for request in requests]))
+        return self._scored(target, requests, spectral_costs)
+
+    def spectral_costs(self, target: Fragment, powers: xp.ndarray) -> np.ndarray:
+        """The spectral cost of the frame with each row of ``powers`` sounding, the first stage of its cost.
+
+        A row's features are read off its power as the library's are, so a stack of mixes ranks on
+        the scale the library's candidates rank on.
+
+        Args:
+            target: Target fragment to match.
+            powers: The power density per bin of each mix, one mix per row.
+
+        Returns:
+            One spectral cost per mix.
+        """
+        features = self.candidate_provider.features_of(xp.asarray(powers))
+        return self.scorer.spectral_costs(target, features)
 
     def mix_cost(self, target: Fragment, mix: FrameMix) -> float:
         """The frame's cost with ``mix`` sounding alone, on the scale columns are scored on."""
@@ -203,15 +204,8 @@ class FrameMatcher:
 
     def mix_costs(self, target: Fragment, mixes: Sequence[FrameMix]) -> np.ndarray:
         """The frame's cost with each of ``mixes`` sounding alone, all scored in one pass."""
-        features = self.candidate_provider.features_of(xp.asarray(np.stack([mix.power for mix in mixes])))
-        spectral_costs = self.scorer.spectral_costs(target, features)
-        return self.scorer.frame_costs(
-            target,
-            spectral_costs,
-            np.stack([mix.expectation for mix in mixes]),
-            np.array([mix.variance for mix in mixes]),
-            np.array([mix.sounding for mix in mixes]),
-        )
+        spectral_costs = self.spectral_costs(target, np.stack([mix.power for mix in mixes]))
+        return self._full_costs(target, spectral_costs, mixes)
 
     def reference_energy(self, fragment: Fragment) -> float:
         """How much sound a target holds, in the units the scoring measures its cost in."""
@@ -258,40 +252,77 @@ class FrameMatcher:
 
         return Contribution(power=power, expectation=waveform, variance=0.0, sounding=instruction.on)
 
-    def _scored(self, target: Fragment, shortlists: Sequence[_Shortlist], spectral_costs: np.ndarray) -> List[Column]:
-        """Each shortlist's rows with the full cost of the frame each reaches beside its mix, best first."""
-        contributions: List[Contribution] = []
-        expectations: List[np.ndarray] = []
-        variances: List[float] = []
-        sounding: List[int] = []
-        for shortlist in shortlists:
-            residual = shortlist.mix.residual_waveform(target)
-            for index, power in zip(shortlist.rows, shortlist.powers):
-                contribution = self.contribution(shortlist.instructions[index], residual, power, drive=shortlist.drive)
-                contributions.append(contribution)
-                expectations.append(shortlist.mix.expectation + contribution.expectation)
-                variances.append(shortlist.mix.variance + contribution.variance)
-                sounding.append(shortlist.mix.sounding + int(contribution.sounding))
+    def _scored(self, target: Fragment, requests: Sequence[RowsRequest], spectral_costs: np.ndarray) -> List[Column]:
+        """Each request's rows with the full cost of the frame each reaches beside its mix, best first.
 
-        costs = self.scorer.frame_costs(
-            target, spectral_costs, np.stack(expectations), np.array(variances), np.array(sounding)
-        )
+        Every row of every request is scored in one pass of the criterion, request after request, in
+        the order ``spectral_costs`` lists their spectral costs, and each request reads its own
+        stretch of the costs back.
+        """
+        played = [self._played(request) for request in requests]
+        contributions = [
+            self._contributions(target, request, instructions) for request, instructions in zip(requests, played)
+        ]
+        costs = self._full_costs(target, spectral_costs, self._reached(requests, contributions))
         columns: List[Column] = []
         start = 0
-        for shortlist in shortlists:
-            scored = [
-                ScoredCandidate(instruction=shortlist.instructions[index], cost=float(cost), contribution=contribution)
-                for index, cost, contribution in zip(
-                    shortlist.rows,
-                    costs[start : start + len(shortlist.rows)],
-                    contributions[start : start + len(shortlist.rows)],
-                )
-            ]
-            scored.sort(key=lambda candidate: (candidate.cost, candidate.instruction.on))
-            columns.append(tuple(scored))
-            start += len(shortlist.rows)
+        for instructions, added in zip(played, contributions):
+            stop = start + len(added)
+            columns.append(self._column(instructions, costs[start:stop], added))
+            start = stop
 
         return columns
+
+    def _played(self, request: RowsRequest) -> List[InstructionUnion]:
+        """What each of the request's rows plays."""
+        instructions = self.candidate_provider.candidates({request.generator.class_name(): request.generator})
+        return [instructions.instructions[row] for row in request.rows]
+
+    def _contributions(
+        self, target: Fragment, request: RowsRequest, instructions: Sequence[InstructionUnion]
+    ) -> List[Contribution]:
+        """What each of the request's rows adds to the frame, against what its mix leaves of the frame's waveform."""
+        residual = request.mix.residual_waveform(target)
+        powers = np.asarray(request.powers, dtype=np.float64)
+        return [
+            self.contribution(instruction, residual, power, drive=request.drive)
+            for instruction, power in zip(instructions, powers)
+        ]
+
+    @staticmethod
+    def _reached(requests: Sequence[RowsRequest], contributions: Sequence[List[Contribution]]) -> List[FrameMix]:
+        """The mix each row reaches: its request's mix with the row sounding in it, request after request."""
+        reached: List[FrameMix] = []
+        for request, added in zip(requests, contributions):
+            reached.extend(request.mix.added(contribution) for contribution in added)
+
+        return reached
+
+    def _full_costs(self, target: Fragment, spectral_costs: np.ndarray, mixes: Sequence[FrameMix]) -> np.ndarray:
+        """The full cost of the frame with each of ``mixes`` sounding, its spectral cost read beforehand."""
+        return self.scorer.frame_costs(
+            target,
+            spectral_costs,
+            np.stack([mix.expectation for mix in mixes]),
+            np.array([mix.variance for mix in mixes]),
+            np.array([mix.sounding for mix in mixes]),
+        )
+
+    @staticmethod
+    def _column(
+        instructions: Sequence[InstructionUnion], costs: np.ndarray, contributions: Sequence[Contribution]
+    ) -> Column:
+        """The rows at their costs, best first, silence ahead of an equal cost."""
+        scored = [
+            ScoredCandidate(instruction=instruction, cost=float(cost), contribution=contribution)
+            for instruction, cost, contribution in zip(instructions, costs, contributions)
+        ]
+        return tuple(sorted(scored, key=FrameMatcher._rank))
+
+    @staticmethod
+    def _rank(candidate: ScoredCandidate) -> Tuple[float, bool]:
+        """Where a candidate stands in its column: the cheaper first, and of equal costs the silent one first."""
+        return candidate.cost, candidate.instruction.on
 
     def _shortlist(
         self,

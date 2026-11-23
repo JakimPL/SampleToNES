@@ -56,4 +56,4 @@ def resting(
 
 def silent_contribution(fragment: Fragment) -> Contribution:
     """What a channel playing nothing adds to ``fragment``: no power in any bin and no waveform."""
-    return Contribution.silence(len(fragment.feature.values), fragment.audio.shape[0])
+    return Contribution.silence_of(fragment)
