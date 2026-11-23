@@ -145,7 +145,6 @@ class TestPitchReferee:
             PitchReferee().judge(written_truth({ChannelName.NOISE: hiss}), converted({ChannelName.NOISE: hiss})) is None
         )
 
-    @pytest.mark.xfail(strict=True, raises=IndexError, reason="suspected bug: an empty line is indexed past its end")
     def test_an_empty_line_beside_a_sounding_conversion_is_left_unjudged(self) -> None:
         truth = Truth(instructions={}, pitches={"bass": ()})
 

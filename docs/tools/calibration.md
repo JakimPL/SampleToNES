@@ -381,8 +381,10 @@ they tell a failure to take the parts apart from a failure to match each part.
 Referees score in their own way, separate from the reconstruction's own scoring, so a comparison stays
 fair when that scoring is what changed.
 
-Both built-in referees split each signal into bands spaced the way hearing spaces pitch, at several
-time resolutions, and compare the energy in each band in decibels.
+The referees below read the audio, except `ownership`, which reads the conversion alone.
+`mr-auditory-dB` and `mr-loudness-dB` split each signal into bands spaced the way hearing spaces pitch,
+at several time resolutions, and compare the energy in each band in decibels. `contour` reads the level
+of short frames and of octave bands.
 
 - **`mr-auditory-dB`** averages the difference over every band equally. It reads the balance of
   tone against noise across the whole spectrum. An empty band counts as much as a full one, so a clip
@@ -391,9 +393,9 @@ time resolutions, and compare the energy in each band in decibels.
   and silent bands barely count. It first brings the reconstruction to the original's level and
   reports the level difference on its own. Silence scores worst, and a clip with the right tone and
   some added noise scores between.
-- **`ownership`** reads a conversion of several stems on its own. It counts how often each channel
-  passes from one stem to another per second. A pause between one stem's stretches counts for
-  nothing. The score is the changes per second over every channel, and each channel's own reading
+- **`ownership`** reads a conversion of several stems from its instructions alone. It counts how often
+  each channel passes from one stem to another per second. A pause between one stem's stretches counts
+  for nothing. The score is the changes per second over every channel, and each channel's own reading
   follows. A conversion of one recording has no reading.
 - **`contour`** follows the loudness of the recording over time and over the spectrum. Both are cut
   into frames of 1/60 s, each measured as its level in decibels. Over the frames the recording sounds
@@ -401,11 +403,11 @@ time resolutions, and compare the energy in each band in decibels.
   set aside, in decibels. Its readings:
   - `spread`: the range of the render's levels less the recording's. Flattened dynamics read below
     zero.
-  - `onset`: how much louder the render plays than the recording in the first three frames after a
-    silence. An overshooting attack reads above zero.
+  - `onset`: how much louder the render plays than the recording in the first frames of each stretch
+    the recording sounds in, up to three. An overshooting attack reads above zero.
   - `band-63` to `band-8000`: the render's energy less the recording's in each octave band the
     recording fills, in decibels. Read across, they draw any equalization the reconstruction adds.
-- **`zimtohrli`** is a model of human hearing from Google. It joins the other two where it is
+- **`zimtohrli`** is a model of human hearing from Google. It joins the audio referees where it is
   installed. See [dependencies](../development/release/dependencies.md#calibration).
 
 ### The truth referees
@@ -425,8 +427,9 @@ They never listen, so they say *what* went wrong where the audio referees say ho
   The two pulses sound the same mix whichever carries which line, so each frame pairs them the way
   that agrees more. A written note played at its pitch on another kind of channel, such as a bass on a
   pulse, is one mistake weighing less than a wrong note, as `misplaced_weight` in `referee.yaml` sets:
-  the channel leaving it off and the channel playing it count it once between them. The score is the weighted share of counted frames
-  played otherwise. Its readings:
+  the channel leaving it off and the channel playing it count it once between them. A mistake either
+  channel makes besides counts as a frame of its own. The score is the weighted share of counted
+  frames played otherwise. Its readings:
   - `missed`: written frames the reconstruction leaves silent.
   - `misplaced`: written frames whose note another kind of channel plays.
   - `spurious`: played frames the sound leaves silent.
@@ -442,7 +445,8 @@ They never listen, so they say *what* went wrong where the audio referees say ho
   - `assignment`: the candidates could form them, and the picks the assignment made did not.
   - `decoder`: the picks had them, and the decoder moved away.
   - `gains`: frames the picks had wrong and the decoder put right.
-  - `misplaced`: wrong frames whose decoded pitches are the written ones, on another kind of channel.
+  - `misplaced`: wrong frames that sound each written pitch as many times as written, some on another
+    kind of channel.
   - `unreached`: written notes no candidate offers on their kind of channel.
   - `pooled`: frames whose pools of whole combinations can sound the written notes, one combination per
     source. The [joint assignment](../concepts/reconstruction.md#52-assigning-channels-jointly) pools
@@ -479,7 +483,9 @@ They never listen, so they say *what* went wrong where the audio referees say ho
     at the level the channels play it reads 1.
 - **`continuity`** asks whether each note of the sound comes back as one continuous sound. A note
   is a run of frames a line holds one pitch through. In each of its frames the note is answered by
-  the tonal channel sounding closest to it, or by none. The score is the extra events per note:
+  the tonal channel sounding closest to it, or by none. The score is the extra events per note: the
+  handovers, and the sounding runs beyond each note's first. A note left silent adds none, since
+  `pitch` reads it as silent. Its readings:
   - `handovers`: changes of the answering channel, such as a triangle note a pulse takes over
     halfway.
   - `fragments`: separate sounding runs per note. A note heard whole has one; a dropout in the

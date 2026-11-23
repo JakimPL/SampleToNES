@@ -1,3 +1,4 @@
+from collections import Counter
 from typing import Dict, Final, FrozenSet, Mapping, NamedTuple, Optional, Tuple
 
 from sampletones_core.configs import Config
@@ -68,9 +69,13 @@ class NoteReader:
         return round(semitones_between(frequency, self._a4_frequency) + self._a4_pitch)
 
 
-def pitches_of(notes: FrozenSet[Note]) -> FrozenSet[int]:
-    """The semitones a frame's notes sound, whichever channel kind sounds each."""
-    return frozenset(note.semitone for note in notes)
+def pitch_counts(notes: FrozenSet[Note]) -> Counter[int]:
+    """How many of a frame's notes sound each semitone, whichever channel kind sounds each.
+
+    A semitone two channel kinds sound together counts twice, so two frames hold equal counts where
+    each note of one pairs with a note of the other at its pitch, one to one.
+    """
+    return Counter(note.semitone for note in notes)
 
 
 def timbre_of(duty_cycle: int) -> int:

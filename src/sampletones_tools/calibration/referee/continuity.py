@@ -6,14 +6,14 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_tools.calibration.corpus.truth import PitchLine, Truth, sounding_pitches
 
-from .frames import common_length
+from .frames import line_within
 from .intervals import line_semitones, octaves_between
 from .protocol import Judgment
 
 CONTINUITY_REFEREE: Final[str] = "continuity"
 HANDOVERS: Final[str] = "handovers"
 FRAGMENTS: Final[str] = "fragments"
-WHOLE_NOTE_FRAGMENTS: Final[float] = 1.0
+WHOLE_NOTE_FRAGMENTS: Final[int] = 1
 
 Answer = Optional[ChannelName]
 
@@ -58,6 +58,11 @@ class NoteAnswers:
 
         return runs
 
+    @property
+    def extra_fragments(self) -> int:
+        """How many runs answer the note beyond the one of a note heard whole, none for a silent note."""
+        return max(self.fragments - WHOLE_NOTE_FRAGMENTS, 0)
+
 
 class ContinuityReferee:
     """Reads whether each note of a sound comes back as one continuous sound on one channel.
@@ -68,9 +73,11 @@ class ContinuityReferee:
     throughout, in one run.
 
     The score is the excess events per note, zero being closest: the mean changes of the answering
-    channel (``handovers``), plus the mean sounding runs per note beyond one, where the mean exceeds one
-    (``fragments`` less one). A triangle note picked up by a pulse halfway is a handover, and a note
-    interrupted by a dropout is a fragment. A note left silent holds no run, so it lowers the mean runs.
+    channel (``handovers``), plus the mean of each note's sounding runs beyond its first
+    (``NoteAnswers.extra_fragments``). A triangle note picked up by a pulse halfway is a handover, and a
+    note interrupted by a dropout is a fragment. A note left silent adds no excess event, since the
+    ``pitch`` referee charges it as silent. The ``fragments`` reading is the mean of the runs per note,
+    one where every note is heard whole.
     """
 
     @property
@@ -97,8 +104,9 @@ class ContinuityReferee:
 
         handovers = sum(note.handovers for note in notes) / len(notes)
         fragments = sum(note.fragments for note in notes) / len(notes)
+        extra_fragments = sum(note.extra_fragments for note in notes) / len(notes)
         return Judgment(
-            score=handovers + max(fragments - WHOLE_NOTE_FRAGMENTS, 0.0),
+            score=handovers + extra_fragments,
             components={HANDOVERS: handovers, FRAGMENTS: fragments},
         )
 
@@ -137,8 +145,7 @@ def answer_at(played: Dict[ChannelName, PitchLine], frame: int, target: float) -
 
 def _answered_notes(line: PitchLine, played: Dict[ChannelName, PitchLine]) -> List[NoteAnswers]:
     """Every note of ``line`` within the frames the conversion plays, with the channel answering each frame."""
-    length = common_length(line, *played.values())
     return [
         NoteAnswers(answers=tuple(answer_at(played, frame, note.target) for frame in range(note.start, note.end)))
-        for note in note_spans(line[:length])
+        for note in note_spans(line_within(line, played.values()))
     ]

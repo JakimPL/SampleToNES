@@ -245,7 +245,6 @@ class TestSearchFrame:
 
         assert frame.misplaced and not frame.right
 
-    @pytest.mark.xfail(strict=True, reason="suspected bug: a note lost from a unison across kinds reads as misplaced")
     def test_a_note_lost_from_a_unison_across_kinds_is_no_misplacement(self, right_frame: SearchFrame) -> None:
         unison = frozenset({BASS_NOTE, BASS_ON_A_PULSE_NOTE})
         frame = replace(right_frame, target=unison, heads=unison, decoded=frozenset({BASS_ON_A_PULSE_NOTE}))

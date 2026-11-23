@@ -81,7 +81,6 @@ class TestContourReferee:
 
         assert judgment.components[ONSET] == pytest.approx(6.0, abs=LEVEL_TOLERANCE_DECIBELS)
 
-    @pytest.mark.xfail(strict=True, reason="suspected bug: an onset reads the frames past a short attack")
     def test_an_onset_reads_the_frames_after_a_short_attack(self, referee: ContourReferee, frame_length: int) -> None:
         envelope = np.zeros(30 * frame_length)
         envelope[10 * frame_length : 11 * frame_length] = ATTACK_AMPLITUDE

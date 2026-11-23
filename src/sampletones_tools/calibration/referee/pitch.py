@@ -5,7 +5,7 @@ from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.constants.music import OCTAVE_SEMITONES, SEMITONE_STEP
 from sampletones_tools.calibration.corpus.truth import PitchLine, Truth, sounding_pitches
 
-from .frames import common_length
+from .frames import line_within
 from .intervals import CENTS_PER_SEMITONE, cents_between
 from .protocol import Judgment
 
@@ -81,9 +81,10 @@ class PitchTally:
 class PitchReferee:
     """Reads whether a conversion sounds the pitches its reference sound's lines sound.
 
-    Every frame a line sounds in is answered by the tonal channels the conversion sounds then (see
-    ``answer_of``). Both sides are read at the frequency each frame sounds, bends included, and compared
-    by their ratio, so the reading holds on any tuning.
+    Every frame a line sounds in, within the frames the conversion plays (see ``line_within``), is
+    answered by the tonal channels the conversion sounds then (see ``answer_of``). Both sides are read
+    at the frequency each frame sounds, bends included, and compared by their ratio, so the reading
+    holds on any tuning.
 
     The score is the share of the lines' sounding frames not answered on pitch: zero where every one
     is, one where none is. Its readings, each a share where zero is closest: ``octave``, ``semitone``,
@@ -106,8 +107,7 @@ class PitchReferee:
         ]
         tally = PitchTally()
         for line in truth.pitches.values():
-            for frame in range(common_length(line, *played)):
-                target = line[frame]
+            for frame, target in enumerate(line_within(line, played)):
                 if target is not None:
                     tally.add(target, heard_at(played, frame))
 

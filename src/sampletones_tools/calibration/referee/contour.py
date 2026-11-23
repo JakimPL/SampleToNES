@@ -1,4 +1,5 @@
 import math
+from itertools import groupby
 from typing import Dict, Final, List, Tuple
 
 import numpy as np
@@ -20,6 +21,7 @@ NO_SPREAD: Final[float] = 0.0
 NO_ONSET: Final[float] = 0.0
 
 BandEnergies = Tuple[float, float]
+FrameRun = Tuple[int, int]
 
 
 class ContourReferee:
@@ -37,9 +39,9 @@ class ContourReferee:
     - ``spread``: the range of the render's audible levels less the recording's, each read from the
       ``LOW_PERCENTILE``-th to the ``HIGH_PERCENTILE``-th percentile, so a render whose dynamics flatten
       reads below zero;
-    - ``onset``: how much louder the render plays than the recording over the ``contour_onset_frames``
-      frames from where each audible run starts, averaged over the runs, so a render that overshoots its
-      attacks reads above zero;
+    - ``onset``: how much louder the render plays than the recording over the first frames of each
+      audible run, up to ``contour_onset_frames`` of them, averaged over the runs, so a render that
+      overshoots its attacks reads above zero;
     - ``band-F``: the render's energy less the recording's in the octave band centered on ``F`` hertz,
       over the bands the recording fills within ``contour_band_floor_decibels`` of its fullest band, so
       an implied equalization reads as a curve across the bands.
@@ -78,13 +80,13 @@ class ContourReferee:
 
     def _onset(self, written: np.ndarray, played: np.ndarray, audible: np.ndarray) -> float:
         """The render's level less the recording's over the first frames of each audible run, averaged over the runs."""
-        starts = _run_starts(audible)
-        if not starts:
+        runs = _audible_runs(audible)
+        if not runs:
             return NO_ONSET
 
         rises: List[float] = []
-        for start in starts:
-            span = slice(start, min(start + self._onset_frames, len(written)))
+        for start, end in runs:
+            span = slice(start, min(start + self._onset_frames, end))
             rises.append(float(np.mean(played[span] - written[span])))
 
         return float(np.mean(rises))
@@ -120,9 +122,18 @@ def _octave_band(frequencies: np.ndarray, center: float) -> np.ndarray:
     return np.asarray((frequencies >= center / OCTAVE_HALF_WIDTH) & (frequencies < center * OCTAVE_HALF_WIDTH))
 
 
-def _run_starts(audible: np.ndarray) -> List[int]:
-    """The frames where a run of audible frames starts, the first frame included where it is audible."""
-    return [frame for frame in range(len(audible)) if audible[frame] and (frame == 0 or not audible[frame - 1])]
+def _audible_runs(audible: np.ndarray) -> List[FrameRun]:
+    """Each run of audible frames, as its first frame and the frame after its last."""
+    runs: List[FrameRun] = []
+    start = 0
+    for is_audible, frames in groupby(audible.tolist()):
+        end = start + len(list(frames))
+        if is_audible:
+            runs.append((start, end))
+
+        start = end
+
+    return runs
 
 
 def _spread(levels: np.ndarray) -> float:

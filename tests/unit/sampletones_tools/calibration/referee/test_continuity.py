@@ -41,6 +41,9 @@ TRIANGLE: Final[ChannelName] = ChannelName.TRIANGLE
 PULSE: Final[ChannelName] = ChannelName.PULSE1
 LOW_NOTE: Final[float] = 110.0
 HIGH_NOTE: Final[float] = 220.0
+LOW: Final[InstructionUnion] = TriangleInstruction(on=True, pitch=57)
+HIGH: Final[InstructionUnion] = TriangleInstruction(on=True, pitch=69)
+WITH_A_DROPOUT: Final[List[InstructionUnion]] = [LOW, LOW, SILENT_TRIANGLE, LOW]
 
 
 def _judged(truth: Truth, reconstruction: Reconstruction) -> Judgment:
@@ -48,21 +51,43 @@ def _judged(truth: Truth, reconstruction: Reconstruction) -> Judgment:
 
 
 class TestNoteAnswers(BaseTestSuite):
-    """A note counts each change of its answering channel and each separate run answering it."""
+    """A note counts each change of its answering channel, each separate run answering it and the runs beyond one."""
 
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
         answers: Tuple[Answer, ...]
         expected: Tuple[int, int]
+        extra_fragments: int
 
     test_cases = (
-        TestCase(label="one_channel_throughout", answers=(TRIANGLE, TRIANGLE, TRIANGLE), expected=(0, 1)),
-        TestCase(label="a_channel_taking_over", answers=(TRIANGLE, PULSE, PULSE), expected=(1, 1)),
-        TestCase(label="a_dropout_on_one_channel", answers=(TRIANGLE, None, TRIANGLE), expected=(0, 2)),
-        TestCase(label="a_dropout_between_two_channels", answers=(TRIANGLE, None, PULSE), expected=(1, 2)),
-        TestCase(label="a_late_entry", answers=(None, None, TRIANGLE), expected=(0, 1)),
-        TestCase(label="a_silent_note", answers=(None, None), expected=(0, 0)),
-        TestCase(label="a_note_of_no_frame", answers=(), expected=(0, 0)),
+        TestCase(
+            label="one_channel_throughout",
+            answers=(TRIANGLE, TRIANGLE, TRIANGLE),
+            expected=(0, 1),
+            extra_fragments=0,
+        ),
+        TestCase(label="a_channel_taking_over", answers=(TRIANGLE, PULSE, PULSE), expected=(1, 1), extra_fragments=0),
+        TestCase(
+            label="a_dropout_on_one_channel",
+            answers=(TRIANGLE, None, TRIANGLE),
+            expected=(0, 2),
+            extra_fragments=1,
+        ),
+        TestCase(
+            label="a_dropout_between_two_channels",
+            answers=(TRIANGLE, None, PULSE),
+            expected=(1, 2),
+            extra_fragments=1,
+        ),
+        TestCase(
+            label="two_dropouts",
+            answers=(TRIANGLE, None, TRIANGLE, None, TRIANGLE),
+            expected=(0, 3),
+            extra_fragments=2,
+        ),
+        TestCase(label="a_late_entry", answers=(None, None, TRIANGLE), expected=(0, 1), extra_fragments=0),
+        TestCase(label="a_silent_note", answers=(None, None), expected=(0, 0), extra_fragments=0),
+        TestCase(label="a_note_of_no_frame", answers=(), expected=(0, 0), extra_fragments=0),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
@@ -70,6 +95,10 @@ class TestNoteAnswers(BaseTestSuite):
         note = NoteAnswers(answers=test_case.answers)
 
         assert (note.handovers, note.fragments) == test_case.expected
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
+    def test_a_note_counts_its_fragments_beyond_one(self, test_case: TestCase) -> None:
+        assert NoteAnswers(answers=test_case.answers).extra_fragments == test_case.extra_fragments
 
 
 class TestAnswerAt:
@@ -162,18 +191,20 @@ class TestContinuityReferee:
 
         assert (judgment.score, judgment.components[FRAGMENTS]) == (0.0, 0.0)
 
-    @pytest.mark.xfail(
-        strict=True, reason="suspected bug: a silent note pulls the mean fragments under one and hides another's"
-    )
     def test_a_dropped_note_offsets_another_note_s_extra_fragment(self) -> None:
         truth = Truth(instructions={}, pitches={"bass": (LOW_NOTE,) * 4 + (HIGH_NOTE,) * 4})
-        low = TriangleInstruction(on=True, pitch=57)
-        high = TriangleInstruction(on=True, pitch=69)
-        with_a_dropout = [low, low, SILENT_TRIANGLE, low]
-        answered = _judged(truth, converted({ChannelName.TRIANGLE: with_a_dropout + [high] * 4}))
-        dropped = _judged(truth, converted({ChannelName.TRIANGLE: with_a_dropout + [SILENT_TRIANGLE] * 4}))
+        answered = _judged(truth, converted({ChannelName.TRIANGLE: WITH_A_DROPOUT + [HIGH] * 4}))
+        dropped = _judged(truth, converted({ChannelName.TRIANGLE: WITH_A_DROPOUT + [SILENT_TRIANGLE] * 4}))
 
         assert dropped.score >= answered.score
+
+    def test_the_score_counts_each_note_s_extra_fragments_and_the_reading_their_plain_mean(self) -> None:
+        truth = Truth(instructions={}, pitches={"bass": (LOW_NOTE,) * 4 + (HIGH_NOTE,) * 4})
+
+        dropped = _judged(truth, converted({ChannelName.TRIANGLE: WITH_A_DROPOUT + [SILENT_TRIANGLE] * 4}))
+
+        assert dropped.score == pytest.approx(0.5)
+        assert dropped.components[FRAGMENTS] == pytest.approx(1.0)
 
     def test_a_sound_of_no_note_is_left_unjudged(self) -> None:
         truth = Truth(instructions={}, pitches={})

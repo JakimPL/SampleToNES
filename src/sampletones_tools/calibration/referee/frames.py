@@ -1,7 +1,8 @@
-from typing import Dict, Mapping, Optional, Sequence, Sized, Tuple
+from typing import Dict, Iterable, Mapping, Optional, Sequence, Sized, Tuple
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import InstructionUnion
+from sampletones_tools.calibration.corpus.truth import PitchLine
 
 Frame = Optional[InstructionUnion]
 
@@ -28,6 +29,14 @@ def common_length(*streams: Sized) -> int:
     the length to the streams that describe some.
     """
     return min((len(stream) for stream in streams if stream), default=0)
+
+
+def line_within(line: PitchLine, played: Iterable[PitchLine]) -> PitchLine:
+    """The frames of a sound's line within the frames the conversion's lines play, the whole line where they play none.
+
+    An empty line holds no frame, so it stays empty beside a sounding conversion.
+    """
+    return line[: common_length(line, *played)]
 
 
 def sounds(frame: Frame) -> bool:

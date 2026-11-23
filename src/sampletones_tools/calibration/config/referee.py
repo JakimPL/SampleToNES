@@ -58,7 +58,7 @@ class RefereeConfig(BaseModel, frozen=True):
         description="Range below the recording's loudest frame the contour referee reads.",
     )
     contour_onset_frames: PositiveInt = Field(
-        description="Frames after a silence the contour referee reads an onset over.",
+        description="The most frames at the start of each audible run the contour referee reads an onset over.",
     )
     contour_band_centers: Tuple[float, ...] = Field(
         min_length=1,

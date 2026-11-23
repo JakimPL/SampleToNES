@@ -122,6 +122,18 @@ class FramePair:
         """Whether this channel plays a note the writing leaves off it."""
         return self.played_note is not None and self.written_note != self.played_note
 
+    def errs_apart(self, *, lost: bool, taken: bool) -> bool:
+        """Whether this channel-frame is played otherwise than written beyond the misplaced notes passing through it.
+
+        A written note it leaves off errs where no other channel kind plays it in its place, and a note
+        it adds errs where it stands in for no other channel's written note.
+
+        Args:
+            lost: Whether its written note is a misplaced one, played on another channel kind.
+            taken: Whether the note it plays is another channel's misplaced note.
+        """
+        return (self.missing and not lost) or (self.added and not taken)
+
     def adds_on_another_kind(self, note: Note) -> bool:
         """Whether this channel adds a note at the pitch of ``note`` on a channel kind other than ``note``'s."""
         return (
@@ -237,9 +249,12 @@ class Tally:
     """The channel-frames a transcription counts, and those that miss in each way.
 
     A channel-frame counts where the writing or the conversion sounds it, and counts one error where it
-    is played otherwise than written. A misplaced note is one error weighing ``misplaced_weight``, which
-    the channel leaving it off and the channel playing it share: the first is counted with no further
-    error for the note, and the second is counted only where the writing sounds a frame of its own there.
+    is played otherwise than written. A misplaced note counts once, as one error weighing
+    ``misplaced_weight``, for the two channel-frames it passes through: the channel leaving it off and
+    the channel playing it. Either of them counts once more where it errs apart from the misplaced
+    notes (see ``FramePair.errs_apart``), such as the channel leaving a bass off playing a wrong note of
+    its own. Every count then carries one error at most, so the score stays the weighted share of
+    counted channel-frames played otherwise.
 
     Attributes:
         comparison: Holds the played fields against the written ones.
@@ -271,6 +286,7 @@ class Tally:
         """Counts one frame's channel-frames, the misplaced notes among them first."""
         misplacements = Misplacements.of(pairs)
         self.misplaced += len(misplacements.missing)
+        self.counted += len(misplacements.missing)
         self.wrong += self.misplaced_weight * len(misplacements.missing)
         for index, pair in enumerate(pairs):
             if misplacements.passes_through(index):
@@ -319,7 +335,7 @@ class Tally:
         self.wrong += not all(agreements.values())
 
     def _count_misplaced(self, pair: FramePair, *, lost: bool, taken: bool) -> None:
-        """Counts a channel-frame a misplaced note passes through, with the errors of its own it still holds.
+        """Counts a channel-frame a misplaced note passes through by the error it holds apart from the misplaced notes.
 
         Args:
             pair: The channel-frame.
@@ -328,11 +344,9 @@ class Tally:
         """
         self.written += pair.written_sounds
         self.played += pair.played_sounds
-        if taken and not pair.written_sounds:
-            return
-
-        self.counted += 1
-        self.wrong += (pair.missing and not lost) or (pair.added and not taken)
+        errs = pair.errs_apart(lost=lost, taken=taken)
+        self.counted += errs
+        self.wrong += errs
 
     def _count_fields(self, agreements: Dict[str, bool]) -> None:
         for name, agrees in agreements.items():

@@ -113,6 +113,9 @@ dimension the import starts carrying.
   choice across stems, ordered by the hierarchy, closes it.
 * The joint assignment's speed against the picks is measured on the calibration benchmark alone. A case in
   `tests/benchmarks/` needs the full library, which an installation builds once.
+* A `contour` reading of the render where the recording falls silent. Its readings over time cover the
+  recording's audible frames, so a render ringing on after a short hit reaches it through the band
+  readings alone.
 * The combinations decoder moves two channels at once only within its pool: the choice with channels
   silenced, the finalists and the choice of the frame before. The Viterbi decoder may take two column
   alternatives on two channels together, which keeps it ahead on some pieces, such as Super Mario Bros. at

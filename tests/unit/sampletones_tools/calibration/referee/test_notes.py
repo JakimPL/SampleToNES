@@ -1,3 +1,4 @@
+from collections import Counter
 from typing import Final
 
 import pytest
@@ -6,7 +7,7 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.instructions import NoiseInstruction, PulseInstruction, TriangleInstruction
 from sampletones_shared.constants.music import OCTAVE_SEMITONES
-from sampletones_tools.calibration.referee.notes import Note, NoteReader, pitches_of, timbre_of
+from sampletones_tools.calibration.referee.notes import Note, NoteReader, pitch_counts, timbre_of
 
 EIGHTH_DUTY: Final[int] = 0
 QUARTER_DUTY: Final[int] = 1
@@ -55,10 +56,22 @@ class TestNoteReader:
         on_pulse = reader.notes({ChannelName.PULSE1: _pulse(57 - OCTAVE_SEMITONES)})
 
         assert on_triangle != on_pulse
-        assert pitches_of(on_triangle) == pitches_of(on_pulse)
+        assert pitch_counts(on_triangle) == pitch_counts(on_pulse)
 
     def test_a_frame_of_no_channel_sounds_no_note(self, reader: NoteReader) -> None:
         assert reader.notes({}) == frozenset()
+
+
+class TestPitchCounts:
+    def test_a_unison_across_kinds_counts_its_pitch_once_per_kind(self) -> None:
+        on_both = frozenset(
+            {Note(GeneratorClassName.PULSE_GENERATOR, 48), Note(GeneratorClassName.TRIANGLE_GENERATOR, 48)}
+        )
+
+        assert pitch_counts(on_both) == Counter({48: 2})
+
+    def test_no_note_counts_no_pitch(self) -> None:
+        assert not pitch_counts(frozenset())
 
 
 class TestTimbreOf:

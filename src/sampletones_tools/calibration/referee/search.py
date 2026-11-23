@@ -8,7 +8,7 @@ from sampletones_tools.calibration.corpus.truth import Truth
 from sampletones_tools.calibration.trace import PoolTrace, SearchTrace
 
 from .frames import Frame, channel_streams, common_length, sounds
-from .notes import TONAL_CHANNELS, Note, NoteReader, pitches_of
+from .notes import TONAL_CHANNELS, Note, NoteReader, pitch_counts
 from .protocol import Judgment
 
 SEARCH_REFEREE: Final[str] = "search"
@@ -86,8 +86,8 @@ class SearchFrame:
 
     @property
     def misplaced(self) -> bool:
-        """Whether a wrong frame sounds the written pitches as a set, on other channel kinds."""
-        return not self.right and pitches_of(self.decoded) == pitches_of(self.target)
+        """Whether a wrong frame sounds each written pitch as many times as written, some on other channel kinds."""
+        return not self.right and pitch_counts(self.decoded) == pitch_counts(self.target)
 
     @property
     def unreached(self) -> int:
@@ -244,8 +244,8 @@ class SearchReferee:
     - ``columns``, ``assignment``, ``decoder``: the counted frames lost at each stage;
     - ``gains``: the counted frames the decoder put right after the picks had them wrong, higher being
       better for the decoder;
-    - ``misplaced``: the counted frames decoded wrong whose decoded pitches are the written ones, on
-      other channel kinds;
+    - ``misplaced``: the counted frames decoded wrong that sound each written pitch as many times as
+      written, some on other channel kinds;
     - ``unreached``: the written notes no column offers on their channel kind;
     - ``pooled``: where the search pooled whole combinations, the counted frames whose pools can sound
       the written notes, one combination per stem, higher being closer;

@@ -366,7 +366,7 @@ class TestTranscriptionReferee:
 
         judgment = _judged(referee, written_truth(written), converted(played))
 
-        assert judgment.score == pytest.approx((MISPLACED_WEIGHT + 1) / 2)
+        assert judgment.score == pytest.approx((MISPLACED_WEIGHT + 1) / 3)
 
     def test_a_misplaced_bass_over_a_written_note_of_the_pulse_counts_that_note_wrong(
         self, referee: TranscriptionReferee
@@ -378,10 +378,27 @@ class TestTranscriptionReferee:
 
         assert judgment.score == pytest.approx((MISPLACED_WEIGHT + 1) / 3)
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="suspected bug: the channel leaving a misplaced note off charges its own wrong note on the same frame",
-    )
+    def test_a_misplaced_bass_counts_apart_from_an_error_of_each_channel_it_passes_through(
+        self, referee: TranscriptionReferee
+    ) -> None:
+        written = {ChannelName.PULSE1: LEAD, ChannelName.PULSE2: HARMONY, ChannelName.TRIANGLE: BASS}
+        played = {ChannelName.PULSE1: LEAD, ChannelName.PULSE2: BASS_ON_A_PULSE, ChannelName.TRIANGLE: WRONG_BASS}
+
+        judgment = _judged(referee, written_truth(written), converted(played))
+
+        assert judgment.score == pytest.approx((MISPLACED_WEIGHT + 2) / 4)
+
+    def test_a_bass_and_a_lead_swapped_across_kinds_count_two_misplaced_notes_alone(
+        self, referee: TranscriptionReferee
+    ) -> None:
+        written = {ChannelName.PULSE1: LEAD, ChannelName.TRIANGLE: BASS}
+        played = {ChannelName.PULSE1: BASS_ON_A_PULSE, ChannelName.TRIANGLE: MELODY_ON_THE_TRIANGLE}
+
+        judgment = _judged(referee, written_truth(written), converted(played))
+
+        assert judgment.score == pytest.approx(MISPLACED_WEIGHT)
+        assert judgment.components[MISPLACED] == 1.0
+
     def test_the_score_stays_a_share_where_a_misplaced_note_meets_a_wrong_one(
         self, referee: TranscriptionReferee
     ) -> None:
