@@ -6,7 +6,7 @@ import numpy as np
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_shared.distribution import SAMPLETONES_VERSION
-from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.digest import sha256_digest
 from sampletones_tools.calibration.fingerprint import RunFingerprint, write_fingerprint
 from sampletones_tools.calibration.renders import (
@@ -52,7 +52,7 @@ def channel_audio(channel: ChannelName) -> np.ndarray:
 def write_run(directory: Path, variants: Sequence[str], offset: float) -> Path:
     """A finished calibration run of a few items: its fingerprint naming ``variants`` in order, then its renders."""
     write_fingerprint(directory, probe_fingerprint(variants))
-    return write_renders(directory, variants, offset, level=WorkingLevel.DEFAULT)
+    return write_renders(directory, variants, offset, level=VariantLevel.DEFAULT)
 
 
 def probe_fingerprint(variants: Sequence[str]) -> RunFingerprint:
@@ -66,7 +66,7 @@ def probe_fingerprint(variants: Sequence[str]) -> RunFingerprint:
     )
 
 
-def write_renders(directory: Path, variants: Sequence[str], offset: float, *, level: WorkingLevel) -> Path:
+def write_renders(directory: Path, variants: Sequence[str], offset: float, *, level: VariantLevel) -> Path:
     """The renders, records and recordings a run of a few items converts, written as a conversion writes them."""
     for position, probe in enumerate(ITEMS):
         write_recording(directory, level, probe.item, channel_audio(ChannelName.TRIANGLE), SAMPLE_RATE)

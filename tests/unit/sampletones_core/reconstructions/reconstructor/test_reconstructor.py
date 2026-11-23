@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, List, Mapping, Tuple
+from typing import Final, List, Mapping, Sequence, Tuple
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -15,12 +15,11 @@ from sampletones_core.constants.enums import (
     DEFAULT_CHANNELS,
     AssignmentMethod,
     ChannelName,
-    GeneratorClassName,
     LevelMethod,
     SelectorName,
 )
 from sampletones_core.fft import Fragment, Window
-from sampletones_core.generators import FULL_SCALE_RMS_LEVELS
+from sampletones_core.generators import GeneratorUnion
 from sampletones_core.generators.render import render_channels
 from sampletones_core.instructions import InstructionUnion, PulseInstruction, TriangleInstruction
 from sampletones_core.library import InstructionLibraryData
@@ -28,21 +27,24 @@ from sampletones_core.reconstructions.progress import ReconstructionProgress
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels
 from sampletones_core.reconstructions.reconstructor.decoder.base import Alternatives, Streams
 from sampletones_core.reconstructions.reconstructor.decoder.viterbi import ViterbiDecoder
-from sampletones_core.reconstructions.reconstructor.reconstructor import Reconstructor
+from sampletones_core.reconstructions.reconstructor.level.working import (
+    LoudnessLevel,
+    WorkingLevel,
+    WorkingLevelFactory,
+)
+from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
+from sampletones_core.reconstructions.reconstructor.reconstructor import (
+    CONFIGURED_WORKING_LEVEL,
+    Reconstructor,
+)
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_core.reconstructions.stage import ReconstructionStage
 from sampletones_shared.exceptions import NoLibraryDataError
-from tests.suite.base import BaseTestSuite
-from tests.suite.case import BaseRegularTestCase
 from tests.suite.progress import RecordingReporter
 
 from .conftest import rendered_audio
 
-TRIANGLE_LEVEL: Final[float] = FULL_SCALE_RMS_LEVELS[GeneratorClassName.TRIANGLE_GENERATOR]
-SINE_FRAMES: Final[int] = 30
-SINE_AMPLITUDE: Final[float] = 0.8
-SINE_CYCLES_PER_FRAME: Final[int] = 4
 OFF_RATE: Final[int] = 48000
 OFF_RATE_ABOVE: Final[int] = 96000
 SQUARE_PEAK: Final[float] = 0.5
@@ -52,18 +54,38 @@ LEAD: Final[PulseInstruction] = PulseInstruction(on=True, pitch=64, volume=12, d
 HELD_FRAMES: Final[int] = 32
 LEVEL_TOLERANCE: Final[float] = 0.05
 TRUE_LEVEL: Final[float] = 1.0
+GIVEN_LEVEL: Final[float] = 0.5
 PASSED_FRAMES: Final[int] = 8
 NO_INERTIA: Final[ChannelInertia] = ChannelInertia(pulse1=0.0, pulse2=0.0, triangle=0.0, noise=0.0)
 
 Decode = Tuple[Alternatives, Streams]
 
 
-def _make_reconstructor(config: Config, library_data: InstructionLibraryData) -> Reconstructor:
+def _make_reconstructor(
+    config: Config,
+    library_data: InstructionLibraryData,
+    *,
+    level_factory: WorkingLevelFactory = CONFIGURED_WORKING_LEVEL,
+) -> Reconstructor:
     mock_library = MagicMock()
     mock_library.get.return_value = library_data
     mock_library.create_key.return_value = MagicMock()
     mock_library.get_path.return_value = "test/path"
-    return Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=mock_library)
+    return Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=mock_library, level_factory=level_factory)
+
+
+@dataclass(frozen=True)
+class GivenLevel:
+    """A working level dividing every run's recordings by the one coefficient it was given."""
+
+    value: float
+
+    def coefficient(self, recordings: Sequence[np.ndarray], stems_config: StemsConfig, matcher: FrameMatcher) -> float:
+        return self.value
+
+
+def _given_level(config: Config, channels: Mapping[ChannelName, GeneratorUnion], window: Window) -> WorkingLevel:
+    return GivenLevel(GIVEN_LEVEL)
 
 
 class TestReconstructorInit:
@@ -95,103 +117,6 @@ class TestReconstructorLoadLibraryError:
         mock_library.get_path.return_value = "test/path"
         with pytest.raises(NoLibraryDataError):
             Reconstructor(config, frozenset(DEFAULT_CHANNELS), library=mock_library)
-
-
-class TestReconstructorGetCoefficient:
-    def test_uniform_audio_anchors_to_its_level(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-    ) -> None:
-        reconstructor = _make_reconstructor(config, library_data)
-        audio = np.ones(config.library.frame_length, dtype=np.float32) * 0.5
-        coefficient = reconstructor.get_coefficient(audio, _full_setup(config))
-        assert coefficient == pytest.approx(0.5 / TRIANGLE_LEVEL)
-
-    def test_coefficient_is_robust_to_a_lone_transient(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-    ) -> None:
-        reconstructor = _make_reconstructor(config, library_data)
-        frame_length = config.library.frame_length
-        audio = np.full(frame_length * 24, 0.05, dtype=np.float32)
-        audio[:frame_length] = 1.0
-        coefficient = reconstructor.get_coefficient(audio, _full_setup(config))
-        assert coefficient == pytest.approx(0.05 / TRIANGLE_LEVEL, rel=1e-3)
-        assert coefficient < 1.0 / TRIANGLE_LEVEL
-
-    def test_louder_audio_produces_larger_coefficient(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-    ) -> None:
-        reconstructor = _make_reconstructor(config, library_data)
-        setup = _full_setup(config)
-        quiet = np.ones(config.library.frame_length, dtype=np.float32) * 0.1
-        loud = np.ones(config.library.frame_length, dtype=np.float32) * 0.9
-        assert reconstructor.get_coefficient(loud, setup) > reconstructor.get_coefficient(quiet, setup)
-
-    def test_a_steady_sine_lands_at_the_level_a_full_volume_triangle_plays(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-    ) -> None:
-        reconstructor = _make_reconstructor(config, library_data)
-        frame_length = config.library.frame_length
-        phase = np.arange(frame_length * SINE_FRAMES) * SINE_CYCLES_PER_FRAME / frame_length
-        sine = (SINE_AMPLITUDE * np.sin(2.0 * np.pi * phase)).astype(np.float32)
-
-        scaled = sine / reconstructor.get_coefficient(sine, _full_setup(config))
-
-        level = float(np.sqrt(np.mean(np.square(scaled.astype(np.float64)))))
-        assert level == pytest.approx(TRIANGLE_LEVEL, rel=1e-2)
-
-
-class TestReconstructorWorkingLevel(BaseTestSuite):
-    """The working level is the full-scale RMS level of the quietest tone channel a setup covers."""
-
-    @dataclass(frozen=True, kw_only=True)
-    class TestCase(BaseRegularTestCase):
-        channels: List[ChannelName]
-        anchor: GeneratorClassName
-
-    test_cases = (
-        TestCase(
-            label="triangle_among_the_tone_channels",
-            channels=[ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE],
-            anchor=GeneratorClassName.TRIANGLE_GENERATOR,
-        ),
-        TestCase(
-            label="pulse_without_the_triangle",
-            channels=[ChannelName.PULSE1, ChannelName.NOISE],
-            anchor=GeneratorClassName.PULSE_GENERATOR,
-        ),
-        TestCase(
-            label="noise_without_a_tone_channel",
-            channels=[ChannelName.NOISE],
-            anchor=GeneratorClassName.NOISE_GENERATOR,
-        ),
-    )
-
-    @pytest.mark.parametrize(
-        "test_case",
-        test_cases,
-        ids=lambda test_case: test_case.label,
-    )
-    def test_the_level_follows_the_covered_channels(
-        self,
-        config: Config,
-        library_data: InstructionLibraryData,
-        test_case: TestCase,
-    ) -> None:
-        reconstructor = _make_reconstructor(config, library_data)
-        setup = StemsConfig.single_entry(StemSettings.covering(test_case.channels))
-        audio = np.ones(config.library.frame_length, dtype=np.float32) * 0.5
-
-        assert reconstructor.get_coefficient(audio, setup) == pytest.approx(
-            0.5 / FULL_SCALE_RMS_LEVELS[test_case.anchor]
-        )
 
 
 def _full_setup(config: Config) -> StemsConfig:
@@ -611,7 +536,7 @@ class TestTheFittedWorkingLevel:
         assert reconstruction.coefficient != pytest.approx(TRUE_LEVEL, rel=LEVEL_TOLERANCE)
 
     def test_a_recording_holding_no_triangle_line_keeps_the_coefficient_under_fitted(
-        self, tmp_path: Path, config: Config, joint_library: InstructionLibraryData
+        self, tmp_path: Path, config: Config, joint_library: InstructionLibraryData, joint_matcher: FrameMatcher
     ) -> None:
         fitted = self._unnormalized(config, LevelMethod.FITTED)
         reconstructor = _make_reconstructor(fitted, joint_library)
@@ -620,9 +545,21 @@ class TestTheFittedWorkingLevel:
         reconstruction = reconstructor(path)
 
         assert reconstruction is not None
-        assert reconstruction.coefficient == reconstructor.get_coefficient(
-            reconstructor.load_audio([path]), _full_setup(fitted)
+        assert reconstruction.coefficient == LoudnessLevel(fitted, reconstructor.channels).coefficient(
+            [reconstructor.load_audio([path])], _full_setup(fitted), joint_matcher
         )
+
+    @pytest.mark.parametrize("method", list(LevelMethod))
+    def test_a_level_handed_to_the_reconstructor_is_the_whole_level_it_matches_at(
+        self, tmp_path: Path, config: Config, joint_library: InstructionLibraryData, method: LevelMethod
+    ) -> None:
+        configured = self._unnormalized(config, method)
+        reconstructor = _make_reconstructor(configured, joint_library, level_factory=_given_level)
+
+        reconstruction = reconstructor(self._bass_under_a_lead(tmp_path, configured))
+
+        assert reconstruction is not None
+        assert reconstruction.coefficient == GIVEN_LEVEL
 
 
 def _write_square(path: Path, sample_rate: int) -> Path:

@@ -8,7 +8,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction
 from sampletones_shared.paths.extensions import EXT_FILE_FLAC, EXT_FILE_JSON
 from sampletones_shared.utils.system.paths import get_filename
-from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.fingerprint import FINGERPRINT_FILE
 from sampletones_tools.calibration.layout import (
     CORPUS_DIRECTORY,
@@ -114,18 +114,18 @@ class TestWriteRecord:
 
 class TestRecordings:
     def test_the_default_level_keeps_its_recordings_directly_in_the_run_s_recordings(self, tmp_path: Path) -> None:
-        path = recording_path(tmp_path, WorkingLevel.DEFAULT, ITEM)
+        path = recording_path(tmp_path, VariantLevel.DEFAULT, ITEM)
 
         assert path == tmp_path / RECORDINGS_DIRECTORY / get_filename(ITEM, EXT_FILE_FLAC)
 
     def test_every_other_level_keeps_its_recordings_in_a_directory_named_after_it(self, tmp_path: Path) -> None:
-        path = recording_path(tmp_path, WorkingLevel.TRUE, ITEM)
+        path = recording_path(tmp_path, VariantLevel.TRUE, ITEM)
 
-        assert path == tmp_path / RECORDINGS_DIRECTORY / WorkingLevel.TRUE.value / get_filename(ITEM, EXT_FILE_FLAC)
+        assert path == tmp_path / RECORDINGS_DIRECTORY / VariantLevel.TRUE.value / get_filename(ITEM, EXT_FILE_FLAC)
 
     def test_a_recording_at_each_level_stands_beside_the_other(self, tmp_path: Path) -> None:
         audio = np.linspace(-0.5, 0.5, SAMPLE_RATE // 8)
-        levels = {WorkingLevel.DEFAULT: audio, WorkingLevel.TRUE: audio / 4}
+        levels = {VariantLevel.DEFAULT: audio, VariantLevel.TRUE: audio / 4}
         for level, scaled in levels.items():
             write_recording(tmp_path, level, ITEM, scaled, SAMPLE_RATE)
 
@@ -146,7 +146,7 @@ class TestClearRenders:
             silence={},
         )
         write_record(tmp_path, record)
-        write_recording(tmp_path, WorkingLevel.TRUE, ITEM, np.zeros(SAMPLE_RATE // 8), SAMPLE_RATE)
+        write_recording(tmp_path, VariantLevel.TRUE, ITEM, np.zeros(SAMPLE_RATE // 8), SAMPLE_RATE)
         (tmp_path / CORPUS_DIRECTORY).mkdir()
         (tmp_path / FINGERPRINT_FILE).write_text("{}", encoding="utf-8")
 

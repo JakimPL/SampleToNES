@@ -8,7 +8,7 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
-from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.corpus.by_channel import by_channel
 from sampletones_tools.calibration.corpus.chords import build_chords
 from sampletones_tools.calibration.corpus.families import Family
@@ -36,7 +36,7 @@ PITCH: Final[float] = 220.0
 
 
 def _variants(method: SpectrumMethod) -> List[CalibrationVariant]:
-    return build_variants(Config(), [method], [1.0], [], settings={}, levels=[WorkingLevel.DEFAULT])
+    return build_variants(Config(), [method], [1.0], [], settings={}, levels=[VariantLevel.DEFAULT])
 
 
 @pytest.fixture(name="item")
@@ -227,7 +227,7 @@ class TestMeasuredVariants:
         self, item: CorpusItem, panel: RefereePanel, tmp_path: Path
     ) -> None:
         methods = [SpectrumMethod.LOG_SPACED_FFT, SpectrumMethod.CQT, SpectrumMethod.FFT]
-        variants = build_variants(Config(), methods, [1.0], [], settings={}, levels=[WorkingLevel.DEFAULT])
+        variants = build_variants(Config(), methods, [1.0], [], settings={}, levels=[VariantLevel.DEFAULT])
         write_fingerprint(tmp_path, fingerprint_of(variants, [item], CHANNELS, panel))
 
         assert measured_variants(tmp_path) == tuple(variant.label for variant in variants)

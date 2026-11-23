@@ -3,7 +3,7 @@ from typing import Callable, List, Optional, Sequence, Tuple
 
 from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_shared.utils.text import parsed_items
-from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.corpus.families import Family
 
 NamesRefusal = Callable[[str], str]
@@ -46,14 +46,14 @@ def settings_named(stated: Optional[str], default: Sequence[str], known: Sequenc
     return _names_among(stated, default, known, refusal=_unknown("set of settings", "sets", known))
 
 
-def levels_named(stated: Optional[str], default: Sequence[WorkingLevel]) -> List[WorkingLevel]:
+def levels_named(stated: Optional[str], default: Sequence[VariantLevel]) -> List[VariantLevel]:
     """The levels a run matches its sounds at: the ones named, comma separated, or ``default``.
 
     Raises:
         ValueError: If a name is none of the levels.
     """
-    known = [level.value for level in WorkingLevel]
-    return parsed_items(stated, default, parse=WorkingLevel, refusal=_unknown("level", "levels", known))
+    known = [level.value for level in VariantLevel]
+    return parsed_items(stated, default, parse=VariantLevel, refusal=_unknown("level", "levels", known))
 
 
 def measured_categories(

@@ -5,7 +5,6 @@ from typing import AbstractSet, Dict, Final, Iterator, List, Optional, Sequence,
 import numpy as np
 
 from sampletones_core.audio import (
-    active_frame_level,
     common_length,
     mix,
     mix_scale,
@@ -14,18 +13,9 @@ from sampletones_core.audio import (
 )
 from sampletones_core.configs import Config
 from sampletones_core.configs.generation import PASSES_HEARD_ALONE
-from sampletones_core.constants.algorithm import MINIMUM_AUDIO_LEVEL
-from sampletones_core.constants.enums import (
-    TONE_CHANNELS,
-    ChannelName,
-    LevelMethod,
-    ordered_channels,
-)
+from sampletones_core.constants.enums import ChannelName, ordered_channels
 from sampletones_core.fft import Fragment, FragmentedAudio, Window
-from sampletones_core.generators import (
-    FULL_SCALE_RMS_LEVELS,
-    get_generators_by_channels,
-)
+from sampletones_core.generators import get_generators_by_channels
 from sampletones_core.library import InstructionLibrary, InstructionLibraryData
 from sampletones_core.reconstructions.progress import (
     FRAMES_PREPARED,
@@ -47,7 +37,11 @@ from sampletones_core.reconstructions.reconstructor.decoder.base import Streams
 from sampletones_core.reconstructions.reconstructor.decoder.transition import (
     TransitionWeights,
 )
-from sampletones_core.reconstructions.reconstructor.level import LevelFitter
+from sampletones_core.reconstructions.reconstructor.level.working import (
+    WorkingLevel,
+    WorkingLevelFactory,
+    working_level,
+)
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
 from sampletones_core.reconstructions.reconstructor.observer import (
     SILENT_OBSERVER,
@@ -84,6 +78,7 @@ from sampletones_shared.utils.progress import silent_reporter
 from sampletones_shared.utils.system.paths import to_path
 
 HEARD_ALONE_PASS: Final[int] = 0
+CONFIGURED_WORKING_LEVEL: Final[WorkingLevelFactory] = working_level  # pylint: disable=invalid-name
 
 
 @dataclass(frozen=True)
@@ -138,6 +133,8 @@ class Reconstructor:
         config: Config,
         channels: AbstractSet[ChannelName],
         library: Optional[InstructionLibrary] = None,
+        *,
+        level_factory: WorkingLevelFactory = CONFIGURED_WORKING_LEVEL,
     ) -> None:
         """Builds a reconstructor for a configuration and loads its library.
 
@@ -147,6 +144,8 @@ class Reconstructor:
             channels: The channels this run hands out, which it builds generators for.
             library: The instruction library to match against; a default library rooted
                 at the configured directory is used when omitted.
+            level_factory: Builds the working level every run matches at, by default the one
+                ``config.general.level`` names.
 
         Raises:
             NoLibraryDataError: If no library exists for the configuration and window.
@@ -158,6 +157,7 @@ class Reconstructor:
         self.channels = get_generators_by_channels(config, self.channel_names)
 
         self.window: Window = Window.from_config(self.config)
+        self.level: WorkingLevel = level_factory(self.config, self.channels, self.window)
         self.library_data: InstructionLibraryData = self.load_library(library)
 
     def __call__(
@@ -347,21 +347,21 @@ class Reconstructor:
     ) -> PreparedStems:
         """Scales the recordings to the working level and frames each of them.
 
-        The level is measured on their mix, so one factor scales the whole set and a
-        recording quieter than the mix reaches its frames at the level it holds there.
+        The working level reads every recording at once, so one factor scales the whole set and
+        a recording quieter than the mix reaches its frames at the level it holds there.
         Framing every recording on its own is what lets a stem's picks be scored against
         the sound that stem contributes.
 
         Args:
             recordings: The loaded stem recordings, in entry order.
             stems_config: The stems setup the run is made under.
-            matcher: The matching machinery a fitted working level is read with.
+            matcher: The matching machinery the working level may read the recordings with.
 
         Returns:
             PreparedStems: The scaled recordings and their frames, keyed by stem id, together
                 with the coefficient they were scaled by.
         """
-        coefficient = self._working_coefficient(recordings, stems_config, matcher)
+        coefficient = self.level.coefficient(recordings, stems_config, matcher)
         self.reset_generators()
         covered = stems_config.covered_channels
         self.state = ReconstructionState.create([name for name in ChannelName.items() if name in covered])
@@ -524,69 +524,6 @@ class Reconstructor:
             np.ndarray: The prepared mix.
         """
         return mix(list(self._load_stem_recordings(list(paths)).recordings))
-
-    def get_coefficient(
-        self,
-        audio: np.ndarray,
-        stems_config: StemsConfig,
-    ) -> float:
-        """
-        Working-level coefficient that brings the input's typical frame to what one channel renders.
-
-        The typical frame is the robust active-frame RMS level under the configured percentile
-        and audibility floor, floored at `MINIMUM_AUDIO_LEVEL` so a fully silent input yields a
-        finite coefficient. It is brought to the full-scale RMS level of the quietest tone
-        channel the setup covers, or of the quietest covered channel when the setup covers no
-        tone channel. A steady tone then plays at a level a single tone channel renders whole,
-        so one channel can answer it, and louder frames call on more channels. A pulse and the
-        noise swing between two levels, so their RMS level is their peak; a triangle's is its
-        peak over the square root of three.
-
-        Args:
-            audio: The prepared input audio.
-            stems_config: The stems setup the reconstruction runs under.
-
-        Returns:
-            float: The positive scale factor the input is divided by before matching.
-        """
-        level = max(
-            active_frame_level(
-                audio,
-                self.config.library.frame_length,
-                percentile=self.config.general.coefficient_percentile,
-                audibility_floor=self.config.general.coefficient_audibility_floor,
-            ),
-            MINIMUM_AUDIO_LEVEL,
-        )
-        return float(level / self._working_level(stems_config))
-
-    def _working_coefficient(
-        self,
-        recordings: Sequence[np.ndarray],
-        stems_config: StemsConfig,
-        matcher: FrameMatcher,
-    ) -> float:
-        """The coefficient the recordings are divided by, set by the configured level method.
-
-        Under ``coefficient`` it is :meth:`get_coefficient`'s, measured on the recordings' mix. Under
-        ``fitted`` that coefficient moves by the factor bringing a triangle line the recordings hold
-        onto the triangle's one level (:class:`LevelFitter`), and stays where the fitter finds none.
-        """
-        coefficient = self.get_coefficient(mix(list(recordings)), stems_config)
-        match self.config.general.level:
-            case LevelMethod.COEFFICIENT:
-                return coefficient
-            case LevelMethod.FITTED:
-                fitter = LevelFitter(stems_config, self.channels, matcher, self.config, self.window)
-                by_stem = {entry.id: recording for entry, recording in zip(stems_config.entries, recordings)}
-                factor = fitter.factor(by_stem, coefficient)
-                return coefficient if factor is None else coefficient * factor
-
-    def _working_level(self, stems_config: StemsConfig) -> float:
-        """The full-scale RMS level of the quietest covered tone channel, or covered channel without one."""
-        covered = [name for name in self.channels if name in stems_config.covered_channels]
-        anchors = [name for name in covered if name in TONE_CHANNELS] or covered
-        return min(FULL_SCALE_RMS_LEVELS[self.channels[name].class_name()] for name in anchors)
 
     def get_fragments(self, audio: np.ndarray) -> FragmentedAudio:
         """Frames the audio into the fragments matched against the library.

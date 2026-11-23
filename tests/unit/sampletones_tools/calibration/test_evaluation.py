@@ -11,7 +11,7 @@ from sampletones_core.reconstructions.reconstructor.observer import SILENT_OBSER
 from sampletones_shared.paths.extensions import EXT_FILE_FLAC, EXT_FILE_JSON
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.system.paths import get_filename
-from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.corpus.by_channel import by_channel
 from sampletones_tools.calibration.corpus.chords import build_chords
 from sampletones_tools.calibration.corpus.families import Family
@@ -51,7 +51,7 @@ class RecordedReconstructors:
     def __init__(self) -> None:
         self.built: List[FrozenSet[ChannelName]] = []
 
-    def __call__(self, config: Config, channels: AbstractSet[ChannelName], level: WorkingLevel) -> SilentReconstructor:
+    def __call__(self, config: Config, channels: AbstractSet[ChannelName], level: VariantLevel) -> SilentReconstructor:
         self.built.append(frozenset(channels))
         return SilentReconstructor()
 
@@ -71,7 +71,7 @@ def variants_fixture(libraries: List[Config]) -> List[CalibrationVariant]:
         [1.0],
         [],
         settings={},
-        levels=[WorkingLevel.DEFAULT],
+        levels=[VariantLevel.DEFAULT],
     )
 
 
@@ -131,7 +131,7 @@ class TestEvaluateVariants:
         ready_at_first_build: List[int] = []
 
         def reconstructor(
-            config: Config, channels: AbstractSet[ChannelName], level: WorkingLevel
+            config: Config, channels: AbstractSet[ChannelName], level: VariantLevel
         ) -> SilentReconstructor:
             ready_at_first_build.append(len(libraries))
             return SilentReconstructor()

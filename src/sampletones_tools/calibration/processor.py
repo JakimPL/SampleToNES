@@ -8,7 +8,7 @@ from sampletones_core.parallelization.processor import TaskProcessor
 from sampletones_core.reconstructions import Reconstructor
 from sampletones_shared.logger import LoggerProtocol
 
-from .config.level import WorkingLevel
+from .config.level import VariantLevel
 from .levels import level_reconstructor
 from .referee.panel import RefereePanel, build_panel
 from .rows import CalibrationRow
@@ -54,7 +54,7 @@ def convert_in_worker(conversion: Conversion) -> List[CalibrationRow]:
 
 
 @lru_cache(maxsize=None)
-def _worker_reconstructor(config: str, channels: FrozenSet[ChannelName], level: WorkingLevel) -> Reconstructor:
+def _worker_reconstructor(config: str, channels: FrozenSet[ChannelName], level: VariantLevel) -> Reconstructor:
     """The worker's reconstructor for a variant over ``channels``, built on first use and kept.
 
     The configuration arrives as its JSON, so the cache keys a variant by the values of its

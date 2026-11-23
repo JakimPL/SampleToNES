@@ -12,7 +12,7 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_tools.calibration.board.layout import PAGE_FILE
 from sampletones_tools.calibration.board.session import BoardRequest
-from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.config.samples import SampleReference, SamplesConfig
 from sampletones_tools.calibration.config.settings import SettingsConfig
 from sampletones_tools.calibration.config.suite import SuiteConfig
@@ -211,7 +211,7 @@ class TestCalibration:
         assert dispatch(COMMANDS, ["calibration", "--settings", "greedy", "--levels", "default,true"]) == 0
 
         assert calibration.requests[0].settings == ["greedy"]
-        assert calibration.requests[0].levels == [WorkingLevel.DEFAULT, WorkingLevel.TRUE]
+        assert calibration.requests[0].levels == [VariantLevel.DEFAULT, VariantLevel.TRUE]
 
     def test_an_unknown_set_of_settings_is_refused(self, calibration: RecordedCalibration) -> None:
         with pytest.raises(SystemExit, match="Unknown set of settings"):

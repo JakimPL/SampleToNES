@@ -4,7 +4,7 @@ from typing import List
 import pytest
 
 from sampletones_tools.calibration.board.reading import read_run, read_runs
-from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.fingerprint import FINGERPRINT_FILE, write_fingerprint
 from tests.unit.sampletones_tools.calibration.runs import (
     REFEREE,
@@ -47,7 +47,7 @@ class TestReadRun:
 
     def test_records_of_a_variant_the_run_never_measured_are_left_unread(self, tmp_path: Path) -> None:
         run = write_run(tmp_path / "run", ["cqt-pe1"], 0.0)
-        write_renders(run, ["fft-pe1"], 0.0, level=WorkingLevel.DEFAULT)
+        write_renders(run, ["fft-pe1"], 0.0, level=VariantLevel.DEFAULT)
 
         reading = read_run(run, "run")
 
@@ -55,13 +55,13 @@ class TestReadRun:
         assert {record.variant for record in reading.records} == {"cqt-pe1"}
 
     def test_a_variant_the_run_stopped_before_is_left_out(self, tmp_path: Path) -> None:
-        run = write_renders(tmp_path / "run", ["fft-pe1"], 0.0, level=WorkingLevel.DEFAULT)
+        run = write_renders(tmp_path / "run", ["fft-pe1"], 0.0, level=VariantLevel.DEFAULT)
         write_fingerprint(run, probe_fingerprint(["fft-pe1", "cqt-pe1"]))
 
         assert read_run(run, "run").variants == ("fft-pe1",)
 
     def test_a_run_without_a_fingerprint_is_reported(self, tmp_path: Path) -> None:
-        run = write_renders(tmp_path / "run", ["cqt-pe1"], 0.0, level=WorkingLevel.DEFAULT)
+        run = write_renders(tmp_path / "run", ["cqt-pe1"], 0.0, level=VariantLevel.DEFAULT)
 
         with pytest.raises(FileNotFoundError, match=f"holds no {FINGERPRINT_FILE}"):
             read_run(run, "run")

@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, NonNegativeFloat
 
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_shared.utils.serialization import load_yaml_model
-from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.paths import SUITE_CONFIG_PATH
 
 TemporalWeight = Annotated[float, Field(ge=0.0, le=1.0)]
@@ -37,7 +37,7 @@ class SuiteConfig(BaseModel, frozen=True):
     settings: Tuple[str, ...] = Field(
         description="Named sets from settings.yaml measured beside the base; empty measures the base alone.",
     )
-    levels: Tuple[WorkingLevel, ...] = Field(
+    levels: Tuple[VariantLevel, ...] = Field(
         min_length=1,
         description="Levels the sounds are matched at.",
     )

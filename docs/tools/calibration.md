@@ -223,9 +223,10 @@ refused before the run starts. The packaged sets:
   the triangle kept to their neighbors at an inertia of 0.5 and 1, the noise free;
   `joint-fitted-combinations-neighbors1-inertia05` keeps every channel at 0.5.
 
-`--levels true` matches every sound at the level its file holds. For a sound written as NES frames
-that is the level the channels play its frames at, where the written frames fit exactly, so a reading
-taken there leaves the working level out: what remains is the search. Its variants end in `-true`.
+`--levels true` matches every sound at the level its file holds, whatever working level its settings
+name, the fitted one included. For a sound written as NES frames that is the level the channels play
+its frames at, where the written frames fit exactly, so a reading taken there leaves the working level
+out: what remains is the search. Its variants end in `-true`.
 The level is meant for written sounds; a synthesized sound at its file's level is simply quieter or
 louder than a conversion would make it.
 

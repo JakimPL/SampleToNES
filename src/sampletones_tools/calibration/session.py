@@ -8,7 +8,7 @@ from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_shared.logger import logger
 from sampletones_tools.calibration.board.session import BoardRequest, build_board
-from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.config.manifest import CorpusManifest
 from sampletones_tools.calibration.config.settings import SettingsConfig
 from sampletones_tools.calibration.corpus.item import CorpusItem
@@ -85,7 +85,7 @@ class CalibrationRequest(BaseModel):
     temporal_weights: List[float]
     channels: List[ChannelName] = Field(min_length=1)
     settings: List[str]
-    levels: List[WorkingLevel] = Field(min_length=1)
+    levels: List[VariantLevel] = Field(min_length=1)
     categories: List[str] = Field(min_length=1)
     workers: int = Field(ge=1)
     resume: bool

@@ -177,6 +177,11 @@ the level is read from the bass line itself, for material written for the NES or
 
 Elsewhere, as for a recording, whose level is a choice, the coefficient stays as above.
 
+A run reads its working level through one rule, which the reconstructor builds once from `general.level`:
+the loudness level above, or the fitted level built on it. A rule handed to the reconstructor takes their
+place whole. The calibration's true level is one such rule. It divides every recording by one, so a sound
+written as NES frames is matched at the level its file holds.
+
 ## 4. Scoring a candidate: the criterion
 
 The **criterion** scores a candidate against the target frame as a weighted sum of a spectral and a

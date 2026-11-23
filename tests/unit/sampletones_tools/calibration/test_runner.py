@@ -16,7 +16,7 @@ from sampletones_shared.paths.extensions import EXT_FILE_FLAC
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.system.paths import get_filename
 from sampletones_tools.calibration import renders
-from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.config.referee import RefereeConfig
 from sampletones_tools.calibration.corpus.by_channel import by_channel
 from sampletones_tools.calibration.corpus.chords import build_chords
@@ -47,7 +47,7 @@ QUANTIZATION_TOLERANCE: Final[float] = 1.0 / 2**15
 
 @pytest.fixture(name="variant")
 def variant_fixture() -> CalibrationVariant:
-    (variant,) = build_variants(Config(), [SpectrumMethod.FFT], [1.0], [], settings={}, levels=[WorkingLevel.DEFAULT])
+    (variant,) = build_variants(Config(), [SpectrumMethod.FFT], [1.0], [], settings={}, levels=[VariantLevel.DEFAULT])
     return variant
 
 
@@ -273,7 +273,7 @@ class TestEvaluateConversion:
         assert np.allclose(render, heard[: render.shape[0]] * HALF_LEVEL, atol=QUANTIZATION_TOLERANCE)
 
     def test_a_record_keeps_the_level_its_render_was_matched_at(self, tmp_path: Path) -> None:
-        (true,) = build_variants(Config(), [SpectrumMethod.FFT], [1.0], [], settings={}, levels=[WorkingLevel.TRUE])
+        (true,) = build_variants(Config(), [SpectrumMethod.FFT], [1.0], [], settings={}, levels=[VariantLevel.TRUE])
         item = item_named("a", listed=False)
 
         evaluate_conversion(
@@ -282,11 +282,11 @@ class TestEvaluateConversion:
 
         record = read_record(tmp_path, true.label, item.name)
         assert record is not None
-        assert record.level == WorkingLevel.TRUE
+        assert record.level == VariantLevel.TRUE
 
     def test_each_level_keeps_its_own_recording_of_a_listed_sound(self, tmp_path: Path) -> None:
         default, true = build_variants(
-            Config(), [SpectrumMethod.FFT], [1.0], [], settings={}, levels=[WorkingLevel.DEFAULT, WorkingLevel.TRUE]
+            Config(), [SpectrumMethod.FFT], [1.0], [], settings={}, levels=[VariantLevel.DEFAULT, VariantLevel.TRUE]
         )
         item = item_named("a", listed=True)
         normalized, quiet = WrittenReconstructor(), QuietFileReconstructor()
@@ -294,8 +294,8 @@ class TestEvaluateConversion:
         evaluate_conversion(_conversion(default, item, tmp_path), cast(Reconstructor, normalized), stub_panel())
         evaluate_conversion(_conversion(true, item, tmp_path), cast(Reconstructor, quiet), stub_panel())
 
-        at_default, _ = read_wave(recording_path(tmp_path, WorkingLevel.DEFAULT, item.name))
-        at_true, _ = read_wave(recording_path(tmp_path, WorkingLevel.TRUE, item.name))
+        at_default, _ = read_wave(recording_path(tmp_path, VariantLevel.DEFAULT, item.name))
+        at_true, _ = read_wave(recording_path(tmp_path, VariantLevel.TRUE, item.name))
         assert np.allclose(at_default, normalized.load_audio([])[: at_default.shape[0]], atol=QUANTIZATION_TOLERANCE)
         assert np.allclose(at_true, quiet.load_audio([])[: at_true.shape[0]], atol=QUANTIZATION_TOLERANCE)
 

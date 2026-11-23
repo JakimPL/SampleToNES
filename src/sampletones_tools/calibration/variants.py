@@ -7,7 +7,7 @@ from sampletones_core.configs import Config
 from sampletones_core.configs.generation import GenerationConfig
 from sampletones_core.constants.enums import SpectrumMethod
 
-from .config.level import WorkingLevel
+from .config.level import VariantLevel
 from .config.settings import Overrides, overridden
 from .levels import level_config
 
@@ -29,7 +29,7 @@ class CalibrationVariant:
 
     label: str
     config: Config
-    level: WorkingLevel
+    level: VariantLevel
 
 
 def build_variants(
@@ -39,7 +39,7 @@ def build_variants(
     temporal_weights: List[float],
     *,
     settings: Mapping[str, Overrides],
-    levels: Sequence[WorkingLevel],
+    levels: Sequence[VariantLevel],
 ) -> List[CalibrationVariant]:
     """
     The variants a run measures: every point of its sweep over a base configuration.
@@ -127,9 +127,9 @@ def _blended(generation: GenerationConfig, temporal_weight: float) -> Generation
     return generation.model_copy(update={"weights": weights})
 
 
-def _at_level(label: str, config: Config, level: WorkingLevel) -> CalibrationVariant:
+def _at_level(label: str, config: Config, level: VariantLevel) -> CalibrationVariant:
     """The variant converting at ``level``, a level other than the default ending its label."""
-    if level != WorkingLevel.DEFAULT:
+    if level != VariantLevel.DEFAULT:
         label = _labeled(label, level.value)
 
     return CalibrationVariant(label=label, config=level_config(config, level), level=level)

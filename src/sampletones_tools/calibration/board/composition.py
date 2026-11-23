@@ -4,7 +4,7 @@ from typing import Dict, Final, List, Optional, Sequence, Tuple
 from sampletones_core.constants.enums import ChannelName, ordered_channels
 from sampletones_shared.paths.extensions import EXT_FILE_FLAC
 from sampletones_shared.utils.system.paths import get_filename
-from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.layout import combination_name
 from sampletones_tools.calibration.renders import RenderRecord, item_directory, recording_path, variant_directory
 from sampletones_tools.web.roles.table import channel_role
@@ -107,7 +107,7 @@ def _recordings(
     held: Sequence[Tuple[RunReading, RenderRecord]],
 ) -> Tuple[BoardRecording, ...]:
     """The recording at each level the cells were matched at, each from the run of the first cell at that level."""
-    first: Dict[WorkingLevel, RunReading] = {}
+    first: Dict[VariantLevel, RunReading] = {}
     for run, record in held:
         first.setdefault(record.level, run)
 

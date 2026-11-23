@@ -13,14 +13,14 @@ from sampletones_core.instructions import InstructionUnion
 from sampletones_shared.paths.extensions import EXT_FILE_FLAC, EXT_FILE_JSON
 from sampletones_shared.utils.system.paths import get_filename
 
-from .config.level import WorkingLevel
+from .config.level import VariantLevel
 from .layout import RECORDINGS_DIRECTORY, RENDERS_DIRECTORY, combination_name
 
 SOUNDING_FRAME: Final[str] = "1"
 RESTING_FRAME: Final[str] = "0"
 UNFILED_FAMILY: Final[str] = ""
 LISTED_BY_DEFAULT: Final[bool] = True
-UNRECORDED_LEVEL: Final[WorkingLevel] = WorkingLevel.DEFAULT
+UNRECORDED_LEVEL: Final[VariantLevel] = VariantLevel.DEFAULT
 
 
 class RenderRecord(BaseModel):
@@ -52,7 +52,7 @@ class RenderRecord(BaseModel):
     family: str = UNFILED_FAMILY
     category: str
     listed: bool = LISTED_BY_DEFAULT
-    level: WorkingLevel = UNRECORDED_LEVEL
+    level: VariantLevel = UNRECORDED_LEVEL
     timelines: Dict[str, str]
     judgments: Dict[str, Dict[str, float]]
     silence: Dict[str, float]
@@ -151,7 +151,7 @@ def write_channel_renders(
 
 def write_recording(
     run_directory: Path,
-    level: WorkingLevel,
+    level: VariantLevel,
     item: str,
     audio: np.ndarray,
     sample_rate: int,
@@ -160,7 +160,7 @@ def write_recording(
     _write_clip(recording_path(run_directory, level, item), audio, sample_rate)
 
 
-def recording_path(run_directory: Path, level: WorkingLevel, item: str) -> Path:
+def recording_path(run_directory: Path, level: VariantLevel, item: str) -> Path:
     """Where the recording of ``item`` matched at ``level`` lies.
 
     Each level keeps a recording of its own, since a level prepares the recording at a scale of its
@@ -169,7 +169,7 @@ def recording_path(run_directory: Path, level: WorkingLevel, item: str) -> Path:
     the default level alone therefore keeps its recordings where every earlier run kept them.
     """
     directory = run_directory / RECORDINGS_DIRECTORY
-    if level != WorkingLevel.DEFAULT:
+    if level != VariantLevel.DEFAULT:
         directory = directory / level.value
 
     return directory / get_filename(item, EXT_FILE_FLAC)

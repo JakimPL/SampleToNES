@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import SelectorName, SpectrumMethod
-from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.config.settings import Overrides
 from sampletones_tools.calibration.variants import CalibrationVariant, build_variants
 from tests.suite.base import BaseTestSuite
@@ -15,8 +15,8 @@ from tests.suite.case import BaseRegularTestCase
 
 METHODS: Final[List[SpectrumMethod]] = [SpectrumMethod.FFT, SpectrumMethod.CQT]
 EXPONENTS: Final[List[float]] = [1.0]
-DEFAULT_LEVEL: Final[List[WorkingLevel]] = [WorkingLevel.DEFAULT]
-BOTH_LEVELS: Final[List[WorkingLevel]] = [WorkingLevel.DEFAULT, WorkingLevel.TRUE]
+DEFAULT_LEVEL: Final[List[VariantLevel]] = [VariantLevel.DEFAULT]
+BOTH_LEVELS: Final[List[VariantLevel]] = [VariantLevel.DEFAULT, VariantLevel.TRUE]
 GREEDY: Final[Overrides] = {"generation": {"decoder": {"selector": "greedy"}}}
 NO_SETTINGS: Final[Dict[str, Overrides]] = {}
 
@@ -38,7 +38,7 @@ class TestSweepOrder(BaseTestSuite):
         exponents: List[float]
         temporal_weights: List[float]
         settings: Dict[str, Overrides]
-        levels: List[WorkingLevel]
+        levels: List[VariantLevel]
         labels: List[str]
 
     test_cases = (
@@ -74,7 +74,7 @@ class TestSweepOrder(BaseTestSuite):
             exponents=EXPONENTS,
             temporal_weights=[],
             settings=NO_SETTINGS,
-            levels=[WorkingLevel.TRUE, WorkingLevel.DEFAULT],
+            levels=[VariantLevel.TRUE, VariantLevel.DEFAULT],
             labels=["cqt-pe1-true", "cqt-pe1"],
             label="levels_in_the_order_named",
         ),
@@ -187,7 +187,7 @@ class TestBuildVariants:
         )
 
         assert (default.label, true.label) == ("cqt-pe1", "cqt-pe1-true")
-        assert (default.level, true.level) == (WorkingLevel.DEFAULT, WorkingLevel.TRUE)
+        assert (default.level, true.level) == (VariantLevel.DEFAULT, VariantLevel.TRUE)
         assert default.config.general.normalize == Config().general.normalize
         assert true.config.general.normalize is False
 

@@ -12,7 +12,7 @@ from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_tools.calibration.board.layout import PAGE_FILE
 from sampletones_tools.calibration.board.reading import read_run
 from sampletones_tools.calibration.board.session import BoardRequest
-from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.config.settings import SettingsConfig
 from sampletones_tools.calibration.corpus.item import CorpusItem
 from sampletones_tools.calibration.fingerprint import FINGERPRINT_FILE, ResumeRefusedError
@@ -129,7 +129,7 @@ def asked_fixture(tmp_path: Path) -> CalibrationRequest:
         temporal_weights=[],
         channels=[ChannelName.PULSE1],
         settings=[],
-        levels=[WorkingLevel.DEFAULT],
+        levels=[VariantLevel.DEFAULT],
         categories=CATEGORIES,
         workers=1,
         resume=False,
@@ -230,12 +230,12 @@ class TestARunInAUsedFolder:
         self, asked: CalibrationRequest, evaluation: RecordedEvaluation
     ) -> None:
         write_run(asked.output, ["cqt-pe1"], 0.0)
-        write_renders(asked.output, ["cqt-pe1-true"], 0.0, level=WorkingLevel.TRUE)
+        write_renders(asked.output, ["cqt-pe1-true"], 0.0, level=VariantLevel.TRUE)
 
         calibrate(asked)
 
         assert [path.name for path in (asked.output / RENDERS_DIRECTORY).iterdir()] == ["fft-pe1"]
-        assert not (asked.output / RECORDINGS_DIRECTORY / WorkingLevel.TRUE.value).exists()
+        assert not (asked.output / RECORDINGS_DIRECTORY / VariantLevel.TRUE.value).exists()
 
     @pytest.mark.parametrize("held", [RENDERS_DIRECTORY, RECORDINGS_DIRECTORY], ids=lambda held: held)
     def test_a_folder_holding_files_no_run_claimed_is_refused_and_left_as_it_stands(
@@ -264,15 +264,15 @@ class TestARunInAUsedFolder:
         self, asked: CalibrationRequest, written: WrittenReconstructor
     ) -> None:
         earlier = asked.model_copy(
-            update={"methods": [SpectrumMethod.FFT, SpectrumMethod.CQT], "levels": [WorkingLevel.TRUE]}
+            update={"methods": [SpectrumMethod.FFT, SpectrumMethod.CQT], "levels": [VariantLevel.TRUE]}
         )
         calibrate(earlier)
-        assert (asked.output / RECORDINGS_DIRECTORY / WorkingLevel.TRUE.value).is_dir()
+        assert (asked.output / RECORDINGS_DIRECTORY / VariantLevel.TRUE.value).is_dir()
 
         calibrate(asked.model_copy(update={"methods": [SpectrumMethod.CQT]}))
 
         assert [path.name for path in (asked.output / RENDERS_DIRECTORY).iterdir()] == ["cqt-pe1"]
-        assert not (asked.output / RECORDINGS_DIRECTORY / WorkingLevel.TRUE.value).exists()
+        assert not (asked.output / RECORDINGS_DIRECTORY / VariantLevel.TRUE.value).exists()
         assert read_run(asked.output, "run").variants == ("cqt-pe1",)
 
     def test_a_resume_reads_none_of_an_earlier_run_s_records(

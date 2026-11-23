@@ -3,7 +3,7 @@ from typing import Final, List, Tuple
 import pytest
 
 from sampletones_core.constants.enums import SpectrumMethod
-from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.corpus.families import Family
 from sampletones_tools.calibration.options import (
     categories_named,
@@ -76,13 +76,13 @@ class TestSettingsNamed:
 
 class TestLevelsNamed:
     def test_nothing_named_is_the_default(self) -> None:
-        assert levels_named(None, (WorkingLevel.TRUE,)) == [WorkingLevel.TRUE]
+        assert levels_named(None, (VariantLevel.TRUE,)) == [VariantLevel.TRUE]
 
     def test_names_are_read_in_order(self) -> None:
-        assert levels_named("true,default", ()) == [WorkingLevel.TRUE, WorkingLevel.DEFAULT]
+        assert levels_named("true,default", ()) == [VariantLevel.TRUE, VariantLevel.DEFAULT]
 
     def test_an_unknown_level_is_refused_with_the_known_ones(self) -> None:
-        known = ", ".join(level.value for level in WorkingLevel)
+        known = ", ".join(level.value for level in VariantLevel)
 
         with pytest.raises(ValueError, match=f"Unknown level 'loud'; the levels are {known}."):
             levels_named("loud", ())
