@@ -1,6 +1,6 @@
 import itertools
 from dataclasses import dataclass
-from typing import Dict, Final, List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, Final, List, Mapping, Optional, Self, Sequence, Tuple
 
 import numpy as np
 
@@ -9,16 +9,17 @@ from sampletones_core.fft import Fragment
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
 from sampletones_shared.array import xp
 
-from .catalog import FULL_VOLUME, KindCatalog
+from .batches import cheapest_row, split_by_group
+from .catalog import KindCatalog, UnitRow
 from .fit import FitTarget, fitted_combinations
 from .hearing import FrameHearing
-from .layout import Slot, StemLayout
+from .layout import StemLayout
 
 FIRST_UPDATES: Final[int] = 5
 FURTHER_UPDATES: Final[int] = 15
 SURVIVORS: Final[int] = 160
-DISTINCT_COMBINATIONS: Final[int] = 12
 SCANNED_COMBINATIONS: Final[int] = 72
+DISTINCT_COMBINATIONS: Final[int] = 12
 REFINEMENT_SWEEPS: Final[int] = 2
 SILENT_ENTRY: Final[int] = 0
 
@@ -40,42 +41,181 @@ class Combination:
     cost: float
 
 
-@dataclass(frozen=True)
-class UnitTable:
-    """What one fitted channel may play across a frame's combinations: one entry per proposal, silence first.
+def searched_choices(layout: StemLayout, proposals: Mapping[GeneratorClassName, Sequence[int]]) -> List[Choice]:
+    """Every choice of proposals the stem may sound together: a proposal or silence on each of its channels.
 
-    A proposal's unit is the loudest row of its note and timbre at the channel's drive, so a fitted
-    level of one sounds that row, and the level may rise as far as full volume.
+    A kind sounds every set of its proposals up to as many as it has channels: none first, then each
+    proposal alone, then every pair, each set in proposal order. A set's proposals go to the kind's
+    channels in layout order, and the channels left over fall silent, so pulses driven alike sound
+    each set once. The kinds' sets are crossed in kind name order, the first kind's sets varying
+    slowest, and a choice is kept where it sounds at most the stem's count of channels.
+
+    The search keeps this order among choices of equal cost: a kind's silence before its sets that
+    sound, smaller sets before larger ones, and the stronger proposals first.
+
+    Args:
+        layout: The stem's channels.
+        proposals: The rows proposed for each kind, strongest first.
+
+    Returns:
+        The choices, each one entry per channel in layout order, ``None`` for silence.
+    """
+    kinds = sorted(layout.kinds)
+    sets = [_proposal_sets(proposals.get(kind, ()), len(layout.of_kind(kind))) for kind in kinds]
+    choices = [_placed(layout, dict(zip(kinds, picked))) for picked in itertools.product(*sets)]
+    return [choice for choice in choices if _sounding(choice) <= layout.cap]
+
+
+def _proposal_sets(offered: Sequence[int], channels: int) -> List[Choice]:
+    """Every set of ``offered`` up to ``channels`` large, smaller first, each padded with silence to ``channels``."""
+    sets: List[Choice] = [(None,) * channels]
+    for sounding in range(1, channels + 1):
+        for picked in itertools.combinations([int(row) for row in offered], sounding):
+            sets.append((*picked, *([None] * (channels - sounding))))
+
+    return sets
+
+
+def _placed(layout: StemLayout, picked: Mapping[GeneratorClassName, Choice]) -> Choice:
+    """Each kind's ``picked`` set on the kind's channels, in layout order."""
+    left = {kind: list(rows) for kind, rows in picked.items()}
+    return tuple(left[slot.kind].pop(0) for slot in layout.slots)
+
+
+def _sounding(choice: Choice) -> int:
+    """How many channels ``choice`` sounds."""
+    return sum(row is not None for row in choice)
+
+
+@dataclass(frozen=True)
+class ChannelUnits:
+    """What one fitted channel may play across a frame's choices: its silence, or a proposal's unit at a level.
+
+    A proposal's unit is the unit row of its note and timbre, heard as the frame's fit reads it on
+    the channel, so a level of one sounds the unit row. The level starts at the proposal's own volume
+    and rises at most to full volume. The channel's silence is ``SILENT_ENTRY``, a unit of no power
+    held at level zero.
 
     Attributes:
-        positions: Each combination's entry.
-        entries: Each proposal row's entry.
-        features: Each entry's unit atom, in feature values.
-        powers: Each entry's unit atom, in power.
+        place: The channel's place in the layout.
+        entries: Each choice's entry on the channel.
+        units: The unit row of each proposal the channel may play, keyed by the proposal's row.
+        features: Each entry's unit, in feature values.
+        powers: Each entry's unit, in power.
         caps: Each entry's highest level.
-        starts: Each entry's starting level, the proposal's own volume.
-        loudest: Each entry's unit row.
-        volumes: Each entry's unit row's volume.
+        starts: Each entry's first level.
     """
 
-    positions: np.ndarray
-    entries: Dict[int, int]
+    place: int
+    entries: np.ndarray
+    units: Dict[int, UnitRow]
     features: np.ndarray
     powers: np.ndarray
     caps: np.ndarray
     starts: np.ndarray
-    loudest: np.ndarray
-    volumes: np.ndarray
+
+    @classmethod
+    def of(cls, choices: Sequence[Choice], place: int, catalog: KindCatalog, hearing: FrameHearing, bins: int) -> Self:
+        """The units of the channel at ``place`` across ``choices``, each proposal an entry in row order."""
+        played = [choice[place] for choice in choices]
+        offered = sorted({row for row in played if row is not None})
+        units = [catalog.unit_of(row) for row in offered]
+        entry_of = {row: entry for entry, row in enumerate(offered, start=SILENT_ENTRY + 1)}
+        unit_rows = [unit.row for unit in units]
+        silence = np.zeros((1, bins))
+        return cls(
+            place=place,
+            entries=np.array([SILENT_ENTRY if row is None else entry_of[row] for row in played]),
+            units=dict(zip(offered, units)),
+            features=np.concatenate([silence, hearing.unit_features(place, unit_rows)]),
+            powers=np.concatenate([silence, hearing.unit_powers(place, unit_rows)]),
+            caps=np.array([0.0, *(unit.full_level for unit in units)]),
+            starts=np.array([0.0, *(unit.level_of(catalog.sounding_volume(row)) for row, unit in zip(offered, units))]),
+        )
+
+
+@dataclass(frozen=True)
+class ChoiceFits:
+    """The fit of a frame's choices, one model per choice: its fixed part and each fitted channel's unit and cap.
+
+    The fixed part is what the frame holds before its rows sound and the rows of the channels
+    playing one level. A model sounds its fixed part and each fitted channel's unit at its level.
+
+    Attributes:
+        units: Each fitted channel's unit in every choice, in feature values.
+        unit_powers: Each fitted channel's unit in every choice, in power.
+        caps: Each fitted channel's highest level in every choice.
+        base: Every choice's fixed part, in feature values.
+        base_powers: Every choice's fixed part, in power.
+    """
+
+    units: List[np.ndarray]
+    unit_powers: List[np.ndarray]
+    caps: List[np.ndarray]
+    base: np.ndarray
+    base_powers: np.ndarray
+
+    @classmethod
+    def of(cls, channels: Sequence[ChannelUnits], base: np.ndarray, base_powers: np.ndarray) -> Self:
+        """The fit of the choices ``channels`` hold the entries of, over their fixed parts."""
+        return cls(
+            units=[channel.features[channel.entries] for channel in channels],
+            unit_powers=[channel.powers[channel.entries] for channel in channels],
+            caps=[channel.caps[channel.entries] for channel in channels],
+            base=base,
+            base_powers=base_powers,
+        )
+
+    def kept(self, choices: np.ndarray) -> Self:
+        """The fit of ``choices`` alone, in their order."""
+        return type(self)(
+            units=[unit[choices] for unit in self.units],
+            unit_powers=[power[choices] for power in self.unit_powers],
+            caps=[cap[choices] for cap in self.caps],
+            base=self.base[choices],
+            base_powers=self.base_powers[choices],
+        )
+
+    def fitted(self, target: FitTarget, levels: Sequence[np.ndarray], updates: int) -> List[np.ndarray]:
+        """Every channel's levels after ``updates`` more updates from ``levels``."""
+        return fitted_combinations(target, self.units, self.base, levels, self.caps, updates=updates)
+
+    def powers(self, levels: Sequence[np.ndarray]) -> np.ndarray:
+        """What every choice sounds at ``levels``, in power."""
+        mixed = self.base_powers.copy()
+        for unit, level in zip(self.unit_powers, levels):
+            mixed = mixed + level[:, None] * unit
+
+        return mixed
+
+
+@dataclass(frozen=True)
+class Survivors:
+    """The choices the short fit ranks cheapest, after the longer fit.
+
+    Attributes:
+        choices: Each survivor's index among the choices, the cheapest of the short fit first.
+        levels: Each fitted channel's level in every survivor.
+        costs: Each survivor's spectral cost at its levels.
+    """
+
+    choices: np.ndarray
+    levels: List[np.ndarray]
+    costs: np.ndarray
 
 
 class CombinationSearch:
-    """Searches the combinations of a frame's proposed notes for the rows that fit the frame best together.
+    """Searches the combinations of a frame's proposals for the rows that fit the frame best together.
 
-    Every combination of the proposals the stem's channels may sound together is fitted at once,
-    each pulse and noise channel's level free and the triangle at its one level. The combinations
-    fitting best are moved onto the library's rows, one channel at a time over every row of its note,
-    and every comparison between them is made on complete mixes under the spectral term, each mix
-    as the frame's hearing adds its rows up.
+    A choice puts a proposal or silence on each of the stem's channels (``searched_choices``). Every
+    choice is fitted to the frame at once: each pulse's and the noise's level scales the unit row of
+    its proposal's note and timbre, and the triangle sounds its one level. The best fits move onto
+    the library's rows nearest their levels, and then one channel at a time onto the row of its note
+    that fits best with the others sounding. Every comparison ranks complete mixes, each as the
+    frame's hearing adds its rows up, by the spectral term. Two orders of pulses driven alike sound
+    the same, so a combination reads once in either.
+
+    The search also scores combinations for the judge: their spectral cost and their pulses' one order.
     """
 
     def __init__(
@@ -94,91 +234,65 @@ class CombinationSearch:
         self.matcher = matcher
         self.hearing = hearing
 
-    def fitted(self, proposals: Mapping[GeneratorClassName, Sequence[int]]) -> List[Combination]:
-        """The distinct combinations fitting the frame best, on the rows nearest their fitted levels.
+    def fitted(self, proposals: Mapping[GeneratorClassName, Sequence[int]]) -> List[Rows]:
+        """The distinct combinations fitting the frame best, each on the rows nearest its fitted levels.
+
+        Every choice is fitted ``FIRST_UPDATES`` times and ranked, and its ``SURVIVORS`` cheapest
+        ``FURTHER_UPDATES`` times more, so the longer fit goes to the choices that may win. The
+        ``SCANNED_COMBINATIONS`` cheapest fits then move onto rows, cheapest first, until
+        ``DISTINCT_COMBINATIONS`` distinct combinations stand: fits differing in levels alone may
+        land on one combination. Equal costs keep the choices' order.
 
         Returns:
-            Up to ``DISTINCT_COMBINATIONS`` combinations, the cheapest first.
+            Up to ``DISTINCT_COMBINATIONS`` combinations, by the cost of their fits, cheapest first.
         """
-        choices = self._choices(proposals)
-        fitted_slots = [index for index, slot in enumerate(self.layout.slots) if _fitted_level(slot)]
-        tables = [self._unit_table(choices, index) for index in fitted_slots]
-        units = [table.features[table.positions] for table in tables]
-        unit_powers = [table.powers[table.positions] for table in tables]
-        caps = [table.caps[table.positions] for table in tables]
-        base, base_powers = self._fixed(choices)
-
-        levels = fitted_combinations(
-            self.target,
-            units,
-            base,
-            [table.starts[table.positions] for table in tables],
-            caps,
-            updates=FIRST_UPDATES,
-        )
-        costs = self._spectral_costs(_mixed(base_powers, unit_powers, levels))
-        kept = np.argsort(costs, kind="stable")[:SURVIVORS]
-        levels = fitted_combinations(
-            self.target,
-            [unit[kept] for unit in units],
-            base[kept],
-            [level[kept] for level in levels],
-            [cap[kept] for cap in caps],
-            updates=FURTHER_UPDATES,
-        )
-        costs = self._spectral_costs(_mixed(base_powers[kept], [power[kept] for power in unit_powers], levels))
-
-        found: Dict[Rows, Combination] = {}
-        for position in np.argsort(costs, kind="stable")[:SCANNED_COMBINATIONS]:
-            combination = int(kept[position])
-            volumes = {
-                index: (table, float(table.volumes[table.positions[combination]] * np.sqrt(max(level[position], 0.0))))
-                for index, table, level in zip(fitted_slots, tables, levels)
-            }
-            rows = self._rows(choices[combination], volumes)
-            found.setdefault(self.canonical(rows), Combination(rows=rows, cost=float(costs[position])))
+        choices = searched_choices(self.layout, proposals)
+        channels = [
+            ChannelUnits.of(choices, place, self.catalogs[slot.kind], self.hearing, self._bins)
+            for place, slot in enumerate(self.layout.slots)
+            if slot.plays_levels
+        ]
+        survivors = self._survivors(channels, *self._fixed_parts(choices))
+        found: Dict[Rows, Rows] = {}
+        for position in np.argsort(survivors.costs, kind="stable")[:SCANNED_COMBINATIONS]:
+            levels = [level[position] for level in survivors.levels]
+            rows = self._rows(choices[int(survivors.choices[position])], channels, levels)
+            found.setdefault(self.canonical(rows), rows)
             if len(found) >= DISTINCT_COMBINATIONS:
                 break
 
-        return sorted(found.values(), key=lambda found_combination: found_combination.cost)
+        return list(found.values())
 
-    def refined(self, combinations: Sequence[Combination]) -> List[Combination]:
+    def refined(self, combinations: Sequence[Rows]) -> List[Combination]:
         """The combinations moved onto the rows of their notes that fit the frame best, one channel at a time.
 
-        Each sounding channel in turn takes the row of its own note, or its silence, that lowers the
-        spectral cost of the frame most with the other channels sounding, over two sweeps. A sounding
-        noise moves over every row it holds, since its shapes overlap too broadly for a fit to tell
-        them apart.
+        Over ``REFINEMENT_SWEEPS`` sweeps through the channels in layout order, each sounding channel
+        of every combination in turn takes the row of its own note, or its silence, that gives the
+        frame the lowest spectral cost with the other channels sounding. A sounding noise moves over
+        every row it holds, since its shapes overlap too broadly for a fit to tell them apart. A
+        silent channel stays silent, so a combination keeps within the stem's count of channels.
 
         Returns:
-            The distinct combinations reached, the cheapest first.
+            The distinct combinations reached, the cheapest first, equal costs in the given order.
         """
         if not combinations:
             return []
 
-        current = [list(combination.rows) for combination in combinations]
+        current = [list(rows) for rows in combinations]
         for _ in range(REFINEMENT_SWEEPS):
-            for index, slot in enumerate(self.layout.slots):
-                self._moved(current, index, slot)
+            for place in range(len(self.layout.slots)):
+                self._move(current, place)
 
-        costs = self._spectral_costs(np.stack([self.power_of(tuple(rows)) for rows in current]))
+        reached = [tuple(rows) for rows in current]
         found: Dict[Rows, Combination] = {}
-        for rows, cost in zip(current, costs):
-            found.setdefault(self.canonical(tuple(rows)), Combination(rows=tuple(rows), cost=float(cost)))
+        for rows, cost in zip(reached, self.spectral_costs(reached)):
+            found.setdefault(self.canonical(rows), Combination(rows=rows, cost=float(cost)))
 
-        return sorted(found.values(), key=lambda combination: combination.cost)
-
-    def power_of(self, rows: Rows) -> np.ndarray:
-        """The power the frame holds with the rows sounding together, each at the drive the stem gives its channel."""
-        total = self.hearing.leak
-        for index, row in enumerate(rows):
-            total = total + self._row_power(index, row)
-
-        return total
+        return sorted(found.values(), key=_cost_of)
 
     def spectral_costs(self, combinations: Sequence[Rows]) -> np.ndarray:
         """The spectral cost of the frame with each combination's rows sounding together."""
-        return self._spectral_costs(np.stack([self.power_of(rows) for rows in combinations]))
+        return self._spectral_costs(np.stack([self._power_of(rows) for rows in combinations]))
 
     def canonical(self, rows: Rows) -> Rows:
         """The rows with the pulses in one order wherever the two are driven alike, so one sound reads once."""
@@ -187,124 +301,114 @@ class CombinationSearch:
             return rows
 
         ordered = list(rows)
-        ordered[pulses[0]], ordered[pulses[1]] = sorted(rows[index] for index in pulses)
+        ordered[pulses[0]], ordered[pulses[1]] = sorted(rows[place] for place in pulses)
         return tuple(ordered)
 
-    def _choices(self, proposals: Mapping[GeneratorClassName, Sequence[int]]) -> List[Choice]:
-        """Every choice of proposal per channel the stem may sound together, within its count of channels."""
-        kinds = sorted(self.layout.kinds)
-        per_kind: List[List[Tuple[Optional[int], ...]]] = []
-        for kind in kinds:
-            count = len(self.layout.of_kind(kind))
-            offered = [int(row) for row in proposals.get(kind, ())]
-            options: List[Tuple[Optional[int], ...]] = [(None,) * count]
-            for sounding in range(1, count + 1):
-                for picked in itertools.combinations(offered, sounding):
-                    options.append((*picked, *([None] * (count - sounding))))
-            per_kind.append(options)
+    def _survivors(self, channels: Sequence[ChannelUnits], base: np.ndarray, base_powers: np.ndarray) -> Survivors:
+        """The choices surviving the short fit, fitted further, every channel starting at its proposal's volume."""
+        fits = ChoiceFits.of(channels, base, base_powers)
+        levels = fits.fitted(self.target, [channel.starts[channel.entries] for channel in channels], FIRST_UPDATES)
+        cheapest = np.argsort(self._spectral_costs(fits.powers(levels)), kind="stable")[:SURVIVORS]
+        kept = fits.kept(cheapest)
+        levels = kept.fitted(self.target, [level[cheapest] for level in levels], FURTHER_UPDATES)
+        return Survivors(choices=cheapest, levels=levels, costs=self._spectral_costs(kept.powers(levels)))
 
-        choices: List[Choice] = []
-        for picked_per_kind in itertools.product(*per_kind):
-            by_kind = {kind: list(picked) for kind, picked in zip(kinds, picked_per_kind)}
-            choice = tuple(by_kind[slot.kind].pop(0) for slot in self.layout.slots)
-            if sum(row is not None for row in choice) <= self.layout.cap:
-                choices.append(choice)
+    @property
+    def _bins(self) -> int:
+        """How many bins the frame's feature holds."""
+        return int(self.target.reference.shape[0])
 
-        return choices
-
-    def _unit_table(self, choices: Sequence[Choice], index: int) -> UnitTable:
-        """The unit atom, cap and starting level of every proposal one fitted channel may play."""
-        slot = self.layout.slots[index]
-        catalog = self.catalogs[slot.kind]
-        offered = sorted({row for choice in choices if (row := choice[index]) is not None})
-        entries = {row: position + 1 for position, row in enumerate(offered)}
-        bins = self.target.reference.shape[0]
-        loudest = [catalog.loudest(int(catalog.notes[row]), int(catalog.timbres[row])) for row in offered]
-        volumes = [max(int(catalog.volumes[row]), 1) for row in loudest]
-        return UnitTable(
-            positions=np.array([SILENT_ENTRY if row is None else entries[row] for row in (c[index] for c in choices)]),
-            entries=entries,
-            features=np.concatenate([np.zeros((1, bins)), self.hearing.unit_features(index, loudest)]),
-            powers=np.concatenate([np.zeros((1, bins)), self.hearing.unit_powers(index, loudest)]),
-            caps=np.array([0.0, *((FULL_VOLUME / volume) ** 2 for volume in volumes)]),
-            starts=np.array(
-                [0.0, *((max(int(catalog.volumes[row]), 1) / volume) ** 2 for row, volume in zip(offered, volumes))]
-            ),
-            loudest=np.array([catalog.silence, *loudest]),
-            volumes=np.array([0.0, *volumes], dtype=np.float64),
-        )
-
-    def _fixed(self, choices: Sequence[Choice]) -> Tuple[np.ndarray, np.ndarray]:
-        """The part of every combination played at one level, what the frame holds before its rows included."""
-        bins = self.target.reference.shape[0]
-        features = np.zeros((len(choices), bins)) + self.hearing.leak_features
-        powers = np.zeros((len(choices), bins)) + self.hearing.leak
-        for index, slot in enumerate(self.layout.slots):
-            if _fitted_level(slot):
+    def _fixed_parts(self, choices: Sequence[Choice]) -> Tuple[np.ndarray, np.ndarray]:
+        """Every choice's fixed part, in feature values and in power: the leak and its one-level channels' rows."""
+        features = np.zeros((len(choices), self._bins)) + self.hearing.leak_features
+        powers = np.zeros((len(choices), self._bins)) + self.hearing.leak
+        for place, slot in enumerate(self.layout.slots):
+            if slot.plays_levels:
                 continue
+
             for position, choice in enumerate(choices):
-                row = choice[index]
+                row = choice[place]
                 if row is not None:
-                    features[position] += self.hearing.features(index, [row])[0]
-                    powers[position] += self.hearing.powers(index, [row])[0]
+                    features[position] += self.hearing.features(place, [row])[0]
+                    powers[position] += self.hearing.powers(place, [row])[0]
 
         return features, powers
 
-    def _rows(self, choice: Choice, volumes: Mapping[int, Tuple[UnitTable, float]]) -> Rows:
-        """The rows nearest a combination's fitted volumes, on each proposal's note and timbre."""
+    def _rows(self, choice: Choice, channels: Sequence[ChannelUnits], levels: Sequence[float]) -> Rows:
+        """The rows ``choice`` plays at its fitted ``levels``: each fitted channel on the row of its unit's volume.
+
+        A fitted channel plays the row of its unit's note and timbre nearest the volume its level
+        sounds, which is silence under half a step. A one-level channel plays its proposal.
+        """
+        fitted = {channel.place: (channel, level) for channel, level in zip(channels, levels)}
         rows: List[int] = []
-        for index, (slot, row) in enumerate(zip(self.layout.slots, choice)):
+        for place, (slot, row) in enumerate(zip(self.layout.slots, choice)):
             catalog = self.catalogs[slot.kind]
             if row is None:
                 rows.append(catalog.silence)
-            elif index in volumes:
-                table, volume = volumes[index]
-                unit = int(table.loudest[table.entries[row]])
-                rows.append(catalog.nearest(unit, min(volume, float(FULL_VOLUME))))
+            elif place in fitted:
+                channel, level = fitted[place]
+                unit = channel.units[row]
+                rows.append(catalog.nearest(unit.row, unit.volume_at(level)))
             else:
                 rows.append(row)
 
         return tuple(rows)
 
-    def _row_power(self, index: int, row: int) -> np.ndarray:
-        return np.asarray(self.hearing.powers(index, [row])[0])
+    def _move(self, current: List[List[int]], place: int) -> None:
+        """Moves the channel at ``place`` of every combination in ``current`` to its option sounding best with the rest.
 
-    def _moved(self, current: List[List[int]], index: int, slot: Slot) -> None:
-        """Every combination's channel moved to the row of its note, or its silence, that fits best with the rest."""
-        stacks: List[np.ndarray] = []
-        owners: List[Tuple[int, np.ndarray]] = []
-        for position, rows in enumerate(current):
-            options = self._options(slot, rows, index)
-            if options is None:
-                continue
-            others = self.power_of(tuple(rows)) - self._row_power(index, rows[index])
-            stacks.append(others[None, :] + self.hearing.powers(index, options))
-            owners.append((position, options))
-
-        if not stacks:
+        Every combination's options are scored in one batch. Of equally cheap options, the earlier
+        stands.
+        """
+        movable = [
+            (position, options)
+            for position, rows in enumerate(current)
+            if (options := self._options(place, rows)) is not None
+        ]
+        if not movable:
             return
 
-        costs = self._spectral_costs(np.concatenate(stacks))
-        start = 0
-        for position, options in owners:
-            current[position][index] = int(options[int(np.argmin(costs[start : start + len(options)]))])
-            start += len(options)
+        stacks = [
+            self._without(place, current[position])[None, :] + self.hearing.powers(place, options)
+            for position, options in movable
+        ]
+        costs = split_by_group(self._spectral_costs(np.concatenate(stacks)), [options for _, options in movable])
+        for (position, options), option_costs in zip(movable, costs):
+            current[position][place] = cheapest_row(options, option_costs)
 
-    def _options(self, slot: Slot, rows: Sequence[int], index: int) -> Optional[np.ndarray]:
-        """The rows a sounding channel may move to beside the rest of a combination; ``None`` for a silent one.
+    def _options(self, place: int, rows: Sequence[int]) -> Optional[np.ndarray]:
+        """The rows the channel at ``place`` may move to beside the rest of ``rows``; ``None`` where it is silent.
 
-        A pulse or the triangle moves over the rows of its own note and its silence. The noise moves
-        over every row it holds.
+        A pulse or the triangle moves over the rows of its own note, in catalog order, and then its
+        silence. The noise moves over every row it holds.
         """
+        slot = self.layout.slots[place]
         catalog = self.catalogs[slot.kind]
-        if not catalog.sounding(rows[index]):
+        if not catalog.sounding(rows[place]):
             return None
 
         if slot.kind == GeneratorClassName.NOISE_GENERATOR:
             return np.arange(len(catalog.instructions))
 
-        options: np.ndarray = np.append(catalog.rows_of(int(catalog.notes[rows[index]])), catalog.silence)
+        options: np.ndarray = np.append(catalog.rows_of(int(catalog.notes[rows[place]])), catalog.silence)
         return options
+
+    def _without(self, place: int, rows: Sequence[int]) -> np.ndarray:
+        """The power the frame holds with every channel of ``rows`` sounding but the one at ``place``."""
+        return np.asarray(self._power_of(tuple(rows)) - self._row_power(place, rows[place]))
+
+    def _power_of(self, rows: Rows) -> np.ndarray:
+        """The power the frame holds with the rows sounding together, each as the hearing hears it on its channel."""
+        total = self.hearing.leak
+        for place, row in enumerate(rows):
+            total = total + self._row_power(place, row)
+
+        return total
+
+    def _row_power(self, place: int, row: int) -> np.ndarray:
+        """The power ``row`` adds to the frame on the channel at ``place``."""
+        return np.asarray(self.hearing.powers(place, [row])[0])
 
     def _spectral_costs(self, powers: np.ndarray) -> np.ndarray:
         """The spectral cost of the frame with each row of ``powers`` sounding."""
@@ -312,15 +416,5 @@ class CombinationSearch:
         return self.matcher.scorer.spectral_costs(self.fragment, features)
 
 
-def _fitted_level(slot: Slot) -> bool:
-    """Whether a channel's level is fitted; the triangle plays one level."""
-    return slot.kind != GeneratorClassName.TRIANGLE_GENERATOR
-
-
-def _mixed(base: np.ndarray, units: Sequence[np.ndarray], levels: Sequence[np.ndarray]) -> np.ndarray:
-    """What every combination sounds: its fixed part and each fitted channel's unit at its level."""
-    mixed = base.copy()
-    for unit, level in zip(units, levels):
-        mixed = mixed + level[:, None] * unit
-
-    return mixed
+def _cost_of(combination: Combination) -> float:
+    return combination.cost

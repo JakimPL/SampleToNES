@@ -12,15 +12,25 @@ from sampletones_shared.array import to_numpy, xp
 SQUARED_DISTANCE_BETA: Final[float] = 2.0
 ABSOLUTE_DISTANCE_BETA: Final[float] = 1.0
 VANISHING: Final[float] = 1e-30
+STACKED_DOT: Final[str] = "...b,...b->..."
 
 
 @dataclass(frozen=True)
 class FitTarget:
     """A frame's feature as a fit of levels reads it: the bins, their weights and the floor both sides stand on.
 
-    The fit measures with the criterion's own beta-divergence, so a level that lowers the fit's
-    divergence lowers the spectral term the search later ranks by. A criterion measuring with
-    another distance is fitted under the beta-divergence nearest it.
+    A fit explains the frame as ``floor + base + sum(level * atom)`` in feature values, every level
+    nonnegative and under its cap, and measures it against ``reference + floor`` by the criterion's
+    weighted beta-divergence. The spectral term is that divergence over a constant of the frame, so a
+    level lowering the fit's divergence lowers the spectral term the search later ranks by. A squared
+    distance is the beta-divergence of beta two up to its scale, and an absolute distance is fitted
+    under the Kullback-Leibler divergence, of beta one.
+
+    The fit updates every level multiplicatively, as a nonnegative factorization with its atoms held
+    does. The divergence's slope along an atom is its rising part less its falling part, each summed
+    over the atom's bins, and each update multiplies the level by the ratio of the falling part to the
+    rising part. A positive level stays positive, and for a beta from one to two each update lowers
+    the divergence, also where the level is then clipped at its cap.
 
     Attributes:
         reference: The frame's feature values.
@@ -46,24 +56,13 @@ class FitTarget:
             beta=_fit_beta(criterion),
         )
 
-    def updated(self, levels: np.ndarray, atoms: np.ndarray, mixed: np.ndarray) -> np.ndarray:
-        """One multiplicative update of every level, the mix they sound standing at ``mixed``.
-
-        The update multiplies each level by the ratio of the divergence's falling and rising parts
-        along its atom, which keeps a level positive and lowers the divergence.
-
-        Args:
-            levels: The levels, one per atom, or one per atom of each mix in a stack.
-            atoms: The atoms the levels scale, one per row, or one per row of each mix.
-            mixed: The mix the levels sound together with the floor, one per row of a stack.
-
-        Returns:
-            The updated levels.
-        """
-        return _stepped(levels, atoms, *self.slopes(mixed))
-
     def slopes(self, mixed: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """The divergence's falling and rising parts at ``mixed``, which every level sounding in it is updated by."""
+        """The divergence's falling and rising parts in each bin of the model ``mixed``, or of each model in a stack.
+
+        The divergence of a bin falls as the model rises toward the target and rises past it: its
+        slope there is the rising part ``w * mixed^(beta - 1)`` less the falling part
+        ``w * (reference + floor) * mixed^(beta - 2)``.
+        """
         shrunk = mixed ** (self.beta - 2.0)
         return self.weights * (self.reference + self.floor) * shrunk, self.weights * shrunk * mixed
 
@@ -77,19 +76,19 @@ def fitted_levels(
     start: float,
     updates: int,
 ) -> np.ndarray:
-    """How strongly each atom sounds when every atom is fitted to the frame at once.
+    """How strongly each atom sounds when every atom is fitted to the frame at once, all in one model.
 
-    The levels of all the atoms are fitted together, each held under the most its channels can
-    play, over a fixed part the frame holds whatever the atoms play. A note the frame holds takes
-    its level, and a note that would only cover other notes' partials is left with little, since the
-    true notes explain the same bins with nothing over.
+    The levels of all the atoms are fitted together, each clipped at its cap, over a fixed part the
+    frame holds whatever the atoms play. A note the frame holds takes its level, and a note that
+    would only cover other notes' partials is left with little, since the true notes explain the
+    same bins with nothing over.
 
     Args:
         target: The frame.
         atoms: One atom per row, in feature values.
         caps: The highest level each atom may reach.
         base: The fixed part, in feature values.
-        start: The level every atom starts from.
+        start: The level every atom starts from, above zero for it to move.
         updates: How many updates the fit runs.
 
     Returns:
@@ -97,8 +96,8 @@ def fitted_levels(
     """
     levels = np.full(atoms.shape[0], start)
     for _ in range(updates):
-        mixed = levels @ atoms + base + target.floor
-        levels = np.minimum(target.updated(levels, atoms, mixed), caps)
+        falling, rising = target.slopes(levels @ atoms + base + target.floor)
+        levels = np.minimum(_shared_update(levels, atoms, falling, rising), caps)
 
     return levels
 
@@ -112,14 +111,16 @@ def fitted_combinations(
     *,
     updates: int,
 ) -> List[np.ndarray]:
-    """The levels of every combination's channels, each combination fitted on its own.
+    """The levels of every combination's channels, each combination its own model fitted on its own.
 
-    Every combination holds one unit atom per fitted channel and a fixed part, the channels that
-    play one level only. Its channels' levels are updated together against the frame.
+    A combination's model holds one unit per fitted channel, each scaled by the channel's level,
+    over a fixed part holding the channels that play one level. All its channels' levels are
+    updated together against the frame, each clipped at its cap. A unit holding no power, as a
+    silent channel's does, holds its level at zero.
 
     Args:
         target: The frame.
-        units: Each fitted channel's unit atom, one row per combination.
+        units: Each fitted channel's unit, one row per combination, in feature values.
         base: The fixed part of each combination, one row per combination.
         levels: Each fitted channel's starting level, one per combination.
         caps: Each fitted channel's highest level, one per combination.
@@ -130,32 +131,47 @@ def fitted_combinations(
     """
     fitted = [np.asarray(level, dtype=np.float64) for level in levels]
     for _ in range(updates):
-        mixed = base + target.floor
-        for level, unit in zip(fitted, units):
-            mixed = mixed + level[:, None] * unit
-        falling, rising = target.slopes(mixed)
+        falling, rising = target.slopes(_stacked_models(target, units, base, fitted))
         fitted = [
-            np.minimum(_stepped(level, unit, falling, rising), cap) for level, unit, cap in zip(fitted, units, caps)
+            np.minimum(_stacked_update(level, unit, falling, rising), cap)
+            for level, unit, cap in zip(fitted, units, caps)
         ]
 
     return fitted
 
 
-def _stepped(levels: np.ndarray, atoms: np.ndarray, falling: np.ndarray, rising: np.ndarray) -> np.ndarray:
-    """Every level multiplied by the ratio of the divergence's falling and rising parts along its atom."""
-    if atoms.ndim == 2 and falling.ndim == 1:
-        stepped: np.ndarray = levels * (atoms @ falling) / (atoms @ rising + VANISHING)
-    else:
-        stepped = (
-            levels
-            * np.einsum("...b,...b->...", atoms, falling)
-            / (np.einsum("...b,...b->...", atoms, rising) + VANISHING)
-        )
+def _stacked_models(
+    target: FitTarget, units: Sequence[np.ndarray], base: np.ndarray, levels: Sequence[np.ndarray]
+) -> np.ndarray:
+    """Every combination's model at ``levels``: the floor, its fixed part and each channel's unit at its level."""
+    mixed = base + target.floor
+    for level, unit in zip(levels, units):
+        mixed = mixed + level[:, None] * unit
 
-    return stepped
+    return mixed
+
+
+def _shared_update(levels: np.ndarray, atoms: np.ndarray, falling: np.ndarray, rising: np.ndarray) -> np.ndarray:
+    """Every level of atoms sounding in one model, times the ratio of the model's falling to rising part along its atom.
+
+    ``VANISHING`` keeps the ratio finite for an atom with no power in any bin the criterion weighs.
+    """
+    return np.asarray(levels * (atoms @ falling) / (atoms @ rising + VANISHING))
+
+
+def _stacked_update(levels: np.ndarray, units: np.ndarray, falling: np.ndarray, rising: np.ndarray) -> np.ndarray:
+    """Each combination's level of its unit, times the ratio of its own model's falling to rising part along it."""
+    return np.asarray(
+        levels * np.einsum(STACKED_DOT, units, falling) / (np.einsum(STACKED_DOT, units, rising) + VANISHING)
+    )
 
 
 def _fit_beta(criterion: Criterion) -> float:
+    """The beta of the divergence a fit under ``criterion`` lowers.
+
+    Raises:
+        ValueError: If the criterion's spectral distance is unsupported.
+    """
     match criterion.metric.distance:
         case SpectralDistance.BETA_DIVERGENCE:
             return criterion.metric.divergence_beta

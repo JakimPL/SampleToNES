@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Final, FrozenSet, List
+from typing import Any, Dict, Final, FrozenSet, List, Mapping
 
 import numpy as np
 import pytest
@@ -26,11 +26,13 @@ NOISE_PERIODS: Final[FrozenSet[int]] = frozenset({4, 8})
 FRAMES: Final[int] = 24
 EDGE_FRAMES: Final[int] = 3
 RIGHT_SHARE: Final[float] = 0.9
+LEAD: Final[PulseInstruction] = PulseInstruction(on=True, pitch=64, volume=12, duty_cycle=2)
 CHORD: Final[Dict[ChannelName, InstructionUnion]] = {
-    ChannelName.PULSE1: PulseInstruction(on=True, pitch=64, volume=12, duty_cycle=2),
+    ChannelName.PULSE1: LEAD,
     ChannelName.PULSE2: PulseInstruction(on=True, pitch=67, volume=8, duty_cycle=1),
     ChannelName.TRIANGLE: TriangleInstruction(on=True, pitch=48),
 }
+HELD: Final[range] = range(EDGE_FRAMES, FRAMES - EDGE_FRAMES)
 
 
 def _kept(instruction: InstructionUnion) -> bool:
@@ -69,9 +71,10 @@ def _library(config: Config) -> InstructionLibrary:
     return library
 
 
-def _chord(path: Path, config: Config) -> Path:
+def _rendered(path: Path, config: Config, played: Mapping[ChannelName, InstructionUnion]) -> Path:
     audio = sum(
-        render_instructions([instruction] * FRAMES, channel_name, config) for channel_name, instruction in CHORD.items()
+        render_instructions([instruction] * FRAMES, channel_name, config)
+        for channel_name, instruction in played.items()
     )
     write_wave(path, config.library.sample_rate, np.asarray(audio, dtype=np.float32))
     return path
@@ -90,24 +93,43 @@ def _joint_config() -> Config:
     )
 
 
-@pytest.fixture(name="reconstruction", scope="module")
-def reconstruction_fixture(tmp_path_factory: pytest.TempPathFactory) -> Reconstruction:
+def _converted(
+    directory: Path, library: InstructionLibrary, played: Mapping[ChannelName, InstructionUnion], settings: StemSettings
+) -> Reconstruction:
+    """``played`` held for every frame, converted by the joint assignment with one stem of ``settings``."""
     config = _joint_config()
-    path = _chord(tmp_path_factory.mktemp("chord") / "chord.wav", config)
-    reconstructor = Reconstructor(config, frozenset(EVERY_CHANNEL), library=_library(config))
-    reconstruction = reconstructor.reconstruct(
-        [path], StemsConfig.single_entry(StemSettings(channels=EVERY_CHANNEL, bends=[]))
-    )
+    path = _rendered(directory / "played.wav", config, played)
+    reconstructor = Reconstructor(config, frozenset(EVERY_CHANNEL), library=library)
+    reconstruction = reconstructor.reconstruct([path], StemsConfig.single_entry(settings))
     assert reconstruction is not None
     return reconstruction
+
+
+def _sounding(reconstruction: Reconstruction, frame: int) -> Dict[ChannelName, InstructionUnion]:
+    """What each channel sounding in ``frame`` plays; a channel standing by holds no frame and sounds none."""
+    sounding: Dict[ChannelName, InstructionUnion] = {}
+    for channel, stream in reconstruction.instructions.items():
+        if stream and stream[frame].on:
+            sounding[channel] = stream[frame]
+
+    return sounding
+
+
+@pytest.fixture(name="library", scope="module")
+def library_fixture() -> InstructionLibrary:
+    return _library(_joint_config())
+
+
+@pytest.fixture(name="reconstruction", scope="module")
+def reconstruction_fixture(tmp_path_factory: pytest.TempPathFactory, library: InstructionLibrary) -> Reconstruction:
+    return _converted(tmp_path_factory.mktemp("chord"), library, CHORD, StemSettings(channels=EVERY_CHANNEL, bends=[]))
 
 
 class TestAJointConversionOfAChord:
     def test_the_chord_s_notes_play_on_their_own_kinds_of_channel(self, reconstruction: Reconstruction) -> None:
         instructions = reconstruction.instructions
-        held = range(EDGE_FRAMES, FRAMES - EDGE_FRAMES)
         right = 0
-        for frame in held:
+        for frame in HELD:
             pulses = {
                 instructions[channel][frame].pitch
                 for channel in (ChannelName.PULSE1, ChannelName.PULSE2)
@@ -121,4 +143,43 @@ class TestAJointConversionOfAChord:
                 and triangle.pitch == 48
             )
 
-        assert right >= RIGHT_SHARE * len(held)
+        assert right >= RIGHT_SHARE * len(HELD)
+
+
+class TestAJointConversionOfAStemCountedToOneChannel:
+    """Every combination the search reaches keeps within the stem's count, so the conversion does too."""
+
+    def test_no_frame_sounds_more_than_one_channel(
+        self, tmp_path_factory: pytest.TempPathFactory, library: InstructionLibrary
+    ) -> None:
+        reconstruction = _converted(
+            tmp_path_factory.mktemp("counted"),
+            library,
+            CHORD,
+            StemSettings(channels=EVERY_CHANNEL, bends=[], channel_cap=1),
+        )
+
+        assert all(len(_sounding(reconstruction, frame)) <= 1 for frame in range(FRAMES))
+
+
+class TestAJointConversionOfALoneNote:
+    """A lone note is fitted whole on one channel, and the notes covering its partials are left out."""
+
+    def test_the_note_plays_on_one_pulse_alone(
+        self, tmp_path_factory: pytest.TempPathFactory, library: InstructionLibrary
+    ) -> None:
+        reconstruction = _converted(
+            tmp_path_factory.mktemp("lone"),
+            library,
+            {ChannelName.PULSE1: LEAD},
+            StemSettings(channels=EVERY_CHANNEL, bends=[]),
+        )
+
+        right = 0
+        for frame in HELD:
+            sounding = list(_sounding(reconstruction, frame).values())
+            right += (
+                len(sounding) == 1 and isinstance(sounding[0], PulseInstruction) and sounding[0].pitch == LEAD.pitch
+            )
+
+        assert right >= RIGHT_SHARE * len(HELD)
