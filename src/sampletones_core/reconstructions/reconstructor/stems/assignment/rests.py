@@ -18,7 +18,8 @@ def sounding_stems(fragments: Dict[int, Fragment]) -> FrozenSet[int]:
     A frame quieter than the quietest note the hardware plays, measured against the working
     level, holds nothing for a channel to sound. Its stem stands aside, so the channel goes
     to a stem that does sound there or rests, and a recording silent through a passage keeps
-    that passage silent on the channels it holds.
+    that passage silent on the channels it holds. A frame whose peak reaches
+    ``STEM_ACTIVITY_FLOOR`` exactly sounds.
     """
     return frozenset(
         stem_id
@@ -33,7 +34,7 @@ def resting(
     fragment: Fragment,
 ) -> Tuple[StemRest, ...]:
     """The channels no stem holds in a frame, each holding its null instruction over a silent frame."""
-    silence = Contribution.silence(len(fragment.feature.values), fragment.audio.shape[0])
+    silence = silent_contribution(fragment)
     return tuple(
         StemRest(
             channel_name=channel_name,
@@ -47,3 +48,8 @@ def resting(
         )
         for channel_name in channel_names
     )
+
+
+def silent_contribution(fragment: Fragment) -> Contribution:
+    """What a channel playing nothing adds to ``fragment``: no power in any bin and no waveform."""
+    return Contribution.silence(len(fragment.feature.values), fragment.audio.shape[0])

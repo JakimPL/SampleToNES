@@ -148,3 +148,31 @@ class TestASlotsLevels(BaseTestSuite):
 
     def test_the_triangle_plays_one_level(self) -> None:
         assert not Slot(channel_name=ChannelName.TRIANGLE, kind=TRIANGLE, drive=UNIT_DRIVE).plays_levels
+
+
+class TestThePulseOrders(BaseTestSuite):
+    """A combination of pulses driven alike sounds the same in either order, so it may be read in both."""
+
+    def test_pulses_driven_alike_stand_in_both_orders_their_own_first(
+        self, all_channels: Dict[ChannelName, GeneratorUnion]
+    ) -> None:
+        (layout,) = separate_layouts(
+            _stems({0: [ChannelName.PULSE1, ChannelName.PULSE2, ChannelName.TRIANGLE]}, channel_cap=3), all_channels
+        )
+
+        assert layout.pulse_orders(["lead", "harmony", "bass"]) == [
+            ("lead", "harmony", "bass"),
+            ("harmony", "lead", "bass"),
+        ]
+
+    def test_pulses_driven_apart_or_alone_keep_their_own_order(
+        self, all_channels: Dict[ChannelName, GeneratorUnion]
+    ) -> None:
+        alone = StemLayout.of(
+            _stems({0: [ChannelName.PULSE1, ChannelName.TRIANGLE]}, channel_cap=2).entries[0], all_channels
+        )
+
+        assert StemLayout.of(_driven_apart(), all_channels).pulse_orders(["lead", "harmony", "bass"]) == [
+            ("lead", "harmony", "bass")
+        ]
+        assert alone.pulse_orders(["lead", "bass"]) == [("lead", "bass")]

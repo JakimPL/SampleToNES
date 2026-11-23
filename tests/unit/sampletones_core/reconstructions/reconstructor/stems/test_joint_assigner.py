@@ -1,4 +1,5 @@
 import itertools
+from dataclasses import replace
 from typing import Dict, Final, List, Mapping, Optional, Sequence, Set, Tuple
 
 import numpy as np
@@ -7,23 +8,29 @@ import pytest
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import RESTING_FRAME_COST
 from sampletones_core.constants.enums import (
-    AssignmentMethod,
     ChannelName,
+    GeneratorClassName,
     HierarchyMode,
     bending_channels,
 )
 from sampletones_core.fft import Fragment, Window
 from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
-from sampletones_core.generators.render import render_instructions
 from sampletones_core.instructions import InstructionUnion, PulseInstruction, TonalInstruction, TriangleInstruction
 from sampletones_core.reconstructions.reconstructor.contribution import Contribution
-from sampletones_core.reconstructions.reconstructor.decoder.base import PooledCombination, Streams
+from sampletones_core.reconstructions.reconstructor.decoder.base import PooledCombination
 from sampletones_core.reconstructions.reconstructor.decoder.transition import TransitionWeights
-from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher, ScoredCandidate
-from sampletones_core.reconstructions.reconstructor.stems.assignment.assigners import PicksAssigner, frame_assigner
-from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.assigner import JointAssigner
+from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.assigner import (
+    UNVOICED_DISTANCE,
+    JointAssigner,
+    PulseHandover,
+)
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.catalog import KindCatalog
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.choice import ScoredCombination
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.combinations import Rows
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.continuity import ChannelContinuity
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import separate_layouts
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
@@ -36,8 +43,10 @@ from sampletones_core.reconstructions.reconstructor.window.surroundings import (
     TonalSurroundings,
     surroundings,
 )
+from tests.suite.base import BaseTestSuite
 
 from ..conftest import rendered_fragment
+from .conftest import decoded_lines, played_lines
 
 LATTICE_WIDTH: Final[int] = 8
 LEAD: Final[PulseInstruction] = PulseInstruction(on=True, pitch=64, volume=12, duty_cycle=2)
@@ -97,7 +106,7 @@ def chord_fixture(config: Config, extractor: FeatureExtractor) -> Fragment:
     return rendered_fragment(config, extractor, CHORD)
 
 
-class TestTheJointAssignment:
+class TestTheJointAssignment(BaseTestSuite):
     def test_a_chord_s_notes_head_the_columns_on_their_own_kinds_of_channel(
         self,
         chord: Fragment,
@@ -143,7 +152,7 @@ class TestTheJointAssignment:
         assignment = assigner.assign({0: rendered_fragment(config, extractor, {})})
 
         assert assignment.choices == ()
-        assert {rest.channel_name for rest in assignment.rests} == set(EVERY_CHANNEL)
+        assert [rest.channel_name for rest in assignment.rests] == EVERY_CHANNEL
 
     def test_a_stem_counted_to_one_channel_holds_one_and_rests_the_rest(
         self,
@@ -215,7 +224,7 @@ def every_channel_assigner_fixture(
     return _assigner(StemsConfig.single_entry(StemSettings.covering(EVERY_CHANNEL)), all_channels, joint_matcher)
 
 
-class TestTheJointPools:
+class TestTheJointPools(BaseTestSuite):
     def test_a_sounding_frame_pools_the_choice_first(
         self, chord: Fragment, every_channel_assigner: JointAssigner
     ) -> None:
@@ -301,24 +310,6 @@ class TestTheJointPools:
         )
 
 
-class TestFrameAssigner:
-    @pytest.mark.parametrize(
-        "method, kind",
-        [(AssignmentMethod.PICKS, PicksAssigner), (AssignmentMethod.JOINT, JointAssigner)],
-        ids=["picks", "joint"],
-    )
-    def test_the_method_names_the_assigner(
-        self,
-        method: AssignmentMethod,
-        kind: type,
-        all_channels: Dict[ChannelName, GeneratorUnion],
-        joint_matcher: FrameMatcher,
-    ) -> None:
-        stems = StemsConfig.single_entry(StemSettings.covering(EVERY_CHANNEL))
-
-        assert isinstance(frame_assigner(method, stems, all_channels, joint_matcher, LATTICE_WIDTH), kind)
-
-
 def _pulse_pitches(heads: Dict[ChannelName, InstructionUnion]) -> Tuple[Optional[int], Optional[int]]:
     def pitch(channel_name: ChannelName) -> Optional[int]:
         match heads.get(channel_name):
@@ -338,30 +329,6 @@ NO_INERTIA: Final[float] = 0.0
 STRONG_INERTIA: Final[float] = 100.0
 
 
-def _sequence(config: Config, lines: Mapping[ChannelName, Sequence[InstructionUnion]]) -> np.ndarray:
-    """The channels playing their lines of instructions together, one instruction a frame."""
-    return sum(
-        (render_instructions(list(line), channel_name, config) for channel_name, line in lines.items()),
-        start=np.zeros(SEQUENCE_FRAMES * config.library.frame_length, dtype=np.float32),
-    )
-
-
-def _decoded(
-    lines: Mapping[ChannelName, Sequence[InstructionUnion]],
-    channels: Mapping[ChannelName, GeneratorUnion],
-    silence: Contribution,
-) -> Streams:
-    """Streams decoded to play ``lines``, every other channel of ``channels`` silent throughout."""
-    streams: Streams = {}
-    for channel_name, generator in channels.items():
-        line = lines.get(channel_name, [generator.get_instruction_type().null_instruction()] * SEQUENCE_FRAMES)
-        streams[channel_name] = [
-            ScoredCandidate(instruction=instruction, cost=0.0, contribution=silence) for instruction in line
-        ]
-
-    return streams
-
-
 def _kept(
     config: Config, lines: Mapping[ChannelName, ChannelLine], frame: int, inertia: float
 ) -> Dict[ChannelName, ChannelContinuity]:
@@ -369,7 +336,7 @@ def _kept(
     return {channel_name: ChannelContinuity.of(line, frame, weights, inertia) for channel_name, line in lines.items()}
 
 
-class TestAssigningBesideTheNeighbors:
+class TestAssigningBesideTheNeighbors(BaseTestSuite):
     """A frame assigned again among the notes its neighbors play reads only its own notes in its window."""
 
     @pytest.fixture(name="staccato")
@@ -394,11 +361,11 @@ class TestAssigningBesideTheNeighbors:
         inertia: float = NO_INERTIA,
     ) -> StemFrameAssignment:
         """Assigns ``frame`` of ``played`` (``lines`` where unnamed) among neighbors decoded to play ``lines``."""
-        fragments = extractor.extract(_sequence(config, lines if played is None else played))
+        fragments = extractor.extract(played_lines(config, lines if played is None else played, SEQUENCE_FRAMES))
         bins = len(fragments[frame].feature.values)
         profiles = frame_profiles(config, window, bins)
         silence = Contribution.silence(bins, config.library.frame_length)
-        decoded = assigner.lines(_decoded(lines, assigner.channels, silence))
+        decoded = assigner.lines(decoded_lines(lines, assigner.channels, silence, SEQUENCE_FRAMES))
         heard = {channel_name: surroundings(line, frame, profiles) for channel_name, line in decoded.items()}
         return assigner.assign_beside({0: fragments[frame]}, heard, _kept(config, decoded, frame, inertia))
 
@@ -435,10 +402,12 @@ class TestAssigningBesideTheNeighbors:
         every_channel_assigner: JointAssigner,
         staccato: Dict[ChannelName, List[InstructionUnion]],
     ) -> None:
-        fragments = extractor.extract(_sequence(config, staccato))
+        fragments = extractor.extract(played_lines(config, staccato, SEQUENCE_FRAMES))
         silence = Contribution.silence(len(fragments[0].feature.values), config.library.frame_length)
         silent_lead = {**staccato, ChannelName.PULSE1: [PulseInstruction.null_instruction()] * SEQUENCE_FRAMES}
-        lines = every_channel_assigner.lines(_decoded(silent_lead, every_channel_assigner.channels, silence))
+        lines = every_channel_assigner.lines(
+            decoded_lines(silent_lead, every_channel_assigner.channels, silence, SEQUENCE_FRAMES)
+        )
         frame = BASS_FRAMES
         profiles = frame_profiles(config, window, len(fragments[frame].feature.values))
         heard = {channel_name: surroundings(line, frame, profiles) for channel_name, line in lines.items()}
@@ -495,3 +464,141 @@ class TestAssigningBesideTheNeighbors:
         )
 
         assert _notes(_heads(assignment)) == {("pulse", LEAD.pitch)}
+
+
+class TestTheStemsMemory(BaseTestSuite):
+    """The assigner keeps each stem's previous choice for the pulses' handover and the pool, cleared by a rest."""
+
+    def test_a_frame_the_stem_leaves_silent_clears_its_previous_choice(
+        self, config: Config, extractor: FeatureExtractor, chord: Fragment, every_channel_assigner: JointAssigner
+    ) -> None:
+        before = _heads(every_channel_assigner.assign({0: chord}))
+        every_channel_assigner.assign({0: rendered_fragment(config, extractor, {})})
+
+        (pool,) = every_channel_assigner.assign({0: rendered_fragment(config, extractor, NEXT_CHORD)}).pools
+
+        assert before not in _pooled(pool)
+
+    def test_a_note_a_pulse_holds_stays_on_its_pulse_when_another_note_joins(
+        self, config: Config, extractor: FeatureExtractor, chord: Fragment, every_channel_assigner: JointAssigner
+    ) -> None:
+        alone = _heads(
+            every_channel_assigner.assign({0: rendered_fragment(config, extractor, {ChannelName.PULSE1: HARMONY})})
+        )
+
+        joined = _heads(every_channel_assigner.assign({0: chord}))
+
+        assert _pulse_pitches(alone) == (HARMONY.pitch, None)
+        assert _pulse_pitches(joined) == (HARMONY.pitch, LEAD.pitch)
+
+
+PULSES: Final[List[ChannelName]] = [ChannelName.PULSE1, ChannelName.PULSE2]
+LOW: Final[PulseInstruction] = PulseInstruction(on=True, pitch=60, volume=12, duty_cycle=2)
+SILENT_PULSE: Final[PulseInstruction] = PulseInstruction.null_instruction()
+
+
+class TestPulseHandover(BaseTestSuite):
+    """The pulses go to the channels that move each least from the note it played the frame before."""
+
+    @pytest.fixture(name="handover")
+    def handover_fixture(
+        self, all_channels: Dict[ChannelName, GeneratorUnion], joint_matcher: FrameMatcher
+    ) -> PulseHandover:
+        layout = separate_layouts(StemsConfig.single_entry(StemSettings.covering(PULSES)), all_channels)[0]
+        return PulseHandover(
+            layout=layout, catalog=KindCatalog.build(joint_matcher.candidate_provider, all_channels[ChannelName.PULSE1])
+        )
+
+    @staticmethod
+    def _rows(handover: PulseHandover, first: PulseInstruction, second: PulseInstruction) -> Rows:
+        return handover.catalog.rows_by_instruction[first], handover.catalog.rows_by_instruction[second]
+
+    @staticmethod
+    def _winner(handover: PulseHandover, first: PulseInstruction, second: PulseInstruction) -> ScoredCombination:
+        silence = Contribution.silence(1, 1)
+        contributions = tuple(None if not instruction.on else replace(silence) for instruction in (first, second))
+        return ScoredCombination(
+            rows=TestPulseHandover._rows(handover, first, second), cost=0.0, contributions=contributions, charge=0.0
+        )
+
+    def test_with_no_frame_before_a_lone_note_goes_to_the_first_pulse_with_what_it_adds(
+        self, handover: PulseHandover
+    ) -> None:
+        winner = self._winner(handover, SILENT_PULSE, LEAD)
+
+        handed = handover.ordered(winner, None)
+
+        assert handed.rows == self._rows(handover, LEAD, SILENT_PULSE)
+        assert handed.contributions[0] is winner.contributions[1]
+        assert handed.contributions[1] is None
+
+    def test_a_note_a_pulse_held_stays_on_it_when_another_joins(self, handover: PulseHandover) -> None:
+        handed = handover.ordered(self._winner(handover, LEAD, HARMONY), self._rows(handover, HARMONY, SILENT_PULSE))
+
+        assert handed.rows == self._rows(handover, HARMONY, LEAD)
+
+    def test_a_note_moves_to_the_pulse_that_sounded_before_rather_than_start_on_a_silent_one(
+        self, handover: PulseHandover
+    ) -> None:
+        handed = handover.ordered(self._winner(handover, SILENT_PULSE, LEAD), self._rows(handover, LOW, SILENT_PULSE))
+
+        assert handed.rows == self._rows(handover, LEAD, SILENT_PULSE)
+
+    def test_of_orders_moving_alike_the_winner_s_own_stands(self, handover: PulseHandover) -> None:
+        winner = self._winner(handover, HARMONY, LEAD)
+
+        assert handover.ordered(winner, None).rows == winner.rows
+
+    def test_a_pulse_moves_by_its_semitones_and_starting_or_stopping_moves_the_unvoiced_distance(self) -> None:
+        assert PulseHandover.moved((LEAD.pitch, None), (LOW.pitch, HARMONY.pitch)) == pytest.approx(
+            LEAD.pitch - LOW.pitch + UNVOICED_DISTANCE
+        )
+        assert PulseHandover.moved((None, None), (None, None)) == 0.0
+        assert PulseHandover.moved((None, LEAD.pitch), None) == 1.0
+
+
+LOUDER_DRIVE: Final[float] = 2.0
+
+
+class TestTheLines(BaseTestSuite):
+    """A line holds each decoded frame as the analysis hears it: the row's power at the channel's drive."""
+
+    @pytest.fixture(name="driven_assigner")
+    def driven_assigner_fixture(
+        self, all_channels: Dict[ChannelName, GeneratorUnion], joint_matcher: FrameMatcher
+    ) -> JointAssigner:
+        settings = StemSettings.covering(EVERY_CHANNEL).with_drive(ChannelName.PULSE1, LOUDER_DRIVE)
+        return _assigner(StemsConfig.single_entry(settings), all_channels, joint_matcher)
+
+    def test_a_decoded_frame_reads_at_its_row_s_power_over_the_drive_squared(
+        self, config: Config, driven_assigner: JointAssigner
+    ) -> None:
+        catalog = driven_assigner.catalogs[GeneratorClassName.PULSE_GENERATOR]
+        silence = Contribution.silence(catalog.powers.shape[1], config.library.frame_length)
+        played = {ChannelName.PULSE1: [LEAD, HARMONY], ChannelName.PULSE2: [HARMONY, LEAD]}
+
+        lines = driven_assigner.lines(
+            decoded_lines(played, driven_assigner.channels, silence, len(played[ChannelName.PULSE1]))
+        )
+
+        lead, harmony = catalog.rows_by_instruction[LEAD], catalog.rows_by_instruction[HARMONY]
+        assert np.array_equal(lines[ChannelName.PULSE1].powers, catalog.powers[[lead, harmony]] / LOUDER_DRIVE**2)
+        assert np.array_equal(lines[ChannelName.PULSE2].powers, catalog.powers[[harmony, lead]])
+        assert lines[ChannelName.PULSE1].keys == [catalog.key(lead), catalog.key(harmony)]
+        assert lines[ChannelName.PULSE1].instructions == [LEAD, HARMONY]
+        assert lines[ChannelName.PULSE1].coherent and not lines[ChannelName.NOISE].coherent
+
+    def test_settling_a_frame_the_stem_leaves_silent_reads_every_channel_as_its_silence_at_its_drive(
+        self, config: Config, extractor: FeatureExtractor, chord: Fragment, driven_assigner: JointAssigner
+    ) -> None:
+        catalog = driven_assigner.catalogs[GeneratorClassName.PULSE_GENERATOR]
+        silence = Contribution.silence(catalog.powers.shape[1], config.library.frame_length)
+        played = {ChannelName.PULSE1: [HARMONY], ChannelName.PULSE2: [HARMONY]}
+        lines = driven_assigner.lines(decoded_lines(played, driven_assigner.channels, silence, 1))
+        assignment = driven_assigner.assign({0: rendered_fragment(config, extractor, {})})
+
+        driven_assigner.settle(lines, 0, assignment)
+
+        assert lines[ChannelName.PULSE1].instructions == [PulseInstruction.null_instruction()]
+        assert lines[ChannelName.PULSE1].keys == [None]
+        assert np.array_equal(lines[ChannelName.PULSE1].powers[0], catalog.powers[catalog.silence] / LOUDER_DRIVE**2)

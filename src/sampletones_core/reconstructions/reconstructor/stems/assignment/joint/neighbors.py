@@ -23,10 +23,12 @@ class NeighborPass:
     """One pass assigning every frame of a decoded recording again, in turn, among what the frames around it play.
 
     A frame's analysis window reads its neighbors, so what they play is a fixed part of its reading.
-    The frames before a frame play what this pass settled them on and the frames after it what the
-    decode played, so each frame is decided among the latest choices around it, and its choice is
-    settled into the lines before the next frame is decided. Each channel's choice also pays its
-    inertia for breaking with the frames beside it.
+    The frames are decided first to last, and each frame's choice is settled into the lines before
+    the next one is decided, as a Gauss–Seidel sweep settles its unknowns: the frames before a frame
+    play what this pass settled them on, the heads of their columns, and the frames after it what
+    the decode played. Each frame is then decided among the latest choices around it, which keeps a
+    second pass from undoing the first. Each channel's choice also pays its inertia for breaking with
+    the frames beside it, read from the same lines.
 
     Attributes:
         assigner: The joint assignment the frames are decided by.
@@ -60,7 +62,8 @@ class NeighborPass:
         """Assigns ``frame`` among what its neighbors play and settles the lines on its choice.
 
         Args:
-            frame: The frame decided, the next one after those already settled.
+            frame: The frame decided, the one after those already settled; the pass starts at the
+                first frame.
             fragments: This frame of every stem, keyed by stem id.
 
         Returns:

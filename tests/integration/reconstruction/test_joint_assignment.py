@@ -6,6 +6,7 @@ import pytest
 
 from sampletones_core.audio import write_wave
 from sampletones_core.configs import Config
+from sampletones_core.configs.generation import ChannelInertia
 from sampletones_core.constants.enums import AssignmentMethod, ChannelName
 from sampletones_core.fft import Window
 from sampletones_core.fft.features import get_feature_extractor
@@ -33,6 +34,8 @@ CHORD: Final[Dict[ChannelName, InstructionUnion]] = {
     ChannelName.TRIANGLE: TriangleInstruction(on=True, pitch=48),
 }
 HELD: Final[range] = range(EDGE_FRAMES, FRAMES - EDGE_FRAMES)
+NEIGHBOR_PASSES: Final[int] = 1
+TONAL_INERTIA: Final[float] = 0.5
 
 
 def _kept(instruction: InstructionUnion) -> bool:
@@ -93,11 +96,26 @@ def _joint_config() -> Config:
     )
 
 
-def _converted(
-    directory: Path, library: InstructionLibrary, played: Mapping[ChannelName, InstructionUnion], settings: StemSettings
-) -> Reconstruction:
-    """``played`` held for every frame, converted by the joint assignment with one stem of ``settings``."""
+def _kept_config() -> Config:
+    """The joint assignment with one neighbor pass, its tonal channels kept to their neighbors."""
     config = _joint_config()
+    assignment = config.generation.assignment.model_copy(
+        update={
+            "neighbors": NEIGHBOR_PASSES,
+            "inertia": ChannelInertia(pulse1=TONAL_INERTIA, pulse2=TONAL_INERTIA, triangle=TONAL_INERTIA, noise=0.0),
+        }
+    )
+    return config.model_copy(update={"generation": config.generation.model_copy(update={"assignment": assignment})})
+
+
+def _converted(
+    directory: Path,
+    library: InstructionLibrary,
+    played: Mapping[ChannelName, InstructionUnion],
+    settings: StemSettings,
+    config: Config,
+) -> Reconstruction:
+    """``played`` held for every frame, converted under ``config`` with one stem of ``settings``."""
     path = _rendered(directory / "played.wav", config, played)
     reconstructor = Reconstructor(config, frozenset(EVERY_CHANNEL), library=library)
     reconstruction = reconstructor.reconstruct([path], StemsConfig.single_entry(settings))
@@ -122,28 +140,53 @@ def library_fixture() -> InstructionLibrary:
 
 @pytest.fixture(name="reconstruction", scope="module")
 def reconstruction_fixture(tmp_path_factory: pytest.TempPathFactory, library: InstructionLibrary) -> Reconstruction:
-    return _converted(tmp_path_factory.mktemp("chord"), library, CHORD, StemSettings(channels=EVERY_CHANNEL, bends=[]))
+    return _converted(
+        tmp_path_factory.mktemp("chord"),
+        library,
+        CHORD,
+        StemSettings(channels=EVERY_CHANNEL, bends=[]),
+        _joint_config(),
+    )
+
+
+def _right_frames(reconstruction: Reconstruction) -> int:
+    """How many held frames play the chord's notes, each on its own kind of channel."""
+    instructions = reconstruction.instructions
+    right = 0
+    for frame in HELD:
+        pulses = {
+            instructions[channel][frame].pitch
+            for channel in (ChannelName.PULSE1, ChannelName.PULSE2)
+            if isinstance(instructions[channel][frame], PulseInstruction) and instructions[channel][frame].on
+        }
+        triangle = instructions[ChannelName.TRIANGLE][frame]
+        right += (
+            pulses == {64, 67} and triangle.on and isinstance(triangle, TriangleInstruction) and triangle.pitch == 48
+        )
+
+    return right
 
 
 class TestAJointConversionOfAChord:
     def test_the_chord_s_notes_play_on_their_own_kinds_of_channel(self, reconstruction: Reconstruction) -> None:
-        instructions = reconstruction.instructions
-        right = 0
-        for frame in HELD:
-            pulses = {
-                instructions[channel][frame].pitch
-                for channel in (ChannelName.PULSE1, ChannelName.PULSE2)
-                if isinstance(instructions[channel][frame], PulseInstruction) and instructions[channel][frame].on
-            }
-            triangle = instructions[ChannelName.TRIANGLE][frame]
-            right += (
-                pulses == {64, 67}
-                and triangle.on
-                and isinstance(triangle, TriangleInstruction)
-                and triangle.pitch == 48
-            )
+        assert _right_frames(reconstruction) >= RIGHT_SHARE * len(HELD)
 
-        assert right >= RIGHT_SHARE * len(HELD)
+
+class TestAJointConversionOfAChordBesideItsNeighbors:
+    """A held chord assigned again among its neighbors, kept to them, keeps its notes."""
+
+    def test_the_chord_s_notes_play_on_their_own_kinds_of_channel(
+        self, tmp_path_factory: pytest.TempPathFactory, library: InstructionLibrary
+    ) -> None:
+        reconstruction = _converted(
+            tmp_path_factory.mktemp("kept"),
+            library,
+            CHORD,
+            StemSettings(channels=EVERY_CHANNEL, bends=[]),
+            _kept_config(),
+        )
+
+        assert _right_frames(reconstruction) >= RIGHT_SHARE * len(HELD)
 
 
 class TestAJointConversionOfAStemCountedToOneChannel:
@@ -157,6 +200,7 @@ class TestAJointConversionOfAStemCountedToOneChannel:
             library,
             CHORD,
             StemSettings(channels=EVERY_CHANNEL, bends=[], channel_cap=1),
+            _joint_config(),
         )
 
         assert all(len(_sounding(reconstruction, frame)) <= 1 for frame in range(FRAMES))
@@ -173,6 +217,7 @@ class TestAJointConversionOfALoneNote:
             library,
             {ChannelName.PULSE1: LEAD},
             StemSettings(channels=EVERY_CHANNEL, bends=[]),
+            _joint_config(),
         )
 
         right = 0

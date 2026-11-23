@@ -50,8 +50,7 @@ class TrackAssignment:
         for pool in frame_assignment.pools:
             self._pool(pool)
             if pool.stem_id in holding:
-                for channel_name in pool.channel_names:
-                    self.stem_ids[channel_name][-1] = pool.stem_id
+                self._claim(pool)
 
     def release_silent(self, streams: Streams) -> None:
         """Gives every frame a decoded stream plays silent to the resting stem.
@@ -71,11 +70,18 @@ class TrackAssignment:
                     stem_ids[frame] = RESTING_STEM_ID
 
     def _append(self, channel_name: ChannelName, stem_id: int, column: Column) -> None:
+        """Appends the frame's column of one channel and the stem that took it."""
         lattice: ChannelLattice = self.lattices[channel_name]
         lattice.append(column)
         self.stem_ids[channel_name].append(stem_id)
 
+    def _claim(self, pool: StemPool) -> None:
+        """Gives the frame of every channel ``pool`` covers to the pool's stem."""
+        for channel_name in pool.channel_names:
+            self.stem_ids[channel_name][-1] = pool.stem_id
+
     def _pool(self, pool: StemPool) -> None:
+        """Appends the frame's pool to its stem's pools, opening them at the stem's first pool."""
         stem_pools = self.pools.setdefault(
             pool.stem_id,
             StemPools(channel_names=pool.channel_names, frames=[]),

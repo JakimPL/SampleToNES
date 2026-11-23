@@ -21,6 +21,7 @@ from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignmen
 from sampletones_core.reconstructions.reconstructor.stems.models.pool import StemPool
 from sampletones_core.reconstructions.reconstructor.stems.models.rest import StemRest
 from sampletones_core.structures.histogram import Histogram
+from tests.suite.base import BaseTestSuite
 
 FRAME_COST: Final[float] = 0.5
 
@@ -80,7 +81,7 @@ def _rest(config: Config) -> StemRest:
     )
 
 
-class TestStemFrameAssignment:
+class TestStemFrameAssignment(BaseTestSuite):
     def test_by_channel_names_the_stem_holding_each_channel(self) -> None:
         first, second = _choices(Config())
 
@@ -101,7 +102,7 @@ class TestStemFrameAssignment:
         assert set(assignment.by_channel).isdisjoint(assignment.resting)
 
 
-class TestTrackAssignment:
+class TestTrackAssignment(BaseTestSuite):
     def test_a_frame_reaches_every_channel_it_answers(self) -> None:
         config = Config()
         first, second = _choices(config)
@@ -162,7 +163,7 @@ def _pool(stem_id: int, column_heads: Tuple[ScoredCandidate, ...], channel_names
     )
 
 
-class TestTrackPools:
+class TestTrackPools(BaseTestSuite):
     def test_every_stem_s_pools_gather_in_frame_order(self) -> None:
         config = Config()
         first, _ = _choices(config)
@@ -211,6 +212,6 @@ class TestTrackPools:
         assert track.stem_ids[ChannelName.NOISE] == [RESTING_STEM_ID]
 
 
-class TestHierarchyMode:
+class TestHierarchyMode(BaseTestSuite):
     def test_values(self) -> None:
         assert tuple(HierarchyMode) == (HierarchyMode.ROUND_ROBIN, HierarchyMode.STRICT)

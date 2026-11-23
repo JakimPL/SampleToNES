@@ -80,7 +80,7 @@ class SteadyHearing:
         return np.zeros(self.bins)
 
     def powers(self, place: int, rows: RowSet) -> np.ndarray:
-        return _library_powers(self.layout, self.catalogs, place, rows)
+        return library_powers(self.layout, self.catalogs, place, rows)
 
     def features(self, place: int, rows: RowSet) -> np.ndarray:
         """Each row's library feature values at the channel's drive, scaled as its power is.
@@ -156,15 +156,15 @@ class SequenceHearing:
         )
 
     def powers(self, place: int, rows: RowSet) -> np.ndarray:
-        library_powers = _library_powers(self.layout, self.catalogs, place, rows)
-        return self.surroundings[place].heard(self._keys(place, rows), library_powers)
+        steady_powers = library_powers(self.layout, self.catalogs, place, rows)
+        return self.surroundings[place].heard(self._keys(place, rows), steady_powers)
 
     def features(self, place: int, rows: RowSet) -> np.ndarray:
         return self._features(self.provider, self.powers(place, rows))
 
     def unit_powers(self, place: int, rows: RowSet) -> np.ndarray:
         gains = self.surroundings[place].gains(self._keys(place, rows))
-        return np.asarray(gains * _library_powers(self.layout, self.catalogs, place, rows))
+        return np.asarray(gains * library_powers(self.layout, self.catalogs, place, rows))
 
     def unit_features(self, place: int, rows: RowSet) -> np.ndarray:
         return self._features(self.provider, self.unit_powers(place, rows))
@@ -203,7 +203,7 @@ class SequenceHearing:
         return np.asarray(to_numpy(provider.features_of(xp.asarray(powers))), dtype=np.float64)
 
 
-def _library_powers(
+def library_powers(
     layout: StemLayout, catalogs: Mapping[GeneratorClassName, KindCatalog], place: int, rows: RowSet
 ) -> np.ndarray:
     """Each row's library power at the drive of the channel at ``place``, as a note held through the window."""

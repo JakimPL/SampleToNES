@@ -1,10 +1,13 @@
+import itertools
 from dataclasses import dataclass
-from typing import Dict, FrozenSet, Self, Sequence, Tuple
+from typing import Dict, FrozenSet, List, Self, Sequence, Tuple, TypeVar
 
 from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
+
+Placed = TypeVar("Placed")
 
 
 @dataclass(frozen=True)
@@ -75,6 +78,24 @@ class StemLayout:
             return ()
 
         return pulses
+
+    def pulse_orders(self, values: Sequence[Placed]) -> List[Tuple[Placed, ...]]:
+        """``values``, one per channel in layout order, in every order of the stem's interchangeable pulses.
+
+        Every order sounds the same, so whatever reads a combination once per sound may read it in
+        any of them. The values' own order comes first, and it stands alone where no pulses are
+        interchangeable.
+        """
+        pulses = self.interchangeable_pulses
+        orders: List[Tuple[Placed, ...]] = []
+        for order in itertools.permutations(pulses):
+            reordered = list(values)
+            for target, source in zip(pulses, order):
+                reordered[target] = values[source]
+
+            orders.append(tuple(reordered))
+
+        return orders
 
     def of_kind(self, kind: GeneratorClassName) -> Tuple[Slot, ...]:
         """The stem's channels of one kind, in channel order."""

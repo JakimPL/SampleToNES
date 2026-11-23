@@ -1,4 +1,3 @@
-import itertools
 from dataclasses import replace
 from typing import Dict, List, Mapping, Sequence, Tuple
 
@@ -10,12 +9,14 @@ from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions.reconstructor.contribution import Contribution
 from sampletones_core.reconstructions.reconstructor.decoder.base import PooledCombination
 from sampletones_core.reconstructions.reconstructor.matching import Column, ScoredCandidate
-from sampletones_core.reconstructions.reconstructor.stems.assignment.rests import resting
+from sampletones_core.reconstructions.reconstructor.stems.assignment.rests import resting, silent_contribution
 from sampletones_core.reconstructions.reconstructor.stems.models.pool import StemPool
 
 from .catalog import KindCatalog
 from .choice import ScoredCombination
 from .layout import StemLayout
+
+Played = Tuple[InstructionUnion, ...]
 
 
 def sounding_pool(
@@ -32,7 +33,8 @@ def sounding_pool(
     pool holds every alternative of every column as such a combination, and a path may take any move
     a decoder of one channel at a time could. A pulse line keeps to its channel across frames only where
     the path may take either order, so each combination also stands in every order its pulses sound the
-    same in. A combination reads once, at the cost it was first pooled with.
+    same in. A combination reads once, by what its channels play, at the cost it was first pooled with:
+    the frame's combinations in their order, then the moves column by column.
 
     Args:
         fragment: The stem's frame.
@@ -44,11 +46,12 @@ def sounding_pool(
     Returns:
         The pool, the choice first.
     """
-    silence = Contribution.silence(len(fragment.feature.values), fragment.audio.shape[0])
+    silence = silent_contribution(fragment)
     pooled = [_pooled(layout, combination, catalogs, silence) for combination in combinations]
-    arranged: Dict[Tuple[InstructionUnion, ...], PooledCombination] = {}
+    arranged: Dict[Played, PooledCombination] = {}
     for combination in [*pooled, *_moved(pooled[0], columns)]:
-        for ordered in _orders(layout, combination):
+        for candidates in layout.pulse_orders(combination.candidates):
+            ordered = replace(combination, candidates=candidates)
             arranged.setdefault(_played(ordered), ordered)
 
     return StemPool(
@@ -69,31 +72,24 @@ def resting_pool(fragment: Fragment, layout: StemLayout, channels: Dict[ChannelN
 
 
 def _moved(choice: PooledCombination, columns: Mapping[int, Column]) -> List[PooledCombination]:
-    """``choice`` with one channel playing each alternative of its column, every channel at the column's cost."""
-    return [
-        PooledCombination(
-            candidates=tuple(
-                candidate if position == index else replace(kept, cost=candidate.cost)
-                for position, kept in enumerate(choice.candidates)
-            ),
-            cost=candidate.cost,
-        )
-        for index, column in columns.items()
-        for candidate in column
-    ]
+    """``choice`` with one channel playing each alternative of its column, column by column."""
+    moves: List[PooledCombination] = []
+    for index, column in columns.items():
+        for candidate in column:
+            moves.append(_moved_to(choice, index, candidate))
+
+    return moves
 
 
-def _orders(layout: StemLayout, combination: PooledCombination) -> List[PooledCombination]:
-    """``combination`` in every order of the stem's interchangeable pulses, its own order first."""
-    pulses = layout.interchangeable_pulses
-    orders: List[PooledCombination] = []
-    for order in itertools.permutations(pulses):
-        candidates = list(combination.candidates)
-        for target, source in zip(pulses, order):
-            candidates[target] = combination.candidates[source]
-        orders.append(replace(combination, candidates=tuple(candidates)))
+def _moved_to(choice: PooledCombination, index: int, candidate: ScoredCandidate) -> PooledCombination:
+    """``choice`` with channel ``index`` playing ``candidate``, every channel at the candidate's cost.
 
-    return orders
+    The column scored ``candidate`` with the other channels playing the choice, so its cost is the
+    cost of the whole combination.
+    """
+    candidates = [replace(kept, cost=candidate.cost) for kept in choice.candidates]
+    candidates[index] = candidate
+    return PooledCombination(candidates=tuple(candidates), cost=candidate.cost)
 
 
 def _pooled(
@@ -102,7 +98,10 @@ def _pooled(
     catalogs: Mapping[GeneratorClassName, KindCatalog],
     silence: Contribution,
 ) -> PooledCombination:
-    """``combination`` as each channel's candidate, every one at what the frame's choice weighs it by."""
+    """``combination`` as each channel's candidate, every one at what the frame's choice weighs it by.
+
+    A silent channel adds the frame's silence.
+    """
     candidates: List[ScoredCandidate] = []
     for slot, row, contribution in zip(layout.slots, combination.rows, combination.contributions):
         candidates.append(
@@ -116,9 +115,11 @@ def _pooled(
     return PooledCombination(candidates=tuple(candidates), cost=combination.weighed)
 
 
-def _played(combination: PooledCombination) -> Tuple[InstructionUnion, ...]:
+def _played(combination: PooledCombination) -> Played:
+    """What every channel of ``combination`` plays, which is what a combination reads once by."""
     return tuple(candidate.instruction for candidate in combination.candidates)
 
 
 def _channel_names(layout: StemLayout) -> Tuple[ChannelName, ...]:
+    """The stem's channels, in the order every combination of its pool lists them."""
     return tuple(slot.channel_name for slot in layout.slots)

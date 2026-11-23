@@ -4,13 +4,16 @@ from typing import Dict, List, Mapping, Optional, Sequence
 import numpy as np
 import pytest
 
+from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import SINGLE_STATE_LATTICE_WIDTH, UNIT_DRIVE
 from sampletones_core.constants.enums import ChannelName, GeneratorClassName
 from sampletones_core.fft import Fragment
 from sampletones_core.generators import GeneratorUnion
+from sampletones_core.generators.render import render_instructions
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibraryData
 from sampletones_core.reconstructions.reconstructor.contribution import Contribution
+from sampletones_core.reconstructions.reconstructor.decoder.base import Streams
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher, ScoredCandidate
 from sampletones_core.reconstructions.reconstructor.mix import FrameMix
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
@@ -145,3 +148,28 @@ def shared_frames(fragment: Fragment, stems_config: StemsConfig) -> Dict[int, Fr
     things deciding the frame, which is what a case using this states.
     """
     return {entry.id: fragment for entry in stems_config.entries}
+
+
+def played_lines(config: Config, lines: Mapping[ChannelName, Sequence[InstructionUnion]], frames: int) -> np.ndarray:
+    """The channels playing their lines of instructions together, one instruction a frame, ``frames`` long."""
+    return sum(
+        (render_instructions(list(line), channel_name, config) for channel_name, line in lines.items()),
+        start=np.zeros(frames * config.library.frame_length, dtype=np.float32),
+    )
+
+
+def decoded_lines(
+    lines: Mapping[ChannelName, Sequence[InstructionUnion]],
+    channels: Mapping[ChannelName, GeneratorUnion],
+    silence: Contribution,
+    frames: int,
+) -> Streams:
+    """Streams decoded to play ``lines``, every other channel of ``channels`` silent through ``frames`` frames."""
+    streams: Streams = {}
+    for channel_name, generator in channels.items():
+        line = lines.get(channel_name, [generator.get_instruction_type().null_instruction()] * frames)
+        streams[channel_name] = [
+            ScoredCandidate(instruction=instruction, cost=0.0, contribution=silence) for instruction in line
+        ]
+
+    return streams

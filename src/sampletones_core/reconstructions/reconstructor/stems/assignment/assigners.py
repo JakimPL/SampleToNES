@@ -41,7 +41,8 @@ def frame_assigner(
     """The assigner a recording's frames are assigned with under ``method``.
 
     Raises:
-        ValueError: If the joint method is asked for stems that share a channel.
+        ValueError: If the joint method is asked for stems that share a channel, or for a stem allowing a
+            channel the run has no generator for.
     """
     match method:
         case AssignmentMethod.PICKS:

@@ -9,164 +9,203 @@ from sampletones_core.reconstructions.reconstructor.matching import Column, Fram
 from sampletones_core.reconstructions.reconstructor.mix import FrameMix
 from sampletones_shared.array import xp
 
+from .batches import cheapest_row, split_by_group
 from .catalog import KindCatalog
 from .choice import ScoredCombination
 from .hearing import FrameHearing
 from .layout import StemLayout
 
 VOLUME_NEIGHBORS: Final[int] = 4
+SILENCE_ROOM: Final[int] = 1
+LEAST_KEPT: Final[int] = 1
+
+NoteRows = List[np.ndarray]
 
 
 @dataclass(frozen=True)
-class _ChannelDraft:
-    """One channel's rows before the other proposed notes join them: its head, its neighbors and its mix."""
+class ChannelDraft:
+    """One held channel's rows before the other proposed notes join them, and what it is scored beside.
 
-    index: int
+    Attributes:
+        place: The channel's place in the layout.
+        options: What the choice plays on the channel, then the nearest volumes of its note.
+        mix: What the stem's other channels sound in the frame, playing the choice.
+        notes: The proposed notes of the channel's kind that no channel of that kind plays in the
+            choice, in proposal order.
+    """
+
+    place: int
     options: List[int]
     mix: FrameMix
     notes: List[int]
 
 
-def channel_columns(
-    fragment: Fragment,
-    layout: StemLayout,
-    held: Sequence[int],
-    winner: ScoredCombination,
-    proposals: Mapping[GeneratorClassName, Sequence[int]],
-    catalogs: Mapping[GeneratorClassName, KindCatalog],
-    matcher: FrameMatcher,
-    width: int,
-    hearing: FrameHearing,
-) -> List[Column]:
-    """Each held channel's alternatives with the stem's other channels playing the winning combination.
+class ChannelColumns:
+    """Builds the column of every channel a stem holds, with the stem's other channels playing the frame's choice.
 
-    A column holds what the winner plays on the channel, the same note at its nearest volumes, the
-    best row of every other note proposed for the channel's kind that no channel of the winner plays,
-    and the channel's silence. Each is scored by the full cost of the frame with the other channels
-    sounding, as a column of one channel at a time is, so the decoder reads it the same way. Every
-    channel's rows are ranked and scored together.
+    A decoder of one channel at a time reads a channel's column with the other channels playing the
+    choice, so each column offers the moves one channel may make from it:
 
-    Args:
+    - what the choice plays on the channel, and for a sounding pulse or noise its ``VOLUME_NEIGHBORS``
+      nearest volumes of the same note and timbre;
+    - the best row of every proposed note of the channel's kind that no channel of that kind plays in
+      the choice, by the spectral cost of the frame with the others sounding, cheapest first;
+    - cut to leave ``SILENCE_ROOM`` of the ``width`` the decoder reads, keeping at least
+      ``LEAST_KEPT``, then the channel's silence where the cut left it out.
+
+    Each is scored by the full cost of the frame with the other channels sounding, as a column of one
+    channel at a time is, and the column keeps the ``width`` best, a column wider than one with the
+    silence among them (``column_of``). Every channel's rows are ranked together and scored together.
+
+    Attributes:
         fragment: The stem's frame.
         layout: The stem's channels.
-        held: The places in the layout of the channels the stem holds.
-        winner: The combination the frame's search chose.
-        proposals: The rows proposed for each kind.
         catalogs: Each kind's rows.
         matcher: The candidate scoring machinery.
-        width: How many alternatives the decoder reads.
         hearing: How the frame hears each row.
-
-    Returns:
-        One column per held channel, in ``held`` order, each best first and ``width`` long at most.
+        width: How many alternatives the decoder reads.
     """
-    if not held:
-        return []
 
-    drafts = [_drafted(fragment, layout, index, winner, proposals, catalogs, hearing) for index in held]
-    alternates = _alternates(fragment, layout, drafts, catalogs, matcher, hearing)
-    requests: List[RowsRequest] = []
-    for draft, rows in zip(drafts, alternates):
-        slot = layout.slots[draft.index]
-        catalog = catalogs[slot.kind]
-        options = list(dict.fromkeys([*draft.options, *rows]))[: max(width - 1, 1)]
-        if catalog.silence not in options:
-            options.append(catalog.silence)
-        requests.append(
-            RowsRequest(
-                generator=catalog.generator,
-                mix=draft.mix,
-                rows=tuple(options),
-                powers=hearing.powers(draft.index, options),
-                drive=slot.drive,
-            )
+    def __init__(
+        self,
+        fragment: Fragment,
+        layout: StemLayout,
+        catalogs: Mapping[GeneratorClassName, KindCatalog],
+        matcher: FrameMatcher,
+        hearing: FrameHearing,
+        width: int,
+    ) -> None:
+        self.fragment = fragment
+        self.layout = layout
+        self.catalogs = catalogs
+        self.matcher = matcher
+        self.hearing = hearing
+        self.width = width
+
+    def columns(
+        self,
+        held: Sequence[int],
+        winner: ScoredCombination,
+        proposals: Mapping[GeneratorClassName, Sequence[int]],
+    ) -> List[Column]:
+        """Each held channel's alternatives with the stem's other channels playing ``winner``.
+
+        Args:
+            held: The places in the layout of the channels the stem holds.
+            winner: The combination the frame's search chose.
+            proposals: The rows proposed for each kind.
+
+        Returns:
+            One column per held channel, in ``held`` order, each best first and ``width`` long at most.
+        """
+        if not held:
+            return []
+
+        drafts = [self._drafted(index, winner, proposals) for index in held]
+        requests = [self._request(draft, rows) for draft, rows in zip(drafts, self._alternates(drafts))]
+        return [column_of(column, self.width) for column in self.matcher.score_requests(self.fragment, requests)]
+
+    def _drafted(
+        self, index: int, winner: ScoredCombination, proposals: Mapping[GeneratorClassName, Sequence[int]]
+    ) -> ChannelDraft:
+        """The channel's own options, the mix the others sound and the proposed notes left to it."""
+        return ChannelDraft(
+            place=index,
+            options=self._own_options(index, winner),
+            mix=self._others_mix(index, winner),
+            notes=self._untaken_notes(index, winner, proposals),
         )
 
-    return [column_of(column, width) for column in matcher.score_requests(fragment, requests)]
+    def _own_options(self, index: int, winner: ScoredCombination) -> List[int]:
+        """What ``winner`` plays on the channel, then, for a sounding channel playing levels, its nearest volumes."""
+        slot = self.layout.slots[index]
+        catalog = self.catalogs[slot.kind]
+        head = winner.rows[index]
+        options: List[int] = [head]
+        if catalog.sounding(head) and slot.plays_levels:
+            options.extend(catalog.neighbors(head, VOLUME_NEIGHBORS))
 
+        return options
 
-def _drafted(
-    fragment: Fragment,
-    layout: StemLayout,
-    index: int,
-    winner: ScoredCombination,
-    proposals: Mapping[GeneratorClassName, Sequence[int]],
-    catalogs: Mapping[GeneratorClassName, KindCatalog],
-    hearing: FrameHearing,
-) -> _ChannelDraft:
-    """The channel's head and its nearest volumes, the mix the others sound and the proposed notes left untaken."""
-    slot = layout.slots[index]
-    catalog = catalogs[slot.kind]
-    others = [
-        contribution
-        for position, contribution in enumerate(winner.contributions)
-        if position != index and contribution is not None
-    ]
-    head = winner.rows[index]
-    options: List[int] = [head]
-    if catalog.sounding(head) and slot.kind != GeneratorClassName.TRIANGLE_GENERATOR:
-        options.extend(catalog.neighbors(head, VOLUME_NEIGHBORS))
+    def _others_mix(self, index: int, winner: ScoredCombination) -> FrameMix:
+        """What the stem's other channels sound in the frame, playing ``winner``, on top of what the frame holds."""
+        mix = self.hearing.empty_mix(self.fragment)
+        for position, contribution in enumerate(winner.contributions):
+            if position != index and contribution is not None:
+                mix = mix.added(contribution)
 
-    taken = _taken_notes(layout, index, winner, catalogs)
-    notes = list(
-        dict.fromkeys(
-            int(catalog.notes[row]) for row in proposals.get(slot.kind, ()) if int(catalog.notes[row]) not in taken
-        )
-    )
-    mix = hearing.empty_mix(fragment)
-    for contribution in others:
-        mix = mix.added(contribution)
+        return mix
 
-    return _ChannelDraft(index=index, options=options, mix=mix, notes=notes)
+    def _untaken_notes(
+        self, index: int, winner: ScoredCombination, proposals: Mapping[GeneratorClassName, Sequence[int]]
+    ) -> List[int]:
+        """The notes proposed for the channel's kind that no channel of the kind plays in ``winner``, each once."""
+        kind = self.layout.slots[index].kind
+        catalog = self.catalogs[kind]
+        taken = self._taken_notes(kind, winner)
+        proposed = (int(catalog.notes[row]) for row in proposals.get(kind, ()))
+        return list(dict.fromkeys(note for note in proposed if note not in taken))
 
+    def _taken_notes(self, kind: GeneratorClassName, winner: ScoredCombination) -> Set[int]:
+        """The notes ``winner`` sounds on the stem's channels of ``kind``."""
+        catalog = self.catalogs[kind]
+        return {
+            int(catalog.notes[row])
+            for slot, row in zip(self.layout.slots, winner.rows)
+            if slot.kind == kind and catalog.sounding(row)
+        }
 
-def _taken_notes(
-    layout: StemLayout,
-    index: int,
-    winner: ScoredCombination,
-    catalogs: Mapping[GeneratorClassName, KindCatalog],
-) -> Set[int]:
-    """The notes the winner plays on the channel and on the stem's other channels of its kind."""
-    kind = layout.slots[index].kind
-    catalog = catalogs[kind]
-    return {
-        int(catalog.notes[row])
-        for slot, row in zip(layout.slots, winner.rows)
-        if slot.kind == kind and catalog.sounding(row)
-    }
+    def _alternates(self, drafts: Sequence[ChannelDraft]) -> List[List[int]]:
+        """Each channel's best row of every note left to it, with its mix sounding, cheapest first.
 
+        A note's best row is its cheapest, the earlier of equally cheap ones; notes whose best rows
+        cost alike stand in row order.
+        """
+        rows_by_draft = [self._note_rows(draft) for draft in drafts]
+        every_note = [rows for note_rows in rows_by_draft for rows in note_rows]
+        if not every_note:
+            return [[] for _ in drafts]
 
-def _alternates(
-    fragment: Fragment,
-    layout: StemLayout,
-    drafts: Sequence[_ChannelDraft],
-    catalogs: Mapping[GeneratorClassName, KindCatalog],
-    matcher: FrameMatcher,
-    hearing: FrameHearing,
-) -> List[List[int]]:
-    """Each channel's best row of every proposed note left untaken, with its mix sounding, cheapest first."""
-    stacks: List[np.ndarray] = []
-    groups: List[Tuple[int, List[np.ndarray]]] = []
-    for position, draft in enumerate(drafts):
-        catalog = catalogs[layout.slots[draft.index].kind]
-        rows_by_note = [catalog.rows_of(note) for note in draft.notes]
-        for rows in rows_by_note:
-            stacks.append(draft.mix.power + hearing.powers(draft.index, rows))
-        groups.append((position, rows_by_note))
+        stacks = [
+            draft.mix.power + self.hearing.powers(draft.place, rows)
+            for draft, note_rows in zip(drafts, rows_by_draft)
+            for rows in note_rows
+        ]
+        costs = iter(split_by_group(self._spectral_costs(np.concatenate(stacks)), every_note))
+        alternates: List[List[int]] = []
+        for note_rows in rows_by_draft:
+            best: List[Tuple[float, int]] = []
+            for rows in note_rows:
+                note_costs = next(costs)
+                best.append((float(note_costs.min()), cheapest_row(rows, note_costs)))
 
-    alternates: List[List[int]] = [[] for _ in drafts]
-    if not stacks:
+            alternates.append([row for _, row in sorted(best)])
+
         return alternates
 
-    features = matcher.candidate_provider.features_of(xp.asarray(np.concatenate(stacks)))
-    costs = matcher.scorer.spectral_costs(fragment, features)
-    start = 0
-    for position, rows_by_note in groups:
-        best: List[Tuple[float, int]] = []
-        for rows in rows_by_note:
-            note_costs = costs[start : start + len(rows)]
-            best.append((float(note_costs.min()), int(rows[int(np.argmin(note_costs))])))
-            start += len(rows)
-        alternates[position] = [row for _, row in sorted(best)]
+    def _note_rows(self, draft: ChannelDraft) -> NoteRows:
+        """Every row of each note left to the channel, note by note."""
+        catalog = self.catalogs[self.layout.slots[draft.place].kind]
+        return [catalog.rows_of(note) for note in draft.notes]
 
-    return alternates
+    def _spectral_costs(self, powers: np.ndarray) -> np.ndarray:
+        """The spectral cost of the frame with each row of ``powers`` sounding."""
+        features = self.matcher.candidate_provider.features_of(xp.asarray(powers))
+        return self.matcher.scorer.spectral_costs(self.fragment, features)
+
+    def _request(self, draft: ChannelDraft, alternates: Sequence[int]) -> RowsRequest:
+        """The channel's rows to score beside its mix: its options and alternates cut to the width, and its silence."""
+        slot = self.layout.slots[draft.place]
+        catalog = self.catalogs[slot.kind]
+        kept = max(self.width - SILENCE_ROOM, LEAST_KEPT)
+        options = list(dict.fromkeys([*draft.options, *alternates]))[:kept]
+        if catalog.silence not in options:
+            options.append(catalog.silence)
+
+        return RowsRequest(
+            generator=catalog.generator,
+            mix=draft.mix,
+            rows=tuple(options),
+            powers=self.hearing.powers(draft.place, options),
+            drive=slot.drive,
+        )
