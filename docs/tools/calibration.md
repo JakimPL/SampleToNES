@@ -182,11 +182,12 @@ Each option replaces one part of the default run. The rest stays as the suite se
 | `--no-open` | Leaves the page closed | `--no-open` |
 
 A run writes `run.json` beside its report: what it measures and what measures it. It holds
-fingerprints of the variants, the channels, the sounds and the referees with their settings, and the
-program's version. With `--resume`, a run in the same folder measuring the same converts only the
-sounds it has no record of yet, so a run stopped halfway goes on from there. The channels may be named
-in any order. A folder holding a run measured otherwise, judged by other referees or made by another
-version is refused, with what differs.
+fingerprints of the variants, the channels, the sounds and the referees with their settings, and of the
+program: its version and its source code. With `--resume`, a run in the same folder measuring the same
+converts only the sounds it has no record of yet, so a run stopped halfway goes on from there. The
+channels may be named in any order. A folder holding a run measured otherwise, judged by other referees
+or made by another version is refused, with what differs. Any edit to the source code counts as another
+version, even between two releases.
 
 Lists are comma separated. Several lists multiply: `--methods fft,cqt --perceptual-exponents
 0.5,1` measures four variants, and the run takes about four times as long as one variant. Each variant

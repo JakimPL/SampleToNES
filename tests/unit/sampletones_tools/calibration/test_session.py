@@ -38,6 +38,7 @@ from tests.unit.sampletones_tools.calibration.conversions import (
     stub_panel,
 )
 from tests.unit.sampletones_tools.calibration.runs import write_renders, write_run
+from tests.unit.sampletones_tools.calibration.source_tree import edit_source
 
 EVALUATE: Final[str] = "sampletones_tools.calibration.session.evaluate_variants"
 BUILD_BOARD: Final[str] = "sampletones_tools.calibration.session.build_board"
@@ -45,6 +46,7 @@ BUILD_PANEL: Final[str] = "sampletones_tools.calibration.session.build_panel"
 ENSURE_LIBRARY: Final[str] = "sampletones_tools.calibration.evaluation.ensure_library"
 RECONSTRUCTOR: Final[str] = "sampletones_tools.calibration.evaluation.level_reconstructor"
 LOAD_SETTINGS: Final[str] = "sampletones_tools.calibration.session.SettingsConfig.load"
+SOURCE_DIRECTORIES: Final[str] = "sampletones_tools.calibration.session.SOURCE_DIRECTORIES"
 CATEGORIES: Final[List[str]] = ["tone"]
 OWN_FILE: Final[str] = "own.flac"
 OWN_BYTES: Final[bytes] = b"a recording of the user's own"
@@ -317,6 +319,22 @@ class TestResumingARun:
 
         with pytest.raises(ResumeRefusedError, match="measured other variants"):
             calibrate(asked.model_copy(update={"resume": True, "methods": [SpectrumMethod.CQT]}))
+
+        assert len(evaluation.channels) == 1
+
+    def test_a_run_resumed_after_an_edit_to_the_source_is_refused(
+        self,
+        asked: CalibrationRequest,
+        evaluation: RecordedEvaluation,
+        packages: Tuple[Path, ...],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(SOURCE_DIRECTORIES, packages)
+        calibrate(asked)
+        edit_source(packages)
+
+        with pytest.raises(ResumeRefusedError, match="measured other source code"):
+            calibrate(asked.model_copy(update={"resume": True}))
 
         assert len(evaluation.channels) == 1
 

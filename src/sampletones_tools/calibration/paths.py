@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Final
+from typing import Final, Tuple
 
 from sampletones_shared.paths.package import package_directory
 
@@ -14,3 +14,5 @@ SAMPLES_CONFIG_PATH: Final[Path] = CALIBRATION_CONFIG_DIRECTORY / "samples.yaml"
 CHORDS_CONFIG_PATH: Final[Path] = CALIBRATION_CONFIG_DIRECTORY / "chords.yaml"
 SUITE_CONFIG_PATH: Final[Path] = CALIBRATION_CONFIG_DIRECTORY / "suite.yaml"
 SETTINGS_CONFIG_PATH: Final[Path] = CALIBRATION_CONFIG_DIRECTORY / "settings.yaml"
+SOURCE_PACKAGES: Final[Tuple[str, ...]] = ("sampletones_core", "sampletones_shared", "sampletones_tools")
+SOURCE_DIRECTORIES: Final[Tuple[Path, ...]] = tuple(package_directory(package) for package in SOURCE_PACKAGES)

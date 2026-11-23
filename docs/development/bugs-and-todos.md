@@ -111,9 +111,6 @@ dimension the import starts carrying.
 * The joint assignment for stems that share channels. It solves each stem on its own channels, so a setup
   where two stems may take one channel is refused under `generation.assignment.method: joint`. A joint
   choice across stems, ordered by the hierarchy, closes it.
-* A calibration run's fingerprint holds the version the package declares, which moves at a release, so
-  `--resume` after a source edit between two releases takes up records the earlier code wrote. A digest of
-  the package's source in the fingerprint closes it.
 * The calibration's MIDI reader loses a note struck again at the tick it is released when the note on
   comes first: the strike ends the old note there, and the release then ends the new one before it sounds.
   Reading a tick's releases before its strikes closes it.

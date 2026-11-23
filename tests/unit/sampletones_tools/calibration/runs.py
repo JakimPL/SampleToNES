@@ -5,7 +5,6 @@ from typing import Dict, Final, Sequence, Tuple
 import numpy as np
 
 from sampletones_core.constants.enums import ChannelName
-from sampletones_shared.distribution import SAMPLETONES_VERSION
 from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.digest import sha256_digest
 from sampletones_tools.calibration.fingerprint import RunFingerprint, write_fingerprint
@@ -20,6 +19,7 @@ SAMPLE_RATE: Final[int] = 22050
 CLIP_LENGTH: Final[int] = SAMPLE_RATE // 8
 REFEREE: Final[str] = "mr-auditory-dB"
 SECOND_REFEREE: Final[str] = "mr-loudness-dB"
+SOURCE: Final[str] = "probe-source"
 SILENCE_SCORE: Final[float] = 20.0
 
 
@@ -62,7 +62,7 @@ def probe_fingerprint(variants: Sequence[str]) -> RunFingerprint:
         channels=[channel.value for channel in ChannelName.items()],
         items={probe.item: sha256_digest(probe.item.encode()) for probe in ITEMS},
         referees=sha256_digest(REFEREE.encode()),
-        version=SAMPLETONES_VERSION,
+        source=sha256_digest(SOURCE.encode()),
     )
 
 

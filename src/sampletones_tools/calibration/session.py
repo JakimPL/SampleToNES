@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sampletones_application.utils.palette.catalog import DEFAULT_PALETTE_NAME
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName, SpectrumMethod
+from sampletones_shared.distribution import SAMPLETONES_VERSION
 from sampletones_shared.logger import logger
 from sampletones_tools.calibration.board.session import BoardRequest, build_board
 from sampletones_tools.calibration.config.level import VariantLevel
@@ -23,10 +24,12 @@ from sampletones_tools.calibration.fingerprint import (
     write_fingerprint,
 )
 from sampletones_tools.calibration.layout import CORPUS_DIRECTORY, CSV_REPORT, MARKDOWN_REPORT
+from sampletones_tools.calibration.paths import SOURCE_DIRECTORIES
 from sampletones_tools.calibration.referee.panel import RefereePanel, build_panel
 from sampletones_tools.calibration.renders import clear_renders, holds_renders
 from sampletones_tools.calibration.report import write_csv, write_markdown
 from sampletones_tools.calibration.rows import CalibrationRow
+from sampletones_tools.calibration.source import source_digest
 from sampletones_tools.calibration.variants import CalibrationVariant, build_variants
 from sampletones_tools.runs import output_root, stamped_board_directory, stamped_run_directory
 
@@ -206,7 +209,8 @@ def _claim_directory(
         ResumeRefusedError: If a run is resumed in a directory holding no run, or another run, or a
             fresh run is given a directory holding renders or recordings no run claimed.
     """
-    fingerprint = fingerprint_of(variants, items, request.channels, panel)
+    source = source_digest(SOURCE_DIRECTORIES, SAMPLETONES_VERSION)
+    fingerprint = fingerprint_of(variants, items, request.channels, panel, source)
     if request.resume:
         check_resumable(request.output, fingerprint)
     else:

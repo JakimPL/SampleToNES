@@ -4,7 +4,6 @@ from typing import Dict, Final, List, Optional, Self, Sequence, Tuple
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
 from sampletones_core.constants.enums import ChannelName, ordered_channels
-from sampletones_shared.distribution import SAMPLETONES_VERSION
 
 from .corpus.item import CorpusItem
 from .corpus.truth import Truth
@@ -35,11 +34,16 @@ class RunFingerprint(BaseModel):
     A resumed run reads back the records a run left and converts only the rest, so a record stands in
     for a conversion the resumed run would make itself only where the two runs share every part its
     readings depend on: the same configurations under the same labels, the same channels, the same
-    sounds, the same referees under the same tuning, and the same version of the program. Each
-    variant and sound is held by a digest, so any change to a configuration's value, or to a sound's
-    audio, family, category, listing, stems setup, own channels or truth, tells the runs apart. The
-    channels are held in the order the application names them, since a conversion reads them as a
-    set.
+    sounds, the same referees under the same tuning, and the same program. Each variant and sound
+    is held by a digest, so any change to a configuration's value, or to a sound's audio, family,
+    category, listing, stems setup, own channels or truth, tells the runs apart. The channels are
+    held in the order the application names them, since a conversion reads them as a set.
+
+    The program is held by a digest of its source (``source_digest``) over the packages that make a
+    record: ``sampletones_core`` converts, ``sampletones_tools`` builds the corpus, judges and writes
+    the records, and ``sampletones_shared`` serves both. Their configuration files lie among their
+    files, the generation defaults and the corpus and referee settings with them. An edit to any of
+    them between two releases therefore tells the runs apart, as a release does.
 
     Attributes:
         variants: Each variant's label beside a digest of its configuration, in the order the run
@@ -47,7 +51,7 @@ class RunFingerprint(BaseModel):
         channels: The channels the synthesized sounds are converted over.
         items: Each sound's name beside a digest of what the corpus holds of it.
         referees: A digest of the referees' names and of the tuning they were built with.
-        version: The version of the program measuring the run.
+        source: A digest of the program measuring the run: its version and its source.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -56,20 +60,20 @@ class RunFingerprint(BaseModel):
     channels: List[str]
     items: Dict[str, str]
     referees: str
-    version: str
+    source: str
 
     def differences(self, other: Self) -> List[str]:
         """The parts ``other`` measures otherwise, named as a refusal names them.
 
         What the run is asked to measure comes first, then what measures it: the variants, the
-        channels and the sounds, then the referees and the program's version.
+        channels and the sounds, then the referees and the program's source.
         """
         comparisons = (
             ("variants", self.variants == other.variants),
             ("channels", self.channels == other.channels),
             ("sounds", self.items == other.items),
             ("referees", self.referees == other.referees),
-            ("program version", self.version == other.version),
+            ("source code", self.source == other.source),
         )
         return [name for name, alike in comparisons if not alike]
 
@@ -95,14 +99,18 @@ def fingerprint_of(
     items: Sequence[CorpusItem],
     channels: Sequence[ChannelName],
     panel: RefereePanel,
+    source: str,
 ) -> RunFingerprint:
-    """The fingerprint of a run measuring ``items`` under ``variants`` over ``channels``, judged by ``panel``."""
+    """The fingerprint of a run measuring ``items`` under ``variants`` over ``channels``.
+
+    The run is judged by ``panel`` and made by the program whose source digest is ``source``.
+    """
     return RunFingerprint(
         variants={variant.label: sha256_digest(variant.config.model_dump_json().encode()) for variant in variants},
         channels=[channel.value for channel in ordered_channels(set(channels))],
         items={item.name: _item_digest(item) for item in items},
         referees=_referees_digest(panel),
-        version=SAMPLETONES_VERSION,
+        source=source,
     )
 
 
