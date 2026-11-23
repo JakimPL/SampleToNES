@@ -2,7 +2,9 @@
 
 This is the working ledger of what is still owed: to-dos, deviations from the architecture, and known
 bugs. Read it before starting work in an area. Add an entry when a change knowingly leaves something
-behind. Each entry says what is owed and why, and the code and the change that closes it hold the rest.
+behind. Each entry names something broken or missing, why it matters, and the change that closes it.
+Open questions, trade-offs a design makes and observations whose cause is unknown belong in the plan that
+settles them.
 
 ## To-dos
 
@@ -108,46 +110,21 @@ dimension the import starts carrying.
 * The `fft` and `logfft` analysis floors. Their window spans two cycles of the pulse's lowest note, so the
   triangle's lowest octave reaches them by its harmonics alone. Covering it doubles their window and
   coarsens their timing.
-* A constant-Q column holds each wavelet up to a sample off its frame's middle, by the parities of the frame,
-  the wavelet and the longest wavelet: at the defaults every even-length wavelet sits half a sample early.
 * The joint assignment for stems that share channels. It solves each stem on its own channels, so a setup
   where two stems may take one channel is refused under `generation.assignment.method: joint`. A joint
   choice across stems, ordered by the hierarchy, closes it.
-* The joint assignment's speed against the picks is measured on the calibration benchmark alone. A case in
-  `tests/benchmarks/` needs the full library, which an installation builds once.
-* A `contour` reading of the render where the recording falls silent. Its readings over time cover the
-  recording's audible frames, so a render ringing on after a short hit reaches it through the band
-  readings alone.
-* The joint assignment's fits (`fitted_levels`, `fitted_combinations`) scale and add feature values, so they
-  read a frame's power exactly at a transformation gamma of zero alone.
-* The combinations decoder moves two channels at once only within its pool: the choice with channels
-  silenced, the finalists and the choice of the frame before. The Viterbi decoder may take two column
-  alternatives on two channels together, which keeps it ahead on some pieces, such as Super Mario Bros. at
-  the true level.
-* The combinations decoder holds a quiet pulse through a noise note. The criterion prices a pulse on a
-  partial of the noise 0.05 to 0.14 per frame below the noise alone, and the pool offers one such pulse in
-  every frame of the note, so the path keeps it. The per-channel decoder reads a different pulse in each
-  frame's column and stays silent. Single noise notes fall from 82% to 60% right and the drum sequence from
-  98% to 86%. A criterion that prices the pulse above the partial it explains closes it.
-* A frame heard among its neighbors loses short drum hits. The first pass holds a quiet noise under a
-  staccato bass's tail, and the pass removes it, so a hit of one to three frames stands alone: its frame
-  prefers quiet low pulses beside the noise, its decay prefers silence, and the decoder's on/off toll
-  outweighs what the hit saves. On Castlevania the written noise frames left silent rise from 12 to 154,
-  and a toll of 0.05 brings back 24 of them. A criterion that prices the pulses above the noise they
-  cover, together with a toll a hit can pay, closes it. On a recording the same choices break the noise
-  and the triangle into short runs: Can't Stop as a whole mix sounds its noise in 49 runs where the
-  first pass held 7, the triangle in 52 where it held 18, and its channels change from 17 to 31 times a
-  second, while the readings in nats hold.
-* A calibration run's fingerprint holds the version the package declares, which moves at a release, so a
-  resume across source edits made between two releases takes up the records written before them.
-* A listening page reads the order of a run's variants from its `run.json`, so `--board` refuses a run
-  written before runs kept one. Such a run's records also read at the default level, so a run of several
-  levels plays every render beside the one recording it kept, the level it wrote last.
+* The `contour` referee reads levels over the recording's audible frames, so a render ringing on after a
+  short hit counts only through its band readings. Reading the frames where the recording or the render is
+  audible closes it.
+* A calibration run's fingerprint holds the version the package declares, which moves at a release, so
+  `--resume` after a source edit between two releases takes up records the earlier code wrote. A digest of
+  the package's source in the fingerprint closes it.
 * The calibration's MIDI reader keeps running status across meta and system-exclusive events, which the
   MIDI standard says cancel it, so a file leaving out the status byte after one reads under the status
-  before it.
+  before it. Clearing the running status at each such event closes it.
 * The calibration's MIDI reader loses a note struck again at the tick it is released when the note on
   comes first: the strike ends the old note there, and the release then ends the new one before it sounds.
+  Reading a tick's releases before its strikes closes it.
 
 ## Architecture
 
@@ -218,48 +195,23 @@ currently out of line. An entry leaves when the code meets the contract again.
   faithful hold needs a DC-blocking output stage at every mix (the reconstruction's render, the sequencer
   and the song render), since nothing drains a held level today.
 * The spectral weights read each bin at its upper edge, half a bin above its center, under every spectrum
-  method (`calculate_weights_from_edges`).
-* The Viterbi decoder holds the quietest noise through a steady constant-Q tone whose first two and last two
-  frames ask for it, since the path holding it costs less than one stopping and starting it
-  (`test_frame_objective.py`).
-* Inertia anchors the neighbor pass to the first decode. A frame's charge is read against the frame after
-  as the first decode played it, and the decoders read the charge again in every pooled cost on top of
-  their own transitions, so a path putting a run right pays the charge in every frame of it. At tonal
-  inertia 0.5 the pass keeps 18% of its gain on NES-MDB review (48.1% right against 59.7% without
-  inertia), and on Castlevania the decoders' reading alone costs 12.5 of the 13.9 points lost.
-* A column's alternatives under inertia pay the winner's other channels in the winner's order, while a
-  combination pays its pulses in the order breaking least. The winner's own row then reads at another
-  cost on its column than in the pool (0.54 against 0 for two pulses swapped against their neighbors), and
-  every move on that column carries the difference.
-* The neighbor pass settles its lines on the columns' heads, while the handover and the pool follow the
-  judge's winner. The heads differ from the winner on 24% of Castlevania's sounding frames without
-  inertia, and the search referee's `assignment` stage reads the heads as the assignment's pick.
-* The neighbor pass lost Mega Man 2's frames 63 to 70 when the window model came to lay each constant-Q
-  wavelet where the transform lays it: under the fitted level, the combinations decoder and one pass, its
-  wrong frames rose from 12.7% to 14.1%. Which reading the corrected model moves there is unmeasured.
+  method (`calculate_weights_from_edges`). Reading each bin at its center closes it.
 * With a stem's pulses driven unlike, the joint search sounds a single pulse proposal on the first pulse
   and a pair in proposal order alone, which covers every choice only where the pulses are
-  interchangeable. A note the second pulse's drive matches is left unsearched.
+  interchangeable, so a note the second pulse's drive matches goes unsearched
+  ([stems](../concepts/stems.md) scores channels driven differently apart). Searching every placement of a
+  kind's proposals where its channels' drives differ closes it.
 * In the neighbor pass, the fit of every note reads a note held through the frame weaker by the
   neighbors' share of it (0.95 of its strength at note 64, 0.79 at note 48), since its atoms are the
-  steady library rows standing over the leak. The combinations' fit reads its atoms through the window
-  model.
-* The fitted level reads a pulse bass as the triangle line. The triangle's raised cap takes a share of a
-  low pulse's note, the lowest run wins over a triangle line above it, and the judgment confirms, so
-  Kirby's Adventure reads 0.38 to 0.51 of its true factor where its triangle is silent.
-* The fitted level reads a legato line low on every frame, since the sounding-through rule sees a rest and
-  passes a note change. Uchuu Keibitai SDF's stem reads 0.63 to 0.81 of its true factor, and the judgment
-  accepts it.
-* A pulse under the triangle lifts the fitted level's reading, and the judgment's cost test accepts it:
-  pulse 48 under triangle 60, matched at 0.6 of its level, reads 0.873, 45% too loud.
-* A note held a few frames between rests reads low through the fitted level's reach of two frames: the
-  triangle held 8 frames at 0.6 of its level reads 0.556, 7.4% low.
+  steady library rows standing over the leak. Reading its atoms through the window model, as the
+  combinations' fit does, closes it.
 * Under `logfft` the window model reads every log bin as one FFT bin. Above about 500 Hz a log bin sums
   several FFT bins, and a note cut at a frame boundary misses the model by up to 0.17 of its steady
-  reading.
+  reading. Modeling a log bin as the sum of the FFT bins it covers closes it.
 * The joint judge orders a combination's channels by their library feature values over the drive squared,
   which reads their driven loudness at a transformation gamma of zero alone. At another gamma, two
   channels driven apart may be phased in an order their driven powers reverse (`CombinationJudge._loudness`).
+  Reading the order from the driven features (`DrivenFeatures`) closes it.
 * Another voice inside a harmonic's bin pulls the pitch reading. A partial of another voice within half a
   semitone of one of a note's harmonics shares that harmonic's bin and adds to its reading: a 65 Hz bass
   under a steady 330 Hz pulse reads about 4 cents off, and within a cent alone.
