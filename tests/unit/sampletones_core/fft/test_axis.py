@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Final
+
 import numpy as np
 import pytest
 
@@ -10,11 +13,17 @@ from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQ
 from sampletones_core.fft import (
     FFTTransformer,
     Window,
-    calculate_fft_frequencies,
+    calculate_fft_bin_edges,
     calculate_weights_from_edges,
 )
 from sampletones_core.fft.features import get_feature_extractor
+from sampletones_core.fft.spectrum.fft import calculate_fft_spectrum
 from sampletones_core.fft.spectrum.spectrum import calculate_spectrum
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
+
+FFT_SAMPLE_RATE: Final[int] = 44100
+TONE_BIN: Final[int] = 37
 
 
 def _config(method: SpectrumMethod) -> Config:
@@ -87,10 +96,46 @@ class TestFragmentAxis:
         assert len(fragment.feature.values) > 1
 
 
+class TestEachFFTBinCentersOnItsFrequency(BaseTestSuite):
+    """Bin ``j`` of the FFT spectrum holds the frequency ``j * Δf`` and spans half a bin on either side of it.
+
+    The axis ends at the Nyquist frequency at every size. An even size's last bin is the Nyquist
+    coefficient, which holds the half bin below it.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        size: int
+
+    test_cases = (
+        TestCase(label="even size", size=1024),
+        TestCase(label="odd size", size=1023),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_tone_at_a_bin_s_frequency_peaks_in_the_bin_centered_on_it(self, test_case: TestCase) -> None:
+        frequency = TONE_BIN * FFT_SAMPLE_RATE / test_case.size
+        tone = np.cos(2.0 * np.pi * frequency * np.arange(test_case.size) / FFT_SAMPLE_RATE)
+
+        spectrum = calculate_fft_spectrum(tone, FFT_SAMPLE_RATE)
+
+        peak = int(np.argmax(spectrum.values))
+        lower, upper = float(spectrum.edges[peak]), float(spectrum.edges[peak + 1])
+        assert lower <= frequency < upper
+        assert (lower + upper) / 2.0 == pytest.approx(frequency)
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_axis_ends_at_the_nyquist_frequency(self, test_case: TestCase) -> None:
+        spectrum = calculate_fft_spectrum(np.zeros(test_case.size), FFT_SAMPLE_RATE)
+
+        assert float(spectrum.edges[-1]) == pytest.approx(FFT_SAMPLE_RATE / 2.0)
+        assert len(spectrum.values) == test_case.size // 2
+
+
 class TestEdgeWeights:
     def test_linear_fft_edges_give_positive_normalized_weights(self) -> None:
         sample_rate, length = 44100, 1024
-        edges = calculate_fft_frequencies(length, sample_rate)
+        edges = calculate_fft_bin_edges(length, sample_rate)
         weights = calculate_weights_from_edges(edges, perceptual_exponent=1.0)
         assert weights.shape[0] == length // 2
         assert bool(np.all(weights > 0.0))

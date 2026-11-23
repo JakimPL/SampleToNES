@@ -11,7 +11,7 @@ from sampletones_core.structures.histogram import Histogram
 
 from ..cqt.frequencies import calculate_cqt_frequencies, convert_midpoints_to_edges
 from ..cqt.normalization import normalize_cqt_energy
-from ..cqt.transform import calculate_cqt, calculate_cqt_frames
+from ..cqt.transform import calculate_cqt, calculate_cqt_frames, column_offset
 from ..utils import calculate_n_bins
 
 
@@ -81,9 +81,10 @@ def calculate_cqt_spectrum_columns(
     references both come from this function, so their features stay comparable
     bin-by-bin.
 
-    The signal is advanced by half a hop before transforming, so column ``i``
-    represents the frame centered on ``(i + 0.5) * hop_length``. This aligns the
-    per-frame timing with the FFT path, which analyzes a window centered on each frame.
+    Column ``i`` centers on the middle of frame ``i``, ``column_offset(hop_length)``
+    samples past ``i * hop_length``. This aligns the per-frame timing with the FFT path,
+    which analyzes a window centered on each frame. The first columns read the audio
+    from its first sample, and silence before it.
 
     Args:
         audio: Input audio as a numpy array.
@@ -102,8 +103,8 @@ def calculate_cqt_spectrum_columns(
     """
     validate_audio_array(audio)
     n_bins = n_bins or calculate_n_bins(sample_rate, cutoff, bins_per_octave)
-    centered_audio = audio[hop_length // 2 :]
-    cqt = calculate_cqt_frames(centered_audio, sample_rate, hop_length, cutoff, n_bins, bins_per_octave)
+    offset = column_offset(hop_length)
+    cqt = calculate_cqt_frames(audio, sample_rate, hop_length, offset, cutoff, n_bins, bins_per_octave)
     frequencies = calculate_cqt_frequencies(n_bins, cutoff, bins_per_octave)
     energy: np.ndarray = np.square(np.abs(cqt))
     energy_scaled = normalize_cqt_energy(energy, frequencies, sample_rate, bins_per_octave)

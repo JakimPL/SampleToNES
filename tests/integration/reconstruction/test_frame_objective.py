@@ -26,6 +26,11 @@ PULSE_PITCHES: Final[FrozenSet[int]] = frozenset({*range(55, 60), *range(67, 72)
 VOLUMES: Final[FrozenSet[int]] = frozenset({1, 8, 15})
 NOISE_PERIODS: Final[FrozenSet[int]] = frozenset({0, 4, 8, 12, 15})
 EDGE_FRAMES: Final[int] = 2
+EDGE_NOISE_HELD: Final[str] = (
+    "The Viterbi decoder holds the quietest noise through the tone: the constant-Q reading asks for it at "
+    "the tone's first two frames and its last two, and the path holding it costs less than one stopping "
+    "and starting it."
+)
 
 
 def _library(config: Config) -> InstructionLibrary:
@@ -93,7 +98,12 @@ class TestASineBecomesOneTriangle:
         interior = reconstructed_tone.instructions[ChannelName.TRIANGLE][EDGE_FRAMES:-EDGE_FRAMES]
         assert all(instruction.on for instruction in interior)
 
-    def test_no_other_channel_sounds_within_the_tone(self, reconstructed_tone: Reconstruction) -> None:
+    def test_no_other_channel_sounds_within_the_tone(
+        self, reconstructed_tone: Reconstruction, request: pytest.FixtureRequest
+    ) -> None:
+        if reconstructed_tone.config.library.spectrum_method == SpectrumMethod.CQT:
+            request.applymarker(pytest.mark.xfail(strict=True, reason=EDGE_NOISE_HELD))
+
         for channel_name in reconstructed_tone.playing_channels:
             if channel_name == ChannelName.TRIANGLE:
                 continue

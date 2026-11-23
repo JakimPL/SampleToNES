@@ -22,7 +22,7 @@ from tests.suite.stems import (
     THREE_STEM_CHANNELS,
     three_stem_config,
     three_stem_reconstruction_config,
-    write_three_stem_recordings,
+    write_turn_taking_stem_recordings,
 )
 
 EVERY_STEM: Final[FrozenSet[int]] = frozenset({STEM_A_ID, STEM_B_ID, STEM_C_ID})
@@ -32,11 +32,14 @@ PITCH_STEP: Final[int] = 1
 
 @pytest.fixture(scope="module")
 def converted(tmp_path_factory: pytest.TempPathFactory) -> Reconstruction:
-    """One real three-stem conversion, the document every scenario below starts from."""
+    """One real three-stem conversion, the document every scenario below starts from.
+
+    Two of its recordings take turns on one tone, so the channel playing it holds frames of both.
+    """
     config = three_stem_reconstruction_config()
     library = build_mini_library(config)
     reconstructor = Reconstructor(config, frozenset(THREE_STEM_CHANNELS), library=library)
-    paths = write_three_stem_recordings(config, tmp_path_factory.mktemp("recordings"))
+    paths = write_turn_taking_stem_recordings(config, tmp_path_factory.mktemp("recordings"))
 
     reconstruction = reconstructor.reconstruct(list(paths), three_stem_config())
 

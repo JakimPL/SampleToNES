@@ -9,7 +9,7 @@ from sampletones_core.constants.spectrum import (
 )
 from sampletones_core.structures.histogram import Histogram
 
-from ..fft import calculate_fft, calculate_fft_frequencies
+from ..fft import calculate_fft, calculate_fft_bin_edges
 from ..utils import to_resolution_floored_log_bands
 
 
@@ -26,7 +26,8 @@ def calculate_fft_spectrum(
     its content: a bin-centered tone of amplitude `A` reports `A**2 / 2`, matching
     the constant-Q convention.
 
-    DC component is excluded.
+    DC component is excluded. Each bin is centered on its frequency, as
+    ``calculate_fft_bin_edges`` places it.
 
     Args:
         audio: Input audio as array.
@@ -40,7 +41,7 @@ def calculate_fft_spectrum(
     fft_size = fft_size or len(audio)
     fft: np.ndarray = calculate_fft(audio, fft_size)
     energy: np.ndarray = 2.0 * np.square(np.abs(fft) / fft_size)
-    bands: np.ndarray = calculate_fft_frequencies(fft_size, sample_rate)
+    bands: np.ndarray = calculate_fft_bin_edges(fft_size, sample_rate)
     return Histogram(edges=bands.astype(np.float32), values=energy.astype(np.float32))
 
 

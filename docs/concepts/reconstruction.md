@@ -115,7 +115,8 @@ sharper frequency resolution requires a longer time window, and vice versa):
   milliseconds), so brief events are smeared in time at the low end. _SampleToNES_
   computes the CQT **once over the whole signal** with a hop of one frame, so each
   frame's energy is reported at its own time position and the per-frame columns line up
-  with the FFT path's frame centers.
+  with the FFT path's frame centers. Each column centers on the middle of its frame, and
+  the first columns read the audio from its first sample, with silence before it.
 
 The target and the library candidates are always described by the *same* method, so
 their features are directly comparable bin by bin. All three methods share one scale
@@ -389,7 +390,8 @@ window holds the note before and the note after, and the frame is asked to expla
 The pass reads a frame through a forward model of its window:
 
 - Each bin weighs every frame around it by the share of its window's weight that frame holds: the
-  wavelet's under `cqt`, the tapered window's under `fft` and `logfft`.
+  wavelet's under `cqt`, laid where the transform lays it, and the tapered window's under `fft` and
+  `logfft`.
 - A note held over a run of frames keeps its phase, so the run reaches the bin in amplitude: each frame's
   share times its amplitude, summed over the run, then squared.
 - Different notes and different channels add in power, and the noise adds in power by the shares of the

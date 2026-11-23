@@ -11,8 +11,14 @@ from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQ
 from sampletones_core.fft import Window
 from sampletones_core.fft.cqt.frequencies import calculate_cqt_frequencies
 from sampletones_core.fft.features import FeatureExtractor, get_feature_extractor
+from sampletones_core.fft.spectrum.cqt import calculate_cqt_spectrum_columns
 from sampletones_core.fft.utils import calculate_n_bins
-from sampletones_core.reconstructions.reconstructor.window.profiles import BinWindow, FrameProfiles, frame_profiles
+from sampletones_core.reconstructions.reconstructor.window.profiles import (
+    BinWindow,
+    FrameProfiles,
+    constant_q_windows,
+    frame_profiles,
+)
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -21,6 +27,8 @@ WINDOWED_BINS: Final[int] = 16
 LOWEST_BIN_OWN_SHARE: Final[float] = 0.1
 ROUNDING: Final[float] = 1e-12
 HELD_NOTE_TOLERANCE: Final[float] = 0.02
+IMPULSE_ROUNDING: Final[float] = 1e-5
+ONE_SIDED_POWER: Final[float] = 2.0
 LINEAR_GAMMA: Final[int] = 0
 BASS: Final[float] = 110.0
 MIDDLE: Final[float] = 440.0
@@ -189,8 +197,8 @@ class TestAHeldNoteAsTheFeatureReadsIt(BaseTestSuite):
     amplitude shares of the frames the tone sounds in, times what the bin reads of the tone held
     throughout. A cut tone also spreads a little of its negative frequency's power into the bin,
     which the model leaves out; that spread stays within ``HELD_NOTE_TOLERANCE`` of the steady
-    reading. The run starts a whole reach into the audio, so every frame's window reads the audio's
-    start as silence, as the model does.
+    reading. The extraction reads the audio from its first sample and silence before it, as the model
+    hears it, so a run sounding from the audio's start reads as one sounding deeper in.
     """
 
     @dataclass(frozen=True, kw_only=True)
@@ -215,10 +223,6 @@ class TestAHeldNoteAsTheFeatureReadsIt(BaseTestSuite):
 
         self._assert_read_as_the_model_hears(test_case.method, test_case.frequency, range(reach, reach + held))
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason="The constant-Q extraction reads the audio's first half frame as silence, which the model hears sound.",
-    )
     def test_a_tone_sounding_from_the_audio_s_start_reads_as_the_model_hears_it(self) -> None:
         reach = _profiles(SpectrumMethod.CQT).reach
 
@@ -271,3 +275,56 @@ class TestAHeldNoteAsTheFeatureReadsIt(BaseTestSuite):
         """The bin's summed amplitude shares of the frames in ``sounding`` its window reads around ``frame``."""
         read = range(max(sounding.start, frame - profiles.reach), min(sounding.stop, frame + profiles.reach + 1))
         return float(sum(profiles.amplitude_at(other - frame)[bin_index] for other in read))
+
+
+class TestTheModelPlacesEachWaveletAsTheTransformDoes(BaseTestSuite):
+    """An impulse at a frame's first sample reaches each column by the weight the model places on that sample.
+
+    A unit impulse at the first sample of frame ``t`` meets, in column ``i``, the first sample of a bin's
+    window the model places on the frame ``t - i`` frames from the frame read. The constant-Q kernel
+    scales each wavelet to unit total weight times the square root of its length, and the normalization
+    divides the energy by that length and doubles it, so the bin reads
+    ``ONE_SIDED_POWER * (weight / total weight) ** 2``. A column whose window holds no sample on that
+    frame reads nothing. The envelope weighs a wavelet's first sample at zero, so a window starting inside
+    a frame reads that frame's first sample as nothing either way. The configurations cover each parity
+    of the frame length and of the longest wavelet's length.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        sample_rate: int
+        nes_frequency: int
+
+    test_cases = (
+        TestCase(label="odd frame, odd kernel", sample_rate=44100, nes_frequency=60),
+        TestCase(label="odd frame, even kernel", sample_rate=32000, nes_frequency=60),
+        TestCase(label="even frame, odd kernel", sample_rate=48000, nes_frequency=60),
+        TestCase(label="even frame, even kernel", sample_rate=24000, nes_frequency=50),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_each_column_reads_an_impulse_by_the_weight_the_model_places_on_it(self, test_case: TestCase) -> None:
+        library = InstructionsLibraryConfig(sample_rate=test_case.sample_rate, nes_frequency=test_case.nes_frequency)
+        windows = constant_q_windows(library.sample_rate, library.frame_length, calculate_n_bins(library.sample_rate))
+        reach = max(window.reach for window in windows)
+        frame = reach + 1
+        audio = np.zeros((2 * reach + 2) * library.frame_length, dtype=np.float32)
+        audio[frame * library.frame_length] = 1.0
+
+        spectra = calculate_cqt_spectrum_columns(audio, library.sample_rate, library.frame_length)
+
+        readings = np.array([spectrum.values for spectrum in spectra], dtype=np.float64)
+        expected = np.array(
+            [[self._impulse_reading(window, frame - column) for window in windows] for column in range(len(spectra))]
+        )
+        assert readings == pytest.approx(expected, rel=IMPULSE_ROUNDING, abs=0.0)
+
+    @staticmethod
+    def _impulse_reading(window: BinWindow, offset: int) -> float:
+        """What a bin reads of a unit impulse at the first sample of the frame ``offset`` frames from the frame read."""
+        on_frame = np.flatnonzero(window.offsets == offset)
+        if on_frame.size == 0:
+            return 0.0
+
+        share = float(window.weights[on_frame[0]] / window.weights.sum())
+        return ONE_SIDED_POWER * share**2

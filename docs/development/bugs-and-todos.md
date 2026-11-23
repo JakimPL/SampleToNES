@@ -108,6 +108,10 @@ dimension the import starts carrying.
 * The `fft` and `logfft` analysis floors. Their window spans two cycles of the pulse's lowest note, so the
   triangle's lowest octave reaches them by its harmonics alone. Covering it doubles their window and
   coarsens their timing.
+* A constant-Q column holds each wavelet up to a sample off its frame's middle, by the parities of the frame,
+  the wavelet and the longest wavelet: at the defaults every even-length wavelet sits half a sample early.
+* A target that wavers for `test_decoding.py`, whose two-tone target wavers at no frame once the extraction
+  reads its opening, so the cases holding the greedy decoder against the Viterbi one stand as expected failures.
 * The joint assignment for stems that share channels. It solves each stem on its own channels, so a setup
   where two stems may take one channel is refused under `generation.assignment.method: joint`. A joint
   choice across stems, ordered by the hierarchy, closes it.
@@ -215,6 +219,11 @@ currently out of line. An entry leaves when the code meets the contract again.
 * A silent triangle renders the middle of its wave, where the console holds the step it stopped on. A
   faithful hold needs a DC-blocking output stage at every mix (the reconstruction's render, the sequencer
   and the song render), since nothing drains a held level today.
+* The spectral weights read each bin at its upper edge, half a bin above its center, under every spectrum
+  method (`calculate_weights_from_edges`).
+* The Viterbi decoder holds the quietest noise through a steady constant-Q tone whose first two and last two
+  frames ask for it, since the path holding it costs less than one stopping and starting it
+  (`test_frame_objective.py`).
 * Another voice inside a harmonic's bin pulls the pitch reading. A partial of another voice within half a
   semitone of one of a note's harmonics shares that harmonic's bin and adds to its reading: a 65 Hz bass
   under a steady 330 Hz pulse reads about 4 cents off, and within a cent alone.

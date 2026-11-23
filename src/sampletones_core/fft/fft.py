@@ -66,6 +66,37 @@ def calculate_fft_frequencies(fragment_length: int, sample_rate: int) -> np.ndar
     return frequencies
 
 
+def calculate_fft_bin_edges(fft_size: int, sample_rate: int) -> np.ndarray:
+    """
+    Edges of the bins ``calculate_fft`` returns, each bin centered on its frequency.
+
+    Bin ``j``, counted from one as ``calculate_fft`` drops the DC coefficient, holds the
+    frequency ``j * Δf`` with ``Δf = sample_rate / fft_size``, so it spans the interval
+    ``[(j - 1/2) * Δf, (j + 1/2) * Δf)``. The last edge stands at the Nyquist frequency,
+    where the one-sided spectrum ends, since a component above it folds back below it. An odd
+    size's last bin reaches it half a bin above its frequency, like every other bin. An even
+    size's last bin is the Nyquist coefficient itself, which holds the half bin below it.
+
+    Args:
+        fft_size: Size of the FFT.
+        sample_rate: Sampling rate in Hz.
+
+    Returns:
+        Bin edges in Hz, shape (fft_size//2 + 1,).
+
+    Examples:
+        >>> edges = calculate_fft_bin_edges(1024, 44100)
+        >>> edges.shape
+        (513,)
+        >>> float(edges[-1])
+        22050.0
+    """
+    resolution = sample_rate / fft_size
+    lower_edges = (np.arange(1, fft_size // 2 + 1) - 0.5) * resolution
+    edges: np.ndarray = np.append(lower_edges, sample_rate / 2.0)
+    return edges
+
+
 def erb_bandwidth(frequencies: np.ndarray) -> np.ndarray:
     """
     Equivalent rectangular bandwidth of the auditory filter centered at each frequency.
@@ -170,7 +201,7 @@ def calculate_weights_from_edges(edges: np.ndarray, perceptual_exponent: float =
         Normalized weights, shape (n_bins,). Sum of weights equals 1.0.
 
     Examples:
-        >>> edges = calculate_fft_frequencies(1024, 44100)
+        >>> edges = calculate_fft_bin_edges(1024, 44100)
         >>> weights = calculate_weights_from_edges(edges)
         >>> weights.shape
         (512,)

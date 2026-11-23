@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Final, Self, Sequence, Tuple, assert_never
+from typing import Final, List, Self, Sequence, Tuple, assert_never
 
 import numpy as np
 
@@ -11,7 +11,7 @@ from sampletones_core.fft import Window
 from sampletones_core.fft.cqt.frequencies import calculate_cqt_frequencies
 from sampletones_core.fft.cqt.geometry import calculate_wavelet_lengths
 from sampletones_core.fft.cqt.kernel import window_envelope
-from sampletones_core.fft.cqt.transform import FRAMES_WINDOW
+from sampletones_core.fft.cqt.transform import FRAMES_WINDOW, wavelet_positions
 
 CACHED_PROFILES: Final[int] = 4
 
@@ -117,9 +117,9 @@ class FrameProfiles:
 def frame_profiles(config: Config, window: Window, bins: int) -> FrameProfiles:
     """The frame profiles of the feature ``config`` analyzes with.
 
-    The constant-Q feature reads each bin through a wavelet of its own length centered on the
-    middle of the frame. The windowed features read every bin through one tapered window starting
-    where ``window`` places it.
+    The constant-Q feature reads each bin through a wavelet of its own length, standing where the
+    transform places it around the middle of the frame. The windowed features read every bin through
+    one tapered window starting where ``window`` places it.
 
     Args:
         config: The configuration whose spectrum method the frames are read with.
@@ -147,18 +147,30 @@ def _constant_q_profiles(sample_rate: int, frame_length: int, bins: int) -> Fram
     The profiles depend on the configuration alone, so a process builds them once for each
     configuration it converts with.
     """
+    return FrameProfiles.of(constant_q_windows(sample_rate, frame_length, bins))
+
+
+def constant_q_windows(sample_rate: int, frame_length: int, bins: int) -> List[BinWindow]:
+    """Each bin's wavelet laid over the frames around the frame it reads, one window per bin.
+
+    The kernel frame the transform lays every wavelet in is as long as the longest wavelet, the
+    lowest bin's.
+    """
     frequencies = calculate_cqt_frequencies(bins, CQT_CUTOFF_FREQUENCY, BINS_PER_OCTAVE)
     lengths = calculate_wavelet_lengths(frequencies, sample_rate, BINS_PER_OCTAVE).astype(int)
-    return FrameProfiles.of([_wavelet(int(length), frame_length) for length in lengths])
+    kernel_length = int(lengths.max())
+    return [_wavelet(int(length), kernel_length, frame_length) for length in lengths]
 
 
-def _wavelet(length: int, frame_length: int) -> BinWindow:
-    """A bin's wavelet of ``length`` samples centered on the middle of the frame it reads.
+def _wavelet(length: int, kernel_length: int, frame_length: int) -> BinWindow:
+    """A bin's wavelet of ``length`` samples, where the transform places it around the frame it reads.
 
-    The wavelet's envelope is the one the constant-Q transform weighs each frame's column by.
+    Its samples stand at the transform's ``wavelet_positions`` within a kernel frame of
+    ``kernel_length`` samples. The wavelet's envelope is the one the constant-Q transform weighs each
+    frame's column by.
     """
-    centered = np.arange(length) - (length - 1) / 2.0
-    return BinWindow.placed(centered + frame_length / 2.0, window_envelope(FRAMES_WINDOW, length), frame_length)
+    positions = wavelet_positions(length, frame_length=kernel_length, hop_length=frame_length)
+    return BinWindow.placed(positions, window_envelope(FRAMES_WINDOW, length), frame_length)
 
 
 @lru_cache(maxsize=CACHED_PROFILES)
