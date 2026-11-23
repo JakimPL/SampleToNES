@@ -1,10 +1,8 @@
 # Bugs and to-dos
 
 This is the working ledger of what is still owed: to-dos, deviations from the architecture, and known
-bugs. Read it before starting work in an area. Add an entry when a change knowingly leaves something
-behind. Each entry names something broken or missing, why it matters, and the change that closes it.
-Open questions, trade-offs a design makes and observations whose cause is unknown belong in the plan that
-settles them.
+bugs. Read it before starting work in an area, and read [its rules](guidelines.md#the-ledger) before adding
+or changing an entry.
 
 ## To-dos
 

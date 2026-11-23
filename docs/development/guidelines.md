@@ -21,7 +21,7 @@ These rules govern the Python in this repository. They complement
 1. Separate function options with `*`, and choose positional arguments intentionally.
 1. Change internal APIs, configs, and data shapes freely. Preserve backward compatibility only when the user explicitly asks.
 1. Move a stored data version once per release. The version a build writes between releases is still being written. A further change to that format therefore extends the upgrade step already pending, and one step carries the whole distance from the version the last release shipped. Libraries are rebuilt from their settings, so a change to what library generation produces moves the library version alone. See [data compatibility](release/compatibility.md).
-1. A risk named while planning lands as a case or a ledger entry. A plan records intent, and a case and the ledger carry a doubt past the moment it was felt. Where the risk is a behavior that might be wrong, write the case that would catch it. Where it is a distance the change accepts, write the entry in [bugs and todos](bugs-and-todos.md) that names it.
+1. A risk named while planning lands as a case or a ledger entry. A plan records intent, and a case and the ledger carry a doubt past the moment it was felt. Where the risk is a behavior that might be wrong, write the case that would catch it. Where it is a distance the change accepts, write the entry in [bugs and todos](bugs-and-todos.md) that names it, as [the ledger](#the-ledger) asks.
 1. Run `pre-commit` on new files after each change.
 1. Run the tests relevant to the code a phase touches after that phase. Run the full suite, screen scenarios included (`make test` and `make screens`), after the final phase. CI runs the same passes on every push, so the `pre-push` stage holds only the `icons` hook.
 
@@ -85,7 +85,13 @@ These rules govern the Python in this repository. They complement
 ## Documentation
 
 1. [Writing the documentation](documentation.md) has the rules for every document in the repository: who each one is written for, what belongs in it, and how it reads. Consult it before adding or editing a page.
-1. Bugs and to-dos are brief, preferably one sentence per entry.
+
+## The ledger
+
+1. [Bugs and to-dos](bugs-and-todos.md) is the working ledger of what is still owed: to-dos, deviations from the architecture, and known bugs. Read it before starting work in an area.
+1. Add an entry when a change knowingly leaves something behind. Each entry names something broken or missing, why it matters, and the change that closes it.
+1. Open questions, trade-offs a design makes and observations whose cause is unknown belong in the plan that settles them.
+1. Entries are brief, preferably one sentence each.
 
 ## Tests
 
