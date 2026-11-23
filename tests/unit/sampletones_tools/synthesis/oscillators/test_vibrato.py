@@ -41,6 +41,15 @@ class TestVibratoOscillator:
 
         assert peak == pytest.approx(3 * FREQUENCY, abs=1.0)
 
+    @pytest.mark.parametrize("harmonic", [1, 3], ids=["fundamental", "third_partial"])
+    def test_the_top_frequency_is_the_highest_the_partial_reaches(self, harmonic: int, time_axis: np.ndarray) -> None:
+        highest = harmonic * float(np.max(_vibrato(DEPTH, harmonic).frequency_at(time_axis)))
+
+        assert _vibrato(DEPTH, harmonic).top_frequency == pytest.approx(highest, rel=1e-6)
+
+    def test_without_depth_the_top_frequency_is_the_partial_s_own(self) -> None:
+        assert _vibrato(0.0, 3).top_frequency == pytest.approx(3 * FREQUENCY)
+
     def test_the_swing_starts_upward_from_the_frequency(self, time_axis: np.ndarray) -> None:
         frequency = _vibrato(DEPTH, 1).frequency_at(time_axis[:2])
 

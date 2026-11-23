@@ -118,6 +118,33 @@ class TestFrameEdges(BaseTestSuite):
         assert frame[ChannelName.PULSE1][0].on is test_case.expected
 
 
+class TestOverlappingNotes(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        frame: int
+
+    test_cases = (
+        TestCase(frame=RATE // 8, expected=A4, label="before the later note starts"),
+        TestCase(frame=3 * RATE // 8, expected=A4 + 2, label="while both sound"),
+        TestCase(frame=3 * RATE // 4, expected=A4, label="after the later note ends"),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
+    def test_a_frame_plays_the_latest_started_note_still_sounding(self, test_case: TestCase) -> None:
+        messages = [
+            (0, bytes([NOTE_ON, A4, VELOCITY])),
+            (ticks(0.25), bytes([NOTE_ON, A4 + 2, VELOCITY])),
+            (ticks(0.25), bytes([NOTE_OFF, A4 + 2, 0])),
+            (ticks(0.5), bytes([NOTE_OFF, A4, 0])),
+        ]
+
+        frame = _frames(midi_file([track("p1", messages, tempo=True)]), start_frame=test_case.frame, frames=1)
+
+        assert frame[ChannelName.PULSE1][0] == PulseInstruction(
+            on=True, pitch=test_case.expected, volume=VELOCITY, duty_cycle=INITIAL_DUTY_CYCLE
+        )
+
+
 class TestVolumeAndTimbre:
     def test_a_pulse_set_no_duty_cycle_plays_the_initial_one(self) -> None:
         piece = midi_file(

@@ -152,7 +152,6 @@ class PitchedConfig(BaseModel):
 
     Attributes:
         amplitude: The peak every sound is brought to.
-        audible_decibels: How far below its start a decaying sound still counts as sounding its pitch.
         decaying: The decaying sines.
         vibrato: The swinging sines and sawtooths.
         line: The bass line.
@@ -164,7 +163,6 @@ class PitchedConfig(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     amplitude: float = Field(gt=0.0, le=1.0)
-    audible_decibels: float = Field(gt=0.0)
     decaying: DecayingConfig
     vibrato: VibratoConfig
     line: LineConfig

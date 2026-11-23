@@ -101,12 +101,13 @@ def _pulse_frame(note: Optional[Note], volume: int, timbre: Optional[int]) -> Pu
 
 
 def _sounding(notes: List[Note], time: float) -> Optional[Note]:
-    """The note sounding at ``time``: the last to start by then, ``None`` before the first or once it ends."""
-    index = bisect_right([note.start for note in notes], time) - 1
-    if index < 0 or notes[index].end <= time:
-        return None
+    """The note sounding at ``time``: of the notes started by then and ending after it, the last to start.
 
-    return notes[index]
+    ``notes`` are ordered by their start. Where notes overlap, the latest to start sounds, and the one
+    it covers sounds again once it ends. Returns ``None`` where no note sounds at ``time``.
+    """
+    started = bisect_right([note.start for note in notes], time)
+    return next((note for note in reversed(notes[:started]) if note.end > time), None)
 
 
 def _volume(track: Track, note: Optional[Note], time: float) -> int:

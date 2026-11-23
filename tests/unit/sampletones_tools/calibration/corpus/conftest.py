@@ -3,6 +3,7 @@ from typing import Final, List
 import pytest
 
 from sampletones_tools.calibration.config.corpus import CorpusConfig
+from sampletones_tools.calibration.config.truth import TruthConfig
 from sampletones_tools.calibration.corpus.item import CorpusItem
 from sampletones_tools.calibration.corpus.synthesis import build_corpus
 
@@ -21,5 +22,10 @@ def corpus_config() -> CorpusConfig:
 
 
 @pytest.fixture(scope="session")
-def corpus_items(corpus_config: CorpusConfig, sample_rate: int) -> List[CorpusItem]:
-    return build_corpus(sample_rate, FRAME_RATE, config=corpus_config)
+def truth_config() -> TruthConfig:
+    return TruthConfig.load()
+
+
+@pytest.fixture(scope="session")
+def corpus_items(corpus_config: CorpusConfig, truth_config: TruthConfig, sample_rate: int) -> List[CorpusItem]:
+    return build_corpus(sample_rate, FRAME_RATE, config=corpus_config, truth=truth_config)

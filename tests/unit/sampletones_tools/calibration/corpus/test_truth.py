@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from functools import partial
 from typing import Dict, Final, List
 
 import numpy as np
@@ -7,13 +8,23 @@ import pytest
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
-from sampletones_tools.calibration.corpus.truth import frame_middles, frames_covering, sounding_pitches
+from sampletones_tools.calibration.corpus.truth import (
+    audible,
+    frame_middles,
+    frames_reached,
+    pitch_line,
+    sounding_pitches,
+    steady,
+)
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
 A4: Final[int] = 69
 OCTAVE: Final[float] = 2.0
 FRAME_RATE: Final[int] = 60
+SAMPLE_RATE: Final[int] = 22050
+FREQUENCY: Final[float] = 440.0
+AUDIBLE_FLOOR: Final[float] = 0.25
 
 
 @pytest.fixture(name="lines", scope="module")
@@ -85,18 +96,61 @@ class TestFrameMiddles(BaseTestSuite):
         np.testing.assert_allclose(middles - starts, 0.5 / FRAME_RATE)
 
 
-class TestFramesCovering(BaseTestSuite):
+class TestFramesReached(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
-        seconds: float
+        samples: int
 
     test_cases = (
-        TestCase(seconds=1.0, expected=FRAME_RATE, label="a whole number of frames"),
-        TestCase(seconds=1.0 + 0.1 / FRAME_RATE, expected=FRAME_RATE + 1, label="a frame reached into partly"),
-        TestCase(seconds=0.5 / FRAME_RATE, expected=1, label="less than one frame"),
-        TestCase(seconds=0.0, expected=0, label="no time at all"),
+        TestCase(samples=SAMPLE_RATE, expected=FRAME_RATE, label="a whole number of frames"),
+        TestCase(samples=SAMPLE_RATE + 1, expected=FRAME_RATE + 1, label="a frame reached into by one sample"),
+        TestCase(samples=SAMPLE_RATE // FRAME_RATE - 1, expected=1, label="less than one frame"),
+        TestCase(samples=SAMPLE_RATE // FRAME_RATE, expected=1, label="one frame exactly"),
+        TestCase(samples=round(0.75 * SAMPLE_RATE), expected=46, label="three quarters of a second rounded up"),
+        TestCase(samples=0, expected=0, label="no samples at all"),
     )
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
     def test_a_frame_reached_into_partly_counts(self, test_case: TestCase) -> None:
-        assert frames_covering(test_case.seconds, FRAME_RATE) == test_case.expected
+        assert frames_reached(test_case.samples, SAMPLE_RATE, FRAME_RATE) == test_case.expected
+
+
+def _fading(times: np.ndarray) -> np.ndarray:
+    return 1.0 - times
+
+
+class TestPitchLine:
+    def test_a_steady_sound_holds_its_frequency_in_every_frame(self) -> None:
+        line = pitch_line(partial(steady, FREQUENCY), partial(audible, _fading, 0.0), FRAME_RATE, FRAME_RATE)
+
+        assert line == (FREQUENCY,) * FRAME_RATE
+
+    def test_a_frame_is_silent_where_the_sound_falls_below_the_audible_floor_at_its_middle(self) -> None:
+        sounding_at = partial(audible, _fading, AUDIBLE_FLOOR)
+        line = pitch_line(partial(steady, FREQUENCY), sounding_at, FRAME_RATE, FRAME_RATE)
+        heard = [(frame + 0.5) / FRAME_RATE <= 1.0 - AUDIBLE_FLOOR for frame in range(FRAME_RATE)]
+
+        assert any(heard) and not all(heard)
+        assert line == tuple(FREQUENCY if sounding else None for sounding in heard)
+
+    def test_no_frames_make_an_empty_line(self) -> None:
+        assert pitch_line(partial(steady, FREQUENCY), partial(audible, _fading, AUDIBLE_FLOOR), 0, FRAME_RATE) == ()
+
+
+class TestAudible(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        level: float
+
+    test_cases = (
+        TestCase(level=1.0, expected=True, label="at full level"),
+        TestCase(level=AUDIBLE_FLOOR, expected=True, label="at the floor"),
+        TestCase(level=AUDIBLE_FLOOR / 2, expected=False, label="below the floor"),
+        TestCase(level=0.0, expected=False, label="silent"),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
+    def test_a_sound_counts_as_sounding_at_or_above_the_floor(self, test_case: TestCase) -> None:
+        level = partial(np.full_like, fill_value=test_case.level)
+
+        assert bool(audible(level, AUDIBLE_FLOOR, np.zeros(1))[0]) is test_case.expected

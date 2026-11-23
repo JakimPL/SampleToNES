@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Final, List, Self, Tuple
+from typing import Dict, Final, List, Optional, Self, Tuple
 
 HEADER_CHUNK: Final[bytes] = b"MThd"
 TRACK_CHUNK: Final[bytes] = b"MTrk"
@@ -13,6 +13,7 @@ TRACK_NAME: Final[int] = 0x03
 SET_TEMPO: Final[int] = 0x51
 NOTE_OFF: Final[int] = 0x80
 NOTE_ON: Final[int] = 0x90
+NOTE_EVENTS: Final[Tuple[int, int]] = (NOTE_OFF, NOTE_ON)
 CONTROL_CHANGE: Final[int] = 0xB0
 ONE_BYTE_MESSAGES: Final[Tuple[int, int]] = (0xC0, 0xD0)
 STATUS_BIT: Final[int] = 0x80
@@ -84,12 +85,14 @@ class TempoMap:
     """The piece's clock: the time in seconds at every tick, through each tempo the piece sets.
 
     The piece plays at the MIDI default tempo until its first tempo change. Every tempo set in any
-    track holds for the whole piece, as a file of tracks playing together keeps one tempo map.
+    track holds for the whole piece, as a file of tracks playing together keeps one tempo map. The
+    tempos are ordered by the tick they are set at, and tempos set at one tick keep the order the file
+    gives them, so the last of them holds from that tick on.
     """
 
     def __init__(self, tempos: List[Tuple[int, int]], division: int) -> None:
         spans = [TempoSpan(tick=0, seconds=0.0, microseconds_per_tick=DEFAULT_TEMPO / division)]
-        for tick, tempo in sorted(tempos):
+        for tick, tempo in sorted(tempos, key=_tempo_tick):
             last = spans[-1]
             seconds = last.seconds + (tick - last.tick) * last.microseconds_per_tick / MICROSECONDS
             spans.append(TempoSpan(tick=tick, seconds=seconds, microseconds_per_tick=tempo / division))
@@ -215,6 +218,12 @@ def _track_chunks(data: bytes) -> List[bytes]:
     return chunks
 
 
+def _tempo_tick(tempo: Tuple[int, int]) -> int:
+    """The tick a tempo is set at, which orders the tempo map."""
+    tick, _ = tempo
+    return tick
+
+
 def _chunk_length(data: bytes, position: int) -> int:
     """The length of the chunk starting at ``position``, which follows its type."""
     return int.from_bytes(data[position + CHUNK_TYPE_BYTES : position + CHUNK_PREFIX_BYTES], "big")
@@ -238,20 +247,40 @@ def _variable_length(data: bytes, position: int) -> Tuple[int, int]:
 def _track(events: List[Event], clock: TempoMap) -> Track:
     """The notes and controller values ``events`` play, in seconds.
 
-    A note on of velocity zero ends the note, as a note off does.
+    Every note event ends the note sounding at its pitch: a note off, a note on of velocity zero, and
+    a note on striking the pitch again, which then starts the new note. A note struck again while it
+    sounds therefore plays twice, the first time up to the new strike.
     """
     track = Track()
     open_notes: Dict[int, Tuple[float, int]] = {}
     for event in events:
         time = clock.seconds_at(event.tick)
-        if event.status == NOTE_ON and event.second > 0:
-            open_notes[event.first] = (time, event.second)
-        elif event.status in (NOTE_OFF, NOTE_ON):
-            opened = open_notes.pop(event.first, None)
-            if opened is not None:
-                track.notes.append(Note(start=opened[0], end=time, pitch=event.first, velocity=opened[1]))
+        if event.status in NOTE_EVENTS:
+            closed = _closed(open_notes, event.first, time)
+            if closed is not None:
+                track.notes.append(closed)
+
+            if event.status == NOTE_ON and event.second > 0:
+                open_notes[event.first] = (time, event.second)
         elif event.status == CONTROL_CHANGE:
             track.controllers.setdefault(event.first, []).append((time, event.second))
 
     track.notes.sort(key=lambda note: note.start)
     return track
+
+
+def _closed(open_notes: Dict[int, Tuple[float, int]], pitch: int, time: float) -> Optional[Note]:
+    """The note open at ``pitch``, taken out of ``open_notes`` and ended at ``time``.
+
+    Returns ``None`` where no note is open at ``pitch``, or where the note would end where it starts,
+    since a note lasting no time plays nothing.
+    """
+    opened = open_notes.pop(pitch, None)
+    if opened is None:
+        return None
+
+    start, velocity = opened
+    if time <= start:
+        return None
+
+    return Note(start=start, end=time, pitch=pitch, velocity=velocity)

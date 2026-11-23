@@ -7,6 +7,7 @@ import pytest
 
 from sampletones_core.constants.enums import ChannelName
 from sampletones_tools.calibration.config.pitched import PitchedConfig
+from sampletones_tools.calibration.config.truth import TruthConfig
 from sampletones_tools.calibration.corpus.item import CorpusItem
 from sampletones_tools.calibration.corpus.pitched import (
     BAND_NAME,
@@ -32,7 +33,6 @@ VOICE_PITCHES: Final[List[int]] = [57, 60, 62, 64]
 CONFIG: Final[PitchedConfig] = PitchedConfig.model_validate(
     {
         "amplitude": 0.5,
-        "audible_decibels": AUDIBLE_DECIBELS,
         "decaying": {"frequencies": [220.0], "time_constants_seconds": [DECAY_SECONDS], "seconds": 0.5},
         "vibrato": {
             "frequencies": [220.0],
@@ -62,12 +62,24 @@ CONFIG: Final[PitchedConfig] = PitchedConfig.model_validate(
         },
     }
 )
+TRUTH: Final[TruthConfig] = TruthConfig(audible_decibels=AUDIBLE_DECIBELS)
 ROW: Final[NoteRow] = NoteRow(note_seconds=0.5, sounding_share=0.5, notes=3)
+FRACTIONAL_NOTES: Final[int] = 3
+HIGH_NOTE: Final[int] = 91
+FOLDING_PARTIAL: Final[int] = 7
+FOLDED_SHARE_BOUND: Final[float] = 1e-3
 
 
 @pytest.fixture(name="items", scope="module")
 def items_fixture() -> Dict[str, CorpusItem]:
-    return {item.name: item for item in build_pitched(SAMPLE_RATE, FRAME_RATE, config=CONFIG)}
+    return {item.name: item for item in build_pitched(SAMPLE_RATE, FRAME_RATE, config=CONFIG, truth=TRUTH)}
+
+
+@pytest.fixture(name="fractional_items", scope="module")
+def fractional_items_fixture() -> Dict[str, CorpusItem]:
+    voice = CONFIG.voice.model_copy(update={"pitches": VOICE_PITCHES[:FRACTIONAL_NOTES]})
+    config = CONFIG.model_copy(update={"voice": voice})
+    return {item.name: item for item in build_pitched(SAMPLE_RATE, FRAME_RATE, config=config, truth=TRUTH)}
 
 
 def _line(item: CorpusItem, name: str = LINE) -> PitchLine:
@@ -88,6 +100,14 @@ class TestBuildPitched:
             assert len(_line(item) if item.name != BAND_NAME else _line(item, BASS_LINE)) == math.ceil(
                 len(item.audio) / SAMPLE_RATE * FRAME_RATE
             )
+
+    def test_a_line_of_a_length_rounded_to_whole_samples_covers_every_frame_its_audio_reaches(
+        self, fractional_items: Dict[str, CorpusItem]
+    ) -> None:
+        voice = fractional_items["vowel-melody"]
+
+        assert len(voice.audio) * FRAME_RATE % SAMPLE_RATE
+        assert len(_line(voice)) == math.ceil(len(voice.audio) * FRAME_RATE / SAMPLE_RATE)
 
     def test_a_decay_sounds_its_pitch_until_it_falls_below_the_audible_range(
         self, items: Dict[str, CorpusItem]
@@ -121,6 +141,21 @@ class TestBuildPitched:
             center = resolve_frequency(pitch)
             assert heard and all(center / swing <= value <= center * swing for value in heard)
         assert len(set(_sounding(line))) > 3
+
+    def test_the_vowel_melody_builds_the_partials_staying_below_the_nyquist_limit_through_the_swing(self) -> None:
+        frequency = resolve_frequency(HIGH_NOTE)
+        swing = 2 ** (VOICE_DEPTH_CENTS / 1200.0)
+        assert FOLDING_PARTIAL * frequency < SAMPLE_RATE / 2 < FOLDING_PARTIAL * frequency * swing
+        voice = CONFIG.voice.model_copy(update={"pitches": [HIGH_NOTE]})
+        items = build_pitched(SAMPLE_RATE, FRAME_RATE, config=CONFIG.model_copy(update={"voice": voice}), truth=TRUTH)
+        audio = next(item for item in items if item.name == "vowel-melody").audio
+
+        power = np.abs(np.fft.rfft(audio)) ** 2
+        bins = np.fft.rfftfreq(len(audio), 1.0 / SAMPLE_RATE)
+        highest_kept = (FOLDING_PARTIAL - 1) * frequency * swing
+        above_kept = bins > highest_kept + frequency / 2
+
+        assert float(np.sum(power[above_kept]) / np.sum(power)) < FOLDED_SHARE_BOUND
 
     def test_every_sound_peaks_at_the_amplitude(self, items: Dict[str, CorpusItem]) -> None:
         for item in items.values():
@@ -157,6 +192,12 @@ class TestBand:
         assert len(bass) < len(voice)
         assert _line(band, BASS_LINE) == bass + (None,) * (len(voice) - len(bass))
         assert _line(band, VOICE_LINE) == voice
+
+    def test_the_band_s_lines_count_the_frames_its_lines_count(self, fractional_items: Dict[str, CorpusItem]) -> None:
+        band, voice = fractional_items[BAND_NAME], _line(fractional_items["vowel-melody"])
+
+        assert _line(band, VOICE_LINE) == voice
+        assert len(_line(band, BASS_LINE)) == len(voice)
 
 
 class TestNoteRow(BaseTestSuite):

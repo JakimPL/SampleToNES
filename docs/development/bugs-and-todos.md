@@ -141,6 +141,11 @@ dimension the import starts carrying.
 * A listening page reads the order of a run's variants from its `run.json`, so `--board` refuses a run
   written before runs kept one. Such a run's records also read at the default level, so a run of several
   levels plays every render beside the one recording it kept, the level it wrote last.
+* The calibration's MIDI reader keeps running status across meta and system-exclusive events, which the
+  MIDI standard says cancel it, so a file leaving out the status byte after one reads under the status
+  before it.
+* The calibration's MIDI reader loses a note struck again at the tick it is released when the note on
+  comes first: the strike ends the old note there, and the release then ends the new one before it sounds.
 
 ## Architecture
 

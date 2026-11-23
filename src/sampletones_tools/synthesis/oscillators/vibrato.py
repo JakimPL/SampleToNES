@@ -25,6 +25,15 @@ class VibratoOscillator(BaseModel):
     depth_cents: float = Field(ge=0.0, description="How far the pitch swings each way, in cents.")
     harmonic: int = Field(ge=1, description="The partial of the swinging fundamental sounded.")
 
+    @property
+    def top_frequency(self) -> float:
+        """The highest frequency in Hz the sounded partial reaches, at the top of the swing.
+
+        A partial limited by this frequency stays below a bound through the whole swing.
+        """
+        top_ratio = 2.0 ** (self.depth_cents / CENTS_PER_OCTAVE)
+        return float(self.harmonic * resolve_frequency(self.frequency) * top_ratio)
+
     def frequency_at(self, time: np.ndarray) -> np.ndarray:
         """The fundamental's instantaneous frequency in Hz at each time.
 

@@ -72,6 +72,30 @@ class TestVoice:
         expected = low.render(time, generator=generator) + high.render(time, generator=generator)
         assert np.allclose(audio, expected)
 
+    def test_its_layers_mix_into_the_voice_it_renders(self, sample_rate: int) -> None:
+        voice = Voice.model_validate(VOICE_MAPPING)
+
+        layers = voice.render_layers(sample_rate=sample_rate, generator=np.random.default_rng(7))
+        rendered = voice.render(sample_rate=sample_rate, generator=np.random.default_rng(7))
+
+        assert len(layers) == len(voice.layers)
+        assert np.array_equal(voice.mix_layers(layers, sample_rate=sample_rate), rendered)
+
+    def test_its_filtered_parts_add_up_to_the_whole(self, sample_rate: int) -> None:
+        voice = Voice.model_validate(VOICE_MAPPING)
+        layers = voice.render_layers(sample_rate=sample_rate, generator=np.random.default_rng(7))
+
+        parts = [voice.mix_layers([layer], sample_rate=sample_rate) for layer in layers]
+
+        np.testing.assert_allclose(sum(parts), voice.mix_layers(layers, sample_rate=sample_rate), atol=1e-12)
+
+    def test_a_part_of_no_layers_is_silence_of_the_voice_s_length(self, sample_rate: int) -> None:
+        voice = Voice.model_validate(VOICE_MAPPING)
+
+        silence = voice.mix_layers([], sample_rate=sample_rate)
+
+        assert silence.shape == (round(DURATION_SECONDS * sample_rate),) and not np.any(silence)
+
     def test_output_is_float64_of_the_configured_length(
         self,
         sample_rate: int,

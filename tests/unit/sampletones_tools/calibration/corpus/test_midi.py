@@ -1,10 +1,13 @@
-from typing import Final
+from dataclasses import dataclass
+from typing import Final, Tuple
 
 import pytest
 
 from sampletones_tools.calibration.corpus.midi import MidiFormatError, read_midi
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
-from ..midifiles import SECONDS_PER_TICK, TEMPO, TICKS_PER_BEAT, midi_file, nesmdb_piece, ticks, track
+from ..midifiles import SECONDS_PER_TICK, TEMPO, TICKS_PER_BEAT, Message, midi_file, nesmdb_piece, ticks, track
 
 NOTE_ON: Final[int] = 0x90
 NOTE_OFF: Final[int] = 0x80
@@ -70,6 +73,11 @@ class TestEvents:
         assert (note.pitch, note.velocity) == (A4, VELOCITY)
         assert note.end == pytest.approx(0.5, abs=SECONDS_PER_TICK)
 
+    def test_a_note_ending_where_it_starts_is_left_out(self) -> None:
+        messages = [(0, bytes([NOTE_ON, A4, VELOCITY])), (0, bytes([NOTE_OFF, A4, 0]))]
+
+        assert not read_midi(midi_file([track("p1", messages)]))["p1"].notes
+
     def test_notes_are_ordered_by_their_start(self) -> None:
         messages = [
             (0, bytes([NOTE_ON, A4, VELOCITY])),
@@ -81,6 +89,51 @@ class TestEvents:
         notes = read_midi(midi_file([track("p1", messages)]))["p1"].notes
 
         assert [note.pitch for note in notes] == [A4, A4 + 2]
+
+
+class TestStrikingAgain(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        messages: Tuple[Message, ...]
+
+    test_cases = (
+        TestCase(
+            messages=(
+                (0, bytes([NOTE_ON, A4, VELOCITY])),
+                (ticks(0.5), bytes([NOTE_ON, A4, VELOCITY])),
+                (ticks(0.5), bytes([NOTE_OFF, A4, 0])),
+            ),
+            expected=((0.0, 0.5), (0.5, 1.0)),
+            label="struck again while it sounds",
+        ),
+        TestCase(
+            messages=(
+                (0, bytes([NOTE_ON, A4, VELOCITY])),
+                (ticks(0.5), bytes([NOTE_OFF, A4, 0])),
+                (0, bytes([NOTE_ON, A4, VELOCITY])),
+                (ticks(0.5), bytes([NOTE_OFF, A4, 0])),
+            ),
+            expected=((0.0, 0.5), (0.5, 1.0)),
+            label="released, then struck at one tick",
+        ),
+        TestCase(
+            messages=(
+                (0, bytes([NOTE_ON, A4, VELOCITY])),
+                (ticks(0.5), bytes([NOTE_ON, A4, VELOCITY])),
+                (0, bytes([NOTE_OFF, A4, 0])),
+            ),
+            expected=((0.0, 0.5),),
+            label="struck, then released at one tick",
+        ),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
+    def test_a_note_struck_again_ends_the_sounding_one_there(self, test_case: TestCase) -> None:
+        notes = read_midi(midi_file([track("p1", test_case.messages)]))["p1"].notes
+
+        assert [(note.start, note.end) for note in notes] == [
+            pytest.approx(span, abs=SECONDS_PER_TICK) for span in test_case.expected
+        ]
 
 
 class TestTempoMap:
@@ -100,3 +153,14 @@ class TestTempoMap:
         (note,) = read_midi(midi_file([conductor, pulse]))["p1"].notes
 
         assert note.end == pytest.approx(TEMPO / 1e6 + TEMPO / 2 / 1e6)
+
+    @pytest.mark.parametrize(
+        ("first", "last"), [(TEMPO // 2, 2 * TEMPO), (2 * TEMPO, TEMPO // 2)], ids=["faster_first", "slower_first"]
+    )
+    def test_of_two_tempos_set_at_one_tick_the_one_the_file_sets_last_holds(self, first: int, last: int) -> None:
+        conductor = track("conductor", [(TICKS_PER_BEAT, _set_tempo(first)), (0, _set_tempo(last))])
+        pulse = track("p1", [(0, bytes([NOTE_ON, A4, VELOCITY])), (2 * TICKS_PER_BEAT, bytes([NOTE_OFF, A4, 0]))])
+
+        (note,) = read_midi(midi_file([conductor, pulse]))["p1"].notes
+
+        assert note.end == pytest.approx(TEMPO / 1e6 + last / 1e6)

@@ -1,6 +1,7 @@
 import math
 from dataclasses import dataclass
-from typing import Dict, Final, Mapping, Optional, Sequence, Tuple
+from fractions import Fraction
+from typing import Callable, Dict, Final, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -11,8 +12,10 @@ from sampletones_core.instructions import InstructionUnion, TonalInstruction
 
 LINE: Final[str] = "line"
 FRAME_MIDDLE: Final[float] = 0.5
+FIRST_FRAME: Final[int] = 0
 
 PitchLine = Tuple[Optional[float], ...]
+TimeFunction = Callable[[np.ndarray], np.ndarray]
 
 
 @dataclass(frozen=True)
@@ -46,9 +49,48 @@ def frame_middles(first: int, count: int, frame_rate: int) -> np.ndarray:
     return (np.arange(first, first + count) + FRAME_MIDDLE) / frame_rate
 
 
-def frames_covering(seconds: float, frame_rate: int) -> int:
-    """How many frames a sound of ``seconds`` reaches into, the last of them partly."""
-    return math.ceil(seconds * frame_rate)
+def frames_reached(samples: int, sample_rate: int, frame_rate: int) -> int:
+    """How many frames ``samples`` of audio at ``sample_rate`` reach into, the last of them partly.
+
+    A synthesized sound's line covers every frame its rendered audio reaches. The count is taken in
+    whole numbers, so audio ending on a frame's edge reaches the frames before it alone.
+    """
+    return math.ceil(Fraction(samples * frame_rate, sample_rate))
+
+
+def pitch_line(frequency_at: TimeFunction, sounding_at: TimeFunction, frames: int, frame_rate: int) -> PitchLine:
+    """The frequency a synthesized sound sounds at the middle of each of its first ``frames`` frames.
+
+    A frame where the sound counts as silent holds ``None``.
+
+    Args:
+        frequency_at: The frequency in Hz the sound sounds at each time.
+        sounding_at: Whether the sound counts as sounding its pitch at each time.
+        frames: How many frames the line covers.
+        frame_rate: The frames per second.
+
+    Returns:
+        PitchLine: One frequency per frame, ``None`` where the sound counts as silent.
+    """
+    times = frame_middles(FIRST_FRAME, frames, frame_rate)
+    return tuple(
+        float(frequency) if heard else None for frequency, heard in zip(frequency_at(times), sounding_at(times))
+    )
+
+
+def steady(frequency: float, times: np.ndarray) -> np.ndarray:
+    """The one frequency a sound holding one pitch sounds, at every time."""
+    return np.full_like(times, frequency)
+
+
+def audible(level_at: TimeFunction, audible_floor: float, times: np.ndarray) -> np.ndarray:
+    """Whether a sound stands at or above ``audible_floor`` of its full level at each time.
+
+    ``level_at`` gives the sound's level against its full level, so a decay counts as sounding its
+    pitch until it falls below the floor, and a crescendo from where it rises to it. A fair test of a
+    pitch ends where the sound grows too quiet to carry it.
+    """
+    return np.asarray(level_at(times) >= audible_floor)
 
 
 def sounding_pitches(

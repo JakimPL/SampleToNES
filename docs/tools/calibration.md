@@ -151,8 +151,10 @@ distance in proportion, so a few sounds far worse than silence move it no more t
 The `transcription`, `search`, `pitch`, `stability`, `balance` and `continuity` sections read the
 reconstruction's instructions against what a reference sound plays, so they cover only the sounds whose frames or
 pitches the run knows. A synthesized sound of a known pitch carries it as a line, frame by frame: the
-sines, the pulse waves, and the pitched `sines-` and `tones-` sounds. A decaying sound counts as
-sounding its pitch while it stays within 40 dB of its start.
+sines, the pulse waves, the tone under hiss and the bass under hi-hats (as one recording and as stems),
+the plucked tone, the crescendo, and the pitched `sines-` and `tones-` sounds. A sound counts as
+sounding its pitch while it stays within 40 dB of its full level, so a decay's quiet tail and a
+crescendo's quiet start hold no pitch.
 Their scores are shares of frames, from 0 to 1, except where the
 [referees](#the-truth-referees) say otherwise, and lower-better too.
 
@@ -337,6 +339,16 @@ report and the page present in this order:
 The page lists a selection of each family. The run measures every sound, writes the audio of the
 listed ones, and keeps a record of the scores for the rest.
 
+Some sounds changed once. A run made before the change has no `pitch` reading of the `mix` sounds,
+and its readings of these categories compare only with runs of its own side:
+
+- `mix-stems` and `polyphony-stems`: their stems add up exactly to the composites they split, the same
+  noise and the same clipping included. Every reading of them changed, and the `mix-stems` sounds
+  gained the pitch line of their composites.
+- `mix`, `transient` and `dynamics`: the tone under hiss, the bass under hi-hats, the plucked tone and
+  the crescendo gained a pitch line, which the `pitch`, `stability` and `continuity` sections read.
+  Their audio stayed the same.
+
 The synthetic sounds are generated from oscillators, envelopes and noise. Each category tests one kind
 of decision:
 
@@ -356,7 +368,7 @@ of decision:
 | `dynamics` | `tones` | a crescendo, and a loud burst dropping to a quiet hiss | following the level |
 | `mix` | `composites` | a tone under hiss, and a bass under hi-hat ticks | a tone and noise together |
 | `polyphony` | `composites` | a chord, and a melody over a snare | several voices at once |
-| `mix-stems`, `polyphony-stems` | `composites` | the same composites, the tone and the noise each a stem, the noise drawn afresh | each part matched on the channels it may take |
+| `mix-stems`, `polyphony-stems` | `composites` | the same composites, the tone and the noise each a stem, adding up to the composite and carrying its truth | each part matched on the channels it may take |
 | `composites-band` | `composites` | the sawtooth bass, the vowel melody and a drum pattern, each a stem: the bass on the triangle, the melody on either pulse, the drums on the noise | a small band converted as stems |
 
 The `notes`, `chords` and `sequences` families are written out frame by frame, as instructions the

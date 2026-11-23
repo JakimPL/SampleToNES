@@ -1,5 +1,4 @@
 amplitude: 0.5
-audible_decibels: 40.0
 decaying:
   frequencies: [110.0, 220.0, 440.0, 880.0]
   time_constants_seconds: [0.15, 0.4, 1.0]

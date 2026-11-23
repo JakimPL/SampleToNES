@@ -9,6 +9,7 @@ from sampletones_tools.calibration.config.notes import NotesConfig
 from sampletones_tools.calibration.config.pitched import PitchedConfig
 from sampletones_tools.calibration.config.samples import SamplesConfig
 from sampletones_tools.calibration.config.sequences import SequencesConfig
+from sampletones_tools.calibration.config.truth import TruthConfig
 from sampletones_tools.calibration.samples import SAMPLES_DIRECTORY
 
 from .by_channel import with_by_channel, with_by_channel_catalog
@@ -92,6 +93,7 @@ def _sources(manifest: Optional[CorpusManifest]) -> List[CorpusSource]:
     """
     probes = CorpusConfig.load()
     pitched = PitchedConfig.load()
+    truth = TruthConfig.load()
     sequences = SequencesConfig.load()
     grid = NotesConfig.load()
     chords = ChordsConfig.load()
@@ -99,16 +101,20 @@ def _sources(manifest: Optional[CorpusManifest]) -> List[CorpusSource]:
     return [
         CorpusSource(
             catalog=[(probe.family, probe.category) for probe in corpus_probes(probes)],
-            build=lambda config: build_corpus(config.library.sample_rate, config.library.nes_frequency, config=probes),
+            build=lambda config: build_corpus(
+                config.library.sample_rate, config.library.nes_frequency, config=probes, truth=truth
+            ),
         ),
         CorpusSource(
             catalog=composite_stems_catalog(probes),
-            build=lambda config: composite_stems(config.library.sample_rate, config=probes),
+            build=lambda config: composite_stems(
+                config.library.sample_rate, config.library.nes_frequency, config=probes, truth=truth
+            ),
         ),
         CorpusSource(
             catalog=PITCHED_CATALOG,
             build=lambda config: build_pitched(
-                config.library.sample_rate, config.library.nes_frequency, config=pitched
+                config.library.sample_rate, config.library.nes_frequency, config=pitched, truth=truth
             ),
         ),
         CorpusSource(
