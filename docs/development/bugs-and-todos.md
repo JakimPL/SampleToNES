@@ -222,6 +222,44 @@ currently out of line. An entry leaves when the code meets the contract again.
 * The Viterbi decoder holds the quietest noise through a steady constant-Q tone whose first two and last two
   frames ask for it, since the path holding it costs less than one stopping and starting it
   (`test_frame_objective.py`).
+* Inertia anchors the neighbor pass to the first decode. A frame's charge is read against the frame after
+  as the first decode played it, and the decoders read the charge again in every pooled cost on top of
+  their own transitions, so a path putting a run right pays the charge in every frame of it. At tonal
+  inertia 0.5 the pass keeps 18% of its gain on NES-MDB review (48.1% right against 59.7% without
+  inertia), and on Castlevania the decoders' reading alone costs 12.5 of the 13.9 points lost.
+* A column's alternatives under inertia pay the winner's other channels in the winner's order, while a
+  combination pays its pulses in the order breaking least. The winner's own row then reads at another
+  cost on its column than in the pool (0.54 against 0 for two pulses swapped against their neighbors), and
+  every move on that column carries the difference.
+* The neighbor pass settles its lines on the columns' heads, while the handover and the pool follow the
+  judge's winner. The heads differ from the winner on 24% of Castlevania's sounding frames without
+  inertia, and the search referee's `assignment` stage reads the heads as the assignment's pick.
+* The neighbor pass lost Mega Man 2's frames 63 to 70 when the window model came to lay each constant-Q
+  wavelet where the transform lays it: under the fitted level, the combinations decoder and one pass, its
+  wrong frames rose from 12.7% to 14.1%. Which reading the corrected model moves there is unmeasured.
+* With a stem's pulses driven unlike, the joint search sounds a single pulse proposal on the first pulse
+  and a pair in proposal order alone, which covers every choice only where the pulses are
+  interchangeable. A note the second pulse's drive matches is left unsearched.
+* In the neighbor pass, the fit of every note reads a note held through the frame weaker by the
+  neighbors' share of it (0.95 of its strength at note 64, 0.79 at note 48), since its atoms are the
+  steady library rows standing over the leak. The combinations' fit reads its atoms through the window
+  model.
+* The fitted level reads a pulse bass as the triangle line. The triangle's raised cap takes a share of a
+  low pulse's note, the lowest run wins over a triangle line above it, and the judgment confirms, so
+  Kirby's Adventure reads 0.38 to 0.51 of its true factor where its triangle is silent.
+* The fitted level reads a legato line low on every frame, since the sounding-through rule sees a rest and
+  passes a note change. Uchuu Keibitai SDF's stem reads 0.63 to 0.81 of its true factor, and the judgment
+  accepts it.
+* A pulse under the triangle lifts the fitted level's reading, and the judgment's cost test accepts it:
+  pulse 48 under triangle 60, matched at 0.6 of its level, reads 0.873, 45% too loud.
+* A note held a few frames between rests reads low through the fitted level's reach of two frames: the
+  triangle held 8 frames at 0.6 of its level reads 0.556, 7.4% low.
+* Under `logfft` the window model reads every log bin as one FFT bin. Above about 500 Hz a log bin sums
+  several FFT bins, and a note cut at a frame boundary misses the model by up to 0.17 of its steady
+  reading.
+* The joint judge orders a combination's channels by their library feature values over the drive squared,
+  which reads their driven loudness at a transformation gamma of zero alone. At another gamma, two
+  channels driven apart may be phased in an order their driven powers reverse (`CombinationJudge._loudness`).
 * Another voice inside a harmonic's bin pulls the pitch reading. A partial of another voice within half a
   semitone of one of a note's harmonics shares that harmonic's bin and adds to its reading: a 65 Hz bass
   under a steady 330 Hz pulse reads about 4 cents off, and within a cent alone.
