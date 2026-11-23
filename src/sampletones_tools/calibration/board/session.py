@@ -53,7 +53,8 @@ def build_board(request: BoardRequest) -> Path:
         Path: The page, the file a reader opens.
 
     Raises:
-        FileNotFoundError: If a run directory holds no renders, or the package a page file.
+        FileNotFoundError: If a run directory holds no renders or no fingerprint, or the package a page
+            file.
         KeyError: If the build ships no palette of the requested name.
     """
     runs = read_runs(request.runs)

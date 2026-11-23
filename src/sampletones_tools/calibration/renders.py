@@ -1,3 +1,4 @@
+import shutil
 from itertools import combinations
 from pathlib import Path
 from typing import Dict, Final, List, Mapping, Optional, Sequence, Tuple
@@ -12,12 +13,14 @@ from sampletones_core.instructions import InstructionUnion
 from sampletones_shared.paths.extensions import EXT_FILE_FLAC, EXT_FILE_JSON
 from sampletones_shared.utils.system.paths import get_filename
 
+from .config.level import WorkingLevel
 from .layout import RECORDINGS_DIRECTORY, RENDERS_DIRECTORY, combination_name
 
 SOUNDING_FRAME: Final[str] = "1"
 RESTING_FRAME: Final[str] = "0"
 UNFILED_FAMILY: Final[str] = ""
 LISTED_BY_DEFAULT: Final[bool] = True
+UNRECORDED_LEVEL: Final[WorkingLevel] = WorkingLevel.DEFAULT
 
 
 class RenderRecord(BaseModel):
@@ -34,6 +37,8 @@ class RenderRecord(BaseModel):
         family: The item's family, empty in a record written before families existed.
         category: The item's corpus category.
         listed: Whether the page lists the item; an unlisted item's record stands without audio.
+        level: The level the render was matched at, which its recording is kept at; the default level
+            in a record written before records kept their level.
         timelines: One character per frame for each channel, ``SOUNDING_FRAME`` where it sounds.
         judgments: Every referee's readings of the render, by referee name.
         silence: Every referee's score for complete silence against the same recording.
@@ -47,6 +52,7 @@ class RenderRecord(BaseModel):
     family: str = UNFILED_FAMILY
     category: str
     listed: bool = LISTED_BY_DEFAULT
+    level: WorkingLevel = UNRECORDED_LEVEL
     timelines: Dict[str, str]
     judgments: Dict[str, Dict[str, float]]
     silence: Dict[str, float]
@@ -145,12 +151,45 @@ def write_channel_renders(
 
 def write_recording(
     run_directory: Path,
+    level: WorkingLevel,
     item: str,
     audio: np.ndarray,
     sample_rate: int,
 ) -> None:
-    """Write the recording a run reconstructs an item from, as the reconstructor prepared it."""
-    _write_clip(run_directory / RECORDINGS_DIRECTORY / get_filename(item, EXT_FILE_FLAC), audio, sample_rate)
+    """Write the recording a run reconstructs an item from at ``level``, as the reconstructor prepared it."""
+    _write_clip(recording_path(run_directory, level, item), audio, sample_rate)
+
+
+def recording_path(run_directory: Path, level: WorkingLevel, item: str) -> Path:
+    """Where the recording of ``item`` matched at ``level`` lies.
+
+    Each level keeps a recording of its own, since a level prepares the recording at a scale of its
+    own. The default level's recordings lie directly in the run's recordings and every other level's
+    in a directory named after it, as a variant's label names every level but the default. A run of
+    the default level alone therefore keeps its recordings where every earlier run kept them.
+    """
+    directory = run_directory / RECORDINGS_DIRECTORY
+    if level != WorkingLevel.DEFAULT:
+        directory = directory / level.value
+
+    return directory / get_filename(item, EXT_FILE_FLAC)
+
+
+def holds_renders(run_directory: Path) -> bool:
+    """Whether the directory holds renders or recordings, the folders a run writes its audio and records into."""
+    return any(directory.exists() for directory in _audio_directories(run_directory))
+
+
+def clear_renders(run_directory: Path) -> None:
+    """Remove every render, record and recording the run directory holds, so a run written next holds its own alone."""
+    for directory in _audio_directories(run_directory):
+        if directory.is_dir():
+            shutil.rmtree(directory)
+
+
+def _audio_directories(run_directory: Path) -> Tuple[Path, Path]:
+    """The folders a run writes its renders, records and recordings into."""
+    return run_directory / RENDERS_DIRECTORY, run_directory / RECORDINGS_DIRECTORY
 
 
 def variant_directory(run_directory: Path, variant: str) -> Path:

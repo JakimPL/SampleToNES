@@ -4,7 +4,15 @@ from typing import List
 import pytest
 
 from sampletones_tools.calibration.board.reading import read_run, read_runs
-from tests.unit.sampletones_tools.calibration.runs import REFEREE, SILENCE_SCORE, write_run
+from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.fingerprint import FINGERPRINT_FILE, write_fingerprint
+from tests.unit.sampletones_tools.calibration.runs import (
+    REFEREE,
+    SILENCE_SCORE,
+    probe_fingerprint,
+    write_renders,
+    write_run,
+)
 
 
 class TestReadRun:
@@ -31,6 +39,32 @@ class TestReadRun:
     def test_a_directory_without_renders_is_reported(self, tmp_path: Path) -> None:
         with pytest.raises(FileNotFoundError, match="holds no calibration renders"):
             read_run(tmp_path, "empty")
+
+    def test_the_variants_follow_the_order_the_run_measured_them_in(self, tmp_path: Path) -> None:
+        run = write_run(tmp_path / "run", ["fft-pe1", "cqt-pe1-greedy", "cqt-pe1"], 0.0)
+
+        assert read_run(run, "run").variants == ("fft-pe1", "cqt-pe1-greedy", "cqt-pe1")
+
+    def test_records_of_a_variant_the_run_never_measured_are_left_unread(self, tmp_path: Path) -> None:
+        run = write_run(tmp_path / "run", ["cqt-pe1"], 0.0)
+        write_renders(run, ["fft-pe1"], 0.0, level=WorkingLevel.DEFAULT)
+
+        reading = read_run(run, "run")
+
+        assert reading.variants == ("cqt-pe1",)
+        assert {record.variant for record in reading.records} == {"cqt-pe1"}
+
+    def test_a_variant_the_run_stopped_before_is_left_out(self, tmp_path: Path) -> None:
+        run = write_renders(tmp_path / "run", ["fft-pe1"], 0.0, level=WorkingLevel.DEFAULT)
+        write_fingerprint(run, probe_fingerprint(["fft-pe1", "cqt-pe1"]))
+
+        assert read_run(run, "run").variants == ("fft-pe1",)
+
+    def test_a_run_without_a_fingerprint_is_reported(self, tmp_path: Path) -> None:
+        run = write_renders(tmp_path / "run", ["cqt-pe1"], 0.0, level=WorkingLevel.DEFAULT)
+
+        with pytest.raises(FileNotFoundError, match=f"holds no {FINGERPRINT_FILE}"):
+            read_run(run, "run")
 
 
 class TestReadRuns:

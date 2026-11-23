@@ -156,7 +156,7 @@ def _record(
     judgments: Dict[str, Judgment],
     silence: Dict[str, float],
 ) -> RenderRecord:
-    """The record of what the conversion heard: its readings, silence's scores and the frames each channel sounds."""
+    """The record of what the conversion heard: its level, its readings, silence's scores and each channel's frames."""
     item = conversion.item
     return RenderRecord(
         variant=conversion.variant.label,
@@ -165,6 +165,7 @@ def _record(
         family=item.family.value,
         category=item.category,
         listed=item.listed,
+        level=conversion.variant.level,
         timelines=sounding_timelines(_played_instructions(reconstruction)),
         judgments={name: judgment.readings() for name, judgment in judgments.items()},
         silence=silence,
@@ -181,11 +182,11 @@ def _write_listened(
 ) -> None:
     """Write what the page plays of a listed sound: the recording, the channel parts, then the render and its record.
 
-    Each file is written back on the recording's own scale, so the page plays a render at the level
-    of the recording it reconstructs.
+    Each file is written back on the recording's own scale, and the recording is kept at the level the
+    render was matched at, so the page plays a render at the level of the recording it reconstructs.
     """
     sample_rate = variant.config.library.sample_rate
-    write_recording(run_directory, record.item, reference * reconstruction.coefficient, sample_rate)
+    write_recording(run_directory, record.level, record.item, reference * reconstruction.coefficient, sample_rate)
     write_channel_renders(
         run_directory,
         record.variant,

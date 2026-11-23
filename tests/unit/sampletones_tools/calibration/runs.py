@@ -5,6 +5,10 @@ from typing import Dict, Final, Sequence, Tuple
 import numpy as np
 
 from sampletones_core.constants.enums import ChannelName
+from sampletones_shared.distribution import SAMPLETONES_VERSION
+from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.digest import sha256_digest
+from sampletones_tools.calibration.fingerprint import RunFingerprint, write_fingerprint
 from sampletones_tools.calibration.renders import (
     RenderRecord,
     write_channel_renders,
@@ -46,9 +50,26 @@ def channel_audio(channel: ChannelName) -> np.ndarray:
 
 
 def write_run(directory: Path, variants: Sequence[str], offset: float) -> Path:
-    """A calibration run of a few items, written exactly as a measured run writes one."""
+    """A finished calibration run of a few items: its fingerprint naming ``variants`` in order, then its renders."""
+    write_fingerprint(directory, probe_fingerprint(variants))
+    return write_renders(directory, variants, offset, level=WorkingLevel.DEFAULT)
+
+
+def probe_fingerprint(variants: Sequence[str]) -> RunFingerprint:
+    """A fingerprint of a run measuring the probes under ``variants``, each part held by a digest of its name."""
+    return RunFingerprint(
+        variants={variant: sha256_digest(variant.encode()) for variant in variants},
+        channels=[channel.value for channel in ChannelName.items()],
+        items={probe.item: sha256_digest(probe.item.encode()) for probe in ITEMS},
+        referees=sha256_digest(REFEREE.encode()),
+        version=SAMPLETONES_VERSION,
+    )
+
+
+def write_renders(directory: Path, variants: Sequence[str], offset: float, *, level: WorkingLevel) -> Path:
+    """The renders, records and recordings a run of a few items converts, written as a conversion writes them."""
     for position, probe in enumerate(ITEMS):
-        write_recording(directory, probe.item, channel_audio(ChannelName.TRIANGLE), SAMPLE_RATE)
+        write_recording(directory, level, probe.item, channel_audio(ChannelName.TRIANGLE), SAMPLE_RATE)
         for variant in variants:
             approximations: Dict[ChannelName, np.ndarray] = {
                 channel: channel_audio(channel) for channel in probe.channels
@@ -61,6 +82,7 @@ def write_run(directory: Path, variants: Sequence[str], offset: float) -> Path:
                     position=position,
                     family=probe.family,
                     category=probe.category,
+                    level=level,
                     timelines={channel.value: "1010" for channel in probe.channels},
                     judgments={
                         REFEREE: {"score": 10.0 + position + offset},

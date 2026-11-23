@@ -1,7 +1,7 @@
 from pathlib import Path
-from typing import Final, List, Optional
+from typing import Final, List, Optional, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from sampletones_application.utils.palette.catalog import DEFAULT_PALETTE_NAME
 from sampletones_core.configs import Config
@@ -15,9 +15,16 @@ from sampletones_tools.calibration.corpus.item import CorpusItem
 from sampletones_tools.calibration.corpus.reference import reference_corpus
 from sampletones_tools.calibration.corpus.writer import write_corpus
 from sampletones_tools.calibration.evaluation import evaluate_variants
-from sampletones_tools.calibration.fingerprint import check_resumable, fingerprint_of, write_fingerprint
+from sampletones_tools.calibration.fingerprint import (
+    ResumeRefusedError,
+    check_resumable,
+    fingerprint_of,
+    holds_fingerprint,
+    write_fingerprint,
+)
 from sampletones_tools.calibration.layout import CORPUS_DIRECTORY, CSV_REPORT, MARKDOWN_REPORT
-from sampletones_tools.calibration.referee.panel import build_panel
+from sampletones_tools.calibration.referee.panel import RefereePanel, build_panel
+from sampletones_tools.calibration.renders import clear_renders, holds_renders
 from sampletones_tools.calibration.report import write_csv, write_markdown
 from sampletones_tools.calibration.rows import CalibrationRow
 from sampletones_tools.calibration.variants import CalibrationVariant, build_variants
@@ -48,6 +55,9 @@ def default_page_output() -> Path:
 
 class CalibrationRequest(BaseModel):
     """What a calibration run is asked for: the base configuration, the sweep and where it writes.
+
+    A request names a sweep whose variants can be built, each under a label of its own, so a sweep
+    the variants cannot be built from is refused as the request is read, before the run starts.
 
     Attributes:
         base: The configuration every value the sweep leaves untouched comes from.
@@ -82,6 +92,36 @@ class CalibrationRequest(BaseModel):
     corpus: Optional[Path]
     palette: str = DEFAULT_PALETTE_NAME
 
+    @model_validator(mode="after")
+    def _buildable_sweep(self) -> Self:
+        """Refuse a sweep whose variants cannot be built.
+
+        Such a sweep holds a set naming a setting the configuration lacks, or two variants under one
+        label.
+
+        Raises:
+            ValueError: If the variants cannot be built from the sweep.
+        """
+        self.measured_variants()
+        return self
+
+    def measured_variants(self) -> List[CalibrationVariant]:
+        """Every variant of the sweep asked for, the named sets read from the packaged settings.
+
+        Raises:
+            ValidationError: If a set of settings names a setting the configuration lacks.
+            ValueError: If two variants share a label.
+        """
+        catalog = SettingsConfig.load().settings
+        return build_variants(
+            self.base,
+            self.methods,
+            self.perceptual_exponents,
+            self.temporal_weights,
+            settings={name: catalog[name] for name in self.settings},
+            levels=self.levels,
+        )
+
 
 class CalibrationOutcome(BaseModel):
     """What a calibration run leaves behind for a reader.
@@ -100,24 +140,27 @@ class CalibrationOutcome(BaseModel):
 def calibrate(request: CalibrationRequest) -> CalibrationOutcome:
     """Reconstructs the corpus under every variant, scores it, and writes the renders, reports and page.
 
-    The run claims its directory before it converts anything: a fresh run writes the fingerprint of
-    what it measures, and a resumed run confirms the directory's fingerprint matches before it takes
-    up the records already written. The corpus is written next, since every conversion reads its
-    sound from a file. The reports and the page come last, from every row and record.
+    The run claims its directory before it converts anything: a fresh run clears the renders and
+    recordings an earlier run left and writes the fingerprint of what it measures, and a resumed run
+    confirms the directory's fingerprint matches before it takes up the records already written. The
+    referees are built before the claim, since the fingerprint holds them. The corpus is written
+    next, since every conversion reads its sound from a file. The reports and the page come last,
+    from every row and record.
 
     Returns:
         CalibrationOutcome: The report and the listening page the run wrote.
 
     Raises:
-        ResumeRefusedError: If a run is resumed in a directory holding no run, or another run.
+        ResumeRefusedError: If a run is resumed in a directory holding no run, or another run, or a
+            fresh run is given a directory holding renders or recordings no run claimed.
     """
     sample_rate = request.base.library.sample_rate
     items = _measured_items(request)
-    variants = _measured_variants(request)
-    _claim_directory(request, variants, items)
+    variants = request.measured_variants()
+    panel = build_panel(sample_rate)
+    _claim_directory(request, variants, items, panel)
 
     item_paths = write_corpus(items, request.output / CORPUS_DIRECTORY, sample_rate)
-    panel = build_panel(sample_rate)
     channel_names = ", ".join(channel.value for channel in request.channels)
     logger.info(f"Evaluating {len(variants)} variants x {len(items)} items on {channel_names}")
     rows = evaluate_variants(
@@ -148,30 +191,45 @@ def _measured_items(request: CalibrationRequest) -> List[CorpusItem]:
     return reference_corpus(request.base, request.categories, manifest)
 
 
-def _measured_variants(request: CalibrationRequest) -> List[CalibrationVariant]:
-    """Every variant of the sweep asked for, the named sets read from the packaged settings."""
-    catalog = SettingsConfig.load().settings
-    return build_variants(
-        request.base,
-        request.methods,
-        request.perceptual_exponents,
-        request.temporal_weights,
-        settings={name: catalog[name] for name in request.settings},
-        levels=request.levels,
-    )
+def _claim_directory(
+    request: CalibrationRequest,
+    variants: List[CalibrationVariant],
+    items: List[CorpusItem],
+    panel: RefereePanel,
+) -> None:
+    """Mark the output as this run's: confirm a resumed run's fingerprint, or claim the folder whole for a fresh run.
 
-
-def _claim_directory(request: CalibrationRequest, variants: List[CalibrationVariant], items: List[CorpusItem]) -> None:
-    """Mark the output as this run's: confirm a resumed run's fingerprint, or write a fresh run's.
+    A fresh run clears every render, record and recording an earlier run left before it writes its
+    fingerprint, so the page and a later resume read this run's records alone.
 
     Raises:
-        ResumeRefusedError: If a run is resumed in a directory holding no run, or another run.
+        ResumeRefusedError: If a run is resumed in a directory holding no run, or another run, or a
+            fresh run is given a directory holding renders or recordings no run claimed.
     """
-    fingerprint = fingerprint_of(variants, items, request.channels)
+    fingerprint = fingerprint_of(variants, items, request.channels, panel)
     if request.resume:
         check_resumable(request.output, fingerprint)
     else:
+        _clear_earlier_run(request.output)
         write_fingerprint(request.output, fingerprint)
+
+
+def _clear_earlier_run(output: Path) -> None:
+    """Clear the renders and recordings of the run that claimed ``output`` before, where one did.
+
+    A folder an earlier run claimed holds its fingerprint, so its renders and recordings are that
+    run's to clear. Renders or recordings with no fingerprint beside them are files no run claimed,
+    which a run leaves where they stand.
+
+    Raises:
+        ResumeRefusedError: If the folder holds renders or recordings no run claimed.
+    """
+    if holds_fingerprint(output):
+        clear_renders(output)
+    elif holds_renders(output):
+        raise ResumeRefusedError(
+            f"'{output}' holds files no calibration run claimed; choose another folder for the run"
+        )
 
 
 def _write_reports(rows: List[CalibrationRow], output: Path) -> Path:

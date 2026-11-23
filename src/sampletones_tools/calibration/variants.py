@@ -1,4 +1,5 @@
 import itertools
+from collections import Counter
 from dataclasses import dataclass
 from typing import Final, List, Mapping, Optional, Sequence, Tuple
 
@@ -49,7 +50,8 @@ def build_variants(
     weight. The base is measured first, and every named set after it, written over it, so a set is
     read against the configuration it departs from. Every level is measured beside the others. The
     label spells each overridden value, the set's name and a level other than the default, so a
-    report row stays self-describing.
+    report row stays self-describing. A label names one variant alone, since it names the variant's
+    records, its row in the reports and its column on the page.
 
     Args:
         base: Configuration providing every value the sweep leaves untouched.
@@ -65,6 +67,8 @@ def build_variants(
 
     Raises:
         ValidationError: If a set of settings names a setting the configuration lacks.
+        ValueError: If two points of the sweep share a label, such as a method named twice or two
+            exponents spelled alike.
     """
     swept_temporal: List[Optional[float]] = list(temporal_weights) if temporal_weights else [None]
     swept_settings: List[Optional[str]] = [None, *settings]
@@ -78,6 +82,7 @@ def build_variants(
 
         variants.append(_at_level(label, config, level))
 
+    _refuse_shared_labels(variants)
     return variants
 
 
@@ -128,6 +133,18 @@ def _at_level(label: str, config: Config, level: WorkingLevel) -> CalibrationVar
         label = _labeled(label, level.value)
 
     return CalibrationVariant(label=label, config=level_config(config, level), level=level)
+
+
+def _refuse_shared_labels(variants: Sequence[CalibrationVariant]) -> None:
+    """Refuse a sweep in which two variants share a label, naming every label shared.
+
+    Raises:
+        ValueError: If two variants share a label.
+    """
+    counts = Counter(variant.label for variant in variants)
+    shared = [label for label, count in counts.items() if count > 1]
+    if shared:
+        raise ValueError(f"Several variants of the sweep are named {', '.join(shared)}; name each value once")
 
 
 def _labeled(label: str, part: str) -> str:

@@ -9,6 +9,7 @@ from sampletones_core.reconstructions.reconstruction.renders import rendered_mix
 from sampletones_core.reconstructions.reconstructor.observer import SILENT_OBSERVER, ReconstructionObserver
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_shared.types.path import Pathlike
+from sampletones_tools.calibration.config.referee import RefereeConfig
 from sampletones_tools.calibration.corpus.families import Family
 from sampletones_tools.calibration.corpus.item import CorpusItem
 from sampletones_tools.calibration.referee.panel import RefereePanel
@@ -48,6 +49,15 @@ class WrittenReconstructor:
         return np.asarray(rendered_mix(self.reconstruction), dtype=np.float64)
 
 
+class UnavailableReconstructor(WrittenReconstructor):
+    """A reconstructor that converts nothing."""
+
+    def __call__(
+        self, path: Pathlike, *, observe: ReconstructionObserver = SILENT_OBSERVER
+    ) -> Optional[Reconstruction]:
+        return None
+
+
 class StubReferee:
     """A referee scoring every render alike, so a conversion leaves one row per sound."""
 
@@ -74,5 +84,5 @@ def item_named(name: str, *, listed: bool) -> CorpusItem:
 
 
 def stub_panel() -> RefereePanel:
-    """A panel of the stub referee alone."""
-    return RefereePanel(audio=(StubReferee(),), truth=(), trace=(), conversion=())
+    """A panel of the stub referee alone, under the packaged tuning."""
+    return RefereePanel(audio=(StubReferee(),), truth=(), trace=(), conversion=(), config=RefereeConfig.load())

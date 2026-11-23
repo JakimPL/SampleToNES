@@ -145,8 +145,9 @@ def run(arguments: Namespace) -> int:
 
     Raises:
         SystemExit: If a method, a value, a channel or a palette is unknown, a file named is missing,
-            a manifest is malformed, a run cannot be resumed, a run directory holds no renders, or a
-            page is asked for beside the options that measure.
+            a manifest is malformed, two variants of the sweep share a name, a set of settings names a
+            setting the configuration lacks, a run cannot claim its folder, a run directory holds no renders,
+            a page is asked for beside the options that measure, or the samples cannot be fetched.
     """
     given = CalibrationArguments.read(arguments)
     if given.fetch_samples:
@@ -173,7 +174,9 @@ def _request(given: CalibrationArguments) -> CalibrationRequest:
     """The run the options ask for, the packaged suite filling every part of the sweep they leave out.
 
     Raises:
-        SystemExit: If a name or a value is unknown, a file named is missing, or a manifest is malformed.
+        SystemExit: If a name or a value is unknown, a file named is missing, a manifest is malformed,
+            two variants of the sweep share a name, or a set of settings names a setting the
+            configuration lacks.
     """
     from sampletones_application.utils.palette.catalog import DEFAULT_PALETTE_NAME
     from sampletones_core.headless.conversion.request import channels_named
@@ -236,14 +239,20 @@ def _compare(given: CalibrationArguments) -> int:
 
 
 def _fetch() -> int:
-    from urllib.error import URLError
+    """Fetch the listening samples, ending with a note where a download fails.
+
+    Raises:
+        SystemExit: If a publisher cannot be reached, stops answering, answers malformed or cut short,
+            or holds a recording of another checksum.
+    """
+    from http.client import HTTPException
 
     from sampletones_tools.calibration.config.samples import SamplesConfig
     from sampletones_tools.calibration.samples import SAMPLES_DIRECTORY, SampleChecksumError, fetch_samples
 
     try:
         fetched = fetch_samples(SamplesConfig.load(), SAMPLES_DIRECTORY)
-    except (URLError, SampleChecksumError) as error:
+    except (OSError, HTTPException, SampleChecksumError) as error:
         raise SystemExit(f"The samples could not be fetched: {error}") from error
 
     print(f"Samples: {len(fetched)} in {SAMPLES_DIRECTORY}")

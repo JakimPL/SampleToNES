@@ -8,16 +8,27 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction
 from sampletones_shared.paths.extensions import EXT_FILE_FLAC, EXT_FILE_JSON
 from sampletones_shared.utils.system.paths import get_filename
-from sampletones_tools.calibration.layout import RENDERS_DIRECTORY, combination_name
+from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.fingerprint import FINGERPRINT_FILE
+from sampletones_tools.calibration.layout import (
+    CORPUS_DIRECTORY,
+    RECORDINGS_DIRECTORY,
+    RENDERS_DIRECTORY,
+    combination_name,
+)
 from sampletones_tools.calibration.renders import (
     UNFILED_FAMILY,
+    UNRECORDED_LEVEL,
     RenderRecord,
     channel_subsets,
+    clear_renders,
     item_directory,
     read_record,
+    recording_path,
     sounding_timelines,
     write_channel_renders,
     write_record,
+    write_recording,
     write_render,
 )
 
@@ -91,6 +102,63 @@ class TestWriteRecord:
         record = RenderRecord.model_validate_json(older)
 
         assert (record.family, record.listed) == (UNFILED_FAMILY, True)
+
+    def test_a_record_written_before_records_kept_their_level_reads_at_the_unrecorded_level(self) -> None:
+        older = (
+            '{"variant": "fft-pe1", "item": "tone-a", "position": 0, "family": "sines", "category": "tone", '
+            '"listed": true, "timelines": {}, "judgments": {}, "silence": {}}'
+        )
+
+        assert RenderRecord.model_validate_json(older).level == UNRECORDED_LEVEL
+
+
+class TestRecordings:
+    def test_the_default_level_keeps_its_recordings_directly_in_the_run_s_recordings(self, tmp_path: Path) -> None:
+        path = recording_path(tmp_path, WorkingLevel.DEFAULT, ITEM)
+
+        assert path == tmp_path / RECORDINGS_DIRECTORY / get_filename(ITEM, EXT_FILE_FLAC)
+
+    def test_every_other_level_keeps_its_recordings_in_a_directory_named_after_it(self, tmp_path: Path) -> None:
+        path = recording_path(tmp_path, WorkingLevel.TRUE, ITEM)
+
+        assert path == tmp_path / RECORDINGS_DIRECTORY / WorkingLevel.TRUE.value / get_filename(ITEM, EXT_FILE_FLAC)
+
+    def test_a_recording_at_each_level_stands_beside_the_other(self, tmp_path: Path) -> None:
+        audio = np.linspace(-0.5, 0.5, SAMPLE_RATE // 8)
+        levels = {WorkingLevel.DEFAULT: audio, WorkingLevel.TRUE: audio / 4}
+        for level, scaled in levels.items():
+            write_recording(tmp_path, level, ITEM, scaled, SAMPLE_RATE)
+
+        for level, scaled in levels.items():
+            recording, _ = read_wave(recording_path(tmp_path, level, ITEM))
+            assert np.allclose(recording, scaled, atol=QUANTIZATION_TOLERANCE)
+
+
+class TestClearRenders:
+    def test_the_renders_and_the_recordings_go_and_the_rest_of_the_run_stays(self, tmp_path: Path) -> None:
+        record = RenderRecord(
+            variant=VARIANT,
+            item=ITEM,
+            position=0,
+            category="tone",
+            timelines={},
+            judgments={},
+            silence={},
+        )
+        write_record(tmp_path, record)
+        write_recording(tmp_path, WorkingLevel.TRUE, ITEM, np.zeros(SAMPLE_RATE // 8), SAMPLE_RATE)
+        (tmp_path / CORPUS_DIRECTORY).mkdir()
+        (tmp_path / FINGERPRINT_FILE).write_text("{}", encoding="utf-8")
+
+        clear_renders(tmp_path)
+
+        assert sorted(path.name for path in tmp_path.iterdir()) == sorted((CORPUS_DIRECTORY, FINGERPRINT_FILE))
+        assert read_record(tmp_path, VARIANT, ITEM) is None
+
+    def test_a_directory_holding_no_run_is_left_as_it_stands(self, tmp_path: Path) -> None:
+        clear_renders(tmp_path)
+
+        assert list(tmp_path.iterdir()) == []
 
 
 class TestReadRecord:

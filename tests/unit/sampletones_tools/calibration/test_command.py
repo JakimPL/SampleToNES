@@ -1,5 +1,6 @@
+import socket
 from pathlib import Path
-from typing import Final, List
+from typing import Final, Iterator, List
 
 import pytest
 import yaml
@@ -12,6 +13,8 @@ from sampletones_core.constants.enums import ChannelName, SpectrumMethod
 from sampletones_tools.calibration.board.layout import PAGE_FILE
 from sampletones_tools.calibration.board.session import BoardRequest
 from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.config.samples import SampleReference, SamplesConfig
+from sampletones_tools.calibration.config.settings import SettingsConfig
 from sampletones_tools.calibration.config.suite import SuiteConfig
 from sampletones_tools.calibration.corpus.reference import reference_categories
 from sampletones_tools.calibration.fingerprint import ResumeRefusedError
@@ -43,6 +46,12 @@ MEASURING_OPTIONS: Final[List[List[str]]] = [
 ]
 BUILD_BOARD = "sampletones_tools.calibration.board.session.build_board"
 OPEN_PAGE = "sampletones_tools.calibration.board.browser.open_page"
+LOAD_SETTINGS = "sampletones_tools.calibration.config.settings.SettingsConfig.load"
+LOAD_SAMPLES = "sampletones_tools.calibration.config.samples.SamplesConfig.load"
+SAMPLES_FOLDER = "sampletones_tools.calibration.samples.SAMPLES_DIRECTORY"
+DOWNLOAD_TIMEOUT = "sampletones_tools.calibration.samples.TIMEOUT_SECONDS"
+STALL_SECONDS: Final[float] = 0.05
+LOOPBACK: Final[str] = "127.0.0.1"
 
 
 class RecordedCalibration:
@@ -82,6 +91,14 @@ def manifest_fixture(tmp_path: Path) -> Path:
     }
     path.write_text(yaml.safe_dump({"items": [item]}), encoding="utf-8")
     return path
+
+
+@pytest.fixture(name="stalling")
+def stalling_fixture() -> Iterator[str]:
+    """The address of a publisher that takes every connection and answers none of them."""
+    with socket.create_server((LOOPBACK, 0)) as server:
+        host, port = server.getsockname()
+        yield f"http://{host}:{port}/sample.wav"
 
 
 @pytest.fixture(name="calibration")
@@ -199,6 +216,30 @@ class TestCalibration:
     def test_an_unknown_set_of_settings_is_refused(self, calibration: RecordedCalibration) -> None:
         with pytest.raises(SystemExit, match="Unknown set of settings"):
             dispatch(COMMANDS, ["calibration", "--settings", "gredy"])
+
+        assert calibration.requests == []
+
+    @pytest.mark.parametrize(
+        "sweep",
+        [["--methods", "cqt,cqt"], ["--methods", "fft", "--perceptual-exponents", "0.5,0.5000001"]],
+        ids=["method", "exponent"],
+    )
+    def test_a_sweep_naming_two_variants_alike_exits_before_the_run_starts(
+        self, calibration: RecordedCalibration, sweep: List[str]
+    ) -> None:
+        with pytest.raises(SystemExit, match="Several variants of the sweep are named"):
+            dispatch(COMMANDS, ["calibration", *sweep])
+
+        assert calibration.requests == []
+
+    def test_a_set_naming_a_setting_the_configuration_lacks_exits_before_the_run_starts(
+        self, calibration: RecordedCalibration, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        catalog = SettingsConfig(settings={"typo": {"generation": {"decoder": {"selektor": "greedy"}}}})
+        monkeypatch.setattr(LOAD_SETTINGS, lambda: catalog)
+
+        with pytest.raises(SystemExit, match="selektor"):
+            dispatch(COMMANDS, ["calibration", "--settings", "typo"])
 
         assert calibration.requests == []
 
@@ -369,3 +410,30 @@ class TestFetchingSamples:
 
         assert calibration.requests == []
         assert board.requests == []
+
+    def test_a_download_that_stalls_after_connecting_ends_with_a_note(
+        self,
+        stalling: str,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        reference = SampleReference(
+            name="stalled",
+            url=stalling,
+            file_name="stalled.wav",
+            sha256="0" * 64,
+            start_seconds=0.0,
+            end_seconds=1.0,
+            license="CC0 1.0",
+            attribution="nobody",
+        )
+        monkeypatch.setattr(
+            LOAD_SAMPLES, lambda: SamplesConfig(user_agent="test", pause_seconds=0.0, samples=[reference])
+        )
+        monkeypatch.setattr(SAMPLES_FOLDER, tmp_path)
+        monkeypatch.setattr(DOWNLOAD_TIMEOUT, STALL_SECONDS)
+
+        with pytest.raises(SystemExit, match="The samples could not be fetched"):
+            dispatch(COMMANDS, ["calibration", "--fetch-samples"])
+
+        assert list(tmp_path.iterdir()) == []

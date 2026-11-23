@@ -4,12 +4,13 @@ from typing import Dict, Final, List, Optional, Sequence, Tuple
 from sampletones_core.constants.enums import ChannelName, ordered_channels
 from sampletones_shared.paths.extensions import EXT_FILE_FLAC
 from sampletones_shared.utils.system.paths import get_filename
-from sampletones_tools.calibration.layout import RECORDINGS_DIRECTORY, combination_name
-from sampletones_tools.calibration.renders import RenderRecord, item_directory, variant_directory
+from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.layout import combination_name
+from sampletones_tools.calibration.renders import RenderRecord, item_directory, recording_path, variant_directory
 from sampletones_tools.web.roles.table import channel_role
 
 from .clips import ClipStore
-from .model import BoardCell, BoardChannel, BoardGlyphs, BoardGroup, BoardPage, BoardRow
+from .model import BoardCell, BoardChannel, BoardGlyphs, BoardGroup, BoardPage, BoardRecording, BoardRow
 from .reading import RunReading
 
 NO_CLIP: Final[str] = ""
@@ -56,8 +57,7 @@ def compose_page(
 def _column_group(run: RunReading, store: ClipStore) -> Tuple[BoardGroup, ...]:
     """One table whose columns are the configurations the run measured."""
     variants = run.variants
-    items = [(item, run) for item in _items(run)]
-    rows = _rows(store, items, [(run, variant) for variant in variants])
+    rows = _rows(store, _items(run), [(run, variant) for variant in variants])
     return (BoardGroup(name=run.label, columns=variants, rows=rows),)
 
 
@@ -74,18 +74,17 @@ def _variant_groups(runs: Sequence[RunReading], store: ClipStore) -> Tuple[Board
 
 def _rows(
     store: ClipStore,
-    items: Sequence[Tuple[str, RunReading]],
+    items: Sequence[str],
     places: Sequence[Tuple[RunReading, str]],
 ) -> Tuple[BoardRow, ...]:
     """A row per item every column holds a render of, so each row reads across the whole table."""
-    rows = [_row(store, item, recording_run, places) for item, recording_run in items]
+    rows = [_row(store, item, places) for item in items]
     return tuple(row for row in rows if row is not None)
 
 
 def _row(
     store: ClipStore,
     item: str,
-    recording_run: RunReading,
     places: Sequence[Tuple[RunReading, str]],
 ) -> Optional[BoardRow]:
     records = [(run, _record(run, item, variant)) for run, variant in places]
@@ -97,8 +96,24 @@ def _row(
         item=item,
         family=held[0][1].family,
         category=held[0][1].category,
-        recording=store.href(recording_run, _recording_path(recording_run, item)),
+        recordings=_recordings(store, item, held),
         cells=tuple(_cell(run, store, record) for run, record in held),
+    )
+
+
+def _recordings(
+    store: ClipStore,
+    item: str,
+    held: Sequence[Tuple[RunReading, RenderRecord]],
+) -> Tuple[BoardRecording, ...]:
+    """The recording at each level the cells were matched at, each from the run of the first cell at that level."""
+    first: Dict[WorkingLevel, RunReading] = {}
+    for run, record in held:
+        first.setdefault(record.level, run)
+
+    return tuple(
+        BoardRecording(level=level.value, clip=store.href(run, recording_path(run.directory, level, item)))
+        for level, run in first.items()
     )
 
 
@@ -145,10 +160,6 @@ def _render_path(run: RunReading, record: RenderRecord) -> Path:
     return variant_directory(run.directory, record.variant) / get_filename(record.item, EXT_FILE_FLAC)
 
 
-def _recording_path(run: RunReading, item: str) -> Path:
-    return run.directory / RECORDINGS_DIRECTORY / get_filename(item, EXT_FILE_FLAC)
-
-
 def _sounding_channels(record: RenderRecord) -> List[ChannelName]:
     return ordered_channels({ChannelName(name) for name in record.timelines})
 
@@ -170,10 +181,5 @@ def _shared_variants(runs: Sequence[RunReading]) -> Tuple[str, ...]:
     return tuple(dict.fromkeys(variant for run in runs for variant in run.variants))
 
 
-def _shared_items(runs: Sequence[RunReading]) -> List[Tuple[str, RunReading]]:
-    seen: Dict[str, RunReading] = {}
-    for run in runs:
-        for item in _items(run):
-            seen.setdefault(item, run)
-
-    return list(seen.items())
+def _shared_items(runs: Sequence[RunReading]) -> Tuple[str, ...]:
+    return tuple(dict.fromkeys(item for run in runs for item in _items(run)))

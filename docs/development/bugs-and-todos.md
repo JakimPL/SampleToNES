@@ -136,6 +136,11 @@ dimension the import starts carrying.
   and the triangle into short runs: Can't Stop as a whole mix sounds its noise in 49 runs where the
   first pass held 7, the triangle in 52 where it held 18, and its channels change from 17 to 31 times a
   second, while the readings in nats hold.
+* A calibration run's fingerprint holds the version the package declares, which moves at a release, so a
+  resume across source edits made between two releases takes up the records written before them.
+* A listening page reads the order of a run's variants from its `run.json`, so `--board` refuses a run
+  written before runs kept one. Such a run's records also read at the default level, so a run of several
+  levels plays every render beside the one recording it kept, the level it wrote last.
 
 ## Architecture
 

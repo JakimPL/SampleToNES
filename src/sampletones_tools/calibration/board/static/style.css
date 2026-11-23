@@ -149,6 +149,15 @@ col.change {
   overflow-wrap: anywhere;
 }
 
+/* A row of several levels stacks its recordings, one per level. */
+td.recording .button:not(:only-child) {
+  display: block;
+}
+
+td.recording .button + .button {
+  margin-top: var(--channel-gap);
+}
+
 /* A cell's play button, readings and channels in one line. */
 .cell {
   display: flex;

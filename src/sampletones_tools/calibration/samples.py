@@ -39,7 +39,9 @@ def fetch_samples(config: SamplesConfig, directory: Path) -> List[Path]:
 
     Raises:
         SampleChecksumError: If a download differs from the recording its reference names.
-        URLError: If a publisher cannot be reached.
+        OSError: If a publisher cannot be reached, refuses the request, or stops answering for
+            ``TIMEOUT_SECONDS``.
+        HTTPException: If a publisher's answer is malformed or breaks off.
     """
     directory.mkdir(parents=True, exist_ok=True)
     downloaded = 0
@@ -64,6 +66,8 @@ def _fetch(reference: SampleReference, user_agent: str, directory: Path) -> None
 
     Raises:
         SampleChecksumError: If the download differs from the recording its reference names.
+        OSError: If the publisher cannot be reached, refuses the request, or stops answering.
+        HTTPException: If the publisher's answer is malformed or breaks off.
     """
     logger.info(f"Fetching {reference.name} from {reference.url}")
     data = _download(reference.url, user_agent)
@@ -78,6 +82,14 @@ def _fetch(reference: SampleReference, user_agent: str, directory: Path) -> None
 
 
 def _download(url: str, user_agent: str) -> bytes:
+    """The bytes published at ``url``, asked for under ``user_agent``.
+
+    Raises:
+        OSError: If the publisher cannot be reached, answers with an error status (``URLError`` and
+            ``HTTPError``), or sends nothing for ``TIMEOUT_SECONDS`` once connected (``TimeoutError``).
+        HTTPException: If the publisher's answer is malformed or breaks off before its end, such as
+            ``IncompleteRead``.
+    """
     request = urllib.request.Request(url, headers={"User-Agent": user_agent})
     with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
         return bytes(response.read())

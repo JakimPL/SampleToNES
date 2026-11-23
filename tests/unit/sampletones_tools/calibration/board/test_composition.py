@@ -1,4 +1,4 @@
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Final, List
 
 import pytest
@@ -8,9 +8,12 @@ from sampletones_tools.calibration.board.clips import InPlaceClips, clip_store
 from sampletones_tools.calibration.board.composition import NO_CLIP, compose_page
 from sampletones_tools.calibration.board.model import BoardGlyphs, BoardPage
 from sampletones_tools.calibration.board.reading import read_runs
+from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.fingerprint import write_fingerprint
 from sampletones_tools.calibration.layout import combination_name
-from sampletones_tools.calibration.renders import RenderRecord, write_record
+from sampletones_tools.calibration.renders import RenderRecord, recording_path, write_record
 from sampletones_tools.web.roles.table import channel_role
+from tests.unit.sampletones_tools.calibration.runs import probe_fingerprint, write_renders, write_run
 
 TITLE: Final[str] = "Calibration"
 GLYPHS: Final[BoardGlyphs] = BoardGlyphs(header="≈", expanded="▾", collapsed="▸", play="▶")
@@ -60,6 +63,31 @@ class TestOneRun:
 
         assert "note-a" not in [row.item for row in group.rows]
 
+    def test_the_columns_follow_the_order_the_run_measured_its_variants_in(self, tmp_path: Path) -> None:
+        run = write_run(tmp_path / "run", ["fft-pe1", "cqt-pe1"], 0.0)
+
+        assert page_of([run], run).groups[0].columns == ("fft-pe1", "cqt-pe1")
+
+    def test_a_row_of_one_level_offers_the_recording_its_cells_reconstruct(self, run: Path) -> None:
+        row = page_of([run], run).groups[0].rows[0]
+
+        assert [recording.level for recording in row.recordings] == [WorkingLevel.DEFAULT.value]
+        assert run / row.recordings[0].clip == recording_path(run, WorkingLevel.DEFAULT, row.item)
+        assert (run / row.recordings[0].clip).is_file()
+
+    def test_a_row_of_several_levels_offers_the_recording_at_each(self, tmp_path: Path) -> None:
+        run = write_renders(tmp_path / "run", ["cqt-pe1"], 0.0, level=WorkingLevel.DEFAULT)
+        write_renders(run, ["cqt-pe1-true"], 0.0, level=WorkingLevel.TRUE)
+        write_fingerprint(run, probe_fingerprint(["cqt-pe1", "cqt-pe1-true"]))
+
+        row = page_of([run], run).groups[0].rows[0]
+
+        assert [recording.level for recording in row.recordings] == [level.value for level in WorkingLevel]
+        assert len({recording.clip for recording in row.recordings}) == len(WorkingLevel)
+        assert [run / recording.clip for recording in row.recordings] == [
+            recording_path(run, level, row.item) for level in WorkingLevel
+        ]
+
     def test_a_cell_names_the_render_the_run_wrote(self, run: Path) -> None:
         cell = page_of([run], run).groups[0].rows[0].cells[0]
 
@@ -108,6 +136,14 @@ class TestSeveralRuns:
         group = page_of(runs, tmp_path / "page").groups[0]
 
         assert [cell.score for cell in group.rows[0].cells] == [10.0, 9.0]
+
+    def test_a_row_carries_the_recording_of_the_first_run_holding_it(self, runs: List[Path], tmp_path: Path) -> None:
+        output = tmp_path / "page"
+        row = page_of(runs, output).groups[0].rows[0]
+
+        (recording,) = row.recordings
+        assert (output / recording.clip).is_file()
+        assert runs[0].name in PurePosixPath(recording.clip).parts
 
 
 class TestNoRun:

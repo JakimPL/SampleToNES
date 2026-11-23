@@ -39,6 +39,20 @@ class BoardCell(BaseModel):
     channels: Tuple[BoardChannel, ...]
 
 
+class BoardRecording(BaseModel):
+    """The recording the cells matched at one level reconstruct.
+
+    Attributes:
+        level: The level the recording was prepared at, which names it where a row holds several.
+        clip: The page's reference to the recording.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    level: str
+    clip: str
+
+
 class BoardRow(BaseModel):
     """One reference sound across every column of a group.
 
@@ -46,7 +60,8 @@ class BoardRow(BaseModel):
         item: The corpus item's name.
         family: The family the item belongs to, which the page heads its section with.
         category: The corpus category the item belongs to.
-        recording: The page's reference to the recording every cell reconstructs.
+        recordings: One recording per level the cells were matched at, in the order the columns first
+            reach each level, so every cell plays beside the recording at its own level.
         cells: One cell per column, in the columns' order.
     """
 
@@ -55,7 +70,7 @@ class BoardRow(BaseModel):
     item: str
     family: str
     category: str
-    recording: str
+    recordings: Tuple[BoardRecording, ...]
     cells: Tuple[BoardCell, ...]
 
 

@@ -16,21 +16,21 @@ from .transcription import TranscriptionReferee
 from .zimtohrli import ZimtohrliReferee, zimtohrli_available
 
 
-def build_referees(sample_rate: int) -> List[Referee]:
+def build_referees(sample_rate: int, config: RefereeConfig) -> List[Referee]:
     """
     Referees available on this system, the headline one first.
 
-    A report ranks by the first referee. The built-in referees share the packaged tuning, and
-    Zimtohrli joins as a second opinion where the ``calibration`` dependency group is installed.
+    A report ranks by the first referee. The built-in referees share ``config``, and Zimtohrli joins
+    as a second opinion where the ``calibration`` dependency group is installed.
 
     Args:
         sample_rate: Sampling rate of the signals under evaluation in Hz.
+        config: The tuning the built-in referees read.
 
     Returns:
-        List[Referee]: The built-in referees with the packaged tuning (auditory, loudness, contour),
-            then Zimtohrli when available.
+        List[Referee]: The built-in referees with ``config`` (auditory, loudness, contour), then
+            Zimtohrli when available.
     """
-    config = RefereeConfig.load()
     referees: List[Referee] = [
         MultiResolutionAuditoryReferee(sample_rate, config=config),
         LoudnessWeightedReferee(sample_rate, config=config),
@@ -42,14 +42,13 @@ def build_referees(sample_rate: int) -> List[Referee]:
     return referees
 
 
-def build_truth_referees() -> List[TruthReferee]:
-    """Referees reading a conversion against what its reference sound plays, with the packaged tuning.
+def build_truth_referees(config: RefereeConfig) -> List[TruthReferee]:
+    """Referees reading a conversion against what its reference sound plays, the transcription tuned by ``config``.
 
     Returns:
         List[TruthReferee]: The transcription, the pitch, the stability, the balance and the continuity
             referees.
     """
-    config = RefereeConfig.load()
     return [
         TranscriptionReferee(volume_tolerance=config.volume_tolerance, misplaced_weight=config.misplaced_weight),
         PitchReferee(),

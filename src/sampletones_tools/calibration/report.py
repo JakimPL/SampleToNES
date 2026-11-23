@@ -40,13 +40,16 @@ def write_csv(rows: List[CalibrationRow], path: Path) -> None:
 def write_markdown(rows: List[CalibrationRow], path: Path) -> None:
     """
     Write a section per family, and in it a per-referee pivot of mean scores: one row per variant,
-    one column per category of the family, with the family's mean last. Lower scores mean closer
-    reconstructions.
+    one column per category of the family, with the family's mean last.
 
     Families stand apart, each read on its own terms, so a mean spans one family alone. Each
     referee's score leads its subsection, and every further reading it reports follows in a table of
     its own. Families, referees, readings, categories and variants each follow the order the rows
     first name them in, which is the run's order.
+
+    A score is lower-better: a lower score is a closer reconstruction. Each further reading reads as
+    its referee states. Some are signed differences, closest at zero, such as the loudness referee's
+    ``level``, and the balance referee's ``scale`` is closest at one.
 
     Args:
         rows: Scored rows from the runner.

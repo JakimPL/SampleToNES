@@ -18,8 +18,9 @@ const MESSAGES = {
 const SOUNDING_FRAME = "1";
 const NAME_BREAK = "-";
 const SHOWN_DIGITS = 2;
-const NO_PLACE = -1;
+const BEFORE_FIRST = -1;
 const CHANGE_COLUMNS = 2;
+const INTERRUPTED = "AbortError";
 
 const player = new Audio();
 let playing = null;
@@ -188,15 +189,26 @@ function changeNode(row) {
   return node;
 }
 
-/** One sound across the table: its name, its recording, a cell per column and the change. */
+/**
+ * A row's recordings, one per level its cells were matched at. A row of one level offers its
+ * recording plainly, and a row of several names each recording by its level.
+ */
+function recordingsNode(row) {
+  const node = element("td", "recording");
+  const named = row.recordings.length > 1;
+  for (const recording of row.recordings) {
+    node.append(clip(named ? recording.level : MESSAGES.recording, recording.clip, "button clip"));
+  }
+  return node;
+}
+
+/** One sound across the table: its name, its recordings, a cell per column and the change. */
 function rowNode(row, board) {
   const node = element("tr", "sound-row");
   const sound = element("td", "sound");
   sound.append(breakable(row.item));
   node.append(sound);
-  const recording = element("td", "recording");
-  recording.append(clip(MESSAGES.recording, row.recording, "button clip"));
-  node.append(recording);
+  node.append(recordingsNode(row));
   for (const cell of row.cells) {
     const holder = element("td");
     holder.append(cellNode(cell, board));
@@ -379,9 +391,14 @@ function mark(button) {
   }
 }
 
-/** Plays the player on, clearing the mark where the browser refuses to play. */
-function resume() {
-  player.play().catch(() => mark(null));
+/**
+ * Plays the player on for `button`. A play the browser refuses clears the mark while `button` still
+ * holds it. An interruption, which a pause or a newer play raises, leaves the mark where it stands.
+ */
+function resume(button) {
+  player.play().catch((error) => {
+    if (error.name !== INTERRUPTED && playing === button) { mark(null); }
+  });
 }
 
 /**
@@ -393,20 +410,28 @@ function play(button) {
   player.pause();
   player.src = button.dataset.source;
   player.currentTime = 0;
-  resume();
+  resume(button);
   mark(button);
   rowOf(button).scrollIntoView({ block: "nearest" });
 }
 
 /**
+ * The place a step of `offset` enters a row of `count` clips from: just outside the row, on the side
+ * the step comes from, so a step right reaches the first clip and a step left the last.
+ */
+function entry(offset, count) {
+  return offset > 0 ? BEFORE_FIRST : count;
+}
+
+/**
  * Plays the clip `offset` places across from the one playing, within its row, going round. With
- * nothing playing, the first open row is stepped through from the place before its first clip.
+ * nothing playing, the first open row is entered from the side the step comes from.
  */
 function stepAcross(offset) {
   const rows = shownRows();
   const clips = playing ? rowClips(rowOf(playing)) : rows.length ? rowClips(rows[0]) : [];
   if (!clips.length) { return; }
-  const place = playing ? clips.indexOf(playing) : NO_PLACE;
+  const place = playing ? clips.indexOf(playing) : entry(offset, clips.length);
   play(clips[stepped(place, offset, clips.length)]);
 }
 
@@ -429,7 +454,7 @@ function stepDown(offset) {
 /** Space: starts the first open row where nothing plays, and otherwise pauses or resumes. */
 function toggle() {
   if (!playing) { stepDown(0); return; }
-  if (player.paused) { resume(); } else { player.pause(); }
+  if (player.paused) { resume(playing); } else { player.pause(); }
 }
 
 const KEYS = new Map([

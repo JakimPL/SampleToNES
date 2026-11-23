@@ -17,6 +17,7 @@ from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.system.paths import get_filename
 from sampletones_tools.calibration import renders
 from sampletones_tools.calibration.config.level import WorkingLevel
+from sampletones_tools.calibration.config.referee import RefereeConfig
 from sampletones_tools.calibration.corpus.by_channel import by_channel
 from sampletones_tools.calibration.corpus.chords import build_chords
 from sampletones_tools.calibration.corpus.item import CorpusItem
@@ -24,7 +25,7 @@ from sampletones_tools.calibration.corpus.truth import Truth
 from sampletones_tools.calibration.layout import RECORDINGS_DIRECTORY
 from sampletones_tools.calibration.referee.panel import RefereePanel
 from sampletones_tools.calibration.referee.protocol import Judgment
-from sampletones_tools.calibration.renders import RenderRecord, read_record, variant_directory
+from sampletones_tools.calibration.renders import RenderRecord, read_record, recording_path, variant_directory
 from sampletones_tools.calibration.rows import recorded_rows
 from sampletones_tools.calibration.runner import Conversion, evaluate_conversion
 from sampletones_tools.calibration.trace import SearchTrace, TraceRecorder
@@ -33,7 +34,7 @@ from sampletones_tools.corpus.written import NO_RECORDINGS, WRITTEN_SCALE, writt
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
-from .conversions import WrittenReconstructor, item_named, stub_panel
+from .conversions import UnavailableReconstructor, WrittenReconstructor, item_named, stub_panel
 from .corpus.test_by_channel import CHORDS
 
 RUN_CHANNELS: Final[FrozenSet[ChannelName]] = frozenset({ChannelName.PULSE1})
@@ -92,6 +93,13 @@ class HalfLevelReconstructor(WrittenReconstructor):
         )
 
 
+class QuietFileReconstructor(WrittenReconstructor):
+    """The written reconstructor, reading its file at half the level, as a level reading files unnormalized may."""
+
+    def load_audio(self, paths: Sequence[Pathlike]) -> np.ndarray:
+        return HALF_LEVEL * super().load_audio(paths)
+
+
 class TracingReconstructor(WrittenReconstructor):
     """The written reconstructor, telling its observer it assigned and decoded."""
 
@@ -101,15 +109,6 @@ class TracingReconstructor(WrittenReconstructor):
         observe.assigned(Alternatives(lattices={}, pools={}))
         observe.decoded({})
         return super().__call__(path, observe=observe)
-
-
-class UnavailableReconstructor(WrittenReconstructor):
-    """A reconstructor that converts nothing."""
-
-    def __call__(
-        self, path: Pathlike, *, observe: ReconstructionObserver = SILENT_OBSERVER
-    ) -> Optional[Reconstruction]:
-        return None
 
 
 @dataclass(frozen=True)
@@ -151,6 +150,7 @@ def _panel(*, answering: bool) -> RefereePanel:
         truth=(TruthJudge("truth", answering, []),),
         trace=(TraceJudge("trace", answering, []),),
         conversion=(ConversionJudge("conversion", answering, []),),
+        config=RefereeConfig.load(),
     )
 
 
@@ -271,6 +271,33 @@ class TestEvaluateConversion:
         heard = reconstructor.load_audio([])
         assert np.allclose(recording, heard[: recording.shape[0]], atol=QUANTIZATION_TOLERANCE)
         assert np.allclose(render, heard[: render.shape[0]] * HALF_LEVEL, atol=QUANTIZATION_TOLERANCE)
+
+    def test_a_record_keeps_the_level_its_render_was_matched_at(self, tmp_path: Path) -> None:
+        (true,) = build_variants(Config(), [SpectrumMethod.FFT], [1.0], [], settings={}, levels=[WorkingLevel.TRUE])
+        item = item_named("a", listed=False)
+
+        evaluate_conversion(
+            _conversion(true, item, tmp_path), cast(Reconstructor, WrittenReconstructor()), stub_panel()
+        )
+
+        record = read_record(tmp_path, true.label, item.name)
+        assert record is not None
+        assert record.level == WorkingLevel.TRUE
+
+    def test_each_level_keeps_its_own_recording_of_a_listed_sound(self, tmp_path: Path) -> None:
+        default, true = build_variants(
+            Config(), [SpectrumMethod.FFT], [1.0], [], settings={}, levels=[WorkingLevel.DEFAULT, WorkingLevel.TRUE]
+        )
+        item = item_named("a", listed=True)
+        normalized, quiet = WrittenReconstructor(), QuietFileReconstructor()
+
+        evaluate_conversion(_conversion(default, item, tmp_path), cast(Reconstructor, normalized), stub_panel())
+        evaluate_conversion(_conversion(true, item, tmp_path), cast(Reconstructor, quiet), stub_panel())
+
+        at_default, _ = read_wave(recording_path(tmp_path, WorkingLevel.DEFAULT, item.name))
+        at_true, _ = read_wave(recording_path(tmp_path, WorkingLevel.TRUE, item.name))
+        assert np.allclose(at_default, normalized.load_audio([])[: at_default.shape[0]], atol=QUANTIZATION_TOLERANCE)
+        assert np.allclose(at_true, quiet.load_audio([])[: at_true.shape[0]], atol=QUANTIZATION_TOLERANCE)
 
 
 class TestJudgments(BaseTestSuite):

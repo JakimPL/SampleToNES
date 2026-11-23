@@ -53,12 +53,17 @@ listening page.
 | `index.html` | the listening page, which opens by double-click |
 | `report.md` | the scores, as tables |
 | `report.csv` | every score, one per row, for your own analysis |
-| `run.json` | what the run measures, which `--resume` checks before it goes on |
+| `run.json` | what the run measures, which `--resume` checks before it goes on, and the order of its variants, which the page's columns follow |
 | `renders/<variant>/` | a JSON file per reconstruction with its scores and the frames each channel plays, and a FLAC file of each listed one |
 | `renders/<variant>/<sound>/` | each listed reconstruction cut by channel, one file per combination |
 | `recordings/` | each reference sound, as the run prepared it for reconstruction: at the library's sample rate and the level the conversion matched |
+| `recordings/true/` | each reference sound as a run with `--levels true` prepared it, at the level its file holds |
 | `corpus/` | the reference sounds as generated |
 | `page/` | the stylesheet, the script and the palette the page reads |
+
+A new run into a folder an earlier run used clears that run's `renders` and `recordings` first, so the
+folder holds one run's results. `--resume` keeps them. A folder holding `renders` or `recordings` with no
+`run.json` beside them holds files no run made, so a run leaves it as it is and asks for another folder.
 
 The audio is FLAC, which is lossless and about a third of the size the same audio takes as WAV. A
 default run writes about 35 MB. A run of four channels writes more, because a reconstruction of four
@@ -72,7 +77,9 @@ starts open, and **Open all** and **Close all** open or close every card at once
 says how many sounds the family lists and which channels play them.
 
 Inside a card, each category of sounds has its own heading. Each row is one reference sound, with a
-**recording** button that plays the original, and each column is one variant. Each cell has:
+**recording** button that plays the original, and each column is one variant. A run of several
+[levels](#custom-runs) gives each row one such button per level, named `default` and `true`, since each
+level prepares the original at a level of its own. Each cell has:
 
 - **▶**, which plays the whole reconstruction from its beginning.
 - The score beside it, with its sign turned, so higher is closer to the recording and zero is exact.
@@ -96,8 +103,8 @@ sound's versions, and <kbd>&uarr;</kbd> and <kbd>&darr;</kbd> move to another so
 The page is drawn in the program's own colors. `--palette NAME` draws it in another of the
 program's palettes, and `--no-open` leaves it closed and prints its link alone.
 
-A render plays at the same level as its recording, so a quieter render sounds quieter. You can also
-play any file in the run folder in an audio player of your own.
+A render plays at the same level as the recording of its own level, so a quieter render sounds quieter.
+You can also play any file in the run folder in an audio player of your own.
 
 Beside each render, a JSON file of the same name has:
 
@@ -113,9 +120,18 @@ A *referee* is a method that scores a reconstruction against its original: zero 
 higher for a larger audible difference. [How it judges](#how-it-judges) describes them.
 
 `report.md` has one section per [family](#the-reference-sounds) of reference sounds, and in it one
-subsection per referee. Each subsection starts with a table: one row per variant, one column per
-category of the family, and the family's mean last. Lower is better. Each family is read on its own
-terms, so a mean spans one family.
+subsection per referee. Each subsection starts with a table of the referee's score: one row per
+variant, one column per category of the family, and the family's mean last. The score is lower-better:
+a lower score is closer to the original. Each family is read on its own terms, so a mean spans one
+family.
+
+Each further table holds one of the referee's readings, and reads as the referee's section in
+[how it judges](#how-it-judges) describes. Most readings are lower-better too. These read otherwise:
+
+- Signed differences, closest at zero: `level` of `mr-loudness-dB`; `spread`, `onset` and the `band-`
+  readings of `contour`; `pulses`, `triangle` and `noise` of `balance`.
+- Closest at one: `scale` of `balance`.
+- Higher-better: `gains` and `pooled` of `search`.
 
 The `mr-loudness-dB` section adds a table for each of its readings:
 
@@ -137,8 +153,8 @@ reconstruction's instructions against what a reference sound plays, so they cove
 pitches the run knows. A synthesized sound of a known pitch carries it as a line, frame by frame: the
 sines, the pulse waves, and the pitched `sines-` and `tones-` sounds. A decaying sound counts as
 sounding its pitch while it stays within 40 dB of its start.
-Their readings are shares of frames, from 0 to 1, except where the
-[referees](#the-truth-referees) say otherwise. Lower is better there too.
+Their scores are shares of frames, from 0 to 1, except where the
+[referees](#the-truth-referees) say otherwise, and lower-better too.
 
 ## Custom runs
 
@@ -163,13 +179,17 @@ Each option replaces one part of the default run. The rest stays as the suite se
 | `--palette NAME` | The palette the listening page is drawn in | `--palette light` |
 | `--no-open` | Leaves the page closed | `--no-open` |
 
-A run writes `run.json` beside its report: what it measures, as fingerprints of its variants, its
-channels and its sounds. With `--resume`, a run in the same folder measuring the same converts only the
-sounds it has no record of yet, so a run stopped halfway goes on from there. A folder holding a run
-measured otherwise is refused, with what differs.
+A run writes `run.json` beside its report: what it measures and what measures it. It holds
+fingerprints of the variants, the channels, the sounds and the referees with their settings, and the
+program's version. With `--resume`, a run in the same folder measuring the same converts only the
+sounds it has no record of yet, so a run stopped halfway goes on from there. The channels may be named
+in any order. A folder holding a run measured otherwise, judged by other referees or made by another
+version is refused, with what differs.
 
 Lists are comma separated. Several lists multiply: `--methods fft,cqt --perceptual-exponents
-0.5,1` measures four variants, and the run takes about four times as long as one variant.
+0.5,1` measures four variants, and the run takes about four times as long as one variant. Each variant
+needs a name of its own, so a value named twice, such as `--methods cqt,cqt`, or two values written
+alike in a name, such as the exponents `0.5,0.5000001`, are refused before the run starts.
 
 From a copy of the source code, put `uv run` in front: `uv run sampletones calibration --methods cqt`.
 

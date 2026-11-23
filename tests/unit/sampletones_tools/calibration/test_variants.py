@@ -193,3 +193,28 @@ class TestBuildVariants:
 
     def test_an_empty_sweep_leaves_no_variant(self) -> None:
         assert not _variants([], EXPONENTS, [])
+
+
+class TestSharedLabels(BaseTestSuite):
+    """A label names one variant, so a sweep spelling two points alike is refused, naming the label."""
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        methods: List[SpectrumMethod]
+        exponents: List[float]
+        shared: str
+
+    test_cases = (
+        TestCase(methods=[SpectrumMethod.CQT, SpectrumMethod.CQT], exponents=[1.0], shared="cqt-pe1", label="method"),
+        TestCase(methods=[SpectrumMethod.FFT], exponents=[0.5, 0.5000001], shared="fft-pe0.5", label="exponent"),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
+    def test_two_points_spelled_alike_are_refused_naming_the_label(self, test_case: TestCase) -> None:
+        with pytest.raises(ValueError, match=f"named {test_case.shared};"):
+            _variants(test_case.methods, test_case.exponents, [])
+
+    def test_exponents_spelled_apart_are_measured_apart(self) -> None:
+        labels = [variant.label for variant in _variants([SpectrumMethod.FFT], [0.5, 0.75], [])]
+
+        assert labels == ["fft-pe0.5", "fft-pe0.75"]
