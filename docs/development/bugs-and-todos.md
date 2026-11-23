@@ -110,8 +110,6 @@ dimension the import starts carrying.
   coarsens their timing.
 * A constant-Q column holds each wavelet up to a sample off its frame's middle, by the parities of the frame,
   the wavelet and the longest wavelet: at the defaults every even-length wavelet sits half a sample early.
-* A target that wavers for `test_decoding.py`, whose two-tone target wavers at no frame once the extraction
-  reads its opening, so the cases holding the greedy decoder against the Viterbi one stand as expected failures.
 * The joint assignment for stems that share channels. It solves each stem on its own channels, so a setup
   where two stems may take one channel is refused under `generation.assignment.method: joint`. A joint
   choice across stems, ordered by the hierarchy, closes it.
